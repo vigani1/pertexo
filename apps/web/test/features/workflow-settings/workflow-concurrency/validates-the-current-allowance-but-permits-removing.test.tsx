@@ -102,7 +102,7 @@ describe('workflow concurrency settings', () => {
       overflow: 'queue',
     });
   });
-  it('retries the exact body and key after an uncertain outcome, not the refreshed revision', async () => {
+  it('preserves edits after an unconfirmed result and confirms them against the refreshed revision with a new key', async () => {
     installQueries();
     let current = defaultConcurrencySettings;
     const requests: { body: unknown; key: string | null }[] = [];
@@ -126,14 +126,14 @@ describe('workflow concurrency settings', () => {
       screen.getByRole('button', { name: 'Save concurrency limit' }),
     );
     await event.click(
-      await screen.findByRole('button', { name: 'Retry same change' }),
+      await screen.findByRole('button', { name: 'Save concurrency limit' }),
     );
     await screen.findByText('Concurrency settings saved');
     expect(requests).toHaveLength(2);
-    expect(requests[1]).toEqual(requests[0]);
+    expect(requests[1]?.key).not.toBe(requests[0]?.key);
     expect(requests[1]?.body).toEqual({
       limit: 1,
-      expectedRevision: 1,
+      expectedRevision: 2,
       overflow: 'queue',
     });
   });

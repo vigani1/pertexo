@@ -1,22 +1,19 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type RefObject,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
-import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { WorkflowDuplicateRequest } from '@pertexo/contracts';
-import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
-import { describeCommandError } from '@/lib/api/error-copy';
-import type { ApiClient } from '@/lib/api/client';
 import {
-  canResend,
-  newCommandKey,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
+import {
+  readAccessLost,
+  shownData,
+  isAccessLost,
+  describeCommandError,
+} from '@/lib/api/error-copy';
+import { isApiError } from '@/lib/api/error';
+import type { ApiClient } from '@/lib/api/client';
 import {
   duplicateWorkflow,
   getWorkflowDuplicateDraft,
@@ -24,35 +21,8 @@ import {
 } from '../../data/workflows.api';
 import { workflowKeys } from '../../data/workflows.queries';
 import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
-import {
-  duplicateFailureState,
-  type DuplicatePhase,
-  type DuplicateState,
-  duplicateWindowEnded,
-} from '../../model/duplicate/duplicate-command-state';
-import {
-  isDuplicateAccessLoss,
-  observeDuplicateAccessLoss,
-} from '../../model/duplicate/access-loss';
-import { useDuplicateAuthority } from './use-duplicate-authority';
+import type { DuplicateState } from '../../model/duplicate/duplicate-command-state';
 
-type DuplicateAttempt = WorkflowDuplicateAttempt &
-  CommandKey & {
-    result?: Readonly<{ workflowId: string }>;
-  };
-
-type WorkflowDuplicateOptions = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  workflowId: string;
-  source: WorkflowDuplicateRequest['source'];
-  allowed: boolean;
-  onCreated: (workflowId: string) => void;
-  onAccessLost: () => void;
-}>;
-
-/** One ephemeral, exact command; no mutation cache/offline replay or client graph. */
 export function useWorkflowDuplicate({
   apiClient,
   userId,
@@ -62,317 +32,125 @@ export function useWorkflowDuplicate({
   allowed,
   onCreated,
   onAccessLost,
-}: WorkflowDuplicateOptions) {
-  const queryClient = useQueryClient();
-  const [state, setState] = useState<DuplicateState>({ kind: 'loading' });
-  const owner = useRef<symbol | undefined>(undefined);
-  const request = useRef<AbortController | undefined>(undefined);
-  const attempt = useRef<DuplicateAttempt | undefined>(undefined);
-  const busy = useRef(false);
-  const kind = source.kind;
-  const versionId = source.kind === 'version' ? source.versionId : undefined;
-
-  const retire = useCallback(() => {
-    retireDuplicateOwner({
-      owner,
-      request,
-      attempt,
-      onAccessLost,
-      setState,
-      queryClient,
-      userId,
-      workspaceId,
-    });
-  }, [queryClient, userId, workspaceId, onAccessLost]);
-
-  const verify = useDuplicateAuthority({
-    apiClient,
-    userId,
-    workspaceId,
-    retire,
-  });
-
-  const loadDraft = useCallback(
-    async (token: symbol) => {
-      await loadDuplicateDraft(
-        {
-          apiClient,
-          workspaceId,
-          workflowId,
-          owner,
-          request,
-          verify,
-          retire,
-          setState,
-        },
-        token,
-      );
-    },
-    [apiClient, workspaceId, workflowId, verify, retire],
-  );
-
-  useEffect(() => {
-    const token = Symbol('workflow-duplicate');
-    owner.current = token;
-    attempt.current = undefined;
-    queueMicrotask(() => {
-      if (owner.current !== token) return;
-      if (!allowed) retire();
-      else if (kind === 'draft') void loadDraft(token);
-      else setState({ kind: 'ready' });
-    });
-    const unsubscribe = subscribeSessionChanges(retire);
-    const unsubscribeCache = observeDuplicateAccessLoss({
-      queryClient,
-      userId,
-      workspaceId,
-      workflowId,
-      isCurrent: () => owner.current === token,
-      retire,
-    });
-    return () => {
-      unsubscribe();
-      unsubscribeCache();
-      if (owner.current === token) owner.current = undefined;
-      retireDuplicateRequest({ request, attempt });
-    };
-  }, [
-    apiClient,
-    userId,
-    workspaceId,
-    workflowId,
-    kind,
-    versionId,
-    allowed,
-    loadDraft,
-    retire,
-    queryClient,
-  ]);
-
-  const send = (command: DuplicateAttempt) =>
-    sendDuplicateCommand(
-      {
-        apiClient,
+}: Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  workflowId: string;
+  source: WorkflowDuplicateRequest['source'];
+  allowed: boolean;
+  onCreated: (workflowId: string) => void;
+  onAccessLost: () => void;
+}>) {
+  const cache = useQueryClient();
+  const [sourceDenied, setSourceDenied] = useState(false);
+  const deniedRead = useRef(false);
+  useEffect(
+    () =>
+      watchWorkspaceReadDenial({
+        queryClient: cache,
         userId,
         workspaceId,
-        workflowId,
-        source,
-        allowed,
-        onCreated,
-        onAccessLost,
-        queryClient,
-        state,
-        owner,
-        request,
-        attempt,
-        busy,
-        verify,
-        retire,
-        setState,
-      },
-      command,
-    );
-
-  return {
-    state,
-    refresh: () => {
-      const token = owner.current;
-      if (token !== undefined && !busy.current && state.kind !== 'uncertain')
-        void loadDraft(token);
-    },
-    start: (name: string) => {
-      if (state.kind !== 'ready') return;
-      const command: DuplicateAttempt = {
-        body: { name, source },
-        ...newCommandKey(),
-        ...(state.draft === undefined ? {} : { etag: state.draft.etag }),
-      };
-      attempt.current = command;
-      void send(command);
-    },
-    retry: () => {
-      const current = attempt.current;
-      if (state.kind !== 'uncertain' || current === undefined) return;
-      // An accepted copy only needs its access re-verified.
-      if (current.result !== undefined || canResend(current))
-        void send(current);
-      else {
-        attempt.current = undefined;
-        setState(duplicateWindowEnded);
-      }
-    },
-  };
-}
-
-type DuplicateCommandContext = WorkflowDuplicateOptions &
-  Readonly<{
-    queryClient: QueryClient;
-    state: DuplicateState;
-    owner: RefObject<symbol | undefined>;
-    request: RefObject<AbortController | undefined>;
-    attempt: RefObject<DuplicateAttempt | undefined>;
-    busy: RefObject<boolean>;
-    verify: (signal: AbortSignal) => Promise<boolean>;
-    retire: () => void;
-    setState: Dispatch<SetStateAction<DuplicateState>>;
-  }>;
-async function sendDuplicateCommand(
-  {
-    apiClient,
-    userId,
-    workspaceId,
-    workflowId,
-    allowed,
-    onCreated,
-    queryClient,
-    state,
-    owner,
-    request,
-    attempt,
-    busy,
-    verify,
-    retire,
-    setState,
-  }: DuplicateCommandContext,
-  command: DuplicateAttempt,
-) {
-  const token = owner.current;
-  if (busy.current || token === undefined || !allowed) return;
-  busy.current = true;
-  const controller = new AbortController();
-  request.current = controller;
-  setState((current) => ({ ...current, kind: 'sending', error: undefined }));
-  let phase: DuplicatePhase =
-    command.result === undefined ? 'authority' : 'accepted';
-  try {
-    if (!(await verify(controller.signal)) || owner.current !== token) return;
-    phase = command.result === undefined ? 'mutation' : 'accepted';
-    const result =
-      command.result ??
-      (await duplicateWorkflow({
+        counts: ({ key }) =>
+          key[0] === 'workflows' ||
+          (key[0] === 'workflow' && key[1] === workflowId),
+        denied: () => {
+          deniedRead.current = true;
+          setSourceDenied(true);
+          onAccessLost();
+          const queryKey = workflowKeys.detail(userId, workspaceId, workflowId);
+          void cache.cancelQueries({ queryKey });
+          cache.removeQueries({ queryKey });
+        },
+      }),
+    [cache, userId, workspaceId, workflowId, onAccessLost],
+  );
+  const draft = useQuery({
+    queryKey: [
+      ...workflowKeys.detail(userId, workspaceId, workflowId),
+      'duplicate-draft',
+    ],
+    queryFn: ({ signal }) =>
+      getWorkflowDuplicateDraft(apiClient, workspaceId, workflowId, signal),
+    enabled: allowed && source.kind === 'draft',
+  });
+  const mutation = useLowEffectMutation({
+    send: (attempt: Omit<WorkflowDuplicateAttempt, 'idempotencyKey'>, key) =>
+      duplicateWorkflow({
         apiClient,
         workspaceId,
         workflowId,
-        attempt: command,
-        signal: controller.signal,
-      }));
-    command.result = result;
-    phase = 'accepted';
-    if (
-      owner.current !== token ||
-      !(await verify(controller.signal)) ||
-      owner.current !== token
-    )
-      return;
-    attempt.current = undefined;
-    void queryClient.invalidateQueries({
-      queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: workflowKeys.scope(userId, workspaceId),
-    });
-    setState({ kind: 'ready' });
-    onCreated(result.workflowId);
-  } catch (error) {
-    if (owner.current !== token) return;
-    if (isDuplicateAccessLoss(error)) {
-      retire();
-      return;
-    }
-    const next = duplicateFailureState(error, state, phase);
-    attempt.current = next.kind === 'uncertain' ? command : undefined;
-    setState(next);
-  } finally {
-    busy.current = false;
-  }
-}
-
-async function loadDuplicateDraft(
-  {
-    apiClient,
-    workspaceId,
-    workflowId,
-    owner,
-    request,
-    verify,
-    retire,
-    setState,
-  }: Pick<
-    DuplicateCommandContext,
-    | 'apiClient'
-    | 'workspaceId'
-    | 'workflowId'
-    | 'owner'
-    | 'request'
-    | 'verify'
-    | 'retire'
-    | 'setState'
-  >,
-  token: symbol,
-) {
-  request.current?.abort();
-  const controller = new AbortController();
-  request.current = controller;
-  setState({ kind: 'loading' });
-  try {
-    if (!(await verify(controller.signal)) || owner.current !== token) return;
-    const draft = await getWorkflowDuplicateDraft(
-      apiClient,
-      workspaceId,
-      workflowId,
-      controller.signal,
-    );
-    if (owner.current === token && request.current === controller)
-      setState({ kind: 'ready', draft });
-  } catch (error) {
-    if (owner.current !== token || request.current !== controller) return;
-    if (isDuplicateAccessLoss(error)) retire();
-    else
-      setState({
-        kind: 'failed',
-        error: describeCommandError(error, 'reading the saved source'),
-      });
-  }
-}
-
-function retireDuplicateOwner({
-  owner,
-  request,
-  attempt,
-  onAccessLost,
-  setState,
-  queryClient,
-  userId,
-  workspaceId,
-}: Pick<
-  DuplicateCommandContext,
-  | 'owner'
-  | 'request'
-  | 'attempt'
-  | 'onAccessLost'
-  | 'setState'
-  | 'queryClient'
-  | 'userId'
-  | 'workspaceId'
->) {
-  owner.current = undefined;
-  request.current?.abort();
-  attempt.current = undefined;
-  onAccessLost();
-  setState({
-    kind: 'denied',
-    error:
-      'Access changed. Close this dialog and reopen it after checking your account and workspace.',
+        attempt: { ...attempt, idempotencyKey: key },
+      }),
+    refresh: () =>
+      Promise.all([
+        cache.invalidateQueries({
+          queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+        }),
+        cache.invalidateQueries({
+          queryKey: workflowKeys.scope(userId, workspaceId),
+        }),
+      ]),
   });
-  const scope = ['identity', userId, 'workspace', workspaceId];
-  void queryClient.cancelQueries({ queryKey: scope });
-  queryClient.removeQueries({ queryKey: scope });
-}
-
-function retireDuplicateRequest({
-  request,
-  attempt,
-}: Pick<DuplicateCommandContext, 'request' | 'attempt'>) {
-  request.current?.abort();
-  attempt.current = undefined;
+  const readDenied = sourceDenied || readAccessLost(draft);
+  const stale =
+    mutation.isError &&
+    isApiError(mutation.error) &&
+    mutation.error.kind === 'problem' &&
+    mutation.error.status === 412;
+  let kind: DuplicateState['kind'] = 'ready';
+  if (!allowed || readDenied) kind = 'denied';
+  else if (mutation.isPending) kind = 'sending';
+  else if (source.kind === 'draft') {
+    if (draft.isPending || draft.isFetching) kind = 'loading';
+    else if (draft.isError) kind = 'failed';
+    else if (stale) kind = 'stale';
+  }
+  let error: string | undefined;
+  if (readDenied)
+    error =
+      'Access changed. Close this dialog and check your access to the source.';
+  else if (mutation.isError)
+    error = stale
+      ? 'The saved source changed. Read the current draft, then confirm a new copy.'
+      : lowEffectError(mutation.error, 'duplicating this workflow');
+  else if (draft.isError)
+    error = describeCommandError(draft.error, 'reading the saved source');
+  const current = shownData(draft);
+  const state: DuplicateState = {
+    kind,
+    ...(current === undefined ? {} : { draft: current }),
+    error,
+  };
+  async function start(name: string) {
+    if (state.kind !== 'ready') return;
+    try {
+      await mutation.mutateAsync(
+        {
+          body: { name, source },
+          ...(draft.data === undefined ? {} : { etag: draft.data.etag }),
+        },
+        {
+          onSuccess: (result) => {
+            const read = cache.getQueryState([
+              ...workflowKeys.detail(userId, workspaceId, workflowId),
+              'duplicate-draft',
+            ]);
+            if (!deniedRead.current && !isAccessLost(read?.error))
+              onCreated(result.workflowId);
+          },
+        },
+      );
+    } catch {
+      /* The mutation owns the displayed failure. */
+    }
+  }
+  return {
+    state,
+    start,
+    refresh: () => {
+      mutation.reset();
+      void draft.refetch();
+    },
+  };
 }

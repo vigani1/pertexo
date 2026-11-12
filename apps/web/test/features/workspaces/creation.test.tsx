@@ -206,10 +206,11 @@ describe('workspace creation', () => {
     },
   );
   it.each(['network', '502', '503'])(
-    'preserves the exact uncertain command through failed verification and retry after %s',
+    'preserves creation details after %s and sends a fresh key on a new confirmation without identity preflights',
     async (failure) => {
       let userReads = 0;
       let postCount = 0;
+      const identityReadsAtPost: number[] = [];
       const attempts: { body: unknown; key: string | null }[] = [];
       let authoritativeWorkspaces: object[] = [];
       mockServer.use(
@@ -227,6 +228,7 @@ describe('workspace creation', () => {
         ),
         http.post('http://pertexo.test/v1/workspaces', async ({ request }) => {
           postCount += 1;
+          identityReadsAtPost.push(userReads);
           attempts.push({
             body: await request.json(),
             key: request.headers.get('idempotency-key'),
@@ -257,32 +259,26 @@ describe('workspace creation', () => {
         .click(
           within(dialog).getByRole('button', { name: 'Create workspace' }),
         );
-      expect(
-        await within(dialog).findByRole('button', {
-          name: 'Check again',
-        }),
-      ).toBeVisible();
-
+      await within(dialog).findByText(/Check the refreshed current state/u);
+      expect(within(dialog).getByLabelText('Workspace name')).toBeEnabled();
+      expect(within(dialog).getByLabelText('Workspace name')).toHaveValue(
+        'Signal Operations',
+      );
       await userEvent
         .setup()
-        .click(within(dialog).getByRole('button', { name: 'Check again' }));
-      expect(
-        await within(dialog).findByText(
-          /couldn’t confirm you’re still signed in/u,
-        ),
-      ).toBeVisible();
-      expect(postCount).toBe(1);
-      await userEvent
-        .setup()
-        .click(within(dialog).getByRole('button', { name: 'Check again' }));
+        .click(
+          within(dialog).getByRole('button', { name: 'Create workspace' }),
+        );
       expect(
         await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
       ).not.toHaveLength(0);
       expect(attempts).toHaveLength(2);
-      expect(attempts[1]).toEqual(attempts[0]);
+      expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+      expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
+      expect(identityReadsAtPost).toEqual([1, 1]);
     },
   );
-  it('keeps an uncertain request locked until it is checked or started over', async () => {
+  it('keeps an unconfirmed creation editable without silently issuing another command', async () => {
     let postCount = 0;
     installIdentity();
     mockServer.use(
@@ -301,19 +297,17 @@ describe('workspace creation', () => {
       .click(within(form).getByRole('button', { name: 'Create workspace' }));
 
     expect(
-      await within(form).findByText(/not sure the workspace was created/u),
+      await within(form).findByText(/Check the refreshed current state/u),
     ).toBeVisible();
-    expect(within(form).getByLabelText('Workspace name')).toBeDisabled();
-    expect(
-      within(form).getByRole('button', { name: 'Check again' }),
-    ).toBeVisible();
-    await userEvent
-      .setup()
-      .click(within(form).getByRole('button', { name: 'Start over' }));
-
     const name = within(form).getByLabelText('Workspace name');
     expect(name).toBeEnabled();
-    expect(name).toHaveValue('');
+    expect(name).toHaveValue('Uncertain');
+    expect(
+      within(form).queryByRole('button', { name: 'Check again' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(form).getByRole('button', { name: 'Create workspace' }),
+    ).toBeEnabled();
     expect(postCount).toBe(1);
   });
 });

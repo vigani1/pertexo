@@ -3,7 +3,6 @@ import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { InlineRenameCommand } from './inline-rename.types';
 import type { useRenameDraft } from './use-draft';
-
 /** A failed or conflicting save: the message, and for a conflict the choice. */
 export function RenameOutcome({
   name,
@@ -19,14 +18,7 @@ export function RenameOutcome({
   return (
     <>
       {command.error === undefined ? null : (
-        <Notice
-          role="alert"
-          tone={
-            rename.conflict || command.retryAvailable
-              ? 'warning'
-              : 'destructive'
-          }
-        >
+        <Notice role="alert" tone={rename.conflict ? 'warning' : 'destructive'}>
           {rename.latestLoaded
             ? meanwhileMessage(name, rename.startedAs, subject)
             : command.error.message}
@@ -45,7 +37,6 @@ export function RenameOutcome({
     </>
   );
 }
-
 function meanwhileMessage(
   current: string,
   startedAs: string,
@@ -55,7 +46,6 @@ function meanwhileMessage(
     ? `This ${subject} changed while you were editing.`
     : `Renamed to “${current}” meanwhile.`;
 }
-
 /** Someone renamed it meanwhile: load their name, then keep either. */
 function ConflictActions({
   latestLoaded,
@@ -90,23 +80,19 @@ function ConflictActions({
     </div>
   );
 }
-
 export function SaveActions({
   accepted,
   pending,
   refreshPending,
-  retryAvailable,
   onCancel,
 }: Readonly<{
   accepted: boolean;
   pending: boolean;
   refreshPending: boolean;
-  retryAvailable: boolean;
   onCancel: () => void;
 }>) {
   let label = 'Save';
-  if (retryAvailable) label = 'Try again';
-  else if (accepted) label = 'Refresh';
+  if (accepted) label = 'Refresh';
   // Like every dialog's footer: Cancel then the filled commit, on the right.
   return (
     <div className="flex flex-wrap justify-end gap-2">

@@ -9,8 +9,9 @@ import { workflowId, secondWorkflowId } from '../list/fixtures';
 function command(denied = false): OrganizationCommand {
   return {
     pending: false,
-    retryAvailable: false,
     denied,
+    revisionConflict: false,
+    revisionRead: undefined,
     error: undefined,
     result: {
       items: [
@@ -25,7 +26,6 @@ function command(denied = false): OrganizationCommand {
     },
     start: vi.fn(() => Promise.resolve()),
     retryRevisionRead: () => Promise.resolve(),
-    retry: vi.fn(() => Promise.resolve()),
     reset: vi.fn(),
   };
 }

@@ -35,15 +35,19 @@ import { MemberRemovalDialog } from './removal-dialog';
 import { MemberRoleDialog } from './role-dialog';
 import { MemberStatusDialog } from './status-dialog';
 import { OwnershipTransferDialog } from './ownership-transfer-dialog';
-
-type Proposal = Readonly<{ member: WorkspaceMember; role: ManagedRole }>;
+type Proposal = Readonly<{
+  member: WorkspaceMember;
+  role: ManagedRole;
+}>;
 type StatusChange = Readonly<{
   member: WorkspaceMember;
   direction: MemberStatusDirection;
 }>;
 type AccessLoss = 'authentication' | 'permission';
-type Actor = Readonly<{ role: WorkspaceRole; userId: string }>;
-
+type Actor = Readonly<{
+  role: WorkspaceRole;
+  userId: string;
+}>;
 /** Row feedback belongs to the member it is about, while no dialog shows it. */
 function rowFeedback(
   feedback: MemberCommandFeedback | undefined,
@@ -55,7 +59,6 @@ function rowFeedback(
     ? feedback.message
     : undefined;
 }
-
 /** The actions menu for a member; transfer needs the actor's own row. */
 function memberActions(
   actor: Actor,
@@ -72,11 +75,10 @@ function memberActions(
   if (canRemoveMember(actor, member)) actions.push('remove');
   return actions;
 }
-
 /**
  * Members with an inline role picker and an actions menu: make owner,
  * suspend or reactivate, and remove. Choosing only proposes; the
- * confirmation sends it, and an in-flight or unconfirmed command keeps its
+ * confirmation sends it, and an in-flight command keeps its
  * confirmation on its original member.
  */
 type MemberManagementProps = Readonly<{
@@ -86,7 +88,6 @@ type MemberManagementProps = Readonly<{
   members: readonly WorkspaceMember[];
   onAccessLost: (loss: AccessLoss) => void;
 }>;
-
 export function MemberManagement({
   apiClient,
   user,
@@ -145,7 +146,6 @@ export function MemberManagement({
   const canManage = workspace.capabilities.includes('member:manage');
   const actor = { role: workspace.role, userId: user.id };
   const you = members.find((member) => member.userId === user.id);
-
   const control: MemberRowControl = {
     roles: assignableRoles(workspace.role),
     canChange: (member) => canManage && canChangeRoleOf(actor, member),
@@ -171,7 +171,6 @@ export function MemberManagement({
       else setStatusChange({ member, direction: action });
     },
   };
-
   return (
     <>
       <MemberList members={members} actorUserId={user.id} control={control} />
@@ -236,7 +235,6 @@ export function MemberManagement({
     </>
   );
 }
-
 type MemberCommandScope = Pick<
   Parameters<typeof useMemberRoleCommand>[0],
   | 'apiClient'

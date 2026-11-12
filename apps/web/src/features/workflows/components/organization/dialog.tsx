@@ -15,10 +15,8 @@ import { WorkflowOrganizationOutcomes } from './outcomes';
 import type { Props } from './use-edit';
 import { useOrganizationEdit } from './use-edit';
 import { OrganizationFields } from './fields';
-
 const RECOVERY =
-  'If we can’t confirm a change, you can retry it here for 24 hours. Reloading this page gives up that retry.';
-
+  'After an unconfirmed change, review the refreshed current state before making another change.';
 export function WorkflowOrganizationDialog(props: Props) {
   const editor = useOrganizationEdit(props);
   const { selected, selectionValid, command, reading, locked, feedback } =
@@ -59,10 +57,7 @@ export function WorkflowOrganizationDialog(props: Props) {
             </Notice>
           ) : null}
           {feedback === undefined ? null : (
-            <Notice
-              role="alert"
-              tone={command.retryAvailable ? 'warning' : 'destructive'}
-            >
+            <Notice role="alert" tone="destructive">
               {feedback}
             </Notice>
           )}
@@ -97,7 +92,6 @@ export function WorkflowOrganizationDialog(props: Props) {
     </Dialog>
   );
 }
-
 function OrganizationEditForm({
   editor,
   workspace,
@@ -148,10 +142,11 @@ function OrganizationEditForm({
     </>
   );
 }
-
 function OrganizationEditResult({
   editor,
-}: Readonly<{ editor: ReturnType<typeof useOrganizationEdit> }>) {
+}: Readonly<{
+  editor: ReturnType<typeof useOrganizationEdit>;
+}>) {
   const { command, selected } = editor;
   if (command.result === undefined) return null;
   if ('items' in command.result)
@@ -165,7 +160,6 @@ function OrganizationEditResult({
     );
   return <Notice tone="success">Saved. The list updates in a moment.</Notice>;
 }
-
 function OrganizationRecoveryActions({
   editor,
   onClose,
@@ -192,18 +186,7 @@ function OrganizationRecoveryActions({
           Load more tags
         </ProgressButton>
       ) : null}
-      {command.retryAvailable ? (
-        <ProgressButton
-          pending={command.pending}
-          pendingLabel="Retrying…"
-          disabled={preparing}
-          onClick={() => {
-            void command.retry();
-          }}
-        >
-          Retry original request
-        </ProgressButton>
-      ) : null}
+
       {command.denied ? null : (
         <ProgressButton
           variant="outline"
@@ -214,9 +197,7 @@ function OrganizationRecoveryActions({
             void refresh();
           }}
         >
-          {command.retryAvailable
-            ? 'Refresh current state'
-            : 'Refresh for a new change'}
+          {'Refresh for a new change'}
         </ProgressButton>
       )}
     </DialogFooter>

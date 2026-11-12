@@ -1,138 +1,67 @@
-import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-  isUnconfirmedCommand,
-  newCommandKey,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
-import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { describeCommandError } from '@/lib/api/error-copy';
 import { commandAutoPause, type AutoPauseCommand } from '../auto-pause.api';
 import { autoPauseKeys } from '../auto-pause.queries';
-import { settingsCommandError } from './settings-command';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 
-/** Keep the entire request, including its original revision, for an exact retry. */
 export function useAutoPauseCommand(
   apiClient: ApiClient,
   userId: string,
   workspaceId: string,
   workflowId: string,
 ) {
-  const queryClient = useQueryClient();
-  const attempt = useRef<
-    (Readonly<{ command: AutoPauseCommand }> & CommandKey) | undefined
-  >(undefined);
-  const sending = useRef(false);
-  const [pending, setPending] = useState(false);
-  const [problem, setProblem] = useState<string>();
-  const [unconfirmed, setUnconfirmed] = useState(false);
-  const [conflict, setConflict] = useState(false);
-
-  async function send(command: AutoPauseCommand): Promise<boolean> {
-    if (sending.current) return false;
-    const current = attempt.current;
-    if (
-      current !== undefined &&
-      JSON.stringify(current.command) !== JSON.stringify(command)
-    )
-      return false;
-    if (current !== undefined && !canResend(current)) {
-      attempt.current = undefined;
-      setUnconfirmed(false);
-      setProblem(RETRY_WINDOW_ENDED);
-      return false;
-    }
-    const request = current ?? { command, ...newCommandKey() };
-    attempt.current = request;
-    sending.current = true;
-    setPending(true);
-    setProblem(undefined);
-    setConflict(false);
-    try {
-      await commandAutoPause({
-        apiClient,
-        workspaceId,
-        workflowId,
-        command: request.command,
-        key: request.idempotencyKey,
-      });
-      attempt.current = undefined;
-      setUnconfirmed(false);
-      return true;
-    } catch (cause) {
-      const uncertain = isUnconfirmedCommand(cause);
-      const revisionConflict =
-        isApiError(cause) &&
-        cause.kind === 'problem' &&
-        cause.status === 409 &&
-        (cause.problem?.code === 'workflow.pause_conflict' ||
-          cause.problem?.code === 'workflow.auto_pause_settings_conflict' ||
-          cause.problem?.code === 'workspace.auto_pause_settings_conflict');
-      const action =
-        command.kind === 'resume'
-          ? 'resuming triggers'
-          : 'saving auto-pause settings';
-      if (!uncertain) attempt.current = undefined;
-      setUnconfirmed(uncertain);
-      setConflict(revisionConflict);
-      setProblem(
-        autoPauseFailure({ cause, action, revisionConflict, uncertain }),
-      );
-      return false;
-    } finally {
-      // Receipts describe the originally accepted state, not current authority.
-      await Promise.all([
-        queryClient.invalidateQueries({
+  const cache = useQueryClient();
+  const mutation = useLowEffectMutation({
+    send: (command: AutoPauseCommand, key) =>
+      commandAutoPause({ apiClient, workspaceId, workflowId, command, key }),
+    refresh: (command) =>
+      Promise.all([
+        cache.invalidateQueries({
           queryKey: autoPauseKeys.workflowRoot(userId, workspaceId),
         }),
         ...(command.kind === 'workspace'
           ? [
-              queryClient.invalidateQueries({
+              cache.invalidateQueries({
                 queryKey: autoPauseKeys.workspace(userId, workspaceId),
               }),
-              queryClient.invalidateQueries({
+              cache.invalidateQueries({
                 queryKey: accessibleWorkspacesQueryOptions(apiClient, userId)
                   .queryKey,
               }),
             ]
           : []),
-      ]);
-      sending.current = false;
-      setPending(false);
+      ]),
+  });
+  const conflict =
+    isApiError(mutation.error) &&
+    mutation.error.status === 409 &&
+    [
+      'workflow.pause_conflict',
+      'workflow.auto_pause_settings_conflict',
+      'workspace.auto_pause_settings_conflict',
+    ].includes(mutation.error.problem?.code ?? '');
+  async function send(command: AutoPauseCommand) {
+    if (mutation.isPending) return false;
+    try {
+      await mutation.mutateAsync(command);
+      return true;
+    } catch {
+      return false;
     }
   }
-
-  return {
-    pending,
-    problem,
-    unconfirmed,
-    conflict,
-    send,
-    retry: () =>
-      attempt.current === undefined
-        ? Promise.resolve(false)
-        : send(attempt.current.command),
-  };
-}
-
-function autoPauseFailure({
-  cause,
-  action,
-  revisionConflict,
-  uncertain,
-}: Readonly<{
-  cause: unknown;
-  action: string;
-  revisionConflict: boolean;
-  uncertain: boolean;
-}>): string {
-  if (revisionConflict)
-    return 'This changed in another session. Your edits are kept. Review the refreshed settings, then save again.';
-  return uncertain
-    ? settingsCommandError(cause, action)
-    : describeCommandError(cause, action);
+  const action =
+    mutation.variables?.kind === 'resume'
+      ? 'resuming triggers'
+      : 'saving auto-pause settings';
+  let problem: string | undefined;
+  if (mutation.isError)
+    problem = conflict
+      ? 'This changed in another session. Your edits are kept. Review the refreshed settings, then save again.'
+      : lowEffectError(mutation.error, action);
+  return { send, pending: mutation.isPending, conflict, problem };
 }

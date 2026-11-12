@@ -147,7 +147,6 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
             inputBlocked={
               model.editingCase ||
               model.cases.pending ||
-              model.cases.uncertain ||
               model.sampleState.kind === 'loading'
             }
             acknowledged={model.acknowledged}

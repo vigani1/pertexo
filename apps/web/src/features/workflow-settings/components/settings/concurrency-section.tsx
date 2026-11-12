@@ -23,14 +23,12 @@ import {
 import { useConcurrencyCommand } from '../../data/mutations/use-concurrency-command';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
-
 type Scope = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   workflowId: string;
 }>;
-
 function limitError(
   value: string,
   settings: WorkflowConcurrencySettings,
@@ -47,41 +45,14 @@ function limitError(
     ? undefined
     : `Enter a whole number from 1 to ${String(settings.workspaceActiveRunLimit)}.`;
 }
-
 function ConcurrencyProblem({
   command,
-  onSaved,
 }: Readonly<{
   command: ReturnType<typeof useConcurrencyCommand>;
-  onSaved: () => void;
 }>) {
   if (command.problem === undefined) return null;
-  return (
-    <Notice
-      tone={command.unconfirmed ? 'warning' : 'destructive'}
-      action={
-        command.unconfirmed ? (
-          <ProgressButton
-            type="button"
-            variant="outline"
-            pending={command.pending}
-            pendingLabel="Retrying…"
-            onClick={() => {
-              void command.retry().then((success) => {
-                if (success) onSaved();
-              });
-            }}
-          >
-            Retry same change
-          </ProgressButton>
-        ) : undefined
-      }
-    >
-      {command.problem}
-    </Notice>
-  );
+  return <Notice tone="destructive">{command.problem}</Notice>;
 }
-
 function ConcurrencyEditor({
   settings,
   scope,
@@ -91,10 +62,13 @@ function ConcurrencyEditor({
   scope: Scope;
   onSaved: () => void;
 }>) {
-  const [draft, setDraft] =
-    useState<
-      Readonly<{ value: string; revision: number; overflow: 'queue' | 'skip' }>
-    >();
+  const [draft, setDraft] = useState<
+    Readonly<{
+      value: string;
+      revision: number;
+      overflow: 'queue' | 'skip';
+    }>
+  >();
   const current = draft ?? {
     value: settings.limit === null ? '' : String(settings.limit),
     revision: settings.revision,
@@ -126,9 +100,8 @@ function ConcurrencyEditor({
       await command.send({
         overflow: current.overflow,
         limit: current.value.trim() === '' ? null : Number(current.value),
-        expectedRevision: command.conflict
-          ? settings.revision
-          : current.revision,
+        expectedRevision:
+          command.problem !== undefined ? settings.revision : current.revision,
       })
     )
       saved();
@@ -155,7 +128,7 @@ function ConcurrencyEditor({
             inputMode="numeric"
             autoComplete="off"
             value={current.value}
-            disabled={command.pending || command.unconfirmed}
+            disabled={command.pending}
             onChange={(event) => {
               setDraft({
                 value: event.target.value,
@@ -172,7 +145,7 @@ function ConcurrencyEditor({
       </LabelledField>
       <OverflowPicker
         value={current.overflow}
-        disabled={command.pending || command.unconfirmed}
+        disabled={command.pending}
         onChange={(overflow) => {
           setDraft({ ...current, overflow });
         }}
@@ -182,16 +155,15 @@ function ConcurrencyEditor({
           type="submit"
           pending={command.pending}
           pendingLabel="Saving…"
-          disabled={command.unconfirmed}
+          disabled={false}
         >
           Save concurrency limit
         </ProgressButton>
       </div>
-      <ConcurrencyProblem command={command} onSaved={saved} />
+      <ConcurrencyProblem command={command} />
     </form>
   );
 }
-
 /** The limit in words: how many at once and what happens to the rest. */
 function limitSummary(settings: WorkflowConcurrencySettings) {
   const workspaceLimit =
@@ -226,11 +198,13 @@ function limitSummary(settings: WorkflowConcurrencySettings) {
     </>
   );
 }
-
 function ConcurrencyPolicy({
   settings,
   scope,
-}: Readonly<{ settings: WorkflowConcurrencySettings; scope: Scope }>) {
+}: Readonly<{
+  settings: WorkflowConcurrencySettings;
+  scope: Scope;
+}>) {
   const [editing, setEditing] = useState(false);
   const canUpdate =
     scope.workspace.status === 'active' &&
@@ -292,7 +266,6 @@ function ConcurrencyPolicy({
     </div>
   );
 }
-
 export function ConcurrencySection(scope: Scope) {
   const canRead = scope.workspace.capabilities.includes('workflow:read');
   const cache = useQueryClient();

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { useWorkflowImportCommand } from '../../data/portability/mutations';
-
 export function WorkflowImportActions({
   commandState,
   onClose,
@@ -29,13 +28,10 @@ export function WorkflowImportActions({
   const { accessDenied, checkingAccess, canImport } = access;
   const createdId =
     commandState.kind === 'confirmed' ? commandState.workflowId : undefined;
-
   return (
     <DialogFooter className="mt-5">
       <Button variant="ghost" onClick={onClose}>
-        {commandState.kind === 'uncertain' || commandState.kind === 'confirmed'
-          ? 'Close'
-          : 'Cancel'}
+        {commandState.kind === 'confirmed' ? 'Close' : 'Cancel'}
       </Button>
       {children}
       {createdId !== undefined && !accessDenied ? (
@@ -62,20 +58,15 @@ export function WorkflowImportActions({
           variant="primary"
           pending={commandState.kind === 'sending'}
           pendingLabel="Importing…"
-          disabled={
-            accessDenied || (commandState.kind !== 'uncertain' && !canImport)
-          }
+          disabled={accessDenied || !canImport}
           onClick={onSubmitImport}
         >
-          {commandState.kind === 'uncertain'
-            ? 'Retry exact import'
-            : 'Import unpublished draft'}
+          {'Import unpublished draft'}
         </ProgressButton>
       )}
     </DialogFooter>
   );
 }
-
 /** One visible feedback owner for a command result or its source-read failure. */
 export function WorkflowImportFeedback({
   state,
@@ -89,14 +80,10 @@ export function WorkflowImportFeedback({
   let failure = error;
   if (state.kind === 'editable' && state.failure !== undefined)
     failure = state.failure.message;
-  if (state.kind === 'uncertain') failure = state.error;
   return (
     <>
       {failure === undefined ? null : (
-        <Notice
-          tone={state.kind === 'uncertain' ? 'warning' : 'destructive'}
-          className="mt-4"
-        >
+        <Notice tone="destructive" className="mt-4">
           {failure}
         </Notice>
       )}

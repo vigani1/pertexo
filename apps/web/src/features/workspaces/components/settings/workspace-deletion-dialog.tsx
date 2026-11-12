@@ -9,25 +9,18 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-
 type WorkspaceDeletionDialogProps = Readonly<{
   workspaceName: string;
   pending: boolean;
-  retryAvailable: boolean;
   error: string | undefined;
-  onDismissUncertain: () => void;
   onRequest: (reason: string) => Promise<boolean>;
-  onRetry: () => Promise<boolean>;
 }>;
-
 type DeletionField = 'confirmation' | 'reason';
-
 function reasonError(reason: string): string | undefined {
   return workspaceDeletionRequestSchema.safeParse({ reason }).success
     ? undefined
     : 'Say why in a sentence (up to 512 characters). Other owners will see it.';
 }
-
 /**
  * Deleting asks for the workspace's name, typed out, and a reason. It is
  * recoverable for 30 days, and the dialog says so before anything is sent.
@@ -35,11 +28,8 @@ function reasonError(reason: string): string | undefined {
 export function WorkspaceDeletionDialog({
   workspaceName,
   pending,
-  retryAvailable,
   error,
-  onDismissUncertain,
   onRequest,
-  onRetry,
 }: WorkspaceDeletionDialogProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -56,11 +46,9 @@ export function WorkspaceDeletionDialog({
     setReason('');
     validation.reset();
   }
-
   async function send(command: () => Promise<boolean>) {
     if (await command()) closeAndReset();
   }
-
   async function submit() {
     const valid = validation.submit({
       confirmation: confirmationError(confirmation),
@@ -70,20 +58,16 @@ export function WorkspaceDeletionDialog({
     const parsed = workspaceDeletionRequestSchema.parse({ reason });
     await send(() => onRequest(parsed.reason));
   }
-
   const changeConfirmationOpen = (next: boolean) => {
     if (next) setOpen(true);
     else closeAndReset();
   };
-  const confirmationRetry = retryAvailable
-    ? { onRetry: () => send(onRetry), onDismiss: onDismissUncertain }
-    : undefined;
   return (
     <ConfirmDialog
       state={{
         open: open,
         onOpenChange: changeConfirmationOpen,
-        locked: pending || retryAvailable,
+        locked: pending,
       }}
       title={`Delete ${workspaceName}?`}
       description="Access and triggers stop now. You can restore it for 30 days after the request; after that it’s deleted for good."
@@ -92,29 +76,17 @@ export function WorkspaceDeletionDialog({
           Delete workspace
         </Button>
       }
-      onSubmit={confirmationRetry?.onRetry ?? submit}
+      onSubmit={submit}
       submitDisabled={pending}
       actions={{
-        cancel:
-          confirmationRetry === undefined
-            ? {
-                kind: 'close',
-                label: 'Cancel',
-                variant: 'ghost',
-                disabled: pending || retryAvailable,
-              }
-            : {
-                kind: 'action',
-                label: 'Close',
-                variant: 'ghost',
-                onClick: () => {
-                  confirmationRetry.onDismiss();
-                  changeConfirmationOpen(false);
-                },
-              },
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: pending,
+        },
         confirm: {
-          label:
-            confirmationRetry === undefined ? 'Delete workspace' : 'Try again',
+          label: 'Delete workspace',
           type: 'submit',
           variant: 'destructive',
           pending: pending,
@@ -122,10 +94,7 @@ export function WorkspaceDeletionDialog({
         },
       }}
     >
-      <ConfirmationDetails
-        error={error}
-        tone={confirmationRetry === undefined ? 'destructive' : 'warning'}
-      >
+      <ConfirmationDetails error={error} tone="destructive">
         <FieldGroup>
           <LabelledField
             id={`${id}-confirmation`}
@@ -139,7 +108,7 @@ export function WorkspaceDeletionDialog({
                 autoComplete="off"
                 spellCheck={false}
                 value={confirmation}
-                disabled={pending || retryAvailable}
+                disabled={pending}
                 onChange={(event) => {
                   const next = event.currentTarget.value;
                   setConfirmation(next);
@@ -162,7 +131,7 @@ export function WorkspaceDeletionDialog({
                 autoComplete="off"
                 maxLength={512}
                 value={reason}
-                disabled={pending || retryAvailable}
+                disabled={pending}
                 onChange={(event) => {
                   const next = event.currentTarget.value;
                   setReason(next);

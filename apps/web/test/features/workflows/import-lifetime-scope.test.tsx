@@ -1,3 +1,4 @@
+import { confirmNewImport } from '../../support/fixtures/import-actions';
 import { act, screen } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
@@ -8,7 +9,7 @@ import { mockServer } from '../../support/mock-server';
 import { mountList, prepare } from './import-recovery/fixture';
 import { api, userId, workspaceId, workflowId } from './list/fixtures';
 
-it('keeps a pending import and its exact retry when an unrelated workflow preview is unavailable', async () => {
+it('keeps import edits and accepts a fresh confirmation when an unrelated workflow preview is unavailable', async () => {
   const attempts: { body: unknown; key: string | null }[] = [];
   mockServer.use(
     http.post(`${api}/workflows/import`, async ({ request }) => {
@@ -33,7 +34,7 @@ it('keeps a pending import and its exact retry when an unrelated workflow previe
   );
   const { event, queryClient } = mountList();
   await prepare(event);
-  await screen.findByRole('button', { name: 'Retry exact import' });
+  await screen.findByText(/Check the refreshed current state/u);
   const options = workflowShapeQueryOptions(
     createApiClient({ fetch: testFetch, readCsrfToken: () => undefined }),
     userId,
@@ -48,8 +49,9 @@ it('keeps a pending import and its exact retry when an unrelated workflow previe
   expect(screen.getByLabelText('New workflow name')).toHaveValue(
     'Frozen recovery draft',
   );
-  await event.click(screen.getByRole('button', { name: 'Retry exact import' }));
-  await screen.findByRole('button', { name: 'Retry exact import' });
+  await confirmNewImport(event);
+  await screen.findByText(/Check the refreshed current state/u);
   expect(attempts).toHaveLength(2);
-  expect(attempts[1]).toEqual(attempts[0]);
+  expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+  expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
 });

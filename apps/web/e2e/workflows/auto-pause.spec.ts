@@ -21,7 +21,7 @@ const paused: WorkflowAutoPauseSettings = {
   pausedLastRunId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 };
 
-test('workflow auto-pause settings preserve conflict edits and exact retries; Resume keeps bigint authority', async ({
+test('workflow auto-pause settings preserve conflict edits and fresh confirmations; Resume keeps bigint authority', async ({
   page,
   baseURL,
 }, testInfo) => {
@@ -82,10 +82,10 @@ test('workflow auto-pause settings preserve conflict edits and exact retries; Re
         ...settings,
         thresholdOverride: 5,
         effectiveThreshold: 5,
-        settingsRevision: 3,
+        settingsRevision: settings.settingsRevision + 1,
       };
       if (writes.length === 2) return route.abort('failed');
-      return route.fulfill({ json: { settings, replayed: true } });
+      return route.fulfill({ json: { settings, replayed: false } });
     },
   );
   let workspaceSettings = { threshold: 10, revision: 1 };
@@ -156,10 +156,16 @@ test('workflow auto-pause settings preserve conflict edits and exact retries; Re
     autoPause.getByText(/pause after 12 failures in a row/u),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Save auto-pause rule' }).click();
-  await page.getByRole('button', { name: 'Retry same change' }).click();
+  await expect(page.getByText(/couldn’t confirm/u)).toBeVisible();
+  await page.getByRole('button', { name: 'Save auto-pause rule' }).click();
   await expect(page.getByText('Auto-pause settings saved')).toBeVisible();
   expect(writes).toHaveLength(3);
-  expect(writes[1]).toEqual(writes[2]);
+  expect(writes[1]?.key).not.toEqual(writes[2]?.key);
+  expect(writes[2]?.body).toEqual({
+    enabled: true,
+    thresholdOverride: 5,
+    expectedSettingsRevision: 3,
+  });
   expect(writes[1]?.body).toEqual({
     enabled: true,
     thresholdOverride: 5,

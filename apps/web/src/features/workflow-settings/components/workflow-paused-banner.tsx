@@ -14,7 +14,6 @@ import { useAutoPauseCommand } from '../data/mutations/use-auto-pause-command';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from './settings-read-failure';
 import { shownData } from '@/lib/api/error-copy';
-
 function PausedStateNotice({
   workspaceId,
   settings,
@@ -76,39 +75,13 @@ function PausedStateNotice({
     </Notice>
   );
 }
-
 function ResumeProblem({
   command,
-  canResume,
-  onRetry,
-}: Readonly<{
-  command: ReturnType<typeof useAutoPauseCommand>;
-  canResume: boolean;
-  onRetry: () => void;
-}>) {
-  if (command.problem === undefined) return null;
-  return (
-    <Notice
-      tone={command.unconfirmed ? 'warning' : 'destructive'}
-      action={
-        command.unconfirmed && canResume ? (
-          <ProgressButton
-            type="button"
-            variant="outline"
-            pending={command.pending}
-            pendingLabel="Resuming…"
-            onClick={onRetry}
-          >
-            Retry Resume
-          </ProgressButton>
-        ) : undefined
-      }
-    >
-      {command.problem}
-    </Notice>
+}: Readonly<{ command: ReturnType<typeof useAutoPauseCommand> }>) {
+  return command.problem === undefined ? null : (
+    <Notice tone="destructive">{command.problem}</Notice>
   );
 }
-
 /** Production admission only: this never freezes the editable draft. */
 export function WorkflowPausedBanner({
   apiClient,
@@ -137,8 +110,7 @@ export function WorkflowPausedBanner({
   const canResume = workspace.capabilities.includes('workflow:publish');
   async function resume() {
     let saved = false;
-    if (command.unconfirmed) saved = await command.retry();
-    else if (settings !== undefined)
+    if (settings !== undefined)
       saved = await command.send({
         kind: 'resume',
         body: { expectedPauseRevision: settings.pauseRevision },
@@ -168,14 +140,10 @@ export function WorkflowPausedBanner({
         settings={settings}
         canResume={canResume}
         pending={command.pending}
-        disabled={query.isError || command.unconfirmed}
+        disabled={query.isError}
         onResume={() => void resume()}
       />
-      <ResumeProblem
-        command={command}
-        canResume={canResume}
-        onRetry={() => void resume()}
-      />
+      <ResumeProblem command={command} />
     </div>
   );
 }

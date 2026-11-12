@@ -39,9 +39,8 @@ import {
   templateOrigin,
   type CuratedTemplate,
 } from '../model/templates/curated-setup';
-
-/** Owns source edits, preview validity and the lifetime of a retained import. */
-// eslint-disable-next-line max-lines-per-function -- Keep the single import form and retry owner together; async phases live in import-phases.
+/** Owns source edits and the validity of the import preview. */
+// eslint-disable-next-line max-lines-per-function -- One form owns source edits and preview validity; async file and preview phases live separately.
 export function useImportDraft(
   apiClient: ApiClient,
   userId: string,
@@ -128,8 +127,7 @@ export function useImportDraft(
   };
   function submitImport() {
     if (lifetime.denied || command.state.kind === 'sending') return;
-    if (command.state.kind === 'uncertain') command.retry();
-    else if (
+    if (
       configuredManifest !== undefined &&
       readyPreview !== undefined &&
       validation.submit({ name: workflowNameError(name) })
@@ -230,9 +228,7 @@ export function useImportDraft(
     commandState: command.state,
     canImport:
       readyPreview !== undefined && workflowNameError(name) === undefined,
-    unresolved:
-      !lifetime.denied &&
-      (command.state.kind === 'sending' || command.state.kind === 'uncertain'),
+    unresolved: !lifetime.denied && command.state.kind === 'sending',
     resetSource: (name: string) => {
       if (locked) return;
       clear();
@@ -249,7 +245,6 @@ export function useImportDraft(
     startAnother,
   };
 }
-
 function importConnectionSetup(
   manifest: WorkflowPortableManifest | undefined,
   definitions: readonly NodeDefinitionCatalogItem[] | undefined,

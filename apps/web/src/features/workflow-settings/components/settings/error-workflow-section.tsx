@@ -28,7 +28,6 @@ import {
 import { useErrorWorkflowCommand } from '../../data/error-workflow/use-command';
 import { settingsReadFailure } from '../settings-read-failure';
 import { shownData } from '@/lib/api/error-copy';
-
 type Scope = Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -40,7 +39,6 @@ type ErrorWorkflowEditorProps = Readonly<{
   settings: WorkflowErrorSettings;
   onSaved: () => void;
 }>;
-
 function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
   const model = useErrorWorkflowForm(props);
   return (
@@ -68,7 +66,7 @@ function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
                     revision: model.current.revision,
                   });
               }}
-              disabled={model.command.pending || model.command.unconfirmed}
+              disabled={model.command.pending}
             >
               <SelectTrigger {...control}>
                 <SelectValue />
@@ -108,52 +106,31 @@ function ErrorWorkflowEditor(props: ErrorWorkflowEditorProps) {
         </p>
       ) : null}
       {model.command.problem === undefined ? null : (
-        <Notice
-          tone={model.command.unconfirmed ? 'warning' : 'destructive'}
-          action={
-            model.command.unconfirmed ? (
-              <ProgressButton
-                type="button"
-                variant="outline"
-                pending={model.command.pending}
-                pendingLabel="Retrying…"
-                onClick={() => {
-                  void model.command.retry().then((success) => {
-                    if (success) model.saved();
-                  });
-                }}
-              >
-                Retry same change
-              </ProgressButton>
-            ) : undefined
-          }
-        >
-          {model.command.problem}
-        </Notice>
+        <Notice tone="destructive">{model.command.problem}</Notice>
       )}
       <ProgressButton
         type="submit"
         className="self-start"
         pending={model.command.pending}
         pendingLabel="Saving…"
-        disabled={
-          model.command.unconfirmed ||
-          model.current.target === model.settings.targetWorkflowId
-        }
+        disabled={model.current.target === model.settings.targetWorkflowId}
       >
         Save error workflow
       </ProgressButton>
     </form>
   );
 }
-
 function useErrorWorkflowForm({
   scope,
   settings,
   onSaved,
 }: ErrorWorkflowEditorProps) {
-  const [draft, setDraft] =
-    useState<Readonly<{ target: string | null; revision: number }>>();
+  const [draft, setDraft] = useState<
+    Readonly<{
+      target: string | null;
+      revision: number;
+    }>
+  >();
   const current = draft ?? {
     target: settings.targetWorkflowId,
     revision: settings.revision,
@@ -196,14 +173,12 @@ function useErrorWorkflowForm({
     if (
       await command.send({
         targetWorkflowId: current.target,
-        expectedRevision: command.conflict
-          ? settings.revision
-          : current.revision,
+        expectedRevision:
+          command.problem !== undefined ? settings.revision : current.revision,
       })
     )
       saved();
   }
-
   return {
     submit,
     options,

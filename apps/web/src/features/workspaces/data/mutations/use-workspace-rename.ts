@@ -1,127 +1,26 @@
 import {
   CONFLICT,
-  UNCERTAIN,
-  UNVERIFIED,
-  NOT_CAUGHT_UP,
   RELOAD_FAILED,
+  NOT_CAUGHT_UP,
   classifyFailure,
   type RenameError,
 } from '../../model/rename-feedback';
-import {
-  mutationOptions,
-  useMutation,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   WorkspaceRenameRequest,
   WorkspaceRenameResponse,
 } from '@pertexo/contracts';
 import {
-  assertSessionIdentity,
-  isSessionIdentityChangedError,
-  isSessionIdentityUnverifiedError,
-} from '@/features/auth/session/identity.public';
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
-import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import {
   accessibleWorkspacesQueryOptions,
   workspaceKeys,
 } from '../workspaces.queries';
 import { renameWorkspace } from '../workspaces.api';
 
-type WorkspaceRenameAttempt = Readonly<{ body: WorkspaceRenameRequest }> &
-  CommandKey;
-
-type State =
-  | Readonly<{ kind: 'idle'; error?: RenameError }>
-  | Readonly<{ kind: 'executing'; attempt: WorkspaceRenameAttempt }>
-  | Readonly<{
-      kind: 'uncertain';
-      attempt: WorkspaceRenameAttempt;
-      error: RenameError;
-    }>
-  | Readonly<{
-      kind: 'accepted';
-      attempt: WorkspaceRenameAttempt;
-      receipt: WorkspaceRenameResponse;
-      refreshing: boolean;
-      error?: RenameError;
-    }>;
-
-const WINDOW_ENDED: RenameError = {
-  kind: 'other',
-  message: RETRY_WINDOW_ENDED,
-};
-
-/** Idle, or holding a rename whose retry window has ended. */
-function canStart(state: State): boolean {
-  return (
-    state.kind === 'idle' ||
-    (state.kind === 'uncertain' && !canResend(state.attempt))
-  );
-}
-
-/** Whether the signed-in person is still the one who started the rename. */
-async function checkSession(
-  apiClient: ApiClient,
-  userId: string,
-): Promise<'same' | 'changed' | 'unverified'> {
-  try {
-    await assertSessionIdentity(apiClient, userId);
-    return 'same';
-  } catch (error) {
-    if (isSessionIdentityChangedError(error)) return 'changed';
-    if (isSessionIdentityUnverifiedError(error)) return 'unverified';
-    throw error;
-  }
-}
-
-/**
- * The rename request itself. The command owns the cache refresh: after
- * re-verifying the identity it re-reads discovery until it shows the new
- * revision (`catchUpDiscovery`), so the mutation carries no cache effect.
- */
-function renameMutation(apiClient: ApiClient, workspaceId: string) {
-  return mutationOptions({
-    mutationFn: (attempt: WorkspaceRenameAttempt) =>
-      renameWorkspace(apiClient, workspaceId, attempt),
-  });
-}
-
-/** Reloads workspace discovery until it shows at least the renamed revision. */
-async function catchUpDiscovery(
-  queryClient: QueryClient,
-  apiClient: ApiClient,
-  userId: string,
-  receipt: WorkspaceRenameResponse,
-) {
-  await queryClient.invalidateQueries({
-    queryKey: workspaceKeys.accessible(userId),
-  });
-  const workspaces = await queryClient.query(
-    accessibleWorkspacesQueryOptions(apiClient, userId),
-  );
-  const discovered = workspaces.find(
-    (workspace) => workspace.id === receipt.workspace.id,
-  );
-  return (
-    discovered !== undefined &&
-    discovered.revision >= receipt.workspace.revision
-  );
-}
-
-/**
- * Renames the workspace at the revision the form started from. An
- * unconfirmed rename keeps its exact command; a conflict loads the latest
- * workspace so people choose between their name and the newer one.
- */
 export function useWorkspaceRename({
   apiClient,
   userId,
@@ -137,263 +36,96 @@ export function useWorkspaceRename({
   onReloaded: () => void;
   onAccessLost: () => void;
 }>) {
-  const queryClient = useQueryClient();
-  const mutation = useMutation(renameMutation(apiClient, workspaceId));
-  const [state, setState] = useState<State>({ kind: 'idle' });
-  const stateRef = useRef(state);
-  const owner = useRef<symbol | undefined>(undefined);
-  const inFlight = useRef(false);
-  const expired = useResendExpired(
-    state.kind === 'uncertain' ? state.attempt : undefined,
-  );
-
-  useEffect(() => {
-    const scope = Symbol('workspace-rename');
-    owner.current = scope;
-    return () => {
-      if (owner.current === scope) owner.current = undefined;
-    };
-  }, [apiClient, userId, workspaceId]);
-
-  function transition(next: State) {
-    stateRef.current = next;
-    setState(next);
-  }
-
-  const context: RenameContext = {
-    queryClient,
-    apiClient,
-    userId,
-    owner,
-    mutation,
-    transition,
-    onChanged,
-    onReloaded,
-    onAccessLost,
-    stateRef,
-    inFlight,
-  };
-  const reloadLatest = () => reloadLatestName(context);
-
-  async function execute(attempt: WorkspaceRenameAttempt) {
-    const scope = owner.current;
-    if (scope === undefined || inFlight.current) return false;
-    inFlight.current = true;
-    let conflicted = false;
-    try {
-      transition({ kind: 'executing', attempt });
-      const session = await checkSession(apiClient, userId);
-      if (owner.current !== scope) return false;
-      if (session === 'changed') {
-        await loseRenameAccess(context, scope, ['identity']);
-        return false;
-      }
-      if (session === 'unverified') {
-        transition({ kind: 'uncertain', attempt, error: UNVERIFIED });
-        return false;
-      }
-      const sent = await sendRename(context, scope, attempt);
-      conflicted = sent.conflict;
-      if (sent.receipt === undefined || owner.current !== scope) return false;
-      return await refreshRename(context, {
-        scope,
-        attempt,
-        receipt: sent.receipt,
-      });
-    } finally {
-      inFlight.current = false;
-      if (conflicted) void reloadLatest();
-    }
-  }
-
+  const cache = useQueryClient();
+  const refresh = () =>
+    cache.invalidateQueries({ queryKey: workspaceKeys.accessible(userId) });
+  const mutation = useLowEffectMutation({
+    send: (input: Readonly<{ body: WorkspaceRenameRequest }>, key) =>
+      renameWorkspace(apiClient, workspaceId, {
+        ...input,
+        idempotencyKey: key,
+      }),
+    refresh,
+  });
+  const discovery = useMutation({
+    mutationFn: async (receipt: WorkspaceRenameResponse | undefined) => {
+      await refresh();
+      const rows = await cache.query(
+        accessibleWorkspacesQueryOptions(apiClient, userId),
+      );
+      if (
+        receipt !== undefined &&
+        !rows.some(
+          (row) =>
+            row.id === workspaceId &&
+            row.revision >= receipt.workspace.revision,
+        )
+      )
+        throw new Error(NOT_CAUGHT_UP.message);
+    },
+  });
   async function refreshAccepted() {
-    const current = stateRef.current;
-    const scope = owner.current;
-    if (current.kind !== 'accepted' || scope === undefined || inFlight.current)
-      return false;
-    inFlight.current = true;
     try {
-      return await refreshRename(context, {
-        scope,
-        attempt: current.attempt,
-        receipt: current.receipt,
+      await discovery.mutateAsync(mutation.data, {
+        onSuccess: () => {
+          if (mutation.data !== undefined)
+            onChanged(mutation.data.workspace.name);
+          else onReloaded();
+        },
       });
-    } finally {
-      inFlight.current = false;
+      return true;
+    } catch {
+      return false;
     }
   }
-
-  const stateError = state.kind === 'executing' ? undefined : state.error;
+  async function start(input: Readonly<{ body: WorkspaceRenameRequest }>) {
+    if (mutation.isPending || discovery.isPending) return false;
+    discovery.reset();
+    try {
+      const receipt = await mutation.mutateAsync(input);
+      await discovery.mutateAsync(receipt, {
+        onSuccess: () => {
+          onChanged(receipt.workspace.name);
+        },
+      });
+      return true;
+    } catch (cause) {
+      const failure = classifyFailure(cause);
+      if (failure.kind === 'signed-out') {
+        await cache.cancelQueries({ queryKey: ['identity'] });
+        cache.removeQueries({ queryKey: ['identity'] });
+        onAccessLost();
+      } else if (failure.kind === 'forbidden') onAccessLost();
+      if (failure.kind === 'rejected' && failure.error === CONFLICT)
+        void discovery
+          .mutateAsync(undefined, { onSuccess: onReloaded })
+          .catch(() => undefined);
+      return false;
+    }
+  }
+  const failure = mutation.isError
+    ? classifyFailure(mutation.error)
+    : undefined;
+  let error: RenameError | undefined;
+  if (discovery.isError)
+    error = mutation.data === undefined ? RELOAD_FAILED : NOT_CAUGHT_UP;
+  else if (failure?.kind === 'rejected') error = failure.error;
+  else if (mutation.isError)
+    error = {
+      kind: 'other',
+      message: lowEffectError(mutation.error, 'renaming the workspace'),
+    };
   return {
-    accepted: state.kind === 'accepted',
-    error: expired ? WINDOW_ENDED : stateError,
-    pending: state.kind === 'executing',
-    retryAvailable: state.kind === 'uncertain' && !expired,
-    reloadLatest,
-    refreshPending: state.kind === 'accepted' && state.refreshing,
-    start: (attempt: WorkspaceRenameAttempt) =>
-      canStart(stateRef.current) ? execute(attempt) : Promise.resolve(false),
-    retry: () => {
-      const current = stateRef.current;
-      return current.kind === 'uncertain' && canResend(current.attempt)
-        ? execute(current.attempt)
-        : Promise.resolve(false);
-    },
-    dismiss: () => {
-      if (stateRef.current.kind === 'uncertain') transition({ kind: 'idle' });
-    },
+    start,
+    pending: mutation.isPending,
+    accepted: mutation.isSuccess && !discovery.isSuccess,
+    refreshPending: discovery.isPending,
     refresh: refreshAccepted,
+    reloadLatest: refreshAccepted,
+    error,
     clearError: () => {
-      if (stateRef.current.kind === 'idle') transition({ kind: 'idle' });
+      mutation.reset();
+      discovery.reset();
     },
   };
-}
-
-type RenameContext = Readonly<{
-  queryClient: QueryClient;
-  apiClient: ApiClient;
-  userId: string;
-  owner: Readonly<{ current: symbol | undefined }>;
-  mutation: Readonly<{
-    mutateAsync: (
-      attempt: WorkspaceRenameAttempt,
-    ) => Promise<WorkspaceRenameResponse>;
-  }>;
-  transition: (state: State) => void;
-  onChanged: (name: string) => void;
-  onReloaded: () => void;
-  onAccessLost: () => void;
-  stateRef: Readonly<{ current: State }>;
-  inFlight: { current: boolean };
-}>;
-
-/** After a conflict: loads the newer name so people can choose between them. */
-async function reloadLatestName({
-  queryClient,
-  apiClient,
-  userId,
-  owner,
-  transition,
-  onReloaded,
-  stateRef,
-  inFlight,
-}: RenameContext) {
-  const current = stateRef.current;
-  const scope = owner.current;
-  const renameReloadBlocked =
-    current.kind !== 'idle' ||
-    current.error?.kind !== 'conflict' ||
-    scope === undefined ||
-    inFlight.current;
-  if (renameReloadBlocked) return false;
-  inFlight.current = true;
-  try {
-    await queryClient.invalidateQueries({
-      queryKey: workspaceKeys.accessible(userId),
-    });
-    await queryClient.query(
-      accessibleWorkspacesQueryOptions(apiClient, userId),
-    );
-    if (owner.current !== scope) return false;
-    transition({ kind: 'idle', error: CONFLICT });
-    onReloaded();
-    return true;
-  } catch {
-    if (owner.current === scope)
-      transition({ kind: 'idle', error: RELOAD_FAILED });
-    return false;
-  } finally {
-    inFlight.current = false;
-  }
-}
-
-async function loseRenameAccess(
-  { queryClient, owner, transition, onAccessLost }: RenameContext,
-  scope: symbol,
-  queryKey: readonly unknown[],
-) {
-  await queryClient.cancelQueries({ queryKey });
-  if (owner.current !== scope) return;
-  queryClient.removeQueries({ queryKey });
-  transition({ kind: 'idle' });
-  onAccessLost();
-}
-
-async function refreshRename(
-  {
-    queryClient,
-    apiClient,
-    userId,
-    owner,
-    transition,
-    onChanged,
-  }: RenameContext,
-  {
-    scope,
-    attempt,
-    receipt,
-  }: Readonly<{
-    scope: symbol;
-    attempt: WorkspaceRenameAttempt;
-    receipt: WorkspaceRenameResponse;
-  }>,
-) {
-  transition({ kind: 'accepted', attempt, receipt, refreshing: true });
-  const caughtUp = await catchUpDiscovery(
-    queryClient,
-    apiClient,
-    userId,
-    receipt,
-  ).catch(() => false);
-  if (owner.current !== scope) return false;
-  if (!caughtUp) {
-    transition({
-      kind: 'accepted',
-      attempt,
-      receipt,
-      refreshing: false,
-      error: NOT_CAUGHT_UP,
-    });
-    return false;
-  }
-  transition({ kind: 'idle' });
-  onChanged(receipt.workspace.name);
-  return true;
-}
-
-/** Sends the rename; on failure settles the state and says whether it conflicted. */
-async function sendRename(
-  context: RenameContext,
-  scope: symbol,
-  attempt: WorkspaceRenameAttempt,
-) {
-  const { mutation, owner, transition, userId } = context;
-  try {
-    return { receipt: await mutation.mutateAsync(attempt), conflict: false };
-  } catch (error) {
-    const failure = classifyFailure(error);
-    if (owner.current !== scope) return { receipt: undefined, conflict: false };
-    switch (failure.kind) {
-      case 'signed-out':
-        await loseRenameAccess(context, scope, ['identity']);
-        break;
-      case 'forbidden':
-        await loseRenameAccess(
-          context,
-          scope,
-          workspaceKeys.accessible(userId),
-        );
-        break;
-      case 'uncertain':
-        transition({ kind: 'uncertain', attempt, error: UNCERTAIN });
-        break;
-      case 'rejected':
-        transition({ kind: 'idle', error: failure.error });
-        break;
-    }
-    return {
-      receipt: undefined,
-      conflict: failure.kind === 'rejected' && failure.error === CONFLICT,
-    };
-  }
 }

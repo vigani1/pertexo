@@ -1,232 +1,119 @@
 import {
-  recoverRevisionConflict,
+  isRevisionConflict,
+  querySnapshot,
   refreshQuerySnapshot,
   type SnapshotRead,
 } from '@/lib/api/query-snapshot';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type RefObject,
-  type Dispatch,
-  type SetStateAction,
-} from 'react';
-import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-} from '@/lib/api/commands/command-retry';
-import {
-  freezeWorkflowOrganizationAttempt,
-  type WorkflowOrganizationAttempt,
-} from '../../model/organization/requests';
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
+import type { WorkflowOrganizationInput } from '../../model/organization/requests';
 import { sendWorkflowOrganizationCommand } from '../../data/organization/workflow-organization.api';
 import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
 import { workflowKeys } from '../../data/workflows.queries';
-import type { RequiredRole } from '../../data/organization/authority';
-import { allowed } from '../../data/organization/authority';
-import { accessLost } from '../../data/organization/authority';
-import { clearOrganizationQueries } from '../../data/organization/authority';
-import { verifyCurrentAuthority } from '../../data/organization/authority';
-import { observeAuthority } from '../../data/organization/authority';
+import { allowed, type RequiredRole } from '../../data/organization/authority';
 
 export type WorkflowOrganizationCommandResult = Awaited<
   ReturnType<typeof sendWorkflowOrganizationCommand>
 >;
-
-type State = Readonly<{
-  revisionConflict?: boolean;
-  revisionRead?: SnapshotRead<unknown>;
-  pending: boolean;
-  retryAvailable: boolean;
-  denied: boolean;
-  error?: string | undefined;
-  result?: WorkflowOrganizationCommandResult;
-}>;
-
 export type WorkflowOrganizationCommandOptions = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   requiredRole: RequiredRole;
 }>;
+export type WorkflowOrganizationCommand = ReturnType<
+  typeof useWorkflowOrganizationCommand
+>;
 
-export type WorkflowOrganizationCommand = State &
-  Readonly<{
-    start: (attempt: WorkflowOrganizationAttempt) => Promise<void>;
-    retry: () => Promise<void>;
-    retryRevisionRead: () => Promise<void>;
-    reset: () => void;
-  }>;
-
-/** A sent command and when it was first sent, for an exact retry. */
-type Held = Readonly<{
-  command: WorkflowOrganizationAttempt;
-  createdAt: number;
-}>;
-
-const idle: State = { pending: false, retryAvailable: false, denied: false };
-
-function uncertain(error: unknown) {
-  return (
-    !isApiError(error) ||
-    error.kind === 'network' ||
-    error.kind === 'timeout' ||
-    error.kind === 'protocol' ||
-    (error.status ?? 0) >= 500
-  );
-}
-
-/** Ephemeral exact command ownership; receipts are feedback, never current state. */
 export function useWorkflowOrganizationCommand({
   apiClient,
   userId,
   workspace,
   requiredRole,
-}: WorkflowOrganizationCommandOptions): WorkflowOrganizationCommand {
-  const queryClient = useQueryClient();
-  const [state, setState] = useState<State>(idle);
-  const owner = useRef<symbol | undefined>(undefined);
-  const request = useRef<AbortController | undefined>(undefined);
-  const attempt = useRef<Held | undefined>(undefined);
-  const denied = useRef(false);
+}: WorkflowOrganizationCommandOptions) {
+  const cache = useQueryClient();
+  const [revisionRead, setRevisionRead] = useState<SnapshotRead<unknown>>();
   const workspaceId = workspace.id;
-  const currentAllowed = allowed(workspace, requiredRole);
-
-  const retire = useCallback(() => {
-    owner.current = undefined;
-    request.current?.abort();
-    request.current = undefined;
-    attempt.current = undefined;
-    denied.current = true;
-    clearOrganizationQueries(queryClient, userId, workspaceId);
-    setState({
-      pending: false,
-      retryAvailable: false,
-      denied: true,
-      error:
-        'Access changed. Reopen this control after checking your account and workspace.',
-    });
-  }, [queryClient, userId, workspaceId]);
-
-  useEffect(() => {
-    const token = Symbol('organization-command');
-    owner.current = token;
-    denied.current = false;
-    attempt.current = undefined;
-    queueMicrotask(() => {
-      if (owner.current !== token) return;
-      if (!currentAllowed) retire();
-      else if (request.current === undefined) setState(idle);
-    });
-    const unsubscribeSession = subscribeSessionChanges(retire);
-    const unsubscribeCache = observeAuthority({
-      queryClient,
-      userId,
-      workspaceId,
-      requiredRole,
-      current: () => owner.current === token,
-      retire,
-    });
-    return () => {
-      unsubscribeSession();
-      unsubscribeCache();
-      if (owner.current === token) owner.current = undefined;
-      request.current?.abort();
-      request.current = undefined;
-      attempt.current = undefined;
-    };
-  }, [
-    apiClient,
-    userId,
-    workspaceId,
-    workspace.role,
-    workspace.status,
-    requiredRole,
-    currentAllowed,
-    queryClient,
-    retire,
-  ]);
-
-  const send = (held: Held) =>
-    sendOrganizationCommand(
-      {
-        apiClient,
-        userId,
-        workspaceId,
-        requiredRole,
-        queryClient,
-        owner,
-        request,
-        attempt,
-        denied,
-        currentAllowed,
-        retire,
-        setState,
-      },
-      held,
-    );
-
-  return {
-    ...state,
-    retryRevisionRead: async () => {
-      if (request.current !== undefined || denied.current) return;
-      const token = owner.current;
-      setState((previous) => ({ ...previous, pending: true }));
-      const revisionRead = await refreshQuerySnapshot(
-        queryClient,
+  const mutation = useLowEffectMutation({
+    send: async (
+      input: WorkflowOrganizationInput,
+      key,
+    ): Promise<WorkflowOrganizationCommandResult> =>
+      sendWorkflowOrganizationCommand(apiClient, {
+        ...input,
+        idempotencyKey: key,
+      }),
+    refresh: () =>
+      Promise.all([
+        cache.invalidateQueries({
+          queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+        }),
+        cache.invalidateQueries({
+          queryKey: workflowKeys.scope(userId, workspaceId),
+        }),
+      ]),
+  });
+  const revisionRefresh = useMutation({
+    mutationFn: () =>
+      refreshQuerySnapshot(
+        cache,
         workflowOrganizationKeys.folders(userId, workspaceId),
-      );
-      if (owner.current === token)
-        setState((previous) => ({ ...previous, pending: false, revisionRead }));
-    },
-    start: async (input) => {
-      const organizationRetryBlocked =
-        request.current !== undefined ||
-        attempt.current !== undefined ||
-        denied.current ||
-        !currentAllowed ||
-        owner.current === undefined;
-      if (organizationRetryBlocked) return;
-      if (input.workspaceId !== workspaceId) {
-        setState({
-          ...idle,
-          error: 'The command belongs to a different workspace.',
-        });
-        return;
-      }
-      let frozen: WorkflowOrganizationAttempt;
-      try {
-        frozen = freezeWorkflowOrganizationAttempt(input);
-      } catch {
-        setState({ ...idle, error: 'The organization command is invalid.' });
-        return;
-      }
-      const held = { command: frozen, createdAt: Date.now() };
-      attempt.current = held;
-      await send(held);
-    },
-    retry: async () => {
-      const held = attempt.current;
-      if (held === undefined) return;
-      if (canResend(held)) await send(held);
-      else {
-        attempt.current = undefined;
-        setState({ ...idle, error: RETRY_WINDOW_ENDED });
-      }
+      ),
+    onSuccess: setRevisionRead,
+  });
+  const pending = mutation.isPending || revisionRefresh.isPending;
+  const actionDenied =
+    isApiError(mutation.error) && mutation.error.status === 403;
+  const partialDenied =
+    mutation.data !== undefined &&
+    'items' in mutation.data &&
+    mutation.data.items.some((item) => item.status === 'forbidden');
+  const denied =
+    !allowed(workspace, requiredRole) || actionDenied || partialDenied;
+  async function start(input: WorkflowOrganizationInput) {
+    if (
+      pending ||
+      denied ||
+      !allowed(workspace, requiredRole) ||
+      input.workspaceId !== workspaceId
+    )
+      return;
+    setRevisionRead(undefined);
+    try {
+      await mutation.mutateAsync(input);
+    } catch (error) {
+      if (isRevisionConflict(error))
+        setRevisionRead(
+          querySnapshot(
+            cache,
+            workflowOrganizationKeys.folders(userId, workspaceId),
+          ),
+        );
+    }
+  }
+  return {
+    pending,
+    result: mutation.data,
+    denied,
+    error: mutation.isError ? definitiveMessage(mutation.error) : undefined,
+    revisionConflict: revisionRead !== undefined,
+    revisionRead,
+    start,
+    retryRevisionRead: async () => {
+      await revisionRefresh.mutateAsync();
     },
     reset: () => {
-      // A reread is not evidence that an outstanding command did not commit.
-      // Only a definitive result may release this owner's frozen intent.
-      if (request.current !== undefined || attempt.current !== undefined)
-        return;
-      if (denied.current) retire();
-      else setState(idle);
+      if (!pending) {
+        mutation.reset();
+        setRevisionRead(undefined);
+      }
     },
   };
 }
@@ -259,131 +146,5 @@ function definitiveMessage(error: unknown) {
   const code = isApiError(error) ? error.problem?.code : undefined;
   return code !== undefined && Object.hasOwn(messages, code)
     ? (messages[code] ?? 'That change wasn’t saved.')
-    : 'That change wasn’t saved. Refresh the list before trying again.';
-}
-
-type OrganizationCommandContext = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  requiredRole: RequiredRole;
-  queryClient: QueryClient;
-  owner: RefObject<symbol | undefined>;
-  request: RefObject<AbortController | undefined>;
-  attempt: RefObject<Held | undefined>;
-  denied: RefObject<boolean>;
-  currentAllowed: boolean;
-  retire: () => void;
-  setState: Dispatch<SetStateAction<State>>;
-}>;
-async function sendOrganizationCommand(
-  {
-    apiClient,
-    userId,
-    workspaceId,
-    requiredRole,
-    queryClient,
-    owner,
-    request,
-    attempt,
-    denied,
-    currentAllowed,
-    retire,
-    setState,
-  }: OrganizationCommandContext,
-  held: Held,
-) {
-  const token = owner.current;
-  const organizationRequestBlocked =
-    token === undefined ||
-    request.current !== undefined ||
-    denied.current ||
-    !currentAllowed;
-  if (organizationRequestBlocked) return;
-  const controller = new AbortController();
-  request.current = controller;
-  const current = () =>
-    owner.current === token &&
-    request.current === controller &&
-    !controller.signal.aborted;
-  const verify = () =>
-    verifyCurrentAuthority({
-      apiClient,
-      userId,
-      workspaceId,
-      requiredRole,
-      signal: controller.signal,
-      current,
-      retire,
-    });
-  setState((previous) => ({
-    ...previous,
-    pending: true,
-    retryAvailable: false,
-    error: undefined,
-  }));
-  try {
-    if (!(await verify())) return;
-    const result = await sendWorkflowOrganizationCommand(
-      apiClient,
-      held.command,
-      controller.signal,
-    );
-    if (!current() || !(await verify()) || !current()) return;
-    const authorityLost =
-      'items' in result &&
-      result.items.some((item) => item.status === 'forbidden');
-    const retryAvailable =
-      'items' in result &&
-      !authorityLost &&
-      result.items.some((item) => item.status === 'outcome_unknown');
-    attempt.current = retryAvailable ? held : undefined;
-    denied.current = authorityLost;
-    if (authorityLost)
-      clearOrganizationQueries(queryClient, userId, workspaceId);
-    setState({
-      pending: false,
-      retryAvailable,
-      denied: authorityLost,
-      result,
-    });
-    void queryClient.invalidateQueries({
-      queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: workflowKeys.scope(userId, workspaceId),
-    });
-  } catch (error) {
-    if (!current()) return;
-    if (accessLost(error)) {
-      retire();
-      return;
-    }
-    const retryAvailable = uncertain(error);
-    const revisionConflict = await recoverRevisionConflict(
-      queryClient,
-      workflowOrganizationKeys.folders(userId, workspaceId),
-      error,
-    );
-    attempt.current = retryAvailable ? held : undefined;
-    setState({
-      pending: false,
-      retryAvailable,
-      denied: false,
-      ...conflictReadState(revisionConflict),
-      error: retryAvailable
-        ? 'We couldn’t confirm that change. Retry it; refreshing the list won’t lose your place.'
-        : definitiveMessage(error),
-    });
-  } finally {
-    if (request.current === controller) request.current = undefined;
-  }
-}
-
-function conflictReadState(
-  recovery: SnapshotRead<unknown> | Readonly<{ kind: 'not-conflict' }>,
-): Pick<State, 'revisionConflict' | 'revisionRead'> {
-  return recovery.kind === 'not-conflict'
-    ? { revisionConflict: false }
-    : { revisionConflict: true, revisionRead: recovery };
+    : lowEffectError(error, 'changing workflow organization');
 }

@@ -1,3 +1,4 @@
+import { useOrganizationReadLifetime } from '../../../hooks/organization/use-organization-read-lifetime';
 import { isAdministrativeRole } from '@pertexo/policy';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -9,22 +10,17 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { workflowTagsInfiniteQueryOptions } from '../../../data/organization/workflow-organization.queries';
-import {
-  freezeWorkflowOrganizationAttempt,
-  type WorkflowOrganizationAttempt,
-} from '../../../model/organization/requests';
+import type { WorkflowOrganizationInput } from '../../../model/organization/requests';
 import { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
 import { TagManagement } from './management';
 import { WorkflowTagCleanup } from './cleanup';
 import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
-
 type Props = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   onClose: () => void;
 }>;
-
 /** Owners and admins add, rename and remove the workspace's tags here. */
 export function WorkflowTagsDialog(props: Props) {
   if (
@@ -53,8 +49,9 @@ export function WorkflowTagsDialog(props: Props) {
     />
   );
 }
-
 function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
+  const lifetime = useOrganizationReadLifetime(userId, workspace.id);
+  const readDenied = lifetime.error !== undefined;
   const tags = useInfiniteQuery(
     workflowTagsInfiniteQueryOptions(apiClient, userId, workspace.id),
   );
@@ -66,19 +63,12 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
   });
   const [cleanup, setCleanup] = useState<WorkflowTag>();
   const [pendingKind, setPendingKind] =
-    useState<WorkflowOrganizationAttempt['kind']>();
-  const [invalid, setInvalid] = useState(false);
-  const locked = command.pending || command.retryAvailable || command.denied;
-  const start = (attempt: WorkflowOrganizationAttempt) => {
+    useState<WorkflowOrganizationInput['kind']>();
+  const locked = command.pending || command.denied || readDenied;
+  const start = (attempt: WorkflowOrganizationInput) => {
     if (locked) return;
-    try {
-      const frozen = freezeWorkflowOrganizationAttempt(attempt);
-      setInvalid(false);
-      setPendingKind(frozen.kind);
-      void command.start(frozen);
-    } catch {
-      setInvalid(true);
-    }
+    setPendingKind(attempt.kind);
+    void command.start(attempt);
   };
   const items = tags.data?.pages.flatMap((page) => page.items) ?? [];
   return (
@@ -105,20 +95,15 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
         </Button>
       }
     >
-      {command.denied ? (
+      {command.denied || readDenied ? (
         <Notice tone="warning">
           Your access changed, so tags can’t be edited here. Close this and
           check your role in the workspace.
         </Notice>
       ) : null}
-      {invalid ? (
-        <Notice tone="destructive">
-          Check the tag. Use lowercase letters, numbers and hyphens, up to 32
-          characters.
-        </Notice>
-      ) : null}
+
       <QueryView query={tags} resource="Tags" loading={null} />
-      {!command.denied && cleanup === undefined ? (
+      {!command.denied && !readDenied && cleanup === undefined ? (
         <>
           <TagManagement
             tags={items}
@@ -149,7 +134,7 @@ function TagsDialogContent({ apiClient, userId, workspace, onClose }: Props) {
           />
         </>
       ) : null}
-      {!command.denied && cleanup !== undefined ? (
+      {!command.denied && !readDenied && cleanup !== undefined ? (
         <WorkflowTagCleanup
           apiClient={apiClient}
           userId={userId}

@@ -10,7 +10,7 @@ import {
 } from '../workflow-editor/support';
 import { defaultConcurrencySettings } from '../../test/support/fixtures/concurrency';
 
-test('workflow concurrency preserves conflict edits, exact retries and Queue/Skip settings on a narrow screen', async ({
+test('workflow concurrency preserves conflict edits, fresh confirmations and Queue/Skip settings on a narrow screen', async ({
   page,
   baseURL,
 }, testInfo) => {
@@ -57,16 +57,15 @@ test('workflow concurrency preserves conflict edits, exact retries and Queue/Ski
         limit: number | null;
         overflow: 'queue' | 'skip';
       };
-      if (writes.length !== 3)
-        settings = {
-          ...settings,
-          limit: body.limit,
-          overflow: body.overflow,
-          revision: settings.revision + 1,
-        };
+      settings = {
+        ...settings,
+        limit: body.limit,
+        overflow: body.overflow,
+        revision: settings.revision + 1,
+      };
       if (writes.length === 2) return route.abort('failed');
       return route.fulfill({
-        json: { settings, replayed: writes.length === 3 },
+        json: { settings, replayed: false },
       });
     },
   );
@@ -80,12 +79,13 @@ test('workflow concurrency preserves conflict edits, exact retries and Queue/Ski
   await expect(input).toHaveValue('1');
   await expect(section.getByText('Up to 3 runs at once.')).toBeVisible();
   await section.getByRole('button', { name: 'Save concurrency limit' }).click();
-  await section.getByRole('button', { name: 'Retry same change' }).click();
+  await expect(section.getByText(/couldn’t confirm/u)).toBeVisible();
+  await section.getByRole('button', { name: 'Save concurrency limit' }).click();
   await expect(page.getByText('Concurrency settings saved')).toBeVisible();
-  expect(writes[2]).toEqual(writes[1]);
+  expect(writes[2]?.key).not.toEqual(writes[1]?.key);
   expect(writes[2]?.body).toEqual({
     limit: 1,
-    expectedRevision: 2,
+    expectedRevision: 3,
     overflow: 'queue',
   });
   await section.getByRole('button', { name: 'Change' }).click();
@@ -98,7 +98,7 @@ test('workflow concurrency preserves conflict edits, exact retries and Queue/Ski
   await expect(section.getByText(/^No limit of its own\./u)).toBeVisible();
   expect(writes[3]?.body).toEqual({
     limit: null,
-    expectedRevision: 3,
+    expectedRevision: 4,
     overflow: 'skip',
   });
   await section.getByRole('button', { name: 'Change' }).click();

@@ -47,7 +47,6 @@ export function SchedulesSection({
     const done = await schedule.setEnabled({
       triggerId: trigger.id,
       enabled,
-      observedEnabled: trigger.status !== 'disabled',
     });
     setPausing(undefined);
     if (done)

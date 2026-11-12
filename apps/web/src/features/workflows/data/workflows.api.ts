@@ -66,14 +66,14 @@ export function duplicateWorkflow({
   workspaceId: string;
   workflowId: string;
   attempt: WorkflowDuplicateAttempt;
-  signal: AbortSignal;
+  signal?: AbortSignal;
 }>) {
   const body = workflowDuplicateRequestSchema.parse(attempt.body);
   return apiClient.request({
     path: `${workflowPath(workspaceId, workflowId)}/duplicate`,
     method: 'POST',
     body,
-    signal,
+    ...(signal === undefined ? {} : { signal }),
     headers: {
       'Idempotency-Key': attempt.idempotencyKey,
       ...(body.source.kind === 'draft'

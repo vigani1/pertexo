@@ -71,17 +71,18 @@ export async function getInputCase({
   return response.case;
 }
 
-export type InputCaseCommand = Readonly<
-  | { kind: 'create'; body: WorkflowInputCaseCreateRequest; key: string }
+export type InputCaseIntent = Readonly<
+  | { kind: 'create'; body: WorkflowInputCaseCreateRequest }
   | {
       kind: 'update';
       caseId: string;
       tag: string;
       body: WorkflowInputCaseUpdateRequest;
-      key: string;
     }
-  | { kind: 'delete'; caseId: string; tag: string; key: string }
+  | { kind: 'delete'; caseId: string; tag: string }
 >;
+
+export type InputCaseCommand = InputCaseIntent & Readonly<{ key: string }>;
 
 export function sendInputCaseCommand(
   api: ApiClient,

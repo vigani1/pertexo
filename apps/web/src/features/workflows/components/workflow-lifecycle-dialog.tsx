@@ -14,7 +14,6 @@ import {
   type LifecycleIntent,
 } from '../model/lifecycle';
 import { useWorkflowLifecycleCommand } from '../data/workflows.mutations';
-
 const COPY = {
   archive: {
     title: 'Archive this workflow?',
@@ -29,7 +28,6 @@ const COPY = {
     done: 'Workflow restored',
   },
 } as const;
-
 /**
  * Confirms archive or restore with its consequences spelled out. The intent
  * stays fixed while open, so a retry repeats exactly what was confirmed.
@@ -70,10 +68,9 @@ export function WorkflowLifecycleDialog({
       enabled: intent?.command === 'archive',
     }),
   );
-  const checkingPins = intent?.command === 'archive' && !lifecycle.exactRetry;
+  const checkingPins = intent?.command === 'archive' && true;
   const action = intent?.command ?? 'archive';
   const copy = COPY[action];
-
   async function confirm() {
     if (intent === undefined) return;
     const done = await lifecycle.submit(
@@ -85,7 +82,6 @@ export function WorkflowLifecycleDialog({
     onCompleted?.();
     onClose();
   }
-
   const pinCheckUnavailable =
     checkingPins && (pins.isPending || pins.isError || pins.isFetching);
   return (
@@ -113,7 +109,7 @@ export function WorkflowLifecycleDialog({
           disabled: lifecycle.pending,
         },
         confirm: {
-          label: lifecycle.exactRetry ? 'Retry safely' : copy.confirm,
+          label: copy.confirm,
           type: 'submit',
           variant:
             (action === 'restore' ? 'default' : 'destructive') === 'destructive'
@@ -128,7 +124,7 @@ export function WorkflowLifecycleDialog({
       <ConfirmationDetails
         consequences={LIFECYCLE_CONSEQUENCES[action]}
         error={lifecycle.error}
-        tone={lifecycle.exactRetry ? 'warning' : 'destructive'}
+        tone="destructive"
       >
         {intent?.command === 'archive' ? (
           <PublishedParentNotice query={pins} />
@@ -137,10 +133,11 @@ export function WorkflowLifecycleDialog({
     </ConfirmDialog>
   );
 }
-
 function PublishedParentNotice({
   query,
-}: Readonly<{ query: UseQueryResult<readonly WorkflowSummary[]> }>) {
+}: Readonly<{
+  query: UseQueryResult<readonly WorkflowSummary[]>;
+}>) {
   return (
     <QueryView
       query={query}
@@ -151,10 +148,11 @@ function PublishedParentNotice({
     </QueryView>
   );
 }
-
 function PublishedParents({
   parents,
-}: Readonly<{ parents: readonly WorkflowSummary[] }>) {
+}: Readonly<{
+  parents: readonly WorkflowSummary[];
+}>) {
   if (parents.length === 0) return null;
   return (
     <Notice tone="warning" title="Published parents pin this workflow">

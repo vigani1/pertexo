@@ -104,11 +104,16 @@ describe('shared workflow input cases', () => {
     });
     expect(reads).toBe(2);
   });
-  it('admits only one same-tick save while preserving the exact recovery command', async () => {
+  it('admits only one user double-click save and keeps the form editable after failure', async () => {
     const captures: unknown[] = [];
+    let release!: () => void;
+    const pending = new Promise<void>((done) => {
+      release = done;
+    });
     mockServer.use(
       http.put(`${path}/${caseId}`, async ({ request }) => {
         captures.push(await request.json());
+        await pending;
         return HttpResponse.error();
       }),
     );
@@ -117,11 +122,11 @@ describe('shared workflow input cases', () => {
       await screen.findByRole('button', { name: 'Edit Synthetic customer' }),
     );
     const save = await screen.findByRole('button', { name: 'Save input case' });
-    act(() => {
-      save.click();
-      save.click();
-    });
-    await screen.findByRole('button', { name: 'Retry exact case change' });
+    await event.dblClick(save);
+    expect(captures).toHaveLength(1);
+    expect(screen.getByLabelText('Case name')).toBeDisabled();
+    release();
+    await screen.findByText(/Check the refreshed current state/u);
     expect(captures).toEqual([
       {
         name: metadata.name,
@@ -129,7 +134,7 @@ describe('shared workflow input cases', () => {
         expectations: { outcome: 'succeeds', assertions: [] },
       },
     ]);
-    expect(screen.getByLabelText('Case name')).toBeDisabled();
+    expect(screen.getByLabelText('Case name')).toBeEnabled();
   });
   it('keeps case edits on a typed conflict and requires explicit current-read review', async () => {
     const writes: { body: unknown; tag: string | null; key: string | null }[] =
@@ -173,7 +178,7 @@ describe('shared workflow input cases', () => {
     );
     expect(input).toHaveValue('{"customer":"changed"}');
   });
-  it('retries a lost update with the same body, opaque tag and key', async () => {
+  it('keeps edits and the opaque tag after a lost update and uses a fresh key for a new confirmation', async () => {
     const writes: { body: unknown; tag: string | null; key: string | null }[] =
       [];
     mockServer.use(
@@ -194,17 +199,17 @@ describe('shared workflow input cases', () => {
     );
     await screen.findByLabelText('Case name');
     await event.click(screen.getByRole('button', { name: 'Save input case' }));
-    await screen.findByRole('button', { name: 'Retry exact case change' });
-    expect(screen.getByLabelText('Case input (JSON)')).toBeDisabled();
+    await screen.findByText(/Check the refreshed current state/u);
+    expect(screen.getByLabelText('Case input (JSON)')).toBeEnabled();
     expect(
       screen.getByRole('button', { name: 'Cancel case edit' }),
-    ).toBeDisabled();
-    await event.click(
-      screen.getByRole('button', { name: 'Retry exact case change' }),
-    );
+    ).toBeEnabled();
+    await event.click(screen.getByRole('button', { name: 'Save input case' }));
     await waitFor(() => {
       expect(writes).toHaveLength(2);
     });
-    expect(writes[1]).toEqual(writes[0]);
+    expect(writes[1]?.body).toEqual(writes[0]?.body);
+    expect(writes[1]?.tag).toBe(writes[0]?.tag);
+    expect(writes[1]?.key).not.toBe(writes[0]?.key);
   });
 });

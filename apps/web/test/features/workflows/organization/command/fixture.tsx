@@ -2,7 +2,7 @@ import {
   useWorkflowOrganizationCommand,
   type WorkflowOrganizationCommandOptions,
 } from '@/features/workflows/hooks/organization/use-workflow-organization-command';
-import type { WorkflowOrganizationAttempt } from '@/features/workflows/model/organization/requests';
+import type { WorkflowOrganizationInput } from '@/features/workflows/model/organization/requests';
 import { createApiClient } from '@/lib/api/client';
 import {
   accessibleWorkspaceSchema,
@@ -24,7 +24,7 @@ import {
   workspaceWith,
 } from '../../list/fixtures';
 
-export const workspace = accessibleWorkspaceSchema.parse(
+const workspace = accessibleWorkspaceSchema.parse(
   workspaceWith(['workflow:read', 'workflow:update']),
 );
 
@@ -48,11 +48,11 @@ const apiClient = createApiClient({
 
 export const single = {
   workspaceId,
-  idempotencyKey: 'single-key',
+
   kind: 'place-folder',
   workflowId,
   body: { folderId: null, expectedOrganizationRevision: 7 },
-} satisfies WorkflowOrganizationAttempt;
+} satisfies WorkflowOrganizationInput;
 
 export const receipt = {
   workflowId,
@@ -61,10 +61,10 @@ export const receipt = {
   replayed: true,
 };
 
-export function bulk(): WorkflowOrganizationAttempt & { kind: 'bulk' } {
+export function bulk(): WorkflowOrganizationInput & { kind: 'bulk' } {
   return {
     workspaceId,
-    idempotencyKey: 'whole-parent-key',
+
     kind: 'bulk',
     body: {
       operation: 'move',
@@ -183,19 +183,6 @@ export function deferred(body: JsonBodyType = receipt) {
 }
 
 /** Another tab says the sign-in changed, as the session sync broadcasts. */
-export function signalSessionChange() {
-  window.dispatchEvent(
-    new StorageEvent('storage', {
-      key: 'pertexo:auth-session-change',
-      newValue: JSON.stringify({
-        event: 'changed',
-        generation: crypto.randomUUID(),
-        sender: 'another-tab',
-      }),
-    }),
-  );
-}
-
 export function setup(
   overrides: Partial<WorkflowOrganizationCommandOptions> = {},
 ) {

@@ -14,7 +14,6 @@ import {
   FolderNameDialog,
 } from './dialogs';
 import { FolderShareDialog } from './share-dialog';
-
 const DONE: Readonly<Record<FolderAction['kind'], string>> = {
   create: 'Folder created',
   rename: 'Folder renamed',
@@ -22,7 +21,6 @@ const DONE: Readonly<Record<FolderAction['kind'], string>> = {
   share: 'Sharing saved',
   delete: 'Folder deleted',
 };
-
 /**
  * One folder dialog at a time. Mount it per action (keyed), so each dialog
  * owns a fresh command and an uncertain one can only be retried exactly.
@@ -57,10 +55,7 @@ export function FolderActionDialog({
   );
   const notifications = useNotifications();
   const succeeded =
-    command.result !== undefined &&
-    !command.pending &&
-    !command.retryAvailable &&
-    !command.denied;
+    command.result !== undefined && !command.pending && !command.denied;
   // Once per confirmed result: the notifier changes as toasts come and go.
   const announced = useRef(command.result);
   useEffect(() => {
@@ -156,7 +151,6 @@ export function FolderActionDialog({
       );
   }
 }
-
 function folderRevisionState(
   reviewed: FolderAction,
   folders: readonly WorkflowFolder[],

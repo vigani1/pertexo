@@ -24,7 +24,6 @@ import {
   type OrganizationOperation,
 } from '../../model/organization/selection-editing';
 import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
-
 export type Props = Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -32,7 +31,6 @@ export type Props = Readonly<{
   workflows: readonly WorkflowOrganizationProjectionResponse[];
   onClose: () => void;
 }>;
-
 export function useOrganizationEdit({
   apiClient,
   userId,
@@ -73,19 +71,20 @@ export function useOrganizationEdit({
   const locked =
     preparing ||
     command.pending ||
-    command.retryAvailable ||
     audience.pending ||
     audience.review !== undefined;
   const feedback =
     command.error ??
     readError ??
+    (command.denied
+      ? 'You can’t change workflow organization with your current access.'
+      : undefined) ??
     (organization.failedRead
       ? 'Current organization could not be loaded. Refresh before confirming a change.'
       : undefined);
-
   async function refresh() {
     if (preparingRef.current || command.pending || command.denied) return;
-    if (!command.retryAvailable) command.reset();
+    command.reset();
     setReadError(undefined);
     setPreparing(true);
     preparingRef.current = true;
@@ -108,7 +107,6 @@ export function useOrganizationEdit({
       if (alive.current) setPreparing(false);
     }
   }
-
   async function confirm(
     operation: OrganizationOperation,
     folderId: string | null,
@@ -155,7 +153,6 @@ export function useOrganizationEdit({
           operation,
           folderId,
           tagIds,
-          idempotencyKey: crypto.randomUUID(),
         }),
       );
     } catch {
@@ -168,7 +165,6 @@ export function useOrganizationEdit({
       if (alive.current) setPreparing(false);
     }
   }
-
   return {
     ...organization,
     selected,
@@ -183,7 +179,6 @@ export function useOrganizationEdit({
     audience,
   };
 }
-
 function useOrganizationReads({
   apiClient,
   userId,

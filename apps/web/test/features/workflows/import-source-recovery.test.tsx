@@ -1,12 +1,12 @@
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { mountList, prepare } from './import-recovery/fixture';
-import { api } from './list/fixtures';
+import { api, curatedCatalog } from './list/fixtures';
 
-it('reopens the unresolved file import when an example is chosen and retries its exact command', async () => {
+it('lets an explicit example replace an unconfirmed file import without sending automatically', async () => {
   const attempts: { body: unknown; key: string | null }[] = [];
   mockServer.use(
     http.post(`${api}/workflows/import`, async ({ request }) => {
@@ -18,21 +18,35 @@ it('reopens the unresolved file import when an example is chosen and retries its
     }),
   );
   const { event } = mountList();
+  mockServer.use(
+    http.get('http://pertexo.test/v1/node-definitions', () =>
+      HttpResponse.json(curatedCatalog()),
+    ),
+  );
   await prepare(event);
-  await screen.findByRole('button', { name: 'Retry exact import' });
-  await event.click(screen.getByRole('button', { name: 'Close' }));
+  await screen.findByText(/couldn’t confirm/u);
+  await event.click(screen.getByRole('button', { name: 'Cancel' }));
   const example = CURATED_WORKFLOW_TEMPLATES[0];
   if (example === undefined) throw new Error('Expected a curated example');
   await event.click(
     screen.getByRole('button', { name: new RegExp(example.title, 'u') }),
   );
+  const choose = await screen.findByRole('button', {
+    name: `Set up ${example.title}`,
+  });
+  await waitFor(() => expect(choose).toBeEnabled());
+  await event.click(choose);
+  expect(attempts).toHaveLength(1);
+  const previewButton = screen.getByRole('button', { name: 'Preview import' });
+  await waitFor(() => expect(previewButton).toBeEnabled());
+  await event.click(previewButton);
+  await screen.findByText(/Compatible with this workspace/u);
   await event.click(
-    await screen.findByRole('button', { name: 'Retry exact import' }),
+    screen.getByRole('button', { name: 'Import unpublished draft' }),
   );
-  await screen.findByRole('button', { name: 'Retry exact import' });
+  await screen.findByText(/couldn’t confirm/u);
   expect(attempts).toHaveLength(2);
-  expect(attempts[1]).toEqual(attempts[0]);
-  expect(screen.getByLabelText('New workflow name')).toHaveValue(
-    'Frozen recovery draft',
-  );
+  expect(attempts[1]?.key).not.toEqual(attempts[0]?.key);
+  expect(attempts[1]?.body).not.toEqual(attempts[0]?.body);
+  expect(screen.getByLabelText('New workflow name')).toHaveValue(example.title);
 });

@@ -1,6 +1,5 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { newCommandKey } from '@/lib/api/commands/command-retry';
 import { changeWorkspaceMemberStatus } from '../../workspaces.api';
 import {
   useMemberCommand,
@@ -45,8 +44,6 @@ export function useMemberStatusCommand(
         attempt,
       ),
     copy: {
-      uncertain: (member) =>
-        `We couldn’t confirm whether ${member.displayName}’s access changed. Try again — Pertexo recognizes the repeat, so it can’t happen twice.`,
       conflict: (member) =>
         `${member.displayName} changed while you were deciding. Check their row, then try again if you still want to.`,
       action: 'changing this member’s access',
@@ -65,7 +62,6 @@ export function useMemberStatusCommand(
         targetUserId: member.userId,
         direction,
         expectedRoleRevision: member.roleRevision,
-        ...newCommandKey(),
       }),
   };
 }

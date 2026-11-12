@@ -10,11 +10,13 @@ import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceLifecycleCommand } from '../../data/mutations/lifecycle/use-workspace-lifecycle-command';
 import { WorkspaceDeletionDialog } from './workspace-deletion-dialog';
 import { WorkspaceLifecycleDialog } from './workspace-lifecycle-dialog';
-
 type LifecycleChange = WorkspaceLifecycleChangeResponse['change'];
-
 /** Irreversible or hard-to-undo actions, fenced off from the rest. */
-export function DangerZone({ children }: Readonly<{ children: ReactNode }>) {
+export function DangerZone({
+  children,
+}: Readonly<{
+  children: ReactNode;
+}>) {
   return (
     <SettingsSection
       title="Danger zone"
@@ -26,7 +28,6 @@ export function DangerZone({ children }: Readonly<{ children: ReactNode }>) {
     </SettingsSection>
   );
 }
-
 /**
  * One action in the danger zone: what it does, with its button beside it on
  * a wide screen, so every row lines up however long its sentence is.
@@ -35,7 +36,11 @@ export function DangerAction({
   title,
   description,
   children,
-}: Readonly<{ title: string; description: string; children: ReactNode }>) {
+}: Readonly<{
+  title: string;
+  description: string;
+  children: ReactNode;
+}>) {
   return (
     <div className="grid items-center gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
       <div className="max-w-xl">
@@ -46,7 +51,6 @@ export function DangerAction({
     </div>
   );
 }
-
 const COMPLETED: Readonly<Record<LifecycleChange, string>> = {
   deletion_requested:
     'The workspace is scheduled for deletion. Restore it within 30 days of the request to keep it.',
@@ -55,13 +59,11 @@ const COMPLETED: Readonly<Record<LifecycleChange, string>> = {
   reactivated:
     'The workspace is active again. Triggers and connections stay off until you turn them back on, and revoked API tokens stay revoked.',
 };
-
 const COMPLETED_LABEL: Readonly<Record<LifecycleChange, string>> = {
   deletion_requested: 'Deletion request',
   deletion_restored: 'Restore request',
   reactivated: 'Reactivation',
 };
-
 /** Delete, restore or reactivate the workspace; what the request did stays until dismissed. */
 export function WorkspaceLifecycleControls({
   apiClient,
@@ -89,7 +91,6 @@ export function WorkspaceLifecycleControls({
     ...target,
     onCompleted: onChanged,
   });
-
   if (completed !== undefined)
     return (
       <Notice
@@ -159,15 +160,11 @@ export function WorkspaceLifecycleControls({
     </>
   );
 }
-
 function commandProps(
   command: ReturnType<typeof useWorkspaceLifecycleCommand>,
 ) {
   return {
     pending: command.pending,
-    retryAvailable: command.retryAvailable,
     error: command.error,
-    onDismissUncertain: command.dismissUncertain,
-    onRetry: command.retry,
   };
 }

@@ -1,3 +1,7 @@
+import {
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
 import type {
   WebhookManagementCommandResponse,
   WebhookAuthentication,
@@ -30,67 +34,48 @@ export function useScheduleCommand({
   workspaceId: string;
   workflowId: string;
 }>) {
-  const queryClient = useQueryClient();
-  const commands = useCommandAttemptKeys();
-  const pendingRef = useRef(false);
-  const [pendingTriggerId, setPendingTriggerId] = useState<string>();
-  const [error, setError] = useState<string>();
-
-  async function setEnabled({
-    triggerId,
-    enabled,
-    observedEnabled,
-  }: Readonly<{
-    triggerId: string;
-    enabled: boolean;
-    observedEnabled: boolean;
-  }>) {
-    if (pendingRef.current) return false;
-    const scope = `schedule:${triggerId}`;
-    commands.resolveObserved(scope, String(observedEnabled));
-    const attempt = commands.begin(scope, String(enabled));
-    if (attempt.kind === 'refused') {
-      setError(attempt.message);
-      return false;
-    }
-    pendingRef.current = true;
-    setPendingTriggerId(triggerId);
-    setError(undefined);
-    try {
-      await setScheduleEnabled({
+  const cache = useQueryClient();
+  const mutation = useLowEffectMutation({
+    send: (input: Readonly<{ triggerId: string; enabled: boolean }>, key) =>
+      setScheduleEnabled({
         apiClient,
         workspaceId,
         workflowId,
-        triggerId,
-        enabled,
-        idempotencyKey: attempt.idempotencyKey,
-      });
-      commands.complete(scope, String(enabled));
-      await queryClient.invalidateQueries({
+        ...input,
+        idempotencyKey: key,
+      }),
+    refresh: () =>
+      cache.invalidateQueries({
         queryKey: workflowSettingsKeys.schedules(
           userId,
           workspaceId,
           workflowId,
         ),
-      });
+      }),
+  });
+  async function setEnabled(
+    input: Readonly<{ triggerId: string; enabled: boolean }>,
+  ) {
+    if (mutation.isPending) return false;
+    try {
+      await mutation.mutateAsync(input);
       return true;
-    } catch (cause) {
-      if (!isUnconfirmedCommand(cause))
-        commands.complete(scope, String(enabled));
-      setError(
-        settingsCommandError(
-          cause,
-          `turning this schedule ${enabled ? 'on' : 'off'}`,
-        ),
-      );
+    } catch {
       return false;
-    } finally {
-      pendingRef.current = false;
-      setPendingTriggerId(undefined);
     }
   }
-
-  return { pendingTriggerId, error, setEnabled };
+  return {
+    setEnabled,
+    pendingTriggerId: mutation.isPending
+      ? mutation.variables.triggerId
+      : undefined,
+    error: mutation.isError
+      ? lowEffectError(
+          mutation.error,
+          `turning this schedule ${mutation.variables.enabled ? 'on' : 'off'}`,
+        )
+      : undefined,
+  };
 }
 
 export type IssuedWebhookCredentials = Readonly<{

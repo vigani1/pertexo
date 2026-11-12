@@ -1,7 +1,6 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import { firstNameOf } from '../../model/workspace-roles';
 import { MemberCommandDialog, type MemberCommandView } from './command-dialog';
-
 /**
  * Confirms removing a member, listing what happens before anything is sent.
  * An unconfirmed removal stays on its member with an exact retry.
@@ -23,7 +22,6 @@ export function MemberRemovalDialog(
       command={props.command}
       onClose={props.onClose}
       onConfirm={props.onConfirm}
-
       content={{
         tone: 'destructive',
         title: `Remove ${member?.displayName ?? 'this member'} from ${props.workspaceName}?`,

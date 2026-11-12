@@ -1,23 +1,20 @@
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { ProgressButton } from '@/components/ui/progress-button';
-import type { useWorkflowOrganizationCommand } from '../../hooks/organization/use-workflow-organization-command';
 
+import type { useWorkflowOrganizationCommand } from '../../hooks/organization/use-workflow-organization-command';
 export type OrganizationCommand = ReturnType<
   typeof useWorkflowOrganizationCommand
 >;
-
 const outcomeLabels = {
   detached: 'Tag detached',
   updated: 'Updated',
   not_visible: 'Not visible',
   conflict: 'Conflict — reload before a new command',
   unavailable: 'Unavailable',
-  outcome_unknown: 'Outcome unknown — retry this exact command',
+  outcome_unknown: 'Outcome unconfirmed — review the current state',
   forbidden: 'Permission lost',
   not_processed: 'Not processed',
 };
-
 export function OrganizationCommandFeedback({
   command,
   names = new Map(),
@@ -31,21 +28,8 @@ export function OrganizationCommandFeedback({
         <Notice tone="destructive">{command.error}</Notice>
       )}
       <OrganizationResult command={command} names={names} />
-      {command.retryAvailable ? (
-        <ProgressButton
-          type="button"
-          pending={command.pending}
-          pendingLabel="Retrying…"
-          onClick={() => {
-            void command.retry();
-          }}
-        >
-          Retry exact command
-        </ProgressButton>
-      ) : null}
-      {command.error !== undefined &&
-      !command.retryAvailable &&
-      !command.denied ? (
+
+      {command.error !== undefined && !command.denied ? (
         <Button type="button" variant="outline" onClick={command.reset}>
           Dismiss feedback
         </Button>
@@ -53,7 +37,6 @@ export function OrganizationCommandFeedback({
     </>
   );
 }
-
 function OrganizationResult({
   command,
   names,

@@ -5,10 +5,7 @@ import type {
   WorkflowOrganizationProjectionResponse,
   WorkflowOrganizationBulkItemOutcome,
 } from '@pertexo/contracts';
-import {
-  freezeWorkflowOrganizationAttempt,
-  type WorkflowOrganizationAttempt,
-} from './requests';
+import type { WorkflowOrganizationInput } from './requests';
 
 export type OrganizationOperation = 'move' | 'replace_tags';
 export function validOrganizationSelection(
@@ -45,15 +42,13 @@ export function organizationEditAttempt({
   operation,
   folderId,
   tagIds,
-  idempotencyKey,
 }: Readonly<{
   workspaceId: string;
   workflows: readonly WorkflowOrganizationProjectionResponse[];
   operation: OrganizationOperation;
   folderId: string | null;
   tagIds: readonly string[];
-  idempotencyKey: string;
-}>): WorkflowOrganizationAttempt {
+}>): WorkflowOrganizationInput {
   if (!validOrganizationSelection(workflows))
     throw new Error('Select 1–50 distinct workflows.');
   const items = workflows.map(({ workflow, organization }) => ({
@@ -61,38 +56,36 @@ export function organizationEditAttempt({
     expectedOrganizationRevision: organization.organizationRevision,
   }));
   const single = items.length === 1 ? items[0] : undefined;
-  const scope = { workspaceId, idempotencyKey };
+  const scope = { workspaceId };
   const replacementTagIds = [...new Set(tagIds)].sort();
   if (single !== undefined)
-    return freezeWorkflowOrganizationAttempt(
-      operation === 'move'
-        ? {
-            ...scope,
-            kind: 'place-folder',
-            workflowId: single.workflowId,
-            body: {
-              folderId,
-              expectedOrganizationRevision: single.expectedOrganizationRevision,
-            },
-          }
-        : {
-            ...scope,
-            kind: 'replace-tags',
-            workflowId: single.workflowId,
-            body: {
-              tagIds: replacementTagIds,
-              expectedOrganizationRevision: single.expectedOrganizationRevision,
-            },
+    return operation === 'move'
+      ? {
+          ...scope,
+          kind: 'place-folder',
+          workflowId: single.workflowId,
+          body: {
+            folderId,
+            expectedOrganizationRevision: single.expectedOrganizationRevision,
           },
-    );
-  return freezeWorkflowOrganizationAttempt({
+        }
+      : {
+          ...scope,
+          kind: 'replace-tags',
+          workflowId: single.workflowId,
+          body: {
+            tagIds: replacementTagIds,
+            expectedOrganizationRevision: single.expectedOrganizationRevision,
+          },
+        };
+  return {
     ...scope,
     kind: 'bulk',
     body:
       operation === 'move'
         ? { operation, folderId, items }
         : { operation, tagIds: replacementTagIds, items },
-  });
+  };
 }
 export function organizationOutcomeText(
   item: WorkflowOrganizationBulkItemOutcome,
@@ -103,7 +96,7 @@ export function organizationOutcomeText(
     case 'not_visible':
       return 'Not visible — no change confirmed';
     case 'outcome_unknown':
-      return 'Outcome unknown — retry the original request';
+      return 'Outcome unknown — review the current state';
     case 'forbidden':
       return 'Access lost — processing stopped';
     case 'not_processed':

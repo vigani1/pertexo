@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { RenameFormProps } from './inline-rename.types';
-
 /**
  * What both rename forms share: the draft, its validation, the revision the
  * edit started from and how a save, a conflict or a retry settles.
@@ -28,20 +27,16 @@ export function useRenameDraft({
   const [submittedRevision, setSubmittedRevision] = useState<number>();
   const [draft, setDraft] = useState(name);
   const validation = useFieldValidation<'name'>();
-
   /** A confirmed rename closes the form; anything else keeps it open. */
   function settle(confirmed: Promise<boolean> | undefined) {
     void confirmed?.then((done) => {
       if (done) onClose(true);
     });
   }
-
   function close() {
-    command.dismiss();
     command.clearError();
     onClose(false);
   }
-
   function save(expectedRevision: number) {
     if (!validation.submit({ name: validate(draft) })) return;
     const trimmed = draft.trim();
@@ -54,14 +49,13 @@ export function useRenameDraft({
     setSubmittedRevision(expectedRevision);
     settle(onSave(trimmed, expectedRevision));
   }
-
   const accepted = command.accepted ?? false;
   const conflict = command.error?.kind === 'conflict';
   const latestLoaded =
     conflict &&
     submittedRevision !== undefined &&
     revision !== submittedRevision;
-  const locked = command.pending || command.retryAvailable || accepted;
+  const locked = command.pending || accepted;
   return {
     draft,
     validation,
@@ -77,8 +71,7 @@ export function useRenameDraft({
       validation.change('name', validate(next));
     },
     submit: () => {
-      if (command.retryAvailable) settle(command.retry());
-      else if (accepted) settle(command.refresh?.());
+      if (accepted) settle(command.refresh?.());
       else save(baseRevision.current);
     },
     keepMine: () => {

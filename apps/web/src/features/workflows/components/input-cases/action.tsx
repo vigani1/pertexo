@@ -15,13 +15,11 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ApiClient } from '@/lib/api/client';
 import { useInputCases } from '../../hooks/use-input-cases';
 import type { LoadedInputCase } from './panel';
-
 // The case editor loads with the dialog's first open, not with the workflow
 // bar that holds its trigger.
 const InputCasesPanel = lazyPiece(() =>
   import('./panel').then((module) => module.InputCasesPanel),
 );
-
 type InputCasesActionProps = Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -32,7 +30,6 @@ type InputCasesActionProps = Readonly<{
   triggerClassName?: string;
   finalFocus?: () => HTMLElement | boolean;
 }>;
-
 export function InputCasesAction(props: InputCasesActionProps) {
   if (!props.workspace.capabilities.includes('workflow:read')) return null;
   return (
@@ -42,7 +39,6 @@ export function InputCasesAction(props: InputCasesActionProps) {
     />
   );
 }
-
 function InputCasesDialog({
   apiClient,
   userId,
@@ -65,7 +61,7 @@ function InputCasesDialog({
     enabled: open,
   });
   const popupRef = useRef<HTMLDivElement>(null);
-  const locked = cases.pending || cases.uncertain;
+  const locked = cases.pending;
   const [loaded, setLoaded] = useState<LoadedInputCase>();
   const clearLoaded = useCallback(() => {
     setLoaded(undefined);

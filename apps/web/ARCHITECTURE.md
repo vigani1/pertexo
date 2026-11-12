@@ -510,10 +510,16 @@ Mutation rules:
 
 1. Feature API function sends the command. Feature mutation hook owns targeted
    cache updates/invalidation. Component owns immediate form/dialog feedback.
-2. Generate a key once per logical keyed command; retain the original body,
-   preconditions and key for retry after an uncertain response. Do not rotate
-   the key until this is genuinely a new command. Do not persist secret bodies
-   in a retry journal or offline mutation cache.
+2. Use two command tiers. Low-effect changes (rename, creation of drafts,
+   organization, input cases, member/lifecycle changes and governance settings)
+   use native mutations through `useLowEffectMutation`: create a fresh key for
+   each explicit confirmation and refresh current reads after every outcome.
+   Unclear results keep editable inputs and ask people to review current state;
+   they do not retain a body/key, freeze edits or offer an exact resend.
+   Effectful operations (run, publish, tests, task decisions, webhook/federation
+   commands and secret/link issuance) retain the original body, preconditions
+   and key within their receipt window, with the existing identity fence. Never
+   persist secrets in a retry journal or offline mutation cache.
 3. Disable duplicate submit for the same command, not the whole app. Guard
    handlers as well as button styling. Do not auto-retry writes on reconnect.
 4. Prefer confirmed response updates plus targeted invalidation. Start without
@@ -792,20 +798,21 @@ Metadata pages alone live in scoped Query caches; opened payloads, detached
 loaded copies and conditional command bodies stay in their local owner. Reads
 validate the body's opaque representation tag against the response ETag. Owner
 disposal, read denial or lost edit authority aborts held reads, fences late
-results and evicts scoped metadata. CRUD requires fresh identity and
+results and evicts scoped metadata. The server authorizes CRUD with
 `workflow:update`; case loading uses `workflow:read` independently from
 `run:start`. Editing/deleting a saved case never rewrites the already loaded run
 intent. Conflict preserves typed edits until an explicit current-case read;
-uncertain changes retain original body/tag/key and block replacement. Synthetic
-input warnings do not imply automatic redaction. Only an explicitly confirmed
-real start executes a workflow. Never represent “Save”, “Publish”, “Run”, “Test
-execute” or “Cancel run” as interchangeable actions. After a step test finishes,
-the bar under the canvas (`chrome/test-result-bar.tsx`) sums it up from the
-preview and the graph only: its status, the path into the step
-(`model/test-path.ts`), its duration and, for a failure, its reason, with View
-output opening the step's Test tab at the remembered result. The next edit to
-the draft puts it away. Side-effecting preview must be clearly
-labeled/confirmed; closing its panel is not execution cancellation.
+unclear changes refresh metadata and keep edits for a new explicit confirmation
+with a fresh key. Synthetic input warnings do not imply automatic redaction.
+Only an explicitly confirmed real start executes a workflow. Never represent
+“Save”, “Publish”, “Run”, “Test execute” or “Cancel run” as interchangeable
+actions. After a step test finishes, the bar under the canvas
+(`chrome/test-result-bar.tsx`) sums it up from the preview and the graph only:
+its status, the path into the step (`model/test-path.ts`), its duration and, for
+a failure, its reason, with View output opening the step's Test tab at the
+remembered result. The next edit to the draft puts it away. Side-effecting
+preview must be clearly labeled/confirmed; closing its panel is not execution
+cancellation.
 
 ## 9. Errors and recovery belong at the right level
 
@@ -821,22 +828,22 @@ reject these useful conflicts. Unknown future codes or malformed shapes become a
 safe protocol error; do not cast them into the closed union. Branch on code, not
 translated title/detail text.
 
-| Situation                                      | Owner and user behavior                                                      |
-| ---------------------------------------------- | ---------------------------------------------------------------------------- |
-| Invalid form input / recognized field errors   | Form: inline errors, retain values, focus correction                         |
-| `auth.unauthenticated`                         | Auth lifecycle: freeze writes, recover login safely, prevent redirect storms |
-| A connection whose credential needs replacing  | Connection feature: its `reauthorization_required` status; never a logout    |
-| Permission denied / missing resource           | Route or feature: explicit forbidden/not-found state, no guessed data        |
-| `workflow.revision_conflict` (412)             | Save coordinator: preserve local graph and resolve conflict                  |
-| Lifecycle / idempotency conflict (409)         | Command-specific recovery; never a generic automatic retry                   |
-| Preconditions missing (428)                    | Treat as client integration failure, not “try harder”                        |
-| Semantic validation (422 or validation report) | Feature: issue list with node/field navigation and stale-report tracking     |
-| Rate limit / unavailable service               | Local feedback, bounded Retry-After; no request storm                        |
-| Background refetch failure                     | Keep last good data with stale/retry notice; do not blank the screen         |
-| Foreground required-data failure               | Route/section boundary with a working Query + Router retry                   |
-| Canceled read                                  | Silent; it is usually navigation, not an error toast                         |
-| Uncertain mutation outcome                     | Preserve intent; reconcile or retry the same keyed command as allowed        |
-| Unexpected render failure                      | Nearest suitable error boundary; safe message and diagnostic correlation     |
+| Situation                                      | Owner and user behavior                                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Invalid form input / recognized field errors   | Form: inline errors, retain values, focus correction                                              |
+| `auth.unauthenticated`                         | Auth lifecycle: freeze writes, recover login safely, prevent redirect storms                      |
+| A connection whose credential needs replacing  | Connection feature: its `reauthorization_required` status; never a logout                         |
+| Permission denied / missing resource           | Route or feature: explicit forbidden/not-found state, no guessed data                             |
+| `workflow.revision_conflict` (412)             | Save coordinator: preserve local graph and resolve conflict                                       |
+| Lifecycle / idempotency conflict (409)         | Command-specific recovery; never a generic automatic retry                                        |
+| Preconditions missing (428)                    | Treat as client integration failure, not “try harder”                                             |
+| Semantic validation (422 or validation report) | Feature: issue list with node/field navigation and stale-report tracking                          |
+| Rate limit / unavailable service               | Local feedback, bounded Retry-After; no request storm                                             |
+| Background refetch failure                     | Keep last good data with stale/retry notice; do not blank the screen                              |
+| Foreground required-data failure               | Route/section boundary with a working Query + Router retry                                        |
+| Canceled read                                  | Silent; it is usually navigation, not an error toast                                              |
+| Uncertain mutation outcome                     | Low effect: refresh and review current state; effectful: retain the exact identity-fenced command |
+| Unexpected render failure                      | Nearest suitable error boundary; safe message and diagnostic correlation                          |
 
 One visible notification owner per failure. Critical save/auth/conflict problems
 stay inline; a transient toast alone is inadequate. Do not toast every autosave
@@ -1074,7 +1081,7 @@ their own:
 | Deadline       | `components/ui/deadline-field.tsx`, `components/ui/calendar.tsx`          | `DeadlineField` for the Run and Replay lenses: None, In 1 hour, In 1 day or Pick a time, where a date (typed, or from a `Calendar` lens with past days disabled) and a 24-hour time are read on the person's clock with their time zone named. Never the browser's native picker; its value is local `datetime-local`-shaped text |
 | Date           | `components/ui/date-input.tsx`                                            | `DateInput` for a calendar day inside a `LabelledField` (form date fields, table date cells): typed `YYYY-MM-DD` or picked from a `Calendar` lens. Never the browser's native picker; the value is the typed text, which callers validate                                                                                         |
 | Validation     | `components/ui/use-field-validation.ts`                                   | `useFieldValidation`: the only message timing (on submit, then live until fixed; focus first invalid; server `errors[].path`); `useFieldValues` is the thin values-and-rules layer for plain text forms                                                                                                                           |
-| Confirmation   | `components/patterns/actions/confirm-dialog.tsx`                          | `ConfirmDialog`: title, description or consequences, optional inputs, one failure `Notice`, Cancel + `ProgressButton`; `unconfirmed` turns confirm into the exact retry and Cancel into Close                                                                                                                                     |
+| Confirmation   | `components/patterns/actions/confirm-dialog.tsx`                          | `ConfirmDialog`: title, description or consequences, optional inputs, one failure `Notice`, Cancel + `ProgressButton`; `DialogActions` owns Cancel, confirm, pending and error; custom footers remain for other flows                                                                                                             |
 | Pending button | `components/ui/progress-button.tsx`                                       | `ProgressButton`: mini orb + swapped verb while pending, countdown while waiting; never hand-build the orb                                                                                                                                                                                                                        |
 | Rename         | `components/patterns/actions/inline-rename.tsx`                           | `InlineRename` (pencil → field → Save/Cancel), `RenameForm` in dialogs; sends the revision the edit started from, conflicts offer “Use theirs / Keep mine”                                                                                                                                                                        |
 | Disclosure     | `components/ui/disclosure.tsx`                                            | `Disclosure`: the one "show more": the app's chevron turning as it opens on the native disclosure (find-in-page and keyboard keep working), quiet/strong/link tones, a framed look, and `lazy` for folds that read data. Never a raw `<details>`                                                                                  |

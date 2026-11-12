@@ -18,7 +18,6 @@ import { thresholdError } from '../../model/auto-pause-input';
 import { CommandProblem } from './auto-pause-fields';
 import { WorkspaceDefault } from './workspace-default';
 import { whoCan } from '@/features/workspaces/roles.public';
-
 function WorkflowRule({
   settings,
   scope,
@@ -28,10 +27,13 @@ function WorkflowRule({
   scope: Scope;
   onSaved: () => void;
 }>) {
-  const [draft, setDraft] =
-    useState<
-      Readonly<{ enabled: boolean; threshold: string; revision: number }>
-    >();
+  const [draft, setDraft] = useState<
+    Readonly<{
+      enabled: boolean;
+      threshold: string;
+      revision: number;
+    }>
+  >();
   const current = draft ?? {
     enabled: settings.enabled,
     threshold:
@@ -61,9 +63,10 @@ function WorkflowRule({
         enabled: current.enabled,
         thresholdOverride:
           current.threshold.trim() === '' ? null : Number(current.threshold),
-        expectedSettingsRevision: command.conflict
-          ? settings.settingsRevision
-          : current.revision,
+        expectedSettingsRevision:
+          command.problem !== undefined
+            ? settings.settingsRevision
+            : current.revision,
       },
     });
     if (saved) {
@@ -94,7 +97,7 @@ function WorkflowRule({
             {...control}
             name="autoPauseEnabled"
             checked={current.enabled}
-            disabled={command.pending || command.unconfirmed}
+            disabled={command.pending}
             onCheckedChange={(enabled) => {
               setDraft({ ...current, enabled });
             }}
@@ -116,7 +119,7 @@ function WorkflowRule({
             inputMode="numeric"
             value={current.threshold}
             placeholder={`Workspace default: ${String(settings.workspaceThreshold)}`}
-            disabled={command.pending || command.unconfirmed}
+            disabled={command.pending}
             onChange={(event) => {
               setDraft({ ...current, threshold: event.target.value });
               validation.change(
@@ -132,23 +135,15 @@ function WorkflowRule({
           type="submit"
           pending={command.pending}
           pendingLabel="Saving…"
-          disabled={command.unconfirmed}
+          disabled={false}
         >
           Save auto-pause rule
         </ProgressButton>
       </div>
-      <CommandProblem
-        command={command}
-        onRetrySuccess={() => {
-          setDraft(undefined);
-          notifications.success({ title: 'Auto-pause settings saved' });
-          onSaved();
-        }}
-      />
+      <CommandProblem command={command} />
     </form>
   );
 }
-
 /** The workflow's rule in words. */
 function ruleSummary(settings: WorkflowAutoPauseSettings) {
   if (!settings.enabled)
@@ -165,7 +160,6 @@ function ruleSummary(settings: WorkflowAutoPauseSettings) {
     </>
   );
 }
-
 export function AutoPauseSection(scope: Scope) {
   const [editing, setEditing] = useState(false);
   const query = useQuery(

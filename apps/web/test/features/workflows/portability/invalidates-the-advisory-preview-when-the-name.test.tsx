@@ -1,3 +1,4 @@
+import { confirmNewImport } from '../../../support/fixtures/import-actions';
 import { readPortableWorkflowFile } from '@/features/workflows/model/portability';
 
 import { workflowKeys } from '@/features/workflows/workflows-queries.public';
@@ -72,7 +73,7 @@ describe('Portable workflow review and import', () => {
     ).toBeDisabled();
     expect(posted).not.toHaveBeenCalled();
   });
-  it('manually retries exact body/key and opens a confirmed destination without another POST', async () => {
+  it('explicitly previews fresh intent after an unknown result and opens a confirmed destination without another POST', async () => {
     const attempts: { body: unknown; key: string | null }[] = [];
     mockServer.use(
       http.post(`${api}/workflows/import/preview`, () =>
@@ -93,17 +94,16 @@ describe('Portable workflow review and import', () => {
     await event.click(
       screen.getByRole('button', { name: 'Import unpublished draft' }),
     );
-    const retry = await screen.findByRole('button', {
-      name: 'Retry exact import',
-    });
-    expect(screen.getByLabelText('New workflow name')).toBeDisabled();
+    await screen.findByText(/couldn’t confirm/u);
+    expect(screen.getByLabelText('New workflow name')).toBeEnabled();
     expect(attempts).toHaveLength(1);
-    await event.click(retry);
+    await confirmNewImport(event);
     await event.click(
       await screen.findByRole('button', { name: 'Open imported workflow' }),
     );
     expect(attempts).toHaveLength(2);
-    expect(attempts[1]).toEqual(attempts[0]);
+    expect(attempts[1]?.body).toEqual(attempts[0]?.body);
+    expect(attempts[1]?.key).not.toEqual(attempts[0]?.key);
     expect(onCreated).toHaveBeenCalledWith(versionId);
   });
   it('clears payloads and fences held preview after observable access loss, while Cancel remains available', async () => {
@@ -183,7 +183,7 @@ describe('Portable workflow review and import', () => {
       screen.getByRole('button', { name: 'Import unpublished draft' }),
     ).toBeDisabled();
   });
-  it('unfreezes editable intent after a definite conflict on an exact uncertain retry', async () => {
+  it('preserves editable intent when a fresh confirmation is refused', async () => {
     let calls = 0;
     mockServer.use(
       http.post(`${api}/workflows/import/preview`, () =>
@@ -201,9 +201,8 @@ describe('Portable workflow review and import', () => {
     await event.click(
       screen.getByRole('button', { name: 'Import unpublished draft' }),
     );
-    await event.click(
-      await screen.findByRole('button', { name: 'Retry exact import' }),
-    );
+    await screen.findByText(/couldn’t confirm/u);
+    await confirmNewImport(event);
     await screen.findByText(/already used with different details/u);
     expect(screen.getByLabelText('New workflow name')).toHaveValue(
       'Independent draft',

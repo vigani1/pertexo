@@ -64,7 +64,8 @@ test('keeps long input-case names bounded and case recovery keyboard accessible 
       key: route.request().headers()['idempotency-key'],
     });
     if (writes.length === 1) await route.abort('failed');
-    else await route.fulfill({ json: { caseId, revision: 2, replayed: true } });
+    else
+      await route.fulfill({ json: { caseId, revision: 2, replayed: false } });
   });
   await page.goto(editorUrl);
   await page.waitForLoadState('networkidle');
@@ -125,20 +126,19 @@ test('keeps long input-case names bounded and case recovery keyboard accessible 
     .getByRole('button', { name: 'Save input case', exact: true })
     .focus();
   await page.keyboard.press('Enter');
-  const retry = dialog.getByRole('button', {
-    name: 'Retry exact case change',
-    exact: true,
-  });
-  await expect(retry).toBeEnabled();
-  await expect(caseInput).toBeDisabled();
+  await expect(dialog.getByText(/couldn’t confirm/u)).toBeVisible();
+  await expect(caseInput).toBeEnabled();
   await expect(
     dialog.getByRole('button', { name: 'Close input cases' }),
-  ).toBeDisabled();
-  await retry.focus();
+  ).toBeEnabled();
+  await dialog
+    .getByRole('button', { name: 'Save input case', exact: true })
+    .focus();
   await page.keyboard.press('Enter');
   await expect(caseInput).not.toBeVisible();
   expect(writes).toHaveLength(2);
-  expect(writes[1]).toEqual(writes[0]);
+  expect(writes[1]?.body).toEqual(writes[0]?.body);
+  expect(writes[1]?.key).not.toEqual(writes[0]?.key);
   expect(writes[0]?.tag).toBe(metadata.representationTag);
   await expect(copy).toHaveValue(JSON.stringify(input, null, 2));
   await dialog.getByRole('button', { name: 'Close input cases' }).focus();

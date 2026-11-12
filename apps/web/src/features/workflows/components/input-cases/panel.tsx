@@ -7,13 +7,11 @@ import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type { useInputCases } from '../../hooks/use-input-cases';
 import { InputCaseEditor } from './editor';
-
 export type LoadedInputCase = Readonly<{
   name: string;
   workflowVersionId: string;
   input: unknown;
 }>;
-
 /** The single shared case browser/editor, never an execution command. */
 export function InputCasesPanel({
   cases,
@@ -39,7 +37,6 @@ export function InputCasesPanel({
   }>;
 }>) {
   const { workspace, workflow } = scope;
-
   const writable =
     !readOnly &&
     workspace.status === 'active' &&
@@ -47,12 +44,16 @@ export function InputCasesPanel({
     workspace.capabilities.includes('workflow:update');
   const [localEditing, setLocalEditing] = useState(false);
   const editing = controlledEditing ?? localEditing;
-  function changeEditing({ next }: Readonly<{ next: boolean }>) {
+  function changeEditing({
+    next,
+  }: Readonly<{
+    next: boolean;
+  }>) {
     if (controlledEditing === undefined) setLocalEditing(next);
     onEditingChange?.(next);
   }
   const releaseEditing = useEffectEvent(() => onEditingChange?.(false));
-  const locked = disabled || cases.pending || cases.uncertain;
+  const locked = disabled || cases.pending;
   // Releasing an unmounted case browser clears its parent's command guard.
   // Live editing changes come from their events, in the same React update.
   useEffect(() => () => releaseEditing(), []);
@@ -65,12 +66,10 @@ export function InputCasesPanel({
         Access to input cases is no longer available.
       </Notice>
     );
-
   function edit(record?: WorkflowInputCase) {
     if (record === undefined) cases.clearSelection();
     changeEditing({ next: true });
   }
-
   function load(record: WorkflowInputCase) {
     onLoad({
       name: record.name,
@@ -78,7 +77,6 @@ export function InputCasesPanel({
       input: structuredClone(record.input),
     });
   }
-
   return (
     <section aria-label="Input cases" className="flex flex-col gap-3">
       <InputCaseToolbar
@@ -119,16 +117,13 @@ export function InputCasesPanel({
         />
       ) : null}
       {cases.error === undefined ? null : (
-        <Notice
-          tone={cases.uncertain || cases.conflict ? 'warning' : 'destructive'}
-        >
+        <Notice tone={cases.conflict ? 'warning' : 'destructive'}>
           {cases.error}
         </Notice>
       )}
     </section>
   );
 }
-
 function InputCaseToolbar({
   cases,
   workflow,
@@ -172,7 +167,6 @@ function InputCaseToolbar({
     </>
   );
 }
-
 type CaseListProps = Readonly<{
   query: ReturnType<typeof useInputCases>['query'];
   publishedVersionId: string | null;
@@ -181,7 +175,6 @@ type CaseListProps = Readonly<{
   onLoad: (caseId: string) => void;
   onEdit: (caseId: string) => void;
 }>;
-
 function InputCaseList({
   query,
   publishedVersionId,
@@ -236,7 +229,6 @@ function InputCaseList({
     </>
   );
 }
-
 function InputCaseRow({
   record,
   publishedVersionId,

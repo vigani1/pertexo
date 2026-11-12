@@ -83,7 +83,7 @@ describe('workflow settings tab', () => {
         ?.isInvalidated,
     ).toBe(true);
   });
-  it('retains the exact lifecycle command across an uncertain retry and refreshed status', async () => {
+  it('refreshes lifecycle after an unconfirmed write and requires a fresh confirmation', async () => {
     installQueries();
     const requests: { path: string; key: string; body: unknown }[] = [];
     let currentSummary = summary;
@@ -130,16 +130,12 @@ describe('workflow settings tab', () => {
       screen.getByRole('heading', { name: 'Archive this workflow?' }),
     ).toBeVisible();
     await event.click(screen.getByRole('button', { name: /^Archive$/u }));
-    expect(
-      await screen.findByText(
-        /couldn’t confirm whether archiving went through/u,
-      ),
-    ).toBeVisible();
+    expect(await screen.findByText(/couldn’t confirm/u)).toBeVisible();
     await queryClient.refetchQueries({ queryKey: detailKey });
     expect(
       screen.getByRole('heading', { name: 'Archive this workflow?' }),
     ).toBeVisible();
-    await event.click(screen.getByRole('button', { name: 'Retry safely' }));
+    await event.click(screen.getByRole('button', { name: /^Archive$/u }));
     await waitFor(() => {
       expect(
         screen.queryByRole('dialog', { name: 'Archive this workflow?' }),
@@ -151,7 +147,7 @@ describe('workflow settings tab', () => {
     ]);
     expect(requests[0]?.body).toEqual({ expectedLifecycleRevision: 7 });
     expect(requests[1]?.body).toEqual({ expectedLifecycleRevision: 7 });
-    expect(requests[0]?.key).toBe(requests[1]?.key);
+    expect(requests[0]?.key).not.toBe(requests[1]?.key);
 
     await event.click(
       await screen.findByRole('button', { name: 'Restore workflow' }),

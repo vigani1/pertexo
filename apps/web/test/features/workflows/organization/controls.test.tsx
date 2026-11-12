@@ -243,7 +243,7 @@ describe('organization editing controls', () => {
       expect(bodies).toEqual([{ tagIds: [], expectedOrganizationRevision: 9 }]);
     });
   });
-  it('shows ordered partial results and retries the same entire parent key and body', async () => {
+  it('shows ordered partial results and requires a refreshed explicit change with a new key', async () => {
     const captures: { key: string | null; body: unknown }[] = [];
     mockServer.use(
       http.post(`${api}/workflows/organization/bulk`, async ({ request }) => {
@@ -273,33 +273,31 @@ describe('organization editing controls', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Move selected workflows' }),
     );
-    await screen.findByRole('button', { name: 'Retry original request' });
+    await screen.findByText(/Outcome unknown/u);
     const outcomes = within(
       screen.getByRole('region', { name: 'Organization command outcomes' }),
     ).getAllByRole('listitem');
     expect(outcomes[0]).toHaveTextContent('Second workflow');
     expect(outcomes[1]).toHaveTextContent('First workflow');
-    expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeEnabled();
     expect(onClose).not.toHaveBeenCalled();
     await userEvent.click(
-      screen.getByRole('button', { name: 'Refresh current state' }),
+      screen.getByRole('button', { name: 'Refresh for a new change' }),
     );
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: 'Retry original request' }),
+        screen.getByRole('button', { name: 'Move selected workflows' }),
       ).toBeEnabled(),
     );
     expect(captures).toHaveLength(1);
-    expect(
-      screen.getByRole('button', { name: 'Move selected workflows' }),
-    ).toBeDisabled();
     await userEvent.click(
-      screen.getByRole('button', { name: 'Retry original request' }),
+      screen.getByRole('button', { name: 'Move selected workflows' }),
     );
     await waitFor(() => {
       expect(captures).toHaveLength(2);
     });
-    expect(captures[1]).toEqual(captures[0]);
+    expect(captures[1]?.body).toEqual(captures[0]?.body);
+    expect(captures[1]?.key).not.toEqual(captures[0]?.key);
     expect(captures[0]?.body).toEqual({
       operation: 'move',
       folderId: null,
@@ -308,7 +306,9 @@ describe('organization editing controls', () => {
         { workflowId, expectedOrganizationRevision: 9 },
       ],
     });
-    expect(screen.getByText(/retry it here for 24 hours/)).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Retry original request' }),
+    ).not.toBeInTheDocument();
   });
   it.each(['builder'] as const)(
     'blocks archived placement for %s',

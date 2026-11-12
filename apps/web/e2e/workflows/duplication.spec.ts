@@ -12,7 +12,7 @@ import {
   workspaceId,
 } from '../workflow-editor/support';
 
-test('keeps a workflow copy exact through retry and postflight outages until verified recovery', async ({
+test('keeps copy intent editable through unknown responses and confirms each new change with a fresh key', async ({
   context,
   page,
 }) => {
@@ -46,7 +46,6 @@ test('keeps a workflow copy exact through retry and postflight outages until ver
     tag: string | undefined;
   }[] = [];
   let workspaceUnavailable = false;
-  let identityUnavailable = false;
   const unavailable = (status: number) => ({
     status,
     contentType: 'application/problem+json',
@@ -62,10 +61,6 @@ test('keeps a workflow copy exact through retry and postflight outages until ver
     if (workspaceUnavailable) await route.fulfill(unavailable(429));
     else await route.fallback();
   });
-  await page.route('**/v1/users/me', async (route) => {
-    if (identityUnavailable) await route.abort('failed');
-    else await route.fallback();
-  });
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/duplicate`,
     async (route) => {
@@ -78,7 +73,6 @@ test('keeps a workflow copy exact through retry and postflight outages until ver
       if (attempts.length === 1) await route.abort('failed');
       else if (attempts.length === 2) await route.fulfill(unavailable(503));
       else {
-        identityUnavailable = attempts.length === 3;
         await route.fulfill({ status: 201, json: { workflowId: destination } });
       }
     },
@@ -101,41 +95,31 @@ test('keeps a workflow copy exact through retry and postflight outages until ver
   await dialog
     .getByRole('button', { name: 'Duplicate workflow', exact: true })
     .click();
-  await expect(
-    dialog.getByRole('button', { name: 'Retry exact copy' }),
-  ).toBeEnabled();
-  await expect(dialog.getByLabel('Copy name')).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-  await page.keyboard.press('Escape');
-  await expect(dialog).toBeVisible();
-  await expect(page).toHaveURL(editorUrl);
+  await expect(dialog.getByText(/couldn’t confirm/u)).toBeVisible();
+  await expect(dialog.getByLabel('Copy name')).toBeEnabled();
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeEnabled();
   workspaceUnavailable = true;
-  await dialog.getByRole('button', { name: 'Retry exact copy' }).click();
+  await dialog.getByLabel('Copy name').fill('A reviewed independent copy');
+  await dialog
+    .getByRole('button', { name: 'Duplicate workflow', exact: true })
+    .click();
+  await expect.poll(() => attempts.length).toBe(2);
+  await expect(dialog.getByText(/couldn’t confirm/u)).toBeVisible();
   await expect(
-    dialog.getByRole('button', { name: 'Retry exact copy' }),
+    dialog.getByRole('button', { name: 'Duplicate workflow', exact: true }),
   ).toBeEnabled();
-  expect(attempts).toHaveLength(1);
   workspaceUnavailable = false;
-  await dialog.getByRole('button', { name: 'Retry exact copy' }).click();
-  await expect(
-    dialog.getByRole('button', { name: 'Retry exact copy' }),
-  ).toBeEnabled();
-  await expect(dialog.getByText(/Nothing was changed/u)).toHaveCount(0);
-  expect(attempts).toHaveLength(2);
-  await dialog.getByRole('button', { name: 'Retry exact copy' }).click();
-  await expect(
-    dialog.getByRole('button', { name: 'Retry exact copy' }),
-  ).toBeEnabled();
-  expect(attempts).toHaveLength(3);
-  await expect(page).toHaveURL(editorUrl);
-  await expect(dialog.getByLabel('Copy name')).toBeDisabled();
-  identityUnavailable = false;
-  await dialog.getByRole('button', { name: 'Retry exact copy' }).click();
+  await dialog
+    .getByRole('button', { name: 'Duplicate workflow', exact: true })
+    .click();
   await expect(page).toHaveURL(`/w/${workspaceId}/workflows/${destination}`);
-  // The accepted destination is remembered; recovery rechecks authority without
-  // another POST, so receipt expiry cannot create a second copy here.
   expect(attempts).toHaveLength(3);
-  for (const attempt of attempts) expect(attempt).toEqual(attempts[0]);
+  expect(new Set(attempts.map((attempt) => attempt.key)).size).toBe(3);
+  expect(attempts[1]?.body).toEqual({
+    name: 'A reviewed independent copy',
+    source: { kind: 'draft' },
+  });
+  expect(attempts[2]?.body).toEqual(attempts[1]?.body);
   expect(attempts[0]?.tag).toBe(currentEtag(remote));
   expect(attempts[0]?.body).toEqual({
     name: 'An independent copy',

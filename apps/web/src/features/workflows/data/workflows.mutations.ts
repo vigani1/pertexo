@@ -1,13 +1,8 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
-  RETRY_WINDOW_ENDED,
-  canResend,
-  isUnconfirmedCommand,
-  newCommandKey,
-  type CommandKey,
-} from '@/lib/api/commands/command-retry';
-import { useResendExpired } from '@/lib/api/commands/use-resend-window';
-import { useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+  useLowEffectMutation,
+  lowEffectError,
+} from '@/lib/api/commands/low-effect-mutation';
 import type {
   InlineRenameCommand,
   InlineRenameError,
@@ -19,7 +14,6 @@ import {
   createWorkflow,
   renameWorkflow,
   transitionWorkflowLifecycle,
-  type CreatedWorkflow,
   type WorkflowLifecycleCommand,
   type WorkflowRenameAttempt,
 } from './workflows.api';
@@ -32,40 +26,22 @@ export function useCreateWorkflow(
   userId: string,
   workspaceId: string,
 ) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (
-      input: Readonly<{ name: string; idempotencyKey: string }>,
-    ): Promise<CreatedWorkflow> =>
-      createWorkflow(apiClient, workspaceId, input),
-    onSuccess: () =>
+  const cache = useQueryClient();
+  return useLowEffectMutation({
+    send: (input: Readonly<{ name: string }>, key) =>
+      createWorkflow(apiClient, workspaceId, { ...input, idempotencyKey: key }),
+    refresh: () =>
       Promise.all([
-        queryClient.invalidateQueries({
+        cache.invalidateQueries({
           queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
         }),
-        queryClient.invalidateQueries({
+        cache.invalidateQueries({
           queryKey: workflowKeys.scope(userId, workspaceId),
         }),
       ]),
   });
 }
 
-function lifecycleErrorMessage(error: unknown, action: LifecycleAction) {
-  const verb = action === 'archive' ? 'archiving' : 'restoring';
-  if (isUnconfirmedCommand(error))
-    return `We couldn’t confirm whether ${verb} went through. Retrying is safe — it won’t be applied twice.`;
-  if (
-    isApiError(error) &&
-    error.problem?.code === 'workflow.lifecycle_conflict'
-  )
-    return 'This workflow changed since you opened this. Close it and check the workflow’s current state.';
-  return describeCommandError(error, `${verb} this workflow`);
-}
-
-/**
- * Archive or restore with one exact command per confirmation: an uncertain
- * failure keeps the same idempotency key and expected revision for a retry.
- */
 export function useWorkflowLifecycleCommand({
   apiClient,
   userId,
@@ -77,84 +53,49 @@ export function useWorkflowLifecycleCommand({
   workspaceId: string;
   workflowId: string;
 }>) {
-  const queryClient = useQueryClient();
-  const commandRef = useRef<
-    (WorkflowLifecycleCommand & CommandKey) | undefined
-  >(undefined);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<
-    Readonly<{ message: string; exactRetry: boolean }> | undefined
-  >();
-
+  const cache = useQueryClient();
+  const mutation = useLowEffectMutation({
+    send: (input: Omit<WorkflowLifecycleCommand, 'idempotencyKey'>, key) =>
+      transitionWorkflowLifecycle(apiClient, workspaceId, workflowId, {
+        ...input,
+        idempotencyKey: key,
+      }),
+    refresh: () =>
+      Promise.all([
+        cache.invalidateQueries({
+          queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+        }),
+        cache.invalidateQueries({
+          queryKey: workflowKeys.scope(userId, workspaceId),
+        }),
+      ]),
+  });
   async function submit(
     command: LifecycleAction,
     expectedLifecycleRevision: number,
-  ): Promise<boolean> {
-    if (pending) return false;
-    if (commandRef.current !== undefined && !canResend(commandRef.current)) {
-      commandRef.current = undefined;
-      setError({ message: RETRY_WINDOW_ENDED, exactRetry: false });
-      return false;
-    }
-    const exactCommand =
-      commandRef.current ??
-      (commandRef.current = {
-        command,
-        expectedLifecycleRevision,
-        ...newCommandKey(),
-      });
-    setPending(true);
-    setError(undefined);
+  ) {
+    if (mutation.isPending) return false;
     try {
-      await transitionWorkflowLifecycle(
-        apiClient,
-        workspaceId,
-        workflowId,
-        exactCommand,
-      );
-      commandRef.current = undefined;
-      void queryClient.invalidateQueries({
-        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: workflowKeys.scope(userId, workspaceId),
-      });
+      await mutation.mutateAsync({ command, expectedLifecycleRevision });
       return true;
-    } catch (cause) {
-      const exactRetry = isUnconfirmedCommand(cause);
-      if (!exactRetry) commandRef.current = undefined;
-      setError({
-        message: lifecycleErrorMessage(cause, exactCommand.command),
-        exactRetry,
-      });
+    } catch {
       return false;
-    } finally {
-      setPending(false);
     }
   }
-
-  return {
-    pending,
-    error: error?.message,
-    exactRetry: error?.exactRetry ?? false,
-    reset: () => {
-      commandRef.current = undefined;
-      setError(undefined);
-    },
-    submit,
-  };
+  let error: string | undefined;
+  if (mutation.isError)
+    error =
+      isApiError(mutation.error) &&
+      mutation.error.problem?.code === 'workflow.lifecycle_conflict'
+        ? 'This workflow changed since you opened this. Close it and check the workflow’s current state.'
+        : lowEffectError(mutation.error, 'changing this workflow');
+  return { submit, pending: mutation.isPending, reset: mutation.reset, error };
 }
 
 const RENAME_CONFLICT: InlineRenameError = {
   kind: 'conflict',
   message: 'This workflow changed while you were editing.',
 };
-const RENAME_UNCERTAIN: InlineRenameError = {
-  kind: 'other',
-  message:
-    'We couldn’t confirm whether the rename went through. Try again — it can’t apply twice.',
-};
-
 function renameError(error: unknown): InlineRenameError {
   const code = isApiError(error) ? error.problem?.code : undefined;
   if (code === 'workflow.name_conflict') return RENAME_CONFLICT;
@@ -170,27 +111,6 @@ function renameError(error: unknown): InlineRenameError {
   };
 }
 
-type HeldRename = WorkflowRenameAttempt & CommandKey;
-
-const RENAME_WINDOW_ENDED: InlineRenameError = {
-  kind: 'other',
-  message: RETRY_WINDOW_ENDED,
-};
-
-type RenameState =
-  | Readonly<{ kind: 'idle'; error?: InlineRenameError }>
-  | Readonly<{ kind: 'sending' }>
-  | Readonly<{
-      kind: 'uncertain';
-      attempt: HeldRename;
-      error: InlineRenameError;
-    }>;
-
-/**
- * Renames at the name revision the edit started from (ADR 041). An
- * unconfirmed attempt keeps its exact key for a retry; a conflict reloads
- * the workflow so people choose between their name and the newer one.
- */
 export function useWorkflowRename({
   apiClient,
   userId,
@@ -207,82 +127,67 @@ export function useWorkflowRename({
   Readonly<{
     start: (name: string, expectedNameRevision: number) => Promise<boolean>;
   }> {
-  const queryClient = useQueryClient();
-  const [state, setState] = useState<RenameState>({ kind: 'idle' });
-  const inFlight = useRef(false);
+  const cache = useQueryClient();
   const detailKey = workflowKeys.detail(userId, workspaceId, workflowId);
-  const expired = useResendExpired(
-    state.kind === 'uncertain' ? state.attempt : undefined,
-  );
-
-  async function reloadLatest(): Promise<boolean> {
+  const mutation = useLowEffectMutation({
+    send: (input: Omit<WorkflowRenameAttempt, 'idempotencyKey'>, key) =>
+      renameWorkflow(apiClient, workspaceId, workflowId, {
+        ...input,
+        idempotencyKey: key,
+      }),
+    refresh: () =>
+      Promise.all([
+        cache.invalidateQueries({ queryKey: detailKey, exact: true }),
+        cache.invalidateQueries({
+          queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+        }),
+        cache.invalidateQueries({
+          queryKey: workflowKeys.lists(userId, workspaceId),
+        }),
+        cache.invalidateQueries({
+          queryKey: workflowKeys.recent(userId, workspaceId),
+        }),
+      ]),
+  });
+  async function reloadLatest() {
     try {
-      await queryClient.refetchQueries({ queryKey: detailKey, exact: true });
+      await cache.refetchQueries(
+        { queryKey: detailKey, exact: true },
+        { throwOnError: true },
+      );
       return true;
     } catch {
       return false;
     }
   }
-
-  async function send(attempt: HeldRename): Promise<boolean> {
-    if (inFlight.current) return false;
-    inFlight.current = true;
-    setState({ kind: 'sending' });
+  async function start(name: string, expectedNameRevision: number) {
+    if (mutation.isPending) return false;
     try {
-      const { workflow } = await renameWorkflow(
-        apiClient,
-        workspaceId,
-        workflowId,
-        attempt,
-      );
-      // A delayed receipt must not replace a newer read that revoked access.
-      void queryClient.invalidateQueries({ queryKey: detailKey, exact: true });
-      void queryClient.invalidateQueries({
-        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
+      const { workflow } = await mutation.mutateAsync({
+        name,
+        expectedNameRevision,
       });
-      void queryClient.invalidateQueries({
-        queryKey: workflowKeys.lists(userId, workspaceId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: workflowKeys.recent(userId, workspaceId),
-      });
-      setState({ kind: 'idle' });
       onRenamed(workflow.name);
       return true;
     } catch (cause) {
-      if (isUnconfirmedCommand(cause)) {
-        setState({ kind: 'uncertain', attempt, error: RENAME_UNCERTAIN });
-        return false;
-      }
-      const error = renameError(cause);
-      setState({ kind: 'idle', error });
-      if (error === RENAME_CONFLICT) void reloadLatest();
+      if (renameError(cause) === RENAME_CONFLICT) void reloadLatest();
       return false;
-    } finally {
-      inFlight.current = false;
     }
   }
-
-  const stateError = state.kind === 'sending' ? undefined : state.error;
+  let error: InlineRenameError | undefined;
+  if (mutation.isError)
+    error =
+      renameError(mutation.error).kind === 'conflict'
+        ? RENAME_CONFLICT
+        : {
+            kind: 'other',
+            message: lowEffectError(mutation.error, 'renaming the workflow'),
+          };
   return {
-    pending: state.kind === 'sending',
-    error: expired ? RENAME_WINDOW_ENDED : stateError,
-    retryAvailable: state.kind === 'uncertain' && !expired,
-    start: (name, expectedNameRevision) =>
-      state.kind === 'idle' || (state.kind === 'uncertain' && expired)
-        ? send({ name, expectedNameRevision, ...newCommandKey() })
-        : Promise.resolve(false),
-    retry: () =>
-      state.kind === 'uncertain' && canResend(state.attempt)
-        ? send(state.attempt)
-        : Promise.resolve(false),
+    start,
+    pending: mutation.isPending,
+    error,
     reloadLatest,
-    dismiss: () => {
-      if (state.kind === 'uncertain') setState({ kind: 'idle' });
-    },
-    clearError: () => {
-      if (state.kind === 'idle' && state.error !== undefined)
-        setState({ kind: 'idle' });
-    },
+    clearError: mutation.reset,
   };
 }

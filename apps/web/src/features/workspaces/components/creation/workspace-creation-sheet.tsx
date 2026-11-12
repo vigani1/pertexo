@@ -11,7 +11,6 @@ import {
 import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceCreation } from '../../data/mutations/use-workspace-creation';
 import { WorkspaceCreationForm } from './workspace-creation-form';
-
 /** "+ New workspace" from the picker: the same form, in a side lens. */
 export function WorkspaceCreationSheet({
   apiClient,
@@ -38,18 +37,16 @@ export function WorkspaceCreationSheet({
       onSessionInvalidated();
     },
   });
-
   function close() {
     command.clearError();
     setFormKey((key) => key + 1);
     onOpenChange(false);
   }
-
   return (
     <Sheet
       open={open}
       onOpenChange={(next) => {
-        // An in-flight or uncertain request stays on screen until resolved.
+        // An in-flight request stays on screen until it settles.
         if (!next && !command.locked && !command.created) close();
       }}
     >
@@ -67,9 +64,6 @@ export function WorkspaceCreationSheet({
             idPrefix="workspace-sheet"
             command={command}
             onCancel={close}
-            onStartOver={() => {
-              setFormKey((key) => key + 1);
-            }}
           />
         </SheetBody>
       </SheetContent>
