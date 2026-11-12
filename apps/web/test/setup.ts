@@ -10,7 +10,8 @@ configure({ asyncUtilTimeout: 3_000 });
 
 let stopSession: (() => void) | undefined;
 beforeEach(() => {
-  stopSession = subscribeSessionChanges(() => undefined);
+  if (typeof window !== 'undefined')
+    stopSession = subscribeSessionChanges(() => undefined);
 });
 afterEach(() => {
   stopSession?.();
