@@ -1,3 +1,4 @@
+import { workspacePage, warmWorkspacePage } from './workspace-page';
 import { parseTaskSearch } from '@/features/pending-tasks/pending-tasks-search.public';
 import { createRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
@@ -85,7 +86,7 @@ export const shellCatchAllRoute = createRoute({
 export const workflowsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'workflows',
-  staticData: { crumb: 'Workflows' },
+  ...workspacePage('Workflows'),
   // `create` opens the New workflow lens; `view` and `sort` keep the list's
   // filters shareable. Unknown values fall back to the defaults.
   validateSearch: (search) => parseWorkflowListSearch(search),
@@ -102,43 +103,41 @@ export const workflowsRoute = createRoute({
       ...authoringPrefetches(context, user.id, workspace.id),
     ]);
   },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Workflows', match.context.workspace.name) }],
-  }),
+
   component: lazyRoute(() => import('../workflow/list'), 'WorkflowListRoute'),
 });
 
 export const runsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'runs',
-  staticData: { crumb: 'Runs' },
+  ...workspacePage('Runs'),
   // Unknown or malformed keys are dropped, never thrown: a bad link still
   // opens the Runs page.
   validateSearch: (search) => sanitizeRunSearch(search),
   loaderDeps: ({ search }) => filtersFromSearch(search),
   loader: async ({ context, deps }) => {
-    const { runStatisticsQueryOptions, workflowRunsInfiniteQueryOptions } =
-      await import('@/features/workflow-runs/workflow-runs-queries.public');
+    return warmWorkspacePage(context, 'run:read', async () => {
+      const { runStatisticsQueryOptions, workflowRunsInfiniteQueryOptions } =
+        await import('@/features/workflow-runs/workflow-runs-queries.public');
 
-    const { apiClient, queryClient, user, workspace } = context;
-    if (!workspace.capabilities.includes('run:read')) return;
-    warmPrefetches(context, [
-      queryClient.infiniteQuery(
-        workflowRunsInfiniteQueryOptions(
-          apiClient,
-          user.id,
-          workspace.id,
-          deps,
+      const { apiClient, queryClient, user, workspace } = context;
+
+      return [
+        queryClient.infiniteQuery(
+          workflowRunsInfiniteQueryOptions(
+            apiClient,
+            user.id,
+            workspace.id,
+            deps,
+          ),
         ),
-      ),
-      queryClient.query(
-        runStatisticsQueryOptions(apiClient, user.id, workspace.id),
-      ),
-    ]);
+        queryClient.query(
+          runStatisticsQueryOptions(apiClient, user.id, workspace.id),
+        ),
+      ];
+    });
   },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Runs', match.context.workspace.name) }],
-  }),
+
   component: lazyRoute(
     () => import('../workflow/run-history'),
     'RunHistoryRoute',
@@ -188,23 +187,23 @@ export const runDetailRoute = createRoute({
 export const connectionsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'connections',
-  staticData: { crumb: 'Connections' },
+  ...workspacePage('Connections'),
   validateSearch: (search) => parseConnectionsSearch(search),
   loader: async ({ context }) => {
-    const { connectionsInfiniteQueryOptions } =
-      await import('@/features/connections/connections-queries.public');
+    return warmWorkspacePage(context, 'connection:read', async () => {
+      const { connectionsInfiniteQueryOptions } =
+        await import('@/features/connections/connections-queries.public');
 
-    const { apiClient, queryClient, user, workspace } = context;
-    if (!workspace.capabilities.includes('connection:read')) return;
-    warmPrefetches(context, [
-      queryClient.infiniteQuery(
-        connectionsInfiniteQueryOptions(apiClient, user.id, workspace.id),
-      ),
-    ]);
+      const { apiClient, queryClient, user, workspace } = context;
+
+      return [
+        queryClient.infiniteQuery(
+          connectionsInfiniteQueryOptions(apiClient, user.id, workspace.id),
+        ),
+      ];
+    });
   },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Connections', match.context.workspace.name) }],
-  }),
+
   component: lazyRoute(() => import('./connections'), 'ConnectionsRoute'),
 });
 
@@ -212,59 +211,63 @@ export const connectionsRoute = createRoute({
 export const inboxRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'inbox',
-  staticData: { crumb: 'Inbox' },
+  ...workspacePage('Inbox'),
   validateSearch: (search) => parseInboxSearch(search),
   loaderDeps: ({ search }) => ({
     filter: search.filter ?? ('all' as const),
     noticeKind: search.noticeKind,
   }),
   loader: async ({ context, deps }) => {
-    const { inboxSummaryQueryOptions, inboxThreadsInfiniteQueryOptions } =
-      await import('@/features/inbox/inbox-queries.public');
+    return warmWorkspacePage(context, 'workspace:read', async () => {
+      const { inboxSummaryQueryOptions, inboxThreadsInfiniteQueryOptions } =
+        await import('@/features/inbox/inbox-queries.public');
 
-    const { apiClient, queryClient, user, workspace } = context;
-    if (!workspace.capabilities.includes('workspace:read')) return;
-    warmPrefetches(context, [
-      queryClient.infiniteQuery(
-        inboxThreadsInfiniteQueryOptions({
-          apiClient,
-          userId: user.id,
-          workspaceId: workspace.id,
-          filter: deps.filter,
-          noticeKind: deps.noticeKind,
-        }),
-      ),
-      queryClient.query(
-        inboxSummaryQueryOptions(apiClient, user.id, workspace.id),
-      ),
-    ]);
+      const { apiClient, queryClient, user, workspace } = context;
+
+      return [
+        queryClient.infiniteQuery(
+          inboxThreadsInfiniteQueryOptions({
+            apiClient,
+            userId: user.id,
+            workspaceId: workspace.id,
+            filter: deps.filter,
+            noticeKind: deps.noticeKind,
+          }),
+        ),
+        queryClient.query(
+          inboxSummaryQueryOptions(apiClient, user.id, workspace.id),
+        ),
+      ];
+    });
   },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Inbox', match.context.workspace.name) }],
-  }),
+
   component: lazyRoute(() => import('./inbox'), 'InboxRoute'),
 });
 
 export const teamRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'team',
-  staticData: { crumb: 'Team' },
+  ...workspacePage('Team'),
   validateSearch: (search) => parseTeamSearch(search),
   loader: async ({ context }) => {
-    const { workspaceMembersInfiniteQueryOptions } =
-      await import('@/features/workspaces/workspaces-queries.public');
+    return warmWorkspacePage(context, 'member:read', async () => {
+      const { workspaceMembersInfiniteQueryOptions } =
+        await import('@/features/workspaces/workspaces-queries.public');
 
-    const { apiClient, queryClient, user, workspace } = context;
-    if (!workspace.capabilities.includes('member:read')) return;
-    warmPrefetches(context, [
-      queryClient.infiniteQuery(
-        workspaceMembersInfiniteQueryOptions(apiClient, user.id, workspace.id),
-      ),
-    ]);
+      const { apiClient, queryClient, user, workspace } = context;
+
+      return [
+        queryClient.infiniteQuery(
+          workspaceMembersInfiniteQueryOptions(
+            apiClient,
+            user.id,
+            workspace.id,
+          ),
+        ),
+      ];
+    });
   },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Team', match.context.workspace.name) }],
-  }),
+
   component: lazyRoute(() => import('./team'), 'TeamRoute'),
 });
 
@@ -285,23 +288,17 @@ export const alertsRedirectRoute = createRoute({
 export const workspaceAccountRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'account',
-  staticData: { crumb: 'Account & security' },
-  head: ({ match }) => ({
-    meta: [
-      { title: pageTitle('Account & security', match.context.workspace.name) },
-    ],
-  }),
+  ...workspacePage('Account & security'),
+
   component: lazyRoute(() => import('./account'), 'WorkspaceAccountRoute'),
 });
 
 export const approvalsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'approvals',
-  staticData: { crumb: 'Approvals' },
+  ...workspacePage('Approvals'),
   validateSearch: (search) => parseTaskSearch(search, 'approval'),
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Approvals', match.context.workspace.name) }],
-  }),
+
   component: lazyRoute(() => import('./approvals/list'), 'ApprovalsRoute'),
 });
 
@@ -325,11 +322,9 @@ export const memberFormRoute = createRoute({
 export const requestsRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'requests',
-  staticData: { crumb: 'Requests' },
+  ...workspacePage('Requests'),
   validateSearch: (search) => parseTaskSearch(search),
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Requests', match.context.workspace.name) }],
-  }),
+
   component: lazyRoute(() => import('./requests/list'), 'RequestsRoute'),
 });
 
@@ -343,10 +338,8 @@ export const requestDetailRoute = createRoute({
 export const dataTablesRoute = createRoute({
   getParentRoute: () => workspaceShellRoute,
   path: 'data-tables',
-  staticData: { crumb: 'Data tables' },
-  head: ({ match }) => ({
-    meta: [{ title: pageTitle('Data tables', match.context.workspace.name) }],
-  }),
+  ...workspacePage('Data tables'),
+
   component: lazyRoute(() => import('./data-tables'), 'DataTablesRoute'),
 });
 
