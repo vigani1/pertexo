@@ -184,3 +184,6 @@ export {
   dataTableBindingsSchema,
   dataTableCommandSchema,
 } from './data-tables/data-table.schemas.js';
+
+export { encodeJson, encodeCanonicalJson } from './values/json-encoding.js';
+export type { JsonValue } from './execution/node-execution.types.js';

@@ -190,7 +190,7 @@ function directionViolations(file, specifier) {
     );
   const workspace = file.split('/')[1];
   const executionPackageDependencies = {
-    'workflow-model': ['policy'],
+    'workflow-model': ['policy', 'node-sdk'],
     'workflow-engine': ['workflow-model', 'node-sdk'],
     'node-sdk': [],
     'nodes-core': ['node-sdk', 'workflow-model'],

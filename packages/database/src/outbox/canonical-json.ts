@@ -1,3 +1,4 @@
+import { encodeCanonicalJson, type JsonValue } from '@pertexo/node-sdk';
 import { isWellFormed, utf8ByteLength } from '@pertexo/workflow-model';
 import { types as nodeTypes } from 'node:util';
 
@@ -25,8 +26,7 @@ type CanonicalContainer = Readonly<{
   entries: readonly (readonly [string, unknown])[];
 }>;
 
-class CanonicalJsonWriter {
-  readonly #chunks: string[] = [];
+class CanonicalJsonSizer {
   #bytes = 0;
   #databaseBytes = 0;
   #members = 0;
@@ -51,7 +51,6 @@ class CanonicalJsonWriter {
       throw new BoundedJsonInvalidError(
         `${this.label} exceeds the PostgreSQL JSONB ${String(this.maximumDatabaseBytes)}-byte backstop`,
       );
-    this.#chunks.push(token);
   }
 
   public admitMembers(count: number, maximumMembers?: number): void {
@@ -61,15 +60,11 @@ class CanonicalJsonWriter {
         `${this.label} exceeds its member limit`,
       );
   }
-
-  public result(): string {
-    return this.#chunks.join('');
-  }
 }
 
 function writeCanonicalScalar(
   value: unknown,
-  writer: CanonicalJsonWriter,
+  writer: CanonicalJsonSizer,
 ): boolean {
   const primitiveValue =
     value === null || typeof value === 'boolean' || typeof value === 'string';
@@ -151,11 +146,8 @@ function pushCanonicalContainer(
   frames.push({ kind: 'token', token: container.array ? '[' : '{' });
 }
 
-// Legacy outbox checksums sort even integer-looking keys lexicographically;
-// workflow-model canonicalJson uses JavaScript's integer-key enumeration order.
-// This writer also bounds PostgreSQL jsonb::text (spaces and expanded exponents)
-// while inspecting descriptors without executing accessors or proxies. Merging
-// the serializers would change existing checksums or their accepted byte limits.
+// Admission also bounds PostgreSQL JSONB text and rejects accessors/proxies.
+// The shared encoder's lexical profile preserves persisted outbox checksums.
 export function canonicalJson(
   value: unknown,
   maximumBytes: number,
@@ -171,7 +163,7 @@ export function canonicalJson(
 ): string {
   const frames: CanonicalFrame[] = [{ depth: 0, kind: 'value', value }];
   const active = new Set<object>();
-  const writer = new CanonicalJsonWriter(
+  const writer = new CanonicalJsonSizer(
     maximumBytes,
     maximumDatabaseBytes,
     label,
@@ -208,7 +200,7 @@ export function canonicalJson(
     active.add(item);
     pushCanonicalContainer(frames, frame, item, container);
   }
-  return writer.result();
+  return encodeCanonicalJson(value as JsonValue, 'lexical');
 }
 
 function assertPostgresJsonString(value: string): void {

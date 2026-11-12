@@ -1,3 +1,4 @@
+import { encodeJson } from '@pertexo/node-sdk';
 import { utf8ByteLength } from '../text.js';
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue =
@@ -139,28 +140,13 @@ export function normalizeJson(value: unknown): JsonValue {
     sortKeys: false,
   });
 }
-// Normalized objects have no prototype; normalized arrays still inherit toJSON.
-// Serialize containers ourselves so neither checksum nor byte inspection runs it.
-function serializeNormalizedJson(value: JsonValue): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value))
-    return `[${value.map(serializeNormalizedJson).join(',')}]`;
-  const object = value as Readonly<Record<string, JsonValue>>;
-  return `{${Object.entries(object)
-    .map(
-      ([key, item]) =>
-        `${JSON.stringify(key)}:${serializeNormalizedJson(item)}`,
-    )
-    .join(',')}}`;
-}
-
 export function canonicalJson(value: unknown): string {
-  return serializeNormalizedJson(canonicalizeJson(value));
+  return encodeJson(canonicalizeJson(value));
 }
 
 /** normalizeJson's text, with keys in the order they were written. */
 export function normalizedJson(value: unknown): string {
-  return serializeNormalizedJson(normalizeJson(value));
+  return encodeJson(normalizeJson(value));
 }
 
 export function inspectJsonValue(value: unknown): JsonInspection {
@@ -181,7 +167,7 @@ export function inspectJsonValue(value: unknown): JsonInspection {
   };
   visit(normalized, 0);
   return {
-    bytes: utf8ByteLength(serializeNormalizedJson(normalized)),
+    bytes: utf8ByteLength(encodeJson(normalized)),
     depth,
     members,
   };

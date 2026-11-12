@@ -1,3 +1,4 @@
+import { encodeCanonicalJson, type JsonValue } from '@pertexo/node-sdk';
 import { utf8ByteLength } from '../../values/text.js';
 import { z } from 'zod';
 
@@ -122,18 +123,8 @@ function portableSnapshot(value: unknown): unknown {
   return inspected.snapshot;
 }
 
-function sortedJson(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(sortedJson).join(',')}]`;
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${sortedJson(record[key])}`)
-    .join(',')}}`;
-}
-
 export function canonicalWorkflowPortableJson(value: unknown): string {
-  return sortedJson(portableSnapshot(value));
+  return encodeCanonicalJson(portableSnapshot(value) as JsonValue, 'lexical');
 }
 
 async function digest(domain: string, value: unknown): Promise<string> {

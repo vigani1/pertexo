@@ -845,6 +845,9 @@ importers:
 
   packages/workflow-model:
     dependencies:
+      '@pertexo/node-sdk':
+        specifier: workspace:*
+        version: link:../node-sdk
       '@pertexo/policy':
         specifier: workspace:*
         version: link:../policy
