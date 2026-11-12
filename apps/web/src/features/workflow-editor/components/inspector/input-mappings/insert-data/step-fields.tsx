@@ -5,7 +5,7 @@ import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import {
   useStepOutputSample,
   type StepOutputSample,
-} from '@/features/workflow-testing/step-samples.public';
+} from '@/features/workflow-testing/public';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/class-names';
 import { StepTestOutputsContext } from '../../../../hooks/use-last-test';

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   SchedulePreviewScope,
   useSchedulePreview,
-} from '@/features/workflow-testing/schedule-preview.public';
+} from '@/features/workflow-testing/inspector.public';
 import { createApiClient } from '@/lib/api/client';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

@@ -1,5 +1,5 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
-import { WebhookTestListener } from '@/features/workflow-testing/webhook-tests.public';
+import { WebhookTestListener } from '@/features/workflow-testing/inspector.public';
 import { useNavigate } from '@tanstack/react-router';
 
 import {
@@ -15,8 +15,8 @@ import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
 import {
   NodeTestPanel,
   type NodeTestHandle,
-} from '@/features/workflow-testing/public';
-import { SchedulePreviewScope } from '@/features/workflow-testing/schedule-preview.public';
+} from '@/features/workflow-testing/inspector.public';
+import { SchedulePreviewScope } from '@/features/workflow-testing/inspector.public';
 
 import {
   AddConnectionContext,
