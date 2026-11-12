@@ -611,12 +611,12 @@ the catalog feature's `schedule-sentence.ts`, shared with the published trigger
 cards. An unrecognised schedule schema falls back to JSON. Under the sentence,
 `draft-next-runs.tsx` lists the next three run times the server's scheduler
 works out for the unsaved rule (ADR 048), through the public
-`useSchedulePreview` hook in `workflow-publish/schedule-preview.public.ts`:
-debounced by 500 ms, asked again once the first time passes, with a loading
-line, one failure line with Retry (an unschedulable rule, rate limiting or a
-failed read) and nothing at all for an unfinished rule. The editor inspector
-provides the hook's `SchedulePreviewScope` (API client and workflow) once, so no
-inspector layer threads it through; without that scope nothing is shown.
+`useSchedulePreview` hook in `workflow-testing/inspector.public.ts`: debounced
+by 500 ms, asked again once the first time passes, with a loading line, one
+failure line with Retry (an unschedulable rule, rate limiting or a failed read)
+and nothing at all for an unfinished rule. The editor inspector provides the
+hook's `SchedulePreviewScope` (API client and workflow) once, so no inspector
+layer threads it through; without that scope nothing is shown.
 
 Switch cases, Parallel branches and Validate rules have list builders
 (`workflow-editor/components/inspector/builders`, model in
@@ -1609,7 +1609,19 @@ consumers nor shared transport depend on React hooks.
 used by both file uploads and variable mappings. Generic inspector props call it
 `workspaceScope`; file-only body controls keep their upload vocabulary.
 
-F35’s webhook Test panel lives in workflow-publish and composes into the generic
+Workflow publication owns validation, publication controls and reviews in
+`workflow-publish`. Workflow testing owns step previews, samples, workflow
+tests, suites and temporary listeners in `workflow-testing`. Their public
+entries follow loading boundaries: publication controls and testing controls
+load with Build; reviews have their own lazy route. Testing's
+`test-data.public.ts` exposes query definitions and pure projections without
+loading panels, while `inspector.public.ts` keeps step testing, webhook
+listeners and schedule previews behind the lazy inspector. Publication readiness
+reads suite data through that query entry without importing testing UI. Shared
+workflow failure wording lives in `lib/workflows`, outside the eager API
+transport chunk.
+
+F35’s webhook Test panel lives in workflow-testing and composes into the generic
 node test panel through children. Its bounded temporary listener uses the
 existing webhook protocols, and the explicit Keep action uses the existing F02
 pin command. Listener credentials stay in mounted component memory; Query and

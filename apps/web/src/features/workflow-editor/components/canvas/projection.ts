@@ -1,8 +1,8 @@
-import { unreachableStepIssues } from '@/features/workflow-publish/validation.public';
+import { unreachableStepIssues } from '@/features/workflow-publish/public';
 import type { NodeChange } from '@xyflow/react';
 import { useCallback, useMemo, useState } from 'react';
 import { stepSampleBindings } from '@pertexo/workflow-model';
-import { currentSampleState } from '@/features/workflow-testing/step-samples.public';
+import { currentSampleState } from '@/features/workflow-testing/test-data.public';
 import type {
   StepSampleMetadata,
   NodeDefinitionCatalogItem,
