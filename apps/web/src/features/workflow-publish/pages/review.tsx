@@ -1,4 +1,4 @@
-import { SuitePublishNotice } from '../components/test-suites/publish-notice';
+import { SuitePublishNotice } from '../components/publication/suite-readiness';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';

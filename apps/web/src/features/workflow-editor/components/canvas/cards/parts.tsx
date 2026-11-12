@@ -15,7 +15,7 @@ import {
   type StepPresentation,
 } from '@/features/catalog/presentation.public';
 import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
-import { sampleStateLabel } from '@/features/workflow-publish/step-samples.public';
+import { sampleStateLabel } from '@/features/workflow-testing/step-samples.public';
 import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/class-names';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';

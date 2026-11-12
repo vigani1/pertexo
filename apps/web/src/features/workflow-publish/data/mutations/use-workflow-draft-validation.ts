@@ -5,7 +5,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isApiError, UserFacingError } from '@/lib/api/error';
 import { useNow } from '@/lib/hooks/use-now';
 import { validateWorkflow } from '../workflow-publish.api';
-import { commandErrorMessage } from './workflow-command-feedback';
+import { commandErrorMessage } from '@/lib/workflows/command-errors';
 
 export type ValidationResult = Readonly<{
   report: WorkflowValidateResponse;

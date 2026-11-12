@@ -10,7 +10,7 @@ import type {
   WorkflowSummary,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { SuitePublishNotice } from '../test-suites/publish-notice';
+import { SuitePublishNotice } from './suite-readiness';
 import { PublishButton } from './publish-button';
 import { PublishDialog } from './publish-dialog';
 import { latestVersionQueryOptions } from '../../data/workflow-publish.queries';

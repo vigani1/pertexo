@@ -3,7 +3,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { runAdmissionError } from '../../model/commands/run';
+import { runAdmissionError } from '@/lib/workflows/command-errors';
 import {
   normalizeRunIntent,
   type RunIntent,

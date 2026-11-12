@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { PropsWithChildren } from 'react';
 import { createApiClient } from '@/lib/api/client';
 import { NotificationsProvider } from '@/components/ui/toast';
-import { useNodeTest } from '@/features/workflow-publish/components/node-preview/use-test';
+import { useNodeTest } from '@/features/workflow-testing/components/node-preview/use-test';
 import { useConnectionTest } from '@/features/connections/components/connection-test/use-command';
 import { useDestinationTest } from '@/features/failure-notifications/hooks/use-destination-test';
 import {
