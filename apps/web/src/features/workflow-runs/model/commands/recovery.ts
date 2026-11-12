@@ -3,7 +3,7 @@ import {
   type WorkflowRecoveryPreview,
 } from '@pertexo/contracts';
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
-import { runAdmissionError } from './run';
+import { runAdmissionError } from '@/lib/workflows/command-errors';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 export type EligibleRecovery = Extract<

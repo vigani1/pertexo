@@ -8,7 +8,7 @@ import { flushSync } from 'react-dom';
 import type { WorkflowIssuesView } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorStoreApi } from '../model/state/context';
 import { useEditorShortcuts } from '../hooks/use-editor-shortcuts';
-import type { NodeTestHandle } from '@/features/workflow-publish/public';
+import type { NodeTestHandle } from '@/features/workflow-testing/public';
 import type { useCanvasEffects } from '../hooks/use-canvas-effects';
 import type { useEditorActions } from '../hooks/use-editor-actions';
 import type { MobilePanel } from '../hooks/use-inspector-navigation';

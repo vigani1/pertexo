@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { publishWorkflow } from '../workflow-publish.api';
 import { invalidatePublishedWorkflow } from '../workflow-publish.queries';
-import { commandErrorMessage } from './workflow-command-feedback';
+import { commandErrorMessage } from '@/lib/workflows/command-errors';
 import {
   useWorkflowDraftValidation,
   type SavedDraft,

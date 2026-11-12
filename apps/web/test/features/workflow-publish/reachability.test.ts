@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { unreachableStepIssues } from '@/features/workflow-publish/model/validation/reachability';
 import { workflowIssuesView } from '@/features/workflow-publish/model/validation/issues-state';
-import { workflowTestStepLabels } from '@/features/workflow-publish/model/testing/workflow';
+import { workflowTestStepLabels } from '@/features/workflow-testing/model/workflow-test';
 
 function node(id: string, key = 'core.code') {
   return {

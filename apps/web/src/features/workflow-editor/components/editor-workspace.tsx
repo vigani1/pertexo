@@ -1,9 +1,7 @@
-import { WorkflowTestHistory } from '@/features/workflow-publish/tests.public';
+import { WorkflowTestHistory } from '@/features/workflow-testing/tests.public';
 import { useRef, type ReactNode } from 'react';
-import type {
-  NodeTestHandle,
-  WorkflowValidationTarget,
-} from '@/features/workflow-publish/public';
+import type { NodeTestHandle } from '@/features/workflow-testing/public';
+import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
 import { AddStepLens } from './add-step/lens';

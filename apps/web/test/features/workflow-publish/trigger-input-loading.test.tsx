@@ -6,8 +6,8 @@ import {
   accessibleWorkspaceSchema,
   workflowSummarySchema,
 } from '@pertexo/contracts';
-import { WorkflowTestDialog } from '@/features/workflow-publish/components/workflow-tests/workflow-test-dialog';
-import { useWorkflowTests } from '@/features/workflow-publish/hooks/use-workflow-tests';
+import { WorkflowTestDialog } from '@/features/workflow-testing/components/workflow-tests/workflow-test-dialog';
+import { useWorkflowTests } from '@/features/workflow-testing/hooks/use-workflow-tests';
 import { createApiClient } from '@/lib/api/client';
 import { renderInRouter } from '../../support/render-in-router';
 import { mockServer } from '../../support/mock-server';
