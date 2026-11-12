@@ -1,3 +1,4 @@
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { expect, test } from '../support/fixtures';
 import {
   addCsrfCookie,
@@ -10,7 +11,7 @@ import {
 } from '../workflow-editor/support';
 
 for (const width of [375, 1280]) {
-  test(`reviews a fresh file import after an unconfirmed result at ${String(width)}px`, async ({
+  test(`recovers the original file import after choosing an example at ${String(width)}px`, async ({
     page,
     context,
   }) => {
@@ -69,22 +70,21 @@ for (const width of [375, 1280]) {
     await page
       .getByRole('button', { name: 'Import unpublished draft' })
       .click();
-    await expect(page.getByText(/couldn’t confirm/u)).toBeVisible();
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await page.getByRole('button', { name: 'Import workflow…' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Retry exact import' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    const example = CURATED_WORKFLOW_TEMPLATES[0];
+    if (example === undefined) throw new Error('Expected an example');
+    await page
+      .getByRole('button', { name: new RegExp(example.title, 'u') })
+      .click();
     await expect(page.getByLabel('New workflow name')).toHaveValue(
       'Original file import',
     );
-    await page
-      .getByLabel('New workflow name')
-      .fill('A freshly reviewed import');
-    await page.getByRole('button', { name: 'Preview import' }).click();
-    await page
-      .getByRole('button', { name: 'Import unpublished draft' })
-      .click();
+    await page.getByRole('button', { name: 'Retry exact import' }).click();
     await expect.poll(() => attempts.length).toBe(2);
-    expect(attempts[1]?.key).not.toEqual(attempts[0]?.key);
-    expect(attempts[1]?.body).not.toEqual(attempts[0]?.body);
+    expect(attempts[1]).toEqual(attempts[0]);
     await expect(page).toHaveURL(`/w/${workspaceId}/workflows`);
     expect(
       await page.evaluate(
