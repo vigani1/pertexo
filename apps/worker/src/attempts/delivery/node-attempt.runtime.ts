@@ -7,9 +7,10 @@ import {
   createWorkflowExecutionReader,
   type RunFailureStore,
 } from '@pertexo/core/runs';
-import type {
-  DatabaseConfig,
-  DatabaseRuntime,
+import {
+  createDatabaseRuntime,
+  type DatabaseConfig,
+  type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import type { ArtifactStoreConfig } from '@pertexo/artifact-store/server';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
@@ -134,7 +135,7 @@ export type NodeAttemptRuntimeFactories = Readonly<{
 
 const productionFactories: NodeAttemptRuntimeFactories = {
   capabilities: createWorkerNodeRuntimeCapabilities,
-  heartbeatStore: createNodeAttemptRunStore,
+  heartbeatStore: createAttemptHeartbeatStore,
   consumer: createQueueConsumer,
   engine: createNodeAttemptExecutionEngine,
   notifications: (redisUrl) =>
@@ -346,4 +347,11 @@ function capabilityRuntimeOptions(
       ? {}
       : { artifactStore: options.artifactStore }),
   };
+}
+
+function createAttemptHeartbeatStore(database: DatabaseConfig) {
+  // Match the worker role so the independent renewal pool shares its monitor.
+  const runtime = createDatabaseRuntime(database, { role: 'worker' });
+  const store = createNodeAttemptRunStore(database, runtime);
+  return { heartbeat: store.heartbeat, close: () => runtime.close() };
 }

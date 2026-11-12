@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
@@ -36,8 +37,11 @@ describe.runIf(fixture.enabled)(
       const [owned, queued] = deliveries;
       if (owned === undefined || queued === undefined)
         throw new Error('Two prepared deliveries are required');
+      const applicationName = `renewal-budget-${randomUUID()}`;
+      const connection = new URL(fixture.databaseUrl(fixture.workerUrl));
+      connection.searchParams.set('application_name', applicationName);
       const database = parseDatabaseConfig({
-        connectionString: fixture.databaseUrl(fixture.workerUrl),
+        connectionString: connection.toString(),
         max: 2,
       });
       const databaseRuntime = createDatabaseRuntime(database, {
@@ -101,6 +105,16 @@ describe.runIf(fixture.enabled)(
             [owned.attemptId],
           ),
         ).toEqual([{ live: true }]);
+        // Two occupied work connections, their shared monitor, and one renewal.
+        const connections = await fixture.waitFor(
+          () =>
+            fixture.workerQuery<{ count: number }>(
+              'select count(*)::int count from pg_stat_activity where datname=current_database() and application_name=$1',
+              [applicationName],
+            ),
+          (rows) => (rows[0]?.count ?? 0) >= 4,
+        );
+        expect(connections).toEqual([{ count: 4 }]);
         await blocker.query('rollback');
         const completed = await fixture.waitFor(
           () =>
