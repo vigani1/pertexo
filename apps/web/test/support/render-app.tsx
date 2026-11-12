@@ -1,3 +1,4 @@
+import { synchronizeApplicationSession } from '@/app/session-sync';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
@@ -15,9 +16,12 @@ export const testFetch: typeof fetch = (input, init) => {
   return globalThis.fetch(request, init);
 };
 
+const sessionOwners = new Set<() => void>();
 const clients = new Set<ReturnType<typeof createQueryClient>>();
 
 afterEach(async () => {
+  for (const stop of sessionOwners) stop();
+  sessionOwners.clear();
   await Promise.all([...clients].map((client) => client.cancelQueries()));
   for (const client of clients) client.clear();
   clients.clear();
@@ -32,6 +36,7 @@ function prepareApp(initialPath: string) {
   });
   const history = createMemoryHistory({ initialEntries: [initialPath] });
   const router = createAppRouter(queryClient, apiClient, history);
+  sessionOwners.add(synchronizeApplicationSession(queryClient, router));
   const app = (
     <QueryClientProvider client={queryClient}>
       <NotificationsProvider>

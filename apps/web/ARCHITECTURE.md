@@ -816,6 +816,17 @@ cancellation.
 
 ## 9. Errors and recovery belong at the right level
 
+The application owns one browser session-change connection and one mutation
+session-expiry handler. A signal clears protected Query snapshots and
+revalidates ordinary routes. The Build editor instead pauses and keeps its
+recoverable local draft. Local private-payload owners observe this same
+notification to cancel reads and clear payloads; they do not verify session or
+membership around writes. Only `auth.unauthenticated` ends the application
+session. An action's 403 stays local feedback about that action; it does not
+establish that readable data is lost. Authoritative GET denial still hides
+snapshots through `readAccessLost`, `shownData`, scoped read disposal and
+QueryView recovery. Effectful exact retries keep their identity fences.
+
 `ApiError` distinguishes API problem, network failure, timeout and unexpected
 protocol/response shape, with safe request ID/status where available. Keep
 original diagnostic details internal and redacted. Do not render arbitrary raw

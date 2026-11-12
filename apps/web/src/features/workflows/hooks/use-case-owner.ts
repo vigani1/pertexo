@@ -1,97 +1,66 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
-import type { ApiClient } from '@/lib/api/client';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
+import { observeSessionChanges } from '@/features/auth/session/sync.public';
 import { inputCasesKey } from '../data/input-cases/workflow-input-cases.queries';
 
-function evictCases(cache: QueryClient, key: ReturnType<typeof inputCasesKey>) {
-  void cache.cancelQueries({ queryKey: key });
-  cache.removeQueries({ queryKey: key });
-}
-
+/** The opened case payload belongs to this read lifetime, not to a retained write. */
 export function useCaseOwner({
-  api,
   cache,
   userId,
   workspaceId,
   workflowId,
-  canWrite,
   enabled,
   onClose,
   onRetire,
 }: Readonly<{
-  api: ApiClient;
   cache: QueryClient;
   userId: string;
   workspaceId: string;
   workflowId: string;
-  canWrite: boolean;
   enabled: boolean;
   onClose: () => void;
   onRetire: () => void;
 }>) {
-  const ownerRef = useRef<symbol | undefined>(undefined);
   const controllerRef = useRef<AbortController | undefined>(undefined);
-  const previousWrite = useRef(canWrite);
   const retire = useCallback(() => {
-    ownerRef.current = undefined;
     controllerRef.current?.abort();
     controllerRef.current = undefined;
     onRetire();
-    evictCases(cache, inputCasesKey(userId, workspaceId, workflowId));
+    const queryKey = inputCasesKey(userId, workspaceId, workflowId);
+    void cache.cancelQueries({ queryKey });
+    cache.removeQueries({ queryKey });
   }, [cache, userId, workspaceId, workflowId, onRetire]);
   useEffect(() => {
     if (!enabled) {
       onClose();
-      previousWrite.current = canWrite;
       return;
     }
-    const token = Symbol('input-cases');
-    ownerRef.current = token;
-    const key = inputCasesKey(userId, workspaceId, workflowId);
-    function disposeRequest() {
-      controllerRef.current?.abort();
-      controllerRef.current = undefined;
-    }
-    if (previousWrite.current && !canWrite) retire();
-    previousWrite.current = canWrite;
-    // Missing optional projections and other workflows do not revoke this
-    // case browser. Session/workspace loss and its own authoritative reads do.
-    const unsubscribe = watchWorkspaceReadDenial({
+    const stopSession = observeSessionChanges(retire);
+    const stopReads = watchWorkspaceReadDenial({
       queryClient: cache,
       userId,
       workspaceId,
-      counts: ({ key: read, error }) => {
-        const isCaseAuthorityLoss =
-          ownerRef.current === token &&
-          (error.status === 401 ||
-            read.length === 0 ||
-            (read[0] === 'workflows' &&
-              read[1] === 'detail' &&
-              read[2] === workflowId &&
-              (error.status === 403 ||
-                read.length === 3 ||
-                read[3] === 'input-cases')));
-        return isCaseAuthorityLoss;
-      },
+      counts: ({ key, error }) =>
+        error.status === 401 ||
+        key.length === 0 ||
+        (key[0] === 'workflows' &&
+          key[1] === 'detail' &&
+          key[2] === workflowId &&
+          (error.status === 403 ||
+            key.length === 3 ||
+            key[3] === 'input-cases')),
       denied: retire,
     });
     return () => {
-      unsubscribe();
-      if (ownerRef.current === token) ownerRef.current = undefined;
-      disposeRequest();
-      evictCases(cache, key);
+      stopReads();
+      stopSession();
+      controllerRef.current?.abort();
+      controllerRef.current = undefined;
+      const queryKey = inputCasesKey(userId, workspaceId, workflowId);
+      void cache.cancelQueries({ queryKey });
+      cache.removeQueries({ queryKey });
     };
-  }, [
-    api,
-    userId,
-    workspaceId,
-    workflowId,
-    cache,
-    canWrite,
-    enabled,
-    onClose,
-    retire,
-  ]);
-  return { ownerRef, controllerRef, retire };
+  }, [cache, userId, workspaceId, workflowId, enabled, onClose, retire]);
+  return { controllerRef, retire };
 }

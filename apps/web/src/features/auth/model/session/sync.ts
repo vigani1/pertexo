@@ -41,7 +41,38 @@ export function publishSessionChange(): void {
   }
 }
 
+const observers = new Set<() => void>();
+const appListeners = new Set<() => void>();
+let disconnect: (() => void) | undefined;
+
+/** Dispose local private payloads and pause effectful work without rechecking authority. */
+export function observeSessionChanges(onChange: () => void): () => void {
+  observers.add(onChange);
+  return () => {
+    observers.delete(onChange);
+  };
+}
+export function notifySessionObservers() {
+  for (const observer of observers) observer();
+}
+
+/** The application owns the browser connection; component owners observe the same signal. */
 export function subscribeSessionChanges(onChange: () => void): () => void {
+  appListeners.add(onChange);
+  disconnect ??= connectSessionChanges(() => {
+    notifySessionObservers();
+    for (const listener of appListeners) listener();
+  });
+  return () => {
+    appListeners.delete(onChange);
+    if (appListeners.size === 0) {
+      disconnect?.();
+      disconnect = undefined;
+    }
+  };
+}
+
+function connectSessionChanges(onChange: () => void): () => void {
   let lastGeneration: string | undefined;
   function receive(value: unknown) {
     if (!isSessionChangeSignal(value)) return;

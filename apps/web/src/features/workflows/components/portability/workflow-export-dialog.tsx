@@ -85,7 +85,7 @@ function WorkflowExportSession({
     source,
   });
   const { review, acknowledgedDigest, pending, error, denied } = model.state;
-  const { activeRequestRef, begin, verify, accessFailure } = model.requests;
+  const { activeRequestRef, begin, accessFailure } = model.requests;
   const {
     setPending,
     setError,
@@ -105,7 +105,6 @@ function WorkflowExportSession({
     setPending(true);
     setError(undefined);
     try {
-      await verify({ signal: request.signal, creating: false });
       if (!request.current()) return;
       const manifest = await exportWorkflow({
         apiClient,
@@ -116,7 +115,6 @@ function WorkflowExportSession({
         signal: request.signal,
       });
       if (!request.current()) return;
-      await verify({ signal: request.signal, creating: false });
       if (!request.current()) return;
       downloadPortableWorkflow(manifest);
       onClose();
@@ -226,8 +224,7 @@ function useExportSource({
     setError(undefined);
     setPending(false);
   }, []);
-  const { denied, begin, verify, accessFailure } = usePortabilityLifetime(
-    apiClient,
+  const { denied, begin, accessFailure } = usePortabilityLifetime(
     userId,
     workspace.id,
     { clear },
@@ -240,7 +237,6 @@ function useExportSource({
     async function readSource(): Promise<ReviewedSource> {
       clear();
       setPending(true);
-      await verify({ signal: request.signal, creating: false });
       request.signal.throwIfAborted();
       const saved = await readWorkflowExportSource({
         apiClient,
@@ -260,7 +256,7 @@ function useExportSource({
           if (request.current()) setReview(saved);
         },
         (failure: unknown) => {
-          if (request.current() && !accessFailure(failure))
+          if (request.current() && !accessFailure(failure, 'read'))
             setError(describeCommandError(failure, 'reading the saved source'));
         },
       )
@@ -283,14 +279,13 @@ function useExportSource({
     versionId,
     denied,
     begin,
-    verify,
     accessFailure,
     clear,
     readAttempt,
   ]);
   return {
     state: { review, acknowledgedDigest, pending, error, denied },
-    requests: { activeRequestRef, begin, verify, accessFailure },
+    requests: { activeRequestRef, begin, accessFailure },
     controls: {
       setPending,
       setError,

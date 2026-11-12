@@ -2,7 +2,7 @@ import {
   CONFLICT,
   RELOAD_FAILED,
   NOT_CAUGHT_UP,
-  classifyFailure,
+  renameFailure,
   type RenameError,
 } from '../../model/rename-feedback';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,10 +10,7 @@ import type {
   WorkspaceRenameRequest,
   WorkspaceRenameResponse,
 } from '@pertexo/contracts';
-import {
-  useLowEffectMutation,
-  lowEffectError,
-} from '@/lib/api/commands/low-effect-mutation';
+import { useLowEffectMutation } from '@/lib/api/commands/low-effect-mutation';
 import type { ApiClient } from '@/lib/api/client';
 import {
   accessibleWorkspacesQueryOptions,
@@ -27,14 +24,12 @@ export function useWorkspaceRename({
   workspaceId,
   onChanged,
   onReloaded,
-  onAccessLost,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
   onChanged: (name: string) => void;
   onReloaded: () => void;
-  onAccessLost: () => void;
 }>) {
   const cache = useQueryClient();
   const refresh = () =>
@@ -90,31 +85,18 @@ export function useWorkspaceRename({
       });
       return true;
     } catch (cause) {
-      const failure = classifyFailure(cause);
-      if (failure.kind === 'signed-out') {
-        await cache.cancelQueries({ queryKey: ['identity'] });
-        cache.removeQueries({ queryKey: ['identity'] });
-        onAccessLost();
-      } else if (failure.kind === 'forbidden') onAccessLost();
-      if (failure.kind === 'rejected' && failure.error === CONFLICT)
+      const failure = renameFailure(cause);
+      if (failure === CONFLICT)
         void discovery
           .mutateAsync(undefined, { onSuccess: onReloaded })
           .catch(() => undefined);
       return false;
     }
   }
-  const failure = mutation.isError
-    ? classifyFailure(mutation.error)
-    : undefined;
   let error: RenameError | undefined;
   if (discovery.isError)
     error = mutation.data === undefined ? RELOAD_FAILED : NOT_CAUGHT_UP;
-  else if (failure?.kind === 'rejected') error = failure.error;
-  else if (mutation.isError)
-    error = {
-      kind: 'other',
-      message: lowEffectError(mutation.error, 'renaming the workspace'),
-    };
+  else if (mutation.isError) error = renameFailure(mutation.error);
   return {
     start,
     pending: mutation.isPending,

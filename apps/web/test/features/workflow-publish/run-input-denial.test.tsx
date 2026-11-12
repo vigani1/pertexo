@@ -200,3 +200,35 @@ it('preserves editable case input after an unknown change and lets the server re
   expect(writes).toHaveBeenCalledOnce();
   expect(start).not.toHaveBeenCalled();
 });
+
+it('saves a case through its endpoint without separate session or discovery checks', async () => {
+  const { event, start } = open();
+  await event.click(
+    await screen.findByRole('button', { name: 'Load Denial fixture' }),
+  );
+  await event.click(
+    screen.getByRole('button', { name: 'Edit Denial fixture' }),
+  );
+  await screen.findByLabelText('Case input (JSON)');
+  let authorityReads = 0;
+  const writes: unknown[] = [];
+  mockServer.use(
+    http.get('http://pertexo.test/v1/users/me', () => {
+      authorityReads++;
+      return HttpResponse.error();
+    }),
+    http.get('http://pertexo.test/v1/workspaces', () => {
+      authorityReads++;
+      return HttpResponse.error();
+    }),
+    http.put(`${path}/${caseId}`, async ({ request }) => {
+      writes.push(await request.json());
+      return HttpResponse.json({ caseId, revision: 2, replayed: false });
+    }),
+  );
+  await event.click(screen.getByRole('button', { name: 'Save input case' }));
+  await screen.findByText('Input case saved');
+  expect(writes).toHaveLength(1);
+  expect(authorityReads).toBe(0);
+  expect(start).not.toHaveBeenCalled();
+});

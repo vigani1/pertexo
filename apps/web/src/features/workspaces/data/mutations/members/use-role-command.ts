@@ -17,8 +17,6 @@ export function useMemberRoleCommand(
     workspaceId: string;
     onChanged: (member: WorkspaceMember, role: ManagedRole) => void;
     onConflict: () => void;
-    onAuthenticationLost: () => void;
-    onPermissionLost: () => void;
     onTargetUnavailable: () => void;
   }>,
 ) {

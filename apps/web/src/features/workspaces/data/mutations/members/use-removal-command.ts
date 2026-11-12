@@ -17,8 +17,6 @@ export function useMemberRemovalCommand(
     workspaceId: string;
     onRemoved: (member: WorkspaceMember) => void;
     onConflict: () => void;
-    onAuthenticationLost: () => void;
-    onPermissionLost: () => void;
     onTargetUnavailable: (member: WorkspaceMember) => void;
   }>,
 ) {

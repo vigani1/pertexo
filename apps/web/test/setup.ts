@@ -1,12 +1,20 @@
+import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, configure } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { mockServer } from './support/mock-server';
 
 // Page tests render the whole app; on a busy machine the first paint can
 // take longer than testing-library's 1 s default. One budget for every file.
 configure({ asyncUtilTimeout: 3_000 });
 
+let stopSession: (() => void) | undefined;
+beforeEach(() => {
+  stopSession = subscribeSessionChanges(() => undefined);
+});
+afterEach(() => {
+  stopSession?.();
+});
 beforeAll(() => {
   mockServer.listen({ onUnhandledRequest: 'error' });
 });

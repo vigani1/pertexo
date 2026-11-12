@@ -64,9 +64,7 @@ export function useImportDraft(
   } = draft;
   const reading = draft.activity === 'reading';
   const previewing = draft.activity === 'previewing';
-  const resetting = draft.activity === 'resetting';
   const customName = useRef(initialName.trim() !== '');
-  const resetBusy = useRef(false);
   const intent = useRef(0);
   const sourceIntent = useRef(0);
   const commandClear = useRef<() => void>(() => undefined);
@@ -78,7 +76,7 @@ export function useImportDraft(
     customName.current = false;
     commandClear.current();
   }, []);
-  const lifetime = usePortabilityLifetime(apiClient, userId, workspace.id, {
+  const lifetime = usePortabilityLifetime(userId, workspace.id, {
     clear,
     readScope: 'collection',
   });
@@ -121,7 +119,6 @@ export function useImportDraft(
     validation,
     intent,
     sourceIntent,
-    resetBusy,
     clear,
     invalidate,
   };
@@ -144,7 +141,9 @@ export function useImportDraft(
       dispatch({ type: 'update', patch: { preview: undefined } });
     }
   }
-  const startAnother = () => startAnotherImport(context);
+  const startAnother = () => {
+    startAnotherImport(context);
+  };
   function invalidate() {
     intent.current += 1;
     dispatch({ type: 'update', patch: { preview: undefined } });
@@ -218,7 +217,6 @@ export function useImportDraft(
     error,
     reading,
     previewing,
-    resetting,
     fileGeneration,
     validation,
     denied: lifetime.denied,

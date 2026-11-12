@@ -29,49 +29,19 @@ export type ImportPhaseContext = Readonly<{
   validation: ReturnType<typeof useFieldValidation<string>>;
   intent: RefObject<number>;
   sourceIntent: RefObject<number>;
-  resetBusy: RefObject<boolean>;
   clear: () => void;
   invalidate: () => void;
 }>;
 
-export async function startAnotherImport({
-  dispatch,
+export function startAnotherImport({
   command,
   lifetime,
-  resetBusy,
   clear,
   validation,
 }: ImportPhaseContext) {
-  if (
-    command.state.kind !== 'confirmed' ||
-    lifetime.denied ||
-    resetBusy.current
-  )
-    return;
-  resetBusy.current = true;
-  dispatch({ type: 'activity', activity: 'resetting' });
-  const request = lifetime.begin();
-  try {
-    await lifetime.verify({ signal: request.signal, creating: true });
-    if (!request.current()) return;
-    clear();
-    validation.reset();
-  } catch (failure) {
-    if (request.current() && !lifetime.accessFailure(failure))
-      dispatch({
-        type: 'update',
-        patch: {
-          error: describeCommandError(
-            failure,
-            'checking access before starting another import',
-          ),
-        },
-      });
-  } finally {
-    request.done();
-    resetBusy.current = false;
-    if (request.current()) dispatch({ type: 'activity', activity: 'idle' });
-  }
+  if (command.state.kind !== 'confirmed' || lifetime.denied) return;
+  clear();
+  validation.reset();
 }
 
 export async function chooseImportFile(
@@ -159,7 +129,6 @@ export async function checkImportPreview({
   dispatch({ type: 'update', patch: { error: undefined } });
   dispatch({ type: 'activity', activity: 'previewing' });
   try {
-    await lifetime.verify({ signal: request.signal, creating: true });
     if (!request.current()) return;
     const result = await previewWorkflowImport(
       apiClient,

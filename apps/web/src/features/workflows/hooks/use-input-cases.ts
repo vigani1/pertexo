@@ -8,11 +8,7 @@ import {
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import type { WorkflowInputCase } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  assertSessionIdentity,
-  isSessionIdentityChangedError,
-} from '@/features/auth/session/identity.public';
-import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-queries.public';
+
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import {
@@ -26,10 +22,7 @@ import {
 } from '../data/input-cases/workflow-input-cases.queries';
 
 function denied(cause: unknown) {
-  return (
-    isSessionIdentityChangedError(cause) ||
-    (isApiError(cause) && [401, 403, 404].includes(cause.status ?? 0))
-  );
+  return isApiError(cause) && [401, 403, 404].includes(cause.status ?? 0);
 }
 
 function caseCommandError(cause: unknown) {
@@ -43,7 +36,7 @@ function caseCommandError(cause: unknown) {
   return describeCommandError(cause, 'changing this input case');
 }
 
-/** Metadata in Query, opened payload and exact command only in this owner. */
+/** Metadata lives in Query; the opened payload stays with its read owner. */
 export function useInputCases({
   api,
   userId,
@@ -60,15 +53,15 @@ export function useInputCases({
   enabled?: boolean | undefined;
 }>) {
   const cache = useQueryClient();
-  const query = useInfiniteQuery({
-    ...inputCasesQueryOptions(api, userId, workspaceId, workflowId),
-    enabled,
-  });
   const [selected, setSelected] = useState<WorkflowInputCase>();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [accessLost, setAccessLost] = useState(false);
+  const query = useInfiniteQuery({
+    ...inputCasesQueryOptions(api, userId, workspaceId, workflowId),
+    enabled: enabled && !accessLost,
+  });
   const onClose = useCallback(() => {
     setSelected(undefined);
     setError(undefined);
@@ -82,13 +75,11 @@ export function useInputCases({
     setAccessLost(true);
     setPending(false);
   }, []);
-  const { ownerRef, controllerRef, retire } = useCaseOwner({
-    api,
+  const { controllerRef, retire } = useCaseOwner({
     cache,
     userId,
     workspaceId,
     workflowId,
-    canWrite,
     enabled,
     onClose,
     onRetire,
@@ -100,9 +91,8 @@ export function useInputCases({
         api,
         workspaceId,
         workflowId,
-        ownerRef,
         controllerRef,
-        uncertain: false,
+        enabled,
         accessLost,
         retire,
         setPending,
@@ -115,21 +105,6 @@ export function useInputCases({
 
   const mutation = useLowEffectMutation({
     send: async ({ command }: CaseSendInput, key) => {
-      const token = ownerRef.current;
-      if (token === undefined) throw new Error('The input case is closed.');
-      const controller = new AbortController();
-      if (
-        !(await verifyCaseWrite({
-          api,
-          userId,
-          workspaceId,
-          ownerRef,
-          retire,
-          token,
-          signal: controller.signal,
-        }))
-      )
-        throw new Error('This input case can’t be changed.');
       return sendInputCaseCommand(api, workspaceId, workflowId, {
         ...command,
         key,
@@ -173,13 +148,13 @@ export function useInputCases({
 
 type CaseReadContext = Pick<
   ReturnType<typeof useCaseOwner>,
-  'ownerRef' | 'controllerRef' | 'retire'
+  'controllerRef' | 'retire'
 > &
   Readonly<{
     api: ApiClient;
     workspaceId: string;
     workflowId: string;
-    uncertain: boolean;
+    enabled: boolean;
     accessLost: boolean;
     setPending: (value: boolean) => void;
     setError: (value: string | undefined) => void;
@@ -191,9 +166,8 @@ async function readInputCase(
     api,
     workspaceId,
     workflowId,
-    ownerRef,
     controllerRef,
-    uncertain,
+    enabled,
     accessLost,
     retire,
     setPending,
@@ -203,10 +177,8 @@ async function readInputCase(
   }: CaseReadContext,
   caseId: string,
 ) {
-  if (controllerRef.current !== undefined || uncertain || accessLost)
+  if (!enabled || controllerRef.current !== undefined || accessLost)
     return undefined;
-  const token = ownerRef.current;
-  if (token === undefined) return undefined;
   const abort = new AbortController();
   controllerRef.current = abort;
   setPending(true);
@@ -219,70 +191,25 @@ async function readInputCase(
       caseId,
       signal: abort.signal,
     });
-    if (ownerRef.current !== token) return undefined;
+    if (abort.signal.aborted) return undefined;
     setSelected(result);
     setConflict(false);
     return result;
   } catch (cause) {
-    if (ownerRef.current === token)
+    if (!abort.signal.aborted)
       setError(describeCommandError(cause, 'opening the input case'));
-    if (denied(cause) && ownerRef.current === token) {
+    if (denied(cause) && !abort.signal.aborted) {
       retire();
     }
     return undefined;
   } finally {
-    finishCaseRequest({ controllerRef, ownerRef, abort, token, setPending });
+    if (controllerRef.current === abort) {
+      controllerRef.current = undefined;
+      if (!abort.signal.aborted) setPending(false);
+    }
   }
-}
-async function verifyCaseWrite({
-  api,
-  userId,
-  workspaceId,
-  ownerRef,
-  retire,
-  token,
-  signal,
-}: Readonly<
-  Pick<ReturnType<typeof useCaseOwner>, 'ownerRef' | 'retire'> & {
-    api: ApiClient;
-    userId: string;
-    workspaceId: string;
-    token: symbol;
-    signal: AbortSignal;
-  }
->) {
-  await assertSessionIdentity(api, userId, signal);
-  const workspace = (await getAllAccessibleWorkspaces(api, signal)).find(
-    (item) => item.id === workspaceId,
-  );
-  if (ownerRef.current !== token) return false;
-  if (
-    workspace?.status !== 'active' ||
-    !workspace.capabilities.includes('workflow:update')
-  ) {
-    retire();
-    return false;
-  }
-  return true;
 }
 
 type CaseSendInput = Readonly<{
   command: InputCaseIntent;
 }>;
-function finishCaseRequest({
-  controllerRef,
-  ownerRef,
-  abort,
-  token,
-  setPending,
-}: Readonly<
-  Pick<ReturnType<typeof useCaseOwner>, 'controllerRef' | 'ownerRef'> & {
-    abort: AbortController;
-    token: symbol;
-    setPending: (value: boolean) => void;
-  }
->) {
-  if (controllerRef.current !== abort) return;
-  controllerRef.current = undefined;
-  if (ownerRef.current === token) setPending(false);
-}

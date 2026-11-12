@@ -99,6 +99,7 @@ export function readFailureReason(error: unknown): string {
 
 /** A sentence for a failed command whose domain codes the caller handled. */
 export function describeCommandError(error: unknown, action: string): string {
+  if (isSessionExpired(error)) return 'Your session ended. Sign in again.';
   if (isUncertainOutcome(error))
     return `We couldn’t confirm whether ${action} went through. Check again before retrying.`;
   if (isForbidden(error)) return `Your role doesn’t allow ${action}.`;

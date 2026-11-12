@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { subscribeSessionChanges } from '@/features/auth/session/sync.public';
+import { observeSessionChanges } from '@/features/auth/session/sync.public';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import { workflowTemplateOriginKey } from '../../data/origin/workflow-template-origin.queries';
 import { workflowKeys } from '../../data/workflows.queries';
@@ -38,7 +38,7 @@ export function useTemplateOriginLifetime({
       setDenied(true);
       clear();
     };
-    const unsubscribeSession = subscribeSessionChanges(retire);
+    const unsubscribeSession = observeSessionChanges(retire);
     const exact = (key: readonly unknown[], candidate: readonly unknown[]) =>
       key.length === candidate.length - 4 &&
       candidate.slice(4).every((part, index) => part === key[index]);
