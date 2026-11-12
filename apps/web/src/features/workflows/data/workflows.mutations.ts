@@ -3,6 +3,7 @@ import {
   useLowEffectMutation,
   lowEffectError,
 } from '@/lib/api/commands/low-effect-mutation';
+import { useCreateCommand } from '@/lib/api/commands/use-create-command';
 import type {
   InlineRenameCommand,
   InlineRenameError,
@@ -27,7 +28,7 @@ export function useCreateWorkflow(
   workspaceId: string,
 ) {
   const cache = useQueryClient();
-  return useLowEffectMutation({
+  return useCreateCommand({
     send: (input: Readonly<{ name: string }>, key) =>
       createWorkflow(apiClient, workspaceId, { ...input, idempotencyKey: key }),
     refresh: () =>

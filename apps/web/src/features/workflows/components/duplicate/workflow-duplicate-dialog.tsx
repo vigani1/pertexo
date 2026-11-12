@@ -16,6 +16,7 @@ import {
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
@@ -66,7 +67,7 @@ export function WorkflowDuplicateDialog({
   });
   const { state } = command;
   const pending = state.kind === 'sending' || state.kind === 'loading';
-  const locked = pending;
+  const locked = pending || command.uncertain;
   return (
     <Dialog
       open
@@ -116,8 +117,9 @@ export function WorkflowDuplicateDialog({
                   autoComplete="off"
                   maxLength={128}
                   value={name}
-                  disabled={locked || state.kind === 'denied'}
+                  disabled={pending || state.kind === 'denied'}
                   onChange={(event) => {
+                    command.editName();
                     setName(event.target.value);
                     validation.change(
                       'name',
@@ -128,6 +130,9 @@ export function WorkflowDuplicateDialog({
               )}
             </LabelledField>
           </FieldGroup>
+          {command.expired ? (
+            <ExpiredAttemptNotice onNewAttempt={command.startNewAttempt} />
+          ) : null}
           {state.error === undefined ? null : (
             <Notice tone={state.kind === 'stale' ? 'warning' : 'destructive'}>
               {state.error}
@@ -156,7 +161,7 @@ export function WorkflowDuplicateDialog({
               }
               disabled={state.kind !== 'ready' && true}
             >
-              {'Duplicate workflow'}
+              {command.uncertain ? 'Retry exact copy' : 'Duplicate workflow'}
             </ProgressButton>
           </DialogFooter>
         </form>

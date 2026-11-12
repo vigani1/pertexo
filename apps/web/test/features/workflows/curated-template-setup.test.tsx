@@ -1,4 +1,3 @@
-import { confirmNewImport } from '../../support/fixtures/import-actions';
 import { HttpResponse, http } from 'msw';
 import { useState } from 'react';
 import { screen, waitFor, within } from '@testing-library/react';
@@ -190,7 +189,7 @@ describe('Curated template setup in the existing import session', () => {
     );
   });
 
-  it('invalidates the preview on edits and preserves template origin through a fresh reviewed confirmation', async () => {
+  it('invalidates real preview on edits and freezes origin/body/key through dismissed uncertain recovery', async () => {
     const previews: unknown[] = [];
     const attempts: { body: unknown; key: string | null }[] = [];
     mockServer.use(
@@ -238,16 +237,17 @@ describe('Curated template setup in the existing import session', () => {
     await event.click(
       screen.getByRole('button', { name: 'Import unpublished draft' }),
     );
-    await screen.findByText(/Check the refreshed current state/u);
-    await event.click(screen.getByRole('button', { name: 'Cancel' }));
+    await screen.findByRole('button', { name: 'Retry exact import' });
+    await event.click(screen.getByRole('button', { name: 'Close' }));
     await event.click(
       screen.getByRole('button', { name: 'Resume import session' }),
     );
-    await confirmNewImport(event);
+    await event.click(
+      await screen.findByRole('button', { name: 'Retry exact import' }),
+    );
     await screen.findByRole('button', { name: 'Open imported workflow' });
     expect(attempts).toHaveLength(2);
-    expect(attempts[1]?.body).toEqual(attempts[0]?.body);
-    expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
+    expect(attempts[1]).toEqual(attempts[0]);
     expect(attempts[0]?.body).toMatchObject({
       templateOrigin: templateOrigin(first),
       manifest: first.manifest,

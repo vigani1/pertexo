@@ -22,13 +22,16 @@ import {
 async function ready() {
   await screen.findByText(/last saved, revision 1/u);
 }
-async function editableFailure() {
-  await screen.findByText(/couldn’t confirm that change/u);
-  expect(screen.getByLabelText('Copy name')).toBeEnabled();
-  expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+/** An unconfirmed copy offers its safe retry and can't be dropped by closing. */
+async function unconfirmedCopy() {
+  await screen.findByText(/couldn’t confirm whether the copy was made/u);
+  expect(
+    screen.getByRole('button', { name: 'Retry exact copy' }),
+  ).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
 }
 
-describe('low-effect duplicate recovery', () => {
+describe('duplicate recovery', () => {
   it('does not read identity around source initialization', async () => {
     const { unmount } = open();
     let reads = 0;
@@ -43,7 +46,7 @@ describe('low-effect duplicate recovery', () => {
     expect(reads).toBe(0);
   });
   it.each([409, 412])(
-    'keeps a copy editable after malformed POST %s details and uses a fresh key for every confirmation',
+    'keeps one key for an unconfirmed copy through malformed POST %s details',
     async (status) => {
       const { event, onCreated } = open();
       const sent = captureCopies((count) => {
@@ -56,32 +59,24 @@ describe('low-effect duplicate recovery', () => {
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),
       );
-      await editableFailure();
+      await unconfirmedCopy();
       await event.click(
-        screen.getByRole('button', { name: 'Duplicate workflow' }),
+        screen.getByRole('button', { name: 'Retry exact copy' }),
       );
       await waitFor(() => {
         expect(sent).toHaveLength(2);
       });
-      await editableFailure();
+      await unconfirmedCopy();
       expect(onCreated).not.toHaveBeenCalled();
       await event.click(
-        screen.getByRole('button', { name: 'Duplicate workflow' }),
+        screen.getByRole('button', { name: 'Retry exact copy' }),
       );
       await waitFor(() => {
         expect(onCreated).toHaveBeenCalledExactlyOnceWith(versionId);
       });
-      expect(new Set(sent.map((item) => item.key)).size).toBe(3);
-      expect(sent.map((item) => item.body)).toEqual([
-        sent[0]?.body,
-        sent[0]?.body,
-        sent[0]?.body,
-      ]);
-      expect(sent.map((item) => item.tag)).toEqual([
-        sent[0]?.tag,
-        sent[0]?.tag,
-        sent[0]?.tag,
-      ]);
+      expect(sent).toHaveLength(3);
+      expect(sent[1]).toEqual(sent[0]);
+      expect(sent[2]).toEqual(sent[0]);
     },
   );
   it('keeps the copy name after a definitive conflict and permits a fresh confirmation', async () => {
@@ -141,36 +136,40 @@ describe('low-effect duplicate recovery', () => {
     expect(sent[1]?.key).not.toBe(sent[0]?.key);
   });
   it.each([429, 503])(
-    'refreshes after POST %i and leaves a new confirmation to the user',
+    'keeps a lost copy’s key across a recovery POST %s',
     async (status) => {
       const { event, onCreated } = open();
-      const sent = captureCopies((count) =>
-        count === 1 ? transient(status) : created(),
-      );
+      const sent = captureCopies((count) => {
+        if (count === 1) return HttpResponse.error();
+        if (count === 2)
+          return status === 429
+            ? problem(429, 'request.rate_limited')
+            : transient(status);
+        return created();
+      });
       await ready();
       await event.click(
         screen.getByRole('button', { name: 'Duplicate workflow' }),
       );
-      await waitFor(() =>
-        expect(
-          screen.getByRole('button', { name: 'Duplicate workflow' }),
-        ).toBeEnabled(),
-      );
-      expect(sent).toHaveLength(1);
-      expect(onCreated).not.toHaveBeenCalled();
-      await event.clear(screen.getByLabelText('Copy name'));
-      await event.type(screen.getByLabelText('Copy name'), 'Reviewed copy');
+      await unconfirmedCopy();
       await event.click(
-        screen.getByRole('button', { name: 'Duplicate workflow' }),
+        screen.getByRole('button', { name: 'Retry exact copy' }),
+      );
+      await waitFor(() => {
+        expect(sent).toHaveLength(2);
+      });
+      // A throttled or unavailable retry says nothing about the lost send.
+      await unconfirmedCopy();
+      expect(onCreated).not.toHaveBeenCalled();
+      await event.click(
+        screen.getByRole('button', { name: 'Retry exact copy' }),
       );
       await waitFor(() => {
         expect(onCreated).toHaveBeenCalledExactlyOnceWith(versionId);
       });
-      expect(sent[1]?.body).toEqual({
-        name: 'Reviewed copy',
-        source: { kind: 'draft' },
-      });
-      expect(sent[1]?.key).not.toBe(sent[0]?.key);
+      expect(sent).toHaveLength(3);
+      expect(sent[1]).toEqual(sent[0]);
+      expect(sent[2]).toEqual(sent[0]);
     },
   );
   it('does not deliver a late accepted copy to an unmounted dialog', async () => {

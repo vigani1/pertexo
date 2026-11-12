@@ -183,7 +183,7 @@ describe('Duplicate workflow', () => {
     expect(requests[0]?.key).toMatch(/^[0-9a-f-]{36}$/u);
   });
 
-  it('preserves editable intent after a lost response and confirms with a fresh key', async () => {
+  it('sends a new key once the copy name changes after a lost response', async () => {
     const requests: Attempt[] = [];
     mockServer.use(
       http.post(
@@ -205,11 +205,16 @@ describe('Duplicate workflow', () => {
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );
-    await screen.findByText(/couldn’t confirm/u);
+    await screen.findByText(/couldn’t confirm whether the copy was made/u);
+    expect(
+      screen.getByRole('button', { name: 'Retry exact copy' }),
+    ).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
     expect(screen.getByLabelText('Copy name')).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
     await event.clear(screen.getByLabelText('Copy name'));
     await event.type(screen.getByLabelText('Copy name'), 'Another copy');
+    // A changed intent is a new request; nothing is held for it.
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
     await event.click(
       screen.getByRole('button', { name: 'Duplicate workflow' }),
     );

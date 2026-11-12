@@ -1,9 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { WorkflowImportRequest } from '@pertexo/contracts';
-import {
-  useLowEffectMutation,
-  lowEffectError,
-} from '@/lib/api/commands/low-effect-mutation';
+import { useCreateCommand } from '@/lib/api/commands/use-create-command';
+import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import { importWorkflow } from './workflow-portability.api';
@@ -18,6 +16,10 @@ type ImportRefusal = Readonly<{
 export type WorkflowImportCommandState =
   | Readonly<{ kind: 'editable'; failure?: ImportRefusal }>
   | Readonly<{ kind: 'sending' }>
+  /** The import may have created a workflow; only its exact resend is safe. */
+  | Readonly<{ kind: 'uncertain' }>
+  /** The held import outlived its receipt; the person checks before a new one. */
+  | Readonly<{ kind: 'expired' }>
   | Readonly<{ kind: 'confirmed'; workflowId: string }>;
 
 export function useWorkflowImportCommand(
@@ -27,7 +29,7 @@ export function useWorkflowImportCommand(
   lifetime: ReturnType<typeof usePortabilityLifetime>,
 ) {
   const cache = useQueryClient();
-  const mutation = useLowEffectMutation({
+  const command = useCreateCommand({
     send: async (body: WorkflowImportRequest, key) => {
       const request = lifetime.begin();
       try {
@@ -53,19 +55,27 @@ export function useWorkflowImportCommand(
       ]),
   });
   let state: WorkflowImportCommandState = { kind: 'editable' };
-  if (mutation.isPending) state = { kind: 'sending' };
-  else if (mutation.isSuccess)
-    state = { kind: 'confirmed', workflowId: mutation.data.workflowId };
-  else if (mutation.isError)
-    state = { kind: 'editable', failure: importRefusal(mutation.error) };
+  if (command.pending) state = { kind: 'sending' };
+  else if (command.expired) state = { kind: 'expired' };
+  else if (command.data !== undefined)
+    state = { kind: 'confirmed', workflowId: command.data.workflowId };
+  else if (command.uncertain) state = { kind: 'uncertain' };
+  else if (command.failed)
+    state = { kind: 'editable', failure: importRefusal(command.error) };
+  function send(sending: () => Promise<unknown>) {
+    if (command.pending || lifetime.denied) return;
+    void sending().catch((cause: unknown) => {
+      lifetime.accessFailure(cause);
+    });
+  }
   return {
     state,
-    clear: mutation.reset,
+    clear: command.startNewAttempt,
     start: (body: WorkflowImportRequest) => {
-      if (mutation.isPending || lifetime.denied) return;
-      void mutation.mutateAsync(body).catch((cause: unknown) => {
-        lifetime.accessFailure(cause);
-      });
+      send(() => command.create(body));
+    },
+    retry: () => {
+      send(command.retry);
     },
   };
 }
@@ -92,7 +102,7 @@ function importRefusal(cause: unknown): ImportRefusal {
       recovery: 'preview',
     };
   return {
-    message: lowEffectError(cause, 'importing this workflow'),
+    message: describeCommandError(cause, 'importing this workflow'),
     recovery: 'none',
   };
 }
