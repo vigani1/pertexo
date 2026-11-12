@@ -3,7 +3,11 @@ import { once } from 'node:events';
 import { createRequire } from 'node:module';
 import { SpanKind } from '@opentelemetry/api';
 
-import { node } from '@opentelemetry/sdk-node';
+import {
+  InMemorySpanExporter,
+  TracerProvider,
+  SimpleSpanProcessor,
+} from '@opentelemetry/sdk-trace';
 import { expect } from 'vitest';
 import { createNodeInstrumentations } from '../../../src/telemetry/telemetry.runtime.js';
 
@@ -100,9 +104,9 @@ function request(
 }
 
 async function captureConfiguredHttpExport() {
-  const exporter = new node.InMemorySpanExporter();
-  const provider = new node.NodeTracerProvider({
-    spanProcessors: [new node.SimpleSpanProcessor(exporter)],
+  const exporter = new InMemorySpanExporter();
+  const provider = new TracerProvider({
+    spanProcessors: [new SimpleSpanProcessor({ exporter })],
   });
   const instrumentations = createNodeInstrumentations();
   const httpInstrumentation = instrumentations.find(

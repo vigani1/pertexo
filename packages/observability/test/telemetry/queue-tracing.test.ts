@@ -7,7 +7,11 @@ import {
   type TextMapPropagator,
   type Tracer,
 } from '@opentelemetry/api';
-import { node } from '@opentelemetry/sdk-node';
+import {
+  InMemorySpanExporter,
+  TracerProvider,
+  SimpleSpanProcessor,
+} from '@opentelemetry/sdk-trace';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createQueueTraceRunner } from '../../src/telemetry/queue-tracing.js';
@@ -151,9 +155,9 @@ describe('createQueueTraceRunner', () => {
   });
 
   it('exports bounded exception classifications without reading hostile error properties', async () => {
-    const exporter = new node.InMemorySpanExporter();
-    const provider = new node.NodeTracerProvider({
-      spanProcessors: [new node.SimpleSpanProcessor(exporter)],
+    const exporter = new InMemorySpanExporter();
+    const provider = new TracerProvider({
+      spanProcessors: [new SimpleSpanProcessor({ exporter })],
     });
     const runner = createQueueTraceRunner({
       tracer: provider.getTracer('queue-tracing-test'),

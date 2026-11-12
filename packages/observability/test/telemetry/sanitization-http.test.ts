@@ -1,4 +1,8 @@
-import { node } from '@opentelemetry/sdk-node';
+import {
+  InMemorySpanExporter,
+  TracerProvider,
+  SimpleSpanProcessor,
+} from '@opentelemetry/sdk-trace';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   prepareConfiguredHTTPUndiciExportScenariosFixture,
@@ -32,9 +36,9 @@ describe('HTTP telemetry URL privacy', () => {
     if (hook === undefined) {
       throw new Error('Expected the configured HTTP request hook');
     }
-    const exporter = new node.InMemorySpanExporter();
-    const provider = new node.NodeTracerProvider({
-      spanProcessors: [new node.SimpleSpanProcessor(exporter)],
+    const exporter = new InMemorySpanExporter();
+    const provider = new TracerProvider({
+      spanProcessors: [new SimpleSpanProcessor({ exporter })],
     });
     const span = provider.getTracer('privacy-test').startSpan('request');
     try {
