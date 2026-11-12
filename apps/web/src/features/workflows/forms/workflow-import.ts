@@ -65,15 +65,13 @@ export function useImportDraft(
   const reading = draft.activity === 'reading';
   const previewing = draft.activity === 'previewing';
   const customName = useRef(initialName.trim() !== '');
-  const intent = useRef(0);
   const sourceIntent = useRef(0);
   const commandClear = useRef<() => void>(() => undefined);
   const validation = useFieldValidation<string>();
-  const clear = useCallback(() => {
-    intent.current += 1;
+  const clear = useCallback((name = '') => {
     sourceIntent.current += 1;
-    dispatch({ type: 'reset' });
-    customName.current = false;
+    dispatch({ type: 'reset', name });
+    customName.current = name.trim() !== '';
     commandClear.current();
   }, []);
   const lifetime = usePortabilityLifetime(userId, workspace.id, {
@@ -117,10 +115,8 @@ export function useImportDraft(
     lifetime,
     command,
     validation,
-    intent,
     sourceIntent,
     clear,
-    invalidate,
   };
   function submitImport() {
     if (lifetime.denied || command.state.kind === 'sending') return;
@@ -138,17 +134,12 @@ export function useImportDraft(
         name,
         expectedCompatibilityFingerprint: readyPreview.compatibilityFingerprint,
       });
-      dispatch({ type: 'update', patch: { preview: undefined } });
+      dispatch({ type: 'import-sent' });
     }
   }
   const startAnother = () => {
     startAnotherImport(context);
   };
-  function invalidate() {
-    intent.current += 1;
-    dispatch({ type: 'update', patch: { preview: undefined } });
-    dispatch({ type: 'update', patch: { error: undefined } });
-  }
   const chooseFile = (file: File | undefined) => {
     sourceIntent.current += 1;
     return chooseImportFile(context, file);
@@ -157,21 +148,11 @@ export function useImportDraft(
   function chooseTemplate(next: CuratedTemplate) {
     if (locked) return;
     sourceIntent.current += 1;
-    invalidate();
     validation.reset();
-    dispatch({ type: 'update', patch: { template: next } });
-    dispatch({ type: 'activity', activity: 'idle' });
     dispatch({
-      type: 'update',
-      patch: { manifest: structuredClone(next.manifest) },
-    });
-    if (!customName.current)
-      dispatch({ type: 'update', patch: { name: next.title } });
-    dispatch({ type: 'update', patch: { bindings: [] } });
-    // Destination literals must be supplied explicitly, never reused from demo data.
-    dispatch({
-      type: 'update',
-      patch: { setupValues: next.setupTargets.map(() => '') },
+      type: 'template-chosen',
+      template: next,
+      ...(customName.current ? {} : { name: next.title }),
     });
   }
   // An example that needs nothing filled in is checked as soon as it's
@@ -192,20 +173,19 @@ export function useImportDraft(
   }, [template]);
   function changeName(next: string) {
     customName.current = next.trim() !== '';
-    invalidate();
-    dispatch({ type: 'update', patch: { name: next } });
+    dispatch({ type: 'source-edited', edit: { field: 'name', value: next } });
   }
   function changeSetup(index: number, next: string) {
-    invalidate();
     dispatch({
-      type: 'setup-values',
-      update: (current) =>
-        current.map((value, position) => (position === index ? next : value)),
+      type: 'source-edited',
+      edit: { field: 'setup', index, value: next },
     });
   }
   function changeBindings(next: PortableConnectionBinding[]) {
-    invalidate();
-    dispatch({ type: 'update', patch: { bindings: next } });
+    dispatch({
+      type: 'source-edited',
+      edit: { field: 'bindings', value: next },
+    });
   }
   return {
     template,
@@ -232,10 +212,7 @@ export function useImportDraft(
     retryImport: command.retry,
     startNewImportAttempt: command.clear,
     resetSource: (name: string) => {
-      if (locked) return;
-      clear();
-      dispatch({ type: 'update', patch: { name: name } });
-      customName.current = name.trim() !== '';
+      if (!locked) clear(name);
     },
     chooseTemplate,
     chooseFile,
