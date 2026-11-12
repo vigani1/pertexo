@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createNodeAttemptRunStore } from '@pertexo/core/attempts';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 import { coordinatorFixture as fixture } from '../support/coordinator/consumer.js';
@@ -35,6 +36,12 @@ describe.runIf(fixture.enabled)('Attempt ownership during preparation', () => {
         workerId: 'preparing-worker',
       },
       { registry: createPlatformNodeRegistry(), runtimeCapabilities: {} },
+    );
+    const competitor = createNodeAttemptRunStore(
+      parseDatabaseConfig({
+        connectionString: fixture.databaseUrl(fixture.workerUrl),
+        max: 1,
+      }),
     );
     const producer = createQueueProducer({ redisUrl: fixture.redisUrl });
     const blocker = await fixture.ownerPool.connect();
@@ -77,6 +84,32 @@ describe.runIf(fixture.enabled)('Attempt ownership during preparation', () => {
           [attempt.attemptId],
         ),
       ).toEqual([{ live: true }]);
+      const [outbox] = await fixture.workerQuery<{ payload_checksum: string }>(
+        'select payload_checksum from app.outbox_events where id=$1',
+        [attempt.outboxEventId],
+      );
+      if (outbox === undefined) throw new Error('Delivery missing');
+      await expect(
+        competitor.claimDelivery({
+          workspaceId: fixture.workspaceId,
+          runId: accepted.runId,
+          nodeRunId: attempt.nodeRunId,
+          attemptId: attempt.attemptId,
+          delivery: {
+            outboxEventId: attempt.outboxEventId,
+            payloadChecksum: outbox.payload_checksum,
+          },
+          workerId: 'competing-preparation-worker',
+          leaseDurationSeconds: 1,
+          signal: AbortSignal.timeout(5000),
+        }),
+      ).resolves.toEqual({ kind: 'duplicate' });
+      expect(
+        await fixture.workerQuery(
+          'select lease_owner from app.node_attempts where id=$1',
+          [attempt.attemptId],
+        ),
+      ).toEqual([{ lease_owner: 'preparing-worker' }]);
       await blocker.query('rollback');
       const completed = await fixture.waitFor(
         () =>
@@ -90,7 +123,11 @@ describe.runIf(fixture.enabled)('Attempt ownership during preparation', () => {
     } finally {
       await blocker.query('rollback');
       blocker.release();
-      await Promise.all([runtime.close(), producer.close()]);
+      await Promise.all([
+        runtime.close(),
+        producer.close(),
+        competitor.close(),
+      ]);
     }
   });
 });
