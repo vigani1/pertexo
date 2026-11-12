@@ -10,7 +10,7 @@ import type {
   WorkflowRunEvent,
 } from '@pertexo/contracts';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Sheet,
   SheetBody,
@@ -88,10 +88,8 @@ type RunDetailPageProps = Readonly<{
 }>;
 
 export function RunDetailPage(props: RunDetailPageProps) {
+  const { apiClient, user, workspace, runId, onRunAccepted } = props;
   const {
-    apiClient,
-    user,
-    workspace,
     run,
     view,
     nowMs,
@@ -100,8 +98,6 @@ export function RunDetailPage(props: RunDetailPageProps) {
     compact,
     replayOpen,
     setReplayOpen,
-    onRunAccepted,
-    runId,
     snapshot,
     rowLabels,
     dataScope,
@@ -111,10 +107,11 @@ export function RunDetailPage(props: RunDetailPageProps) {
     graphState,
     stepLabel,
     lensRef,
-    lens,
+    upstream,
     sheetOpen,
     setSheetOpen,
   } = useRunDetail(props);
+
   return (
     // The lens stands beside the steps whenever the page has room for both
     // (a container query): the spine and the in-app browser take their share.
@@ -218,7 +215,15 @@ export function RunDetailPage(props: RunDetailPageProps) {
         <RunInspection
           selected={selected}
           lensRef={lensRef}
-          lens={lens}
+          lens={
+            <RunStepDetails
+              row={selected}
+              rows={view.rows}
+              upstream={upstream}
+              nowMs={nowMs}
+              scope={dataScope}
+            />
+          }
           sheetOpen={sheetOpen}
           setSheetOpen={setSheetOpen}
           compact={compact}
@@ -237,8 +242,9 @@ function RunInspection({
   compact,
 }: Pick<
   ReturnType<typeof useRunDetail>,
-  'selected' | 'lensRef' | 'lens' | 'sheetOpen' | 'setSheetOpen' | 'compact'
->) {
+  'selected' | 'lensRef' | 'sheetOpen' | 'setSheetOpen' | 'compact'
+> &
+  Readonly<{ lens: ReactNode }>) {
   return (
     <>
       <aside
@@ -272,8 +278,7 @@ function useRunDetail({
   user,
   workspace,
   runId,
-  onRunAccepted,
-}: RunDetailPageProps) {
+}: Omit<RunDetailPageProps, 'onRunAccepted'>) {
   const { data: snapshot } = useSuspenseQuery(
     workflowRunQueryOptions(apiClient, user.id, workspace.id, runId),
   );
@@ -346,24 +351,11 @@ function useRunDetail({
     if (!lensFitsBeside(lensRef.current)) setSheetOpen(true);
   }
 
-  const lens = (
-    <RunStepDetails
-      row={selected}
-      rows={view.rows}
-      upstream={upstream}
-      nowMs={nowMs}
-      scope={dataScope}
-    />
-  );
-
   const graphState = graphReadState({
     canViewWorkflow,
     failed: version.isError,
   });
   return {
-    apiClient,
-    user,
-    workspace,
     run,
     view,
     nowMs,
@@ -372,8 +364,6 @@ function useRunDetail({
     compact,
     replayOpen,
     setReplayOpen,
-    onRunAccepted,
-    runId,
     snapshot,
     rowLabels,
     dataScope,
@@ -383,7 +373,7 @@ function useRunDetail({
     graphState,
     stepLabel,
     lensRef,
-    lens,
+    upstream,
     sheetOpen,
     setSheetOpen,
   } as const;

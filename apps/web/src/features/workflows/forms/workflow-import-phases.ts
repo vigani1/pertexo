@@ -1,9 +1,9 @@
-import type { RefObject, Dispatch, SetStateAction } from 'react';
-import type { WorkflowImportPreviewResponse } from '@pertexo/contracts';
 import type {
-  PortableConnectionBinding,
-  WorkflowPortableManifest,
-} from '@pertexo/workflow-model';
+  ImportDraftState,
+  ImportDraftAction,
+} from './workflow-import-state';
+import type { RefObject, Dispatch } from 'react';
+import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 import type { ApiClient } from '@/lib/api/client';
 import type { useFieldValidation } from '@/components/ui/use-field-validation';
 import { describeCommandError } from '@/lib/api/error-copy';
@@ -15,19 +15,15 @@ import type { useWorkflowImportCommand } from '../data/portability/mutations';
 import {
   setupValueError,
   templateOrigin,
-  type CuratedTemplate,
 } from '../model/templates/curated-setup';
 export type ImportPhaseContext = Readonly<{
+  draft: ImportDraftState;
+  dispatch: Dispatch<ImportDraftAction>;
   apiClient: ApiClient;
   workspaceId: string;
-  template: CuratedTemplate | undefined;
-  setupValues: readonly string[];
   configuredManifest: WorkflowPortableManifest | undefined;
-  name: string;
-  bindings: PortableConnectionBinding[];
   complete: boolean;
   locked: boolean;
-  previewing: boolean;
   lifetime: ReturnType<typeof usePortabilityLifetime>;
   command: ReturnType<typeof useWorkflowImportCommand>;
   validation: ReturnType<typeof useFieldValidation<string>>;
@@ -36,25 +32,15 @@ export type ImportPhaseContext = Readonly<{
   resetBusy: RefObject<boolean>;
   clear: () => void;
   invalidate: () => void;
-  setManifest: Dispatch<SetStateAction<WorkflowPortableManifest | undefined>>;
-  setTemplate: Dispatch<SetStateAction<CuratedTemplate | undefined>>;
-  setSetupValues: Dispatch<SetStateAction<string[]>>;
-  setBindings: Dispatch<SetStateAction<PortableConnectionBinding[]>>;
-  setReading: (value: boolean) => void;
-  setPreview: (value: WorkflowImportPreviewResponse | undefined) => void;
-  setError: (value: string | undefined) => void;
-  setResetting: (value: boolean) => void;
-  setPreviewing: (value: boolean) => void;
 }>;
 
 export async function startAnotherImport({
+  dispatch,
   command,
   lifetime,
   resetBusy,
-  setResetting,
   clear,
   validation,
-  setError,
 }: ImportPhaseContext) {
   if (
     command.state.kind !== 'confirmed' ||
@@ -63,7 +49,7 @@ export async function startAnotherImport({
   )
     return;
   resetBusy.current = true;
-  setResetting(true);
+  dispatch({ type: 'activity', activity: 'resetting' });
   const request = lifetime.begin();
   try {
     await lifetime.verify({ signal: request.signal, creating: true });
@@ -72,83 +58,87 @@ export async function startAnotherImport({
     validation.reset();
   } catch (failure) {
     if (request.current() && !lifetime.accessFailure(failure))
-      setError(
-        describeCommandError(
-          failure,
-          'checking access before starting another import',
-        ),
-      );
+      dispatch({
+        type: 'update',
+        patch: {
+          error: describeCommandError(
+            failure,
+            'checking access before starting another import',
+          ),
+        },
+      });
   } finally {
     request.done();
     resetBusy.current = false;
-    if (request.current()) setResetting(false);
+    if (request.current()) dispatch({ type: 'activity', activity: 'idle' });
   }
 }
 
 export async function chooseImportFile(
   {
+    dispatch,
     locked,
     invalidate,
-    setTemplate,
-    setSetupValues,
-    setManifest,
-    setBindings,
-    setReading,
     validation,
     sourceIntent,
     lifetime,
-    setError,
   }: ImportPhaseContext,
   file: File | undefined,
 ) {
   if (locked) return;
   invalidate();
-  setTemplate(undefined);
-  setSetupValues([]);
-  setManifest(undefined);
-  setBindings([]);
-  setReading(false);
+  dispatch({
+    type: 'update',
+    patch: {
+      template: undefined,
+      setupValues: [],
+      manifest: undefined,
+      bindings: [],
+    },
+  });
+  dispatch({ type: 'activity', activity: 'idle' });
   validation.reset();
   if (file === undefined) return;
   const epoch = sourceIntent.current;
   const request = lifetime.begin();
-  setReading(true);
+  dispatch({ type: 'activity', activity: 'reading' });
   try {
     const parsed = await readPortableWorkflowFile(file);
     if (request.current() && epoch === sourceIntent.current)
-      setManifest(parsed);
+      dispatch({ type: 'update', patch: { manifest: parsed } });
   } catch (failure) {
     if (request.current() && epoch === sourceIntent.current)
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : 'This file can’t be read. Choose a workflow file exported from Pertexo.',
-      );
+      dispatch({
+        type: 'update',
+        patch: {
+          error:
+            failure instanceof Error
+              ? failure.message
+              : 'This file can’t be read. Choose a workflow file exported from Pertexo.',
+        },
+      });
   } finally {
     request.done();
-    if (request.current() && epoch === sourceIntent.current) setReading(false);
+    if (request.current() && epoch === sourceIntent.current)
+      dispatch({ type: 'activity', activity: 'idle' });
   }
 }
 
 export async function checkImportPreview({
+  draft,
+  dispatch,
   apiClient,
   command,
   workspaceId,
-  template,
-  setupValues,
   complete,
   locked,
-  previewing,
   validation,
-  name,
   configuredManifest,
   intent,
   lifetime,
-  setPreview,
-  setError,
-  setPreviewing,
-  bindings,
 }: ImportPhaseContext) {
+  const { template, setupValues, name, bindings } = draft;
+  const previewing = draft.activity === 'previewing';
   const setupErrors = Object.fromEntries(
     template?.setupTargets.map((target, index) => [
       `setup-${String(index)}`,
@@ -165,9 +155,9 @@ export async function checkImportPreview({
   command.clear();
   const epoch = intent.current;
   const request = lifetime.begin();
-  setPreview(undefined);
-  setError(undefined);
-  setPreviewing(true);
+  dispatch({ type: 'update', patch: { preview: undefined } });
+  dispatch({ type: 'update', patch: { error: undefined } });
+  dispatch({ type: 'activity', activity: 'previewing' });
   try {
     await lifetime.verify({ signal: request.signal, creating: true });
     if (!request.current()) return;
@@ -183,16 +173,20 @@ export async function checkImportPreview({
       },
       request.signal,
     );
-    if (request.current() && epoch === intent.current) setPreview(result);
+    if (request.current() && epoch === intent.current)
+      dispatch({ type: 'update', patch: { preview: result } });
   } catch (failure) {
     if (
       request.current() &&
       epoch === intent.current &&
       !lifetime.accessFailure(failure)
     )
-      setError(describeCommandError(failure, 'checking this import'));
+      dispatch({
+        type: 'update',
+        patch: { error: describeCommandError(failure, 'checking this import') },
+      });
   } finally {
     request.done();
-    if (request.current()) setPreviewing(false);
+    if (request.current()) dispatch({ type: 'activity', activity: 'idle' });
   }
 }
