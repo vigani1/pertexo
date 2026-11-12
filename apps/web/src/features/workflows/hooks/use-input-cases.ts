@@ -1,5 +1,9 @@
 import { useCaseOwner } from './use-case-owner';
-import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
+import {
+  RETRY_WINDOW_ENDED,
+  isUnconfirmedCommand,
+} from '@/lib/api/commands/command-retry';
+import { useCreateCommand } from '@/lib/api/commands/use-create-command';
 import { useCallback, useState } from 'react';
 import {
   useLowEffectMutation,
@@ -31,9 +35,13 @@ function caseCommandError(cause: unknown) {
     return 'This case changed elsewhere. Your edits are still here. Read the current case and review before confirming a new change.';
   if (code === 'workflow.input_case_limit_exceeded')
     return 'This workspace or workflow has reached its input-case limit. Remove an unneeded case and try again.';
-  if (isUnconfirmedCommand(cause))
-    return lowEffectError(cause, 'changing this input case');
   return describeCommandError(cause, 'changing this input case');
+}
+
+function unconfirmedCaseError(intent: InputCaseIntent['kind'], cause: unknown) {
+  return intent === 'create'
+    ? 'We couldn’t confirm whether the case was saved. Saving it again unchanged is safe — it won’t make a second case.'
+    : lowEffectError(cause, 'changing this input case');
 }
 
 /** Metadata lives in Query; the opened payload stays with its read owner. */
@@ -103,30 +111,40 @@ export function useInputCases({
       caseId,
     );
 
-  const mutation = useLowEffectMutation({
-    send: async ({ command }: CaseSendInput, key) => {
-      return sendInputCaseCommand(api, workspaceId, workflowId, {
-        ...command,
-        key,
-      });
-    },
-    refresh: () =>
-      cache.invalidateQueries({
-        queryKey: inputCasesKey(userId, workspaceId, workflowId),
-      }),
-  });
-  async function send(input: CaseSendInput) {
-    if (mutation.isPending || pending || !canWrite || accessLost) return false;
+  const refresh = () =>
+    cache.invalidateQueries({
+      queryKey: inputCasesKey(userId, workspaceId, workflowId),
+    });
+  const sendCommand = (command: InputCaseIntent, key: string) =>
+    sendInputCaseCommand(api, workspaceId, workflowId, { ...command, key });
+  // Updates and deletes carry the case's tag, so a resend can't repeat them;
+  // a create is told apart only by its key.
+  const change = useLowEffectMutation({ send: sendCommand, refresh });
+  const create = useCreateCommand({ send: sendCommand, refresh });
+  const sending = change.isPending || create.pending;
+  async function send({ command }: CaseSendInput) {
+    if (sending || pending || !canWrite || accessLost) return false;
     setError(undefined);
     try {
-      await mutation.mutateAsync(input);
+      if (command.kind === 'create') {
+        if ((await create.create(command)) === undefined) {
+          // The person checks the list first; the next save is a new attempt.
+          create.startNewAttempt();
+          setError(RETRY_WINDOW_ENDED);
+          return false;
+        }
+      } else await change.mutateAsync(command);
       setSelected(undefined);
       setConflict(false);
       return true;
     } catch (cause) {
       const code = isApiError(cause) ? cause.problem?.code : undefined;
       setConflict(code === 'workflow.input_case_revision_conflict');
-      setError(caseCommandError(cause));
+      setError(
+        isUnconfirmedCommand(cause)
+          ? unconfirmedCaseError(command.kind, cause)
+          : caseCommandError(cause),
+      );
       return false;
     }
   }
@@ -135,7 +153,7 @@ export function useInputCases({
     query,
     selected,
     error,
-    pending: pending || mutation.isPending,
+    pending: pending || sending,
     conflict,
     accessLost,
     read,
