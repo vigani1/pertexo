@@ -61,6 +61,13 @@ stops writers before migrations and leaves serving stopped until they complete;
 keep that maintenance window in place. Do not run this migration alongside live
 writers or edit a recorded migration to add `CONCURRENTLY`.
 
+## Migration 0002: queue-head run admission
+
+`0002_queue_head_admission.sql` replaces SQL functions only: the dispatcher now
+checks the head of each limited queue and the workspace's free slots instead of
+every queued run. It changes no table or data and runs in well under a second, so
+the normal upgrade estimate applies.
+
 ## Baseline transition: required release stop
 
 **Required stop: v0.2.0 — the final release containing migrations

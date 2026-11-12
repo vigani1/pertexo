@@ -783,6 +783,64 @@ $$;
 ALTER FUNCTION app.has_pending_invitation(p_normalized_email character varying) OWNER TO pertexo_owner;
 
 --
+-- Name: held_workflow_run_admission_events(uuid); Type: FUNCTION; Schema: app; Owner: pertexo_owner
+--
+
+CREATE FUNCTION app.held_workflow_run_admission_events(p_workspace uuid) RETURNS SETOF uuid
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'app'
+    SET row_security TO 'on'
+    AS $$
+DECLARE v_prior text;
+BEGIN
+  v_prior:=current_setting('app.workspace_id',true);
+  PERFORM set_config('app.workspace_id',p_workspace::text,true);
+  RETURN QUERY
+  WITH waiting AS MATERIALIZED (
+    SELECT event.id AS event_id, run.workflow_id, run.admission_ticket, run.execution_entitlement_version,
+      event.available_at<=clock_timestamp()
+        AND (event.lease_expires_at IS NULL OR event.lease_expires_at<=clock_timestamp()) AS claimable,
+      EXISTS(SELECT 1 FROM app.workflow_concurrency_policies policy
+        WHERE policy.workspace_id=p_workspace AND policy.workflow_id=run.workflow_id
+          AND policy.active_run_limit IS NOT NULL) AS limited,
+      event.available_at
+    FROM app.outbox_events event
+    JOIN app.workflow_runs run ON run.workspace_id=event.workspace_id AND run.id=event.aggregate_id
+    WHERE event.workspace_id=p_workspace AND event.job_name='advance-workflow-run'
+      AND event.aggregate_type='workflow-run' AND event.published_at IS NULL AND event.failed_at IS NULL
+      AND run.status='queued' AND run.cancel_requested_at IS NULL
+      AND (run.deadline_at IS NULL OR run.deadline_at>clock_timestamp())
+      AND NOT EXISTS(SELECT 1 FROM app.workflow_run_active_admissions admission
+        WHERE admission.workspace_id=p_workspace AND admission.workflow_run_id=run.id)
+  ), free AS (
+    -- The maintained counter, not a count of the backlog. An estimate is enough:
+    -- every candidate is still checked exactly, under the counter lock.
+    SELECT greatest(0,
+      coalesce((SELECT max(version.active_run_limit) FROM app.workspace_execution_entitlement_versions version
+        WHERE version.workspace_id=p_workspace
+          AND version.version IN (SELECT waiting.execution_entitlement_version FROM waiting)),0)
+      -counter.active_runs-app.workflow_run_reserved_slots(p_workspace,NULL,NULL)) AS slots
+    FROM app.workspace_execution_admission_counters counter
+    WHERE counter.workspace_id=p_workspace
+  ), ranked AS (
+    SELECT waiting.event_id,
+      CASE WHEN waiting.limited
+        THEN waiting.admission_ticket=min(waiting.admission_ticket) OVER (PARTITION BY waiting.workflow_id)
+        ELSE waiting.claimable AND row_number() OVER (
+          PARTITION BY waiting.limited, waiting.claimable
+          ORDER BY waiting.available_at, waiting.event_id)<=free.slots
+      END AS candidate
+    FROM waiting CROSS JOIN free
+  )
+  SELECT ranked.event_id FROM ranked WHERE NOT ranked.candidate;
+  PERFORM set_config('app.workspace_id',coalesce(v_prior,''),true);
+EXCEPTION WHEN OTHERS THEN PERFORM set_config('app.workspace_id',coalesce(v_prior,''),true); RAISE;
+END $$;
+
+
+ALTER FUNCTION app.held_workflow_run_admission_events(p_workspace uuid) OWNER TO pertexo_owner;
+
+--
 -- Name: index_artifact_owner_references(); Type: FUNCTION; Schema: app; Owner: pertexo_owner
 --
 
@@ -1894,8 +1952,8 @@ BEGIN
   -- ordered grants. Controls cannot use this predicate to start node work.
   IF v_reserved AND v_run.human_wait_started_at IS NULL AND (p_grant OR v_exempt) THEN RETURN true; END IF;
   IF (NOT coalesce(v_reserved,false) OR v_run.human_wait_started_at IS NOT NULL) AND
-    (SELECT active_runs+reserved_active_slots
-      FROM app.workflow_run_slot_counts(p_workspace,v_run.workflow_id))>=v_limit THEN
+    app.workflow_run_active_slots(p_workspace,v_run.workflow_id,NULL)
+      +app.workflow_run_reserved_slots(p_workspace,v_run.workflow_id,NULL)>=v_limit THEN
     RETURN false;
   END IF;
   RETURN NOT EXISTS(SELECT 1 FROM app.workflow_runs earlier
@@ -1938,8 +1996,8 @@ BEGIN
         AND (EXISTS(SELECT 1 FROM app.workflow_run_active_admissions WHERE workspace_id=p_workspace_id
           AND workflow_run_id=p_workflow_run_id AND outbox_event_id=p_outbox_event_id)
         OR (NOT EXISTS(SELECT 1 FROM app.workflow_run_active_admissions WHERE workspace_id=p_workspace_id AND workflow_run_id=p_workflow_run_id)
-          AND (SELECT active_runs+reserved_active_slots
-            FROM app.workflow_run_slot_counts(p_workspace_id))<v_limit));
+          AND app.workflow_run_active_slots(p_workspace_id,NULL,NULL)
+            +app.workflow_run_reserved_slots(p_workspace_id,NULL,NULL)<v_limit));
     END IF;
   END IF;
   PERFORM set_config('app.workspace_id',coalesce(v_prior,''),true); RETURN coalesce(v_result,false);
@@ -1958,7 +2016,7 @@ CREATE FUNCTION app.workflow_run_active_capacity_available(p_workspace_id uuid, 
     SET search_path TO 'pg_catalog', 'app'
     SET row_security TO 'on'
     AS $$
-DECLARE active_limit integer; active_count integer; reserved_count integer;
+DECLARE active_limit integer;
 BEGIN
   IF nullif(current_setting('app.workspace_id',true),'')::uuid IS DISTINCT FROM p_workspace_id THEN
     RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
@@ -1972,19 +2030,69 @@ BEGIN
     WHERE counter.workspace_id=p_workspace_id FOR UPDATE OF counter;
   IF NOT FOUND THEN RAISE EXCEPTION 'workspace admission state missing' USING ERRCODE='PTA01'; END IF;
   IF NOT app.workflow_concurrency_admissible(p_workspace_id,p_workflow_run_id,false) THEN RETURN false; END IF;
-  SELECT active_runs,reserved_active_slots INTO active_count,reserved_count
-    FROM app.workflow_run_slot_counts(p_workspace_id,NULL,p_workflow_run_id);
   RETURN (
     EXISTS(SELECT 1 FROM app.workflow_run_active_admissions admission
       WHERE admission.workspace_id=p_workspace_id AND admission.workflow_run_id=p_workflow_run_id
         AND admission.borrowed_call_id IS NOT NULL
         AND NOT EXISTS(SELECT 1 FROM app.workflow_runs paused WHERE paused.workspace_id=p_workspace_id AND paused.id=p_workflow_run_id AND paused.human_wait_started_at IS NOT NULL))
     OR EXISTS(SELECT 1 FROM app.workflow_calls loan WHERE loan.workspace_id=p_workspace_id AND loan.parent_run_id=p_workflow_run_id AND loan.slot_lent)
-    OR active_count+reserved_count<active_limit);
+    OR app.workflow_run_active_slots(p_workspace_id,NULL,p_workflow_run_id)
+      +app.workflow_run_reserved_slots(p_workspace_id,NULL,p_workflow_run_id)<active_limit);
 END $$;
 
 
 ALTER FUNCTION app.workflow_run_active_capacity_available(p_workspace_id uuid, p_entitlement_version integer, p_workflow_run_id uuid) OWNER TO pertexo_owner;
+
+--
+-- Name: workflow_run_active_slots(uuid, uuid, uuid); Type: FUNCTION; Schema: app; Owner: pertexo_owner
+--
+
+CREATE FUNCTION app.workflow_run_active_slots(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) RETURNS integer
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'app'
+    SET row_security TO 'on'
+    AS $$
+BEGIN
+  IF nullif(current_setting('app.workspace_id',true),'')::uuid IS DISTINCT FROM p_workspace THEN
+    RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
+  END IF;
+  RETURN (SELECT count(*)::integer FROM app.workflow_runs run
+    WHERE run.workspace_id=p_workspace AND run.status IN ('running','waiting') AND run.human_wait_started_at IS NULL
+      -- A timed Wait holds no workspace slot, but keeps its place in the workflow's own limit.
+      AND (p_workflow IS NOT NULL OR run.timed_wait_started_at IS NULL)
+      AND (p_workflow IS NULL OR run.workflow_id=p_workflow)
+      AND (p_excluded_run IS NULL OR run.id<>p_excluded_run)
+      AND (p_workflow IS NOT NULL OR NOT EXISTS (
+        SELECT 1 FROM app.workflow_calls call WHERE call.workspace_id=p_workspace
+          AND call.parent_run_id=run.id AND call.slot_lent)));
+END $$;
+
+
+ALTER FUNCTION app.workflow_run_active_slots(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) OWNER TO pertexo_owner;
+
+--
+-- Name: workflow_run_reserved_slots(uuid, uuid, uuid); Type: FUNCTION; Schema: app; Owner: pertexo_owner
+--
+
+CREATE FUNCTION app.workflow_run_reserved_slots(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) RETURNS integer
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'app'
+    SET row_security TO 'on'
+    AS $$
+BEGIN
+  IF nullif(current_setting('app.workspace_id',true),'')::uuid IS DISTINCT FROM p_workspace THEN
+    RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
+  END IF;
+  RETURN (SELECT count(*)::integer FROM app.workflow_run_active_admissions admission
+    JOIN app.workflow_runs run
+      ON run.workspace_id=admission.workspace_id AND run.id=admission.workflow_run_id
+    WHERE admission.workspace_id=p_workspace AND run.human_wait_started_at IS NULL AND run.status NOT IN ('running','waiting')
+      AND (p_workflow IS NULL OR (run.workflow_id=p_workflow AND run.status='queued'))
+      AND (p_excluded_run IS NULL OR run.id<>p_excluded_run));
+END $$;
+
+
+ALTER FUNCTION app.workflow_run_reserved_slots(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) OWNER TO pertexo_owner;
 
 --
 -- Name: workflow_run_slot_counts(uuid, uuid, uuid); Type: FUNCTION; Schema: app; Owner: pertexo_owner
@@ -2000,21 +2108,8 @@ BEGIN
     RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
   END IF;
   RETURN QUERY SELECT
-    (SELECT count(*)::integer FROM app.workflow_runs run
-      WHERE run.workspace_id=p_workspace AND run.status IN ('running','waiting') AND run.human_wait_started_at IS NULL
-        -- A timed Wait holds no workspace slot, but keeps its place in the workflow's own limit.
-        AND (p_workflow IS NOT NULL OR run.timed_wait_started_at IS NULL)
-        AND (p_workflow IS NULL OR run.workflow_id=p_workflow)
-        AND (p_excluded_run IS NULL OR run.id<>p_excluded_run)
-        AND (p_workflow IS NOT NULL OR NOT EXISTS (
-          SELECT 1 FROM app.workflow_calls call WHERE call.workspace_id=p_workspace
-            AND call.parent_run_id=run.id AND call.slot_lent))),
-    (SELECT count(*)::integer FROM app.workflow_run_active_admissions admission
-      JOIN app.workflow_runs run
-        ON run.workspace_id=admission.workspace_id AND run.id=admission.workflow_run_id
-      WHERE admission.workspace_id=p_workspace AND run.human_wait_started_at IS NULL AND run.status NOT IN ('running','waiting')
-        AND (p_workflow IS NULL OR (run.workflow_id=p_workflow AND run.status='queued'))
-        AND (p_excluded_run IS NULL OR run.id<>p_excluded_run)),
+    app.workflow_run_active_slots(p_workspace,p_workflow,p_excluded_run),
+    app.workflow_run_reserved_slots(p_workspace,p_workflow,p_excluded_run),
     (SELECT count(*)::integer FROM app.workflow_runs run
       WHERE run.workspace_id=p_workspace AND run.status='queued'
         AND (p_workflow IS NULL OR run.workflow_id=p_workflow)
@@ -12952,6 +13047,14 @@ GRANT ALL ON FUNCTION app.has_pending_invitation(p_normalized_email character va
 
 
 --
+-- Name: FUNCTION held_workflow_run_admission_events(p_workspace uuid); Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+REVOKE ALL ON FUNCTION app.held_workflow_run_admission_events(p_workspace uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.held_workflow_run_admission_events(p_workspace uuid) TO pertexo_maintenance;
+
+
+--
 -- Name: FUNCTION index_artifact_owner_references(); Type: ACL; Schema: app; Owner: pertexo_owner
 --
 
@@ -13208,6 +13311,20 @@ GRANT ALL ON FUNCTION app.workflow_run_active_admission_eligible(p_workspace_id 
 
 REVOKE ALL ON FUNCTION app.workflow_run_active_capacity_available(p_workspace_id uuid, p_entitlement_version integer, p_workflow_run_id uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.workflow_run_active_capacity_available(p_workspace_id uuid, p_entitlement_version integer, p_workflow_run_id uuid) TO pertexo_app;
+
+
+--
+-- Name: FUNCTION workflow_run_active_slots(p_workspace uuid, p_workflow uuid, p_excluded_run uuid); Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+REVOKE ALL ON FUNCTION app.workflow_run_active_slots(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) FROM PUBLIC;
+
+
+--
+-- Name: FUNCTION workflow_run_reserved_slots(p_workspace uuid, p_workflow uuid, p_excluded_run uuid); Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+REVOKE ALL ON FUNCTION app.workflow_run_reserved_slots(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) FROM PUBLIC;
 
 
 --
