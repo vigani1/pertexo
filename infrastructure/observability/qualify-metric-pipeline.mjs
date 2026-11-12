@@ -9,9 +9,9 @@ import {
 } from '../support/bounded-child-process.mjs';
 
 const COLLECTOR_IMAGE =
-  'otel/opentelemetry-collector-contrib:0.136.0@sha256:45392d534c1edcc809c2d112394029246bc679d2ae5ea7081414a1fc74f2c621';
+  'otel/opentelemetry-collector-contrib:0.164.0@sha256:340c9ca6a36617084c6661bdc4f0fe92b7cda5a805d61673ec8db375fddc522b';
 const PROMETHEUS_IMAGE =
-  'prom/prometheus:v3.6.0@sha256:76947e7ef22f8a698fc638f706685909be425dbe09bd7a2cd7aca849f79b5f64';
+  'prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06';
 const COMMAND_TIMEOUT_MILLISECONDS = 30_000;
 const QUALIFICATION_TIMEOUT_MILLISECONDS = 45_000;
 

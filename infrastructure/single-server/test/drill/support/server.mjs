@@ -26,7 +26,7 @@ import {
 const DOCKER_CLI =
   'docker:29-cli@sha256:5e6baf67325a79f64ed3bed6863954d5e05d0f3d4e57cbdb14809346814bbfdb';
 const RC_IMAGE =
-  'rustfs/rc:v0.1.36@sha256:ab024bfebee49a750ce886b4c70963ccd9ddaa03f491704a90710641d7a26699';
+  'rustfs/rc:v0.1.37@sha256:7e93fd410a8fe51514f89373e093392c92095b98dc6140335fcfe956810c4c80';
 const BACKUP_TIMEOUT_SECONDS = 90;
 const repositoryRoot = new URL('../../../../../', import.meta.url).pathname;
 

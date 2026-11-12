@@ -42,7 +42,7 @@ compose exec -T postgres sh -c 'export PGPASSWORD="$POSTGRES_PASSWORD"; exec psq
 if ! docker run --rm --read-only --tmpfs /tmp --user "$(id -u):$(id -g)" \
   --network pertexo-beta_private --env-file "$BETA_STATE_DIR/rc.env" \
   -v "$BETA_STATE_DIR:/prepared:ro" -v "$release/infrastructure/single-server/storage/bootstrap.sh:/bootstrap.sh:ro" \
-  --entrypoint /bin/sh rustfs/rc:v0.1.36@sha256:ab024bfebee49a750ce886b4c70963ccd9ddaa03f491704a90710641d7a26699 /bootstrap.sh; then
+  --entrypoint /bin/sh rustfs/rc:v0.1.37@sha256:7e93fd410a8fe51514f89373e093392c92095b98dc6140335fcfe956810c4c80 /bootstrap.sh; then
   if [[ -n "$previous" && ! -f "$BETA_STATE_DIR/migration-fence" ]]; then
     select_release "$previous"
     validate_rollback_configuration
