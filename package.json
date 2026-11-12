@@ -118,7 +118,7 @@
     "lint:infrastructure": "NODE_OPTIONS=--max-old-space-size=8192 eslint eslint.config.mjs infrastructure",
     "lint:workspaces": "NODE_OPTIONS=--max-old-space-size=8192 pnpm --recursive --workspace-concurrency=1 exec eslint .",
     "naming:check": "node --test infrastructure/checks/validate-file-names.test.mjs && node infrastructure/checks/validate-file-names.mjs",
-    "observability:check": "node --test infrastructure/observability/qualify-metric-pipeline.test.mjs && node infrastructure/observability/validate-config.mjs && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check rules /etc/prometheus/pertexo-alerts.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus test rules /etc/prometheus/pertexo-alerts.test.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps otel-collector validate --config=/etc/otelcol/config.yaml",
+    "observability:check": "node --test infrastructure/observability/qualify-metric-pipeline.test.mjs && node infrastructure/observability/validate-config.mjs && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check config /etc/prometheus/prometheus.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus check rules /etc/prometheus/pertexo-alerts.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps --entrypoint promtool prometheus test rules /etc/prometheus/pertexo-alerts.test.yaml && docker compose -f infrastructure/observability/compose.yaml run --rm --no-deps otel-collector validate --config=/etc/otelcol/config.yaml && pnpm observability:qualify-sdk",
     "observability:qualify": "node infrastructure/observability/qualify-metric-pipeline.mjs",
     "ops": "pnpm --filter @pertexo/ops start",
     "prepare": "pnpm hooks:install",
@@ -131,7 +131,8 @@
     "cli": "pnpm --filter @pertexo/cli start",
     "ops:two-factor-disable": "pnpm --filter @pertexo/ops exec node dist/identity/main.js",
     "licenses:check": "node --test infrastructure/checks/third-party-notices.test.mjs && node infrastructure/checks/third-party-notices.mjs",
-    "format:changed": "node infrastructure/development/format-changed.mjs"
+    "format:changed": "node infrastructure/development/format-changed.mjs",
+    "observability:qualify-sdk": "node packages/observability/test/telemetry/qualify-collector.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
