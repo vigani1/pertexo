@@ -200,7 +200,7 @@ export function canonicalJson(
     active.add(item);
     pushCanonicalContainer(frames, frame, item, container);
   }
-  return encodeCanonicalJson(value as JsonValue, 'lexical');
+  return encodeCanonicalJson(value as JsonValue);
 }
 
 function assertPostgresJsonString(value: string): void {

@@ -40,6 +40,7 @@ export function useWorkflowOrganizationCommand({
 }: WorkflowOrganizationCommandOptions) {
   const cache = useQueryClient();
   const [revisionRead, setRevisionRead] = useState<SnapshotRead<unknown>>();
+  const [foreignScope, setForeignScope] = useState(false);
   const workspaceId = workspace.id;
   const mutation = useLowEffectMutation({
     send: async (
@@ -75,13 +76,9 @@ export function useWorkflowOrganizationCommand({
     mutation.data.items.some((item) => item.status === 'forbidden');
   const denied = !allowed(workspace, requiredRole) || partialDenied;
   async function start(input: WorkflowOrganizationInput) {
-    if (
-      pending ||
-      denied ||
-      !allowed(workspace, requiredRole) ||
-      input.workspaceId !== workspaceId
-    )
-      return;
+    if (pending || denied || !allowed(workspace, requiredRole)) return;
+    setForeignScope(input.workspaceId !== workspaceId);
+    if (input.workspaceId !== workspaceId) return;
     setRevisionRead(undefined);
     try {
       await mutation.mutateAsync(input);
@@ -95,11 +92,14 @@ export function useWorkflowOrganizationCommand({
         );
     }
   }
+  let error: string | undefined;
+  if (foreignScope) error = 'The command belongs to a different workspace.';
+  else if (mutation.isError) error = definitiveMessage(mutation.error);
   return {
     pending,
     result: mutation.data,
     denied,
-    error: mutation.isError ? definitiveMessage(mutation.error) : undefined,
+    error,
     revisionConflict: revisionRead !== undefined,
     revisionRead,
     start,
@@ -110,12 +110,16 @@ export function useWorkflowOrganizationCommand({
       if (!pending) {
         mutation.reset();
         setRevisionRead(undefined);
+        setForeignScope(false);
       }
     },
   };
 }
 
 function definitiveMessage(error: unknown) {
+  // Every transport, decode and server failure is an ApiError; anything else
+  // is the request's own validation refusing the command before it was sent.
+  if (!isApiError(error)) return 'The organization command is invalid.';
   const messages: Readonly<Record<string, string>> = {
     'workflow.folder_name_conflict':
       'Another folder in this parent already has that name.',

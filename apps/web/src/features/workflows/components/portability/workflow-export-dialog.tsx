@@ -105,7 +105,6 @@ function WorkflowExportSession({
     setPending(true);
     setError(undefined);
     try {
-      if (!request.current()) return;
       const manifest = await exportWorkflow({
         apiClient,
         workspaceId: workspace.id,
@@ -114,7 +113,7 @@ function WorkflowExportSession({
         etag: 'etag' in review ? review.etag : undefined,
         signal: request.signal,
       });
-      if (!request.current()) return;
+      // The session may have ended while the export was in flight.
       if (!request.current()) return;
       downloadPortableWorkflow(manifest);
       onClose();

@@ -8,18 +8,16 @@ export function encodeJson(value: JsonValue): string {
 }
 
 /**
- * ECMAScript integer-key order is the workflow value contract. Lexical order
- * preserves existing outbox checksums and portable manifest digests. Neither
- * profile changes array order, scalar escaping or number representation.
+ * Keys in plain code-unit order, which preserves existing outbox checksums
+ * and portable manifest digests. Array order, scalar escaping and number
+ * representation are the same as `encodeJson`. (Workflow values get their
+ * ECMAScript integer-key order from workflow-model's `canonicalizeJson`.)
  */
-export function encodeCanonicalJson(
-  value: JsonValue,
-  order: 'ecmascript' | 'lexical' = 'ecmascript',
-): string {
-  return encode(value, order);
+export function encodeCanonicalJson(value: JsonValue): string {
+  return encode(value, true);
 }
 
-function encode(value: JsonValue, order?: 'ecmascript' | 'lexical'): string {
+function encode(value: JsonValue, sortKeys = false): string {
   const frames: Frame[] = [{ value }];
   const chunks: string[] = [];
   while (frames.length > 0) {
@@ -45,7 +43,8 @@ function encode(value: JsonValue, order?: 'ecmascript' | 'lexical'): string {
       continue;
     }
     const record = item as Readonly<Record<string, JsonValue>>;
-    const keys = orderedKeys(record, order);
+    const keys = Object.keys(record);
+    if (sortKeys) keys.sort();
     frames.push('}');
     let remaining = keys.length;
     for (const key of keys.reverse()) {
@@ -60,31 +59,4 @@ function encode(value: JsonValue, order?: 'ecmascript' | 'lexical'): string {
     frames.push('{');
   }
   return chunks.join('');
-}
-
-function orderedKeys(
-  value: Readonly<Record<string, JsonValue>>,
-  order: 'ecmascript' | 'lexical' | undefined,
-): string[] {
-  const keys = Object.keys(value);
-  if (order === undefined) return keys;
-  keys.sort();
-  if (order === 'lexical') return keys;
-  const indices: string[] = [];
-  const names: string[] = [];
-  for (const key of keys) {
-    const number = Number(key);
-    if (
-      Number.isInteger(number) &&
-      number >= 0 &&
-      number < 4_294_967_295 &&
-      String(number) === key
-    )
-      indices.push(key);
-    else names.push(key);
-  }
-  return [
-    ...indices.sort((left, right) => Number(left) - Number(right)),
-    ...names,
-  ];
 }

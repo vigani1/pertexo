@@ -5,10 +5,9 @@ import { canonicalJsonVectors } from '../../../../infrastructure/testing/canonic
 import { encodeCanonicalJson, encodeJson } from '../../src/index.js';
 
 describe('shared JSON encoding contract', () => {
-  it.each(canonicalJsonVectors)('$name', ({ input, ecmascript, lexical }) => {
+  it.each(canonicalJsonVectors)('$name', ({ input, lexical }) => {
     const snapshot = canonicalizeBoundedJson(input);
-    expect(encodeCanonicalJson(snapshot)).toBe(ecmascript);
-    expect(encodeCanonicalJson(snapshot, 'lexical')).toBe(lexical);
+    expect(encodeCanonicalJson(snapshot)).toBe(lexical);
     expect(encodeJson(snapshot)).toBe(JSON.stringify(input));
   });
   it('measures admitted data without calling inherited array serializers', () => {
