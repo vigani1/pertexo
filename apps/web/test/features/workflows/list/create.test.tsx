@@ -35,7 +35,7 @@ function buildTabHandlers() {
 }
 
 describe('new workflow lens', () => {
-  it('validates the name, preserves it after an unconfirmed create, then opens Build on a new confirmation', async () => {
+  it('validates the name, reuses one key for an uncertain retry, then opens Build', async () => {
     const keys: (string | null)[] = [];
     mockServer.use(
       ...discoveryHandlers(),
@@ -76,9 +76,11 @@ describe('new workflow lens', () => {
     expect(name).toHaveAttribute('aria-invalid', 'false');
     await event.click(screen.getByRole('button', { name: 'Create workflow' }));
     expect(
-      await screen.findByText(/couldn’t confirm that change/u),
+      await screen.findByText(
+        /couldn’t confirm whether the workflow was created/u,
+      ),
     ).toBeVisible();
-    await event.click(screen.getByRole('button', { name: 'Create workflow' }));
+    await event.click(screen.getByRole('button', { name: 'Retry safely' }));
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(
@@ -88,7 +90,58 @@ describe('new workflow lens', () => {
     expect(await screen.findByText('Workflow created')).toBeVisible();
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBeTruthy();
-    expect(keys[1]).not.toBe(keys[0]);
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  it('sends a new key once the name changes after an unconfirmed create', async () => {
+    const sent: { key: string | null; name: unknown }[] = [];
+    mockServer.use(
+      ...discoveryHandlers(),
+      ...buildTabHandlers(),
+      emptyList(),
+      http.post(`${api}/workflows`, async ({ request }) => {
+        const body = (await request.json()) as { name: unknown };
+        sent.push({
+          key: request.headers.get('idempotency-key'),
+          name: body.name,
+        });
+        if (sent.length === 1) return HttpResponse.error();
+        return createdResponse(workflowId, 'Nightly sync');
+      }),
+    );
+    await renderLoadedApp(`/w/${workspaceId}/workflows`);
+    const event = userEvent.setup();
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'Weave your first workflow' },
+        coldStart,
+      ),
+    ).toBeVisible();
+    await event.click(screen.getByRole('button', { name: 'New workflow' }));
+    const dialog = await screen.findByRole(
+      'dialog',
+      { name: 'New workflow' },
+      coldStart,
+    );
+    const name = within(dialog).getByLabelText('Workflow name');
+    await event.type(name, 'Nightly');
+    await event.click(screen.getByRole('button', { name: 'Create workflow' }));
+    expect(
+      await screen.findByRole('button', { name: 'Retry safely' }),
+    ).toBeVisible();
+    await event.type(name, ' sync');
+    await event.click(screen.getByRole('button', { name: 'Create workflow' }));
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(2);
+    });
+    expect(sent.map((request) => request.name)).toEqual([
+      'Nightly',
+      'Nightly sync',
+    ]);
+    expect(sent[1]?.key).toBeTruthy();
+    expect(sent[1]?.key).not.toBe(sent[0]?.key);
   });
 
   it('freezes the submitted create intent while its request is pending', async () => {

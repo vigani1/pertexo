@@ -159,6 +159,7 @@ function WorkflowImportSession({
             state={draft.commandState}
             error={draft.error}
             denied={draft.denied}
+            onStartNewAttempt={draft.startNewImportAttempt}
           />
           <WorkflowImportActions
             commandState={draft.commandState}
@@ -166,6 +167,7 @@ function WorkflowImportSession({
             onStartAnotherImport={draft.startAnother}
             onOpenWorkflow={onCreated}
             onSubmitImport={draft.submitImport}
+            onRetryImport={draft.retryImport}
             access={{
               accessDenied: draft.denied,
               canImport: draft.canImport,

@@ -87,7 +87,7 @@ const connection = {
   updatedAt: '2026-09-14T10:00:00.000Z',
 };
 
-test('reviews exact saved export and explicitly binds a mobile keyboard import with reviewed fresh confirmations', async ({
+test('reviews exact saved export and explicitly binds a mobile keyboard import with exact recovery', async ({
   context,
   page,
 }) => {
@@ -285,23 +285,38 @@ test('reviews exact saved export and explicitly binds a mobile keyboard import w
   await importing.getByRole('button', { name: 'Cancel', exact: true }).click();
   releaseImport();
   await page.getByRole('button', { name: 'Import workflow…' }).click();
-  await expect(importing.getByText(/couldn’t confirm/u)).toBeVisible();
-  await expect(importing.getByLabel('New workflow name')).toBeEnabled();
-  await importing.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(
+    importing.getByRole('button', { name: 'Retry exact import' }),
+  ).toBeEnabled();
+  await expect(importing.getByLabel('New workflow name')).toBeDisabled();
+  await importing.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(importing).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole('button', { name: 'Import workflow…' }).click();
-  expect(attempts).toHaveLength(1);
-  await importing.getByRole('button', { name: 'Preview import' }).click();
-  await importing
-    .getByRole('button', { name: 'Import unpublished draft' })
+  await page
+    .getByRole('navigation', { name: 'Workspace' })
+    .getByRole('link', { name: 'Home', exact: true })
     .click();
+  const guard = page.getByRole('dialog', {
+    name: 'Resolve the import before leaving',
+  });
+  await expect(guard).toBeVisible();
+  await expect(guard).toHaveCSS('opacity', '1');
+  await expect(page).toHaveURL(`/w/${workspaceId}/workflows`);
+  expect(attempts).toHaveLength(1);
+  await page.screenshot({
+    path: 'test-results/workflow-portability-recovery.png',
+    animations: 'disabled',
+  });
+  await guard.getByRole('button', { name: 'Reopen import' }).click();
+  await expect(
+    importing.getByRole('button', { name: 'Retry exact import' }),
+  ).toBeEnabled();
+  await importing.getByRole('button', { name: 'Retry exact import' }).click();
   await expect(
     importing.getByRole('button', { name: 'Open imported workflow' }),
   ).toBeEnabled();
   expect(attempts).toHaveLength(2);
-  expect(attempts[1]?.body).toEqual(attempts[0]?.body);
-  expect(attempts[1]?.key).not.toEqual(attempts[0]?.key);
+  expect(attempts[1]).toEqual(attempts[0]);
   expect(attempts[0]?.body).toEqual({
     manifest,
     bindings: [{ nodeId: 'sender', slot: 'slack_bot_token', connectionId }],

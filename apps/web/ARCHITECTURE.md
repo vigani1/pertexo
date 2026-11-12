@@ -510,16 +510,21 @@ Mutation rules:
 
 1. Feature API function sends the command. Feature mutation hook owns targeted
    cache updates/invalidation. Component owns immediate form/dialog feedback.
-2. Use two command tiers. Low-effect changes (rename, creation of drafts,
-   organization, input cases, member/lifecycle changes and governance settings)
-   use native mutations through `useLowEffectMutation`: create a fresh key for
-   each explicit confirmation and refresh current reads after every outcome.
-   Unclear results keep editable inputs and ask people to review current state;
-   they do not retain a body/key, freeze edits or offer an exact resend.
-   Effectful operations (run, publish, tests, task decisions, webhook/federation
-   commands and secret/link issuance) retain the original body, preconditions
-   and key within their receipt window, with the existing identity fence. Never
-   persist secrets in a retry journal or offline mutation cache.
+2. Use two command tiers. Low-effect changes whose resend the server stops by
+   revision or absolute state (rename, organization, input cases,
+   member/lifecycle changes and governance settings) use native mutations
+   through `useLowEffectMutation`: create a fresh key for each explicit
+   confirmation and refresh current reads after every outcome. Unclear results
+   keep editable inputs and ask people to review current state; they do not
+   retain a body/key, freeze edits or offer an exact resend. Creates the server
+   can tell apart only by their idempotency key (workflow create, duplicate and
+   import) go through `useCreateCommand`: an unchanged intent keeps its key
+   until a success or a refusal that settled the key, so a resend after a lost
+   response replays the receipt; a changed intent gets a new key. Effectful
+   operations (run, publish, tests, task decisions, webhook/federation commands
+   and secret/link issuance) retain the original body, preconditions and key
+   within their receipt window, with the existing identity fence. Never persist
+   secrets in a retry journal or offline mutation cache.
 3. Disable duplicate submit for the same command, not the whole app. Guard
    handlers as well as button styling. Do not auto-retry writes on reconnect.
 4. Prefer confirmed response updates plus targeted invalidation. Start without

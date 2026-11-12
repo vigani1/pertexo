@@ -1,4 +1,3 @@
-import { confirmNewImport } from '../../support/fixtures/import-actions';
 import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 
 import { ApiError } from '@/lib/api/error';
@@ -143,7 +142,7 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
           screen.getByRole('button', { name: 'Importing…' }),
         ).toBeDisabled();
       } else if (state === 'uncertain')
-        await screen.findByText(/Check the refreshed current state/u);
+        await screen.findByRole('button', { name: 'Retry exact import' });
       else {
         await screen.findByText(/Your role doesn’t allow/u);
         expect(screen.getByLabelText('New workflow name')).toBeEnabled();
@@ -232,7 +231,7 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
     expect(checks).toBe(0);
     expect(posted).toBe(1);
   });
-  it('keeps a failed import draft through dismissal and sends a fresh reviewed confirmation', async () => {
+  it('retains a lost accepted response through Close/reopen and only manually replays the exact body/key', async () => {
     const attempts: { body: unknown; key: string | null }[] = [];
     mockServer.use(
       http.post(`${api}/workflows/import`, async ({ request }) => {
@@ -248,25 +247,23 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
     );
     const { event, onCreated } = mountList();
     await prepare(event);
-    await screen.findByText(/Check the refreshed current state/u);
-    await event.click(screen.getByRole('button', { name: 'Cancel' }));
+    await screen.findByRole('button', { name: 'Retry exact import' });
+    await event.click(screen.getByRole('button', { name: 'Close' }));
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'Import workflow' }),
       ).not.toBeInTheDocument(),
     );
     await event.click(screen.getByRole('button', { name: 'Import workflow…' }));
-    await screen.findByLabelText('New workflow name');
+    const retry = await screen.findByRole('button', {
+      name: 'Retry exact import',
+    });
     expect(attempts).toHaveLength(1);
-    expect(screen.getByLabelText('New workflow name')).toBeEnabled();
-    expect(screen.getByLabelText('New workflow name')).toHaveValue(
-      'Frozen recovery draft',
-    );
-    await confirmNewImport(event);
+    expect(screen.getByLabelText('New workflow name')).toBeDisabled();
+    await event.click(retry);
     await screen.findByRole('button', { name: 'Open imported workflow' });
     expect(attempts).toHaveLength(2);
-    expect(attempts[1]?.body).toEqual(attempts[0]?.body);
-    expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
+    expect(attempts[1]).toEqual(attempts[0]);
     expect(attempts[0]?.key).toBeTruthy();
     await event.click(
       screen.getByRole('button', { name: 'Open imported workflow' }),

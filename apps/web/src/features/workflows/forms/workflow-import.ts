@@ -226,7 +226,11 @@ export function useImportDraft(
     commandState: command.state,
     canImport:
       readyPreview !== undefined && workflowNameError(name) === undefined,
-    unresolved: !lifetime.denied && command.state.kind === 'sending',
+    unresolved:
+      !lifetime.denied &&
+      (command.state.kind === 'sending' || command.state.kind === 'uncertain'),
+    retryImport: command.retry,
+    startNewImportAttempt: command.clear,
     resetSource: (name: string) => {
       if (locked) return;
       clear();

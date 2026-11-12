@@ -3,10 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { WorkflowDuplicateRequest } from '@pertexo/contracts';
-import {
-  useLowEffectMutation,
-  lowEffectError,
-} from '@/lib/api/commands/low-effect-mutation';
+import { useCreateCommand } from '@/lib/api/commands/use-create-command';
 import {
   readAccessLost,
   shownData,
@@ -80,7 +77,7 @@ export function useWorkflowDuplicate({
       getWorkflowDuplicateDraft(apiClient, workspaceId, workflowId, signal),
     enabled: allowed && source.kind === 'draft',
   });
-  const mutation = useLowEffectMutation({
+  const command = useCreateCommand({
     send: (attempt: Omit<WorkflowDuplicateAttempt, 'idempotencyKey'>, key) =>
       duplicateWorkflow({
         apiClient,
@@ -100,28 +97,21 @@ export function useWorkflowDuplicate({
   });
   const readDenied = sourceDenied || readAccessLost(draft);
   const stale =
-    mutation.isError &&
-    isApiError(mutation.error) &&
-    mutation.error.kind === 'problem' &&
-    mutation.error.status === 412;
+    command.failed &&
+    isApiError(command.error) &&
+    command.error.kind === 'problem' &&
+    command.error.status === 412;
   let kind: DuplicateState['kind'] = 'ready';
   if (!allowed || readDenied) kind = 'denied';
-  else if (mutation.isPending) kind = 'sending';
+  else if (command.pending) kind = 'sending';
   else if (source.kind === 'draft') {
     if (draft.isPending || draft.isFetching) kind = 'loading';
     else if (draft.isError) kind = 'failed';
     else if (stale) kind = 'stale';
   }
-  let error: string | undefined;
-  if (readDenied)
-    error =
-      'Access changed. Close this dialog and check your access to the source.';
-  else if (mutation.isError)
-    error = stale
-      ? 'The saved source changed. Read the current draft, then confirm a new copy.'
-      : lowEffectError(mutation.error, 'duplicating this workflow');
-  else if (draft.isError)
-    error = describeCommandError(draft.error, 'reading the saved source');
+  const error = readDenied
+    ? 'Access changed. Close this dialog and check your access to the source.'
+    : duplicateError(command, stale, draft.isError ? draft.error : undefined);
   const current = shownData(draft);
   const state: DuplicateState = {
     kind,
@@ -130,33 +120,57 @@ export function useWorkflowDuplicate({
   };
   async function start(name: string) {
     if (state.kind !== 'ready') return;
+    let result: Awaited<ReturnType<typeof command.create>>;
     try {
-      await mutation.mutateAsync(
-        {
-          body: { name, source },
-          ...(draft.data === undefined ? {} : { etag: draft.data.etag }),
-        },
-        {
-          onSuccess: (result) => {
-            const read = cache.getQueryState([
-              ...workflowKeys.detail(userId, workspaceId, workflowId),
-              'duplicate-draft',
-            ]);
-            if (!deniedRead.current && !isAccessLost(read?.error))
-              onCreated(result.workflowId);
-          },
-        },
-      );
+      result = await command.create({
+        body: { name, source },
+        ...(draft.data === undefined ? {} : { etag: draft.data.etag }),
+      });
     } catch {
-      /* The mutation owns the displayed failure. */
+      return; // The command owns the displayed failure.
     }
+    if (result === undefined) return;
+    const read = cache.getQueryState([
+      ...workflowKeys.detail(userId, workspaceId, workflowId),
+      'duplicate-draft',
+    ]);
+    if (!deniedRead.current && !isAccessLost(read?.error))
+      onCreated(result.workflowId);
   }
   return {
     state,
     start,
+    /** An unconfirmed copy holds its key; closing would drop the safe retry. */
+    uncertain: command.uncertain && !command.expired,
+    expired: command.expired,
+    startNewAttempt: command.startNewAttempt,
+    editName: command.reset,
     refresh: () => {
-      mutation.reset();
+      command.reset();
       void draft.refetch();
     },
   };
+}
+
+/** One visible message: the copy's outcome first, then the source read. */
+function duplicateError(
+  command: Readonly<{
+    expired: boolean;
+    uncertain: boolean;
+    failed: boolean;
+    error: unknown;
+  }>,
+  stale: boolean,
+  readError: unknown,
+): string | undefined {
+  if (command.expired) return undefined;
+  if (command.uncertain)
+    return 'We couldn’t confirm whether the copy was made. Retrying is safe — it won’t make a second copy.';
+  if (command.failed)
+    return stale
+      ? 'The saved source changed. Read the current draft, then confirm a new copy.'
+      : describeCommandError(command.error, 'duplicating this workflow');
+  return readError === undefined
+    ? undefined
+    : describeCommandError(readError, 'reading the saved source');
 }
