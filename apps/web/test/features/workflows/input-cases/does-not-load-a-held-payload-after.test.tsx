@@ -212,4 +212,42 @@ describe('shared workflow input cases', () => {
     expect(writes[1]?.tag).toBe(writes[0]?.tag);
     expect(writes[1]?.key).not.toBe(writes[0]?.key);
   });
+  it('keeps one key for an unchanged case create after a lost response and a new key once it changes', async () => {
+    const creates: { body: unknown; key: string | null }[] = [];
+    mockServer.use(
+      http.post(path, async ({ request }) => {
+        creates.push({
+          body: await request.json(),
+          key: request.headers.get('idempotency-key'),
+        });
+        return creates.length < 3
+          ? HttpResponse.error()
+          : HttpResponse.json(
+              { caseId, revision: 1, replayed: false },
+              { status: 201 },
+            );
+      }),
+    );
+    const { event } = open();
+    await event.click(
+      await screen.findByRole('button', { name: 'New input case' }),
+    );
+    await event.type(await screen.findByLabelText('Case name'), 'Lost case');
+    await event.click(screen.getByRole('button', { name: 'Save input case' }));
+    await screen.findByText(/couldn’t confirm whether the case was saved/u);
+    await event.click(screen.getByRole('button', { name: 'Save input case' }));
+    await waitFor(() => {
+      expect(creates).toHaveLength(2);
+    });
+    await screen.findByText(/couldn’t confirm whether the case was saved/u);
+    expect(creates[1]).toEqual(creates[0]);
+    await event.type(screen.getByLabelText('Case name'), ' renamed');
+    await event.click(screen.getByRole('button', { name: 'Save input case' }));
+    await waitFor(() => {
+      expect(creates).toHaveLength(3);
+    });
+    expect(creates[2]?.body).toMatchObject({ name: 'Lost case renamed' });
+    expect(creates[2]?.key).toBeTruthy();
+    expect(creates[2]?.key).not.toBe(creates[0]?.key);
+  });
 });
