@@ -1,4 +1,8 @@
 import {
+  importDraftReducer,
+  initialImportDraft,
+} from './workflow-import-state';
+import {
   startAnotherImport,
   chooseImportFile,
   checkImportPreview,
@@ -9,13 +13,12 @@ import {
   useEffect,
   useEffectEvent,
   useRef,
-  useState,
+  useReducer,
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
   NodeDefinitionCatalogItem,
-  WorkflowImportPreviewResponse,
 } from '@pertexo/contracts';
 import type {
   PortableConnectionBinding,
@@ -45,18 +48,25 @@ export function useImportDraft(
   workspace: AccessibleWorkspace,
   initialName = '',
 ) {
-  const [template, setTemplate] = useState<CuratedTemplate>();
-  const [setupValues, setSetupValues] = useState<string[]>([]);
-  const [manifest, setManifest] = useState<WorkflowPortableManifest>();
-  const [name, setName] = useState(initialName);
+  const [draft, dispatch] = useReducer(
+    importDraftReducer,
+    initialName,
+    initialImportDraft,
+  );
+  const {
+    template,
+    setupValues,
+    manifest,
+    name,
+    bindings,
+    preview,
+    error,
+    fileGeneration,
+  } = draft;
+  const reading = draft.activity === 'reading';
+  const previewing = draft.activity === 'previewing';
+  const resetting = draft.activity === 'resetting';
   const customName = useRef(initialName.trim() !== '');
-  const [bindings, setBindings] = useState<PortableConnectionBinding[]>([]);
-  const [preview, setPreview] = useState<WorkflowImportPreviewResponse>();
-  const [error, setError] = useState<string>();
-  const [reading, setReading] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [fileGeneration, setFileGeneration] = useState(0);
   const resetBusy = useRef(false);
   const intent = useRef(0);
   const sourceIntent = useRef(0);
@@ -65,18 +75,8 @@ export function useImportDraft(
   const clear = useCallback(() => {
     intent.current += 1;
     sourceIntent.current += 1;
-    setManifest(undefined);
-    setTemplate(undefined);
-    setSetupValues([]);
-    setName('');
+    dispatch({ type: 'reset' });
     customName.current = false;
-    setBindings([]);
-    setPreview(undefined);
-    setError(undefined);
-    setReading(false);
-    setPreviewing(false);
-    setResetting(false);
-    setFileGeneration((previous) => previous + 1);
     commandClear.current();
   }, []);
   const lifetime = usePortabilityLifetime(apiClient, userId, workspace.id, {
@@ -110,16 +110,13 @@ export function useImportDraft(
     preview?.compatible && !preview.truncated && complete && !previewing;
   const readyPreview = previewReady ? preview : undefined;
   const context: ImportPhaseContext = {
+    draft,
+    dispatch,
     apiClient,
     workspaceId: workspace.id,
-    template,
-    setupValues,
     configuredManifest,
-    name,
-    bindings,
     complete,
     locked,
-    previewing,
     lifetime,
     command,
     validation,
@@ -128,15 +125,6 @@ export function useImportDraft(
     resetBusy,
     clear,
     invalidate,
-    setManifest,
-    setTemplate,
-    setSetupValues,
-    setBindings,
-    setReading,
-    setPreview,
-    setError,
-    setResetting,
-    setPreviewing,
   };
   function submitImport() {
     if (lifetime.denied || command.state.kind === 'sending') return;
@@ -155,14 +143,14 @@ export function useImportDraft(
         name,
         expectedCompatibilityFingerprint: readyPreview.compatibilityFingerprint,
       });
-      setPreview(undefined);
+      dispatch({ type: 'update', patch: { preview: undefined } });
     }
   }
   const startAnother = () => startAnotherImport(context);
   function invalidate() {
     intent.current += 1;
-    setPreview(undefined);
-    setError(undefined);
+    dispatch({ type: 'update', patch: { preview: undefined } });
+    dispatch({ type: 'update', patch: { error: undefined } });
   }
   const chooseFile = (file: File | undefined) => {
     sourceIntent.current += 1;
@@ -174,13 +162,20 @@ export function useImportDraft(
     sourceIntent.current += 1;
     invalidate();
     validation.reset();
-    setTemplate(next);
-    setReading(false);
-    setManifest(structuredClone(next.manifest));
-    if (!customName.current) setName(next.title);
-    setBindings([]);
+    dispatch({ type: 'update', patch: { template: next } });
+    dispatch({ type: 'activity', activity: 'idle' });
+    dispatch({
+      type: 'update',
+      patch: { manifest: structuredClone(next.manifest) },
+    });
+    if (!customName.current)
+      dispatch({ type: 'update', patch: { name: next.title } });
+    dispatch({ type: 'update', patch: { bindings: [] } });
     // Destination literals must be supplied explicitly, never reused from demo data.
-    setSetupValues(next.setupTargets.map(() => ''));
+    dispatch({
+      type: 'update',
+      patch: { setupValues: next.setupTargets.map(() => '') },
+    });
   }
   // An example that needs nothing filled in is checked as soon as it's
   // chosen, so Import is the next click; one with setup waits for values.
@@ -201,17 +196,19 @@ export function useImportDraft(
   function changeName(next: string) {
     customName.current = next.trim() !== '';
     invalidate();
-    setName(next);
+    dispatch({ type: 'update', patch: { name: next } });
   }
   function changeSetup(index: number, next: string) {
     invalidate();
-    setSetupValues((current) =>
-      current.map((value, position) => (position === index ? next : value)),
-    );
+    dispatch({
+      type: 'setup-values',
+      update: (current) =>
+        current.map((value, position) => (position === index ? next : value)),
+    });
   }
   function changeBindings(next: PortableConnectionBinding[]) {
     invalidate();
-    setBindings(next);
+    dispatch({ type: 'update', patch: { bindings: next } });
   }
   return {
     template,
@@ -239,7 +236,7 @@ export function useImportDraft(
     resetSource: (name: string) => {
       if (locked) return;
       clear();
-      setName(name);
+      dispatch({ type: 'update', patch: { name: name } });
       customName.current = name.trim() !== '';
     },
     chooseTemplate,

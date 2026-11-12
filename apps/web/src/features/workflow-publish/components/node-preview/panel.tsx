@@ -58,7 +58,8 @@ type NodeTestPanelProps = Readonly<{
 }>;
 
 export function NodeTestPanel(props: NodeTestPanelProps) {
-  const model = useNodeTestPanel(props);
+  const model = useNodeTestController(props);
+  useImperativeHandle(props.actionRef, () => ({ runTest: model.run }));
   return (
     <div
       className={cn(
@@ -66,16 +67,16 @@ export function NodeTestPanel(props: NodeTestPanelProps) {
         model.test.pending === 'run' && 'live-edge',
       )}
     >
-      {model.children}
-      {!model.editable ? null : (
+      {props.children}
+      {!props.editable ? null : (
         <SampleAvailability
           query={model.sampleQuery}
           sample={model.sample}
-          scope={model.scope}
-          nodeId={model.nodeId}
+          scope={props.scope}
+          nodeId={props.step.nodeId}
           state={model.sampleState}
           preview={model.test.preview}
-          ensureSaved={model.ensureSaved}
+          ensureSaved={props.ensureSaved}
           disabled={
             model.test.pending !== undefined ||
             model.test.observing ||
@@ -83,19 +84,17 @@ export function NodeTestPanel(props: NodeTestPanelProps) {
           }
         />
       )}
-      {model.realBlocked ? <Notice>{model.liveTestUnavailable}</Notice> : null}
+      {!model.pinned && props.step.liveTestUnavailable !== undefined ? (
+        <Notice>{props.step.liveTestUnavailable}</Notice>
+      ) : null}
       {model.pinned ? null : (
         <PreviewInputFields
-          nodeId={model.nodeId}
-          priorPreview={model.priorPreview}
+          nodeId={props.step.nodeId}
+          priorPreview={props.previews.priorPreview}
           usePrior={model.usePrior}
           onUsePriorChange={model.setUsePrior}
           input={model.input}
-          onInputChange={(text) => {
-            model.setInput(text);
-            model.setAcknowledgedContext(undefined);
-            model.test.inputChanged();
-          }}
+          onInputChange={model.changeInput}
         />
       )}
       <div className="flex flex-wrap gap-2">
@@ -115,14 +114,10 @@ export function NodeTestPanel(props: NodeTestPanelProps) {
       <SetupCheck check={model.test.check} />
       {model.pinned ? null : (
         <RealTestPermission
-          stepSideEffect={model.stepSideEffect}
+          stepSideEffect={props.step.stepSideEffect}
           check={model.test.check}
           acknowledged={model.acknowledged}
-          onAcknowledgedChange={(checked) => {
-            model.setAcknowledgedContext(
-              checked ? model.checkContext : undefined,
-            );
-          }}
+          onAcknowledgedChange={model.acknowledge}
         />
       )}
       <Button
@@ -138,20 +133,14 @@ export function NodeTestPanel(props: NodeTestPanelProps) {
         {runLabel({ test: model.test, pinned: model.pinned })}
       </Button>
       {model.test.expired ? (
-        <Button
-          type="button"
-          onClick={() => {
-            model.test.startNewAttempt();
-            model.setAcknowledgedContext(undefined);
-          }}
-        >
+        <Button type="button" onClick={model.startNewAttempt}>
           Start a new attempt
         </Button>
       ) : null}
       <TestResult
         preview={model.test.preview}
-        apiClient={model.apiClient}
-        workspaceId={model.workspaceId}
+        apiClient={props.scope.apiClient}
+        workspaceId={props.scope.workspaceId}
       />
       {model.test.error === undefined ? null : (
         <Notice tone="destructive">{model.test.error}</Notice>
@@ -160,19 +149,17 @@ export function NodeTestPanel(props: NodeTestPanelProps) {
   );
 }
 
-function useNodeTestPanel({
+function useNodeTestController({
   editable,
-  children,
   ensureSaved,
-  actionRef,
   scope,
   step,
   previews,
   events = {},
-}: NodeTestPanelProps) {
+}: Omit<NodeTestPanelProps, 'children' | 'actionRef'>) {
   const { apiClient, workspaceId, workflowId } = scope;
 
-  const { stepBinding, liveTestUnavailable, nodeId, stepSideEffect } = step;
+  const { stepBinding, liveTestUnavailable, nodeId } = step;
 
   const { priorPreview, rememberedPreview } = previews;
 
@@ -192,7 +179,6 @@ function useNodeTestPanel({
   const acknowledged = acknowledgedContext === checkContext;
   if (acknowledgedContext !== undefined && acknowledgedContext !== checkContext)
     setAcknowledgedContext(undefined);
-  const realBlocked = !pinned && liveTestUnavailable !== undefined;
   const test = useNodeTest({
     apiClient,
     workspaceId,
@@ -227,34 +213,34 @@ function useNodeTestPanel({
           ...(priorId === undefined ? {} : { priorPreviewId: priorId }),
         }));
   }
-  useImperativeHandle(actionRef, () => ({ runTest: run }));
+  function changeInput(text: string) {
+    setInput(text);
+    setAcknowledgedContext(undefined);
+    test.inputChanged();
+  }
+  function acknowledge(checked: boolean) {
+    setAcknowledgedContext(checked ? checkContext : undefined);
+  }
+  function startNewAttempt() {
+    test.startNewAttempt();
+    setAcknowledgedContext(undefined);
+  }
 
   return {
     test,
-    children,
-    editable,
+    changeInput,
+    acknowledge,
+    startNewAttempt,
     sampleQuery,
     sample,
-    scope,
-    nodeId,
     sampleState,
-    ensureSaved,
-    realBlocked,
-    liveTestUnavailable,
     pinned,
-    priorPreview,
     usePrior,
     setUsePrior,
     input,
-    setInput,
-    setAcknowledgedContext,
-    stepSideEffect,
     acknowledged,
-    checkContext,
     canRun,
     run,
-    apiClient,
-    workspaceId,
   } as const;
 }
 
