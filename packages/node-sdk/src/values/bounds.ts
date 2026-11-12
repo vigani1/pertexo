@@ -1,3 +1,4 @@
+import { encodeJson } from './json-encoding.js';
 type BoundedJsonValue =
   | null
   | boolean
@@ -192,9 +193,7 @@ function inspectObject(
   }
 
   const snapshot = root as BoundedJsonValue;
-  if (
-    new TextEncoder().encode(JSON.stringify(snapshot)).byteLength > limits.bytes
-  )
+  if (new TextEncoder().encode(encodeJson(snapshot)).byteLength > limits.bytes)
     return failure('JSON byte limit exceeded');
   return { ok: true, value: snapshot };
 }
@@ -206,8 +205,7 @@ function inspectBoundedJsonUnsafe(
   const primitive = primitiveJson(value);
   if (primitive !== undefined) {
     if (
-      new TextEncoder().encode(JSON.stringify(primitive)).byteLength >
-      limits.bytes
+      new TextEncoder().encode(encodeJson(primitive)).byteLength > limits.bytes
     )
       return failure('JSON byte limit exceeded');
     return { ok: true, value: primitive };

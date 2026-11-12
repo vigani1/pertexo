@@ -27,7 +27,6 @@ const workflowModelLayer = {
     '@pertexo/worker/*',
     '@pertexo/workflow-engine',
     '@pertexo/workflow-engine/*',
-    '@pertexo/node-sdk',
     '@pertexo/node-sdk/*',
     '@pertexo/nodes-core',
     '@pertexo/nodes-core/*',

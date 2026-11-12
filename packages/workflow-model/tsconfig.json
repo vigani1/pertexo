@@ -18,5 +18,12 @@
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "test"],
-  "references": [{ "path": "../policy/tsconfig.json" }]
+  "references": [
+    {
+      "path": "../policy/tsconfig.json"
+    },
+    {
+      "path": "../node-sdk/tsconfig.json"
+    }
+  ]
 }
