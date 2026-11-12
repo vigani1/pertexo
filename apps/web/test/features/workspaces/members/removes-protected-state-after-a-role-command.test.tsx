@@ -59,7 +59,7 @@ describe('team: members', () => {
     expect(confirmation()).not.toBeInTheDocument();
     expect(commandCount).toBe(1);
   });
-  it('keeps the selected role after a failure and accepts a fresh confirmation', async () => {
+  it('keeps the selected role after an unconfirmed change and resends it with its key', async () => {
     const commands: { key: string | null; body: unknown }[] = [];
     mockServer.use(
       ...identityHandlers(ownerWorkspace),
@@ -95,7 +95,7 @@ describe('team: members', () => {
       expect(commands).toHaveLength(2);
     });
     expect(commands[1]?.body).toEqual(commands[0]?.body);
-    expect(commands[1]?.key).not.toBe(commands[0]?.key);
+    expect(commands[1]?.key).toBe(commands[0]?.key);
     expect(commands[0]?.body).toEqual({
       role: 'operator',
       expectedRoleRevision: 1,
@@ -161,7 +161,7 @@ describe('team: members', () => {
       expect(commands).toHaveLength(2);
     });
     expect(commands[1]?.body).toEqual(commands[0]?.body);
-    expect(commands[1]?.key).not.toBe(commands[0]?.key);
+    expect(commands[1]?.key).toBe(commands[0]?.key);
     expect(commands[0]).toMatchObject({
       target: firstMemberId,
       body: { role: 'operator', expectedRoleRevision: 1 },

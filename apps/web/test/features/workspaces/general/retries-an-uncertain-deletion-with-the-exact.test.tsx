@@ -22,7 +22,7 @@ import {
 } from './fixture';
 
 describe('workspace settings', () => {
-  it('keeps deletion confirmation and reason after an unconfirmed result and accepts a fresh command in StrictMode', async () => {
+  it('keeps deletion confirmation and reason after an unconfirmed result and resends it with its key in StrictMode', async () => {
     const commands: { key: string | null; body: unknown }[] = [];
     let attempts = 0;
     mockServer.use(
@@ -84,7 +84,7 @@ describe('workspace settings', () => {
     expect(await screen.findByText(scheduledForDeletion)).toBeVisible();
     expect(commands).toHaveLength(2);
     expect(commands[0]?.body).toEqual(commands[1]?.body);
-    expect(commands[0]?.key).not.toBe(commands[1]?.key);
+    expect(commands[0]?.key).toBe(commands[1]?.key);
     expect(commands[0]?.body).toEqual({ reason: 'No longer needed' });
   });
   it('refreshes the workspace once a deletion completes and offers restore after dismissal', async () => {

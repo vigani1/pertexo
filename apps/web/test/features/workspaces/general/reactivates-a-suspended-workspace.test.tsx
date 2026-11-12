@@ -73,7 +73,7 @@ describe('reactivating a workspace', () => {
     expect(screen.queryByRole('button', button)).not.toBeInTheDocument();
     expect(keys).toEqual([expect.any(String)]);
   });
-  it('shows the current suspended state after an unconfirmed reactivation and uses a fresh confirmation key', async () => {
+  it('shows the current suspended state after an unconfirmed reactivation and resends it with its key', async () => {
     const server = suspendedUntilReactivated();
     const keys: (string | null)[] = [];
     mockServer.use(
@@ -95,7 +95,7 @@ describe('reactivating a workspace', () => {
       expect(screen.queryByText(suspendedBanner)).not.toBeInTheDocument();
     });
     expect(keys).toHaveLength(2);
-    expect(keys[1]).not.toBe(keys[0]);
+    expect(keys[1]).toBe(keys[0]);
   });
   it('says so when the workspace changed meanwhile', async () => {
     mockServer.use(

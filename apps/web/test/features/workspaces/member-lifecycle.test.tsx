@@ -94,7 +94,7 @@ describe('team: suspension and reactivation', () => {
     ]);
   });
 
-  it('keeps the member and role after an unconfirmed reactivation and uses a fresh confirmation key', async () => {
+  it('keeps the member and role after an unconfirmed reactivation and resends it with its key', async () => {
     const sent: Command[] = [];
     mockServer.use(
       ...team.identityHandlers(team.ownerWorkspace),
@@ -134,7 +134,7 @@ describe('team: suspension and reactivation', () => {
     ).toBeVisible();
     expect(sent).toHaveLength(2);
     expect(sent[1]?.body).toEqual(sent[0]?.body);
-    expect(sent[1]?.key).not.toBe(sent[0]?.key);
+    expect(sent[1]?.key).toBe(sent[0]?.key);
     expect(sent[0]?.body).toEqual({ expectedRoleRevision: 2 });
   });
 

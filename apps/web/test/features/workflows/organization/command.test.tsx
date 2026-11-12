@@ -167,7 +167,7 @@ describe('low-effect organization mutations', () => {
     ['an unreadable reply', HttpResponse.text('{', { status: 200 })],
     ['a 503', problem(503, 'service.unavailable')],
   ])(
-    'refreshes after %s and gives a new confirmation its own key',
+    'refreshes after %s and resends the unchanged change with its key',
     async (_name, failure) => {
       const server = serveCommands();
       server.answers.push(failure);
@@ -183,7 +183,7 @@ describe('low-effect organization mutations', () => {
       expect(f.queryClient.getQueryState(key)?.isInvalidated).toBe(true);
       await act(() => f.result.current.start(single));
       expect(server.sent).toHaveLength(2);
-      expect(server.sent[1]?.key).not.toBe(server.sent[0]?.key);
+      expect(server.sent[1]?.key).toBe(server.sent[0]?.key);
       expect(server.sent[1]?.body).toEqual(server.sent[0]?.body);
     },
   );

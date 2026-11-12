@@ -93,7 +93,7 @@ describe('settings: leaving a workspace', () => {
     expect(sent).toEqual([{ key: expect.any(String) as unknown, body: {} }]);
   });
 
-  it('lets people confirm leaving again with a fresh key and treats an ended session as left', async () => {
+  it('lets people confirm leaving again with the same key and treats an ended session as left', async () => {
     const sent: Leave[] = [];
     mockServer.use(
       ...identityUntilLeft(builderWorkspace, () => sent.length > 1),
@@ -116,7 +116,7 @@ describe('settings: leaving a workspace', () => {
 
     await expectSignInPage();
     expect(sent).toHaveLength(2);
-    expect(sent[1]?.key).not.toBe(sent[0]?.key);
+    expect(sent[1]?.key).toBe(sent[0]?.key);
   });
 
   it('tells the owner to hand the workspace over before leaving', async () => {

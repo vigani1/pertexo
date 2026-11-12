@@ -122,7 +122,7 @@ describe('team: member removal', () => {
       ).not.toBeInTheDocument();
   });
 
-  it('keeps a failed removal on its member and accepts a new confirmation with a fresh key', async () => {
+  it('keeps an unconfirmed removal on its member and resends it with its key', async () => {
     const removals: Removal[] = [];
     mockServer.use(
       ...identityHandlers(ownerWorkspace),
@@ -154,7 +154,7 @@ describe('team: member removal', () => {
     ).toBeVisible();
     expect(removals).toHaveLength(2);
     expect(removals[1]?.body).toEqual(removals[0]?.body);
-    expect(removals[1]?.key).not.toBe(removals[0]?.key);
+    expect(removals[1]?.key).toBe(removals[0]?.key);
   });
 
   it('asks again after a stale revision and says when the member is already gone', async () => {

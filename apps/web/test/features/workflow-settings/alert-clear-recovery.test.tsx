@@ -48,7 +48,7 @@ it('reviews the current policy after an unknown clear and confirms a new destina
   expect(sets[0]?.key).not.toBe(clears[0]);
 });
 
-it('uses a fresh key on deliberate confirmation when the refreshed policy still shows alerts on', async () => {
+it('resends the unconfirmed clear with its key when the refreshed policy still shows alerts on', async () => {
   const { event, clears } = mountAcceptedClear('keeps-current');
   const alerts = await screen.findByRole('region', { name: 'Failure alerts' });
   await event.click(
@@ -62,7 +62,7 @@ it('uses a fresh key on deliberate confirmation when the refreshed policy still 
   );
   await within(alerts).findByText(/aren’t announced anywhere/u);
   expect(clears).toHaveLength(2);
-  expect(clears[1]).not.toEqual(clears[0]);
+  expect(clears[1]).toEqual(clears[0]);
 });
 
 function mountAcceptedClear(

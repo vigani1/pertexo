@@ -80,7 +80,7 @@ describe('workspace settings', () => {
     );
     expect(commands[0]?.key).toBeTruthy();
   });
-  it('keeps the rename draft after an unconfirmed result and uses a fresh key for a new confirmation', async () => {
+  it('keeps the rename draft after an unconfirmed result and resends it with its key', async () => {
     let authoritative = workspace;
     const commands: { body: unknown; key: string | null }[] = [];
     mockServer.use(
@@ -123,7 +123,7 @@ describe('workspace settings', () => {
     ).toBeGreaterThan(0);
     expect(commands).toHaveLength(2);
     expect(commands[0]?.body).toEqual(commands[1]?.body);
-    expect(commands[0]?.key).not.toBe(commands[1]?.key);
+    expect(commands[0]?.key).toBe(commands[1]?.key);
   });
   // web-app-04: the rename resends its held key after any delay.
   it('uses a fresh key for a new confirmation after a day, preserving the rename draft', async () => {

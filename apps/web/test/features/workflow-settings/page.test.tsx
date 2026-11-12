@@ -83,7 +83,7 @@ describe('workflow settings tab', () => {
         ?.isInvalidated,
     ).toBe(true);
   });
-  it('refreshes lifecycle after an unconfirmed write and requires a fresh confirmation', async () => {
+  it('refreshes lifecycle after an unconfirmed write and resends the unchanged change with its key', async () => {
     installQueries();
     const requests: { path: string; key: string; body: unknown }[] = [];
     let currentSummary = summary;
@@ -147,7 +147,7 @@ describe('workflow settings tab', () => {
     ]);
     expect(requests[0]?.body).toEqual({ expectedLifecycleRevision: 7 });
     expect(requests[1]?.body).toEqual({ expectedLifecycleRevision: 7 });
-    expect(requests[0]?.key).not.toBe(requests[1]?.key);
+    expect(requests[0]?.key).toBe(requests[1]?.key);
 
     await event.click(
       await screen.findByRole('button', { name: 'Restore workflow' }),

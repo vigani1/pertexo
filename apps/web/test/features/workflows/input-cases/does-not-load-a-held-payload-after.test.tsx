@@ -178,7 +178,7 @@ describe('shared workflow input cases', () => {
     );
     expect(input).toHaveValue('{"customer":"changed"}');
   });
-  it('keeps edits and the opaque tag after a lost update and uses a fresh key for a new confirmation', async () => {
+  it('keeps edits and the opaque tag after a lost update and resends the unchanged update with its key', async () => {
     const writes: { body: unknown; tag: string | null; key: string | null }[] =
       [];
     mockServer.use(
@@ -210,7 +210,7 @@ describe('shared workflow input cases', () => {
     });
     expect(writes[1]?.body).toEqual(writes[0]?.body);
     expect(writes[1]?.tag).toBe(writes[0]?.tag);
-    expect(writes[1]?.key).not.toBe(writes[0]?.key);
+    expect(writes[1]?.key).toBe(writes[0]?.key);
   });
   it('keeps one key for an unchanged case create after a lost response and a new key once it changes', async () => {
     const creates: { body: unknown; key: string | null }[] = [];

@@ -99,7 +99,7 @@ describe('workflow rename', () => {
     expect(requests[0]?.key).toMatch(/^[0-9a-f-]{36}$/u);
   });
 
-  it('keeps an unconfirmed rename editable, then lets people keep their name over a newer one', async () => {
+  it('resends an unconfirmed rename with its key, then lets people keep their name over a newer one', async () => {
     let current = summary;
     const keys: (string | null)[] = [];
     const bodies: unknown[] = [];
@@ -131,7 +131,8 @@ describe('workflow rename', () => {
     expect(
       await screen.findByText('Renamed to “Daily checks” meanwhile.'),
     ).toBeVisible();
-    expect(keys[1]).not.toBe(keys[0]);
+    // The unchanged resend reuses the key; the 409 settles it.
+    expect(keys[1]).toBe(keys[0]);
 
     await event.click(screen.getByRole('button', { name: 'Keep mine' }));
     expect(await screen.findByText('Renamed to Morning control')).toBeVisible();
