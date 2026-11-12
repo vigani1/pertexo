@@ -11,14 +11,11 @@ import {
 import { workflowListBody } from './workflows/list-support';
 
 for (const width of [375, 1280]) {
-  test(`workflow creation keeps its safe retry promise at ${String(width)}px`, async ({
+  test(`an unconfirmed workflow creation keeps the name and asks for a new confirmation at ${String(width)}px`, async ({
     page,
     context,
   }) => {
     await page.setViewportSize({ width, height: 900 });
-    const now = new Date('2026-11-09T12:00:00Z');
-    await page.clock.install({ time: now });
-    await page.clock.setFixedTime(now);
     await page.route('**/v1/**', (route) => route.fulfill({ status: 404 }));
     await addCsrfCookie(context);
     await installEditorRoutes(page, remoteDraft(), {
@@ -28,11 +25,13 @@ for (const width of [375, 1280]) {
       },
     });
     const keys: (string | undefined)[] = [];
+    let listReads = 0;
     await page.route(`**/v1/workspaces/${workspaceId}/workflows**`, (route) => {
       if (route.request().method() === 'POST') {
         keys.push(route.request().headers()['idempotency-key']);
         return route.abort('failed');
       }
+      listReads += 1;
       return route.fulfill({
         json: workflowListBody(route.request().url(), []),
       });
@@ -41,40 +40,27 @@ for (const width of [375, 1280]) {
     await page
       .getByRole('button', { name: 'New workflow', exact: true })
       .click();
-    await page.getByLabel('Workflow name').fill('Retained workflow');
-    await page
-      .getByRole('button', { name: 'Create workflow', exact: true })
-      .click();
-    const retry = page.getByRole('button', {
-      name: 'Retry safely',
+    const name = page.getByLabel('Workflow name');
+    await name.fill('Retained workflow');
+    const create = page.getByRole('button', {
+      name: 'Create workflow',
       exact: true,
     });
-    await expect(retry).toBeEnabled();
-    await page.clock.setFixedTime(now.getTime() + 86_400_000 - 1);
-    await retry.click();
-    await expect.poll(() => keys.length).toBe(2);
-    await expect(retry).toBeEnabled();
-    expect(keys[1]).toBe(keys[0]);
-    await page.clock.setFixedTime(now.getTime() + 86_400_000);
-    await retry.click();
-    await expect(page.getByText(/The retry window ended/)).toBeVisible();
-    expect(keys).toHaveLength(2);
-    await page.clock.setFixedTime(now.getTime() + 86_400_001);
-    await retry.click();
-    expect(keys).toHaveLength(2);
+    const readsBeforeCreate = listReads;
+    await create.click();
+    await expect(page.getByText(/couldn’t confirm that change/u)).toBeVisible();
+    await expect.poll(() => listReads).toBeGreaterThan(readsBeforeCreate);
+    await expect(name).toHaveValue('Retained workflow');
+    await expect(create).toBeEnabled();
+    expect(keys).toHaveLength(1);
     await page.screenshot({
-      path: test.info().outputPath(`workflow-expiry-${String(width)}.png`),
+      path: test.info().outputPath(`workflow-unconfirmed-${String(width)}.png`),
     });
-    await page
-      .getByRole('button', { name: 'Start a new attempt', exact: true })
-      .click();
-    expect(keys).toHaveLength(2);
-    await page
-      .getByRole('button', { name: 'Create workflow', exact: true })
-      .click();
-    await expect.poll(() => keys.length).toBe(3);
-    expect(keys[2]).toBeTruthy();
-    expect(keys[2]).not.toBe(keys[0]);
+    await create.click();
+    await expect.poll(() => keys.length).toBe(2);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBeTruthy();
+    expect(keys[1]).not.toBe(keys[0]);
     await expect(page).toHaveURL(`/w/${workspaceId}/workflows?create=true`);
   });
 }
