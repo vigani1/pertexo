@@ -57,6 +57,7 @@ Existing SDK/catalog/integrations pattern; provider-specific idempotency/retry/e
    Google or Microsoft APIs) without a bespoke connector. Can ship before the
    provider slices; each later provider reuses it.
 1. Rank requested end-to-end journeys and choose one provider, not a large arbitrary list.
+   The proposed order is in [21b](21b-next-integrations.md).
 2. Ship one action with real sandbox compatibility and safe connection UX.
 3. Ship its highest-value trigger with crash/cursor/dedupe proof; repeat only when previous slice is usable.
 
