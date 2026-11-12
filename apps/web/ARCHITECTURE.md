@@ -518,13 +518,14 @@ Mutation rules:
    keep editable inputs and ask people to review current state; they do not
    retain a body/key, freeze edits or offer an exact resend. Creates the server
    can tell apart only by their idempotency key (workflow create, duplicate and
-   import, input-case create) go through `useCreateCommand`: an unchanged intent
-   keeps its key until a success or a refusal that settled the key, so a resend
-   after a lost response replays the receipt; a changed intent gets a new key.
-   Effectful operations (run, publish, tests, task decisions, webhook/federation
-   commands and secret/link issuance) retain the original body, preconditions
-   and key within their receipt window, with the existing identity fence. Never
-   persist secrets in a retry journal or offline mutation cache.
+   import, input-case and workspace create) go through `useCreateCommand`: an
+   unchanged intent keeps its key until a success or a refusal that settled the
+   key, so a resend after a lost response replays the receipt; a changed intent
+   gets a new key. Effectful operations (run, publish, tests, task decisions,
+   webhook/federation commands and secret/link issuance) retain the original
+   body, preconditions and key within their receipt window, with the existing
+   identity fence. Never persist secrets in a retry journal or offline mutation
+   cache.
 3. Disable duplicate submit for the same command, not the whole app. Guard
    handlers as well as button styling. Do not auto-retry writes on reconnect.
 4. Prefer confirmed response updates plus targeted invalidation. Start without

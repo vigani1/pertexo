@@ -206,7 +206,7 @@ describe('workspace creation', () => {
     },
   );
   it.each(['network', '502', '503'])(
-    'preserves creation details after %s and sends a fresh key on a new confirmation without identity preflights',
+    'replays an unchanged creation after %s with the same key and no identity preflights',
     async (failure) => {
       let userReads = 0;
       let postCount = 0;
@@ -259,7 +259,9 @@ describe('workspace creation', () => {
         .click(
           within(dialog).getByRole('button', { name: 'Create workspace' }),
         );
-      await within(dialog).findByText(/Check the refreshed current state/u);
+      await within(dialog).findByText(
+        /couldn’t confirm whether the workspace was created/u,
+      );
       expect(within(dialog).getByLabelText('Workspace name')).toBeEnabled();
       expect(within(dialog).getByLabelText('Workspace name')).toHaveValue(
         'Signal Operations',
@@ -273,8 +275,8 @@ describe('workspace creation', () => {
         await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
       ).not.toHaveLength(0);
       expect(attempts).toHaveLength(2);
-      expect(attempts[1]?.body).toEqual(attempts[0]?.body);
-      expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
+      expect(attempts[1]).toEqual(attempts[0]);
+      expect(attempts[0]?.key).toBeTruthy();
       expect(identityReadsAtPost).toEqual([1, 1]);
     },
   );
@@ -297,7 +299,9 @@ describe('workspace creation', () => {
       .click(within(form).getByRole('button', { name: 'Create workspace' }));
 
     expect(
-      await within(form).findByText(/Check the refreshed current state/u),
+      await within(form).findByText(
+        /couldn’t confirm whether the workspace was created/u,
+      ),
     ).toBeVisible();
     const name = within(form).getByLabelText('Workspace name');
     expect(name).toBeEnabled();
@@ -309,5 +313,82 @@ describe('workspace creation', () => {
       within(form).getByRole('button', { name: 'Create workspace' }),
     ).toBeEnabled();
     expect(postCount).toBe(1);
+  });
+  it('opens the workspace a lost creation made instead of calling its handle taken', async () => {
+    // The server committed the first request; only that key replays it, and
+    // any other key finds the handle already in use.
+    const keys: (string | null)[] = [];
+    let authoritativeWorkspaces: object[] = [];
+    installIdentity();
+    mockServer.use(
+      http.get('http://pertexo.test/v1/workspaces', () =>
+        HttpResponse.json({ items: authoritativeWorkspaces, nextCursor: null }),
+      ),
+      http.post('http://pertexo.test/v1/workspaces', ({ request }) => {
+        const key = request.headers.get('idempotency-key');
+        keys.push(key);
+        authoritativeWorkspaces = [createdWorkspace];
+        if (keys.length === 1) return HttpResponse.error();
+        return key === keys[0]
+          ? HttpResponse.json(workspaceResponse(), { status: 201 })
+          : problem(409, 'workspace.conflict', 'Handle in use');
+      }),
+    );
+    installWorkspaceDestination();
+    await renderLoadedApp('/workspaces');
+    const dialog = await openCreation('first');
+    const event = userEvent.setup();
+    await event.type(
+      within(dialog).getByLabelText('Workspace name'),
+      'Signal Operations',
+    );
+    await event.click(
+      within(dialog).getByRole('button', { name: 'Create workspace' }),
+    );
+    await within(dialog).findByText(
+      /couldn’t confirm whether the workspace was created/u,
+    );
+    await event.click(
+      within(dialog).getByRole('button', { name: 'Create workspace' }),
+    );
+    expect(
+      await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
+    ).not.toHaveLength(0);
+    expect(screen.queryByText(/already taken/u)).not.toBeInTheDocument();
+    expect(keys).toHaveLength(2);
+  });
+  it('sends a new key once the details change after an unconfirmed creation', async () => {
+    const attempts: { body: unknown; key: string | null }[] = [];
+    installIdentity();
+    mockServer.use(
+      http.post('http://pertexo.test/v1/workspaces', async ({ request }) => {
+        attempts.push({
+          body: await request.json(),
+          key: request.headers.get('idempotency-key'),
+        });
+        return HttpResponse.error();
+      }),
+    );
+    await renderLoadedApp('/workspaces');
+    const form = await openCreation('first');
+    const event = userEvent.setup();
+    const name = within(form).getByLabelText('Workspace name');
+    await event.type(name, 'Uncertain');
+    await event.click(
+      within(form).getByRole('button', { name: 'Create workspace' }),
+    );
+    await within(form).findByText(
+      /couldn’t confirm whether the workspace was created/u,
+    );
+    await event.type(name, ' team');
+    await event.click(
+      within(form).getByRole('button', { name: 'Create workspace' }),
+    );
+    await waitFor(() => {
+      expect(attempts).toHaveLength(2);
+    });
+    expect(attempts[1]?.body).not.toEqual(attempts[0]?.body);
+    expect(attempts[1]?.key).toBeTruthy();
+    expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
   });
 });

@@ -5,11 +5,9 @@ import type {
   WorkspaceResponse,
 } from '@pertexo/contracts';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  useLowEffectMutation,
-  lowEffectError,
-} from '@/lib/api/commands/low-effect-mutation';
-import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
+import { useCreateCommand } from '@/lib/api/commands/use-create-command';
+import { RETRY_WINDOW_ENDED } from '@/lib/api/commands/command-retry';
+import { useState } from 'react';
 import { isUnauthenticated } from '@/features/auth/session/identity.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -34,7 +32,9 @@ export function useWorkspaceCreation({
   const cache = useQueryClient();
   const refresh = () =>
     cache.invalidateQueries({ queryKey: workspaceKeys.accessible(userId) });
-  const mutation = useLowEffectMutation({
+  // A lost create keeps its key, so resending replays the receipt instead of
+  // reporting the person's own new handle as taken.
+  const command = useCreateCommand({
     send: (input: Readonly<{ body: WorkspaceCreateRequest }>, key) =>
       createWorkspace(apiClient, { ...input, idempotencyKey: key }),
     refresh,
@@ -53,11 +53,19 @@ export function useWorkspaceCreation({
       return created;
     },
   });
+  const [windowEnded, setWindowEnded] = useState(false);
   async function start(input: Readonly<{ body: WorkspaceCreateRequest }>) {
-    if (mutation.isPending || mutation.isSuccess) return false;
+    if (command.pending || command.data !== undefined) return false;
     discovery.reset();
+    setWindowEnded(false);
     try {
-      const receipt = await mutation.mutateAsync(input);
+      const receipt = await command.create(input);
+      if (receipt === undefined) {
+        // The person checks their workspaces first; the next create is new.
+        command.startNewAttempt();
+        setWindowEnded(true);
+        return false;
+      }
       await discovery.mutateAsync(receipt, { onSuccess: onCreated });
       return true;
     } catch (cause) {
@@ -66,9 +74,9 @@ export function useWorkspaceCreation({
     }
   }
   async function openCreated() {
-    if (mutation.data === undefined || discovery.isPending) return false;
+    if (command.data === undefined || discovery.isPending) return false;
     try {
-      await discovery.mutateAsync(mutation.data, { onSuccess: onCreated });
+      await discovery.mutateAsync(command.data, { onSuccess: onCreated });
       return true;
     } catch (cause) {
       if (isUnauthenticated(cause)) onSessionInvalidated();
@@ -81,20 +89,24 @@ export function useWorkspaceCreation({
       message:
         'The workspace was created, but this page couldn’t refresh. Open workspace to try again.',
     };
-  else if (mutation.isError)
-    error = isUnconfirmedCommand(mutation.error)
-      ? { message: lowEffectError(mutation.error, 'creating the workspace') }
-      : creationError(mutation.error);
+  else if (windowEnded) error = { message: RETRY_WINDOW_ENDED };
+  else if (command.uncertain)
+    error = {
+      message:
+        'We couldn’t confirm whether the workspace was created. Creating it again unchanged is safe — it won’t make a second workspace.',
+    };
+  else if (command.failed) error = creationError(command.error);
   return {
     start,
-    created: mutation.isSuccess,
-    pending: mutation.isPending,
-    locked: mutation.isPending,
+    created: command.data !== undefined,
+    pending: command.pending,
+    locked: command.pending,
     refreshPending: discovery.isPending,
     refresh: openCreated,
     error,
     clearError: () => {
-      if (mutation.isError) mutation.reset();
+      setWindowEnded(false);
+      if (command.failed) command.reset();
     },
   };
 }
