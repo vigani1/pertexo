@@ -77,6 +77,11 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
     reason:
       'Extract stored artifact foreign-key identities for reference-integrity locking, without granting visibility.',
   },
+  'app.held_workflow_run_admission_events(uuid)': {
+    category: 'queue claiming',
+    reason:
+      'Skip queued-run deliveries behind their queue head or beyond the free slots, so a claim checks a bounded set.',
+  },
   'app.has_pending_invitation(character varying)': {
     category: 'workspace isolation',
     reason:
@@ -254,6 +259,16 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
     category: 'capacity counters',
     reason:
       'Read active capacity with the pinned entitlement and reservation identity.',
+  },
+  'app.workflow_run_active_slots(uuid,uuid,uuid)': {
+    category: 'capacity counters',
+    reason:
+      'Count the runs holding a workspace or workflow slot, without counting the queue.',
+  },
+  'app.workflow_run_reserved_slots(uuid,uuid,uuid)': {
+    category: 'capacity counters',
+    reason:
+      'Count the slots reserved for queued runs, without counting the queue.',
   },
   'app.workflow_run_slot_counts(uuid,uuid,uuid)': {
     category: 'capacity counters',

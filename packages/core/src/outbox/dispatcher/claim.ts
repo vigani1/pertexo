@@ -126,6 +126,14 @@ async function leaseFairOutboxBatch(
                  else 1 end,
             ${eligible.workspaceId}
           limit ${parsed.limit}
+        ), held as materialized (
+          -- Queued runs behind their queue's head, or beyond the free slots, are
+          -- skipped as a set: checking each one made a claim cost grow with the
+          -- backlog, and draining it with the backlog's square.
+          select held.event_id
+          from workspace_round
+          cross join lateral app.held_workflow_run_admission_events(${workspace_round.workspaceId}) held(event_id)
+          where 'advance-workflow-run' = any(${sql.param(parsed.enabledJobNames)}::varchar[])
         ), candidates as materialized (
           select picked.${sql.identifier(outboxEvents.id.name)},picked.${sql.identifier(outboxEvents.publishAttempts.name)},picked.${sql.identifier(outboxEvents.jobName.name)},
                  picked.${sql.identifier(outboxEvents.aggregateType.name)},picked.${sql.identifier(outboxEvents.aggregateId.name)},
@@ -140,12 +148,13 @@ async function leaseFairOutboxBatch(
               and ${sql.identifier(outboxEvents.jobName.name)} = any(${sql.param(parsed.enabledJobNames)}::varchar[])
               and ${sql.identifier(outboxEvents.availableAt.name)} <= clock_timestamp()
               and (${sql.identifier(outboxEvents.leaseExpiresAt.name)} is null or ${sql.identifier(outboxEvents.leaseExpiresAt.name)} <= clock_timestamp())
-              and (
-                ${sql.identifier(outboxEvents.jobName.name)} <> 'advance-workflow-run'
-                or app.workflow_run_active_admission_eligible(
-                     ${event.workspaceId},${event.id},${event.aggregateId}
-                   )
-              )
+              and case
+                when ${sql.identifier(outboxEvents.jobName.name)} <> 'advance-workflow-run' then true
+                when ${event.id} in (select event_id from held) then false
+                else app.workflow_run_active_admission_eligible(
+                  ${event.workspaceId},${event.id},${event.aggregateId}
+                )
+              end
             order by ${sql.identifier(outboxEvents.availableAt.name)},${sql.identifier(outboxEvents.id.name)}
             for update skip locked
             -- An equal share of the batch: workspaces stay fair with each other,

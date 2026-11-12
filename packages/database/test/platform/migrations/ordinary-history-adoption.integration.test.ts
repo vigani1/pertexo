@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { copyFile, readFile } from 'node:fs/promises';
+import { copyFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
 import {
@@ -8,7 +8,7 @@ import {
 } from '../../../src/migrations.js';
 import { seedWorkflow, withBaselineDatabase } from './upgrade-fixture.js';
 
-it('upgrades an adopted baseline through real 0001 preserving data and matching the release catalog', async () => {
+it('upgrades an adopted baseline through the real later migrations, preserving data and matching the release catalog', async () => {
   await withBaselineDatabase(async ({ admin, config, directory }) => {
     const ids = await seedWorkflow(admin);
     await admin.query(
@@ -55,13 +55,14 @@ it('upgrades an adopted baseline through real 0001 preserving data and matching 
       (await admin.query('select name from pertexo_internal.schema_migrations'))
         .rows,
     ).toEqual([{ name: '0000_baseline.sql' }]);
-    await copyFile(
-      join(MIGRATIONS_DIRECTORY, '0001_ordinary_run_history.sql'),
-      join(directory, '0001_ordinary_run_history.sql'),
-    );
-    await expect(migrateDatabase(config, directory)).resolves.toEqual([
-      '0001_ordinary_run_history.sql',
-    ]);
+    // Every release migration after the baseline, so the catalog is the release's.
+    const later = (await readdir(MIGRATIONS_DIRECTORY))
+      .filter((name) => name.endsWith('.sql') && name !== '0000_baseline.sql')
+      .sort();
+    expect(later[0]).toBe('0001_ordinary_run_history.sql');
+    for (const name of later)
+      await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
+    await expect(migrateDatabase(config, directory)).resolves.toEqual(later);
     expect((await admin.query('select * from app.workflows')).rows).toEqual(
       before,
     );
