@@ -205,7 +205,7 @@ describe('workspace creation', () => {
         expect(within(dialog).getByLabelText(focusedField)).toHaveFocus();
     },
   );
-  it.each(['network', '502', '503'])(
+  it.each(['network', '502', '503', '504'])(
     'replays an unchanged creation after %s with the same key and no identity preflights',
     async (failure) => {
       let userReads = 0;
