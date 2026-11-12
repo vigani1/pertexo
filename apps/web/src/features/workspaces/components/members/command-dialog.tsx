@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import type { ReactNode } from 'react';
 import type { WorkspaceMember } from '@pertexo/contracts';
 import {
@@ -74,44 +70,39 @@ export function MemberCommandDialog({
       description={content.description}
       onSubmit={confirmationRetry?.onRetry ?? onConfirm}
       submitDisabled={command.pending || member === undefined}
-      footer={
-        <DialogFooter>
-          {confirmationRetry === undefined ? (
-            <DialogClose
-              disabled={command.locked}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                confirmationRetry.onDismiss();
-                changeConfirmationOpen(false);
-              }}
-            >
-              Close
-            </Button>
-          )}
-          <ProgressButton
-            type="submit"
-            variant={
-              (content.tone ?? 'default') === 'destructive'
-                ? 'destructive'
-                : 'primary'
-            }
-            pending={command.pending}
-            pendingLabel={content.pendingLabel ?? content.confirmLabel}
-            disabled={member === undefined}
-          >
-            {confirmationRetry === undefined
+      actions={{
+        cancel:
+          confirmationRetry === undefined
+            ? {
+                kind: 'close',
+                label: 'Cancel',
+                variant: 'ghost',
+                disabled: command.locked,
+              }
+            : {
+                kind: 'action',
+                label: 'Close',
+                variant: 'ghost',
+                onClick: () => {
+                  confirmationRetry.onDismiss();
+                  changeConfirmationOpen(false);
+                },
+              },
+        confirm: {
+          label:
+            confirmationRetry === undefined
               ? content.confirmLabel
-              : 'Try again'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+              : 'Try again',
+          type: 'submit',
+          variant:
+            (content.tone ?? 'default') === 'destructive'
+              ? 'destructive'
+              : 'primary',
+          pending: command.pending,
+          pendingLabel: content.pendingLabel ?? content.confirmLabel,
+          disabled: member === undefined,
+        },
+      }}
     >
       <ConfirmationDetails
         consequences={content.consequences}

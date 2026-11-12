@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { WebhookTestEventSnapshot } from '@pertexo/contracts';
@@ -70,25 +67,24 @@ export function CapturedEvent({
               );
           }}
           submitDisabled={confirmBlocked}
-          footer={
-            <DialogFooter>
-              <DialogClose
-                disabled={pin.pending}
-                render={<Button type="button" variant="ghost" />}
-              >
-                Cancel
-              </DialogClose>
-              <ProgressButton
-                type="submit"
-                variant="primary"
-                pending={pin.pending}
-                pendingLabel="Keeping…"
-                disabled={sample.data === undefined || pin.expired}
-              >
-                {pin.uncertain ? 'Retry the same pin' : 'Keep as pinned sample'}
-              </ProgressButton>
-            </DialogFooter>
-          }
+          actions={{
+            cancel: {
+              kind: 'close',
+              label: 'Cancel',
+              variant: 'ghost',
+              disabled: pin.pending,
+            },
+            confirm: {
+              label: pin.uncertain
+                ? 'Retry the same pin'
+                : 'Keep as pinned sample',
+              type: 'submit',
+              variant: 'primary',
+              pending: pin.pending,
+              pendingLabel: 'Keeping…',
+              disabled: sample.data === undefined || pin.expired,
+            },
+          }}
         >
           <ConfirmationDetails error={pin.error} />
         </ConfirmDialog>

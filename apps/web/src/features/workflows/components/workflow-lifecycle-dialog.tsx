@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
@@ -109,30 +105,25 @@ export function WorkflowLifecycleDialog({
       }
       onSubmit={confirm}
       submitDisabled={lifecycle.pending || pinCheckUnavailable}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={lifecycle.pending}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant={
-              (action === 'restore' ? 'default' : 'destructive') ===
-              'destructive'
-                ? 'destructive'
-                : 'primary'
-            }
-            pending={lifecycle.pending}
-            pendingLabel={copy.pending}
-            disabled={pinCheckUnavailable}
-          >
-            {lifecycle.exactRetry ? 'Retry safely' : copy.confirm}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: lifecycle.pending,
+        },
+        confirm: {
+          label: lifecycle.exactRetry ? 'Retry safely' : copy.confirm,
+          type: 'submit',
+          variant:
+            (action === 'restore' ? 'default' : 'destructive') === 'destructive'
+              ? 'destructive'
+              : 'primary',
+          pending: lifecycle.pending,
+          pendingLabel: copy.pending,
+          disabled: pinCheckUnavailable,
+        },
+      }}
     >
       <ConfirmationDetails
         consequences={LIFECYCLE_CONSEQUENCES[action]}

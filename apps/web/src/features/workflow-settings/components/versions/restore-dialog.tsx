@@ -1,8 +1,5 @@
-import { DialogFooter } from '@/components/ui/dialog';
 import { useRouter } from '@tanstack/react-router';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import {
   ConfirmDialog,
@@ -94,30 +91,26 @@ export function RestoreVersionDialog({
       description={`Your draft will be replaced by ${label}. Published versions don’t change. Unpublished changes will be saved as a separate disabled copy in the same folder.`}
       onSubmit={confirm}
       submitDisabled={restore.pending}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={restore.pending}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant={
-              (restore.recovery === 'confirm-replacement'
-                ? 'destructive'
-                : 'default') === 'destructive'
-                ? 'destructive'
-                : 'primary'
-            }
-            pending={restore.pending}
-            pendingLabel="Restoring…"
-          >
-            {CONFIRM[restore.recovery ?? 'start']}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: restore.pending,
+        },
+        confirm: {
+          label: CONFIRM[restore.recovery ?? 'start'],
+          type: 'submit',
+          variant:
+            (restore.recovery === 'confirm-replacement'
+              ? 'destructive'
+              : 'default') === 'destructive'
+              ? 'destructive'
+              : 'primary',
+          pending: restore.pending,
+          pendingLabel: 'Restoring…',
+        },
+      }}
     >
       <ConfirmationDetails
         error={restore.error}

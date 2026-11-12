@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import { useId, useState } from 'react';
 import { workspaceDeletionRequestSchema } from '@pertexo/contracts';
 import {
@@ -97,37 +94,33 @@ export function WorkspaceDeletionDialog({
       }
       onSubmit={confirmationRetry?.onRetry ?? submit}
       submitDisabled={pending}
-      footer={
-        <DialogFooter>
-          {confirmationRetry === undefined ? (
-            <DialogClose
-              disabled={pending || retryAvailable}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                confirmationRetry.onDismiss();
-                changeConfirmationOpen(false);
-              }}
-            >
-              Close
-            </Button>
-          )}
-          <ProgressButton
-            type="submit"
-            variant="destructive"
-            pending={pending}
-            pendingLabel="Requesting…"
-          >
-            {confirmationRetry === undefined ? 'Delete workspace' : 'Try again'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel:
+          confirmationRetry === undefined
+            ? {
+                kind: 'close',
+                label: 'Cancel',
+                variant: 'ghost',
+                disabled: pending || retryAvailable,
+              }
+            : {
+                kind: 'action',
+                label: 'Close',
+                variant: 'ghost',
+                onClick: () => {
+                  confirmationRetry.onDismiss();
+                  changeConfirmationOpen(false);
+                },
+              },
+        confirm: {
+          label:
+            confirmationRetry === undefined ? 'Delete workspace' : 'Try again',
+          type: 'submit',
+          variant: 'destructive',
+          pending: pending,
+          pendingLabel: 'Requesting…',
+        },
+      }}
     >
       <ConfirmationDetails
         error={error}

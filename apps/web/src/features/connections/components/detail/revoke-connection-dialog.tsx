@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { useState } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
@@ -59,24 +56,21 @@ export function RevokeConnectionDialog({
         mutation.reset();
       }}
       submitDisabled={mutation.isPending}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={mutation.isPending}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Keep connection
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="destructive"
-            pending={mutation.isPending}
-            pendingLabel="Revoking…"
-          >
-            Revoke connection
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Keep connection',
+          variant: 'ghost',
+          disabled: mutation.isPending,
+        },
+        confirm: {
+          label: 'Revoke connection',
+          type: 'submit',
+          variant: 'destructive',
+          pending: mutation.isPending,
+          pendingLabel: 'Revoking…',
+        },
+      }}
     >
       <ConfirmationDetails
         error={

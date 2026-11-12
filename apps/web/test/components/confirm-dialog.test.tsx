@@ -1,15 +1,13 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { useState, type ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
   ConfirmDialog,
   ConfirmationDetails,
+  type DialogActions,
 } from '../../src/components/patterns/actions/confirm-dialog';
 import { Button } from '../../src/components/ui/button';
-import { DialogClose } from '../../src/components/ui/dialog';
-import { ProgressButton } from '../../src/components/ui/progress-button';
 
 function Harness({
   pending = false,
@@ -35,35 +33,20 @@ function Harness({
 }>) {
   const [open, setOpen] = useState(false);
   const locked = options.locked ?? pending;
-  let cancelButton: ReactNode;
+  let cancel: ComponentProps<typeof DialogActions>['cancel'];
   if (unconfirmed !== undefined) {
-    cancelButton = (
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={() => {
-          unconfirmed.onDismiss();
-          setOpen(false);
-        }}
-      >
-        Close
-      </Button>
-    );
+    cancel = {
+      kind: 'action',
+      label: 'Close',
+      onClick: () => {
+        unconfirmed.onDismiss();
+        setOpen(false);
+      },
+    };
   } else if (options.onCancel !== undefined) {
-    cancelButton = (
-      <Button type="button" variant="ghost" onClick={options.onCancel}>
-        Cancel
-      </Button>
-    );
+    cancel = { kind: 'action', label: 'Cancel', onClick: options.onCancel };
   } else {
-    cancelButton = (
-      <DialogClose
-        disabled={locked}
-        render={<Button type="button" variant="ghost" />}
-      >
-        Cancel
-      </DialogClose>
-    );
+    cancel = { kind: 'close', label: 'Cancel', disabled: locked };
   }
   return (
     <ConfirmDialog
@@ -73,32 +56,25 @@ function Harness({
       description="Steps that use it stop working."
       onSubmit={unconfirmed?.onRetry ?? onConfirm}
       submitDisabled={pending || (options.confirmDisabled ?? false)}
-      footer={
-        <DialogFooter>
-          {cancelButton}
-          {options.secondaryAction}
-          <ProgressButton
-            type="submit"
-            variant="destructive"
-            pending={pending}
-            pendingLabel="Revoking…"
-            disabled={options.confirmDisabled}
-          >
-            {unconfirmed === undefined ? 'Revoke connection' : 'Try again'}
-          </ProgressButton>
-        </DialogFooter>
-      }
-    >
-      <ConfirmationDetails
-        consequences={options.consequences}
-        error={error}
-        tone={
+      actions={{
+        cancel: { ...cancel, variant: 'ghost' },
+        confirm: {
+          label: unconfirmed === undefined ? 'Revoke connection' : 'Try again',
+          variant: 'destructive',
+          pending,
+          pendingLabel: 'Revoking…',
+          disabled: options.confirmDisabled,
+        },
+        secondaryAction: options.secondaryAction,
+        error,
+        tone:
           unconfirmed === undefined
             ? (options.errorTone ?? 'destructive')
-            : 'warning'
-        }
-        errorAction={options.errorAction}
-      >
+            : 'warning',
+        errorAction: options.errorAction,
+      }}
+    >
+      <ConfirmationDetails consequences={options.consequences}>
         {options.children}
       </ConfirmationDetails>
     </ConfirmDialog>

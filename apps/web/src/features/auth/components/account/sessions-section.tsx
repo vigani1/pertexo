@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import type { AccountSecuritySessionsResponse } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { LaptopIcon, SmartphoneIcon } from 'lucide-react';
@@ -174,24 +171,21 @@ function EndSessionDialog({
       }
       onSubmit={onConfirm}
       submitDisabled={busy}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={busy}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="destructive"
-            pending={busy}
-            pendingLabel="Signing out…"
-          >
-            Sign out
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: busy,
+        },
+        confirm: {
+          label: 'Sign out',
+          type: 'submit',
+          variant: 'destructive',
+          pending: busy,
+          pendingLabel: 'Signing out…',
+        },
+      }}
     >
       <ConfirmationDetails
         error={

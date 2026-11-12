@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import { LogOutIcon } from 'lucide-react';
@@ -88,39 +85,33 @@ export function WorkspaceLeave({
         title={`Leave ${workspace.name}?`}
         onSubmit={confirmationRetry?.onRetry ?? (() => command.start())}
         submitDisabled={command.pending}
-        footer={
-          <DialogFooter>
-            {confirmationRetry === undefined ? (
-              <DialogClose
-                disabled={command.pending || command.retryAvailable}
-                render={<Button type="button" variant="ghost" />}
-              >
-                Cancel
-              </DialogClose>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  confirmationRetry.onDismiss();
-                  setConfirming(false);
-                }}
-              >
-                Close
-              </Button>
-            )}
-            <ProgressButton
-              type="submit"
-              variant="destructive"
-              pending={command.pending}
-              pendingLabel="Leaving…"
-            >
-              {confirmationRetry === undefined
-                ? 'Leave workspace'
-                : 'Try again'}
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel:
+            confirmationRetry === undefined
+              ? {
+                  kind: 'close',
+                  label: 'Cancel',
+                  variant: 'ghost',
+                  disabled: command.pending || command.retryAvailable,
+                }
+              : {
+                  kind: 'action',
+                  label: 'Close',
+                  variant: 'ghost',
+                  onClick: () => {
+                    confirmationRetry.onDismiss();
+                    setConfirming(false);
+                  },
+                },
+          confirm: {
+            label:
+              confirmationRetry === undefined ? 'Leave workspace' : 'Try again',
+            type: 'submit',
+            variant: 'destructive',
+            pending: command.pending,
+            pendingLabel: 'Leaving…',
+          },
+        }}
       >
         <ConfirmationDetails
           consequences={[

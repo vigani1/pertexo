@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import { useState } from 'react';
 import {
   ConfirmDialog,
@@ -57,37 +54,32 @@ export function WorkspaceLifecycleDialog({
       }
       onSubmit={confirmationRetry?.onRetry ?? (() => send(onConfirm))}
       submitDisabled={pending}
-      footer={
-        <DialogFooter>
-          {confirmationRetry === undefined ? (
-            <DialogClose
-              disabled={pending || retryAvailable}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                confirmationRetry.onDismiss();
-                setOpen(false);
-              }}
-            >
-              Close
-            </Button>
-          )}
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            pending={pending}
-            pendingLabel={pendingLabel}
-          >
-            {confirmationRetry === undefined ? action : 'Try again'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel:
+          confirmationRetry === undefined
+            ? {
+                kind: 'close',
+                label: 'Cancel',
+                variant: 'ghost',
+                disabled: pending || retryAvailable,
+              }
+            : {
+                kind: 'action',
+                label: 'Close',
+                variant: 'ghost',
+                onClick: () => {
+                  confirmationRetry.onDismiss();
+                  setOpen(false);
+                },
+              },
+        confirm: {
+          label: confirmationRetry === undefined ? action : 'Try again',
+          type: 'submit',
+          variant: 'primary',
+          pending: pending,
+          pendingLabel: pendingLabel,
+        },
+      }}
     >
       <ConfirmationDetails
         error={error}

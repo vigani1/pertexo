@@ -1,12 +1,21 @@
-import type { ReactElement, ReactNode } from 'react';
+import type {
+  ComponentProps,
+  MouseEventHandler,
+  ReactElement,
+  ReactNode,
+} from 'react';
 import {
   Dialog,
+  DialogClose,
+  DialogFooter,
   DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
+import { Button } from '@/components/ui/button';
+import { ProgressButton } from '@/components/ui/progress-button';
 
 type ConfirmDialogProps = Readonly<{
   state: Readonly<{
@@ -18,11 +27,14 @@ type ConfirmDialogProps = Readonly<{
   title: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
-  footer: ReactNode;
   /** Return the command promise; the caller owns its visible failure and success effects. */
   onSubmit: () => unknown;
   submitDisabled?: boolean;
-}>;
+}> &
+  (
+    | Readonly<{ actions: DialogActionsProps; footer?: never }>
+    | Readonly<{ footer: ReactNode; actions?: never }>
+  );
 
 /** A controlled confirmation form: Enter submits, and locked state prevents dismissal. */
 export function ConfirmDialog({
@@ -32,6 +44,7 @@ export function ConfirmDialog({
   description,
   children,
   footer,
+  actions,
   onSubmit,
   submitDisabled = false,
 }: ConfirmDialogProps) {
@@ -61,7 +74,7 @@ export function ConfirmDialog({
           }}
         >
           {children}
-          {footer}
+          {actions === undefined ? footer : <DialogActions {...actions} />}
         </form>
       </DialogContent>
     </Dialog>
@@ -110,5 +123,71 @@ export function ConfirmationDetails({
         </Notice>
       )}
     </div>
+  );
+}
+
+type CancelAction = Omit<
+  ComponentProps<typeof Button>,
+  'children' | 'type' | 'render' | 'onClick'
+> &
+  Readonly<{ label: ReactNode }> &
+  (
+    | Readonly<{
+        kind: 'close';
+        onClick?: MouseEventHandler<HTMLButtonElement>;
+      }>
+    | Readonly<{
+        kind: 'action';
+        onClick: MouseEventHandler<HTMLButtonElement>;
+      }>
+  );
+
+type DialogActionsProps = Readonly<{
+  cancel: CancelAction;
+  confirm: Omit<ComponentProps<typeof ProgressButton>, 'children'> &
+    Readonly<{ label: ReactNode }>;
+  error?: ReactNode;
+  errorAction?: ReactNode;
+  secondaryAction?: ReactNode;
+  tone?: 'destructive' | 'warning';
+}>;
+
+/** One cancellation, pending submission and feedback layout for command dialogs. */
+export function DialogActions({
+  cancel,
+  confirm,
+  error,
+  errorAction,
+  secondaryAction,
+  tone,
+}: DialogActionsProps) {
+  const { kind, label: cancelLabel, ...cancelProps } = cancel;
+  const { label: confirmLabel, ...confirmProps } = confirm;
+  return (
+    <>
+      <ConfirmationDetails
+        error={error}
+        errorAction={errorAction}
+        {...(tone === undefined ? {} : { tone })}
+      />
+      <DialogFooter>
+        {kind === 'close' ? (
+          <DialogClose
+            disabled={cancelProps.disabled}
+            render={<Button type="button" {...cancelProps} />}
+          >
+            {cancelLabel}
+          </DialogClose>
+        ) : (
+          <Button type="button" {...cancelProps}>
+            {cancelLabel}
+          </Button>
+        )}
+        {secondaryAction}
+        <ProgressButton type="submit" {...confirmProps}>
+          {confirmLabel}
+        </ProgressButton>
+      </DialogFooter>
+    </>
   );
 }

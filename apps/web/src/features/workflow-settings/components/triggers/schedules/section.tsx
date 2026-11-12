@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
@@ -116,24 +112,21 @@ export function SchedulesSection({
             : setEnabled({ trigger: pausing, enabled: false })
         }
         submitDisabled={schedule.pendingTriggerId !== undefined}
-        footer={
-          <DialogFooter>
-            <DialogClose
-              disabled={schedule.pendingTriggerId !== undefined}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Keep it on
-            </DialogClose>
-            <ProgressButton
-              type="submit"
-              variant="destructive"
-              pending={schedule.pendingTriggerId !== undefined}
-              pendingLabel="Turning off…"
-            >
-              Turn off
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel: {
+            kind: 'close',
+            label: 'Keep it on',
+            variant: 'ghost',
+            disabled: schedule.pendingTriggerId !== undefined,
+          },
+          confirm: {
+            label: 'Turn off',
+            type: 'submit',
+            variant: 'destructive',
+            pending: schedule.pendingTriggerId !== undefined,
+            pendingLabel: 'Turning off…',
+          },
+        }}
       ></ConfirmDialog>
     </>
   );

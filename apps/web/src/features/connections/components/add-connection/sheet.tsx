@@ -1,9 +1,6 @@
 import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+
 import {
   isUnconfirmedCommand,
   newCommandKey,
@@ -183,20 +180,15 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
           model.setConfirmingDiscard(false);
           model.close();
         }}
-        footer={
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="ghost" />}>
-              Keep editing
-            </DialogClose>
-            <ProgressButton
-              type="submit"
-              variant="destructive"
-              pendingLabel="Discard"
-            >
-              Discard
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel: { kind: 'close', label: 'Keep editing', variant: 'ghost' },
+          confirm: {
+            label: 'Discard',
+            type: 'submit',
+            variant: 'destructive',
+            pendingLabel: 'Discard',
+          },
+        }}
       ></ConfirmDialog>
     </Sheet>
   );

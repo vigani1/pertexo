@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { codeLanguageSchema, type CodeLanguage } from '@pertexo/node-sdk';
 import {
@@ -63,21 +59,16 @@ export function CodeLanguageField({
           if (requested !== undefined) change(requested);
         }}
         submitDisabled={!form.editable}
-        footer={
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="ghost" />}>
-              Cancel
-            </DialogClose>
-            <ProgressButton
-              type="submit"
-              variant="primary"
-              pendingLabel="Switch language"
-              disabled={!form.editable}
-            >
-              Switch language
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel: { kind: 'close', label: 'Cancel', variant: 'ghost' },
+          confirm: {
+            label: 'Switch language',
+            type: 'submit',
+            variant: 'primary',
+            pendingLabel: 'Switch language',
+            disabled: !form.editable,
+          },
+        }}
       ></ConfirmDialog>
     </>
   );

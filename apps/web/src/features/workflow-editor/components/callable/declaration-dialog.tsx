@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { Button } from '@/components/ui/button';
 import { useState, type ReactNode, type ComponentProps } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
@@ -9,7 +6,6 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import { DeclarationForm } from './declaration-form';
@@ -100,20 +96,15 @@ export function DeclarationDialog({
           title="Discard contract changes?"
           description="These contract edits have not been applied to the workflow draft."
           onSubmit={close}
-          footer={
-            <DialogFooter>
-              <DialogClose render={<Button type="button" variant="ghost" />}>
-                Keep editing
-              </DialogClose>
-              <ProgressButton
-                type="submit"
-                variant="destructive"
-                pendingLabel="Discard changes"
-              >
-                Discard changes
-              </ProgressButton>
-            </DialogFooter>
-          }
+          actions={{
+            cancel: { kind: 'close', label: 'Keep editing', variant: 'ghost' },
+            confirm: {
+              label: 'Discard changes',
+              type: 'submit',
+              variant: 'destructive',
+              pendingLabel: 'Discard changes',
+            },
+          }}
         ></ConfirmDialog>
       </DialogContent>
     </Dialog>

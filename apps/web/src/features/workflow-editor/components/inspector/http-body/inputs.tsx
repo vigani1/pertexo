@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { useScratchForm } from '../use-draft-field';
 import { useState, type ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -178,20 +174,15 @@ function BodyInputs(props: BodyInputsProps) {
             model.pending?.apply();
           model.setConfirmation(undefined);
         }}
-        footer={
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="ghost" />}>
-              Cancel
-            </DialogClose>
-            <ProgressButton
-              type="submit"
-              variant="primary"
-              pendingLabel={model.pending?.confirmLabel ?? 'Replace'}
-            >
-              {model.pending?.confirmLabel ?? 'Replace'}
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel: { kind: 'close', label: 'Cancel', variant: 'ghost' },
+          confirm: {
+            label: model.pending?.confirmLabel ?? 'Replace',
+            type: 'submit',
+            variant: 'primary',
+            pendingLabel: model.pending?.confirmLabel ?? 'Replace',
+          },
+        }}
       ></ConfirmDialog>
     </div>
   );

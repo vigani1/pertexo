@@ -1,8 +1,5 @@
-import { DialogFooter } from '@/components/ui/dialog';
 import { useEditorSession } from '../model/state/context';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+
 import type { ReactNode } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
@@ -131,21 +128,16 @@ export function SessionDialogs({
         description="The owned handler steps are removed with the link, so they cannot become ordinary starting steps. The source stops this run on failure again. Undo restores the whole path."
         onSubmit={actions.confirmRemoval}
         submitDisabled={paused}
-        footer={
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="ghost" />}>
-              Cancel
-            </DialogClose>
-            <ProgressButton
-              type="submit"
-              variant="destructive"
-              pendingLabel="Remove failure path"
-              disabled={paused}
-            >
-              Remove failure path
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel: { kind: 'close', label: 'Cancel', variant: 'ghost' },
+          confirm: {
+            label: 'Remove failure path',
+            type: 'submit',
+            variant: 'destructive',
+            pendingLabel: 'Remove failure path',
+            disabled: paused,
+          },
+        }}
       >
         <ConfirmationDetails
           consequences={actions.pendingRemoval?.labels ?? []}

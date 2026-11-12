@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import type { AccountSecurityResponse } from '@pertexo/contracts';
 import { KeyRoundIcon, PlusIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -143,25 +140,22 @@ export function AccountMethodsSection({
           notifications.success({ title: `${name} removed` });
         }}
         submitDisabled={unlink.isPending || methodToRemove === undefined}
-        footer={
-          <DialogFooter>
-            <DialogClose
-              disabled={unlink.isPending}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Keep method
-            </DialogClose>
-            <ProgressButton
-              type="submit"
-              variant="destructive"
-              pending={unlink.isPending}
-              pendingLabel="Removing…"
-              disabled={methodToRemove === undefined}
-            >
-              Remove method
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel: {
+            kind: 'close',
+            label: 'Keep method',
+            variant: 'ghost',
+            disabled: unlink.isPending,
+          },
+          confirm: {
+            label: 'Remove method',
+            type: 'submit',
+            variant: 'destructive',
+            pending: unlink.isPending,
+            pendingLabel: 'Removing…',
+            disabled: methodToRemove === undefined,
+          },
+        }}
       >
         <ConfirmationDetails
           error={removalFailure(unlink.error)}

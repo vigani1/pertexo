@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { WebhookAuthenticationDialog } from './authentication-dialog';
 import { useState } from 'react';
 import type {
@@ -122,24 +118,21 @@ export function WebhooksSection(props: WebhooksSectionProps) {
             : model.run(model.confirming.triggerId, 'rotate-endpoint')
         }
         submitDisabled={model.webhook.pending?.command === 'rotate-endpoint'}
-        footer={
-          <DialogFooter>
-            <DialogClose
-              disabled={model.webhook.pending?.command === 'rotate-endpoint'}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-            <ProgressButton
-              type="submit"
-              variant="destructive"
-              pending={model.webhook.pending?.command === 'rotate-endpoint'}
-              pendingLabel="Rotating…"
-            >
-              Rotate URL
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel: {
+            kind: 'close',
+            label: 'Cancel',
+            variant: 'ghost',
+            disabled: model.webhook.pending?.command === 'rotate-endpoint',
+          },
+          confirm: {
+            label: 'Rotate URL',
+            type: 'submit',
+            variant: 'destructive',
+            pending: model.webhook.pending?.command === 'rotate-endpoint',
+            pendingLabel: 'Rotating…',
+          },
+        }}
       ></ConfirmDialog>
       <RotateSecretDialog
         open={model.confirming?.command === 'rotate-secret'}

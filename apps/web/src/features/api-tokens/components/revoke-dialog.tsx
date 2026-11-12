@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { useRef, useState } from 'react';
 import type { ApiTokenMetadata } from '@pertexo/contracts';
 import {
@@ -76,37 +72,31 @@ export function RevokeTokenDialog({
       description="Scripts using this token will be refused. Already accepted requests and runs may finish. Signing out does not revoke a token."
       onSubmit={revoke}
       submitDisabled={mutation.isPending}
-      footer={
-        <DialogFooter>
-          {!uncertain ? (
-            <DialogClose
-              disabled={mutation.isPending}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
+      actions={{
+        cancel: !uncertain
+          ? {
+              kind: 'close',
+              label: 'Cancel',
+              variant: 'ghost',
+              disabled: mutation.isPending,
+            }
+          : {
+              kind: 'action',
+              label: 'Close',
+              variant: 'ghost',
+              onClick: () => {
                 onClose();
                 changeConfirmationOpen(false);
-              }}
-            >
-              Close
-            </Button>
-          )}
-          <ProgressButton
-            type="submit"
-            variant="destructive"
-            pending={mutation.isPending}
-            pendingLabel="Revoking token…"
-          >
-            {!uncertain ? 'Revoke token' : 'Try again'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+              },
+            },
+        confirm: {
+          label: !uncertain ? 'Revoke token' : 'Try again',
+          type: 'submit',
+          variant: 'destructive',
+          pending: mutation.isPending,
+          pendingLabel: 'Revoking token…',
+        },
+      }}
     >
       <ConfirmationDetails
         error={feedback}
