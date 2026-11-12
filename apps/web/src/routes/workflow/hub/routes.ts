@@ -1,3 +1,4 @@
+import { warmWorkspacePage } from '../../workspace/workspace-page';
 import { parseCollaborationSearch } from '@/features/workflow-collaboration/workflow-collaboration-search.public';
 import { createRoute } from '@tanstack/react-router';
 import { lazyPiece, lazyRoute } from '@/components/patterns/app-update/lazy';
@@ -91,20 +92,20 @@ export const workflowRunsRoute = createRoute({
   validateSearch: (search) => sanitizeWorkflowRunSearch(search),
   loaderDeps: ({ search }) => filtersFromSearch(search),
   loader: async ({ context, deps }) => {
-    const { workflowRunsInfiniteQueryOptions } =
-      await import('@/features/workflow-runs/workflow-runs-queries.public');
-
     const { apiClient, queryClient, user, workspace, workflowId } = context;
-    if (workflowId === null || !workspace.capabilities.includes('run:read'))
-      return;
-    warmPrefetches(context, [
-      queryClient.infiniteQuery(
-        workflowRunsInfiniteQueryOptions(apiClient, user.id, workspace.id, {
-          ...deps,
-          workflowId,
-        }),
-      ),
-    ]);
+    if (workflowId === null) return;
+    return warmWorkspacePage(context, 'run:read', async () => {
+      const { workflowRunsInfiniteQueryOptions } =
+        await import('@/features/workflow-runs/workflow-runs-queries.public');
+      return [
+        queryClient.infiniteQuery(
+          workflowRunsInfiniteQueryOptions(apiClient, user.id, workspace.id, {
+            ...deps,
+            workflowId,
+          }),
+        ),
+      ];
+    });
   },
   head: ({ match }) => ({
     meta: [{ title: pageTitle('Workflow runs', match.context.workspace.name) }],
