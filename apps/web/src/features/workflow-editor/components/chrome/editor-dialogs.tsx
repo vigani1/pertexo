@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import type { LeaveReason } from '../../hooks/use-leave-guard';
@@ -54,38 +51,30 @@ export function LeaveEditorDialog({
       description={copy.description}
       onSubmit={canSave ? onSaveAndLeave : leave}
       submitDisabled={saving}
-      footer={
-        <DialogFooter>
-          <DialogClose
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Stay here',
+          disabled: saving,
+          variant: 'ghost',
+        },
+        secondaryAction: canSave ? (
+          <Button
+            type="button"
+            variant="destructive"
             disabled={saving}
-            render={<Button type="button" variant="ghost" />}
+            onClick={leave}
           >
-            Stay here
-          </DialogClose>
-          {canSave ? (
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={saving}
-              onClick={leave}
-            >
-              {'Leave anyway'}
-            </Button>
-          ) : undefined}
-          <ProgressButton
-            type="submit"
-            variant={
-              (canSave ? 'default' : 'destructive') === 'destructive'
-                ? 'destructive'
-                : 'primary'
-            }
-            pending={saving}
-            pendingLabel="Saving…"
-          >
-            {canSave ? 'Save and leave' : 'Leave anyway'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+            Leave anyway
+          </Button>
+        ) : undefined,
+        confirm: {
+          label: canSave ? 'Save and leave' : 'Leave anyway',
+          variant: canSave ? 'primary' : 'destructive',
+          pending: saving,
+          pendingLabel: 'Saving…',
+        },
+      }}
     ></ConfirmDialog>
   );
 }
@@ -108,20 +97,15 @@ export function UnfinishedEditDialog({
       title="Discard the unfinished edit?"
       description="A field in the step panel isn’t valid yet, so it hasn’t been saved. Stay to fix it, or discard it and continue."
       onSubmit={onDiscard}
-      footer={
-        <DialogFooter>
-          <DialogClose render={<Button type="button" variant="ghost" />}>
-            Stay
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="destructive"
-            pendingLabel="Discard edit"
-          >
-            Discard edit
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: { kind: 'close', label: 'Stay', variant: 'ghost' },
+        confirm: {
+          label: 'Discard edit',
+          type: 'submit',
+          variant: 'destructive',
+          pendingLabel: 'Discard edit',
+        },
+      }}
     ></ConfirmDialog>
   );
 }

@@ -1,5 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { DialogClose } from '@/components/ui/dialog';
 import { useId, useState, type ReactNode } from 'react';
 import {
   workflowFolderNameInputSchema,
@@ -307,37 +305,33 @@ export function FolderDeleteDialog({
           }))
       }
       submitDisabled={command.pending || command.revisionConflict === true}
-      footer={
-        <DialogFooter>
-          {confirmationRetry === undefined ? (
-            <DialogClose
-              disabled={command.pending}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                confirmationRetry.onDismiss();
-                changeConfirmationOpen(false);
-              }}
-            >
-              Close
-            </Button>
-          )}
-          <ProgressButton
-            type="submit"
-            variant="destructive"
-            pending={command.pending}
-            pendingLabel="Deleting…"
-          >
-            {confirmationRetry === undefined ? 'Delete folder' : 'Try again'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel:
+          confirmationRetry === undefined
+            ? {
+                kind: 'close',
+                label: 'Cancel',
+                variant: 'ghost',
+                disabled: command.pending,
+              }
+            : {
+                kind: 'action',
+                label: 'Close',
+                variant: 'ghost',
+                onClick: () => {
+                  confirmationRetry.onDismiss();
+                  changeConfirmationOpen(false);
+                },
+              },
+        confirm: {
+          label:
+            confirmationRetry === undefined ? 'Delete folder' : 'Try again',
+          type: 'submit',
+          variant: 'destructive',
+          pending: command.pending,
+          pendingLabel: 'Deleting…',
+        },
+      }}
     >
       {revisionReview}
       <ConfirmationDetails

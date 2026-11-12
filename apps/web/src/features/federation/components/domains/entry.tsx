@@ -1,5 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { DialogClose } from '@/components/ui/dialog';
 import { domainConfirmationCopy, domainStatus } from './copy';
 import { useState } from 'react';
 import type { FederationSettings } from '@pertexo/contracts';
@@ -248,40 +246,36 @@ function DomainConfirmation({
           ))
       }
       submitDisabled={confirmBlocked}
-      footer={
-        <DialogFooter>
-          {confirmationRetry === undefined ? (
-            <DialogClose
-              disabled={model.command.pending}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                confirmationRetry.onDismiss();
-                changeConfirmationOpen(false);
-              }}
-            >
-              Close
-            </Button>
-          )}
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            pending={model.command.pending}
-            pendingLabel={model.confirmationCopy.confirmLabel}
-            disabled={!model.editable || model.command.expired}
-          >
-            {confirmationRetry === undefined
+      actions={{
+        cancel:
+          confirmationRetry === undefined
+            ? {
+                kind: 'close',
+                label: 'Cancel',
+                variant: 'ghost',
+                disabled: model.command.pending,
+              }
+            : {
+                kind: 'action',
+                label: 'Close',
+                variant: 'ghost',
+                onClick: () => {
+                  confirmationRetry.onDismiss();
+                  changeConfirmationOpen(false);
+                },
+              },
+        confirm: {
+          label:
+            confirmationRetry === undefined
               ? model.confirmationCopy.confirmLabel
-              : 'Try again'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+              : 'Try again',
+          type: 'submit',
+          variant: 'primary',
+          pending: model.command.pending,
+          pendingLabel: model.confirmationCopy.confirmLabel,
+          disabled: !model.editable || model.command.expired,
+        },
+      }}
     >
       <ConfirmationDetails
         error={model.command.error}

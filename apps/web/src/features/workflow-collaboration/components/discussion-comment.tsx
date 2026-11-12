@@ -2,9 +2,7 @@ import {
   commentDraftState,
   type CommentDraftChange,
 } from '../model/comment-draft';
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
+
 import { useEffect, useState } from 'react';
 import type { WorkflowComment } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
@@ -128,27 +126,23 @@ export function DiscussionComment({
           })
         }
         submitDisabled={confirmBlocked}
-        footer={
-          <DialogFooter>
-            <DialogClose
-              disabled={command.pending || command.uncertain}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-            <ProgressButton
-              type="submit"
-              variant="primary"
-              pending={command.pending}
-              pendingLabel="Delete comment"
-              disabled={
-                command.uncertain || deletionRevision !== comment.revision
-              }
-            >
-              Delete comment
-            </ProgressButton>
-          </DialogFooter>
-        }
+        actions={{
+          cancel: {
+            kind: 'close',
+            label: 'Cancel',
+            variant: 'ghost',
+            disabled: command.pending || command.uncertain,
+          },
+          confirm: {
+            label: 'Delete comment',
+            type: 'submit',
+            variant: 'primary',
+            pending: command.pending,
+            pendingLabel: 'Delete comment',
+            disabled:
+              command.uncertain || deletionRevision !== comment.revision,
+          },
+        }}
       >
         <ConfirmationDetails>
           {deletionRevision === comment.revision ? null : (

@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import type { WorkspaceInvitation } from '@pertexo/contracts';
 import {
   ConfirmDialog,
@@ -64,43 +60,37 @@ export function InvitationActionDialog(
       description={copy.description}
       onSubmit={confirmationRetry?.onRetry ?? props.command.onConfirm}
       submitDisabled={props.command.pending}
-      footer={
-        <DialogFooter>
-          {confirmationRetry === undefined ? (
-            <DialogClose
-              disabled={props.command.locked}
-              render={<Button type="button" variant="ghost" />}
-            >
-              Cancel
-            </DialogClose>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                confirmationRetry.onDismiss();
-                changeConfirmationOpen(false);
-              }}
-            >
-              Close
-            </Button>
-          )}
-          <ProgressButton
-            type="submit"
-            variant={
-              (props.selection?.action === 'revoke'
-                ? 'destructive'
-                : 'default') === 'destructive'
-                ? 'destructive'
-                : 'primary'
-            }
-            pending={props.command.pending}
-            pendingLabel={copy.busy}
-          >
-            {confirmationRetry === undefined ? copy.confirm : 'Try again'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel:
+          confirmationRetry === undefined
+            ? {
+                kind: 'close',
+                label: 'Cancel',
+                variant: 'ghost',
+                disabled: props.command.locked,
+              }
+            : {
+                kind: 'action',
+                label: 'Close',
+                variant: 'ghost',
+                onClick: () => {
+                  confirmationRetry.onDismiss();
+                  changeConfirmationOpen(false);
+                },
+              },
+        confirm: {
+          label: confirmationRetry === undefined ? copy.confirm : 'Try again',
+          type: 'submit',
+          variant:
+            (props.selection?.action === 'revoke'
+              ? 'destructive'
+              : 'default') === 'destructive'
+              ? 'destructive'
+              : 'primary',
+          pending: props.command.pending,
+          pendingLabel: copy.busy,
+        },
+      }}
     >
       <ConfirmationDetails
         error={props.command.message}

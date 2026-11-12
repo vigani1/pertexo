@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import type {
   AccessibleWorkspace,
   WorkflowRecoveryPreview,
@@ -122,25 +119,22 @@ export function RunRecoveryAction({
             } else void preview.refetch();
           }}
           submitDisabled={preview.isFetching || preview.isFetching}
-          footer={
-            <DialogFooter>
-              <DialogClose
-                disabled={preview.isFetching}
-                render={<Button type="button" variant="ghost" />}
-              >
-                Cancel
-              </DialogClose>
-              <ProgressButton
-                type="submit"
-                variant="primary"
-                pending={preview.isFetching}
-                pendingLabel={unavailable ? 'Use full replay…' : 'Check again'}
-                disabled={preview.isFetching}
-              >
-                {unavailable ? 'Use full replay…' : 'Check again'}
-              </ProgressButton>
-            </DialogFooter>
-          }
+          actions={{
+            cancel: {
+              kind: 'close',
+              label: 'Cancel',
+              variant: 'ghost',
+              disabled: preview.isFetching,
+            },
+            confirm: {
+              label: unavailable ? 'Use full replay…' : 'Check again',
+              type: 'submit',
+              variant: 'primary',
+              pending: preview.isFetching,
+              pendingLabel: unavailable ? 'Use full replay…' : 'Check again',
+              disabled: preview.isFetching,
+            },
+          }}
         ></ConfirmDialog>
       ) : null}
     </>
@@ -164,25 +158,22 @@ function UnconfirmedRecoveryDialog({
       description="Check whether the original recovery request was accepted. The same version, step, deadline and acknowledgement are retained; this does not request a second run."
       onSubmit={() => command.retry()}
       submitDisabled={command.pending || command.expired}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={command.pending}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            pending={command.pending}
-            pendingLabel="Checking acceptance…"
-            disabled={command.expired}
-          >
-            Retry same request
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: command.pending,
+        },
+        confirm: {
+          label: 'Retry same request',
+          type: 'submit',
+          variant: 'primary',
+          pending: command.pending,
+          pendingLabel: 'Checking acceptance…',
+          disabled: command.expired,
+        },
+      }}
     >
       <ConfirmationDetails error={command.error} tone="warning">
         <p className="text-sm text-muted-foreground">

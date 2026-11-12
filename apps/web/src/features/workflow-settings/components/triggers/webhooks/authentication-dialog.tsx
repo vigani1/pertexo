@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import {
   webhookAuthenticationSchema,
@@ -98,27 +94,24 @@ export function WebhookAuthenticationDialog({
           await onSave(parsed.data);
       }}
       submitDisabled={confirmBlocked}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={pending}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            pending={pending}
-            pendingLabel="Saving…"
-            disabled={blocked && !pending}
-          >
-            {changesCredential
-              ? 'Save and rotate credentials'
-              : 'Save authentication'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: pending,
+        },
+        confirm: {
+          label: changesCredential
+            ? 'Save and rotate credentials'
+            : 'Save authentication',
+          type: 'submit',
+          variant: 'primary',
+          pending: pending,
+          pendingLabel: 'Saving…',
+          disabled: blocked && !pending,
+        },
+      }}
     >
       <ConfirmationDetails error={error}>
         <LabelledField id="webhook-mode" label="Authentication mode">

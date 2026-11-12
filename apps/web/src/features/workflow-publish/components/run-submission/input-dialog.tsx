@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { RunPublicationReview } from './publication-review';
 import { usePublicationReview } from './use-publication-review';
 import { RunInputUpload } from './file-input';
@@ -104,27 +100,24 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
       }
       onSubmit={model.submit}
       submitDisabled={model.pending || model.availability.confirmDisabled}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={model.availability.locked}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            pending={model.pending}
-            pendingLabel="Starting…"
-            disabled={model.availability.confirmDisabled}
-          >
-            {model.retryAvailable
-              ? 'Retry same run'
-              : 'Start published version'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: model.availability.locked,
+        },
+        confirm: {
+          label: model.retryAvailable
+            ? 'Retry same run'
+            : 'Start published version',
+          type: 'submit',
+          variant: 'primary',
+          pending: model.pending,
+          pendingLabel: 'Starting…',
+          disabled: model.availability.confirmDisabled,
+        },
+      }}
     >
       <ConfirmationDetails
         error={model.review.error ?? model.error}

@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import {
@@ -86,25 +83,22 @@ export function RecoveryConfirmation({
       }
       onSubmit={confirm}
       submitDisabled={command.pending || confirmationBlocked}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={command.pending}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            pending={command.pending}
-            pendingLabel="Checking acceptance…"
-            disabled={confirmationBlocked}
-          >
-            {command.unconfirmed ? 'Retry same request' : idleConfirmLabel}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: command.pending,
+        },
+        confirm: {
+          label: command.unconfirmed ? 'Retry same request' : idleConfirmLabel,
+          type: 'submit',
+          variant: 'primary',
+          pending: command.pending,
+          pendingLabel: 'Checking acceptance…',
+          disabled: confirmationBlocked,
+        },
+      }}
     >
       <ConfirmationDetails
         error={command.error}

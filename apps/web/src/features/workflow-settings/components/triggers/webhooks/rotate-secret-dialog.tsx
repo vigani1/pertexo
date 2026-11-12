@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import {
   ConfirmDialog,
@@ -65,24 +61,21 @@ export function RotateSecretDialog({
           await onRotate(endpointKey).finally(clear);
       }}
       submitDisabled={pending}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={pending}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            pending={pending}
-            pendingLabel="Rotating…"
-          >
-            Rotate secret
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: pending,
+        },
+        confirm: {
+          label: 'Rotate secret',
+          type: 'submit',
+          variant: 'primary',
+          pending: pending,
+          pendingLabel: 'Rotating…',
+        },
+      }}
     >
       <ConfirmationDetails>
         <LabelledField

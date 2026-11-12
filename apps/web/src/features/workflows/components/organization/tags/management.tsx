@@ -1,6 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
 import { TagNameActions, TagNameField } from './name-fields';
 import {
   workflowTagKeyInputSchema,
@@ -216,25 +213,22 @@ function TagDeleteConfirmation({
       description="It’s removed from every workflow, including archived ones. If more than 50 workflows use it, remove it from some of them first with See workflows using it."
       onSubmit={command.retryAvailable ? command.retry : onDelete}
       submitDisabled={confirmBlocked}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={command.pending || command.retryAvailable}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="destructive"
-            pending={command.pending && pendingKind === 'delete-tag'}
-            pendingLabel="Deleting…"
-            disabled={tagDeletionBlocked}
-          >
-            {command.retryAvailable ? 'Try again' : 'Delete tag'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: command.pending || command.retryAvailable,
+        },
+        confirm: {
+          label: command.retryAvailable ? 'Try again' : 'Delete tag',
+          type: 'submit',
+          variant: 'destructive',
+          pending: command.pending && pendingKind === 'delete-tag',
+          pendingLabel: 'Deleting…',
+          disabled: tagDeletionBlocked,
+        },
+      }}
     >
       <ConfirmationDetails
         error={

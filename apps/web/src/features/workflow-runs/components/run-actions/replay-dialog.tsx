@@ -1,7 +1,3 @@
-import { DialogFooter } from '@/components/ui/dialog';
-import { ProgressButton } from '@/components/ui/progress-button';
-import { DialogClose } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { ChoiceCards } from '@/components/patterns/choice-cards';
 import { GitBranchIcon, RotateCcwIcon } from 'lucide-react';
 import { workflowRunVersionQueryOptions } from '../../data/detail.queries';
@@ -297,25 +293,22 @@ export function ReplayRunDialog({
       }
       onSubmit={submit}
       submitDisabled={replay.pending || cannotStart}
-      footer={
-        <DialogFooter>
-          <DialogClose
-            disabled={replay.pending}
-            render={<Button type="button" variant="ghost" />}
-          >
-            Cancel
-          </DialogClose>
-          <ProgressButton
-            type="submit"
-            variant="primary"
-            pending={replay.pending}
-            pendingLabel="Replaying…"
-            disabled={cannotStart}
-          >
-            {replay.retryAvailable ? 'Retry same replay' : 'Replay run'}
-          </ProgressButton>
-        </DialogFooter>
-      }
+      actions={{
+        cancel: {
+          kind: 'close',
+          label: 'Cancel',
+          variant: 'ghost',
+          disabled: replay.pending,
+        },
+        confirm: {
+          label: replay.retryAvailable ? 'Retry same replay' : 'Replay run',
+          type: 'submit',
+          variant: 'primary',
+          pending: replay.pending,
+          pendingLabel: 'Replaying…',
+          disabled: cannotStart,
+        },
+      }}
     >
       <ConfirmationDetails
         error={replay.error}
