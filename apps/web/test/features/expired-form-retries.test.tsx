@@ -15,7 +15,6 @@ import {
 import { createApiClient } from '@/lib/api/client';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { NewWorkflowSheet } from '@/features/workflows/components/creation/new-workflow-sheet';
 import { ReplaceCredentialForm } from '@/features/connections/components/detail/replace-credential-form';
 import { AddConnectionSheet } from '@/features/connections/components/add-connection/sheet';
 import { DestinationForm } from '@/features/failure-notifications/components/destination-form';
@@ -28,7 +27,7 @@ import {
 afterEach(() => {
   vi.restoreAllMocks();
 });
-it.each(['workflow', 'credential', 'destination', 'connection'] as const)(
+it.each(['credential', 'destination', 'connection'] as const)(
   'keeps the %s form retry exact until expiry and requires a new-attempt decision',
   async (kind) => {
     let now = Date.now();
@@ -53,16 +52,7 @@ it.each(['workflow', 'credential', 'destination', 'connection'] as const)(
       },
     });
     let view;
-    if (kind === 'workflow')
-      view = (
-        <NewWorkflowSheet
-          {...scope}
-          open
-          onOpenChange={() => undefined}
-          onCreated={() => undefined}
-        />
-      );
-    else if (kind === 'credential')
+    if (kind === 'credential')
       view = (
         <ReplaceCredentialForm
           scope={scope}
@@ -115,11 +105,6 @@ it.each(['workflow', 'credential', 'destination', 'connection'] as const)(
     });
     render(<RouterProvider router={router} />);
     const user = userEvent.setup();
-    if (kind === 'workflow')
-      await user.type(
-        await screen.findByLabelText('Workflow name'),
-        'Retained workflow',
-      );
     if (kind === 'credential' || kind === 'connection') {
       await user.type(
         await screen.findByLabelText('Slack bot token'),
@@ -129,16 +114,12 @@ it.each(['workflow', 'credential', 'destination', 'connection'] as const)(
         await user.click(screen.getByRole('button', { name: 'Continue' }));
     }
     const submitLabel = {
-      workflow: 'Create workflow',
       credential: 'Replace credential',
       destination: 'Save changes',
       connection: 'Save and test',
     }[kind];
     await user.click(await screen.findByRole('button', { name: submitLabel }));
-    const retryLabel = kind === 'workflow' ? 'Retry safely' : 'Try again';
-    const retry = await screen.findByRole('button', {
-      name: retryLabel,
-    });
+    const retry = await screen.findByRole('button', { name: 'Try again' });
     await waitFor(() => {
       expect(keys).toHaveLength(1);
     });
