@@ -15,9 +15,11 @@ pending review; the table does not claim compatibility has been tested.
 | Package | Installed | Latest | Reason for retaining current version | Review by |
 | --- | --- | --- | --- | --- |
 | `@nestjs/core` | 11.2.8 | 12.4.2 | Review framework, Fastify adapter and testing migration together. | 2026-12-10 |
-| `@opentelemetry/resources`, `@opentelemetry/sdk-metrics` | 2.12.0 | 3.1.1 | Coordinate SDK, instrumentation and privacy-test migration; weekly 0.301 SDK removed exports and requires the 3.x family. | 2026-12-10 |
 | `uuid` | 13.0.2 | 14.0.3 | Review runtime and exported API compatibility before changing shared identifiers. | 2026-12-10 |
 | `@xmldom/xmldom` | 0.8.15 | 0.9.12 | Existing SAML parser type/error-handling deferral in dependency-updates.md. | 2026-11-19 |
+
+OpenTelemetry moved to the coordinated 3.0.0/0.300.0 family on 2026-11-12;
+see [the completed migration](dependency-updates.md#opentelemetry-3-migration-2026-11-12).
 
 ## Overrides reviewed 2026-11-10
 
@@ -27,7 +29,7 @@ checking every dependency path, the production audit and relevant tests.
 
 | Override | Reason | Removal condition | Review by |
 | --- | --- | --- | --- |
-| `@opentelemetry/api: 1.9.1` | SDK 2.x peer ranges exclude 1.10; align optional peers so Drizzle's error class has one identity. | Coordinated OpenTelemetry 3 migration and rollback/admission tests pass without it. | 2026-12-10 |
+| `@opentelemetry/api: 1.10.0` | Align SDK 3 and optional peers so Drizzle's error class has one identity. | One API resolution and rollback/admission tests pass without the override. | 2026-12-12 |
 | `@esbuild-kit/core-utils>esbuild: 0.25.12` | Drizzle's legacy configuration loader resolves vulnerable esbuild 0.18. | Parent loader upgrades beyond that vulnerable line. | 2026-12-10 |
 | `fastify: 5.12.8` | Align Nest's transitive adapter and the app's direct Fastify version at the patched release. | All parent paths resolve the same supported patched release. | 2026-12-10 |
 | `fast-uri@^3.0.0: 3.1.9`, `fast-uri@^4.0.0: 4.2.3` | Patched vulnerable transitive versions, retaining each parent's major (06aff8ab2). | All parent paths select patched versions. | 2026-12-10 |

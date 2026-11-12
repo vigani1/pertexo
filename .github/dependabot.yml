@@ -28,40 +28,6 @@ updates:
       - dependency-name: '@xmldom/xmldom'
         versions:
           - '>=0.9.0'
-      # OpenTelemetry 3 migration: see dependency-updates.md.
-      - dependency-name: '@opentelemetry/exporter-metrics-otlp-http'
-        versions:
-          - '0.301.0'
-      - dependency-name: '@opentelemetry/exporter-trace-otlp-http'
-        versions:
-          - '0.301.0'
-      - dependency-name: '@opentelemetry/instrumentation-host-metrics'
-        versions:
-          - '0.7.0'
-      - dependency-name: '@opentelemetry/instrumentation-http'
-        versions:
-          - '0.301.0'
-      - dependency-name: '@opentelemetry/instrumentation-nestjs-core'
-        versions:
-          - '0.71.0'
-      - dependency-name: '@opentelemetry/instrumentation-pg'
-        versions:
-          - '0.77.0'
-      - dependency-name: '@opentelemetry/instrumentation-pino'
-        versions:
-          - '0.70.0'
-      - dependency-name: '@opentelemetry/instrumentation-runtime-node'
-        versions:
-          - '0.37.0'
-      - dependency-name: '@opentelemetry/instrumentation-undici'
-        versions:
-          - '0.34.0'
-      - dependency-name: '@opentelemetry/sdk-node'
-        versions:
-          - '0.301.0'
-      - dependency-name: '@opentelemetry/api'
-        versions:
-          - '1.10.0'
     commit-message:
       prefix: build
     labels:
