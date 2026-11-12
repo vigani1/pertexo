@@ -38,9 +38,9 @@ if (
 let storagePort = 0;
 let databasePort = 0;
 const rust =
-  'rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c';
+  'rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2';
 const rc =
-  'rustfs/rc:v0.1.36@sha256:ab024bfebee49a750ce886b4c70963ccd9ddaa03f491704a90710641d7a26699';
+  'rustfs/rc:v0.1.37@sha256:7e93fd410a8fe51514f89373e093392c92095b98dc6140335fcfe956810c4c80';
 const clone = readFileSync(
   'infrastructure/single-server/backup/compose.yaml',
   'utf8',

@@ -84,8 +84,7 @@ it('gives the Code runner the limits its own settings derive', () => {
   );
 });
 
-// Two files pin the same third-party images, and only one of them gets exercised by a
-// real server: they must not drift apart.
+// Dependabot updates Compose; script-only pins must follow so probes test what ships.
 it('runs the same pinned images as a real install', () => {
   const read = (path) =>
     parse(readFileSync(path, 'utf8'), { merge: true }).services;
@@ -93,16 +92,28 @@ it('runs the same pinned images as a real install', () => {
   const real = read('infrastructure/single-server/compose.yaml');
   for (const service of ['proxy', 'postgres', 'redis', 'storage'])
     assert.equal(quick[service].image, real[service].image, service);
-  assert.ok(
-    readFileSync(
-      'infrastructure/single-server/release-operations.sh',
-      'utf8',
-    ).includes(quick['storage-setup'].image) ||
-      readFileSync('infrastructure/single-server/deploy.sh', 'utf8').includes(
+  for (const file of [
+    'deploy.sh',
+    'restore.sh',
+    'storage/qualify.mjs',
+    'backup/qualify.mjs',
+    'test/drill/support/server.mjs',
+  ]) {
+    assert.ok(
+      readFileSync(`infrastructure/single-server/${file}`, 'utf8').includes(
         quick['storage-setup'].image,
       ),
-    'the storage setup client',
-  );
+      `Storage setup client pin drift in ${file}: update its script-only rustfs/rc pin to ${quick['storage-setup'].image}, matching infrastructure/quickstart/compose.yaml. See docs/operations/dependency-updates.md weekly manual review.`,
+    );
+  }
+  for (const file of ['storage/qualify.mjs', 'backup/qualify.mjs']) {
+    assert.ok(
+      readFileSync(`infrastructure/single-server/${file}`, 'utf8').includes(
+        quick.storage.image,
+      ),
+      `Storage server pin drift in ${file}: update its script-only RustFS pin to ${quick.storage.image}, matching Compose.`,
+    );
+  }
 });
 
 it('keeps Code enabled on API and worker when the deployment supplies a runner', () => {

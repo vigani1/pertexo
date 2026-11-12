@@ -50,8 +50,7 @@ services:
     stop_grace_period: 1m
 
   redis:
-    # redis:8.2.8-alpine; manifest digest resolved 2026-08-30
-    image: ${REDIS_IMAGE:-redis:8.2.8-alpine@sha256:a7859ed111db3c1f5404a973a4747505d559fb5ca32d37e447afc0ef845a2103}
+    image: ${REDIS_IMAGE:-redis:8.10.2-alpine@sha256:9f8d2d789b9a1d1e3f283f979aa9cbf393373806472e1ccd460e2f9c869b833b}
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-pertexo-local-redis}
@@ -83,8 +82,7 @@ services:
     stop_grace_period: 30s
 
   artifact-store:
-    # adobe/s3mock:5.1.0; manifest digest resolved 2026-08-30
-    image: ${S3MOCK_IMAGE:-adobe/s3mock:5.1.0@sha256:65cf60155a2e235fe7d5bf6c633747d6fc7ed93f9f5a6727d86470026b83c2a2}
+    image: ${S3MOCK_IMAGE:-adobe/s3mock:5.2.3@sha256:ab01a6946750f451ca215a47e91030695b260e4003b8a5a6201d25029b8fca92}
     restart: unless-stopped
     environment:
       COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /data
