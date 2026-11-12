@@ -27,10 +27,8 @@ export type ImportPhaseContext = Readonly<{
   lifetime: ReturnType<typeof usePortabilityLifetime>;
   command: ReturnType<typeof useWorkflowImportCommand>;
   validation: ReturnType<typeof useFieldValidation<string>>;
-  intent: RefObject<number>;
   sourceIntent: RefObject<number>;
   clear: () => void;
-  invalidate: () => void;
 }>;
 
 export function startAnotherImport({
@@ -45,52 +43,30 @@ export function startAnotherImport({
 }
 
 export async function chooseImportFile(
-  {
-    dispatch,
-    locked,
-    invalidate,
-    validation,
-    sourceIntent,
-    lifetime,
-  }: ImportPhaseContext,
+  { dispatch, locked, validation, sourceIntent, lifetime }: ImportPhaseContext,
   file: File | undefined,
 ) {
   if (locked) return;
-  invalidate();
-  dispatch({
-    type: 'update',
-    patch: {
-      template: undefined,
-      setupValues: [],
-      manifest: undefined,
-      bindings: [],
-    },
-  });
-  dispatch({ type: 'activity', activity: 'idle' });
+  dispatch({ type: 'file-chosen', reading: file !== undefined });
   validation.reset();
   if (file === undefined) return;
   const epoch = sourceIntent.current;
   const request = lifetime.begin();
-  dispatch({ type: 'activity', activity: 'reading' });
   try {
     const parsed = await readPortableWorkflowFile(file);
     if (request.current() && epoch === sourceIntent.current)
-      dispatch({ type: 'update', patch: { manifest: parsed } });
+      dispatch({ type: 'file-read', manifest: parsed });
   } catch (failure) {
     if (request.current() && epoch === sourceIntent.current)
       dispatch({
-        type: 'update',
-        patch: {
-          error:
-            failure instanceof Error
-              ? failure.message
-              : 'This file can’t be read. Choose a workflow file exported from Pertexo.',
-        },
+        type: 'file-read',
+        error:
+          failure instanceof Error
+            ? failure.message
+            : 'This file can’t be read. Choose a workflow file exported from Pertexo.',
       });
   } finally {
     request.done();
-    if (request.current() && epoch === sourceIntent.current)
-      dispatch({ type: 'activity', activity: 'idle' });
   }
 }
 
@@ -104,7 +80,6 @@ export async function checkImportPreview({
   locked,
   validation,
   configuredManifest,
-  intent,
   lifetime,
 }: ImportPhaseContext) {
   const { template, setupValues, name, bindings } = draft;
@@ -123,11 +98,9 @@ export async function checkImportPreview({
   if (importSubmissionBlocked) return;
   if (configuredManifest === undefined) return;
   command.clear();
-  const epoch = intent.current;
+  const { revision } = draft;
   const request = lifetime.begin();
-  dispatch({ type: 'update', patch: { preview: undefined } });
-  dispatch({ type: 'update', patch: { error: undefined } });
-  dispatch({ type: 'activity', activity: 'previewing' });
+  dispatch({ type: 'preview-started' });
   try {
     if (!request.current()) return;
     const result = await previewWorkflowImport(
@@ -142,20 +115,20 @@ export async function checkImportPreview({
       },
       request.signal,
     );
-    if (request.current() && epoch === intent.current)
-      dispatch({ type: 'update', patch: { preview: result } });
+    if (request.current())
+      dispatch({ type: 'preview-finished', revision, preview: result });
   } catch (failure) {
-    if (
-      request.current() &&
-      epoch === intent.current &&
-      !lifetime.accessFailure(failure)
-    )
-      dispatch({
-        type: 'update',
-        patch: { error: describeCommandError(failure, 'checking this import') },
-      });
+    if (!request.current()) return;
+    dispatch(
+      lifetime.accessFailure(failure)
+        ? { type: 'preview-finished', revision, superseded: true }
+        : {
+            type: 'preview-finished',
+            revision,
+            error: describeCommandError(failure, 'checking this import'),
+          },
+    );
   } finally {
     request.done();
-    if (request.current()) dispatch({ type: 'activity', activity: 'idle' });
   }
 }
