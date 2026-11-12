@@ -147,6 +147,23 @@ describeIntegration('Lost ownership before attempt setup', () => {
             signal: new AbortController().signal,
           }),
         ).rejects.toBeInstanceOf(NodeAttemptReconciliationRequiredError);
+        const expiryBefore = await workerQuery(
+          'select lease_expires_at from app.node_attempts where id=$1',
+          [oldLease.attemptId],
+        );
+        await expect(
+          store.heartbeat({
+            lease: oldLease,
+            leaseDurationSeconds: 120,
+            signal: new AbortController().signal,
+          }),
+        ).rejects.toBeInstanceOf(NodeAttemptReconciliationRequiredError);
+        expect(
+          await workerQuery(
+            'select lease_expires_at from app.node_attempts where id=$1',
+            [oldLease.attemptId],
+          ),
+        ).toEqual(expiryBefore);
         if (replacement !== undefined) {
           expect(
             await workerQuery(
