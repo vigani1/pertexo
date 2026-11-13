@@ -173,3 +173,24 @@ describe('checkouts that start together on a new pool', () => {
     }
   });
 });
+
+describe('a first checkout made with a callback', () => {
+  beforeEach(beforeEachFixture1);
+
+  it('is refused like a promise checkout, and its client is destroyed', async () => {
+    pg.FakePool.freshSession = {
+      kind: 'carries',
+      settings: ['app.workspace_id'],
+    };
+    const first = client();
+    pg.FakePool.connectOutcomes.push({ kind: 'resolve', client: first });
+    const target = pool();
+
+    const refusal = await callbackCheckout(target);
+
+    expect(refusal).toBeInstanceOf(InheritedSessionContextError);
+    expect(refusal).toMatchObject({ settings: ['app.workspace_id'] });
+    expect(first.release).toHaveBeenCalledExactlyOnceWith(true);
+    await expect(target.connect()).rejects.toBe(refusal);
+  });
+});
