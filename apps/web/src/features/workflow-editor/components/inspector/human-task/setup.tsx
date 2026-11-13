@@ -158,8 +158,8 @@ export function HumanFormSetup({
         />
       ) : null}
       <Notice glyph="waiting">
-        {decisionGuidance(parsed)} Human waiting releases the active slot and
-        pauses the execution budget; an explicit absolute deadline still
+        {decisionGuidance(parsed)} While it waits for a person, the run doesn’t
+        hold a run slot or use up its time limit. A deadline you set still
         applies.
       </Notice>
     </>

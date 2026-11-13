@@ -6,7 +6,7 @@ import { RUN_LIST_GUIDE } from '../../model/presentation/run-guide';
 
 /**
  * What the statuses mean, the Live switch (10 s polling while visible) and
- * the List | Loom view. On a phone the guide and views keep only their icons,
+ * the List | Timeline view. On a phone the guide and views keep only their icons,
  * so the toolbar stays one row above the filters.
  */
 export function RunsToolbar({
@@ -41,7 +41,7 @@ export function RunsToolbar({
         </ToggleGroupItem>
         <ToggleGroupItem value="loom">
           <ChartGanttIcon aria-hidden="true" />
-          <span className="max-sm:sr-only">Loom</span>
+          <span className="max-sm:sr-only">Timeline</span>
         </ToggleGroupItem>
       </ToggleGroup>
     </>

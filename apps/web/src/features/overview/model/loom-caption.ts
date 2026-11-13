@@ -22,6 +22,6 @@ export function loomCaption({
       : undefined;
   const runs = `${total.toLocaleString(FORMAT_LOCALE)} ${total === 1 ? 'run' : 'runs'} in ${phrase}`;
   return capped
-    ? `${runs}. The Loom draws the latest 300; narrow the window to see every run.`
+    ? `${runs}. The timeline shows the latest 300; narrow the window to see every run.`
     : `${runs}.`;
 }
