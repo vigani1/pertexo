@@ -40,7 +40,9 @@ function methodLabel(method: Method): string {
 function linkFailure(error: unknown, provider: string): string {
   if (isApiError(error)) {
     if (isSessionExpired(error)) return 'Your session ended. Sign in again.';
-    // Link start refuses a wrong current password with 403.
+    if (error.problem?.code === 'auth.email_not_verified')
+      return 'Verify your email address before adding a sign-in method. Check your inbox for the link.';
+    // Link start's other 403 is a current password it couldn't confirm.
     if (error.status === 403)
       return 'That didn’t confirm it’s you. Check your current password and try again.';
     if (error.status === 409)

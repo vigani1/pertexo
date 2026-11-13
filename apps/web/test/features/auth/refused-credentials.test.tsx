@@ -151,6 +151,12 @@ describe('refused credentials, each in its own words', () => {
       'auth.forbidden',
       'That didn’t confirm it’s you. Check your current password and try again.',
     ],
+    // Review of PR #707, P3: an unverified email is its own 403.
+    [
+      403,
+      'auth.email_not_verified',
+      'Verify your email address before adding a sign-in method. Check your inbox for the link.',
+    ],
     [401, 'auth.unauthenticated', 'Your session ended. Sign in again.'],
   ] as const)(
     'answers a %i %s when adding a sign-in method',

@@ -83,7 +83,8 @@ export class AccountLinking {
     if (csrfRefusal !== undefined) return problem(csrfRefusal);
     const session = await this.input.authenticate(request);
     if (session === undefined) return problem(401);
-    if (!session.emailVerified) return problem(403);
+    // Better Auth's own code, which the bridge names auth.email_not_verified.
+    if (!session.emailVerified) return problem(403, 'EMAIL_NOT_VERIFIED');
     const body = accountSecurityLinkStartRequestSchema.safeParse(
       await request.json().catch(() => null),
     );
@@ -351,8 +352,8 @@ export class AccountLinking {
   }
 }
 
-function problem(status: number): Response {
-  return Response.json({ code: 'LINK_ATTEMPT_UNAVAILABLE' }, { status });
+function problem(status: number, code = 'LINK_ATTEMPT_UNAVAILABLE'): Response {
+  return Response.json({ code }, { status });
 }
 
 const LINK_LANDINGS = {
