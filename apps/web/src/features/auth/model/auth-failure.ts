@@ -33,8 +33,7 @@ const TOO_MANY = 'Too many attempts. Wait a moment, then try again.';
 
 /** The email and password were refused (rather than the request failing). */
 export function isCredentialMismatch(error: unknown): boolean {
-  const status = nativeError(error)?.status;
-  return status === 401 || status === 400;
+  return nativeError(error)?.code === 'auth.invalid_credentials';
 }
 
 export function signInFailure(error: unknown): string {

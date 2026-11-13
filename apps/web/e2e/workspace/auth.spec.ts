@@ -3,6 +3,7 @@ import { expect, test } from '../support/fixtures';
 import {
   csrfToken,
   mockIdentity,
+  refusedCredentialsProblem,
   unauthenticatedProblem,
   user,
   workspace,
@@ -101,9 +102,9 @@ test('shows the live edge and execution orb while sign-in is pending', async ({
   await page.route('**/v1/auth/sign-in/email', async (route) => {
     await gate;
     await route.fulfill({
-      status: 401,
+      status: 400,
       contentType: 'application/problem+json',
-      body: unauthenticatedProblem(),
+      body: refusedCredentialsProblem(),
     });
   });
 
@@ -123,7 +124,9 @@ test('shows the live edge and execution orb while sign-in is pending', async ({
   await expect(page.locator('[aria-busy="true"]')).toBeVisible();
 
   release?.();
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText(
+    'That email and password don’t match.',
+  );
 });
 
 test('signing out in one tab clears protected workspace views in another tab', async ({
