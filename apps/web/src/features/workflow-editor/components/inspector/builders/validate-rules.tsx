@@ -1,4 +1,5 @@
 import { PlusIcon } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
@@ -57,13 +58,30 @@ function ruleType(rule: ValidateRule): ValidateType | undefined {
  * valid and which rules failed, for a Condition or Switch to route on.
  */
 export function ValidateRules({
-  rules,
+  rules: stored,
   form,
 }: Readonly<{ rules: readonly ValidateRule[]; form: NodeFormApi }>) {
+  // A new Validate step opens with one blank rule to fill, as n8n, Zapier
+  // and Make do. It lives here until it has a path, so the stored setup
+  // stays empty rather than holding a rule nobody wrote.
+  const [blank, setBlank] = useState(() => addValidateRule([]));
+  const rules = stored.length === 0 ? blank : stored;
   function change(
     update: (current: readonly ValidateRule[]) => readonly ValidateRule[],
     key: string,
   ) {
+    if (stored.length === 0) {
+      const next = update(blank);
+      if (next.every((rule) => rule.path === '')) {
+        setBlank(next);
+        return;
+      }
+      form.commit(
+        (node) => ({ config: withValidateRules(node.config, next) }),
+        `${form.nodeId}:config:rules:${key}`,
+      );
+      return;
+    }
     form.commit(
       (node) => ({
         config: withValidateRules(
@@ -83,24 +101,18 @@ export function ValidateRules({
         stop the run: the result says whether the input is valid and which rules
         failed, for a Condition to route on.
       </p>
-      {rules.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No rules yet. Add the first to say what the input needs.
-        </p>
-      ) : (
-        <ol className="flex flex-col gap-2">
-          {rules.map((rule, index) => (
-            <RuleCard
-              key={rule.id}
-              rule={rule}
-              index={index}
-              count={rules.length}
-              form={form}
-              onChange={change}
-            />
-          ))}
-        </ol>
-      )}
+      <ol className="flex flex-col gap-2">
+        {rules.map((rule, index) => (
+          <RuleCard
+            key={rule.id}
+            rule={rule}
+            index={index}
+            count={rules.length}
+            form={form}
+            onChange={change}
+          />
+        ))}
+      </ol>
       <Button
         type="button"
         size="sm"
