@@ -1,8 +1,8 @@
 # Run admission under a backlog
 
-Status: proposed; awaiting the owner's approval. Finding: architecture-07
-(batch J7). Builds nothing until approved. Related: ADR 012, ADR 058, ADR 070
-(slot lending stays), [F29](29-workflow-concurrency-controls.md).
+Status: **built** (option B plus an ordered-start wake; batch J8). Finding:
+architecture-07 (batch J7). Related: ADR 012, ADR 058, ADR 070 (slot lending
+stays), [F29](29-workflow-concurrency-controls.md).
 
 ## Measurement (2026-11-12, main at `8dd36b6c4`)
 
@@ -79,7 +79,63 @@ win little beyond B. Revisit it only if B's numbers fall short. A and D: no.
 Close the "multi-tenant machinery doesn't fit" half of the finding with this
 evidence, and keep the cost half open until B lands.
 
-## What it would change
+## What was built (batch J8)
+
+B alone removed the quadratic cost but not the slow drain. The drain's real
+bound was a second cause: granted runs of a limited workflow start in ticket
+order, and a later run whose start landed first was deferred **5 s while holding
+its slot**. A second fix removes that idle time.
+
+- **Queue-head admission** (migration `0002_queue_head_admission.sql`,
+  `claim.ts`):
+  - `held_workflow_run_admission_events` is one set-based query per workspace
+    in the claim's round. It lists the queued-run deliveries that can't be
+    admitted in this claim: those behind their limited queue's head, and those
+    beyond the free slots read from `workspace_execution_admission_counters`.
+    The claim skips them and checks only the rest, each still exactly, under
+    the counter lock.
+  - The slot rules moved unchanged into `workflow_run_active_slots` and
+    `workflow_run_reserved_slots`, which never count the queue.
+  - No index was needed.
+- **Ordered-start wake** (migration `0003_ordered_start_wakeup.sql`,
+  `runs/wakeups/ordered-start.repository.ts`):
+  - When a run starts, the coordinator's start transaction calls
+    `wake_next_ordered_workflow_run_start`. It brings forward only the next
+    granted run's deferred delivery, with `SKIP LOCKED`, so the wake takes no
+    lock it would wait for.
+  - `workflow_run_active_capacity_available` now decides an order rejection
+    under the counter lock the start path already holds. The deferral then
+    serializes with the start of the run ahead, and that start's wake always
+    sees it.
+  - The 5 s deferral stays as the fallback when the run ahead is stuck.
+- **Unchanged:** who may be admitted, ticket order, workspace fairness, lending,
+  and the app's fence on outbox updates.
+
+### Measured (J7 harness, 200 noisy runs, limit 5, load 5–8)
+
+| | Main | B | B + wake |
+| --- | ---: | ---: | ---: |
+| 200-run drain (wall) | 877 s | 123 s | 37 / 65 / 42 s (three runs) |
+| eligibility checks | 880,401 | 5,215 | 3,408 – 3,653 |
+| 5 s order deferrals | 774 | 90 | 0 / 0 / 1 |
+| empty claims | 70% | 43% | 17 – 22% |
+| claim p50 | 21 ms | 6.5 ms | 7 – 11 ms |
+| Postgres CPU | 227 s | 46 s | 37 – 65 s |
+| quiet runs' wait p50 / p99 | 0.11 / 0.58 s | 0.14 / 1.06 s | 0.15–0.32 / 0.37–0.90 s |
+| start p50 / p99 | 83 / 528 ms | 307 / 779 ms | 129–245 ms / 0.40–1.09 s |
+
+The wall time includes the 20 s quiet load that runs alongside. The machine
+was shared, so the same code varied from 37 to 65 s between runs.
+
+With a noisy workflow in a second workspace, quiet runs waited 1.36 / 4.0 s on
+main and 0.43–0.69 / 0.59–1.05 s after.
+
+Remaining cost: inside one workspace, every run status change still takes the
+workspace counter row lock and holds it until commit. That lock is what bounds
+an unlimited same-workspace burst (30–54 s for 240 runs) and the start
+latency there. It is not admission cost, and this plan doesn't change it.
+
+## What it planned to change
 
 - `packages/core/src/outbox/dispatcher/claim.ts`: candidate selection takes
   only queue heads (one per limited workflow, in ticket order) and at most the
