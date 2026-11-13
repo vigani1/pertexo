@@ -11,7 +11,11 @@ import {
   paginationForMode,
   paginationValue,
 } from '@/features/workflow-editor/model/inspector/http-pagination/draft';
-import { paginationFields } from '@/features/workflow-editor/model/inspector/http-pagination/fields';
+import {
+  httpAdvancedInUse,
+  paginationFields,
+  splitHttpSetupFields,
+} from '@/features/workflow-editor/model/inspector/http-pagination/fields';
 import { outputFieldsOf } from '@/features/workflow-editor/model/inspector/input-mappings/schema';
 
 describe('HTTP pagination setup', () => {
@@ -218,5 +222,42 @@ describe('HTTP pagination setup', () => {
         ],
       }),
     ).toEqual([{ key: 'value' }]);
+  });
+});
+
+describe('HTTP setup’s Advanced section', () => {
+  it('keeps method, URL and headers out front and folds the rest', () => {
+    const fields = [
+      'method',
+      'url',
+      'headers',
+      'timeoutMillis',
+      'maxRedirects',
+      'maxResponseBytes',
+      'inlineResponseBytes',
+      'returnErrorResponses',
+    ].map((key) => ({ key }) as Parameters<typeof splitHttpSetupFields>[0][0]);
+    const { essential, advanced } = splitHttpSetupFields(fields);
+    expect(essential.map((field) => field.key)).toEqual([
+      'method',
+      'url',
+      'headers',
+    ]);
+    expect(advanced.map((field) => field.key)).toEqual([
+      'timeoutMillis',
+      'maxRedirects',
+      'maxResponseBytes',
+      'inlineResponseBytes',
+      'returnErrorResponses',
+    ]);
+  });
+
+  it('opens by itself only when the request pages or returns error responses', () => {
+    expect(httpAdvancedInUse({})).toBe(false);
+    expect(httpAdvancedInUse({ returnErrorResponses: false })).toBe(false);
+    expect(httpAdvancedInUse({ returnErrorResponses: true })).toBe(true);
+    expect(
+      httpAdvancedInUse({ pagination: { mode: 'link', itemsPath: '$' } }),
+    ).toBe(true);
   });
 });

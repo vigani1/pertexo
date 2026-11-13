@@ -96,7 +96,10 @@ export function HumanFormSetup({
         <FormFields fields={captured.fields} form={form} />
         <EventCoordinationSetup node={node} graph={graph} form={form} />
         <FormAccessControl scope={scope} editable={form.editable} />
-        {form.editable ? <FormEventHistory scope={scope} /> : null}
+        {/* Coordinated events only exist while coordination is on. */}
+        {form.editable && node.config.coordination !== undefined ? (
+          <FormEventHistory scope={scope} />
+        ) : null}
       </>
     );
   function changeAudience(next: TaskAudience) {

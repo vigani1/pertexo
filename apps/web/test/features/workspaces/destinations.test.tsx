@@ -104,6 +104,7 @@ describe('workspace destinations by role', () => {
     {
       role: 'viewer',
       rail: ['General', 'Usage', 'Variables', 'Notifications', 'API tokens'],
+      advanced: [],
     },
     {
       role: 'builder',
@@ -112,10 +113,11 @@ describe('workspace destinations by role', () => {
         'Usage',
         'Variables',
         'Alerts',
-        'Promotion',
         'Notifications',
         'API tokens',
+        'Promotion',
       ],
+      advanced: ['Promotion'],
     },
     {
       role: 'admin',
@@ -124,22 +126,30 @@ describe('workspace destinations by role', () => {
         'Usage',
         'Variables',
         'Alerts',
+        'Notifications',
+        'API tokens',
         'Promotion',
         'Audit log',
         'Single sign-on',
-        'Notifications',
-        'API tokens',
       ],
+      advanced: ['Promotion', 'Audit log', 'Single sign-on'],
     },
   ] as const)(
     'offers a $role the settings pages their role can open',
-    async ({ role, rail }) => {
+    async ({ role, rail, advanced }) => {
       serveAs(role);
       await renderLoadedApp(`/w/${workspaceId}/settings`);
       const settings = await screen.findByRole('navigation', {
         name: 'Settings',
       });
       expect(names(within(settings).getAllByRole('link'))).toEqual([...rail]);
+      // product-ux-17: what most workspaces never need comes last, labelled.
+      const group = within(settings).queryByLabelText('Advanced');
+      if (advanced.length === 0) expect(group).toBeNull();
+      else
+        expect(names(within(group ?? settings).getAllByRole('link'))).toEqual([
+          ...advanced,
+        ]);
     },
   );
 });

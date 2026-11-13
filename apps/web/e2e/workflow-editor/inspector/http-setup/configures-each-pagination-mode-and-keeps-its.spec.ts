@@ -8,6 +8,7 @@ import {
   httpDefinition,
   httpDraft,
   installHttp,
+  openAdvanced,
   openSetup,
   savedConfig,
 } from './fixture';
@@ -27,12 +28,15 @@ for (const width of [375, 1280]) {
     await installHttp(page, remote);
     await page.goto(editorUrl);
     await openSetup(page, width);
+    await openAdvanced(page);
     const section = page.locator('details').filter({
-      has: page.locator('summary').filter({ hasText: 'Pagination' }),
+      has: page.locator(':scope > summary', { hasText: 'Pagination' }),
     });
-    await expect(section.locator('summary')).toHaveText('Pagination · Off');
+    await expect(section.locator(':scope > summary')).toHaveText(
+      'Pagination · Off',
+    );
     await expect(page.getByLabel('Items path', { exact: true })).toBeHidden();
-    await section.locator('summary').click();
+    await section.locator(':scope > summary').click();
     const mode = page.getByLabel('Pagination mode', { exact: true });
     const choose = async (label: string) => {
       await mode.click();
@@ -152,7 +156,7 @@ for (const width of [375, 1280]) {
     ).toBe(true);
     await page.reload();
     await openSetup(page, width);
-    await section.locator('summary').click();
+    await section.locator(':scope > summary').click();
     await expect(mode).toContainText('Next page link');
     await choose('Off');
     await expect.poll(() => savedConfig(remote).pagination).toBeUndefined();

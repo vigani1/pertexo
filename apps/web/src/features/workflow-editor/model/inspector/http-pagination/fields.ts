@@ -32,6 +32,24 @@ export function paginationFields(
   };
 }
 
+// What a request needs to work; the rest (limits, error responses, paging)
+// waits under Advanced.
+const HTTP_ESSENTIAL_FIELDS = new Set(['method', 'url', 'headers']);
+
+export function splitHttpSetupFields(fields: readonly SchemaFieldSpec[]) {
+  return {
+    essential: fields.filter((field) => HTTP_ESSENTIAL_FIELDS.has(field.key)),
+    advanced: fields.filter((field) => !HTTP_ESSENTIAL_FIELDS.has(field.key)),
+  };
+}
+
+/** Advanced opens by itself when the request already uses something in it. */
+export function httpAdvancedInUse(config: NodeConfig): boolean {
+  return (
+    config.pagination !== undefined || config.returnErrorResponses === true
+  );
+}
+
 export function httpSetupFields(
   fields: readonly SchemaFieldSpec[],
   config: NodeConfig,

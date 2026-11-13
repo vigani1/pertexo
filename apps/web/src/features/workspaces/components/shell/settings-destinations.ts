@@ -25,25 +25,25 @@ export type SettingsGroup = Readonly<{
   destinations: readonly SettingsDestination[];
 }>;
 
-/** The Settings pages this role may open: the workspace's, then your own. */
+/**
+ * The Settings pages this role may open: the workspace's everyday ones, then
+ * your own, then the advanced ones most workspaces never need (promotion
+ * between workspaces, the audit log, single sign-on), last and labelled so.
+ */
 export function settingsGroups(
   workspace: AccessibleWorkspace,
 ): readonly SettingsGroup[] {
-  const shared: readonly SettingsDestination[] = [
-    { ...WORKSPACE_PLACES.settings, label: 'General', exact: true },
-    WORKSPACE_PLACES.usage,
-    WORKSPACE_PLACES.variables,
-    WORKSPACE_PLACES.alerts,
-    WORKSPACE_PLACES.promotion,
-    WORKSPACE_PLACES.audit,
-    WORKSPACE_PLACES.sso,
-  ];
+  const allowed = (destinations: readonly SettingsDestination[]) =>
+    destinations.filter((destination) => canOpenPlace(workspace, destination));
   return [
     {
       label: 'Workspace',
-      destinations: shared.filter((destination) =>
-        canOpenPlace(workspace, destination),
-      ),
+      destinations: allowed([
+        { ...WORKSPACE_PLACES.settings, label: 'General', exact: true },
+        WORKSPACE_PLACES.usage,
+        WORKSPACE_PLACES.variables,
+        WORKSPACE_PLACES.alerts,
+      ]),
     },
     {
       label: 'You',
@@ -52,5 +52,13 @@ export function settingsGroups(
         WORKSPACE_PLACES.apiTokens,
       ],
     },
-  ];
+    {
+      label: 'Advanced',
+      destinations: allowed([
+        WORKSPACE_PLACES.promotion,
+        WORKSPACE_PLACES.audit,
+        WORKSPACE_PLACES.sso,
+      ]),
+    },
+  ].filter((group) => group.destinations.length > 0);
 }

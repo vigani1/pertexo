@@ -8,6 +8,7 @@ import {
   httpDefinition,
   httpDraft,
   installHttp,
+  openAdvanced,
   openSetup,
   savedConfig,
   savedHttpNode,
@@ -37,6 +38,11 @@ for (const width of [390, 1280]) {
     if (pickerBox === null || methodBox === null)
       throw new Error('Setup controls must be visible');
     expect(pickerBox.y + pickerBox.height).toBeLessThan(methodBox.y);
+    // product-ux-17: a new request shows what it needs; limits wait folded.
+    await expect(
+      page.getByLabel('Largest response (in megabytes)', { exact: true }),
+    ).toBeHidden();
+    await openAdvanced(page);
     const response = page.getByLabel('Largest response (in megabytes)', {
       exact: true,
     });
@@ -58,6 +64,7 @@ for (const width of [390, 1280]) {
     expect(savedConfig(remote).headers).toEqual({ 'X-Trace': 'preserved' });
     await page.reload();
     await openSetup(page, width);
+    await openAdvanced(page);
     await expect(response).toHaveValue('1.1');
     await expect(inline).toHaveValue('64.001');
     await page
@@ -99,6 +106,7 @@ for (const width of [390, 1280]) {
     await expect(
       page.getByLabel('HTTP connection', { exact: true }),
     ).toBeDisabled();
+    await openAdvanced(page);
     const response = page.getByLabel('Largest response (in megabytes)', {
       exact: true,
     });
