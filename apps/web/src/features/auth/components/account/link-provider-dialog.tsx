@@ -40,7 +40,10 @@ function methodLabel(method: Method): string {
 function linkFailure(error: unknown, provider: string): string {
   if (isApiError(error)) {
     if (error.status === 401) return 'Your session ended. Sign in again.';
-    if (error.status === 403)
+    if (
+      error.status === 403 ||
+      error.problem?.code === 'auth.invalid_credentials'
+    )
       return 'That didn’t confirm it’s you. Check your current password and try again.';
     if (error.status === 409)
       return `${provider} is already connected. Close this and check your methods.`;
