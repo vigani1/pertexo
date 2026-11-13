@@ -25,7 +25,6 @@ import {
   ARTIFACT_UPLOAD_PENDING_MS,
   type ArtifactUploadResult,
 } from './artifact-upload.js';
-import type { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 
 export type ArtifactUploadReservation = Readonly<{
   workspaceId: string;
@@ -127,7 +126,7 @@ export async function reserveArtifactUpload(
 }
 
 /**
- * Makes a verified pending upload available until `retainFor` passes unless
+ * Makes a verified pending upload available until `retainForSeconds` pass unless
  * something references it. Expired or deleting uploads never come back.
  */
 export async function completeArtifactUpload(
@@ -137,10 +136,7 @@ export async function completeArtifactUpload(
     artifactId: string;
     purpose: ArtifactUploadPurpose;
     expectedMetadata: ArtifactMetadataIdentity;
-    retainFor:
-      | `${typeof DATA_RETENTION_DAYS.unusedUploads} days`
-      | '24 hours'
-      | '1 hour';
+    retainForSeconds: number;
   }>,
 ): Promise<ArtifactRecord> {
   const db = drizzle(client);
@@ -167,7 +163,7 @@ export async function completeArtifactUpload(
     .set({
       status: 'available',
       finalizedAt: sql`clock_timestamp()`,
-      expiresAt: sql`clock_timestamp()+${input.retainFor}::interval`,
+      expiresAt: sql`clock_timestamp()+make_interval(secs=>${input.retainForSeconds})`,
       updatedAt: sql`clock_timestamp()`,
     })
     .where(

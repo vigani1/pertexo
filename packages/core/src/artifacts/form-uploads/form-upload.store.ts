@@ -198,7 +198,7 @@ async function finalizeFormUpload(
       expectedMetadata: input.expectedMetadata,
       // Unsent files go after a day, or an hour for a public link; a
       // submission's run keeps them.
-      retainFor: target.capabilityHash === null ? '24 hours' : '1 hour',
+      retainForSeconds: target.capabilityHash === null ? 86_400 : 3_600,
     });
     return { artifact, filename: bound.filename };
   });
