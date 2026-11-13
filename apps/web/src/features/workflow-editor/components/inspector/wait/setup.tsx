@@ -12,6 +12,7 @@ import {
 } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from '../fields/choice-select';
 import { DurationField } from '../fields/duration';
+import { formatTimeSpan } from '@/lib/format/time';
 
 export function WaitSetup({
   config,
@@ -66,8 +67,8 @@ export function WaitSetup({
         label={callback ? 'Give up after' : 'Wait for'}
         description={
           callback
-            ? 'Counted from when the run reaches this step, up to 30 days. Add a failure route to handle a timeout.'
-            : 'Up to 30 days.'
+            ? `Counted from when the run reaches this step, up to ${formatTimeSpan(WAIT_MAXIMUM_SECONDS)}. Add a failure route to handle a timeout.`
+            : `Up to ${formatTimeSpan(WAIT_MAXIMUM_SECONDS)}.`
         }
         maximumSeconds={WAIT_MAXIMUM_SECONDS}
       />

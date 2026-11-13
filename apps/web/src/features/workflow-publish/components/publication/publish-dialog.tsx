@@ -28,6 +28,8 @@ import type { WorkflowValidationTarget } from '../../model/validation/target';
 import type { PublishStage } from '../../data/mutations/use-workflow-publication';
 import { IssuesList } from '../validation/issues-list';
 import { PublishChanges } from './publish-changes';
+import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 
 const touchTargets =
   'flex h-[44rem] flex-col overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11';
@@ -87,9 +89,10 @@ export function PublishDialog({
   const fields = useFieldValues(
     {
       note: (value: string) =>
-        value.trim().length >= 1 && value.trim().length <= 1000
+        value.trim().length >= 1 &&
+        value.trim().length <= PUBLICATION_REVIEW_TEXT_MAX_LENGTH
           ? undefined
-          : 'Add a note of 1 to 1,000 characters for the reviewer.',
+          : `Add a note of 1 to ${formatCount(PUBLICATION_REVIEW_TEXT_MAX_LENGTH, 'character')} for the reviewer.`,
     },
     { note: '' },
   );
@@ -150,7 +153,7 @@ export function PublishDialog({
                         <Textarea
                           {...control}
                           {...fields.control('note')}
-                          maxLength={1000}
+                          maxLength={PUBLICATION_REVIEW_TEXT_MAX_LENGTH}
                           rows={3}
                           disabled={recoveryPending}
                         />

@@ -8,9 +8,9 @@ import {
   type WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
 import { downloadTextFile } from '@/lib/download-file';
+import { formatByteLength } from '@/lib/format/bytes';
 
-const TOO_LARGE =
-  'This file is larger than 2 MB, the most a workflow file can be.';
+const TOO_LARGE = `This file is larger than ${formatByteLength(WORKFLOW_PORTABILITY_LIMITS.bytes)}, the most a workflow file can be.`;
 const NOT_JSON =
   'This file isn’t valid JSON. Choose a workflow file exported from Pertexo.';
 

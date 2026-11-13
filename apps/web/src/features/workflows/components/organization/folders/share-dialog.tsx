@@ -28,9 +28,9 @@ import {
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useFolderSharingEditor } from '../../../hooks/use-folder-sharing';
 import { folderTrail } from '../../../model/organization/folder-navigation';
+import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
 
 type Editor = ReturnType<typeof useFolderSharingEditor>;
-const MAX_ENTRIES = 100;
 const ACCESS_CHOICES = [
   { value: 'viewer', label: 'Can view' },
   { value: 'editor', label: 'Can edit' },
@@ -119,7 +119,7 @@ function FolderAudience({
 }: Readonly<{ scope: WorkspaceApiScope; editor: Editor }>) {
   const snapshot = editor.snapshot;
   if (snapshot === undefined) return null;
-  const full = snapshot.grants.length >= MAX_ENTRIES;
+  const full = snapshot.grants.length >= FOLDER_GRANT_LIMIT;
   return (
     <>
       <section aria-label="People with access" className="flex flex-col">
@@ -193,8 +193,8 @@ function FolderAudience({
         <p className="mt-1 text-xs text-muted-foreground">
           Can view lets people open and run workflows. Can edit also lets them
           change and publish, when their role allows it.
-          {snapshot.grants.length >= MAX_ENTRIES - 10
-            ? ` ${String(snapshot.grants.length)} of ${String(MAX_ENTRIES)} people and groups.`
+          {snapshot.grants.length >= FOLDER_GRANT_LIMIT - 10
+            ? ` ${String(snapshot.grants.length)} of ${String(FOLDER_GRANT_LIMIT)} people and groups.`
             : ''}
         </p>
       </section>
@@ -207,7 +207,7 @@ function FolderAudience({
         onAdd={(principal) => {
           const identifier = principalIdentifier(principal);
           editor.update((value) =>
-            value.grants.length >= MAX_ENTRIES ||
+            value.grants.length >= FOLDER_GRANT_LIMIT ||
             value.grants.some((grant) => grantId(grant) === identifier)
               ? value
               : {

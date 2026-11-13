@@ -21,7 +21,7 @@ const TEXT_FIELDS = {
   },
   thankYouMessage: {
     label: 'Thank-you message',
-    error: 'Use 1–1,000 characters.',
+    error: `Use 1–${FORM_LIMITS.thankYouCharacters.toLocaleString('en-US')} characters.`,
     description:
       'Shown after acceptance. HTTP and HTTPS URLs become links. The run may still be waiting or running.',
   },

@@ -40,6 +40,7 @@ import {
   loadArtifact,
   reserveArtifactUpload,
 } from './reservation.repository.js';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 
 export type ArtifactUploadStore = ReturnType<typeof createArtifactUploadStore>;
 
@@ -216,7 +217,7 @@ async function finalizeUpload(
         artifactId: parsed.artifactId,
         purpose: ARTIFACT_UPLOAD_PURPOSE,
         expectedMetadata: parsed.expectedMetadata,
-        retainFor: '30 days',
+        retainFor: `${DATA_RETENTION_DAYS.unusedUploads} days` as const,
       });
     },
   );

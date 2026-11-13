@@ -10,6 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import type { TestSuites } from '../../hooks/use-test-suites';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 export function TestSuiteDialog({ suites }: Readonly<{ suites: TestSuites }>) {
   const [acknowledged, setAcknowledged] = useState(false);
   const locked = suites.start.pending || suites.start.uncertain;
@@ -25,7 +27,8 @@ export function TestSuiteDialog({ suites }: Readonly<{ suites: TestSuites }>) {
         <DialogTitle>Run all tests</DialogTitle>
         <DialogDescription>
           Runs every saved input case against this saved draft, one after
-          another. Pins replace their steps. Test results stay for seven days.
+          another. Pins replace their steps. Test results stay for{' '}
+          {formatCount(DATA_RETENTION_DAYS.testRuns, 'day')}.
         </DialogDescription>
         {suites.preparing ? (
           <p role="status">Saving and preparing cases…</p>

@@ -20,6 +20,8 @@ import {
   type ReviewScope,
 } from '../../data/reviews/publication-review.api';
 import { publicationReviewKeys } from '../../data/reviews/publication-review.queries';
+import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 export function ReviewDecision({
   scope,
   request,
@@ -29,9 +31,9 @@ export function ReviewDecision({
   const fields = useFieldValues(
     {
       comment: (value: string) =>
-        value.trim().length <= 1000
+        value.trim().length <= PUBLICATION_REVIEW_TEXT_MAX_LENGTH
           ? undefined
-          : 'Keep the comment under 1,000 characters.',
+          : `Keep the comment to ${formatCount(PUBLICATION_REVIEW_TEXT_MAX_LENGTH, 'character')} or fewer.`,
     },
     { comment: '' },
   );
@@ -91,7 +93,7 @@ export function ReviewDecision({
                 {...control}
                 {...fields.control('comment')}
                 rows={3}
-                maxLength={1000}
+                maxLength={PUBLICATION_REVIEW_TEXT_MAX_LENGTH}
                 disabled={locked}
               />
             )}

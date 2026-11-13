@@ -8,6 +8,8 @@ import { SkeletonLines } from '@/components/ui/skeleton';
 import { nodeRunDiagnosticsQueryOptions } from '../../data/stored-values.queries';
 import type { RunTimelineRow } from '../../model/timeline/runs';
 import type { RunDataScope } from './data/value';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 export function StepCodeDiagnostics({
   row,
@@ -57,7 +59,7 @@ export function StepCodeDiagnostics({
         diagnostics === null ? (
           <p className="text-xs text-muted-foreground">
             No Code diagnostics were kept for this attempt. Run details expire
-            after 30 days.
+            after {formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}.
           </p>
         ) : (
           <CodeDiagnostics diagnostics={diagnostics} />

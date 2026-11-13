@@ -183,6 +183,7 @@ export {
 export {
   publicationReviewRequestSchema,
   publicationReviewDecisionSchema,
+  PUBLICATION_REVIEW_TEXT_MAX_LENGTH,
   publicationReviewSchema,
   publicationReviewOverviewSchema,
   publicationReviewDetailSchema,

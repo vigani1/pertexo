@@ -30,6 +30,7 @@ import type {
   TestEventScope,
   TestEventSnapshot,
 } from './webhook-test-event.types.js';
+import { WEBHOOK_TEST_CAPTURE_SECONDS } from '@pertexo/workflow-model';
 
 const WORKSPACE_LISTENER_LIMIT = 10;
 
@@ -126,7 +127,7 @@ function startTestEventListener(
         ciphertext: s.ciphertext,
         nonce: s.nonce,
         authTag: s.authTag,
-        expiresAt: sql`clock_timestamp()+interval '120 seconds'`,
+        expiresAt: sql`clock_timestamp()+make_interval(secs=>${WEBHOOK_TEST_CAPTURE_SECONDS})`,
       })
       .returning({ expiresAt: listeners.expiresAt })
       .catch(rethrowQueryFailure);

@@ -105,6 +105,10 @@ export {
 } from './values/mapping/resolve.js';
 export { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from './execution/observation-window.js';
 export {
+  DATA_RETENTION_DAYS,
+  WEBHOOK_TEST_CAPTURE_SECONDS,
+} from './execution/data-retention.js';
+export {
   PortableJsonError,
   WORKFLOW_PORTABILITY_LIMITS,
   canonicalWorkflowPortableJson,
