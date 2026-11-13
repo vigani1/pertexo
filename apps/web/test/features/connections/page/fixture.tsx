@@ -15,7 +15,7 @@ export const secretVersionId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 export const base = `http://pertexo.test/v1/workspaces/${workspaceId}/connections`;
 
-const user = createUserFixture({
+export const user = createUserFixture({
   id: userId,
   email: 'owner@example.test',
   displayName: 'Workspace Owner',
