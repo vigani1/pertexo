@@ -85,6 +85,14 @@ export function SessionPauseBoundary({
     [apiClient, notifications, owner, pause, queryClient, router],
   );
 
+  // A discarded page (another account, or a sign-out on purpose) takes the
+  // actions it raised with it: a Try again from one account must never run
+  // as the next.
+  const generation = state.generation;
+  useEffect(() => {
+    if (generation > 0) notifications.dismissActionable();
+  }, [generation, notifications]);
+
   const reason = paused ? state.reason : undefined;
   // Another tab changed the session: ask at once who is signed in now.
   useEffect(() => {
