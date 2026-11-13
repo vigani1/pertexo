@@ -65,6 +65,7 @@ async function qualifyDatabaseRuntime() {
     await a.query('rollback');
     await b.query('begin');
     await b.query('update j2_errors set value=3 where id=1');
+    // session-setting-exempt: this probe's own pool, ended when the probe finishes
     await a.query("set lock_timeout='100ms'");
     await expectOutcome(
       drizzle(a).execute(sql`update j2_errors set value=4 where id=1`),

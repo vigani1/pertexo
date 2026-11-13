@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   findSessionSettings,
+  transactionLocalScope,
   unexemptedSessionSettings,
   validateTransactionLocalSettings,
 } from './transaction-local-settings.mjs';
@@ -144,4 +145,48 @@ test('catches a session-level setting introduced into the transaction code', asy
   assert.deepEqual(statements(mutated), [
     "set_config('app.organization_id',$1,false)",
   ]);
+});
+
+test('scopes by named test directories and by reach to pg, not by file names', () => {
+  const inScope = transactionLocalScope();
+  for (const file of [
+    'packages/core/src/fixture-import.repository.ts',
+    'packages/core/src/testing-policy.ts',
+    'packages/database/src/testing/postgres/disposable-database.ts',
+    'apps/worker/src/runs/coordinator.runtime.ts',
+    'infrastructure/images/database-runtime.fixture.mjs',
+    'infrastructure/single-server/backup/qualify.mjs',
+  ])
+    assert.equal(inScope(file), true, file);
+  for (const file of [
+    'packages/core/test/runs/run-store/run-store.fixture.ts',
+    'apps/api/test/workspaces/real-api/queries.ts',
+    'infrastructure/single-server/test/restore.test.mjs',
+    'packages/core/src/runs/start-run.test.ts',
+    'packages/database/migrations/0000_baseline.sql',
+    'apps/web/src/features/auth/pages/password-recovery.tsx',
+    'packages/contracts/src/errors/api-problem.ts',
+  ])
+    assert.equal(inScope(file), false, file);
+});
+
+test('exempts each marked statement of the migration runner, and nothing else in it', async () => {
+  const file = path.resolve(
+    import.meta.dirname,
+    '../../packages/database/src/migrations.ts',
+  );
+  const source = await readFile(file, 'utf8');
+  assert.equal(findSessionSettings('migrations.ts', source).length, 4);
+  assert.deepEqual(unexemptedSessionSettings('migrations.ts', source), []);
+  const added = source.replace(
+    "await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);",
+    "await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);\n    await client.query('set search_path = app');",
+  );
+  assert.notEqual(added, source);
+  assert.deepEqual(
+    unexemptedSessionSettings('migrations.ts', added).map(
+      ({ statement }) => statement,
+    ),
+    ['set search_path = app'],
+  );
 });
