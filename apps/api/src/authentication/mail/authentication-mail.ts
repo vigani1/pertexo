@@ -221,6 +221,7 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     expiresAt: Date;
   }): SystemMailInput {
     return this.prepare('password_reset', input.recipient, {
+      // session-setting-exempt: an email subject, not SQL
       subject: 'Reset your Pertexo password',
       text: renderAuthenticationMail(
         input.displayName,

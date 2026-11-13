@@ -173,6 +173,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
     {
       status: 400,
       code: 'auth.reset_link_invalid',
+      // session-setting-exempt: a problem title shown to people, not SQL
       title: 'Reset link invalid or expired',
     },
   ],

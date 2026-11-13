@@ -5,9 +5,11 @@ const remedies = {
     'supply matching settings and valid keys; check the identity configuration guide.',
   incomplete_pair: 'supply both settings or remove both.',
   required_secret:
+    // session-setting-exempt: an operator-facing configuration message, not SQL
     'set BETTER_AUTH_SECRET to a private secret of at least 32 characters.',
   invitation_pair:
     'configure both invitation key settings together; keep them configured when deployed.',
+  // session-setting-exempt: an operator-facing configuration message, not SQL
   required_origin: 'set PUBLIC_WEB_ORIGIN to the browser application origin.',
   https_origin: 'use an HTTPS public web origin when deployed.',
   secure_origin: 'use an HTTPS public web origin for secure session cookies.',
