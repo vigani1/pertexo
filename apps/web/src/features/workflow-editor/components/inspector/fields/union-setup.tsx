@@ -1,9 +1,10 @@
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
 import {
   coveredProperties,
   type NodeConfig,
 } from '../../../model/inspector/draft';
 import {
+  describedBy,
   fieldControlId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
@@ -16,6 +17,7 @@ import {
 import { useScratchForm } from '../use-draft-field';
 import { ChoiceSelect } from './choice-select';
 import { SchemaFieldList } from './schema-list';
+import { SchemaFieldDescription } from './schema';
 
 /**
  * Setup that takes one of several shapes (Date's operation, say): a choice
@@ -52,11 +54,9 @@ export function SchemaUnionSetup({
               `${form.nodeId}:config:${union.key}:${next}`,
             );
           }}
-          control={{ id }}
+          control={{ id, describedBy: describedBy(id, hint) }}
         />
-        {hint === undefined ? null : (
-          <FieldDescription>{hint}</FieldDescription>
-        )}
+        <SchemaFieldDescription id={id} text={hint} />
       </Field>
       <SchemaFieldList
         fields={fields}

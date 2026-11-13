@@ -28,7 +28,10 @@ import { parseItemPath } from '../../../model/inspector/item-path';
 import { useInspectorDraftField } from '../use-draft-field';
 import { ChoiceSelect } from './choice-select';
 import {
+  describedBy,
   fieldControlId,
+  fieldDescriptionId,
+  fieldErrorId,
   type NodeFormApi,
 } from '../../../model/inspector/node-form';
 
@@ -60,6 +63,7 @@ export function SchemaField({
           <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
           <Switch
             id={id}
+            aria-describedby={describedBy(id, field.description)}
             checked={value === true}
             disabled={!form.editable}
             onCheckedChange={(checked) => {
@@ -67,9 +71,7 @@ export function SchemaField({
             }}
           />
         </div>
-        {field.description === undefined ? null : (
-          <FieldDescription>{field.description}</FieldDescription>
-        )}
+        <SchemaFieldDescription id={id} text={field.description} />
       </Field>
     );
   if (field.options !== undefined)
@@ -89,11 +91,12 @@ export function SchemaField({
           onChange={(next) => {
             commit(next ?? undefined);
           }}
-          control={{ id: id }}
+          control={{
+            id,
+            describedBy: describedBy(id, field.description),
+          }}
         />
-        {field.description === undefined ? null : (
-          <FieldDescription>{field.description}</FieldDescription>
-        )}
+        <SchemaFieldDescription id={id} text={field.description} />
       </Field>
     );
   return field.kind === 'string' ? (
@@ -160,7 +163,7 @@ function ConfigTextField(props: LiveFieldProps) {
       return parseItemPath(text);
     },
   );
-  const errorId = `${id}-error`;
+  const errorId = fieldErrorId(id);
   return (
     <Field data-invalid={live.error !== undefined}>
       <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
@@ -172,15 +175,13 @@ function ConfigTextField(props: LiveFieldProps) {
         value={live.text}
         disabled={!form.editable}
         aria-invalid={live.error !== undefined}
-        aria-describedby={live.error === undefined ? undefined : errorId}
+        aria-describedby={describedBy(id, field.description, live.error)}
         onChange={(event) => {
           live.change(event.currentTarget.value);
         }}
         onBlur={live.blur}
       />
-      {field.description === undefined ? null : (
-        <FieldDescription>{field.description}</FieldDescription>
-      )}
+      <SchemaFieldDescription id={id} text={field.description} />
       {live.error === undefined ? null : (
         <FieldError id={errorId}>{live.error}</FieldError>
       )}
@@ -203,7 +204,7 @@ function ConfigNumberField(props: LiveFieldProps) {
         : '',
     (text) => parseNumberField(field, text),
   );
-  const errorId = `${id}-error`;
+  const errorId = fieldErrorId(id);
   const unit =
     field.unit === undefined
       ? undefined
@@ -254,7 +255,7 @@ function ConfigNumberField(props: LiveFieldProps) {
             value={live.text}
             disabled={!form.editable}
             aria-invalid={live.error !== undefined}
-            aria-describedby={live.error === undefined ? undefined : errorId}
+            aria-describedby={describedBy(id, hint, live.error)}
             onChange={(event) => {
               live.change(event.currentTarget.value);
             }}
@@ -296,7 +297,7 @@ function ConfigNumberField(props: LiveFieldProps) {
           <PlusIcon />
         </Button>
       </div>
-      {hint === undefined ? null : <FieldDescription>{hint}</FieldDescription>}
+      <SchemaFieldDescription id={id} text={hint} />
       {live.error === undefined ? null : (
         <FieldError id={errorId}>{live.error}</FieldError>
       )}
@@ -328,4 +329,14 @@ function unitPadding(
 ): string | undefined {
   if (unit === undefined) return undefined;
   return unit.symbol === 's' ? 'pr-7' : 'pr-14';
+}
+
+/** A field's help, under the id `describedBy` names. */
+export function SchemaFieldDescription({
+  id,
+  text,
+}: Readonly<{ id: string; text: string | undefined }>) {
+  return text === undefined ? null : (
+    <FieldDescription id={fieldDescriptionId(id)}>{text}</FieldDescription>
+  );
 }
