@@ -90,7 +90,15 @@ const pg = vi.hoisted(() => {
         kind: 'reject' as const,
         error: new Error('Fake pool connect is not implemented'),
       };
-      const release = outcome.release ?? (() => undefined);
+      // Like pg, the callback's release is the client's own unless a test
+      // overrides it, so a leaked client stays visible to unit tests.
+      const release =
+        outcome.release ??
+        (outcome.kind === 'resolve'
+          ? (destroy?: boolean | Error) => {
+              outcome.client.release(destroy);
+            }
+          : () => undefined);
       if (outcome.kind === 'resolve') this.answerInspection(outcome.client);
       if (callback !== undefined) {
         queueMicrotask(() => {
