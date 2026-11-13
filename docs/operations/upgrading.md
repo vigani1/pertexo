@@ -71,9 +71,10 @@ the normal upgrade estimate applies.
 ## Migration 0003: ordered-start wake
 
 `0003_ordered_start_wakeup.sql` also replaces and adds SQL functions only. When
-a run of a limited workflow starts, the next run granted behind it starts
-straight away instead of after a 5-second retry. It changes no table or data and
-runs in well under a second, so the normal upgrade estimate applies.
+a queued run of a limited workflow leaves the queue (it starts, or is canceled,
+times out or fails first), the next run granted behind it starts straight away
+instead of after a 5-second retry. It changes no table or data and runs in well
+under a second, so the normal upgrade estimate applies.
 
 ## Baseline transition: required release stop
 
