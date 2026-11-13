@@ -82,6 +82,28 @@ test('authenticator at desktop and single-use recovery sign-in on a phone', asyn
   } catch {
     throw new Error('Owned enrollment key could not be read');
   }
+  // Review J6a final P2: a mistyped code from someone still signed in is the
+  // form's own error on the real API, never a paused "Your session ended".
+  const refusals: number[] = [];
+  page.on('response', (response) => {
+    if (response.url().includes('/two-factor/verify-totp'))
+      refusals.push(response.status());
+  });
+  await fillOwnedHttpCredential(
+    page.getByLabel('Authenticator code', { exact: true }),
+    '000000',
+  );
+  await page.getByRole('button', { name: 'Verify code' }).click();
+  await expect(
+    page.getByRole('dialog').getByText('That code wasn’t accepted.', {
+      exact: false,
+    }),
+  ).toBeVisible();
+  expect(refusals).toEqual([401]);
+  await expect(
+    page.getByRole('heading', { name: 'Your session ended', exact: true }),
+  ).toHaveCount(0);
+  expect((await page.request.get('/v1/users/me')).status()).toBe(200);
   await page.setViewportSize({ width: 375, height: 800 });
   await fillOwnedHttpCredential(
     page.getByLabel('Authenticator code', { exact: true }),
@@ -170,18 +192,9 @@ test('authenticator at desktop and single-use recovery sign-in on a phone', asyn
   await expect(page).toHaveURL('/workspaces');
   await page.goto('/account/security');
   await page.getByRole('tab', { name: 'Sign-in & security' }).click();
+  // The spent code is gone from the count. Refusing it again is pinned by
+  // the API's integration tests; a second sign-in here would spend the
+  // identity budget (10 a minute per address, sign-ups, sign-ins, enable
+  // and every code check alike) that the wrong-code check above uses.
   await expect(page.getByText('On · 9 recovery codes remaining')).toBeVisible();
-  await signOut(page);
-  await signIn(page, email);
-  await page
-    .getByRole('button', { name: 'Use a recovery code instead' })
-    .click();
-  await fillOwnedHttpCredential(
-    page.getByLabel('Recovery code', { exact: true }),
-    recoveryCode,
-  );
-  await page.getByRole('button', { name: 'Verify code' }).click();
-  await expect(page.getByRole('alert')).toContainText(
-    'That code wasn’t accepted.',
-  );
 });

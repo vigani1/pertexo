@@ -294,6 +294,62 @@ describe('Better Auth Fastify bridge', () => {
     }
   });
 
+  // Review J6a final P2: the web pauses the page on auth.unauthenticated, so
+  // a refused code or password must never be named that.
+  it.each([
+    [
+      '/v1/auth/sign-in/email',
+      'INVALID_EMAIL_OR_PASSWORD',
+      'auth.invalid_credentials',
+    ],
+    ['/v1/auth/link-social', 'INVALID_TOKEN', 'auth.invalid_credentials'],
+    [
+      '/v1/auth/two-factor/verify-totp',
+      'INVALID_CODE',
+      'auth.two_factor_code_invalid',
+    ],
+    [
+      '/v1/auth/two-factor/verify-backup-code',
+      'INVALID_BACKUP_CODE',
+      'auth.two_factor_code_invalid',
+    ],
+    [
+      '/v1/auth/two-factor/verify-totp',
+      'INVALID_TWO_FACTOR_COOKIE',
+      'auth.two_factor_challenge_expired',
+    ],
+    ['/v1/auth/two-factor/verify-totp', undefined, 'auth.unauthenticated'],
+  ] as const)(
+    'names a 401 from %s with native %s as %s',
+    async (path, nativeCode, expectedCode) => {
+      const application = Fastify();
+      applications.push(application);
+      registerBetterAuthHandler(application, {
+        publicOrigin: 'https://pertexo.test',
+        rateLimitConsumer: allowingRateLimit,
+        sessionCookie: { secure: true, sameSite: 'lax', maxAgeSeconds: 3600 },
+        handler: () =>
+          Promise.resolve(
+            Response.json(
+              nativeCode === undefined
+                ? { message: 'private native details' }
+                : { code: nativeCode, message: 'private native details' },
+              { status: 401 },
+            ),
+          ),
+      });
+      const reply = await application.inject({
+        method: 'POST',
+        url: path,
+        headers: { origin: 'https://pertexo.test' },
+        payload: {},
+      });
+      expect(reply.statusCode).toBe(401);
+      expect(apiProblemSchema.parse(reply.json()).code).toBe(expectedCode);
+      expect(reply.payload).not.toContain('private native details');
+    },
+  );
+
   it.each(['verify-totp', 'verify-backup-code'])(
     'identifies account lockout on %s without exposing native error details',
     async (path) => {

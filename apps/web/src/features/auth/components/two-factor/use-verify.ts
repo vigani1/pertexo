@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError } from '@/lib/api/error';
+import { isApiError, type ApiError } from '@/lib/api/error';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 import { useFieldValues } from '@/components/ui/use-field-validation';
@@ -68,35 +68,14 @@ export function useTwoFactorVerification({
       if (!request.isCurrent()) return;
       fields.reset();
       const apiError = isApiError(error) ? error : undefined;
-      if (apiError?.problem?.code === 'auth.two_factor_locked') {
-        setFailure('Too many wrong codes. Try again in 15 minutes.');
-        return;
-      }
-      switch (apiError?.status) {
-        case 429: {
-          const retryAfterMs = apiError.retryAfterMs;
-          if (retryAfterMs !== undefined)
-            cooldown.startSeconds(Math.ceil(retryAfterMs / 1000));
-          setFailure('Too many attempts. Wait a moment, then try again.');
-          break;
-        }
-        case 409:
-          setFailure(
-            'Sign-in settings changed. Go back and sign in again, or use organization sign-in.',
-          );
-          break;
-        case 401:
-        case 400:
-          setFailure(
-            'That code wasn’t accepted. Check it and try again. If the sign-in expired, go back and sign in again.',
-          );
-          break;
-        case undefined:
-        default:
-          setFailure(
-            'We couldn’t confirm the code. Reload to check whether you’re signed in before trying again.',
-          );
-      }
+      const retryAfterMs = apiError?.retryAfterMs;
+      if (
+        apiError?.status === 429 &&
+        apiError.problem?.code !== 'auth.two_factor_locked' &&
+        retryAfterMs !== undefined
+      )
+        cooldown.startSeconds(Math.ceil(retryAfterMs / 1000));
+      setFailure(verificationFailure(apiError));
     } finally {
       request.finish();
     }
@@ -115,3 +94,32 @@ export function useTwoFactorVerification({
     },
   };
 }
+
+/**
+ * What a refused code says. A wrong code leaves any session as it was;
+ * only the challenge behind a sign-in can run out.
+ */
+function verificationFailure(error: ApiError | undefined): string {
+  const code = error?.problem?.code;
+  const named = code === undefined ? undefined : BY_CODE[code];
+  if (named !== undefined) return named;
+  return (
+    BY_STATUS[error?.status ?? 0] ??
+    'We couldn’t confirm the code. Reload to check whether you’re signed in before trying again.'
+  );
+}
+
+const BY_CODE: Readonly<Partial<Record<string, string>>> = {
+  'auth.two_factor_locked': 'Too many wrong codes. Try again in 15 minutes.',
+  'auth.two_factor_code_invalid':
+    'That code wasn’t accepted. Check it and try again.',
+  'auth.two_factor_challenge_expired':
+    'This sign-in expired. Go back and sign in again.',
+};
+
+const BY_STATUS: Readonly<Partial<Record<number, string>>> = {
+  429: 'Too many attempts. Wait a moment, then try again.',
+  409: 'Sign-in settings changed. Go back and sign in again, or use organization sign-in.',
+  401: 'That code wasn’t accepted. Check it and try again. If the sign-in expired, go back and sign in again.',
+  400: 'That code wasn’t accepted. Check it and try again. If the sign-in expired, go back and sign in again.',
+};

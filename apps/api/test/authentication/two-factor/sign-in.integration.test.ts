@@ -38,7 +38,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expectProblem(
         await verify(cookie, 'invalid'),
         401,
-        'auth.unauthenticated',
+        'auth.two_factor_code_invalid',
       );
       const accepted = await verify(cookie, authenticatorCode(user.totpURI));
       expect(accepted.statusCode, accepted.payload).toBe(200);
@@ -57,7 +57,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expectProblem(
         await verify(cookie, authenticatorCode(user.totpURI)),
         401,
-        'auth.unauthenticated',
+        'auth.two_factor_challenge_expired',
       );
       const read = await api.send('GET', '/v1/auth/account-security', {
         browser,
@@ -123,7 +123,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expectProblem(
         await verify(await challenge(user.email), code, true),
         401,
-        'auth.unauthenticated',
+        'auth.two_factor_code_invalid',
       );
     });
   },
@@ -176,7 +176,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           true,
         ),
         401,
-        'auth.unauthenticated',
+        'auth.two_factor_code_invalid',
       );
       expect(
         (await verify(await challenge(user.email), codes[0] ?? '', true))
@@ -294,7 +294,7 @@ for (const usingRecoveryCode of [false, true])
           expectProblem(
             await verify(await challenge(user.email), 'invalid', backup),
             401,
-            'auth.unauthenticated',
+            'auth.two_factor_code_invalid',
           );
         expectProblem(
           await verify(
@@ -401,7 +401,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           payload: { email: 'missing@example.test', password: factorPassword },
         }),
         401,
-        'auth.unauthenticated',
+        'auth.invalid_credentials',
       );
       for (let attempt = 0; attempt < 9; attempt++) {
         const path = attempt % 2 === 0 ? 'verify-totp' : 'verify-backup-code';
@@ -411,7 +411,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             payload: { code: 'invalid' },
           }),
           401,
-          'auth.unauthenticated',
+          'auth.two_factor_challenge_expired',
         );
       }
       for (const path of ['verify-totp', 'verify-backup-code']) {

@@ -76,3 +76,9 @@ export function createFactorAdmissionFixture() {
   const api = useOrganizationApi('2fa_admit');
   return { api };
 }
+
+/** A signed-in account turning two-factor on, before any code is verified. */
+export function createEnrollmentFixture() {
+  const { api } = useFactorApi('2fa_enroll');
+  return { api };
+}
