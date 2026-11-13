@@ -207,6 +207,20 @@ describe('step setup drawn from the catalog schema', () => {
     ).toHaveTextContent('Days (24 hours)');
   });
 
+  it('reads an operation’s help with its choice', () => {
+    render(<NewStep stepKey="core.crypto" />);
+    expect(
+      screen.getByRole('combobox', { name: 'Operation' }),
+    ).toHaveAccessibleDescription(
+      'MD5 is not for security. UUID and random IDs change whenever this step runs again.',
+    );
+    expect(
+      screen.getByRole('combobox', { name: 'Algorithm' }),
+    ).toHaveAccessibleDescription(
+      'MD5 is not for security. Use SHA-256 or SHA-512 for security-sensitive hashes.',
+    );
+  });
+
   it('names stored choice IDs in words on a flat setup', async () => {
     render(<NewStep stepKey="core.filter" />);
     expect(
@@ -306,6 +320,71 @@ describe('shapes the generic setup draws', () => {
     // Clearing the last value removes the group, not leaves `{}` behind.
     expect(saved()).toEqual({});
     expect(screen.queryByText(/only be edited as JSON/u)).toBeNull();
+  });
+
+  it('reads each field’s help, and its error, with the field', async () => {
+    const user = userEvent.setup();
+    render(
+      <Fields
+        schema={{
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              title: 'Name',
+              description: 'Shown to people.',
+            },
+            strict: {
+              type: 'boolean',
+              title: 'Strict',
+              description: 'Refuse unknown fields.',
+            },
+            mode: {
+              type: 'string',
+              enum: ['fast', 'safe'],
+              title: 'Mode',
+              description: 'Safe checks twice.',
+            },
+            timeoutMillis: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 30_000,
+              description: 'How long to wait.',
+            },
+            retry: {
+              type: 'object',
+              title: 'Retry',
+              properties: {
+                attempts: {
+                  type: 'integer',
+                  title: 'Attempts',
+                  description: 'Tries before giving up.',
+                },
+              },
+            },
+          },
+        }}
+      />,
+    );
+    expect(
+      screen.getByRole('textbox', { name: 'Name' }),
+    ).toHaveAccessibleDescription('Shown to people.');
+    expect(
+      screen.getByRole('switch', { name: 'Strict' }),
+    ).toHaveAccessibleDescription('Refuse unknown fields.');
+    expect(
+      screen.getByRole('combobox', { name: 'Mode' }),
+    ).toHaveAccessibleDescription('Safe checks twice.');
+    expect(
+      screen.getByRole('textbox', { name: 'Attempts' }),
+    ).toHaveAccessibleDescription('Tries before giving up.');
+    const timeout = screen.getByRole('textbox', { name: /^Timeout/u });
+    expect(timeout).toHaveAccessibleDescription('How long to wait.');
+    await user.type(timeout, 'x');
+    await user.tab();
+    expect(timeout).toHaveAccessibleDescription(
+      'How long to wait. Timeout must be a number.',
+    );
   });
 
   it('keeps shapes it can’t draw on Edit as JSON', () => {
