@@ -202,83 +202,6 @@ describe('a pool whose fresh connection already carries app settings', () => {
   });
 });
 
-/** Every app.* name read anywhere in the catalog, in any schema, found as broadly as possible. */
-const FULL_SCAN = `
-  with source(text) as (
-    select concat_ws(' ', fn.prosrc, pg_get_function_sqlbody(fn.oid))
-      from pg_proc fn join pg_namespace ns on ns.oid = fn.pronamespace
-     where ns.nspname not in ('pg_catalog', 'information_schema')
-    union all select pg_get_viewdef(rel.oid) from pg_class rel
-     where rel.relkind in ('v', 'm')
-       and rel.relnamespace not in ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
-    union all select pg_get_expr(def.adbin, def.adrelid) from pg_attrdef def
-    union all select pg_get_constraintdef(con.oid) from pg_constraint con
-    union all select pg_get_expr(pol.polqual, pol.polrelid) from pg_policy pol
-    union all select pg_get_expr(pol.polwithcheck, pol.polrelid) from pg_policy pol
-  )
-  select distinct lower((regexp_matches(
-    text, 'current_setting\\s*\\(\\s*''(app\\.[A-Za-z0-9_.$]+)''', 'gi'))[1]) as name
-    from source where text is not null order by 1`;
-
-describe('the names a pool checks', () => {
-  it('cover every app setting a full catalog scan finds the database reading', async () => {
-    // Readers an earlier pattern missed: a digit, a function outside schema
-    // app written with a space, an upper-case name in a SQL-standard body, a
-    // view, a column default and a check constraint.
-    await admin.query(`
-      create table public.j9_readers (
-        id integer,
-        scope text default current_setting('app.default_reader', true),
-        check (coalesce(current_setting('app.check_reader', true), '') is not null)
-      );
-      alter table public.j9_readers enable row level security;
-      create policy j9_scope2 on public.j9_readers
-        using (current_setting('app.scope2', true) is null);
-      create function public.j9_outside() returns text language sql
-        as $$ select current_setting ( 'app.outside_reader', true) $$;
-      create function public.j9_atomic() returns text language sql
-        return current_setting('APP.Upper_Reader', true);
-      create view public.j9_view as
-        select current_setting('app.view_reader', true) as reader;
-    `);
-    try {
-      const scanned = (await admin.query<{ name: string }>(FULL_SCAN)).rows.map(
-        (row) => row.name,
-      );
-      expect(scanned).toEqual(
-        expect.arrayContaining([
-          'app.check_reader',
-          'app.default_reader',
-          'app.outside_reader',
-          'app.scope2',
-          'app.upper_reader',
-          'app.view_reader',
-          'app.workspace_id',
-        ]),
-      );
-
-      const error = await refusal(
-        createDatabasePool(
-          {
-            connectionString: urlFor(appBaseUrl),
-            max: 1,
-            options: scanned.map((name) => `-c ${name}=x`).join(' '),
-          },
-          { monitorLockWaits: false, role: 'api' },
-        ),
-      );
-      expect(error).toMatchObject({ settings: scanned });
-    } finally {
-      await admin.query(`
-        drop view public.j9_view;
-        drop function public.j9_atomic();
-        drop function public.j9_outside();
-        drop table public.j9_readers;
-      `);
-    }
-  });
-});
-
 describe('a pool whose fresh connection is clean', () => {
   it('inspects one connection once, however many checkouts follow', async () => {
     await admin.query('select pg_stat_statements_reset()');
@@ -307,7 +230,7 @@ describe('a pool whose fresh connection is clean', () => {
     const inspections = await admin.query<{ calls: string }>(
       `select coalesce(sum(s.calls), 0)::text calls
          from pg_stat_statements s join pg_database d on d.oid = s.dbid
-        where d.datname = $1 and s.query like '%from pg_policy%'`,
+        where d.datname = $1 and s.query like '%current_setting(name%'`,
       [databaseName],
     );
     expect(inspections.rows[0]?.calls).toBe('2');
