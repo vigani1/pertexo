@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -117,5 +117,65 @@ describe('getting started on Home', () => {
     expect(
       screen.queryByRole('region', { name: 'Getting started' }),
     ).toBeNull();
+  });
+
+  // Review J6a P3-2: Home and the workflow list start the same example as
+  // one intent.
+  it('resends an unconfirmed start from the workflow list instead of making a second copy', async () => {
+    const imports: (string | null)[] = [];
+    let previews = 0;
+    mockServer.use(
+      ...identityHandlers([...readerCapabilities, 'workflow:create']),
+      workflowHandlers([]),
+      ...runHandlers({ problems: [], any: [] }),
+      http.post(`${api}/workflows/import/preview`, () => {
+        previews += 1;
+        return HttpResponse.json({
+          manifestDigest: 'b'.repeat(64),
+          compatibilityFingerprint: `wf-compat:sha256:${'c'.repeat(64)}`,
+          compatible: true,
+          issues: [],
+          truncated: false,
+          connectionSlots: [],
+        });
+      }),
+      http.post(`${api}/workflows/import`, ({ request }) => {
+        imports.push(request.headers.get('idempotency-key'));
+        return imports.length === 1
+          ? HttpResponse.error()
+          : HttpResponse.json({ workflowId }, { status: 201 });
+      }),
+    );
+    const { router } = await renderLoadedApp(`/w/${workspaceId}`);
+    const event = userEvent.setup();
+    await event.click(
+      within(await checklist()).getByRole('button', {
+        name: 'Try the example',
+      }),
+    );
+    await waitFor(() => {
+      expect(imports).toHaveLength(1);
+    });
+    await act(() =>
+      router.navigate({
+        to: '/w/$workspaceId/workflows',
+        params: { workspaceId },
+      }),
+    );
+    await event.click(
+      await screen.findByRole(
+        'button',
+        { name: 'Use this example: Say hello: your first run' },
+        coldStart,
+      ),
+    );
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        `/w/${workspaceId}/workflows/${workflowId}`,
+      );
+    });
+    expect(imports).toHaveLength(2);
+    expect(imports[1]).toBe(imports[0]);
+    expect(previews).toBe(1);
   });
 });
