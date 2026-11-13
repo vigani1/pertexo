@@ -1,8 +1,15 @@
 import type { PoolConfig } from 'pg';
 
-/** The workload a pool serves; it picks the deadline budget and the metric label. */
-export type DatabasePoolRole =
-  'api' | 'dispatcher' | 'maintenance' | 'other' | 'worker';
+/** The workloads a pool can serve; each picks a deadline budget and a metric label. */
+export const DATABASE_POOL_ROLES = Object.freeze([
+  'api',
+  'dispatcher',
+  'maintenance',
+  'other',
+  'worker',
+] as const);
+
+export type DatabasePoolRole = (typeof DATABASE_POOL_ROLES)[number];
 
 const databaseDeadlineBudget: Readonly<
   Record<

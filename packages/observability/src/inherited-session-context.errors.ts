@@ -1,8 +1,10 @@
 // The database package refuses a pool whose fresh connection already carries
 // app.* settings (InheritedSessionContextError). Its text never reaches a log;
-// this builds the operator's description from its checked fields alone. The
-// apps' startup tests boot against a contaminated database to keep the two
-// packages in step.
+// this builds the operator's description from its checked fields alone.
+// Observability can't depend on the database package, so the pool roles and
+// the error's name and fields are repeated here; the API's process-failure
+// test describes a real refusal for every DATABASE_POOL_ROLES role and every
+// APP_SETTING_NAMES name, so the copies can't drift apart unnoticed.
 
 const POOL_ROLES = new Set([
   'api',
