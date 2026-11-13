@@ -160,6 +160,38 @@ describe('Portable workflow review and import', () => {
       screen.queryByText(/Compatible with this workspace/u),
     ).not.toBeInTheDocument();
   });
+  it.each([
+    [403, 'auth.forbidden'],
+    [404, 'resource.not_found'],
+  ] as const)(
+    'says Access changed and clears the import when its preview is refused with %i',
+    async (status, code) => {
+      let previews = 0;
+      mockServer.use(
+        http.post(`${api}/workflows/import/preview`, () => {
+          previews += 1;
+          // Membership ends between the first and second check.
+          return previews === 1
+            ? HttpResponse.json(preview)
+            : problem(status, code);
+        }),
+      );
+      const { event } = openImport();
+      await prepareImport(event);
+      await event.click(screen.getByRole('button', { name: 'Preview import' }));
+      expect(await screen.findByText(/Access changed/u)).toBeVisible();
+      expect(
+        screen.queryByLabelText('Workflow JSON file'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('New workflow name'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('Complete imported graph'),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    },
+  );
   it('requires a new preview after an ordinary conflict while retaining editable import intent', async () => {
     mockServer.use(
       http.post(`${api}/workflows/import/preview`, () =>
