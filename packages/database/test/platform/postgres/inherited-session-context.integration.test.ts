@@ -10,6 +10,7 @@ import {
   InheritedSessionContextError,
 } from '../../../src/platform/index.js';
 import { createDatabasePool } from '../../../src/platform/pool/telemetry/create-pool.js';
+import { APP_SETTING_NAMES } from '../../../src/tenant-access/app-settings.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 const adminUrl =
@@ -199,6 +200,82 @@ describe('a pool whose fresh connection already carries app settings', () => {
         await database.close();
       }
     });
+  });
+});
+
+/**
+ * Every app.* name the catalog reads, in any schema, with any name
+ * PostgreSQL accepts. This scan takes relation locks, so it lives here, not
+ * in the pool's boot check.
+ */
+const CATALOG_SCAN = `
+  with source(text) as (
+    select concat_ws(' ', fn.prosrc, pg_get_function_sqlbody(fn.oid))
+      from pg_proc fn join pg_namespace ns on ns.oid = fn.pronamespace
+     where ns.nspname not in ('pg_catalog', 'information_schema')
+    union all select pg_get_viewdef(rel.oid) from pg_class rel
+     where rel.relkind in ('v', 'm')
+       and rel.relnamespace not in ('pg_catalog'::regnamespace, 'information_schema'::regnamespace)
+    union all select pg_get_expr(def.adbin, def.adrelid) from pg_attrdef def
+    union all select pg_get_constraintdef(con.oid) from pg_constraint con
+    union all select pg_get_expr(pol.polqual, pol.polrelid) from pg_policy pol
+    union all select pg_get_expr(pol.polwithcheck, pol.polrelid) from pg_policy pol
+  )
+  select distinct lower((regexp_matches(
+    text, 'current_setting\\s*\\(\\s*''(app\\.[A-Za-z0-9_.$]+)''', 'gi'))[1]) as name
+    from source where text is not null order by 1`;
+
+async function scannedNames(): Promise<string[]> {
+  return (await admin.query<{ name: string }>(CATALOG_SCAN)).rows.map(
+    (row) => row.name,
+  );
+}
+
+describe('the app setting names a pool checks', () => {
+  it('include every app setting the migrated catalog reads', async () => {
+    const scanned = await scannedNames();
+    expect(scanned).toContain('app.workspace_id');
+    expect(scanned.filter((name) => !APP_SETTING_NAMES.includes(name))).toEqual(
+      [],
+    );
+  });
+
+  it('come from a scan that finds every kind of reader', async () => {
+    await admin.query(`
+      create table public.j9_readers (
+        id integer,
+        scope text default current_setting('app.default_reader', true),
+        check (coalesce(current_setting('app.check_reader', true), '') is not null)
+      );
+      alter table public.j9_readers enable row level security;
+      create policy j9_scope2 on public.j9_readers
+        using (current_setting('app.scope2', true) is null);
+      create function public.j9_outside() returns text language sql
+        as $$ select current_setting ( 'app.outside_reader', true) $$;
+      create function public.j9_atomic() returns text language sql
+        return current_setting('APP.Upper_Reader', true);
+      create view public.j9_view as
+        select current_setting('app.view_reader', true) as reader;
+    `);
+    try {
+      expect(await scannedNames()).toEqual(
+        expect.arrayContaining([
+          'app.check_reader',
+          'app.default_reader',
+          'app.outside_reader',
+          'app.scope2',
+          'app.upper_reader',
+          'app.view_reader',
+        ]),
+      );
+    } finally {
+      await admin.query(`
+        drop view public.j9_view;
+        drop function public.j9_atomic();
+        drop function public.j9_outside();
+        drop table public.j9_readers;
+      `);
+    }
   });
 });
 
