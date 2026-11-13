@@ -41,8 +41,16 @@ describe('run live updates', () => {
         stream: () => problem(status, code),
       });
       await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
+      // An ended session pauses the whole page (J6a); lost access says so
+      // on the stream.
       expect(
-        await screen.findByText('Updates paused', undefined, coldStart),
+        status === 401
+          ? await screen.findByRole(
+              'heading',
+              { name: 'Your session ended' },
+              coldStart,
+            )
+          : await screen.findByText('Updates paused', undefined, coldStart),
       ).toBeVisible();
       // A passing failure would have reconnected within about a second.
       await new Promise((resolve) => setTimeout(resolve, 2_000));

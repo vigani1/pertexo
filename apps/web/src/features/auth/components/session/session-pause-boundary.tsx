@@ -111,7 +111,12 @@ export function SessionPauseBoundary({
     const returnTo = allowlistedReturnPath(here);
     queryClient.clear();
     pause.discard();
-    void router.navigate({ to: '/login', search: returnToSearch(returnTo) });
+    // Discarding was the choice, so no leave-unsaved prompt asks again.
+    void router.navigate({
+      to: '/login',
+      search: returnToSearch(returnTo),
+      ignoreBlocker: true,
+    });
   }
 
   return (

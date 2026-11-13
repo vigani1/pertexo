@@ -347,4 +347,39 @@ describe('personal API token settings', () => {
       screen.getByText(/Create a replacement with your current access/u),
     ).toBeVisible();
   });
+
+  // Review J6a P2-1: a command that calls the API directly pauses too.
+  it('pauses with the token form kept when creating meets an ended session', async () => {
+    fixtures();
+    let signedIn = true;
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        signedIn
+          ? HttpResponse.json(
+              createUserFixture({
+                id: userId,
+                email: 'owner@example.test',
+                displayName: 'Workspace Owner',
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              }),
+            )
+          : problem('auth.unauthenticated', 401),
+      ),
+      http.post(endpoint, () => problem('auth.unauthenticated', 401)),
+    );
+    await renderLoadedApp(path);
+    const user = await fillCreation();
+    signedIn = false;
+    await user.click(screen.getByRole('button', { name: 'Create token' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Your session ended' }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: /Sign in again/u })).toBeVisible();
+    signedIn = true;
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByLabelText('Token name')).toHaveValue(
+      'Build runner',
+    );
+  });
 });

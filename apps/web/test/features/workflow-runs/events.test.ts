@@ -97,6 +97,7 @@ describe('run event lifecycle', () => {
       .mockResolvedValueOnce(openEventStream([event(1)]));
     const apiClient = {
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request: vi.fn(),
       stream,
     } satisfies ApiClient;
@@ -138,6 +139,7 @@ describe('run event lifecycle', () => {
       );
       const apiClient = {
         download: vi.fn(),
+        onSessionExpired: vi.fn(),
         request: vi.fn(),
         stream,
       } satisfies ApiClient;
@@ -168,6 +170,7 @@ describe('run event lifecycle', () => {
       .mockResolvedValueOnce(openEventStream([event(1)]));
     const apiClient = {
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request: vi.fn(),
       stream,
     } satisfies ApiClient;
@@ -204,6 +207,7 @@ describe('run event lifecycle', () => {
     );
     const apiClient = {
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request: vi.fn(),
       stream,
     } satisfies ApiClient;
@@ -229,6 +233,7 @@ describe('run event lifecycle', () => {
       .mockResolvedValueOnce(openEventStream([event(1), event(2)]));
     const apiClient = {
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request: vi.fn(),
       stream,
     } satisfies ApiClient;
@@ -261,6 +266,7 @@ describe('run event lifecycle', () => {
       .mockResolvedValueOnce({ ...openEventStream([event(1)]), close });
     const apiClient = {
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request: vi.fn(),
       stream,
     } satisfies ApiClient;

@@ -39,6 +39,7 @@ export function queryWrapper(strict: boolean) {
 export function streamApiClient(open: () => ApiByteStream): ApiClient {
   return {
     download: vi.fn(),
+    onSessionExpired: vi.fn(),
     request: vi.fn(),
     stream: vi.fn(() => Promise.resolve(open())),
   } as ApiClient;

@@ -13,7 +13,7 @@ export function synchronizeApplicationSession(
   queryClient: QueryClient,
   router: ReturnType<typeof createAppRouter>,
 ) {
-  const { apiClient, sessionPause, onSessionExpired } = router.options.context;
+  const { apiClient, sessionPause } = router.options.context;
   let refreshing = false;
   // Another tab changed who is signed in. A rendered page waits, hidden,
   // until it knows who that is now; with nothing to keep, the routes recheck.
@@ -50,9 +50,10 @@ export function synchronizeApplicationSession(
       !isSessionExpired(event.action.error)
     )
       return;
+    // The API client already paused the page; private payload owners and
+    // Build's cache still hear it from the command that failed.
     notifySessionObservers();
     if (isEditorOpen(router)) queryClient.clear();
-    else onSessionExpired();
   });
   // Leaving the paused page (to sign in, or a command that ends the
   // session) ends its pause: the page it kept is gone.

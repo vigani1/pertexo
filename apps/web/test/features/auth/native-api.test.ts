@@ -15,6 +15,7 @@ describe('native authentication API', () => {
     const apiClient = {
       stream: vi.fn(),
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request: vi.fn().mockResolvedValue({ url, redirect: true }),
     } satisfies ApiClient;
     await expect(startSocialAuthentication(apiClient, 'google')).resolves.toBe(
@@ -30,6 +31,7 @@ describe('native authentication API', () => {
     const apiClient = {
       stream: vi.fn(),
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request: vi.fn().mockResolvedValue({ url, redirect: true }),
     } satisfies ApiClient;
     await expect(
@@ -41,6 +43,7 @@ describe('native authentication API', () => {
     const apiClient = {
       stream: vi.fn(),
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request,
     } satisfies ApiClient;
 
@@ -63,6 +66,7 @@ describe('native authentication API', () => {
     const apiClient = {
       stream: vi.fn(),
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request,
     } satisfies ApiClient;
     await resetPassword(apiClient, {

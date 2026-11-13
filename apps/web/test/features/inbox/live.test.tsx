@@ -12,6 +12,7 @@ const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 function client(stream: ApiClient['stream']): ApiClient {
   return {
     download: vi.fn(),
+    onSessionExpired: vi.fn(),
     request: vi.fn(),
     stream,
   };
