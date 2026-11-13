@@ -1,17 +1,15 @@
 -- Granted runs of a limited workflow start in ticket order. A later run whose
--- start lands first is deferred while holding its slot. When the run ahead of it
--- starts, the coordinator calls this in the same transaction, so the next
--- granted run's deferred delivery is due at once instead of after the deferral.
--- It moves only that delivery; the app may not move any other advance.
-CREATE FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid) RETURNS boolean
+-- start lands first is deferred while holding its slot. Whenever a granted run
+-- leaves the queue (it starts, is canceled, times out or fails), the next granted
+-- run's deferred delivery becomes due at once instead of after the deferral.
+-- The counter refresh trigger calls it, so every writer of a run's status does,
+-- in its own transaction and under the counter lock its status write took.
+CREATE FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_workflow uuid) RETURNS boolean
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'pg_catalog', 'app'
     SET row_security TO 'on'
     AS $$
 BEGIN
-  IF nullif(current_setting('app.workspace_id',true),'')::uuid IS DISTINCT FROM p_workspace THEN
-    RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
-  END IF;
   -- SKIP LOCKED: a delivery the dispatcher holds is already due, so never wait for it.
   UPDATE app.outbox_events event
      SET available_at=clock_timestamp(), updated_at=clock_timestamp()
@@ -24,12 +22,10 @@ BEGIN
           -- Non-exempt grants exist only under a workflow limit.
           SELECT admission.outbox_event_id
             FROM app.workflow_run_active_admissions admission
-            JOIN app.workflow_runs started
-              ON started.workspace_id=admission.workspace_id AND started.id=p_started_run
             JOIN app.workflow_runs waiting
               ON waiting.workspace_id=admission.workspace_id AND waiting.id=admission.workflow_run_id
            WHERE admission.workspace_id=p_workspace AND NOT admission.workflow_concurrency_order_exempt
-             AND waiting.workflow_id=started.workflow_id AND waiting.status='queued'
+             AND waiting.workflow_id=p_workflow AND waiting.status='queued'
              AND waiting.cancel_requested_at IS NULL
              AND (waiting.deadline_at IS NULL OR waiting.deadline_at>clock_timestamp())
            ORDER BY waiting.admission_ticket
@@ -38,9 +34,33 @@ BEGIN
   RETURN FOUND;
 END $$;
 
-ALTER FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid) OWNER TO {{owner_role}};
-REVOKE ALL ON FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid) FROM PUBLIC;
-GRANT ALL ON FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid) TO {{app_role}};
+ALTER FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_workflow uuid) OWNER TO {{owner_role}};
+REVOKE ALL ON FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_workflow uuid) FROM PUBLIC;
+
+CREATE OR REPLACE FUNCTION app.refresh_workflow_run_admission_counters() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'app'
+    SET row_security TO 'on'
+    AS $$
+BEGIN
+  IF NEW.status<>'queued' THEN
+    DELETE FROM app.workflow_run_active_admissions
+     WHERE workspace_id=NEW.workspace_id AND workflow_run_id=NEW.id AND borrowed_call_id IS NULL;
+  END IF;
+  UPDATE app.workspace_execution_admission_counters counter
+     SET queued_runs=counts.queued_runs, active_runs=counts.active_runs,
+         reconciled_at=clock_timestamp()
+    FROM app.workflow_run_slot_counts(NEW.workspace_id) counts
+   WHERE counter.workspace_id=NEW.workspace_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'workspace admission state missing' USING ERRCODE='PTA01';
+  END IF;
+  -- Any way out of the queue frees the next ordered start from its deferral.
+  IF TG_OP='UPDATE' AND OLD.status='queued' AND NEW.status<>'queued' THEN
+    PERFORM app.wake_next_ordered_workflow_run_start(NEW.workspace_id,NEW.workflow_id);
+  END IF;
+  RETURN NEW;
+END $$;
 
 CREATE OR REPLACE FUNCTION app.workflow_run_active_capacity_available(p_workspace_id uuid, p_entitlement_version integer, p_workflow_run_id uuid) RETURNS boolean
     LANGUAGE plpgsql SECURITY DEFINER

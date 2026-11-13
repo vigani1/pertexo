@@ -248,7 +248,7 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   'app.wake_next_ordered_workflow_run_start(uuid,uuid)': {
     category: 'capacity counters',
     reason:
-      "Bring forward only the next granted run's deferred start when the run ahead of it starts, under the start's locks.",
+      "Bring forward only the next granted run's deferred start when a granted run leaves the queue, under its writer's counter lock.",
   },
   'app.workflow_concurrency_admissible(uuid,uuid,boolean)': {
     category: 'capacity counters',
