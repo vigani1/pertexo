@@ -22,14 +22,19 @@ type Statement = 'begin' | 'commit' | 'rollback' | 'set_config';
 
 /**
  * A stand-in for one PostgreSQL connection: transaction-local settings end
- * with the transaction, and set_config returns each new value under its
- * column alias. A test can fail a statement, or report a value other than
- * the one set, to reach failures a healthy server never produces.
+ * with the transaction, and a plain set_config column returns the value it
+ * set under its alias. It evaluates no other SQL: a computed column, such as
+ * the statement timeout in milliseconds, comes only from `computed`, which
+ * stands for what PostgreSQL would compute (the database integration tests
+ * check PostgreSQL's own conversion). A test can fail a statement, or report
+ * a value other than the one set, to reach failures a healthy server never
+ * produces.
  */
 export function postgresConnection(
   options: Readonly<{
     fail?: Partial<Record<Statement, Error>>;
     onStatement?: (statement: Statement) => void;
+    computed?: Readonly<Record<string, unknown>>;
     reported?: Readonly<Record<string, unknown>> | 'no row';
   }> = {},
 ) {
@@ -49,23 +54,26 @@ export function postgresConnection(
       local = new Map();
     }
     if (kind !== 'set_config') return Promise.resolve(result());
-    const row: Record<string, unknown> = {};
-    for (const [, name, parameter, alias] of statement.matchAll(
-      /set_config\('([^']+)',\$(\d+),true\)(?:\)::interval\)\*1000\)::bigint)? "(\w+)"/gu,
-    )) {
-      const value = String(values[Number(parameter) - 1]);
-      if (transactionActive && name !== undefined) local.set(name, value);
-      if (alias !== undefined)
-        row[alias] =
-          name === 'statement_timeout' ? String(Number.parseInt(value)) : value;
-    }
+    const argument = (parameter: string) =>
+      String(values[Number(parameter) - 1]);
+    for (const [, name, parameter] of statement.matchAll(
+      /set_config\('([^']+)',\$(\d+),true\)/gu,
+    ))
+      if (transactionActive && name !== undefined && parameter !== undefined)
+        local.set(name, argument(parameter));
+    const row: Record<string, unknown> = { ...options.computed };
+    for (const [, , parameter, alias] of statement.matchAll(
+      /(?:^select |,)set_config\('([^']+)',\$(\d+),true\) "(\w+)"/gu,
+    ))
+      if (alias !== undefined && parameter !== undefined)
+        row[alias] = argument(parameter);
     if (options.reported === 'no row') return Promise.resolve(result());
     return Promise.resolve(result([{ ...row, ...options.reported }]));
   };
   return {
     query,
     statements,
-    /** The settings a statement would see now. */
+    /** The settings a statement would see now, as they were set. */
     settings: (): Readonly<Record<string, string>> => Object.fromEntries(local),
     get transactionActive() {
       return transactionActive;

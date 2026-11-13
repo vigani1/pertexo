@@ -138,7 +138,10 @@ describe('shared workspace transaction engine', () => {
   });
 
   it('installs a transaction-local statement timeout with the scope', async () => {
-    const connection = postgresConnection();
+    // PostgreSQL shows 30000ms as 30s; the statement reads that back as 30000.
+    const connection = postgresConnection({
+      computed: { statementTimeoutMillis: '30000' },
+    });
 
     await expect(
       withTenantScopedClient(
@@ -153,6 +156,20 @@ describe('shared workspace transaction engine', () => {
     });
     // Scope and timeout take one round trip between BEGIN and the work.
     expect(connection.statements).toHaveLength(3);
+  });
+
+  it('refuses a statement timeout PostgreSQL reports no value for', async () => {
+    const operation = vi.fn();
+
+    await expect(
+      withTenantScopedClient(
+        poolWith({ query: postgresConnection().query, release: vi.fn() }),
+        { workspaceId },
+        operation,
+        { statementTimeoutMillis: 30_000 },
+      ),
+    ).rejects.toThrow('PostgreSQL transaction timeout verification failed');
+    expect(operation).not.toHaveBeenCalled();
   });
 
   it('fails a statement-timeout read-back mismatch before domain work', async () => {
@@ -193,7 +210,9 @@ describe('shared workspace transaction engine', () => {
   });
 
   it('bounds platform-global work by a transaction-local statement timeout', async () => {
-    const connection = postgresConnection();
+    const connection = postgresConnection({
+      computed: { statementTimeoutMillis: '1500' },
+    });
 
     await expect(
       withPlatformTransaction(
