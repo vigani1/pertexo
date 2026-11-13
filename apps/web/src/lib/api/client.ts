@@ -1,10 +1,5 @@
 import { csrfTokenSchema } from '@pertexo/contracts';
-import {
-  ApiError,
-  isApiError,
-  isSessionExpired,
-  protocolError,
-} from './error';
+import { ApiError, isApiError, isSessionExpired, protocolError } from './error';
 import {
   requestIdFrom,
   mediaType,
@@ -252,8 +247,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           kind: 'canceled',
           message: 'The API request was canceled.',
         });
-      if (!response.ok)
-        throw await failureFor(response, request.decodeProblem);
+      if (!response.ok) throw await failureFor(response, request.decodeProblem);
       if (request.response.kind === 'empty') return;
       return decodeSuccess(
         request.response.decode,
@@ -296,8 +290,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         credentials: 'same-origin',
         signal: call.signal,
       });
-      if (!response.ok)
-        throw await failureFor(response, request.decodeProblem);
+      if (!response.ok) throw await failureFor(response, request.decodeProblem);
       if (mediaType(response) !== request.response.mediaType) {
         call.abort();
         throw protocolError(
