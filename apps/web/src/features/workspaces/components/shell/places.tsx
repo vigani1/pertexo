@@ -45,6 +45,10 @@ export const WORKSPACE_PLACES = {
     icon: <InboxIcon />,
     capability: 'workspace:read',
   },
+  approvals: {
+    to: '/w/$workspaceId/approvals',
+    label: 'Approvals',
+  },
   dataTables: {
     to: '/w/$workspaceId/data-tables',
     label: 'Data tables',
