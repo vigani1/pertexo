@@ -226,7 +226,7 @@ test('an unanswered approval continues on Timed out to a later step; one without
     ),
   ).toBeVisible();
   await captureEverySize(page, 'run');
-  await page.getByRole('tab', { name: 'Graph', exact: true }).click();
+  await page.getByRole('tab', { name: 'Diagram', exact: true }).click();
   await expect(page.getByText('Timed out', { exact: true })).toBeVisible();
   await captureEverySize(page, 'run-graph');
   const task = await openTask(page, workspaceId, continued);

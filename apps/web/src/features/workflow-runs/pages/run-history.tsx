@@ -68,7 +68,7 @@ function WorkflowFilter({
   );
 }
 
-/** The workspace's run log: live counts, URL filters, List or Loom. */
+/** The workspace's run log: live counts, URL filters, List or Timeline. */
 export function RunHistoryPage({
   apiClient,
   user,

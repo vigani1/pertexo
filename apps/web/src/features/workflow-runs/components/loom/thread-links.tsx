@@ -132,8 +132,8 @@ function LoomRunPreview({
       {alsoHere === 0 ? null : (
         <p>
           {alsoHere === 1
-            ? '1 more run here: list them below the Loom.'
-            : `${String(alsoHere)} more runs here: list them below the Loom.`}
+            ? '1 more run here: list them below the timeline.'
+            : `${String(alsoHere)} more runs here: list them below the timeline.`}
         </p>
       )}
     </div>

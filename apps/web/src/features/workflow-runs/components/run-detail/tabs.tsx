@@ -25,7 +25,7 @@ const RunGraphView = lazyPiece(() =>
 const graphMessages = {
   loading: 'Loading the exact version this run used…',
   error:
-    'The version this run used couldn’t be loaded. The thread and events still show what happened.',
+    'The version this run used couldn’t be loaded. The timeline and events still show what happened.',
   forbidden: 'Your role can’t view workflows, so the map of steps is hidden.',
 } as const;
 
@@ -109,8 +109,8 @@ export function RunDetailTabs({
       }}
     >
       <TabsList>
-        <TabsTrigger value="thread">Thread</TabsTrigger>
-        <TabsTrigger value="graph">Graph</TabsTrigger>
+        <TabsTrigger value="thread">Timeline</TabsTrigger>
+        <TabsTrigger value="graph">Diagram</TabsTrigger>
         <TabsTrigger value="events">
           Events
           <span className="font-mono text-[0.7rem] text-subtle-foreground">
