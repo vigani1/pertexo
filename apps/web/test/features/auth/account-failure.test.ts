@@ -24,4 +24,27 @@ describe('account policy refusals', () => {
       'Add another sign-in method',
     );
   });
+
+  // PR #705: only auth.unauthenticated ends the session, whatever the status.
+  it.each([
+    [401, 'auth.unauthenticated', 'Your session ended. Sign in again.'],
+    [401, 'auth.invalid_credentials', 'Changing your password didn’t work.'],
+    [400, 'auth.invalid_credentials', 'Changing your password didn’t work.'],
+  ] as const)('answers a %i %s by its code', (status, code, message) => {
+    const error = new ApiError({
+      kind: 'problem',
+      message: 'Refused',
+      status,
+      problem: {
+        type: `urn:pertexo:problem:${code}`,
+        title: 'Refused',
+        code,
+        status,
+        requestId: 'by-code',
+      },
+    });
+    expect(accountCommandFailure(error, 'changing your password')).toContain(
+      message,
+    );
+  });
 });

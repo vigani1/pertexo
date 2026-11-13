@@ -1,4 +1,4 @@
-import { isApiError } from '@/lib/api/error';
+import { isApiError, isSessionExpired } from '@/lib/api/error';
 import { isUncertainOutcome } from '@/lib/api/error-copy';
 
 // These refusals need an account or policy change; signing in again cannot resolve them.
@@ -26,7 +26,8 @@ export function accountCommandFailure(error: unknown, action: string): string {
     if (error.problem?.code === 'auth.recovery_required')
       return 'Keep the recovery owner password while organization SSO is required. Turn off required SSO before removing it.';
 
-    if (error.status === 401) return 'Your session ended. Sign in again.';
+    // Only this code ends the session; a refused credential is its own 400.
+    if (isSessionExpired(error)) return 'Your session ended. Sign in again.';
     if (error.status === 403)
       return 'For your security, sign in again to continue.';
     if (error.status === 429)
