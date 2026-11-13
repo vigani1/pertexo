@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { labelledChoice } from '@pertexo/node-sdk';
 import {
   collectionItemsSchema,
   collectionPathSchema,
@@ -11,17 +12,22 @@ export const CORE_SUMMARIZE_CONFIG_SCHEMA = z
     valuePath: collectionPathSchema.meta({
       title: 'Numeric value',
       description:
-        'A number field like amount; $ selects numeric items. Numeric strings are not coerced; use Number conversion in an expression first.',
+        'Choose numeric items with $, or a field like $.amount. Text numbers need conversion in an expression first.',
+      default: '$',
     }),
     groupBy: collectionPathSchema.optional().meta({
       title: 'Group by',
       description:
-        'Optional field like region. Groups keep first-seen order; leave empty for one summary.',
+        'Leave empty for one total, or group by a field like $.currency. Groups keep their first-seen order.',
     }),
-    missing: z.enum(['error', 'skip']).meta({
+    missing: labelledChoice({
+      error: 'Fail on missing values',
+      skip: 'Skip missing values',
+    }).meta({
       title: 'Missing values',
       description:
         'Fail on missing/null numbers or missing group keys, or explicitly skip and count them. Wrong types still fail.',
+      default: 'error',
     }),
   })
   .strict();

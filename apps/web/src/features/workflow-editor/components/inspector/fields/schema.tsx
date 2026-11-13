@@ -16,8 +16,10 @@ import {
   unitDisplay,
 } from '../../../model/field-units';
 import {
+  fieldPath,
   parseNumberField,
-  withConfigValue,
+  readFieldValue,
+  withFieldValue,
   type FieldParseResult,
   type NodeConfig,
   type SchemaFieldSpec,
@@ -42,12 +44,13 @@ export function SchemaField({
   config: NodeConfig;
   form: NodeFormApi;
 }>) {
-  const id = fieldControlId(form.nodeId, field.key);
-  const value = config[field.key];
+  const path = fieldPath(field);
+  const id = fieldControlId(form.nodeId, path);
+  const value = readFieldValue(config, field);
   function commit(next: ConfigValue) {
     form.commit(
-      (node) => ({ config: withConfigValue(node.config, field.key, next) }),
-      `${form.nodeId}:config:${field.key}`,
+      (node) => ({ config: withFieldValue(node.config, field, next) }),
+      `${form.nodeId}:config:${path}`,
     );
   }
   if (field.kind === 'boolean')
@@ -132,7 +135,7 @@ function useConfigText(
     parse,
     commit,
     onScratchChange: (scratch) => {
-      form.reportScratch(field.key, scratch);
+      form.reportScratch(fieldPath(field), scratch);
     },
   });
 }
@@ -163,7 +166,7 @@ function ConfigTextField(props: LiveFieldProps) {
       <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
       <Input
         id={id}
-        name={`config.${field.key}`}
+        name={`config.${fieldPath(field)}`}
         autoComplete="off"
         className={cn(path && 'font-mono')}
         value={live.text}
@@ -242,7 +245,7 @@ function ConfigNumberField(props: LiveFieldProps) {
         <FieldControl className="flex-1">
           <Input
             id={id}
-            name={`config.${field.key}`}
+            name={`config.${fieldPath(field)}`}
             autoComplete="off"
             // The digit pad has no minus or "." key on every phone, so only
             // whole counts from 0 in their own unit get it.

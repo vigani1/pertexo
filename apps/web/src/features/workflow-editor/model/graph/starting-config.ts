@@ -1,70 +1,31 @@
-import { utilityOperationConfig } from '../inspector/transforms/utility-config';
 import {
   approvalConfigSchema,
   formConfigSchema,
   inputRequestConfigSchema,
+  isRecord,
 } from '@pertexo/workflow-model';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import { propertyDefaults } from '../inspector/draft';
 import type { WorkflowNode } from './scopes';
 
 type NodeConfig = WorkflowNode['config'];
 
-// How a new step starts, for the steps whose setup would otherwise begin
-// empty and invalid. Values sit inside each schema's bounds (the catalog
-// has no defaults). Authoring materializes these settings under ADR 069's
-// current pre-launch contract.
-const STARTING: Readonly<Record<string, NodeConfig>> = {
-  'core.code': { code: 'return input;' },
-  'core.respond_webhook': { bodyType: 'json' },
-  'core.create_file': { format: 'csv', delimiter: ',', columns: [] },
-  'core.read_file': { format: 'csv', delimiter: ',', convertValues: true },
-  'core.batch': { size: 100 },
-  'core.take': { count: 100 },
-  'core.concat': {},
-  'core.filter': { path: '$', operator: 'equals' },
-  'core.sort': {
-    path: '$',
-    valueType: 'number',
-    direction: 'ascending',
-    missing: 'last',
-  },
-  'core.unique': { path: '$', missing: 'error' },
-  'core.summarize': { valuePath: '$', missing: 'error' },
-  'core.date': { operation: 'to_iso' },
-  // Two branches, both at once.
-  'core.parallel': {
-    branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
-    maxConcurrency: 2,
-  },
-  // One case to fill in; anything else goes out Default.
-  'core.switch': { cases: [{ id: 'case-01', equals: '' }] },
-  // A rule list the builder fills from its first "Add rule".
-  'core.validate': { rules: [] },
-  'core.wait': { durationSeconds: 60 },
-  'email.send_notification': { timeoutMillis: 10_000 },
-  'slack.send_message': { timeoutMillis: 10_000 },
-  'http.request': {
-    method: 'GET',
-    headers: {},
-    timeoutMillis: 10_000,
-    maxRedirects: 3,
-    maxResponseBytes: 1_048_576,
-    inlineResponseBytes: 65_536,
-  },
-};
-
 /**
- * A new step's setup. A Merge waits for every branch, and joins the
- * Parallel on its level when there's exactly one to join.
+ * A new step's setup, from its catalog schema: the schema's own `default`
+ * when it gives a whole starting setup (a union names the shape it starts
+ * in), else each property's `default`. Human tasks start from their parsed
+ * empty form, and a Merge waits for every branch and joins the Parallel on
+ * its level when there's exactly one to join; a schema can't say that.
  */
 export function startingConfig(
-  definitionKey: string,
+  definition: Pick<NodeDefinitionCatalogItem, 'definition' | 'configSchema'>,
   levelNodes: readonly WorkflowNode[],
 ): NodeConfig {
-  if (definitionKey === 'core.form') return formConfigSchema.parse({});
-  if (definitionKey === 'core.request_input')
-    return inputRequestConfigSchema.parse({});
-  if (definitionKey === 'core.approval') return approvalConfigSchema.parse({});
-  if (definitionKey === 'core.merge') {
+  const { key } = definition.definition;
+  if (key === 'core.form') return formConfigSchema.parse({});
+  if (key === 'core.request_input') return inputRequestConfigSchema.parse({});
+  if (key === 'core.approval') return approvalConfigSchema.parse({});
+  if (key === 'core.merge') {
     const parallels = levelNodes.filter(
       (node) => node.definition.key === 'core.parallel',
     );
@@ -76,24 +37,8 @@ export function startingConfig(
         : {}),
     };
   }
-  return structuredClone(
-    STARTING[definitionKey] ?? utilityOperationConfig(definitionKey) ?? {},
-  );
-}
-
-/** Changing Date operation replaces its exact variant in one undoable edit. */
-export function dateOperationConfig(operation: string): NodeConfig | undefined {
-  switch (operation) {
-    case 'to_iso':
-    case 'to_epoch_millis':
-      return { operation };
-    case 'format':
-      return { operation, format: 'date_only', timeZone: 'UTC' };
-    case 'convert_timezone':
-      return { operation, timeZone: 'UTC' };
-    case 'add_duration':
-      return { operation, unit: 'days' };
-    default:
-      return undefined;
-  }
+  const whole = definition.configSchema.default;
+  return isRecord(whole)
+    ? structuredClone(whole)
+    : propertyDefaults(definition.configSchema);
 }

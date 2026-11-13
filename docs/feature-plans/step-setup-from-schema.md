@@ -1,7 +1,23 @@
 # Step setup drawn from the catalog schema
 
-Status: proposed; awaiting the owner's approval. Finding: web-gaps-05 (batch
-J7). Builds nothing until approved. Related: [F21](21-integrations-and-polling.md).
+Status: built (option B, batch J6b). Finding: web-gaps-05. Related:
+[F21](21-integrations-and-polling.md).
+
+## As built
+
+- Labelled choices use `labelledChoice` from `@pertexo/node-sdk`: one record
+  gives both the stored `enum` and its `oneOf` `{ const, title }` words.
+- Starting values are `default` in the schema. A union carries a whole valid
+  starting setup as its own `default` (Text starts on Trim, not on its first
+  shape); a flat step uses each property's `default`. New `default`s use
+  `.meta()`, so runtime parsing doesn't change. A catalog test validates every
+  `default` against the schema it sits in.
+- Validate now starts empty: its old starting `{ rules: [] }` broke its own
+  schema (one rule at least). Every other step starts exactly as before, which
+  a web test checks across the whole catalog.
+- Wait, Read file, Create file and Schedule keep their own builders, which
+  name their choices themselves. Wait has no `const` discriminator, and adding
+  one would change its stored format.
 
 ## Measurement (2026-11-12, main at `8dd36b6c4`)
 

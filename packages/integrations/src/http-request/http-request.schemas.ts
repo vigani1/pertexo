@@ -173,7 +173,9 @@ export const resolvedHttpHeadersCredentialSchema = z
 
 export const httpRequestConfigSchema = z
   .object({
-    method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']),
+    method: z
+      .enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'])
+      .meta({ default: 'GET' }),
     url: z
       .url()
       .max(MAX_URL_BYTES)
@@ -187,11 +189,26 @@ export const httpRequestConfigSchema = z
         description:
           'An https address, or http inside a private network your administrator allowed. Put {name} in the path or query, or in a header value, and map a value for it on Inputs.',
       }),
-    headers: httpRequestHeadersSchema,
-    timeoutMillis: z.number().int().min(1).max(120_000),
-    maxRedirects: z.number().int().min(0).max(5),
-    maxResponseBytes: z.number().int().min(1).max(MAX_RESPONSE_BYTES),
-    inlineResponseBytes: z.number().int().min(1).max(MAX_INLINE_RESPONSE_BYTES),
+    headers: httpRequestHeadersSchema.meta({ default: {} }),
+    timeoutMillis: z
+      .number()
+      .int()
+      .min(1)
+      .max(120_000)
+      .meta({ default: 10_000 }),
+    maxRedirects: z.number().int().min(0).max(5).meta({ default: 3 }),
+    maxResponseBytes: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_RESPONSE_BYTES)
+      .meta({ default: 1_048_576 }),
+    inlineResponseBytes: z
+      .number()
+      .int()
+      .min(1)
+      .max(MAX_INLINE_RESPONSE_BYTES)
+      .meta({ default: 65_536 }),
     multipart: httpMultipartConfigSchema.optional(),
     pagination: httpPaginationSchema.optional(),
     returnErrorResponses: z.boolean().optional().meta({

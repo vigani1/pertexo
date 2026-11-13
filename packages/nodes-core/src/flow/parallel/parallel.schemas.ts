@@ -5,7 +5,13 @@ import {
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-export const CORE_PARALLEL_CONFIG_SCHEMA = parallelConfigSchema;
+// Two branches, both at once.
+export const CORE_PARALLEL_CONFIG_SCHEMA = parallelConfigSchema.meta({
+  default: {
+    branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
+    maxConcurrency: 2,
+  },
+});
 export const CORE_PARALLEL_INPUT_SCHEMA = z.object({}).strict();
 export const CORE_PARALLEL_OUTPUT_SCHEMA = z
   .object({

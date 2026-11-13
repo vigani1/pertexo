@@ -15,6 +15,8 @@ export {
   type SchemaProjectionOptions,
 } from './definitions/schema-document.js';
 
+export { labelledChoice } from './definitions/labelled-choice.js';
+
 export {
   type DefinitionIdentity,
   type ExecutorIdentity,

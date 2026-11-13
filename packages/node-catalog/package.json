@@ -28,5 +28,8 @@
     "@pertexo/nodes-core": "workspace:*",
     "@pertexo/templates": "workspace:*",
     "@pertexo/workflow-model": "workspace:*"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0"
   }
 }
