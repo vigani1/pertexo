@@ -5,6 +5,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
+import { startupSettingFindings } from './pool-startup-settings.mjs';
 
 // Transactions no longer prove a pooled client is clean before and after use:
 // they rely on every setting being transaction-local. A session-level setting
@@ -32,7 +33,7 @@ const TEST_DIRECTORIES = [
 ];
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/u;
 
-/** Finds SQL in one JavaScript or TypeScript file that could leave session state behind. */
+/** Finds SQL, and connection startup settings, in one JavaScript or TypeScript file that could leave session state behind. */
 export function findSessionSettings(fileName, source) {
   const sourceFile = ts.createSourceFile(
     fileName,
@@ -42,14 +43,15 @@ export function findSessionSettings(fileName, source) {
   );
   const found = [];
   const visit = (node) => {
+    const line = () =>
+      sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line +
+      1;
     const text = literalText(node);
-    if (text !== undefined && !isNonSqlWord(node, text)) {
-      const { line } = sourceFile.getLineAndCharacterOfPosition(
-        node.getStart(sourceFile),
-      );
+    if (text !== undefined && !isNonSqlWord(node, text))
       for (const statement of sessionSettings(text))
-        found.push({ line: line + 1, statement });
-    }
+        found.push({ line: line(), statement });
+    for (const statement of startupSettingFindings(node))
+      found.push({ line: line(), statement });
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
