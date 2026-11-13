@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { isApiError, type ApiError } from '@/lib/api/error';
+import { isApiError, isSessionExpired, type ApiError } from '@/lib/api/error';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 import { useFieldValues } from '@/components/ui/use-field-validation';
@@ -75,7 +75,7 @@ export function useTwoFactorVerification({
         retryAfterMs !== undefined
       )
         cooldown.startSeconds(Math.ceil(retryAfterMs / 1000));
-      setFailure(verificationFailure(apiError));
+      setFailure(verificationFailure(apiError, purpose));
     } finally {
       request.finish();
     }
@@ -99,7 +99,14 @@ export function useTwoFactorVerification({
  * What a refused code says. A wrong code leaves any session as it was;
  * only the challenge behind a sign-in can run out.
  */
-function verificationFailure(error: ApiError | undefined): string {
+function verificationFailure(
+  error: ApiError | undefined,
+  purpose: 'sign-in' | 'enrollment',
+): string {
+  // No session exists at the sign-in code step. The challenge cookie expires
+  // with the challenge, so an expired sign-in arrives with no cookie and the
+  // API can only answer auth.unauthenticated.
+  if (purpose === 'sign-in' && isSessionExpired(error)) return SIGN_IN_EXPIRED;
   const code = error?.problem?.code;
   const named = code === undefined ? undefined : BY_CODE[code];
   if (named !== undefined) return named;
@@ -109,12 +116,13 @@ function verificationFailure(error: ApiError | undefined): string {
   );
 }
 
+const SIGN_IN_EXPIRED = 'This sign-in expired. Go back and sign in again.';
+
 const BY_CODE: Readonly<Partial<Record<string, string>>> = {
   'auth.two_factor_locked': 'Too many wrong codes. Try again in 15 minutes.',
   'auth.two_factor_code_invalid':
     'That code wasn’t accepted. Check it and try again.',
-  'auth.two_factor_challenge_expired':
-    'This sign-in expired. Go back and sign in again.',
+  'auth.two_factor_challenge_expired': SIGN_IN_EXPIRED,
 };
 
 const BY_STATUS: Readonly<Partial<Record<number, string>>> = {

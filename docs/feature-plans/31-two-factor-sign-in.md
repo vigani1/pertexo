@@ -211,8 +211,11 @@ identify the account lockout and show its fifteen-minute message. A wrong
 authenticator or recovery code returns 400 `auth.two_factor_code_invalid`, and
 an expired sign-in challenge 400 `auth.two_factor_challenge_expired`, never a
 401 or `auth.unauthenticated` (clients read any 401 as an ended session): the web pauses the whole page on that one (J6a), and a
-mistyped code must not look like an ended session. The plugin
-owns the lockout counters and timing.
+mistyped code must not look like an ended session. Better Auth's challenge
+cookie expires with the challenge, so a sign-in left at the code step past
+its lifetime arrives with no challenge cookie and is 401
+`auth.unauthenticated`; at the sign-in code step no session exists, so the web
+says the sign-in expired. The plugin owns the lockout counters and timing.
 
 The Fastify bridge already puts all native POST routes in the distributed
 `identity_start` class, including both code-verification routes; preserve that
