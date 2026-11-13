@@ -56,8 +56,18 @@ describe('run advance store', () => {
     const checkout = new Promise<PoolClient>((resolve) => {
       resolveCheckout = resolve;
     });
+    // A pool first inspects one fresh session for inherited app settings.
+    const freshSession = {
+      query: () => Promise.resolve({ rows: [] }),
+      release: () => undefined,
+    };
     const connect = vi
       .spyOn(Pool.prototype, 'connect')
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- This exercises the promise overload of pg Pool.connect.
+      .mockImplementationOnce((() =>
+        Promise.resolve(
+          freshSession as unknown as PoolClient,
+        )) as typeof Pool.prototype.connect)
       // eslint-disable-next-line @typescript-eslint/no-misused-promises -- This exercises the promise overload of pg Pool.connect.
       .mockImplementation((() => checkout) as typeof Pool.prototype.connect);
     const runtime = createDatabaseRuntime(noNetworkConfig, {

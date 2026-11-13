@@ -140,6 +140,11 @@ const TENANT_SETTINGS = [
   ['organizationId', 'app.organization_id'],
 ] as const;
 
+/** Every tenant setting a transaction installs; a fresh connection must carry none. */
+export const TENANT_SETTING_NAMES: readonly string[] = TENANT_SETTINGS.map(
+  ([, name]) => name,
+);
+
 function completeScope(scope: TransactionScope): ContextSettings {
   return {
     workspaceId:
