@@ -410,8 +410,9 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             remoteAddress,
             payload: { code: 'invalid' },
           }),
-          400,
-          'auth.two_factor_challenge_expired',
+          // No session and no challenge cookie: nobody is signed in.
+          401,
+          'auth.unauthenticated',
         );
       }
       for (const path of ['verify-totp', 'verify-backup-code']) {

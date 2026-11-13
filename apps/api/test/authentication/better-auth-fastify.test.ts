@@ -313,15 +313,23 @@ describe('Better Auth Fastify bridge', () => {
       'INVALID_BACKUP_CODE',
       'auth.two_factor_code_invalid',
     ],
+    // A challenge that ran out is a sign-in to start again; the same native
+    // code with no challenge cookie (and no session) is an ended session.
     [
       '/v1/auth/two-factor/verify-totp',
       'INVALID_TWO_FACTOR_COOKIE',
       'auth.two_factor_challenge_expired',
+      'pertexo-auth.two_factor=expired-challenge',
+    ],
+    [
+      '/v1/auth/two-factor/verify-totp',
+      'INVALID_TWO_FACTOR_COOKIE',
+      'auth.unauthenticated',
     ],
     ['/v1/auth/two-factor/verify-totp', undefined, 'auth.unauthenticated'],
   ] as const)(
     'names a 401 from %s with native %s as %s',
-    async (path, nativeCode, expectedCode) => {
+    async (path, nativeCode, expectedCode, cookie?: string) => {
       const application = Fastify();
       applications.push(application);
       registerBetterAuthHandler(application, {
@@ -341,7 +349,10 @@ describe('Better Auth Fastify bridge', () => {
       const reply = await application.inject({
         method: 'POST',
         url: path,
-        headers: { origin: 'https://pertexo.test' },
+        headers: {
+          origin: 'https://pertexo.test',
+          ...(cookie === undefined ? {} : { cookie }),
+        },
         payload: {},
       });
       // A 401 leaves only for an ended session; a refusal is a 400.

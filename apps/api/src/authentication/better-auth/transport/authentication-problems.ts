@@ -56,10 +56,6 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   ['401:INVALID_CODE', refused('auth.two_factor_code_invalid')],
   ['401:INVALID_BACKUP_CODE', refused('auth.two_factor_code_invalid')],
   [
-    '401:INVALID_TWO_FACTOR_COOKIE',
-    refused('auth.two_factor_challenge_expired'),
-  ],
-  [
     '400:INVALID_PASSWORD',
     {
       status: 400,
@@ -253,10 +249,17 @@ const UNEXPECTED_PROBLEM: NativeProblem = {
   title: 'Authentication unavailable',
 };
 
+/**
+ * `carriesChallenge`: the request brought a two-factor sign-in challenge
+ * cookie. Better Auth answers INVALID_TWO_FACTOR_COOKIE both when that
+ * challenge expired and when a request has no session and no challenge at
+ * all; only the first is an expired sign-in, the second an ended session.
+ */
 export function normalizedNativeError(
   status: number,
   body: Uint8Array,
   requestId: string,
+  carriesChallenge = false,
 ): Readonly<{ status: number; body: string }> {
   let nativeCode: unknown;
   try {
@@ -268,10 +271,17 @@ export function normalizedNativeError(
   } catch {
     nativeCode = undefined;
   }
-  const specific =
+  const challengeExpired =
+    status === 401 &&
+    nativeCode === 'INVALID_TWO_FACTOR_COOKIE' &&
+    carriesChallenge;
+  const listed =
     typeof nativeCode === 'string'
       ? NATIVE_PROBLEMS.get(`${String(status)}:${nativeCode}`)
       : undefined;
+  const specific = challengeExpired
+    ? refused('auth.two_factor_challenge_expired')
+    : listed;
   const mapped = specific ?? STATUS_PROBLEMS.get(status) ?? UNEXPECTED_PROBLEM;
   return {
     status: mapped.status,
