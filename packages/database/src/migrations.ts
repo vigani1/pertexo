@@ -154,13 +154,16 @@ export async function migrateDatabase(
   try {
     const names = await migrationNames(migrationsDirectory);
 
+    // session-setting-exempt: the migration runner's own one-client pool, ended after migrating
     await client.query("select set_config('statement_timeout',$1,false)", [
       `${String(statementTimeoutMs)}ms`,
     ]);
+    // session-setting-exempt: the migration runner's own one-client pool, ended after migrating
     await client.query("select set_config('lock_timeout',$1,false)", [
       `${String(lockTimeoutMs)}ms`,
     ]);
     await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
+    // session-setting-exempt: the migration runner's own one-client pool, ended after migrating
     await client.query(`set role ${quoteIdentifier(config.ownerRole)}`);
     await runMigrationTransaction(transaction, async () => {
       const roleResult = await client.query<{ current_user: string }>(
@@ -225,6 +228,7 @@ export async function migrateDatabase(
   } finally {
     const cleanupErrors: unknown[] = [];
     try {
+      // session-setting-exempt: the migration runner's own one-client pool, ended after migrating
       await client.query('reset role');
     } catch (error) {
       cleanupErrors.push(error);

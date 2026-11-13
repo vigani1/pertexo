@@ -199,9 +199,7 @@ export async function seedEncryptedRecoveryFixture(sql, database) {
         },
       ),
     ),
-    "SELECT set_config('app.workspace_id'," +
-      quoted(webhookWorkspace) +
-      ',true);',
+    `SELECT set_config('app.workspace_id',${quoted(webhookWorkspace)},true);`,
     insert('workflow_runs', {
       id: callbackRun,
       workspace_id: webhookWorkspace,

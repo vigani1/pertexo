@@ -20,13 +20,17 @@ const SOURCE_FILE = /\.(?:[cm]?[jt]s|tsx)$/u;
 /** A line comment on the line of, or the line above, a literal, naming its reason. */
 const EXEMPTION_MARKER = /\/\/\s*session-setting-exempt:\s*(\S.*)$/u;
 
-/** Code that sets session state on a connection no pool ever hands out again. */
-export const SESSION_SETTING_EXEMPTIONS = Object.freeze({
-  'packages/database/src/migrations.ts':
-    'The migration runner sets its timeouts and owner role on a dedicated one-client pool that it ends after migrating.',
-  'infrastructure/single-server/backup/qualify.mjs':
-    'Backup qualification runs each check through a one-shot psql session against a restored copy.',
-});
+/**
+ * Test code, which owns dedicated clients and never hands them to production
+ * code. Named directories and file roles only: a production file whose name
+ * merely mentions "test" or "fixture" stays in scope.
+ */
+const TEST_DIRECTORIES = [
+  /^(?:apps|packages)\/[^/]+\/test\//u,
+  /^apps\/web\/e2e\//u,
+  /^infrastructure\/single-server\/test\//u,
+];
+const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/u;
 
 /** Finds SQL in one JavaScript or TypeScript file that could leave session state behind. */
 export function findSessionSettings(fileName, source) {
@@ -186,7 +190,7 @@ function* setConfigCalls(sql) {
 }
 
 /** Files a pooled client can run: tests excluded, and packages that can't reach pg. */
-function scopeFilter() {
+export function transactionLocalScope() {
   const manifests = execFileSync(
     'git',
     ['ls-files', '-z', '--', 'package.json', '*/package.json'],
@@ -231,14 +235,13 @@ function scopeFilter() {
   return (file) =>
     SOURCE_FILE.test(file) &&
     !file.startsWith('packages/database/migrations/') &&
-    !/(?:^|\/)test\//u.test(file) &&
-    !/\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(file) &&
-    !/fixture/u.test(file) &&
+    !TEST_DIRECTORIES.some((directory) => directory.test(file)) &&
+    !TEST_FILE.test(file) &&
     !withoutPostgres.some((directory) => file.startsWith(directory));
 }
 
 export async function validateTransactionLocalSettings() {
-  const inScope = scopeFilter();
+  const inScope = transactionLocalScope();
   const files = execFileSync(
     'git',
     ['ls-files', '--cached', '--others', '--exclude-standard', '-z'],
@@ -247,7 +250,6 @@ export async function validateTransactionLocalSettings() {
     .split('\0')
     .filter((file) => file !== '' && inScope(file));
   const violations = [];
-  const usedExemptions = new Set();
   let checked = 0;
   for (const file of files) {
     let source;
@@ -259,20 +261,12 @@ export async function validateTransactionLocalSettings() {
       throw error;
     }
     checked += 1;
-    const found = unexemptedSessionSettings(file, source);
-    if (Object.hasOwn(SESSION_SETTING_EXEMPTIONS, file)) {
-      if (found.length > 0) usedExemptions.add(file);
-      continue;
-    }
-    for (const { line, statement } of found)
+    for (const { line, statement } of unexemptedSessionSettings(file, source))
       violations.push(`${file}:${String(line)}: ${statement}`);
   }
-  for (const file of Object.keys(SESSION_SETTING_EXEMPTIONS))
-    if (!usedExemptions.has(file))
-      violations.push(`${file}: exemption no longer needed; remove it`);
   if (violations.length > 0)
     throw new Error(
-      `Session-level settings outlive their transaction on a pooled client. Make each one transaction-local (is_local true, SET LOCAL), or mark text that isn't SQL with a session-setting-exempt reason:\n${violations.join('\n')}`,
+      `Session-level settings outlive their transaction on a pooled client. Make each one transaction-local (is_local true, SET LOCAL), or mark a statement on a connection no pool reuses, or text that isn't SQL, with a session-setting-exempt reason:\n${violations.join('\n')}`,
     );
   return Object.freeze({ checked });
 }

@@ -288,6 +288,7 @@ try {
     });
   sql(
     sourceDb,
+    // session-setting-exempt: a one-shot psql session against the source copy
     `SET ROLE pertexo_owner;
  CREATE TABLE public.recovery_fixture(workspace_id uuid, artifact_id uuid, sha256 text, pages_json jsonb);
  ALTER TABLE public.recovery_fixture ENABLE ROW LEVEL SECURITY;
@@ -586,11 +587,13 @@ try {
   await oauth2.verify(targetDb);
   const visible = sql(
     targetDb,
+    // session-setting-exempt: a one-shot psql session against the restored copy
     `SET ROLE pertexo_app; SELECT set_config('app.workspace_id','${artifacts[0].workspaceId}',false); SELECT count(*) FROM public.recovery_fixture;`,
   );
   assert.equal(visible.trim().split('\n').at(-1), '1');
   const foreignPages = sql(
     targetDb,
+    // session-setting-exempt: a one-shot psql session against the restored copy
     `SET ROLE pertexo_app; SELECT set_config('app.workspace_id','${artifacts[0].workspaceId}',false); SELECT count(*) FROM public.recovery_fixture WHERE pages_json IS NOT NULL;`,
   );
   assert.equal(foreignPages.trim().split('\n').at(-1), '0');
