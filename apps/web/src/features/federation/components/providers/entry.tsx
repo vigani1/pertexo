@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { TestProvider } from './test';
+import { pluralWord } from '@/lib/format/count';
 type Organization = NonNullable<FederationSettings['organization']>;
 type Provider = Organization['providers'][number];
 function trustDescription(provider: Provider) {
   if (provider.kind === 'oidc')
     return `OIDC · Client secret ${provider.secretConfigured ? 'configured' : 'missing'}`;
   const count = provider.configuration.certificates.length;
-  return `SAML · ${String(count)} pinned signing certificate${count === 1 ? '' : 's'}`;
+  return `SAML · ${String(count)} pinned signing ${pluralWord(count, 'certificate')}`;
 }
 export function ProviderEntry({
   scope,

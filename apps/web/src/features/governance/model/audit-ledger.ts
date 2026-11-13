@@ -1,5 +1,6 @@
 import type { AuditEvent } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
+import { pluralWord } from '@/lib/format/count';
 
 type Phrase = Readonly<{ words: string; tone?: StatusTone }>;
 
@@ -218,7 +219,7 @@ function particulars(event: AuditEvent): string[] {
   }
   if (typeof metadata.affected === 'number')
     facts.push(
-      `${String(metadata.affected)} row${metadata.affected === 1 ? '' : 's'}`,
+      `${String(metadata.affected)} ${pluralWord(metadata.affected, 'row')}`,
     );
   if (Array.isArray(metadata.changedNames) && metadata.changedNames.length > 0)
     facts.push(metadata.changedNames.join(', '));

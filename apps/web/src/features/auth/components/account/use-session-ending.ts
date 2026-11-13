@@ -5,6 +5,7 @@ import {
   useRevokeAccountSession,
   useRevokeOtherAccountSessions,
 } from '../../data/account-security.mutations';
+import { pluralWord } from '@/lib/format/count';
 
 export type SessionEnding =
   | Readonly<{ kind: 'one'; id: string; label: string }>
@@ -46,10 +47,11 @@ export function useSessionEnding(apiClient: ApiClient, userId: string) {
       const result = await revokeOthers.mutateAsync();
       setEnding(undefined);
       notifications.success({
-        title:
-          result.revokedCount === 1
-            ? 'Signed out of 1 other device'
-            : `Signed out of ${String(result.revokedCount)} other devices`,
+        title: pluralWord(
+          result.revokedCount,
+          'Signed out of 1 other device',
+          `Signed out of ${String(result.revokedCount)} other devices`,
+        ),
       });
     }
   }

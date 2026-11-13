@@ -16,6 +16,7 @@ import {
   useVariableUsageCheck,
   type UsageCheckPhase,
 } from '../hooks/use-usage-check';
+import { pluralWord } from '@/lib/format/count';
 type UsageRow = WorkspaceVariableUsageResponse['items'][number];
 
 function emptySentence(phase: UsageCheckPhase, incomplete: boolean): string {
@@ -28,7 +29,7 @@ function emptySentence(phase: UsageCheckPhase, incomplete: boolean): string {
 const count = (value: number) => value.toLocaleString(FORMAT_LOCALE);
 
 function progressSentence(phase: UsageCheckPhase, found: number): string {
-  const references = `${count(found)} ${found === 1 ? 'reference' : 'references'} found`;
+  const references = `${count(found)} ${pluralWord(found, 'reference')} found`;
   if (phase === 'finished') return `Check complete. ${references}.`;
   if (phase === 'failed') return `Check stopped. ${references} so far.`;
   return `Checking workflows… ${references} so far.`;

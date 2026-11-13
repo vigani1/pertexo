@@ -5,6 +5,7 @@ import type { LoomModel } from '../../model/loom/model';
 import { describeRunStatus } from '../../model/presentation/run-status';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { Disclosure } from '@/components/ui/disclosure';
+import { pluralWord } from '@/lib/format/count';
 
 /**
  * The Loom's text alternative: every plotted run, per workflow, as a link.
@@ -20,11 +21,13 @@ export function LoomRunList({
     <Disclosure
       summary={
         <>
-          {model.runCount === 1
-            ? 'List the run on this timeline'
-            : `List the ${String(model.runCount)} runs on this timeline`}
+          {pluralWord(
+            model.runCount,
+            'List the run on this timeline',
+            `List the ${String(model.runCount)} runs on this timeline`,
+          )}
           {model.hiddenLaneCount > 0
-            ? ` (and ${String(model.hiddenLaneCount)} more ${model.hiddenLaneCount === 1 ? 'workflow' : 'workflows'} not drawn)`
+            ? ` (and ${String(model.hiddenLaneCount)} more ${pluralWord(model.hiddenLaneCount, 'workflow')} not drawn)`
             : ''}
         </>
       }
@@ -39,7 +42,7 @@ export function LoomRunList({
             {lane.total === undefined ? null : (
               <p className="font-mono text-xs text-subtle-foreground">
                 {lane.total.toLocaleString(FORMAT_LOCALE)}{' '}
-                {lane.total === 1 ? 'run' : 'runs'} in {windowLabel}
+                {pluralWord(lane.total, 'run')} in {windowLabel}
               </p>
             )}
             <ul className="mt-1.5 flex flex-col">

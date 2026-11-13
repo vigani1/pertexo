@@ -2,6 +2,7 @@ import type { UsageCapacityResponse } from '@pertexo/contracts';
 import { formatByteLength } from '@/lib/format/bytes';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { cn } from '@/lib/class-names';
+import { formatCount } from '@/lib/format/count';
 
 const VISIBLE_SLOTS = 24;
 const SIZE = 112;
@@ -28,7 +29,7 @@ export function SlotWheel({
   return (
     <figure
       className="relative size-28 shrink-0"
-      aria-label={`${String(occupied)} of ${String(total)} runs in progress at once, ${String(execution.queuedRuns)} ${execution.queuedRuns === 1 ? 'run' : 'runs'} queued`}
+      aria-label={`${String(occupied)} of ${String(total)} runs in progress at once, ${formatCount(execution.queuedRuns, 'run')} queued`}
     >
       <svg
         aria-hidden="true"

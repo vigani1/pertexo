@@ -31,6 +31,7 @@ import { AttachPicker } from './attach-picker';
 import { AttachmentRow } from './attachment-row';
 import { AttachmentSizeMeter } from './size-meter';
 import { useAttachmentsDraft } from './use-draft';
+import { pluralWord } from '@/lib/format/count';
 
 type Props = Readonly<{
   node: WorkflowNode;
@@ -303,10 +304,11 @@ function useAttachments({
       const after = store.getState().generation;
       if (rows.length === 0 || after === before) return;
       notifications.undo({
-        title:
-          rows.length === 1
-            ? 'Replaced the attachment'
-            : `Replaced ${String(rows.length)} attachments`,
+        title: pluralWord(
+          rows.length,
+          'Replaced the attachment',
+          `Replaced ${String(rows.length)} attachments`,
+        ),
         onUndo: () => {
           if (store.getState().generation === after) store.getState().undo();
         },

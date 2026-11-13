@@ -8,6 +8,7 @@ import { loopSummary } from '../../model/graph/loop-summary';
 import type { WorkflowNode } from '../../model/graph/scopes';
 import type { NodeFormApi } from '../../model/inspector/node-form';
 import { LoopBoundsFields } from './fields/loop-bounds';
+import { formatCount } from '@/lib/format/count';
 
 /**
  * A For each step's body (ADR 020): it runs once per item within its item
@@ -33,7 +34,7 @@ export function LoopBodySection({
   const bounds =
     loop === null
       ? ''
-      : `, up to ${String(loop.maxIterations)} ${loop.maxIterations === 1 ? 'item' : 'items'} and ${String(loop.maxConcurrency)} at a time`;
+      : `, up to ${formatCount(loop.maxIterations, 'item')} and ${String(loop.maxConcurrency)} at a time`;
   return (
     <section
       aria-labelledby={headingId}

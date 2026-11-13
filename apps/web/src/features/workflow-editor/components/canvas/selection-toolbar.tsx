@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import { useEditorStore } from '../../model/state/context';
 import { shortcut } from '@/lib/shortcut-keys';
+import { formatCount } from '@/lib/format/count';
 
 /**
  * Commands for several selected steps or links at once, floating over
@@ -21,12 +22,8 @@ export function SelectionToolbar({
   const edgeCount = useEditorStore((state) => state.selectedEdgeIds.length);
   if (!editable || nodeCount + edgeCount < 2) return null;
   const parts = [
-    nodeCount > 0
-      ? `${String(nodeCount)} ${nodeCount === 1 ? 'step' : 'steps'}`
-      : undefined,
-    edgeCount > 0
-      ? `${String(edgeCount)} ${edgeCount === 1 ? 'link' : 'links'}`
-      : undefined,
+    nodeCount > 0 ? formatCount(nodeCount, 'step') : undefined,
+    edgeCount > 0 ? formatCount(edgeCount, 'link') : undefined,
   ].filter((part) => part !== undefined);
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center">

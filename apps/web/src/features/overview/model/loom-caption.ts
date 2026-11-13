@@ -1,4 +1,5 @@
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { pluralWord } from '@/lib/format/count';
 
 /**
  * The sentence under the Loom. With the exact window total it says how many
@@ -20,7 +21,7 @@ export function loomCaption({
     return capped
       ? `Showing the latest 300 runs in ${phrase}. Narrow the window to see every run.`
       : undefined;
-  const runs = `${total.toLocaleString(FORMAT_LOCALE)} ${total === 1 ? 'run' : 'runs'} in ${phrase}`;
+  const runs = `${total.toLocaleString(FORMAT_LOCALE)} ${pluralWord(total, 'run')} in ${phrase}`;
   return capped
     ? `${runs}. The timeline shows the latest 300; narrow the window to see every run.`
     : `${runs}.`;

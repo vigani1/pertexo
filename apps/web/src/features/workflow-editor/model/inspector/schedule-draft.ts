@@ -1,5 +1,6 @@
 import { cronHasUnsupportedOperators, isRecord } from '@pertexo/workflow-model';
 import type { FieldParseResult, NodeConfig } from './draft';
+import { pluralWord } from '@/lib/format/count';
 
 // The Schedule step's builder: what the catalog's setup schema allows, the
 // builder's editable draft, and the exact config it writes. The config keeps
@@ -230,7 +231,7 @@ function cronTextIssue(
 
 function spanWords(minutes: number): string {
   const [count, unit] = durationUnits(minutes);
-  return `${String(count)} ${unit}${count === 1 ? '' : 's'}`;
+  return `${String(count)} ${pluralWord(count, unit)}`;
 }
 
 /** The recurrence a finished draft describes, for its sentence preview. */

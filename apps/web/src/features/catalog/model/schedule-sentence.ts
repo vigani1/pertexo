@@ -1,5 +1,6 @@
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { pluralWord } from '@/lib/format/count';
 
 // How the Schedule step's rule reads to people. It lives with the rest of the
 // step presentation so the editor's builder and the published trigger cards
@@ -46,7 +47,7 @@ const MONTH_ALIASES: Readonly<Record<string, number>> = Object.fromEntries(
 /** "Every 15 minutes", "Every 2 hours", "Every 3 days", "Every week". */
 export function describeInterval(minutes: number): string {
   const every = (count: number, one: string, many: string) =>
-    count === 1 ? `Every ${one}` : `Every ${String(count)} ${many}`;
+    pluralWord(count, `Every ${one}`, `Every ${String(count)} ${many}`);
   if (minutes % 10_080 === 0) return every(minutes / 10_080, 'week', 'weeks');
   if (minutes >= 2_880 && minutes % 1_440 === 0)
     return every(minutes / 1_440, 'day', 'days');
@@ -176,16 +177,20 @@ function describeDays(
 function describeTimes(minute: Field, hour: Field): string | undefined {
   if (minute.any && hour.any) return 'Every minute';
   if (minute.step !== undefined && hour.any)
-    return minute.step === 1
-      ? 'Every minute'
-      : `Every ${String(minute.step)} minutes`;
+    return pluralWord(
+      minute.step,
+      'Every minute',
+      `Every ${String(minute.step)} minutes`,
+    );
   const [onlyMinute] = minute.values;
   if (minute.values.length !== 1 || onlyMinute === undefined) return undefined;
   if (hour.any) return `Every hour at :${pad(onlyMinute)}`;
   if (hour.step !== undefined)
-    return hour.step === 1
-      ? `Every hour at :${pad(onlyMinute)}`
-      : `Every ${String(hour.step)} hours at :${pad(onlyMinute)}`;
+    return pluralWord(
+      hour.step,
+      `Every hour at :${pad(onlyMinute)}`,
+      `Every ${String(hour.step)} hours at :${pad(onlyMinute)}`,
+    );
   if (hour.values.length > 4) return undefined;
   return `at ${listWords(hour.values.map((value) => clock(value, onlyMinute)))}`;
 }

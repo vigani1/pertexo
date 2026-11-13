@@ -7,6 +7,7 @@ import type {
 import type { StatusTone } from '@/components/ui/status';
 import { needsReconnecting } from '@/features/connections/provider.public';
 import { formatElapsedTime } from '@/lib/format/time';
+import { pluralWord } from '@/lib/format/count';
 
 // "Needs attention" is derived from reads the app already makes: problem
 // runs from the last day, workflows whose triggers aren't healthy,
@@ -54,9 +55,11 @@ function groupTitle(group: RunGroup): string {
   if (group.timedOut === total)
     return `${group.name} timed out ${times(total)} in the last 24 hours`;
   if (group.unknown === total)
-    return total === 1
-      ? `${group.name} has a run with an unknown outcome`
-      : `${group.name} has ${String(total)} runs with an unknown outcome`;
+    return pluralWord(
+      total,
+      `${group.name} has a run with an unknown outcome`,
+      `${group.name} has ${String(total)} runs with an unknown outcome`,
+    );
   return `${group.name} had ${String(total)} runs go wrong in the last 24 hours`;
 }
 
@@ -199,10 +202,11 @@ export function destinationAttentionItems(
     {
       key: 'destinations:disabled',
       tone: 'attention',
-      title:
-        disabled.length === 1
-          ? 'A failure alert destination is turned off'
-          : `${String(disabled.length)} failure alert destinations are turned off`,
+      title: pluralWord(
+        disabled.length,
+        'A failure alert destination is turned off',
+        `${String(disabled.length)} failure alert destinations are turned off`,
+      ),
       detail: `Failures that should reach ${kinds.join(' and ')} won’t be sent.`,
       action: { kind: 'alerts' },
     },

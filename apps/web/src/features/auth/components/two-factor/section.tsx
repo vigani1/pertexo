@@ -7,6 +7,7 @@ import { Notice } from '@/components/ui/notice';
 import { AccountSection } from '../account/section';
 import { accountSecurityKeys } from '../../data/account-security.queries';
 import { TwoFactorSetupDialog, type TwoFactorAction } from './setup-dialog';
+import { pluralWord } from '@/lib/format/count';
 
 export function AccountTwoFactorSection({
   apiClient,
@@ -116,7 +117,7 @@ export function AccountTwoFactorSection({
 
 function recoveryCodeCopy(remaining: number | null) {
   if (remaining === null) return { status: 'On', warning: undefined };
-  const noun = remaining === 1 ? 'code' : 'codes';
+  const noun = pluralWord(remaining, 'code');
   const status = `On · ${String(remaining)} recovery ${noun} remaining`;
   if (remaining > 2) return { status, warning: undefined };
   return {

@@ -15,6 +15,7 @@ import { WorkflowOrganizationOutcomes } from './outcomes';
 import type { Props } from './use-edit';
 import { useOrganizationEdit } from './use-edit';
 import { OrganizationFields } from './fields';
+import { pluralWord } from '@/lib/format/count';
 const RECOVERY =
   'After an unconfirmed change, review the refreshed current state before making another change.';
 export function WorkflowOrganizationDialog(props: Props) {
@@ -32,9 +33,11 @@ export function WorkflowOrganizationDialog(props: Props) {
       <DialogContent>
         <DialogTitle>
           Organize{' '}
-          {selected.length === 1
-            ? 'workflow'
-            : `${String(selected.length)} workflows`}
+          {pluralWord(
+            selected.length,
+            'workflow',
+            `${String(selected.length)} workflows`,
+          )}
         </DialogTitle>
         <DialogDescription>
           Only these explicitly selected workflows are changed. Folder and tag

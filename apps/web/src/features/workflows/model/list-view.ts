@@ -2,6 +2,7 @@ import type { WorkflowListQuery, WorkflowSummary } from '@pertexo/contracts';
 import { workflowOrganizationListQuerySchema } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { describeWorkflowState } from './workflow-state';
+import { pluralWord } from '@/lib/format/count';
 
 export type WorkflowView = 'active' | 'archived' | 'all';
 export type WorkflowSort = 'updated' | 'created';
@@ -128,7 +129,7 @@ export function countWorkflowStates(
     counts.set(state.label, {
       tone: state.tone,
       count,
-      label: count === 1 ? words[0] : words[1],
+      label: pluralWord(count, words[0], words[1]),
     });
   }
   return [...STATE_WORDS.keys()].flatMap((label) => {

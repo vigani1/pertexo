@@ -7,6 +7,7 @@ import { cn } from '@/lib/class-names';
 import type { IssuesState } from '../../model/validation/issues-state';
 import type { EmptyDraftHint } from '../../model/publication/readiness';
 import { countIssues } from '../../model/validation/issues';
+import { formatCount, pluralWord } from '@/lib/format/count';
 
 /** The issues lens the chip opens; the editor places it at the bottom. */
 export const ISSUES_LENS_ID = 'editor-issues-lens';
@@ -124,16 +125,14 @@ function ChipLabel({
   return (
     <>
       <StatusGlyph tone="failure" />
-      {count} <Words>{count === 1 ? 'issue' : 'issues'}</Words>
+      {count} <Words>{pluralWord(count, 'issue')}</Words>
     </>
   );
 }
 
 function describeChip(state: IssuesState, count: number | undefined): string {
   if (count !== undefined)
-    return count === 0
-      ? 'No issues'
-      : `${String(count)} ${count === 1 ? 'issue' : 'issues'}`;
+    return count === 0 ? 'No issues' : formatCount(count, 'issue');
   if (state.checking) return 'Checking…';
   return state.error === undefined ? 'Not checked yet' : 'Couldn’t check';
 }

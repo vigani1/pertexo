@@ -25,6 +25,7 @@ import {
   type OAuth2Draft,
   type OAuth2Field,
 } from './oauth2-draft';
+import { pluralWord } from '@/lib/format/count';
 
 /** What a form fills in: a provider's own credential, or HTTP's other way in. */
 export type CredentialKind = ConnectionChoice | 'oauth2';
@@ -386,7 +387,7 @@ export function describeSavedCredential(
     case 'http': {
       const names = filledRows(draft.headers).map((row) => row.name.trim());
       return {
-        term: names.length === 1 ? 'Header' : 'Headers',
+        term: pluralWord(names.length, 'Header'),
         value: names.join(', '),
       };
     }

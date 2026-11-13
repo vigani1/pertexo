@@ -33,6 +33,7 @@ import {
   workspaceInvitationsInfiniteQueryOptions,
   workspaceMembersInfiniteQueryOptions,
 } from '../data/workspaces.queries';
+import { pluralWord } from '@/lib/format/count';
 
 // An ended session isn't a loss here: the session pause keeps this page.
 type AccessLoss = 'permission';
@@ -111,8 +112,7 @@ function TeamHeader({
             <PageHeaderMeta>
               <Status tone="queued">
                 {pendingInvitations}{' '}
-                {pendingInvitations === 1 ? 'invitation' : 'invitations'}{' '}
-                pending
+                {pluralWord(pendingInvitations, 'invitation')} pending
               </Status>
             </PageHeaderMeta>
           ) : null}

@@ -16,6 +16,7 @@ import { FormatTiles, type FileFormat } from './format-tiles';
 import { SheetGrid } from './sheet-grid';
 import { SheetTabs } from './sheet-tabs';
 import { FILE_LIMIT_COPY } from '../../../../model/inspector/file-limit-copy';
+import { pluralWord } from '@/lib/format/count';
 
 const READ_FORMATS = ['json', 'csv', 'xlsx'] as const;
 const FORMAT_GUIDANCE: Readonly<Record<string, string>> = {
@@ -215,7 +216,7 @@ function describePreview(preview: SheetPreview): string {
     case 'rows':
       return preview.total === 0
         ? 'The last test found the header row and no rows under it.'
-        : `${String(preview.rows.length)} of ${preview.total.toLocaleString('en-US')} ${preview.total === 1 ? 'row' : 'rows'} from the last test.`;
+        : `${String(preview.rows.length)} of ${preview.total.toLocaleString('en-US')} ${pluralWord(preview.total, 'row')} from the last test.`;
     case 'pages':
       return `The last test stored ${preview.itemCount.toLocaleString('en-US')} rows as pages; choose Inline data to preview rows.`;
     case 'missing':

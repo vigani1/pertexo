@@ -1,6 +1,7 @@
 import { emailSendNotificationOutputSchema } from '@pertexo/integrations';
 import { FileChip } from '@/features/artifacts/public';
 import { formatByteLength } from '@/lib/format/bytes';
+import { formatCount } from '@/lib/format/count';
 
 /**
  * The files a Send email step attached, as the same chips the editor shows.
@@ -17,8 +18,8 @@ export function SentAttachments({ value }: Readonly<{ value: unknown }>) {
   return (
     <section aria-label="Attachments sent" className="flex flex-col gap-2 pb-3">
       <p className="font-mono text-caption text-subtle-foreground tabular-nums">
-        {attachments.length} {attachments.length === 1 ? 'file' : 'files'} sent
-        · {formatByteLength(total)}
+        {formatCount(attachments.length, 'file')} sent ·{' '}
+        {formatByteLength(total)}
       </p>
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] gap-2">
         {attachments.map((attachment, index) => (

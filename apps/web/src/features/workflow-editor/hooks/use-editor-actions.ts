@@ -16,6 +16,7 @@ import {
 import { duplicateWorkflowNodes } from '../model/graph/copies';
 import { levelAt, scopeOf, type ScopePath } from '../model/graph/scopes';
 import { useInspectorNavigation } from './use-inspector-navigation';
+import { pluralWord } from '@/lib/format/count';
 
 export type EditorFocusTarget = Readonly<{
   nodeId: string;
@@ -236,9 +237,11 @@ function removalTitle(removed: RemovedElements): string {
     return `Deleted “${stepTitle(onlyNode)}”`;
   if (removed.nodes.length > 1)
     return `Deleted ${String(removed.nodes.length)} steps`;
-  return removed.edges.length === 1
-    ? 'Link removed'
-    : `Removed ${String(removed.edges.length)} links`;
+  return pluralWord(
+    removed.edges.length,
+    'Link removed',
+    `Removed ${String(removed.edges.length)} links`,
+  );
 }
 
 function useRemovalUndo({

@@ -7,6 +7,7 @@ import { describeStep } from '@/features/catalog/presentation.public';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import { connectionUsageQueryOptions } from '../../data/connections.queries';
 import type { ConnectionUsageResponse } from '@pertexo/contracts';
+import { pluralWord } from '@/lib/format/count';
 
 /** Retained published versions, not drafts or an inferred current graph. */
 export function ConnectionUsage({
@@ -131,7 +132,7 @@ function describeVersions(workflow: WorkflowUsage): string {
   const older =
     workflow.older === 0
       ? ''
-      : `${String(workflow.older)} older ${workflow.older === 1 ? 'version' : 'versions'} still used by runs`;
+      : `${String(workflow.older)} older ${pluralWord(workflow.older, 'version')} still used by runs`;
   const live =
     workflow.current === undefined
       ? ''

@@ -16,6 +16,7 @@ import {
   type LoomRun,
 } from '../../model/loom/model';
 import { describeRunStatus } from '../../model/presentation/run-status';
+import { pluralWord } from '@/lib/format/count';
 
 /** Native links share the renderer's geometry, including overlapping runs. */
 export function LoomThreadLinks({
@@ -131,9 +132,11 @@ function LoomRunPreview({
       <p className="font-mono">{formatDateTime(run.createdAt)}</p>
       {alsoHere === 0 ? null : (
         <p>
-          {alsoHere === 1
-            ? '1 more run here: list them below the timeline.'
-            : `${String(alsoHere)} more runs here: list them below the timeline.`}
+          {pluralWord(
+            alsoHere,
+            '1 more run here: list them below the timeline.',
+            `${String(alsoHere)} more runs here: list them below the timeline.`,
+          )}
         </p>
       )}
     </div>
