@@ -175,7 +175,7 @@ function InsertDataChoices({
         />
         {failureSource === undefined ? null : (
           <li>
-            <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
+            <p className="flex items-center gap-2 text-label font-semibold">
               <StatusGlyph tone="failure" />
               Source failure
             </p>
@@ -320,7 +320,7 @@ function RunInputChoices({
   if (triggers.length === 0)
     return (
       <li>
-        <p className="text-[0.8rem] font-semibold">Run input</p>
+        <p className="text-label font-semibold">Run input</p>
         <FieldList fields={[]} wholeLabel="Whole input" onPick={pickField}>
           {files}
         </FieldList>

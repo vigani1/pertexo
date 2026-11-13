@@ -28,7 +28,7 @@ export function AuthLensTitle({ className, ...props }: ComponentProps<'h1'>) {
   return (
     <h1
       className={cn(
-        'font-display text-[1.875rem] leading-none [--display-optical-size:30] [--display-width:82%]',
+        'font-display text-3xl leading-none [--display-optical-size:30] [--display-width:82%]',
         className,
       )}
       {...props}
@@ -43,7 +43,7 @@ export function AuthLensDescription({
   return (
     <p
       className={cn(
-        'mt-2 text-[0.85rem] leading-relaxed text-pretty text-muted-foreground',
+        'mt-2 text-label leading-relaxed text-pretty text-muted-foreground',
         className,
       )}
       {...props}
@@ -56,7 +56,7 @@ export function AuthLensFooter({ className, ...props }: ComponentProps<'p'>) {
   return (
     <p
       className={cn(
-        'mt-5 text-center text-[0.8rem] text-subtle-foreground [&_a]:inline-link',
+        'mt-5 text-center text-label text-subtle-foreground [&_a]:inline-link',
         className,
       )}
       {...props}

@@ -42,10 +42,10 @@ function VersionLine({
   const live = version.data;
   return (
     <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs">
-      <Status tone={state.tone} className="shrink-0 text-[0.75rem] font-medium">
+      <Status tone={state.tone} className="shrink-0 text-label font-medium">
         {state.label}
       </Status>
-      <span className="min-w-0 truncate font-mono text-[0.7rem] leading-none text-subtle-foreground">
+      <span className="min-w-0 truncate font-mono text-caption leading-none text-subtle-foreground">
         {publicationLabel(published, live)}
       </span>
     </p>

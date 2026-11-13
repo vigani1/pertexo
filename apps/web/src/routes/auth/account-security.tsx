@@ -22,7 +22,7 @@ export function AccountSecurityRoute() {
     <div className="relative isolate min-h-svh bg-background">
       <div className="ambient fixed -z-10" aria-hidden="true" />
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 pt-6 sm:px-8">
-        <Wordmark className="text-[1.375rem]" />
+        <Wordmark className="text-wordmark" />
         <Link
           to="/"
           className={buttonVariants({ variant: 'ghost', size: 'sm' })}

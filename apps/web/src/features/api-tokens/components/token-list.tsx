@@ -55,7 +55,7 @@ export function TokenList({
                 </h3>
                 <p
                   className={cn(
-                    'text-[0.78rem] font-medium',
+                    'text-label font-medium',
                     statusToneText[status.tone],
                   )}
                 >

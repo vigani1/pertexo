@@ -110,7 +110,7 @@ function GraphJson({
         {label} · {formatCount(graph.nodes.length, 'step')},{' '}
         {formatCount(graph.edges.length, 'link')}
       </figcaption>
-      <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-surface-ink/8 bg-recess-ink/25 p-2 font-mono text-[0.7rem] break-all whitespace-pre-wrap">
+      <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-surface-ink/8 bg-recess-ink/25 p-2 font-mono text-caption break-all whitespace-pre-wrap">
         {JSON.stringify(graph, null, 2)}
       </pre>
     </figure>

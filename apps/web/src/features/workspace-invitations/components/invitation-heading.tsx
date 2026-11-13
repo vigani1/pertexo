@@ -32,7 +32,7 @@ export function InvitationHeading({
       <AuthLensTitle id="invitation-title" className="mt-5 text-balance">
         {children}
       </AuthLensTitle>
-      <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[0.82rem] text-muted-foreground">
+      <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-label text-muted-foreground">
         <Badge variant="secondary" className="font-semibold">
           {copy.name}
         </Badge>

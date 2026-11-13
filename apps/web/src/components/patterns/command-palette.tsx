@@ -135,7 +135,7 @@ export function CommandPalette({
                 items={[...group.items]}
                 className="pb-2 last:pb-0"
               >
-                <Autocomplete.GroupLabel className="px-2 py-1.5 font-mono text-[0.68rem] tracking-wide text-subtle-foreground uppercase">
+                <Autocomplete.GroupLabel className="px-2 py-1.5 font-mono text-caption tracking-wide text-subtle-foreground uppercase">
                   {group.label}
                 </Autocomplete.GroupLabel>
                 <Autocomplete.Collection>
@@ -153,7 +153,7 @@ export function CommandPalette({
                         {item.label}
                       </span>
                       {item.hint === undefined ? null : (
-                        <span className="font-mono text-[0.7rem] text-subtle-foreground">
+                        <span className="font-mono text-caption text-subtle-foreground">
                           {item.hint}
                         </span>
                       )}

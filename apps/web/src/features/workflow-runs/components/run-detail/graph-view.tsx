@@ -305,7 +305,7 @@ function WorkflowRunNode({ data }: NodeProps<RunNode>) {
       <div className="flex items-center justify-between gap-2 border-t border-surface-ink/6 px-3 py-2">
         <Status tone={data.tone}>{data.statusLabel}</Status>
         {data.invocations > 1 ? (
-          <span className="font-mono text-[0.7rem] text-subtle-foreground">
+          <span className="font-mono text-caption text-subtle-foreground">
             ×{String(data.invocations)}
           </span>
         ) : null}
@@ -370,7 +370,7 @@ function WorkflowRunEdge({
           y={labelY - 6}
           textAnchor="middle"
           className={cn(
-            'font-mono text-[11px]',
+            'font-mono text-caption',
             data.timedOut ? 'fill-warning' : 'fill-subtle-foreground',
           )}
         >

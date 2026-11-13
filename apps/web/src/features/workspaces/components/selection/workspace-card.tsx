@@ -52,7 +52,7 @@ export function WorkspaceCard({
           <Status tone={availability.tone}>{availability.status}</Status>
         </span>
       </span>
-      <span className="mt-auto flex w-full items-center justify-between gap-3 text-[0.8rem] text-muted-foreground">
+      <span className="mt-auto flex w-full items-center justify-between gap-3 text-label text-muted-foreground">
         <span>{availability.note}</span>
         {availability.openable ? (
           <span className="inline-flex items-center gap-1 font-semibold text-accent-foreground">

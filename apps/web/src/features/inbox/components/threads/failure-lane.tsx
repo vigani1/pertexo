@@ -45,7 +45,7 @@ export function FailureLane({
     >
       <span
         aria-hidden="true"
-        className="font-mono text-[0.6rem] text-subtle-foreground"
+        className="font-mono text-micro text-subtle-foreground"
       >
         30d
       </span>

@@ -26,7 +26,7 @@ export function WorkspacePickerHeader({
 }>) {
   return (
     <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 pt-6 sm:px-8">
-      <Wordmark className="text-[1.375rem]" />
+      <Wordmark className="text-wordmark" />
       <DropdownMenu>
         <DropdownMenuTrigger
           aria-label={`Account menu for ${user.displayName}`}

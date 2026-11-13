@@ -32,7 +32,7 @@ export function FieldLabel({ className, ...props }: ComponentProps<'label'>) {
     <label
       data-slot="field-label"
       className={cn(
-        'text-[0.8rem] font-semibold text-foreground/85 group-data-[disabled=true]/field:opacity-50 group-data-[invalid=true]/field:text-destructive',
+        'text-label font-semibold text-foreground/85 group-data-[disabled=true]/field:opacity-50 group-data-[invalid=true]/field:text-destructive',
         className,
       )}
       {...props}
@@ -45,7 +45,7 @@ export function FieldDescription({ className, ...props }: ComponentProps<'p'>) {
     <p
       data-slot="field-description"
       className={cn(
-        'text-[0.8rem] leading-relaxed text-muted-foreground',
+        'text-label leading-relaxed text-muted-foreground',
         className,
       )}
       {...props}
@@ -58,7 +58,7 @@ export function FieldError({ className, ...props }: ComponentProps<'p'>) {
     <p
       role="alert"
       data-slot="field-error"
-      className={cn('text-[0.8rem] text-destructive', className)}
+      className={cn('text-label text-destructive', className)}
       {...props}
     />
   );
@@ -156,7 +156,7 @@ export function LabelledField({
       {labelAction === undefined ? null : (
         // Drawn on the label's row but reached after the control, so Tab
         // goes from one field to the next before any "Forgot?".
-        <div className="absolute top-0 right-0 flex h-[1.2em] items-center text-[0.8rem]">
+        <div className="absolute top-0 right-0 flex h-[1.2em] items-center text-label">
           {labelAction}
         </div>
       )}

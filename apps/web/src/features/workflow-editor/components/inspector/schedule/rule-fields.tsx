@@ -134,7 +134,7 @@ export function DaysField({
     <Field data-invalid={error === undefined ? undefined : true}>
       <span
         id={labelId}
-        className="text-[0.8rem] font-semibold text-foreground/85"
+        className="text-label font-semibold text-foreground/85"
       >
         On
       </span>
@@ -265,7 +265,7 @@ export function MisfireField({
     <Field>
       <span
         id={labelId}
-        className="text-[0.8rem] font-semibold text-foreground/85"
+        className="text-label font-semibold text-foreground/85"
       >
         If runs are missed
       </span>

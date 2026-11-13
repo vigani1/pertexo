@@ -53,7 +53,7 @@ export function AccountWorkspacesSection({
                 >
                   <WorkspaceMark
                     name={workspace.name}
-                    className="size-9 rounded-lg text-[0.7rem]"
+                    className="size-9 rounded-lg text-caption"
                   />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="flex min-w-0 items-center gap-2">

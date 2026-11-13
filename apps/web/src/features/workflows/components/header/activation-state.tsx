@@ -22,7 +22,7 @@ export function WorkflowActivationState({
   const needsSetup = activating && workflow.webhookSetupRequired;
   const state = describeWorkflowState(workflow);
   const word = (
-    <Status tone={state.tone} className="font-sans text-[0.75rem]">
+    <Status tone={state.tone} className="font-sans text-label">
       {state.label}
     </Status>
   );

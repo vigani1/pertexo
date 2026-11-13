@@ -66,7 +66,7 @@ function Tile({
 }>) {
   return (
     <div className="rounded-md border border-surface-ink/6 bg-surface-ink/[0.02] px-3 py-2">
-      <p className="text-[0.7rem] text-subtle-foreground">{label}</p>
+      <p className="text-caption text-subtle-foreground">{label}</p>
       <p
         className={cn(
           'mt-0.5 font-mono text-base font-medium tabular-nums',
@@ -77,7 +77,7 @@ function Tile({
         {value}
       </p>
       {note === undefined ? null : (
-        <p className="font-mono text-[0.7rem] text-subtle-foreground">{note}</p>
+        <p className="font-mono text-caption text-subtle-foreground">{note}</p>
       )}
     </div>
   );
@@ -135,7 +135,7 @@ function RecentRun({
       >
         <StatusGlyph tone={look.tone} className="mt-0.5" />
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.82rem]">
+          <span className="block text-label">
             {look.label}
             {item === undefined ? null : (
               <span className="text-subtle-foreground"> · {item}</span>
@@ -147,7 +147,7 @@ function RecentRun({
             </span>
           )}
         </span>
-        <span className="shrink-0 text-right font-mono text-[0.7rem] text-subtle-foreground">
+        <span className="shrink-0 text-right font-mono text-caption text-subtle-foreground">
           {formatRelativeTime(run.runCreatedAt)}
           {took === undefined ? null : (
             <span className="block">{formatDurationMs(took)}</span>
@@ -277,7 +277,7 @@ function StepRecord({
         }
       >
         <HealthTiles health={stepHealth} />
-        <p className="font-mono text-[0.7rem] text-subtle-foreground">
+        <p className="font-mono text-caption text-subtle-foreground">
           last {String(runsConsidered)} runs
           {oldestRunAt === null
             ? ''

@@ -73,7 +73,7 @@ export function AttachmentSizeMeter({ size }: Readonly<{ size: Size }>) {
       </div>
       <p
         className={cn(
-          'font-mono text-[0.66rem] leading-none tabular-nums',
+          'font-mono text-micro leading-none tabular-nums',
           size.over ? 'text-destructive' : 'text-subtle-foreground',
         )}
       >

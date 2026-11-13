@@ -163,7 +163,7 @@ export function WorkflowPresenceSummary() {
                 key={person.userId}
                 title={person.displayName}
                 className={cn(
-                  'grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-[0.6rem] text-foreground ring-1',
+                  'grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-micro text-foreground ring-1',
                   presencePresentation(person).ring,
                 )}
               >
@@ -171,7 +171,7 @@ export function WorkflowPresenceSummary() {
               </span>
             ))}
             {people.length > 3 ? (
-              <span className="grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-[0.6rem] text-muted-foreground ring-1 ring-border-strong">
+              <span className="grid size-6 place-items-center rounded-full border border-background bg-raised font-mono text-micro text-muted-foreground ring-1 ring-border-strong">
                 +{people.length - 3}
               </span>
             ) : null}

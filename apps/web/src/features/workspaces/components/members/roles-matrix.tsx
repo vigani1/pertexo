@@ -32,7 +32,7 @@ export function RolesMatrix({
                 key={role}
                 scope="col"
                 className={cn(
-                  'px-0.5 pb-2 text-center max-sm:w-1/5 text-[0.62rem] font-semibold text-subtle-foreground sm:w-20 sm:text-[0.7rem]',
+                  'px-0.5 pb-2 text-center max-sm:w-1/5 text-micro font-semibold text-subtle-foreground sm:w-20 sm:text-caption',
                   role === yourRole && 'text-accent-foreground',
                 )}
               >

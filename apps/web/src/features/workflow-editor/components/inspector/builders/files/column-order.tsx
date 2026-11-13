@@ -68,11 +68,11 @@ export function ColumnOrder({
           >
             <span
               aria-hidden="true"
-              className="w-5 shrink-0 text-right font-mono text-[0.62rem] text-subtle-foreground"
+              className="w-5 shrink-0 text-right font-mono text-micro text-subtle-foreground"
             >
               {index + 1}
             </span>
-            <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] whitespace-pre">
+            <span className="min-w-0 flex-1 truncate font-mono text-label whitespace-pre">
               {name}
             </span>
             <span className="flex shrink-0 items-center">

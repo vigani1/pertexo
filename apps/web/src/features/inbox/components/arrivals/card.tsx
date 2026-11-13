@@ -131,7 +131,7 @@ export function InboxArrivalCard({
             <div className="min-w-0 flex-1">
               <p
                 className={cn(
-                  'font-mono text-[0.68rem] tracking-wide uppercase',
+                  'font-mono text-caption tracking-wide uppercase',
                   tone,
                 )}
               >
@@ -148,7 +148,7 @@ export function InboxArrivalCard({
               <Toast.Title className="mt-1 truncate font-display text-lg leading-tight text-foreground [--display-optical-size:24] [--display-width:84%]">
                 {view.title}
               </Toast.Title>
-              <Toast.Description className="mt-1 text-[0.8rem] text-muted-foreground">
+              <Toast.Description className="mt-1 text-label text-muted-foreground">
                 {view.detail}
               </Toast.Description>
             </div>
@@ -173,7 +173,7 @@ export function InboxArrivalCard({
                 />
               ))}
               {view.more === 0 ? null : (
-                <span className={cn('ml-1.5 font-mono text-[0.68rem]', tone)}>
+                <span className={cn('ml-1.5 font-mono text-caption', tone)}>
                   +{view.more}
                 </span>
               )}

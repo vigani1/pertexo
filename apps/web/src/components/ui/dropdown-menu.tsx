@@ -97,7 +97,7 @@ export function DropdownMenuLabel({
     <MenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
       className={cn(
-        'px-2 py-1.5 font-mono text-[0.68rem] tracking-wide text-subtle-foreground uppercase',
+        'px-2 py-1.5 font-mono text-caption tracking-wide text-subtle-foreground uppercase',
         className,
       )}
       {...props}

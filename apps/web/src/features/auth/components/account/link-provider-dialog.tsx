@@ -69,7 +69,7 @@ function SourcePicker({
     <div className="flex flex-col gap-2">
       <span
         id="link-source-label"
-        className="text-[0.8rem] font-semibold text-foreground/85"
+        className="text-label font-semibold text-foreground/85"
       >
         Confirm with
       </span>

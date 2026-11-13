@@ -53,7 +53,7 @@ function ConnectionRow({
         </Status>
         <span
           className={cn(
-            'col-start-2 truncate font-mono text-[0.72rem] sm:col-start-auto',
+            'col-start-2 truncate font-mono text-caption sm:col-start-auto',
             health.tone === 'attention'
               ? 'text-warning'
               : 'text-subtle-foreground',
@@ -62,7 +62,7 @@ function ConnectionRow({
           <span className="sm:hidden">{status.label} · </span>
           {health.text}
         </span>
-        <span className="hidden font-mono text-[0.72rem] text-subtle-foreground sm:block">
+        <span className="hidden font-mono text-caption text-subtle-foreground sm:block">
           {formatRelativeTime(connection.updatedAt)}
         </span>
         <ChevronRightIcon

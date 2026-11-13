@@ -144,7 +144,7 @@ function TaskStatusLine({ task }: Readonly<{ task: PendingTaskDetail }>) {
   if (timedOut !== undefined)
     return (
       <>
-        <span className="inline-flex items-center gap-1.5 text-[0.8rem] leading-none font-semibold text-warning">
+        <span className="inline-flex items-center gap-1.5 text-label leading-none font-semibold text-warning">
           <TimedOutGlyph />
           {timedOut}
         </span>

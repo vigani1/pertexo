@@ -27,7 +27,7 @@ const HEADERS = [
 
 function Snippet({ code }: Readonly<{ code: string }>) {
   return (
-    <pre className="max-h-80 overflow-auto rounded-md border border-border bg-recess-ink/35 p-3 font-mono text-[0.75rem] leading-relaxed text-muted-foreground">
+    <pre className="max-h-80 overflow-auto rounded-md border border-border bg-recess-ink/35 p-3 font-mono text-label leading-relaxed text-muted-foreground">
       <code>{code}</code>
     </pre>
   );

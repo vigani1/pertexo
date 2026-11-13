@@ -38,7 +38,7 @@ export function ShellBreadcrumb({
   const trail = crumbs.map((crumb) => crumb.key).join('/');
   return (
     <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
-      <ol className="flex min-w-0 items-center gap-2 text-[0.8rem] text-subtle-foreground">
+      <ol className="flex min-w-0 items-center gap-2 text-label text-subtle-foreground">
         {/* The cap sits on the step, not the switcher inside it: a width
             capped by a percentage still reserves the whole name, which
             pushed the rest of the trail across the bar. */}

@@ -81,7 +81,7 @@ export function DailyChart({
         </div>
         <div
           aria-hidden="true"
-          className="flex justify-between text-[10px] text-muted-foreground"
+          className="flex justify-between text-micro text-muted-foreground"
         >
           {snapshot.days
             .filter(

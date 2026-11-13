@@ -73,14 +73,14 @@ export function StatusGuide({
                   key={entry.label}
                   className="flex flex-col gap-0.5 sm:grid sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-baseline sm:gap-3"
                 >
-                  <dt className="text-[0.8rem] font-medium">
+                  <dt className="text-label font-medium">
                     {entry.tone === undefined ? (
                       entry.label
                     ) : (
                       <Status tone={entry.tone}>{entry.label}</Status>
                     )}
                   </dt>
-                  <dd className="text-[0.8rem] leading-relaxed text-muted-foreground">
+                  <dd className="text-label leading-relaxed text-muted-foreground">
                     {entry.meaning}
                   </dd>
                 </div>

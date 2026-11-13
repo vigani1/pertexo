@@ -65,7 +65,7 @@ function TestResult({
           gives way (ellipsis) so its time and reason stay on the line. */}
       <p
         title={summary}
-        className="order-last flex w-full min-w-0 pb-1 font-mono text-[0.72rem] leading-snug whitespace-nowrap text-subtle-foreground sm:order-none sm:w-auto sm:flex-1 sm:pb-0"
+        className="order-last flex w-full min-w-0 pb-1 font-mono text-caption leading-snug whitespace-nowrap text-subtle-foreground sm:order-none sm:w-auto sm:flex-1 sm:pb-0"
       >
         <span className="min-w-0 truncate">{path}</span>
         {facts === '' ? null : (

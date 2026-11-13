@@ -46,7 +46,7 @@ export function ConfigJsonEditor({
           name="nodeConfiguration"
           autoComplete="off"
           spellCheck={false}
-          className="min-h-56 font-mono text-base md:text-[0.8rem]"
+          className="min-h-56 font-mono text-base md:text-label"
           value={live.text}
           disabled={!form.editable}
           aria-invalid={live.error !== undefined}

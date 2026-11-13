@@ -98,7 +98,7 @@ export function FileChip({
     <div
       data-slot="file-chip"
       className={cn(
-        'flex h-13 min-w-0 items-center gap-3 rounded-lg border border-surface-ink/8 bg-card py-2 pr-1.5 pl-2.5 text-[0.8rem]',
+        'flex h-13 min-w-0 items-center gap-3 rounded-lg border border-surface-ink/8 bg-card py-2 pr-1.5 pl-2.5 text-label',
         className,
       )}
     >
@@ -111,7 +111,7 @@ export function FileChip({
         ) : (
           <FileName name={name} />
         )}
-        <span className="flex min-w-0 items-center gap-1.5 font-mono text-[0.66rem] leading-none text-subtle-foreground tabular-nums">
+        <span className="flex min-w-0 items-center gap-1.5 font-mono text-micro leading-none text-subtle-foreground tabular-nums">
           {byteLength === undefined ? null : (
             <span className="shrink-0">{formatByteLength(byteLength)}</span>
           )}

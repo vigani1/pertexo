@@ -6,12 +6,12 @@ import type { ApiClient } from '@/lib/api/client';
 import { inboxSummaryQueryOptions } from '../data/inbox.queries';
 
 const viewClass =
-  'flex shrink-0 items-center gap-2 rounded-sm px-3 py-1.5 text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring aria-[current=page]:bg-action/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)]';
+  'flex shrink-0 items-center gap-2 rounded-sm px-3 py-1.5 text-label font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring aria-[current=page]:bg-action/10 aria-[current=page]:text-accent-foreground aria-[current=page]:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)]';
 
 function Count({ value }: Readonly<{ value: number | undefined }>) {
   if (value === undefined || value === 0) return null;
   return (
-    <span className="font-mono text-[0.7rem] tabular-nums">
+    <span className="font-mono text-caption tabular-nums">
       {value > 99 ? '99+' : value}
     </span>
   );

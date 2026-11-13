@@ -50,7 +50,7 @@ export function InviteResults({
           <div className="flex items-center justify-between gap-3">
             <span className="min-w-0 truncate text-sm">{row.email}</span>
             {row.delivery === 'sending' ? (
-              <span className="inline-flex items-center gap-1.5 text-[0.8rem] font-semibold text-primary">
+              <span className="inline-flex items-center gap-1.5 text-label font-semibold text-primary">
                 <LoadingOrb />
                 Sending
               </span>

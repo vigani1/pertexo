@@ -19,7 +19,7 @@ export function WorkspaceMark({
     <span
       aria-hidden="true"
       className={cn(
-        'grid size-5 shrink-0 place-items-center rounded-[0.35rem] bg-linear-135 font-heading text-[0.6rem] font-bold text-primary-foreground',
+        'grid size-5 shrink-0 place-items-center rounded-[0.35rem] bg-linear-135 font-heading text-micro font-bold text-primary-foreground',
         MARK_GRADIENTS[stableIndex(name, MARK_GRADIENTS.length)],
         className,
       )}
@@ -56,7 +56,7 @@ export function RingMonogram({
       aria-hidden="true"
       data-initials={formatInitials(name)}
       className={cn(
-        'relative grid size-8 shrink-0 place-items-center rounded-full bg-card font-heading text-[0.7rem] font-bold text-foreground after:content-[attr(data-initials)]',
+        'relative grid size-8 shrink-0 place-items-center rounded-full bg-card font-heading text-caption font-bold text-foreground after:content-[attr(data-initials)]',
         'before:absolute before:-inset-0.5 before:rounded-full before:bg-conic before:[mask:radial-gradient(closest-side,transparent_calc(100%-2px),black_calc(100%-1.5px))]',
         RING_GRADIENTS[stableIndex(name, RING_GRADIENTS.length)],
         className,

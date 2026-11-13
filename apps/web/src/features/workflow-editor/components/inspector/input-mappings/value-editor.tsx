@@ -77,7 +77,7 @@ export function MappingValueEditor({
         value={[row.kind]}
         disabled={disabled}
         // Wrap source choices within the inspector rather than narrowing the labels.
-        className="w-full flex-wrap [&>*]:flex-1 [&>*]:px-1.5 [&>*]:text-[0.78rem]"
+        className="w-full flex-wrap [&>*]:flex-1 [&>*]:px-1.5 [&>*]:text-label"
         onValueChange={(values) => {
           const kind: unknown = values[0];
           if (!isEditableInputMappingKind(kind)) return;

@@ -33,7 +33,7 @@ export function FileFieldSetup({
       <div className="flex min-w-0 flex-col gap-2">
         <span
           id={`${prefix}-accept`}
-          className="text-[0.8rem] font-semibold text-foreground/85"
+          className="text-label font-semibold text-foreground/85"
         >
           Accepts
         </span>
@@ -59,7 +59,7 @@ export function FileFieldSetup({
         <div className="flex flex-col gap-2">
           <span
             id={`${prefix}-count`}
-            className="text-[0.8rem] font-semibold text-foreground/85"
+            className="text-label font-semibold text-foreground/85"
           >
             Files per response
           </span>
@@ -106,11 +106,11 @@ export function FileFieldSetup({
           <div className="flex items-baseline justify-between gap-2">
             <label
               htmlFor={`${prefix}-size`}
-              className="text-[0.8rem] font-semibold text-foreground/85"
+              className="text-label font-semibold text-foreground/85"
             >
               Largest file
             </label>
-            <span className="font-mono text-[0.8rem] tabular-nums">
+            <span className="font-mono text-label tabular-nums">
               {formatFormFileBytes(megabytes * MEBIBYTE)}
             </span>
           </div>
@@ -127,7 +127,7 @@ export function FileFieldSetup({
               onChange({ maxBytes: Number(event.target.value) * MEBIBYTE });
             }}
           />
-          <div aria-hidden="true" className="relative h-5 text-[0.7rem]">
+          <div aria-hidden="true" className="relative h-5 text-caption">
             {TICKS.map((tick) => (
               <SizeTick key={tick} megabytes={tick} />
             ))}

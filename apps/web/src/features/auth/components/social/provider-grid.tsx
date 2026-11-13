@@ -37,7 +37,7 @@ export function SocialProviderGrid({
 /** "or with email": a quiet break between providers and the form. */
 export function OrDivider({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="my-4 flex items-center gap-3 text-[0.75rem] text-subtle-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+    <div className="my-4 flex items-center gap-3 text-label text-subtle-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
       {children}
     </div>
   );

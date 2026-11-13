@@ -111,7 +111,7 @@ function ArtifactDownloadScope({
           <p className="truncate font-medium">
             {filename ?? describeFileKind(details?.mediaType)}
           </p>
-          <p className="truncate font-mono text-[0.7rem] text-subtle-foreground">
+          <p className="truncate font-mono text-caption text-subtle-foreground">
             {details === undefined
               ? shortArtifactId(artifactId)
               : describeDetails(details, filename)}

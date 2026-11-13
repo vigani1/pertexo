@@ -211,7 +211,7 @@ export function TableCollection({
                   />
                 ))}
                 {more > 0 ? (
-                  <span className="self-center font-mono text-[0.7rem] text-subtle-foreground">
+                  <span className="self-center font-mono text-caption text-subtle-foreground">
                     +{more}
                   </span>
                 ) : null}

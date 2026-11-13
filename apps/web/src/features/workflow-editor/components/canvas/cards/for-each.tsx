@@ -72,7 +72,7 @@ export function ForEachNodeCard({
         </div>
         {output === undefined ? null : (
           <>
-            <span className="font-mono text-[0.64rem] text-muted-foreground">
+            <span className="font-mono text-micro text-muted-foreground">
               done
             </span>
             <Handle
@@ -88,7 +88,7 @@ export function ForEachNodeCard({
       </div>
       <section aria-label="Body, runs once per item">
         <div
-          className="flex items-center justify-between px-3 font-mono text-[0.6rem] text-subtle-foreground"
+          className="flex items-center justify-between px-3 font-mono text-micro text-subtle-foreground"
           style={{ height: LOOP_FRAME.label }}
         >
           <span>
@@ -109,7 +109,7 @@ export function ForEachNodeCard({
           }}
         >
           {stepCount === 0 ? (
-            <p className="absolute inset-x-4 top-4 text-[0.7rem] leading-snug text-subtle-foreground">
+            <p className="absolute inset-x-4 top-4 text-caption leading-snug text-subtle-foreground">
               No steps yet. Steps inside a For each run once per item.
             </p>
           ) : null}
@@ -132,7 +132,7 @@ export function ForEachNodeCard({
             <button
               type="button"
               aria-label={`Add a step to ${title}’s body`}
-              className="nodrag nopan ml-auto inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[0.7rem] font-medium text-accent-foreground outline-none hover:bg-surface-ink/5 focus-ring [&_svg]:size-3"
+              className="nodrag nopan ml-auto inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-caption font-medium text-accent-foreground outline-none hover:bg-surface-ink/5 focus-ring [&_svg]:size-3"
               onClick={(event) => {
                 event.stopPropagation();
                 addToBody(id, event.currentTarget);
@@ -153,7 +153,7 @@ export function ForEachNodeCard({
             {body.issues.map((issue) => (
               <li
                 key={issue.code}
-                className="flex items-start gap-1.5 text-[0.68rem] leading-snug text-warning"
+                className="flex items-start gap-1.5 text-caption leading-snug text-warning"
               >
                 <StatusGlyph tone="attention" className="mt-px shrink-0" />
                 {issue.message}

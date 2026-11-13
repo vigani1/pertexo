@@ -7,7 +7,7 @@ import { useRenameDraft } from './use-draft';
 import { RenameOutcome } from './outcome';
 /** A key you could press instead: Enter saves, Escape lets go. */
 const KEYCAP =
-  'inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[5px] border px-1.5 font-mono text-[0.66rem] leading-none shadow-[inset_0_-1px_0_color-mix(in_srgb,var(--surface-ink)_6%,transparent)] outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 motion-reduce:transition-none pointer-coarse:h-10 pointer-coarse:min-w-10 [&_svg]:size-3.5';
+  'inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-[5px] border px-1.5 font-mono text-micro leading-none shadow-[inset_0_-1px_0_color-mix(in_srgb,var(--surface-ink)_6%,transparent)] outline-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 motion-reduce:transition-none pointer-coarse:h-10 pointer-coarse:min-w-10 [&_svg]:size-3.5';
 /**
  * The name edited where it stands. It lifts onto a glass plate, the same
  * size and face, written on a thread that draws in under it; Save and

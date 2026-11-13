@@ -32,7 +32,7 @@ export function ScheduleRunTimes({
           <time dateTime={at} className="font-mono text-sm tabular-nums">
             {formatDateTimeInZone(at, zone)}
           </time>
-          <span className="font-mono text-[0.72rem] text-subtle-foreground">
+          <span className="font-mono text-caption text-subtle-foreground">
             {zone === local
               ? formatRelativeTime(at)
               : `${formatDateTimeInZone(at, local)} your time · ${formatRelativeTime(at)}`}

@@ -61,7 +61,7 @@ function SpineLink({
           // A new count rolls in, so a change is seen without a flash.
           <span
             key={destination.badge}
-            className="absolute top-0.5 right-0.5 rounded-sm bg-action/15 px-0.5 font-mono text-[0.58rem] leading-[0.8rem] font-semibold text-accent-foreground ring-1 ring-action/30 motion-safe:animate-[badge-roll_320ms_var(--ease-unspool)]"
+            className="absolute top-0.5 right-0.5 rounded-sm bg-action/15 px-0.5 font-mono text-micro leading-[0.8rem] font-semibold text-accent-foreground ring-1 ring-action/30 motion-safe:animate-[badge-roll_320ms_var(--ease-unspool)]"
           >
             {formatBadge(destination.badge)}
           </span>

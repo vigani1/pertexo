@@ -67,9 +67,7 @@ export function TaskRow({
           >
             {task.title}
           </Link>
-          <span
-            className={cn('text-[0.78rem] font-medium', statusToneText[tone])}
-          >
+          <span className={cn('text-label font-medium', statusToneText[tone])}>
             {waiting ? taskStatusLabel(task.status) : taskOutcome(task)}
           </span>
         </div>

@@ -75,7 +75,7 @@ export function AccountProfileSection({
         )}
       </div>
       <dl className="grid gap-1">
-        <dt className="text-[0.8rem] text-subtle-foreground">Email</dt>
+        <dt className="text-label text-subtle-foreground">Email</dt>
         <dd className="flex flex-wrap items-center gap-2 text-sm">
           <span className="[overflow-wrap:anywhere]">{email}</span>
           {<EmailVerification security={security} />}

@@ -48,7 +48,7 @@ function InvitationRow({
           {ROLE_NAMES[invitation.role]} · {status.label}
         </p>
       </div>
-      <span className="text-[0.8rem] font-semibold max-sm:hidden">
+      <span className="text-label font-semibold max-sm:hidden">
         {ROLE_NAMES[invitation.role]}
       </span>
       <Status tone={status.tone} className="max-sm:hidden">
@@ -56,7 +56,7 @@ function InvitationRow({
       </Status>
       <span
         className={cn(
-          'col-start-1 font-mono text-[0.72rem] sm:col-start-auto',
+          'col-start-1 font-mono text-caption sm:col-start-auto',
           delivery.problem ? 'text-warning' : 'text-subtle-foreground',
         )}
       >

@@ -54,7 +54,7 @@ export function CodeSetup({
       <Field data-invalid={issue !== undefined}>
         <p
           id={`${id}-label`}
-          className="text-[0.8rem] font-semibold text-foreground/85"
+          className="text-label font-semibold text-foreground/85"
         >
           {presentation.label}
         </p>
@@ -83,7 +83,7 @@ export function CodeSetup({
             Line {issue.line}, column {issue.column}: {issue.message}
           </FieldError>
         )}
-        <p className="font-mono text-[0.7rem] text-subtle-foreground">
+        <p className="font-mono text-caption text-subtle-foreground">
           {formatByteLength(new TextEncoder().encode(source).byteLength)} /{' '}
           {formatByteLength(CODE_LIMITS.sourceBytes)} · Tab moves focus
         </p>

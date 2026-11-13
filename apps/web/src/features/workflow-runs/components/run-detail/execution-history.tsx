@@ -29,13 +29,13 @@ export function StepError({
   const copy = describeStepError(code, definitionKey);
   const canOpenConnections = workspace.capabilities.includes('connection:read');
   return (
-    <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/[0.05] p-3 text-[0.8rem] leading-relaxed">
+    <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/[0.05] p-3 text-label leading-relaxed">
       <p className="break-words whitespace-pre-wrap text-foreground">
         {summary ?? copy.sentence}
       </p>
       <p className="mt-1 text-muted-foreground">{copy.advice}</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <code className="font-mono text-[0.7rem] text-destructive">{code}</code>
+        <code className="font-mono text-caption text-destructive">{code}</code>
         {copy.fix !== undefined && canOpenConnections ? (
           <Link
             to="/w/$workspaceId/connections"
@@ -65,11 +65,11 @@ function StoryEntry({
 }>) {
   const reason = storyEntryReason(entry);
   return (
-    <li className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2.5 border-t border-surface-ink/6 py-2.5 text-[0.82rem]">
+    <li className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2.5 border-t border-surface-ink/6 py-2.5 text-label">
       <StatusGlyph tone={entry.tone} className="mt-0.5" />
       <div className="min-w-0">
         <p className="font-semibold">{storyEntryTitle(entry)}</p>
-        <p className="mt-0.5 font-mono text-[0.7rem] text-subtle-foreground">
+        <p className="mt-0.5 font-mono text-caption text-subtle-foreground">
           {storyEntryMeta(entry, nowMs)}
         </p>
         {entry.kind === 'retry' ? (
@@ -104,7 +104,7 @@ export function StepExecutionHistory({
 }>) {
   if (row.reused !== undefined)
     return (
-      <div className="text-[0.8rem] text-muted-foreground">
+      <div className="text-label text-muted-foreground">
         <p>
           This step was not executed here. Its saved output belongs to this run
           and remains available when the source history expires.
@@ -129,12 +129,12 @@ export function StepExecutionHistory({
   return (
     <>
       {row.failureHandling === undefined ? null : (
-        <p className="mb-3 text-[0.8rem] text-muted-foreground">
+        <p className="mb-3 text-label text-muted-foreground">
           {failureHandlingLabel(row)}
         </p>
       )}
       {row.story.length === 0 ? (
-        <p className="text-[0.8rem] text-muted-foreground">
+        <p className="text-label text-muted-foreground">
           {row.status === 'not_started'
             ? 'This step hasn’t started in this run.'
             : 'Nothing recorded yet.'}

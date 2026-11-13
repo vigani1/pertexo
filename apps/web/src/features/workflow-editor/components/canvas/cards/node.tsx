@@ -80,7 +80,7 @@ export function WorkflowNodeCard({
             style={{ top: 'calc(100% - 14px)' }}
             className="!size-2.5 !border-destructive !bg-background !border-dashed"
           />
-          <span className="pointer-events-none absolute bottom-1 right-3 flex items-center gap-1 rounded bg-card px-1 text-[0.65rem] text-destructive">
+          <span className="pointer-events-none absolute bottom-1 right-3 flex items-center gap-1 rounded bg-card px-1 text-micro text-destructive">
             <StatusGlyph tone="failure" className="size-2.5" />
             Failure
           </span>

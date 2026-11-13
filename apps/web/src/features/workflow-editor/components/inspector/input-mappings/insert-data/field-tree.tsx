@@ -144,15 +144,15 @@ export function PickButton({
   return (
     <button
       type="button"
-      className="flex min-h-7 w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-[0.8rem] text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring pointer-coarse:min-h-10"
+      className="flex min-h-7 w-full items-center gap-2 rounded-sm px-1.5 py-1 text-left text-label text-muted-foreground outline-none hover:bg-surface-ink/5 hover:text-accent-foreground focus-ring pointer-coarse:min-h-10"
       onClick={onClick}
     >
       <span className="min-w-0 truncate font-medium">{label}</span>
-      <span className="min-w-0 flex-[1_1_0] truncate text-right font-mono text-[0.7rem] text-subtle-foreground">
+      <span className="min-w-0 flex-[1_1_0] truncate text-right font-mono text-caption text-subtle-foreground">
         {preview}
       </span>
       {type === undefined ? null : (
-        <span className="shrink-0 font-mono text-[0.66rem] text-subtle-foreground">
+        <span className="shrink-0 font-mono text-micro text-subtle-foreground">
           {type}
         </span>
       )}

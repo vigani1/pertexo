@@ -148,7 +148,7 @@ function unrecordedInput(
 /** Names where the input came from for what it is: not the exact input. */
 function SourceNote() {
   return (
-    <p className="text-[0.8rem] text-muted-foreground">
+    <p className="text-label text-muted-foreground">
       Source data, not the exact input: this step’s own mappings may have
       changed it.
     </p>

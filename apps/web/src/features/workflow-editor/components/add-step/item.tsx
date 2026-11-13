@@ -18,8 +18,8 @@ export function StepRowText({
 }: Readonly<{ name: string; description: string; children?: ReactNode }>) {
   return (
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-[0.82rem] font-medium">{name}</span>
-      <span className="block line-clamp-2 min-h-[2lh] text-[0.72rem] leading-snug text-subtle-foreground">
+      <span className="block truncate text-label font-medium">{name}</span>
+      <span className="block line-clamp-2 min-h-[2lh] text-caption leading-snug text-subtle-foreground">
         {description}
       </span>
       {children}

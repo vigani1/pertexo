@@ -12,7 +12,7 @@ function SharingAvatar({
     <span
       aria-hidden="true"
       className={cn(
-        'grid size-8 shrink-0 place-items-center rounded-full border border-background font-mono text-[0.65rem] ring-1',
+        'grid size-8 shrink-0 place-items-center rounded-full border border-background font-mono text-micro ring-1',
         kind === 'member'
           ? 'bg-raised text-foreground ring-border-strong'
           : 'bg-primary/10 text-primary ring-primary/30',

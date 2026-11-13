@@ -18,7 +18,7 @@ export function ColumnChip({
   return (
     <span
       className={cn(
-        'inline-flex max-w-40 min-w-0 items-center gap-1.5 rounded-md border border-surface-ink/7 bg-surface-ink/[0.03] px-1.5 py-0.5 font-mono text-[0.7rem] text-muted-foreground',
+        'inline-flex max-w-40 min-w-0 items-center gap-1.5 rounded-md border border-surface-ink/7 bg-surface-ink/[0.03] px-1.5 py-0.5 font-mono text-caption text-muted-foreground',
         isKey && 'border-action/30 text-accent-foreground',
         className,
       )}

@@ -73,8 +73,8 @@ export function WebhookTestEventPanel({
       <p className="text-xs text-muted-foreground">
         A separate test URL captures one request for{' '}
         {formatTimeSpan(WEBHOOK_TEST_CAPTURE_SECONDS)} without running the
-        workflow. Request data may contain secrets. Keeping it as a pin
-        shares it with people who can see run data.
+        workflow. Request data may contain secrets. Keeping it as a pin shares
+        it with people who can see run data.
       </p>
       <div hidden={listener !== undefined}>
         <ListenerAuthentication

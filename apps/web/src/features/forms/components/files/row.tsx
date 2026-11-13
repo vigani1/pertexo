@@ -41,7 +41,7 @@ export function FileRow({
         </p>
         <p
           className={cn(
-            'text-[0.75rem] leading-snug',
+            'text-label leading-snug',
             failed ? 'text-destructive' : 'text-muted-foreground',
           )}
         >

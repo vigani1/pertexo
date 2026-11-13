@@ -82,7 +82,7 @@ function EditedSinceNote({
     receipt.revision !== draft.revision;
   if (!edited) return null;
   return (
-    <span className="hidden font-mono text-[0.7rem] whitespace-nowrap text-subtle-foreground sm:inline">
+    <span className="hidden font-mono text-caption whitespace-nowrap text-subtle-foreground sm:inline">
       Edited since v{receipt.versionNumber}
     </span>
   );

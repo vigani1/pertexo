@@ -35,7 +35,7 @@ export function RadioChoice<Value extends string>({
         <Radio.Root
           key={option.value}
           value={option.value}
-          className="inline-flex h-7 items-center rounded-sm px-3 text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground transition-colors outline-none hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 data-checked:bg-surface-ink/8 data-checked:text-foreground max-sm:min-h-[var(--control-min-size,2.75rem)]"
+          className="inline-flex h-7 items-center rounded-sm px-3 text-label font-medium whitespace-nowrap text-subtle-foreground transition-colors outline-none hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 data-checked:bg-surface-ink/8 data-checked:text-foreground max-sm:min-h-[var(--control-min-size,2.75rem)]"
         >
           {option.label}
         </Radio.Root>

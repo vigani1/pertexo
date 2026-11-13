@@ -40,7 +40,7 @@ export type RunDataScope = Readonly<{
 }>;
 
 export function Muted({ children }: Readonly<{ children: string }>) {
-  return <p className="text-[0.8rem] text-muted-foreground">{children}</p>;
+  return <p className="text-label text-muted-foreground">{children}</p>;
 }
 
 /** Inline JSON: a tree to browse, with its size, Copy and a wider view. */
@@ -53,7 +53,7 @@ function InlineValue({
   return (
     <div className="min-w-0">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="font-mono text-[0.7rem] text-subtle-foreground">
+        <span className="font-mono text-caption text-subtle-foreground">
           {summary}
         </span>
         <div className="-mr-1.5 flex items-center">

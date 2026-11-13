@@ -137,12 +137,12 @@ function MemberRow({
             {member.displayName}
           </span>
           {isYou ? (
-            <span className="font-mono text-[0.68rem] text-subtle-foreground">
+            <span className="font-mono text-caption text-subtle-foreground">
               you
             </span>
           ) : null}
           {member.membershipStatus === 'suspended' ? (
-            <span className="font-mono text-[0.68rem] text-warning sm:hidden">
+            <span className="font-mono text-caption text-warning sm:hidden">
               suspended
             </span>
           ) : null}
@@ -171,11 +171,11 @@ function MemberRow({
             }}
             triggerProps={{
               'aria-label': `Role for ${member.displayName}`,
-              className: 'h-8 w-32 text-[0.8rem] font-semibold',
+              className: 'h-8 w-32 text-label font-semibold',
             }}
           />
         ) : (
-          <span className="inline-flex h-8 items-center px-3 text-[0.8rem] font-semibold">
+          <span className="inline-flex h-8 items-center px-3 text-label font-semibold">
             {ROLE_NAMES[member.role]}
           </span>
         )}
@@ -187,7 +187,7 @@ function MemberRow({
           <Status tone="attention">Suspended</Status>
         )}
       </span>
-      <span className="font-mono text-[0.72rem] text-subtle-foreground max-sm:hidden">
+      <span className="font-mono text-caption text-subtle-foreground max-sm:hidden">
         {formatDate(member.createdAt)}
       </span>
       <MemberActions member={member} control={control} />
@@ -220,7 +220,7 @@ export function MemberList({
           joined. Each cell names itself for screen readers already. */}
       <div
         aria-hidden="true"
-        className="hidden grid-cols-[auto_minmax(0,1fr)_8.5rem_6rem_6.5rem_2rem] gap-x-3.5 border-b border-border pb-2 font-mono text-[0.68rem] text-subtle-foreground sm:grid"
+        className="hidden grid-cols-[auto_minmax(0,1fr)_8.5rem_6rem_6.5rem_2rem] gap-x-3.5 border-b border-border pb-2 font-mono text-caption text-subtle-foreground sm:grid"
       >
         <span className="col-start-3 px-3">Role</span>
         <span>Status</span>

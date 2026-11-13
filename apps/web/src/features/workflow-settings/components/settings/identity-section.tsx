@@ -20,7 +20,7 @@ function Moment({ label, value }: Readonly<{ label: string; value: string }>) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="text-sm">
         <time dateTime={value}>{formatRelativeTime(value)}</time>
-        <span className="block font-mono text-[0.72rem] text-subtle-foreground">
+        <span className="block font-mono text-caption text-subtle-foreground">
           {formatDateTime(value)}
         </span>
       </dd>

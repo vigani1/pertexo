@@ -61,7 +61,7 @@ export function NoticeFrame({
           {/* The ring already draws the glyph; the word keeps its colour. */}
           <span
             className={cn(
-              'shrink-0 text-[0.78rem] font-medium',
+              'shrink-0 text-label font-medium',
               statusToneText[tone],
             )}
           >
