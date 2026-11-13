@@ -1,5 +1,5 @@
 import { workflowListBody } from '../workflows/list-support';
-import { csrfToken } from '../run-history/fixture';
+import { csrfToken, run } from '../run-history/fixture';
 import {
   createUserFixture,
   createWorkspaceFixture,
@@ -70,6 +70,7 @@ async function newWorkspace(page: Page) {
               'workflow:read',
               'workflow:create',
               'run:read',
+              'connection:read',
             ],
             createdAt: timestamp,
             updatedAt: timestamp,
@@ -83,6 +84,9 @@ async function newWorkspace(page: Page) {
     route.fulfill({ json: workflowListBody(route.request().url(), []) }),
   );
   await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route(`**/v1/workspaces/${workspaceId}/connections?**`, (route) =>
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );
   await page.route(
@@ -176,4 +180,70 @@ for (const width of [375, 1280] as const)
       `/w/${workspaceId}/workflows/${workflowId}?guide=first-run`,
     );
     expect(imports).toHaveLength(1);
+  });
+
+/** The same workspace after its first run: one published workflow, one run. */
+async function afterFirstRun(page: Page) {
+  await page.route(`**/v1/workspaces/${workspaceId}/workflows?**`, (route) =>
+    route.fulfill({
+      json: workflowListBody(route.request().url(), [
+        {
+          id: workflowId,
+          workspaceId,
+          name: 'Say hello',
+          nameRevision: 1,
+          lifecycleStatus: 'active',
+          lifecycleRevision: 1,
+          activationStatus: 'inactive',
+          webhookSetupRequired: false,
+          publishedVersionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ]),
+    }),
+  );
+  await page.route(`**/v1/workspaces/${workspaceId}/runs?**`, (route) =>
+    route.fulfill({
+      json: {
+        items:
+          new URL(route.request().url()).searchParams.get('status') === null
+            ? [run('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', 'succeeded')]
+            : [],
+        nextCursor: null,
+      },
+    }),
+  );
+}
+
+for (const width of [375, 1280] as const)
+  test(`keeps the unfinished setup tasks, quieter, after the first run at ${String(width)}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await newWorkspace(page);
+    await afterFirstRun(page);
+    await page.goto(`/w/${workspaceId}`);
+    const section = page.getByRole('region', { name: 'Getting started' });
+    await expect(section).toBeVisible();
+    await expect(section).toContainText('3 of 4 done.');
+    const connection = section.getByRole('link', { name: 'Add a connection' });
+    await expect(connection).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/connections?add=any`,
+    );
+    await expect(
+      section.getByRole('button', { name: 'Try the example' }),
+    ).toHaveCount(0);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: test
+        .info()
+        .outputPath(`getting-started-after-${String(width)}.png`),
+      fullPage: true,
+    });
   });
