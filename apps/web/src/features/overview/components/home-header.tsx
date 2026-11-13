@@ -40,7 +40,11 @@ export function HomeHeader({
         <PageHeaderTitle className="break-words sm:text-5xl">
           {workspace.name}
         </PageHeaderTitle>
-        {statistics === undefined ? null : (
+        {/* The figures' line is held while they load, so the actions under
+            it on a phone don't drop when they arrive. */}
+        {statistics === undefined ? (
+          <PageHeaderMeta aria-hidden="true">&nbsp;</PageHeaderMeta>
+        ) : (
           <PageHeaderMeta>
             <LiveRunCounts current={statistics.current} />
             <RunCount
