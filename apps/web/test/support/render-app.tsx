@@ -2,7 +2,7 @@ import { synchronizeApplicationSession } from '@/app/session-sync';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { createAppRouter } from '@/app/router';
@@ -18,8 +18,22 @@ export const testFetch: typeof fetch = (input, init) => {
 
 const sessionOwners = new Set<() => void>();
 const clients = new Set<ReturnType<typeof createQueryClient>>();
+const routers = new Set<ReturnType<typeof createAppRouter>>();
 
 afterEach(async () => {
+  // A navigation still loading when the test ends keeps its pending-UI
+  // timer and its commit. Both hand matches to React through
+  // `startTransition`, which the mounted Transitioner binds to a state
+  // update; run after the environment closes, that update finds no
+  // `window`. Unbind it before unmounting, so whatever the router finishes
+  // later stays inside the router.
+  for (const router of routers)
+    router.startTransition = (commit) => {
+      commit();
+      return Promise.resolve(false);
+    };
+  routers.clear();
+  cleanup();
   for (const stop of sessionOwners) stop();
   sessionOwners.clear();
   await Promise.all([...clients].map((client) => client.cancelQueries()));
@@ -36,6 +50,7 @@ function prepareApp(initialPath: string) {
   });
   const history = createMemoryHistory({ initialEntries: [initialPath] });
   const router = createAppRouter(queryClient, apiClient, history);
+  routers.add(router);
   sessionOwners.add(synchronizeApplicationSession(queryClient, router));
   const app = (
     <QueryClientProvider client={queryClient}>
