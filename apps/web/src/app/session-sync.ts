@@ -21,8 +21,10 @@ export function synchronizeApplicationSession(
   const sessionChanged = (event: SessionChangeEvent) => {
     if (refreshing) return;
     const editorIsOpen = isEditorOpen(router);
-    if (event === 'signed-out') sessionPause.discard();
-    else if (
+    // Build pauses itself and keeps its draft, even on a sign-out elsewhere.
+    if (event === 'signed-out') {
+      if (!editorIsOpen) sessionPause.discard();
+    } else if (
       !editorIsOpen &&
       pauseRenderedPage(
         { router, queryClient, apiClient, sessionPause },

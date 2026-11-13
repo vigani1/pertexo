@@ -107,6 +107,43 @@ describe('workflow editor identity fencing', { timeout: 30_000 }, () => {
     });
   });
 
+  it('keeps its unsaved step when another tab signs out on purpose', async () => {
+    mockServer.use(...editorHandlers(() => undefined));
+    mockServer.use(identityHandler(() => user));
+    const app = await renderLoadedApp(editorPath, { strict: true });
+    const event = userEvent.setup();
+    await findCanvas();
+    await event.click(addStepButton(/Set fields/u));
+    const nodes = () => screen.getAllByTestId(/^rf__node-/u).length;
+    const before = nodes();
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'pertexo:auth-session-change',
+          newValue: JSON.stringify({
+            event: 'signed-out',
+            generation: 'other-tab-sign-out',
+            sender: 'other-tab',
+          }),
+        }),
+      );
+    });
+    expect(await findPaused()).toBeVisible();
+    // The page is never thrown away while Build owns its pause.
+    expect(app.router.options.context.sessionPause.current().generation).toBe(
+      0,
+    );
+    await event.click(
+      screen.getByRole('button', { name: 'Verify original account' }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('heading', { name: 'Editor paused' }),
+      ).toBeNull();
+    });
+    expect(nodes()).toBe(before);
+  });
+
   it('aborts an in-flight draft write when identity observation changes', async () => {
     let currentUser = user;
     let saveStarted = 0;
