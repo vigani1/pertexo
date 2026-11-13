@@ -188,6 +188,7 @@ describe('authentication and workspace entry', () => {
     const apiClient = {
       stream: vi.fn(),
       download: vi.fn(),
+      onSessionExpired: vi.fn(),
       request,
     } satisfies ApiClient;
     const navigate = vi.fn();

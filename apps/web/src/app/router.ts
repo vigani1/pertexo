@@ -1,5 +1,4 @@
 import {
-  isUnauthenticated,
   currentUserQueryKey,
   currentUserQueryOptions,
 } from '@/features/auth/session/auth-session-queries.public';
@@ -8,7 +7,7 @@ import {
   isRedirect,
   type RouterHistory,
 } from '@tanstack/react-router';
-import { hashKey, type QueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { createSessionPause } from '@/features/auth/session/pause.public';
 import { isEditorOpen, pauseRenderedPage } from './session-pause';
@@ -86,20 +85,14 @@ export function createAppRouter(
       recovering = false;
     });
   };
-  queryClient.getQueryCache().subscribe((event) => {
-    // Identity loaders own their redirects; invalidating them from their own error cancels that redirect.
-    if (
-      event.type === 'updated' &&
-      event.query.queryHash === hashKey(currentUserQueryKey)
-    )
-      return;
-
-    if (
-      event.type === 'updated' &&
-      event.action.type === 'error' &&
-      isUnauthenticated(event.action.error)
-    )
-      revalidate();
+  // Every answer that ends the session, from a read or any command, reaches
+  // this one owner through the API client. A navigation still loading leaves
+  // it to its route guard, and with nobody signed in (a refused sign-in)
+  // there is no page to keep.
+  apiClient.onSessionExpired(() => {
+    if (router.state.status !== 'idle') return;
+    if (queryClient.getQueryData(currentUserQueryKey) === undefined) return;
+    revalidate();
   });
   return router;
 }

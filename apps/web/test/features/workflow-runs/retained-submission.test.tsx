@@ -7,6 +7,7 @@ const apiClient: ApiClient = {
   request: vi.fn(),
   stream: vi.fn(),
   download: vi.fn(),
+  onSessionExpired: vi.fn(),
 };
 const scope = {
   apiClient,

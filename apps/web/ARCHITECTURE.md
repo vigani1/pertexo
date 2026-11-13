@@ -824,20 +824,22 @@ cancellation.
 ## 9. Errors and recovery belong at the right level
 
 The application owns one browser session-change connection and one
-session-expiry handler for reads and commands (`app/session-sync.ts`,
-`app/session-pause.ts`). A rendered page outside Build never unmounts when its
-session ends: the session pause (`features/auth`, held in router context) hides
-the page and every other top-level layer (open dialogs and menus) behind "Sign
-in again", keeping them mounted so unsaved input stays in its components. There
-is no draft store. Sign-in opens in a new tab and announces itself; the paused
-tab then checks who is signed in (also on focus and on Continue). The same
-account resumes the page as it was and refetches its reads; another account
-clears the cache, remounts the page from scratch and says the input was
-discarded. A cross-tab session signal pauses the same way while it checks. Only
-while a navigation is loading does a refusal still sign out through the route
-guard. The Build editor keeps its own pause, fenced into its save pipeline. A
-command that finds an unexpected account calls `reportSessionChange` instead of
-handling it locally. Local private-payload owners observe the session
+session-expiry handler. The API client reports every `auth.unauthenticated`
+answer, from a query, a mutation or a direct command, through
+`onSessionExpired`, and the router (`app/router.ts`, `app/session-pause.ts`) is
+its one owner; no command handles it itself. A rendered page outside Build never
+unmounts when its session ends: the session pause (`features/auth`, held in
+router context) hides the page and every other top-level layer (open dialogs and
+menus) behind "Sign in again", keeping them mounted so unsaved input stays in
+its components. There is no draft store. Sign-in opens in a new tab and
+announces itself; the paused tab then checks who is signed in (also on focus and
+on Continue). The same account resumes the page as it was and refetches its
+reads; another account clears the cache, remounts the page from scratch and says
+the input was discarded. A cross-tab session signal pauses the same way while it
+checks. Only while a navigation is loading does a refusal still sign out through
+the route guard. The Build editor keeps its own pause, fenced into its save
+pipeline. A command that finds an unexpected account calls `reportSessionChange`
+instead of handling it locally. Local private-payload owners observe the session
 notification to cancel reads and clear payloads; they do not verify session or
 membership around writes. Only `auth.unauthenticated` ends the application
 session, and it is never access loss: `isAccessLost` excludes it. An action's

@@ -342,3 +342,46 @@ describe('browser API transport', () => {
     expect(networkError.message).toBe('The API could not be reached.');
   });
 });
+
+describe('the session-ended report', () => {
+  const read = { path: '/v1/users/me', response: { kind: 'empty' } } as const;
+
+  it('tells its listeners of every ended session, from any request', async () => {
+    // A fresh answer each time, so the second request ends a session too.
+    const fetch = vi.fn<typeof globalThis.fetch>(() =>
+      Promise.resolve(
+        problemResponse(
+          commonProblem({ status: 401, code: 'auth.unauthenticated' }),
+          { status: 401 },
+        ),
+      ),
+    );
+    const client = createApiClient({ fetch, readCsrfToken: () => csrfToken });
+    const heard = vi.fn();
+    const stop = client.onSessionExpired(heard);
+    await expect(client.request(read)).rejects.toThrow();
+    expect(heard).toHaveBeenCalledOnce();
+    stop();
+    await expect(client.request(read)).rejects.toThrow();
+    expect(heard).toHaveBeenCalledOnce();
+  });
+
+  it('stays quiet for another 401, such as a refused provider credential', async () => {
+    const client = createApiClient({
+      fetch: fetchMock(
+        problemResponse(
+          commonProblem({
+            status: 401,
+            code: 'connection.credential_rejected',
+          }),
+          { status: 401 },
+        ),
+      ),
+      readCsrfToken: () => csrfToken,
+    });
+    const heard = vi.fn();
+    client.onSessionExpired(heard);
+    await expect(client.request(read)).rejects.toThrow();
+    expect(heard).not.toHaveBeenCalled();
+  });
+});

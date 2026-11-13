@@ -1,5 +1,10 @@
 import { csrfTokenSchema } from '@pertexo/contracts';
-import { ApiError, isApiError, protocolError } from './error';
+import {
+  ApiError,
+  isApiError,
+  isSessionExpired,
+  protocolError,
+} from './error';
 import {
   requestIdFrom,
   mediaType,
@@ -56,6 +61,12 @@ export interface ApiClient {
   request(request: ApiEmptyRequest): Promise<void>;
   stream(request: ApiStreamRequest): Promise<ApiByteStream>;
   download(request: Readonly<{ path: ApiPath; body: unknown }>): void;
+  /**
+   * Hears every answer that ends the session (`auth.unauthenticated`), from
+   * any read or command, so one owner can pause the page. Returns the
+   * unsubscribe.
+   */
+  onSessionExpired(listener: () => void): () => void;
 }
 
 type ApiClientOptions = Readonly<{
@@ -192,6 +203,16 @@ function serializeBody(
 export function createApiClient(options: ApiClientOptions): ApiClient {
   const defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
   validateTimeout(defaultTimeoutMs);
+  const sessionListeners = new Set<() => void>();
+  async function failureFor(
+    response: Response,
+    decodeProblem: ApiRequestBase['decodeProblem'],
+  ) {
+    const error = await errorForResponse(response, decodeProblem);
+    if (isSessionExpired(error))
+      for (const listener of sessionListeners) listener();
+    return error;
+  }
 
   async function request<Value>(request: ApiJsonRequest<Value>): Promise<Value>;
   async function request(request: ApiEmptyRequest): Promise<void>;
@@ -232,7 +253,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           message: 'The API request was canceled.',
         });
       if (!response.ok)
-        throw await errorForResponse(response, request.decodeProblem);
+        throw await failureFor(response, request.decodeProblem);
       if (request.response.kind === 'empty') return;
       return decodeSuccess(
         request.response.decode,
@@ -276,7 +297,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         signal: call.signal,
       });
       if (!response.ok)
-        throw await errorForResponse(response, request.decodeProblem);
+        throw await failureFor(response, request.decodeProblem);
       if (mediaType(response) !== request.response.mediaType) {
         call.abort();
         throw protocolError(
@@ -321,5 +342,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       throw protocolError('A valid CSRF cookie is required for this request.');
     submitNativeDownload(input.path, payload, token);
   }
-  return Object.freeze({ request, stream, download });
+  function onSessionExpired(listener: () => void): () => void {
+    sessionListeners.add(listener);
+    return () => {
+      sessionListeners.delete(listener);
+    };
+  }
+  return Object.freeze({ request, stream, download, onSessionExpired });
 }
