@@ -37,7 +37,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       );
       expectProblem(
         await verify(cookie, 'invalid'),
-        401,
+        400,
         'auth.two_factor_code_invalid',
       );
       const accepted = await verify(cookie, authenticatorCode(user.totpURI));
@@ -56,7 +56,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       );
       expectProblem(
         await verify(cookie, authenticatorCode(user.totpURI)),
-        401,
+        400,
         'auth.two_factor_challenge_expired',
       );
       const read = await api.send('GET', '/v1/auth/account-security', {
@@ -122,7 +122,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       });
       expectProblem(
         await verify(await challenge(user.email), code, true),
-        401,
+        400,
         'auth.two_factor_code_invalid',
       );
     });
@@ -175,7 +175,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           user.backupCodes[0] ?? '',
           true,
         ),
-        401,
+        400,
         'auth.two_factor_code_invalid',
       );
       expect(
@@ -293,7 +293,7 @@ for (const usingRecoveryCode of [false, true])
         for (let attempt = 0; attempt < 10; attempt++)
           expectProblem(
             await verify(await challenge(user.email), 'invalid', backup),
-            401,
+            400,
             'auth.two_factor_code_invalid',
           );
         expectProblem(
@@ -400,7 +400,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           remoteAddress,
           payload: { email: 'missing@example.test', password: factorPassword },
         }),
-        401,
+        400,
         'auth.invalid_credentials',
       );
       for (let attempt = 0; attempt < 9; attempt++) {
@@ -410,7 +410,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             remoteAddress,
             payload: { code: 'invalid' },
           }),
-          401,
+          400,
           'auth.two_factor_challenge_expired',
         );
       }

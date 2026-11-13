@@ -345,7 +345,7 @@ describe('two-factor account controls', () => {
           HttpResponse.json({ totpURI: uri, backupCodes: codes }),
         ),
         http.post('http://pertexo.test/v1/auth/two-factor/verify-totp', () =>
-          problem(401, code),
+          problem(400, code),
         ),
       );
       const { actor } = await openSecurity();

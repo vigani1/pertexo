@@ -28,7 +28,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
           browser,
           payload: { code: '000000' },
         }),
-        401,
+        400,
         'auth.two_factor_code_invalid',
       );
       const me = await api.send('GET', '/v1/users/me', { browser });
@@ -42,7 +42,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         await api.send('POST', '/v1/auth/sign-in/email', {
           payload: { email, password: 'not the password at all' },
         }),
-        401,
+        400,
         'auth.invalid_credentials',
       );
     });

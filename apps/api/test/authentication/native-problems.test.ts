@@ -72,7 +72,7 @@ const mappings = [
     401,
     'INVALID_TOKEN',
     {
-      status: 401,
+      status: 400,
       code: 'auth.invalid_credentials',
       title: 'Sign-in details not accepted',
     },

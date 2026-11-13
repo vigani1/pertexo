@@ -208,9 +208,9 @@ visible behavior until slice 2 adds the controls.
 
 Code-step account lockout returns `auth.two_factor_locked`, so the web can
 identify the account lockout and show its fifteen-minute message. A wrong
-authenticator or recovery code returns `auth.two_factor_code_invalid`, and an
-expired sign-in challenge `auth.two_factor_challenge_expired`, never
-`auth.unauthenticated`: the web pauses the whole page on that one (J6a), and a
+authenticator or recovery code returns 400 `auth.two_factor_code_invalid`, and
+an expired sign-in challenge 400 `auth.two_factor_challenge_expired`, never a
+401 or `auth.unauthenticated` (clients read any 401 as an ended session): the web pauses the whole page on that one (J6a), and a
 mistyped code must not look like an ended session. The plugin
 owns the lockout counters and timing.
 
