@@ -262,6 +262,31 @@ describe('a page outside the editor when its session ends', () => {
     },
   );
 
+  it('follows another tab that signed out on purpose to sign-in', async () => {
+    const state = server();
+    const app = await renderLoadedApp(path);
+    await screen.findByRole('region', { name: 'RATE' });
+    state.session = 'signed-out';
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'pertexo:auth-session-change',
+          newValue: JSON.stringify({
+            event: 'signed-out',
+            generation: 'other-tab-sign-out',
+            sender: 'other-tab',
+          }),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(app.router.state.location.pathname).toBe('/login');
+    });
+    expect(
+      screen.queryByRole('heading', { name: 'Your session ended' }),
+    ).toBeNull();
+  });
+
   it('pauses when a read on the page finds the session gone', async () => {
     const state = server();
     const app = await renderLoadedApp(path);

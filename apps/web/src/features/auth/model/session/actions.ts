@@ -15,5 +15,5 @@ export async function endBrowserSession(
     if (!isUnauthenticated(error)) throw error;
   }
   queryClient.clear();
-  publishSessionChange();
+  publishSessionChange('signed-out');
 }
