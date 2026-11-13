@@ -12,9 +12,9 @@ import type {
   WorkspaceScopeRunner,
 } from './transactions/workspace-transaction.types.js';
 import {
-  installTransactionScope,
-  assertNoTenantContext,
-  verifyTenantContext,
+  assertNoNestedScope,
+  clearNestedScope,
+  installTransactionContext,
 } from './transactions/scope.js';
 import { runTransaction } from './transactions/run.js';
 
@@ -29,10 +29,10 @@ export {
 export { parseWorkspaceId } from './transactions/scope.js';
 /**
  * Runs one workspace-scoped transaction on a single checked-out pool client
- * with fail-closed hygiene: absent-context proof before use, read-back
- * verification of every configured setting, wire-level cancellation through
- * the abort signal, and client destruction whenever transaction rollback or
- * context cleanup fails so a contaminated client can never be reused. The
+ * with fail-closed hygiene: the whole context set transaction-locally in one
+ * verified statement, wire-level cancellation through the abort signal, and
+ * client destruction whenever BEGIN or rollback fails so a client in an
+ * unknown state is never reused. The
  * callback owns its non-SQL work and must not retain or use the client after it
  * settles; abort can destroy that client while callback work is still pending.
  */
@@ -48,7 +48,6 @@ export async function withTenantScopedClient<T>(
     mode: 'read_write',
     messages: {
       abort: 'Workspace transaction aborted',
-      cleanup: 'Tenant context cleanup failed',
       rollback: 'Tenant-scoped transaction rollback failed',
     },
   });
@@ -74,7 +73,6 @@ export async function withActorScopedClient<T>(
       mode: 'repeatable_read_only',
       messages: {
         abort: 'Actor-scoped transaction aborted',
-        cleanup: 'Actor context cleanup failed',
         rollback: 'Actor-scoped transaction rollback failed',
       },
     },
@@ -94,7 +92,6 @@ export async function withTenantScopedReadClient<T>(
     mode: 'repeatable_read_only',
     messages: {
       abort: 'Workspace transaction aborted',
-      cleanup: 'Tenant context cleanup failed',
       rollback: 'Tenant-scoped transaction rollback failed',
     },
   });
@@ -117,7 +114,6 @@ export async function withPlatformTransaction<T>(
     mode: 'read_write',
     messages: {
       abort: 'Platform transaction aborted',
-      cleanup: 'Platform context cleanup failed',
       rollback: 'Platform transaction rollback failed',
     },
   });
@@ -138,7 +134,6 @@ export function withMultiWorkspaceTransaction<T>(
     mode: 'read_write',
     messages: {
       abort: 'Multi-workspace transaction aborted',
-      cleanup: 'Multi-workspace context cleanup failed',
       rollback: 'Multi-workspace transaction rollback failed',
     },
   });
@@ -150,20 +145,14 @@ async function withInstalledScope<T>(
   scope: TransactionScope,
   operation: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  await assertNoTenantContext(client, { allowOrganizationContext: true });
-  const clear = async () => {
-    await client.query(`select set_config('app.workspace_id','',true),
-      set_config('app.actor_id','',true),set_config('app.discovery_scope','',true)`);
-    await assertNoTenantContext(client, { allowOrganizationContext: true });
-  };
-  await installTransactionScope(client, scope);
-  await verifyTenantContext(client, scope, undefined);
+  await assertNoNestedScope(client);
+  await installTransactionContext(client, scope, undefined);
   let result: T;
   try {
     result = await operation(client);
   } catch (error: unknown) {
     try {
-      await clear();
+      await clearNestedScope(client);
     } catch (cleanupError: unknown) {
       throw new AggregateError(
         [error, cleanupError],
@@ -172,7 +161,7 @@ async function withInstalledScope<T>(
     }
     throw error;
   }
-  await clear();
+  await clearNestedScope(client);
   return result;
 }
 

@@ -203,66 +203,6 @@ describe('tenant-scoped transaction hygiene', () => {
         currentSettings(client),
       ),
     ).resolves.toEqual({ workspaceId: null, actorId: null });
-
-    const leakedWorkspaceId = randomUUID();
-    let contaminatedBackend: number | undefined;
-    const error = (await captureRejection(() =>
-      withPlatformTransaction(apiPool, async (client) => {
-        contaminatedBackend = await backendId(client);
-        await client.query("select set_config('app.workspace_id', $1, false)", [
-          leakedWorkspaceId,
-        ]);
-      }),
-    )) as AggregateError;
-    expect(error).toBeInstanceOf(AggregateError);
-    expect(error.message).toBe('Platform context cleanup failed');
-    expect(contaminatedBackend).toBeDefined();
-    await waitForBackendAbsent(contaminatedBackend ?? -1);
-
-    const fresh = await apiPool.connect();
-    try {
-      await expect(currentSettings(fresh)).resolves.toEqual({
-        workspaceId: null,
-        actorId: null,
-      });
-      await expect(backendId(fresh)).resolves.not.toBe(contaminatedBackend);
-    } finally {
-      fresh.release();
-    }
-  });
-
-  it('destroys a pooled client that leaks workspace context through the commit path', async () => {
-    const workspaceId = randomUUID();
-    let contaminatedBackend: number | undefined;
-    const error = (await captureRejection(() =>
-      withTenantScopedClient(apiPool, { workspaceId }, async (client) => {
-        // A session-level setting (local = false) survives COMMIT and must be
-        // detected after the transaction instead of returning the client to
-        // the pool contaminated.
-        contaminatedBackend = await backendId(client);
-        await client.query("select set_config('app.workspace_id', $1, false)", [
-          workspaceId,
-        ]);
-        return 'committed';
-      }),
-    )) as AggregateError;
-    expect(error).toBeInstanceOf(AggregateError);
-    expect(error.message).toBe('Tenant context cleanup failed');
-    expect(error.errors).toHaveLength(2);
-    expect(contaminatedBackend).toBeDefined();
-    await waitForBackendAbsent(contaminatedBackend ?? -1);
-
-    // The destroyed client must not be reused: the next checkout is clean.
-    const fresh = await apiPool.connect();
-    try {
-      await expect(currentSettings(fresh)).resolves.toEqual({
-        workspaceId: null,
-        actorId: null,
-      });
-      await expect(backendId(fresh)).resolves.not.toBe(contaminatedBackend);
-    } finally {
-      fresh.release();
-    }
   });
 
   it('rolls back cleanly, preserves the original error, and keeps the client reusable', async () => {

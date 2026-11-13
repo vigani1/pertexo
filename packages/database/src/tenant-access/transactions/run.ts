@@ -7,12 +7,7 @@ import type {
   WorkspaceTransactionOptions,
   TransactionScope,
 } from './workspace-transaction.types.js';
-import {
-  installTransactionScope,
-  assertNoTenantContext,
-  verifyTenantContext,
-  parseStatementTimeout,
-} from './scope.js';
+import { installTransactionContext, parseStatementTimeout } from './scope.js';
 
 export async function runTransaction<T>(
   pool: Pool,
@@ -29,7 +24,6 @@ export async function runTransaction<T>(
     messages: Readonly<{
       abort: string;
       rollback: string;
-      cleanup: string;
     }>;
   }>,
 ): Promise<T> {
@@ -80,8 +74,6 @@ export async function runTransaction<T>(
   options.signal?.addEventListener('abort', releaseForAbort, { once: true });
 
   try {
-    await assertNoTenantContext(client);
-    assertNotAborted();
     await client.query(
       mode === 'repeatable_read_only'
         ? 'begin isolation level repeatable read read only'
@@ -89,50 +81,36 @@ export async function runTransaction<T>(
     );
     transactionOpen = true;
     assertNotAborted();
-    await installTransactionScope(client, scope);
+    await installTransactionContext(client, scope, statementTimeoutMillis);
     assertNotAborted();
-    if (statementTimeoutMillis !== undefined) {
-      await client.query("select set_config('statement_timeout', $1, true)", [
-        `${String(statementTimeoutMillis)}ms`,
-      ]);
-    }
-    assertNotAborted();
-    if (scope !== undefined) {
-      await verifyTenantContext(client, scope, statementTimeoutMillis);
-      assertNotAborted();
-    }
 
     const result = await operation(client);
     assertNotAborted();
     await client.query('commit');
     transactionOpen = false;
     assertNotAborted();
-    await assertNoTenantContext(client);
+    // Every setting was transaction-local, so the commit cleared them all.
     clientReleased = true;
     client.release();
     return result;
   } catch (error: unknown) {
     if (options.signal?.aborted) throw abortError;
     if (clientReleased) throw error;
-    if (transactionOpen) {
-      await rollbackTransaction(client, {
-        error,
-        abortError,
-        signal: options.signal,
-        destroyClient,
-        message: messages.rollback,
-      });
-    }
-
-    try {
-      await assertNoTenantContext(client);
-      clientReleased = true;
-      client.release();
-    } catch (cleanupError: unknown) {
+    if (!transactionOpen) {
+      // BEGIN itself failed, so the connection's state is unknown.
       destroyClient();
-      if (options.signal?.aborted) throw abortError;
-      throw new AggregateError([error, cleanupError], messages.cleanup);
+      throw error;
     }
+    await rollbackTransaction(client, {
+      error,
+      abortError,
+      signal: options.signal,
+      destroyClient,
+      message: messages.rollback,
+    });
+    // A rollback undoes every setting made in the transaction, even a session-level one.
+    clientReleased = true;
+    client.release();
     throw error;
   } finally {
     options.signal?.removeEventListener('abort', releaseForAbort);

@@ -126,7 +126,6 @@ describe('authoring cancellation and runtime lifetime', () => {
       max: 1,
       ownerRole: 'pertexo_owner',
     } as const;
-    let transaction = false;
     let finishRollback: () => void = () => {
       throw new Error('rollback not initialized');
     };
@@ -145,13 +144,9 @@ describe('authoring cancellation and runtime lifetime', () => {
         const sql = (
           typeof statement === 'string' ? statement : statement.text
         ).replaceAll('"', '');
-        if (sql === 'begin') transaction = true;
         if (sql === 'rollback') {
           rollbackEntered();
-          return rollback.then(() => {
-            transaction = false;
-            return { rows: [] };
-          });
+          return rollback.then(() => ({ rows: [] }));
         }
         if (
           typeof statement !== 'string' &&
@@ -165,14 +160,15 @@ describe('authoring cancellation and runtime lifetime', () => {
             : [sql.includes('workspace_memberships') ? ['owner'] : [1]];
           return Promise.resolve({ rows, rowCount: rows.length });
         }
-        if (sql.startsWith("select current_setting('app.workspace_id'"))
+        // PostgreSQL returns each value the context statement sets.
+        if (sql.startsWith('select set_config('))
           return Promise.resolve({
             rows: [
               {
-                workspace_id: transaction ? workspaceId : null,
-                actor_id: transaction ? actorId : null,
-                discovery_scope: null,
-                statement_timeout_millis: 30000,
+                workspaceId,
+                actorId,
+                discoveryScope: '',
+                statementTimeoutMillis: '30000',
               },
             ],
           });

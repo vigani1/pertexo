@@ -55,11 +55,6 @@ function coordinatorQueryKind(text: string): string {
     .replaceAll(/\s+/gu, ' ')
     .trim()
     .toLowerCase();
-  if (normalized.includes("current_setting('app.workspace_id'")) {
-    return normalized.includes("pg_settings where name='statement_timeout'")
-      ? 'verify_workspace_context'
-      : 'empty_tenant_context';
-  }
   if (normalized === 'begin isolation level repeatable read read only')
     return 'begin_repeatable_read_only';
   if (normalized.includes("set_config('app.workspace_id'"))
