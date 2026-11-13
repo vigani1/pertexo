@@ -1,4 +1,6 @@
 import { Link } from '@tanstack/react-router';
+import { PlayIcon } from 'lucide-react';
+import { ProgressButton } from '@/components/ui/progress-button';
 import { cn } from '@/lib/class-names';
 import type {
   FirstThreadDestination,
@@ -74,6 +76,12 @@ function StepLink({
   }
 }
 
+/** A one-click first run: the example with nothing to set up. */
+export type FirstRunOffer = Readonly<{
+  starting: boolean;
+  onStart: () => void;
+}>;
+
 /**
  * A new workspace's first thread: the steps to a first real run, each tied
  * off with a knot along one line as it's done.
@@ -81,7 +89,12 @@ function StepLink({
 export function FirstThread({
   steps,
   workspaceId,
-}: Readonly<{ steps: readonly FirstThreadStep[]; workspaceId: string }>) {
+  firstRun,
+}: Readonly<{
+  steps: readonly FirstThreadStep[];
+  workspaceId: string;
+  firstRun?: FirstRunOffer | undefined;
+}>) {
   const done = steps.filter((step) => step.done).length;
   return (
     <section
@@ -95,6 +108,28 @@ export function FirstThread({
         {String(done)} of {String(steps.length)} done. Once something runs, this
         space shows every run as it happens.
       </p>
+      {firstRun === undefined ? null : (
+        <div className="mt-5 flex flex-col items-start gap-2 rounded-lg border border-primary/20 bg-primary/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm">
+            <span className="font-semibold">See a run in about a minute.</span>{' '}
+            <span className="text-muted-foreground">
+              Create a ready-made example that needs nothing set up, then
+              publish and run it with a guide.
+            </span>
+          </p>
+          <ProgressButton
+            type="button"
+            variant="primary"
+            pending={firstRun.starting}
+            pendingLabel="Setting it up…"
+            icon={<PlayIcon aria-hidden="true" data-icon="inline-start" />}
+            className="shrink-0"
+            onClick={firstRun.onStart}
+          >
+            Try the example
+          </ProgressButton>
+        </div>
+      )}
       <ol className="relative mt-6 flex flex-col gap-5 pl-7">
         <span
           aria-hidden="true"

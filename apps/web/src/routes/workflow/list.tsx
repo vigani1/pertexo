@@ -25,10 +25,11 @@ export function WorkflowListRoute() {
           replace: replacesCurrentSearch,
         });
       }}
-      onCreated={(workflowId) => {
+      onCreated={(workflowId, guided = false) => {
         void navigate({
           to: '/w/$workspaceId/workflows/$workflowId',
           params: { workspaceId: workspace.id, workflowId },
+          search: guided ? { guide: 'first-run' } : {},
         });
       }}
       onRunStarted={(runId) => {

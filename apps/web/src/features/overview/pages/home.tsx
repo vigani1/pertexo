@@ -27,6 +27,7 @@ import { RecentlyChanged } from '../components/recently-changed';
 import { isNewWorkspace, type FirstThreadFacts } from '../model/first-thread';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
 import { shownData } from '@/lib/api/error-copy';
+import { useFirstRunOffer } from '../hooks/use-first-run-offer';
 
 /**
  * Home answers three questions at a glance: what's running (the Loom),
@@ -38,12 +39,18 @@ export function HomePage({
   user,
   workspace,
   onOpenSearch,
+  onExampleCreated,
+  onReviewExamples,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   /** Opens the workspace shell's command palette. */
   onOpenSearch: () => void;
+  /** Opens the first-run example in Build with its guide. */
+  onExampleCreated: (workflowId: string) => void;
+  /** The example can't start here as is: the workflow list explains why. */
+  onReviewExamples: () => void;
 }>) {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +74,15 @@ export function HomePage({
       : { workflows: workflows.data.pages.flatMap((page) => page.items) }),
     ...(anyRun.data === undefined ? {} : { hasRun: anyRun.data }),
   };
+
+  const firstRun = useFirstRunOffer({
+    apiClient,
+    userId: user.id,
+    workspace,
+    workflows: facts.workflows,
+    onCreated: onExampleCreated,
+    onNeedsReview: onReviewExamples,
+  });
 
   function refresh() {
     setRefreshing(true);
@@ -122,6 +138,7 @@ export function HomePage({
           userId={user.id}
           workspace={workspace}
           facts={facts}
+          firstRun={firstRun}
         />
       ) : null}
       {!newWorkspace && canReadRuns ? (

@@ -32,7 +32,11 @@ type WorkflowListResultsProps = Readonly<{
     canCreate: boolean;
     onboarding: boolean;
     openCreate: () => void;
-    chooseExample: (id: string, name?: string) => void;
+    /** Choosing an example, and the one being created, if any. */
+    examples: Readonly<{
+      choose: (templateId: string, name?: string) => void;
+      starting: string | undefined;
+    }>;
   }>;
   actions: WorkflowRowActions;
 }>;
@@ -45,7 +49,7 @@ export function WorkflowListResults({
 }: WorkflowListResultsProps) {
   const { apiClient, userId, workspace } = scope;
   const { workflows } = list;
-  const { canCreate, onboarding, openCreate, chooseExample } = creation;
+  const { canCreate, onboarding, openCreate, examples } = creation;
   return (
     <>
       {refreshingInBackground(workflows) ? (
@@ -71,7 +75,8 @@ export function WorkflowListResults({
         <WorkflowListEmpty
           canCreate={canCreate}
           onStartBlank={openCreate}
-          onChooseExample={chooseExample}
+          onChooseExample={examples.choose}
+          startingExample={examples.starting}
         />
       ) : null}
       {list.shown === 'results' || (list.shown === 'empty' && !onboarding) ? (

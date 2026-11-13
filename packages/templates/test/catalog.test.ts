@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CURATED_WORKFLOW_TEMPLATES,
+  FIRST_RUN_TEMPLATE_ID,
   verifyCuratedTemplateManifest,
   validateCuratedTemplateSetupValue,
   type CuratedWorkflowTemplate,
@@ -62,11 +63,12 @@ describe('reviewed browser-safe curated templates', () => {
       ).toBe(true);
   });
 
-  it('pins all three complete strict manifests and canonical digests', async () => {
+  it('pins all four complete strict manifests and canonical digests', async () => {
     expect(CURATED_WORKFLOW_TEMPLATES.map((item) => item.templateId)).toEqual([
       'webhook-validation-routing',
       'schedule-bounded-batch',
       'controlled-http-notification',
+      'first-run-greeting',
     ]);
     for (const descriptor of CURATED_WORKFLOW_TEMPLATES) {
       expect(workflowPortableManifestSchema.parse(descriptor.manifest)).toEqual(
@@ -85,6 +87,7 @@ describe('reviewed browser-safe curated templates', () => {
     }
     expect(CURATED_WORKFLOW_TEMPLATES[0]?.setupTargets).toEqual([]);
     expect(CURATED_WORKFLOW_TEMPLATES[1]?.setupTargets).toEqual([]);
+    expect(CURATED_WORKFLOW_TEMPLATES[3]?.setupTargets).toEqual([]);
     expect(CURATED_WORKFLOW_TEMPLATES[2]?.setupTargets).toEqual([
       {
         nodeId: 'controlled-http',
@@ -319,5 +322,20 @@ describe('reviewed browser-safe curated templates', () => {
       expect(result.ok).toBe(false);
       expect(JSON.stringify(result)).not.toContain('private');
     }
+  });
+});
+
+describe('the first-run example', () => {
+  it('starts from a click and needs no connection, setup or outside call', () => {
+    const descriptor = required(
+      CURATED_WORKFLOW_TEMPLATES.find(
+        (template) => template.templateId === FIRST_RUN_TEMPLATE_ID,
+      ),
+    );
+    expect(descriptor.setupTargets).toEqual([]);
+    expect(descriptor.manifest.connectionSlots).toEqual([]);
+    expect(
+      descriptor.manifest.requirements.definitions.map(({ key }) => key),
+    ).toEqual(['core.manual', 'core.set', 'core.terminate']);
   });
 });

@@ -53,6 +53,8 @@ type NewWorkflowSheetProps = Readonly<{
   onOpenChange: (open: boolean) => void;
   onCreated: (workflowId: string) => void;
   onChooseExample?: ((templateId: string, name?: string) => void) | undefined;
+  /** The example being created in one click, if any. */
+  startingExample?: string | undefined;
 }>;
 
 export function NewWorkflowSheet({
@@ -63,6 +65,7 @@ export function NewWorkflowSheet({
   onOpenChange,
   onCreated,
   onChooseExample,
+  startingExample,
 }: NewWorkflowSheetProps) {
   const notifications = useNotifications();
   const [name, setName] = useState('');
@@ -163,6 +166,7 @@ export function NewWorkflowSheet({
                 <ExampleCards
                   layout="rows"
                   disabled={command.pending}
+                  starting={startingExample}
                   onChoose={(templateId) => {
                     onChooseExample(templateId, name.trim());
                   }}

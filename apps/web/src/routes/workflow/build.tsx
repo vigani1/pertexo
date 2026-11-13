@@ -4,7 +4,13 @@ import {
   WorkflowEditingPresence,
 } from '@/features/workflow-collaboration/presence.public';
 import { useStepDiscussions } from '@/features/workflow-collaboration/discussions.public';
-import { Link, useLoaderData, useNavigate } from '@tanstack/react-router';
+import {
+  Link,
+  useLoaderData,
+  useNavigate,
+  useSearch,
+} from '@tanstack/react-router';
+import { FirstRunGuide } from '@/features/workflows/first-run.public';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { WorkflowEditorPage } from '@/features/workflow-editor/public';
 import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
@@ -18,6 +24,9 @@ export function WorkflowBuildRoute() {
     from: '/w/$workspaceId/workflows/$workflowId/',
   });
   const navigate = useNavigate();
+  const { guide } = useSearch({
+    from: '/w/$workspaceId/workflows/$workflowId/',
+  });
   const stepDiscussions = useStepDiscussions();
   if (!found)
     return (
@@ -43,6 +52,22 @@ export function WorkflowBuildRoute() {
       triggerNotice={
         <>
           {' '}
+          {guide === 'first-run' ? (
+            <FirstRunGuide
+              apiClient={apiClient}
+              userId={user.id}
+              workspaceId={workspace.id}
+              workflowId={workflowId}
+              onDismiss={() => {
+                void navigate({
+                  to: '/w/$workspaceId/workflows/$workflowId',
+                  params: { workspaceId: workspace.id, workflowId },
+                  search: {},
+                  replace: true,
+                });
+              }}
+            />
+          ) : null}
           <WorkflowPresenceWarning />
           <WorkflowPausedBanner
             key={`${user.id}:${workspace.id}:${workflowId}`}
