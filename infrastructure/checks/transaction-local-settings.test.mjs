@@ -57,6 +57,16 @@ const REJECTED = {
   // A quoted argument the parser misreads makes a later "true" look like the flag.
   'set_config whose dollar-quoted value hides the flag': `client.query("select set_config('app.workspace_id', $q$, true) ,$q$, false)");`,
   'set_config whose escape-string value hides the flag': `client.query("select set_config('app.workspace_id', E'\\\\', true) ,', false)");`,
+  'a pool startup setting': `new Pool({ connectionString, options: '-c app.workspace_id=x' });`,
+  'a client startup setting without a space': `new Client({ options: '-capp.actor_id=x' });`,
+  'a pool startup setting in long form': `new Pool({ host, options: '--search_path=app' });`,
+  'a pool startup setting from a variable': `const config = { connectionString: url, options };`,
+  'a pool startup setting from a call': `const config = { connectionString: url, options: startupOptions() };`,
+  'a startup setting in a connection string': `const url = 'postgresql://u@h/db?options=-c%20app.workspace_id%3Dx';`,
+  'a startup setting added to a connection URL': `url.searchParams.set('options', '-c role=pertexo_owner');`,
+  'a connection URL startup setting from a variable': `url.searchParams.set('options', startup);`,
+  'a PGOPTIONS startup setting': `process.env.PGOPTIONS = '-c app.organization_id=x';`,
+  'a PGOPTIONS startup setting in long form': `execSync('PGOPTIONS=--search_path=app psql');`,
   'DO with a language': `client.query("DO LANGUAGE plpgsql $body$ begin null; end $body$");`,
 };
 
@@ -81,6 +91,20 @@ test('accepts transaction-local settings and SQL that changes no setting', () =>
       await client.query("update app.users set status='x' where id=$1");
       await client.query('insert into t values (1) on conflict do update set v=1');
       // set_config('app.workspace_id', $1, false) in a comment is no SQL.
+    `),
+    [],
+  );
+});
+
+test('accepts the allowed startup setting, command-line flags and other options', () => {
+  assert.deepEqual(
+    statements(`
+      new Pool({ connectionString, options: '-c statement_timeout=5000' });
+      url.searchParams.set('options', '-c statement_timeout=5000');
+      spawn('sh', ['-c', 'pg_dump --format=custom']);
+      execFile('docker', ['compose', 'run', '--pull=never']);
+      const options = { encryption: true };
+      createServer({ options: { port: 1 } });
     `),
     [],
   );
