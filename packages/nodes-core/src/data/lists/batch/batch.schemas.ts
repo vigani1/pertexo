@@ -9,6 +9,7 @@ export const CORE_BATCH_CONFIG_SCHEMA = z
     size: z.number().int().min(1).max(COLLECTION_MAX_ITEMS).meta({
       title: 'Items per batch',
       description: 'Positive integer. Each batch keeps original order.',
+      default: 100,
     }),
   })
   .strict();

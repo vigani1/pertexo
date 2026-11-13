@@ -19,33 +19,35 @@ const fileColumnsSchema = z
     (columns) => new Set(columns).size === columns.length,
     'Choose each column once.',
   );
-export const CORE_CREATE_FILE_CONFIG_SCHEMA = z.discriminatedUnion('format', [
-  z
-    .object({
-      format: z.literal('json'),
-      inputMode: z.literal('pages').optional(),
-    })
-    .strict(),
-  z.object({ format: z.literal('text') }).strict(),
-  z
-    .object({
-      format: z.literal('csv'),
-      inputMode: z.literal('pages').optional(),
-      delimiter: z.enum([',', ';', '\t']),
-      columns: fileColumnsSchema,
-    })
-    .strict(),
-  z
-    .object({
-      format: z.literal('xlsx'),
-      inputMode: z.literal('pages').optional(),
-      sheetName: sheetNameSchema.default('Sheet1').meta({
-        title: 'Sheet name',
-      }),
-      columns: fileColumnsSchema,
-    })
-    .strict(),
-]);
+export const CORE_CREATE_FILE_CONFIG_SCHEMA = z
+  .discriminatedUnion('format', [
+    z
+      .object({
+        format: z.literal('json'),
+        inputMode: z.literal('pages').optional(),
+      })
+      .strict(),
+    z.object({ format: z.literal('text') }).strict(),
+    z
+      .object({
+        format: z.literal('csv'),
+        inputMode: z.literal('pages').optional(),
+        delimiter: z.enum([',', ';', '\t']),
+        columns: fileColumnsSchema,
+      })
+      .strict(),
+    z
+      .object({
+        format: z.literal('xlsx'),
+        inputMode: z.literal('pages').optional(),
+        sheetName: sheetNameSchema.default('Sheet1').meta({
+          title: 'Sheet name',
+        }),
+        columns: fileColumnsSchema,
+      })
+      .strict(),
+  ])
+  .meta({ default: { format: 'csv', delimiter: ',', columns: [] } });
 export const CORE_CREATE_FILE_INPUT_SCHEMA = z.union([
   z.object({ data: z.json() }).strict(),
   z

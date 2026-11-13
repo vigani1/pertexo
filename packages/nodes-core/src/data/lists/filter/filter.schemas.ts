@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { labelledChoice } from '@pertexo/node-sdk';
 import {
   collectionItemsSchema,
   collectionPathSchema,
@@ -10,25 +11,25 @@ export const CORE_FILTER_CONFIG_SCHEMA = z
     path: collectionPathSchema.meta({
       title: 'Item path',
       description:
-        'A field like status or order.total; $ selects the whole item.',
+        'Use $ for each whole item, or a path like $.paid for one field.',
+      default: '$',
     }),
-    operator: z
-      .enum([
-        'equals',
-        'not_equals',
-        'less_than',
-        'less_or_equal',
-        'greater_than',
-        'greater_or_equal',
-        'contains',
-        'exists',
-        'not_exists',
-      ])
-      .meta({
-        title: 'Comparison',
-        description:
-          'Map comparison value on Inputs, except for exists/not exists. Missing fields never match comparisons.',
-      }),
+    operator: labelledChoice({
+      equals: 'Equals',
+      not_equals: 'Does not equal',
+      less_than: 'Less than',
+      less_or_equal: 'Less than or equal',
+      greater_than: 'Greater than',
+      greater_or_equal: 'Greater than or equal',
+      contains: 'Contains text',
+      exists: 'Field exists',
+      not_exists: 'Field is missing',
+    }).meta({
+      title: 'Comparison',
+      description:
+        'Map comparison value on Inputs, except for exists/not exists. Missing fields never match comparisons.',
+      default: 'equals',
+    }),
   })
   .strict();
 export const CORE_FILTER_INPUT_SCHEMA = z

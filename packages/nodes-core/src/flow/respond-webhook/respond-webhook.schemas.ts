@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 export const CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA = z
   .object({
-    bodyType: z.enum(['json', 'text']).optional(),
+    bodyType: z.enum(['json', 'text']).optional().meta({ default: 'json' }),
     // Only types a browser can't run: XML can carry XHTML, SVG or a stylesheet,
     // and `/hooks` shares the app's origin.
     textContentType: z.enum(['text/plain', 'text/csv']).optional(),

@@ -4,7 +4,14 @@ import { z } from 'zod';
 const MAX_TEXT_BYTES = 16_384;
 
 export const slackSendMessageConfigSchema = z
-  .object({ timeoutMillis: z.number().int().min(1).max(30_000) })
+  .object({
+    timeoutMillis: z
+      .number()
+      .int()
+      .min(1)
+      .max(30_000)
+      .meta({ default: 10_000 }),
+  })
   .strict()
   .readonly();
 

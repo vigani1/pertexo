@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { labelledChoice } from '@pertexo/node-sdk';
 import {
   collectionItemsSchema,
   collectionPathSchema,
@@ -9,17 +10,23 @@ export const CORE_SORT_CONFIG_SCHEMA = z
     path: collectionPathSchema.meta({
       title: 'Sort by',
       description:
-        'A field like price or order.total; $ sorts by the whole item.',
+        'Use $ for each whole item, or a path like $.amount for one field.',
+      default: '$',
     }),
-    valueType: z.enum(['number', 'text']).meta({
+    valueType: labelledChoice({ number: 'Numbers', text: 'Text' }).meta({
       title: 'Value type',
       description:
-        'Present keys must match this type; text uses deterministic code-unit ordering.',
+        'Numbers sort numerically. Text compares characters in a fixed, case-sensitive order.',
+      default: 'number',
     }),
-    direction: z.enum(['ascending', 'descending']).meta({ title: 'Direction' }),
-    missing: z.enum(['first', 'last']).meta({
+    direction: labelledChoice({
+      ascending: 'Ascending',
+      descending: 'Descending',
+    }).meta({ title: 'Direction', default: 'ascending' }),
+    missing: labelledChoice({ first: 'First', last: 'Last' }).meta({
       title: 'Missing or null fields',
       description: 'Keep these records first or last, regardless of direction.',
+      default: 'last',
     }),
   })
   .strict();

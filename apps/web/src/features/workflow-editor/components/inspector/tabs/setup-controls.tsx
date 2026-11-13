@@ -1,7 +1,5 @@
 import { useInspectorSession } from '../use-session';
 import { WaitSetup } from '../wait/setup';
-import { UtilitySetup } from '../builders/utility-setup';
-import { UTILITY_OPERATION_KEYS } from '../../../model/inspector/transforms/utility-config';
 import {
   httpAdvancedInUse,
   httpSetupFields,
@@ -19,12 +17,15 @@ import { WebhookResponseSetup } from '../webhook/response-setup';
 import { HumanFormSetup } from '../human-task/setup';
 import { CreateFileSetup } from '../builders/files/create-setup';
 import { ReadFileSetup } from '../builders/files/read-setup';
-import { DateSetup } from '../builders/date-setup';
 
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { ReactNode, ComponentType } from 'react';
-import type { schemaFields } from '../../../model/inspector/draft';
-import { schemaPropertyCount } from '../../../model/inspector/draft';
+import {
+  coveredProperties,
+  schemaPropertyCount,
+  type SchemaFieldSpec,
+} from '../../../model/inspector/draft';
+import { readSchemaUnion } from '../../../model/inspector/schema-union';
 import {
   readParallelBranches,
   readSwitchCases,
@@ -34,7 +35,8 @@ import type { GraphLevel } from '../../../model/graph/scopes';
 import type { ScheduleSchema } from '../../../model/inspector/schedule-draft';
 import { ScheduleBuilder } from '../schedule/builder';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { SchemaField } from '../fields/schema';
+import { SchemaFieldList } from '../fields/schema-list';
+import { SchemaUnionSetup } from '../fields/union-setup';
 import { ParallelBranches } from '../builders/parallel-branches';
 import { SwitchCases } from '../builders/switch-cases';
 import { ValidateRules } from '../builders/validate-rules';
@@ -62,10 +64,6 @@ const SIMPLE_SETUP_RENDERERS: Readonly<
   'core.respond_webhook': WebhookResponseSetup,
   'core.read_file': ReadFileSetup,
   'core.create_file': CreateFileSetup,
-  'core.date': DateSetup,
-  ...Object.fromEntries(
-    UTILITY_OPERATION_KEYS.map((key) => [key, UtilitySetup]),
-  ),
 };
 
 /** The controls for a catalog step's setup, when it isn't shown as JSON. */
@@ -80,7 +78,7 @@ export function SetupControls({
   node: WorkflowNode;
   graph: GraphLevel;
   configSchema: unknown;
-  fields: ReturnType<typeof schemaFields>;
+  fields: readonly SchemaFieldSpec[];
   scheduleSchema: ScheduleSchema | undefined;
   form: NodeFormApi;
 }>) {
@@ -125,6 +123,9 @@ export function SetupControls({
     return (
       <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />
     );
+  const union = readSchemaUnion(configSchema);
+  if (union !== undefined)
+    return <SchemaUnionSetup union={union} config={config} form={form} />;
   if (formKey === 'http.request') {
     const { essential, advanced } = splitHttpSetupFields(
       httpSetupFields(fields, config),
@@ -136,7 +137,7 @@ export function SetupControls({
           config={config}
           form={form}
           jsonOnlySettings={
-            schemaPropertyCount(configSchema) > fields.length + 1
+            schemaPropertyCount(configSchema) > coveredProperties(fields) + 1
           }
         />
         <Disclosure
@@ -170,7 +171,9 @@ export function SetupControls({
         fields={fields}
         config={config}
         form={form}
-        jsonOnlySettings={propertyCount > fields.length + (list?.covers ?? 0)}
+        jsonOnlySettings={
+          propertyCount > coveredProperties(fields) + (list?.covers ?? 0)
+        }
       />
     </>
   );
@@ -231,35 +234,4 @@ function listBuilder(
     default:
       return undefined;
   }
-}
-
-function SchemaFieldList({
-  fields,
-  config,
-  form,
-  jsonOnlySettings,
-}: Readonly<{
-  fields: ReturnType<typeof schemaFields>;
-  config: WorkflowNode['config'];
-  form: NodeFormApi;
-  /** The schema has properties no field models. */
-  jsonOnlySettings: boolean;
-}>) {
-  return (
-    <>
-      {fields.map((field) => (
-        <SchemaField
-          key={field.key}
-          field={field}
-          config={config}
-          form={form}
-        />
-      ))}
-      {jsonOnlySettings ? (
-        <p className="text-xs text-subtle-foreground">
-          Some settings can only be edited as JSON.
-        </p>
-      ) : null}
-    </>
-  );
 }

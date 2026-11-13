@@ -10,6 +10,7 @@ export const CORE_TAKE_CONFIG_SCHEMA = z
       title: 'Items to keep',
       description:
         'Keep the first N items. Zero keeps none; a larger count keeps all available items.',
+      default: 100,
     }),
   })
   .strict();

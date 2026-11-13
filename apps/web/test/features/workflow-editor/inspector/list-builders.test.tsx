@@ -1,4 +1,5 @@
 import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
+import { browserDefinitions } from '../../../support/fixtures/node-catalog';
 import {
   addSwitchCase,
   addValidateRule,
@@ -107,26 +108,32 @@ describe('setup lists', () => {
   });
 
   it('starts new steps with a setup that’s ready where it can be', () => {
+    const catalog = browserDefinitions();
+    const start = (key: string, level: readonly WorkflowNode[]) => {
+      const definition = catalog.find((item) => item.definition.key === key);
+      if (definition === undefined) throw new Error(`No ${key} in the catalog`);
+      return startingConfig(definition, level);
+    };
     const parallel = {
       id: 'p1',
       definition: { key: 'core.parallel', version: 1 },
     } as WorkflowNode;
-    expect(startingConfig('core.parallel', [])).toEqual({
+    expect(start('core.parallel', [])).toEqual({
       branches: [{ id: 'branch-01' }, { id: 'branch-02' }],
       maxConcurrency: 2,
     });
-    expect(startingConfig('core.merge', [parallel])).toEqual({
+    expect(start('core.merge', [parallel])).toEqual({
       policy: { kind: 'all' },
       parallelNodeId: 'p1',
     });
     // Two Parallels: which one to join is the person's choice.
-    expect(
-      startingConfig('core.merge', [parallel, { ...parallel, id: 'p2' }]),
-    ).toEqual({ policy: { kind: 'all' } });
-    expect(startingConfig('core.set', [])).toEqual({});
+    expect(start('core.merge', [parallel, { ...parallel, id: 'p2' }])).toEqual({
+      policy: { kind: 'all' },
+    });
+    expect(start('core.set', [])).toEqual({});
     // Each step gets its own copy.
-    const first = startingConfig('core.switch', []);
-    expect(startingConfig('core.switch', [])).not.toBe(first);
+    const first = start('core.switch', []);
+    expect(start('core.switch', [])).not.toBe(first);
   });
 });
 

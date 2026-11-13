@@ -55,7 +55,7 @@ function newStep(
     definition: definition.definition,
     position,
     configVersion: definition.configVersion,
-    config: startingConfig(definition.definition.key, levelNodes),
+    config: startingConfig(definition, levelNodes),
     inputMappings: {},
     connectionRefs: {},
   } satisfies WorkflowNode;

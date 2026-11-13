@@ -9,7 +9,10 @@ const CORE_SWITCH_SELECTED_PORT_SCHEMA = z.enum([
   ...SWITCH_CASE_PORTS,
   'default',
 ]);
-export const CORE_SWITCH_CONFIG_SCHEMA = switchConfigSchema;
+// One case to fill in; anything else goes out Default.
+export const CORE_SWITCH_CONFIG_SCHEMA = switchConfigSchema.meta({
+  default: { cases: [{ id: 'case-01', equals: '' }] },
+});
 export const CORE_SWITCH_INPUT_SCHEMA = z
   .object({ value: switchScalarSchema })
   .strict();

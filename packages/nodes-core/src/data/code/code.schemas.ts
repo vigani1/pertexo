@@ -8,7 +8,10 @@ import { z } from 'zod';
 export const CORE_CODE_CONFIG_SCHEMA = z
   .object({
     language: codeLanguageSchema.optional(),
-    code: z.string().max(CODE_LIMITS.sourceBytes),
+    code: z
+      .string()
+      .max(CODE_LIMITS.sourceBytes)
+      .meta({ default: 'return input;' }),
     timeoutSeconds: z.number().int().min(1).max(300).optional(),
   })
   .strict()

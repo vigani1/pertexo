@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { labelledChoice } from '@pertexo/node-sdk';
 import {
   collectionItemsSchema,
   collectionPathSchema,
@@ -9,12 +10,17 @@ export const CORE_UNIQUE_CONFIG_SCHEMA = z
     path: collectionPathSchema.meta({
       title: 'Compare by',
       description:
-        'A field like email; $ compares the whole item. The first equal value is kept; object key order is ignored.',
+        'Use $ to compare whole items, or a field like $.id. Keep the first item for each equal value.',
+      default: '$',
     }),
-    missing: z.enum(['error', 'skip']).meta({
+    missing: labelledChoice({
+      error: 'Fail on missing keys',
+      skip: 'Skip missing keys',
+    }).meta({
       title: 'Missing keys',
       description:
         'Fail on missing keys, or explicitly skip and count those records. Null is a real key.',
+      default: 'error',
     }),
   })
   .strict();

@@ -15,7 +15,6 @@ import {
   schemaFields,
   schemaPropertyCount,
 } from '../../../model/inspector/draft';
-import { describeTransformFields } from '../../../model/inspector/transforms/fields';
 import { stepTitle } from '../../../model/graph/adapter';
 import { readParallelBranches } from '../../../model/inspector/setup-builders';
 import type { GraphLevel } from '../../../model/graph/scopes';
@@ -64,15 +63,7 @@ function CatalogSetupTab({
 }: SetupTabProps) {
   const { connections } = useInspectorSession();
   const fields = useMemo(
-    () =>
-      withStepChoices(
-        describeTransformFields(
-          schemaFields(definition?.configSchema),
-          node.definition.key,
-        ),
-        node,
-        graph,
-      ),
+    () => withStepChoices(schemaFields(definition?.configSchema), node, graph),
     [definition?.configSchema, node, graph],
   );
   const scheduleSchema = useMemo(
