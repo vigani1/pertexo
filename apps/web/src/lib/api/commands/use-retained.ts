@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { describeCommandError } from '../error-copy';
+import { isApiError } from '../error';
 import {
   RETRY_WINDOW_ENDED,
   canResend,
@@ -71,24 +72,35 @@ export function useRetainedCommand<Input, Output>(
       busy.current = false;
     }
   }
+  // A resend of an unconfirmed command that the server refused for the
+  // person's role: the refusal is certain, the first send's fate isn't.
+  const refused =
+    uncertain && isApiError(mutation.error) && mutation.error.status === 403;
   function errorMessage(): string | undefined {
     if (expired) return options.expiredMessage ?? RETRY_WINDOW_ENDED;
+    if (refused)
+      return `${refusal()} Pertexo refused this retry; the first attempt’s answer was lost, so check the current state to see whether it saved.`;
     if (uncertain)
       return 'We couldn’t confirm the result. Retry the same action before changing anything.';
-    if (mutation.isError)
-      return (
-        options.failureMessage?.(mutation.error) ??
-        describeCommandError(
-          mutation.error,
-          options.action ?? 'sending this response',
-        )
-      );
+    if (mutation.isError) return refusal();
     return undefined;
   }
+  function refusal(): string {
+    return (
+      options.failureMessage?.(mutation.error) ??
+      describeCommandError(
+        mutation.error,
+        options.action ?? 'sending this response',
+      )
+    );
+  }
+
   return {
     send,
     pending: mutation.isPending,
     uncertain,
+    /** The retry of an unconfirmed command was refused for the person's role. */
+    refused,
     expired,
     data: mutation.data,
     cause: mutation.error,

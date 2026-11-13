@@ -137,6 +137,74 @@ for (const width of [1280, 375])
       ),
     ).toBe(true);
   });
+for (const width of [1280, 375])
+  test(`says plainly when a retried variables save is refused for the role at ${String(width)}px`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height: 768 });
+    await installEditorRoutes(page, remoteDraft(), {
+      accessibleWorkspace: {
+        ...workspace,
+        capabilities: [...workspace.capabilities, 'variable:manage'],
+      },
+    });
+    await addCsrfCookie(context);
+    const keys: (string | undefined)[] = [];
+    await page.route(
+      `**/v1/workspaces/${workspaceId}/variables`,
+      async (route) => {
+        const request = route.request();
+        if (request.method() === 'GET')
+          return route.fulfill({
+            json: { revision: 1, values: { RATE: 10 }, descriptions: {} },
+          });
+        keys.push(request.headers()['idempotency-key']);
+        const refused = keys.length > 1;
+        return route.fulfill({
+          status: refused ? 403 : 502,
+          contentType: 'application/problem+json',
+          json: refused
+            ? {
+                type: 'urn:pertexo:problem:auth.forbidden',
+                title: 'Forbidden',
+                status: 403,
+                code: 'auth.forbidden',
+                requestId: 'test',
+              }
+            : {
+                type: 'about:blank',
+                title: 'Gateway failed',
+                status: 502,
+                code: 'internal.unexpected',
+                requestId: 'test',
+              },
+        });
+      },
+    );
+    await page.goto(`/w/${workspaceId}/settings/variables`);
+    const row = page.getByRole('region', { name: 'RATE', exact: true });
+    await row.getByRole('button', { name: 'Edit RATE', exact: true }).click();
+    await row.getByLabel('Value', { exact: true }).fill('20');
+    await page
+      .getByRole('button', { name: 'Save variables', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Retry same save', exact: true })
+      .click();
+    await expect(
+      page.getByText(/Your role doesn’t allow saving workspace variables/u),
+    ).toBeVisible();
+    await expect(page.getByText(/refused this retry/u)).toBeVisible();
+    await expect(page.getByText(/couldn’t confirm the result/u)).toHaveCount(0);
+    // Retrying would only be refused again.
+    await expect(
+      page.getByRole('button', { name: 'Retry same save', exact: true }),
+    ).toHaveCount(0);
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toBe(keys[0]);
+  });
+
 test('members can inspect references and an empty scan page is never presented as unused', async ({
   page,
 }) => {

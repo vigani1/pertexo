@@ -6,6 +6,7 @@ type CommandFeedback = Readonly<{
   error: string | undefined;
   cause: unknown;
   uncertain: boolean;
+  refused: boolean;
   pending: boolean;
   expired: boolean;
   retry: () => void;
@@ -32,7 +33,9 @@ export function VariableEditorFeedback({
       {error === undefined ? null : <Notice tone="destructive">{error}</Notice>}
       {command.error === undefined ? null : (
         <Notice
-          tone={command.uncertain ? 'warning' : 'destructive'}
+          tone={
+            command.uncertain && !command.refused ? 'warning' : 'destructive'
+          }
           action={recoveryAction(command)}
         >
           {isApiError(command.cause) &&
@@ -67,7 +70,8 @@ function recoveryAction(command: CommandFeedback) {
       </Button>
     );
   }
-  if (command.uncertain) {
+  // Retrying again would only be refused again.
+  if (command.uncertain && !command.refused) {
     return (
       <Button
         type="button"
