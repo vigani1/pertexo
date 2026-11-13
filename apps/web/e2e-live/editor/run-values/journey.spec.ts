@@ -53,7 +53,7 @@ test('authors business values, runs them on the worker and finds the real run by
   ).toBeVisible();
   await expect(page.getByText('A-1042', { exact: true })).toBeVisible();
   await page.goto(`/w/${workspaceId}/runs`);
-  await page.getByRole('button', { name: 'Run value: any' }).click();
+  await page.getByRole('button', { name: 'Any run value' }).click();
   let valueFilter = page.getByRole('dialog', {
     name: 'Find runs by a saved value',
   });
@@ -76,7 +76,9 @@ test('authors business values, runs them on the worker and finds the real run by
       .items.map((run) => run.id),
   ).toContain(runId);
   await expect(page.getByText('Find an order', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /^Run value: orderId is/u }).click();
+  await page
+    .getByRole('button', { name: /^orderId = .*, run value filter$/u })
+    .click();
   valueFilter = page.getByRole('dialog', {
     name: 'Find runs by a saved value',
   });
