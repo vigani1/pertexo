@@ -10,31 +10,49 @@ const THEMES = ['light', 'dark'] as const;
  */
 export async function expectAccessibleInBothThemes(page: Page) {
   const found: unknown[] = [];
-  for (const theme of THEMES) {
-    await page.evaluate((choice) => {
-      const root = document.documentElement;
-      root.dataset.theme = choice;
-      root.classList.toggle('dark', choice === 'dark');
-      root.style.colorScheme = choice;
-    }, theme);
-    const wcag = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-      .analyze();
-    // Content outside a landmark is best practice, not WCAG; the audit
-    // asked for it too.
-    const landmarks = await new AxeBuilder({ page })
-      .withRules(['region'])
-      .analyze();
-    const violations = [...wcag.violations, ...landmarks.violations];
-    found.push(
-      ...violations.map(({ id, nodes }) => ({
-        theme,
-        rule: id,
-        nodes: nodes.map(({ target, html }) => `${target.join(' ')} ${html}`),
-      })),
-    );
+  // A theme switch fades colours over ~150 ms; axe must read the settled
+  // ones, so motion stops while it checks and any running motion finishes.
+  await page.evaluate(() => {
+    const still = document.createElement('style');
+    still.id = 'axe-still';
+    still.textContent =
+      '*,*::before,*::after{transition:none!important;animation:none!important}';
+    document.head.append(still);
+  });
+  try {
+    for (const theme of THEMES) {
+      await page.evaluate((choice) => {
+        const root = document.documentElement;
+        root.dataset.theme = choice;
+        root.classList.toggle('dark', choice === 'dark');
+        root.style.colorScheme = choice;
+        for (const motion of document.getAnimations()) motion.finish();
+      }, theme);
+      found.push(...(await violationsIn(page, theme)));
+    }
+  } finally {
+    await page.evaluate(() => {
+      document.getElementById('axe-still')?.remove();
+    });
   }
   expect(found).toEqual([]);
+}
+
+async function violationsIn(page: Page, theme: (typeof THEMES)[number]) {
+  const wcag = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  // Content outside a landmark is best practice, not WCAG; the audit
+  // asked for it too.
+  const landmarks = await new AxeBuilder({ page })
+    .withRules(['region'])
+    .analyze();
+  const violations = [...wcag.violations, ...landmarks.violations];
+  return violations.map(({ id, nodes }) => ({
+    theme,
+    rule: id,
+    nodes: nodes.map(({ target, html }) => `${target.join(' ')} ${html}`),
+  }));
 }
 
 /**
