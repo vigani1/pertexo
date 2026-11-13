@@ -155,7 +155,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
       try {
         await security.rpush(sentinel, 'queued-work');
         for (let attempt = 0; attempt < 10; attempt++)
-          expect((await failedSignIn(address(21))).status).toBe(401);
+          // A refused password is a 400; a 401 means only an ended session.
+          expect((await failedSignIn(address(21))).status).toBe(400);
         for (const name of [
           'capacity',
           'timed-waits',
@@ -203,7 +204,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
 
       expect(statuses).toContain(429);
       expect(
-        statuses.filter((status) => status === 401).length,
+        statuses.filter((status) => status === 400).length,
       ).toBeLessThanOrEqual(30);
     }, 60_000);
 

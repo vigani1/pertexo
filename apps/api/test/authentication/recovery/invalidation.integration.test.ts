@@ -25,9 +25,10 @@ describe.runIf(betterAuthIntegrationEnabled)(
       expect((await api.reset(first)).statusCode).toBe(200);
       for (const token of [second, first])
         expect((await api.reset(token, originalPassword)).statusCode).toBe(400);
+      // The old password is refused (400); a 401 means only no session.
       expect(
         (await api.signInWith(person.email, originalPassword)).statusCode,
-      ).toBe(401);
+      ).toBe(400);
       expect(
         (await api.signInWith(person.email, replacementPassword)).statusCode,
       ).toBe(200);
@@ -161,7 +162,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       ]);
       for (const [index, password] of passwords.entries()) {
         expect((await api.signInWith(person.email, password)).statusCode).toBe(
-          responses[index]?.statusCode === 200 ? 200 : 401,
+          responses[index]?.statusCode === 200 ? 200 : 400,
         );
       }
     });
