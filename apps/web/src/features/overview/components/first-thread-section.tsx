@@ -7,9 +7,9 @@ import { FirstThread, type FirstRunOffer } from './first-thread';
 import { useSetupReads } from '../hooks/use-setup-reads';
 
 /**
- * The checklist for a workspace that hasn't run anything yet. The caller
- * already knows about workflows and runs; this adds what else the role can
- * check (connections, alerts, teammates).
+ * Getting started. The caller already knows about workflows and runs; this
+ * adds what else the role can check (connections, alerts, teammates). After
+ * the first run it stays, compact, until every task is done.
  */
 export function FirstThreadSection({
   apiClient,
@@ -17,12 +17,14 @@ export function FirstThreadSection({
   workspace,
   facts,
   firstRun,
+  compact = false,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   facts: FirstThreadFacts;
   firstRun?: FirstRunOffer | undefined;
+  compact?: boolean;
 }>) {
   const { connections, destinations } = useSetupReads({
     apiClient,
@@ -48,7 +50,13 @@ export function FirstThreadSection({
         }),
   });
   if (steps.length === 0) return null;
+  if (compact && steps.every((step) => step.done)) return null;
   return (
-    <FirstThread steps={steps} workspaceId={workspace.id} firstRun={firstRun} />
+    <FirstThread
+      steps={steps}
+      workspaceId={workspace.id}
+      firstRun={firstRun}
+      compact={compact}
+    />
   );
 }

@@ -9,6 +9,7 @@ import { renderLoadedApp } from '../../../support/render-app';
 import {
   readerCapabilities,
   runHandlers,
+  workflow,
   workflowHandlers,
   workflowId,
   workspaceId,
@@ -17,10 +18,10 @@ import {
 const api = `http://pertexo.test/v1/workspaces/${workspaceId}`;
 
 function checklist() {
-  return screen.findByRole('region', { name: 'Your first thread' }, coldStart);
+  return screen.findByRole('region', { name: 'Getting started' }, coldStart);
 }
 
-describe('the first run from Home', () => {
+describe('getting started on Home', () => {
   it('creates the first-run example in one click and opens its guided run', async () => {
     const imports: Record<string, unknown>[] = [];
     mockServer.use(
@@ -69,6 +70,52 @@ describe('the first run from Home', () => {
     const section = await checklist();
     expect(
       within(section).queryByRole('button', { name: 'Try the example' }),
+    ).toBeNull();
+  });
+
+  it('keeps the unfinished tasks, quieter, after the first run', async () => {
+    mockServer.use(
+      ...identityHandlers([...readerCapabilities, 'connection:read']),
+      workflowHandlers([workflow({ publishedVersionId: crypto.randomUUID() })]),
+      ...runHandlers(),
+      http.get(`${api}/connections`, () =>
+        HttpResponse.json({ items: [], nextCursor: null }),
+      ),
+    );
+    await renderLoadedApp(`/w/${workspaceId}`);
+    const section = await checklist();
+    expect(
+      await within(section).findByText('3 of 4 done.', { exact: false }),
+    ).toBeVisible();
+    const connection = within(section).getByRole('link', {
+      name: 'Add a connection',
+    });
+    expect(connection).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/connections?add=any`,
+    );
+    expect(connection.closest('li')).toHaveTextContent('To do');
+    expect(
+      within(section).queryByRole('button', { name: 'Try the example' }),
+    ).toBeNull();
+  });
+
+  it('goes away once every task is done', async () => {
+    mockServer.use(
+      ...identityHandlers(readerCapabilities),
+      workflowHandlers([workflow({ publishedVersionId: crypto.randomUUID() })]),
+      ...runHandlers(),
+    );
+    await renderLoadedApp(`/w/${workspaceId}`);
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'Needs attention' },
+        coldStart,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('region', { name: 'Getting started' }),
     ).toBeNull();
   });
 });
