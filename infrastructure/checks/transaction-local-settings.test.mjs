@@ -40,6 +40,14 @@ const REJECTED = {
   'SET after a line comment': `client.query('-- scope\\nset app.workspace_id = 1');`,
   'SET after a block comment': `client.query('/* scope */ SET app.workspace_id = 1');`,
   'SET after another statement': `client.query('begin; set app.workspace_id to 1; commit');`,
+  // J9 final review A, B, B2, C: a ";" or a quote inside a comment.
+  'SET after a line comment holding a semicolon':
+    "client.query(`-- scope it; see ADR 091\\nset app.workspace_id = 'x'`);",
+  'SET after a block comment holding a semicolon':
+    "client.query(`/* note; */ set app.workspace_id = 'x'`);",
+  'SET after a comment-only statement':
+    "client.query(`select 1; -- a; b\\nset app.workspace_id='x'`);",
+  'set_config whose flag a quote in a comment hides': `client.query("select set_config('app.workspace_id', /* ' */ $1, false) -- ', true)", [id]);`,
   'SET in mixed case': `client.query("Set app.workspace_id To 'x'");`,
   'SET with a function value': `client.query("set app.workspace_id = current_setting('x')");`,
   'SET with a cast value': `client.query("set statement_timeout = '5s'::text");`,
@@ -88,6 +96,9 @@ test('accepts transaction-local settings and SQL that changes no setting', () =>
       await client.query('-- bounded\\nset local lock_timeout = 1000');
       await client.query('set transaction isolation level serializable');
       await client.query('set constraints all deferred');
+      await client.query("select set_config('app.note', '-- not a comment', true)");
+      await client.query("select E'it''s \\\\' /* x */ as v -- set app.y = 1");
+      await client.query('select 1 /* outer /* nested; */ set app.x = 1 */');
       await client.query("update app.users set status='x' where id=$1");
       await client.query('insert into t values (1) on conflict do update set v=1');
       // set_config('app.workspace_id', $1, false) in a comment is no SQL.

@@ -6,6 +6,11 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { startupSettingFindings } from './pool-startup-settings.mjs';
+import {
+  dollarQuoteAt,
+  opensEscapeString,
+  withoutSqlComments,
+} from './sql-text.mjs';
 
 // Transactions no longer prove a pooled client is clean before and after use:
 // they rely on every setting being transaction-local. A session-level setting
@@ -121,22 +126,18 @@ function isForeignKeyAction(parent) {
   return name === 'onDelete' || name === 'onUpdate';
 }
 
-const DOLLAR_QUOTE = /^\$(?:[A-Za-z_]\w*)?\$/u;
-// E'...' (any case) right after a non-identifier character.
-const ESCAPE_STRING_PREFIX = /(?:^|[^\w$])[eE]$/u;
-const LEADING_COMMENTS = /^(?:\s+|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)*/u;
 // SET LOCAL, SET TRANSACTION and SET CONSTRAINTS end with the transaction.
 const TRANSACTION_SCOPED_SET = /^set\s+(?:local|transaction|constraints)\b/iu;
 // A DO block runs SQL this check can't read.
 const ANONYMOUS_BLOCK = /^do\s+(?:language\s+\S+\s+)?['$]/iu;
 
-function sessionSettings(sql) {
+function sessionSettings(literal) {
+  // Comments go first: a ";" or a quote in one would move where a statement
+  // or an argument ends.
+  const sql = withoutSqlComments(literal);
   const found = [];
   for (const statement of sql.split(';')) {
-    const text = statement
-      .replace(LEADING_COMMENTS, '')
-      .replaceAll(/\s+/gu, ' ')
-      .trim();
+    const text = statement.replaceAll(/\s+/gu, ' ').trim();
     if (
       (/^(?:set|reset)(?:\s|$)/iu.test(text) &&
         !TRANSACTION_SCOPED_SET.test(text)) ||
@@ -176,8 +177,8 @@ function* setConfigCalls(sql) {
         continue;
       }
       if (
-        (char === '$' && DOLLAR_QUOTE.test(sql.slice(index))) ||
-        (char === "'" && ESCAPE_STRING_PREFIX.test(sql.slice(0, index)))
+        dollarQuoteAt(sql, index) !== undefined ||
+        opensEscapeString(sql, index)
       ) {
         unreadable = true;
         break;
