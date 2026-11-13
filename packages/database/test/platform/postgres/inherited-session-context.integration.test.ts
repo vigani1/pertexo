@@ -208,7 +208,7 @@ describe('a pool whose fresh connection already carries app settings', () => {
  * PostgreSQL accepts. This scan takes relation locks, so it lives here, not
  * in the pool's boot check.
  */
-const CATALOG_SCAN = `
+const CATALOG_SOURCES = `
   with source(text) as (
     select concat_ws(' ', fn.prosrc, pg_get_function_sqlbody(fn.oid))
       from pg_proc fn join pg_namespace ns on ns.oid = fn.pronamespace
@@ -220,10 +220,24 @@ const CATALOG_SCAN = `
     union all select pg_get_constraintdef(con.oid) from pg_constraint con
     union all select pg_get_expr(pol.polqual, pol.polrelid) from pg_policy pol
     union all select pg_get_expr(pol.polwithcheck, pol.polrelid) from pg_policy pol
-  )
+    union all select pg_get_triggerdef(trg.oid) from pg_trigger trg
+     where not trg.tgisinternal
+    union all select pg_get_ruledef(rul.oid) from pg_rewrite rul
+     where rul.rulename <> '_RETURN'
+  )`;
+
+const CATALOG_SCAN = `${CATALOG_SOURCES}
   select distinct lower((regexp_matches(
     text, 'current_setting\\s*\\(\\s*''(app\\.[A-Za-z0-9_.$]+)''', 'gi'))[1]) as name
     from source where text is not null order by 1`;
+
+/** Readers whose setting name isn't a plain literal, so the scan can't name them. */
+const UNREADABLE_READERS = `${CATALOG_SOURCES}
+  select call[1] as argument
+    from source, regexp_matches(text, 'current_setting\\s*\\(\\s*([^,)]*)', 'gi') call
+   where text is not null
+     and call[1] !~ '^''[^'']*''(::text)?\\s*$'
+   order by 1`;
 
 async function scannedNames(): Promise<string[]> {
   return (await admin.query<{ name: string }>(CATALOG_SCAN)).rows.map(
@@ -232,6 +246,13 @@ async function scannedNames(): Promise<string[]> {
 }
 
 describe('the app setting names a pool checks', () => {
+  it('come from readers that name their setting as a plain literal', async () => {
+    const unreadable = await admin.query<{ argument: string }>(
+      UNREADABLE_READERS,
+    );
+    expect(unreadable.rows).toEqual([]);
+  });
+
   it('include every app setting the migrated catalog reads', async () => {
     const scanned = await scannedNames();
     expect(scanned).toContain('app.workspace_id');
@@ -256,6 +277,15 @@ describe('the app setting names a pool checks', () => {
         return current_setting('APP.Upper_Reader', true);
       create view public.j9_view as
         select current_setting('app.view_reader', true) as reader;
+      create function public.j9_trigger_fn() returns trigger language plpgsql
+        as $$ begin return new; end $$;
+      create trigger j9_when_reader before insert on public.j9_readers
+        for each row
+        when (current_setting('app.trigger_reader', true) is not null)
+        execute function public.j9_trigger_fn();
+      create rule j9_rule_reader as on update to public.j9_readers
+        where current_setting('app.rule_reader', true) is not null
+        do also select 1;
       create function public.j9_odd_names() returns text language sql
         as $$ select current_setting('app.a.b', true) || current_setting('app.x$y', true) $$;
     `);
@@ -268,6 +298,8 @@ describe('the app setting names a pool checks', () => {
           'app.scope2',
           'app.upper_reader',
           'app.view_reader',
+          'app.trigger_reader',
+          'app.rule_reader',
           // Names PostgreSQL accepts beyond letters, digits and "_".
           'app.a.b',
           'app.x$y',
@@ -276,6 +308,9 @@ describe('the app setting names a pool checks', () => {
     } finally {
       await admin.query(`
         drop function public.j9_odd_names();
+        drop rule j9_rule_reader on public.j9_readers;
+        drop trigger j9_when_reader on public.j9_readers;
+        drop function public.j9_trigger_fn();
         drop view public.j9_view;
         drop function public.j9_atomic();
         drop function public.j9_outside();
