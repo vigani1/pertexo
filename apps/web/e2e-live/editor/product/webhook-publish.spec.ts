@@ -4,12 +4,9 @@ import {
   workflowRunListResponseSchema,
   workflowVersionsResponseSchema,
 } from '@pertexo/contracts';
-import { test } from '../../support/browser-fixture';
+import { test } from './account';
 import { createEditorWorkflow } from '../../support/authoring/single-step';
-import {
-  createEditorWorkspace,
-  registerEditorUser,
-} from '../../support/ordinary-editor-session';
+import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import {
   expect,
   addStep,
@@ -30,14 +27,8 @@ function acceptedRun(body: unknown) {
 }
 
 /** A published webhook then a Set fields step, with an endpoint just created in Triggers. */
-async function publishedWebhook(
-  page: Page,
-  request: Parameters<typeof registerEditorUser>[1],
-) {
-  const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
-  if (mail === undefined) throw new Error('Use the owned API fixture');
-  await registerEditorUser(page, request, mail, 'Live webhook owner');
-  const workspaceId = await createEditorWorkspace(page, 'Live webhooks');
+async function publishedWebhook(page: Page) {
+  const workspaceId = await openNewEditorWorkspace(page, 'Live webhooks');
   const path = await createEditorWorkflow(page, workspaceId, 'Order intake');
   const editorUrl = new URL(page.url()).pathname;
   const workflowId = path.split('/').at(-1);
@@ -98,11 +89,10 @@ async function closeReveal(page: Page) {
 
 test('a publish keeps a live webhook answering on the new version, with its history', async ({
   page,
-  request,
 }) => {
   const origin = process.env.PERTEXO_API_PROXY_TARGET;
   if (origin === undefined) throw new Error('Use the owned API fixture');
-  const live = await publishedWebhook(page, request);
+  const live = await publishedWebhook(page);
   await closeReveal(page);
   const hookUrl = new URL(`/hooks/${live.endpointKey}`, origin).toString();
 
@@ -165,11 +155,10 @@ test('a publish keeps a live webhook answering on the new version, with its hist
 
 test('the publish dialog warns when a webhook step goes, and the endpoint then retires', async ({
   page,
-  request,
 }) => {
   const origin = process.env.PERTEXO_API_PROXY_TARGET;
   if (origin === undefined) throw new Error('Use the owned API fixture');
-  const live = await publishedWebhook(page, request);
+  const live = await publishedWebhook(page);
   await closeReveal(page);
   const hookUrl = new URL(`/hooks/${live.endpointKey}`, origin).toString();
   expect((await sendSigned(hookUrl, live.secret)).status).toBe(202);
@@ -194,10 +183,9 @@ test('the publish dialog warns when a webhook step goes, and the endpoint then r
 
 test('the reveal dialog gives a whole address that really takes a delivery', async ({
   page,
-  request,
 }) => {
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  const live = await publishedWebhook(page, request);
+  const live = await publishedWebhook(page);
   const pageOrigin = new URL(page.url()).origin;
   const address = `${pageOrigin}/hooks/${live.endpointKey}`;
   await expect(live.reveal).toContainText(address);

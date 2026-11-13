@@ -1,16 +1,13 @@
 import { workflowRunStartResponseSchema } from '@pertexo/contracts';
 import { mapBrowserInput } from '../../../test/support/browser/inputs';
-import { test } from '../../support/browser-fixture';
+import { test } from './account';
 import {
   addSingleStep,
   createEditorWorkflow,
   readEditorDraft,
   startSingleStep,
 } from '../../support/authoring/single-step';
-import {
-  createEditorWorkspace,
-  registerEditorUser,
-} from '../../support/ordinary-editor-session';
+import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import {
   expect,
   onlyVersion,
@@ -22,14 +19,8 @@ import {
 // Several real services behind one browser; this stays honest on a busy machine.
 test.describe.configure({ timeout: 120_000 });
 
-test('a failed run replays on the version that fixes it', async ({
-  page,
-  request,
-}) => {
-  const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
-  if (mail === undefined) throw new Error('Use the owned API fixture');
-  await registerEditorUser(page, request, mail, 'Fix and replay owner');
-  const workspaceId = await createEditorWorkspace(page, 'Fix and replay');
+test('a failed run replays on the version that fixes it', async ({ page }) => {
+  const workspaceId = await openNewEditorWorkspace(page, 'Fix and replay');
   const path = await createEditorWorkflow(page, workspaceId, 'Order gate');
   const editorUrl = new URL(page.url()).pathname;
   const conditionId = await addSingleStep(page, path, /Condition/u, 'Gate');

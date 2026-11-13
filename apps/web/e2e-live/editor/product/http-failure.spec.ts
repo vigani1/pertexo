@@ -1,4 +1,5 @@
-import { test } from '../../support/browser-fixture';
+import { test } from './account';
+import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import { createOwnedHttpConnection } from '../../support/authoring/http-connection';
 import {
   addSingleStep,
@@ -17,6 +18,7 @@ test('a failed HTTP step shows its status, response and URL, without the secrets
   const { controlOrigin, workspaceId } = await createOwnedHttpConnection(
     page,
     request,
+    openNewEditorWorkspace,
   );
   const credential = await request.get(`${controlOrigin}/http-credential`);
   const { authorizationValue } = (await credential.json()) as {

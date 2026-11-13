@@ -98,3 +98,16 @@ export async function createEditorWorkspace(page: Page, name: string) {
     throw new Error('Workspace URL has no identifier');
   return workspaceId;
 }
+
+/**
+ * A new workspace for an account that may already have some: the first-run
+ * form for a new account, the New workspace sheet after that.
+ */
+export async function openNewEditorWorkspace(page: Page, name: string) {
+  await page.goto('/workspaces');
+  const firstRun = page.getByRole('heading', { name: 'Create your workspace' });
+  const another = page.getByRole('button', { name: 'New workspace' });
+  await expect(firstRun.or(another).first()).toBeVisible();
+  if (!(await firstRun.isVisible())) await another.click();
+  return createEditorWorkspace(page, name);
+}

@@ -1,13 +1,10 @@
-import { test } from '../../support/browser-fixture';
+import { test } from './account';
 import {
   addSingleStep,
   createEditorWorkflow,
   readEditorDraft,
 } from '../../support/authoring/single-step';
-import {
-  createEditorWorkspace,
-  registerEditorUser,
-} from '../../support/ordinary-editor-session';
+import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import { expect } from './steps';
 
 // Several real services behind one browser; this stays honest on a busy machine.
@@ -15,12 +12,8 @@ test.describe.configure({ timeout: 120_000 });
 
 test('a save the network dropped is retried and nobody else is blamed', async ({
   page,
-  request,
 }) => {
-  const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
-  if (mail === undefined) throw new Error('Use the owned API fixture');
-  await registerEditorUser(page, request, mail, 'Solo editor');
-  const workspaceId = await createEditorWorkspace(page, 'Solo editing');
+  const workspaceId = await openNewEditorWorkspace(page, 'Solo editing');
   const path = await createEditorWorkflow(page, workspaceId, 'Solo workflow');
   const nodeId = await addSingleStep(page, path, /Set fields/u, 'First name');
   await expect
