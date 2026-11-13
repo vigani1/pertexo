@@ -146,9 +146,7 @@ export function RunDataValue({
     case 'none':
       return <Muted>{emptyText}</Muted>;
     case 'expired':
-      return (
-        <Muted>No longer kept. Pertexo keeps a run’s input for 30 days.</Muted>
-      );
+      return <Muted>No longer kept. Pertexo keeps run data for 30 days.</Muted>;
   }
 }
 

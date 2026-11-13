@@ -1,6 +1,8 @@
 import { describeStepError } from '@/features/workflow-runs/failure.public';
 import { useMemo } from 'react';
 import { QueryView } from '@/components/patterns/states/query-view';
+import { ArtifactDownload } from '@/features/artifacts/public';
+import type { WorkflowRunData } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Disclosure } from '@/components/ui/disclosure';
 import { Status } from '@/components/ui/status';
@@ -74,6 +76,44 @@ function TestOutput(props: Readonly<TestOutputProps>) {
     </Disclosure>
   );
 }
+/** A test step's output: its JSON, its file to download, or why there's none. */
+function TestOutputData({
+  data,
+  scope,
+}: Readonly<{ data: WorkflowRunData; scope: WorkflowTests['scope'] }>) {
+  switch (data.kind) {
+    case 'inline':
+      return (
+        <JsonTree
+          value={data.value}
+          label="Test step output"
+          className="max-h-56"
+        />
+      );
+    case 'artifact':
+      return (
+        <ArtifactDownload
+          apiClient={scope.apiClient}
+          userId={scope.userId}
+          workspaceId={scope.workspaceId}
+          artifactId={data.artifactId}
+        />
+      );
+    case 'none':
+      return <OutputNote>This step returned nothing.</OutputNote>;
+    case 'expired':
+      return (
+        <OutputNote>
+          No longer kept. Pertexo keeps test data for 7 days.
+        </OutputNote>
+      );
+  }
+}
+
+function OutputNote({ children }: Readonly<{ children: string }>) {
+  return <p className="text-sm text-muted-foreground">{children}</p>;
+}
+
 interface TestOutputProps {
   tests: WorkflowTests;
   runId: string;
@@ -98,19 +138,7 @@ export function TestOutputValue({
   );
   return (
     <QueryView query={output} resource="Test step output">
-      {(data) =>
-        data.kind === 'inline' ? (
-          <JsonTree
-            value={data.value}
-            label="Test step output"
-            className="max-h-56"
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            This output is stored as a file or is no longer available.
-          </p>
-        )
-      }
+      {(data) => <TestOutputData data={data} scope={tests.scope} />}
     </QueryView>
   );
 }

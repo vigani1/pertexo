@@ -118,7 +118,7 @@ export function RunRecoveryAction({
               onReplay();
             } else void preview.refetch();
           }}
-          submitDisabled={preview.isFetching || preview.isFetching}
+          submitDisabled={preview.isFetching}
           actions={{
             cancel: {
               kind: 'close',

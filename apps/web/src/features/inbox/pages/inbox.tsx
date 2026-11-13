@@ -48,6 +48,8 @@ import {
   inboxThreadsInfiniteQueryOptions,
 } from '../data/inbox.queries';
 
+const INBOX_CAPABILITY = 'workspace:read';
+
 function InboxHeader({
   filter,
   canMarkAll,
@@ -180,7 +182,9 @@ export function InboxPage({
   noticeKind?: WorkspaceNoticeKind;
   onNoticeKindChange?: (kind: WorkspaceNoticeKind | undefined) => void;
 }>) {
-  const canRead = workspace.capabilities.includes('workspace:read');
+  // The API serves each member's own inbox to anyone who can read the
+  // workspace; the refusal below names that same capability.
+  const canRead = workspace.capabilities.includes(INBOX_CAPABILITY);
   const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const threads = useInfiniteQuery({
     ...inboxThreadsInfiniteQueryOptions({
@@ -205,8 +209,8 @@ export function InboxPage({
         title="The inbox is unavailable"
         description={roleLimitSentence(
           workspace.role,
-          'notification:read',
-          'get notified when workflows fail',
+          INBOX_CAPABILITY,
+          'open the inbox',
         )}
       />
     );

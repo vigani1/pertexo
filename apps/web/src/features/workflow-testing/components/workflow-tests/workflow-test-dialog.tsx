@@ -24,6 +24,7 @@ import {
   useInputCases,
 } from '@/features/workflows/input-cases.public';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
+import { formatCount } from '@/lib/format/count';
 
 type WorkflowTestDialogProps = Readonly<{
   tests: WorkflowTests;
@@ -61,9 +62,12 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
               <>
                 <p className="text-sm text-muted-foreground">
                   Draft revision {model.tests.preparation.draftRevision} ·{' '}
-                  {model.tests.preparation.samples.length} pinned steps. Wait
-                  finishes immediately. Pin Approval, Request input and Call
-                  steps to continue past them.
+                  {formatCount(
+                    model.tests.preparation.samples.length,
+                    'pinned step',
+                  )}
+                  . Wait finishes immediately. Pin Approval, Request input and
+                  Call steps to continue past them.
                 </p>
                 {model.workflow === undefined ? null : (
                   <InputCasesPanel

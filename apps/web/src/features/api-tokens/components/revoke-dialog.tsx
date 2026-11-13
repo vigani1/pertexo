@@ -84,10 +84,7 @@ export function RevokeTokenDialog({
               kind: 'action',
               label: 'Close',
               variant: 'ghost',
-              onClick: () => {
-                onClose();
-                changeConfirmationOpen(false);
-              },
+              onClick: onClose,
             },
         confirm: {
           label: !uncertain ? 'Revoke token' : 'Try again',

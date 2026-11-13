@@ -9,6 +9,7 @@ import {
 } from '@/features/catalog/presentation.public';
 import { describeAmount } from './field-units';
 import type { GraphLevel, WorkflowNode } from './graph/scopes';
+import { formatCount } from '@/lib/format/count';
 
 // What a step card says about its step, from the step's own setup and its
 // links: which ports it draws (and where they lead), and a short
@@ -210,10 +211,6 @@ function recordAt(
   return isRecord(found) ? found : undefined;
 }
 
-function plural(count: number, word: string): string {
-  return `${String(count)} ${word}${count === 1 ? '' : 's'}`;
-}
-
 /**
  * A few words from the step's own setup for its card's type line, e.g.
  * "6 rules", "POST" or "Every day at 02:00"; undefined when there's
@@ -226,7 +223,7 @@ export function stepSummary(
   switch (node.definition.key) {
     case 'core.validate':
       return Array.isArray(config.rules) && config.rules.length > 0
-        ? plural(config.rules.length, 'rule')
+        ? formatCount(config.rules.length, 'rule')
         : undefined;
     case 'http.request':
       return typeof config.method === 'string' ? config.method : undefined;
@@ -240,7 +237,7 @@ export function stepSummary(
       return scheduleWords(config);
     case 'core.set': {
       const count = Object.keys(node.inputMappings).length;
-      return count > 0 ? plural(count, 'field') : undefined;
+      return count > 0 ? formatCount(count, 'field') : undefined;
     }
     default:
       return undefined;
