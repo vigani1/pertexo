@@ -75,6 +75,13 @@ const REJECTED = {
   'a connection URL startup setting from a variable': `url.searchParams.set('options', startup);`,
   'a PGOPTIONS startup setting': `process.env.PGOPTIONS = '-c app.organization_id=x';`,
   'a PGOPTIONS startup setting in long form': `execSync('PGOPTIONS=--search_path=app psql');`,
+  // J9 final review F and K, and their neighbours.
+  'a pg.Pool startup setting in long form': `new pg.Pool({ options: '--app.workspace_id=x' });`,
+  'a pg.Client startup setting': `new pg.Client({ options: '-c app.actor_id=x' });`,
+  'a PGOPTIONS property assignment in long form': `process.env.PGOPTIONS = '--app.workspace_id=x';`,
+  'a PGOPTIONS element assignment in long form': `process.env['PGOPTIONS'] = '--app.workspace_id=x';`,
+  'a PGOPTIONS child environment in long form': `spawn('psql', [], { env: { PGOPTIONS: '--app.workspace_id=x' } });`,
+  'a computed PGOPTIONS': `process.env.PGOPTIONS = '--app.' + 'workspace_id=x';`,
   'DO with a language': `client.query("DO LANGUAGE plpgsql $body$ begin null; end $body$");`,
 };
 
@@ -116,6 +123,9 @@ test('accepts the allowed startup setting, command-line flags and other options'
       execFile('docker', ['compose', 'run', '--pull=never']);
       const options = { encryption: true };
       createServer({ options: { port: 1 } });
+      new pg.Pool({ connectionString, options: '-c statement_timeout=5000' });
+      process.env.PGOPTIONS = '--statement_timeout=5000';
+      const settings = { PGOPTIONS_HINT: '--format=json' };
     `),
     [],
   );
