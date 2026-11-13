@@ -821,25 +821,30 @@ BEGIN
       AND (run.deadline_at IS NULL OR run.deadline_at>clock_timestamp())
       AND NOT EXISTS(SELECT 1 FROM app.workflow_run_active_admissions admission
         WHERE admission.workspace_id=p_workspace AND admission.workflow_run_id=run.id)
-  ), free AS (
+  ), occupied AS (
     -- The maintained counter, not a count of the backlog. An estimate is enough:
     -- every candidate is still checked exactly, under the counter lock.
-    SELECT greatest(0,
-      coalesce((SELECT max(version.active_run_limit) FROM app.workspace_execution_entitlement_versions version
-        WHERE version.workspace_id=p_workspace
-          AND version.version IN (SELECT waiting.execution_entitlement_version FROM waiting)),0)
-      -counter.active_runs-app.workflow_run_reserved_slots(p_workspace,NULL,NULL)) AS slots
+    SELECT counter.active_runs+app.workflow_run_reserved_slots(p_workspace,NULL,NULL) AS slots
     FROM app.workspace_execution_admission_counters counter
     WHERE counter.workspace_id=p_workspace
+  ), free AS (
+    -- A run is admitted under the limit of the entitlement version it is pinned
+    -- to, and occupancy only grows within a claim, so each version's admitted
+    -- runs are a prefix of that version's own queue. Ranking per version keeps
+    -- runs pinned to a lower limit from crowding out those pinned to a higher one.
+    SELECT version.version, greatest(0,version.active_run_limit-occupied.slots) AS slots
+    FROM app.workspace_execution_entitlement_versions version CROSS JOIN occupied
+    WHERE version.workspace_id=p_workspace
+      AND version.version IN (SELECT waiting.execution_entitlement_version FROM waiting)
   ), ranked AS (
     SELECT waiting.event_id,
       CASE WHEN waiting.limited
         THEN waiting.admission_ticket=min(waiting.admission_ticket) OVER (PARTITION BY waiting.workflow_id)
         ELSE waiting.claimable AND row_number() OVER (
-          PARTITION BY waiting.limited, waiting.claimable
-          ORDER BY waiting.available_at, waiting.event_id)<=free.slots
+          PARTITION BY waiting.limited, waiting.claimable, waiting.execution_entitlement_version
+          ORDER BY waiting.available_at, waiting.event_id)<=coalesce(free.slots,0)
       END AS candidate
-    FROM waiting CROSS JOIN free
+    FROM waiting LEFT JOIN free ON free.version=waiting.execution_entitlement_version
   )
   SELECT ranked.event_id FROM ranked WHERE NOT ranked.candidate;
   PERFORM set_config('app.workspace_id',coalesce(v_prior,''),true);
