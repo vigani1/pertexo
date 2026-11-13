@@ -25,7 +25,6 @@ import {
   deferCoordinatorForActiveCapacity,
 } from '../receipts.repository.js';
 import { persistCoordinatorRunTransition } from './run-transition.repository.js';
-import { wakeNextOrderedStart } from '../../wakeups/ordered-start.repository.js';
 import {
   persistDueReadyTransitions,
   persistLoopBarrierTransitions,
@@ -122,7 +121,6 @@ export async function saveRunTransition(
     workflowVersionId: row.workflow_version_id,
     workspaceId,
   });
-  if (startsRun) await wakeNextOrderedStart(client, workspaceId, runId);
   await completeCoordinatorReceipt(client, workspaceId, delivery);
   return Object.freeze({
     kind: 'committed',
