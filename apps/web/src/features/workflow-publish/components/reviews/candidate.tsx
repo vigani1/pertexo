@@ -6,6 +6,7 @@ import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
 import { LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Disclosure } from '@/components/ui/disclosure';
+import { formatCount } from '@/lib/format/count';
 
 export function ReviewCandidate({
   graph,
@@ -25,9 +26,10 @@ export function ReviewCandidate({
       <h2 className="font-semibold">Exactly what will be published</h2>
       <p className="text-sm text-muted-foreground">
         {liveGraph === null ? 'First publication. ' : ''}
-        {diff.added.length} steps added, {diff.changed.length} changed,{' '}
-        {diff.removed.length} removed. {diff.linksAdded} links added,{' '}
-        {diff.linksRemoved} removed. {diff.notes.length} notes changed.
+        {formatCount(diff.added.length, 'step')} added, {diff.changed.length}{' '}
+        changed, {diff.removed.length} removed.{' '}
+        {formatCount(diff.linksAdded, 'link')} added, {diff.linksRemoved}{' '}
+        removed. {formatCount(diff.notes.length, 'note')} changed.
       </p>
       <ul
         className="list-inside list-disc text-sm"

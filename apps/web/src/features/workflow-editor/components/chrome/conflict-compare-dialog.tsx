@@ -15,6 +15,7 @@ import {
 } from '@/features/workflows/comparison.public';
 import { useEditorStore } from '../../model/state/context';
 import { shownConflict } from '../../model/state/workflow-editor.store';
+import { formatCount } from '@/lib/format/count';
 
 type Line = GraphChange;
 
@@ -106,18 +107,14 @@ function GraphJson({
   return (
     <figure className="min-w-0">
       <figcaption className="text-xs font-semibold text-subtle-foreground">
-        {label} · {countOf(graph.nodes.length, 'step')},{' '}
-        {countOf(graph.edges.length, 'link')}
+        {label} · {formatCount(graph.nodes.length, 'step')},{' '}
+        {formatCount(graph.edges.length, 'link')}
       </figcaption>
       <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-surface-ink/8 bg-recess-ink/25 p-2 font-mono text-[0.7rem] break-all whitespace-pre-wrap">
         {JSON.stringify(graph, null, 2)}
       </pre>
     </figure>
   );
-}
-
-function countOf(count: number, noun: string): string {
-  return `${String(count)} ${noun}${count === 1 ? '' : 's'}`;
 }
 
 const LINE_APPEARANCE = {

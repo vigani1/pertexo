@@ -2,6 +2,7 @@ import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
 import { LabelledField } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
+import { formatCount } from '@/lib/format/count';
 export function SuitePreparation({
   preparation,
   acknowledged,
@@ -16,8 +17,9 @@ export function SuitePreparation({
   return (
     <div className="contents">
       <p className="text-sm">
-        Draft {preparation.draftRevision} · {preparation.cases.length} cases ·{' '}
-        {preparation.samples.length} pinned steps
+        Draft {preparation.draftRevision} ·{' '}
+        {formatCount(preparation.cases.length, 'case')} ·{' '}
+        {formatCount(preparation.samples.length, 'pinned step')}
       </p>
       {preparation.cases.length === 0 ? (
         <Notice>
