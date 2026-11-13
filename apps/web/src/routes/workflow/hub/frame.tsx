@@ -49,6 +49,7 @@ export function WorkflowHubTabFrame({
           workspace={workspace}
           workflowId={workflowId}
           showReadError={tab !== 'settings'}
+          problemSide="above"
         />
         <WorkflowPresenceWarning />
         {children}
