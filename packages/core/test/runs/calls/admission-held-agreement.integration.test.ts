@@ -54,7 +54,11 @@ describe('held admission deliveries', () => {
     );
 
     for (let index = 0; index < 2; index += 1)
-      await insertRun(ws, unlimited, unlimitedVersion, 'running');
+      await insertRun(ws, {
+        workflowId: unlimited,
+        versionId: unlimitedVersion,
+        status: 'running',
+      });
     const limitedRuns: string[] = [];
     for (let index = 0; index < 4; index += 1)
       limitedRuns.push(await queuedWithDelivery(ws, limited, limitedVersion));
@@ -159,24 +163,26 @@ async function queuedWithDelivery(
   versionId: string,
   options: Readonly<{ expired?: boolean }> = {},
 ): Promise<string> {
-  const runId = await insertRun(
-    workspaceId,
+  const runId = await insertRun(workspaceId, {
     workflowId,
     versionId,
-    'queued',
-    options.expired === true,
-  );
+    status: 'queued',
+    expired: options.expired === true,
+  });
   await insertHint(workspaceId, runId);
   return runId;
 }
 
 async function insertRun(
   workspaceId: string,
-  workflowId: string,
-  versionId: string,
-  status: string,
-  expired = false,
+  run: Readonly<{
+    workflowId: string;
+    versionId: string;
+    status: string;
+    expired?: boolean;
+  }>,
 ): Promise<string> {
+  const { workflowId, versionId, status, expired = false } = run;
   const id = randomUUID();
   await admin.query("select set_config('app.workspace_id',$1,false)", [
     workspaceId,
