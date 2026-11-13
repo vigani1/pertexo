@@ -287,10 +287,11 @@ guards the boundary now:
   `app.*` setting, and otherwise refuses to start
   (`InheritedSessionContextError`). That covers what code can't show:
   deployment `PGOPTIONS`, a connection string's options, and role or
-  database defaults. The
-schema-compatibility check also verifies the workspace column type/nullability,
-workspace indexing, policy expressions, grants, ownership, forced RLS, runtime
-attributes, PostgreSQL major version, and migration head.
+  database defaults.
+
+The schema-compatibility check also verifies the workspace column
+type/nullability, workspace indexing, policy expressions, grants, ownership,
+forced RLS, runtime attributes, PostgreSQL major version, and migration head.
 
 ## Consequences
 
