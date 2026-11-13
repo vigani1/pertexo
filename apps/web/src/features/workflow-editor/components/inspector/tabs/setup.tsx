@@ -15,7 +15,7 @@ import {
   schemaFields,
   schemaPropertyCount,
 } from '../../../model/inspector/draft';
-import { stepTitle } from '../../../model/graph/adapter';
+import { stepTitle } from '../../../model/graph/step-title';
 import { readParallelBranches } from '../../../model/inspector/setup-builders';
 import type { GraphLevel } from '../../../model/graph/scopes';
 import { readScheduleSchema } from '../../../model/inspector/schedule-draft';

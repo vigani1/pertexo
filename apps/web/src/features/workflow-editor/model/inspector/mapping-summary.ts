@@ -1,5 +1,5 @@
 import { formatByteLength } from '@/lib/format/bytes';
-import { stepTitle } from '../graph/adapter';
+import { stepTitle } from '../graph/step-title';
 import type { GraphLevel } from '../graph/scopes';
 import type { InputMappingDraftRow } from './input-mappings/draft';
 

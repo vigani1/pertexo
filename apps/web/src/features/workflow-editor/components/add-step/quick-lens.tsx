@@ -15,7 +15,7 @@ import {
 import { FieldLabel } from '@/components/ui/field';
 import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover';
 import { useEditorStore } from '../../model/state/context';
-import { stepTitle } from '../../model/graph/adapter';
+import { stepTitle } from '../../model/graph/step-title';
 import { findStep } from '../../model/graph/scopes';
 import { followingSteps } from '../../model/quick-add';
 import type { QuickAddRequest } from './use-quick';

@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/popover';
 import { describeStep, StepTile } from '@/features/catalog/presentation.public';
 import type { ValueSource } from '@pertexo/workflow-model';
-import { findDefinition, stepTitle } from '../../../model/graph/adapter';
+import { findDefinition } from '../../../model/graph/adapter';
+import { stepTitle } from '../../../model/graph/step-title';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import { directPredecessorOptions } from '../../../model/inspector/input-mappings/draft';
 import {

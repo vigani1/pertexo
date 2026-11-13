@@ -3,7 +3,7 @@ import {
   callbackWaitConfigSchema,
 } from '@pertexo/workflow-model';
 import { RepeatIcon } from 'lucide-react';
-import { stepTitle } from '../../../../model/graph/adapter';
+import { stepTitle } from '../../../../model/graph/step-title';
 import type { WorkflowNode } from '../../../../model/graph/scopes';
 import {
   firstFormFilePath,

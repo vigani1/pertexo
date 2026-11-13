@@ -6,7 +6,7 @@ import {
   inspectWorkflowFailureRoutes,
   WORKFLOW_FAILURE_PORT,
 } from '@pertexo/workflow-model';
-import { stepTitle } from '../graph/adapter';
+import { stepTitle } from '../graph/step-title';
 
 type Selection = Readonly<{
   nodeIds: readonly string[];

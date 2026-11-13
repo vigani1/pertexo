@@ -1,4 +1,4 @@
-import { stepTitle } from './adapter';
+import { stepTitle } from './step-title';
 import { levelSinks } from './order';
 import {
   indexGraph,

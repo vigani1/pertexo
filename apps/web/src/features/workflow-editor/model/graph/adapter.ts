@@ -11,7 +11,6 @@ import type {
 } from '@pertexo/contracts';
 import type { CoordinateExtent, Edge, Node } from '@xyflow/react';
 import {
-  describeStep,
   portName,
   requiredConnections,
 } from '@/features/catalog/presentation.public';
@@ -25,6 +24,8 @@ import {
 import type { BodyIssue } from './for-each-body-rules';
 import { portLinks, shownPorts, stepSummary } from '../step-card';
 import { levelSinks } from './order';
+import { loopSummary, type LoopSummary } from './loop-summary';
+import { stepTitle } from './step-title';
 import {
   indexGraph,
   isForEach,
@@ -35,20 +36,6 @@ import {
 
 type Position = Readonly<{ x: number; y: number }>;
 type Size = Readonly<{ width: number; height: number }>;
-
-/**
- * A For each step's body in summary (ADR 020): the steps that run once per
- * item, the body's `item`/`ordinal` inputs and `result` output, and the
- * bounds on items and concurrency. The graph itself is untouched.
- */
-export type LoopSummary = Readonly<{
-  maxIterations: number;
-  maxConcurrency: number;
-  /** The body's steps, in stored order. */
-  steps: readonly Readonly<{ id: string; title: string }>[];
-  inputs: readonly string[];
-  outputs: readonly string[];
-}>;
 
 /** A For each container's body area on the canvas and what's wrong in it. */
 type BodyArea = Readonly<{
@@ -365,28 +352,6 @@ function projectEdge(
       intoIssue: (decorations.issuesByNode.get(edge.target.nodeId) ?? 0) > 0,
     },
   };
-}
-
-export function loopSummary(
-  node: Pick<WorkflowNode, 'structured'>,
-): LoopSummary | null {
-  const structured = node.structured;
-  if (structured === undefined) return null;
-  return {
-    maxIterations: structured.maxIterations,
-    maxConcurrency: structured.maxConcurrency,
-    steps: structured.body.nodes.map((step) => ({
-      id: step.id,
-      title: stepTitle(step),
-    })),
-    inputs: structured.body.inputPorts,
-    outputs: structured.body.outputPorts,
-  };
-}
-
-/** A step's label, or the human name of its type when it has none. */
-export function stepTitle(node: Pick<WorkflowNode, 'label' | 'definition'>) {
-  return node.label ?? describeStep(node.definition.key).name;
 }
 
 function nodeGeometry(
