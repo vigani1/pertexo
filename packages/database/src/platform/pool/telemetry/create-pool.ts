@@ -38,7 +38,8 @@ export function createDatabasePool(
   surviveConnectionLoss(pool, (error) => {
     safeDiagnostic(options.diagnostics, 'idle_pool_error', role, error);
   });
-  // The proof checks out pg's own connection, outside the checkout metrics.
+  // The proof runs inside the caller's first checkout, so that checkout's
+  // duration includes it; later checkouts pay nothing.
   refuseInheritedSessionContext(pool, role);
   instrumentPoolCheckout(pool, state.poolCheckoutDuration, role, (client) => {
     instrumentClientRelease(client, state);
