@@ -147,7 +147,7 @@ describe('low-effect workspace mutations', () => {
     });
     await waitFor(() => {
       expect(f.result.current.command.error).toContain(
-        'Check the refreshed current state',
+        'Saving it again is safe — it won’t apply twice',
       );
     });
     expect(reads).toBe(2);

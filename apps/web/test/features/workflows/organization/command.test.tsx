@@ -177,7 +177,7 @@ describe('low-effect organization mutations', () => {
       await act(() => f.result.current.start(single));
       await waitFor(() => {
         expect(f.result.current.error).toContain(
-          'Check the refreshed current state',
+          'Saving it again is safe — it won’t apply twice',
         );
       });
       expect(f.queryClient.getQueryState(key)?.isInvalidated).toBe(true);

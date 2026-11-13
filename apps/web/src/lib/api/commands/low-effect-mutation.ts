@@ -43,6 +43,6 @@ export function useLowEffectMutation<Input, Result>({
 
 export function lowEffectError(error: unknown, action: string): string {
   return isUnconfirmedCommand(error)
-    ? 'We couldn’t confirm that change. Check the refreshed current state before trying again.'
+    ? 'We couldn’t confirm that change. Saving it again is safe — it won’t apply twice.'
     : describeCommandError(error, action);
 }
