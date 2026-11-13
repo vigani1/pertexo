@@ -1,4 +1,8 @@
-import { useMutation } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
 import { RETRY_WINDOW_ENDED, isUnconfirmedCommand } from './command-retry';
 import { describeCommandError } from '../error-copy';
 import { useHeldCommandKey } from './use-held-command-key';
@@ -9,7 +13,16 @@ import { useHeldCommandKey } from './use-held-command-key';
  * unchanged change after a lost response replays it rather than being
  * refused as someone else's.
  */
-export function useLowEffectMutation<Input, Result>({
+/**
+ * For changes that set an absolute state and carry no revision: the read
+ * that shows the current state, and whether its data shows this change.
+ */
+export type AppliedIn<Input, Data> = Readonly<{
+  read: QueryKey;
+  shows: (data: Data, input: Input) => boolean;
+}>;
+
+export function useLowEffectMutation<Input, Result, Data = unknown>({
   send,
   refresh,
   appliedIn,
@@ -19,19 +32,19 @@ export function useLowEffectMutation<Input, Result>({
   /** `error` is null when the change landed. */
   refresh: (input: Input, error: unknown) => Promise<unknown>;
   /**
-   * For changes that set an absolute state and carry no revision: whether
-   * the current read shows this change. When a refresh after an unconfirmed
-   * outcome doesn't, the held key goes, so saving again applies the change
-   * (harmless, it sets a state) rather than replaying an old receipt that
-   * someone else's change has since undone.
+   * When a read that succeeded after an unconfirmed outcome doesn't show
+   * the change, the held key goes, so saving again applies it (harmless,
+   * it sets a state) rather than replaying an old receipt that someone
+   * else's change has since undone. Without such a read the key stays.
    */
-  appliedIn?: (input: Input) => boolean;
+  appliedIn?: AppliedIn<Input, Data>;
   /**
    * The target a change is made to, when one hook changes several (a
    * folder, a tag): each target keeps its own held key.
    */
   slotOf?: (input: Input) => string;
 }>) {
+  const cache = useQueryClient();
   const keys = useHeldCommandKey<Input>('renew', slotOf);
   return useMutation({
     retry: false,
@@ -49,16 +62,22 @@ export function useLowEffectMutation<Input, Result>({
       }
     },
     onSettled: async (_result, error, input) => {
+      const outcomeAt = Date.now();
       // Read errors stay with their queries. A failed refresh cannot turn an
       // accepted write into an unconfirmed command or invite a second write.
-      const [refreshed] = await Promise.allSettled([refresh(input, error)]);
+      await Promise.allSettled([refresh(input, error)]);
+      if (appliedIn === undefined || !isUnconfirmedCommand(error)) return;
+      // Only a read that answered after this outcome can say the change
+      // isn't there. A refetch that failed (invalidateQueries resolves
+      // anyway) or never ran leaves older data, which proves nothing.
+      const read = cache.getQueryState<Data>(appliedIn.read);
       if (
-        appliedIn !== undefined &&
-        refreshed.status === 'fulfilled' &&
-        isUnconfirmedCommand(error) &&
-        !appliedIn(input)
+        read?.status !== 'success' ||
+        read.data === undefined ||
+        read.dataUpdatedAt < outcomeAt
       )
-        keys.forget(input);
+        return;
+      if (!appliedIn.shows(read.data, input)) keys.forget(input);
     },
   });
 }

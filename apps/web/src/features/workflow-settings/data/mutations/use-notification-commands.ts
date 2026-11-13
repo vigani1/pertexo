@@ -51,14 +51,15 @@ export function useFailureNotificationCommands({
     refresh: () => cache.invalidateQueries({ queryKey: policyKey }),
     // Set and clear carry no revision: a held key stays only while the
     // refreshed setting shows the change.
-    appliedIn: (intent) => {
-      const current =
-        cache.getQueryData<WorkflowFailureNotificationPolicyResponse>(
-          policyKey,
-        )?.destination;
-      return intent.kind === 'clear'
-        ? current === null
-        : current?.id === intent.destinationId;
+    appliedIn: {
+      read: policyKey,
+      shows: (
+        { destination }: WorkflowFailureNotificationPolicyResponse,
+        intent,
+      ) =>
+        intent.kind === 'clear'
+          ? destination === null
+          : destination?.id === intent.destinationId,
     },
   });
   async function updatePolicy(destinationId?: string) {

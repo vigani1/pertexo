@@ -58,13 +58,15 @@ export function useScheduleCommand({
       }),
     // Turning a schedule on or off carries no revision: a held key stays
     // only while the refreshed schedule shows the change.
-    appliedIn: ({ triggerId, enabled }) => {
-      const status = cache
-        .getQueryData<Awaited<ReturnType<typeof getScheduleTriggers>>>(
-          workflowSettingsKeys.schedules(userId, workspaceId, workflowId),
-        )
-        ?.items.find((item) => item.id === triggerId)?.status;
-      return status !== undefined && (status === 'disabled') !== enabled;
+    appliedIn: {
+      read: workflowSettingsKeys.schedules(userId, workspaceId, workflowId),
+      shows: (
+        { items }: Awaited<ReturnType<typeof getScheduleTriggers>>,
+        { triggerId, enabled },
+      ) => {
+        const status = items.find((item) => item.id === triggerId)?.status;
+        return status !== undefined && (status === 'disabled') !== enabled;
+      },
     },
   });
   async function setEnabled(
