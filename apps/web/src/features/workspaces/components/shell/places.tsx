@@ -2,14 +2,17 @@ import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { LinkProps } from '@tanstack/react-router';
 import {
   BellIcon,
+  ClipboardCheckIcon,
   GaugeIcon,
   HomeIcon,
   InboxIcon,
   KeyRoundIcon,
   PlugIcon,
+  ScrollTextIcon,
   SlidersHorizontalIcon,
   Table2Icon,
   UsersIcon,
+  VariableIcon,
   WavesIcon,
   WorkflowIcon,
 } from 'lucide-react';
@@ -48,6 +51,7 @@ export const WORKSPACE_PLACES = {
   approvals: {
     to: '/w/$workspaceId/approvals',
     label: 'Approvals',
+    icon: <ClipboardCheckIcon />,
   },
   dataTables: {
     to: '/w/$workspaceId/data-tables',
@@ -78,7 +82,11 @@ export const WORKSPACE_PLACES = {
     icon: <GaugeIcon />,
     capability: 'run:read',
   },
-  variables: { to: '/w/$workspaceId/settings/variables', label: 'Variables' },
+  variables: {
+    to: '/w/$workspaceId/settings/variables',
+    label: 'Variables',
+    icon: <VariableIcon />,
+  },
   alerts: {
     to: '/w/$workspaceId/settings/alerts',
     label: 'Alerts',
@@ -93,6 +101,7 @@ export const WORKSPACE_PLACES = {
   audit: {
     to: '/w/$workspaceId/settings/audit',
     label: 'Audit log',
+    icon: <ScrollTextIcon />,
     capability: 'audit:read',
   },
   sso: {

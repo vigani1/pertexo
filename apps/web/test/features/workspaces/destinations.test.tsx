@@ -187,6 +187,13 @@ describe('workspace destinations by role', () => {
       places.map((_, index) => at('Home') + index),
     );
     expect(at('Guide: your first workflow')).toBeGreaterThan(at('API tokens'));
+    // Review J6a P3-1: every entry carries an icon, so the labels line up.
+    expect(
+      within(dialog)
+        .getAllByRole('option')
+        .filter((option) => option.querySelector('svg') === null)
+        .map((option) => option.textContent.trim()),
+    ).toEqual([]);
     expect(at('Glossary')).toBeLessThan(at('Switch theme'));
   });
 
