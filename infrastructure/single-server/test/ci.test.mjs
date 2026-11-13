@@ -62,6 +62,16 @@ test('turns off Postgres durability only where nothing tests it', () => {
     );
 });
 
+// s3mock writes absolute store paths into its bucket and object metadata, so a
+// volume written at /data reads back only at /data (review of PR #707, P1).
+test('keeps the S3 mock store where its volume is mounted, at /data', () => {
+  const compose = parse(readFileSync('compose.yaml', 'utf8'));
+  const store = compose.services['artifact-store'];
+  const mounts = store.volumes.map((volume) => volume.split(':')[1]);
+  assert.deepEqual(mounts, ['/data']);
+  assert.equal(store.environment.COM_ADOBE_TESTING_S3MOCK_STORE_ROOT, '/data');
+});
+
 // A leg dropped from a matrix takes its tests with it while every other leg stays green.
 test('the gate requires a split suite, and every one of its shards exists', () => {
   const shards = ci.jobs.browser.strategy.matrix.include.flatMap(
