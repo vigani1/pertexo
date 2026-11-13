@@ -54,6 +54,9 @@ const REJECTED = {
   'RESET ALL': `client.query('RESET ALL');`,
   'RESET ROLE': `client.query('reset role');`,
   'DO with EXECUTE SET': `client.query("do $$ begin execute 'set app.workspace_id = ''x'''; end $$");`,
+  // A quoted argument the parser misreads makes a later "true" look like the flag.
+  'set_config whose dollar-quoted value hides the flag': `client.query("select set_config('app.workspace_id', $q$, true) ,$q$, false)");`,
+  'set_config whose escape-string value hides the flag': `client.query("select set_config('app.workspace_id', E'\\\\', true) ,', false)");`,
   'DO with a language': `client.query("DO LANGUAGE plpgsql $body$ begin null; end $body$");`,
 };
 
@@ -66,6 +69,8 @@ test('accepts transaction-local settings and SQL that changes no setting', () =>
   assert.deepEqual(
     statements(`
       await client.query("select set_config('app.workspace_id', $1, true)", [id]);
+      await client.query("select set_config('app.mode', 'E', true), set_config('app.cost', 'a$b$c', true)");
+      await client.query(\`select set_config('app.\${name}', $\${index}, true)\`, values);
       await client.query(\`select set_config('\${name}',$\${n},TRUE) "\${key}"\`, values);
       await db.execute(sql\`select set_config('app.workspace_id',coalesce(\${id}::text,''),true)\`);
       await client.query('set local role pertexo_owner');
