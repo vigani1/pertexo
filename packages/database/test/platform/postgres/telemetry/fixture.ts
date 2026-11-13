@@ -2,6 +2,7 @@ import type { Meter } from '@opentelemetry/api';
 import { vi } from 'vitest';
 
 const pg = vi.hoisted(() => {
+  const inspectable = new WeakSet<object>();
   class FakePool {
     static instances: FakePool[] = [];
     static endFailures: { readonly error: unknown }[] = [];
@@ -18,14 +19,13 @@ const pg = vi.hoisted(() => {
         }>
     )[] = [];
     static queryErrors: unknown[] = [];
-    /** app.* settings a fresh session reports, or a failure opening one. */
+    /** app.* settings a fresh session reports, or why reading them fails. */
     static freshSession:
       | Readonly<{ kind: 'clean' }>
       | Readonly<{ kind: 'carries'; settings: readonly string[] }>
       | Readonly<{ kind: 'unreachable'; error: Error }> = { kind: 'clean' };
-    readonly freshSessionChecks: { destroyed: boolean | Error | undefined }[] =
-      [];
-    private freshSessionServed = false;
+    /** How many times a client handed out by this pool was asked for its app settings. */
+    inspections = 0;
     static queryResults: { rows: { pid: number }[] }[] = [];
     static queryOutcomes: (
       | Readonly<{ kind: 'reject'; error: unknown }>
@@ -86,15 +86,12 @@ const pg = vi.hoisted(() => {
         release: (destroy?: boolean | Error) => void,
       ) => void,
     ): Promise<{ release(destroy?: boolean | Error): void }> | undefined {
-      // Like pg, the pool's first checkout opens a fresh session; the code
-      // under test checks it for inherited settings before anything else.
-      if (callback === undefined && !this.freshSessionServed)
-        return this.openFreshSession();
       const outcome = FakePool.connectOutcomes.shift() ?? {
         kind: 'reject' as const,
         error: new Error('Fake pool connect is not implemented'),
       };
       const release = outcome.release ?? (() => undefined);
+      if (outcome.kind === 'resolve') this.answerInspection(outcome.client);
       if (callback !== undefined) {
         queueMicrotask(() => {
           if (outcome.kind === 'reject')
@@ -108,25 +105,30 @@ const pg = vi.hoisted(() => {
         : Promise.resolve(outcome.client);
     }
 
-    private openFreshSession(): Promise<{
-      release(destroy?: boolean | Error): void;
-    }> {
-      const session = FakePool.freshSession;
-      if (session.kind === 'unreachable') return Promise.reject(session.error);
-      this.freshSessionServed = true;
-      const check: { destroyed: boolean | Error | undefined } = {
-        destroyed: undefined,
-      };
-      this.freshSessionChecks.push(check);
-      return Promise.resolve({
-        query: () =>
-          Promise.resolve({
-            rows: (session.kind === 'carries' ? session.settings : []).map(
-              (name) => ({ name }),
-            ),
-          }),
-        release: (destroy?: boolean | Error) => {
-          check.destroyed = destroy;
+    /**
+     * Like a PostgreSQL session, every client answers the code under test's
+     * question about inherited app settings; its other queries pass through.
+     */
+    private answerInspection(client: object): void {
+      if (inspectable.has(client)) return;
+      inspectable.add(client);
+      const own = (client as { query?: (...args: unknown[]) => unknown }).query;
+      Object.assign(client, {
+        query: (sql: unknown, ...rest: unknown[]) => {
+          if (typeof sql === 'string' && sql.includes('current_setting(name')) {
+            this.inspections += 1;
+            const session = FakePool.freshSession;
+            if (session.kind === 'unreachable')
+              return Promise.reject(session.error);
+            return Promise.resolve({
+              rows: (session.kind === 'carries' ? session.settings : []).map(
+                (name) => ({ name }),
+              ),
+            });
+          }
+          return own === undefined
+            ? Promise.reject(new Error('Fake client query is not implemented'))
+            : own.call(client, sql, ...rest);
         },
       });
     }

@@ -184,14 +184,8 @@ describe('authoring cancellation and runtime lifetime', () => {
     const checkout = Pool.prototype as unknown as {
       connect(): Promise<PoolClient>;
     };
-    // A pool first inspects one fresh session for inherited app settings.
-    const freshSession = {
-      query: () => Promise.resolve({ rows: [] }),
-      release: () => undefined,
-    };
     const connect = vi
       .spyOn(checkout, 'connect')
-      .mockResolvedValueOnce(freshSession as unknown as PoolClient)
       .mockResolvedValue({ query, release } as unknown as PoolClient);
     const runtime = createDatabaseRuntime(config, { monitorLockWaits: false });
     const database = createWorkflowAuthoringStore(config, {

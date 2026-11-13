@@ -1,10 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { beforeEachFixture1, pg, poolAt } from './telemetry/fixture.js';
 import { InheritedSessionContextError } from '../../../src/platform/index.js';
 import { createDatabasePool } from '../../../src/platform/pool/telemetry/create-pool.js';
 
-const client = () => ({ release: () => undefined });
+const client = () => ({ release: vi.fn() });
 
 function pool(role: 'api' | 'maintenance' | 'worker' = 'api') {
   return createDatabasePool({ max: 2 }, { monitorLockWaits: false, role });
@@ -22,13 +22,17 @@ describe('a pool whose fresh session carries app settings', () => {
   beforeEach(beforeEachFixture1);
 
   it.each(['api', 'worker', 'maintenance'] as const)(
-    'refuses every %s checkout, naming the settings, after one inspection',
+    'refuses every %s checkout, naming the settings, after inspecting its first client',
     async (role) => {
       pg.FakePool.freshSession = {
         kind: 'carries',
         settings: ['app.organization_id', 'app.workspace_id'],
       };
-      pg.FakePool.connectOutcomes.push({ kind: 'resolve', client: client() });
+      const first = client();
+      pg.FakePool.connectOutcomes.push(
+        { kind: 'resolve', client: first },
+        { kind: 'resolve', client: client() },
+      );
       const target = pool(role);
 
       const refusal = await target.connect().catch((error: unknown) => error);
@@ -43,8 +47,9 @@ describe('a pool whose fresh session carries app settings', () => {
       await expect(target.connect()).rejects.toBe(refusal);
       await expect(callbackCheckout(target)).resolves.toBe(refusal);
 
-      // The inspected connection is destroyed, and no other session opened.
-      expect(poolAt(0).freshSessionChecks).toEqual([{ destroyed: true }]);
+      // The inspected client is destroyed, and no other connection opened.
+      expect(first.release).toHaveBeenCalledExactlyOnceWith(true);
+      expect(poolAt(0).inspections).toBe(1);
       expect(pg.FakePool.connectOutcomes).toHaveLength(1);
     },
   );
@@ -53,8 +58,10 @@ describe('a pool whose fresh session carries app settings', () => {
 describe('a pool whose fresh session is clean', () => {
   beforeEach(beforeEachFixture1);
 
-  it('inspects once and then hands out clients through both checkout forms', async () => {
+  it("inspects the caller's own first client once and takes no checkout of its own", async () => {
     const first = client();
+    // Telemetry wraps a handed-out client's release; keep the original.
+    const firstRelease = first.release;
     const second = client();
     pg.FakePool.connectOutcomes.push(
       { kind: 'resolve', client: first },
@@ -64,21 +71,41 @@ describe('a pool whose fresh session is clean', () => {
 
     await expect(target.connect()).resolves.toBe(first);
     await expect(callbackCheckout(target)).resolves.toBe('connected');
-    expect(poolAt(0).freshSessionChecks).toEqual([{ destroyed: undefined }]);
+    expect(pg.FakePool.connectOutcomes).toHaveLength(0);
+    expect(firstRelease).not.toHaveBeenCalled();
+    expect(poolAt(0).inspections).toBe(1);
   });
 
-  it('retries the inspection after the database could not be reached', async () => {
+  it('shares one inspection between checkouts that start together', async () => {
+    const first = client();
+    const second = client();
+    pg.FakePool.connectOutcomes.push(
+      { kind: 'resolve', client: first },
+      { kind: 'resolve', client: second },
+    );
+    const target = pool();
+
+    await expect(
+      Promise.all([target.connect(), target.connect()]),
+    ).resolves.toEqual([first, second]);
+    expect(poolAt(0).inspections).toBe(1);
+  });
+
+  it('destroys a client it could not inspect and inspects the next', async () => {
     pg.FakePool.freshSession = {
       kind: 'unreachable',
-      error: new Error('connection refused'),
+      error: new Error('connection lost'),
     };
+    const lost = client();
+    pg.FakePool.connectOutcomes.push({ kind: 'resolve', client: lost });
     const target = pool();
-    await expect(target.connect()).rejects.toThrow('connection refused');
+    await expect(target.connect()).rejects.toThrow('connection lost');
+    expect(lost.release).toHaveBeenCalledExactlyOnceWith(true);
 
     pg.FakePool.freshSession = { kind: 'clean' };
     const ready = client();
     pg.FakePool.connectOutcomes.push({ kind: 'resolve', client: ready });
     await expect(target.connect()).resolves.toBe(ready);
-    expect(poolAt(0).freshSessionChecks).toHaveLength(1);
+    expect(poolAt(0).inspections).toBe(2);
   });
 });
