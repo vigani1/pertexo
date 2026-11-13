@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
+import { SkeletonLines } from '@/components/ui/skeleton';
 import {
   anyRunQueryOptions,
   runStatisticsQueryOptions,
@@ -123,6 +124,9 @@ export function HomePage({
     );
 
   const newWorkspace = isNewWorkspace(facts);
+  const settled =
+    (!canReadRuns || anyRun.data !== undefined || anyRun.isError) &&
+    (!canReadWorkflows || workflows.data !== undefined || workflows.isError);
   return (
     <div className="flex flex-col gap-10">
       <HomeHeader
@@ -132,45 +136,52 @@ export function HomePage({
         onRefresh={refresh}
         onOpenSearch={onOpenSearch}
       />
-      {newWorkspace ? (
-        <FirstThreadSection
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          facts={facts}
-          firstRun={firstRun}
-        />
-      ) : null}
-      {!newWorkspace && canReadRuns ? (
-        <HomeLoom
-          apiClient={apiClient}
-          userId={user.id}
-          workspaceId={workspace.id}
-        />
-      ) : null}
-      {newWorkspace ? null : (
-        <FirstThreadSection
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-          facts={facts}
-          compact
-        />
+      {/* One block holds the place until Home knows which layout it has. */}
+      {settled ? (
+        <>
+          {newWorkspace ? (
+            <FirstThreadSection
+              apiClient={apiClient}
+              userId={user.id}
+              workspace={workspace}
+              facts={facts}
+              firstRun={firstRun}
+            />
+          ) : null}
+          {!newWorkspace && canReadRuns ? (
+            <HomeLoom
+              apiClient={apiClient}
+              userId={user.id}
+              workspaceId={workspace.id}
+            />
+          ) : null}
+          {newWorkspace ? null : (
+            <FirstThreadSection
+              apiClient={apiClient}
+              userId={user.id}
+              workspace={workspace}
+              facts={facts}
+              compact
+            />
+          )}
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+            <AttentionSection
+              apiClient={apiClient}
+              userId={user.id}
+              workspace={workspace}
+            />
+            {canReadWorkflows ? (
+              <RecentlyChanged
+                apiClient={apiClient}
+                userId={user.id}
+                workspaceId={workspace.id}
+              />
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <SkeletonLines label="Loading Home" lines={4} className="min-h-80" />
       )}
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-        <AttentionSection
-          apiClient={apiClient}
-          userId={user.id}
-          workspace={workspace}
-        />
-        {canReadWorkflows ? (
-          <RecentlyChanged
-            apiClient={apiClient}
-            userId={user.id}
-            workspaceId={workspace.id}
-          />
-        ) : null}
-      </div>
     </div>
   );
 }
