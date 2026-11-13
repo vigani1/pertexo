@@ -230,3 +230,71 @@ test('workflow auto-pause banner stays usable in the narrow Build view without p
     fullPage: true,
   });
 });
+
+for (const width of [1280, 375])
+  test(`keeps a failed pause-state read compact and still at ${String(width)}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await installEditorRoutes(page, remoteDraft());
+    let answer: 'fail' | 'hold' | 'ok' = 'fail';
+    let release: () => void = () => undefined;
+    await page.route('**/auto-pause', async (route) => {
+      if (answer === 'fail')
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/problem+json',
+          json: {
+            type: 'urn:pertexo:problem:internal.unexpected',
+            title: 'Try again',
+            status: 503,
+            code: 'internal.unexpected',
+            requestId: 'pause-read',
+          },
+        });
+      if (answer === 'hold')
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      return route.fulfill({ json: unpausedWorkflowSettings });
+    });
+    await page.goto(editorUrl);
+    const tools = page.getByRole('toolbar', { name: 'Canvas tools' });
+    await expect(tools).toBeVisible();
+    const line = page
+      .getByRole('status')
+      .filter({ hasText: 'Couldn’t check if triggers are paused.' })
+      // The innermost: a phone's editor wraps its panels in a live region.
+      .last();
+    await expect(line).toBeVisible();
+    // A background read, not a failure of the person's work.
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    const at = async () => (await tools.boundingBox())?.y;
+    const failing = await at();
+    await page.screenshot({
+      path: testInfo.outputPath(`pause-read-${String(width)}.png`),
+    });
+    const box = await line.boundingBox();
+    // One line: a phone's 44 px Retry target sets its height there.
+    expect(box?.height).toBeLessThanOrEqual(width < 640 ? 56 : 40);
+    const note = await page
+      .getByRole('button', { name: 'Add note', exact: true })
+      .boundingBox();
+    // Clear of the canvas tools beside it.
+    expect(box?.x ?? 0).toBeGreaterThanOrEqual(
+      (note?.x ?? 0) + (note?.width ?? 0),
+    );
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(width);
+    answer = 'hold';
+    await line.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(
+      line.getByRole('button', { name: 'Checking…' }),
+    ).toBeDisabled();
+    expect((await line.boundingBox())?.width).toBe(box?.width);
+    expect(await at()).toBe(failing);
+    answer = 'ok';
+    release();
+    await expect(line).toHaveCount(0);
+    expect(await at()).toBe(failing);
+  });
