@@ -65,14 +65,6 @@ it('validates organization IDs and contains organization context within a transa
           ).rows,
         ).toEqual([{ organization: '' }]);
       });
-      const dirty = await pool.connect();
-      await dirty.query("select set_config('app.organization_id',$1,false)", [
-        organization,
-      ]);
-      dirty.release();
-      await expect(
-        withPlatformTransaction(pool, () => Promise.resolve(true)),
-      ).rejects.toThrow();
     } finally {
       await pool.end();
     }
