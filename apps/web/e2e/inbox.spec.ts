@@ -1,3 +1,4 @@
+import { expectFitsAndTappable } from './support/accessibility';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
   createUserFixture,
@@ -179,6 +180,28 @@ test('keeps the inbox usable on a phone', async ({ page }) => {
     () => document.documentElement.scrollWidth - window.innerWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('fits the inbox and its row actions at 360px', async ({ page }, info) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await mockInbox(page);
+  await page.goto(`/w/${workspaceId}/inbox`);
+  const row = page.getByRole('link', { name: 'Billing sync, unread' });
+  await expect(row).toBeVisible();
+  await expectFitsAndTappable(page);
+  // Every control in the list stays on screen, not past its right edge.
+  for (const control of await page
+    .getByRole('main')
+    .getByRole('button')
+    .all()) {
+    if (!(await control.isVisible())) continue;
+    const box = await control.boundingBox();
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(360);
+  }
+  await page.screenshot({
+    path: info.outputPath('inbox-360.png'),
+    fullPage: true,
+  });
 });
 
 for (const width of [1280, 390])

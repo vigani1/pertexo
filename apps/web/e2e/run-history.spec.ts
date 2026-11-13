@@ -1,4 +1,7 @@
-import { expectAccessibleInBothThemes } from './support/accessibility';
+import {
+  expectAccessibleInBothThemes,
+  expectFitsAndTappable,
+} from './support/accessibility';
 import {
   csrfToken,
   firstRunId,
@@ -137,6 +140,27 @@ test('replays the exact displayed version from its own input', async ({
     page.getByRole('button', { name: 'Copy run ID 1111…1111' }),
   ).toBeVisible();
   await expect(page.getByText('Replay started')).toBeVisible();
+});
+
+test('fits run history and its row menu at 768px', async ({ page }, info) => {
+  await page.setViewportSize({ width: 768, height: 900 });
+  await installRoutes(page);
+  await page.goto(`/w/${workspaceId}/runs`);
+  await expect(
+    page.getByRole('button', { name: 'Copy run ID eeee…eeee' }),
+  ).toBeVisible();
+  await expectFitsAndTappable(page);
+  const menus = page
+    .getByRole('main')
+    .getByRole('button', { name: /actions/iu });
+  for (const menu of await menus.all()) {
+    const box = await menu.boundingBox();
+    expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(768);
+  }
+  await page.screenshot({
+    path: info.outputPath('runs-768.png'),
+    fullPage: true,
+  });
 });
 
 test('keeps a maximum-length workflow identity accessible and contained on mobile', async ({

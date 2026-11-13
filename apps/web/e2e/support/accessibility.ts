@@ -36,3 +36,23 @@ export async function expectAccessibleInBothThemes(page: Page) {
   }
   expect(found).toEqual([]);
 }
+
+/**
+ * The page fits its width with no sideways scroll, and every control is
+ * at least 24 px square or spaced as if it were (WCAG 2.2 target size).
+ */
+export async function expectFitsAndTappable(page: Page) {
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    ),
+  ).toBeLessThanOrEqual(0);
+  const { violations } = await new AxeBuilder({ page })
+    .withRules(['target-size'])
+    .analyze();
+  expect(
+    violations.flatMap(({ nodes }) =>
+      nodes.map(({ target, html }) => `${target.join(' ')} ${html}`),
+    ),
+  ).toEqual([]);
+}

@@ -1,3 +1,4 @@
+import { expectFitsAndTappable } from '../support/accessibility';
 import { test, expect } from '../support/fixtures';
 import {
   installEditorRoutes,
@@ -6,7 +7,7 @@ import {
   workspaceId,
   addCsrfCookie,
 } from '../workflow-editor/support';
-for (const width of [1280, 375])
+for (const width of [1280, 360])
   test(`audit filters and retention preserve an uncertain save at ${String(width)}px`, async ({
     page,
     context,
@@ -81,6 +82,7 @@ for (const width of [1280, 375])
     await expect(
       page.getByText('workspace.created', { exact: true }),
     ).toBeHidden();
+    await expectFitsAndTappable(page);
     await page.getByLabel('Keep audit events (days)').fill('30');
     await page
       .getByRole('button', { name: 'Save retention', exact: true })
