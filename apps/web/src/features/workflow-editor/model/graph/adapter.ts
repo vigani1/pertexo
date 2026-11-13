@@ -12,6 +12,7 @@ import type {
 import type { CoordinateExtent, Edge, Node } from '@xyflow/react';
 import {
   describeStep,
+  portName,
   requiredConnections,
 } from '@/features/catalog/presentation.public';
 import {
@@ -338,8 +339,16 @@ function projectEdge(
   projection: Projection,
 ): WorkflowFlowEdge {
   const { decorations, labels } = projection;
+  const sourceLabel = labels.get(edge.source.nodeId) ?? 'a step';
+  const targetLabel = labels.get(edge.target.nodeId) ?? 'a step';
   return {
     id: edge.id,
+    // Screen readers name a link by its steps, not their IDs.
+    ariaLabel: `Link from ${
+      edge.source.port === 'out'
+        ? sourceLabel
+        : `${sourceLabel} (${portName(edge.source.port)})`
+    } to ${targetLabel}`,
     source: edge.source.nodeId,
     sourceHandle: edge.source.port,
     target: edge.target.nodeId,
@@ -349,8 +358,8 @@ function projectEdge(
     data: {
       failure: edge.source.port === WORKFLOW_FAILURE_PORT,
       timedOut: edge.source.port === TIMED_OUT_PORT,
-      sourceLabel: labels.get(edge.source.nodeId) ?? 'a step',
-      targetLabel: labels.get(edge.target.nodeId) ?? 'a step',
+      sourceLabel,
+      targetLabel,
       flowing: decorations.flowingEdgeIds.has(edge.id),
       weaveOrder: decorations.weaveOrder?.get(edge.id) ?? null,
       intoIssue: (decorations.issuesByNode.get(edge.target.nodeId) ?? 0) > 0,
