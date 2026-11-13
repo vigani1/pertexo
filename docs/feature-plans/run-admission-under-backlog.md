@@ -107,16 +107,18 @@ its slot**. A second fix removes that idle time.
     Then add a partial index on `(workspace_id, available_at, id)` for
     undelivered advance events, or limit the held set's read to the free
     slots plus one head per limited workflow.
-- **Ordered-start wake** (migration `0003_ordered_start_wakeup.sql`,
-  `runs/wakeups/ordered-start.repository.ts`):
-  - When a run starts, the coordinator's start transaction calls
-    `wake_next_ordered_workflow_run_start`. It brings forward only the next
-    granted run's deferred delivery, with `SKIP LOCKED`, so the wake takes no
-    lock it would wait for.
+- **Ordered-start wake** (migration `0003_ordered_start_wakeup.sql`):
+  - Whenever a run leaves `queued` (it starts, or is canceled, times out or
+    fails before starting), the status trigger
+    `refresh_workflow_run_admission_counters` calls
+    `wake_next_ordered_workflow_run_start` in the same transaction. The wake
+    brings forward only the next granted run's deferred delivery, with
+    `SKIP LOCKED`, so it takes no lock it would wait for. Only the owner may
+    call it; the app can't.
   - `workflow_run_active_capacity_available` now decides an order rejection
-    under the counter lock the start path already holds. The deferral then
-    serializes with the start of the run ahead, and that start's wake always
-    sees it.
+    under the counter lock every status write already holds. The deferral then
+    serializes with the run ahead leaving the queue, and that change's wake
+    always sees it.
   - The 5 s deferral stays as the fallback when the run ahead is stuck.
 - **Unchanged:** who may be admitted, ticket order, workspace fairness, lending,
   and the app's fence on outbox updates.
@@ -136,6 +138,11 @@ its slot**. A second fix removes that idle time.
 
 The wall time includes the 20 s quiet load that runs alongside. The machine
 was shared, so the same code varied from 37 to 65 s between runs.
+
+After the wake moved into the status trigger, the final review reran the
+harness: a 42.3 s drain, 3,573 eligibility checks, 0 deferrals, a claim p50 of
+7.9 ms and 239 wakes costing 23.9 ms in total. A status write costs about
+0.01 ms more with the wake (0.641 against 0.630 ms), within run-to-run noise.
 
 With a noisy workflow in a second workspace, quiet runs waited 1.36 / 4.0 s on
 main and 0.43–0.69 / 0.59–1.05 s after.
