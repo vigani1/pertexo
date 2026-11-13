@@ -168,6 +168,7 @@ describe('authoring cancellation and runtime lifetime', () => {
                 workspaceId,
                 actorId,
                 discoveryScope: '',
+                organizationId: '',
                 statementTimeoutMillis: '30000',
               },
             ],
