@@ -260,22 +260,22 @@ const apiProblemDetails = {
     severity: 'info',
     exposeDetail: false,
   },
-  // A refused credential while signing in or proving it is you: not an
-  // ended session, which only auth.unauthenticated means.
+  // A refused credential while signing in or proving it is you. 400, like
+  // auth.invalid_password: a 401 means only an ended session.
   'auth.invalid_credentials': {
-    status: 401,
+    status: 400,
     title: 'Sign-in details not accepted',
     severity: 'info',
     exposeDetail: false,
   },
   'auth.two_factor_code_invalid': {
-    status: 401,
+    status: 400,
     title: 'Two-factor code not accepted',
     severity: 'info',
     exposeDetail: false,
   },
   'auth.two_factor_challenge_expired': {
-    status: 401,
+    status: 400,
     title: 'Two-factor sign-in expired',
     severity: 'info',
     exposeDetail: false,

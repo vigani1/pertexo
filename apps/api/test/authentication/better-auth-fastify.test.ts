@@ -344,7 +344,10 @@ describe('Better Auth Fastify bridge', () => {
         headers: { origin: 'https://pertexo.test' },
         payload: {},
       });
-      expect(reply.statusCode).toBe(401);
+      // A 401 leaves only for an ended session; a refusal is a 400.
+      expect(reply.statusCode).toBe(
+        expectedCode === 'auth.unauthenticated' ? 401 : 400,
+      );
       expect(apiProblemSchema.parse(reply.json()).code).toBe(expectedCode);
       expect(reply.payload).not.toContain('private native details');
     },

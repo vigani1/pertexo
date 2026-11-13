@@ -35,14 +35,17 @@ type NativeProblem = Readonly<{
   title: string;
 }>;
 
-/** A 401 that refuses what was typed, not the session behind it. */
+/**
+ * Better Auth refuses what was typed with a 401. Clients read a 401 as an
+ * ended session, so these leave as 400, like auth.invalid_password.
+ */
 function refused(
   code:
     | 'auth.invalid_credentials'
     | 'auth.two_factor_code_invalid'
     | 'auth.two_factor_challenge_expired',
 ): NativeProblem {
-  return { status: 401, code, title: API_PROBLEM_MANIFEST[code].title };
+  return { status: 400, code, title: API_PROBLEM_MANIFEST[code].title };
 }
 
 const NATIVE_PROBLEMS = new Map<string, NativeProblem>([

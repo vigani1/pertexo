@@ -113,7 +113,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         person.email,
         'anonymous-private-password',
       );
-      expect(reply.statusCode).toBe(401);
+      expect(reply.statusCode).toBe(400);
       expect(reply.json()).toMatchObject({
         code: 'auth.invalid_credentials',
         title: 'Sign-in details not accepted',

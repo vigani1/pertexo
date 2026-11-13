@@ -15,7 +15,7 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `auth.conflict` | 409 | Authentication change conflict |
 | `auth.email_not_verified` | 403 | Email verification required |
 | `auth.forbidden` | 403 | Forbidden |
-| `auth.invalid_credentials` | 401 | Sign-in details not accepted |
+| `auth.invalid_credentials` | 400 | Sign-in details not accepted |
 | `auth.invalid_password` | 400 | The current password is incorrect. Check it and try again. |
 | `auth.last_method` | 400 | Another working sign-in method required |
 | `auth.method_limit` | 400 | Sign-in method limit reached |
@@ -28,8 +28,8 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `auth.sso_required` | 403 | Organization sign-in required |
 | `auth.token_not_supported` | 403 | API tokens are not accepted here |
 | `auth.token_scope_required` | 403 | Token scope required |
-| `auth.two_factor_challenge_expired` | 401 | Two-factor sign-in expired |
-| `auth.two_factor_code_invalid` | 401 | Two-factor code not accepted |
+| `auth.two_factor_challenge_expired` | 400 | Two-factor sign-in expired |
+| `auth.two_factor_code_invalid` | 400 | Two-factor code not accepted |
 | `auth.two_factor_locked` | 429 | Two-factor sign-in temporarily locked |
 | `auth.unauthenticated` | 401 | Authentication required |
 | `callback.already_received` | 409 | Callback already received |

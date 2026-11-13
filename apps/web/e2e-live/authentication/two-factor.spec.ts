@@ -99,7 +99,7 @@ test('authenticator at desktop and single-use recovery sign-in on a phone', asyn
       exact: false,
     }),
   ).toBeVisible();
-  expect(refusals).toEqual([401]);
+  expect(refusals).toEqual([400]);
   await expect(
     page.getByRole('heading', { name: 'Your session ended', exact: true }),
   ).toHaveCount(0);
