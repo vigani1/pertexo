@@ -28,7 +28,7 @@ function TableCell({
   const text = tableCellText(value);
   if (text === undefined)
     return (
-      <span className="text-subtle-foreground/60">
+      <span className="text-subtle-foreground">
         <span aria-hidden="true">—</span>
         <span className="sr-only">Empty</span>
       </span>

@@ -276,7 +276,7 @@ function CalendarGrid({
                     aria-current={isToday ? 'date' : undefined}
                     className={cn(
                       'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-[0.8rem] tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
-                      outside && 'text-subtle-foreground/70',
+                      outside && 'text-subtle-foreground',
                       isToday && !chosen(day) && 'text-accent-foreground',
                       onBand === 'middle' && 'text-foreground',
                       chosen(day)

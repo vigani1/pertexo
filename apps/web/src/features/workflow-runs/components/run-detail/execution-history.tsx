@@ -35,9 +35,7 @@ export function StepError({
       </p>
       <p className="mt-1 text-muted-foreground">{copy.advice}</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <code className="font-mono text-[0.7rem] text-destructive/90">
-          {code}
-        </code>
+        <code className="font-mono text-[0.7rem] text-destructive">{code}</code>
         {copy.fix !== undefined && canOpenConnections ? (
           <Link
             to="/w/$workspaceId/connections"

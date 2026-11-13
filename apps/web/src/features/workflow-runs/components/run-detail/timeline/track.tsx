@@ -167,7 +167,7 @@ export function RunTimelineTrack({
         className={cn(
           'absolute top-0.5 hidden max-w-60 truncate font-mono text-[0.68rem] leading-4 whitespace-nowrap sm:block',
           tone === 'failure' || tone === 'timeout'
-            ? 'text-destructive/85'
+            ? 'text-destructive'
             : 'text-subtle-foreground',
         )}
         style={tagStyle}

@@ -1,3 +1,4 @@
+import { expectAccessibleInBothThemes } from '../support/accessibility';
 import { expect, test } from '../support/fixtures';
 import {
   addCsrfCookie,
@@ -58,6 +59,7 @@ for (const width of [1280, 390]) {
     await page.goto(`/w/${workspaceId}/workflows`);
     const row = page.getByRole('link', { name: 'Daily intake' });
     await expect(row).toBeVisible();
+    await expectAccessibleInBothThemes(page);
     await expect(
       page
         .getByRole('region', { name: 'Find and organize workflows' })

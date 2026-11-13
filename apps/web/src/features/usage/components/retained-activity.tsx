@@ -98,12 +98,11 @@ export function RetainedActivity({
                 to="/w/$workspaceId/runs"
                 params={{ workspaceId }}
                 search={{ ...search, status }}
-                aria-label={`${look.label} ${count.toLocaleString(FORMAT_LOCALE)}`}
                 className={cn(
                   'focus-ring inline-flex items-center gap-2 rounded-md border border-surface-ink/7 bg-surface-ink/[0.025] px-2.5 py-1.5 text-sm transition-colors hover:border-surface-ink/15 hover:bg-surface-ink/[0.05] motion-reduce:transition-none',
                 )}
               >
-                <Status tone={look.tone}>{look.label}</Status>
+                <Status tone={look.tone}>{look.label}</Status>{' '}
                 <span className="font-mono text-foreground/90">
                   {count.toLocaleString(FORMAT_LOCALE)}
                 </span>
