@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValues } from '@/components/ui/use-field-validation';
-import { isApiError } from '@/lib/api/error';
+import { isApiError, isSessionExpired } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { startAccountLink } from '../../data/account-security.api';
 import { currentPasswordProblem } from '../../forms/field-rules';
@@ -39,7 +39,7 @@ function methodLabel(method: Method): string {
 
 function linkFailure(error: unknown, provider: string): string {
   if (isApiError(error)) {
-    if (error.status === 401) return 'Your session ended. Sign in again.';
+    if (isSessionExpired(error)) return 'Your session ended. Sign in again.';
     if (
       error.status === 403 ||
       error.problem?.code === 'auth.invalid_credentials'

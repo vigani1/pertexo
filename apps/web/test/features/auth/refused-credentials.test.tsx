@@ -109,6 +109,12 @@ describe('refused credentials, each in its own words', () => {
       'That didn’t confirm it’s you. Check your current password and try again.',
     ],
     [401, 'auth.unauthenticated', 'Your session ended. Sign in again.'],
+    // Only the code ends a session, never the bare status.
+    [
+      401,
+      'auth.invalid_credentials',
+      'That didn’t confirm it’s you. Check your current password and try again.',
+    ],
   ] as const)(
     'answers a %i %s when adding a sign-in method',
     async (status, code, message) => {
