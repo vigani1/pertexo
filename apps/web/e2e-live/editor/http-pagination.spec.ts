@@ -48,11 +48,17 @@ test('fetches three authenticated pages in a real run and single-step preview', 
   await page
     .getByLabel('URL', { exact: true })
     .fill('https://pertexo-controlled-action.example.test/pages?page=1');
-  await page.getByLabel('Timeout (in seconds)', { exact: true }).fill('1');
   await page.getByLabel('HTTP connection', { exact: true }).click();
   await page
     .getByRole('option', { name: 'Owned HTTP credential', exact: true })
     .click();
+  // Limits and paging wait under Advanced.
+  await page
+    .locator('summary', {
+      hasText: 'Advanced: limits, error responses and paging',
+    })
+    .click();
+  await page.getByLabel('Timeout (in seconds)', { exact: true }).fill('1');
   const summary = page.locator('summary').filter({ hasText: 'Pagination' });
   await summary.click();
   await page.getByLabel('Pagination mode', { exact: true }).click();

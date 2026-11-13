@@ -31,14 +31,15 @@ export async function executeCuratedTemplateGraphs(
   workspaceId: string,
   workflowIds: readonly string[],
 ) {
-  const [webhookId, scheduleId, httpId] = workflowIds;
+  const [webhookId, scheduleId, httpId, firstRunId] = workflowIds;
   if (
     webhookId === undefined ||
     scheduleId === undefined ||
     httpId === undefined ||
-    workflowIds.length !== 3
+    firstRunId === undefined ||
+    workflowIds.length !== 4
   )
-    throw new Error('Three reviewed workflow identities required');
+    throw new Error('Four reviewed workflow identities required');
   const path = (id: string) => `/v1/workspaces/${workspaceId}/workflows/${id}`;
   const published = new Map<string, string>();
   async function publish(id: string) {
@@ -309,6 +310,13 @@ export async function executeCuratedTemplateGraphs(
     { kind: 'http', count: 5 },
     { kind: 'slack', count: 1 },
   ]);
+  // The first-run example: a click, a message built in the run, a finish.
+  await publish(firstRunId);
+  const greeted = await run(firstRunId, {}, 'finish');
+  expect(greeted.nodes).toContainEqual({
+    node_id: 'greeting',
+    status: 'succeeded',
+  });
   return {
     accepted: accepted.runId,
     rejected: rejected.runId,
