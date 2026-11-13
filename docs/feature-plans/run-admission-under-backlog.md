@@ -96,7 +96,17 @@ its slot**. A second fix removes that idle time.
     the counter lock.
   - The slot rules moved unchanged into `workflow_run_active_slots` and
     `workflow_run_reserved_slots`, which never count the queue.
-  - No index was needed.
+  - Per-claim cost is still linear in the workspace's backlog: the held set
+    reads every undelivered advance in the workspace. The J8 review measured
+    an empty claim at 8–12 ms with 200 queued runs, 32–46 ms at 5,000 and
+    53–101 ms (about 55 ms typical) at 10,000, the default queued limit.
+    Draining a 10,000-run backlog therefore still costs on the order of n²
+    cheap row visits, against main's n² eligibility checks. No index is
+    built: large backlogs are rare and one is easy to add later.
+  - **Trigger to revisit:** empty claims under a backlog above about 50 ms.
+    Then add a partial index on `(workspace_id, available_at, id)` for
+    undelivered advance events, or limit the held set's read to the free
+    slots plus one head per limited workflow.
 - **Ordered-start wake** (migration `0003_ordered_start_wakeup.sql`,
   `runs/wakeups/ordered-start.repository.ts`):
   - When a run starts, the coordinator's start transaction calls

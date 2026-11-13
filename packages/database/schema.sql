@@ -799,6 +799,11 @@ BEGIN
   -- (test: runs/calls/admission-held-agreement).
   v_prior:=current_setting('app.workspace_id',true);
   PERFORM set_config('app.workspace_id',p_workspace::text,true);
+  -- Cost is linear in the workspace's undelivered advances: about 8 ms per claim
+  -- at 200 queued runs and 55 ms at 10,000 (the default queued limit; review J8).
+  -- If empty claims under a backlog pass about 50 ms, add a partial index on
+  -- (workspace_id, available_at, id) for undelivered advances, or read only the
+  -- free slots plus one head per limited workflow.
   RETURN QUERY
   WITH waiting AS MATERIALIZED (
     SELECT event.id AS event_id, run.workflow_id, run.admission_ticket, run.execution_entitlement_version,
