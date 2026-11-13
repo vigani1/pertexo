@@ -204,10 +204,13 @@ test('a confirmed account switch revalidates another open workspace tab', async 
 
   await page.goto('/workspaces');
   await second.goto('/account/security');
-  await expect(page.getByText(user.email)).toBeVisible();
+  // The account menu names who is signed in; a "signed in as" notice may
+  // also show the new email, so scope to the menu.
+  const accountMenu = page.getByRole('button', { name: /^Account menu for/u });
+  await expect(accountMenu).toContainText(user.email);
   currentUser = anotherUser;
   await second.getByRole('link', { name: 'Back to Pertexo' }).click();
-  await expect(page.getByText(anotherUser.email)).toBeVisible();
+  await expect(accountMenu).toContainText(anotherUser.email);
   await expect(page.getByText(user.email)).toHaveCount(0);
   await second.close();
 });
