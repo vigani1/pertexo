@@ -166,6 +166,42 @@ describe('a released pooled client', () => {
   });
 });
 
+describe('a scoped transaction', () => {
+  it('states its whole context over anything the client carried in, organization included', async () => {
+    const leaked = await apiPool.connect();
+    const backend = await backendId(leaked);
+    // Session-level on purpose: what a leak would leave behind.
+    await leaked.query(
+      `select set_config('app.workspace_id',$1,false),
+              set_config('app.actor_id',$2,false),
+              set_config('app.discovery_scope','workspace_memberships',false),
+              set_config('app.organization_id',$3,false)`,
+      [randomUUID(), randomUUID(), randomUUID()],
+    );
+    leaked.release();
+    try {
+      const workspaceId = randomUUID();
+      await expect(
+        withTenantScopedClient(apiPool, { workspaceId }, async (client) => ({
+          backend: await backendId(client),
+          settings: await settings(client),
+        })),
+      ).resolves.toEqual({ backend, settings: { ...CLEAN, workspaceId } });
+      const actorId = randomUUID();
+      await expect(
+        withActorScopedClient(apiPool, actorId, settings),
+      ).resolves.toEqual({
+        ...CLEAN,
+        actorId,
+        discoveryScope: 'workspace_memberships',
+      });
+    } finally {
+      const contaminated = await apiPool.connect();
+      contaminated.release(true);
+    }
+  });
+});
+
 describe('a wrong or mismatched scope', () => {
   it('fails before the operation runs and leaves the client reusable', async () => {
     const { backend } = await nextTransaction();
