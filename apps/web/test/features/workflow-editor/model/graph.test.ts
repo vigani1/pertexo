@@ -217,6 +217,25 @@ describe('editor graph commands', () => {
       targetLabel: 'Send Slack message',
     });
   });
+  it('names each link by its steps and, past the main output, its port', () => {
+    const graph: WorkflowGraphContract = {
+      ...branchingGraph(),
+      nodes: [node('trigger', { label: 'Order arrives' }), node('slack')],
+      edges: [
+        edge('main', 'trigger', 'slack'),
+        {
+          id: 'case',
+          source: { nodeId: 'trigger', port: 'case-02' },
+          target: { nodeId: 'slack', port: 'in' },
+        },
+      ],
+    };
+    const [main, routed] = projectWorkflowGraph(graph, [definition]).edges;
+    expect(main?.ariaLabel).toBe('Link from Order arrives to Set fields');
+    expect(routed?.ariaLabel).toBe(
+      'Link from Order arrives (Case 2) to Set fields',
+    );
+  });
 });
 
 describe('add-step choices', () => {
