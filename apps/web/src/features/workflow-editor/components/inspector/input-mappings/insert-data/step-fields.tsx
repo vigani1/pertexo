@@ -9,7 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/class-names';
 import { StepTestOutputsContext } from '../../../../hooks/use-last-test';
-import { findDefinition, stepTitle } from '../../../../model/graph/adapter';
+import { findDefinition } from '../../../../model/graph/adapter';
+import { stepTitle } from '../../../../model/graph/step-title';
 import type { WorkflowNode } from '../../../../model/graph/scopes';
 import { useEditorSession } from '../../../../model/state/context';
 import {

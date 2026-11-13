@@ -18,7 +18,7 @@ import {
   failureTargetOptions,
 } from '../../model/failure-routing/failure-routing-commands';
 import { canOwnFailureLink } from '../../model/failure-routing/eligibility';
-import { stepTitle } from '../../model/graph/adapter';
+import { stepTitle } from '../../model/graph/step-title';
 import { linkWorkflowNodes } from '../../model/graph/workflow-graph-commands';
 import type { EditorStore } from '../../model/state/workflow-editor.store';
 

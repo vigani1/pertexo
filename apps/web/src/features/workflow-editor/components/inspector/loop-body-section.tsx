@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { bodyIssuesOf } from '../../model/graph/for-each-body-rules';
 import { useEditorStore } from '../../model/state/context';
-import { loopSummary } from '../../model/graph/adapter';
+import { loopSummary } from '../../model/graph/loop-summary';
 import type { WorkflowNode } from '../../model/graph/scopes';
 import type { NodeFormApi } from '../../model/inspector/node-form';
 import { LoopBoundsFields } from './fields/loop-bounds';

@@ -8,7 +8,7 @@ import {
 } from '@pertexo/workflow-model';
 import { isRecord } from '@pertexo/workflow-model';
 import { parseJsonPath } from '@pertexo/workflow-model';
-import { stepTitle } from '../../graph/adapter';
+import { stepTitle } from '../../graph/step-title';
 import { startingExpression } from './reference';
 import type { GraphLevel, WorkflowNode } from '../../graph/scopes';
 

@@ -1,5 +1,5 @@
 import { portName } from '@/features/catalog/presentation.public';
-import { stepTitle } from './graph/adapter';
+import { stepTitle } from './graph/step-title';
 import type { GraphLevel } from './graph/scopes';
 
 /** The default output port; any other port is named on the path. */

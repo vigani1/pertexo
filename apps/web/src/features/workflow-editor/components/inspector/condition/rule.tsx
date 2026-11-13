@@ -5,7 +5,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from '@/components/ui/input';
 import { StatusGlyph } from '@/components/ui/status';
 import { cn } from '@/lib/class-names';
-import { stepTitle } from '../../../model/graph/adapter';
+import { stepTitle } from '../../../model/graph/step-title';
 import type { GraphLevel } from '../../../model/graph/scopes';
 import {
   CONDITION_OPERATOR_CHOICES,

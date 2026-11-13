@@ -1,7 +1,7 @@
 import { parseJsonPath, isRecord } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { walkLevels, indexGraph, type GraphLevel } from '../../graph/scopes';
-import { stepTitle } from '../../graph/adapter';
+import { stepTitle } from '../../graph/step-title';
 
 type Source = WorkflowGraphContract['nodes'][number]['inputMappings'][string];
 export type ColumnNameReference = Readonly<{
