@@ -12,6 +12,7 @@ export {
 } from './nest-runtime.js';
 export { createStructuredLogger } from './logger.js';
 export { describeProcessFailure } from './process-error-classification.js';
+export { DESCRIBED_POOL_ROLES } from './inherited-session-context.errors.js';
 export type {
   TransportMetrics,
   TransportJob,

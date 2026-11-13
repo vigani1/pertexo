@@ -3,16 +3,19 @@
 // this builds the operator's description from its checked fields alone.
 // Observability can't depend on the database package, so the pool roles and
 // the error's name and fields are repeated here; the API's process-failure
-// test describes a real refusal for every DATABASE_POOL_ROLES role and every
-// APP_SETTING_NAMES name, so the copies can't drift apart unnoticed.
+// test requires DESCRIBED_POOL_ROLES to equal DATABASE_POOL_ROLES and
+// describes a real refusal for every role and every APP_SETTING_NAMES name,
+// so the copies can't drift apart unnoticed.
 
-const POOL_ROLES = new Set([
+/** The pool roles a refusal may name; the API test holds them equal to the database's. */
+export const DESCRIBED_POOL_ROLES: readonly string[] = Object.freeze([
   'api',
   'dispatcher',
   'maintenance',
   'other',
   'worker',
 ]);
+const POOL_ROLES = new Set(DESCRIBED_POOL_ROLES);
 const SETTING_NAME = /^app\.[a-z0-9_]+$/u;
 const MAX_SETTINGS = 32;
 
