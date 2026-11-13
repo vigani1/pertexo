@@ -64,8 +64,7 @@ test('keeps long input-case names bounded and case recovery keyboard accessible 
       key: route.request().headers()['idempotency-key'],
     });
     if (writes.length === 1) await route.abort('failed');
-    else
-      await route.fulfill({ json: { caseId, revision: 2, replayed: false } });
+    else await route.fulfill({ json: { caseId, revision: 2, replayed: true } });
   });
   await page.goto(editorUrl);
   await page.waitForLoadState('networkidle');
@@ -137,8 +136,8 @@ test('keeps long input-case names bounded and case recovery keyboard accessible 
   await page.keyboard.press('Enter');
   await expect(caseInput).not.toBeVisible();
   expect(writes).toHaveLength(2);
-  expect(writes[1]?.body).toEqual(writes[0]?.body);
-  expect(writes[1]?.key).not.toEqual(writes[0]?.key);
+  // The unchanged resend replays the lost update with its key.
+  expect(writes[1]).toEqual(writes[0]);
   expect(writes[0]?.tag).toBe(metadata.representationTag);
   await expect(copy).toHaveValue(JSON.stringify(input, null, 2));
   await dialog.getByRole('button', { name: 'Close input cases' }).focus();
