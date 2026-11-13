@@ -79,6 +79,29 @@ describe('refused credentials, each in its own words', () => {
     ).toBeVisible();
   });
 
+  // Review J6a delta 2 P3: the form decides by code. A sign-in that fails
+  // inside the identity service (a 401 auth.unauthenticated) or a request the
+  // API rejects is not a wrong password.
+  it.each([
+    [401, 'auth.unauthenticated'],
+    [400, 'request.invalid'],
+  ] as const)(
+    'doesn’t blame the password for a %i %s at sign-in',
+    async (status, code) => {
+      signInServer();
+      mockServer.use(
+        http.post('http://pertexo.test/v1/auth/sign-in/email', () =>
+          problem(status, code),
+        ),
+      );
+      await signIn();
+      expect(
+        await screen.findByText('We couldn’t sign you in. Try again.'),
+      ).toBeVisible();
+      expect(screen.queryByText(/don’t match/u)).toBeNull();
+    },
+  );
+
   it.each([
     [
       'auth.two_factor_code_invalid',

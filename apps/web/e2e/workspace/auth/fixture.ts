@@ -43,6 +43,17 @@ export function unauthenticatedProblem() {
   });
 }
 
+/** What the API answers when the email and password don't match. */
+export function refusedCredentialsProblem() {
+  return JSON.stringify({
+    type: 'https://pertexo.test/problems/auth.invalid_credentials',
+    title: 'Invalid credentials',
+    status: 400,
+    code: 'auth.invalid_credentials',
+    requestId: 'browser-request-1235',
+  });
+}
+
 export async function mockIdentity(
   page: Page,
   options: Readonly<{
