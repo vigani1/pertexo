@@ -102,6 +102,25 @@ describe('refused credentials, each in its own words', () => {
     },
   );
 
+  // Review J6a delta 2 P2: the challenge cookie expires with the challenge,
+  // so a sign-in left too long at the code step arrives with no cookie and the
+  // API answers auth.unauthenticated. No session exists there yet.
+  it('says the sign-in expired when its challenge cookie is gone', async () => {
+    signInServer(() => problem(401, 'auth.unauthenticated'));
+    const actor = await signIn();
+    await actor.type(
+      await screen.findByLabelText('Authenticator code'),
+      '000000',
+    );
+    await actor.click(screen.getByRole('button', { name: 'Verify code' }));
+    expect(
+      await screen.findByText(
+        'This sign-in expired. Go back and sign in again.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/code wasn’t accepted/u)).toBeNull();
+  });
+
   it.each([
     [
       400,
