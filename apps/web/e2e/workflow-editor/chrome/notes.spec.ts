@@ -48,9 +48,7 @@ for (const theme of ['light', 'dark'] as const)
       await form
         .getByRole('textbox', { name: 'Note', exact: true })
         .fill('# Orders\n\nKeep **one** per order.\n\n- Capture\n- Validate');
-      await form
-        .getByRole('button', { name: 'Add note', exact: true })
-        .click();
+      await form.getByRole('button', { name: 'Add note', exact: true }).click();
       const note = page.getByRole('article', {
         name: 'Canvas note',
         exact: true,
