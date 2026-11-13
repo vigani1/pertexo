@@ -23,6 +23,7 @@ import {
 } from '../model/list-view';
 import { useListShortcuts } from '../hooks/use-list-shortcuts';
 import { useRunWorkflow } from '../hooks/use-run-workflow';
+import { useExampleChooser } from '../hooks/use-example-chooser';
 import { WorkflowOrganizationFilters } from '../components/organization/filters';
 import type { LifecycleTarget } from '../components/list/commands/dialogs';
 import { useWorkflowList } from '../hooks/use-workflow-list';
@@ -34,7 +35,8 @@ type WorkflowListContentProps = Readonly<{
   workspace: AccessibleWorkspace;
   search: WorkflowListSearch;
   onSearchChange: (search: WorkflowListSearchUpdate) => void | Promise<void>;
-  onCreated: (workflowId: string) => void;
+  /** `guided`: the new workflow is the guided first-run example. */
+  onCreated: (workflowId: string, guided?: boolean) => void;
   /** Opens a run started from a row. */
   onRunStarted: (runId: string) => void;
 }>;
@@ -76,6 +78,8 @@ function WorkflowListContent({
   }
 
   function openImport(nextExample?: string, name = '') {
+    if (search.create ?? false)
+      void onSearchChange(updateWorkflowListSearch(search, { create: false }));
     if (
       !importDraft.locked &&
       (nextExample !== example || name !== exampleName)
@@ -87,11 +91,11 @@ function WorkflowListContent({
     setImporting(true);
   }
 
-  function chooseExample(templateId: string, name = '') {
-    if (search.create ?? false)
-      void onSearchChange(updateWorkflowListSearch(search, { create: false }));
-    openImport(templateId, name);
-  }
+  const examples = useExampleChooser(scope, {
+    importHeld: importDraft.locked,
+    onCreated,
+    onReview: openImport,
+  });
 
   useListShortcuts({
     onFocusFilter: () => {
@@ -145,7 +149,7 @@ function WorkflowListContent({
         scope={scope}
         list={list}
         search={search}
-        creation={{ canCreate, onboarding, openCreate, chooseExample }}
+        creation={{ canCreate, onboarding, openCreate, examples }}
         actions={{
           onRename: setRenaming,
           onDuplicate: setDuplicating,
@@ -165,7 +169,7 @@ function WorkflowListContent({
           search,
           onSearchChange,
           onCreated,
-          chooseExample,
+          examples,
         }}
         selection={{
           renaming,

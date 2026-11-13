@@ -260,12 +260,12 @@ describe('ready-made examples', () => {
     for (const template of CURATED_WORKFLOW_TEMPLATES)
       expect(
         within(sheet).getByRole('button', {
-          name: new RegExp(`^${template.title}`, 'u'),
+          name: `Use this example: ${template.title}`,
         }),
       ).toBeVisible();
     await event.click(
       within(sheet).getByRole('button', {
-        name: new RegExp(`^${controlled.title}`, 'u'),
+        name: `Use this example: ${controlled.title}`,
       }),
     );
     const dialog = await screen.findByRole('dialog', {
@@ -293,7 +293,7 @@ describe('ready-made examples', () => {
     );
     await event.click(
       within(sheet).getByRole('button', {
-        name: new RegExp(`^${controlled.title}`, 'u'),
+        name: `Use this example: ${controlled.title}`,
       }),
     );
     const dialog = await screen.findByRole('dialog', {
@@ -317,7 +317,7 @@ describe('ready-made examples', () => {
     );
   });
 
-  it('offers the same examples beside Start blank on an empty list', async () => {
+  it('offers the same examples beside Start blank on an empty list, the no-setup one first', async () => {
     mockServer.use(...discoveryHandlers(), emptyList());
     mockServer.use(exampleHandlers());
     await renderLoadedApp(`/w/${workspaceId}/workflows`);
@@ -328,12 +328,16 @@ describe('ready-made examples', () => {
     for (const template of CURATED_WORKFLOW_TEMPLATES)
       expect(
         within(empty).getByRole('button', {
-          name: new RegExp(`^${template.title}`, 'u'),
+          name: `Use this example: ${template.title}`,
         }),
       ).toBeVisible();
+    expect(
+      within(empty).getAllByRole('button', { name: /^Use this example/u })[0],
+    ).toHaveAccessibleName('Use this example: Say hello: your first run');
+    // An example with something to set up opens its setup first.
     await event.click(
       within(empty).getByRole('button', {
-        name: new RegExp(`^${first.title}`, 'u'),
+        name: `Use this example: ${controlled.title}`,
       }),
     );
     expect(

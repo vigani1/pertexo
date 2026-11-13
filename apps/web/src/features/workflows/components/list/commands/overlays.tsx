@@ -24,7 +24,11 @@ type ListOverlaysProps = Readonly<{
     search: WorkflowListSearch;
     onSearchChange: (search: WorkflowListSearchUpdate) => void | Promise<void>;
     onCreated: (workflowId: string) => void;
-    chooseExample: (templateId: string, name?: string) => void;
+    /** Choosing an example, and the one being created, if any. */
+    examples: Readonly<{
+      choose: (templateId: string, name?: string) => void;
+      starting: string | undefined;
+    }>;
   }>;
   selection: Readonly<{
     renaming: WorkflowSummary | undefined;
@@ -51,8 +55,7 @@ export function WorkflowListOverlays({
   commands,
 }: ListOverlaysProps) {
   const { apiClient, userId, workspace } = scope;
-  const { canCreate, search, onSearchChange, onCreated, chooseExample } =
-    creation;
+  const { canCreate, search, onSearchChange, onCreated, examples } = creation;
   const {
     renaming,
     lifecycle,
@@ -83,7 +86,8 @@ export function WorkflowListOverlays({
             );
           }}
           onCreated={onCreated}
-          onChooseExample={chooseExample}
+          onChooseExample={examples.choose}
+          startingExample={examples.starting}
         />
       ) : null}
       <WorkflowDialogs

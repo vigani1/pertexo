@@ -3,6 +3,10 @@ import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 import { CONTROLLED_HTTP_NOTIFICATION_MANIFEST } from './manifests/controlled-http-notification.js';
 import { SCHEDULE_BOUNDED_BATCH_MANIFEST } from './manifests/schedule-bounded-batch.js';
 import { WEBHOOK_VALIDATION_ROUTING_MANIFEST } from './manifests/webhook-validation-routing.js';
+import { FIRST_RUN_GREETING_MANIFEST } from './manifests/first-run-greeting.js';
+
+/** The example a new workspace's guided first run creates: nothing to set up. */
+export const FIRST_RUN_TEMPLATE_ID = 'first-run-greeting';
 
 export type CuratedTemplateSetupValueKind =
   'https_endpoint' | 'slack_channel_id';
@@ -97,6 +101,21 @@ const templates: CuratedWorkflowTemplate[] = [
         valueKind: 'slack_channel_id',
       },
     ],
+  },
+  {
+    templateId: FIRST_RUN_TEMPLATE_ID,
+    templateVersion: 1,
+    baseManifestDigest:
+      '9ead1e6a9b12bb99c9e1dc9c56649ef91565feb8d6c9ec7ca97885fe3c5566a1',
+    title: 'Say hello: your first run',
+    description:
+      'Click Run and watch three steps finish. Nothing to connect or set up first.',
+    inputSummary: 'A click on Run. It needs no input.',
+    effectsSummary:
+      'Only builds a short message inside the run; it calls no outside service and sends nothing.',
+    boundsSummary: 'Three step runs, no loops; runs stop after five minutes.',
+    manifest: FIRST_RUN_GREETING_MANIFEST,
+    setupTargets: [],
   },
 ];
 

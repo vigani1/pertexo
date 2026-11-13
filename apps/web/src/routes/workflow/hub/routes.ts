@@ -1,3 +1,4 @@
+import { parseFirstRunGuideSearch } from '@/features/workflows/first-run-search.public';
 import { warmWorkspacePage } from '../../workspace/workspace-page';
 import { parseCollaborationSearch } from '@/features/workflow-collaboration/workflow-collaboration-search.public';
 import { createRoute } from '@tanstack/react-router';
@@ -63,6 +64,7 @@ export const workflowBuildRoute = createRoute({
   getParentRoute: () => workflowHubRoute,
   pendingComponent: WorkflowHubPending,
   path: '/',
+  validateSearch: (search) => parseFirstRunGuideSearch(search),
   loader: async ({ context }) => {
     const { workflowDraftQueryOptions } =
       await import('@/features/workflow-editor/draft.public');

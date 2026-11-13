@@ -1,5 +1,6 @@
 export {
   CURATED_WORKFLOW_TEMPLATES,
+  FIRST_RUN_TEMPLATE_ID,
   type CuratedTemplateSetupTarget,
   type CuratedTemplateSetupValueKind,
   type CuratedWorkflowTemplate,

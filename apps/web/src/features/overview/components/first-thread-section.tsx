@@ -3,7 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { workspaceMembersInfiniteQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { firstThreadSteps, type FirstThreadFacts } from '../model/first-thread';
-import { FirstThread } from './first-thread';
+import { FirstThread, type FirstRunOffer } from './first-thread';
 import { useSetupReads } from '../hooks/use-setup-reads';
 
 /**
@@ -16,11 +16,13 @@ export function FirstThreadSection({
   userId,
   workspace,
   facts,
+  firstRun,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspace: AccessibleWorkspace;
   facts: FirstThreadFacts;
+  firstRun?: FirstRunOffer | undefined;
 }>) {
   const { connections, destinations } = useSetupReads({
     apiClient,
@@ -46,5 +48,7 @@ export function FirstThreadSection({
         }),
   });
   if (steps.length === 0) return null;
-  return <FirstThread steps={steps} workspaceId={workspace.id} />;
+  return (
+    <FirstThread steps={steps} workspaceId={workspace.id} firstRun={firstRun} />
+  );
 }

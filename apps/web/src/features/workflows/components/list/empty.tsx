@@ -18,10 +18,12 @@ export function WorkflowListEmpty({
   canCreate,
   onStartBlank,
   onChooseExample,
+  startingExample,
 }: Readonly<{
   canCreate: boolean;
   onStartBlank: () => void;
   onChooseExample: (templateId: string) => void;
+  startingExample: string | undefined;
 }>) {
   if (!canCreate)
     return (
@@ -50,7 +52,11 @@ export function WorkflowListEmpty({
           and runs its steps in order. Start blank, or from an example.
         </EmptyDescription>
         <div className="mt-3">
-          <ExampleCards layout="cards" onChoose={onChooseExample} />
+          <ExampleCards
+            layout="cards"
+            starting={startingExample}
+            onChoose={onChooseExample}
+          />
         </div>
         <EmptyActions>
           <Button type="button" variant="primary" onClick={onStartBlank}>
