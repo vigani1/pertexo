@@ -51,6 +51,7 @@ export {
   setOrganizationContext,
   parseWorkspaceId,
 } from './tenant-access/transactions/scope.js';
+export { readDurationSettingMillis } from './platform/duration-setting.js';
 export {
   canonicalJson,
   BoundedJsonInvalidError,

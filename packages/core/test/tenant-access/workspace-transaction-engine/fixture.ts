@@ -51,7 +51,7 @@ export function postgresConnection(
     if (kind !== 'set_config') return Promise.resolve(result());
     const row: Record<string, unknown> = {};
     for (const [, name, parameter, alias] of statement.matchAll(
-      /set_config\('([^']+)',\$(\d+),true\)(?:::interval\)\*1000\)::bigint)? "(\w+)"/gu,
+      /set_config\('([^']+)',\$(\d+),true\)(?:\)::interval\)\*1000\)::bigint)? "(\w+)"/gu,
     )) {
       const value = String(values[Number(parameter) - 1]);
       if (transactionActive && name !== undefined) local.set(name, value);

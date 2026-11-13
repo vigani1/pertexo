@@ -24,4 +24,4 @@ export const valid = {
   worstCaseLoopIterations: 0,
 };
 
-export const budget = { rows: [{ setting: '35000', unit: 'ms' }] };
+export const budget = { rows: [{ millis: '35000' }] };

@@ -6,27 +6,12 @@ const parserWaitMs =
   AUTHORING_VALIDATION_BUDGET.parseMs +
   AUTHORING_VALIDATION_BUDGET.terminationMs;
 
-/** pg_settings exposes the effective connection setting in its declared unit. */
-export function authoringIdleBudgetIsSafe(
-  setting: unknown,
-  unit: unknown,
-): boolean {
-  if (typeof setting !== 'string' || !/^[0-9]+$/u.test(setting)) return false;
-  const multipliers: Readonly<Record<string, number>> = {
-    us: 0.001,
-    ms: 1,
-    s: 1000,
-    min: 60000,
-    h: 3600000,
-  };
-  if (typeof unit !== 'string') return false;
-  const multiplier = multipliers[unit];
-  if (multiplier === undefined) return false;
-  const duration = Number(setting) * multiplier;
+/** The connection's idle-in-transaction timeout, in milliseconds, outlasts the off-thread wait. */
+export function authoringIdleBudgetIsSafe(millis: number | undefined): boolean {
   // Zero means unlimited, not evidence of a bounded effective deadline.
   return (
-    Number.isSafeInteger(Number(setting)) &&
-    Number.isFinite(duration) &&
-    duration > parserWaitMs
+    millis !== undefined &&
+    Number.isSafeInteger(millis) &&
+    millis > parserWaitMs
   );
 }
