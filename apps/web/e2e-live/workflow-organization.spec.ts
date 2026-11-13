@@ -251,18 +251,21 @@ test('ordinary owner persists shared organization, exact recovery and private di
   expect(new URL(page.url()).searchParams.get('folderId')).toBe('root');
   await closeFilters(page);
 
-  // Lose only a REAL completed response. No response body is fabricated and
-  // the same full parent command must replay through current authority.
+  // Lose only a REAL completed response. No response body is fabricated; the
+  // move must land once and be what the person sees after refreshing.
   let firstBody: unknown;
   await phase('bulk');
-  let firstKey: string | undefined;
+  let bulkSends = 0;
+  page.on('request', (sent) => {
+    if (sent.method() === 'POST' && sent.url().endsWith('/organization/bulk'))
+      bulkSends += 1;
+  });
   await page.route(
     '**/workflows/organization/bulk',
     async (route) => {
       firstBody = workflowOrganizationBulkRequestSchema.parse(
         route.request().postDataJSON(),
       );
-      firstKey = route.request().headers()['idempotency-key'];
       const actual = await route.fetch();
       expect(actual.status()).toBe(200);
       const result = workflowOrganizationBulkResponseSchema.parse(
@@ -292,33 +295,33 @@ test('ordinary owner persists shared organization, exact recovery and private di
     'Delivery',
   );
   await bulk.getByRole('button', { name: 'Move selected workflows' }).click();
-  await expect(
-    bulk.getByRole('button', { name: 'Retry original request' }),
-  ).toBeVisible();
+  // A plain organization change: the unconfirmed result asks the person to
+  // review the current state, and nothing is sent until they do.
+  await expect(bulk.getByText(/couldn’t confirm that change/u)).toBeVisible();
   await expect(
     bulk.getByRole('combobox', { name: 'Folder', exact: true }),
   ).toBeDisabled();
-  const replay = await command({
-    page,
-    button: bulk.getByRole('button', { name: 'Retry original request' }),
-    suffix: '/bulk',
-  });
-  expect(
-    workflowOrganizationBulkRequestSchema.parse(
-      replay.request().postDataJSON(),
-    ),
-  ).toEqual(firstBody);
-  expect(replay.request().headers()['idempotency-key']).toBe(firstKey);
   expect(
     workflowOrganizationBulkRequestSchema
       .parse(firstBody)
       .items.map((item) => item.workflowId),
   ).toEqual([beta, alpha]);
-  expect(
-    workflowOrganizationBulkResponseSchema
-      .parse(await replay.json())
-      .items.every((item) => item.status === 'updated' && item.replayed),
-  ).toBe(true);
+  await bulk.getByRole('button', { name: 'Refresh for a new change' }).click();
+  await expect(
+    bulk.getByRole('combobox', { name: 'Folder', exact: true }),
+  ).toBeEnabled();
+  // The refreshed state is the move that landed; it was applied once.
+  for (const id of [alpha, beta]) {
+    const response = await page.request.get(
+      `/v1/workspaces/${workspaceId}/workflows/${id}?include=organization`,
+    );
+    expect(response.status()).toBe(200);
+    expect(
+      workflowOrganizationProjectionResponseSchema.parse(await response.json())
+        .organization.folderId,
+    ).toBe(child.id);
+  }
+  expect(bulkSends).toBe(1);
   await bulk.getByRole('button', { name: 'Close', exact: true }).click();
   await openFilters(page);
   await page
