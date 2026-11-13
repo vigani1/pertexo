@@ -256,6 +256,8 @@ describe('the app setting names a pool checks', () => {
         return current_setting('APP.Upper_Reader', true);
       create view public.j9_view as
         select current_setting('app.view_reader', true) as reader;
+      create function public.j9_odd_names() returns text language sql
+        as $$ select current_setting('app.a.b', true) || current_setting('app.x$y', true) $$;
     `);
     try {
       expect(await scannedNames()).toEqual(
@@ -266,10 +268,14 @@ describe('the app setting names a pool checks', () => {
           'app.scope2',
           'app.upper_reader',
           'app.view_reader',
+          // Names PostgreSQL accepts beyond letters, digits and "_".
+          'app.a.b',
+          'app.x$y',
         ]),
       );
     } finally {
       await admin.query(`
+        drop function public.j9_odd_names();
         drop view public.j9_view;
         drop function public.j9_atomic();
         drop function public.j9_outside();
