@@ -293,7 +293,7 @@ describe('tenant-scoped transaction hygiene', () => {
 
   it('verifies and cleans both context settings on the success path', async () => {
     const workspaceId = randomUUID();
-    const actorId = 'hygiene-success-probe';
+    const actorId = randomUUID();
     await expect(
       withTenantScopedClient(
         apiPool,

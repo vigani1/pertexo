@@ -232,6 +232,43 @@ describe('a wrong or mismatched scope', () => {
     });
   });
 
+  it.each(['not-a-uuid', '', "x'; drop table app.users; --"])(
+    'refuses actor %j before the operation runs, through every scope entry',
+    async (malformedActor) => {
+      const { backend } = await nextTransaction();
+      let entered = false;
+      const operation = () => {
+        entered = true;
+        return Promise.resolve();
+      };
+
+      await expect(
+        withTenantScopedClient(
+          apiPool,
+          { workspaceId: randomUUID(), actorId: malformedActor },
+          operation,
+        ),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+      await expect(
+        withActorScopedClient(apiPool, malformedActor, operation),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+      await expect(
+        withMultiWorkspaceTransaction(apiPool, (inWorkspace) =>
+          inWorkspace(
+            { workspaceId: randomUUID(), actorId: malformedActor },
+            operation,
+          ),
+        ),
+      ).rejects.toMatchObject({ name: 'ZodError' });
+
+      expect(entered).toBe(false);
+      await expect(nextTransaction()).resolves.toEqual({
+        backend,
+        settings: CLEAN,
+      });
+    },
+  );
+
   it('refuses a workspace scope while actor discovery is installed', async () => {
     let entered = false;
     await withPlatformTransaction(apiPool, async (client) => {
