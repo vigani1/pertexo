@@ -4,6 +4,8 @@ import { StatusGlyph } from '@/components/ui/status';
 import { cn } from '@/lib/class-names';
 import { ConvergingThreads } from './converging-threads';
 import { Wordmark } from './wordmark';
+import { WAIT_MAXIMUM_SECONDS } from '@pertexo/workflow-model';
+import { formatTimeSpan } from '@/lib/format/time';
 
 type StageLayout = 'docked' | 'centered';
 
@@ -40,7 +42,7 @@ const FACTS = [
   },
   {
     tone: 'waiting',
-    text: 'Waits of up to 30 days, and retries that don’t repeat side effects',
+    text: `Waits of up to ${formatTimeSpan(WAIT_MAXIMUM_SECONDS)}, and retries that don’t repeat side effects`,
   },
 ] as const;
 

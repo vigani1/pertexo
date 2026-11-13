@@ -17,6 +17,8 @@ import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { useUpload } from '../hooks/use-artifact-upload';
 import type { FileReference, UploadPhase } from '../model/artifact-upload';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 export type FileUploadScope = WorkspaceApiScope;
 type Props = Readonly<{
@@ -146,7 +148,7 @@ function UploadSession({
       <p className="text-xs leading-relaxed text-subtle-foreground">
         Only a verified file reference is inserted. Saved drafts, versions,
         input cases and runs keep their files. Unused finalized files expire
-        after 30 days.
+        after {formatCount(DATA_RETENTION_DAYS.unusedUploads, 'day')}.
       </p>
       <DialogFooter>
         <Button type="button" variant="ghost" onClick={close}>

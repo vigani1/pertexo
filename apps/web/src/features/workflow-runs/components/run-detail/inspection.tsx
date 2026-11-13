@@ -12,6 +12,8 @@ import { StepInputData } from './data/inputs';
 import { StepOutputData } from './data/outputs';
 import type { RunDataScope } from './data/value';
 import { Disclosure } from '@/components/ui/disclosure';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 function StepDetailsSection({
   title,
@@ -93,7 +95,11 @@ export function RunStepDetails({
               is underneath: the run’s input for the first step, and what the
               steps connected into it returned for the others.
             </p>
-            <p>Pertexo keeps run data for 30 days, then deletes it.</p>
+            <p>
+              Pertexo keeps run data for{' '}
+              {formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}, then
+              deletes it.
+            </p>
           </>
         }
       >

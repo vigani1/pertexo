@@ -7,6 +7,8 @@ import { Notice } from '@/components/ui/notice';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { formatByteLength } from '@/lib/format/bytes';
 import type { SampleDialogSource } from '../../model/step-samples';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 export function SampleContent({
   query,
   source,
@@ -85,7 +87,8 @@ function SampleOutputEditor({
   return (
     <p className="text-sm text-muted-foreground">
       Copy this retained output into the draft. Replacing a pin erases its old
-      output. The sample expires after 30 days.
+      output. The sample expires after{' '}
+      {formatCount(DATA_RETENTION_DAYS.stepSamples, 'day')}.
     </p>
   );
 }

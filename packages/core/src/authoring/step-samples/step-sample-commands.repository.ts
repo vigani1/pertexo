@@ -9,7 +9,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowStepSamples } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
-import { utf8ByteLength } from '@pertexo/workflow-model';
+import { DATA_RETENTION_DAYS, utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
@@ -226,6 +226,6 @@ async function persistCapturedSample(
     .catch(rethrowQueryFailure);
 }
 
-const SAMPLE_RETENTION_SECONDS = 30 * 24 * 60 * 60;
+const SAMPLE_RETENTION_SECONDS = DATA_RETENTION_DAYS.stepSamples * 86_400;
 
 const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;

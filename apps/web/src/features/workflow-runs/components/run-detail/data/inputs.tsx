@@ -14,6 +14,10 @@ import { Muted } from './value';
 import { RunDataValue } from './value';
 import { RunInputData } from './outputs';
 import { StepOutputData } from './outputs';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
+import { formatByteLength } from '@/lib/format/bytes';
 
 /** Statuses in which a step's current attempt may still record its input. */
 const RECORDING: ReadonlySet<RunTimelineRow['status']> = new Set([
@@ -136,9 +140,9 @@ function unrecordedInput(
   status: RunTimelineRow['status'],
 ): string {
   if (kind === 'expired')
-    return 'No longer kept. Pertexo keeps run data for 30 days.';
+    return `No longer kept. Pertexo keeps run data for ${formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}.`;
   if (RECORDING.has(status)) return 'Not recorded yet.';
-  return 'Pertexo didn’t keep exactly what this step received, for example because it was over 256 KB.';
+  return `Pertexo didn’t keep exactly what this step received, for example because it was over ${formatByteLength(STORED_EXECUTION_VALUE_LIMITS.inlineBytes)}.`;
 }
 
 /** Names where the input came from for what it is: not the exact input. */

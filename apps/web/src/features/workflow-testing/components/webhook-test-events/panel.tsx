@@ -13,6 +13,8 @@ import { useWebhookListener } from './use-listener';
 import { ListenerAuthentication } from './authentication';
 import { ListenerCredentials } from './credentials';
 import { CapturedEvent } from './capture';
+import { WEBHOOK_TEST_CAPTURE_SECONDS } from '@pertexo/workflow-model';
+import { formatTimeSpan } from '@/lib/format/time';
 
 export function WebhookTestEventPanel({
   scope,
@@ -69,8 +71,9 @@ export function WebhookTestEventPanel({
         Receive a real sample
       </h3>
       <p className="text-xs text-muted-foreground">
-        A separate test URL captures one request for two minutes without running
-        the workflow. Request data may contain secrets. Keeping it as a pin
+        A separate test URL captures one request for{' '}
+        {formatTimeSpan(WEBHOOK_TEST_CAPTURE_SECONDS)} without running the
+        workflow. Request data may contain secrets. Keeping it as a pin
         shares it with people who can see run data.
       </p>
       <div hidden={listener !== undefined}>

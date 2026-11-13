@@ -1,5 +1,8 @@
 import { connectionSlotKey, portableSteps } from '../../model/portability';
-import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
+import {
+  WORKFLOW_PORTABILITY_LIMITS,
+  type WorkflowPortableManifest,
+} from '@pertexo/workflow-model';
 import type { Ref } from 'react';
 import { FileDrop } from '@/components/ui/file-drop';
 import { SkeletonThread } from '@/components/ui/skeleton';
@@ -177,7 +180,7 @@ function FileSummary({
       <p className="text-xs text-muted-foreground">
         {selection.file
           ? formatByteLength(selection.file.size)
-          : 'A JSON file exported from Pertexo, up to 2 MB.'}
+          : `A JSON file exported from Pertexo, up to ${formatByteLength(WORKFLOW_PORTABILITY_LIMITS.bytes)}.`}
       </p>
     </>
   );

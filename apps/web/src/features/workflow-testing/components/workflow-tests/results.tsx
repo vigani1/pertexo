@@ -12,6 +12,8 @@ import { nodeRunOutputQueryOptions } from '@/features/workflow-runs/workflow-run
 import { workflowTestStepLabels } from '../../model/workflow-test';
 import { PinRecordedOutputButton } from '../samples/controls';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 export function WorkflowTestResults({
   tests,
@@ -104,7 +106,7 @@ function TestOutputData({
     case 'expired':
       return (
         <OutputNote>
-          No longer kept. Pertexo keeps test data for 7 days.
+          {`No longer kept. Pertexo keeps test data for ${formatCount(DATA_RETENTION_DAYS.testRuns, 'day')}.`}
         </OutputNote>
       );
   }

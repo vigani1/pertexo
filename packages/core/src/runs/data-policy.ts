@@ -1,10 +1,11 @@
 import { sql, type SQL } from 'drizzle-orm';
 import { alias as tableAlias } from 'drizzle-orm/pg-core';
 import { workflowRuns } from '@pertexo/database/schema';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 const TEST_TRIGGER_TYPE = 'test';
-const TEST_DAYS = 7;
-const DETAILS_DAYS = 30;
-const SUMMARY_DAYS = 90;
+const TEST_DAYS = DATA_RETENTION_DAYS.testRuns;
+const DETAILS_DAYS = DATA_RETENTION_DAYS.runDetails;
+const SUMMARY_DAYS = DATA_RETENTION_DAYS.runSummaries;
 export const TEST_RUN_RETENTION_MILLIS = TEST_DAYS * 24 * 60 * 60 * 1000;
 export const RUN_DETAILS_RETENTION_SQL =
   sql`make_interval(days=>${DETAILS_DAYS})`.inlineParams();

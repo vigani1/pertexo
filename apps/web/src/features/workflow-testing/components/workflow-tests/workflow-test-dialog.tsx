@@ -7,7 +7,10 @@ import type {
   WorkflowSummary,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
-import { isWorkflowTriggerDefinition } from '@pertexo/workflow-model';
+import {
+  DATA_RETENTION_DAYS,
+  isWorkflowTriggerDefinition,
+} from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -47,7 +50,8 @@ export function WorkflowTestDialog(props: WorkflowTestDialogProps) {
           <DialogTitle>Test workflow</DialogTitle>
           <DialogDescription>
             Runs the saved draft. Pins replace their steps; every other step
-            runs for real. Test data stays for seven days.
+            runs for real. Test data stays for{' '}
+            {formatCount(DATA_RETENTION_DAYS.testRuns, 'day')}.
           </DialogDescription>
         </div>
         <div className="flex min-h-0 flex-1 flex-col">

@@ -29,6 +29,8 @@ import {
   describeValue,
   isEmptyValue,
 } from '../../../model/step-inspection/run-data-summary';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 export type RunDataScope = Readonly<{
   apiClient: ApiClient;
@@ -146,7 +148,9 @@ export function RunDataValue({
     case 'none':
       return <Muted>{emptyText}</Muted>;
     case 'expired':
-      return <Muted>No longer kept. Pertexo keeps run data for 30 days.</Muted>;
+      return (
+        <Muted>{`No longer kept. Pertexo keeps run data for ${formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}.`}</Muted>
+      );
   }
 }
 

@@ -8,6 +8,8 @@ import {
   type NodeStatus,
   type RunStatus,
 } from './run-status';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 // Each status in one plain sentence, in the order people meet them.
 const runMeanings: Readonly<Record<RunStatus, string>> = {
@@ -97,7 +99,7 @@ export const RUN_PAGE_GUIDE: readonly GuideSection[] = [
       },
       {
         label: 'Data out',
-        meaning: 'What a step returned. Pertexo keeps run data for 30 days.',
+        meaning: `What a step returned. Pertexo keeps run data for ${formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}.`,
       },
       {
         label: 'Attempt',

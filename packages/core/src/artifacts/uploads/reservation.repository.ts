@@ -25,6 +25,7 @@ import {
   ARTIFACT_UPLOAD_PENDING_MS,
   type ArtifactUploadResult,
 } from './artifact-upload.js';
+import type { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 
 export type ArtifactUploadReservation = Readonly<{
   workspaceId: string;
@@ -136,7 +137,10 @@ export async function completeArtifactUpload(
     artifactId: string;
     purpose: ArtifactUploadPurpose;
     expectedMetadata: ArtifactMetadataIdentity;
-    retainFor: '30 days' | '24 hours' | '1 hour';
+    retainFor:
+      | `${typeof DATA_RETENTION_DAYS.unusedUploads} days`
+      | '24 hours'
+      | '1 hour';
   }>,
 ): Promise<ArtifactRecord> {
   const db = drizzle(client);

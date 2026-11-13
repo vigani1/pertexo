@@ -3,13 +3,24 @@ import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workflowGraphSchema } from '@pertexo/workflow-model';
 
+/** The longest note or decision comment on a publication review. */
+export const PUBLICATION_REVIEW_TEXT_MAX_LENGTH = 1000;
+
 export const publicationReviewRequestSchema = z
-  .object({ note: storageTextSchema.trim().min(1).max(1000) })
+  .object({
+    note: storageTextSchema
+      .trim()
+      .min(1)
+      .max(PUBLICATION_REVIEW_TEXT_MAX_LENGTH),
+  })
   .strict();
 export const publicationReviewDecisionSchema = z
   .object({
     decision: z.enum(['approve', 'reject']),
-    comment: storageTextSchema.trim().max(1000).optional(),
+    comment: storageTextSchema
+      .trim()
+      .max(PUBLICATION_REVIEW_TEXT_MAX_LENGTH)
+      .optional(),
   })
   .strict();
 export const publicationReviewParamsSchema = z
@@ -24,14 +35,14 @@ export const publicationReviewSchema = responseSchema(
       requestedBy: z.uuid(),
       requesterName: z.string().max(256),
       draftRevision: z.number().int().positive(),
-      note: z.string().max(1000),
+      note: z.string().max(PUBLICATION_REVIEW_TEXT_MAX_LENGTH),
       status: z.enum(['pending', 'approved', 'rejected', 'stale', 'expired']),
       createdAt: z.iso.datetime(),
       expiresAt: z.iso.datetime(),
       decidedBy: z.uuid().nullable(),
       deciderName: z.string().max(256).nullable(),
       decidedAt: z.iso.datetime().nullable(),
-      comment: z.string().max(1000).nullable(),
+      comment: z.string().max(PUBLICATION_REVIEW_TEXT_MAX_LENGTH).nullable(),
       publishedVersionId: z.uuid().nullable(),
       versionNumber: z.number().int().positive().nullable(),
       canDecide: z.boolean(),
