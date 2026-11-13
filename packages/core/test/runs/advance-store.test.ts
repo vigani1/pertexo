@@ -56,18 +56,8 @@ describe('run advance store', () => {
     const checkout = new Promise<PoolClient>((resolve) => {
       resolveCheckout = resolve;
     });
-    // A pool first inspects one fresh session for inherited app settings.
-    const freshSession = {
-      query: () => Promise.resolve({ rows: [] }),
-      release: () => undefined,
-    };
     const connect = vi
       .spyOn(Pool.prototype, 'connect')
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- This exercises the promise overload of pg Pool.connect.
-      .mockImplementationOnce((() =>
-        Promise.resolve(
-          freshSession as unknown as PoolClient,
-        )) as typeof Pool.prototype.connect)
       // eslint-disable-next-line @typescript-eslint/no-misused-promises -- This exercises the promise overload of pg Pool.connect.
       .mockImplementation((() => checkout) as typeof Pool.prototype.connect);
     const runtime = createDatabaseRuntime(noNetworkConfig, {
@@ -80,7 +70,11 @@ describe('run advance store', () => {
       const pending = store.advance(input(controller.signal), vi.fn());
       controller.abort();
       await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
-      resolveCheckout({ release } as unknown as PoolClient);
+      // A client answers the pool's check for inherited app settings.
+      resolveCheckout({
+        query: () => Promise.resolve({ rows: [] }),
+        release,
+      } as unknown as PoolClient);
       await vi.waitFor(() => {
         expect(
           release.mock.calls.some(([reason]) => reason instanceof Error),
