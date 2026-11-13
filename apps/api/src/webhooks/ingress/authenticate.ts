@@ -1,8 +1,5 @@
-import {
-  headerPresent,
-  singleHeader,
-  WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS,
-} from '../requests/headers.js';
+import { WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS } from '@pertexo/contracts';
+import { headerPresent, singleHeader } from '../requests/headers.js';
 
 import { verifyWebhookHeaderSecret } from '../authentication/header-secret.js';
 import {

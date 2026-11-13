@@ -3,10 +3,8 @@ import { verifyWebhookSignature } from '@pertexo/integrations/server';
 import type { CallbackTokenKeys } from '@pertexo/secrets/server';
 import type { FastifyRequest } from 'fastify';
 import { verifyWebhookHeaderSecret } from '../authentication/header-secret.js';
-import {
-  singleHeader,
-  WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS,
-} from '../requests/headers.js';
+import { WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS } from '@pertexo/contracts';
+import { singleHeader } from '../requests/headers.js';
 export function verifyCallbackRequest(
   request: FastifyRequest,
   body: Uint8Array,

@@ -21,11 +21,8 @@ import {
   withRequestOperationSignal,
 } from '../../platform/http/index.js';
 import { problem, record } from '../ingress/reply.js';
-import {
-  WEBHOOK_BODY_MAX_BYTES,
-  parseWebhookBody,
-  webhookMediaType,
-} from '../requests/body.js';
+import { WEBHOOK_BODY_MAX_BYTES } from '@pertexo/contracts';
+import { parseWebhookBody, webhookMediaType } from '../requests/body.js';
 import { headerPresent, singleHeader } from '../requests/headers.js';
 import { webhookHeaders } from '../requests/details.js';
 import {

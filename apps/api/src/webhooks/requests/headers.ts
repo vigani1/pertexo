@@ -1,7 +1,5 @@
 import type { FastifyRequest } from 'fastify';
 
-export const WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS = 300;
-
 export function headerPresent(request: FastifyRequest, name: string): boolean {
   // Webhook verification reads raw headers intentionally: unlike ordinary HTTP
   // adaptation, duplicate or comma-folded signature inputs must be rejected.

@@ -1,7 +1,7 @@
 import { hasHttpStatus } from '../../platform/http/problems/status.js';
 
 import { singleHeader } from '../requests/headers.js';
-import { WEBHOOK_BODY_MAX_BYTES as MAX_BODY } from '../requests/body.js';
+import { WEBHOOK_BODY_MAX_BYTES as MAX_BODY } from '@pertexo/contracts';
 
 import {
   allowWebhookOrigin,
