@@ -9,7 +9,7 @@ import {
   readSamlMetadata,
   type FederationScope,
 } from '../../data/federation-settings.api';
-import { downloadSamlMetadata } from '../../model/download-metadata';
+import { downloadTextFile } from '@/lib/download-file';
 import { Disclosure } from '@/components/ui/disclosure';
 function MetadataValue({
   label,
@@ -48,7 +48,13 @@ export function SamlMetadata({
     setError(undefined);
     try {
       const metadata = await readSamlMetadata(scope, attempt.signal);
-      if (attempt.isCurrent()) downloadSamlMetadata(metadata.xml);
+      // Only the bounded public metadata the authenticated API returned.
+      if (attempt.isCurrent())
+        downloadTextFile({
+          name: 'pertexo-saml.xml',
+          type: 'application/samlmetadata+xml',
+          text: metadata.xml,
+        });
     } catch (cause) {
       if (attempt.isCurrent())
         setError(describeCommandError(cause, 'downloading SAML metadata'));
