@@ -116,6 +116,72 @@ it('sets a destination again under a new key once someone else undid the unconfi
   expect(current).toEqual(destination);
 });
 
+it('replays the first set, not a second, while the policy can’t be read', async () => {
+  installQueries();
+  let current: typeof destination | null = null;
+  let lost = false;
+  const sets: (string | null)[] = [];
+  const applied: (string | null)[] = [];
+  mockServer.use(
+    http.get(`${workflowApi}/failure-notification-policy`, () =>
+      lost
+        ? HttpResponse.json(
+            {
+              type: 'about:blank',
+              title: 'Unavailable',
+              status: 503,
+              code: 'internal.unavailable',
+            },
+            { status: 503 },
+          )
+        : HttpResponse.json({ destination: current }),
+    ),
+    http.put(`${workflowApi}/failure-notification-policy`, ({ request }) => {
+      const key = request.headers.get('idempotency-key');
+      sets.push(key);
+      // A key the server has seen replays its receipt; it never reapplies.
+      if (!applied.includes(key)) {
+        applied.push(key);
+        current = destination;
+      }
+      if (sets.length === 1) {
+        // The set lands, its answer is lost, and the next read fails too.
+        lost = true;
+        return HttpResponse.error();
+      }
+      return new HttpResponse(null, { status: 204 });
+    }),
+  );
+  renderSection();
+  const event = userEvent.setup();
+  const alerts = await screen.findByRole('region', { name: 'Failure alerts' });
+  const choose = async () => {
+    await event.click(
+      within(alerts).getByRole('combobox', { name: 'Send failure alerts to' }),
+    );
+    await event.click(
+      await screen.findByRole('option', {
+        name: 'Email to alerts@example.test',
+      }),
+    );
+    await event.click(
+      within(alerts).getByRole('button', { name: 'Save destination' }),
+    );
+  };
+  await within(alerts).findByRole('combobox', {
+    name: 'Send failure alerts to',
+  });
+  await choose();
+  await within(alerts).findByText(/Saving it again is safe/u);
+  await choose();
+  await waitFor(() => {
+    expect(sets).toHaveLength(2);
+  });
+  // Nothing showed the set missing, so the second save replays the first.
+  expect(sets[1]).toEqual(sets[0]);
+  expect(applied).toHaveLength(1);
+});
+
 function mountAcceptedClear(
   mode: 'lose-first' | 'keeps-current' = 'lose-first',
 ) {
