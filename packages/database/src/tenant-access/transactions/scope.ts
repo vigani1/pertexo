@@ -12,6 +12,11 @@ export function parseWorkspaceId(value: string): WorkspaceId {
   return scopeIdSchema.parse(value) as WorkspaceId;
 }
 
+/** An actor is a user id, held to the same rule as the workspace it acts in. */
+function parseActorId(value: string): string {
+  return scopeIdSchema.parse(value);
+}
+
 /** Organization authority spans per-workspace projections but ends with this transaction. */
 export async function setOrganizationContext(
   client: PoolClient,
@@ -43,7 +48,8 @@ export async function installTransactionScope(
       scope.workspaceId === undefined
         ? undefined
         : parseWorkspaceId(scope.workspaceId),
-    actorId: scope.actorId,
+    actorId:
+      scope.actorId === undefined ? undefined : parseActorId(scope.actorId),
     discoveryScope:
       'discoveryScope' in scope ? scope.discoveryScope : undefined,
   });
@@ -140,7 +146,7 @@ function completeScope(scope: TransactionScope): ContextSettings {
       scope.workspaceId === undefined
         ? ''
         : parseWorkspaceId(scope.workspaceId),
-    actorId: scope.actorId ?? '',
+    actorId: scope.actorId === undefined ? '' : parseActorId(scope.actorId),
     discoveryScope: 'discoveryScope' in scope ? scope.discoveryScope : '',
   };
 }

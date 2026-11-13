@@ -13,6 +13,8 @@ import {
   postgresConnection,
 } from './workspace-transaction-engine/fixture.js';
 
+const EXPECTED_ACTOR = '33333333-3333-4333-8333-333333333333';
+
 describe('shared workspace transaction engine', () => {
   it.each([0, 2_147_483_648, 1.5])(
     'rejects invalid PostgreSQL statement timeout %s before checkout',
@@ -106,13 +108,44 @@ describe('shared workspace transaction engine', () => {
       await expect(
         withTenantScopedClient(
           poolWith({ query: connection.query, release }),
-          { workspaceId, actorId: 'expected-actor' },
+          { workspaceId, actorId: EXPECTED_ACTOR },
           operation,
         ),
       ).rejects.toThrow('PostgreSQL tenant context verification failed');
       expect(operation).not.toHaveBeenCalled();
       expect(connection.statements).toContain('rollback');
       expect(release).toHaveBeenCalledWith();
+    },
+  );
+
+  it.each(['not-a-uuid', '', "x'; drop table app.users; --"])(
+    'refuses actor %j before any context is set or the operation runs',
+    async (malformedActor) => {
+      for (const run of [
+        (pool: Pool, operation: () => Promise<unknown>) =>
+          withTenantScopedClient(
+            pool,
+            { workspaceId, actorId: malformedActor },
+            operation,
+          ),
+        (pool: Pool, operation: () => Promise<unknown>) =>
+          withActorScopedClient(pool, malformedActor, operation),
+      ]) {
+        const connection = postgresConnection();
+        const operation = vi.fn(() => Promise.resolve());
+        const release = vi.fn();
+
+        await expect(
+          run(poolWith({ query: connection.query, release }), operation),
+        ).rejects.toMatchObject({ name: 'ZodError' });
+        expect(operation).not.toHaveBeenCalled();
+        expect(
+          connection.statements.some((statement) =>
+            statement.includes('set_config'),
+          ),
+        ).toBe(false);
+        expect(release).toHaveBeenCalledWith();
+      }
     },
   );
 
@@ -123,12 +156,12 @@ describe('shared workspace transaction engine', () => {
     await expect(
       withTenantScopedClient(
         poolWith({ query: connection.query, release }),
-        { workspaceId, actorId: 'actor-1' },
+        { workspaceId, actorId: EXPECTED_ACTOR },
         () => Promise.resolve(connection.settings()),
       ),
     ).resolves.toEqual({
       'app.workspace_id': workspaceId,
-      'app.actor_id': 'actor-1',
+      'app.actor_id': EXPECTED_ACTOR,
       'app.discovery_scope': '',
       'app.organization_id': '',
     });
