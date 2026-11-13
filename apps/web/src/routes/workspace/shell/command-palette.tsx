@@ -6,8 +6,13 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { workflowRunIdentifierSchema } from '@pertexo/contracts';
+import { HELP_LINKS } from '@/lib/help/guides';
 import {
+  BookOpenIcon,
   LayoutGridIcon,
+  PlugIcon,
+  PlusIcon,
+  UserPlusIcon,
   LogOutIcon,
   SunMoonIcon,
   ShieldCheckIcon,
@@ -107,11 +112,14 @@ export function WorkspaceCommandPalette({
     },
   });
 
+  const actions = workspaceActions({ workspace, navigate });
   const groups: CommandGroup[] = [
+    ...(actions.length === 0 ? [] : [{ label: 'Actions', items: actions }]),
     { label: 'Go to', items: places },
     ...(workflowItems.length === 0
       ? []
       : [{ label: 'Workflows', items: workflowItems }]),
+    { label: 'Help', items: HELP_ITEMS },
     { label: 'Account', items: accountItems },
   ];
 
@@ -159,6 +167,10 @@ export function WorkspaceCommandPalette({
   );
 }
 
+/**
+ * Every page this role can open, in the spine's order: the everyday places
+ * first, then settings. Keywords catch the words people search with.
+ */
 function workspacePlaces({
   workspace,
   navigate,
@@ -167,10 +179,27 @@ function workspacePlaces({
   navigate: ReturnType<typeof useNavigate>;
 }>): CommandItem[] {
   const params = { workspaceId: workspace.id };
+  const place = (
+    key: keyof typeof WORKSPACE_PLACES,
+    extra: Partial<CommandItem> = {},
+  ) => ({
+    ...WORKSPACE_PLACES[key],
+    id: key,
+    onSelect: () => void navigate({ to: WORKSPACE_PLACES[key].to, params }),
+    ...extra,
+  });
   const items: readonly (CommandItem & Parameters<typeof canOpenPlace>[1])[] = [
-    {
-      ...WORKSPACE_PLACES.usage,
-      id: 'usage',
+    place('home'),
+    place('workflows'),
+    place('runs', { keywords: 'history timeline executions' }),
+    place('inbox', { keywords: 'notices failures notifications' }),
+    place('approvals', { keywords: 'tasks decisions waiting' }),
+    place('dataTables', { keywords: 'rows records tables' }),
+    place('connections', { keywords: 'credentials slack http email' }),
+    place('team', { keywords: 'members invitations roles' }),
+    place('alerts', { keywords: 'failure notifications destinations' }),
+    place('variables', { keywords: 'configuration values secrets' }),
+    place('usage', {
       keywords: 'capacity retained activity limits',
       onSelect: () =>
         void navigate({
@@ -178,58 +207,107 @@ function workspacePlaces({
           params,
           search: { window: '24h' },
         }),
-    },
-    {
-      ...WORKSPACE_PLACES.home,
-      id: 'home',
-      onSelect: () => void navigate({ to: WORKSPACE_PLACES.home.to, params }),
-    },
-    {
-      ...WORKSPACE_PLACES.workflows,
-      id: 'workflows',
-      onSelect: () =>
-        void navigate({ to: WORKSPACE_PLACES.workflows.to, params }),
-    },
-    {
-      ...WORKSPACE_PLACES.runs,
-      id: 'runs',
-      onSelect: () => void navigate({ to: WORKSPACE_PLACES.runs.to, params }),
-    },
-    {
-      ...WORKSPACE_PLACES.connections,
-      id: 'connections',
-      onSelect: () =>
-        void navigate({ to: WORKSPACE_PLACES.connections.to, params }),
-    },
-    {
-      ...WORKSPACE_PLACES.team,
-      id: 'team',
-      keywords: 'members invitations roles',
-      onSelect: () => void navigate({ to: WORKSPACE_PLACES.team.to, params }),
-    },
-    {
-      ...WORKSPACE_PLACES.alerts,
-      id: 'alerts',
-      keywords: 'failure notifications destinations',
-      onSelect: () => void navigate({ to: WORKSPACE_PLACES.alerts.to, params }),
-    },
-    {
-      ...WORKSPACE_PLACES.settings,
-      id: 'settings',
-      label: 'Workspace settings',
-      onSelect: () =>
-        void navigate({ to: WORKSPACE_PLACES.settings.to, params }),
-    },
-    {
-      ...WORKSPACE_PLACES.apiTokens,
-      id: 'api-tokens',
-      keywords: 'scripts automation personal access',
-      onSelect: () =>
-        void navigate({ to: WORKSPACE_PLACES.apiTokens.to, params }),
-    },
+    }),
+    place('settings', { label: 'Workspace settings' }),
+    place('audit', { keywords: 'history changes who did what' }),
+    place('apiTokens', { keywords: 'scripts automation personal access' }),
   ];
   return items.filter((item) => canOpenPlace(workspace, item));
 }
+
+/** Things to do, not places: the actions people most often come for. */
+function workspaceActions({
+  workspace,
+  navigate,
+}: Readonly<{
+  workspace: AccessibleWorkspace;
+  navigate: ReturnType<typeof useNavigate>;
+}>): CommandItem[] {
+  const params = { workspaceId: workspace.id };
+  const can = (capability: (typeof workspace.capabilities)[number]) =>
+    workspace.capabilities.includes(capability);
+  return [
+    ...(can('workflow:create')
+      ? [
+          {
+            id: 'new-workflow',
+            label: 'New workflow',
+            keywords: 'create blank example template',
+            icon: <PlusIcon />,
+            onSelect: () =>
+              void navigate({
+                to: '/w/$workspaceId/workflows',
+                params,
+                search: { create: true },
+              }),
+          },
+        ]
+      : []),
+    ...(can('connection:manage')
+      ? [
+          {
+            id: 'add-connection',
+            label: 'Add a connection',
+            keywords: 'connect slack http email credential',
+            icon: <PlugIcon />,
+            onSelect: () =>
+              void navigate({
+                to: '/w/$workspaceId/connections',
+                params,
+                search: { add: 'any' },
+              }),
+          },
+        ]
+      : []),
+    ...(can('member:manage')
+      ? [
+          {
+            id: 'invite-people',
+            label: 'Invite people',
+            keywords: 'teammate member invitation',
+            icon: <UserPlusIcon />,
+            onSelect: () =>
+              void navigate({
+                to: '/w/$workspaceId/team',
+                params,
+                search: { invite: true },
+              }),
+          },
+        ]
+      : []),
+  ];
+}
+
+/** The public guides, each opening in a new tab. */
+const HELP_ITEMS: readonly CommandItem[] = [
+  {
+    id: 'help-first-workflow',
+    label: 'Guide: your first workflow',
+    keywords: 'help docs getting started tutorial',
+    icon: <BookOpenIcon />,
+    onSelect: () => {
+      window.open(HELP_LINKS.firstWorkflow, '_blank', 'noopener');
+    },
+  },
+  {
+    id: 'help-guides',
+    label: 'All guides',
+    keywords: 'help docs documentation',
+    icon: <BookOpenIcon />,
+    onSelect: () => {
+      window.open(HELP_LINKS.allGuides, '_blank', 'noopener');
+    },
+  },
+  {
+    id: 'help-glossary',
+    label: 'Glossary',
+    keywords: 'help terms words meaning',
+    icon: <BookOpenIcon />,
+    onSelect: () => {
+      window.open(HELP_LINKS.glossary, '_blank', 'noopener');
+    },
+  },
+];
 
 function paletteSearchState(query: ReadQuery<unknown>) {
   if (query.isPending) return { status: 'loading' as const };
