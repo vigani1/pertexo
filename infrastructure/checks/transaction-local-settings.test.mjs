@@ -47,6 +47,9 @@ const REJECTED = {
     "client.query(`/* note; */ set app.workspace_id = 'x'`);",
   'SET after a comment-only statement':
     "client.query(`select 1; -- a; b\\nset app.workspace_id='x'`);",
+  // J9 follow-up review P3-2: "$" inside an identifier opens no dollar quote.
+  'SET after a comment that follows an identifier holding $':
+    "client.query(`select a$b$ from t; -- note\\nset app.workspace_id = 'x'`);",
   'set_config whose flag a quote in a comment hides': `client.query("select set_config('app.workspace_id', /* ' */ $1, false) -- ', true)", [id]);`,
   'SET in mixed case': `client.query("Set app.workspace_id To 'x'");`,
   'SET with a function value': `client.query("set app.workspace_id = current_setting('x')");`,
