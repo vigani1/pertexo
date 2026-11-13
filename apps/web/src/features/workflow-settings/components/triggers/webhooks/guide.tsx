@@ -3,17 +3,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   curlSnippet,
   NODE_SNIPPET,
-  WEBHOOK_FRESHNESS,
-  WEBHOOK_MAX_BODY,
 } from '../../../model/triggers/webhook-snippets';
 import { webhookAddressTemplate } from '../../../model/triggers/endpoint-key';
 import { Disclosure } from '@/components/ui/disclosure';
+import {
+  WEBHOOK_BODY_MAX_BYTES,
+  WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS,
+} from '@pertexo/contracts';
+import { formatTimeSpan } from '@/lib/format/time';
+import { formatByteLength } from '@/lib/format/bytes';
 
 const HEADERS = [
   ['Content-Type', 'application/json'],
   [
     'X-Pertexo-Timestamp',
-    `The current Unix time in seconds. Deliveries older than ${WEBHOOK_FRESHNESS} are refused.`,
+    `The current Unix time in seconds. Deliveries older than ${formatTimeSpan(WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS)} are refused.`,
   ],
   [
     'X-Pertexo-Signature',
@@ -45,8 +49,8 @@ export function WebhookGuide({
       <div className="flex flex-col gap-4 border-t border-border px-3 py-4 text-sm">
         <p className="text-muted-foreground">
           {authentication.mode === 'signed'
-            ? `Send a POST with a JSON, form or plain-text body of up to ${WEBHOOK_MAX_BODY} to the endpoint address. Each delivery starts one run.`
-            : `Send a POST with a JSON, form or plain-text body of up to ${WEBHOOK_MAX_BODY}, or a GET with a query string, to the endpoint address. Each delivery starts one run.`}
+            ? `Send a POST with a JSON, form or plain-text body of up to ${formatByteLength(WEBHOOK_BODY_MAX_BYTES)} to the endpoint address. Each delivery starts one run.`
+            : `Send a POST with a JSON, form or plain-text body of up to ${formatByteLength(WEBHOOK_BODY_MAX_BYTES)}, or a GET with a query string, to the endpoint address. Each delivery starts one run.`}
         </p>
         {authentication.mode === 'signed' ? (
           <>

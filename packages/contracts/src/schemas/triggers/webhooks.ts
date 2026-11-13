@@ -22,6 +22,13 @@ const webhookTriggerHealthStatusSchema = z.enum([
   'unhealthy',
   'disabled',
 ]);
+
+/** The largest webhook or callback request body Pertexo accepts. */
+export const WEBHOOK_BODY_MAX_BYTES = 256 * 1024;
+
+/** How far a signed delivery's timestamp may be from now, in seconds. */
+export const WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS = 300;
+
 export const webhookTriggerHealthSchema = z
   .object({
     id: z.uuid(),
@@ -122,7 +129,7 @@ export const webhookDeliverySchema = z
     httpStatus: z.number().int().min(200).max(599),
     signatureCheck: webhookDeliverySignatureCheckSchema,
     replayCheck: webhookDeliveryReplayCheckSchema,
-    byteLength: z.number().int().min(0).max(262_144).nullable(),
+    byteLength: z.number().int().min(0).max(WEBHOOK_BODY_MAX_BYTES).nullable(),
     runId: z.uuid().nullable(),
     skipReason: z.literal('concurrency_limit').optional(),
     coordination: coordinatedEventSchema.optional(),

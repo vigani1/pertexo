@@ -1,5 +1,5 @@
 import { headerPresent, singleHeader } from '../requests/headers.js';
-import { WEBHOOK_BODY_MAX_BYTES as MAX_BODY } from '../requests/body.js';
+import { WEBHOOK_BODY_MAX_BYTES as MAX_BODY } from '@pertexo/contracts';
 
 import { randomUUID } from 'node:crypto';
 
