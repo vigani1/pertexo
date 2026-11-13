@@ -90,4 +90,6 @@ const editorOutcomeChecks: Record<
   'nested-conflict': verifyEditorNestedOutcome,
   // These specs assert what the browser and its webhook senders see.
   product: () => undefined,
+  // These specs read what the server holds through the browser's own session.
+  'first-use': () => undefined,
 };

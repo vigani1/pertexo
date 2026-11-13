@@ -15,13 +15,33 @@ export async function signInEditorUser(
   expectedLanding = '/workspaces',
 ) {
   await page.goto('/login');
-  await page.getByLabel('Email', { exact: true }).fill(email);
-  await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await submitSignInForm(page, email);
   await expect(page).toHaveURL(expectedLanding);
 }
 
+/** Fills the sign-in form already on screen, such as the tab "Sign in again" opens. */
+export async function submitSignInForm(page: Page, email: string) {
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+}
+
 export async function registerEditorUser(
+  page: Page,
+  request: APIRequestContext,
+  mailOrigin: string,
+  name: string,
+) {
+  const email = await createVerifiedEditorUser(page, request, mailOrigin, name);
+  await signInEditorUser(page, email);
+  return email;
+}
+
+/**
+ * Signs up and verifies an account without signing it in, for a journey that
+ * needs a second person and must stay inside the sign-in rate budget.
+ */
+export async function createVerifiedEditorUser(
   page: Page,
   request: APIRequestContext,
   mailOrigin: string,
@@ -58,7 +78,6 @@ export async function registerEditorUser(
   if (verificationPath === undefined)
     throw new Error('Verification mail was not delivered');
   await openVerificationLink(page, verificationPath);
-  await signInEditorUser(page, email);
   return email;
 }
 

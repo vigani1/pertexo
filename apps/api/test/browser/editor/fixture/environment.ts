@@ -47,6 +47,7 @@ export const scenario = z
     'callable',
     'email-attachments',
     'product',
+    'first-use',
   ])
   .parse(process.env.EDITOR_BROWSER_CASE ?? 'nested-conflict');
 
@@ -145,4 +146,5 @@ const EDITOR_JOURNEY_PATHS = {
   'webhook-controlled-http': 'editor/webhook-controlled-http.spec.ts',
   'email-attachments': 'editor/email-attachments.spec.ts',
   product: 'editor/product',
+  'first-use': 'first-use',
 } satisfies Record<Exclude<typeof scenario, 'artifact-inputs'>, string>;
