@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { expect, type Page, type Locator } from '@playwright/test';
 import {
   workflowDraftResponseSchema,
@@ -15,6 +15,7 @@ import {
 } from '@pertexo/templates';
 import { test } from './support/browser-fixture';
 import { openWorkflowAction } from './support/authoring/workflow-actions';
+import { openEveryStepAndSave } from './support/authoring/open-and-save';
 
 interface Seed {
   workspaceId: string;
@@ -199,6 +200,13 @@ test('owned complete examples retain historical origin through independent edits
       derivation: 'direct',
     });
   }
+  const retyped: Record<string, Record<string, string[]>> = {};
+  for (const id of importedWorkflowIds)
+    retyped[id] = await openEveryStepAndSave(page, seed.workspaceId, id);
+  await writeFile(
+    info.outputPath('open-and-save-retyped.json'),
+    JSON.stringify(retyped, null, 2),
+  );
   const editedWorkflowId = importedWorkflowIds[0];
   if (editedWorkflowId === undefined)
     throw new Error('Reviewed first template was not imported');
