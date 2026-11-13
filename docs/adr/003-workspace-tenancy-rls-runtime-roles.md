@@ -103,6 +103,12 @@ be used by reviewed SQL helpers when parameter binding is handled safely. The
 transaction-local setting is reset automatically on commit or rollback. The
 helper returns only after the transaction has completed, and a pooled client
 is never released while a session-level workspace setting remains active.
+Since batch J9 that holds without inspecting each client: every setting the
+helper makes is transaction-local, the statement that sets it is verified
+from the values PostgreSQL returns, the transaction-local settings check
+refuses session-level settings and connection startup settings in the code,
+and each pool refuses to start when a fresh connection already carries an
+`app.*` setting (see below).
 
 The transaction object, not the pool or process, carries the scope. Nested
 operations use the same transaction (or savepoints) and cannot silently fall
@@ -260,9 +266,28 @@ policy, removed forced RLS, an incompatible migration head, and an incompatible
 runtime grant.
 
 An independent review identified and removed session-level empty-value cleanup
-and hard-coded migration role names. The final helper only inspects for leaked
-session context and destroys a contaminated client; role identifiers are
-validated environment configuration rendered as quoted SQL identifiers. The
+and hard-coded migration role names. Role identifiers are validated
+environment configuration rendered as quoted SQL identifiers.
+
+The helper used to inspect every pooled client for leaked session context,
+before and after each transaction, and destroy a contaminated one. Batch J9
+removed that inspection (two round trips per transaction;
+[step transaction cost](../feature-plans/step-transaction-cost.md)). What
+guards the boundary now:
+
+- every setting is transaction-local, so commit or rollback clears it;
+- one statement sets a transaction's whole context (workspace, actor,
+  discovery scope, organization and timeout) and is verified from the
+  values PostgreSQL returns;
+- the transaction-local settings check (`infrastructure/checks/`) refuses
+  session-level `SET`, `RESET`, `set_config(..., false)` and connection
+  startup settings (`options`, `-c`, `PGOPTIONS`) in code that can reach a
+  pool;
+- each pool proves on its first connection that a fresh session carries no
+  `app.*` setting, and otherwise refuses to start
+  (`InheritedSessionContextError`). That covers what code can't show:
+  deployment `PGOPTIONS`, a connection string's options, and role or
+  database defaults. The
 schema-compatibility check also verifies the workspace column type/nullability,
 workspace indexing, policy expressions, grants, ownership, forced RLS, runtime
 attributes, PostgreSQL major version, and migration head.
