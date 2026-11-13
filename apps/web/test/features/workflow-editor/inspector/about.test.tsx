@@ -42,4 +42,26 @@ describe('the About tab', () => {
       ),
     ).toBeVisible();
   });
+
+  it('links to the guide for its step type, opening beside the editor', async () => {
+    renderInRouter(
+      <AboutTab node={node('core.set')} definition={setDefinition} />,
+    );
+    const guide = await screen.findByRole('link', {
+      name: /^How .+ works/u,
+    });
+    expect(guide).toHaveAttribute(
+      'href',
+      'https://github.com/vigani1/pertexo/blob/main/docs/guides/data-transforms.md',
+    );
+    expect(guide).toHaveAttribute('target', '_blank');
+  });
+
+  it('adds no guide link for a step type without its own guide', async () => {
+    renderInRouter(
+      <AboutTab node={node('core.manual')} definition={manualDefinition} />,
+    );
+    await screen.findByRole('list', { name: 'Fields it returns' });
+    expect(screen.queryByRole('link', { name: /works/u })).toBeNull();
+  });
 });

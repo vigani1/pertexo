@@ -8,6 +8,8 @@ import {
 } from '@/components/ui/popover';
 import { Status, type StatusTone } from '@/components/ui/status';
 import { cn } from '@/lib/class-names';
+import { HELP_LINKS } from '@/lib/help/guides';
+import { GuideLink } from './guide-link';
 
 export type GuideEntry = Readonly<{
   label: string;
@@ -86,6 +88,9 @@ export function StatusGuide({
             </dl>
           </section>
         ))}
+        <GuideLink href={HELP_LINKS.glossary} className="mt-5 text-xs">
+          More words explained in the glossary
+        </GuideLink>
       </PopoverContent>
     </Popover>
   );
