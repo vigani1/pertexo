@@ -81,8 +81,9 @@ export function NoticeFrame({
           </div>
         )}
       </div>
-      {/* Under the notice on a phone, beside it on wider screens. */}
-      <div className="relative z-10 col-start-2 flex items-center gap-3 sm:col-start-3 sm:row-start-1">
+      {/* Under the notice on a phone, beside it on wider screens. A narrow
+          phone wraps the actions under the lane rather than past the edge. */}
+      <div className="relative z-10 col-start-2 flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 sm:col-start-3 sm:row-start-1 sm:flex-nowrap sm:justify-start">
         {aside}
         {actions === undefined ? null : (
           <div className="flex items-center">{actions}</div>
