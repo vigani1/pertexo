@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
-import { PlayIcon } from 'lucide-react';
+import { ArrowRightIcon, PlayIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { cn } from '@/lib/class-names';
 import type {
@@ -7,8 +8,21 @@ import type {
   FirstThreadStep,
 } from '../model/first-thread';
 
+// Each task reads as a link: the action's colour, an arrow, an underline on hover.
 const linkClass =
-  'text-sm font-semibold text-foreground outline-none hover:text-accent-foreground focus-ring rounded-sm';
+  'group/step inline-flex items-center gap-1 rounded-sm text-sm font-semibold text-accent-foreground underline-offset-4 outline-none hover:underline focus-ring';
+
+function StepLabel({ label }: Readonly<{ label: string }>): ReactNode {
+  return (
+    <>
+      {label}
+      <ArrowRightIcon
+        aria-hidden="true"
+        className="size-3.5 transition-transform group-hover/step:translate-x-0.5 motion-reduce:transition-none"
+      />
+    </>
+  );
+}
 
 function StepLink({
   destination,
@@ -27,7 +41,7 @@ function StepLink({
           params={{ workspaceId, workflowId: destination.workflowId }}
           className={linkClass}
         >
-          {label}
+          <StepLabel label={label} />
         </Link>
       );
     case 'workflows':
@@ -38,7 +52,7 @@ function StepLink({
           search={(destination.create ?? false) ? { create: true } : {}}
           className={linkClass}
         >
-          {label}
+          <StepLabel label={label} />
         </Link>
       );
     case 'connections':
@@ -49,7 +63,7 @@ function StepLink({
           search={{ add: destination.add }}
           className={linkClass}
         >
-          {label}
+          <StepLabel label={label} />
         </Link>
       );
     case 'alerts':
@@ -59,7 +73,7 @@ function StepLink({
           params={{ workspaceId }}
           className={linkClass}
         >
-          {label}
+          <StepLabel label={label} />
         </Link>
       );
     case 'team':
@@ -70,7 +84,7 @@ function StepLink({
           search={{ invite: destination.invite }}
           className={linkClass}
         >
-          {label}
+          <StepLabel label={label} />
         </Link>
       );
   }
@@ -83,30 +97,43 @@ export type FirstRunOffer = Readonly<{
 }>;
 
 /**
- * A new workspace's first thread: the steps to a first real run, each tied
- * off with a knot along one line as it's done.
+ * Getting started: the setup tasks that are still worth doing, each a link
+ * to where it's done, tied off along one line as it's done. A new
+ * workspace sees it first, with a one-click example run; later it stays,
+ * quieter, until every task is done.
  */
 export function FirstThread({
   steps,
   workspaceId,
   firstRun,
+  compact = false,
 }: Readonly<{
   steps: readonly FirstThreadStep[];
   workspaceId: string;
   firstRun?: FirstRunOffer | undefined;
+  /** After the first run: the remaining tasks, below what's running. */
+  compact?: boolean;
 }>) {
   const done = steps.filter((step) => step.done).length;
   return (
     <section
       aria-labelledby="first-thread-title"
-      className="rounded-xl border border-surface-ink/6 bg-linear-to-b from-surface-ink/[0.02] to-transparent p-5 sm:p-7"
+      className={cn(
+        'rounded-xl border border-surface-ink/6 bg-linear-to-b from-surface-ink/[0.02] to-transparent',
+        compact ? 'p-4 sm:p-5' : 'p-5 sm:p-7',
+      )}
     >
-      <h2 id="first-thread-title" className="text-2xl font-semibold">
-        Your first thread
+      <h2
+        id="first-thread-title"
+        className={cn('font-semibold', compact ? 'text-lg' : 'text-2xl')}
+      >
+        Getting started
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        {String(done)} of {String(steps.length)} done. Once something runs, this
-        space shows every run as it happens.
+        {String(done)} of {String(steps.length)} done.
+        {compact
+          ? ' The rest are here whenever you want them.'
+          : ' Once something runs, this page shows every run as it happens.'}
       </p>
       {firstRun === undefined ? null : (
         <div className="mt-5 flex flex-col items-start gap-2 rounded-lg border border-primary/20 bg-primary/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -130,7 +157,12 @@ export function FirstThread({
           </ProgressButton>
         </div>
       )}
-      <ol className="relative mt-6 flex flex-col gap-5 pl-7">
+      <ol
+        className={cn(
+          'relative flex flex-col pl-7',
+          compact ? 'mt-4 gap-3' : 'mt-6 gap-5',
+        )}
+      >
         <span
           aria-hidden="true"
           className="absolute top-2 bottom-2 left-[0.4rem] w-0.5 rounded-full bg-surface-ink/8"

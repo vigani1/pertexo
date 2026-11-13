@@ -200,7 +200,7 @@ describe('workspace home', () => {
       within(attention).getByRole('link', { name: 'Reconnect' }),
     ).toHaveAttribute('href', `/w/${workspaceId}/connections`);
   });
-  it('guides a new workspace with its first-thread checklist instead of the loom', async () => {
+  it('guides a new workspace with its getting-started checklist instead of the loom', async () => {
     mockServer.use(
       ...identityHandlers(readerCapabilities),
       workflowHandlers([]),
@@ -210,7 +210,7 @@ describe('workspace home', () => {
     await renderLoadedApp(`/w/${workspaceId}`);
     const checklist = await screen.findByRole(
       'region',
-      { name: 'Your first thread' },
+      { name: 'Getting started' },
       coldStart,
     );
     expect(
@@ -230,7 +230,7 @@ describe('workspace home', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /Timeline/u })).toBeNull();
   });
-  it('links every first-thread step to where it is done', async () => {
+  it('links every getting-started step to where it is done', async () => {
     const empty = { items: [], nextCursor: null };
     mockServer.use(
       ...identityHandlers([
@@ -257,7 +257,7 @@ describe('workspace home', () => {
     await renderLoadedApp(`/w/${workspaceId}`);
     const checklist = await screen.findByRole(
       'region',
-      { name: 'Your first thread' },
+      { name: 'Getting started' },
       coldStart,
     );
     expect(

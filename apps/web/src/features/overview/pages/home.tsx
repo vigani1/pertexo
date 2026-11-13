@@ -148,6 +148,15 @@ export function HomePage({
           workspaceId={workspace.id}
         />
       ) : null}
+      {newWorkspace ? null : (
+        <FirstThreadSection
+          apiClient={apiClient}
+          userId={user.id}
+          workspace={workspace}
+          facts={facts}
+          compact
+        />
+      )}
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         <AttentionSection
           apiClient={apiClient}
