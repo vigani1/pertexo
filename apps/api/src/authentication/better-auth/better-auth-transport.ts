@@ -28,6 +28,7 @@ import {
   sendProblem,
   normalizedNativeError,
 } from './transport/authentication-problems.js';
+import { AUTH_COOKIE_PREFIX } from './auth-cookies.js';
 import {
   tokenFreeAuthenticationBody,
   establishesPertexoSession,
@@ -229,6 +230,7 @@ async function dispatchBetterAuthRequest(
     pathname,
     sessionCookie,
     requestId,
+    carriesChallenge: carriesTwoFactorChallenge(request.headers.cookie),
   });
 }
 
@@ -276,13 +278,23 @@ async function sendAuthenticationResponse(
     pathname,
     sessionCookie,
     requestId,
+    carriesChallenge,
   }: Pick<AuthenticationDispatch, 'sessionCookie'> &
-    Readonly<{ pathname: string; requestId: string }>,
+    Readonly<{
+      pathname: string;
+      requestId: string;
+      carriesChallenge: boolean;
+    }>,
 ): Promise<void> {
   const responseBody = new Uint8Array(await response.arrayBuffer());
   const nativeError =
     response.status >= 400
-      ? normalizedNativeError(response.status, responseBody, requestId)
+      ? normalizedNativeError(
+          response.status,
+          responseBody,
+          requestId,
+          carriesChallenge,
+        )
       : undefined;
   reply
     .code(nativeError?.status ?? response.status)
@@ -339,4 +351,16 @@ function requestBody(
     return form;
   }
   return JSON.stringify(body);
+}
+
+const TWO_FACTOR_CHALLENGE_COOKIE = `${AUTH_COOKIE_PREFIX}.two_factor=`;
+
+/** Whether a request brought a two-factor sign-in challenge to answer. */
+function carriesTwoFactorChallenge(cookie: string | undefined): boolean {
+  return (
+    cookie
+      ?.split(';')
+      .some((part) => part.trim().startsWith(TWO_FACTOR_CHALLENGE_COOKIE)) ??
+    false
+  );
 }

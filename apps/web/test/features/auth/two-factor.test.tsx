@@ -366,4 +366,41 @@ describe('two-factor account controls', () => {
       ).toBeNull();
     },
   );
+
+  // Review J6a delta P2: a code sent after the session ended answers
+  // auth.unauthenticated, and the page pauses instead of blaming a sign-in.
+  it('pauses the page when the session ended before the code was sent', async () => {
+    let signedIn = true;
+    identity(() => account());
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        signedIn
+          ? HttpResponse.json(user)
+          : problem(401, 'auth.unauthenticated'),
+      ),
+      http.post('http://pertexo.test/v1/auth/two-factor/enable', () =>
+        HttpResponse.json({ totpURI: uri, backupCodes: codes }),
+      ),
+      http.post('http://pertexo.test/v1/auth/two-factor/verify-totp', () =>
+        problem(401, 'auth.unauthenticated'),
+      ),
+    );
+    const { actor } = await openSecurity();
+    await actor.click(
+      await screen.findByRole('button', { name: 'Turn on two-factor sign-in' }),
+    );
+    await password(actor, 'Continue');
+    await actor.type(
+      await screen.findByLabelText('Authenticator code'),
+      '000000',
+    );
+    signedIn = false;
+    await actor.click(screen.getByRole('button', { name: 'Verify code' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Your session ended' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByText('This sign-in expired. Go back and sign in again.'),
+    ).toBeNull();
+  });
 });

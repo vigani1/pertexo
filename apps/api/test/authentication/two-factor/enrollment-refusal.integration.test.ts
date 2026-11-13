@@ -46,5 +46,38 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         'auth.invalid_credentials',
       );
     });
+
+    // Review J6a delta P2: with no session and no sign-in challenge, Better
+    // Auth answers INVALID_TWO_FACTOR_COOKIE; that is an ended session, so
+    // the web pauses, not an expired sign-in.
+    it('names a code sent after the session ended as an ended session', async () => {
+      const email = `${randomUUID()}@example.test`;
+      await api.signUp(email, '/workspaces');
+      const browser = await api.signIn(email);
+      const enabled = await api.send('POST', '/v1/auth/two-factor/enable', {
+        browser,
+        payload: { password: factorPassword },
+      });
+      expect(enabled.statusCode).toBe(200);
+      await api
+        .database()
+        .query(
+          'delete from app.auth_sessions where user_id=(select id from app.users where email=$1)',
+          [email],
+        );
+      expectProblem(
+        await api.send('GET', '/v1/users/me', { browser }),
+        401,
+        'auth.unauthenticated',
+      );
+      expectProblem(
+        await api.send('POST', '/v1/auth/two-factor/verify-totp', {
+          browser,
+          payload: { code: '000000' },
+        }),
+        401,
+        'auth.unauthenticated',
+      );
+    });
   },
 );
