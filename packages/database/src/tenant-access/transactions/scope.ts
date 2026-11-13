@@ -1,3 +1,4 @@
+import { durationSettingMillisSql } from '../../platform/duration-setting.js';
 import { isIntegerInRange } from '../../platform/persisted-primitives.js';
 import type { PoolClient } from 'pg';
 
@@ -165,9 +166,9 @@ async function applyContext(
   const timeout = settings.statementTimeoutMillis;
   if (timeout !== undefined) {
     values.push(`${String(timeout)}ms`);
-    // set_config returns the display form ('5s', '1500ms'); an interval reads every unit.
+    const timeoutSet = `set_config('statement_timeout',$${String(values.length)},true)`;
     columns.push(
-      `(extract(epoch from set_config('statement_timeout',$${String(values.length)},true)::interval)*1000)::bigint "statementTimeoutMillis"`,
+      `${durationSettingMillisSql(timeoutSet)} "statementTimeoutMillis"`,
     );
   }
   if (columns.length === 0) return;

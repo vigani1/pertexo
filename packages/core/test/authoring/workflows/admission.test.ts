@@ -18,24 +18,20 @@ import { admitWorkflowAuthoring } from '../../../src/authoring/workflows/admissi
 import { authoringIdleBudgetIsSafe } from '../../../src/authoring/workflows/idle-budget.js';
 
 describe('effective authoring idle budget', () => {
+  // PostgreSQL turns the shown setting into milliseconds (database
+  // duration-setting integration test); this is the rule applied to them.
   it.each([
-    ['35000', 'ms', true],
-    ['6251', 'ms', true],
-    ['6250', 'ms', false],
-    ['6', 's', false],
-    ['7', 's', true],
-    ['1', 'min', true],
-    ['6250001', 'us', true],
-    ['0', 'ms', false],
-    ['-1', 'ms', false],
-    ['NaN', 'ms', false],
-    ['2.5', 's', false],
-    ['99999999999999999999', 'ms', false],
-    ['35000', 'unknown', false],
-    [undefined, 'ms', false],
-    ['35000', null, false],
-  ])('qualifies setting %s unit %s as %s', (setting, unit, expected) => {
-    expect(authoringIdleBudgetIsSafe(setting, unit)).toBe(expected);
+    [35_000, true],
+    [6251, true],
+    [6250, false],
+    [0, false],
+    [-1, false],
+    [Number.NaN, false],
+    [2.5, false],
+    [1e20, false],
+    [undefined, false],
+  ])('qualifies an idle timeout of %s ms as %s', (millis, expected) => {
+    expect(authoringIdleBudgetIsSafe(millis)).toBe(expected);
   });
 
   it('fails closed before dispatch without wiring, with unknown/unlimited or too-small effective settings', async () => {
@@ -45,11 +41,7 @@ describe('effective authoring idle budget', () => {
       admitWorkflowAuthoring({ query }, undefined, graph),
     ).rejects.toMatchObject({ reason: 'not_configured' });
     expect(query).not.toHaveBeenCalled();
-    for (const rows of [
-      [],
-      [{ setting: '0', unit: 'ms' }],
-      [{ setting: '6250', unit: 'ms' }],
-    ]) {
+    for (const rows of [[], [{ millis: '0' }], [{ millis: '6250' }]]) {
       query.mockResolvedValue({ rows });
       await expect(
         admitWorkflowAuthoring({ query }, validator, graph),
@@ -62,7 +54,7 @@ describe('effective authoring idle budget', () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce(budget)
-      .mockResolvedValueOnce({ rows: [{ setting: '1000', unit: 'ms' }] });
+      .mockResolvedValueOnce({ rows: [{ millis: '1000' }] });
     const validator = vi.fn().mockResolvedValue(valid);
     const controller = new AbortController();
     await expect(
@@ -183,7 +175,7 @@ describe('authoring cancellation and runtime lifetime', () => {
           return Promise.resolve({ rows: [{ role: 'owner' }], rowCount: 1 });
         if (sql.includes('from app.workflow_drafts'))
           return Promise.resolve({ rows: [draftWireRow(row)] });
-        if (sql.includes('pg_settings')) return Promise.resolve(budget);
+        if (sql.includes('current_setting($1)')) return Promise.resolve(budget);
         return Promise.resolve({ rows: [] });
       },
     );
