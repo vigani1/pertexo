@@ -110,7 +110,13 @@ returned-value check still stand.
   one scope-and-timeout statement, verification from its result, and no
   `pg_settings` read. Also the organization path in `transactions.ts`.
 - `infrastructure/checks/`: a check that forbids session-level `set_config` or
-  `SET` outside migrations.
+  `SET` outside migrations. As built, it also refuses connection startup
+  settings (`options`, `-c`, `PGOPTIONS`, a connection string's options)
+  other than `statement_timeout`.
+- As built, after review: each pool refuses to start when a fresh connection
+  already carries an `app.*` setting, which covers the sources code can't
+  show (deployment `PGOPTIONS`, role and database defaults). One query per
+  pool, once.
 - No schema, contract or behavior change for users.
 
 ## Tests that would prove it
