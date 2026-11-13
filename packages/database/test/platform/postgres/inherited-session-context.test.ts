@@ -109,3 +109,67 @@ describe('a pool whose fresh session is clean', () => {
     expect(poolAt(0).inspections).toBe(2);
   });
 });
+
+describe('checkouts that start together on a new pool', () => {
+  beforeEach(beforeEachFixture1);
+
+  it('refuses every one of them when the shared inspection finds a setting', async () => {
+    pg.FakePool.freshSession = {
+      kind: 'carries',
+      settings: ['app.workspace_id'],
+    };
+    const first = client();
+    const second = client();
+    pg.FakePool.connectOutcomes.push(
+      { kind: 'resolve', client: first },
+      { kind: 'resolve', client: second },
+    );
+    const target = pool();
+
+    const outcomes = await Promise.all([
+      target.connect().catch((error: unknown) => error),
+      target.connect().catch((error: unknown) => error),
+    ]);
+
+    expect(outcomes[0]).toBeInstanceOf(InheritedSessionContextError);
+    expect(outcomes[1]).toBe(outcomes[0]);
+    expect(first.release).toHaveBeenCalledExactlyOnceWith(true);
+    expect(second.release).toHaveBeenCalledExactlyOnceWith(true);
+    expect(poolAt(0).inspections).toBe(1);
+  });
+
+  it('fails only the checkout whose client could not be inspected', async () => {
+    const lost = new Error('connection lost');
+    let reads = 0;
+    Object.defineProperty(pg.FakePool, 'freshSession', {
+      configurable: true,
+      get: () =>
+        reads++ === 0
+          ? { kind: 'unreachable', error: lost }
+          : { kind: 'clean' },
+    });
+    const first = client();
+    const second = client();
+    pg.FakePool.connectOutcomes.push(
+      { kind: 'resolve', client: first },
+      { kind: 'resolve', client: second },
+    );
+    const target = pool();
+    try {
+      const outcomes = await Promise.allSettled([
+        target.connect(),
+        target.connect(),
+      ]);
+      expect(outcomes[0]).toEqual({ status: 'rejected', reason: lost });
+      expect(outcomes[1]).toEqual({ status: 'fulfilled', value: second });
+      expect(first.release).toHaveBeenCalledExactlyOnceWith(true);
+      expect(poolAt(0).inspections).toBe(2);
+    } finally {
+      Object.defineProperty(pg.FakePool, 'freshSession', {
+        configurable: true,
+        writable: true,
+        value: { kind: 'clean' },
+      });
+    }
+  });
+});
