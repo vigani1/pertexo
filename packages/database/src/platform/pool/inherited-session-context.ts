@@ -71,11 +71,13 @@ export function refuseInheritedSessionContext(
 }
 
 /**
- * The app.* settings a connection carries, by name: PostgreSQL lists no
+ * The app.* settings a connection carries, by name. PostgreSQL lists no
  * placeholder settings in pg_settings, so the names are every app.* setting
- * the schema's row-security policies and app functions read, plus the
- * tenant settings this package installs (so an unmigrated database is
- * checked too).
+ * the database reads anywhere it can (row-security policies, functions in
+ * every schema, views, column defaults and check constraints), plus the
+ * tenant settings this package installs, so an unmigrated database is
+ * checked too. Setting names are case-insensitive, and a function body is
+ * stored as written, so the pattern allows spaces and any case.
  */
 const CARRIED_APP_SETTINGS = `
   with source(text) as (
@@ -83,11 +85,24 @@ const CARRIED_APP_SETTINGS = `
     union all
     select pg_get_expr(pol.polwithcheck, pol.polrelid) from pg_policy pol
     union all
-    select fn.prosrc from pg_proc fn
-      join pg_namespace ns on ns.oid = fn.pronamespace
-     where ns.nspname = 'app'
+    select concat_ws(' ', fn.prosrc, pg_get_function_sqlbody(fn.oid))
+      from pg_proc fn join pg_namespace ns on ns.oid = fn.pronamespace
+     where ns.nspname not in ('pg_catalog', 'information_schema')
+       and ns.nspname not like 'pg\\_%'
+    union all
+    select pg_get_viewdef(rel.oid) from pg_class rel
+      join pg_namespace ns on ns.oid = rel.relnamespace
+     where rel.relkind in ('v', 'm')
+       and ns.nspname not in ('pg_catalog', 'information_schema')
+       and ns.nspname not like 'pg\\_%'
+    union all
+    select pg_get_expr(def.adbin, def.adrelid) from pg_attrdef def
+    union all
+    select pg_get_constraintdef(con.oid) from pg_constraint con
+     where con.contype = 'c'
   ), setting(name) as (
-    select (regexp_matches(text, 'current_setting\\(''(app\\.[a-z_]+)''', 'g'))[1]
+    select lower((regexp_matches(
+      text, 'current_setting\\s*\\(\\s*''(app\\.[a-z0-9_]+)''', 'gi'))[1])
       from source where text is not null
     union
     select unnest($1::text[])
