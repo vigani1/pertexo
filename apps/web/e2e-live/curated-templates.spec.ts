@@ -9,7 +9,10 @@ import {
   parsePortableJson,
   workflowPortableManifestSchema,
 } from '@pertexo/workflow-model';
-import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
+import {
+  CURATED_WORKFLOW_TEMPLATES,
+  FIRST_RUN_TEMPLATE_ID,
+} from '@pertexo/templates';
 import { test } from './support/browser-fixture';
 import { openWorkflowAction } from './support/authoring/workflow-actions';
 
@@ -79,11 +82,42 @@ test('owned complete examples retain historical origin through independent edits
     await page
       .getByRole('button', { name: 'New workflow', exact: true })
       .click();
-    // The examples sit under the name in New workflow; one opens set up.
-    await page
-      .getByRole('dialog', { name: 'New workflow', exact: true })
-      .getByRole('button', { name: descriptor.title })
-      .click();
+    const sheet = page.getByRole('dialog', {
+      name: 'New workflow',
+      exact: true,
+    });
+    const example = sheet.getByRole('button', {
+      name: `Use this example: ${descriptor.title}`,
+      exact: true,
+    });
+    // An example with nothing to set up starts in one click, under the
+    // name typed above it, and opens in Build.
+    if (
+      descriptor.setupTargets.length === 0 &&
+      descriptor.manifest.connectionSlots.length === 0
+    ) {
+      await sheet
+        .getByLabel('Workflow name', { exact: true })
+        .fill(`Independent ${descriptor.templateId}`);
+      await example.click();
+      await expect(page).toHaveURL(/\/workflows\/[0-9a-f-]{36}(\?.*)?$/u);
+      const id = new URL(page.url()).pathname.split('/')[4];
+      if (id === undefined) throw new Error('Started workflow ID missing');
+      importedWorkflowIds.push(id);
+      if (descriptor.templateId === FIRST_RUN_TEMPLATE_ID)
+        await expect(
+          page.getByRole('region', { name: 'Your first run', exact: true }),
+        ).toBeVisible();
+      expect(await readOrigin(page, seed.workspaceId, id)).toMatchObject({
+        templateId: descriptor.templateId,
+        templateVersion: descriptor.templateVersion,
+        baseManifestDigest: descriptor.baseManifestDigest,
+        derivation: 'direct',
+      });
+      continue;
+    }
+    // One with setup opens set up in the import dialog.
+    await example.click();
     const dialog = page.getByRole('dialog', {
       name: 'Start from an example',
       exact: true,

@@ -14,7 +14,9 @@ import { executeCuratedTemplateTriggers } from './trigger-evidence.js';
 
 export const curatedTemplateBrowserEvidenceSchema = z.strictObject({
   workspaceId: z.uuid(),
-  importedWorkflowIds: z.array(z.uuid()).length(3),
+  importedWorkflowIds: z
+    .array(z.uuid())
+    .length(CURATED_WORKFLOW_TEMPLATES.length),
   editedWorkflowId: z.uuid(),
   duplicateWorkflowId: z.uuid(),
   reimportedWorkflowId: z.uuid(),
@@ -126,7 +128,7 @@ export async function prepareCuratedTemplateBrowserFixture(
           evidence.duplicateWorkflowId,
           evidence.reimportedWorkflowId,
         ]).size,
-      ).toBe(5);
+      ).toBe(CURATED_WORKFLOW_TEMPLATES.length + 2);
       const origins = [];
       for (const [index, id] of evidence.importedWorkflowIds.entries()) {
         const response = await api.send(
@@ -185,7 +187,9 @@ export async function prepareCuratedTemplateBrowserFixture(
         published_version_id: string | null;
         activation_status: string;
       }>('select published_version_id,activation_status from app.workflows where workspace_id=$1 and id=any($2::uuid[])', [workspaceId, [...evidence.importedWorkflowIds, evidence.duplicateWorkflowId, evidence.reimportedWorkflowId]]);
-      expect(createdOnly.rows).toHaveLength(5);
+      expect(createdOnly.rows).toHaveLength(
+        CURATED_WORKFLOW_TEMPLATES.length + 2,
+      );
       for (const row of createdOnly.rows)
         expect(row).toEqual({
           published_version_id: null,

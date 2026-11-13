@@ -78,6 +78,13 @@ export async function configure(
   mode: EventCoordinationPolicy['mode'],
   isForm = false,
 ) {
+  // Coordination is folded away until a policy is set.
+  const fold = page.locator('summary', { hasText: /^Event coordination ·/u });
+  await fold.waitFor();
+  const open = await fold.evaluate(
+    (summary) => summary.parentElement?.hasAttribute('open') ?? false,
+  );
+  if (!open) await fold.click();
   await page.getByLabel('Policy', { exact: true }).click();
   await page
     .getByRole('option', {

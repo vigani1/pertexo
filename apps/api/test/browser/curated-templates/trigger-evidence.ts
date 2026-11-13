@@ -88,11 +88,11 @@ export async function executeCuratedTemplateTriggers({
   assertOwnedLoopbackApi(origin);
   const [webhookId, scheduleId] = workflowIds;
   if (
-    workflowIds.length !== 3 ||
+    workflowIds.length !== 4 ||
     webhookId === undefined ||
     scheduleId === undefined
   )
-    throw new Error('Three reviewed workflow identities required');
+    throw new Error('Four reviewed workflow identities required');
   const path = (id: string) => `/v1/workspaces/${workspaceId}/workflows/${id}`;
   async function get(url: string): Promise<unknown> {
     const response = await api.send('GET', url, { browser });
