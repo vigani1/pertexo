@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { downloadTextFile } from '@/lib/download-file';
 
 export function RecoveryCodes({
   codes,
@@ -19,16 +20,11 @@ export function RecoveryCodes({
     codes.join('\n') +
     '\n';
   function download() {
-    const url = URL.createObjectURL(
-      new Blob([text], { type: 'text/plain;charset=utf-8' }),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'pertexo-recovery-codes.txt';
-    link.click();
-    window.setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 0);
+    downloadTextFile({
+      name: 'pertexo-recovery-codes.txt',
+      type: 'text/plain;charset=utf-8',
+      text,
+    });
   }
   return (
     <div className="mt-6 flex flex-col gap-4">

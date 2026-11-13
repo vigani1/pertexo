@@ -7,6 +7,7 @@ import {
   WORKFLOW_PORTABILITY_LIMITS,
   type WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
+import { downloadTextFile } from '@/lib/download-file';
 
 const TOO_LARGE =
   'This file is larger than 2 MB, the most a workflow file can be.';
@@ -63,18 +64,11 @@ function foreignFileMessage(value: unknown): string {
 
 /** Fixed name, ephemeral object URL, no source names or resource identifiers. */
 export function downloadPortableWorkflow(manifest: WorkflowPortableManifest) {
-  const url = URL.createObjectURL(
-    new Blob([canonicalWorkflowPortableJson(manifest)], {
-      type: 'application/json',
-    }),
-  );
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'pertexo-workflow.json';
-  link.click();
-  setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 0);
+  downloadTextFile({
+    name: 'pertexo-workflow.json',
+    type: 'application/json',
+    text: canonicalWorkflowPortableJson(manifest),
+  });
 }
 
 type GraphNode = WorkflowPortableManifest['graph']['nodes'][number];
