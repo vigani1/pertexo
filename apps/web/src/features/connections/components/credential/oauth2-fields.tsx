@@ -261,7 +261,7 @@ export function OAuth2Fields(form: FormProps) {
             readOnly
             spellCheck={false}
             value={redirectUrl}
-            className="font-mono text-[0.8rem]"
+            className="font-mono text-label"
           />
         )}
       </LabelledField>

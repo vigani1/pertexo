@@ -54,10 +54,8 @@ export function RunStepList({
               }}
             >
               <span className="min-w-0">
-                <span className="block truncate text-[0.95rem]">
-                  {row.label}
-                </span>
-                <span className="block truncate font-mono text-[0.72rem] text-subtle-foreground">
+                <span className="block truncate text-lead">{row.label}</span>
+                <span className="block truncate font-mono text-caption text-subtle-foreground">
                   {stepLine(row, nowMs)}
                 </span>
               </span>

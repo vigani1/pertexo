@@ -35,10 +35,7 @@ export function ExpressionExamples({
             >
               Use {example.name.toLowerCase()}
             </Button>
-            <code
-              translate="no"
-              className="break-words font-mono text-[0.7rem]"
-            >
+            <code translate="no" className="break-words font-mono text-caption">
               {example.expression}
             </code>
             <p className="break-words text-muted-foreground">

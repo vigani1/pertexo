@@ -9,7 +9,7 @@ import {
 } from '../../../model/inspector/mapping-summary';
 
 const chipVariants = cva(
-  'inline-block max-w-full min-w-0 shrink truncate rounded-sm px-1.5 py-1 font-mono text-[0.66rem] leading-none font-semibold',
+  'inline-block max-w-full min-w-0 shrink truncate rounded-sm px-1.5 py-1 font-mono text-micro leading-none font-semibold',
   {
     variants: {
       tone: {
@@ -59,7 +59,7 @@ export function MappingSummary({
     >
       {/* Spaces between the parts keep the accessible name readable:
           "amount from New invoice › body.amount number". */}
-      <span className="flex w-full min-w-0 items-center gap-2 text-[0.8rem]">
+      <span className="flex w-full min-w-0 items-center gap-2 text-label">
         <span
           className={cn(
             'max-w-[45%] min-w-0 shrink-0 truncate font-semibold',
@@ -78,7 +78,7 @@ export function MappingSummary({
         {type === undefined ? null : (
           <>
             {' '}
-            <span className="ml-auto shrink-0 pl-1 font-mono text-[0.66rem] text-subtle-foreground">
+            <span className="ml-auto shrink-0 pl-1 font-mono text-micro text-subtle-foreground">
               {type}
             </span>
           </>
@@ -87,7 +87,7 @@ export function MappingSummary({
       {source.code === undefined || open ? null : (
         <>
           {' '}
-          <code className="block w-full rounded-md border border-primary/28 bg-recess-ink/30 px-2.5 py-2 font-mono text-[0.78rem] break-words whitespace-pre-wrap text-foreground">
+          <code className="block w-full rounded-md border border-primary/28 bg-recess-ink/30 px-2.5 py-2 font-mono text-label break-words whitespace-pre-wrap text-foreground">
             {source.code}
           </code>
         </>

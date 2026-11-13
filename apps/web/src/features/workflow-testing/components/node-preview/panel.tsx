@@ -275,7 +275,7 @@ function SetupCheck({
         {check.issues.map((issue) => (
           <li
             key={`${issue.path}\u0000${issue.code}`}
-            className="flex items-start gap-2 text-[0.8rem] text-muted-foreground"
+            className="flex items-start gap-2 text-label text-muted-foreground"
           >
             <StatusGlyph tone="failure" className="mt-px text-destructive" />
             {describeValidationIssue(issue)}
@@ -309,14 +309,14 @@ function TestResult({
         <Status tone={status.tone}>{status.label}</Status>
       </p>
       {preview.errorSummary === undefined ? null : (
-        <p className="text-[0.8rem] leading-relaxed text-foreground">
+        <p className="text-label leading-relaxed text-foreground">
           {preview.errorSummary}
         </p>
       )}
       {preview.safeErrorCode === null ? null : (
         <p className="text-xs text-muted-foreground">
           {`The step reported: ${shortStepError(preview.safeErrorCode)} `}
-          <code className="font-mono text-[0.7rem] text-subtle-foreground">
+          <code className="font-mono text-caption text-subtle-foreground">
             {preview.safeErrorCode}
           </code>
         </p>

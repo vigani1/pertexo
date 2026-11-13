@@ -187,7 +187,7 @@ export function InlineFailedRead({
   retry: () => void;
 }>) {
   return (
-    <div role="alert" className="text-[0.8rem] text-muted-foreground">
+    <div role="alert" className="text-label text-muted-foreground">
       <ReadRecovery
         error={error}
         resource="This data"

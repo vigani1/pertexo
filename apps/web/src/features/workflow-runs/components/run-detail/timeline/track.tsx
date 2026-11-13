@@ -165,7 +165,7 @@ export function RunTimelineTrack({
       })}
       <span
         className={cn(
-          'absolute top-0.5 hidden max-w-60 truncate font-mono text-[0.68rem] leading-4 whitespace-nowrap sm:block',
+          'absolute top-0.5 hidden max-w-60 truncate font-mono text-caption leading-4 whitespace-nowrap sm:block',
           tone === 'failure' || tone === 'timeout'
             ? 'text-destructive'
             : 'text-subtle-foreground',

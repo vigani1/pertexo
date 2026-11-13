@@ -82,7 +82,7 @@ export function WorkflowRows({
     >
       <div
         aria-hidden="true"
-        className={`hidden ${WORKFLOW_ROW_COLUMNS} gap-x-4 px-3 pb-2 font-mono text-[0.68rem] text-subtle-foreground lg:grid`}
+        className={`hidden ${WORKFLOW_ROW_COLUMNS} gap-x-4 px-3 pb-2 font-mono text-caption text-subtle-foreground lg:grid`}
       >
         <span />
         <span>Workflow</span>

@@ -85,7 +85,7 @@ export function RecentLog<Item>({
           {title}
         </Heading>
         {note === undefined ? null : (
-          <span className="font-mono text-[0.72rem] text-subtle-foreground">
+          <span className="font-mono text-caption text-subtle-foreground">
             {note}
           </span>
         )}
@@ -179,7 +179,7 @@ export function RecentLogEntry({
         )}
         {action}
       </div>
-      <p className="flex flex-col items-end gap-0.5 text-right font-mono text-[0.72rem] text-subtle-foreground">
+      <p className="flex flex-col items-end gap-0.5 text-right font-mono text-caption text-subtle-foreground">
         <time dateTime={at} title={formatDateTime(at)}>
           {formatRelativeTime(at)}
         </time>

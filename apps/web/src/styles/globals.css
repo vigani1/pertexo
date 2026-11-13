@@ -27,6 +27,17 @@
     'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
 
+  /* The type scale below Tailwind's text-sm, and the display sizes. Each
+     size is far enough from its neighbours to tell apart; text keeps the
+     line height it inherits, as the sizes it replaces did. */
+  --text-micro: 0.625rem; /* axis ticks, tiny counts, tile marks */
+  --text-caption: 0.7rem; /* ids, timestamps, mono metadata */
+  --text-label: 0.8rem; /* field labels, help, dense rows */
+  --text-lead: 0.95rem; /* a row's name, a large button */
+  --text-wordmark: 1.375rem;
+  --text-wordmark-lg: 1.625rem;
+  --text-display: 2.75rem; /* page titles from sm up */
+
   --color-surface-ink: var(--surface-ink);
   --color-recess-ink: var(--recess-ink);
   --color-graph-link: var(--graph-link);

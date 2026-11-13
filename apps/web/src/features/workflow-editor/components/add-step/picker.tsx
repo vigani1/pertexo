@@ -95,7 +95,7 @@ export function StepChoiceList({
       <section key={group.id} aria-labelledby={headingId} className="mt-3">
         <h3
           id={headingId}
-          className="px-1.5 font-mono text-[0.68rem] font-semibold tracking-wide text-subtle-foreground uppercase"
+          className="px-1.5 font-mono text-caption font-semibold tracking-wide text-subtle-foreground uppercase"
         >
           {group.title}
         </h3>

@@ -44,7 +44,7 @@ export function MultipleChoices({
         aria-invalid={error !== undefined}
         className="flex min-w-0 flex-col gap-3"
       >
-        <legend className="mb-2 text-[0.8rem] font-semibold">
+        <legend className="mb-2 text-label font-semibold">
           {field.label}
           {field.required ? '' : ' (optional)'}
         </legend>

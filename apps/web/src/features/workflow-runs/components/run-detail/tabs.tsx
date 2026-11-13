@@ -113,7 +113,7 @@ export function RunDetailTabs({
         <TabsTrigger value="graph">Diagram</TabsTrigger>
         <TabsTrigger value="events">
           Events
-          <span className="font-mono text-[0.7rem] text-subtle-foreground">
+          <span className="font-mono text-caption text-subtle-foreground">
             {String(events.length + truncatedCount)}
           </span>
         </TabsTrigger>

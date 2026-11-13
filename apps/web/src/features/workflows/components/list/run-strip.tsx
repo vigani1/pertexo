@@ -26,7 +26,7 @@ const TICK_CLASS: Readonly<Record<StatusTone, string>> = {
 export function RunStrip({ ticks }: Readonly<{ ticks: readonly RunTick[] }>) {
   if (ticks.length === 0)
     return (
-      <span className="font-mono text-[0.7rem] text-subtle-foreground">
+      <span className="font-mono text-caption text-subtle-foreground">
         No runs yet
       </span>
     );

@@ -114,7 +114,7 @@ export function FileFieldControl({
               />
               <span
                 id={summaryId}
-                className="mt-0.5 block text-[0.75rem] text-muted-foreground"
+                className="mt-0.5 block text-label text-muted-foreground"
               >
                 {acceptSummary(field)}
               </span>

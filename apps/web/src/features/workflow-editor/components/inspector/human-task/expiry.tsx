@@ -62,7 +62,7 @@ function ExpiryTimeline({
             }}
           >
             <span className="h-1 w-px bg-surface-ink/20" />
-            <span className="font-mono text-[0.625rem] leading-none text-subtle-foreground">
+            <span className="font-mono text-micro leading-none text-subtle-foreground">
               {tick.label}
             </span>
           </span>

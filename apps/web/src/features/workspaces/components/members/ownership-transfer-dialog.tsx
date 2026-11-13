@@ -52,7 +52,7 @@ export function OwnershipTransferDialog(
             search={returnToSearch(
               allowlistedReturnPath(`/w/${props.workspaceId}/team`),
             )}
-            className="text-[0.8rem] font-semibold text-accent-foreground underline-offset-4 hover:underline"
+            className="text-label font-semibold text-accent-foreground underline-offset-4 hover:underline"
           >
             Sign in again
           </Link>

@@ -74,7 +74,7 @@ export function LiteralEditor({
           name={`inputMapping.${row.id}.literal`}
           autoComplete="off"
           spellCheck={false}
-          className="min-h-20 font-mono text-base md:text-[0.8rem]"
+          className="min-h-20 font-mono text-base md:text-label"
           value={row.literalJson}
           disabled={disabled}
           onChange={(event) => {

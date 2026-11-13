@@ -38,7 +38,7 @@ export function InfoHint({
       </PopoverTrigger>
       <PopoverContent className="w-80">
         <PopoverTitle className="text-sm">{title}</PopoverTitle>
-        <div className="mt-1.5 flex flex-col gap-2 text-[0.82rem] leading-relaxed text-muted-foreground">
+        <div className="mt-1.5 flex flex-col gap-2 text-label leading-relaxed text-muted-foreground">
           {children}
         </div>
       </PopoverContent>

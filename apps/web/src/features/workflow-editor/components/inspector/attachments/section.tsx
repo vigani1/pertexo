@@ -58,11 +58,11 @@ export function EmailAttachments({ node, graph, loopPorts, form }: Props) {
       onBlurCapture={model.draft.blur}
     >
       <div className="flex items-baseline justify-between gap-3">
-        <h3 id={headingId} className="text-[0.8rem] font-semibold">
+        <h3 id={headingId} className="text-label font-semibold">
           Attachments
         </h3>
         {text.mode === 'files' ? (
-          <span className="font-mono text-[0.66rem] text-subtle-foreground tabular-nums">
+          <span className="font-mono text-micro text-subtle-foreground tabular-nums">
             {text.rows.length} / {maxAttachments}
           </span>
         ) : null}
@@ -150,7 +150,7 @@ function AttachmentList({
 /** Holds one chip's height, so the first file takes its place without a jump. */
 function EmptyAttachments() {
   return (
-    <div className="flex h-13 min-w-0 items-center gap-3 rounded-lg border border-dashed border-border-strong px-2.5 text-[0.8rem]">
+    <div className="flex h-13 min-w-0 items-center gap-3 rounded-lg border border-dashed border-border-strong px-2.5 text-label">
       <StepTile step={describeStep('email.send_notification')} size="sm" />
       <div className="flex min-w-0 flex-col gap-1">
         <span className="truncate font-medium">
@@ -230,8 +230,8 @@ function WholeList({
     <div className="flex min-w-0 flex-col gap-3">
       <p className="text-sm text-muted-foreground">
         These attachments come from one list. Each item needs a{' '}
-        <code className="font-mono text-[0.78rem]">file</code> and may have a{' '}
-        <code className="font-mono text-[0.78rem]">filename</code>.
+        <code className="font-mono text-label">file</code> and may have a{' '}
+        <code className="font-mono text-label">filename</code>.
       </p>
       <MappingValueEditor
         row={source}

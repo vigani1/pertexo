@@ -16,7 +16,7 @@ export function SentAttachments({ value }: Readonly<{ value: unknown }>) {
   );
   return (
     <section aria-label="Attachments sent" className="flex flex-col gap-2 pb-3">
-      <p className="font-mono text-[0.7rem] text-subtle-foreground tabular-nums">
+      <p className="font-mono text-caption text-subtle-foreground tabular-nums">
         {attachments.length} {attachments.length === 1 ? 'file' : 'files'} sent
         · {formatByteLength(total)}
       </p>

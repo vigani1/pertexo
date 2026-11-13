@@ -41,7 +41,7 @@ function HandlePreview({
   onEdit: () => void;
 }>) {
   return (
-    <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[0.8rem] text-muted-foreground">
+    <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-label text-muted-foreground">
       Handle
       <code className="max-w-full truncate rounded-sm bg-surface-ink/[0.04] px-1.5 py-0.5 text-foreground">
         {slug === '' ? 'follows the name' : slug}

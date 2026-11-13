@@ -35,10 +35,7 @@ export function FormatTiles({
   return (
     <>
       {/* A label element can't name a group of buttons. */}
-      <p
-        id={labelId}
-        className="text-[0.8rem] font-semibold text-foreground/85"
-      >
+      <p id={labelId} className="text-label font-semibold text-foreground/85">
         File format
       </p>
       <ToggleGroup
@@ -65,11 +62,11 @@ export function FormatTiles({
             )}
           >
             <FormatGlyph format={format} />
-            <span className="flex items-baseline gap-1 text-[0.78rem] leading-none font-medium">
+            <span className="flex items-baseline gap-1 text-label leading-none font-medium">
               {TILES[format].label}
               <span
                 aria-hidden="true"
-                className="hidden font-mono text-[0.62rem] font-normal text-subtle-foreground min-[420px]:inline"
+                className="hidden font-mono text-micro font-normal text-subtle-foreground min-[420px]:inline"
               >
                 {TILES[format].extension}
               </span>

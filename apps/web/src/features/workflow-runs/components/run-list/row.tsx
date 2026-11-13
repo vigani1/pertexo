@@ -99,7 +99,7 @@ export function RunRow({
           workflowLabel(run)
         )}
       </Link>
-      <div className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[0.8rem] md:contents">
+      <div className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-label md:contents">
         <Status tone={look.tone} className="md:col-start-1 md:row-start-1">
           {look.label}
         </Status>

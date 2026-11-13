@@ -150,14 +150,14 @@ function WorkflowsTile({
             <Status
               key={state.label}
               tone={state.tone}
-              className="font-mono text-[0.72rem] font-normal"
+              className="font-mono text-caption font-normal"
             >
               {figure({ count: state.count, more: query.hasNextPage })}{' '}
               {state.label}
             </Status>
           ))}
           {archived === 0 ? null : (
-            <span className="font-mono text-[0.72rem]">
+            <span className="font-mono text-caption">
               {figure({ count: archived, more: query.hasNextPage })} archived
             </span>
           )}

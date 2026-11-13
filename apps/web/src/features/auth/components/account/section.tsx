@@ -48,7 +48,7 @@ export function FreshSignInLink({ error }: Readonly<{ error: unknown }>) {
     <Link
       to="/logout"
       search={returnToSearch(allowlistedReturnPath(pathname))}
-      className="text-[0.8rem] font-semibold text-accent-foreground underline-offset-4 hover:underline"
+      className="text-label font-semibold text-accent-foreground underline-offset-4 hover:underline"
     >
       Sign in again
     </Link>

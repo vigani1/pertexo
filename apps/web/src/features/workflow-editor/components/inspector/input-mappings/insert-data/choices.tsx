@@ -56,7 +56,7 @@ export function LoopInputChoices({
 }>) {
   return loopPorts.length > 0 ? (
     <li>
-      <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
+      <p className="flex items-center gap-2 text-label font-semibold">
         <RepeatIcon aria-hidden="true" className="size-3.5 text-secondary" />
         This item
       </p>
@@ -96,9 +96,7 @@ export function CallbackInputChoices({
 }>) {
   return (
     <li>
-      <p className="text-[0.8rem] font-semibold">
-        {stepTitle(target)} · callback
-      </p>
+      <p className="text-label font-semibold">{stepTitle(target)} · callback</p>
       <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
         {(callbackWaitConfigSchema.parse(target.config).authentication.mode ===
         'secret_url'

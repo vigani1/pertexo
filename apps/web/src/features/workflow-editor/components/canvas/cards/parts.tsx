@@ -40,7 +40,7 @@ export function CardHeading({
         <h2 className="truncate text-base leading-tight font-semibold">
           {title}
         </h2>
-        <p className="mt-0.5 truncate text-[0.8125rem] text-subtle-foreground">
+        <p className="mt-0.5 truncate text-label text-subtle-foreground">
           {type}
         </p>
       </div>
@@ -53,7 +53,7 @@ export function IssueBadge({ count }: Readonly<{ count: number }>) {
   return (
     <span
       aria-hidden="true"
-      className="absolute -top-2.5 -right-2.5 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 font-mono text-[0.68rem] font-bold text-background shadow-[0_0_0_3px_var(--background)]"
+      className="absolute -top-2.5 -right-2.5 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 font-mono text-caption font-bold text-background shadow-[0_0_0_3px_var(--background)]"
     >
       {count}
     </span>
@@ -160,7 +160,7 @@ export function Mark({
   return (
     <span
       className={cn(
-        'inline-flex max-w-full shrink-0 items-center gap-1 truncate rounded-[0.3125rem] border px-1.5 py-[0.1875rem] font-mono text-[0.75rem] leading-none [&_svg]:size-3.5 [&_svg]:shrink-0',
+        'inline-flex max-w-full shrink-0 items-center gap-1 truncate rounded-[0.3125rem] border px-1.5 py-[0.1875rem] font-mono text-label leading-none [&_svg]:size-3.5 [&_svg]:shrink-0',
         markTones[tone],
       )}
     >

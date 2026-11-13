@@ -70,7 +70,7 @@ function VariableSummary({
         )}
       </div>
       <p className="col-span-2 row-start-2 flex min-w-0 items-baseline gap-2 sm:col-span-1 sm:row-start-auto">
-        <span className="min-w-0 truncate font-mono text-[0.8rem] text-muted-foreground">
+        <span className="min-w-0 truncate font-mono text-label text-muted-foreground">
           <span className="sr-only">Value: </span>
           {valuePreview(row)}
         </span>

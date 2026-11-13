@@ -62,7 +62,7 @@ export function PasswordMeter({
         id={id}
         hidden={quiet}
         className={cn(
-          'font-mono text-[0.72rem] text-subtle-foreground',
+          'font-mono text-caption text-subtle-foreground',
           met && 'text-success',
         )}
       >

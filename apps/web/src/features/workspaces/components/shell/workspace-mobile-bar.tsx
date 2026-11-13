@@ -24,7 +24,7 @@ const AWAY_WHILE_TYPING =
   'transition-[visibility] delay-300 typing:invisible typing:delay-0 typing:duration-0';
 
 const barLinkClass =
-  "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-[0.68rem] text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground data-[active=true]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
+  "flex min-w-0 flex-1 flex-col items-center gap-1 py-1.5 text-caption text-subtle-foreground outline-none aria-[current=page]:text-accent-foreground data-[active=true]:text-accent-foreground focus-visible:text-foreground [&_svg:not([class*='size-'])]:size-5";
 
 /** Bottom navigation for phones: Home, Workflows, Runs, Inbox and More. */
 type WorkspaceMobileBarProps = Readonly<{

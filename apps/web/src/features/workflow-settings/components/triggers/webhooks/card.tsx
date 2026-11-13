@@ -71,7 +71,7 @@ export function WebhookCard({
       {repair === undefined ? null : <Notice tone="warning">{repair}</Notice>}
       {/* Checking only means something once there's an endpoint. */}
       {trigger.reconciledAt === null || !trigger.endpointReady ? null : (
-        <p className="font-mono text-[0.72rem] text-subtle-foreground">
+        <p className="font-mono text-caption text-subtle-foreground">
           Last checked{' '}
           <time
             dateTime={trigger.reconciledAt}

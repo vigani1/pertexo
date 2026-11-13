@@ -32,7 +32,7 @@ export function BuilderCard({
         <p className="flex min-w-0 items-baseline gap-2 text-sm font-semibold">
           {title}
           {port === undefined ? null : (
-            <span className="font-mono text-[0.7rem] font-normal text-subtle-foreground">
+            <span className="font-mono text-caption font-normal text-subtle-foreground">
               {port}
             </span>
           )}

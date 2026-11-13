@@ -43,7 +43,7 @@ export function StepIndicator({ step }: Readonly<{ step: AddStep }>) {
           />
         ))}
       </div>
-      <p className="font-mono text-[0.72rem] text-subtle-foreground">
+      <p className="font-mono text-caption text-subtle-foreground">
         Step {current + 1} of 3 · {STEP_WORDS[step]}
       </p>
     </div>
@@ -156,7 +156,7 @@ export function TestStep({
             <>
               <dt className="text-subtle-foreground">{saved.term}</dt>
               <dd className="min-w-0">
-                <span className="font-mono text-[0.8rem] break-all">
+                <span className="font-mono text-label break-all">
                   {saved.value}
                 </span>
                 <span className="block text-xs text-muted-foreground">

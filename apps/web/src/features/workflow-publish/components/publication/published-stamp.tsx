@@ -68,7 +68,7 @@ export function PublishedStamp({
         >
           <div className="flex items-center justify-between gap-2">
             <Status tone="success">
-              <span className="font-heading text-[0.95rem] font-semibold text-foreground">
+              <span className="font-heading text-lead font-semibold text-foreground">
                 {needsTriggerSetup
                   ? `v${String(versionNumber)} is published`
                   : `v${String(versionNumber)} is ${publicationStateLabel({ reused, liveAgain })}`}

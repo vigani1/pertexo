@@ -72,7 +72,7 @@ export function SlotWheel({
         <span className="font-display text-3xl leading-none [--display-optical-size:36]">
           {occupied.toLocaleString(FORMAT_LOCALE)}
         </span>
-        <span className="mt-1 font-mono text-[0.62rem] text-subtle-foreground">
+        <span className="mt-1 font-mono text-micro text-subtle-foreground">
           of {total.toLocaleString(FORMAT_LOCALE)}
         </span>
       </figcaption>
@@ -137,7 +137,7 @@ export function StorageArc({
         <span className="font-display text-xl leading-none [--display-optical-size:28]">
           {storageShareLabel({ used, limit, share })}
         </span>
-        <span className="mt-1 font-mono text-[0.62rem] text-subtle-foreground">
+        <span className="mt-1 font-mono text-micro text-subtle-foreground">
           full
         </span>
       </figcaption>

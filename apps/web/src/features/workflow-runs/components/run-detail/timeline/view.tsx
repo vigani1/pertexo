@@ -51,7 +51,7 @@ export function RunTimeline({
       {waiting ? <RunLoadingWave /> : null}
       <div
         aria-hidden="true"
-        className="grid grid-cols-[9rem_minmax(0,1fr)] px-2.5 font-mono text-[0.66rem] text-subtle-foreground @xl:grid-cols-[13rem_minmax(0,1fr)]"
+        className="grid grid-cols-[9rem_minmax(0,1fr)] px-2.5 font-mono text-micro text-subtle-foreground @xl:grid-cols-[13rem_minmax(0,1fr)]"
       >
         <span />
         <div className="relative mr-3 h-5 @xl:mr-6">
@@ -99,11 +99,11 @@ export function RunTimeline({
                     <StatusGlyph tone={row.tone} className="size-3.5" />
                   </span>
                   <span className="min-w-0 leading-tight">
-                    <span className="block truncate text-[0.82rem] font-semibold">
+                    <span className="block truncate text-label font-semibold">
                       {row.label}
                     </span>
                     {row.kindLabel === undefined ? null : (
-                      <span className="block truncate text-[0.7rem] text-subtle-foreground">
+                      <span className="block truncate text-caption text-subtle-foreground">
                         {row.kindLabel}
                       </span>
                     )}

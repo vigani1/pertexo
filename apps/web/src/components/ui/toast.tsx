@@ -42,7 +42,7 @@ function ToastCard({ toast }: Readonly<{ toast: Toast.Root.ToastObject }>) {
       <ToastLeading type={toast.type} />
       <Toast.Content className="min-w-0">
         <Toast.Title className="font-semibold text-foreground" />
-        <Toast.Description className="mt-0.5 text-[0.8rem] text-muted-foreground" />
+        <Toast.Description className="mt-0.5 text-label text-muted-foreground" />
       </Toast.Content>
       <Toast.Action className={buttonVariants({ size: 'sm' })} />
       <Toast.Close

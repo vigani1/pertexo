@@ -81,7 +81,7 @@ export function RunLoom({
                 : 'size-12 @min-[640px]:size-28'
             }
           />
-          <p className="font-mono text-[0.7rem] font-semibold text-accent-foreground/90 @max-[639px]:hidden">
+          <p className="font-mono text-caption font-semibold text-accent-foreground/90 @max-[639px]:hidden">
             {String(model.liveCount)} running
           </p>
         </div>

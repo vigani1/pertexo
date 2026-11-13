@@ -108,7 +108,7 @@ function RowTitle({
       <Link
         to="/w/$workspaceId/workflows/$workflowId"
         params={{ workspaceId, workflowId: workflow.id }}
-        className="block truncate text-[0.95rem] font-semibold text-foreground outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring/60"
+        className="block truncate text-lead font-semibold text-foreground outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring/60"
       >
         {workflow.name}
       </Link>
@@ -127,7 +127,7 @@ function RowRuns({
 }: Readonly<{ summary: WorkflowSummary['listSummary'] }>) {
   if (summary?.recentRuns === undefined)
     return (
-      <span className="font-mono text-[0.7rem] text-subtle-foreground">
+      <span className="font-mono text-caption text-subtle-foreground">
         Couldn’t load
       </span>
     );
@@ -139,7 +139,7 @@ function UpdatedAt({ at }: Readonly<{ at: string }>) {
     <time
       dateTime={at}
       title={`Updated ${formatDateTime(at)}`}
-      className="font-mono text-[0.72rem] text-subtle-foreground"
+      className="font-mono text-caption text-subtle-foreground"
     >
       {formatRelativeTime(at)}
     </time>
@@ -251,7 +251,7 @@ export function WorkflowRow({
       <RowTitle workspaceId={workspace.id} workflow={workflow} graph={graph} />
       <div className="col-start-2 row-start-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 lg:contents">
         <div className="min-w-0">
-          <Status tone={state.tone} className="text-[0.78rem]">
+          <Status tone={state.tone} className="text-label">
             {state.label}
           </Status>
         </div>

@@ -228,7 +228,7 @@ function CalendarGrid({
             <th
               key={name}
               scope="col"
-              className="pb-1 text-[0.68rem] font-semibold tracking-wide text-subtle-foreground uppercase"
+              className="pb-1 text-caption font-semibold tracking-wide text-subtle-foreground uppercase"
             >
               {name}
             </th>
@@ -275,7 +275,7 @@ function CalendarGrid({
                     aria-pressed={chosen(day)}
                     aria-current={isToday ? 'date' : undefined}
                     className={cn(
-                      'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-[0.8rem] tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
+                      'relative mx-auto grid size-9 place-items-center rounded-full border border-transparent font-mono text-label tabular-nums outline-none transition-[background-color,border-color,box-shadow,color] duration-150 focus-ring disabled:pointer-events-none disabled:opacity-25 motion-reduce:transition-none',
                       outside && 'text-subtle-foreground',
                       isToday && !chosen(day) && 'text-accent-foreground',
                       onBand === 'middle' && 'text-foreground',

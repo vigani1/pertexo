@@ -166,7 +166,7 @@ export function WorkflowHubBar({
               <h1 className={TITLE_CLASS}>{workflow.name}</h1>
             </WorkflowNameWithDialog>
           )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 max-sm:flex-nowrap max-sm:gap-x-1 gap-y-0.5 font-mono text-[0.7rem] text-subtle-foreground">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 max-sm:flex-nowrap max-sm:gap-x-1 gap-y-0.5 font-mono text-caption text-subtle-foreground">
             <WorkflowActivationState
               workspace={workspace}
               workflowId={workflowId}
@@ -203,7 +203,7 @@ export function WorkflowHubBar({
             aria-current={link.tab === activeTab ? 'page' : undefined}
             className={cn(
               // Horizontal overflow keeps one fixed-height row, including Comments.
-              'shrink-0 rounded-sm px-2 py-2 text-center text-[0.8rem] font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring sm:flex-none sm:px-3 sm:py-1.5',
+              'shrink-0 rounded-sm px-2 py-2 text-center text-label font-medium whitespace-nowrap text-subtle-foreground outline-none hover:text-foreground focus-ring sm:flex-none sm:px-3 sm:py-1.5',
               link.tab === activeTab &&
                 'bg-action/10 text-accent-foreground shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--action)_22%,transparent)]',
             )}

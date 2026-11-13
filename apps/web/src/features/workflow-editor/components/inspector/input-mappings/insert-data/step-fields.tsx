@@ -71,7 +71,7 @@ export function StepFields({
         type="button"
         aria-expanded={open}
         aria-controls={fieldsId}
-        className="flex min-h-7 w-full items-center gap-2 rounded-sm text-left text-[0.8rem] font-semibold outline-none hover:bg-surface-ink/5 focus-ring pointer-coarse:min-h-10"
+        className="flex min-h-7 w-full items-center gap-2 rounded-sm text-left text-label font-semibold outline-none hover:bg-surface-ink/5 focus-ring pointer-coarse:min-h-10"
         onClick={() => {
           setAsked(true);
           setOpen((current) => !current);

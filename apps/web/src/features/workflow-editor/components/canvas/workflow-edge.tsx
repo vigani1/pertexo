@@ -120,7 +120,7 @@ export function WorkflowEdge({
         <EdgeLabelRenderer>
           <span
             className={cn(
-              'pointer-events-none absolute flex items-center gap-1 rounded bg-card/90 px-1.5 text-[0.7rem] whitespace-nowrap',
+              'pointer-events-none absolute flex items-center gap-1 rounded bg-card/90 px-1.5 text-caption whitespace-nowrap',
               failure ? 'text-destructive' : 'text-warning',
             )}
             style={{

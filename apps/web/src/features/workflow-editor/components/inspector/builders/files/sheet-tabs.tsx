@@ -66,7 +66,7 @@ export function SheetTabs({
               live.change(event.currentTarget.value);
             }}
             onBlur={live.blur}
-            className="w-36 max-w-48 min-w-14 bg-transparent font-mono supports-[field-sizing:content]:w-auto supports-[field-sizing:content]:[field-sizing:content] text-[0.72rem] font-medium text-foreground outline-none placeholder:font-sans placeholder:font-normal placeholder:text-subtle-foreground disabled:opacity-60"
+            className="w-36 max-w-48 min-w-14 bg-transparent font-mono supports-[field-sizing:content]:w-auto supports-[field-sizing:content]:[field-sizing:content] text-caption font-medium text-foreground outline-none placeholder:font-sans placeholder:font-normal placeholder:text-subtle-foreground disabled:opacity-60"
           />
         </span>
         {others.map((name) => (
@@ -79,7 +79,7 @@ export function SheetTabs({
             onClick={() => {
               live.change(name);
             }}
-            className="flex h-7 max-w-36 shrink-0 items-center gap-1 rounded-b-md border border-t-0 border-dashed border-surface-ink/12 px-2 font-mono text-[0.68rem] text-muted-foreground transition-colors hover:border-action/50 hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none"
+            className="flex h-7 max-w-36 shrink-0 items-center gap-1 rounded-b-md border border-t-0 border-dashed border-surface-ink/12 px-2 font-mono text-caption text-muted-foreground transition-colors hover:border-action/50 hover:text-foreground focus-ring disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none"
           >
             <PlusIcon aria-hidden="true" className="size-3 shrink-0" />
             <span className="truncate">{name}</span>

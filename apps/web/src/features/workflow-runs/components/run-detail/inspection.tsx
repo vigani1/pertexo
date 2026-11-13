@@ -97,8 +97,8 @@ export function RunStepDetails({
             </p>
             <p>
               Pertexo keeps run data for{' '}
-              {formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}, then
-              deletes it.
+              {formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}, then deletes
+              it.
             </p>
           </>
         }
@@ -111,7 +111,7 @@ export function RunStepDetails({
             scope={scope}
           />
         ) : (
-          <p className="text-[0.8rem] text-muted-foreground">
+          <p className="text-label text-muted-foreground">
             No input was sent: this step used its saved output.
           </p>
         )}

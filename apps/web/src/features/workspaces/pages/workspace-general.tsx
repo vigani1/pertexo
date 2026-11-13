@@ -114,7 +114,7 @@ export function WorkspaceGeneralPage({
               <time dateTime={workspace.createdAt}>
                 {formatRelativeTime(workspace.createdAt)}
               </time>
-              <span className="block font-mono text-[0.72rem] text-subtle-foreground">
+              <span className="block font-mono text-caption text-subtle-foreground">
                 {formatDateTime(workspace.createdAt)}
               </span>
             </Fact>

@@ -96,7 +96,7 @@ function StepHealthTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left font-mono text-[0.7rem] text-subtle-foreground">
+            <tr className="text-left font-mono text-caption text-subtle-foreground">
               <th className="py-1.5 pr-3 font-normal">Step</th>
               <th className="px-3 py-1.5 text-right font-normal">Ran</th>
               <th className="px-3 py-1.5 text-right font-normal">Failed</th>

@@ -51,7 +51,7 @@ export function SheetGrid({
         {stale ? (
           <span
             aria-hidden="true"
-            className="absolute top-0.5 right-1 z-10 rounded-full border border-warning/30 bg-background/90 px-1.5 font-sans text-[0.6rem] leading-4 text-warning"
+            className="absolute top-0.5 right-1 z-10 rounded-full border border-warning/30 bg-background/90 px-1.5 font-sans text-micro leading-4 text-warning"
           >
             Before your edits
           </span>
@@ -78,7 +78,7 @@ export function SheetGrid({
           className="overflow-x-auto overscroll-x-contain [scrollbar-width:thin] focus-ring"
         >
           <div
-            className="grid w-max min-w-full font-mono text-[0.68rem] leading-6"
+            className="grid w-max min-w-full font-mono text-caption leading-6"
             style={{ gridTemplateColumns: template }}
           >
             <span
@@ -89,7 +89,7 @@ export function SheetGrid({
               <span
                 key={index}
                 aria-hidden="true"
-                className="border-b border-surface-ink/7 text-center text-[0.6rem] text-subtle-foreground"
+                className="border-b border-surface-ink/7 text-center text-micro text-subtle-foreground"
               >
                 {String.fromCharCode(65 + (index % 26))}
               </span>
@@ -217,7 +217,7 @@ function SheetRow({
     >
       <span
         aria-hidden="true"
-        className="flex h-6 items-center justify-end border-r border-b border-surface-ink/6 pr-1 text-[0.6rem] text-subtle-foreground"
+        className="flex h-6 items-center justify-end border-r border-b border-surface-ink/6 pr-1 text-micro text-subtle-foreground"
       >
         {gutter}
       </span>

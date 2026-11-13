@@ -35,7 +35,7 @@ export function IssuesList({
             key={group.nodeId ?? 'workflow'}
             className="flex flex-col gap-1.5"
           >
-            <p className="flex items-center gap-2 text-[0.8rem] font-semibold">
+            <p className="flex items-center gap-2 text-label font-semibold">
               {step === undefined ? null : <StepTile step={step} size="sm" />}
               <span className="truncate">{name}</span>
             </p>
@@ -43,7 +43,7 @@ export function IssuesList({
               {group.issues.map((issue) => (
                 <li
                   key={issue.id}
-                  className="grid grid-cols-[1rem_minmax(0,1fr)_auto] items-start gap-2 text-[0.8rem] leading-snug"
+                  className="grid grid-cols-[1rem_minmax(0,1fr)_auto] items-start gap-2 text-label leading-snug"
                 >
                   <StatusGlyph
                     tone="failure"

@@ -19,7 +19,7 @@ export function VariablePicker({
   const descriptionPrefix = useId();
   return (
     <>
-      <p className="text-[0.8rem] font-semibold">Workspace variables</p>
+      <p className="text-label font-semibold">Workspace variables</p>
       <QueryView query={query} resource="Variable names">
         {(snapshot) => (
           <ul className="mt-1 ml-3 flex flex-col border-l border-surface-ink/8 pl-2">
@@ -32,7 +32,7 @@ export function VariablePicker({
                       ? undefined
                       : `${descriptionPrefix}-${name}`
                   }
-                  className="flex min-h-9 w-full items-center justify-between gap-2 rounded px-1 text-left text-[0.8rem] outline-offset-2 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                  className="flex min-h-9 w-full items-center justify-between gap-2 rounded px-1 text-left text-label outline-offset-2 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
                   onClick={() => {
                     onChoose(name);
                   }}

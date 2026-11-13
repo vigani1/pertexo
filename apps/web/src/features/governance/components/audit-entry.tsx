@@ -120,17 +120,17 @@ export function AuditEntry({
           >
             <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5">
               <dt>When</dt>
-              <dd className="font-mono text-[0.72rem]">
+              <dd className="font-mono text-caption">
                 {formatDateTime(event.occurredAt)}
               </dd>
               <dt>Recorded as</dt>
-              <dd className="font-mono text-[0.72rem] [overflow-wrap:anywhere]">
+              <dd className="font-mono text-caption [overflow-wrap:anywhere]">
                 {event.action}
               </dd>
               {details.map(([name, value]) => (
                 <div key={name} className="contents">
                   <dt>{DETAIL_LABELS[name]}</dt>
-                  <dd className="min-w-0 font-mono text-[0.72rem] [overflow-wrap:anywhere]">
+                  <dd className="min-w-0 font-mono text-caption [overflow-wrap:anywhere]">
                     <DetailValue value={value} />
                   </dd>
                 </div>

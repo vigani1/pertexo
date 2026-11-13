@@ -29,7 +29,7 @@ function When({
             <time dateTime={value} className="font-medium">
               {formatRelativeTime(value)}
             </time>
-            <span className="block font-mono text-[0.72rem] text-subtle-foreground">
+            <span className="block font-mono text-caption text-subtle-foreground">
               {formatDateTime(value)}
             </span>
           </>

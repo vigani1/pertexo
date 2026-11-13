@@ -38,7 +38,7 @@ export function AccountFactsSection({
           <time dateTime={user.createdAt}>
             {formatRelativeTime(user.createdAt)}
           </time>
-          <span className="block font-mono text-[0.72rem] text-subtle-foreground">
+          <span className="block font-mono text-caption text-subtle-foreground">
             {formatDateTime(user.createdAt)}
           </span>
         </Fact>
@@ -51,7 +51,7 @@ export function AccountFactsSection({
         </Fact>
         <Fact term="Time zone">
           <span className="[overflow-wrap:anywhere]">{localTimeZone()}</span>
-          <span className="block font-mono text-[0.72rem] text-subtle-foreground">
+          <span className="block font-mono text-caption text-subtle-foreground">
             {localUtcOffset()} · from this browser
           </span>
         </Fact>

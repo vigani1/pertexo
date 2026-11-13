@@ -21,7 +21,7 @@ export type StatusTone =
 const statusVariants = cva(
   // A status is one short word and never gives up its space to the text
   // beside it: that text wraps instead.
-  'inline-flex shrink-0 items-center gap-1.5 text-[0.8rem] leading-none font-semibold whitespace-nowrap',
+  'inline-flex shrink-0 items-center gap-1.5 text-label leading-none font-semibold whitespace-nowrap',
   {
     variants: { tone: statusToneText },
     defaultVariants: { tone: 'neutral' },
