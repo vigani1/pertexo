@@ -16,6 +16,7 @@ import {
   draftHandler,
   organizedPage,
   summary,
+  user,
   workflowId,
   workspaceId,
 } from './fixtures';
@@ -175,6 +176,62 @@ describe('examples with nothing to set up', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Start from an example' }),
     ).toBeVisible();
+    expect(sent.imports).toHaveLength(0);
+  });
+
+  // Review J6a P2-2: nothing raised for one account can be acted on as the
+  // next one.
+  it('closes the failed start’s Try again when another account signs in', async () => {
+    const sent = workspace();
+    let session: 'a' | 'none' | 'b' = 'a';
+    const refused = () =>
+      HttpResponse.json(
+        {
+          type: 'about:blank',
+          title: 'Session ended',
+          status: 401,
+          code: 'auth.unauthenticated',
+          requestId: 'examples-switch',
+        },
+        {
+          status: 401,
+          headers: { 'content-type': 'application/problem+json' },
+        },
+      );
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () => {
+        if (session === 'a') return HttpResponse.json(user);
+        if (session === 'b')
+          return HttpResponse.json({
+            ...user,
+            id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+            email: 'b@example.test',
+          });
+        return refused();
+      }),
+      http.post(`${api}/workflows/import/preview`, () => {
+        session = 'none';
+        return refused();
+      }),
+    );
+    const { event } = await chooseOnEmptyList(firstRun.title);
+    expect(
+      await screen.findByRole('heading', { name: 'Your session ended' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Try again', { selector: 'button' }),
+    ).toBeInTheDocument();
+
+    session = 'b';
+    await event.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(
+      await screen.findByText('Signed in as a different account'),
+    ).toBeVisible();
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Try again', { selector: 'button' }),
+      ).toBeNull();
+    });
     expect(sent.imports).toHaveLength(0);
   });
 });

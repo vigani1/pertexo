@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Toast } from '@base-ui/react/toast';
 
 type Message = Readonly<{ title: ReactNode; description?: ReactNode }>;
@@ -25,6 +25,11 @@ export type Notifications = Readonly<{
     }>,
   ): Promise<Result>;
   dismiss(id: string): void;
+  /**
+   * Closes every notification that offers an action (Try again, Undo), so
+   * nothing raised for one account can be acted on as another.
+   */
+  dismissActionable(): void;
 }>;
 
 type NotificationAction = Readonly<{
@@ -34,6 +39,10 @@ type NotificationAction = Readonly<{
 
 export function useNotifications(): Notifications {
   const manager = Toast.useToastManager();
+  const shown = useRef(manager.toasts);
+  useEffect(() => {
+    shown.current = manager.toasts;
+  }, [manager.toasts]);
   return useMemo<Notifications>(
     () => ({
       success: (message) =>
@@ -99,6 +108,10 @@ export function useNotifications(): Notifications {
         }),
       dismiss: (id) => {
         manager.close(id);
+      },
+      dismissActionable: () => {
+        for (const toast of shown.current)
+          if (toast.actionProps !== undefined) manager.close(toast.id);
       },
     }),
     [manager],
