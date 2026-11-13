@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   findSessionSettings,
+  unexemptedSessionSettings,
   validateTransactionLocalSettings,
 } from './transaction-local-settings.mjs';
 
@@ -15,58 +16,116 @@ test('passes the repository, whose settings are all transaction-local', async ()
   assert.ok(checked > 1_000);
 });
 
-test('rejects a session-level set_config, however it is written', () => {
-  assert.deepEqual(
-    statements(`
-      await client.query("select set_config('app.workspace_id', $1, false)", [id]);
-      await client.query(\`select set_config('app.actor_id',\${actor},FALSE)\`);
-      await db.execute(sql\`select set_config('lock_timeout',\${\`\${ms}ms\`},false)\`);
-      await client.query("select set_config('app.discovery_scope', $1, $2)", [scope, local]);
-    `),
-    [
-      "set_config('app.workspace_id', $1, false)",
-      "set_config('app.actor_id',$x,FALSE)",
-      "set_config('lock_timeout',$x,false)",
-      "set_config('app.discovery_scope', $1, $2)",
-    ],
-  );
-});
+// Every sample here once passed the check (batch J9 review, check-bypass.mjs)
+// or is a form the check must refuse; each must now be found on its own.
+const REJECTED = {
+  'set_config with false': `client.query("select set_config('app.workspace_id', $1, false)", [id]);`,
+  'set_config with FALSE in a template': `client.query(\`select set_config('app.actor_id',\${actor},FALSE)\`);`,
+  'set_config false in a drizzle template': `db.execute(sql\`select set_config('lock_timeout',\${\`\${ms}ms\`},false)\`);`,
+  'set_config with a parameter flag': `client.query("select set_config($1, $2, $3)", [a, b, local]);`,
+  'set_config with a template variable flag':
+    'client.query(`select set_config($1, $2, ${isLocal})`);',
+  'set_config with a column flag': `client.query("select set_config('a', $1, is_local)");`,
+  'set_config built by concatenation': `client.query("select set_config('app.workspace_id', $1, " + local + ")", [id]);`,
+  'set_config named through a variable':
+    "const fn = 'set_config'; client.query(`select ${fn}('a', $1, false)`);",
+  'set_config with two arguments': `client.query("select set_config('a', $1)");`,
+  'set_config in a DO block': `client.query("do $$ begin perform set_config('app.workspace_id', 'x', false); end $$");`,
+  'SET with an interpolated name': 'client.query(`set ${name} = ${value}`);',
+  'SET TO with an interpolated name':
+    'client.query(`SET ${name} TO ${value}`);',
+  'SET built by concatenation': `client.query('set ' + 'app.workspace_id = ' + id);`,
+  'SET built from an array': `client.query(['set', 'app.workspace_id', '=', id].join(' '));`,
+  'SET after a line comment': `client.query('-- scope\\nset app.workspace_id = 1');`,
+  'SET after a block comment': `client.query('/* scope */ SET app.workspace_id = 1');`,
+  'SET after another statement': `client.query('begin; set app.workspace_id to 1; commit');`,
+  'SET in mixed case': `client.query("Set app.workspace_id To 'x'");`,
+  'SET with a function value': `client.query("set app.workspace_id = current_setting('x')");`,
+  'SET with a cast value': `client.query("set statement_timeout = '5s'::text");`,
+  'SET ROLE': `client.query('set role pertexo_owner');`,
+  'SET ROLE with an interpolated role': 'client.query(`set role "${role}"`);',
+  'SET SESSION': `client.query("SET SESSION app.workspace_id = 'x'");`,
+  'SET SESSION CHARACTERISTICS': `client.query('set session characteristics as transaction read only');`,
+  'SET SESSION AUTHORIZATION': `client.query('set session authorization pertexo_app');`,
+  'SET TIME ZONE': `client.query("set time zone 'UTC'");`,
+  'sql.raw SET': `sql.raw("set statement_timeout = 0")`,
+  RESET: `client.query("reset app.workspace_id");`,
+  'RESET ALL': `client.query('RESET ALL');`,
+  'RESET ROLE': `client.query('reset role');`,
+  'DO with EXECUTE SET': `client.query("do $$ begin execute 'set app.workspace_id = ''x'''; end $$");`,
+  'DO with a language': `client.query("DO LANGUAGE plpgsql $body$ begin null; end $body$");`,
+};
 
-test('rejects SET without LOCAL, alone or after other statements', () => {
-  assert.deepEqual(
-    statements(`
-      await client.query('set role pertexo_owner');
-      await client.query("SET statement_timeout = '5s'");
-      await client.query('begin; set session app.workspace_id to "x"; commit');
-      await client.query(\`set role "\${role}"\`);
-      await client.query('set session_replication_role=replica');
-    `),
-    [
-      'set role pertexo_owner',
-      "SET statement_timeout = '5s'",
-      'set session app.workspace_id to "x"',
-      'set role "$x"',
-      'set session_replication_role=replica',
-    ],
-  );
-});
+for (const [name, source] of Object.entries(REJECTED))
+  test(`rejects ${name}`, () => {
+    assert.notDeepEqual(statements(source), [], source);
+  });
 
-test('accepts transaction-local settings, updates and prose', () => {
+test('accepts transaction-local settings and SQL that changes no setting', () => {
   assert.deepEqual(
     statements(`
       await client.query("select set_config('app.workspace_id', $1, true)", [id]);
+      await client.query(\`select set_config('\${name}',$\${n},TRUE) "\${key}"\`, values);
       await db.execute(sql\`select set_config('app.workspace_id',coalesce(\${id}::text,''),true)\`);
       await client.query('set local role pertexo_owner');
       await client.query("SET LOCAL statement_timeout='5s'");
+      await client.query('-- bounded\\nset local lock_timeout = 1000');
       await client.query('set transaction isolation level serializable');
       await client.query('set constraints all deferred');
       await client.query("update app.users set status='x' where id=$1");
+      await client.query('insert into t values (1) on conflict do update set v=1');
       // set_config('app.workspace_id', $1, false) in a comment is no SQL.
-      throw new Error('set NODE_ENV to development, test or production');
-      const label = 'Set up a ready-made workflow';
-      const onDelete = 'set null';
     `),
     [],
+  );
+});
+
+test('treats lone words and foreign key actions as values', () => {
+  assert.deepEqual(
+    statements(`
+      type Outcome = 'reset' | 'invalid';
+      const result = { kind: 'set' };
+      map.get('Set');
+      references(() => runs.id, { onDelete: 'set null' });
+      foreignKey({ columns: [a], foreignColumns: [b] }).onDelete('set null');
+    `),
+    [],
+  );
+  assert.notDeepEqual(statements(`const action = 'set null';`), []);
+});
+
+test('lets a reasoned marker exempt one statement, and refuses a stale marker', () => {
+  const exempted = `
+    // session-setting-exempt: a message shown to people, not SQL
+    const hint = 'set NODE_ENV to production';
+    const sql = 'set role pertexo_owner';
+  `;
+  assert.deepEqual(
+    unexemptedSessionSettings('sample.ts', exempted).map(
+      ({ statement }) => statement,
+    ),
+    ['set role pertexo_owner'],
+  );
+  assert.deepEqual(
+    unexemptedSessionSettings(
+      'sample.ts',
+      `
+        // session-setting-exempt: no longer needed
+        const sql = 'select 1';
+      `,
+    ).map(({ statement }) => statement),
+    ['exemption marker exempts nothing; remove it'],
+  );
+  assert.notDeepEqual(
+    unexemptedSessionSettings(
+      'sample.ts',
+      `
+        // session-setting-exempt:
+        const sql = 'set role pertexo_owner';
+      `,
+    ),
+    [],
+    'a marker without a reason exempts nothing',
   );
 });
 

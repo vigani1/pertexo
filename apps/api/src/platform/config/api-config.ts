@@ -94,6 +94,7 @@ export class InvalidInstanceLimitError extends ApiConfigurationError {
   public constructor(public readonly setting: string) {
     super(
       setting,
+      // session-setting-exempt: an operator-facing configuration message, not SQL
       `${setting} must be a whole number within its allowed range; set a supported integer limit.`,
     );
   }
