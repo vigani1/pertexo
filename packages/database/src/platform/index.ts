@@ -10,6 +10,8 @@ export {
 } from './pool/database-pool.runtime.js';
 export { surviveConnectionLoss } from './pool/connection-loss.js';
 export { InheritedSessionContextError } from './pool/inherited-session-context.js';
+export { DATABASE_POOL_ROLES } from './pool/policy.js';
+export { APP_SETTING_NAMES } from '../tenant-access/app-settings.js';
 export type {
   DatabaseRuntime,
   DatabaseRuntimeOptions,
