@@ -379,7 +379,7 @@ jobs:
             journeys: >-
               collaboration workflow-organization variables transforms oauth2
               forms expression-admission spreadsheets readonly duplication
-              federation receipts input-cases connection-health
+              federation receipts input-cases connection-health first-use
           - suite: live-3
             journeys: >-
               artifact-inputs product webhook-responses webhook-controlled-http
