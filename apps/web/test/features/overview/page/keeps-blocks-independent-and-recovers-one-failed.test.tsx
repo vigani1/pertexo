@@ -276,6 +276,8 @@ describe('workspace home', () => {
       'Add a connection': `${base}/connections?add=any`,
       'Set a failure alert': `${base}/settings/alerts`,
       'Invite a teammate': `${base}/team?invite=true`,
+      'Read the first-workflow guide (opens in a new tab)':
+        'https://github.com/vigani1/pertexo/blob/main/docs/guides/getting-started.md',
     });
   });
 });

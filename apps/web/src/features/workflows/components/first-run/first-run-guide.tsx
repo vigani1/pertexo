@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/class-names';
+import { GuideLink } from '@/components/patterns/guidance/guide-link';
+import { HELP_LINKS } from '@/lib/help/guides';
 import { shownData } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowSummaryQueryOptions } from '../../data/workflows.queries';
@@ -42,7 +44,10 @@ export function FirstRunGuide({
             Your first run
           </h2>
           <p className="text-xs text-muted-foreground">
-            This example needs nothing set up. Three steps to see it work.
+            This example needs nothing set up. Three steps to see it work.{' '}
+            <GuideLink href={HELP_LINKS.firstWorkflow} className="text-xs">
+              The full guide
+            </GuideLink>
           </p>
         </div>
         <Button

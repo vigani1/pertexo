@@ -1,3 +1,4 @@
+import { HelpMenu } from './help-menu';
 import type { ReactNode, Ref } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
@@ -151,6 +152,7 @@ export function WorkspaceSpine({
         />
       ))}
       <span className="flex-1" />
+      <HelpMenu className={spineLinkClass} />
       <ThemeSwitchButton className={spineLinkClass} />
       <Tooltip>
         <TooltipTrigger

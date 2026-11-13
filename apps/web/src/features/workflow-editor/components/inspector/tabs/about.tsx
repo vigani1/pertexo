@@ -6,6 +6,8 @@ import type {
 } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { CopyButton } from '@/components/ui/copy-button';
+import { GuideLink } from '@/components/patterns/guidance/guide-link';
+import { stepGuideLink } from '@/lib/help/guides';
 import {
   outputFieldsOf,
   type OutputField,
@@ -32,6 +34,7 @@ export function AboutTab({
   definition: NodeDefinitionCatalogItem | undefined;
 }>) {
   const step = describeStep(node.definition.key, definition?.family);
+  const guide = stepGuideLink(node.definition.key);
   return (
     <dl className="flex flex-col gap-4 text-sm">
       <Row term="Step type">
@@ -41,6 +44,11 @@ export function AboutTab({
           {node.definition.key} · v{node.definition.version} ·{' '}
           {familyWord(step.family)}
         </span>
+        {guide === undefined ? null : (
+          <GuideLink href={guide} className="mt-1.5 text-xs">
+            How {step.name} works
+          </GuideLink>
+        )}
       </Row>
       {definition === undefined ? (
         <Row term="Catalog">

@@ -3,6 +3,8 @@ import { ArrowRightIcon, PlayIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { cn } from '@/lib/class-names';
+import { GuideLink } from '@/components/patterns/guidance/guide-link';
+import { HELP_LINKS } from '@/lib/help/guides';
 import type {
   FirstThreadDestination,
   FirstThreadStep,
@@ -135,6 +137,9 @@ export function FirstThread({
           ? ' The rest are here whenever you want them.'
           : ' Once something runs, this page shows every run as it happens.'}
       </p>
+      <GuideLink href={HELP_LINKS.firstWorkflow} className="mt-2">
+        Read the first-workflow guide
+      </GuideLink>
       {firstRun === undefined ? null : (
         <div className="mt-5 flex flex-col items-start gap-2 rounded-lg border border-primary/20 bg-primary/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">

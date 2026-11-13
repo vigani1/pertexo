@@ -1,3 +1,4 @@
+import { HelpLinks } from './help-menu';
 import { useState, type ReactNode, type Ref } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link, useMatchRoute } from '@tanstack/react-router';
@@ -159,6 +160,9 @@ export function WorkspaceMobileBar(props: WorkspaceMobileBarProps) {
                   {destination.label}
                 </Link>
               ))}
+              <div className="mt-3 border-t border-border pt-3">
+                <HelpLinks />
+              </div>
               <div className="mt-3 border-t border-border pt-3">{more}</div>
             </SheetBody>
           </SheetContent>
