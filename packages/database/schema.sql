@@ -793,6 +793,10 @@ CREATE FUNCTION app.held_workflow_run_admission_events(p_workspace uuid) RETURNS
     AS $$
 DECLARE v_prior text;
 BEGIN
+  -- Restates who workflow_run_active_admission_eligible (and the
+  -- workflow_concurrency_admissible it calls) could admit; it may only hold
+  -- deliveries those refuse. Change both together
+  -- (test: runs/calls/admission-held-agreement).
   v_prior:=current_setting('app.workspace_id',true);
   PERFORM set_config('app.workspace_id',p_workspace::text,true);
   RETURN QUERY
@@ -2031,6 +2035,9 @@ BEGIN
     IF v_run.status<>'queued' OR v_run.cancel_requested_at IS NOT NULL OR v_run.deadline_at<=clock_timestamp() THEN
       v_result:=true;
     ELSE
+      -- Keep in step with held_workflow_run_admission_events: the claim never asks
+      -- this about the deliveries that function holds, so a new way in for a queued
+      -- run must be added there too (test: runs/calls/admission-held-agreement).
       SELECT status INTO v_status FROM app.workspaces WHERE id=p_workspace_id;
       SELECT active_run_limit INTO v_limit FROM app.workspace_execution_entitlement_versions
         WHERE workspace_id=p_workspace_id AND version=v_run.execution_entitlement_version;
