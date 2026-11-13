@@ -126,7 +126,7 @@ describe('shared workflow input cases', () => {
     expect(captures).toHaveLength(1);
     expect(screen.getByLabelText('Case name')).toBeDisabled();
     release();
-    await screen.findByText(/Check the refreshed current state/u);
+    await screen.findByText(/Saving it again is safe — it won’t apply twice/u);
     expect(captures).toEqual([
       {
         name: metadata.name,
@@ -199,7 +199,7 @@ describe('shared workflow input cases', () => {
     );
     await screen.findByLabelText('Case name');
     await event.click(screen.getByRole('button', { name: 'Save input case' }));
-    await screen.findByText(/Check the refreshed current state/u);
+    await screen.findByText(/Saving it again is safe — it won’t apply twice/u);
     expect(screen.getByLabelText('Case input (JSON)')).toBeEnabled();
     expect(
       screen.getByRole('button', { name: 'Cancel case edit' }),

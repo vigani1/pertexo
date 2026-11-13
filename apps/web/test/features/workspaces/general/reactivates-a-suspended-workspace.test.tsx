@@ -88,7 +88,7 @@ describe('reactivating a workspace', () => {
     const actor = userEvent.setup();
 
     await pressReactivate(actor);
-    await screen.findByText(/Check the refreshed current state/u);
+    await screen.findByText(/Saving it again is safe — it won’t apply twice/u);
     await actor.click(screen.getByRole('button', button));
 
     await waitFor(() => {
