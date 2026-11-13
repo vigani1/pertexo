@@ -14,7 +14,7 @@ import type {
 import {
   assertNoNestedScope,
   clearNestedScope,
-  installTransactionContext,
+  installNestedScope,
 } from './transactions/scope.js';
 import { runTransaction } from './transactions/run.js';
 
@@ -146,7 +146,7 @@ async function withInstalledScope<T>(
   operation: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
   await assertNoNestedScope(client);
-  await installTransactionContext(client, scope, undefined);
+  await installNestedScope(client, scope);
   let result: T;
   try {
     result = await operation(client);

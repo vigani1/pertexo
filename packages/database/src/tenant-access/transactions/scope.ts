@@ -49,10 +49,12 @@ export async function installTransactionScope(
 }
 
 /**
- * Sets a transaction's whole context in one statement: every tenant setting
- * (empty when the scope lacks it) and the statement timeout. All of them are
- * transaction-local, so the next user of a pooled client starts without them;
- * the transaction-local-settings check keeps session-level ones out of the code.
+ * Sets a transaction's whole context in one statement: every tenant setting,
+ * organization included (empty when the scope lacks it), and the statement
+ * timeout. The context is then exactly what the statement returned. All of
+ * them are transaction-local, so the next user of a pooled client starts
+ * without them; the transaction-local-settings check keeps session-level ones
+ * out of the code.
  */
 export async function installTransactionContext(
   client: PoolClient,
@@ -60,9 +62,19 @@ export async function installTransactionContext(
   statementTimeoutMillis: number | undefined,
 ): Promise<void> {
   await applyContext(client, {
-    ...(scope === undefined ? {} : completeScope(scope)),
+    ...(scope === undefined
+      ? {}
+      : { ...completeScope(scope), organizationId: '' }),
     statementTimeoutMillis,
   });
+}
+
+/** Opens a nested scope; organization context belongs to the outer transaction. */
+export async function installNestedScope(
+  client: PoolClient,
+  scope: TransactionScope,
+): Promise<void> {
+  await applyContext(client, completeScope(scope));
 }
 
 /** Ends a nested scope; organization context belongs to the outer transaction. */
@@ -110,6 +122,7 @@ type ContextSettings = Readonly<{
   workspaceId?: string | undefined;
   actorId?: string | undefined;
   discoveryScope?: string | undefined;
+  organizationId?: string | undefined;
   statementTimeoutMillis?: number | undefined;
 }>;
 
@@ -117,6 +130,7 @@ const TENANT_SETTINGS = [
   ['workspaceId', 'app.workspace_id'],
   ['actorId', 'app.actor_id'],
   ['discoveryScope', 'app.discovery_scope'],
+  ['organizationId', 'app.organization_id'],
 ] as const;
 
 function completeScope(scope: TransactionScope): ContextSettings {

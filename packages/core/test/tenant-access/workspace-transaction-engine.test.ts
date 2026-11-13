@@ -44,6 +44,7 @@ describe('shared workspace transaction engine', () => {
       'app.workspace_id': '',
       'app.actor_id': actorId,
       'app.discovery_scope': 'workspace_memberships',
+      'app.organization_id': '',
     });
     expect(connection.statements[0]).toBe(
       'begin isolation level repeatable read read only',
@@ -91,6 +92,10 @@ describe('shared workspace transaction engine', () => {
       reported: { discoveryScope: 'workspace_memberships' },
       label: 'a discovery scope',
     },
+    {
+      reported: { organizationId: '44444444-4444-4444-8444-444444444444' },
+      label: 'an organization',
+    },
   ])(
     'fails workspace context verification for $label before the operation',
     async ({ reported }) => {
@@ -125,6 +130,7 @@ describe('shared workspace transaction engine', () => {
       'app.workspace_id': workspaceId,
       'app.actor_id': 'actor-1',
       'app.discovery_scope': '',
+      'app.organization_id': '',
     });
     expect(connection.statements.at(-1)).toBe('commit');
     expect(connection.settings()).toEqual({});
