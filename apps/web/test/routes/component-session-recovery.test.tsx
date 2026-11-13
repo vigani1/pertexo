@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
+import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderLoadedApp } from '../support/render-app';
@@ -17,7 +18,7 @@ import {
 import { coldStart } from '../support/fixtures/run';
 import { createUserFixture } from '../support/fixtures/identity';
 
-it('clears the previous account’s data when resource-session recovery finds a different signed-in person', async () => {
+it('clears the previous account’s data when the paused page finds a different signed-in person', async () => {
   let changed = false,
     refused = false;
   const nextUser = createUserFixture({
@@ -52,6 +53,12 @@ it('clears the previous account’s data when resource-session recovery finds a 
   await app.queryClient.refetchQueries({
     queryKey: ['identity', userId, 'workspace', workspaceId, 'members'],
   });
+  await userEvent
+    .setup()
+    .click(await screen.findByRole('button', { name: 'Continue' }));
+  expect(
+    await screen.findByText('Signed in as a different account'),
+  ).toBeVisible();
   await waitFor(() => {
     expect(app.queryClient.getQueryData(['protected', userId])).toBeUndefined();
   });

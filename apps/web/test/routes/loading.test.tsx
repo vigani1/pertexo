@@ -72,7 +72,7 @@ describe('route loading', () => {
       returnTo: `/w/${workspaceId}/runs`,
     });
   });
-  it('signs out when a warmed read finds the session gone', async () => {
+  it('pauses the rendered page when a warmed read finds the session gone', async () => {
     let sessionChecks = 0;
     mockServer.use(
       signInCapabilities,
@@ -88,11 +88,10 @@ describe('route loading', () => {
       http.get(`${apiBase}/runs`, unauthenticated),
     );
     const { router } = renderApp(`/w/${workspaceId}/runs`);
-    await expectSignInPage();
-    expect(router.state.location.pathname).toBe('/login');
-    expect(router.state.location.search).toEqual({
-      returnTo: `/w/${workspaceId}/runs`,
-    });
+    expect(
+      await screen.findByRole('heading', { name: 'Your session ended' }),
+    ).toBeVisible();
+    expect(router.state.location.pathname).toBe(`/w/${workspaceId}/runs`);
   });
   it('keeps a missing run inside the shell', async () => {
     mockServer.use(

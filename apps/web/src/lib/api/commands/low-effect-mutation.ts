@@ -14,7 +14,8 @@ export function useLowEffectMutation<Input, Result>({
   refresh,
 }: Readonly<{
   send: (input: Input, key: string) => Promise<Result>;
-  refresh: (input: Input) => Promise<unknown>;
+  /** `error` is null when the change landed. */
+  refresh: (input: Input, error: unknown) => Promise<unknown>;
 }>) {
   const keys = useHeldCommandKey<Input>('renew');
   return useMutation({
@@ -32,10 +33,10 @@ export function useLowEffectMutation<Input, Result>({
         throw cause;
       }
     },
-    onSettled: async (_result, _error, input) => {
+    onSettled: async (_result, error, input) => {
       // Read errors stay with their queries. A failed refresh cannot turn an
       // accepted write into an unconfirmed command or invite a second write.
-      await Promise.allSettled([refresh(input)]);
+      await Promise.allSettled([refresh(input, error)]);
     },
   });
 }

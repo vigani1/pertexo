@@ -95,18 +95,18 @@ describe('reloading notification choices', () => {
     ).toBeVisible();
   });
 
-  // A reload that loses access fails the page's own read, which then says
-  // why in place of the editor.
-  it('says the session ended when the reload answers 401', async () => {
+  // An ended session is not lost access: the edits stay (the app's session
+  // pause hides the page until the same person signs in again).
+  it('keeps the edits and says the session ended when the reload answers 401', async () => {
     await reloadFailingWith(() => problem(401, 'auth.unauthenticated'));
     expect(
       await screen.findByText('Your session ended. Sign in again.'),
     ).toBeVisible();
     expect(
-      screen.queryByText(
+      screen.getByText(
         'Current choices could not be loaded. Your edits are kept.',
       ),
-    ).not.toBeInTheDocument();
+    ).toBeVisible();
   });
 
   it('names the lost access when the reload answers 403', async () => {

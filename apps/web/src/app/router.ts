@@ -10,6 +10,8 @@ import {
 } from '@tanstack/react-router';
 import { hashKey, type QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
+import { createSessionPause } from '@/features/auth/session/pause.public';
+import { isEditorOpen, pauseRenderedPage } from './session-pause';
 import { PagePending } from '../routes/root/status/pending';
 import { routeTree } from '../routes/root/route-tree';
 import { loadCurrentUser } from '../routes/root/route-context';
@@ -20,11 +22,13 @@ export function createAppRouter(
   history?: RouterHistory,
 ) {
   let revalidate: () => void = () => undefined;
+  const sessionPause = createSessionPause();
   const router = createRouter({
     routeTree,
     context: {
       queryClient,
       apiClient,
+      sessionPause,
       onSessionExpired: () => {
         revalidate();
       },
@@ -41,19 +45,25 @@ export function createAppRouter(
     scrollRestoration: true,
     ...(history ? { history } : {}),
   });
-  // Verify component-read refusals without rewarming the same rejected resource forever.
+  // A rendered page pauses in place, keeping what was typed into it. The
+  // editor observes identity and pauses with its draft. While a navigation
+  // loads, its route guard's account-change fence signs out instead.
   let recovering = false;
   revalidate = () => {
+    const editorIsOpen = isEditorOpen(router);
+    if (
+      !editorIsOpen &&
+      pauseRenderedPage(
+        { router, queryClient, apiClient, sessionPause },
+        'expired',
+      )
+    )
+      return;
     if (recovering) return;
     recovering = true;
-    const editorIsOpen = router.state.matches.some(
-      (match) => match.routeId === '/w/$workspaceId/workflows/$workflowId',
-    );
     const previous = queryClient.getQueryData(
       currentUserQueryOptions(apiClient).queryKey,
     );
-    // The editor observes identity and pauses with its draft intact. Other pages reuse
-    // the loader's account-change fence before updating their route context.
     const recovery = editorIsOpen
       ? queryClient.refetchQueries({
           queryKey: currentUserQueryKey,
@@ -62,6 +72,7 @@ export function createAppRouter(
       : loadCurrentUser({
           queryClient,
           apiClient,
+          sessionPause,
           onSessionExpired: revalidate,
         }).then(
           async (current) => {

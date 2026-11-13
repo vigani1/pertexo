@@ -823,16 +823,28 @@ cancellation.
 
 ## 9. Errors and recovery belong at the right level
 
-The application owns one browser session-change connection and one mutation
-session-expiry handler. A signal clears protected Query snapshots and
-revalidates ordinary routes. The Build editor instead pauses and keeps its
-recoverable local draft. Local private-payload owners observe this same
+The application owns one browser session-change connection and one
+session-expiry handler for reads and commands (`app/session-sync.ts`,
+`app/session-pause.ts`). A rendered page outside Build never unmounts when its
+session ends: the session pause (`features/auth`, held in router context) hides
+the page and every other top-level layer (open dialogs and menus) behind "Sign
+in again", keeping them mounted so unsaved input stays in its components. There
+is no draft store. Sign-in opens in a new tab and announces itself; the paused
+tab then checks who is signed in (also on focus and on Continue). The same
+account resumes the page as it was and refetches its reads; another account
+clears the cache, remounts the page from scratch and says the input was
+discarded. A cross-tab session signal pauses the same way while it checks. Only
+while a navigation is loading does a refusal still sign out through the route
+guard. The Build editor keeps its own pause, fenced into its save pipeline. A
+command that finds an unexpected account calls `reportSessionChange` instead of
+handling it locally. Local private-payload owners observe the session
 notification to cancel reads and clear payloads; they do not verify session or
 membership around writes. Only `auth.unauthenticated` ends the application
-session. An action's 403 stays local feedback about that action; it does not
-establish that readable data is lost. Authoritative GET denial still hides
-snapshots through `readAccessLost`, `shownData`, scoped read disposal and
-QueryView recovery. Effectful exact retries keep their identity fences.
+session, and it is never access loss: `isAccessLost` excludes it. An action's
+403 stays local feedback about that action; it does not establish that readable
+data is lost. Authoritative GET denial (403, 404) still hides snapshots through
+`readAccessLost`, `shownData`, scoped read disposal and QueryView recovery.
+Effectful exact retries keep their identity fences.
 
 `ApiError` distinguishes API problem, network failure, timeout and unexpected
 protocol/response shape, with safe request ID/status where available. Keep
@@ -1192,24 +1204,24 @@ unread.
 - Loading: every other loader warms its queries with `warmPrefetches` and
   returns at once, so navigation never waits for list data; each block shows its
   own skeleton. A warmed read that meets an expired session calls the router
-  context's `onSessionExpired`, which re-runs the scope's session check in
-  `beforeLoad` and signs out. What still blocks (the session and workspace
-  check, resource reads, lazy chunks) shows the router's pending component after
-  150 ms (`defaultPendingMs`), fading in, for only as long as the load takes
-  (`defaultPendingMinMs` 0: the fade already keeps a short one from flashing):
-  `PagePending` inside the shell, `WorkflowHubPending` in the hub,
-  `WorkspaceBootPage` (“Opening Northwind Ops…”, then “Still connecting…” after
-  2 s) for a cold workspace, `BootPage` for public pages that check the session
-  and `SigningOut` for sign-out. The static first frame in `index.html` has the
-  boot screen's layout with an empty status line, so the orb screen is the only
-  full-screen loading view. `Skeleton` and `SkeletonThread` stay invisible for
-  their first 150 ms and then fade in over 250 ms, so an in-page skeleton never
-  flashes either. A page change that waits on the scope's session check (it runs
-  again on every navigation) keeps the current page on screen, and
-  `NavigationProgress` (`routes/navigation-progress.tsx`, in the root layout)
-  draws a slim spooling thread along the top from the router's pending state
-  after the same 150 ms; it holds still under reduced motion and never shows on
-  a cold start, which has the boot page.
+  context's `onSessionExpired`, which pauses the rendered page (section 9). What
+  still blocks (the session and workspace check, resource reads, lazy chunks)
+  shows the router's pending component after 150 ms (`defaultPendingMs`), fading
+  in, for only as long as the load takes (`defaultPendingMinMs` 0: the fade
+  already keeps a short one from flashing): `PagePending` inside the shell,
+  `WorkflowHubPending` in the hub, `WorkspaceBootPage` (“Opening Northwind
+  Ops…”, then “Still connecting…” after 2 s) for a cold workspace, `BootPage`
+  for public pages that check the session and `SigningOut` for sign-out. The
+  static first frame in `index.html` has the boot screen's layout with an empty
+  status line, so the orb screen is the only full-screen loading view.
+  `Skeleton` and `SkeletonThread` stay invisible for their first 150 ms and then
+  fade in over 250 ms, so an in-page skeleton never flashes either. A page
+  change that waits on the scope's session check (it runs again on every
+  navigation) keeps the current page on screen, and `NavigationProgress`
+  (`routes/navigation-progress.tsx`, in the root layout) draws a slim spooling
+  thread along the top from the router's pending state after the same 150 ms; it
+  holds still under reduced motion and never shows on a cold start, which has
+  the boot page.
 - File placement is the same in every feature: `components/` holds components
   (and the Canvas scene a component owns); `model/` holds pure rules, types and
   the editor store with its React contexts; feature hooks (`use-*.ts`) sit at

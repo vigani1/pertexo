@@ -12,12 +12,15 @@ import {
   returnToSearch,
 } from '@/features/auth/return-path.public';
 import { publishSessionChange } from '@/features/auth/session/sync.public';
+import type { SessionPause } from '@/features/auth/session/pause.public';
 
 export type RouterContext = Readonly<{
   queryClient: QueryClient;
   apiClient: ApiClient;
-  /** Re-runs the current routes' session checks after a warmed read's 401. */
+  /** A rendered page's read or command found the session gone. */
   onSessionExpired: () => void;
+  /** Holds a rendered page in place while its session is unknown. */
+  sessionPause: SessionPause;
 }>;
 
 function rethrowError(error: unknown): never {

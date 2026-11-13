@@ -8,7 +8,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCreateCommand } from '@/lib/api/commands/use-create-command';
 import { RETRY_WINDOW_ENDED } from '@/lib/api/commands/command-retry';
 import { useState } from 'react';
-import { isUnauthenticated } from '@/features/auth/session/identity.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   accessibleWorkspacesQueryOptions,
@@ -22,12 +21,10 @@ export function useWorkspaceCreation({
   apiClient,
   userId,
   onCreated,
-  onSessionInvalidated,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   onCreated: (workspace: AccessibleWorkspace) => void;
-  onSessionInvalidated: () => void;
 }>) {
   const cache = useQueryClient();
   const refresh = () =>
@@ -68,8 +65,8 @@ export function useWorkspaceCreation({
       }
       await discovery.mutateAsync(receipt, { onSuccess: onCreated });
       return true;
-    } catch (cause) {
-      if (isUnauthenticated(cause)) onSessionInvalidated();
+    } catch {
+      // The form shows the failure; an ended session pauses the page.
       return false;
     }
   }
@@ -78,8 +75,8 @@ export function useWorkspaceCreation({
     try {
       await discovery.mutateAsync(command.data, { onSuccess: onCreated });
       return true;
-    } catch (cause) {
-      if (isUnauthenticated(cause)) onSessionInvalidated();
+    } catch {
+      // The form shows the failure; an ended session pauses the page.
       return false;
     }
   }

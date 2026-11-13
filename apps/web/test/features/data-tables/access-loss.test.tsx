@@ -121,12 +121,14 @@ it.each([
 );
 
 it.each([
-  [401, false],
+  // An ended session keeps the edit: the session pause hides the page and
+  // keeps it for the same person signing in again.
+  [401, true],
   [403, false],
   [404, false],
   [503, true],
 ] as const)(
-  'after a %s refresh, an open row editor keeps the row only when access remains',
+  'after a %s refresh, an open row editor keeps the row unless access is gone',
   async (status, kept) => {
     let failing = false;
     mockServer.use(

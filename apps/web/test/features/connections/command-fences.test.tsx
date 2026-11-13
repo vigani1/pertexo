@@ -62,7 +62,9 @@ function tested() {
 
 describe('connection command response fences', () => {
   it.each([
-    [401, 'auth.unauthenticated', true],
+    // An ended session keeps the snapshots: the session pause hides the
+    // page and keeps it for the same person signing in again.
+    [401, 'auth.unauthenticated', false],
     [403, 'auth.forbidden', true],
     [404, 'resource.not_found', true],
     [409, 'workspace.conflict', true],

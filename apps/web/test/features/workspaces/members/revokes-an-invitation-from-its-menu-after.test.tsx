@@ -281,7 +281,7 @@ describe('team: members', () => {
     ).toBeVisible();
     expect(screen.queryByText('Ada Operator')).not.toBeInTheDocument();
   });
-  it('removes cached members and an open confirmation after authentication is lost', async () => {
+  it('hides the members and an open confirmation while the session has ended, and keeps both', async () => {
     let sessionExpired = false;
     mockServer.use(
       ...identityHandlers(ownerWorkspace),
@@ -296,7 +296,8 @@ describe('team: members', () => {
       ),
     );
     const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/team`);
-    await pickRole(userEvent.setup(), 'Alice Member', 'Operator');
+    const actor = userEvent.setup();
+    await pickRole(actor, 'Alice Member', 'Operator');
     expect(confirmation()).toHaveTextContent('Alice Member');
 
     sessionExpired = true;
@@ -304,11 +305,17 @@ describe('team: members', () => {
       queryKey: ['identity', userId, 'workspace', workspaceId, 'members'],
     });
     expect(
-      await screen.findByRole('heading', {
-        name: 'Your session is no longer available',
-      }),
+      await screen.findByRole('heading', { name: 'Your session ended' }),
     ).toBeVisible();
-    expect(screen.queryByText('Alice Member')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Alice Member/u }),
+    ).not.toBeInTheDocument();
     expect(confirmation()).not.toBeInTheDocument();
+
+    sessionExpired = false;
+    await actor.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(confirmation()).toHaveTextContent('Alice Member');
+    });
   });
 });

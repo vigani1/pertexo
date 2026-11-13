@@ -19,6 +19,7 @@ import {
   isSessionIdentityUnverifiedError,
   isUnauthenticated,
 } from '@/features/auth/session/identity.public';
+import { reportSessionChange } from '@/features/auth/session/sync.public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
@@ -103,7 +104,6 @@ type InvitationCommandInput = Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
-  onAuthenticationLost: () => void;
   onPermissionLost: () => void;
 }>;
 
@@ -159,9 +159,9 @@ export function useInvitationCommand(input: InvitationCommandInput) {
       transition({ kind: 'uncertain', attempt, message });
       return { kind: 'uncertain', message };
     }
+    // The session pause owns an ended session and keeps this page.
     if (isUnauthenticated(error)) {
       transition({ kind: 'idle' });
-      input.onAuthenticationLost();
       return STOPPED;
     }
     if (isApiError(error) && (error.status === 403 || error.status === 404)) {
@@ -278,7 +278,7 @@ async function verifyInvitationSession(
     if (owner.current !== scope) return STOPPED;
     if (isSessionIdentityChangedError(error) || isUnauthenticated(error)) {
       transition({ kind: 'idle' });
-      input.onAuthenticationLost();
+      reportSessionChange();
       return STOPPED;
     }
     if (isSessionIdentityUnverifiedError(error)) {
@@ -316,10 +316,7 @@ function useInvitationRevocation(input: InvitationCommandInput) {
       await revocation.mutateAsync(invitation);
       return { kind: 'done' };
     } catch (cause) {
-      if (isUnauthenticated(cause)) {
-        input.onAuthenticationLost();
-        return STOPPED;
-      }
+      if (isUnauthenticated(cause)) return STOPPED;
       const message = lowEffectError(cause, 'revoking this invitation');
       return { kind: 'failed', message };
     }
