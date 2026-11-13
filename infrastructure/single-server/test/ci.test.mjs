@@ -62,6 +62,28 @@ test('turns off Postgres durability only where nothing tests it', () => {
     );
 });
 
+// CI pins each service image itself, and .env.example copies it, so a Compose
+// update that misses either one leaves CI testing an image nobody runs
+// (review of PR #707, P2: s3mock 5.2.3 locally, 5.1.0 in CI).
+test('CI and .env.example pin every service image the Compose defaults use', () => {
+  const defaults = [
+    ...readFileSync('compose.yaml', 'utf8').matchAll(
+      /\$\{(\w+_IMAGE):-([^}]+)\}/gu,
+    ),
+  ].map(([, name, image]) => [name, image]);
+  assert.ok(defaults.length > 0);
+  const example = Object.fromEntries(
+    readFileSync('.env.example', 'utf8')
+      .split('\n')
+      .map((line) => /^(\w+_IMAGE)=(.+)$/u.exec(line)?.slice(1))
+      .filter((pair) => pair !== undefined),
+  );
+  for (const [name, image] of defaults) {
+    assert.equal(ci.env[name], image, `${name} in .github/workflows/ci.yml`);
+    assert.equal(example[name], image, `${name} in .env.example`);
+  }
+});
+
 // s3mock writes absolute store paths into its bucket and object metadata, so a
 // volume written at /data reads back only at /data (review of PR #707, P1).
 test('keeps the S3 mock store where its volume is mounted, at /data', () => {
