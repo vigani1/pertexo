@@ -63,11 +63,14 @@ const geometry = [
   },
 ] as const;
 export function NoteForm({
+  mode,
   note,
   onClose,
   onApply,
   onRemove,
 }: Readonly<{
+  /** A new note is added; an existing one is edited. */
+  mode: 'add' | 'edit';
   note: WorkflowNote;
   onClose: () => void;
   onApply: (note: WorkflowNote) => void;
@@ -95,7 +98,9 @@ export function NoteForm({
     >
       <DialogContent className="max-w-lg">
         <div className="flex flex-col gap-2">
-          <DialogTitle>Edit note</DialogTitle>
+          <DialogTitle>
+            {mode === 'add' ? 'Add a note' : 'Edit note'}
+          </DialogTitle>
           <DialogDescription>
             Documentation for this workflow. Saving updates the draft; notes
             never run.
@@ -141,7 +146,7 @@ export function NoteForm({
                 />
               )}
             </LabelledField>
-            <LabelledField id="note-color" label="Colour">
+            <LabelledField id="note-color" label="Color">
               {(control) => (
                 <Select
                   items={colors}
@@ -193,7 +198,7 @@ export function NoteForm({
                 Cancel
               </Button>
               <Button type="submit" variant="primary">
-                Save note
+                {mode === 'add' ? 'Add note' : 'Save note'}
               </Button>
             </div>
           </div>

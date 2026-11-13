@@ -144,6 +144,7 @@ export function CanvasNote({ data }: NodeProps<NoteFlowNode>) {
       {editing && editable ? (
         <NoteForm
           key={note.id}
+          mode="edit"
           note={note}
           onClose={() => {
             setEditing(false);

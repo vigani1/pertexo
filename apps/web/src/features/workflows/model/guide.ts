@@ -51,7 +51,7 @@ export const WORKFLOW_LIST_GUIDE: readonly GuideSection[] = [
       {
         label: 'Run strip',
         meaning:
-          'Its last 20 runs, oldest on the left, each coloured by how it ended.',
+          'Its last 20 runs, oldest on the left, each colored by how it ended.',
       },
       {
         label: 'Updated',

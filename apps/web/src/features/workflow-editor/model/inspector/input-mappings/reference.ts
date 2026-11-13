@@ -28,6 +28,13 @@ export function sourceReference(source: InsertedSource): string | undefined {
   }
 }
 
+/** What an expression starts from when a source is switched to one. */
+export function startingExpression(
+  source: InsertedSource | Readonly<{ kind: 'literal' }>,
+): string | undefined {
+  return source.kind === 'literal' ? undefined : sourceReference(source);
+}
+
 const NAME = String.raw`"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))*"`;
 const SEGMENTS = String.raw`(?:\.${NAME}|\[\d+\])*`;
 const ROOT = String.raw`runInput|nodeOutputs\.${NAME}|loop\.[A-Za-z_][A-Za-z0-9_]*`;

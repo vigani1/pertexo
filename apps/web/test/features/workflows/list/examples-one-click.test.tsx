@@ -93,6 +93,11 @@ async function chooseOnEmptyList(title: string) {
   return { ...app, event };
 }
 
+const requested: string[] = [];
+mockServer.events.on('request:start', ({ request }) => {
+  requested.push(request.url);
+});
+
 describe('examples with nothing to set up', () => {
   it('creates the first-run example in one click and opens it in Build with its guide', async () => {
     const sent = workspace();
@@ -122,6 +127,8 @@ describe('examples with nothing to set up', () => {
       { name: 'Your first run' },
       coldStart,
     );
+    // product-ux-28: the new workflow is read by its ID, never "undefined".
+    expect(requested.filter((url) => url.includes('undefined'))).toEqual([]);
     expect(within(guide).getByText('Publish it').closest('li')).toHaveAttribute(
       'aria-current',
       'step',
