@@ -384,8 +384,10 @@ evidence:
   defaults provider delivery to 30 seconds and shutdown cleanup to five seconds.
   Neither proves the proposed capture budget or aggregate worker admission.
 - [Tenant transactions](../../packages/database/src/tenant-access/transactions.ts),
-  `WorkspaceTransactionOptions`/`verifyTenantContext`, enforce scoped context and
-  optional statement limits. Operator transactions (`packages/database/src/operator/operator-transaction.ts`, historical source retained in Git),
+  `WorkspaceTransactionOptions` and the verified context statement
+  (`installTransactionContext` in
+  [`transactions/scope.ts`](../../packages/database/src/tenant-access/transactions/scope.ts)),
+  enforce scoped context and optional statement limits. Operator transactions (`packages/database/src/operator/operator-transaction.ts`, historical source retained in Git),
   `runOperatorTransaction`, own abortable checkout, cancellation disposal and
   uncertain COMMIT handling. These establish seams to reuse, not an existing
   capture-wide deadline/admission implementation.
