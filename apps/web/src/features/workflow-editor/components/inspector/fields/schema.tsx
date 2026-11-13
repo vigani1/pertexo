@@ -17,14 +17,16 @@ import {
 } from '../../../model/field-units';
 import {
   fieldPath,
-  parseNumberField,
   readFieldValue,
   withFieldValue,
   type FieldParseResult,
   type NodeConfig,
   type SchemaFieldSpec,
 } from '../../../model/inspector/draft';
-import { parseItemPath } from '../../../model/inspector/item-path';
+import {
+  formatFieldText,
+  parseFieldText,
+} from '../../../model/inspector/field-text';
 import { useInspectorDraftField } from '../use-draft-field';
 import { ChoiceSelect } from './choice-select';
 import {
@@ -148,20 +150,8 @@ function ConfigTextField(props: LiveFieldProps) {
   const path = field.format === 'json-path';
   const live = useConfigText(
     props,
-    (current) =>
-      typeof current === 'string' || typeof current === 'number'
-        ? String(current)
-        : '',
-    (text): FieldParseResult<ConfigValue> => {
-      if (!path)
-        return {
-          ok: true,
-          value: text === '' && !field.required ? undefined : text,
-        };
-      if (text.trim() === '' && !field.required)
-        return { ok: true, value: undefined };
-      return parseItemPath(text);
-    },
+    (current) => formatFieldText(field, current),
+    (text) => parseFieldText(field, text),
   );
   const errorId = fieldErrorId(id);
   return (
@@ -198,11 +188,8 @@ function ConfigNumberField(props: LiveFieldProps) {
   const { field, id, form, value } = props;
   const live = useConfigText(
     props,
-    (current) =>
-      typeof current === 'number'
-        ? String(toShownValue(current, field.unit, field.maximum))
-        : '',
-    (text) => parseNumberField(field, text),
+    (current) => formatFieldText(field, current),
+    (text) => parseFieldText(field, text),
   );
   const errorId = fieldErrorId(id);
   const unit =
