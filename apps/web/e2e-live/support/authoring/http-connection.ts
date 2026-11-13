@@ -9,19 +9,23 @@ import { fillOwnedHttpCredential } from '../http-secret-actions';
 export async function createOwnedHttpConnection(
   page: Page,
   request: APIRequestContext,
+  // A journey that shares one signed-in account passes its way to a new
+  // workspace; otherwise a new account signs up for this one.
+  openWorkspace?: (page: Page, name: string) => Promise<string>,
 ) {
   const controlOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
   if (controlOrigin === undefined)
     throw new Error('Run through the owned API fixture');
-  await registerEditorUser(
-    page,
-    request,
-    controlOrigin,
-    'Controlled HTTP owner',
-  );
+  if (openWorkspace === undefined)
+    await registerEditorUser(
+      page,
+      request,
+      controlOrigin,
+      'Controlled HTTP owner',
+    );
   // This private control response is transient test material, not VITE configuration.
   const [workspaceId, material] = await Promise.all([
-    createEditorWorkspace(page, 'Controlled HTTP workspace'),
+    (openWorkspace ?? createEditorWorkspace)(page, 'Controlled HTTP workspace'),
     request.get(`${controlOrigin}/http-credential`),
   ]);
   if (material.status() !== 200)

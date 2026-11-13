@@ -1,36 +1,26 @@
+import type { Page } from '@playwright/test';
 import { mapBrowserInput } from '../../../test/support/browser/inputs';
-import { test } from '../../support/browser-fixture';
+import { test } from './account';
 import {
   addSingleStep,
   createEditorWorkflow,
   readEditorDraft,
 } from '../../support/authoring/single-step';
-import {
-  createEditorWorkspace,
-  registerEditorUser,
-} from '../../support/ordinary-editor-session';
+import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import { expect, addStep } from './steps';
 
 // Several real services behind one browser; this stays honest on a busy machine.
 test.describe.configure({ timeout: 120_000 });
 
-async function startEditor(
-  page: Parameters<typeof registerEditorUser>[0],
-  request: Parameters<typeof registerEditorUser>[1],
-  name: string,
-) {
-  const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
-  if (mail === undefined) throw new Error('Use the owned API fixture');
-  await registerEditorUser(page, request, mail, name);
-  const workspaceId = await createEditorWorkspace(page, name);
+async function startEditor(page: Page, name: string) {
+  const workspaceId = await openNewEditorWorkspace(page, name);
   return createEditorWorkflow(page, workspaceId, name);
 }
 
 test('a step that can’t run is flagged in words before publish', async ({
   page,
-  request,
 }) => {
-  const path = await startEditor(page, request, 'Honest issues owner');
+  const path = await startEditor(page, 'Honest issues owner');
   await addStep(page, path, /^Manual\b/u, 'Start by hand');
   await addStep(page, path, /Condition/u, 'Gate with no input');
   const chip = page.locator('#editor-issues-chip');
@@ -55,11 +45,8 @@ test('a step that can’t run is flagged in words before publish', async ({
   );
 });
 
-test('a failed test says what’s wrong with the step', async ({
-  page,
-  request,
-}) => {
-  const path = await startEditor(page, request, 'Test failure owner');
+test('a failed test says what’s wrong with the step', async ({ page }) => {
+  const path = await startEditor(page, 'Test failure owner');
   const gateId = await addSingleStep(page, path, /Condition/u, 'Gate');
   await mapBrowserInput({
     page,
