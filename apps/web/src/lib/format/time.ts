@@ -2,6 +2,7 @@
 // or epoch milliseconds; missing values render as an em dash.
 
 import { FORMAT_LOCALE } from './locale';
+import { pluralWord } from '@/lib/format/count';
 
 const dateTimeFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   dateStyle: 'medium',
@@ -160,7 +161,7 @@ export function formatTimeSpan(totalSeconds: number): string {
     ([, unitSeconds]) => seconds >= unitSeconds && seconds % unitSeconds === 0,
   ) ?? ['second', 1];
   const amount = seconds / size;
-  return `${String(amount)} ${unit}${amount === 1 ? '' : 's'}`;
+  return `${String(amount)} ${pluralWord(amount, unit)}`;
 }
 
 /** "0:24", "4:59" — the instrument voice for a countdown in whole seconds. */

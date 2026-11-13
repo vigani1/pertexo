@@ -4,6 +4,7 @@ import type {
 } from '@pertexo/contracts';
 import type { CoreOrbState } from '@/components/patterns/core/orb';
 import type { StatusTone } from '@/components/ui/status';
+import { formatCount } from '@/lib/format/count';
 
 export type RunStatus = WorkflowRunSummary['status'];
 export type NodeStatus = WorkflowNodeRunSummary['status'];
@@ -87,7 +88,7 @@ export function describeRunStatus({
   if (status === 'succeeded' && handledFailureCount > 0)
     return {
       tone: 'success',
-      label: `Finished — ${String(handledFailureCount)} ${handledFailureCount === 1 ? 'failure' : 'failures'} handled`,
+      label: `Finished — ${formatCount(handledFailureCount, 'failure')} handled`,
     };
   return runStatusLooks[status];
 }

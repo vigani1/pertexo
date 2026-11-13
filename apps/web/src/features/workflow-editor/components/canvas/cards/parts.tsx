@@ -23,6 +23,7 @@ import { portName } from '@/features/catalog/presentation.public';
 import { portLinkLabel } from '../../../model/step-card';
 import { StepDiscussionsContext } from '../../../model/state/discussions';
 import { handleClass } from './style';
+import { pluralWord } from '@/lib/format/count';
 
 /**
  * Family tile, title and human type: the top of every step card. Sized so
@@ -92,7 +93,7 @@ export function NodeMarks({
     marks.push(
       <Mark key="discussions">
         <MessageSquareIcon aria-hidden="true" />
-        {discussions} open {discussions === 1 ? 'discussion' : 'discussions'}
+        {discussions} open {pluralWord(discussions, 'discussion')}
       </Mark>,
     );
   if (facts.length === 0 && marks.length === 0) return null;

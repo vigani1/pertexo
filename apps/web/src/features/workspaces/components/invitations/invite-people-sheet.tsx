@@ -20,6 +20,7 @@ import { RoleSelectWithSummaries } from '../members/role-select';
 import { EmailChipsField } from './email-chips-field';
 import { InviteResults } from './invite-results';
 import { useInviteBatch } from './use-invite-batch';
+import { pluralWord } from '@/lib/format/count';
 
 /**
  * Invite several people at once, as chips, with the role they start with.
@@ -173,10 +174,11 @@ function useInvitationForm({
   const validation = useFieldValidation<'emails'>();
   const batch = useInviteBatch(command, (sent) => {
     notifications.success({
-      title:
-        sent.length === 1
-          ? `Invitation sent to ${sent[0] ?? ''}`
-          : `Invited ${String(sent.length)} people`,
+      title: pluralWord(
+        sent.length,
+        `Invitation sent to ${sent[0] ?? ''}`,
+        `Invited ${String(sent.length)} people`,
+      ),
     });
     reset();
     onClose();

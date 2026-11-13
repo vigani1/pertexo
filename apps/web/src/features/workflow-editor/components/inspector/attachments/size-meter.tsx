@@ -2,13 +2,14 @@ import { EMAIL_SEND_NOTIFICATION_LIMITS } from '@pertexo/integrations';
 import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/class-names';
 import type { attachmentsSize } from '../../../model/inspector/object-mappings/attachments';
+import { formatCount } from '@/lib/format/count';
 
 type Size = ReturnType<typeof attachmentsSize>;
 
 function describe(size: Size): string {
   if (size.count === 0)
     return `No files · up to ${formatByteLength(size.limitBytes)}`;
-  const files = `${String(size.count)} ${size.count === 1 ? 'file' : 'files'}`;
+  const files = formatCount(size.count, 'file');
   const known = `${formatByteLength(size.bytes)} of ${formatByteLength(size.limitBytes)}`;
   if (size.unknown === 0) return `${files} · ${known}`;
   return `${files} · ${known} · ${String(size.unknown)} measured when sent`;

@@ -3,6 +3,7 @@ import { describeListedFailure } from '@/features/workflow-runs/failure.public';
 import { describeRunStatus } from '@/features/workflow-runs/labels.public';
 import { formatDateTime } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { pluralWord } from '@/lib/format/count';
 
 /** How a failing workflow's notice reads in the inbox. */
 export type InboxThreadView = Readonly<{
@@ -20,10 +21,11 @@ export function describeInboxThread(
   const failure = describeListedFailure(thread.latestFailedStep);
   return {
     look: describeRunStatus({ status: thread.kind }),
-    occurrences:
-      thread.occurrenceCount === 1
-        ? 'Failed once'
-        : `Failed ${thread.occurrenceCount.toLocaleString(FORMAT_LOCALE)} times since ${formatDateTime(thread.firstOccurredAt)}`,
+    occurrences: pluralWord(
+      thread.occurrenceCount,
+      'Failed once',
+      `Failed ${thread.occurrenceCount.toLocaleString(FORMAT_LOCALE)} times since ${formatDateTime(thread.firstOccurredAt)}`,
+    ),
     ...(failure.step === undefined ? {} : { step: failure.step }),
     ...(failure.reason === undefined ? {} : { reason: failure.reason }),
   };

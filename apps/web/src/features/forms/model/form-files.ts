@@ -8,6 +8,7 @@ import {
   type FormField,
   type FormFileGroup,
 } from '@pertexo/workflow-model';
+import { formatCount, pluralWord } from '@/lib/format/count';
 
 export type FileField = Extract<FormField, { type: 'file' }>;
 
@@ -28,9 +29,9 @@ export function acceptSummary(field: FileField): string {
   const kinds = FILE_GROUPS.filter(({ group }) =>
     field.accept.includes(group),
   ).map(({ short }) => short);
-  const size = `up to ${formatFormFileBytes(field.maxBytes)}${field.maxFiles === 1 ? '' : ' each'}`;
+  const size = `up to ${formatFormFileBytes(field.maxBytes)}${pluralWord(field.maxFiles, '', ' each')}`;
   const count =
-    field.maxFiles === 1 ? '' : ` · ${String(field.maxFiles)} files`;
+    field.maxFiles > 1 ? ` · ${formatCount(field.maxFiles, 'file')}` : '';
   return `${kinds.join(', ')} · ${size}${count}`;
 }
 

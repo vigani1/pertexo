@@ -12,6 +12,7 @@ import { useNow } from '@/lib/hooks/use-now';
 import { LoomRunList } from './run-list';
 import { LoomThreadLinks } from './thread-links';
 import { LoomRenderer } from '../../model/loom/renderer';
+import { pluralWord } from '@/lib/format/count';
 
 function coreEnergy(liveCount: number): number {
   // Each live run quickens the Core, up to six.
@@ -51,11 +52,13 @@ export function RunLoom({
     [runs, windowMs, nowMs, laneTotals],
   );
 
-  const summary = `Timeline of ${String(model.runCount)} ${
-    model.runCount === 1 ? 'run' : 'runs'
-  } across ${String(model.lanes.length)} ${
-    model.lanes.length === 1 ? 'workflow' : 'workflows'
-  } over ${windowLabel}.`;
+  const summary = `Timeline of ${String(model.runCount)} ${pluralWord(
+    model.runCount,
+    'run',
+  )} across ${String(model.lanes.length)} ${pluralWord(
+    model.lanes.length,
+    'workflow',
+  )} over ${windowLabel}.`;
 
   const height = loomHeight(model.lanes.length);
   return (

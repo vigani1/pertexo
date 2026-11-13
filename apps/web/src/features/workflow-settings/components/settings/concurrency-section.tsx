@@ -23,6 +23,7 @@ import {
 import { useConcurrencyCommand } from '../../data/mutations/use-concurrency-command';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
+import { formatCount } from '@/lib/format/count';
 type Scope = Readonly<{
   apiClient: ApiClient;
   userId: string;
@@ -181,11 +182,7 @@ function limitSummary(settings: WorkflowConcurrencySettings) {
     );
   return (
     <>
-      Up to{' '}
-      <b>
-        {settings.limit} {settings.limit === 1 ? 'run' : 'runs'}
-      </b>{' '}
-      at once.{' '}
+      Up to <b>{formatCount(settings.limit, 'run')}</b> at once.{' '}
       {settings.overflow === 'queue' ? (
         <>
           Extra events <b>wait their turn</b>.

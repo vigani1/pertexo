@@ -3,6 +3,7 @@ import { formFieldsOf, type FormFieldAnswer } from './form-files';
 import { declaredFieldsOf, propertyPath, type DeclaredField } from './schema';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { WorkflowNode } from '../../graph/scopes';
+import { formatCount } from '@/lib/format/count';
 
 /** One field Insert data lists: declared, seen in real output, or both. */
 export type FieldNode = Readonly<{
@@ -160,11 +161,10 @@ function valueType(value: unknown): string {
 }
 
 function previewOf(value: unknown): string {
-  if (Array.isArray(value))
-    return value.length === 1 ? '1 item' : `${String(value.length)} items`;
+  if (Array.isArray(value)) return formatCount(value.length, 'item');
   if (isRecord(value)) {
     const count = Object.keys(value).length;
-    return count === 1 ? '1 field' : `${String(count)} fields`;
+    return formatCount(count, 'field');
   }
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   return text.length > PREVIEW_LENGTH

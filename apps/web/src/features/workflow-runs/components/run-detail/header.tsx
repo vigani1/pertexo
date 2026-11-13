@@ -41,6 +41,7 @@ import { CancelRunDialog } from '../run-actions/cancel-dialog';
 import { ReplayRunDialog } from '../run-actions/replay-dialog';
 import { RunAdmissionBlockers } from '../run-admission-blockers';
 import { RunStalledNotice } from '../run-stalled-notice';
+import { pluralWord } from '@/lib/format/count';
 
 function MetaFact({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -167,7 +168,7 @@ function RunFacts({
       {run.recovery === undefined ? null : (
         <MetaFact>
           {String(run.recovery.reusedCount)} earlier{' '}
-          {run.recovery.reusedCount === 1 ? 'step' : 'steps'} reused
+          {pluralWord(run.recovery.reusedCount, 'step')} reused
         </MetaFact>
       )}
       <StatusGuide sections={RUN_PAGE_GUIDE} className="-my-1 -ml-2" />

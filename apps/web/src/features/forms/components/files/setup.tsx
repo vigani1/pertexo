@@ -9,6 +9,7 @@ import { cn } from '@/lib/class-names';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FILE_GROUPS, type FileField } from '../../model/form-files';
 import { FileGroupGlyph } from './glyph';
+import { formatCount } from '@/lib/format/count';
 
 const MEBIBYTE = 1_048_576;
 const MAX_MEGABYTES = FORM_FILE_LIMITS.maxBytes / MEBIBYTE;
@@ -85,7 +86,7 @@ export function FileFieldSetup({
               aria-live="polite"
               className="min-w-24 text-center text-sm tabular-nums"
             >
-              Up to {field.maxFiles} {field.maxFiles === 1 ? 'file' : 'files'}
+              Up to {formatCount(field.maxFiles, 'file')}
             </output>
             <Button
               type="button"

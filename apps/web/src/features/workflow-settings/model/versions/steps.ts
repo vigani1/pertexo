@@ -4,9 +4,10 @@ import {
   stepLabel,
   triggerKindOf,
 } from '@/features/workflows/shape.public';
+import { formatCount } from '@/lib/format/count';
 
 export function stepCountLabel(count: number): string {
-  return count === 1 ? '1 step' : `${String(count)} steps`;
+  return formatCount(count, 'step');
 }
 
 export type VersionStep = Readonly<{

@@ -6,6 +6,7 @@ import {
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { NodeFormApi } from '../node-form';
 import type { SchemaFieldSpec } from '../draft';
+import { formatCount } from '@/lib/format/count';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 
@@ -104,7 +105,7 @@ export function describeStepRetrySettings(
   if (settings.maximumAttempts === 1)
     return 'One try. Temporary failures are not retried.';
   const seconds = settings.delayMillis / 1_000;
-  return `Up to ${String(settings.maximumAttempts)} total tries for eligible failures, waiting ${String(seconds)} ${seconds === 1 ? 'second' : 'seconds'} between tries.`;
+  return `Up to ${String(settings.maximumAttempts)} total tries for eligible failures, waiting ${formatCount(seconds, 'second')} between tries.`;
 }
 
 function attemptsForMode(mode: string, previous: StepRetrySettings): number {

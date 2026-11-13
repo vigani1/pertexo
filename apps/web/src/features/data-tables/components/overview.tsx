@@ -22,6 +22,7 @@ import {
 import { formatByteLength } from '@/lib/format/bytes';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { ColumnChip, TableSwatch, UsageMeter } from './column-type';
+import { pluralWord } from '@/lib/format/count';
 export function TablePageActions({
   detail,
   editable,
@@ -197,7 +198,7 @@ export function TableCollection({
                   </p>
                   <p className="text-xs text-subtle-foreground">
                     {item.columns.length}{' '}
-                    {item.columns.length === 1 ? 'column' : 'columns'}
+                    {pluralWord(item.columns.length, 'column')}
                     {item.keyColumn === null ? '' : ' · unique key'}
                   </p>
                 </div>
@@ -221,7 +222,7 @@ export function TableCollection({
                   <span className="font-mono tabular-nums">
                     {item.rowCount.toLocaleString(FORMAT_LOCALE)}{' '}
                     <span className="font-sans text-muted-foreground">
-                      {item.rowCount === 1 ? 'row' : 'rows'}
+                      {pluralWord(item.rowCount, 'row')}
                     </span>
                   </span>
                   <span className="font-mono text-xs text-subtle-foreground">

@@ -4,6 +4,7 @@ import { Disclosure } from '@/components/ui/disclosure';
 import type { ApiClient } from '@/lib/api/client';
 import { formatByteLength } from '@/lib/format/bytes';
 import { ArtifactDownload } from './artifact-download';
+import { pluralWord } from '@/lib/format/count';
 
 /** Metadata only; each ordinary download still checks current file access. */
 export function FilePages({
@@ -27,8 +28,8 @@ export function FilePages({
     <section aria-label="Data pages" className="flex flex-col gap-2">
       <p className="text-sm text-muted-foreground">
         {bundle.itemCount.toLocaleString()}{' '}
-        {bundle.itemCount === 1 ? 'record' : 'records'} · {bundle.pageCount}{' '}
-        {bundle.pageCount === 1 ? 'page' : 'pages'} · {formatByteLength(bytes)}
+        {pluralWord(bundle.itemCount, 'record')} · {bundle.pageCount}{' '}
+        {pluralWord(bundle.pageCount, 'page')} · {formatByteLength(bytes)}
       </p>
       {bundle.pageCount === 0 ? null : (
         <Disclosure

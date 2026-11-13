@@ -29,7 +29,7 @@ import type { PublishStage } from '../../data/mutations/use-workflow-publication
 import { IssuesList } from '../validation/issues-list';
 import { PublishChanges } from './publish-changes';
 import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/contracts';
-import { formatCount } from '@/lib/format/count';
+import { formatCount, pluralWord } from '@/lib/format/count';
 
 const touchTargets =
   'flex h-[44rem] flex-col overflow-hidden max-sm:[&_button]:min-h-11 max-sm:[&_button]:min-w-11';
@@ -255,13 +255,15 @@ function RetiredWebhooks({ names }: Readonly<{ names: readonly string[] }>) {
   if (names.length === 0) return null;
   return (
     <Notice tone="warning">
-      {joinNames(names)} {names.length === 1 ? 'is' : 'are'} removed, so{' '}
-      {names.length === 1
-        ? 'its webhook address stops'
-        : 'their webhook addresses stop'}{' '}
+      {joinNames(names)} {pluralWord(names.length, 'is', 'are')} removed, so{' '}
+      {pluralWord(
+        names.length,
+        'its webhook address stops',
+        'their webhook addresses stop',
+      )}{' '}
       answering. Publishing a version with{' '}
-      {names.length === 1 ? 'that step' : 'those steps'} again brings the same
-      address back.
+      {pluralWord(names.length, 'that step', 'those steps')} again brings the
+      same address back.
     </Notice>
   );
 }
@@ -280,7 +282,7 @@ function WhatHappens({
           <li>
             {triggers.length === 0
               ? `Runs you start after this use ${versionLabel}.`
-              : `${joinNames(triggers)} ${triggers.length === 1 ? 'starts' : 'start'} ${versionLabel} once it’s live.`}
+              : `${joinNames(triggers)} ${pluralWord(triggers.length, 'starts', 'start')} ${versionLabel} once it’s live.`}
           </li>
           <li>
             Runs already in progress finish on the version they started with.

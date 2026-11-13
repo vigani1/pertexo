@@ -9,6 +9,7 @@ import {
   type GraphLevel,
   type ScopePath,
 } from './scopes';
+import { pluralWord } from '@/lib/format/count';
 
 // ADR 020's rules for a For each body, checked in the browser so people see
 // them while building: the body has steps, stays apart from the steps
@@ -89,7 +90,7 @@ function topologyIssues(body: GraphLevel | undefined): readonly BodyIssue[] {
     : [
         {
           code: 'unreachable',
-          message: `${names(body, stranded)} ${stranded.length === 1 ? 'isn’t' : 'aren’t'} on the way from the body’s start to its last step. Remove the link that loops back, or link ${stranded.length === 1 ? 'it' : 'them'} into the body’s path.`,
+          message: `${names(body, stranded)} ${pluralWord(stranded.length, 'isn’t', 'aren’t')} on the way from the body’s start to its last step. Remove the link that loops back, or link ${pluralWord(stranded.length, 'it', 'them')} into the body’s path.`,
           nodeIds: stranded,
         },
       ];

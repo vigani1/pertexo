@@ -6,6 +6,7 @@ import { formatDurationMs, formatShortTime } from '@/lib/format/time';
 import { runDurationMs } from '../list/runs';
 import { isActiveRunStatus } from './run-status';
 import type { RunTimelineRow, RunTimelineStepStatus } from '../timeline/runs';
+import { formatCount } from '@/lib/format/count';
 
 type StepFacts = Pick<
   RunTimelineRow,
@@ -117,7 +118,7 @@ export function describeRunSentence(
   switch (run.status) {
     case 'succeeded':
       if ((run.handledFailureCount ?? 0) > 0)
-        return `Finished — ${String(run.handledFailureCount)} ${run.handledFailureCount === 1 ? 'failure' : 'failures'} handled`;
+        return `Finished — ${formatCount(run.handledFailureCount ?? 0, 'failure')} handled`;
       {
         const succeeded =
           ending === undefined ? 'Succeeded' : `Succeeded as “${ending}”`;

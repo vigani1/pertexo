@@ -29,6 +29,7 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import { useFolderSharingEditor } from '../../../hooks/use-folder-sharing';
 import { folderTrail } from '../../../model/organization/folder-navigation';
 import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
+import { pluralWord } from '@/lib/format/count';
 
 type Editor = ReturnType<typeof useFolderSharingEditor>;
 const ACCESS_CHOICES = [
@@ -99,7 +100,7 @@ export function FolderShareDialog({
                   {index === 0 ? '' : ' and '}“{ancestor.name}”
                 </span>
               ))}
-              , which {narrowedBy.length === 1 ? 'is' : 'are'} above this
+              , which {pluralWord(narrowedBy.length, 'is', 'are')} above this
               folder.
             </p>
           )}

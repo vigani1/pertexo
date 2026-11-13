@@ -21,6 +21,7 @@ import {
 } from '../../model/preview-observation';
 import { describeValidationIssue } from '@/lib/workflows/validation-message';
 import { useNodeTest } from './use-test';
+import { pluralWord } from '@/lib/format/count';
 
 export type NodeTestHandle = Readonly<{ runTest: () => void }>;
 
@@ -267,9 +268,11 @@ function SetupCheck({
   return (
     <section aria-label="Setup issues" className="flex flex-col gap-1.5">
       <Status tone="failure">
-        {check.issues.length === 1
-          ? '1 thing to fix'
-          : `${String(check.issues.length)} things to fix`}
+        {pluralWord(
+          check.issues.length,
+          '1 thing to fix',
+          `${String(check.issues.length)} things to fix`,
+        )}
       </Status>
       <ul className="flex flex-col gap-1">
         {check.issues.map((issue) => (

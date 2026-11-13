@@ -2,6 +2,7 @@ import { formatByteLength } from '@/lib/format/bytes';
 import { stepTitle } from '../graph/step-title';
 import type { GraphLevel } from '../graph/scopes';
 import type { InputMappingDraftRow } from './input-mappings/draft';
+import { formatCount } from '@/lib/format/count';
 
 /**
  * How a source chip reads: references to data elsewhere (a step's output,
@@ -94,7 +95,7 @@ function describeLiteral(json: string): MappingSourceSummary {
   if (Array.isArray(value))
     return {
       tone: 'value',
-      label: `[${String(value.length)} ${value.length === 1 ? 'item' : 'items'}]`,
+      label: `[${formatCount(value.length, 'item')}]`,
     };
   if (typeof value === 'object') {
     if (hasArtifactByteLength(value))
@@ -105,7 +106,7 @@ function describeLiteral(json: string): MappingSourceSummary {
     const count = Object.keys(value).length;
     return {
       tone: 'value',
-      label: `{${String(count)} ${count === 1 ? 'field' : 'fields'}}`,
+      label: `{${formatCount(count, 'field')}}`,
     };
   }
   return { tone: 'value', label: clip(JSON.stringify(value)) };

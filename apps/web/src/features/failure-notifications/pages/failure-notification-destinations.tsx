@@ -33,6 +33,7 @@ import type { FailureNotificationDestinationList } from '../data/failure-notific
 import { destinationChannels } from '../model/channel-names';
 import { useSlackChannelNames } from '../hooks/use-slack-channel-names';
 import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { pluralWord } from '@/lib/format/count';
 
 type Lens = Readonly<{
   open: boolean;
@@ -131,7 +132,7 @@ function AlertsHeader({
           <PageHeaderMeta>
             <span>
               <b className="text-foreground">{items.length}</b>{' '}
-              {items.length === 1 ? 'destination' : 'destinations'}
+              {pluralWord(items.length, 'destination')}
             </span>
             <span>
               <b className="text-foreground">{enabledCount}</b> on

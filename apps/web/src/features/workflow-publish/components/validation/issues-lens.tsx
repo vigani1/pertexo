@@ -11,6 +11,7 @@ import type { WorkflowValidationTarget } from '../../model/validation/target';
 import { countIssues } from '../../model/validation/issues';
 import { ISSUES_CHIP_ID, ISSUES_LENS_ID } from './issues-chip';
 import { IssuesList } from './issues-list';
+import { formatCount } from '@/lib/format/count';
 
 /**
  * The issues lens at the bottom of the editor, opened from the command
@@ -71,7 +72,7 @@ export function IssuesLens({
           <h2 id={titleId} className="text-sm font-semibold">
             {count === undefined || count === 0
               ? 'Issues'
-              : `${String(count)} ${count === 1 ? 'issue' : 'issues'}`}
+              : formatCount(count, 'issue')}
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {hint === undefined ? describeState(state, count) : hint.detail}

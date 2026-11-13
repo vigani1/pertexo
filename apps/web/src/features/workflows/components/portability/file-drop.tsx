@@ -8,6 +8,7 @@ import { FileDrop } from '@/components/ui/file-drop';
 import { SkeletonThread } from '@/components/ui/skeleton';
 import { formatByteLength } from '@/lib/format/bytes';
 import { PatternGlyph } from '../pattern-glyph';
+import { formatCount, pluralWord } from '@/lib/format/count';
 
 /**
  * Where a workflow file comes in: a frame to drop it on or choose it from,
@@ -159,10 +160,10 @@ function FileSummary({
           {selection.file.name}
         </p>
         <p className="text-xs text-muted-foreground">
-          {steps === 1 ? '1 step' : `${String(steps)} steps`}
+          {formatCount(steps, 'step')}
           {slots === 0
             ? ''
-            : ` · needs ${slots === 1 ? 'a connection' : `${String(slots)} connections`}`}
+            : ` · needs ${pluralWord(slots, 'a connection', `${String(slots)} connections`)}`}
           {' · '}
           <span className="font-mono">
             {formatByteLength(selection.file.size)}

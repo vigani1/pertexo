@@ -14,6 +14,7 @@ import {
 } from '@/features/workflow-runs/labels.public';
 import { formatDateTime } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { pluralWord } from '@/lib/format/count';
 
 type RunStatus = WorkflowRunSummary['status'];
 
@@ -51,7 +52,7 @@ export function RetainedActivity({
             {total.toLocaleString(FORMAT_LOCALE)}
           </span>{' '}
           <span className="text-sm text-muted-foreground">
-            {total === 1 ? 'run' : 'runs'} started {windowPhrase}
+            {pluralWord(total, 'run')} started {windowPhrase}
           </span>
         </p>
         <Link
@@ -242,9 +243,8 @@ function BusiestWorkflows({
       ) : null}
       {snapshot.truncated ? (
         <p className="text-xs text-subtle-foreground">
-          Showing {workflows.length}{' '}
-          {workflows.length === 1 ? 'workflow' : 'workflows'}. The total above
-          includes the rest.
+          Showing {workflows.length} {pluralWord(workflows.length, 'workflow')}.
+          The total above includes the rest.
         </p>
       ) : null}
     </div>

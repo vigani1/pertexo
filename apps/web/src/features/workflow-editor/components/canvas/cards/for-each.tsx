@@ -9,6 +9,7 @@ import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { BODY_PORTS } from '../../../model/graph/scopes';
 import { CardHeading, IssueBadge, Mark, NodeMarks } from './parts';
 import { cardClassName, cardIdentity, handleClass, nodeLabel } from './style';
+import { formatCount, pluralWord } from '@/lib/format/count';
 
 const noIssues: readonly BodyIssue[] = Object.freeze([]);
 const noBody = Object.freeze({
@@ -123,7 +124,7 @@ export function ForEachNodeCard({
               <Mark>
                 <RepeatIcon aria-hidden="true" />
                 up to {data.loop.maxIterations}{' '}
-                {data.loop.maxIterations === 1 ? 'item' : 'items'}
+                {pluralWord(data.loop.maxIterations, 'item')}
               </Mark>
               <Mark>{data.loop.maxConcurrency} at a time</Mark>
             </>
@@ -169,5 +170,5 @@ export function ForEachNodeCard({
 
 function loopLabel(label: string, bodyIssues: number): string {
   if (bodyIssues === 0) return label;
-  return `${label}, body needs ${String(bodyIssues)} ${bodyIssues === 1 ? 'fix' : 'fixes'}`;
+  return `${label}, body needs ${formatCount(bodyIssues, 'fix', 'fixes')}`;
 }

@@ -13,6 +13,7 @@ import { formatDateTime } from '@/lib/format/time';
 import { runDeadlineProblem } from '../../model/commands/run-intent';
 import type { EligibleRecovery } from '../../model/commands/recovery';
 import type { useRunRecovery } from '../../data/mutations/use-run-recovery';
+import { pluralWord } from '@/lib/format/count';
 type RecoveryCommand = ReturnType<typeof useRunRecovery>;
 export function RecoveryConfirmation({
   preview,
@@ -114,7 +115,7 @@ export function RecoveryConfirmation({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <Status tone="success">
             {String(preview.reusedCount)} earlier{' '}
-            {preview.reusedCount === 1 ? 'step' : 'steps'} reused
+            {pluralWord(preview.reusedCount, 'step')} reused
           </Status>
           <span className="text-muted-foreground">
             Saved {formatDateTime(preview.sourceCompletedAt)}

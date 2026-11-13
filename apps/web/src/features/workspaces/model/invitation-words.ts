@@ -1,5 +1,6 @@
 import type { WorkspaceInvitation } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
+import { formatCount } from '@/lib/format/count';
 
 const DAY_MS = 86_400_000;
 
@@ -52,5 +53,5 @@ export function describeInvitationExpiry(
   if (remainingMs <= 0) return 'expired';
   const days = Math.floor(remainingMs / DAY_MS);
   if (days === 0) return 'expires today';
-  return `expires in ${String(days)} ${days === 1 ? 'day' : 'days'}`;
+  return `expires in ${formatCount(days, 'day')}`;
 }

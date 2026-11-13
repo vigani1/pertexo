@@ -5,6 +5,7 @@ import {
 } from '@/features/catalog/presentation.public';
 import { cn } from '@/lib/class-names';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
+import { formatCount } from '@/lib/format/count';
 
 // Looks and words every step card shares, whatever its shape.
 
@@ -38,7 +39,7 @@ export function nodeLabel(
   issueCount: number,
 ): string {
   return issueCount > 0
-    ? `${title}, ${type}, ${issueCount === 1 ? '1 issue' : `${String(issueCount)} issues`}`
+    ? `${title}, ${type}, ${formatCount(issueCount, 'issue')}`
     : `${title}, ${type}`;
 }
 

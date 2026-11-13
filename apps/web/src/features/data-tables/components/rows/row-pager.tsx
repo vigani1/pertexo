@@ -3,6 +3,7 @@ import type { DataTableQuery } from '@pertexo/node-sdk';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
+import { pluralWord } from '@/lib/format/count';
 
 export function RowsPager({
   table,
@@ -21,7 +22,7 @@ export function RowsPager({
   onPrevious: () => void;
   onNext: () => void;
 }>) {
-  let count = `${table.rowCount.toLocaleString(FORMAT_LOCALE)} ${table.rowCount === 1 ? 'row' : 'rows'} total`;
+  let count = `${table.rowCount.toLocaleString(FORMAT_LOCALE)} ${pluralWord(table.rowCount, 'row')} total`;
   if (query.filters.length > 0) count = '0 matching rows';
   if (shown > 0) {
     const range = `Rows ${String(query.offset + 1)}–${String(query.offset + shown)}`;

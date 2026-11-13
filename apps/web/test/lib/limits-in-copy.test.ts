@@ -101,7 +101,6 @@ const STILL_WRITTEN: readonly string[] = [
   'features/workflow-settings/components/triggers/schedules/occurrences.tsx: for 90 days',
   'features/workflow-settings/components/triggers/webhooks/deliveries.tsx: for 90 days',
   'features/workflow-settings/model/run-duration.ts: 1 hour',
-  'features/workflow-settings/model/run-duration.ts: 1 minute',
   'features/workflow-testing/components/test-suites/preparation.tsx: up to 50 cases',
   'features/workflows/components/input-cases/expectations.tsx: 4 KB',
   'features/workflows/components/organization/folders/dialogs.tsx: up to 128 characters',

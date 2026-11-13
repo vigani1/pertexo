@@ -1,5 +1,6 @@
 import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { cn } from '@/lib/class-names';
+import { formatCount } from '@/lib/format/count';
 
 const DAY_MILLIS = 86_400_000;
 const DAYS = 30;
@@ -40,7 +41,7 @@ export function FailureLane({
   return (
     <figure
       className={cn('flex items-center gap-2', className)}
-      aria-label={`${String(total)} ${total === 1 ? 'failure' : 'failures'} in the last 30 days`}
+      aria-label={`${formatCount(total, 'failure')} in the last 30 days`}
       title="The last 30 days, today on the right"
     >
       <span
@@ -56,7 +57,7 @@ export function FailureLane({
           {marks.map(({ day, count }) => (
             <span
               key={day}
-              title={`${day} UTC: ${String(count)} ${count === 1 ? 'failure' : 'failures'}`}
+              title={`${day} UTC: ${formatCount(count, 'failure')}`}
               className={cn('h-3 w-1 rounded-[1px]', intensity(count))}
             />
           ))}
@@ -67,8 +68,7 @@ export function FailureLane({
         Failure days:{' '}
         {failing
           .map(
-            (mark) =>
-              `${mark.day} UTC, ${String(mark.count)} ${mark.count === 1 ? 'failure' : 'failures'}`,
+            (mark) => `${mark.day} UTC, ${formatCount(mark.count, 'failure')}`,
           )
           .join('; ') || 'none'}
         .

@@ -6,6 +6,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { pluralWord } from '@/lib/format/count';
 
 type Crumb = Readonly<{ key: string; label: ReactNode }>;
 
@@ -79,7 +80,7 @@ function FoldedCrumbs({ crumbs }: Readonly<{ crumbs: readonly Crumb[] }>) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        aria-label={`Show ${String(count)} more ${count === 1 ? 'step' : 'steps'} of the path`}
+        aria-label={`Show ${String(count)} more ${pluralWord(count, 'step')} of the path`}
         className="grid size-7 place-items-center rounded-md outline-none hover:bg-surface-ink/5 hover:text-foreground focus-ring"
       >
         <EllipsisIcon aria-hidden="true" className="size-4" />

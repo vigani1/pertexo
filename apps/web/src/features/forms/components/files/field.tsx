@@ -16,6 +16,7 @@ import {
 } from '../../model/form-files';
 import { availableUploadSlots, type UploadRow } from '../../model/form-uploads';
 import { FileRow } from './row';
+import { pluralWord } from '@/lib/format/count';
 
 /**
  * A file question: a drop zone naming what fits, then one row per file. The
@@ -157,7 +158,7 @@ export function FileFieldControl({
       </p>
       {leftOut === 0 ? null : (
         <FieldDescription>
-          {leftOut === 1 ? 'One file was' : `${String(leftOut)} files were`}{' '}
+          {pluralWord(leftOut, 'One file was', `${String(leftOut)} files were`)}{' '}
           left out: this question takes up to {field.maxFiles}.
         </FieldDescription>
       )}
@@ -185,7 +186,7 @@ function DropPrompt({
   settled: boolean;
   attached: number;
 }>) {
-  const what = field.maxFiles - attached === 1 ? 'a file' : 'files';
+  const what = pluralWord(field.maxFiles - attached, 'a file', 'files');
   if (full)
     return (
       <span className="block font-medium">
@@ -212,9 +213,11 @@ function DropPrompt({
 }
 
 function fullPrompt(field: FileField): string {
-  return field.maxFiles === 1
-    ? 'File attached'
-    : `All ${String(field.maxFiles)} files attached`;
+  return pluralWord(
+    field.maxFiles,
+    'File attached',
+    `All ${String(field.maxFiles)} files attached`,
+  );
 }
 
 function announcement(row: UploadRow | undefined): string {

@@ -24,6 +24,7 @@ import {
   useWorkflowPresence,
 } from '../model/discussion-context';
 import { VIEWING_PRESENCE, type EditingPresence } from '../model/presence';
+import { pluralWord } from '@/lib/format/count';
 // One identity per page load, never carried over: sessionStorage would hand it to a
 // duplicated tab, hiding that real other tab's unsaved work, and the lease's sequence
 // restarts with the page. Route remounts retain the lease; pagehide ends it.
@@ -197,9 +198,11 @@ export function WorkflowPresenceSummary() {
           {ownTabs === undefined ? null : (
             <li className="text-xs text-muted-foreground">
               You also have this workflow open in{' '}
-              {ownTabs.tabCount === 1
-                ? 'another tab'
-                : `${String(ownTabs.tabCount)} other tabs`}
+              {pluralWord(
+                ownTabs.tabCount,
+                'another tab',
+                `${String(ownTabs.tabCount)} other tabs`,
+              )}
               {ownTabs.dirty ? ', with unsaved changes there' : ''}.
             </li>
           )}

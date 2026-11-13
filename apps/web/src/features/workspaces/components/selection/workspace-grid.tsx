@@ -6,6 +6,7 @@ import {
   PageHeaderTitle,
 } from '@/components/patterns/page-header';
 import { WorkspaceCard } from './workspace-card';
+import { formatCount } from '@/lib/format/count';
 
 /** Every workspace you belong to, then a tile to start another. */
 export function WorkspaceGrid({
@@ -26,9 +27,7 @@ export function WorkspaceGrid({
         <div>
           <PageHeaderTitle id="workspaces-title">Workspaces</PageHeaderTitle>
           <PageHeaderMeta>
-            <span>
-              {count} {count === 1 ? 'workspace' : 'workspaces'}
-            </span>
+            <span>{formatCount(count, 'workspace')}</span>
           </PageHeaderMeta>
         </div>
       </PageHeader>

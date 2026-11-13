@@ -1,14 +1,17 @@
 import type { CSSProperties } from 'react';
 import { cn } from '@/lib/class-names';
+import { pluralWord } from '@/lib/format/count';
 
 /** What the meter says: the rule, how far there is to go, or that it's met. */
 function meterText(length: number, minimumLength: number): string {
   if (length === 0) return `At least ${String(minimumLength)} characters`;
   const missing = minimumLength - length;
   if (missing <= 0) return 'Long enough';
-  return missing === 1
-    ? '1 more character'
-    : `${String(missing)} more characters`;
+  return pluralWord(
+    missing,
+    '1 more character',
+    `${String(missing)} more characters`,
+  );
 }
 
 /**

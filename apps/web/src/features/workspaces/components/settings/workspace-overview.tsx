@@ -22,6 +22,7 @@ import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-qu
 import type { ApiClient } from '@/lib/api/client';
 import { ROLE_NAMES, WORKSPACE_ROLES } from '../../model/workspace-roles';
 import { workspaceMembersInfiniteQueryOptions } from '../../data/workspaces.queries';
+import { pluralWord } from '@/lib/format/count';
 
 type OverviewTarget =
   | '/w/$workspaceId/workflows'
@@ -292,9 +293,7 @@ function AlertsTile({
       workspaceId={workspaceId}
       to="/w/$workspaceId/settings/alerts"
       icon={<BellIcon aria-hidden="true" />}
-      label={
-        destinations.length === 1 ? 'alert destination' : 'alert destinations'
-      }
+      label={pluralWord(destinations.length, 'alert destination')}
       count={destinations.length}
       query={{
         loading: query.isPending,
