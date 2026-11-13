@@ -2,8 +2,11 @@ const CHANNEL_NAME = 'pertexo-auth-session';
 const STORAGE_KEY = 'pertexo:auth-session-change';
 const tabId = crypto.randomUUID();
 
+/** `signed-out`: someone signed out on purpose, so every tab follows. */
+export type SessionChangeEvent = 'changed' | 'signed-out';
+
 type SessionChangeSignal = Readonly<{
-  event: 'changed';
+  event: SessionChangeEvent;
   generation: string;
   sender: string;
 }>;
@@ -12,16 +15,18 @@ function isSessionChangeSignal(value: unknown): value is SessionChangeSignal {
   if (typeof value !== 'object' || value === null) return false;
   const signal = value as Record<string, unknown>;
   return (
-    signal.event === 'changed' &&
+    (signal.event === 'changed' || signal.event === 'signed-out') &&
     typeof signal.generation === 'string' &&
     typeof signal.sender === 'string'
   );
 }
 
 /** A notification to revalidate, never an authentication authority. */
-export function publishSessionChange(): void {
+export function publishSessionChange(
+  event: SessionChangeEvent = 'changed',
+): void {
   const signal: SessionChangeSignal = {
-    event: 'changed',
+    event,
     generation: crypto.randomUUID(),
     sender: tabId,
   };
@@ -42,7 +47,7 @@ export function publishSessionChange(): void {
 }
 
 const observers = new Set<() => void>();
-const appListeners = new Set<() => void>();
+const appListeners = new Set<(event: SessionChangeEvent) => void>();
 let disconnect: (() => void) | undefined;
 
 /** Dispose local private payloads and pause effectful work without rechecking authority. */
@@ -62,15 +67,17 @@ export function notifySessionObservers() {
  */
 export function reportSessionChange() {
   notifySessionObservers();
-  for (const listener of appListeners) listener();
+  for (const listener of appListeners) listener('changed');
 }
 
 /** The application owns the browser connection; component owners observe the same signal. */
-export function subscribeSessionChanges(onChange: () => void): () => void {
+export function subscribeSessionChanges(
+  onChange: (event: SessionChangeEvent) => void,
+): () => void {
   appListeners.add(onChange);
-  disconnect ??= connectSessionChanges(() => {
+  disconnect ??= connectSessionChanges((event) => {
     notifySessionObservers();
-    for (const listener of appListeners) listener();
+    for (const listener of appListeners) listener(event);
   });
   return () => {
     appListeners.delete(onChange);
@@ -81,13 +88,15 @@ export function subscribeSessionChanges(onChange: () => void): () => void {
   };
 }
 
-function connectSessionChanges(onChange: () => void): () => void {
+function connectSessionChanges(
+  onChange: (event: SessionChangeEvent) => void,
+): () => void {
   let lastGeneration: string | undefined;
   function receive(value: unknown) {
     if (!isSessionChangeSignal(value)) return;
     if (value.sender === tabId || value.generation === lastGeneration) return;
     lastGeneration = value.generation;
-    onChange();
+    onChange(value.event);
   }
 
   let channel: BroadcastChannel | undefined;

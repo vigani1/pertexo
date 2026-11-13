@@ -4,4 +4,5 @@ export {
   observeSessionChanges,
   notifySessionObservers,
   reportSessionChange,
+  type SessionChangeEvent,
 } from '../model/session/sync';

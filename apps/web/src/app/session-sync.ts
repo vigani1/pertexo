@@ -1,6 +1,7 @@
 import {
   subscribeSessionChanges,
   notifySessionObservers,
+  type SessionChangeEvent,
 } from '@/features/auth/session/sync.public';
 import { isSessionExpired } from '@/lib/api/error';
 import type { QueryClient } from '@tanstack/react-query';
@@ -14,12 +15,14 @@ export function synchronizeApplicationSession(
 ) {
   const { apiClient, sessionPause, onSessionExpired } = router.options.context;
   let refreshing = false;
-  // Another tab signed in or out. A rendered page waits, hidden, until it
-  // knows who is signed in now; with nothing to keep, the routes recheck.
-  const sessionChanged = () => {
+  // Another tab changed who is signed in. A rendered page waits, hidden,
+  // until it knows who that is now; with nothing to keep, the routes recheck.
+  // A sign-out on purpose signs every tab out, as it always has.
+  const sessionChanged = (event: SessionChangeEvent) => {
     if (refreshing) return;
     const editorIsOpen = isEditorOpen(router);
-    if (
+    if (event === 'signed-out') sessionPause.discard();
+    else if (
       !editorIsOpen &&
       pauseRenderedPage(
         { router, queryClient, apiClient, sessionPause },
