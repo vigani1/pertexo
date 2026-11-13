@@ -3,6 +3,7 @@ import { Pool, type PoolClient, type PoolConfig } from 'pg';
 import { withDatabaseDeadlineBudget } from '../policy.js';
 import { instrumentPoolCheckout } from '../checkout-telemetry.js';
 import { surviveConnectionLoss } from '../connection-loss.js';
+import { refuseInheritedSessionContext } from '../inherited-session-context.js';
 import {
   type DatabasePoolOptions,
   safeDiagnostic,
@@ -37,6 +38,8 @@ export function createDatabasePool(
   surviveConnectionLoss(pool, (error) => {
     safeDiagnostic(options.diagnostics, 'idle_pool_error', role, error);
   });
+  // The proof checks out pg's own connection, outside the checkout metrics.
+  refuseInheritedSessionContext(pool, role);
   instrumentPoolCheckout(pool, state.poolCheckoutDuration, role, (client) => {
     instrumentClientRelease(client, state);
   });

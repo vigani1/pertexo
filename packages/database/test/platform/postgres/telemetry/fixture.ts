@@ -18,6 +18,14 @@ const pg = vi.hoisted(() => {
         }>
     )[] = [];
     static queryErrors: unknown[] = [];
+    /** app.* settings a fresh session reports, or a failure opening one. */
+    static freshSession:
+      | Readonly<{ kind: 'clean' }>
+      | Readonly<{ kind: 'carries'; settings: readonly string[] }>
+      | Readonly<{ kind: 'unreachable'; error: Error }> = { kind: 'clean' };
+    readonly freshSessionChecks: { destroyed: boolean | Error | undefined }[] =
+      [];
+    private freshSessionServed = false;
     static queryResults: { rows: { pid: number }[] }[] = [];
     static queryOutcomes: (
       | Readonly<{ kind: 'reject'; error: unknown }>
@@ -78,6 +86,10 @@ const pg = vi.hoisted(() => {
         release: (destroy?: boolean | Error) => void,
       ) => void,
     ): Promise<{ release(destroy?: boolean | Error): void }> | undefined {
+      // Like pg, the pool's first checkout opens a fresh session; the code
+      // under test checks it for inherited settings before anything else.
+      if (callback === undefined && !this.freshSessionServed)
+        return this.openFreshSession();
       const outcome = FakePool.connectOutcomes.shift() ?? {
         kind: 'reject' as const,
         error: new Error('Fake pool connect is not implemented'),
@@ -94,6 +106,29 @@ const pg = vi.hoisted(() => {
       return outcome.kind === 'reject'
         ? Promise.reject(outcome.error)
         : Promise.resolve(outcome.client);
+    }
+
+    private openFreshSession(): Promise<{
+      release(destroy?: boolean | Error): void;
+    }> {
+      const session = FakePool.freshSession;
+      if (session.kind === 'unreachable') return Promise.reject(session.error);
+      this.freshSessionServed = true;
+      const check: { destroyed: boolean | Error | undefined } = {
+        destroyed: undefined,
+      };
+      this.freshSessionChecks.push(check);
+      return Promise.resolve({
+        query: () =>
+          Promise.resolve({
+            rows: (session.kind === 'carries' ? session.settings : []).map(
+              (name) => ({ name }),
+            ),
+          }),
+        release: (destroy?: boolean | Error) => {
+          check.destroyed = destroy;
+        },
+      });
     }
 
     query(
@@ -277,6 +312,7 @@ export function beforeEachFixture1() {
   pg.FakePool.queryErrors.length = 0;
   pg.FakePool.queryResults.length = 0;
   pg.FakePool.queryOutcomes.length = 0;
+  pg.FakePool.freshSession = { kind: 'clean' };
 }
 
 export { pg };

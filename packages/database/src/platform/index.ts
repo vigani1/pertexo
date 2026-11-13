@@ -9,6 +9,7 @@ export {
   createDatabaseRuntime,
 } from './pool/database-pool.runtime.js';
 export { surviveConnectionLoss } from './pool/connection-loss.js';
+export { InheritedSessionContextError } from './pool/inherited-session-context.js';
 export type {
   DatabaseRuntime,
   DatabaseRuntimeOptions,
