@@ -48,7 +48,9 @@ it('reviews the current policy after an unknown clear and confirms a new destina
   expect(sets[0]?.key).not.toBe(clears[0]);
 });
 
-it('resends the unconfirmed clear with its key when the refreshed policy still shows alerts on', async () => {
+// The refreshed policy doesn't show the clear, so its held key can't stand
+// for the current state; clearing again is a fresh, harmless clear.
+it('clears again under a new key when the refreshed policy still shows alerts on', async () => {
   const { event, clears } = mountAcceptedClear('keeps-current');
   const alerts = await screen.findByRole('region', { name: 'Failure alerts' });
   await event.click(
@@ -62,7 +64,56 @@ it('resends the unconfirmed clear with its key when the refreshed policy still s
   );
   await within(alerts).findByText(/aren’t announced anywhere/u);
   expect(clears).toHaveLength(2);
-  expect(clears[1]).toEqual(clears[0]);
+  expect(clears[1]).not.toEqual(clears[0]);
+});
+
+it('sets a destination again under a new key once someone else undid the unconfirmed set', async () => {
+  installQueries();
+  let current: typeof destination | null = null;
+  const sets: (string | null)[] = [];
+  mockServer.use(
+    http.get(`${workflowApi}/failure-notification-policy`, () =>
+      HttpResponse.json({ destination: current }),
+    ),
+    http.put(`${workflowApi}/failure-notification-policy`, ({ request }) => {
+      sets.push(request.headers.get('idempotency-key'));
+      if (sets.length === 1) {
+        // The set lands, its answer is lost, and another admin clears it
+        // before the page reads the policy again.
+        current = null;
+        return HttpResponse.error();
+      }
+      current = destination;
+      return new HttpResponse(null, { status: 204 });
+    }),
+  );
+  renderSection();
+  const event = userEvent.setup();
+  const alerts = await screen.findByRole('region', { name: 'Failure alerts' });
+  const choose = async () => {
+    await event.click(
+      within(alerts).getByRole('combobox', { name: 'Send failure alerts to' }),
+    );
+    await event.click(
+      await screen.findByRole('option', {
+        name: 'Email to alerts@example.test',
+      }),
+    );
+    await event.click(
+      within(alerts).getByRole('button', { name: 'Save destination' }),
+    );
+  };
+  await within(alerts).findByRole('combobox', {
+    name: 'Send failure alerts to',
+  });
+  await choose();
+  await within(alerts).findByText(/Saving it again is safe/u);
+  await choose();
+  await within(alerts).findByText('Failures go to');
+  expect(sets).toHaveLength(2);
+  // A replay of the first key would report success while alerts stay off.
+  expect(sets[1]).not.toEqual(sets[0]);
+  expect(current).toEqual(destination);
 });
 
 function mountAcceptedClear(
@@ -95,6 +146,12 @@ function mountAcceptedClear(
       },
     ),
   );
+  renderSection();
+  const event = userEvent.setup();
+  return { event, clears, sets };
+}
+
+function renderSection() {
   renderInRouter(
     <FailureAlertsSection
       apiClient={createApiClient({
@@ -109,6 +166,4 @@ function mountAcceptedClear(
       workflowId={workflowId}
     />,
   );
-  const event = userEvent.setup();
-  return { event, clears, sets };
 }

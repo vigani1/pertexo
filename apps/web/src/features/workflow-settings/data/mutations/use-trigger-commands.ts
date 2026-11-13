@@ -16,7 +16,11 @@ import {
   isUnconfirmedCommand,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import { commandWebhook, setScheduleEnabled } from '../workflow-settings.api';
+import {
+  commandWebhook,
+  type getScheduleTriggers,
+  setScheduleEnabled,
+} from '../workflow-settings.api';
 import { workflowSettingsKeys } from '../workflow-settings.queries';
 import {
   settingsCommandError,
@@ -52,6 +56,16 @@ export function useScheduleCommand({
           workflowId,
         ),
       }),
+    // Turning a schedule on or off carries no revision: a held key stays
+    // only while the refreshed schedule shows the change.
+    appliedIn: ({ triggerId, enabled }) => {
+      const status = cache
+        .getQueryData<Awaited<ReturnType<typeof getScheduleTriggers>>>(
+          workflowSettingsKeys.schedules(userId, workspaceId, workflowId),
+        )
+        ?.items.find((item) => item.id === triggerId)?.status;
+      return status !== undefined && (status === 'disabled') !== enabled;
+    },
   });
   async function setEnabled(
     input: Readonly<{ triggerId: string; enabled: boolean }>,
