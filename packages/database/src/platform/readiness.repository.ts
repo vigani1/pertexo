@@ -3,7 +3,7 @@ import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 import type { DatabaseReadiness } from './database-platform.types.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0002_queue_head_admission.sql';
+export const EXPECTED_MIGRATION_HEAD = '0003_ordered_start_wakeup.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

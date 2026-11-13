@@ -2022,7 +2022,9 @@ BEGIN
     RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
   END IF;
   -- Protocol rejection precedes the counter, including for old lock-owning workers.
-  IF NOT app.workflow_concurrency_admissible(p_workspace_id,p_workflow_run_id,false) THEN RETURN false; END IF;
+  -- An order rejection is decided under the counter, so a deferral and the start
+  -- of the run ahead of it serialize, and that start's wake sees the deferral.
+  PERFORM app.workflow_concurrency_admissible(p_workspace_id,p_workflow_run_id,false);
   SELECT version.active_run_limit INTO active_limit
     FROM app.workspace_execution_admission_counters counter
     JOIN app.workspace_execution_entitlement_versions version ON version.workspace_id=counter.workspace_id
@@ -11774,6 +11776,13 @@ ALTER TABLE app.outbox_events ENABLE ROW LEVEL SECURITY;
 --
 
 CREATE POLICY outbox_events_error_workflow_wakeup ON app.outbox_events FOR UPDATE TO pertexo_app USING (((workspace_id = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid) AND ((job_name)::text = 'start-error-workflow'::text) AND (published_at IS NULL) AND (failed_at IS NULL))) WITH CHECK (((workspace_id = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid) AND ((job_name)::text = 'start-error-workflow'::text) AND (published_at IS NULL) AND (failed_at IS NULL)));
+
+
+--
+-- Name: outbox_events outbox_events_ordered_start_wakeup; Type: POLICY; Schema: app; Owner: pertexo_owner
+--
+
+CREATE POLICY outbox_events_ordered_start_wakeup ON app.outbox_events FOR UPDATE TO pertexo_app USING (((workspace_id = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid) AND ((job_name)::text = 'advance-workflow-run'::text) AND (published_at IS NULL) AND (failed_at IS NULL))) WITH CHECK (((workspace_id = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid) AND ((job_name)::text = 'advance-workflow-run'::text) AND (published_at IS NULL) AND (failed_at IS NULL)));
 
 
 --
