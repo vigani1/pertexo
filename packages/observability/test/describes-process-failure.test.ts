@@ -145,3 +145,49 @@ it('admits only owned setting context and closed repair text, without traversing
     ),
   ).toBe('[Redacted]');
 });
+
+/** The database package's refusal, as it reaches the process boundary. */
+function inheritedSettingsRefusal(
+  role: unknown,
+  settings: unknown,
+  message = 'refused: app.workspace_id = 0b0f-secret-value',
+): Error {
+  return Object.assign(new Error(message), {
+    name: 'InheritedSessionContextError',
+    role,
+    settings,
+  });
+}
+
+describe('describing a pool that refused inherited app settings', () => {
+  it('names the pool, the settings and the remedy, never the message', () => {
+    const described = describeProcessFailure(
+      new Error('Could not start', {
+        cause: inheritedSettingsRefusal('api', [
+          'app.organization_id',
+          'app.workspace_id',
+        ]),
+      }),
+    );
+
+    expect(described).toBe(
+      '[Redacted]: the api database pool refused a connection that already carries ' +
+        'app.organization_id, app.workspace_id; remove it from PGOPTIONS, the ' +
+        'connection string options, or the role or database defaults',
+    );
+    expect(described).not.toContain('secret-value');
+  });
+
+  it.each([
+    ['a name that is not an app setting', 'worker', ['search_path']],
+    ['a name carrying a value', 'worker', ["app.workspace_id='x'"]],
+    ['an upper-case name', 'worker', ['app.Workspace_id']],
+    ['no settings', 'worker', []],
+    ['settings that are not a list', 'worker', 'app.workspace_id'],
+    ['an unknown pool role', 'browser', ['app.workspace_id']],
+  ])('stays redacted for %s', (_case, role, settings) => {
+    expect(
+      describeProcessFailure(inheritedSettingsRefusal(role, settings)),
+    ).toBe('[Redacted]');
+  });
+});

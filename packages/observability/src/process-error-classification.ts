@@ -3,6 +3,7 @@ import {
   describeStartupSettingError,
 } from './startup-setting.errors.js';
 import { z } from 'zod';
+import { describeInheritedSessionContext } from './inherited-session-context.errors.js';
 
 const SYSTEM_ERROR_CODES = new Set([
   'ECONNREFUSED',
@@ -60,6 +61,8 @@ function causeChain(error: unknown, depth: number): readonly string[] {
   if (depth >= MAX_CAUSE_DEPTH) return [];
   if (error instanceof StartupSettingError)
     return [describeStartupSettingError(error)];
+  const inherited = describeInheritedSessionContext(error);
+  if (inherited !== undefined) return [inherited];
   const issues = settingsIssues(error);
   // Settings are named with what is wrong; a schema's message can quote the
   // rejected value, which may be a secret, so it never reaches a log.
@@ -81,7 +84,8 @@ function causeChain(error: unknown, depth: number): readonly string[] {
 }
 
 /**
- * Keep typed setting issues for startup repair; generic error text is private.
+ * Keep typed setting issues and the database's inherited-settings refusal
+ * for startup repair; generic error text is private.
  */
 export function describeProcessFailure(value: unknown): string {
   try {
