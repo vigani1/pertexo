@@ -26,7 +26,7 @@ it('applies exact values with existing filters, keeps them for the next search a
   const user = userEvent.setup(),
     onSearchChange = vi.fn();
   render(<Filter onSearchChange={onSearchChange} />);
-  await user.click(screen.getByRole('button', { name: 'Run value: any' }));
+  await user.click(screen.getByRole('button', { name: 'Any run value' }));
   const popup = await screen.findByRole('dialog', {
     name: 'Find runs by a saved value',
   });
@@ -39,7 +39,7 @@ it('applies exact values with existing filters, keeps them for the next search a
     runValue: ' A-1042 ',
   });
   await user.click(
-    screen.getByRole('button', { name: /^Run value: orderId is/u }),
+    screen.getByRole('button', { name: /^orderId = .*, run value filter$/u }),
   );
   const again = await screen.findByRole('dialog', {
     name: 'Find runs by a saved value',
@@ -57,7 +57,7 @@ it('says which part to fix and sends nothing for an invalid name', async () => {
   const user = userEvent.setup(),
     onSearchChange = vi.fn();
   render(<Filter onSearchChange={onSearchChange} />);
-  await user.click(screen.getByRole('button', { name: 'Run value: any' }));
+  await user.click(screen.getByRole('button', { name: 'Any run value' }));
   const popup = await screen.findByRole('dialog', {
     name: 'Find runs by a saved value',
   });

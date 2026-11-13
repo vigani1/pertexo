@@ -1,3 +1,4 @@
+import { expectAccessibleInBothThemes } from './support/accessibility';
 import { temporaryTestPath } from '../test/support/temporary-test-path';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import {
@@ -185,6 +186,7 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
   await expect(
     page.getByText('Showing 1 workflow.', { exact: false }),
   ).toBeVisible();
+  await expectAccessibleInBothThemes(page);
   await page.getByRole('button', { name: '6 hours' }).click();
   await expect(page).toHaveURL(/window=6h/u);
   const failed = page

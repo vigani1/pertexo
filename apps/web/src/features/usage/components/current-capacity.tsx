@@ -34,17 +34,16 @@ function CapacityFigure({
       ? 0
       : Math.min(1, usedCount / limitCount);
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <dt className="text-sm text-muted-foreground">{label}</dt>
-        <dd className="min-w-0 font-mono text-sm break-all">
-          <span className="text-foreground">{used}</span>
-          <span className="text-subtle-foreground"> / {limit}</span>
-        </dd>
-      </div>
+    // A definition list allows one div around each term and its value.
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1.5">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-right font-mono text-sm break-all">
+        <span className="text-foreground">{used}</span>
+        <span className="text-subtle-foreground"> / {limit}</span>
+      </dd>
       <span
         aria-hidden="true"
-        className="relative h-1 overflow-hidden rounded-full bg-surface-ink/[0.07]"
+        className="relative col-span-2 h-1 overflow-hidden rounded-full bg-surface-ink/[0.07]"
       >
         <span
           className={cn(

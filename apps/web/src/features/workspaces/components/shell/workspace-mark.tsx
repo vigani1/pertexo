@@ -49,16 +49,18 @@ export function RingMonogram({
   className,
 }: Readonly<{ name: string; className?: string }>) {
   return (
+    // The initials are drawn, not text: the account button around them is
+    // named for the person, and its name must hold any visible text it
+    // contains (WCAG 2.5.3).
     <span
       aria-hidden="true"
+      data-initials={formatInitials(name)}
       className={cn(
-        'relative grid size-8 shrink-0 place-items-center rounded-full bg-card font-heading text-[0.7rem] font-bold text-foreground',
+        'relative grid size-8 shrink-0 place-items-center rounded-full bg-card font-heading text-[0.7rem] font-bold text-foreground after:content-[attr(data-initials)]',
         'before:absolute before:-inset-0.5 before:rounded-full before:bg-conic before:[mask:radial-gradient(closest-side,transparent_calc(100%-2px),black_calc(100%-1.5px))]',
         RING_GRADIENTS[stableIndex(name, RING_GRADIENTS.length)],
         className,
       )}
-    >
-      {formatInitials(name)}
-    </span>
+    />
   );
 }

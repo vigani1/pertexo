@@ -1,3 +1,4 @@
+import { expectAccessibleInBothThemes } from '../support/accessibility';
 import { test, expect } from '../support/fixtures';
 import { formConfigSchema } from '@pertexo/workflow-model';
 import {
@@ -38,6 +39,8 @@ for (const width of [1280, 375])
       });
     });
     await page.goto(`/forms/${publicId}#${capability}`);
+    await expect(page.getByLabel('Message', { exact: true })).toBeVisible();
+    await expectAccessibleInBothThemes(page);
     await page
       .getByLabel('Message', { exact: true })
       .fill('Keep this exact response');

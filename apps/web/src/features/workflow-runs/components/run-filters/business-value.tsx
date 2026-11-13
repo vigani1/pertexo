@@ -33,10 +33,12 @@ export function BusinessValueFilter({
             type="button"
             variant="outline"
             className="col-span-2 w-full justify-start font-normal text-foreground sm:col-span-1 sm:w-auto"
+            // The visible words lead the name, so a voice command that
+            // says them finds the button.
             aria-label={
               applied === undefined
-                ? 'Run value: any'
-                : `Run value: ${applied} is ${search.runValue ?? ''}`
+                ? undefined
+                : `${applied} = ${search.runValue ?? ''}, run value filter`
             }
           />
         }

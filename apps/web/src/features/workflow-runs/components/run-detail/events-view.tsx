@@ -64,7 +64,7 @@ export function RunEventsView({
                   <b className="font-semibold">{line.step} · </b>
                 )}
                 {line.sentence}{' '}
-                <span className="ml-1.5 font-mono text-[0.68rem] break-all text-subtle-foreground/80 opacity-0 transition-opacity duration-150 group-focus-within/event:opacity-100 group-hover/event:opacity-100 motion-reduce:transition-none">
+                <span className="ml-1.5 font-mono text-[0.68rem] break-all text-subtle-foreground opacity-0 transition-opacity duration-150 group-focus-within/event:opacity-100 group-hover/event:opacity-100 motion-reduce:transition-none">
                   {line.rawType}
                 </span>
               </span>

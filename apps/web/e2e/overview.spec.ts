@@ -1,3 +1,4 @@
+import { expectAccessibleInBothThemes } from './support/accessibility';
 import { workflowListBody } from './workflows/list-support';
 import { temporaryTestPath } from '../test/support/temporary-test-path';
 import {
@@ -247,6 +248,7 @@ test('shows the loom, what needs attention and recent changes on mobile', async 
 
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect(page.getByRole('button', { name: 'Refresh' })).toBeEnabled();
+  await expectAccessibleInBothThemes(page);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

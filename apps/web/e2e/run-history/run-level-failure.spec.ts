@@ -1,3 +1,4 @@
+import { expectAccessibleInBothThemes } from '../support/accessibility';
 import { expect, test } from '../support/fixtures';
 import { firstRunId, installRoutes, run, workspaceId } from './fixture';
 
@@ -36,6 +37,7 @@ test('explains a run-level failure in history and on the retained run', async ({
   await expect(
     page.getByText('execution.run_state_invalid', { exact: true }),
   ).toHaveCount(0);
+  await expectAccessibleInBothThemes(page);
   await page.screenshot({
     path: testInfo.outputPath('run-level-failure.png'),
     fullPage: true,

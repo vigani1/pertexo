@@ -1,3 +1,4 @@
+import { expectAccessibleInBothThemes } from './support/accessibility';
 import {
   csrfToken,
   firstRunId,
@@ -31,6 +32,7 @@ test('filters and paginates workspace history, then opens the exact run', async 
       .getByRole('link', { name: 'Runs, 2 running' }),
   ).toBeVisible();
   await expect(page.getByText(firstRunId)).toHaveCount(0);
+  await expectAccessibleInBothThemes(page);
   await page.getByRole('button', { name: 'Load more' }).click();
   await expect(
     page.getByRole('button', { name: 'Copy run ID ffff…ffff' }),

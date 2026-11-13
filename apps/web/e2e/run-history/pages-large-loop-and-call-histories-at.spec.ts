@@ -120,7 +120,7 @@ for (const theme of ['light', 'dark'] as const)
           }),
       );
       await page.goto(`/w/${workspaceId}/runs`);
-      await page.getByRole('button', { name: 'Run value: any' }).click();
+      await page.getByRole('button', { name: 'Any run value' }).click();
       const valueFilter = page.getByRole('dialog', {
         name: 'Find runs by a saved value',
       });
