@@ -78,6 +78,13 @@ export function useHeldCommandKey<Input>(
       if (cause === undefined || settlesKey(cause)) attempt.clear();
     },
     held: () => attempt.current(),
+    /** Drops the key held for this input, wherever it waits. */
+    forget: (input: Input) => {
+      const intent = intentOf(input);
+      const slot = slotOf(input);
+      if (setAside.get(slot)?.intent === intent) setAside.delete(slot);
+      if (attempt.current()?.intent === intent) attempt.clear();
+    },
     expired: attempt.expired,
     release: () => {
       setAside.clear();

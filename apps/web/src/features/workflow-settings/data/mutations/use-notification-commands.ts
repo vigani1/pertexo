@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
+import type { WorkflowFailureNotificationPolicyResponse } from '@pertexo/contracts';
 import {
   useLowEffectMutation,
   lowEffectError,
@@ -26,6 +27,11 @@ export function useFailureNotificationCommands({
   workflowId: string;
 }>) {
   const cache = useQueryClient();
+  const policyKey = workflowSettingsKeys.failurePolicy(
+    userId,
+    workspaceId,
+    workflowId,
+  );
   const mutation = useLowEffectMutation({
     send: (intent: PolicyChange, key) =>
       intent.kind === 'clear'
@@ -42,14 +48,18 @@ export function useFailureNotificationCommands({
             destinationId: intent.destinationId,
             idempotencyKey: key,
           }),
-    refresh: () =>
-      cache.invalidateQueries({
-        queryKey: workflowSettingsKeys.failurePolicy(
-          userId,
-          workspaceId,
-          workflowId,
-        ),
-      }),
+    refresh: () => cache.invalidateQueries({ queryKey: policyKey }),
+    // Set and clear carry no revision: a held key stays only while the
+    // refreshed setting shows the change.
+    appliedIn: (intent) => {
+      const current =
+        cache.getQueryData<WorkflowFailureNotificationPolicyResponse>(
+          policyKey,
+        )?.destination;
+      return intent.kind === 'clear'
+        ? current === null
+        : current?.id === intent.destinationId;
+    },
   });
   async function updatePolicy(destinationId?: string) {
     if (mutation.isPending) return false;

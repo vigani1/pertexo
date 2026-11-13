@@ -12,11 +12,20 @@ import { useHeldCommandKey } from './use-held-command-key';
 export function useLowEffectMutation<Input, Result>({
   send,
   refresh,
+  appliedIn,
   slotOf,
 }: Readonly<{
   send: (input: Input, key: string) => Promise<Result>;
   /** `error` is null when the change landed. */
   refresh: (input: Input, error: unknown) => Promise<unknown>;
+  /**
+   * For changes that set an absolute state and carry no revision: whether
+   * the current read shows this change. When a refresh after an unconfirmed
+   * outcome doesn't, the held key goes, so saving again applies the change
+   * (harmless, it sets a state) rather than replaying an old receipt that
+   * someone else's change has since undone.
+   */
+  appliedIn?: (input: Input) => boolean;
   /**
    * The target a change is made to, when one hook changes several (a
    * folder, a tag): each target keeps its own held key.
@@ -42,7 +51,14 @@ export function useLowEffectMutation<Input, Result>({
     onSettled: async (_result, error, input) => {
       // Read errors stay with their queries. A failed refresh cannot turn an
       // accepted write into an unconfirmed command or invite a second write.
-      await Promise.allSettled([refresh(input, error)]);
+      const [refreshed] = await Promise.allSettled([refresh(input, error)]);
+      if (
+        appliedIn !== undefined &&
+        refreshed.status === 'fulfilled' &&
+        isUnconfirmedCommand(error) &&
+        !appliedIn(input)
+      )
+        keys.forget(input);
     },
   });
 }
