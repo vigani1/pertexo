@@ -3,8 +3,13 @@
 
 const DOLLAR_QUOTE = /\$(?:[A-Za-z_]\w*)?\$/uy;
 
-/** The dollar-quote tag ($$ or $tag$) that starts at index, if one does. */
+/**
+ * The dollar-quote tag ($$ or $tag$) that starts at index, if one does. As in
+ * PostgreSQL's lexer, a "$" right after an identifier character belongs to
+ * the identifier (a$b$) and starts nothing.
+ */
 export function dollarQuoteAt(sql, index) {
+  if (index > 0 && /[\w$]/u.test(sql[index - 1])) return undefined;
   DOLLAR_QUOTE.lastIndex = index;
   return DOLLAR_QUOTE.exec(sql)?.[0];
 }
