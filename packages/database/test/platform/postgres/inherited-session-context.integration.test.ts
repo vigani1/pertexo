@@ -279,6 +279,41 @@ describe('the app setting names a pool checks', () => {
   });
 });
 
+describe('a pool created while a policy table is locked', () => {
+  it('gets its first connection without waiting for the lock', async () => {
+    const blocker = new Pool({ connectionString: urlFor(adminUrl), max: 1 });
+    const held = await blocker.connect();
+    await held.query('begin');
+    await held.query(
+      'lock table app.workspace_inbox_threads in access exclusive mode',
+    );
+    const pool = createDatabasePool(
+      { connectionString: urlFor(appBaseUrl), max: 1 },
+      { monitorLockWaits: false, role: 'api' },
+    );
+    try {
+      const started = performance.now();
+      const first = await Promise.race([
+        pool
+          .query<{ one: number }>('select 1 as one')
+          .then((result) => result.rows),
+        new Promise((resolve) =>
+          setTimeout(() => {
+            resolve('still waiting');
+          }, 2_000),
+        ),
+      ]);
+      expect(first).toEqual([{ one: 1 }]);
+      expect(performance.now() - started).toBeLessThan(1_000);
+    } finally {
+      await held.query('rollback');
+      held.release();
+      await blocker.end();
+      await pool.end();
+    }
+  });
+});
+
 describe('a pool whose fresh connection is clean', () => {
   it('inspects one connection once, however many checkouts follow', async () => {
     await admin.query('select pg_stat_statements_reset()');
