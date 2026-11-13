@@ -1,8 +1,10 @@
-import { HeadContent, Outlet } from '@tanstack/react-router';
+import { HeadContent, Outlet, useRouteContext } from '@tanstack/react-router';
+import { SessionPauseBoundary } from '@/features/auth/session/pause.public';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { NavigationProgress } from './navigation-progress';
 
 export function RootLayout() {
+  const { sessionPause, apiClient } = useRouteContext({ from: '__root__' });
   // Notifications sit above the router (main.tsx), so they outlive a crash.
   return (
     <TooltipProvider delay={400}>
@@ -14,7 +16,9 @@ export function RootLayout() {
       >
         Skip to content
       </a>
-      <Outlet />
+      <SessionPauseBoundary pause={sessionPause} apiClient={apiClient}>
+        <Outlet />
+      </SessionPauseBoundary>
     </TooltipProvider>
   );
 }

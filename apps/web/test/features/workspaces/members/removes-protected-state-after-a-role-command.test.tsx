@@ -18,6 +18,7 @@ import {
   problem,
   rowOf,
   secondMemberId,
+  user,
   userId,
   workspace,
   workspaceId,
@@ -30,8 +31,9 @@ import { renderLoadedApp } from '../../../support/render-app';
 import { confirmation, pickRole } from './fixture';
 
 describe('team: members', () => {
-  it('removes protected state after a role command reports authentication loss without replaying', async () => {
+  it('pauses over an open role confirmation when the session ends, and keeps it for the same person', async () => {
     let commandCount = 0;
+    let signedIn = true;
     mockServer.use(
       ...identityHandlers(ownerWorkspace),
       noInvitations(),
@@ -45,18 +47,25 @@ describe('team: members', () => {
     await renderLoadedApp(`/w/${workspaceId}/team`, { strict: true });
     mockServer.use(
       http.get('http://pertexo.test/v1/users/me', () =>
-        problem(401, 'auth.unauthenticated'),
+        signedIn
+          ? HttpResponse.json(user)
+          : problem(401, 'auth.unauthenticated'),
       ),
     );
     await pickRole(browser, 'Alice Member', 'Operator');
+    signedIn = false;
     await browser.click(screen.getByRole('button', { name: 'Change role' }));
     expect(
-      await screen.findByRole('heading', {
-        name: 'Sign in to continue',
-      }),
+      await screen.findByRole('heading', { name: 'Your session ended' }),
     ).toBeVisible();
-    expect(screen.queryByText('Alice Member')).not.toBeInTheDocument();
+    // The open dialog is hidden with the page, not shown over the pause.
     expect(confirmation()).not.toBeInTheDocument();
+
+    signedIn = true;
+    await browser.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(confirmation()).toHaveTextContent('Alice Member');
+    });
     expect(commandCount).toBe(1);
   });
   it('keeps the selected role after an unconfirmed change and resends it with its key', async () => {

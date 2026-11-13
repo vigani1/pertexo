@@ -22,7 +22,11 @@ export function useLeaveWorkspaceCommand({
   const mutation = useLowEffectMutation({
     send: (_input: undefined, key) =>
       leaveWorkspace(apiClient, workspaceId, key),
-    refresh: () => cache.invalidateQueries(),
+    // Leaving ends the session, so after it lands there's nothing to read.
+    refresh: (_input, error) =>
+      error === null || isUnauthenticated(error)
+        ? Promise.resolve()
+        : cache.invalidateQueries(),
   });
   async function finish(confirmed: boolean) {
     cache.clear();

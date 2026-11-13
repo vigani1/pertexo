@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { isUnauthenticated } from '@/features/auth/session/identity.public';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { InvitationsPanel } from '../components/invitations/invitations-panel';
@@ -35,7 +34,8 @@ import {
   workspaceMembersInfiniteQueryOptions,
 } from '../data/workspaces.queries';
 
-type AccessLoss = 'authentication' | 'permission';
+// An ended session isn't a loss here: the session pause keeps this page.
+type AccessLoss = 'permission';
 
 /** Why the page can't show the team, if it can't. */
 function blockedCopy({
@@ -55,11 +55,6 @@ function blockedCopy({
         'member:read',
         'see who’s in this workspace',
       ),
-    };
-  if (losses.includes('authentication'))
-    return {
-      title: 'Your session is no longer available',
-      description: 'Sign in again to see or manage this workspace’s members.',
     };
   if (losses.includes('permission'))
     return {
@@ -159,7 +154,6 @@ function lossOf({
 }>): AccessLoss | undefined {
   if (!query.isError) return undefined;
   const error = query.error;
-  if (isUnauthenticated(error)) return 'authentication';
   if (!isApiError(error)) return undefined;
   if (error.status === 403 || (notFoundIsLoss && error.status === 404))
     return 'permission';
@@ -202,9 +196,6 @@ export function WorkspaceMembersPage({
     apiClient,
     userId: user.id,
     workspaceId: workspace.id,
-    onAuthenticationLost: () => {
-      setCommandLoss('authentication');
-    },
     onPermissionLost: () => {
       setCommandLoss('permission');
     },
@@ -281,7 +272,6 @@ export function WorkspaceMembersPage({
               workspace={workspace}
               query={members}
               members={memberItems}
-              onAccessLost={setCommandLoss}
             />
           </TabsContent>
           {canManage ? (

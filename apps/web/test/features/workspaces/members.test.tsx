@@ -262,9 +262,11 @@ describe('team: invitations', () => {
     await browser.click(
       lens().getByRole('button', { name: 'Send invitation' }),
     );
+    // Another account owns the browser now: the page starts again for it.
     expect(
-      await screen.findByText('Your session is no longer available'),
+      await screen.findByText('Signed in as a different account'),
     ).toBeVisible();
+    expect(screen.queryByDisplayValue('new.member@example.test')).toBeNull();
     expect(commands).toBe(0);
   });
   it('blocks an exact uncertain retry after the authenticated identity changes', async () => {
@@ -301,9 +303,11 @@ describe('team: invitations', () => {
     );
     currentUser = { ...user, id: 'ffffffff-ffff-4fff-8fff-ffffffffffff' };
     await browser.click(lens().getByRole('button', { name: 'Try again' }));
+    // Another account owns the browser now: the page starts again for it.
     expect(
-      await screen.findByText('Your session is no longer available'),
+      await screen.findByText('Signed in as a different account'),
     ).toBeVisible();
+    expect(screen.queryByDisplayValue('new.member@example.test')).toBeNull();
     expect(commands).toBe(1);
   });
   it('paginates invitations independently from members and puts delivery and expiry in words', async () => {

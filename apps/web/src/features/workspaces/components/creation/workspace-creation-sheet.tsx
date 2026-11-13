@@ -18,24 +18,18 @@ export function WorkspaceCreationSheet({
   open,
   onOpenChange,
   onCreated,
-  onSessionInvalidated,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (workspace: AccessibleWorkspace) => void;
-  onSessionInvalidated: () => void;
 }>) {
   const [formKey, setFormKey] = useState(0);
   const command = useWorkspaceCreation({
     apiClient,
     userId,
     onCreated,
-    onSessionInvalidated: () => {
-      onOpenChange(false);
-      onSessionInvalidated();
-    },
   });
   function close() {
     command.clearError();

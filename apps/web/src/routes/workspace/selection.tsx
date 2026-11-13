@@ -2,7 +2,6 @@ import {
   useLoaderData,
   useNavigate,
   useRouteContext,
-  useRouter,
 } from '@tanstack/react-router';
 import { WorkspaceSelectionPage } from '@/features/workspaces/selection.public';
 import { useLogout } from '../auth/use-logout';
@@ -11,7 +10,6 @@ export function WorkspaceSelectionRoute() {
   const { apiClient } = useRouteContext({ from: '/workspaces' });
   const { user, workspaces } = useLoaderData({ from: '/workspaces' });
   const navigate = useNavigate();
-  const router = useRouter();
   const logoutState = useLogout(apiClient);
   return (
     <WorkspaceSelectionPage
@@ -38,9 +36,6 @@ export function WorkspaceSelectionRoute() {
           ? {}
           : { logoutError: logoutState.error }),
         logoutPending: logoutState.pending,
-        onSessionInvalidated: () => {
-          void router.invalidate();
-        },
         onLogout: logoutState.requestLogout,
       }}
     />

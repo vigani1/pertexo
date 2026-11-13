@@ -1,3 +1,4 @@
+import { reportSessionChange } from '@/features/auth/session/sync.public';
 import { MembershipThread } from '../membership-thread';
 import type {
   AccessibleWorkspace,
@@ -43,7 +44,6 @@ type StatusChange = Readonly<{
   member: WorkspaceMember;
   direction: MemberStatusDirection;
 }>;
-type AccessLoss = 'authentication' | 'permission';
 type Actor = Readonly<{
   role: WorkspaceRole;
   userId: string;
@@ -86,14 +86,12 @@ type MemberManagementProps = Readonly<{
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   members: readonly WorkspaceMember[];
-  onAccessLost: (loss: AccessLoss) => void;
 }>;
 export function MemberManagement({
   apiClient,
   user,
   workspace,
   members,
-  onAccessLost,
 }: MemberManagementProps) {
   const notifications = useNotifications();
   const [proposal, setProposal] = useState<Proposal>();
@@ -114,7 +112,6 @@ export function MemberManagement({
   const { roleCommand, removal, status, transfer } = useMemberCommands({
     scope,
     workspaceName: workspace.name,
-    onAccessLost,
     feedback: { notifications, gone },
     selection: {
       setProposal,
@@ -243,13 +240,11 @@ type MemberCommandSelection = Readonly<{
 function useMemberCommands({
   scope,
   workspaceName,
-  onAccessLost,
   feedback,
   selection,
 }: Readonly<{
   scope: MemberCommandScope;
   workspaceName: string;
-  onAccessLost: (loss: AccessLoss) => void;
   feedback: Readonly<{
     notifications: ReturnType<typeof useNotifications>;
     gone: (member: WorkspaceMember) => void;
@@ -320,7 +315,8 @@ function useMemberCommands({
         title: `${member.displayName} is now the owner of ${workspaceName}`,
         description: 'You’re an admin now. Sign in again to keep working.',
       });
-      onAccessLost('authentication');
+      // The transfer ended this session; the session pause asks to sign in.
+      reportSessionChange();
     },
     onConflict: () => {
       setTransferTarget(undefined);

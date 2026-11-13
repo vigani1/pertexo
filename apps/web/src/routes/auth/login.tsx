@@ -21,6 +21,8 @@ export function LoginRoute() {
         window.location.assign(authorizationUrl);
       }}
       onAuthenticated={() => {
+        // A page paused in another tab checks who signed in and resumes.
+        publishSessionChange();
         // A full navigation starts the signed-in app from a clean slate, at
         // the allowlisted page that asked for the sign-in.
         window.location.assign(returnTo ?? '/');

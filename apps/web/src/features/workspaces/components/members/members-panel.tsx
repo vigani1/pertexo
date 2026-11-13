@@ -31,14 +31,12 @@ export function MembersPanel({
   workspace,
   query,
   members,
-  onAccessLost,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
   query: MembersQuery;
   members: readonly WorkspaceMember[];
-  onAccessLost: (loss: 'authentication' | 'permission') => void;
 }>) {
   return (
     <div className="flex flex-col gap-3">
@@ -67,7 +65,6 @@ export function MembersPanel({
             user={user}
             workspace={workspace}
             members={members}
-            onAccessLost={onAccessLost}
           />
         )}
       </QueryView>

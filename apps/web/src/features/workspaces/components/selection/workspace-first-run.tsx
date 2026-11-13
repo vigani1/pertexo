@@ -9,18 +9,15 @@ export function WorkspaceFirstRun({
   apiClient,
   userId,
   onCreated,
-  onSessionInvalidated,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   onCreated: (workspace: AccessibleWorkspace) => void;
-  onSessionInvalidated: () => void;
 }>) {
   const command = useWorkspaceCreation({
     apiClient,
     userId,
     onCreated,
-    onSessionInvalidated,
   });
 
   return (

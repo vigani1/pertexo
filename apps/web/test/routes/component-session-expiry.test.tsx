@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { mockServer } from '../support/mock-server';
 import { renderLoadedApp } from '../support/render-app';
@@ -8,7 +8,7 @@ import {
   createWorkspaceFixture,
 } from '../support/fixtures/identity';
 it.each(['first read', 'refetch'] as const)(
-  'recovers a component-owned expired session on %s with a safe return path',
+  'pauses the page when a component read finds the session ended on %s, with a safe return path',
   async (when) => {
     const user = createUserFixture(),
       workspace = createWorkspaceFixture();
@@ -54,10 +54,13 @@ it.each(['first read', 'refetch'] as const)(
         predicate: (query) => query.queryKey.includes('variables'),
       });
     }
-    await waitFor(() => {
-      expect(view.router.state.location.pathname).toBe('/login');
-    });
-    expect(view.router.state.location.search).toMatchObject({ returnTo: path });
+    expect(
+      await screen.findByRole('heading', { name: 'Your session ended' }),
+    ).toBeVisible();
+    expect(view.router.state.location.pathname).toBe(path);
+    expect(
+      screen.getByRole('link', { name: /Sign in again/u }),
+    ).toHaveAttribute('href', `/login?returnTo=${encodeURIComponent(path)}`);
   },
 );
 

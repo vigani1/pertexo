@@ -56,6 +56,15 @@ export function notifySessionObservers() {
   for (const observer of observers) observer();
 }
 
+/**
+ * This tab found an account it didn't expect, such as a command's identity
+ * check failing: everything reacts as if another tab had changed the session.
+ */
+export function reportSessionChange() {
+  notifySessionObservers();
+  for (const listener of appListeners) listener();
+}
+
 /** The application owns the browser connection; component owners observe the same signal. */
 export function subscribeSessionChanges(onChange: () => void): () => void {
   appListeners.add(onChange);

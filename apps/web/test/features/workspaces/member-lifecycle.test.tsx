@@ -1,5 +1,5 @@
 import type { DelegatedRole } from '@pertexo/policy';
-import { HttpResponse } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -268,17 +268,19 @@ describe('team: ownership transfer', () => {
     await renderLoadedApp(`/w/${team.workspaceId}/team`);
 
     const dialog = await openAction(actor, 'Ada Lovelace', 'Make owner…');
+    // The transfer ends the previous owner's sessions.
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        team.problem(401, 'auth.unauthenticated'),
+      ),
+    );
     await actor.click(dialog.getByRole('button', { name: 'Make owner' }));
 
     expect(
-      await screen.findByText(
-        `Ada Lovelace is now the owner of ${workspaceName}`,
-      ),
+      await screen.findByRole('heading', { name: 'Your session ended' }),
     ).toBeVisible();
     expect(
-      await screen.findByRole('heading', {
-        name: 'Your session is no longer available',
-      }),
+      screen.getByText(`Ada Lovelace is now the owner of ${workspaceName}`),
     ).toBeVisible();
     expect(sent).toHaveLength(1);
   });

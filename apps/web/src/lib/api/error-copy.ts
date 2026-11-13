@@ -22,12 +22,18 @@ export function isNotFound(error: unknown): boolean {
 }
 
 /**
- * Signed out, forbidden, or not found under the API's non-disclosing
- * policy: an authoritative "you can't see this" that hides data loaded
- * earlier instead of showing it as stale.
+ * Refused, forbidden, or not found under the API's non-disclosing policy:
+ * an authoritative "you can't see this" that hides data loaded earlier
+ * instead of showing it as stale. An ended session is not one: the session
+ * pause hides the whole page and keeps it, with its data and unsaved input,
+ * for the same person signing in again.
  */
 export function isAccessLost(error: unknown): boolean {
-  return isApiError(error) && [401, 403, 404].includes(error.status ?? 0);
+  return (
+    isApiError(error) &&
+    [401, 403, 404].includes(error.status ?? 0) &&
+    !isSessionExpired(error)
+  );
 }
 
 /** A read whose latest answer says access is gone. */

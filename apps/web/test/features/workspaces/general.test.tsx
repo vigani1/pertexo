@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { mockServer } from '../../support/mock-server';
 
-import { expectSignInPage, renderLoadedApp } from '../../support/render-app';
+import { renderLoadedApp } from '../../support/render-app';
 
 import {
   problem,
@@ -274,16 +274,15 @@ describe('workspace settings', () => {
     ).toBeGreaterThan(0);
     expect(patchCount).toBe(1);
   });
-  it('ends the workspace session when the server refuses the rename as unauthenticated', async () => {
-    let userReads = 0;
+  it('pauses with the rename kept when the server refuses it as unauthenticated', async () => {
+    let signedIn = true;
     let patchCount = 0;
     mockServer.use(
-      http.get('http://pertexo.test/v1/users/me', () => {
-        userReads += 1;
-        return userReads === 1
+      http.get('http://pertexo.test/v1/users/me', () =>
+        signedIn
           ? HttpResponse.json(user)
-          : problem(401, 'auth.unauthenticated', 'Session changed');
-      }),
+          : problem(401, 'auth.unauthenticated', 'Session changed'),
+      ),
       http.get('http://pertexo.test/v1/workspaces', () =>
         HttpResponse.json({ items: [workspace], nextCursor: null }),
       ),
@@ -300,9 +299,17 @@ describe('workspace settings', () => {
     const input = screen.getByLabelText('Workspace name');
     await actor.clear(input);
     await actor.type(input, 'Refused at the server');
+    signedIn = false;
     await actor.click(screen.getByRole('button', { name: 'Save' }));
 
-    await expectSignInPage();
+    expect(
+      await screen.findByRole('heading', { name: 'Your session ended' }),
+    ).toBeVisible();
+    signedIn = true;
+    await actor.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByLabelText('Workspace name')).toHaveValue(
+      'Refused at the server',
+    );
     expect(patchCount).toBe(1);
   });
   it('removes rename actions after authoritative permission loss', async () => {

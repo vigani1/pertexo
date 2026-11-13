@@ -19,7 +19,6 @@ type WorkspaceSelectionPageProps = Readonly<{
   session: Readonly<{
     logoutPending: boolean;
     logoutError?: string;
-    onSessionInvalidated: () => void;
     onLogout: () => void;
   }>;
 }>;
@@ -35,8 +34,7 @@ export function WorkspaceSelectionPage({
   onCreated,
   session,
 }: WorkspaceSelectionPageProps) {
-  const { logoutPending, logoutError, onSessionInvalidated, onLogout } =
-    session;
+  const { logoutPending, logoutError, onLogout } = session;
   const [creationOpen, setCreationOpen] = useState(false);
   const lastOpenedId = readLastWorkspace(user.id);
   return (
@@ -64,7 +62,6 @@ export function WorkspaceSelectionPage({
             apiClient={apiClient}
             userId={user.id}
             onCreated={onCreated}
-            onSessionInvalidated={onSessionInvalidated}
           />
         ) : (
           <>
@@ -83,7 +80,6 @@ export function WorkspaceSelectionPage({
               open={creationOpen}
               onOpenChange={setCreationOpen}
               onCreated={onCreated}
-              onSessionInvalidated={onSessionInvalidated}
             />
           </>
         )}

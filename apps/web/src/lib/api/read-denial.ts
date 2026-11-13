@@ -10,9 +10,9 @@ export type WorkspaceReadDenial = Readonly<{
 }>;
 
 /**
- * Watches the query cache for a read under `workspaceReadScope` that answered
- * 401, 403 or 404, and calls `denied` when `counts` says that read ends this
- * feature's access. Returns the unsubscribe.
+ * Watches the query cache for a read under `workspaceReadScope` that lost
+ * access (`isAccessLost`), and calls `denied` when `counts` says that read
+ * ends this feature's access. Returns the unsubscribe.
  */
 export function watchWorkspaceReadDenial({
   queryClient,
@@ -45,7 +45,7 @@ export function watchWorkspaceReadDenial({
 
 /** Read conflicts can end visibility even though command conflicts preserve authority. */
 export function isReadAccessLost(error: unknown): boolean {
-  return isApiError(error) && [401, 403, 404, 409].includes(error.status ?? 0);
+  return isAccessLost(error) || (isApiError(error) && error.status === 409);
 }
 
 /** Keep the rejecting read alive while canceled siblings lose their cached snapshots. */

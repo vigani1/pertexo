@@ -1,3 +1,4 @@
+import type { Route } from '@playwright/test';
 import { COLLABORATION_LIMITS } from '@pertexo/contracts';
 import { mappingGraph } from './workflow-editor/graph';
 import {
@@ -111,6 +112,7 @@ for (const width of [375, 1280]) {
     });
   });
   test(`read recovery retains cooldown and support metadata before session recovery at ${String(width)}px`, async ({
+    context,
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -163,7 +165,11 @@ for (const width of [375, 1280]) {
       path: test.info().outputPath(`read-recovery-${String(width)}.png`),
     });
     stage = 2;
-    await page.route('**/v1/auth/capabilities', (route) =>
+    // The sign-in tab gets the context's routes; this page keeps its own.
+    await context.route('**/v1/**', (route) =>
+      route.fulfill({ status: 404, json: { status: 404 } }),
+    );
+    await context.route('**/v1/auth/capabilities', (route) =>
       route.fulfill({
         json: {
           password: {
@@ -176,7 +182,7 @@ for (const width of [375, 1280]) {
         },
       }),
     );
-    await page.route('**/v1/auth/sign-in/email', (route) => {
+    await context.route('**/v1/auth/sign-in/email', (route) => {
       expect(route.request().postDataJSON()).toMatchObject({
         email: 'operator@example.test',
         password: 'correct horse battery staple',
@@ -184,7 +190,7 @@ for (const width of [375, 1280]) {
       stage = 3;
       return route.fulfill({ json: { redirect: false, token: null, user } });
     });
-    await page.route('**/v1/users/me', (route) =>
+    const currentUser = (route: Route) =>
       stage === 3
         ? route.fulfill({ json: user })
         : route.fulfill({
@@ -197,27 +203,41 @@ for (const width of [375, 1280]) {
               code: 'auth.unauthenticated',
               requestId: 'expired-session',
             },
-          }),
-    );
+          });
+    await page.route('**/v1/users/me', currentUser);
+    await context.route('**/v1/users/me', currentUser);
     await page.clock.fastForward(2_100);
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
-    await expect(page).toHaveURL(/\/login\?returnTo=/);
-    const url = new URL(page.url());
-    expect(url.searchParams.get('returnTo')).toBe(
+    // The page pauses in place; signing in happens in another tab.
+    await expect(
+      page.getByRole('heading', { name: 'Your session ended' }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(`/w/${workspaceId}/settings/variables`);
+    await page.screenshot({
+      path: test.info().outputPath(`session-paused-${String(width)}.png`),
+    });
+    const [signIn] = await Promise.all([
+      page.waitForEvent('popup'),
+      page.getByRole('link', { name: /Sign in again/ }).click(),
+    ]);
+    expect(new URL(signIn.url()).searchParams.get('returnTo')).toBe(
       `/w/${workspaceId}/settings/variables`,
     );
     await expect(
-      page.getByRole('heading', { name: 'Sign in to continue' }),
+      signIn.getByRole('heading', { name: 'Sign in to continue' }),
     ).toBeVisible();
-    await page.getByLabel('Email').fill('operator@example.test');
-    await page
+    await signIn.getByLabel('Email').fill('operator@example.test');
+    await signIn
       .getByLabel('Password', { exact: true })
       .fill('correct horse battery staple');
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-    await expect(page).toHaveURL(`/w/${workspaceId}/settings/variables`);
+    await signIn.getByRole('button', { name: 'Sign in', exact: true }).click();
+    // The sign-in tells this tab, which checks it's the same person.
     await expect(
       page.getByText('No workspace variables configured.'),
     ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Your session ended' }),
+    ).toBeHidden();
   });
 }
 
