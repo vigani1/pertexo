@@ -1,7 +1,7 @@
 # Cost of a pure step
 
-Status: proposed; awaiting the owner's approval. Finding: performance-07
-(batch J7). Builds nothing until approved.
+Status: built (option B, batch J9). Finding: performance-07 (batch J7).
+Results are under [Measured after B](#measured-after-b).
 
 ## Measurement (2026-11-12, main at `8dd36b6c4`)
 
@@ -123,3 +123,27 @@ returned-value check still stand.
 - The check fails on a sample session-level `set_config(..., false)`.
 - The J7 harness, re-run: statements per step at or below 90, and the
   `pg_settings` statement absent from `pg_stat_statements`.
+
+## Measured after B
+
+The J7 harness ran again on 2026-11-13 at active limit 200, twice with B and
+twice with main's transaction code, swapping only the three transaction
+files. Everything else was the same commit and stack. Machine load was 3–12.
+
+| Per step                        |   Before |    After |
+| ------------------------------- | -------: | -------: |
+| Client statements (round trips) | 112, 113 |   86, 86 |
+| Database transactions           |  27, 27  |   10, 10 |
+| Postgres CPU                    | 55, 64 ms | 32, 24 ms |
+| Worker CPU                      | 38, 51 ms | 34, 32 ms |
+| Redis commands                  |   92, 91 |   88, 88 |
+
+- Statements per step fell by 26 (−23%), under the 90 target. Transactions
+  fell by 16 because the absent-context checks each ran as their own
+  autocommit transaction outside BEGIN.
+- The `pg_settings` read-back is gone from `pg_stat_statements`. The single
+  context statement that replaces it took 163 ms over 17,203 calls in a
+  10-step burst; the read-back took 15.9 s over the same number.
+- The 10-step burst of 200 runs took 82 s and 122 s before and 80 s and 66 s
+  after (25–36 node runs/s after, 20–29 before). At this load the wall
+  times overlap too much to quote a gain, but every per-step cost fell.
