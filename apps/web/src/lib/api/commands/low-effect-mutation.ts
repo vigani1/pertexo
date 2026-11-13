@@ -12,12 +12,18 @@ import { useHeldCommandKey } from './use-held-command-key';
 export function useLowEffectMutation<Input, Result>({
   send,
   refresh,
+  slotOf,
 }: Readonly<{
   send: (input: Input, key: string) => Promise<Result>;
   /** `error` is null when the change landed. */
   refresh: (input: Input, error: unknown) => Promise<unknown>;
+  /**
+   * The target a change is made to, when one hook changes several (a
+   * folder, a tag): each target keeps its own held key.
+   */
+  slotOf?: (input: Input) => string;
 }>) {
-  const keys = useHeldCommandKey<Input>('renew');
+  const keys = useHeldCommandKey<Input>('renew', slotOf);
   return useMutation({
     retry: false,
     mutationFn: async (input: Input) => {

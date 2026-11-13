@@ -16,6 +16,12 @@ export function useCommandAttempt<Attempt extends CommandKey>() {
       current.current = undefined;
       setHeld(undefined);
     },
+    /** Makes a held attempt current again, as it was when set aside. */
+    adopt: (attempt: Attempt) => {
+      setRefused(false);
+      current.current = attempt;
+      setHeld(attempt);
+    },
     getOrCreate: async (
       create: () => Attempt | Promise<Attempt>,
     ): Promise<Attempt | undefined> => {

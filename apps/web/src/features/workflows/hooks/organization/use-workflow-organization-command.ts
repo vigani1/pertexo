@@ -60,6 +60,8 @@ export function useWorkflowOrganizationCommand({
           queryKey: workflowKeys.scope(userId, workspaceId),
         }),
       ]),
+    // A folder change and a tag change from one dialog keep separate keys.
+    slotOf: organizationTarget,
   });
   const revisionRefresh = useMutation({
     mutationFn: () =>
@@ -148,4 +150,14 @@ function definitiveMessage(error: unknown) {
   return code !== undefined && Object.hasOwn(messages, code)
     ? (messages[code] ?? 'That change wasn’t saved.')
     : lowEffectError(error, 'changing workflow organization');
+}
+
+/** What an organization command changes: its kind and the thing it names. */
+function organizationTarget(input: WorkflowOrganizationInput): string {
+  const named =
+    ('workflowId' in input ? input.workflowId : undefined) ??
+    ('folderId' in input ? input.folderId : undefined) ??
+    ('tagId' in input ? input.tagId : undefined) ??
+    '';
+  return `${input.kind}:${named}`;
 }
