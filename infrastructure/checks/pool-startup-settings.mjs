@@ -42,6 +42,11 @@ export function startupSettingFindings(node) {
     if (literalValue(value) === undefined)
       return [`${node.getText()} (startup settings can't be read)`];
   }
+  const pgOptions = pgOptionsValue(node);
+  if (pgOptions !== undefined && literalValue(pgOptions) === undefined)
+    return [
+      `PGOPTIONS = ${pgOptions.getText()} (startup settings can't be read)`,
+    ];
   return [];
 }
 
@@ -64,16 +69,39 @@ function literalValue(node) {
   return undefined;
 }
 
-/** The literal is the value of a pool's options or of a connection string's options parameter. */
+/** The literal is the value of a pool's options, a connection string's options parameter, or PGOPTIONS. */
 function isStartupOptionsValue(node) {
   const parent = node.parent;
   return (
     (isPoolOptionsProperty(parent) && parent.initializer === node) ||
-    (isOptionsSearchParameter(parent) && parent.arguments[1] === node)
+    (isOptionsSearchParameter(parent) && parent.arguments[1] === node) ||
+    pgOptionsValue(parent) === node
   );
 }
 
-/** `options` in an object given to new Pool / new Client, or one holding a connectionString. */
+/**
+ * The value given to PGOPTIONS, which libpq sends as startup options:
+ * `env.PGOPTIONS = v`, `env['PGOPTIONS'] = v`, or `{ PGOPTIONS: v }`.
+ */
+function pgOptionsValue(node) {
+  if (node === undefined) return undefined;
+  if (ts.isPropertyAssignment(node))
+    return propertyName(node) === 'PGOPTIONS' ? node.initializer : undefined;
+  if (
+    !ts.isBinaryExpression(node) ||
+    node.operatorToken.kind !== ts.SyntaxKind.EqualsToken
+  )
+    return undefined;
+  const target = node.left;
+  const named =
+    (ts.isPropertyAccessExpression(target) &&
+      target.name.text === 'PGOPTIONS') ||
+    (ts.isElementAccessExpression(target) &&
+      literalValue(target.argumentExpression) === 'PGOPTIONS');
+  return named ? node.right : undefined;
+}
+
+/** `options` in an object given to new Pool / Client (also pg.Pool), or one holding a connectionString. */
 function isPoolOptionsProperty(node) {
   if (!(
     ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)
@@ -84,7 +112,7 @@ function isPoolOptionsProperty(node) {
   if (!ts.isObjectLiteralExpression(object)) return false;
   const constructed =
     ts.isNewExpression(object.parent) &&
-    ['Pool', 'Client'].includes(object.parent.expression.getText());
+    /(?:^|\.)(?:Pool|Client)$/u.test(object.parent.expression.getText());
   const connection = object.properties.some(
     (property) => propertyName(property) === 'connectionString',
   );
