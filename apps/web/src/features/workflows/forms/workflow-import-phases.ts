@@ -119,8 +119,10 @@ export async function checkImportPreview({
       dispatch({ type: 'preview-finished', revision, preview: result });
   } catch (failure) {
     if (!request.current()) return;
+    // A preview changes nothing: it reads the destination's compatibility, so
+    // a 401/403/404 means access to the workspace is gone, not a refused action.
     dispatch(
-      lifetime.accessFailure(failure)
+      lifetime.accessFailure(failure, 'read')
         ? { type: 'preview-finished', revision, superseded: true }
         : {
             type: 'preview-finished',
