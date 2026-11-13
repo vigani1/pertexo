@@ -1923,6 +1923,48 @@ $$;
 ALTER FUNCTION app.store_webhook_ingress_counter(p_endpoint_key_hash character, p_expected_window timestamp with time zone, p_expected_count integer, p_reset boolean, p_window timestamp with time zone) OWNER TO pertexo_owner;
 
 --
+-- Name: wake_next_ordered_workflow_run_start(uuid, uuid); Type: FUNCTION; Schema: app; Owner: pertexo_owner
+--
+
+CREATE FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog', 'app'
+    SET row_security TO 'on'
+    AS $$
+BEGIN
+  IF nullif(current_setting('app.workspace_id',true),'')::uuid IS DISTINCT FROM p_workspace THEN
+    RAISE EXCEPTION 'workspace context mismatch' USING ERRCODE='42501';
+  END IF;
+  -- SKIP LOCKED: a delivery the dispatcher holds is already due, so never wait for it.
+  UPDATE app.outbox_events event
+     SET available_at=clock_timestamp(), updated_at=clock_timestamp()
+   WHERE event.id IN (
+     SELECT deferred.id FROM app.outbox_events deferred
+      WHERE deferred.workspace_id=p_workspace AND deferred.job_name='advance-workflow-run'
+        AND deferred.published_at IS NULL AND deferred.failed_at IS NULL
+        AND deferred.lease_expires_at IS NULL AND deferred.available_at>clock_timestamp()
+        AND deferred.id=(
+          -- Non-exempt grants exist only under a workflow limit.
+          SELECT admission.outbox_event_id
+            FROM app.workflow_run_active_admissions admission
+            JOIN app.workflow_runs started
+              ON started.workspace_id=admission.workspace_id AND started.id=p_started_run
+            JOIN app.workflow_runs waiting
+              ON waiting.workspace_id=admission.workspace_id AND waiting.id=admission.workflow_run_id
+           WHERE admission.workspace_id=p_workspace AND NOT admission.workflow_concurrency_order_exempt
+             AND waiting.workflow_id=started.workflow_id AND waiting.status='queued'
+             AND waiting.cancel_requested_at IS NULL
+             AND (waiting.deadline_at IS NULL OR waiting.deadline_at>clock_timestamp())
+           ORDER BY waiting.admission_ticket
+           LIMIT 1)
+      FOR UPDATE SKIP LOCKED);
+  RETURN FOUND;
+END $$;
+
+
+ALTER FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid) OWNER TO pertexo_owner;
+
+--
 -- Name: workflow_concurrency_admissible(uuid, uuid, boolean); Type: FUNCTION; Schema: app; Owner: pertexo_owner
 --
 
@@ -11779,13 +11821,6 @@ CREATE POLICY outbox_events_error_workflow_wakeup ON app.outbox_events FOR UPDAT
 
 
 --
--- Name: outbox_events outbox_events_ordered_start_wakeup; Type: POLICY; Schema: app; Owner: pertexo_owner
---
-
-CREATE POLICY outbox_events_ordered_start_wakeup ON app.outbox_events FOR UPDATE TO pertexo_app USING (((workspace_id = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid) AND ((job_name)::text = 'advance-workflow-run'::text) AND (published_at IS NULL) AND (failed_at IS NULL))) WITH CHECK (((workspace_id = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid) AND ((job_name)::text = 'advance-workflow-run'::text) AND (published_at IS NULL) AND (failed_at IS NULL)));
-
-
---
 -- Name: outbox_events outbox_events_tenant_insert; Type: POLICY; Schema: app; Owner: pertexo_owner
 --
 
@@ -13297,6 +13332,14 @@ GRANT ALL ON FUNCTION app.store_trigger_schedule_retirement(p_trigger_id uuid, p
 
 REVOKE ALL ON FUNCTION app.store_webhook_ingress_counter(p_endpoint_key_hash character, p_expected_window timestamp with time zone, p_expected_count integer, p_reset boolean, p_window timestamp with time zone) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.store_webhook_ingress_counter(p_endpoint_key_hash character, p_expected_window timestamp with time zone, p_expected_count integer, p_reset boolean, p_window timestamp with time zone) TO pertexo_app;
+
+
+--
+-- Name: FUNCTION wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid); Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+REVOKE ALL ON FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.wake_next_ordered_workflow_run_start(p_workspace uuid, p_started_run uuid) TO pertexo_app;
 
 
 --

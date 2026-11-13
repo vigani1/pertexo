@@ -245,6 +245,11 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
       reason:
         'Compare/store the locked counter tuple; core chooses window and reset values.',
     },
+  'app.wake_next_ordered_workflow_run_start(uuid,uuid)': {
+    category: 'capacity counters',
+    reason:
+      "Bring forward only the next granted run's deferred start when the run ahead of it starts, under the start's locks.",
+  },
   'app.workflow_concurrency_admissible(uuid,uuid,boolean)': {
     category: 'capacity counters',
     reason:
