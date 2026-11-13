@@ -85,11 +85,12 @@ function literalText(node) {
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
     return node.text;
   if (ts.isTemplateExpression(node))
-    // An interpolation stands for one unknown piece of SQL.
+    // An interpolation stands for one unknown piece of SQL. "?" can't start a
+    // dollar quote, even right after a "$" parameter marker.
     return [
       node.head.text,
       ...node.templateSpans.map((span) => span.literal.text),
-    ].join('$x');
+    ].join('?');
   return undefined;
 }
 
@@ -118,6 +119,9 @@ function isForeignKeyAction(parent) {
   return name === 'onDelete' || name === 'onUpdate';
 }
 
+const DOLLAR_QUOTE = /^\$(?:[A-Za-z_]\w*)?\$/u;
+// E'...' (any case) right after a non-identifier character.
+const ESCAPE_STRING_PREFIX = /(?:^|[^\w$])[eE]$/u;
 const LEADING_COMMENTS = /^(?:\s+|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)*/u;
 // SET LOCAL, SET TRANSACTION and SET CONSTRAINTS end with the transaction.
 const TRANSACTION_SCOPED_SET = /^set\s+(?:local|transaction|constraints)\b/iu;
@@ -143,7 +147,12 @@ function sessionSettings(sql) {
   return found;
 }
 
-/** Every set_config mention, local only when it is a closed call whose third argument is literally true. */
+/**
+ * Every set_config mention, local only when it is a closed call whose third
+ * argument is literally true. A dollar-quoted or E'...' escape string in the
+ * call isn't read; either can hide where an argument ends, so the call is
+ * then not proven local.
+ */
 function* setConfigCalls(sql) {
   for (const match of sql.matchAll(/\bset_config\b/giu)) {
     const open = /^\s*\(/u.exec(sql.slice(match.index + match[0].length));
@@ -157,11 +166,19 @@ function* setConfigCalls(sql) {
     let quote;
     let argumentStart = start;
     let end;
+    let unreadable = false;
     for (let index = start; index < sql.length; index += 1) {
       const char = sql[index];
       if (quote !== undefined) {
         if (char === quote) quote = undefined;
         continue;
+      }
+      if (
+        (char === '$' && DOLLAR_QUOTE.test(sql.slice(index))) ||
+        (char === "'" && ESCAPE_STRING_PREFIX.test(sql.slice(0, index)))
+      ) {
+        unreadable = true;
+        break;
       }
       if (char === "'" || char === '"') quote = char;
       else if (char === '(') depth += 1;
@@ -178,7 +195,7 @@ function* setConfigCalls(sql) {
       }
     }
     // An unclosed call is being assembled elsewhere, so its flag is unknown.
-    if (end === undefined) {
+    if (unreadable || end === undefined) {
       yield { text: sql.slice(match.index).split('\n')[0], local: false };
       continue;
     }
