@@ -15,6 +15,12 @@ const timestamp = '2026-11-13T10:00:00.000Z';
 // while it loaded (review J6a P2-3); Home must not move more than that.
 const BASE_SHIFT = { 375: 0.106, 1280: 0.026 } as const;
 
+// Holding still: on a 375 x 900 screen, a block covering half of it that
+// moves 36 px (one line of text) scores 0.5 x 0.04 = 0.02. Anything larger
+// reads as a jump. Measured with every read late: 0.011 at 375 px, 0.0015 at
+// 1280 px.
+const HOLDS_STILL = 0.02;
+
 const noRuns = {
   queued: 0,
   running: 0,
@@ -246,4 +252,40 @@ for (const width of [375, 1280] as const)
         .outputPath(`getting-started-after-${String(width)}.png`),
       fullPage: true,
     });
+  });
+
+/**
+ * Each of Home's reads answers late and at its own time, the worst order
+ * for a page that rearranges as facts arrive.
+ */
+async function answerLate(page: Page) {
+  const late = (path: string, after: number) =>
+    page.route(path, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, after));
+      await route.fallback();
+    });
+  await late(`**/v1/workspaces/${workspaceId}/run-statistics?**`, 300);
+  await late(`**/v1/workspaces/${workspaceId}/connections?**`, 600);
+  await late(`**/v1/workspaces/${workspaceId}/runs?**`, 900);
+  await late(`**/v1/workspaces/${workspaceId}/workflows?**`, 1_200);
+}
+
+for (const width of [375, 1280] as const)
+  test(`a new workspace's Home holds still while its reads arrive late at ${String(width)}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await newWorkspace(page);
+    await answerLate(page);
+    await page.goto(`/w/${workspaceId}`);
+    await expect(
+      page
+        .getByRole('region', { name: 'Getting started' })
+        .getByRole('button', { name: 'Try the example' }),
+    ).toBeVisible();
+    await page.waitForTimeout(1_000);
+    const shift = await page.evaluate(
+      () => (window as unknown as { __shift: number }).__shift,
+    );
+    expect(shift).toBeLessThanOrEqual(HOLDS_STILL);
   });
