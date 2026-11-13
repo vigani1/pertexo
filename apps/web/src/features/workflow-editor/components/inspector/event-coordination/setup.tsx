@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
+import { Disclosure } from '@/components/ui/disclosure';
 import { ChoiceSelect } from '../fields/choice-select';
 import { MappingValueEditor } from '../input-mappings/value-editor';
 import { useInspectorDraftField } from '../use-draft-field';
@@ -52,75 +53,84 @@ export function EventCoordinationSetup({
     }, `${node.id}:coordination`);
   }
   const id = `${node.id}-coordination-mode`;
+  // Most workflows never need it: folded away until a policy is set (or the
+  // stored one can't be read, which needs looking at).
   return (
-    <fieldset className="flex min-w-0 flex-col gap-3">
-      <legend className="mb-3 font-medium">Event coordination</legend>
-      <Field>
-        <FieldLabel htmlFor={id}>Policy</FieldLabel>
-        <ChoiceSelect
-          value={policy?.mode ?? 'off'}
-          disabled={!form.editable}
-          choices={[
-            { value: 'off', label: 'Off' },
-            { value: 'deduplicate', label: 'Deduplicate' },
-            { value: 'debounce', label: 'Debounce' },
-            { value: 'throttle', label: 'Throttle' },
-          ]}
-          onChange={(mode) => {
-            const key = policy?.key ?? {
-              kind: 'run_input' as const,
-              path:
-                node.definition.key === 'core.form'
-                  ? '$.values.orderId'
-                  : '$.orderId',
-            };
-            switch (mode) {
-              case 'off':
-                commit(undefined);
-                break;
-              case 'deduplicate':
-                commit({ mode, key, windowSeconds: 86400 });
-                break;
-              case 'debounce':
-                commit({ mode, key, quietSeconds: 5 });
-                break;
-              case 'throttle':
-                commit({
-                  mode,
-                  key,
-                  windowSeconds: 60,
-                  limit: 1,
-                  onExcess: 'skip',
-                });
-                break;
-              case null:
-                break;
-            }
-          }}
-          control={{ id: id }}
-        />
-        <FieldDescription>
-          Group events by a value in their input. Authentication and transport
-          retries keep their usual behavior.
-        </FieldDescription>
-      </Field>
-      {node.config.coordination !== undefined && !result.success ? (
-        <Notice tone="destructive">
-          The saved coordination settings are invalid. Choose a policy to
-          replace them.
-        </Notice>
-      ) : null}
-      {policy === undefined ? null : (
-        <CoordinationFields
-          key={policy.mode}
-          policy={policy}
-          node={node}
-          graph={graph}
-          form={form}
-          onChange={commit}
-        />
-      )}
-    </fieldset>
+    <Disclosure
+      summary={`Event coordination · ${policy === undefined ? 'Off' : 'On'}`}
+      defaultOpen={node.config.coordination !== undefined}
+      appearance={{ tone: 'strong' }}
+      className="border-t border-border pt-3"
+    >
+      <fieldset className="flex min-w-0 flex-col gap-3">
+        <legend className="sr-only">Event coordination</legend>
+        <Field>
+          <FieldLabel htmlFor={id}>Policy</FieldLabel>
+          <ChoiceSelect
+            value={policy?.mode ?? 'off'}
+            disabled={!form.editable}
+            choices={[
+              { value: 'off', label: 'Off' },
+              { value: 'deduplicate', label: 'Deduplicate' },
+              { value: 'debounce', label: 'Debounce' },
+              { value: 'throttle', label: 'Throttle' },
+            ]}
+            onChange={(mode) => {
+              const key = policy?.key ?? {
+                kind: 'run_input' as const,
+                path:
+                  node.definition.key === 'core.form'
+                    ? '$.values.orderId'
+                    : '$.orderId',
+              };
+              switch (mode) {
+                case 'off':
+                  commit(undefined);
+                  break;
+                case 'deduplicate':
+                  commit({ mode, key, windowSeconds: 86400 });
+                  break;
+                case 'debounce':
+                  commit({ mode, key, quietSeconds: 5 });
+                  break;
+                case 'throttle':
+                  commit({
+                    mode,
+                    key,
+                    windowSeconds: 60,
+                    limit: 1,
+                    onExcess: 'skip',
+                  });
+                  break;
+                case null:
+                  break;
+              }
+            }}
+            control={{ id: id }}
+          />
+          <FieldDescription>
+            Group events by a value in their input. Authentication and transport
+            retries keep their usual behavior.
+          </FieldDescription>
+        </Field>
+        {node.config.coordination !== undefined && !result.success ? (
+          <Notice tone="destructive">
+            The saved coordination settings are invalid. Choose a policy to
+            replace them.
+          </Notice>
+        ) : null}
+        {policy === undefined ? null : (
+          <CoordinationFields
+            key={policy.mode}
+            policy={policy}
+            node={node}
+            graph={graph}
+            form={form}
+            onChange={commit}
+          />
+        )}
+      </fieldset>
+    </Disclosure>
   );
 }
 function CoordinationFields({

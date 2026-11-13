@@ -2,7 +2,12 @@ import { useInspectorSession } from '../use-session';
 import { WaitSetup } from '../wait/setup';
 import { UtilitySetup } from '../builders/utility-setup';
 import { UTILITY_OPERATION_KEYS } from '../../../model/inspector/transforms/utility-config';
-import { httpSetupFields } from '../../../model/inspector/http-pagination/fields';
+import {
+  httpAdvancedInUse,
+  httpSetupFields,
+  splitHttpSetupFields,
+} from '../../../model/inspector/http-pagination/fields';
+import { Disclosure } from '@/components/ui/disclosure';
 import { HttpPaginationSetup } from '../http-pagination/setup';
 import { DataTableSetup } from '../builders/table-setup';
 import { isDataTableDefinition } from '@pertexo/node-sdk';
@@ -120,24 +125,42 @@ export function SetupControls({
     return (
       <ScheduleBuilder config={config} schema={scheduleSchema} form={form} />
     );
-  if (formKey === 'http.request')
+  if (formKey === 'http.request') {
+    const { essential, advanced } = splitHttpSetupFields(
+      httpSetupFields(fields, config),
+    );
     return (
       <>
         <SchemaFieldList
-          fields={httpSetupFields(fields, config)}
+          fields={essential}
           config={config}
           form={form}
           jsonOnlySettings={
             schemaPropertyCount(configSchema) > fields.length + 1
           }
         />
-        <HttpPaginationSetup
-          schema={configSchema}
-          config={config}
-          form={form}
-        />
+        <Disclosure
+          summary="Advanced: limits, error responses and paging"
+          defaultOpen={httpAdvancedInUse(config)}
+          appearance={{ tone: 'strong' }}
+          className="border-t border-border pt-3"
+          contentClassName="flex flex-col gap-4"
+        >
+          <SchemaFieldList
+            fields={advanced}
+            config={config}
+            form={form}
+            jsonOnlySettings={false}
+          />
+          <HttpPaginationSetup
+            schema={configSchema}
+            config={config}
+            form={form}
+          />
+        </Disclosure>
       </>
     );
+  }
   const list = listBuilder(node, graph, form);
   const propertyCount = schemaPropertyCount(configSchema);
   return (

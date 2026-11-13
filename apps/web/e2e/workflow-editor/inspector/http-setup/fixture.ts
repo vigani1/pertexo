@@ -75,6 +75,15 @@ export async function openSetup(page: Page, width: number) {
       .click();
 }
 
+/** Limits, error responses and paging wait under Advanced. */
+export async function openAdvanced(page: Page) {
+  await page
+    .locator('summary', {
+      hasText: 'Advanced: limits, error responses and paging',
+    })
+    .click();
+}
+
 export async function installHttp(
   page: Page,
   remote: RemoteDraft,
