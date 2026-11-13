@@ -183,6 +183,13 @@ for (const editable of [true, false]) {
           language: 'jsonata',
           expression: '$uppercase(runInput.text)',
         });
+      // product-ux-28: a typed expression survives a look at another source.
+      const source = page.getByRole('group', { name: 'Source', exact: true });
+      await source.getByText('Value', { exact: true }).click();
+      await source.getByText('Expression', { exact: true }).click();
+      await expect(
+        page.getByRole('textbox', { name: 'Expression', exact: true }),
+      ).toHaveValue('$uppercase(runInput.text)');
       if (process.env.PERTEXO_TRANSFORM_SCREENSHOTS !== undefined)
         await page.screenshot({
           path: `${process.env.PERTEXO_TRANSFORM_SCREENSHOTS}/expressions-phone.png`,

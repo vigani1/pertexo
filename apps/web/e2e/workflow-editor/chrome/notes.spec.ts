@@ -40,7 +40,8 @@ for (const theme of ['light', 'dark'] as const)
       await toolbar
         .getByRole('button', { name: 'Add note', exact: true })
         .click();
-      const form = page.getByRole('dialog', { name: 'Edit note' });
+      // product-ux-28: a new note is added, not edited.
+      const form = page.getByRole('dialog', { name: 'Add a note' });
       await expect(
         form.getByRole('textbox', { name: 'Note', exact: true }),
       ).toBeFocused();
@@ -48,7 +49,7 @@ for (const theme of ['light', 'dark'] as const)
         .getByRole('textbox', { name: 'Note', exact: true })
         .fill('# Orders\n\nKeep **one** per order.\n\n- Capture\n- Validate');
       await form
-        .getByRole('button', { name: 'Save note', exact: true })
+        .getByRole('button', { name: 'Add note', exact: true })
         .click();
       const note = page.getByRole('article', {
         name: 'Canvas note',
@@ -82,7 +83,7 @@ for (const theme of ['light', 'dark'] as const)
           .click();
       await page
         .getByRole('dialog')
-        .getByRole('combobox', { name: 'Colour' })
+        .getByRole('combobox', { name: 'Color' })
         .click();
       await page.getByRole('option', { name: 'Amber', exact: true }).click();
       await page

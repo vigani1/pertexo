@@ -140,6 +140,7 @@ export function NoteTools({ editable, containerRef }: NoteToolsProps) {
       {candidate === undefined ? null : (
         <NoteForm
           key={candidate.note.id}
+          mode={candidate.mode}
           note={candidate.note}
           onClose={() => {
             setCandidate(undefined);

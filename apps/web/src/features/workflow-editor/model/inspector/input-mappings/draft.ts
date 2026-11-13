@@ -9,6 +9,7 @@ import {
 import { isRecord } from '@pertexo/workflow-model';
 import { parseJsonPath } from '@pertexo/workflow-model';
 import { stepTitle } from '../../graph/adapter';
+import { startingExpression } from './reference';
 import type { GraphLevel, WorkflowNode } from '../../graph/scopes';
 
 export type InputMapping = WorkflowNode['inputMappings'][string];
@@ -112,10 +113,12 @@ export function newInputMappingRow(
   return { id, destinationKey, kind: 'literal', literalJson: 'null' };
 }
 
+/** A new source kind; Expression gets back what was typed, or reads the old source. */
 export function changeInputMappingKind(
   row: InputMappingDraftRow,
   kind: EditableInputMappingKind,
   firstPredecessorId = '',
+  keptExpression?: string,
 ): InputMappingDraftRow {
   const base = { id: row.id, destinationKey: row.destinationKey };
   switch (kind) {
@@ -134,7 +137,7 @@ export function changeInputMappingKind(
       return {
         ...base,
         kind,
-        expression: '',
+        expression: keptExpression ?? startingExpression(row) ?? '',
       };
   }
 }

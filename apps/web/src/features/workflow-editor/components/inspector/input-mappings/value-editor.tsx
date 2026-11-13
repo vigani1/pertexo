@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { GraphLevel } from '../../../model/graph/scopes';
@@ -51,6 +52,7 @@ export function MappingValueEditor({
   context: MappingSources;
 }>) {
   const { nodeId, graph, predecessors, loopPorts } = context;
+  const keptExpression = useRef<string | undefined>(undefined);
 
   const failureSource = graph.edges.find(
     (edge) =>
@@ -79,11 +81,15 @@ export function MappingValueEditor({
         onValueChange={(values) => {
           const kind: unknown = values[0];
           if (!isEditableInputMappingKind(kind)) return;
+          // An expression set aside by switching away comes back with it.
+          if (row.kind === 'expression')
+            keptExpression.current = row.expression;
           onChange(
             changeInputMappingKind(
               row,
               kind,
               kind === 'node_failure' ? failureSource : predecessors[0]?.nodeId,
+              keptExpression.current,
             ),
           );
         }}
