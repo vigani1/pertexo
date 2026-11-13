@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { isApiError } from '../error';
 import {
   canResend,
@@ -7,7 +8,15 @@ import {
 } from './command-retry';
 import { useCommandAttempt } from './use-command-attempt';
 
-type HeldKey<Input> = Readonly<{ intent: string; input: Input }> & CommandKey;
+type HeldKey<Input> = Readonly<{
+  intent: string;
+  slot: string;
+  input: Input;
+}> &
+  CommandKey;
+
+// Held keys of other targets, set aside while this hook sends to another.
+const SET_ASIDE_LIMIT = 16;
 
 /**
  * The one key rule for keyed commands. A send reuses the held key while its
@@ -16,26 +25,50 @@ type HeldKey<Input> = Readonly<{ intent: string; input: Input }> & CommandKey;
  * changed input gets a new key. Success, or a refusal that settled the key,
  * releases it.
  *
+ * Each target (`slotOf`, one for the whole hook by default) holds its own
+ * key: a command to another target sets the held key aside, so resending
+ * the first command later still replays its own receipt. Another command to
+ * the same target replaces it, since the target's state has moved on.
+ *
  * When the held key's receipt window ends, `renew` takes a new key (for
  * changes a revision or absolute state still guards) and `refuse` sends
  * nothing until the person starts a new attempt (for creates nothing else
  * guards).
  */
-export function useHeldCommandKey<Input>(whenExpired: 'renew' | 'refuse') {
+export function useHeldCommandKey<Input>(
+  whenExpired: 'renew' | 'refuse',
+  slotOf: (input: Input) => string = () => '',
+) {
   const attempt = useCommandAttempt<HeldKey<Input>>();
+  const [setAside] = useState(() => new Map<string, HeldKey<Input>>());
+  function setCurrentAside(held: HeldKey<Input>) {
+    setAside.delete(held.slot);
+    setAside.set(held.slot, held);
+    const [oldest] = setAside.keys();
+    if (setAside.size > SET_ASIDE_LIMIT && oldest !== undefined)
+      setAside.delete(oldest);
+  }
   return {
     /** Resolves to `undefined` only when a refused attempt's window ended. */
     keyFor: async (input: Input) => {
       const intent = intentOf(input);
+      const slot = slotOf(input);
+      const current = attempt.current();
+      if (current !== undefined && current.intent !== intent) {
+        if (current.slot !== slot) setCurrentAside(current);
+        attempt.clear();
+      }
+      const waiting = setAside.get(slot);
+      if (waiting !== undefined) {
+        setAside.delete(slot);
+        if (waiting.intent === intent) attempt.adopt(waiting);
+      }
       const held = attempt.current();
-      if (
-        held !== undefined &&
-        (held.intent !== intent ||
-          (whenExpired === 'renew' && !canResend(held)))
-      )
+      if (held !== undefined && whenExpired === 'renew' && !canResend(held))
         attempt.clear();
       return attempt.getOrCreate(() => ({
         intent,
+        slot,
         input,
         ...newCommandKey(),
       }));
@@ -46,7 +79,10 @@ export function useHeldCommandKey<Input>(whenExpired: 'renew' | 'refuse') {
     },
     held: () => attempt.current(),
     expired: attempt.expired,
-    release: attempt.clear,
+    release: () => {
+      setAside.clear();
+      attempt.clear();
+    },
   };
 }
 

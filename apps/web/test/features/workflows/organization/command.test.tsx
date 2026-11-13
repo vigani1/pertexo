@@ -187,4 +187,20 @@ describe('low-effect organization mutations', () => {
       expect(server.sent[1]?.body).toEqual(server.sent[0]?.body);
     },
   );
+  it('keeps a held key through a different command in between', async () => {
+    const server = serveCommands();
+    server.answers.push(problem(503, 'service.unavailable'));
+    const f = setup();
+    await act(() => f.result.current.start(single));
+    await waitFor(() => {
+      expect(f.result.current.error).toContain('Saving it again is safe');
+    });
+    // Another change from the same place, then the first one again.
+    await act(() => f.result.current.start(bulk()));
+    await act(() => f.result.current.start(single));
+    expect(server.sent).toHaveLength(3);
+    expect(server.sent[1]?.key).not.toBe(server.sent[0]?.key);
+    expect(server.sent[2]?.key).toBe(server.sent[0]?.key);
+    expect(server.sent[2]?.body).toEqual(server.sent[0]?.body);
+  });
 });
