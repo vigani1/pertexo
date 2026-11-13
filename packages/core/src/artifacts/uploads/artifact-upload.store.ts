@@ -217,7 +217,7 @@ async function finalizeUpload(
         artifactId: parsed.artifactId,
         purpose: ARTIFACT_UPLOAD_PURPOSE,
         expectedMetadata: parsed.expectedMetadata,
-        retainFor: `${DATA_RETENTION_DAYS.unusedUploads} days` as const,
+        retainForSeconds: DATA_RETENTION_DAYS.unusedUploads * 86_400,
       });
     },
   );
