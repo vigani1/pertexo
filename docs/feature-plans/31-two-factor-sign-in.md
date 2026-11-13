@@ -207,7 +207,11 @@ visible behavior until slice 2 adds the controls.
 ### Backend alignment (owner-approved 2026-10-19)
 
 Code-step account lockout returns `auth.two_factor_locked`, so the web can
-identify the account lockout and show its fifteen-minute message. The plugin
+identify the account lockout and show its fifteen-minute message. A wrong
+authenticator or recovery code returns `auth.two_factor_code_invalid`, and an
+expired sign-in challenge `auth.two_factor_challenge_expired`, never
+`auth.unauthenticated`: the web pauses the whole page on that one (J6a), and a
+mistyped code must not look like an ended session. The plugin
 owns the lockout counters and timing.
 
 The Fastify bridge already puts all native POST routes in the distributed

@@ -115,8 +115,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
       );
       expect(reply.statusCode).toBe(401);
       expect(reply.json()).toMatchObject({
-        code: 'auth.unauthenticated',
-        title: 'Authentication required',
+        code: 'auth.invalid_credentials',
+        title: 'Sign-in details not accepted',
       });
       expect(reply.payload).not.toContain(person.email);
       expect(reply.payload).not.toContain('anonymous-private-password');

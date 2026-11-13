@@ -49,7 +49,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expectProblem(
         await verify(await challenge(user.email), 'invalid-code'),
         401,
-        'auth.unauthenticated',
+        'auth.two_factor_code_invalid',
       );
       const counter = await api
         .database()
@@ -82,7 +82,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       expectProblem(
         await verify(await challenge(user.email), code),
         401,
-        'auth.unauthenticated',
+        'auth.two_factor_code_invalid',
       );
       expect(notices()).toHaveLength(1);
       const facts = await api

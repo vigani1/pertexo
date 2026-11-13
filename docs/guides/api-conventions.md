@@ -55,7 +55,10 @@ never on `detail`, which is written for people. A rejected input also has
 
 | Response | Meaning |
 |---|---|
-| 401 `auth.unauthenticated` | No valid credential |
+| 401 `auth.unauthenticated` | No valid session or token. Only this one means the session ended |
+| 401 `auth.invalid_credentials` | Signing in: the email and password (or provider token) were refused |
+| 401 `auth.two_factor_code_invalid` | An authenticator or recovery code was refused; any session you hold is still valid |
+| 401 `auth.two_factor_challenge_expired` | The two-factor step of a sign-in expired; sign in again |
 | 403 `auth.token_scope_required` | The token is fine and needs another scope, which `detail` names |
 | 403 `auth.token_not_supported` | The route needs a browser session |
 | 403 `auth.forbidden` | Your role can't do this |

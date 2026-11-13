@@ -35,7 +35,27 @@ type NativeProblem = Readonly<{
   title: string;
 }>;
 
+/** A 401 that refuses what was typed, not the session behind it. */
+function refused(
+  code:
+    | 'auth.invalid_credentials'
+    | 'auth.two_factor_code_invalid'
+    | 'auth.two_factor_challenge_expired',
+): NativeProblem {
+  return { status: 401, code, title: API_PROBLEM_MANIFEST[code].title };
+}
+
 const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
+  // Better Auth answers every refusal with 401. Only a missing or ended
+  // session may reach clients as auth.unauthenticated, which ends theirs.
+  ['401:INVALID_EMAIL_OR_PASSWORD', refused('auth.invalid_credentials')],
+  ['401:INVALID_TOKEN', refused('auth.invalid_credentials')],
+  ['401:INVALID_CODE', refused('auth.two_factor_code_invalid')],
+  ['401:INVALID_BACKUP_CODE', refused('auth.two_factor_code_invalid')],
+  [
+    '401:INVALID_TWO_FACTOR_COOKIE',
+    refused('auth.two_factor_challenge_expired'),
+  ],
   [
     '400:INVALID_PASSWORD',
     {

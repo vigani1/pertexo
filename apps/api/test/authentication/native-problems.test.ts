@@ -73,6 +73,15 @@ const mappings = [
     'INVALID_TOKEN',
     {
       status: 401,
+      code: 'auth.invalid_credentials',
+      title: 'Sign-in details not accepted',
+    },
+  ],
+  [
+    401,
+    'UNKNOWN',
+    {
+      status: 401,
       code: 'auth.unauthenticated',
       title: 'Authentication required',
     },

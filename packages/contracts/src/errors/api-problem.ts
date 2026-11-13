@@ -35,6 +35,9 @@ export const API_PROBLEM_CODES = [
   'auth.email_not_verified',
   'auth.sso_required',
   'auth.two_factor_locked',
+  'auth.invalid_credentials',
+  'auth.two_factor_code_invalid',
+  'auth.two_factor_challenge_expired',
   'auth.invalid_password',
   'auth.password_already_configured',
   'auth.authentication_changed',
@@ -254,6 +257,26 @@ const apiProblemDetails = {
   'auth.two_factor_locked': {
     status: 429,
     title: 'Two-factor sign-in temporarily locked',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  // A refused credential while signing in or proving it is you: not an
+  // ended session, which only auth.unauthenticated means.
+  'auth.invalid_credentials': {
+    status: 401,
+    title: 'Sign-in details not accepted',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.two_factor_code_invalid': {
+    status: 401,
+    title: 'Two-factor code not accepted',
+    severity: 'info',
+    exposeDetail: false,
+  },
+  'auth.two_factor_challenge_expired': {
+    status: 401,
+    title: 'Two-factor sign-in expired',
     severity: 'info',
     exposeDetail: false,
   },
