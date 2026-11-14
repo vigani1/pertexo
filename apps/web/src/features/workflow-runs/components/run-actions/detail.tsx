@@ -66,18 +66,21 @@ export function RunDetailActions({
       ) : null}
     </>
   );
-  if (!compact)
-    return (
-      <PageHeaderActions className="md:self-start">{buttons}</PageHeaderActions>
-    );
+  // One element at every size, only restyled: a different element would
+  // remount the actions when the screen crosses the phone width (a dragged
+  // window, a browser's full-page capture), closing an open recovery
+  // dialog and losing what was ticked and typed in it.
   return (
-    <div
-      role="group"
-      aria-label="Run actions"
-      className="lens fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-30 flex gap-2 rounded-2xl p-2"
+    <PageHeaderActions
+      {...(compact ? { role: 'group', 'aria-label': 'Run actions' } : {})}
+      className={
+        compact
+          ? 'lens fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.25rem)] z-30 flex-nowrap items-stretch rounded-2xl p-2'
+          : 'md:self-start'
+      }
     >
       {buttons}
-      {canOpenWorkflow && roomToOpenWorkflow ? (
+      {compact && canOpenWorkflow && roomToOpenWorkflow ? (
         <Link
           to="/w/$workspaceId/workflows/$workflowId"
           params={{ workspaceId, workflowId }}
@@ -86,6 +89,6 @@ export function RunDetailActions({
           Open workflow
         </Link>
       ) : null}
-    </div>
+    </PageHeaderActions>
   );
 }
