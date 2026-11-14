@@ -2,11 +2,9 @@ import { fileURLToPath } from 'node:url';
 import { ZodError } from 'zod';
 
 import { parseMigrationConfig, type MigrationConfig } from './config.js';
-import {
-  MigrationFileFailedError,
-  PartialMigrationHistoryError,
-  migrateDatabase,
-} from './migrations/migrate-database.js';
+import { migrateDatabase } from './migrations/migrate-database.js';
+import { MigrationFileFailedError } from './migrations/migration.errors.js';
+import { PartialMigrationHistoryError } from './migration-history.js';
 
 export interface MigrationCliDependencies {
   readonly loadConfig?: () => MigrationConfig;

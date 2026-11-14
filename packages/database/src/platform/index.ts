@@ -10,7 +10,7 @@ export {
 } from './pool/database-pool.runtime.js';
 export { surviveConnectionLoss } from './pool/connection-loss.js';
 export { checkClientConnection } from './pool/connection-check.js';
-export { InheritedSessionContextError } from './pool/inherited-session-context.js';
+export { InheritedSessionContextError } from './pool/inherited-session-context.errors.js';
 export { DATABASE_POOL_ROLES } from './pool/policy.js';
 export { APP_SETTING_NAMES } from '../tenant-access/app-settings.js';
 export type {
@@ -19,10 +19,8 @@ export type {
 } from './pool/database-pool.runtime.js';
 export { generatePersistedId } from './persisted-id.js';
 export { isTransientDatabaseFailure } from './query.errors.js';
-export {
-  IdempotencyConflictError,
-  credentialCommandScope,
-} from './idempotency/repository.js';
+export { credentialCommandScope } from './idempotency/repository.js';
+export { IdempotencyConflictError } from './idempotency/idempotency.errors.js';
 export type {
   DatabaseReadiness,
   InstanceCapacity,

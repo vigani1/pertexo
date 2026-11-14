@@ -1,13 +1,7 @@
 import { encodeCanonicalJson, type JsonValue } from '@pertexo/node-sdk';
 import { isWellFormed, utf8ByteLength } from '@pertexo/workflow-model';
 import { types as nodeTypes } from 'node:util';
-
-export class BoundedJsonInvalidError extends TypeError {
-  public constructor(message = 'outbox payload must be valid bounded JSON') {
-    super(message);
-    this.name = 'BoundedJsonInvalidError';
-  }
-}
+import { BoundedJsonInvalidError } from './outbox.errors.js';
 
 type CanonicalFrame =
   | Readonly<{ depth: number; kind: 'value'; value: unknown }>
