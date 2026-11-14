@@ -120,3 +120,89 @@ it('replays the first turn-off, not a second, while the schedule can’t be read
   expect(applied).toHaveLength(1);
   expect(state.status).toBe('disabled');
 });
+
+it('keeps a lost turn-off’s key while another schedule is turned off', async () => {
+  installQueries();
+  const otherId = '22222222-2222-4222-8222-222222222222';
+  const status: Record<string, Status> = {
+    [scheduleId]: 'active',
+    [otherId]: 'active',
+  };
+  let lost = false;
+  const keysA: (string | null)[] = [];
+  const appliedA: (string | null)[] = [];
+  const view = (id: string) => ({
+    ...schedule,
+    id,
+    status: status[id],
+    healthStatus: status[id] === 'disabled' ? 'disabled' : 'healthy',
+  });
+  mockServer.use(
+    http.get(`${workflowApi}/triggers/schedules`, () =>
+      lost
+        ? HttpResponse.json(
+            {
+              type: 'about:blank',
+              title: 'Unavailable',
+              status: 503,
+              code: 'internal.unavailable',
+            },
+            { status: 503 },
+          )
+        : HttpResponse.json({ items: [view(scheduleId), view(otherId)] }),
+    ),
+    http.post(
+      `${workflowApi}/triggers/:id/schedule/disable`,
+      ({ request, params }) => {
+        const id = String(params.id);
+        const key = request.headers.get('idempotency-key');
+        if (id !== scheduleId) {
+          status[id] = 'disabled';
+          return HttpResponse.json({ trigger: view(id), replayed: false });
+        }
+        keysA.push(key);
+        const replayed = appliedA.includes(key);
+        if (!replayed) {
+          appliedA.push(key);
+          status[id] = 'disabled';
+        }
+        if (keysA.length === 1) {
+          // A's turn-off lands, its answer is lost, and reads fail after.
+          lost = true;
+          return HttpResponse.error();
+        }
+        return HttpResponse.json({ trigger: view(id), replayed });
+      },
+    ),
+  );
+  await renderLoadedApp(triggersPath);
+  const user = userEvent.setup();
+  const turnOffCard = async (index: number) => {
+    const cards = await screen.findAllByRole(
+      'article',
+      { name: /^Schedule:/u },
+      { timeout: 5_000 },
+    );
+    const card = cards[index];
+    if (card === undefined) throw new Error(`No schedule ${String(index)}`);
+    const toggle = within(card).getByRole('switch');
+    await waitFor(() => {
+      expect(toggle).toBeEnabled();
+    });
+    await user.click(toggle);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Turn off this schedule?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: 'Turn off' }));
+  };
+  await turnOffCard(0);
+  await screen.findByText(/Saving it again is safe/u);
+  await turnOffCard(1);
+  await screen.findByText('Schedule turned off');
+  await turnOffCard(0);
+  await waitFor(() => {
+    expect(keysA).toHaveLength(2);
+  });
+  expect(keysA[1]).toEqual(keysA[0]);
+  expect(appliedA).toHaveLength(1);
+});

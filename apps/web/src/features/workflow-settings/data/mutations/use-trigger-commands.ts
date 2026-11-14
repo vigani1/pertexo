@@ -58,6 +58,9 @@ export function useScheduleCommand({
       }),
     // Turning a schedule on or off carries no revision: a held key stays
     // only while the refreshed schedule shows the change.
+    // Each schedule keeps its own held key: turning one off doesn't drop
+    // another's.
+    slotOf: ({ triggerId }) => triggerId,
     appliedIn: {
       read: workflowSettingsKeys.schedules(userId, workspaceId, workflowId),
       shows: (
