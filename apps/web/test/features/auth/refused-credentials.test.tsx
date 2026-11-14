@@ -145,11 +145,27 @@ describe('refused credentials, each in its own words', () => {
   });
 
   it.each([
-    // Link start refuses a wrong current password with 403 auth.forbidden.
+    [
+      400,
+      'auth.invalid_password',
+      'That didn’t confirm it’s you. Check your current password and try again.',
+    ],
+    // Batch K: a CSRF refusal isn't a wrong password.
     [
       403,
       'auth.forbidden',
-      'That didn’t confirm it’s you. Check your current password and try again.',
+      'We couldn’t verify this request. Reload the page and try again.',
+    ],
+    // The confirming method was removed in another tab.
+    [
+      409,
+      'auth.authentication_changed',
+      'That sign-in method is no longer on your account. Close this and pick another one.',
+    ],
+    [
+      409,
+      'auth.conflict',
+      'Google is already connected. Close this and check your methods.',
     ],
     // Review of PR #707, P3: an unverified email is its own 403.
     [

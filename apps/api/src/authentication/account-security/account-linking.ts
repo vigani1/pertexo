@@ -101,6 +101,9 @@ export class AccountLinking {
       !this.input.providers.available.includes(sourceProvider)
     )
       return problem(404);
+    // Each refusal keeps its own code, so the dialog can say which proof
+    // failed: a wrong password reads as Change password's does, and a
+    // source method gone since the dialog opened as changed sign-in settings.
     if (existingMethod.kind === 'password') {
       if (
         !(await this.input.verifyPassword(
@@ -108,10 +111,10 @@ export class AccountLinking {
           existingMethod.password,
         ))
       )
-        return problem(403);
+        return problem(400, 'INVALID_PASSWORD');
     } else {
       if (!(await this.commands.hasMethod(session.userId, sourceProvider)))
-        return problem(403);
+        return problem(409, 'AUTHENTICATION_CHANGED');
     }
     if (await this.commands.hasMethod(session.userId, provider))
       return problem(409);
