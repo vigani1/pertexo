@@ -176,19 +176,23 @@ describe.each(POOL_ROLES)(
       const backend = new Promise<number>((resolve) => {
         entered = resolve;
       });
-      const running = withMultiWorkspaceTransaction(pool, (inWorkspace) =>
-        inWorkspace(scope(), async (client) => {
-          used = await fillContext(client);
-          entered(used);
-          await client.query('select pg_sleep(5) /* cancel-me */');
-        }),
+      // Captured as it starts: the rejection can land before the cancel's
+      // own query returns, and an unobserved rejection fails the run.
+      const rejection = captureRejection(() =>
+        withMultiWorkspaceTransaction(pool, (inWorkspace) =>
+          inWorkspace(scope(), async (client) => {
+            used = await fillContext(client);
+            entered(used);
+            await client.query('select pg_sleep(5) /* cancel-me */');
+          }),
+        ),
       );
       const pid = await backend;
       await waitForStatement(pid, 'cancel-me');
       await admin.query('select pg_cancel_backend($1)', [pid]);
       // The nested scope's cleanup also fails in the aborted transaction, so the
       // cancellation arrives as the first of an aggregate.
-      expect(await captureRejection(() => running)).toMatchObject({
+      expect(await rejection).toMatchObject({
         errors: [{ code: '57014' }, { code: '25P02' }],
       });
       await expect(nextUser()).resolves.toEqual({
@@ -202,14 +206,42 @@ describe.each(POOL_ROLES)(
       const backend = new Promise<number>((resolve) => {
         entered = resolve;
       });
-      const running = withTenantScopedClient(pool, scope(), async (client) => {
-        entered(await fillContext(client));
-        await client.query('select pg_sleep(5) /* terminate-me */');
-      });
+      // Captured as it starts: the rejection can land before
+      // pg_terminate_backend returns (main, 2026-11-13).
+      const rejection = captureRejection(() =>
+        withTenantScopedClient(pool, scope(), async (client) => {
+          entered(await fillContext(client));
+          await client.query('select pg_sleep(5) /* terminate-me */');
+        }),
+      );
       const pid = await backend;
       await waitForStatement(pid, 'terminate-me');
       await admin.query('select pg_terminate_backend($1)', [pid]);
-      expect(await captureRejection(() => running)).toBeInstanceOf(Error);
+      // The server ended the session, and the transaction with it: the
+      // caller hears that, not a rollback that couldn't be sent.
+      expect(await rejection).toMatchObject({ code: '57P01' });
+      const next = await nextUser();
+      expect(next.backend).not.toBe(pid);
+      expect(next.settings).toEqual(clean);
+    });
+
+    it('reports a connection that dies inside a nested scope as itself', async () => {
+      let entered: (pid: number) => void = () => undefined;
+      const backend = new Promise<number>((resolve) => {
+        entered = resolve;
+      });
+      const rejection = captureRejection(() =>
+        withMultiWorkspaceTransaction(pool, (inWorkspace) =>
+          inWorkspace(scope(), async (client) => {
+            entered(await fillContext(client));
+            await client.query('select pg_sleep(5) /* terminate-nested */');
+          }),
+        ),
+      );
+      const pid = await backend;
+      await waitForStatement(pid, 'terminate-nested');
+      await admin.query('select pg_terminate_backend($1)', [pid]);
+      expect(await rejection).toMatchObject({ code: '57P01' });
       const next = await nextUser();
       expect(next.backend).not.toBe(pid);
       expect(next.settings).toEqual(clean);

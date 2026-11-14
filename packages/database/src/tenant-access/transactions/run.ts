@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import { destroyCanceledPoolClient } from '../../platform/pool/client-disposal.js';
 import { acquireAbortablePoolClient } from '../../platform/pool/abortable-checkout.js';
+import { isConnectionLost } from '../../platform/query-errors.js';
 
 import type {
   WorkspaceTransactionOptions,
@@ -98,6 +99,12 @@ export async function runTransaction<T>(
     if (clientReleased) throw error;
     if (!transactionOpen) {
       // BEGIN itself failed, so the connection's state is unknown.
+      destroyClient();
+      throw error;
+    }
+    if (isConnectionLost(error)) {
+      // PostgreSQL ended the transaction with the session; a rollback could
+      // only fail on the dead socket and bury why.
       destroyClient();
       throw error;
     }

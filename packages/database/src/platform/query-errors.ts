@@ -58,6 +58,24 @@ const TRANSIENT_POSTGRES_CODES = new Set([
   '55P03',
 ]);
 
+/** The server ended the session: an administrator, a shutdown, a crash. */
+const SESSION_ENDED_CODES = new Set(['57P01', '57P02', '57P03']);
+const CONNECTION_LOST_MESSAGE =
+  /^(?:Connection terminated|Connection ended unexpectedly|Client has encountered a connection error)/u;
+
+/**
+ * True when the connection itself is gone, so PostgreSQL has already ended
+ * any transaction on it and nothing more can be sent there.
+ */
+export function isConnectionLost(error: unknown): boolean {
+  const failure = queryFailure(error);
+  if (!(failure instanceof Error)) return false;
+  const { code } = postgresFailure(failure);
+  if (code !== undefined)
+    return SESSION_ENDED_CODES.has(code) || code.startsWith('08');
+  return CONNECTION_LOST_MESSAGE.test(failure.message);
+}
+
 const TRANSIENT_CLIENT_MESSAGE =
   /^(?:Connection terminated|timeout exceeded when trying to connect|Client has encountered a connection error|Connection ended unexpectedly|Query read timeout)/u;
 
@@ -68,7 +86,7 @@ const TRANSIENT_CLIENT_MESSAGE =
 export function isTransientDatabaseFailure(error: unknown): boolean {
   try {
     const failure = queryFailure(error);
-    // A connection lost mid-transaction fails its rollback too, and arrives as both.
+    // A failure and the cleanup it broke arrive together; both must pass.
     if (failure instanceof AggregateError)
       return (
         failure.errors.length > 0 &&
