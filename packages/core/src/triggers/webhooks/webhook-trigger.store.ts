@@ -8,7 +8,7 @@ import type {
   DatabaseConfig,
 } from '@pertexo/database/platform';
 import { acquireDatabasePool } from '@pertexo/database/platform';
-import { DEFAULT_WEBHOOK_ENDPOINT_BURST_LIMIT } from './ingress-limits.js';
+import { DEFAULT_WEBHOOK_ENDPOINT_BURST_LIMIT } from '@pertexo/policy';
 import type { WebhookResponseScope } from './responses/webhook-response.types.js';
 import { readWebhookResponse } from './responses/webhook-responses.repository.js';
 

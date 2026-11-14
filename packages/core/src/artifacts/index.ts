@@ -48,4 +48,3 @@ export type {} from './form-uploads/resolve.repository.js';
 export type {} from './form-uploads/unsent.repository.js';
 export type {} from './form-uploads/targets.repository.js';
 export type {} from './uploads/reservation.repository.js';
-export { DEFAULT_ARTIFACT_COUNT_LIMIT } from './artifact-limits.js';
