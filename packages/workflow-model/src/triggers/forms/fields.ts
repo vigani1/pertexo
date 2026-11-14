@@ -2,7 +2,11 @@ import { eventCoordinationPolicySchema } from '../event-coordination/event-coord
 import { formRedirectUrlSchema } from './links.js';
 import { storageTextSchema } from '../../values/json/text.js';
 import { inspectJsonValue } from '../../values/json/canonical.js';
-import { FORM_FILE_LIMITS, formFileGroupSchema } from './files.js';
+import {
+  FORM_FILE_LIMITS,
+  formatFormFileBytes,
+  formFileGroupSchema,
+} from './files.js';
 import { z } from 'zod';
 
 export const FORM_LIMITS = Object.freeze({
@@ -12,6 +16,11 @@ export const FORM_LIMITS = Object.freeze({
   options: 50,
   textCharacters: 10_000,
   submissionBytes: 65_536,
+  labelCharacters: 160,
+  helpCharacters: 500,
+  optionCharacters: 160,
+  titleCharacters: 160,
+  instructionsCharacters: 2_000,
 });
 const field = z.object({
   id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u),
@@ -22,8 +31,8 @@ const field = z.object({
       (name) => !['constructor', 'prototype', '__proto__'].includes(name),
       'Choose a different field name.',
     ),
-  label: storageTextSchema.trim().min(1).max(160),
-  help: storageTextSchema.max(500).default(''),
+  label: storageTextSchema.trim().min(1).max(FORM_LIMITS.labelCharacters),
+  help: storageTextSchema.max(FORM_LIMITS.helpCharacters).default(''),
   required: z.boolean().default(true),
 });
 const choices = field.extend({
@@ -32,7 +41,7 @@ const choices = field.extend({
       storageTextSchema
         .trim()
         .min(1)
-        .max(160)
+        .max(FORM_LIMITS.optionCharacters)
         .regex(/^[^\r\n]*$/u, 'Keep each option on one line.'),
     )
     .min(1)
@@ -77,7 +86,10 @@ export const formFieldSchema = z
           .number()
           .int()
           .min(1)
-          .max(FORM_FILE_LIMITS.maxBytes, 'Keep each file within 10 MB.')
+          .max(
+            FORM_FILE_LIMITS.maxBytes,
+            `Keep each file within ${formatFormFileBytes(FORM_FILE_LIMITS.maxBytes)}.`,
+          )
           .default(FORM_FILE_LIMITS.defaultMaxBytes),
       })
       .strict(),
@@ -125,7 +137,7 @@ export const formFieldsSchema = z
   )
   .refine(
     (fields) => inspectJsonValue(fields).bytes <= FORM_LIMITS.schemaBytes,
-    'Keep field definitions within 10 KB; shorten help text or options.',
+    `Keep field definitions within ${formatFormFileBytes(FORM_LIMITS.schemaBytes)}; shorten help text or options.`,
   );
 export const DEFAULT_FORM_THANK_YOU_MESSAGE = 'Thanks for your response.';
 export const formThankYouMessageSchema = storageTextSchema
@@ -135,8 +147,14 @@ export const formThankYouMessageSchema = storageTextSchema
 export const formConfigSchema = z
   .object({
     coordination: eventCoordinationPolicySchema.exactOptional(),
-    title: storageTextSchema.trim().min(1).max(160).default('Send a request'),
-    instructions: storageTextSchema.max(2_000).default(''),
+    title: storageTextSchema
+      .trim()
+      .min(1)
+      .max(FORM_LIMITS.titleCharacters)
+      .default('Send a request'),
+    instructions: storageTextSchema
+      .max(FORM_LIMITS.instructionsCharacters)
+      .default(''),
     thankYouMessage: formThankYouMessageSchema.exactOptional(),
     redirectUrl: formRedirectUrlSchema.exactOptional(),
     fields: formFieldsSchema.default([

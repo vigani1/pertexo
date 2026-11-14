@@ -101,6 +101,10 @@ test('finds a limit written into text', () => {
     find('const hint = `at most ${String(MAX)} characters`;'),
     [],
   );
+  assert.deepEqual(
+    find('const hint = `at most ${String(MAX)} UTF-8 bytes, not 8 bytes`;'),
+    ['"8 bytes"'],
+  );
 });
 
 test('names a limit only at module level, not in a function body', () => {

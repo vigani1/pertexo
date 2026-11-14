@@ -2,6 +2,14 @@ import { z } from 'zod';
 
 export const FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES = 4_096;
 export const FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT = 100;
+const FAILURE_NOTIFICATION_FIELD_LIMITS = Object.freeze({
+  // RFC 5321's longest forward path.
+  emailAddressLength: 254,
+  nodeIdLength: 128,
+  invocationKeyLength: 256,
+  failureCount: 10_000,
+  providerReferenceLength: 256,
+});
 
 const safeCodeSchema = z.string().regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
 
@@ -22,7 +30,7 @@ export const FailureNotificationDestinationConfigSchema = z.discriminatedUnion(
         connectionId: z.uuid(),
         toEmail: z
           .email()
-          .max(254)
+          .max(FAILURE_NOTIFICATION_FIELD_LIMITS.emailAddressLength)
           .overwrite((value) => {
             const at = value.lastIndexOf('@');
             return `${value.slice(0, at)}@${value.slice(at + 1).toLowerCase()}`;
@@ -58,8 +66,14 @@ export const FailureNotificationContextSchema = z
     primaryFailure: z.union([
       z
         .object({
-          nodeId: z.string().min(1).max(128),
-          invocationKey: z.string().min(1).max(256),
+          nodeId: z
+            .string()
+            .min(1)
+            .max(FAILURE_NOTIFICATION_FIELD_LIMITS.nodeIdLength),
+          invocationKey: z
+            .string()
+            .min(1)
+            .max(FAILURE_NOTIFICATION_FIELD_LIMITS.invocationKeyLength),
           nodeStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
           attemptNumber: z.number().int().nonnegative(),
           safeErrorCode: safeCodeSchema,
@@ -73,7 +87,11 @@ export const FailureNotificationContextSchema = z
         })
         .strict(),
     ]),
-    totalFailureCount: z.number().int().positive().max(10_000),
+    totalFailureCount: z
+      .number()
+      .int()
+      .positive()
+      .max(FAILURE_NOTIFICATION_FIELD_LIMITS.failureCount),
   })
   .strict();
 
@@ -84,7 +102,11 @@ export const FailureNotificationDeliveryResultSchema = z.discriminatedUnion(
       .object({
         kind: z.literal('delivered'),
         possiblyDispatched: z.literal(true),
-        providerReference: z.string().min(1).max(256).optional(),
+        providerReference: z
+          .string()
+          .min(1)
+          .max(FAILURE_NOTIFICATION_FIELD_LIMITS.providerReferenceLength)
+          .optional(),
       })
       .strict(),
     z

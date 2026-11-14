@@ -1,9 +1,19 @@
 import { ROLES, ADMINISTRATIVE_ROLES } from '@pertexo/policy';
 import { z } from 'zod';
+import { inspectJsonValue } from '../../values/json/canonical.js';
+
+// PostgreSQL jsonb text puts a space after every separator, so each member costs this much more.
+const JSONB_SEPARATOR_BYTES = 2;
 
 export const PENDING_TASK_LIMITS = Object.freeze({
   titleCharacters: 160,
   configBytes: 16_384,
+  detailNameCharacters: 160,
+  detailFields: 20,
+  detailListItems: 20,
+  detailsBytes: 8_192,
+  contextBytes: 73_728,
+  decidedByNameCharacters: 256,
   instructionsCharacters: 2_000,
   commentCharacters: 2_000,
   audienceMembers: 50,
@@ -41,3 +51,14 @@ export const taskAudienceSchema = z
   });
 
 export type TaskAudience = z.output<typeof taskAudienceSchema>;
+
+/** The bytes a task value takes in its jsonb column, which every task size limit bounds. */
+export function storedTaskBytes(value: unknown): number {
+  const { bytes, members } = inspectJsonValue(value);
+  return bytes + JSONB_SEPARATOR_BYTES * members;
+}
+
+/** `16 KB` for 16,384 bytes: the size people read in a task limit message. */
+export function taskKilobytes(bytes: number): string {
+  return `${String(bytes / 1_024)} KB`;
+}

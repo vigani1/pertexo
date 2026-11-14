@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import type { ValueSource } from '../../graph/workflow-graph.schemas.js';
 
+const CALLABLE_TYPE_LIMITS = Object.freeze({
+  arrayItems: 10_000,
+  propertyNameLength: 64,
+  properties: 10_000,
+  depth: 64,
+});
+
 export interface CallableDeclaration {
   readonly input: CallableType;
   readonly resultType: CallableType;
@@ -32,7 +39,11 @@ export const callableTypeStructuralSchema: z.ZodType<CallableType> = z.lazy(
         .object({
           type: z.literal('array'),
           items: callableTypeStructuralSchema,
-          maxItems: z.number().int().nonnegative().max(10_000),
+          maxItems: z
+            .number()
+            .int()
+            .nonnegative()
+            .max(CALLABLE_TYPE_LIMITS.arrayItems),
         })
         .strict(),
       z
@@ -42,13 +53,16 @@ export const callableTypeStructuralSchema: z.ZodType<CallableType> = z.lazy(
             .array(
               z
                 .object({
-                  name: z.string().min(1).max(64),
+                  name: z
+                    .string()
+                    .min(1)
+                    .max(CALLABLE_TYPE_LIMITS.propertyNameLength),
                   valueType: callableTypeStructuralSchema,
                   required: z.boolean(),
                 })
                 .strict(),
             )
-            .max(10_000),
+            .max(CALLABLE_TYPE_LIMITS.properties),
         })
         .strict(),
     ]),
@@ -68,7 +82,7 @@ export function callableTypeIssues(
   while (pending.length > 0) {
     const current = pending.pop();
     if (current === undefined) continue;
-    if (current.depth > 64) {
+    if (current.depth > CALLABLE_TYPE_LIMITS.depth) {
       issues.push({ path: current.path, code: 'type_depth' });
       continue;
     }

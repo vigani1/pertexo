@@ -1,6 +1,20 @@
 import { z } from 'zod';
 import { ianaTimeZoneSchema } from '../values/time-zone.schemas.js';
 
+const LAST_HOUR_OF_DAY = 23;
+const SECOND_MS = 1_000;
+const MINUTE_MS = 60_000;
+const HOUR_MS = 3_600_000;
+// Every zone's offset lies within this many hours of UTC; probe it in steps.
+const OFFSET_PROBE_HOURS = 36;
+const OFFSET_PROBE_STEP_HOURS = 6;
+// Skipped dates mean the next local hour can be up to this many days away.
+const DAILY_CANDIDATE_DAYS = 4;
+// Window keys: the ISO date, hour and minute prefixes of an instant.
+const ISO_DATE_LENGTH = 10;
+const ISO_HOUR_LENGTH = 13;
+const ISO_MINUTE_LENGTH = 16;
+
 export const noticeEmailModeSchema = z.enum([
   'off',
   'immediate',
@@ -10,14 +24,13 @@ export const noticeEmailModeSchema = z.enum([
 export const noticeScheduleSchema = z
   .object({
     mode: noticeEmailModeSchema,
-    hour: z.number().int().min(0).max(23),
+    hour: z.number().int().min(0).max(LAST_HOUR_OF_DAY),
     timeZone: ianaTimeZoneSchema,
   })
   .strict();
 
 export type NoticeSchedule = z.output<typeof noticeScheduleSchema>;
 
-const minute = 60_000;
 function calendar(time: Date, zone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: zone,
@@ -45,8 +58,12 @@ function calendar(time: Date, zone: string) {
 /** Resolve one local hour, choosing the first occurrence or first instant after a gap. */
 function localHour(target: number, zone: string): number {
   const offsets = new Set<number>();
-  for (let h = -36; h <= 36; h += 6) {
-    const instant = target + h * 3_600_000;
+  for (
+    let h = -OFFSET_PROBE_HOURS;
+    h <= OFFSET_PROBE_HOURS;
+    h += OFFSET_PROBE_STEP_HOURS
+  ) {
+    const instant = target + h * HOUR_MS;
     offsets.add(calendar(new Date(instant), zone) - instant);
   }
   const candidates = [...offsets]
@@ -61,11 +78,11 @@ function localHour(target: number, zone: string): number {
   );
   if (above === undefined)
     throw new RangeError('Unable to resolve the local notification hour');
-  let low = (candidates[0] ?? above) - minute;
+  let low = (candidates[0] ?? above) - MINUTE_MS;
   let high = above;
   // At most 28 probes over the bounded 72-hour offset range, including skipped dates.
-  while (high - low > 1000) {
-    const middle = Math.floor((low + high) / 2000) * 1000;
+  while (high - low > SECOND_MS) {
+    const middle = Math.floor((low + high) / 2 / SECOND_MS) * SECOND_MS;
     if (calendar(new Date(middle), zone) >= target) high = middle;
     else low = middle;
   }
@@ -78,11 +95,11 @@ export function nextNoticeDue(
   if (schedule.mode === 'off') return null;
   const now = after.getTime();
   if (schedule.mode === 'immediate')
-    return new Date((Math.floor(now / minute) + 1) * minute);
+    return new Date((Math.floor(now / MINUTE_MS) + 1) * MINUTE_MS);
   if (schedule.mode === 'hourly')
-    return new Date((Math.floor(now / 3_600_000) + 1) * 3_600_000);
+    return new Date((Math.floor(now / HOUR_MS) + 1) * HOUR_MS);
   const wall = new Date(calendar(after, schedule.timeZone));
-  for (let day = 0; day < 4; day++) {
+  for (let day = 0; day < DAILY_CANDIDATE_DAYS; day++) {
     const target = Date.UTC(
       wall.getUTCFullYear(),
       wall.getUTCMonth(),
@@ -96,8 +113,8 @@ export function nextNoticeDue(
 }
 export function noticeWindow(schedule: NoticeSchedule, now: Date): string {
   if (schedule.mode === 'daily')
-    return `daily:${new Date(calendar(now, schedule.timeZone)).toISOString().slice(0, 10)}`;
-  return `${schedule.mode}:${now.toISOString().slice(0, schedule.mode === 'hourly' ? 13 : 16)}`;
+    return `daily:${new Date(calendar(now, schedule.timeZone)).toISOString().slice(0, ISO_DATE_LENGTH)}`;
+  return `${schedule.mode}:${now.toISOString().slice(0, schedule.mode === 'hourly' ? ISO_HOUR_LENGTH : ISO_MINUTE_LENGTH)}`;
 }
 
 export function nextPersonNoticeDue(

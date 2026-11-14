@@ -1,5 +1,8 @@
 import { isRecord } from '../values/json/object.js';
 import { isCallbackWaitNode } from '../flow/callbacks/callback-wait.js';
+
+// Executable graphs nest; selection refuses one that visits more nodes than this.
+const MAX_VISITED_CONTROL_NODES = 10_000;
 export type WorkflowControlOutputKind =
   'branch' | 'parallel' | 'for_each' | 'human_task';
 
@@ -55,7 +58,7 @@ export function workflowControlOutputNodeIds(
       throw new TypeError('Executable control nodes are invalid');
     for (const value of nodes) {
       visited += 1;
-      if (visited > 10_000)
+      if (visited > MAX_VISITED_CONTROL_NODES)
         throw new RangeError(
           'Executable control node selection exceeds graph bound',
         );

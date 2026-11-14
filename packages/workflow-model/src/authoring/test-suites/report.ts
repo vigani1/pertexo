@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   testAssertionSchema,
   testExpectationValueSchema,
+  WORKFLOW_TEST_LIMITS,
 } from './workflow-test-expectations.schemas.js';
 
 const observation = z
@@ -9,7 +10,7 @@ const observation = z
     state: z.enum(['value', 'missing', 'unavailable', 'ambiguous']),
     matched: z.boolean(),
     value: testExpectationValueSchema.optional(),
-    preview: z.string().max(4000).optional(),
+    preview: z.string().max(WORKFLOW_TEST_LIMITS.previewUnits).optional(),
     bytes: z.number().int().nonnegative().optional(),
     truncated: z.boolean().optional(),
   })
@@ -42,7 +43,7 @@ export const workflowTestSuiteReportSchema = z
           .object({ assertion: testAssertionSchema, actual: observation })
           .strict(),
       )
-      .max(20),
+      .max(WORKFLOW_TEST_LIMITS.assertions),
   })
   .strict();
 

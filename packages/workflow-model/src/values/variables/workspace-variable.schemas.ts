@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { STORED_INTEGER_MAX } from '../stored-integer.js';
 import { inspectJsonValue } from '../json/canonical.js';
 import { storageTextSchema } from '../json/text.js';
 
@@ -60,7 +61,7 @@ export const workspaceVariableDescriptionsSchema = z
   .readonly();
 export const workspaceVariableSnapshotSchema = z
   .object({
-    revision: z.number().int().nonnegative().max(2_147_483_647),
+    revision: z.number().int().nonnegative().max(STORED_INTEGER_MAX),
     values: workspaceVariableValuesSchema,
   })
   .strict()

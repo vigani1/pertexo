@@ -14,20 +14,32 @@ export const EVENT_COORDINATION_LIMITS = Object.freeze({
   pendingMillis: 24 * 60 * 60_000,
   capacityWaitMillis: 15 * 60_000,
   historyDays: 90,
+  keyPathLength: 1_024,
+  keyExpressionLength: 16_384,
+  maxDeduplicateWindowSeconds: 604_800,
+  defaultDeduplicateWindowSeconds: 86_400,
+  maxQuietSeconds: 3_600,
+  defaultQuietSeconds: 5,
+  maxThrottleWindowSeconds: 86_400,
+  defaultThrottleWindowSeconds: 60,
+  maxThrottleLimit: 1_000,
 });
 const eventCoordinationKeySchema = z.discriminatedUnion('kind', [
   runInputValueSourceSchema.extend({
     path: z
       .string()
       .min(1)
-      .max(1_024)
+      .max(EVENT_COORDINATION_LIMITS.keyPathLength)
       .refine(
         (path) => parseJsonPath(path) !== undefined,
         'Use a valid event input path.',
       ),
   }),
   expressionValueSourceSchema.extend({
-    expression: z.string().min(1).max(16_384),
+    expression: z
+      .string()
+      .min(1)
+      .max(EVENT_COORDINATION_LIMITS.keyExpressionLength),
   }),
 ]);
 const keyed = z.object({ key: eventCoordinationKeySchema });
@@ -35,20 +47,40 @@ export const eventCoordinationPolicySchema = z.discriminatedUnion('mode', [
   keyed
     .extend({
       mode: z.literal('deduplicate'),
-      windowSeconds: z.number().int().min(1).max(604_800).default(86_400),
+      windowSeconds: z
+        .number()
+        .int()
+        .min(1)
+        .max(EVENT_COORDINATION_LIMITS.maxDeduplicateWindowSeconds)
+        .default(EVENT_COORDINATION_LIMITS.defaultDeduplicateWindowSeconds),
     })
     .strict(),
   keyed
     .extend({
       mode: z.literal('debounce'),
-      quietSeconds: z.number().int().min(1).max(3_600).default(5),
+      quietSeconds: z
+        .number()
+        .int()
+        .min(1)
+        .max(EVENT_COORDINATION_LIMITS.maxQuietSeconds)
+        .default(EVENT_COORDINATION_LIMITS.defaultQuietSeconds),
     })
     .strict(),
   keyed
     .extend({
       mode: z.literal('throttle'),
-      windowSeconds: z.number().int().min(1).max(86_400).default(60),
-      limit: z.number().int().min(1).max(1_000).default(1),
+      windowSeconds: z
+        .number()
+        .int()
+        .min(1)
+        .max(EVENT_COORDINATION_LIMITS.maxThrottleWindowSeconds)
+        .default(EVENT_COORDINATION_LIMITS.defaultThrottleWindowSeconds),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(EVENT_COORDINATION_LIMITS.maxThrottleLimit)
+        .default(1),
       onExcess: z.enum(['skip', 'delay']).default('skip'),
     })
     .strict(),

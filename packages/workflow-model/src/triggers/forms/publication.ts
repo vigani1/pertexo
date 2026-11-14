@@ -2,6 +2,9 @@ import { formConfigSchema } from './fields.js';
 import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 import type { GraphValidationIssue } from '../../graph/validation/graph-validation.js';
 
+// A broken form step reports this many of its setup issues.
+const FORM_SETUP_ISSUES_SHOWN = 20;
+
 /** Form admission supplies one entry, never a second implicitly active root. */
 export function formDeclarationIssues(
   graph: WorkflowGraph,
@@ -20,7 +23,10 @@ export function formDeclarationIssues(
       found++;
       const config = formConfigSchema.safeParse(node.config);
       if (!config.success)
-        for (const error of config.error.issues.slice(0, 20))
+        for (const error of config.error.issues.slice(
+          0,
+          FORM_SETUP_ISSUES_SHOWN,
+        ))
           issues.push({
             code: 'invalid_graph',
             path: `${level.path}.nodes[${String(index)}].config${error.path.map((part) => `.${String(part)}`).join('')}`,

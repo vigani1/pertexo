@@ -49,7 +49,9 @@ export const approvalOutputSchema = z
     decision: approvalDecisionSchema,
     comment: z.string().max(PENDING_TASK_LIMITS.commentCharacters).nullable(),
     decidedBy: z.uuid(),
-    decidedByName: storageTextSchema.max(256).optional(),
+    decidedByName: storageTextSchema
+      .max(PENDING_TASK_LIMITS.decidedByNameCharacters)
+      .optional(),
     decidedAt: z.iso.datetime(),
   })
   .strict();

@@ -113,6 +113,8 @@ export const WORKFLOW_EXECUTION_LIMITS = Object.freeze({
   maxRunDurationMs: 3_600_000,
 });
 export const WORKFLOW_VALIDATION_MAX_ISSUES = 100;
+/** How deeply JSON values inside a graph (static inputs, settings) may nest. */
+export const WORKFLOW_GRAPH_JSON_VALUE_DEPTH = 64;
 
 const identifierSchema = z
   .string()
@@ -259,7 +261,7 @@ const workflowGraphPreflightSchema = z.unknown().transform((input, context) => {
     input,
     {
       ...WORKFLOW_GRAPH_CONTRACT_LIMITS,
-      jsonValueDepth: 64,
+      jsonValueDepth: WORKFLOW_GRAPH_JSON_VALUE_DEPTH,
     },
     { allowNonFiniteNumbers: true },
   );

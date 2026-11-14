@@ -8,6 +8,9 @@ import {
 } from './validation-protocol.js';
 import { replySchema, type PendingBatch } from './worker-replies.js';
 import { assertReportBudget } from './graph.js';
+
+// The reply's own fields around the report it carries.
+const REPLY_ENVELOPE_BYTES = 256;
 export function authoringMessageHandler({
   job,
   worker,
@@ -29,7 +32,10 @@ export function authoringMessageHandler({
   return (input: unknown): void => {
     if (isFinished()) return;
     try {
-      if (utf8ByteLength(JSON.stringify(input)) > budget.reportBytes + 256) {
+      if (
+        utf8ByteLength(JSON.stringify(input)) >
+        budget.reportBytes + REPLY_ENVELOPE_BYTES
+      ) {
         void finish('report_limit');
         return;
       }

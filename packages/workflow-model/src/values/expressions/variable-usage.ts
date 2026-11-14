@@ -4,6 +4,10 @@ import type {
   ValueSource,
 } from '../../graph/workflow-graph.schemas.js';
 import { inspectExpression, EXPRESSION_POLICY } from './expression-policy.js';
+
+// A reference keeps this much of its step label and input name for display.
+const VARIABLE_REFERENCE_LABEL_CHARACTERS = 160;
+const VARIABLE_REFERENCE_INPUT_CHARACTERS = 128;
 export type WorkflowVariableReference = Readonly<{
   nodeId: string | null;
   label: string;
@@ -29,8 +33,8 @@ function sourceEntry(
   return {
     source,
     nodeId,
-    label: label.slice(0, 160),
-    input: input.slice(0, 128),
+    label: label.slice(0, VARIABLE_REFERENCE_LABEL_CHARACTERS),
+    input: input.slice(0, VARIABLE_REFERENCE_INPUT_CHARACTERS),
     costBytes:
       source.kind === 'expression'
         ? Math.min(

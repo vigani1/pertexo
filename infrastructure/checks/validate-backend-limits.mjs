@@ -32,6 +32,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/artifact-store',
   'packages/observability',
   'packages/secrets',
+  'packages/workflow-model',
 ]);
 
 /**
@@ -84,6 +85,28 @@ export const NOT_LIMITS = Object.freeze({
     'the unfinished escape kept past a credential’s length at a chunk boundary',
   'packages/secrets/src/outbound-http/redaction/sensitive-representations.ts: *':
     'credential spellings: hex radix and width, base64 padding, a query prefix',
+  'packages/workflow-model/src/authoring/portability/portable-manifest.ts: 16':
+    'a digest byte printed in hex',
+  'packages/workflow-model/src/authoring/portability/portable-manifest.ts: 2':
+    'two hex digits per digest byte',
+  'packages/workflow-model/src/execution/notice-schedule.ts: 2':
+    'the bisection halves its interval',
+  'packages/workflow-model/src/flow/callbacks/references.ts: *':
+    'JSONata AST shapes: path step counts, argument counts and the `$lookup`/`$execution` prefix lengths',
+  'packages/workflow-model/src/graph/validation/admission.ts: 2':
+    'JSON text layout: the two brackets of a container',
+  'packages/workflow-model/src/triggers/forms/files.ts: 2':
+    'a list of two or more names joins with “or”',
+  'packages/workflow-model/src/triggers/forms/files.ts: 1024':
+    'bytes below a kilobyte print as bytes',
+  'packages/workflow-model/src/triggers/forms/files.ts: 10':
+    'megabytes print with one decimal',
+  'packages/workflow-model/src/triggers/schedule-cron.ts: 3':
+    'the month field’s position in a cron expression',
+  'packages/workflow-model/src/triggers/schedule-cron.ts: 4':
+    'the weekday field’s position in a cron expression',
+  'packages/workflow-model/src/values/text.ts: *':
+    'UTF-8 and UTF-16 encoding: byte widths, code point boundaries and surrogates',
 });
 
 // Unit factors: 1_000 ms in a second, 60 seconds in a minute, 1_024 bytes in a KB.
@@ -99,8 +122,9 @@ const BIT_OPERATORS = new Set([
 const DURATION_STRING = /^\d+(?:ms|s|m|h|d)$/u;
 const UNITS = String.raw`(?:milliseconds?|ms|seconds?|minutes?|hours?|days?|bytes?|characters?|KB|MB|GB)`;
 // A limit written into text: "30000 milliseconds", "32-byte", "five minutes".
+// An encoding's name ("UTF-8 bytes", "UTF-16 units") is not a limit.
 const LIMIT_IN_TEXT = new RegExp(
-  String.raw`\b(?:\d[\d,_]*|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|sixty|ninety)[\s-]${UNITS}\b`,
+  String.raw`(?<!UTF-)\b(?:\d[\d,_]*|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|sixty|ninety)[\s-]${UNITS}\b`,
   'giu',
 );
 const CONSTANT_NAME = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/u;
