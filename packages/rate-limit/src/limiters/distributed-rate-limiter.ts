@@ -5,6 +5,10 @@ import {
   type RateLimitDecision,
   type RateLimitDimensionKind,
 } from '../rate-limit-policy.js';
+import {
+  RateLimitBackendError,
+  RateLimitDecisionError,
+} from '../rate-limit.errors.js';
 
 export type RateLimitScriptExecutor = Readonly<{
   eval(
@@ -66,12 +70,15 @@ end
 return {1, 0, 0, remaining, tightest, reset_ms}
 `;
 
+const COUNTER_KEY_PREFIX = 'pertexo:abuse:';
 const MAX_WINDOW_SECONDS = Math.floor(Number.MAX_SAFE_INTEGER / 1_000);
 
 function counterKey(decision: RateLimitDecision, index: number): string {
   const dimension = decision.dimensions[index];
   if (dimension === undefined) {
-    throw new RangeError('Rate-limit dimension index is out of bounds');
+    throw new RateLimitDecisionError(
+      'Rate-limit dimension index is out of bounds',
+    );
   }
   const digest = createHash('sha256')
     .update(decision.endpointClass)
@@ -80,36 +87,44 @@ function counterKey(decision: RateLimitDecision, index: number): string {
     .update('\0')
     .update(dimension.identifier)
     .digest('hex');
-  return `pertexo:abuse:${decision.endpointClass}:${dimension.kind}:${digest}`;
+  return `${COUNTER_KEY_PREFIX}${decision.endpointClass}:${dimension.kind}:${digest}`;
 }
 
 function assertDecision(decision: RateLimitDecision): void {
   if (!RATE_LIMIT_ENDPOINT_CLASSES.includes(decision.endpointClass))
-    throw new Error('Rate-limit decision endpoint class is invalid');
+    throw new RateLimitDecisionError(
+      'Rate-limit decision endpoint class is invalid',
+    );
   if (
     !Number.isSafeInteger(decision.windowSeconds) ||
     decision.windowSeconds <= 0 ||
     decision.windowSeconds > MAX_WINDOW_SECONDS
   )
-    throw new Error(
+    throw new RateLimitDecisionError(
       'Rate-limit decision window must be a positive integer with a safe millisecond projection',
     );
   if (decision.dimensions.length === 0)
-    throw new Error('Rate-limit decision requires at least one dimension');
+    throw new RateLimitDecisionError(
+      'Rate-limit decision requires at least one dimension',
+    );
   const keys = new Set<string>();
   for (const dimension of decision.dimensions) {
     if (
       dimension.identifier.length === 0 ||
       dimension.identifier.trim() !== dimension.identifier
     )
-      throw new Error('Rate-limit decision identifier must be normalized');
+      throw new RateLimitDecisionError(
+        'Rate-limit decision identifier must be normalized',
+      );
     if (!Number.isSafeInteger(dimension.limit) || dimension.limit <= 0)
-      throw new Error(
+      throw new RateLimitDecisionError(
         'Rate-limit decision limit must be a positive safe integer',
       );
     const key = `${dimension.kind}\0${dimension.identifier}`;
     if (keys.has(key))
-      throw new Error('Rate-limit decision dimensions must be unique');
+      throw new RateLimitDecisionError(
+        'Rate-limit decision dimensions must be unique',
+      );
     keys.add(key);
   }
 }
@@ -120,7 +135,7 @@ function parseScriptResult(value: unknown): readonly number[] {
     (value.length !== 3 && value.length !== 6) ||
     !value.every((item) => typeof item === 'number' && Number.isInteger(item))
   ) {
-    throw new Error('Invalid rate-limit script result');
+    throw new RateLimitBackendError('Invalid rate-limit script result');
   }
   return value as number[];
 }
@@ -174,12 +189,13 @@ export class DistributedRateLimiter {
       retryMilliseconds < 0 ||
       limitedDimension === undefined
     ) {
-      throw new Error('Invalid rate-limit script result');
+      throw new RateLimitBackendError('Invalid rate-limit script result');
     }
     return {
       allowed: false,
+      // A counter never outlives its window, so neither does the wait.
       retryAfterSeconds: Math.min(
-        60,
+        decision.windowSeconds,
         Math.max(1, Math.ceil(retryMilliseconds / 1_000)),
       ),
       limitedDimension: limitedDimension.kind,

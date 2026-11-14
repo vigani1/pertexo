@@ -6,12 +6,18 @@ import {
   type DistributedRateLimitResult,
 } from './limiters/distributed-rate-limiter.js';
 import type { RateLimitDecision } from './rate-limit-policy.js';
+import { RateLimitBackendError } from './rate-limit.errors.js';
 
 export type RedisRateLimitRuntimeOptions = Readonly<{
   operationTimeoutMs?: number;
 }>;
 
 const DEFAULT_OPERATION_TIMEOUT_MS = 1_000;
+const MIN_OPERATION_TIMEOUT_MS = 100;
+const MAX_OPERATION_TIMEOUT_MS = 10_000;
+/** An exclusive slot is released by its holder or, after a crash, by this lifetime. */
+const MAX_SLOT_LIFETIME_MS = 60 * 60 * 1_000;
+const SLOT_KEY_PREFIX = 'pertexo:admission:';
 
 export class RedisRateLimitRuntime {
   private readonly redis: Redis;
@@ -56,11 +62,15 @@ export class RedisRateLimitRuntime {
     scope: string,
     ttlMs: number,
   ): Promise<{ release(): Promise<void> } | null> {
-    if (!Number.isSafeInteger(ttlMs) || ttlMs < 1 || ttlMs > 3_600_000)
+    if (
+      !Number.isSafeInteger(ttlMs) ||
+      ttlMs < 1 ||
+      ttlMs > MAX_SLOT_LIFETIME_MS
+    )
       throw new RangeError(
-        'Slot lifetime must be 1 through 3600000 milliseconds',
+        `Slot lifetime must be 1 through ${String(MAX_SLOT_LIFETIME_MS)} milliseconds`,
       );
-    const key = `pertexo:admission:${createHash('sha256').update(scope).digest('hex')}`;
+    const key = `${SLOT_KEY_PREFIX}${createHash('sha256').update(scope).digest('hex')}`;
     const owner = randomUUID();
     const acquired = await this.withDeadline(async () => {
       await this.connect();
@@ -73,7 +83,8 @@ export class RedisRateLimitRuntime {
       );
     });
     if (acquired === null) return null;
-    if (acquired !== 'OK') throw new Error('Invalid concurrency slot result');
+    if (acquired !== 'OK')
+      throw new RateLimitBackendError('Invalid concurrency slot result');
     return {
       release: () =>
         this.withDeadline(async () => {
@@ -107,7 +118,7 @@ export class RedisRateLimitRuntime {
     let timeout: NodeJS.Timeout | undefined;
     const deadline = new Promise<never>((_resolve, reject) => {
       timeout = setTimeout(() => {
-        reject(new Error('Redis rate-limit close timed out'));
+        reject(new RateLimitBackendError('Redis rate-limit close timed out'));
       }, this.operationTimeoutMs);
       timeout.unref();
     });
@@ -128,7 +139,8 @@ export class RedisRateLimitRuntime {
   }
 
   private async connect(): Promise<void> {
-    if (this.closed) throw new Error('Redis rate-limit runtime is closed');
+    if (this.closed)
+      throw new RateLimitBackendError('Redis rate-limit runtime is closed');
     if (this.redis.status === 'ready') return;
     const connection =
       this.connection ?? this.redis.connect().then(() => undefined);
@@ -137,7 +149,7 @@ export class RedisRateLimitRuntime {
       await connection;
       if (this.isClosed()) {
         this.redis.disconnect();
-        throw new Error('Redis rate-limit runtime is closed');
+        throw new RateLimitBackendError('Redis rate-limit runtime is closed');
       }
     } finally {
       if (this.connection === connection) this.connection = undefined;
@@ -154,7 +166,9 @@ export class RedisRateLimitRuntime {
       timeout = setTimeout(() => {
         this.connection = undefined;
         this.redis.disconnect();
-        reject(new Error('Redis rate-limit operation timed out'));
+        reject(
+          new RateLimitBackendError('Redis rate-limit operation timed out'),
+        );
       }, this.operationTimeoutMs);
       timeout.unref();
     });
@@ -172,14 +186,20 @@ function redisCloseError(error: unknown): Error {
   } catch {
     // Ignore hostile rejection values and retain them only as an opaque cause.
   }
-  return new Error('Redis rate-limit close failed', { cause: error });
+  return new RateLimitBackendError('Redis rate-limit close failed', {
+    cause: error,
+  });
 }
 
 function operationTimeout(value: number | undefined): number {
   const timeout = value ?? DEFAULT_OPERATION_TIMEOUT_MS;
-  if (!Number.isSafeInteger(timeout) || timeout < 100 || timeout > 10_000)
+  if (
+    !Number.isSafeInteger(timeout) ||
+    timeout < MIN_OPERATION_TIMEOUT_MS ||
+    timeout > MAX_OPERATION_TIMEOUT_MS
+  )
     throw new TypeError(
-      'Redis rate-limit operation timeout must be 100 through 10000 milliseconds',
+      `Redis rate-limit operation timeout must be ${String(MIN_OPERATION_TIMEOUT_MS)} through ${String(MAX_OPERATION_TIMEOUT_MS)} milliseconds`,
     );
   return timeout;
 }
