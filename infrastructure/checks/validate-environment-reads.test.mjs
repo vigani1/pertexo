@@ -82,3 +82,29 @@ test('scans every workspace’s src from disk', async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('finds the environment read by destructuring, import, index or globalThis', () => {
+  for (const text of [
+    'const { env } = process;',
+    'const { env: settings } = process;',
+    "import { env } from 'node:process';",
+    "import { env as settings } from 'process';",
+    "const port = process['env'].PORT;",
+    'const port = globalThis.process.env.PORT;',
+  ])
+    assert.equal(readsEnvironment('a.ts', text), true, text);
+  assert.equal(
+    readsEnvironment('a.ts', "import { argv } from 'node:process';"),
+    false,
+  );
+});
+
+test('refuses a file added to the pending list', () => {
+  assert.match(
+    validateEnvironmentReads(
+      ['packages/example/src/runtime.ts', ...ENVIRONMENT_READS_PENDING],
+      [...ENVIRONMENT_READS_PENDING, 'packages/example/src/runtime.ts'],
+    ).join(),
+    /runtime\.ts: ENVIRONMENT_READS_PENDING may only shrink/u,
+  );
+});

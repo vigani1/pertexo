@@ -10,6 +10,18 @@ import {
   repositoryRoot,
 } from './workspace-sources.mjs';
 
+// LIMITS_CHECKED as it stood when the check began; it never drops one of these.
+const ORIGINAL_LIMITS_CHECKED = Object.freeze([
+  'packages/policy',
+  'packages/rate-limit',
+  'packages/queue',
+  'packages/templates',
+  'packages/node-catalog',
+  'packages/artifact-store',
+  'packages/observability',
+  'packages/secrets',
+]);
+
 /** Backend workspaces reworked so far; each new one joins once its limits are named. */
 export const LIMITS_CHECKED = Object.freeze([
   'packages/policy',
@@ -41,6 +53,12 @@ export const NOT_LIMITS = Object.freeze({
   'packages/rate-limit/src/limiters/distributed-rate-limiter.ts: 6':
     'the length of the Lua script’s admission reply',
   'packages/templates/src/catalog.ts: 2': 'template versions',
+  'packages/templates/src/catalog.ts: "five minutes"':
+    'reviewed copy; catalog.test.ts ties it to each manifest’s run duration',
+  'packages/templates/src/catalog.ts: "one-second"':
+    'reviewed copy; catalog.test.ts ties it to the HTTP step’s timeout',
+  'packages/templates/src/catalog.ts: "1,024 bytes"':
+    'reviewed copy; catalog.test.ts ties it to the HTTP step’s answer size',
   'packages/templates/src/https-endpoint.validation.ts: 2':
     'a label’s first and last characters; a domain’s two labels',
   'packages/secrets/src/encryption/envelopes/envelope-format.ts: 3':
@@ -79,6 +97,12 @@ const BIT_OPERATORS = new Set([
   ts.SyntaxKind.CaretToken,
 ]);
 const DURATION_STRING = /^\d+(?:ms|s|m|h|d)$/u;
+const UNITS = String.raw`(?:milliseconds?|ms|seconds?|minutes?|hours?|days?|bytes?|characters?|KB|MB|GB)`;
+// A limit written into text: "30000 milliseconds", "32-byte", "five minutes".
+const LIMIT_IN_TEXT = new RegExp(
+  String.raw`\b(?:\d[\d,_]*|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|sixty|ninety)[\s-]${UNITS}\b`,
+  'giu',
+);
 const CONSTANT_NAME = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/u;
 
 /** Literal limits in one file: numbers and duration strings outside a named constant. */
@@ -94,19 +118,35 @@ export function findWrittenLimits(file, text) {
       DURATION_STRING.test(node.text)
     )
       found.push(`'${node.text}'`);
+    else if (isTextNode(node))
+      for (const [match] of node.text.matchAll(LIMIT_IN_TEXT))
+        found.push(`"${match}"`);
     ts.forEachChild(node, visit);
   };
   visit(source);
   return found;
 }
 
+function isTextNode(node) {
+  return (
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    ts.isTemplateHead(node) ||
+    ts.isTemplateMiddle(node) ||
+    ts.isTemplateTail(node)
+  );
+}
+
+/** A module-level UPPER_CASE const: the one place a limit is named. */
 function isNamedConstant(node) {
   return (
     ts.isVariableDeclaration(node) &&
     ts.isIdentifier(node.name) &&
     CONSTANT_NAME.test(node.name.text) &&
     ts.isVariableDeclarationList(node.parent) &&
-    (node.parent.flags & ts.NodeFlags.Const) !== 0
+    (node.parent.flags & ts.NodeFlags.Const) !== 0 &&
+    ts.isVariableStatement(node.parent.parent) &&
+    ts.isSourceFile(node.parent.parent.parent)
   );
 }
 
@@ -114,7 +154,6 @@ function isLimit(node) {
   const value = Number(node.text.replaceAll('_', ''));
   if (value === 0 || value === 1) return false;
   const parent = node.parent;
-  if (ts.isPrefixUnaryExpression(parent) && value === 1) return false;
   if (ts.isElementAccessExpression(parent)) return false;
   if (ts.isBinaryExpression(parent)) {
     const operator = parent.operatorToken.kind;
@@ -161,6 +200,16 @@ export function validateBackendLimits(written) {
   return findings;
 }
 
+/** A reworked package dropped from the check since it began. */
+export function validateLimitsChecked(checked = LIMITS_CHECKED) {
+  return ORIGINAL_LIMITS_CHECKED.filter(
+    (workspace) => !checked.includes(workspace),
+  ).map(
+    (workspace) =>
+      `${workspace}: LIMITS_CHECKED may only grow; put it back and name its limits.`,
+  );
+}
+
 export async function inspectBackendLimits(root = repositoryRoot) {
   const written = [];
   for (const workspace of LIMITS_CHECKED)
@@ -169,7 +218,7 @@ export async function inspectBackendLimits(root = repositoryRoot) {
         file,
         findWrittenLimits(file, await readSource(file, root)),
       ]);
-  return validateBackendLimits(written);
+  return [...validateLimitsChecked(), ...validateBackendLimits(written)];
 }
 
 if (

@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 import {
+  entriesAddedSince,
   listSourceFiles,
   listWorkspaces,
   readSource,
@@ -21,6 +22,13 @@ export const ENVIRONMENT_READS_PENDING = Object.freeze([
   'apps/code-runner/src/process/slot.ts',
 ]);
 
+// The list as it stood when the check began; ENVIRONMENT_READS_PENDING stays within it.
+const ORIGINAL_ENVIRONMENT_READS_PENDING = Object.freeze([
+  'apps/api/src/workspaces/http/route.ts',
+  'apps/cli/src/run-automation-cli.ts',
+  'apps/code-runner/src/process/slot.ts',
+]);
+
 /** A config module: `config.ts`, `<subject>-config.ts`, or a file under an app's `config/`. */
 export function isConfigModule(file) {
   const name = file.split('/').at(-1) ?? '';
@@ -30,32 +38,80 @@ export function isConfigModule(file) {
   );
 }
 
-/** Whether a source text reads `process.env`. */
+/**
+ * Whether a source text reads the environment: `process.env`,
+ * `process['env']`, `globalThis.process.env`, `const { env } = process`, or
+ * `env` imported from `node:process`.
+ */
 export function readsEnvironment(file, text) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false);
   let found = false;
   const visit = (node) => {
-    if (
-      ts.isPropertyAccessExpression(node) &&
-      node.name.text === 'env' &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === 'process'
-    )
-      found = true;
+    if (readsEnv(node)) found = true;
     else if (!found) ts.forEachChild(node, visit);
   };
   visit(source);
   return found;
 }
 
-export function validateEnvironmentReads(readers) {
-  const findings = [];
+function readsEnv(node) {
+  if (ts.isPropertyAccessExpression(node))
+    return node.name.text === 'env' && namesProcess(node.expression);
+  if (ts.isElementAccessExpression(node))
+    return (
+      ts.isStringLiteralLike(node.argumentExpression) &&
+      node.argumentExpression.text === 'env' &&
+      namesProcess(node.expression)
+    );
+  if (ts.isVariableDeclaration(node))
+    return (
+      node.initializer !== undefined &&
+      namesProcess(node.initializer) &&
+      ts.isObjectBindingPattern(node.name) &&
+      node.name.elements.some((element) => {
+        const key = element.propertyName ?? element.name;
+        return ts.isIdentifier(key) && key.text === 'env';
+      })
+    );
+  if (ts.isImportDeclaration(node))
+    return (
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      ['node:process', 'process'].includes(node.moduleSpecifier.text) &&
+      node.importClause?.namedBindings !== undefined &&
+      ts.isNamedImports(node.importClause.namedBindings) &&
+      node.importClause.namedBindings.elements.some(
+        (element) => (element.propertyName ?? element.name).text === 'env',
+      )
+    );
+  return false;
+}
+
+/** `process` or `globalThis.process`. */
+function namesProcess(expression) {
+  return (
+    (ts.isIdentifier(expression) && expression.text === 'process') ||
+    (ts.isPropertyAccessExpression(expression) &&
+      expression.name.text === 'process' &&
+      ts.isIdentifier(expression.expression) &&
+      expression.expression.text === 'globalThis')
+  );
+}
+
+export function validateEnvironmentReads(
+  readers,
+  pending = ENVIRONMENT_READS_PENDING,
+) {
+  const findings = entriesAddedSince(
+    'ENVIRONMENT_READS_PENDING',
+    pending,
+    ORIGINAL_ENVIRONMENT_READS_PENDING,
+  );
   for (const file of readers)
-    if (!isConfigModule(file) && !ENVIRONMENT_READS_PENDING.includes(file))
+    if (!isConfigModule(file) && !pending.includes(file))
       findings.push(
         `${file}: read process.env only in a config module and pass the typed value inward.`,
       );
-  for (const file of ENVIRONMENT_READS_PENDING)
+  for (const file of pending)
     if (!readers.includes(file))
       findings.push(
         `${file}: no longer reads process.env; remove it from ENVIRONMENT_READS_PENDING.`,

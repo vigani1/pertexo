@@ -7,6 +7,7 @@ import test from 'node:test';
 import {
   PENDING_ROOTS,
   ROOT_CONCEPTS,
+  validatePendingRoots,
   inspectPackageRoots,
   validatePackageRoot,
 } from './validate-package-roots.mjs';
@@ -63,4 +64,30 @@ test('reads each workspace’s direct src files from disk', async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('keeps the database’s own doors to the database', () => {
+  assert.deepEqual(
+    validatePackageRoot('packages/database', [
+      'platform.ts',
+      'schema.ts',
+      'primitives.ts',
+    ]).filter((finding) => !finding.includes('PENDING_ROOTS')),
+    [],
+  );
+  assert.match(
+    validatePackageRoot('packages/example', [
+      'server.ts',
+      'platform.ts',
+    ]).join(),
+    /packages\/example\/src\/platform\.ts: a src root holds/u,
+  );
+});
+
+test('refuses a workspace added to the pending list', () => {
+  assert.deepEqual(validatePendingRoots(PENDING_ROOTS), []);
+  assert.match(
+    validatePendingRoots([...PENDING_ROOTS, 'packages/queue']).join(),
+    /packages\/queue: PENDING_ROOTS may only shrink/u,
+  );
 });
