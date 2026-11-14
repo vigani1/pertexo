@@ -3,7 +3,7 @@ import {
   describeStartupSettingError,
 } from './startup-setting.errors.js';
 import { z } from 'zod';
-import { describeInheritedSessionContext } from './inherited-session-context.errors.js';
+import { describeInheritedSessionContext } from './inherited-session-context.js';
 
 const SYSTEM_ERROR_CODES = new Set([
   'ECONNREFUSED',

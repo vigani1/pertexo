@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { StartupSettingError } from '../src/startup.js';
-import { describeProcessFailure } from '../src/startup.js';
+import { StartupSettingError } from '../../src/startup.js';
+import { describeProcessFailure } from '../../src/startup.js';
 
 describe('describing why a process could not run', () => {
   it('names each invalid setting without its value', () => {

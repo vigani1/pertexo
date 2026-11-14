@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyProcessError } from '../src/process-error-classification.js';
+import { classifyProcessError } from '../../src/process-failure/describe-process-failure.js';
 
 describe('process error classification', () => {
   it.each([

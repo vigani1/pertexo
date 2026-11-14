@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { createStructuredLogger } from '../../src/logger.js';
-import { captureDestination, testConfig } from './fixture.js';
+import { createStructuredLogger } from '../../src/logging/structured-logger.js';
+import { captureDestination, testConfig } from './structured-logger.fixture.js';
 
 it('keeps arbitrary error text private while retaining structured operator context', () => {
   const capture = captureDestination();
@@ -44,7 +44,8 @@ it('keeps arbitrary error text private while retaining structured operator conte
 });
 
 it('keeps Nest string errors, optional stacks and contexts out of log text', async () => {
-  const { NestLoggerAdapter } = await import('../../src/nest-runtime.js');
+  const { NestLoggerAdapter } =
+    await import('../../src/lifecycle/nest-observability.runtime.js');
   const capture = captureDestination();
   const adapter = new NestLoggerAdapter(
     createStructuredLogger(testConfig(), capture.destination),

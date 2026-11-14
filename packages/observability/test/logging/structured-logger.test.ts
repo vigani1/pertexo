@@ -3,12 +3,12 @@ import {
   cleanPackagesObservabilityTestLoggerTestTsLoggerTestTsFixture,
   captureDestination,
   testConfig,
-} from './logger/fixture.js';
+} from './structured-logger.fixture.js';
 import {
   createStructuredLogger,
   redactLogText,
   redactCredentialFields,
-} from '../src/logger.js';
+} from '../../src/logging/structured-logger.js';
 import { context, TraceFlags, trace } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 

@@ -1,5 +1,8 @@
-import { redactLogText, type StructuredLogger } from './logger.js';
-import type { TelemetryLifecycle } from './telemetry/telemetry.runtime.js';
+import {
+  redactLogText,
+  type StructuredLogger,
+} from '../logging/structured-logger.js';
+import type { TelemetryLifecycle } from '../telemetry/telemetry.runtime.js';
 
 export class NestLoggerAdapter {
   public constructor(private readonly logger: StructuredLogger) {}
