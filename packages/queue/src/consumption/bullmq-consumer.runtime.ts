@@ -33,8 +33,12 @@ import {
   QueueConsumerDrainError,
 } from './queue-consumer.errors.js';
 import { TIMED_OUT, abortReason, bounded } from '../redis/bounded-operation.js';
+import { closeRedis, closeWorker } from './close-consumer-connections.js';
 
-export class BullMqQueueConsumer implements QueueConsumer {
+/** How often a draining consumer rechecks its running handlers. */
+const DRAIN_POLL_INTERVAL_MS = 10;
+
+class BullMqQueueConsumer implements QueueConsumer {
   private readonly activeExecutions = new Set<ActiveExecution>();
   private readonly drainTimeoutMs: number;
   private readonly handler: QueueJobHandler;
@@ -318,7 +322,7 @@ export class BullMqQueueConsumer implements QueueConsumer {
       const remainingMs = deadline - Date.now();
       if (remainingMs <= 0) return false;
       await new Promise<void>((resolve) => {
-        setTimeout(resolve, Math.min(10, remainingMs));
+        setTimeout(resolve, Math.min(DRAIN_POLL_INTERVAL_MS, remainingMs));
       });
     }
     return true;
@@ -333,42 +337,6 @@ export class BullMqQueueConsumer implements QueueConsumer {
     this.worker.cancelAllJobs(reason.message);
     return abortedJobs;
   }
-  private async closeWorker({
-    forced,
-    deadline,
-  }: Readonly<{ forced: boolean; deadline: number }>): Promise<boolean> {
-    try {
-      const closeResult = await bounded(
-        this.worker.close(forced),
-        forced ? 1_000 : Math.max(1, deadline - Date.now()),
-      );
-      return closeResult !== TIMED_OUT;
-    } catch {
-      return false;
-    }
-  }
-  private async closeRedis({
-    workerClosed,
-  }: Readonly<{ workerClosed: boolean }>): Promise<boolean> {
-    if (!workerClosed) {
-      try {
-        await bounded(this.worker.disconnect(), 1_000);
-      } catch {
-        // The owned connection below still disconnects. This bounded call is the
-        // best-effort teardown of BullMQ's own blocking connection.
-      }
-      this.redis.disconnect();
-      return true;
-    }
-    try {
-      const quitResult = await bounded(this.redis.quit(), 1_000);
-      if (quitResult !== TIMED_OUT) return true;
-    } catch {
-      // Fall through to the defensive disconnect below.
-    }
-    this.redis.disconnect();
-    return false;
-  }
   private async performClose(): Promise<QueueConsumerCloseResult> {
     if (this.lifecycle === 'closed') {
       return { abortedJobs: 0, forced: false };
@@ -379,12 +347,13 @@ export class BullMqQueueConsumer implements QueueConsumer {
     let forced = await this.pauseForDrain(deadline);
     if (!forced) forced = !(await this.waitForActiveExecutions(deadline));
     const abortedJobs = forced ? this.abortActiveExecutions() : 0;
-    const workerClosed = await this.closeWorker({
+    const workerClosed = await closeWorker(this.worker, {
       forced,
       deadline,
     });
     if (!workerClosed) forced = true;
-    if (!(await this.closeRedis({ workerClosed }))) forced = true;
+    if (!(await closeRedis(this.worker, this.redis, { workerClosed })))
+      forced = true;
     this.lifecycle = 'closed';
     notifyConsumerObserver(() => {
       this.observer?.consumerLifecycle?.({
@@ -394,4 +363,10 @@ export class BullMqQueueConsumer implements QueueConsumer {
     });
     return { abortedJobs, forced };
   }
+}
+
+export function createQueueConsumer(
+  options: QueueConsumerOptions,
+): QueueConsumer {
+  return new BullMqQueueConsumer(options);
 }

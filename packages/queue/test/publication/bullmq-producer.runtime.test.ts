@@ -8,8 +8,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BullMqQueueProducer,
   createQueueProducer,
-  jobIdForOutboxEvent,
 } from '../../src/publication/bullmq-producer.runtime.js';
+import { jobIdForOutboxEvent } from '../../src/jobs/job-id.js';
 import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
 import type { RedisTelemetryObserver } from '../../src/redis/redis-instrumentation.js';
 

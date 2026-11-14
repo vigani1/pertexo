@@ -24,6 +24,22 @@ export class QueuePublicationUnavailableError extends Error {
   }
 }
 
+export class QueueObservationTimedOutError extends Error {
+  public override readonly name = 'QueueObservationTimedOutError';
+
+  public constructor() {
+    super('Queue observation exceeded its bounded timeout');
+  }
+}
+
+export class QueueProducerCloseTimedOutError extends Error {
+  public override readonly name = 'QueueProducerCloseTimedOutError';
+
+  public constructor() {
+    super('Queue producer close exceeded its bounded timeout');
+  }
+}
+
 export class QueueWriteTimedOutError extends Error {
   public override readonly name = 'QueueWriteTimedOutError';
 

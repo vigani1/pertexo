@@ -24,23 +24,19 @@ import type {
 import { parseProducerOptions } from './producer-options.js';
 import {
   QueueNotReadyError,
+  QueueObservationTimedOutError,
+  QueueProducerCloseTimedOutError,
   QueuePublicationUnavailableError,
   QueueWriteTimedOutError,
 } from './queue-producer.errors.js';
 
-export {
-  type QueueProducerOptions,
-  type EnqueuedQueueJob,
-  type QueuePublishResult,
-  type QueueStateObservation,
-  type QueueProducer,
-} from './queue-producer.types.js';
-export {
-  QueueNotReadyError,
-  QueuePublicationUnavailableError,
-  QueueWriteTimedOutError,
-} from './queue-producer.errors.js';
-export { jobIdForOutboxEvent } from '../jobs/job-id.js';
+/** How often readiness is rechecked while waiting for Redis. */
+const READY_POLL_INTERVAL_MS = 10;
+// PING/connection readiness stays green during OOM and persistence refusal.
+// One expiring key checks admission without creating any queue work.
+const WRITE_READINESS_KEY = 'pertexo:queue:write-readiness';
+const WRITE_READINESS_KEY_LIFETIME_MS = 10_000;
+
 function createQueues(redis: Redis): QueueMap {
   return {
     [QUEUE_NAME.workflowCoordinator]: new Queue(
@@ -180,7 +176,7 @@ export class BullMqQueueProducer implements QueueProducer {
       }
 
       await new Promise<void>((resolve) => {
-        setTimeout(resolve, 10);
+        setTimeout(resolve, READY_POLL_INTERVAL_MS);
       });
     }
 
@@ -194,10 +190,13 @@ export class BullMqQueueProducer implements QueueProducer {
     );
     if (!this.isReady()) throw new QueueNotReadyError();
     try {
-      // PING/connection readiness stays green during OOM and persistence refusal.
-      // One expiring key checks admission without creating any queue work.
       await this.withTimeout(
-        this.redis.set('pertexo:queue:write-readiness', '1', 'PX', 10_000),
+        this.redis.set(
+          WRITE_READINESS_KEY,
+          '1',
+          'PX',
+          WRITE_READINESS_KEY_LIFETIME_MS,
+        ),
         Math.max(1, deadline - Date.now()),
         new QueueWriteTimedOutError(),
       );
@@ -304,7 +303,7 @@ export class BullMqQueueProducer implements QueueProducer {
         }),
       ).then((observations) => Object.freeze(observations)),
       this.publishTimeoutMs,
-      new Error('Queue observation exceeded its bounded timeout'),
+      new QueueObservationTimedOutError(),
     );
   }
 
@@ -329,7 +328,7 @@ export class BullMqQueueProducer implements QueueProducer {
       const closeResults = await this.withTimeout(
         settlement,
         this.closeTimeoutMs,
-        new Error('Queue producer close exceeded its bounded timeout'),
+        new QueueProducerCloseTimedOutError(),
       );
       const rejected = closeResults.find(
         (result): result is PromiseRejectedResult =>
