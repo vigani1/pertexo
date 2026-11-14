@@ -40,11 +40,11 @@ coherent module just to earn a `.types.ts` or `.schemas.ts`.
 - **Configuration:** `observability/src/config.ts` reads the environment once
   and returns a typed object; the telemetry runtime takes that object, never
   `process.env`.
-- **A decision:** `rate-limit/src/policy/limit-policy.ts` decides how many
-  requests a key may make with no I/O; the limiters apply it against memory or
-  Redis.
-- **Live connections:** `rate-limit/src/redis/redis.runtime.ts` owns the Redis
-  client's construction and shutdown.
+- **A decision:** `rate-limit/src/rate-limit-policy.ts` decides which budgets
+  a request counts against with no I/O; the limiters in `limiters/` apply it
+  against Redis or memory.
+- **Live connections:** `rate-limit/src/redis-rate-limit.runtime.ts` owns the
+  Redis client's construction, deadlines and shutdown.
 
 ## Directories, with examples
 
