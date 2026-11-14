@@ -65,3 +65,32 @@ it('keeps a second blank row unsaved until one row is filled', async () => {
   expect(screen.getByText('Rule 2')).toBeVisible();
   expect(saved()).toEqual({});
 });
+
+it('never saves a blank row, before or after another row has a path', async () => {
+  const user = userEvent.setup();
+  render(<NewValidate />);
+  await user.click(screen.getByRole('button', { name: 'Add rule' }));
+  const [first] = screen.getAllByRole('textbox', { name: 'Path' });
+  if (first === undefined) throw new Error('No first rule');
+  await user.type(first, 'email');
+  expect(saved()).toEqual({
+    rules: [{ id: 'rule-1', path: '$.email', required: true }],
+  });
+  expect(screen.getByText('Rule 2')).toBeVisible();
+  // A row added once rules are saved stays a draft too, until it has a path.
+  await user.click(screen.getByRole('button', { name: 'Add rule' }));
+  expect(screen.getByText('Rule 3')).toBeVisible();
+  expect(saved()).toEqual({
+    rules: [{ id: 'rule-1', path: '$.email', required: true }],
+  });
+  const third = screen.getAllByRole('textbox', { name: 'Path' })[2];
+  if (third === undefined) throw new Error('No third rule');
+  await user.type(third, 'total');
+  expect(saved()).toEqual({
+    rules: [
+      { id: 'rule-1', path: '$.email', required: true },
+      { id: 'rule-3', path: '$.total', required: true },
+    ],
+  });
+  expect(screen.getByText('Rule 3')).toBeVisible();
+});
