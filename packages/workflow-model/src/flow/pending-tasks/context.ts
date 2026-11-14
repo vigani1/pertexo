@@ -8,8 +8,8 @@ import { storageTextSchema } from '../../values/json/text.js';
 import {
   parseFormValues,
   formValuesSchema,
-  FormValuesInvalidError,
 } from '../../triggers/forms/values.js';
+import { FormValuesInvalidError } from '../../triggers/forms/forms.errors.js';
 import type { FormField } from '../../triggers/forms/fields.js';
 
 const scalar = z.union([storageTextSchema, z.number(), z.boolean(), z.null()]);

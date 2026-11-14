@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { safeParseWorkflowGraphDraft } from '../../src/graph/validation/preflight.js';
-import { WorkflowGraphContractError } from '../../src/graph/validation/graph-validation.js';
+import { WorkflowGraphContractError } from '../../src/graph/validation/graph-validation.errors.js';
 import {
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
   workflowGraphSchema,

@@ -3,6 +3,7 @@ import {
   isWorkflowCallDefinition,
   workflowCallConfigSchema,
 } from './invocation.js';
+import { WorkflowCallDependencyError } from './callable.errors.js';
 
 export interface WorkflowCallPin {
   readonly workflowId: string;
@@ -19,15 +20,6 @@ export interface CallableVersionSummary extends WorkflowCallPin {
     pin: WorkflowCallPin;
     multiplicity: number;
   }>[];
-}
-
-export class WorkflowCallDependencyError extends TypeError {
-  public override readonly name = 'WorkflowCallDependencyError';
-  public constructor(
-    readonly code: 'workspace' | 'pin' | 'cycle' | 'expansion',
-  ) {
-    super('Workflow call dependencies do not satisfy the publication contract');
-  }
 }
 
 /** Validated immutable summaries are shared; every call site's weight still counts. */

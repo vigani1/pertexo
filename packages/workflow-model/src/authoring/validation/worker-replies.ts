@@ -4,10 +4,12 @@ import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 import type { GraphValidationResult } from '../../graph/validation/graph-validation.js';
 import {
   validationReportSchema,
-  type AuthoringValidationUnavailableReason,
-  type AuthoringValidationUnavailableError,
   type WorkflowExpressionPolicyProjection,
 } from './validation-protocol.js';
+import type {
+  AuthoringValidationUnavailableReason,
+  AuthoringValidationUnavailableError,
+} from './authoring-validation.errors.js';
 
 export const replySchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('ready') }).strict(),

@@ -4,7 +4,7 @@ import {
 } from '../../src/graph/workflow-graph.schemas.js';
 
 import { parseWorkflowGraphDraft } from '../../src/graph/validation/preflight.js';
-import { WorkflowGraphContractError } from '../../src/graph/validation/graph-validation.js';
+import { WorkflowGraphContractError } from '../../src/graph/validation/graph-validation.errors.js';
 export const TEST_DEFINITION_CATALOG = {
   definitions: [
     { key: 'core.other', version: 1 },

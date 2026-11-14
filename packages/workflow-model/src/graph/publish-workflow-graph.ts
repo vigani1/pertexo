@@ -4,10 +4,8 @@ import {
 } from './workflow-graph.schemas.js';
 import { parseWorkflowGraphDraft } from './validation/preflight.js';
 import { validateWorkflowGraph } from './validation/validate-workflow-graph.js';
-import {
-  InvalidWorkflowGraphError,
-  type GraphValidationIssue,
-} from './validation/graph-validation.js';
+import type { GraphValidationIssue } from './validation/graph-validation.js';
+import { InvalidWorkflowGraphError } from './validation/graph-validation.errors.js';
 import {
   compatibilityForGraph,
   EMPTY_DEFINITION_CATALOG,

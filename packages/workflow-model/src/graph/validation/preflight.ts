@@ -10,10 +10,8 @@ import {
   escapeDroppedInputMappingKeys,
   restoreDroppedInputMappingKeys,
 } from '../input-mapping-keys.js';
-import {
-  WORKFLOW_GRAPH_LIMITS,
-  WorkflowGraphContractError,
-} from './graph-validation.js';
+import { WORKFLOW_GRAPH_LIMITS } from './graph-validation.js';
+import { WorkflowGraphContractError } from './graph-validation.errors.js';
 
 const workflowGraphAggregateAdmissionSchema = z
   .unknown()

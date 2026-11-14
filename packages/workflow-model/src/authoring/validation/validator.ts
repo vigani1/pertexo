@@ -9,12 +9,14 @@ import { parseWorkflowGraphDraft } from '../../graph/validation/preflight.js';
 import type { GraphValidationResult } from '../../graph/validation/graph-validation.js';
 import {
   AUTHORING_VALIDATION_BUDGET as budget,
-  AuthoringValidationUnavailableError,
   policyProjectionSchema,
-  type AuthoringValidationUnavailableReason,
   type WorkflowExpressionPolicyProjection,
   type WorkflowAuthoringValidationOptions,
 } from './validation-protocol.js';
+import {
+  AuthoringValidationUnavailableError,
+  type AuthoringValidationUnavailableReason,
+} from './authoring-validation.errors.js';
 
 // Heap and stack bounds for one validation thread.
 const VALIDATION_THREAD_RESOURCES = Object.freeze({

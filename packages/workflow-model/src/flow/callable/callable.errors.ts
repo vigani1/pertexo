@@ -8,3 +8,12 @@ export class CallableInputInvalidError extends TypeError {
     super('Workflow input does not satisfy its callable contract');
   }
 }
+
+export class WorkflowCallDependencyError extends TypeError {
+  public override readonly name = 'WorkflowCallDependencyError';
+  public constructor(
+    readonly code: 'workspace' | 'pin' | 'cycle' | 'expansion',
+  ) {
+    super('Workflow call dependencies do not satisfy the publication contract');
+  }
+}

@@ -8,6 +8,7 @@ import {
   formFileValueSchema,
   type FormFileValue,
 } from './files.js';
+import { FormValuesInvalidError } from './forms.errors.js';
 
 const selectionSchema = z
   .array(storageTextSchema)
@@ -27,18 +28,6 @@ export const formValuesSchema = z.record(
   ]),
 );
 export type FormValues = Readonly<z.output<typeof formValuesSchema>>;
-export class FormValuesInvalidError extends Error {
-  override readonly name = 'FormValuesInvalidError';
-  constructor(
-    readonly fields: readonly Readonly<{ name: string; message: string }>[],
-  ) {
-    super(
-      fields.length === 1 && fields[0]?.name === ''
-        ? fields[0].message
-        : 'Check the form fields and try again.',
-    );
-  }
-}
 function valueSchema(field: FormField): z.ZodType {
   switch (field.type) {
     case 'number':

@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   canonicalWorkflowPortableJson,
   parsePortableJson,
-  PortableJsonError,
-  WORKFLOW_PORTABILITY_LIMITS,
 } from '../../../src/authoring/portability/portable-manifest.js';
+import { PortableJsonError } from '../../../src/authoring/portability/portability.errors.js';
+import { WORKFLOW_PORTABILITY_LIMITS } from '../../../src/authoring/portability/portability-limits.js';
 import {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,

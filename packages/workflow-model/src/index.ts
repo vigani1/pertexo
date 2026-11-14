@@ -27,12 +27,14 @@ export {
   isWorkflowTriggerDefinition,
 } from './graph/triggers.js';
 export {
-  InvalidWorkflowGraphError,
   WORKFLOW_GRAPH_LIMITS,
-  WorkflowGraphContractError,
   type GraphValidationResult,
   type GraphValidationIssue,
 } from './graph/validation/graph-validation.js';
+export {
+  InvalidWorkflowGraphError,
+  WorkflowGraphContractError,
+} from './graph/validation/graph-validation.errors.js';
 export {
   parseWorkflowGraphDraft,
   safeParseWorkflowGraphDraft,
@@ -55,7 +57,7 @@ export {
 } from './graph/workflow-graph.schemas.js';
 
 // Flow control
-export { CallableInputInvalidError } from './flow/callable/callable-input.errors.js';
+export { CallableInputInvalidError } from './flow/callable/callable.errors.js';
 export {
   type CallableType,
   type CallableDeclaration,
@@ -64,9 +66,9 @@ export type { WorkflowCallPin } from './flow/callable/dependencies.js';
 export {
   summarizeWorkflowCalls,
   validateCallDependencyClosure,
-  WorkflowCallDependencyError,
   type CallableVersionSummary,
 } from './flow/callable/dependencies.js';
+export { WorkflowCallDependencyError } from './flow/callable/callable.errors.js';
 export {
   workflowCallConfigSchema,
   isWorkflowCallDefinition,
@@ -244,7 +246,6 @@ export {
   FORM_FILE_LIMITS,
   FORM_FILE_GROUPS,
   formFileValueSchema,
-  FormFileRejectedError,
   formFileType,
   formFileExtension,
   formFilename,
@@ -254,6 +255,7 @@ export {
   type FormFileGroup,
   type FormFileValue,
 } from './triggers/forms/files.js';
+export { FormFileRejectedError } from './triggers/forms/forms.errors.js';
 export {
   formRedirectUrlSchema,
   formLinkUrlSchema,
@@ -261,11 +263,11 @@ export {
 export {
   parseFormValues,
   formSubmissionSchema,
-  FormValuesInvalidError,
   formFileUploads,
   attachFormFiles,
   type FormValues,
 } from './triggers/forms/values.js';
+export { FormValuesInvalidError } from './triggers/forms/forms.errors.js';
 export { cronHasUnsupportedOperators } from './triggers/schedule-cron.js';
 export {
   webhookAuthenticationSchema,
@@ -328,8 +330,6 @@ export {
   type WorkflowTemplateOrigin,
 } from './authoring/portability/origin.js';
 export {
-  PortableJsonError,
-  WORKFLOW_PORTABILITY_LIMITS,
   canonicalWorkflowPortableJson,
   parsePortableJson,
   portableConnectionBindingSchema,
@@ -344,12 +344,14 @@ export {
   type PortableIssue,
   type WorkflowPortableManifest,
 } from './authoring/portability/portable-manifest.js';
+export { PortableJsonError } from './authoring/portability/portability.errors.js';
+export { WORKFLOW_PORTABILITY_LIMITS } from './authoring/portability/portability-limits.js';
 export {
-  WorkflowPortabilityError,
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,
   type WorkflowPortabilityCatalog,
 } from './authoring/portability/projection.js';
+export { WorkflowPortabilityError } from './authoring/portability/portability.errors.js';
 export { publicationReviewDecision } from './authoring/publication-review-decision.js';
 export {
   stepSampleIdentity,

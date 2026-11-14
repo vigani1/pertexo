@@ -5,11 +5,11 @@ import { EMPTY_WORKFLOW_GRAPH } from '../../src/graph/workflow-graph.schemas.js'
 import { parseWorkflowGraphForPublish } from '../../src/graph/publish-workflow-graph.js';
 import { workflowCompatibilityReport } from '../../src/graph/definition-catalog.js';
 import { parseWorkflowGraphDraft } from '../../src/graph/validation/preflight.js';
+import { WORKFLOW_GRAPH_LIMITS } from '../../src/graph/validation/graph-validation.js';
 import {
   InvalidWorkflowGraphError,
-  WORKFLOW_GRAPH_LIMITS,
   WorkflowGraphContractError,
-} from '../../src/graph/validation/graph-validation.js';
+} from '../../src/graph/validation/graph-validation.errors.js';
 import {
   TEST_DEFINITION_CATALOG,
   node,

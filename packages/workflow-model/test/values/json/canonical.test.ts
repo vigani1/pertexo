@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   CANONICAL_JSON_MAX_DEPTH,
-  InvalidJsonValueError,
   canonicalJson,
   canonicalizeJson,
   inspectJsonValue,
   normalizeJson,
 } from '../../../src/values/json/canonical.js';
+import { InvalidJsonValueError } from '../../../src/values/json/json.errors.js';
 
 describe('canonical JSON', () => {
   it('sorts every object and reports stable UTF-8 bytes', () => {

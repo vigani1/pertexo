@@ -23,9 +23,9 @@ import {
 } from '../../values/expressions/expression-policy.js';
 import {
   AUTHORING_VALIDATION_BUDGET,
-  AuthoringValidationUnavailableError,
   type WorkflowExpressionPolicyProjection,
 } from './validation-protocol.js';
+import { AuthoringValidationUnavailableError } from './authoring-validation.errors.js';
 
 function safeExpressionMessage(result: ExpressionValidation): string {
   if (result.kind === 'valid') return '';
