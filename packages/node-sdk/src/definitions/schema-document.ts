@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
-import { inspectBoundedJson, NODE_JSON_LIMITS } from '../values/bounds.js';
+import {
+  inspectBoundedJson,
+  NODE_JSON_LIMITS,
+} from '../values/bounded-json.validation.js';
 import { cloneAndFreeze } from '../values/freeze.js';
 
-export { NODE_JSON_LIMITS } from '../values/bounds.js';
+export { NODE_JSON_LIMITS } from '../values/bounded-json.validation.js';
 
 export type SchemaJson =
   null | boolean | number | string | readonly SchemaJson[] | SchemaObject;

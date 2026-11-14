@@ -4,7 +4,7 @@ import {
   inspectBoundedJson,
   NODE_JSON_LIMITS,
   type BoundedJsonLimits,
-} from './bounds.js';
+} from './bounded-json.validation.js';
 
 // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
 interface JsonObject {

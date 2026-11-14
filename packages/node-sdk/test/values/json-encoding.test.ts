@@ -1,4 +1,4 @@
-import { canonicalizeBoundedJson } from '../../src/values/boundary.js';
+import { canonicalizeBoundedJson } from '../../src/values/bounded-json.js';
 import { InvalidBoundedJsonError } from '../../src/execution/node-execution.errors.js';
 import { describe, expect, it } from 'vitest';
 import { canonicalJsonVectors } from '../../../../infrastructure/testing/canonical-json-vectors.mjs';

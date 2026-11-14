@@ -7,12 +7,12 @@ import {
   isBoundedNodeJson,
   nodeCatalogSchema,
   type NodeManifest,
-} from '../../src/definitions/catalog.js';
+} from '../../../src/definitions/catalog.js';
 import {
   InvalidBoundedJsonError,
   NODE_EXECUTION_LIMITS,
   canonicalizeBoundedJson,
-} from '../../src/server.js';
+} from '../../../src/server.js';
 import { policy, manifest, catalog } from './registry.fixture.js';
 
 describe('node-sdk bounded JSON contracts', () => {

@@ -3,7 +3,7 @@ import { STORED_EXECUTION_VALUE_LIMITS } from '../../values/stored-json.js';
 import { FILE_PAGE_LIMITS } from '../page-limits.js';
 import type { FilePageBundle } from './bundle.js';
 import type { EncodedFilePageRecord } from './encode-record.js';
-import { refuseFilePages } from './failure.js';
+import { refuseFilePages } from './file-pages.errors.js';
 
 /** Only a page under construction and immutable file references survive backpressure. */
 export async function writeFilePages(

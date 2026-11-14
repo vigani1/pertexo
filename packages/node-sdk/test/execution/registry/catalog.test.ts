@@ -7,8 +7,11 @@ import {
   nodeManifestSchema,
   parseNodeCatalog,
   nodeCatalogSchema,
-} from '../../src/definitions/catalog.js';
-import { NodeExecutorFailure, createNodeRegistry } from '../../src/server.js';
+} from '../../../src/definitions/catalog.js';
+import {
+  NodeExecutorFailure,
+  createNodeRegistry,
+} from '../../../src/server.js';
 import {
   definition,
   executor,
