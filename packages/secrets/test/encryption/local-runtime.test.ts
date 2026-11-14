@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  createConnectionEnvelopeEncryption,
-  parseConnectionEncryptionConfig,
-} from '../../src/encryption/connection-encryption.runtime.js';
+import { createConnectionEnvelopeEncryption } from '../../src/encryption/connection-encryption.runtime.js';
+import { parseConnectionEncryptionConfig } from '../../src/encryption/connection-encryption-config.js';
 import { createWebhookTriggerEnvelopeEncryption } from '../../src/encryption/envelopes/webhook-envelope.js';
 
 const key = Buffer.alloc(32, 7).toString('base64');

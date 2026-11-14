@@ -18,7 +18,8 @@ and never returns a response body before redaction.
 ## Layout
 
 - `src/server.ts`: the entry.
-- `encryption/`: the connection and AWS envelope runtimes; `envelopes/` the
+- `encryption/`: the connection-encryption config, the connection and AWS
+  envelope runtimes and `encryption.errors.ts`; `envelopes/` the
   sealed formats and cipher; `keys/` key providers, the key ring, KMS client,
   stored keys and their verification.
 - `mail/`: system mail config, sealing, the delivery store and repository,
@@ -40,9 +41,10 @@ and never returns a response body before redaction.
 
 ## Defaults and config
 
-- Environment: `encryption/connection-encryption.runtime.ts` (connection
-  keys), `mail/config.ts` (system mail); both are read by the calling app's
-  config and passed in typed.
+- Environment: `encryption/connection-encryption-config.ts` (connection
+  keys) and `mail/config.ts` (system mail). Each parses the environment the
+  calling app's config hands it and returns a typed config; the runtimes only
+  build from that config.
 - Sizes and lengths: named constants at the top of the file that enforces
   them; the envelope format's sizes in `encryption/envelopes/envelope-format.ts`.
 
