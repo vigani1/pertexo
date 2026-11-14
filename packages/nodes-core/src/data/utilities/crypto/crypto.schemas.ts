@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { labelledChoice } from '@pertexo/node-sdk';
+import { outputEncodingSchema } from '../encoding.schemas.js';
 export const cryptoConfigSchema = z
   .discriminatedUnion('operation', [
     z
@@ -14,7 +15,7 @@ export const cryptoConfigSchema = z
             'MD5 is not for security. Use SHA-256 or SHA-512 for security-sensitive hashes.',
           default: 'sha256',
         }),
-        encoding: z.enum(['hex', 'base64']).meta({ default: 'hex' }),
+        encoding: outputEncodingSchema,
       })
       .strict(),
     z.object({ operation: z.literal('uuid').meta({ title: 'UUID' }) }).strict(),

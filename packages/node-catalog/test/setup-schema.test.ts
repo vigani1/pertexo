@@ -118,4 +118,31 @@ describe('step setup in the catalog schema', () => {
       ],
     });
   });
+  it('names the output encoding of Crypto and HMAC in words', () => {
+    const encoding = {
+      enum: ['hex', 'base64'],
+      oneOf: [
+        { const: 'hex', title: 'Hexadecimal (hex)' },
+        { const: 'base64', title: 'Base64' },
+      ],
+    };
+    const schemaOf = (key: string) =>
+      definitions.find(({ definition }) => definition.key === key)
+        ?.configSchema;
+    expect(schemaOf('core.hmac')).toMatchObject({
+      properties: { encoding },
+    });
+    const crypto = schemaOf('core.crypto');
+    const variants: readonly unknown[] = Array.isArray(crypto?.oneOf)
+      ? crypto.oneOf
+      : [];
+    const hash = variants.find(
+      (variant) =>
+        isRecord(variant) &&
+        isRecord(variant.properties) &&
+        isRecord(variant.properties.operation) &&
+        variant.properties.operation.const === 'hash',
+    );
+    expect(hash).toMatchObject({ properties: { encoding } });
+  });
 });
