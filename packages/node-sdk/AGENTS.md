@@ -68,6 +68,11 @@ hands an executor.
 
 ## Exceptions
 
+- `values/stored-json.ts` keeps its own JSON string byte count instead of
+  workflow-model's `jsonStringByteLength`: stored execution text must be
+  well-formed, so it refuses NUL and lone surrogates, where workflow-model
+  measures any string as JSON writes it. The difference is deliberate.
+
 - Generic throws that stay, each a programmer error:
   `definitions/schema-document.ts` (projection options out of bounds) and
   the two constructor guards in `execution/node-execution.errors.ts` (a

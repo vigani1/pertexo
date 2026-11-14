@@ -275,6 +275,12 @@ export {
 export { CORE_WEBHOOK_CONFIG_SCHEMA } from './triggers/webhook.js';
 
 // Values
+export {
+  measureBoundedJson,
+  type BoundedJsonSize,
+  type BoundedJsonSizeBounds,
+  type BoundedJsonSizeRefusal,
+} from './values/json/bounded-json-size.js';
 export { STORED_INTEGER_MAX } from './values/stored-integer.js';
 export { UUID_PATTERN } from './values/identifiers.js';
 export {

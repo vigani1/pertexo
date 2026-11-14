@@ -1,6 +1,6 @@
 import { encodeJson } from '@pertexo/node-sdk';
-import { utf8ByteLength } from '../text.js';
 import { InvalidJsonValueError } from './json.errors.js';
+import { measureBoundedJson } from './bounded-json-size.js';
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue =
   JsonPrimitive | readonly JsonValue[] | { readonly [key: string]: JsonValue };
@@ -141,25 +141,9 @@ export function normalizedJson(value: unknown): string {
 }
 
 export function inspectJsonValue(value: unknown): JsonInspection {
-  const normalized = canonicalizeJson(value);
-  let depth = 0;
-  let members = 0;
-  const visit = (current: JsonValue, containerDepth: number): void => {
-    if (current === null || typeof current !== 'object') {
-      depth = Math.max(depth, containerDepth);
-      return;
-    }
-    const values: readonly JsonValue[] = Array.isArray(current)
-      ? (current as readonly JsonValue[])
-      : Object.values(current as Readonly<Record<string, JsonValue>>);
-    depth = Math.max(depth, containerDepth + 1);
-    members += values.length;
-    for (const child of values) visit(child, containerDepth + 1);
-  };
-  visit(normalized, 0);
-  return {
-    bytes: utf8ByteLength(encodeJson(normalized)),
-    depth,
-    members,
-  };
+  const measured = measureBoundedJson(canonicalizeJson(value));
+  // A canonical value is plain, acyclic, dense JSON, so the unbounded walk can't refuse it.
+  if (!measured.ok) throw new InvalidJsonValueError('$', 'value is not JSON');
+  const { bytes, depth, members } = measured;
+  return { bytes, depth, members };
 }

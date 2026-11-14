@@ -1,4 +1,14 @@
 import { isRecord } from '../../values/json/object.js';
+
+// JSONata AST shapes of a static callback reference: `$execution.callbacks.<id>.url`
+// is four path steps; `$lookup($execution.callbacks, "<id>").url` is two, with a
+// two-argument lookup whose owner is the two-step `$execution.callbacks`.
+const CALLBACK_AST = Object.freeze({
+  executionPathSteps: 4,
+  lookupPathSteps: 2,
+  lookupArguments: 2,
+  callbacksOwnerSteps: 2,
+});
 export type CallbackReference = Readonly<{
   nodeId: string;
   field: 'url' | 'secret';
@@ -133,14 +143,14 @@ export function remapCallbackReferences(
 function callbackNodeId(steps: unknown[]): unknown {
   let nodeId: unknown;
   if (
-    steps.length === 4 &&
+    steps.length === CALLBACK_AST.executionPathSteps &&
     named(steps[0], 'variable', 'execution') &&
     named(steps[1], 'name', 'callbacks')
   ) {
     const target = steps[2];
     if (plain(target, ['type', 'value', 'position']) && target.type === 'name')
       nodeId = target.value;
-  } else if (steps.length === 2) {
+  } else if (steps.length === CALLBACK_AST.lookupPathSteps) {
     const lookup = steps[0];
     nodeId = lookupCallbackNodeId(lookup);
   }
@@ -162,14 +172,14 @@ function lookupCallbackNodeId(lookup: unknown): unknown {
     lookup.name === undefined &&
     named(lookup.procedure, 'variable', 'lookup') &&
     Array.isArray(lookup.arguments) &&
-    lookup.arguments.length === 2
+    lookup.arguments.length === CALLBACK_AST.lookupArguments
   ) {
     const [owner, target] = lookup.arguments as unknown[];
     if (
       plain(owner, ['type', 'steps', 'position']) &&
       owner.type === 'path' &&
       Array.isArray(owner.steps) &&
-      owner.steps.length === 2 &&
+      owner.steps.length === CALLBACK_AST.callbacksOwnerSteps &&
       named(owner.steps[0], 'variable', 'execution') &&
       named(owner.steps[1], 'name', 'callbacks') &&
       plain(target, ['type', 'value', 'position']) &&
@@ -231,7 +241,9 @@ function callbackSourceSpan(
     typeof last.position === 'number'
   )
     return {
-      start: procedure.position - (procedure.value === 'lookup' ? 7 : 10),
+      start:
+        procedure.position -
+        (procedure.value === 'lookup' ? '$lookup' : '$execution').length,
       end: last.position,
     };
   return undefined;
