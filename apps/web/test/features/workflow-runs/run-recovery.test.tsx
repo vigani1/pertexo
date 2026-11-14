@@ -1,8 +1,8 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
 import { renderLoadedApp } from '../../support/render-app';
 import {
@@ -78,7 +78,56 @@ async function open() {
     );
   return screen.findByRole('dialog', { name: 'Retry from this step' });
 }
+/**
+ * A screen whose width the test moves across the phone breakpoint, as a
+ * dragged window or a browser's full-page capture does.
+ */
+function resizableScreen() {
+  const phone = '(max-width: 47.999rem)';
+  let narrow = false;
+  const listeners = new Set<() => void>();
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({
+      get matches() {
+        return query === phone && narrow;
+      },
+      media: query,
+      addEventListener: (_type: string, listener: () => void) => {
+        if (query === phone) listeners.add(listener);
+      },
+      removeEventListener: (_type: string, listener: () => void) => {
+        listeners.delete(listener);
+      },
+    }),
+  });
+  return (next: 'phone' | 'wide') => {
+    narrow = next === 'phone';
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+  };
+}
+afterEach(() => {
+  Reflect.deleteProperty(window, 'matchMedia');
+});
 describe('failed-step recovery confirmation', () => {
+  // CI saw the dialog vanish mid-test at 1280px: Chromium's full-page
+  // capture briefly matched the phone query, and the actions remounted.
+  it('keeps the open dialog and its acknowledgement when the screen crosses the phone width', async () => {
+    install();
+    const resize = resizableScreen();
+    await renderLoadedApp(`/w/${workspaceId}/runs/${sourceRunId}`);
+    const dialog = await open();
+    await userEvent.setup().click(within(dialog).getByRole('checkbox'));
+    resize('phone');
+    resize('wide');
+    const kept = screen.getByRole('dialog', { name: 'Retry from this step' });
+    expect(within(kept).getByRole('checkbox')).toBeChecked();
+    expect(
+      within(kept).getByRole('button', { name: 'Retry anyway' }),
+    ).toBeEnabled();
+  });
   it('requires an unchecked acknowledgement and sends no editable input', async () => {
     install();
     const bodies: unknown[] = [];
