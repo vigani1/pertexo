@@ -1,5 +1,6 @@
 import { HttpResponse, http } from 'msw';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
+import { focusManager } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 import { mockServer } from '../../support/mock-server';
@@ -205,4 +206,34 @@ it('keeps a lost turn-off’s key while another schedule is turned off', async (
   });
   expect(keysA[1]).toEqual(keysA[0]);
   expect(appliedA).toHaveLength(1);
+});
+
+it('turns it off under a new key once a later read shows it undone, after a failed one', async () => {
+  const { state, keys } = mountSchedule(() => undefined, 'fails');
+  await renderLoadedApp(triggersPath);
+  await turnOff();
+  await screen.findByText(/Saving it again is safe/u);
+  // Another admin turns it back on; the person leaves the window and comes
+  // back, and this time the read answers.
+  state.status = 'active';
+  state.lost = false;
+  act(() => {
+    focusManager.setFocused(false);
+  });
+  act(() => {
+    focusManager.setFocused(true);
+  });
+  const card = await screen.findByRole('article', {
+    name: 'Schedule: Nightly check',
+  });
+  await waitFor(() => {
+    expect(within(card).getByRole('switch')).toBeChecked();
+  });
+  await turnOff();
+  await screen.findByText('Schedule turned off');
+  expect(keys).toHaveLength(2);
+  // The page showed the schedule on, so this turn-off must apply, not
+  // replay the old "turned off" receipt.
+  expect(keys[1]).not.toEqual(keys[0]);
+  expect(state.status).toBe('disabled');
 });

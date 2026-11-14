@@ -1,6 +1,7 @@
 import {
   useMutation,
   useQueryClient,
+  type QueryClient,
   type QueryKey,
 } from '@tanstack/react-query';
 import { RETRY_WINDOW_ENDED, isUnconfirmedCommand } from './command-retry';
@@ -49,6 +50,16 @@ export function useLowEffectMutation<Input, Result, Data = unknown>({
   return useMutation({
     retry: false,
     mutationFn: async (input: Input) => {
+      // Decided at each send, not once: a read that answered after the
+      // lost outcome (the refresh, or a later refetch on focus) and doesn't
+      // show the change means the old receipt no longer stands for it.
+      const unconfirmedAt = keys.heldFor(input)?.unconfirmedAt;
+      if (
+        appliedIn !== undefined &&
+        unconfirmedAt !== undefined &&
+        readDisagrees(cache, appliedIn, unconfirmedAt, input)
+      )
+        keys.forget(input);
       const held = await keys.keyFor(input);
       // Renewing keys are never refused; this guards the contract.
       if (held === undefined) throw new Error(RETRY_WINDOW_ENDED);
@@ -62,24 +73,31 @@ export function useLowEffectMutation<Input, Result, Data = unknown>({
       }
     },
     onSettled: async (_result, error, input) => {
-      const outcomeAt = Date.now();
       // Read errors stay with their queries. A failed refresh cannot turn an
       // accepted write into an unconfirmed command or invite a second write.
       await Promise.allSettled([refresh(input, error)]);
-      if (appliedIn === undefined || !isUnconfirmedCommand(error)) return;
-      // Only a read that answered after this outcome can say the change
-      // isn't there. A refetch that failed (invalidateQueries resolves
-      // anyway) or never ran leaves older data, which proves nothing.
-      const read = cache.getQueryState<Data>(appliedIn.read);
-      if (
-        read?.status !== 'success' ||
-        read.data === undefined ||
-        read.dataUpdatedAt < outcomeAt
-      )
-        return;
-      if (!appliedIn.shows(read.data, input)) keys.forget(input);
     },
   });
+}
+
+/**
+ * A read that answered at or after `since` and doesn't show the change. A
+ * refetch that failed (invalidateQueries resolves anyway) or never ran
+ * leaves older data, which proves nothing.
+ */
+function readDisagrees<Input, Data>(
+  cache: QueryClient,
+  appliedIn: AppliedIn<Input, Data>,
+  since: number,
+  input: Input,
+): boolean {
+  const read = cache.getQueryState<Data>(appliedIn.read);
+  return (
+    read?.status === 'success' &&
+    read.data !== undefined &&
+    read.dataUpdatedAt >= since &&
+    !appliedIn.shows(read.data, input)
+  );
 }
 
 export function lowEffectError(error: unknown, action: string): string {
