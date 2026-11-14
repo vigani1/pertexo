@@ -1,18 +1,22 @@
 import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { isSupportedHttpFieldValue } from '../shared/http-field-value.js';
+import {
+  HTTP_HEADER_LIMITS,
+  isSupportedHttpFieldValue,
+} from '../shared/http-field-value.js';
 import { oauth2CredentialSchema } from './oauth2-connections.js';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
 const httpHeaderNameSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(HTTP_HEADER_LIMITS.nameCharacters)
   .regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u);
 const httpHeaderValueSchema = z
   .string()
   .min(1)
-  .max(8_192)
+  .max(HTTP_HEADER_LIMITS.valueCharacters)
   .refine(isSupportedHttpFieldValue, {
     message: 'header value contains a byte unsupported by HTTP transport',
   });
@@ -47,10 +51,13 @@ export const httpHeaderCredentialSchema = z
   .record(httpHeaderNameSchema, httpHeaderValueSchema)
   .superRefine((headers, context) => {
     const names = Object.keys(headers);
-    if (names.length < 1 || names.length > 32) {
+    if (
+      names.length < 1 ||
+      names.length > HTTP_HEADER_LIMITS.credentialHeaders
+    ) {
       context.addIssue({
         code: 'custom',
-        message: 'between one and 32 credential headers are required',
+        message: `between one and ${String(HTTP_HEADER_LIMITS.credentialHeaders)} credential headers are required`,
       });
     }
     const normalized = new Set<string>();
@@ -74,7 +81,7 @@ export const httpHeaderCredentialSchema = z
       }
       normalized.add(canonicalName);
     }
-    if (bytes > 16_384) {
+    if (bytes > HTTP_HEADER_LIMITS.credentialHeaderBytes) {
       context.addIssue({
         code: 'custom',
         message: 'credential headers exceed the total byte limit',
@@ -110,8 +117,8 @@ export const slackBotTokenCredentialSchema = z
   .readonly();
 const emailMailboxSchema = z
   .string()
-  .min(3)
-  .max(254)
+  .min(EMAIL_ADDRESS_LIMITS.minimumCharacters)
+  .max(EMAIL_ADDRESS_LIMITS.characters)
   .refine((value) => /^[\x21-\x7e]+$/u.test(value))
   .refine((value) => {
     if (unsafeMailboxCharacters.some((character) => value.includes(character)))
@@ -121,11 +128,11 @@ const emailMailboxSchema = z
     const local = value.slice(0, at);
     const labels = value.slice(at + 1).split('.');
     return (
-      local.length <= 64 &&
+      local.length <= EMAIL_ADDRESS_LIMITS.localPartCharacters &&
       /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u.test(
         local,
       ) &&
-      labels.length >= 2 &&
+      labels.length >= EMAIL_ADDRESS_LIMITS.minimumDomainLabels &&
       labels.every((label) =>
         /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u.test(label),
       )

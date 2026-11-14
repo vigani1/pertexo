@@ -5,6 +5,7 @@ import {
   promotionIdentifierSchema as id,
 } from './settings.js';
 import { workflowPromotionModeSchema } from './review.js';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 export const workflowPromotionPageQuerySchema = z
   .object({
@@ -26,7 +27,7 @@ export const workflowPromotionCandidatesQuerySchema =
         .number()
         .int()
         .positive()
-        .max(2147483647)
+        .max(STORED_INTEGER_MAX)
         .optional(),
     })
     .strict()

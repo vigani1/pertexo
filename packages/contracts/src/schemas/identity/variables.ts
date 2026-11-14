@@ -6,6 +6,7 @@ import {
   workspaceVariableSnapshotSchema,
   workspaceVariableNameSchema,
 } from '@pertexo/workflow-model';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 export const workspaceVariablesResponseSchema = responseSchema(
   workspaceVariableSnapshotSchema
     .unwrap()
@@ -15,7 +16,12 @@ export const workspaceVariablesResponseSchema = responseSchema(
 );
 export const workspaceVariablesRequestSchema = z
   .object({
-    expectedRevision: z.number().int().nonnegative().max(2_147_483_646),
+    // The next revision must still fit a stored integer.
+    expectedRevision: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(STORED_INTEGER_MAX - 1),
     values: workspaceVariableValuesSchema,
     descriptions: workspaceVariableDescriptionsSchema.optional(),
   })

@@ -1,6 +1,7 @@
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { createApiProblemSchema } from '../../errors/api-problem.js';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 /** How many recent skipped triggers one settings read returns. */
 export const WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX = 20;
@@ -9,7 +10,7 @@ export const workflowConcurrencyRevisionSchema = z
   .number()
   .int()
   .min(1)
-  .max(2_147_483_647);
+  .max(STORED_INTEGER_MAX);
 export const workflowConcurrencyLimitSchema = z
   .number()
   .int()

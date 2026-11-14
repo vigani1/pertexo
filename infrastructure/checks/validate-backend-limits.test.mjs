@@ -146,4 +146,10 @@ test('leaves an HTTP status where HTTP code writes one, and nothing else', () =>
     '404',
   ]);
   assert.deepEqual(find('if (response.status === 600) f();'), ['600']);
+  assert.deepEqual(
+    find(
+      'const a = { status: z.literal(409), b: z.number().int().min(400).max(599) };',
+    ),
+    ['400', '599'],
+  );
 });

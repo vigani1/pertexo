@@ -20,9 +20,9 @@ import {
 import { HTTP_PLACEHOLDER_NAME, httpTemplateProblem } from './placeholders.js';
 import {
   credentialLikeHeader,
-  HTTP_HEADER_LIMITS,
   httpRequestHeadersSchema,
 } from './request-headers.schemas.js';
+import { HTTP_HEADER_LIMITS } from '@pertexo/contracts';
 
 const MAX_URL_BYTES = 2_048;
 const MAX_REQUEST_BODY_BYTES = ARTIFACT_INPUT_MAX_BYTES;

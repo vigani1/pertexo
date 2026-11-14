@@ -5,7 +5,13 @@ import {
   noticeScheduleSchema,
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
-const revision = z.number().int().nonnegative().max(2_147_483_646);
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+// The next revision must still fit a stored integer.
+const revision = z
+  .number()
+  .int()
+  .nonnegative()
+  .max(STORED_INTEGER_MAX - 1);
 export const noticePreferencesRequestSchema = noticeScheduleSchema
   .extend({
     mode: noticeEmailModeSchema.nullable(),

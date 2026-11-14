@@ -363,7 +363,7 @@ export {
 } from './schemas/identity/people.js';
 
 export {
-  HTTP_FIELD_VALUE_CHARACTERS,
+  HTTP_HEADER_LIMITS,
   isSupportedHttpFieldValue,
 } from './schemas/shared/http-field-value.js';
 export * from './schemas/identity/authentication.js';

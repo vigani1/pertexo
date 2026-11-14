@@ -7,6 +7,7 @@ import {
   workflowTestExpectationsSchema,
 } from '@pertexo/workflow-model';
 import { formatByteSize, formatCount } from '@pertexo/node-sdk';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 const WORKFLOW_INPUT_CASE_MAX_BYTES = 65_536;
 const WORKFLOW_INPUT_CASE_MAX_DEPTH = 64;
@@ -106,7 +107,7 @@ const workflowInputCaseRevisionSchema = z
   .number()
   .int()
   .min(1)
-  .max(2_147_483_647);
+  .max(STORED_INTEGER_MAX);
 export const workflowInputCaseTagSchema = z
   .string()
   .regex(/^"wic1\.[0-9a-f]{32}\.[0-9a-z]{1,6}"$/u);
