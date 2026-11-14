@@ -54,6 +54,8 @@ never stores artifact rows (PostgreSQL does, through `core`) and never logs
 
 ## Exceptions
 
+- The root files beside the entry are listed with their reasons in
+  `ROOT_CONCEPTS` (`infrastructure/checks/validate-package-roots.mjs`).
 - `config.ts` takes `process.env` as its default argument; the backup scripts
   call it without one.
 

@@ -47,6 +47,8 @@ reads them for its hints.
 
 ## Exceptions
 
+- The root files beside the entry are listed with their reasons in
+  `ROOT_CONCEPTS` (`infrastructure/checks/validate-package-roots.mjs`).
 - The examples' titles and summaries are user-facing text outside the web
   app: they are reviewed and versioned with the manifests they describe, and
   the web shows them as given.

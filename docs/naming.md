@@ -1,6 +1,6 @@
-The rules are in `AGENTS.md`; this file explains them.
-
 # File and directory naming
+
+The rules are in `AGENTS.md`; this file explains them.
 
 [`AGENTS.md`](../AGENTS.md) holds the rules under "Where code lives" and
 "Naming and layout". This page says why they exist and shows them applied.
@@ -65,5 +65,6 @@ each under ten.
 
 `queue/test/jobs/defaults.test.ts` mirrors `queue/src/jobs/defaults.ts`.
 A behavioural name finishes its thought:
-`retains-pending-charge-until-deletion.cases.ts`, not `retains-pending.ts`.
-A `.cases.ts` file is imported by one discovered suite, so its cases run once.
+`api/test/workflow-authoring/drafts/refuses-settings-a-run-cannot-use.integration.test.ts`,
+not `refuses-settings.test.ts`. A `.cases.ts` file, when a suite needs one,
+is imported by that one discovered suite, so its cases run once.
