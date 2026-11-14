@@ -17,7 +17,7 @@ const emitterPaths = [
   '../../../apps/worker/src/triggers/telemetry.ts',
   '../../artifact-store/src/s3/telemetry.ts',
   '../../database/src/platform/pool/telemetry/metrics.ts',
-  '../../queue/src/redis/telemetry.ts',
+  '../../queue/src/redis/redis-metrics.ts',
   '../src/telemetry/telemetry.runtime.ts',
   '../src/telemetry/transport-metrics.ts',
 ] as const;

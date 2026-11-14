@@ -4,7 +4,7 @@ import {
   IDS,
   validJob,
   TRACEPARENT,
-} from './consumer/fixture.js';
+} from './consumer.fixture.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   InvalidQueueDeliveryError,
@@ -16,9 +16,9 @@ import {
   type QueueConsumerObserver,
   type QueueHandlerObservation,
   type QueueTraceRunner,
-} from '../src/consumer.js';
-import { JOB_NAME, QUEUE_NAME } from '../src/jobs/names.js';
-import { jobIdForOutboxEvent } from '../src/producer.js';
+} from '../../src/consumer.js';
+import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
+import { jobIdForOutboxEvent } from '../../src/publication/bullmq-producer.runtime.js';
 
 describe('BullMQ queue consumer', () => {
   beforeEach(resetPackagesQueueTestConsumerTestTsBullMQQueueConsumerFixture);

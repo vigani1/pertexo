@@ -14,7 +14,7 @@ import {
   notifyRedisConnectionEvent,
   observeRedisOperation,
   type RedisTelemetryObserver,
-} from '../redis/telemetry-contracts.js';
+} from '../redis/redis-instrumentation.js';
 import type {
   QueueDelivery,
   QueueJobHandler,
@@ -26,7 +26,7 @@ import type {
   QueueConsumer,
   ActiveExecution,
 } from './queue-consumer.types.js';
-import { parseConsumerOptions } from './configuration.js';
+import { parseConsumerOptions } from './consumer-options.js';
 import {
   QueueConsumerNotReadyError,
   QueueJobTimeoutError,

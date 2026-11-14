@@ -15,7 +15,7 @@ import {
 
 import { createQueueConsumer, type QueueConsumer } from '../../src/consumer.js';
 import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
-import { createQueueProducer } from '../../src/producer.js';
+import { createQueueProducer } from '../../src/publication/bullmq-producer.runtime.js';
 
 const redisUrl = process.env.REDIS_URL;
 const requested = process.env.QUEUE_INTEGRATION === 'true';

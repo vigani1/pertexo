@@ -1,8 +1,8 @@
 export {
   ReconcileWorkflowTriggersJobSchema,
   parseQueueJob,
-} from './jobs/contracts.js';
-export type { QueueJob } from './jobs/contracts.js';
+} from './jobs/queue-job.schemas.js';
+export type { QueueJob } from './jobs/queue-job.schemas.js';
 export { JOB_NAME, QUEUE_FOR_JOB, QUEUE_NAME } from './jobs/names.js';
 export type { JobName } from './jobs/names.js';
 export { normalizeRedisEndpoint } from './redis/endpoint.js';
@@ -14,18 +14,18 @@ export {
   createQueueProducer,
   jobIdForOutboxEvent,
   type QueueProducer,
-} from './producer.js';
+} from './publication/bullmq-producer.runtime.js';
 export {
   InvalidQueueDeliveryError,
   createQueueConsumer,
   unrecoverableQueueError,
 } from './consumer.js';
-export { createProductionRedisTelemetryObserver } from './redis/telemetry.js';
+export { createProductionRedisTelemetryObserver } from './redis/redis-metrics.js';
 export type {
   RedisOperation,
   RedisOperationErrorClass,
   RedisTelemetryObserver,
-} from './redis/telemetry-contracts.js';
+} from './redis/redis-instrumentation.js';
 export {
   RedisRunEventNotificationPublisher,
   RunEventNotificationConfigurationError,
