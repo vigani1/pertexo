@@ -32,7 +32,7 @@ import {
   QueueJobTimeoutError,
   QueueConsumerDrainError,
 } from './queue-consumer.errors.js';
-import { TIMED_OUT, abortReason, bounded } from './deadline.js';
+import { TIMED_OUT, abortReason, bounded } from '../redis/bounded-operation.js';
 
 export class BullMqQueueConsumer implements QueueConsumer {
   private readonly activeExecutions = new Set<ActiveExecution>();
