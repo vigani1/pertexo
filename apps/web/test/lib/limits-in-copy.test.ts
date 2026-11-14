@@ -9,8 +9,9 @@ import { expect, it } from 'vitest';
 // what the server does. This reads every string, template part and JSX text
 // in src and fails on a limit written as a literal.
 const COUNT = String.raw`(?:\d[\d,.]*|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fifteen|twenty|thirty|sixty|ninety)`;
-// Size units are capitals, so a class like `mt-1 mb-3` isn't a size.
-const WRITTEN_SIZE = /\b\d[\d,.]*\s?(?:KB|MB|GB|TB)\b/gu;
+// Size units are capitals, so a class like `mt-1 mb-3` isn't a size. Binary
+// units (KiB, MiB) are sizes too.
+const WRITTEN_SIZE = /\b\d[\d,.]*\s?[KMGT]i?B\b/gu;
 const WRITTEN_LIMIT = new RegExp(
   [
     // "4,096 UTF-8 bytes", not the 8 of "UTF-8".
@@ -101,6 +102,7 @@ const STILL_WRITTEN: readonly string[] = [
   'features/workflow-runs/components/run-filters/business-value.tsx: up to 255 characters',
   'features/workflow-runs/data/mutations/use-run-replay.ts: within 24 hours',
   'features/workflow-runs/model/step-inspection/error-copy.ts: 1 MB',
+  'features/workflow-runs/model/step-inspection/error-copy.ts: 256 KiB',
   'features/workflow-runs/model/step-inspection/error-copy.ts: 6 MB',
   'features/workflow-runs/model/step-inspection/error-copy.ts: 64 KB',
   'features/workflow-runs/model/step-inspection/error-copy.ts: At most 1,000 rows',
