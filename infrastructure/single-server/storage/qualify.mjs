@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { parseEnv } from 'node:util';
 import { createArtifactStore } from '../../../packages/artifact-store/dist/artifact.store.js';
-import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/config/artifact-store.config.js';
+import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/config.js';
 
 const image =
   'rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2';

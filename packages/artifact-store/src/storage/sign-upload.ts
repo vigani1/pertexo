@@ -1,8 +1,8 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 
-import { artifactStorageKey } from '../identity.js';
+import { artifactStorageKey } from '../artifact-identity.js';
 
-import type { ArtifactStoreConfig } from '../config/artifact-store.config.js';
+import type { ArtifactStoreConfig } from '../config.js';
 
 import { awaitWithSignal } from '../s3/request-lifecycle.js';
 

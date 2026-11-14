@@ -10,7 +10,7 @@ import type {
   ArtifactDownloadCapability,
   BeginDirectDownloadRequest,
   DirectDownload,
-} from '../download.js';
+} from './sign-download.js';
 
 import type {
   ArtifactMetadata,

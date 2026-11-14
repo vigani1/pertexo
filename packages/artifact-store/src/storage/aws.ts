@@ -7,20 +7,20 @@ import {
 } from '@aws-sdk/client-s3';
 import type { HeadObjectCommandOutput } from '@aws-sdk/client-s3';
 
-import { verifiedBody } from '../stream-verification.js';
-import { artifactMetadataMatches } from '../metadata.js';
+import { verifiedBody } from './stream-verification.js';
+import { artifactMetadataMatches } from './metadata.js';
 import {
   artifactIdentitySchema,
   artifactStorageKey,
   type ArtifactIdentity,
-} from '../identity.js';
+} from '../artifact-identity.js';
 import {
   ArtifactInputIntegrityError,
   ArtifactIntegrityError,
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
 } from '../artifact-store.errors.js';
-import type { ArtifactStoreConfig } from '../config/artifact-store.config.js';
+import type { ArtifactStoreConfig } from '../config.js';
 
 import { sendS3 } from '../s3/s3-client.js';
 import { requestSignal } from '../s3/request-lifecycle.js';
@@ -30,7 +30,7 @@ import {
   type BeginDirectDownloadRequest,
   type DirectDownload,
   type GetObjectPresigner,
-} from '../download.js';
+} from './sign-download.js';
 
 import type {
   S3ClientLike,
