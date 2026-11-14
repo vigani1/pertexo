@@ -1,4 +1,7 @@
-import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
+import {
+  PlatformNodeDefinitionUnavailableError,
+  resolvePlatformNodeDefinition,
+} from '@pertexo/node-catalog';
 import { isWorkflowTriggerDefinition } from '@pertexo/workflow-model';
 import type {
   GraphValidationIssue,
@@ -50,8 +53,10 @@ export function stepSetupIssues(
 function knownDefinition(node: WorkflowNode): StepDefinition | undefined {
   try {
     return resolvePlatformNodeDefinition(node.definition);
-  } catch {
-    return undefined;
+  } catch (error) {
+    if (error instanceof PlatformNodeDefinitionUnavailableError)
+      return undefined;
+    throw error;
   }
 }
 

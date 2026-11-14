@@ -13,6 +13,7 @@ import {
   executorManifestFor,
 } from '@pertexo/node-sdk';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
+import { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js';
 import {
   CORE_NODE_CATALOG,
   CORE_NODE_DEFINITION_REGISTRATIONS,
@@ -68,6 +69,6 @@ export function resolvePlatformNodeDefinition(
     `${key}@${String(version)}`,
   );
   if (registration === undefined)
-    throw new Error('Platform node definition is not implemented');
+    throw new PlatformNodeDefinitionUnavailableError();
   return registration;
 }
