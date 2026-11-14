@@ -10,14 +10,7 @@ import {
   type CoreValidateOutput,
   type CoreValidateRule,
 } from './validate.schemas.js';
-
-export class CoreValidateExecutionAbortedError extends Error {
-  public override readonly name = 'CoreValidateExecutionAbortedError';
-
-  public constructor() {
-    super('Validate execution was canceled');
-  }
-}
+import { CoreValidateExecutionAbortedError } from './validate.errors.js';
 
 type RuleValueType = NonNullable<CoreValidateRule['type']>;
 

@@ -13,7 +13,7 @@ import type { ProviderHttpClient } from '../../../providers/http-client.js';
 
 import { safeInstanceOf } from '@pertexo/node-sdk/server';
 
-import { HttpRequestExecutorError } from './request-execution.js';
+import { HttpRequestExecutorError } from '../request.errors.js';
 
 // Leaves room in the step's 1 MiB, 10,000-member output for the text and
 // headers the parsed value sits beside.

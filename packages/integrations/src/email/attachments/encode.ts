@@ -6,7 +6,7 @@ import {
 } from '@pertexo/node-sdk/server';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { encodedAttachmentBytes } from '../send-notification/send-notification.schemas.js';
-import { EmailAttachmentFailure } from './plan.js';
+import { EmailAttachmentFailure } from './attachment.errors.js';
 
 export type ResendAttachment = Readonly<{
   filename: string;

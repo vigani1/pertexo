@@ -1,9 +1,8 @@
 import { slackRejection } from '../rejection-policy.js';
-import {
-  type NodeExecutionInvocation,
-  type NodeExecutionRuntime,
-  type NodeExecutorRegistration,
-  NodeExecutorFailure,
+import type {
+  NodeExecutionInvocation,
+  NodeExecutionRuntime,
+  NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
 
 import { PROVIDER_HTTP_ERROR_CODE } from '../../providers/http.errors.js';
@@ -27,6 +26,7 @@ import {
   connectionLookupFailure,
   providerFailure,
 } from '../../providers/provider.errors.js';
+import { SlackSendMessageExecutorError } from './send-message.errors.js';
 
 type ResolvedSlackConnection = Awaited<
   ReturnType<NonNullable<NodeExecutionRuntime['connections']>['resolve']>
@@ -34,10 +34,6 @@ type ResolvedSlackConnection = Awaited<
 type SlackCredential = ReturnType<
   typeof resolvedSlackBotTokenCredentialSchema.parse
 >;
-
-export class SlackSendMessageExecutorError extends NodeExecutorFailure {
-  public override readonly name = 'SlackSendMessageExecutorError';
-}
 
 export interface SlackSendMessageExecutorTelemetry {
   measure(
