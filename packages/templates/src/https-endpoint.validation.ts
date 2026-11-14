@@ -1,5 +1,5 @@
 /** Approved curated-only syntax, not a URL parser, reachability or network-safety claim. */
-const LIMITS = Object.freeze({
+export const CURATED_HTTPS_ENDPOINT_LIMITS = Object.freeze({
   bytes: 2_048,
   hostBytes: 253,
   labelBytes: 63,
@@ -7,16 +7,23 @@ const LIMITS = Object.freeze({
   queryNameBytes: 64,
 });
 
+const LIMITS = CURATED_HTTPS_ENDPOINT_LIMITS;
+// A label's first and last characters are alphanumeric; the rest fill its budget.
+const LABEL = new RegExp(
+  `^[a-z0-9](?:[a-z0-9-]{0,${String(LIMITS.labelBytes - 2)}}[a-z0-9])?$`,
+  'u',
+);
+const QUERY_PAIR = new RegExp(
+  `^([A-Za-z0-9._~-]{1,${String(LIMITS.queryNameBytes)}})=((?:[A-Za-z0-9._~-]|%[0-9A-F]{2})*)$`,
+  'u',
+);
+
 function validHost(host: string): boolean {
   if (host.length > LIMITS.hostBytes) return false;
   const labels = host.split('.');
   return (
     labels.length >= 2 &&
-    labels.every(
-      (label) =>
-        /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u.test(label) &&
-        !label.startsWith('xn--'),
-    ) &&
+    labels.every((label) => LABEL.test(label) && !label.startsWith('xn--')) &&
     /^[a-z]{2,63}$/u.test(labels.at(-1) ?? '')
   );
 }
@@ -36,10 +43,7 @@ function validQuery(query: string): boolean {
   return (
     pairs.length <= LIMITS.queryPairs &&
     pairs.every((pair) => {
-      const parsed =
-        /^([A-Za-z0-9._~-]{1,64})=((?:[A-Za-z0-9._~-]|%[0-9A-F]{2})*)$/u.exec(
-          pair,
-        );
+      const parsed = QUERY_PAIR.exec(pair);
       return (
         parsed !== null &&
         !/(?:auth|credential|secret|token|api[-_]?key)/iu.test(parsed[1] ?? '')

@@ -63,6 +63,40 @@ describe('reviewed browser-safe curated templates', () => {
       ).toBe(true);
   });
 
+  // The limits each example states are its manifest's own; the copy can't drift.
+  it('states each example’s run duration as its manifest sets it', () => {
+    const minutes: Readonly<Record<number, string>> = { 5: 'five' };
+    for (const descriptor of CURATED_WORKFLOW_TEMPLATES) {
+      const limit = descriptor.manifest.graph.settings.maxRunDurationMs;
+      expect(limit, descriptor.templateId).toBeDefined();
+      expect(descriptor.boundsSummary, descriptor.templateId).toMatch(
+        new RegExp(
+          `runs stop after ${String(minutes[(limit ?? 0) / 60_000])} minutes\\.$`,
+          'u',
+        ),
+      );
+    }
+  });
+
+  it('states the HTTP example’s timeout and answer size as its steps set them', () => {
+    const descriptor = required(
+      CURATED_WORKFLOW_TEMPLATES.find(
+        ({ templateId }) => templateId === 'controlled-http-notification',
+      ),
+    );
+    const http = required(
+      descriptor.manifest.graph.nodes.find(
+        ({ id }) => id === 'controlled-http',
+      ),
+    );
+    expect(http.config).toMatchObject({
+      timeoutMillis: 1_000,
+      maxResponseBytes: 1_024,
+    });
+    expect(descriptor.boundsSummary).toContain('one-second timeouts');
+    expect(descriptor.boundsSummary).toContain('answers up to 1,024 bytes');
+  });
+
   it('pins all four complete strict manifests and canonical digests', async () => {
     expect(CURATED_WORKFLOW_TEMPLATES.map((item) => item.templateId)).toEqual([
       'webhook-validation-routing',
