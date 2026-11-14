@@ -1,13 +1,11 @@
-export {
-  advanceWorkflow,
-  executeNodeAttempt,
-  resolveSingleNodePreviewInput,
-} from './transition/advance-workflow.js';
+export { advanceWorkflow } from './transition/advance-workflow.js';
+export { executeNodeAttempt } from './attempt/execute.js';
+export { resolveSingleNodePreviewInput } from './attempt/mapping.js';
 export type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
   NodeExecutionRegistry,
-} from './transition/advance-workflow.js';
+} from './attempt/node-attempt.types.js';
 export {
   createCheckpoint,
   parseCheckpoint,
