@@ -1,6 +1,6 @@
 import { encodeJson } from '@pertexo/node-sdk';
+import { utf8ByteLength } from '../text.js';
 import { InvalidJsonValueError } from './json.errors.js';
-import { measureBoundedJson } from './bounded-json-size.js';
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue =
   JsonPrimitive | readonly JsonValue[] | { readonly [key: string]: JsonValue };
@@ -140,10 +140,34 @@ export function normalizedJson(value: unknown): string {
   return encodeJson(normalizeJson(value));
 }
 
+/**
+ * Measures an already-normalized value. Its bytes come from the native
+ * encoder, which is far faster on large text than a character walk; the
+ * untrusted-input guards use measureBoundedJson, which must stop early.
+ */
 export function inspectJsonValue(value: unknown): JsonInspection {
-  const measured = measureBoundedJson(canonicalizeJson(value));
-  // A canonical value is plain, acyclic, dense JSON, so the unbounded walk can't refuse it.
-  if (!measured.ok) throw new InvalidJsonValueError('$', 'value is not JSON');
-  const { bytes, depth, members } = measured;
-  return { bytes, depth, members };
+  const normalized = canonicalizeJson(value);
+  let depth = 0;
+  let members = 0;
+  const pending: [JsonValue, number][] = [[normalized, 0]];
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (next === undefined) continue;
+    const [current, containerDepth] = next;
+    if (current === null || typeof current !== 'object') {
+      depth = Math.max(depth, containerDepth);
+      continue;
+    }
+    const values: readonly JsonValue[] = Array.isArray(current)
+      ? (current as readonly JsonValue[])
+      : Object.values(current as Readonly<Record<string, JsonValue>>);
+    depth = Math.max(depth, containerDepth + 1);
+    members += values.length;
+    for (const child of values) pending.push([child, containerDepth + 1]);
+  }
+  return {
+    bytes: utf8ByteLength(encodeJson(normalized)),
+    depth,
+    members,
+  };
 }
