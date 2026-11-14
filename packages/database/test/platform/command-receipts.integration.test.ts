@@ -6,8 +6,8 @@ import {
   claimCommand,
   completeCommand,
   findCommandResult,
-  IdempotencyConflictError,
 } from '../../src/platform/idempotency/repository.js';
+import { IdempotencyConflictError } from '../../src/platform/idempotency/idempotency.errors.js';
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 import { seedWorkflow, withDatabase } from './migrations/upgrade-fixture.js';
 

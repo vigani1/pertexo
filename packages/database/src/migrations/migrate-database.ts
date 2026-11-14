@@ -10,7 +10,7 @@ import {
   inspectMigrationHistory,
   migrationNames,
 } from '../migration-history.js';
-export { PartialMigrationHistoryError } from '../migration-history.js';
+import { MigrationFileFailedError } from './migration.errors.js';
 
 // Stable application namespace for serializing Pertexo schema migrations.
 const MIGRATION_LOCK_ID = 7_166_118_812;
@@ -75,21 +75,6 @@ function parseMigrationTimeout(
 export const MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL('../../migrations', import.meta.url),
 );
-
-/** Names the file that stopped a migration, so a failed deploy has a reason. */
-export class MigrationFileFailedError extends Error {
-  public override readonly name = 'MigrationFileFailedError';
-
-  public constructor(
-    readonly file: string,
-    cause: unknown,
-  ) {
-    super(
-      `Migration ${file} failed: ${cause instanceof Error ? cause.message : 'no reason given'}`,
-      { cause },
-    );
-  }
-}
 
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;

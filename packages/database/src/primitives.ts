@@ -52,7 +52,5 @@ export {
   parseWorkspaceId,
 } from './tenant-access/transactions/scope.js';
 export { readDurationSettingMillis } from './platform/duration-setting.js';
-export {
-  canonicalJson,
-  BoundedJsonInvalidError,
-} from './outbox/canonical-json.js';
+export { canonicalJson } from './outbox/canonical-json.js';
+export { BoundedJsonInvalidError } from './outbox/outbox.errors.js';

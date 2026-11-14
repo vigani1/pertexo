@@ -20,14 +20,7 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '../persisted-id.js';
-
-/** A command key was reused for a different request. */
-export class IdempotencyConflictError extends Error {
-  override readonly name = 'IdempotencyConflictError';
-  constructor() {
-    super('Idempotency key was used for a different request');
-  }
-}
+import { IdempotencyConflictError } from './idempotency.errors.js';
 
 /**
  * The request the key was used for: hashed here, or the digest a caller
