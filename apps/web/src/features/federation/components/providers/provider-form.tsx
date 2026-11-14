@@ -1,12 +1,14 @@
 import { OidcIdentityFields, OidcClaimFields } from './fields/oidc';
 import { useId, useState } from 'react';
 import {
+  FEDERATION_LIMITS,
   oidcProviderCreateSchema,
   oidcConfigurationSchema,
   type FederationSettings,
   type FederationProtocol,
 } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
+import { formatCount } from '@/lib/format/count';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProviderRevisionNotice } from './revision-notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
@@ -223,7 +225,7 @@ function oidcFieldRules(provider: Provider | undefined) {
       ) {
         return undefined;
       }
-      return 'Enter a client secret of at most 8,192 UTF-8 bytes.';
+      return `Enter a client secret of at most ${formatCount(FEDERATION_LIMITS.secretBytes, 'UTF-8 byte')}.`;
     },
     emailClaim: (value: string) =>
       oidcConfigurationSchema.shape.emailClaim.safeParse(value).success

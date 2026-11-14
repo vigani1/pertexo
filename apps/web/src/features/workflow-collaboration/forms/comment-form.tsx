@@ -17,6 +17,7 @@ import {
   type WorkflowCommentBody,
   type WorkflowCommentCommandResult,
 } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type {
@@ -111,7 +112,7 @@ export function CommentForm({
     });
     if (!parsed.success) {
       setValidation(
-        'Write a comment of up to 8,000 characters and mention each person once.',
+        `Write a comment of up to ${formatCount(COLLABORATION_LIMITS.body, 'character')} and mention each person once.`,
       );
       return;
     }

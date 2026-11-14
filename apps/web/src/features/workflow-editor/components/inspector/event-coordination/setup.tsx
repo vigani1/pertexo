@@ -1,8 +1,11 @@
 import {
   canonicalJson,
+  EVENT_COORDINATION_LIMITS,
   eventCoordinationPolicySchema,
   type EventCoordinationPolicy,
 } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
+import { formatTimeSpan } from '@/lib/format/time';
 import {
   Field,
   FieldLabel,
@@ -203,8 +206,10 @@ function CoordinationFields({
           }}
         />
         <p className="text-xs text-muted-foreground">
-          A nonempty text value (up to 512 bytes), number or true/false. Only a
-          hash is stored as the key. Expressions read event input only.
+          A nonempty text value (up to{' '}
+          {formatCount(EVENT_COORDINATION_LIMITS.keyBytes, 'byte')}), number or
+          true/false. Only a hash is stored as the key. Expressions read event
+          input only.
         </p>
       </div>
       {policy.mode === 'debounce' ? (
@@ -258,10 +263,12 @@ function CoordinationFields({
         </>
       )}
       <Notice>
-        {POLICY_DESCRIPTION[policy.mode]} Pending events wait at most 24 hours;
-        a full run queue may defer admission for up to 15 minutes. Changing the
-        published version cancels pending events. Deferred webhooks acknowledge
-        with 202 immediately.
+        {POLICY_DESCRIPTION[policy.mode]} Pending events wait at most{' '}
+        {formatTimeSpan(EVENT_COORDINATION_LIMITS.pendingMillis / 1_000)}; a
+        full run queue may defer admission for up to{' '}
+        {formatTimeSpan(EVENT_COORDINATION_LIMITS.capacityWaitMillis / 1_000)}.
+        Changing the published version cancels pending events. Deferred webhooks
+        acknowledge with 202 immediately.
       </Notice>
     </>
   );
