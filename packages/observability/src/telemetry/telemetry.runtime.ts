@@ -30,6 +30,9 @@ import {
   sanitizeUndiciRequest,
 } from './sanitization.js';
 
+/** How often the Node runtime instrumentation samples event-loop delay. */
+const RUNTIME_MONITORING_PRECISION_MS = 10;
+
 export const METRIC_EXPORT_INTERVAL_MILLISECONDS = 60_000;
 export const METRIC_EXPORT_TIMEOUT_MILLISECONDS = 30_000;
 
@@ -107,7 +110,9 @@ export function createNodeInstrumentations() {
     new HostMetricsInstrumentation({
       metricGroups: ['process.cpu', 'process.memory'],
     }),
-    new RuntimeNodeInstrumentation({ monitoringPrecision: 10 }),
+    new RuntimeNodeInstrumentation({
+      monitoringPrecision: RUNTIME_MONITORING_PRECISION_MS,
+    }),
   ];
 }
 

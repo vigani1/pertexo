@@ -9,6 +9,7 @@ import type { IncomingMessage, RequestOptions } from 'node:http';
 import type { UndiciRequest } from '@opentelemetry/instrumentation-undici';
 
 const REDACTED_EXCEPTION = '[Redacted exception]';
+const MAX_PORT = 65_535;
 
 function safeAuthority(
   value: unknown,
@@ -61,7 +62,7 @@ function safePort(value: unknown): string | undefined {
   }
 
   const numericPort = Number(port);
-  return numericPort <= 65_535 ? port : undefined;
+  return numericPort <= MAX_PORT ? port : undefined;
 }
 
 function sanitizeException(exception: unknown): Exception {

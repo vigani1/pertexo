@@ -122,6 +122,8 @@ function resemblesStack(value: string): boolean {
     .some(resemblesStackLine);
 }
 
+const STACK_FRAME_PREFIX = 'at';
+
 function resemblesStackLine(line: string): boolean {
   let cursor = 0;
   while (isWhitespace(line[cursor])) cursor += 1;
@@ -134,8 +136,12 @@ function resemblesStackLine(line: string): boolean {
   )
     return true;
 
-  if (line.slice(cursor, cursor + 2) !== 'at') return false;
-  cursor += 2;
+  if (
+    line.slice(cursor, cursor + STACK_FRAME_PREFIX.length) !==
+    STACK_FRAME_PREFIX
+  )
+    return false;
+  cursor += STACK_FRAME_PREFIX.length;
   if (!isWhitespace(line[cursor])) return false;
   while (isWhitespace(line[cursor])) cursor += 1;
   return line[cursor] !== undefined && !isWhitespace(line[cursor]);
@@ -146,17 +152,11 @@ function isWhitespace(character: string | undefined): boolean {
 }
 
 function isAsciiLetter(character: string | undefined): boolean {
-  if (character === undefined) return false;
-  const code = character.charCodeAt(0);
-  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+  return character !== undefined && /^[A-Za-z]$/u.test(character);
 }
 
 function isAsciiWordCharacter(character: string | undefined): boolean {
-  if (character === undefined) return false;
-  const code = character.charCodeAt(0);
-  return (
-    isAsciiLetter(character) || (code >= 48 && code <= 57) || character === '_'
-  );
+  return character !== undefined && /^\w$/u.test(character);
 }
 
 export class TelemetryShutdown {
