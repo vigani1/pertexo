@@ -1,6 +1,5 @@
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { STARTUP_TEST_TIMEOUT_MS, startApiProcess } from './startup-process.js';
 import {
   standaloneBetterAuthEnvironment,
   validDeployedEnvironment,
@@ -155,19 +154,11 @@ describe('owned startup refusals through the real API process', () => {
   it.each(refusals)(
     '$name names its settings and remedy without echoing input',
     ({ environment, settings, remedy }) => {
-      const result = spawnSync(
-        process.execPath,
-        [
-          '--import',
-          'tsx',
-          fileURLToPath(new URL('../../src/main.ts', import.meta.url)),
-        ],
-        {
-          env: { PATH: process.env.PATH, NODE_ENV: 'test', ...environment },
-          encoding: 'utf8',
-          timeout: 10_000,
-        },
-      );
+      const result = startApiProcess({
+        PATH: process.env.PATH,
+        NODE_ENV: 'test',
+        ...environment,
+      });
       expect(result.error).toBeUndefined();
       expect(result.status).toBe(1);
       expect(result.stderr).toContain('api.process_failed');
@@ -187,5 +178,6 @@ describe('owned startup refusals through the real API process', () => {
         }
       }
     },
+    STARTUP_TEST_TIMEOUT_MS,
   );
 });

@@ -312,6 +312,16 @@ export function validateModuleImports(sources) {
       errors.push(...directionViolations(file, specifier));
       if (!isSource(file)) return;
       errors.push(...sourceViolations(file, specifier));
+      // A refused start reads its settings first; loading the core runtime
+      // for a default made each refusal take seconds (batch K).
+      if (
+        runtime &&
+        /^apps\/[^/]+\/src\/platform\/config\//u.test(file) &&
+        /^@pertexo\/core(?:\/|$)/u.test(specifier)
+      )
+        errors.push(
+          `${file}: startup settings load before the runtime; take defaults from @pertexo/policy, not ${specifier}`,
+        );
       if (
         file.startsWith('apps/code-runner/src/') &&
         specifier.startsWith('@pertexo/') &&

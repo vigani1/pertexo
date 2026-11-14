@@ -1029,3 +1029,27 @@ test('keeps removed workflow forwarding modules out of API dependencies', () => 
     }
   }
 });
+
+test('startup settings never load the core runtime, though types may name it', () => {
+  const config = (text) => ({
+    'apps/api/src/platform/config/limits.ts': text,
+  });
+  assert.match(
+    validateModuleImports(
+      config("import { DEFAULT_LIMIT } from '@pertexo/core/runs';"),
+    ).join('\n'),
+    /startup settings load before the runtime/u,
+  );
+  assert.deepEqual(
+    validateModuleImports(
+      config("import type { Limit } from '@pertexo/core/runs';"),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    validateModuleImports(
+      config("import { DEFAULT_LIMIT } from '@pertexo/policy';"),
+    ),
+    [],
+  );
+});
