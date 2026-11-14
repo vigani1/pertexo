@@ -91,10 +91,11 @@ const refusals = [
     remedy: 'configure durable authentication mail when deployed',
   },
   {
-    name: 'missing deployed Redis URL',
-    environment: { ...deployed, REDIS_URL: undefined },
+    // Required in every environment, as the worker requires it.
+    name: 'missing Redis URL',
+    environment: { ...standalone, REDIS_URL: undefined },
     settings: ['REDIS_URL'],
-    remedy: 'configure a Redis connection URL when deployed',
+    remedy: 'the API needs Redis in every environment',
   },
   {
     name: 'missing deployed trusted proxies',

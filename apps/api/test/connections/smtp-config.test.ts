@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import { parseApiConfig } from '../../src/platform/config/api-config.js';
 const environment = {
   DATABASE_URL: 'postgresql://pertexo_app:fixture@localhost:5432/pertexo',
+  REDIS_URL: 'redis://localhost:6379/0',
 };
 
 it('requires an explicit operator opt-in for unencrypted SMTP', () => {
