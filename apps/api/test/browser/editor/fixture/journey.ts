@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { liveJourneyEnvironment } from '../../../../../../infrastructure/testing/live-failure-artifacts.mjs';
 import { randomUUID } from 'node:crypto';
 
 import type { createServer } from 'node:http';
@@ -177,17 +178,12 @@ async function runEditorBrowserJourney(
 
   identityProvider.setOrigin(`http://localhost:${String(address.port)}`);
 
+  // Only a listed journey keeps failure artifacts, never an inherited request.
   const childEnvironment = {
-    ...process.env,
+    ...liveJourneyEnvironment(process.env, scenario),
     PERTEXO_API_PROXY_TARGET: apiOrigin,
     PERTEXO_LIVE_MAIL_ORIGIN: `http://127.0.0.1:${String(address.port)}`,
     PERTEXO_LIVE_WEB_ORIGIN: webOrigin,
-    // Callable types no secret into a step and its accounts are made for this
-    // run, so a failure keeps a trace and a screenshot (batch K: it flakes
-    // in CI only).
-    ...(scenario === 'callable'
-      ? { PERTEXO_LIVE_FAILURE_ARTIFACTS: scenario }
-      : {}),
   };
 
   const viteCli = join(
