@@ -18,6 +18,10 @@ type HeldKey<Input> = Readonly<{
   CommandKey;
 
 // Held keys of other targets, set aside while this hook sends to another.
+// The bound keeps a long session from growing without end. Evicting a key
+// needs more lost answers in a row, each on a different target, than this;
+// resending the evicted change then applies it under a new key, which for
+// the absolute states these hooks set changes nothing but the audit trail.
 const SET_ASIDE_LIMIT = 16;
 
 /**

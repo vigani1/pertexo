@@ -171,7 +171,9 @@ describe('workflow automatic pause controls', () => {
     await event.click(
       await screen.findByRole('button', { name: 'Resume triggers' }),
     );
-    await screen.findByText(/Saving it again is safe — it won’t apply twice/u);
+    await screen.findByText(
+      /Saving it again is safe — it won’t change anything twice/u,
+    );
     expect(
       screen.queryByRole('button', { name: 'Resume triggers' }),
     ).not.toBeInTheDocument();
