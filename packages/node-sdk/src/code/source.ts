@@ -1,5 +1,5 @@
 import { parse } from 'acorn';
-import { CODE_LIMITS, type CodeLanguage } from './limits.js';
+import { CODE_LIMITS, type CodeLanguage } from './code-settings.js';
 
 export type CodeSyntaxIssue = Readonly<{
   message: string;
