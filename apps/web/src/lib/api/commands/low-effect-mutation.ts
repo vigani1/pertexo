@@ -9,12 +9,6 @@ import { describeCommandError } from '../error-copy';
 import { useHeldCommandKey } from './use-held-command-key';
 
 /**
- * Changes a revision or absolute state guards: every outcome refreshes the
- * current reads, and the key follows `useHeldCommandKey`, so resending an
- * unchanged change after a lost response replays it rather than being
- * refused as someone else's.
- */
-/**
  * For changes that set an absolute state and carry no revision: the read
  * that shows the current state, and whether its data shows this change.
  */
@@ -23,6 +17,12 @@ export type AppliedIn<Input, Data> = Readonly<{
   shows: (data: Data, input: Input) => boolean;
 }>;
 
+/**
+ * Changes a revision or absolute state guards: every outcome refreshes the
+ * current reads, and the key follows `useHeldCommandKey`, so resending an
+ * unchanged change after a lost response replays it rather than being
+ * refused as someone else's.
+ */
 export function useLowEffectMutation<Input, Result, Data = unknown>({
   send,
   refresh,
