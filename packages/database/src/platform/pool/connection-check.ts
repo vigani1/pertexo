@@ -19,8 +19,9 @@ type ConnectCallback = (
 ) => void;
 
 /**
- * Sets the check on each new connection and waits for it before the first
- * caller gets the client. Sent from the connect event instead, the caller's
+ * Sets the check on each new connection of a pool and waits for it before
+ * the first caller gets the client. createDatabasePool applies it; a pool
+ * built elsewhere (Better Auth's) calls it directly. Sent from the connect event instead, the caller's
  * first query queued behind it, which pg warns about on stderr (and a
  * release preflight that requires a clean stderr then failed). A failure
  * is reported and the client still handed out, as before.
