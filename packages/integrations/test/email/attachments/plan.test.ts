@@ -3,7 +3,7 @@ import {
   EMAIL_SEND_NOTIFICATION_LIMITS,
   encodedAttachmentBytes,
 } from '../../../src/index.js';
-import { emailSendNotificationInputSchema } from '../../../src/email/email-send-notification.schemas.js';
+import { emailSendNotificationInputSchema } from '../../../src/email/send-notification/send-notification.schemas.js';
 import { planAttachments } from '../../../src/email/attachments/plan.js';
 
 function file(byteLength: number, mediaType = 'text/csv') {

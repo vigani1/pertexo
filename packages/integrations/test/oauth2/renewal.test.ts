@@ -2,7 +2,7 @@ import { Readable } from 'node:stream';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createOAuth2RenewalClient } from '../../src/http-request/execution/oauth2-renewal.js';
+import { createOAuth2RenewalClient } from '../../src/http/request/execution/oauth2-renewal.js';
 import type {
   ProviderHttpBodyConsumer,
   ProviderHttpRequest,

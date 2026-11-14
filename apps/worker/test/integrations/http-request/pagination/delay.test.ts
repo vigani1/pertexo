@@ -6,7 +6,7 @@ import type {
   SecureHttpRequest,
   SecureHttpResponse,
 } from '@pertexo/secrets/server';
-import { executePagination } from '../../../../../../packages/integrations/src/http-request/pagination/execute.js';
+import { executePagination } from '../../../../../../packages/integrations/src/http/request/pagination/execute.js';
 
 afterEach(() => {
   mock.timers.reset();

@@ -4,8 +4,8 @@ import {
   type NodeArtifactRuntime,
   type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
-import { failure } from '../failure.js';
-import type { EmailAttachment } from '../email-send-notification.schemas.js';
+import { failure } from '../send-notification/send-notification.errors.js';
+import type { EmailAttachment } from '../send-notification/send-notification.schemas.js';
 import type { ResendAttachment } from './encode.js';
 import { planAttachments, type PlannedAttachment } from './plan.js';
 
