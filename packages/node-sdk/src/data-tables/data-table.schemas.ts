@@ -243,25 +243,6 @@ export interface NodeDataTableRuntime {
     }>,
   ): Promise<DataTableResult>;
 }
-export class DataTableError extends Error {
-  override readonly name = 'DataTableError';
-  constructor(
-    readonly code:
-      | 'not_found'
-      | 'invalid_values'
-      | 'quota_exceeded'
-      | 'conflict'
-      | 'key_conflict'
-      | 'result_too_large'
-      | 'unsafe_filter'
-      | 'attempt_expired'
-      | 'unavailable',
-    message: string,
-    readonly rowNumber?: number,
-  ) {
-    super(message);
-  }
-}
 
 export function isDataTableResultBounded(value: DataTableResult): boolean {
   return inspectBoundedJson(value).ok;

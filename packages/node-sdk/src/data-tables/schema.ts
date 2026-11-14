@@ -1,10 +1,10 @@
 import {
-  DataTableError,
   isDataTableKeyColumn,
   type DataTableColumn,
   type DataTableSchemaChange,
   type DataTableValues,
 } from './data-table.schemas.js';
+import { DataTableError } from './data-table.errors.js';
 import { validateDataTableValues } from './values.js';
 
 interface DataTableSchemaState {
