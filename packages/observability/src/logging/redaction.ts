@@ -1,5 +1,5 @@
-import { safeSystemErrorCode } from '../process-error-classification.js';
-import type { LogFields } from '../logger.js';
+import { safeSystemErrorCode } from '../process-failure/describe-process-failure.js';
+import type { LogFields } from './structured-logger.js';
 
 const RESERVED_FIELDS = new Set([
   'environment',

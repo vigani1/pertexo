@@ -1,7 +1,10 @@
 import { expect, it } from 'vitest';
 
-import { createStructuredLogger, redactLogText } from '../../src/logger.js';
-import { captureDestination, testConfig } from './fixture.js';
+import {
+  createStructuredLogger,
+  redactLogText,
+} from '../../src/logging/structured-logger.js';
+import { captureDestination, testConfig } from './structured-logger.fixture.js';
 
 const failedQuery = (params: string) =>
   `Failed query: insert into "app"."workflow_runs" ("id") values ($1)\nparams: ${params}`;

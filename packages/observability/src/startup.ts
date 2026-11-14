@@ -9,7 +9,7 @@ export {
   classifyProcessError,
   describeProcessFailure,
   type ProcessErrorType,
-} from './process-error-classification.js';
+} from './process-failure/describe-process-failure.js';
 export {
   createOpenTelemetrySdk,
   createTelemetryLifecycle,
@@ -25,4 +25,4 @@ export {
 export {
   StartupSettingError,
   parseStartupSettings,
-} from './startup-setting.errors.js';
+} from './process-failure/startup-setting.errors.js';

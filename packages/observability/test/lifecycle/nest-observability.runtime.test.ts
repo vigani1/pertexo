@@ -4,9 +4,9 @@ import {
   createNestObservabilityRegistration,
   NestLoggerAdapter,
   TelemetryShutdown,
-} from '../src/nest-runtime.js';
-import type { StructuredLogger } from '../src/logger.js';
-import type { TelemetryLifecycle } from '../src/telemetry/telemetry.runtime.js';
+} from '../../src/lifecycle/nest-observability.runtime.js';
+import type { StructuredLogger } from '../../src/logging/structured-logger.js';
+import type { TelemetryLifecycle } from '../../src/telemetry/telemetry.runtime.js';
 
 describe('Nest observability runtime integration', () => {
   it('adapts bounded Nest log context without forwarding message content', () => {

@@ -1,10 +1,10 @@
 import { context, isSpanContextValid, trace } from '@opentelemetry/api';
 import pino from 'pino';
 import type { DestinationStream, Logger as PinoLogger } from 'pino';
-import type { ObservabilityConfig } from './config.js';
-import { safeFields, errorValue } from './logging/redaction.js';
+import type { ObservabilityConfig } from '../config.js';
+import { safeFields, errorValue } from './redaction.js';
 
-export { redactLogText, redactCredentialFields } from './logging/redaction.js';
+export { redactLogText, redactCredentialFields } from './redaction.js';
 export type LogFields = Readonly<Record<string, unknown>>;
 
 export type LogEventName = string;
