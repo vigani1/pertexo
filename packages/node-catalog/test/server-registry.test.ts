@@ -18,7 +18,7 @@ import type {
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { CORE_SET_DEFINITION, CORE_SET_EXECUTOR } from '@pertexo/nodes-core';
 
-import { createPlatformNodeRegistry } from './registry.js';
+import { createPlatformNodeRegistry } from './platform-registry.fixture.js';
 
 describe('platform server registry composition', () => {
   it('builds one registry with dispatch-aware HTTP', async () => {
