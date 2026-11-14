@@ -140,11 +140,11 @@ export {
   dataTableResultSchema,
   type DataTableResult,
   type NodeDataTableRuntime,
-  DataTableError,
   isDataTableResultBounded,
   dataTableSchemaChangeSchema,
   type DataTableSchemaChange,
 } from './data-tables/data-table.schemas.js';
+export { DataTableError } from './data-tables/data-table.errors.js';
 
 export {
   validateDataTableValues,
@@ -162,9 +162,9 @@ export { escapeCsvValue, looksLikeFormula } from './values/csv.js';
 
 export {
   STORED_EXECUTION_VALUE_LIMITS,
-  StoredExecutionValueInvalidError,
   storedExecutionJsonStringBytes,
 } from './values/stored-json.js';
+export { StoredExecutionValueInvalidError } from './values/stored-json.errors.js';
 
 export { signingKeyCredentialSchema } from './credentials/signing-key.js';
 

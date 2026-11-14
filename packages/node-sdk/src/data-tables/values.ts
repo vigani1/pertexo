@@ -1,10 +1,10 @@
 import {
-  DataTableError,
   DATA_TABLE_JSON_LIMITS,
   type DataTableNewColumn,
   type DataTableValues,
   type DataTableQuery,
 } from './data-table.schemas.js';
+import { DataTableError } from './data-table.errors.js';
 import { inspectBoundedJson } from '../values/bounded-json.validation.js';
 
 // The `YYYY-MM-DD` prefix of an ISO timestamp.

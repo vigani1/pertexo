@@ -1,16 +1,9 @@
+import { StoredExecutionValueInvalidError } from './stored-json.errors.js';
 export const STORED_EXECUTION_VALUE_LIMITS = Object.freeze({
   inlineBytes: 262_144,
   depth: 64,
   members: 10_000,
 });
-
-export class StoredExecutionValueInvalidError extends TypeError {
-  public override readonly name = 'StoredExecutionValueInvalidError';
-
-  public constructor() {
-    super('Stored execution value violates the persistence contract');
-  }
-}
 
 function invalid(): never {
   throw new StoredExecutionValueInvalidError();

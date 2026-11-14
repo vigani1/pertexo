@@ -1,5 +1,4 @@
 import {
-  DataTableError,
   isDataTableResultBounded,
   type DataTableBindings,
   type DataTableColumn,
@@ -7,6 +6,7 @@ import {
   type DataTableQuery,
   type DataTableResult,
 } from './data-table.schemas.js';
+import { DataTableError } from './data-table.errors.js';
 
 /** Stable workflow aliases resolve to the current names used by table rows. */
 export function resolveDataTableBindings({

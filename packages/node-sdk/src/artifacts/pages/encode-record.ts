@@ -1,8 +1,6 @@
 import { canonicalizeBoundedJson } from '../../values/bounded-json.js';
-import {
-  storedExecutionJsonStringBytes,
-  StoredExecutionValueInvalidError,
-} from '../../values/stored-json.js';
+import { storedExecutionJsonStringBytes } from '../../values/stored-json.js';
+import { StoredExecutionValueInvalidError } from '../../values/stored-json.errors.js';
 import type { JsonValue } from '../../execution/node-execution.types.js';
 import { FILE_PAGE_LIMITS } from '../page-limits.js';
 import { refuseFilePages } from './file-pages.errors.js';
