@@ -43,8 +43,6 @@ export function moved<Entry>(
 
 // ---------------------------------------------------------------- Switch
 
-/** Switch's fixed case ports (ADR 018). */
-
 export type SwitchScalar = null | boolean | number | string;
 export type SwitchCase = Readonly<{ id: string; equals: SwitchScalar }>;
 
