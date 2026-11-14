@@ -7,6 +7,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   failure,
   inspectSecureHttpError,
+  SecureHttpRejection,
 } from './secure-http.errors.js';
 import type { SecureHttpRequest } from './secure.js';
 import { safeInstanceOf } from '@pertexo/node-sdk/server';
@@ -100,26 +101,26 @@ function assertRequestBounds(request: z.output<typeof requestSchema>): void {
     request.timeoutMillis < 1 ||
     request.timeoutMillis > MAX_TIMEOUT_MILLIS
   )
-    throw new Error('invalid request timeout');
+    throw new SecureHttpRejection('invalid request timeout');
   if (
     !Number.isInteger(request.maxRedirects) ||
     request.maxRedirects < 0 ||
     request.maxRedirects > MAX_REDIRECTS
   )
-    throw new Error('invalid redirect limit');
+    throw new SecureHttpRejection('invalid redirect limit');
   if (
     !Number.isInteger(request.maxResponseBytes) ||
     request.maxResponseBytes < 1 ||
     request.maxResponseBytes > MAX_RESPONSE_BYTES
   )
-    throw new Error('invalid response byte limit');
+    throw new SecureHttpRejection('invalid response byte limit');
   if (
     (request.body?.byteLength ?? 0) >
     (request.body instanceof Uint8Array
       ? MAX_REQUEST_BODY_BYTES
       : FILE_PAGE_LIMITS.fileBytes)
   )
-    throw new Error('request body exceeds byte limit');
+    throw new SecureHttpRejection('request body exceeds byte limit');
 }
 
 function assertRequestMethodBodyPolicy(
@@ -129,7 +130,7 @@ function assertRequestMethodBodyPolicy(
     (request.method === 'GET' || request.method === 'HEAD') &&
     request.body !== undefined
   )
-    throw new Error('request method does not allow a body');
+    throw new SecureHttpRejection('request method does not allow a body');
 }
 
 function parseHeaders(
@@ -146,12 +147,12 @@ function parseHeaders(
       value.length > MAX_HEADER_VALUE_LENGTH ||
       !isSerializableHttpHeaderValue(value) ||
       normalized.has(lower);
-    if (invalidHeader) throw new Error('invalid request header');
+    if (invalidHeader) throw new SecureHttpRejection('invalid request header');
     bytes += utf8ByteLength(`${lower}:${value}\r\n`);
     normalized.set(lower, value);
   }
   if (normalized.size > MAX_HEADER_COUNT || bytes > MAX_HEADER_BYTES)
-    throw new Error('request headers exceed limits');
+    throw new SecureHttpRejection('request headers exceed limits');
   return Object.freeze(
     Object.fromEntries(
       [...normalized.entries()].sort(([left], [right]) =>
@@ -168,7 +169,7 @@ function parseSensitiveValues(values: readonly string[]): readonly string[] {
       (value) => value.length < 1 || value.length > MAX_SENSITIVE_VALUE_LENGTH,
     )
   )
-    throw new Error('invalid sensitive values');
+    throw new SecureHttpRejection('invalid sensitive values');
   return Object.freeze(
     [...new Set(values)].sort((left, right) => right.length - left.length),
   );
@@ -184,7 +185,7 @@ export function parseRequest(
       parsed.navigation !== undefined &&
       new URL(parsed.url).origin !== parsed.navigation.origin
     )
-      throw new Error('Navigation origin mismatch');
+      throw new SecureHttpRejection('Navigation origin mismatch');
     assertRequestMethodBodyPolicy(parsed);
     return Object.freeze({
       url: parsed.url,

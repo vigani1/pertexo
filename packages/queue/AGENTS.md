@@ -54,8 +54,10 @@ timeouts) and never logs (it reports through observers).
   with `admitQueueDelivery` before running a handler.
 - Every Redis call is bounded (`redis/bounded-operation.ts` or the client's
   own timeout) and observed through `redis/redis-instrumentation.ts`.
-- Redis URL failures use `REDIS_ENDPOINT_ERROR_MESSAGE`; each client names its
-  own error class.
+- Redis URL failures use `REDIS_ENDPOINT_ERROR_MESSAGE`. Errors live in their
+  area's errors file: `jobs/queue-job.errors.ts`, `publication/` and
+  `consumption/` (delivery admission is the consumer's), `pubsub/pubsub.errors.ts`.
+  A generic `Error` only wraps a rejection value that isn't an `Error`.
 
 ## Exceptions
 

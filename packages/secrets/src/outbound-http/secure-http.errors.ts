@@ -116,3 +116,21 @@ export function abortFailure(
     { possiblyDispatched, ambiguous },
   );
 }
+
+/**
+ * Why a request, URL or address was refused. It never reaches a caller by
+ * itself: the client wraps it as the cause of one SecureHttpError.
+ */
+export class SecureHttpRejection extends Error {
+  public override readonly name = 'SecureHttpRejection';
+}
+
+/** A transport failure the client classifies by its code and wraps. */
+export class SecureHttpTransportError extends Error {
+  public override readonly name = 'SecureHttpTransportError';
+}
+
+/** HTTP_ALLOWED_PRIVATE_NETWORKS holds an entry that isn't a CIDR. */
+export class PrivateNetworkConfigurationError extends Error {
+  public override readonly name = 'PrivateNetworkConfigurationError';
+}

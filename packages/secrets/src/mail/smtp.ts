@@ -1,3 +1,4 @@
+import { SmtpLookupError } from './mail.errors.js';
 import { FILE_PAGE_LIMITS } from '@pertexo/node-sdk';
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import type { Readable } from 'node:stream';
@@ -124,7 +125,7 @@ async function session(
           assertPublicAddress(answer.address);
       }
       const address = answers[0];
-      if (address === undefined) throw new Error('No address');
+      if (address === undefined) throw new SmtpLookupError('No address');
       host = address.address;
     } catch {
       return { kind: 'failed', failure: { category: 'network' } };
@@ -272,10 +273,10 @@ async function resolveHost(host: string, input: SmtpCheck) {
       lookup(host, { all: true, order: 'verbatim' }),
       new Promise<never>((_resolve, reject) => {
         timeout = setTimeout(() => {
-          reject(new Error('SMTP DNS deadline'));
+          reject(new SmtpLookupError('SMTP DNS deadline'));
         }, input.timeoutMillis);
         aborted = () => {
-          reject(new Error('SMTP cancelled'));
+          reject(new SmtpLookupError('SMTP cancelled'));
         };
         input.signal?.addEventListener('abort', aborted, { once: true });
         if (input.signal?.aborted) aborted();

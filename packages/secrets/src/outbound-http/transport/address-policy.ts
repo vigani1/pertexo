@@ -1,3 +1,7 @@
+import {
+  PrivateNetworkConfigurationError,
+  SecureHttpRejection,
+} from '../secure-http.errors.js';
 import { isIP } from 'node:net';
 
 import {
@@ -26,23 +30,23 @@ export function assertPublicAddress(address: string): 4 | 6 {
         matchesIpv4Prefix(value, ipv4Number(network), prefix),
       )
     )
-      throw new Error('blocked address');
+      throw new SecureHttpRejection('blocked address');
     return 4;
   }
   if (family === 6) {
     const words = ipv6Words(address);
     const first = words[0] ?? 0;
     if (isMetadataAddress(6, words) || (first & 0xe000) !== 0x2000)
-      throw new Error('blocked address');
+      throw new SecureHttpRejection('blocked address');
     if (
       BLOCKED_IPV6_PREFIXES.some(({ network, prefix }) =>
         matchesIpv6Prefix(words, network, prefix),
       )
     )
-      throw new Error('blocked address');
+      throw new SecureHttpRejection('blocked address');
     return 6;
   }
-  throw new Error('invalid address');
+  throw new SecureHttpRejection('invalid address');
 }
 
 function ipv4Number(address: string): number {
@@ -51,7 +55,7 @@ function ipv4Number(address: string): number {
     octets.length !== 4 ||
     octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)
   )
-    throw new Error('invalid IPv4 address');
+    throw new SecureHttpRejection('invalid IPv4 address');
   return (
     (((octets[0] ?? 0) << 24) |
       ((octets[1] ?? 0) << 16) |
@@ -72,16 +76,17 @@ function matchesIpv4Prefix(
 
 function ipv6Words(address: string): readonly number[] {
   const normalized = address.toLowerCase();
-  if (normalized.includes('%')) throw new Error('scoped IPv6 is blocked');
+  if (normalized.includes('%'))
+    throw new SecureHttpRejection('scoped IPv6 is blocked');
   const halves = normalized.split('::');
-  if (halves.length > 2) throw new Error('invalid IPv6 address');
+  if (halves.length > 2) throw new SecureHttpRejection('invalid IPv6 address');
   const left = parseIpv6Half(halves[0] ?? '');
   const right = parseIpv6Half(halves[1] ?? '');
   const missing = 8 - left.length - right.length;
   const invalidCompression =
     (halves.length === 1 && missing !== 0) ||
     (halves.length === 2 && missing < 1);
-  if (invalidCompression) throw new Error('invalid IPv6 address');
+  if (invalidCompression) throw new SecureHttpRejection('invalid IPv6 address');
   return [
     ...left,
     ...new Array<number>(Math.max(0, missing)).fill(0),
@@ -95,12 +100,12 @@ function parseIpv6Half(value: string): readonly number[] {
   return segments.flatMap((segment, index) => {
     if (segment.includes('.')) {
       if (index !== segments.length - 1)
-        throw new Error('invalid embedded IPv4 address');
+        throw new SecureHttpRejection('invalid embedded IPv4 address');
       const ipv4 = ipv4Number(segment);
       return [(ipv4 >>> 16) & 0xffff, ipv4 & 0xffff];
     }
     if (!/^[0-9a-f]{1,4}$/u.test(segment))
-      throw new Error('invalid IPv6 segment');
+      throw new SecureHttpRejection('invalid IPv6 segment');
     return [Number.parseInt(segment, 16)];
   });
 }
@@ -178,7 +183,7 @@ export function parseAllowedPrivateNetworks(
         !/^\d{1,3}$/u.test(prefixText) ||
         prefix > (family === 4 ? 32 : 128);
       if (invalidNetwork)
-        throw new Error(
+        throw new PrivateNetworkConfigurationError(
           `HTTP_ALLOWED_PRIVATE_NETWORKS has an invalid entry "${entry.trim()}"; use CIDRs such as 10.0.0.0/8.`,
         );
       return Object.freeze({

@@ -1,3 +1,4 @@
+import { CallbackKeyConfigurationError } from './callback.errors.js';
 import { z } from 'zod';
 import { createHash, createHmac } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
@@ -30,14 +31,16 @@ export function parseCallbackKeyConfig(
       environment.CALLBACK_TOKEN_KEY_VERSION !== undefined ||
       environment.CALLBACK_TOKEN_PREVIOUS_KEYS !== undefined
     )
-      throw new Error(
+      throw new CallbackKeyConfigurationError(
         'Configure CALLBACK_TOKEN_KEY and CALLBACK_TOKEN_KEY_VERSION; they are required when deployed.',
       );
     return undefined;
   }
   const version = environment.CALLBACK_TOKEN_KEY_VERSION;
   if (version === undefined)
-    throw new Error('Configure CALLBACK_TOKEN_KEY_VERSION.');
+    throw new CallbackKeyConfigurationError(
+      'Configure CALLBACK_TOKEN_KEY_VERSION.',
+    );
   const keys = validateApplicationKeyRing({
     current: { version, key },
     previous: parseApplicationPreviousKeys(
@@ -50,12 +53,14 @@ export function parseCallbackKeyConfig(
       isDevelopmentKey(entry.key),
     )
   )
-    throw new Error(
+    throw new CallbackKeyConfigurationError(
       'Replace the public development CALLBACK_TOKEN_KEY before deployment.',
     );
   const origin = environment.PUBLIC_WEB_ORIGIN;
   if (origin === undefined)
-    throw new Error('Configure PUBLIC_WEB_ORIGIN for callback URLs.');
+    throw new CallbackKeyConfigurationError(
+      'Configure PUBLIC_WEB_ORIGIN for callback URLs.',
+    );
   const parsed = new URL(origin);
   const invalidOrigin =
     origin.length > MAX_ORIGIN_LENGTH ||
@@ -63,7 +68,7 @@ export function parseCallbackKeyConfig(
     !['http:', 'https:'].includes(parsed.protocol) ||
     (deployed && parsed.protocol !== 'https:');
   if (invalidOrigin)
-    throw new Error(
+    throw new CallbackKeyConfigurationError(
       'PUBLIC_WEB_ORIGIN must be an origin, using HTTPS when deployed.',
     );
   return { origin, keys };
@@ -88,7 +93,7 @@ export function createCallbackTokenKeys(config: CallbackKeyConfig) {
     material(identity: CallbackTokenIdentity, version: string) {
       const key = keys.get(version);
       if (closed || key === undefined)
-        throw new Error(
+        throw new CallbackKeyConfigurationError(
           'A stored callback key version is unavailable; restore its CALLBACK_TOKEN_PREVIOUS_KEYS entry.',
         );
       const derive = (purpose: string) =>

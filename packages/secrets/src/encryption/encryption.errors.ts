@@ -52,3 +52,13 @@ export class WebhookTriggerSecretEncryptionError extends Error {
     super('Webhook trigger secret encryption failed');
   }
 }
+
+/** The CONNECTION_* settings can't make one valid encryption config. */
+export class ConnectionEncryptionConfigurationError extends Error {
+  public override readonly name = 'ConnectionEncryptionConfigurationError';
+}
+
+/** Reading or releasing the stored key inventory failed. */
+export class EncryptionKeyInventoryError extends Error {
+  public override readonly name = 'EncryptionKeyInventoryError';
+}

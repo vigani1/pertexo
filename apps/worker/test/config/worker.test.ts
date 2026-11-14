@@ -344,9 +344,10 @@ describe('parseWorkerConfig', () => {
     }
 
     expect(thrown).toBeInstanceOf(Error);
-    expect((thrown as Error).cause).toEqual(
-      new Error('HTTPS connection KMS endpoint is required when deployed'),
-    );
+    expect((thrown as Error).cause).toMatchObject({
+      name: 'ConnectionEncryptionConfigurationError',
+      message: 'HTTPS connection KMS endpoint is required when deployed',
+    });
   });
 
   it('accepts HTTPS artifact storage and runs retention when deployed', () => {

@@ -1,3 +1,4 @@
+import { ConnectionEncryptionConfigurationError } from './encryption.errors.js';
 import { z } from 'zod';
 
 import type { AwsConnectionEnvelopeEncryptionConfig } from './aws-envelope.runtime.js';
@@ -51,7 +52,9 @@ export function parseConnectionEncryptionConfig(
     .parse(options);
   const parsed = environmentSchema.safeParse(environment);
   if (!parsed.success)
-    throw new Error('Connection encryption configuration is invalid');
+    throw new ConnectionEncryptionConfigurationError(
+      'Connection encryption configuration is invalid',
+    );
   const config = parsed.data;
   const kmsConfigured = Object.entries(environment).some(
     ([name, value]) =>
@@ -69,11 +72,15 @@ export function parseConnectionEncryptionConfig(
       selfManagedConfigured,
     });
   if (config.CONNECTION_LOCAL_KEY !== undefined)
-    throw new Error('CONNECTION_LOCAL_KEY requires local encryption mode');
+    throw new ConnectionEncryptionConfigurationError(
+      'CONNECTION_LOCAL_KEY requires local encryption mode',
+    );
   if (config.CONNECTION_ENCRYPTION_MODE === 'self-managed')
     return selfManagedEncryptionConfig(config, { deployed, kmsConfigured });
   if (selfManagedConfigured)
-    throw new Error('Self-managed keys require self-managed encryption mode');
+    throw new ConnectionEncryptionConfigurationError(
+      'Self-managed keys require self-managed encryption mode',
+    );
   if (
     !kmsConfigured &&
     config.CONNECTION_ENCRYPTION_MODE === undefined &&
@@ -84,13 +91,17 @@ export function parseConnectionEncryptionConfig(
     config.CONNECTION_KMS_KEY_REFERENCE === undefined ||
     config.CONNECTION_KMS_REGION === undefined
   )
-    throw new Error('Connection KMS configuration is incomplete');
+    throw new ConnectionEncryptionConfigurationError(
+      'Connection KMS configuration is incomplete',
+    );
   if (
     deployed &&
     config.CONNECTION_KMS_ENDPOINT !== undefined &&
     new URL(config.CONNECTION_KMS_ENDPOINT).protocol !== 'https:'
   )
-    throw new Error('HTTPS connection KMS endpoint is required when deployed');
+    throw new ConnectionEncryptionConfigurationError(
+      'HTTPS connection KMS endpoint is required when deployed',
+    );
   return Object.freeze({
     keyReference: config.CONNECTION_KMS_KEY_REFERENCE,
     region: config.CONNECTION_KMS_REGION,
@@ -113,13 +124,15 @@ function localEncryptionConfig(
   }>,
 ): SelfManagedConnectionEncryptionConfig {
   if (deployed)
-    throw new Error('Local connection encryption is forbidden when deployed');
+    throw new ConnectionEncryptionConfigurationError(
+      'Local connection encryption is forbidden when deployed',
+    );
   if (kmsConfigured || selfManagedConfigured)
-    throw new Error(
+    throw new ConnectionEncryptionConfigurationError(
       'Local and other connection encryption settings cannot be mixed',
     );
   if (config.CONNECTION_LOCAL_KEY === undefined)
-    throw new Error(
+    throw new ConnectionEncryptionConfigurationError(
       'Local connection encryption requires CONNECTION_LOCAL_KEY',
     );
   return Object.freeze({
@@ -144,14 +157,14 @@ function selfManagedEncryptionConfig(
   }>,
 ): SelfManagedConnectionEncryptionConfig {
   if (kmsConfigured)
-    throw new Error(
+    throw new ConnectionEncryptionConfigurationError(
       'Self-managed and KMS connection encryption cannot be mixed',
     );
   if (
     config.CONNECTION_SELF_MANAGED_KEY === undefined ||
     config.CONNECTION_SELF_MANAGED_KEY_VERSION === undefined
   )
-    throw new Error(
+    throw new ConnectionEncryptionConfigurationError(
       'Self-managed connection encryption requires CONNECTION_SELF_MANAGED_KEY and CONNECTION_SELF_MANAGED_KEY_VERSION',
     );
   const encryption = validateApplicationKeyRing({
@@ -175,12 +188,12 @@ function selfManagedEncryptionConfig(
           ),
         )
       )
-        throw new Error(
+        throw new ConnectionEncryptionConfigurationError(
           'Public development master keys are forbidden when deployed',
         );
       const value = bytes.toString('base64url');
       if (values.has(value))
-        throw new Error(
+        throw new ConnectionEncryptionConfigurationError(
           'Self-managed key values must be distinct for each version',
         );
       values.add(value);

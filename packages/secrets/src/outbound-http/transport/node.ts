@@ -1,3 +1,4 @@
+import { SecureHttpTransportError } from '../secure-http.errors.js';
 import { FILE_TRANSFER_NO_PROGRESS_MILLIS } from '@pertexo/node-sdk';
 import { lookup } from 'node:dns/promises';
 import http from 'node:http';
@@ -102,11 +103,7 @@ export class NodeHttpTransport implements SecureHttpTransport {
           ? Math.min(input.timeoutMillis, FILE_TRANSFER_NO_PROGRESS_MILLIS)
           : input.timeoutMillis,
         () => {
-          const error = Object.assign(
-            new Error('Secure HTTP request timed out'),
-            { code: 'ETIMEDOUT' },
-          );
-          fail(error);
+          fail(requestTimedOut());
         },
       );
       request.on('error', fail);
@@ -131,7 +128,7 @@ export class NodeHttpTransport implements SecureHttpTransport {
             !(chunk instanceof Uint8Array) ||
             written + chunk.byteLength > length
           ) {
-            callback(new Error('Verified HTTP body length mismatch'));
+            callback(bodyLengthMismatch());
             return;
           }
           written += chunk.byteLength;
@@ -140,7 +137,7 @@ export class NodeHttpTransport implements SecureHttpTransport {
         },
         final(callback) {
           if (written !== length) {
-            callback(new Error('Verified HTTP body length mismatch'));
+            callback(bodyLengthMismatch());
             return;
           }
           if (!request.writableEnded) request.end();
@@ -162,7 +159,9 @@ export class NodeHttpTransport implements SecureHttpTransport {
             fail(
               error instanceof Error
                 ? error
-                : new Error('Verified HTTP body transfer failed'),
+                : new SecureHttpTransportError(
+                    'Verified HTTP body transfer failed',
+                  ),
             );
           },
         );
@@ -170,7 +169,9 @@ export class NodeHttpTransport implements SecureHttpTransport {
         fail(
           error instanceof Error
             ? error
-            : new Error('Verified HTTP body could not be opened'),
+            : new SecureHttpTransportError(
+                'Verified HTTP body could not be opened',
+              ),
         );
       }
     });
@@ -186,4 +187,16 @@ export function createNodeSecureHttpClient(
     undefined,
     addressPolicy,
   );
+}
+
+/** Classified like a socket timeout, by its ETIMEDOUT code. */
+function requestTimedOut(): Error {
+  return Object.assign(
+    new SecureHttpTransportError('Secure HTTP request timed out'),
+    { code: 'ETIMEDOUT' },
+  );
+}
+
+function bodyLengthMismatch(): Error {
+  return new SecureHttpTransportError('Verified HTTP body length mismatch');
 }

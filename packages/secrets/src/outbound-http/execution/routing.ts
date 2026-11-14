@@ -3,7 +3,11 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import { isIP } from 'node:net';
 
-import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-http.errors.js';
+import {
+  SECURE_HTTP_ERROR_CODE,
+  failure,
+  SecureHttpRejection,
+} from '../secure-http.errors.js';
 
 import type { ParsedSecureHttpRequest } from '../secure-request.js';
 
@@ -86,12 +90,15 @@ export function redirectTransition(
 
 export function parseTargetUrl(value: string): URL {
   try {
-    if (utf8ByteLength(value) > MAX_URL_BYTES) throw new Error('URL too long');
+    if (utf8ByteLength(value) > MAX_URL_BYTES)
+      throw new SecureHttpRejection('URL too long');
     const url = new URL(value);
     if (url.protocol !== 'http:' && url.protocol !== 'https:')
-      throw new Error('unsupported scheme');
+      throw new SecureHttpRejection('unsupported scheme');
     if (url.username !== '' || url.password !== '' || url.hash !== '')
-      throw new Error('URL credentials and fragments are not allowed');
+      throw new SecureHttpRejection(
+        'URL credentials and fragments are not allowed',
+      );
     return url;
   } catch (error: unknown) {
     throw failure(SECURE_HTTP_ERROR_CODE.invalidRequest, {

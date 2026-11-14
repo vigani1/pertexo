@@ -1,3 +1,4 @@
+import { EncryptionKeyInventoryError } from '../encryption.errors.js';
 import type { StoredEncryptionKey } from './stored-encryption-key.types.js';
 import { and, asc, gt, isNotNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -101,7 +102,9 @@ async function finishClient(
     if (signal.aborted) return undefined;
     lifecycle.released = true;
     client.release(true);
-    return new Error('Encryption key inventory cleanup failed');
+    return new EncryptionKeyInventoryError(
+      'Encryption key inventory cleanup failed',
+    );
   }
   return undefined;
 }
@@ -112,6 +115,8 @@ async function* readKeys(
   state: RepositoryState,
 ): AsyncGenerator<StoredEncryptionKey> {
   if (state.cleanupFailure !== undefined) throw state.cleanupFailure;
+  // Generic on purpose: pg and the pool recognise a cancellation by the
+  // standard AbortError name, which a subclass would have to fake.
   const abortError = new Error('Encryption key inventory was cancelled');
   abortError.name = 'AbortError';
   const client = await acquireAbortablePoolClient(
@@ -176,7 +181,9 @@ async function* readKeys(
     lifecycle.transactionOpen = false;
   } catch {
     if (signal.aborted) throw abortError;
-    throw new Error('Encryption key inventory is unavailable');
+    throw new EncryptionKeyInventoryError(
+      'Encryption key inventory is unavailable',
+    );
   } finally {
     const cleanupFailure = await finishClient(client, lifecycle, signal);
     if (cleanupFailure !== undefined) state.cleanupFailure = cleanupFailure;

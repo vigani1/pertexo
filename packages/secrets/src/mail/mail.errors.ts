@@ -13,3 +13,18 @@ export class SystemMailConfigurationError extends Error {
     super('System mail configuration is invalid');
   }
 }
+
+/** A queued mail's sealed payload can't be opened with the configured keys. */
+export class SystemMailPayloadUnavailableError extends Error {
+  public override readonly name = 'SystemMailPayloadUnavailableError';
+}
+
+/** The mail's recipient may no longer receive it; the claim is superseded. */
+export class SystemMailNoLongerEligibleError extends Error {
+  public override readonly name = 'SystemMailNoLongerEligibleError';
+}
+
+/** The SMTP host couldn't be resolved to a permitted address in time. */
+export class SmtpLookupError extends Error {
+  public override readonly name = 'SmtpLookupError';
+}

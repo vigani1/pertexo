@@ -2,6 +2,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   failure,
   inspectSecureHttpError,
+  SecureHttpRejection,
 } from './secure-http.errors.js';
 import {
   assertPublicAddress,
@@ -271,10 +272,10 @@ export class SecureHttpClient {
           ? candidate.family
           : assertPublicAddress(candidate.address);
         if (family !== candidate.family)
-          throw new Error('address family mismatch');
+          throw new SecureHttpRejection('address family mismatch');
         // Plain http only inside a network the operator allowed.
         if (policy !== undefined && url.protocol === 'http:' && !permitted)
-          throw new Error('plain http to a public address');
+          throw new SecureHttpRejection('plain http to a public address');
         validated.push(Object.freeze({ ...candidate }));
       }
     } catch (error: unknown) {

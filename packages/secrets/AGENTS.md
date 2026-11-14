@@ -54,8 +54,16 @@ and never returns a response body before redaction.
 - Every outbound request goes through `SecureHttpClient`: pinned DNS, the
   address policy, bounded bodies and redaction of every credential spelling.
 - Retired keys only open; only the current key seals.
+- Errors live in `encryption/encryption.errors.ts`, `mail/mail.errors.ts`,
+  `callbacks/callback.errors.ts` and `outbound-http/secure-http.errors.ts`.
+  Outbound HTTP's internal rejections (`SecureHttpRejection`,
+  `SecureHttpTransportError`) only ever reach a caller as the cause of one
+  `SecureHttpError`.
 
 ## Exceptions
+
+- The key inventory's cancellation is a plain `Error` named `AbortError`: pg
+  and the pool recognise a cancellation by that standard name.
 
 - `outbound-http/transport/address-policy.ts`, `redaction/decoded-body-view.ts`,
   `response-charset.ts` and `sensitive-representations.ts` parse formats, so

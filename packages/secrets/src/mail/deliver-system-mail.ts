@@ -1,3 +1,7 @@
+import {
+  SystemMailNoLongerEligibleError,
+  SystemMailPayloadUnavailableError,
+} from './mail.errors.js';
 import { authenticationMailAssociatedData } from './mail-associated-data.js';
 import { z } from 'zod';
 import type { SystemMailDeliveryClaim } from './system-mail.types.js';
@@ -146,7 +150,7 @@ async function deliverClaim(
       dependencies.onUnavailableKey?.(error.keyVersion);
       return;
     }
-    throw new Error(
+    throw new SystemMailPayloadUnavailableError(
       'Cannot open queued system mail. Restore AUTH_MAIL_KEY and AUTH_MAIL_PREVIOUS_KEYS, or repair the queued payload, then restart the worker. Mail is retained until expiry.',
     );
   }
@@ -298,6 +302,6 @@ async function authorizeDispatch(
       (await dependencies.notices.authorize(claim.id));
   if (!permitted) {
     authorization.superseded = true;
-    throw new Error('System mail no longer eligible');
+    throw new SystemMailNoLongerEligibleError('System mail no longer eligible');
   }
 }
