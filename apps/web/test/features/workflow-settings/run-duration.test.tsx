@@ -2,8 +2,6 @@ import { http } from 'msw';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { WORKFLOW_EXECUTION_LIMITS } from '@pertexo/workflow-model';
-import { RUN_DURATION_LIMIT_MS } from '@/features/workflow-settings/model/run-duration';
 import { coldStart } from '../../support/fixtures/run';
 import { mockServer } from '../../support/mock-server';
 import { renderLoadedApp } from '../../support/render-app';
@@ -44,12 +42,6 @@ async function chooseDuration(label: string) {
 }
 
 describe('workflow settings: run duration', () => {
-  it('matches the platform limit', () => {
-    expect(RUN_DURATION_LIMIT_MS).toBe(
-      WORKFLOW_EXECUTION_LIMITS.maxRunDurationMs,
-    );
-  });
-
   it('saves a new maximum into the draft with its ETag and says to publish', async () => {
     const saves: SavedDraft[] = [];
     let graph: unknown = emptyGraph;
