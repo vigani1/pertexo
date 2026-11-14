@@ -35,8 +35,8 @@ coherent module just to earn a `.types.ts` or `.schemas.ts`.
 ## Where code lives, with examples
 
 - **A limit:** the queue's transport attempts are `TRANSPORT_ATTEMPTS` in
-  `queue/src/jobs/defaults.ts`, beside the job defaults they shape. A test or
-  a log message imports it; nobody writes `8` again.
+  `queue/src/jobs/defaults.ts`, beside the job defaults they shape; nothing
+  else writes `8`, and a change happens in one place.
 - **Configuration:** `observability/src/config.ts` reads the environment once
   and returns a typed object; the telemetry runtime takes that object, never
   `process.env`.
