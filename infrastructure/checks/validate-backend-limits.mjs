@@ -94,12 +94,6 @@ export const NOT_LIMITS = Object.freeze({
   'packages/node-sdk/src/artifacts/pages/write.ts: 2':
     'JSON text: a page’s two brackets',
   'packages/node-sdk/src/code/framing.ts: 10': 'the newline byte ends a frame',
-  'packages/node-sdk/src/values/stored-json.ts: *':
-    'JSON string encoding: quotes, escape widths, UTF-8 widths and surrogates',
-  'packages/workflow-engine/src/checkpoint/admission.ts: *':
-    'JSON text layout: literal widths, brackets and separators',
-  'packages/workflow-engine/src/compilation/executable.validation.ts: *':
-    'JSON text layout: literal widths, brackets and separators',
   'packages/workflow-engine/src/compilation/checkpoint-capacity.ts: 64':
     'a SHA-256 digest is 64 hex digits',
   'packages/workflow-engine/src/completion/failure-notification.ts: 2':
@@ -110,8 +104,6 @@ export const NOT_LIMITS = Object.freeze({
     'two hex digits per digest byte',
   'packages/workflow-model/src/execution/notice-schedule.ts: 2':
     'the bisection halves its interval',
-  'packages/workflow-model/src/flow/callbacks/references.ts: *':
-    'JSONata AST shapes: path step counts, argument counts and the `$lookup`/`$execution` prefix lengths',
   'packages/workflow-model/src/graph/validation/admission.ts: 2':
     'JSON text layout: the two brackets of a container',
   'packages/workflow-model/src/triggers/forms/files.ts: 2':
@@ -120,8 +112,6 @@ export const NOT_LIMITS = Object.freeze({
     'the month field’s position in a cron expression',
   'packages/workflow-model/src/triggers/schedule-cron.ts: 4':
     'the weekday field’s position in a cron expression',
-  'packages/workflow-model/src/values/text.ts: *':
-    'UTF-8 and UTF-16 encoding: byte widths, code point boundaries and surrogates',
 });
 
 // Unit factors: 1_000 ms in a second, 60 seconds in a minute, 1_024 bytes in a KB.

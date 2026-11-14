@@ -41,7 +41,28 @@ export function isWellFormed(value: string): boolean {
 
 const shortJsonEscapes = new Set(['"', '\\', '\b', '\f', '\n', '\r', '\t']);
 
-/** Includes JSON's quotes and escapes, retaining lone surrogates as escapes.
+// JSON text: a string's two quotes, a two-byte escape (\n), a six-byte one
+// (\u0001) for other control characters and lone surrogates.
+const JSON_STRING_ENCODING = Object.freeze({
+  quoteBytes: 2,
+  shortEscapeBytes: 2,
+  lastControlCode: 0x1f,
+  unicodeEscapeBytes: 6,
+});
+// UTF-8 widths by code point; a surrogate pair is two UTF-16 units.
+const UTF8_ENCODING = Object.freeze({
+  oneByteLast: 0x7f,
+  twoByteLast: 0x7ff,
+  twoBytes: 2,
+  threeBytes: 3,
+  fourBytes: 4,
+  surrogatePairUnits: 2,
+});
+
+/** Includes JSON's quotes and escapes, retaining lone surrogates as escapes:
+ * this measures what JSON writes for any string. node-sdk's
+ * storedExecutionJsonStringBytes refuses lone surrogates instead, because
+ * stored execution text must be well-formed; the two differ on purpose.
  * Stop on overflow without allocating a serialized string or UTF-8 buffer.
  */
 export function jsonStringByteLength(
@@ -49,12 +70,16 @@ export function jsonStringByteLength(
   options: ByteMeasurementOptions = {},
 ): number {
   const maximum = options.stopAfterBytes ?? Infinity;
-  let bytes = 2;
+  const encoding = JSON_STRING_ENCODING;
+  let bytes = encoding.quoteBytes;
   if (bytes > maximum) return bytes;
   for (const character of value) {
-    if (shortJsonEscapes.has(character)) bytes += 2;
-    else if (character.charCodeAt(0) <= 0x1f || !isWellFormed(character))
-      bytes += 6;
+    if (shortJsonEscapes.has(character)) bytes += encoding.shortEscapeBytes;
+    else if (
+      character.charCodeAt(0) <= encoding.lastControlCode ||
+      !isWellFormed(character)
+    )
+      bytes += encoding.unicodeEscapeBytes;
     else bytes += scalarUtf8Bytes(character);
     if (bytes > maximum) return bytes;
   }
@@ -62,9 +87,10 @@ export function jsonStringByteLength(
 }
 
 function scalarUtf8Bytes(character: string): number {
-  if (character.length === 2) return 4;
+  if (character.length === UTF8_ENCODING.surrogatePairUnits)
+    return UTF8_ENCODING.fourBytes;
   const code = character.charCodeAt(0);
-  if (code <= 0x7f) return 1;
-  if (code <= 0x7ff) return 2;
-  return 3;
+  if (code <= UTF8_ENCODING.oneByteLast) return 1;
+  if (code <= UTF8_ENCODING.twoByteLast) return UTF8_ENCODING.twoBytes;
+  return UTF8_ENCODING.threeBytes;
 }

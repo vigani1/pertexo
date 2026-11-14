@@ -1,4 +1,7 @@
-import { jsonStringByteLength } from '@pertexo/workflow-model';
+import {
+  measureBoundedJson,
+  type BoundedJsonSizeRefusal,
+} from '@pertexo/workflow-model';
 
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { hasExactFields } from '../input-checks/exact-fields.js';
@@ -31,111 +34,25 @@ export function assertExactKeys(
   );
 }
 
-export function assertBoundedCheckpointJson(value: unknown): void {
-  const addBytes = (current: number, added: number): number => {
-    const next = current + added;
-    assertCheckpoint(
-      next <= WORKFLOW_CHECKPOINT_LIMITS.bytes,
-      'checkpoint exceeds maximum bytes',
-    );
-    return next;
-  };
-  type Frame =
-    | {
-        readonly kind: 'value';
-        readonly value: unknown;
-        readonly depth: number;
-      }
-    | { readonly kind: 'exit'; readonly value: object };
-  const pending: Frame[] = [{ kind: 'value', value, depth: 1 }];
-  const ancestors = new Set<object>();
-  let members = 0;
-  let bytes = 0;
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (current === undefined) continue;
-    if (current.kind === 'exit') {
-      ancestors.delete(current.value);
-      continue;
-    }
-    const item = current.value;
-    if (item === null) {
-      bytes = addBytes(bytes, 4);
-      continue;
-    }
-    const primitiveBytes = checkpointPrimitiveBytes(item);
-    if (primitiveBytes !== undefined) {
-      bytes = addBytes(bytes, primitiveBytes);
-      continue;
-    }
-    assertCheckpoint(typeof item === 'object', 'checkpoint must contain JSON');
-    assertCheckpoint(
-      current.depth <= WORKFLOW_CHECKPOINT_LIMITS.depth,
-      'checkpoint exceeds maximum depth',
-    );
-    assertCheckpoint(
-      !ancestors.has(item),
-      'checkpoint must not contain cycles',
-    );
-    const isArray = Array.isArray(item);
-    const prototype: object | null = Object.getPrototypeOf(item) as
-      object | null;
-    assertCheckpoint(
-      isArray || prototype === Object.prototype || prototype === null,
-      'checkpoint must contain plain JSON objects',
-    );
-    if (isArray) {
-      assertCheckpoint(
-        item.length <= WORKFLOW_CHECKPOINT_LIMITS.arrayItems,
-        'checkpoint array is oversized',
-      );
-      bytes = addBytes(bytes, 2 + Math.max(0, item.length - 1));
-    } else bytes = addBytes(bytes, 2);
-    ancestors.add(item);
-    pending.push({ kind: 'exit', value: item });
-    let enumerableCount = 0;
-    for (const key of Object.keys(item)) {
-      members += 1;
-      assertCheckpoint(
-        members <= WORKFLOW_CHECKPOINT_LIMITS.members,
-        'checkpoint exceeds maximum members',
-      );
-      if (isArray)
-        assertCheckpoint(
-          key === String(enumerableCount),
-          'checkpoint array is sparse or has extra properties',
-        );
-      else {
-        if (enumerableCount > 0) bytes = addBytes(bytes, 1);
-        bytes = addBytes(
-          bytes,
-          jsonStringByteLength(key, {
-            stopAfterBytes: WORKFLOW_CHECKPOINT_LIMITS.bytes,
-          }) + 1,
-        );
-      }
-      enumerableCount += 1;
-      pending.push({
-        kind: 'value',
-        value: (item as Readonly<Record<string, unknown>>)[key],
-        depth: current.depth + 1,
-      });
-    }
-    if (isArray)
-      assertCheckpoint(
-        enumerableCount === item.length,
-        'checkpoint array is sparse',
-      );
-  }
-}
+const CHECKPOINT_JSON_REFUSALS: Readonly<
+  Record<BoundedJsonSizeRefusal, string>
+> = {
+  bytes: 'checkpoint exceeds maximum bytes',
+  depth: 'checkpoint exceeds maximum depth',
+  members: 'checkpoint exceeds maximum members',
+  array_items: 'checkpoint array is oversized',
+  not_json: 'checkpoint must contain JSON',
+  cycle: 'checkpoint must not contain cycles',
+  not_plain: 'checkpoint must contain plain JSON objects',
+  array_extra_keys: 'checkpoint array is sparse or has extra properties',
+  sparse_array: 'checkpoint array is sparse',
+};
 
-function checkpointPrimitiveBytes(item: unknown): number | undefined {
-  if (typeof item === 'string')
-    return jsonStringByteLength(item, {
-      stopAfterBytes: WORKFLOW_CHECKPOINT_LIMITS.bytes,
-    });
-  if (typeof item === 'boolean') return item ? 4 : 5;
-  if (typeof item === 'number' && Number.isFinite(item))
-    return Object.is(item, -0) ? 1 : String(item).length;
-  return undefined;
+export function assertBoundedCheckpointJson(value: unknown): void {
+  const measured = measureBoundedJson(value, WORKFLOW_CHECKPOINT_LIMITS);
+  if (!measured.ok)
+    throw new WorkflowEngineError(
+      'checkpoint_invalid',
+      CHECKPOINT_JSON_REFUSALS[measured.refusal],
+    );
 }
