@@ -7,7 +7,7 @@ import {
   expressionError,
   type ExpressionRequest,
   type ExpressionResult,
-} from './policy.js';
+} from './expression-policy.js';
 
 const RUNTIME_URL = new URL(
   import.meta.url.endsWith('.ts')

@@ -5,8 +5,8 @@ import {
   AUTHORING_VALIDATION_BUDGET as budget,
   AuthoringValidationUnavailableError,
   type AuthoringValidationUnavailableReason,
-} from './contracts.js';
-import { replySchema, type PendingBatch } from './worker-contract.js';
+} from './validation-protocol.js';
+import { replySchema, type PendingBatch } from './worker-replies.js';
 import { assertReportBudget } from './graph.js';
 export function authoringMessageHandler({
   job,

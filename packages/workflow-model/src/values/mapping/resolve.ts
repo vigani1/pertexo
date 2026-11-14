@@ -4,7 +4,7 @@ import type {
   ExpressionContext,
   ExpressionEvaluator,
   ExpressionResult,
-} from '../expressions/policy.js';
+} from '../expressions/expression-policy.js';
 import type { ValueSource } from '../../graph/workflow-graph.schemas.js';
 import { resolveJsonPath } from '../json/path.js';
 import type { WorkflowNodeFailureValue } from '../../flow/failure-routing/value.js';

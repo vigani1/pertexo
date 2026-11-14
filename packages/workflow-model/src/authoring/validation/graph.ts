@@ -1,5 +1,5 @@
 import { utf8ByteLength } from '../../values/text.js';
-import { supportsExpressionMappings } from '../../values/mapping/policy.js';
+import { supportsExpressionMappings } from '../../values/mapping/mapping-support.js';
 import { callbackReferenceIssue } from '../../flow/callbacks/callback-references.validation.js';
 import {
   eventCoordinationPolicySchema,
@@ -20,12 +20,12 @@ import type {
 import {
   inspectExpression,
   type ExpressionValidation,
-} from '../../values/expressions/policy.js';
+} from '../../values/expressions/expression-policy.js';
 import {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
   type WorkflowExpressionPolicyProjection,
-} from './contracts.js';
+} from './validation-protocol.js';
 
 function safeExpressionMessage(result: ExpressionValidation): string {
   if (result.kind === 'valid') return '';

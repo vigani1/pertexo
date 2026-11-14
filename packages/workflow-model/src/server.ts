@@ -4,7 +4,7 @@ export {
   AUTHORING_VALIDATION_BUDGET,
   AuthoringValidationUnavailableError,
   type WorkflowAuthoringValidationOptions,
-} from './authoring/validation/contracts.js';
+} from './authoring/validation/validation-protocol.js';
 export { WorkflowAuthoringValidator } from './authoring/validation/validator.js';
 export { JsonataEvaluator } from './values/expressions/evaluator.js';
 export {
@@ -12,7 +12,7 @@ export {
   type ExpressionEvaluator,
   type ExpressionLimit,
   type ExpressionResult,
-} from './values/expressions/policy.js';
+} from './values/expressions/expression-policy.js';
 export {
   EMPTY_DEFINITION_CATALOG,
   workflowCompatibilityReport,
@@ -35,7 +35,7 @@ export { resolveEventCoordinationKey } from './triggers/event-coordination/key.j
 export {
   inspectExpression,
   isTemporaryExpressionFailure,
-} from './values/expressions/policy.js';
+} from './values/expressions/expression-policy.js';
 export type { CallbackReference } from './flow/callbacks/references.js';
 
 export {

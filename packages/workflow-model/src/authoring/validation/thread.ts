@@ -3,7 +3,7 @@ import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 import {
   AuthoringValidationUnavailableError,
   type WorkflowExpressionPolicyProjection,
-} from './contracts.js';
+} from './validation-protocol.js';
 import { validateAuthoringBatch } from './graph.js';
 
 const port = parentPort;

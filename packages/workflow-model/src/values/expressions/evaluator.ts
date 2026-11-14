@@ -14,7 +14,7 @@ import {
   type ExpressionEvaluator,
   type ExpressionRequest,
   type ExpressionResult,
-} from './policy.js';
+} from './expression-policy.js';
 
 type Pending = Readonly<{
   evaluation: ProcessEvaluation;
