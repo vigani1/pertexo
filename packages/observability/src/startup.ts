@@ -23,6 +23,7 @@ export {
 } from './lifecycle/database-config.js';
 
 export {
+  KEY_RING_REPAIR_BOUNDS,
   StartupSettingError,
   parseStartupSettings,
 } from './process-failure/startup-setting.errors.js';

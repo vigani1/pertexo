@@ -1,34 +1,53 @@
 import type { z } from 'zod';
+
+/**
+ * Secrets' key ring limits, restated because observability loads before
+ * secrets and can't import it. The worker's key-ring-repair-bounds test holds
+ * each one to the limit secrets enforces.
+ */
+export const KEY_RING_REPAIR_BOUNDS = Object.freeze({
+  keyBytes: 32,
+  maxPreviousKeys: 8,
+  maxVersionLength: 64,
+});
+
+// The apps' own setting limits, as their configs enforce them.
+const SETTING_BOUNDS = Object.freeze({
+  maxPort: 65_535,
+  timeoutMs: { min: 100, max: 30_000 },
+  pollIntervalMs: { min: 100, max: 60_000 },
+  maxWorkerIdLength: 118,
+  maxApiKeyLength: 512,
+  maxOperatorRefLength: 128,
+  maxOperatorReasonLength: 512,
+  maxSocketPathBytes: 100,
+});
+
+const { keyBytes, maxPreviousKeys, maxVersionLength } = KEY_RING_REPAIR_BOUNDS;
 const repairs = {
   node_environment_required:
     'set NODE_ENV to development, test, staging or production',
   smtp_hostname_required: 'use a valid SMTP hostname or IP address',
-  smtp_port_required: 'use an SMTP port from 1 to 65535',
+  smtp_port_required: `use an SMTP port from 1 to ${String(SETTING_BOUNDS.maxPort)}`,
   smtp_tls_required:
     'use starttls or implicit SMTP TLS; plaintext is allowed only on development loopback',
   smtp_credentials_required:
     'configure both SMTP username and password together, within their length limits',
 
   email_required: 'use a valid email address',
-  key_version_required:
-    'use a key version starting with letters or digits, followed by letters, digits, dots, underscores, colons or hyphens (at most 64 characters)',
-  application_key_required: 'provide a base64 encoded 32-byte application key',
-  previous_keys_required:
-    'provide a JSON array of at most eight unique historical key versions and their base64 encoded 32-byte keys; keep versions distinct from the current version',
-  timeout_required: 'use an integer timeout from 100 to 30000 milliseconds',
-  poll_interval_required:
-    'use an integer polling interval from 100 to 60000 milliseconds',
-  worker_id_required:
-    'use a worker identity of at most 118 letters, digits, dots, underscores, colons or hyphens',
-  api_key_required: 'provide the delivery API key (1 to 512 characters)',
+  key_version_required: `use a key version starting with letters or digits, followed by letters, digits, dots, underscores, colons or hyphens (at most ${String(maxVersionLength)} characters)`,
+  application_key_required: `provide a base64 encoded ${String(keyBytes)}-byte application key`,
+  previous_keys_required: `provide a JSON array of at most ${String(maxPreviousKeys)} unique historical key versions and their base64 encoded ${String(keyBytes)}-byte keys; keep versions distinct from the current version`,
+  timeout_required: `use an integer timeout from ${String(SETTING_BOUNDS.timeoutMs.min)} to ${String(SETTING_BOUNDS.timeoutMs.max)} milliseconds`,
+  poll_interval_required: `use an integer polling interval from ${String(SETTING_BOUNDS.pollIntervalMs.min)} to ${String(SETTING_BOUNDS.pollIntervalMs.max)} milliseconds`,
+  worker_id_required: `use a worker identity of at most ${String(SETTING_BOUNDS.maxWorkerIdLength)} letters, digits, dots, underscores, colons or hyphens`,
+  api_key_required: `provide the delivery API key (1 to ${String(SETTING_BOUNDS.maxApiKeyLength)} characters)`,
   mail_transport_required:
     'set SYSTEM_MAIL_TRANSPORT to resend or smtp and configure its delivery credentials',
   database_url_required:
     'provide an application-role PostgreSQL connection URL',
-  operator_ref_required:
-    'provide a nonempty operator identity (at most 128 characters)',
-  operator_reason_required:
-    'provide a recovery reason from 1 to 512 characters',
+  operator_ref_required: `provide a nonempty operator identity (at most ${String(SETTING_BOUNDS.maxOperatorRefLength)} characters)`,
+  operator_reason_required: `provide a recovery reason from 1 to ${String(SETTING_BOUNDS.maxOperatorReasonLength)} characters`,
   recovery_arguments_required:
     'use --email followed by one valid email address',
   durable_mail_required:
@@ -38,8 +57,7 @@ const repairs = {
 
   absolute_private_directory_required:
     'use an absolute private disk-backed directory',
-  unix_socket_path_required:
-    'use an absolute Unix socket path of at most 100 bytes',
+  unix_socket_path_required: `use an absolute Unix socket path of at most ${String(SETTING_BOUNDS.maxSocketPathBytes)} bytes`,
   https_required: 'use an HTTPS endpoint',
   http_origin_required:
     'use an HTTP(S) origin without credentials, a path, query or fragment',
