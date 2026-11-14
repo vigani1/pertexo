@@ -1,6 +1,5 @@
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { STARTUP_TEST_TIMEOUT_MS, startApiProcess } from './startup-process.js';
 import { standaloneBetterAuthEnvironment } from '../config/fixture.js';
 
 describe('identity startup diagnostics in the actual API process', () => {
@@ -41,24 +40,12 @@ describe('identity startup diagnostics in the actual API process', () => {
   ] as const)(
     'names %s and a remedy without leaking rejected values',
     (setting, changes, remedy) => {
-      const result = spawnSync(
-        process.execPath,
-        [
-          '--import',
-          'tsx',
-          fileURLToPath(new URL('../../src/main.ts', import.meta.url)),
-        ],
-        {
-          env: {
-            PATH: process.env.PATH,
-            ...standaloneBetterAuthEnvironment(),
-            NODE_ENV: 'test',
-            ...changes,
-          },
-          encoding: 'utf8',
-          timeout: 10_000,
-        },
-      );
+      const result = startApiProcess({
+        PATH: process.env.PATH,
+        ...standaloneBetterAuthEnvironment(),
+        NODE_ENV: 'test',
+        ...changes,
+      });
       expect(result.error).toBeUndefined();
       expect(result.status).toBe(1);
       expect(result.stderr).toContain(setting);
@@ -71,5 +58,6 @@ describe('identity startup diagnostics in the actual API process', () => {
         expect(text).not.toContain('SyntaxError');
       }
     },
+    STARTUP_TEST_TIMEOUT_MS,
   );
 });
