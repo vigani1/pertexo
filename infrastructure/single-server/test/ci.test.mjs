@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { parse } from 'yaml';
 import { test } from 'node:test';
@@ -84,14 +85,88 @@ test('CI and .env.example pin every service image the Compose defaults use', () 
   }
 });
 
+// Every pinned image, wherever it is written: Compose defaults, plain
+// `image:` strings in the production and quickstart stacks, CI, Dockerfile
+// stages and the scripts and tests that pull images. One repository has one
+// pin, so production runs the Postgres and Redis that development and CI
+// test, and an update that misses a copy fails here (batch K).
+const PIN = /([a-z0-9][\w.-]*(?:\/[\w.-]+)*):([\w.-]+)@sha256:([0-9a-f]{64})/gu;
+const pinnedFiles = execFileSync('git', ['ls-files', '-z'], {
+  encoding: 'utf8',
+})
+  .split('\0')
+  .filter(
+    (path) => path !== '' && path !== 'pnpm-lock.yaml' && existsSync(path),
+  )
+  .filter((path) =>
+    /(?:^|\/)(?:Dockerfile|\.env\.example)$|\.(?:ya?ml|mjs|sh)$/u.test(path),
+  );
+
+test('pins each image repository once, across every file that names it', () => {
+  const pins = new Map();
+  for (const path of pinnedFiles)
+    for (const [, repository, tag, digest] of readFileSync(
+      path,
+      'utf8',
+    ).matchAll(PIN)) {
+      const seen = pins.get(repository) ?? new Map();
+      seen.set(`${tag}@sha256:${digest}`, [
+        ...(seen.get(`${tag}@sha256:${digest}`) ?? []),
+        path,
+      ]);
+      pins.set(repository, seen);
+    }
+  for (const repository of ['postgres', 'redis', 'adobe/s3mock', 'node'])
+    assert.ok(pins.has(repository), repository);
+  // Production's own stack names these as plain strings, not Compose defaults.
+  const production = readFileSync(
+    'infrastructure/single-server/compose.yaml',
+    'utf8',
+  );
+  for (const repository of ['postgres', 'redis'])
+    assert.match(
+      production,
+      new RegExp(`image: ${repository}:\\S+@sha256:`, 'u'),
+    );
+  for (const [repository, seen] of pins)
+    assert.equal(
+      seen.size,
+      1,
+      `${repository} has ${String(seen.size)} pins: ${JSON.stringify(Object.fromEntries(seen))}`,
+    );
+});
+
+test('names every Compose service image by digest, or as our own image', () => {
+  const composeFiles = pinnedFiles.filter((path) =>
+    /(?:^|\/)compose[\w.-]*\.ya?ml$/u.test(path),
+  );
+  assert.ok(composeFiles.includes('infrastructure/single-server/compose.yaml'));
+  for (const path of composeFiles) {
+    const { services = {} } = parse(readFileSync(path, 'utf8')) ?? {};
+    for (const [name, service] of Object.entries(services)) {
+      if (service.image === undefined) continue;
+      const image =
+        /^\$\{\w+:-(.+)\}$/u.exec(service.image)?.[1] ?? service.image;
+      assert.ok(
+        image.startsWith('ghcr.io/vigani1/pertexo') ||
+          /@sha256:[0-9a-f]{64}$/u.test(image),
+        `${path} ${name}: ${service.image}`,
+      );
+    }
+  }
+});
+
 // s3mock writes absolute store paths into its bucket and object metadata, so a
 // volume written at /data reads back only at /data (review of PR #707, P1).
-test('keeps the S3 mock store where its volume is mounted, at /data', () => {
+// From 5.2 it runs as uid 1000, and a fresh volume is root-owned, so it runs
+// as root to write there.
+test('keeps the S3 mock store where its volume is mounted, at /data, as root', () => {
   const compose = parse(readFileSync('compose.yaml', 'utf8'));
   const store = compose.services['artifact-store'];
   const mounts = store.volumes.map((volume) => volume.split(':')[1]);
   assert.deepEqual(mounts, ['/data']);
   assert.equal(store.environment.COM_ADOBE_TESTING_S3MOCK_STORE_ROOT, '/data');
+  assert.equal(store.user, '0:0');
 });
 
 // A leg dropped from a matrix takes its tests with it while every other leg stays green.
