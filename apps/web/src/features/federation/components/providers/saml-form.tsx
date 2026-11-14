@@ -3,8 +3,10 @@ import { useId, useState } from 'react';
 import {
   samlProviderCreateSchema,
   samlConfigurationSchema,
+  SAML_LIMITS,
   type FederationSettings,
 } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { LabelledField } from '@/components/ui/field';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ProviderRevisionNotice } from './revision-notice';
@@ -190,7 +192,7 @@ const SAML_FIELD_RULES = {
   certificate: (value: string) =>
     samlConfigurationSchema.shape.certificates.element.safeParse(value).success
       ? undefined
-      : 'Paste a PEM signing certificate of at most 16,384 characters.',
+      : `Paste a PEM signing certificate of at most ${formatCount(SAML_LIMITS.certificateCharacters, 'character')}.`,
   nextCertificate: (value: string) =>
     value.trim() === '' ||
     samlConfigurationSchema.shape.certificates.element.safeParse(value).success

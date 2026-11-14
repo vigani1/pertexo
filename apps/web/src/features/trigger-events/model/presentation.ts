@@ -1,14 +1,15 @@
-import type {
-  EventCoordinationReason,
-  EventCoordinationStatus,
+import {
+  EVENT_COORDINATION_LIMITS,
+  type EventCoordinationReason,
+  type EventCoordinationStatus,
 } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 import type { StatusTone } from '@/components/ui/status';
 const reasons: Record<EventCoordinationReason, string> = {
   duplicate_key: 'An event with this key was already accepted in this window.',
   newer_event: 'A newer event replaced this input. Only the latest will run.',
   throttle_limit: 'This key reached its run limit for the window.',
-  invalid_key:
-    'The key must resolve to nonempty text, a number or true/false within 512 bytes.',
+  invalid_key: `The key must resolve to nonempty text, a number or true/false within ${formatCount(EVENT_COORDINATION_LIMITS.keyBytes, 'byte')}.`,
   coordination_full:
     'The workspace has too many pending events or active keys. Try again shortly.',
   coordination_timeout:
