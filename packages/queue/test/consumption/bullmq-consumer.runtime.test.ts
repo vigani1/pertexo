@@ -1,5 +1,5 @@
 import {
-  resetPackagesQueueTestConsumerTestTsBullMQQueueConsumerFixture,
+  resetConsumerFixture,
   mocks,
   IDS,
   validJob,
@@ -25,7 +25,7 @@ import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
 import { jobIdForOutboxEvent } from '../../src/jobs/job-id.js';
 
 describe('BullMQ queue consumer', () => {
-  beforeEach(resetPackagesQueueTestConsumerTestTsBullMQQueueConsumerFixture);
+  beforeEach(resetConsumerFixture);
   it('maps queue defaults to BullMQ worker and dedicated blocking Redis options', () => {
     createQueueConsumer({
       queueName: QUEUE_NAME.workflowCoordinator,

@@ -1,5 +1,5 @@
 import {
-  resetPackagesQueueTestProducerTestTsBullMQQueueProducerFixture,
+  resetProducerFixture,
   mocks,
   IDS,
   redisClient,
@@ -14,7 +14,7 @@ import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
 import type { RedisTelemetryObserver } from '../../src/redis/redis-instrumentation.js';
 
 describe('BullMQ queue producer', () => {
-  beforeEach(resetPackagesQueueTestProducerTestTsBullMQQueueProducerFixture);
+  beforeEach(resetProducerFixture);
   it('derives a stable nonnumeric, colon-free job ID from the outbox event', () => {
     const jobId = jobIdForOutboxEvent(IDS.outboxEventId);
 
