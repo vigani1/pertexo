@@ -13,30 +13,31 @@ function postgresRole(defaultRole: string) {
     .default(defaultRole);
 }
 
-const maximumPostgresTimeoutMillis = 2_147_483_647;
+/** PostgreSQL's largest timeout setting (milliseconds), its integer ceiling. */
+export const MAX_POSTGRES_TIMEOUT_MILLIS = 2_147_483_647;
 const connectionTimeoutMillis = z
   .number()
   .int()
   .positive()
-  .max(maximumPostgresTimeoutMillis)
+  .max(MAX_POSTGRES_TIMEOUT_MILLIS)
   .default(5_000);
 const idleTimeoutMillis = z
   .number()
   .int()
   .positive()
-  .max(maximumPostgresTimeoutMillis)
+  .max(MAX_POSTGRES_TIMEOUT_MILLIS)
   .default(30_000);
 const environmentConnectionTimeoutMillis = z.coerce
   .number()
   .int()
   .positive()
-  .max(maximumPostgresTimeoutMillis)
+  .max(MAX_POSTGRES_TIMEOUT_MILLIS)
   .default(5_000);
 const environmentIdleTimeoutMillis = z.coerce
   .number()
   .int()
   .positive()
-  .max(maximumPostgresTimeoutMillis)
+  .max(MAX_POSTGRES_TIMEOUT_MILLIS)
   .default(30_000);
 const conservativePoolMax = z.coerce
   .number()
