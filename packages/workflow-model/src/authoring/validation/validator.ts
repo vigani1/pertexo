@@ -16,6 +16,13 @@ import {
   type WorkflowAuthoringValidationOptions,
 } from './validation-protocol.js';
 
+// Heap and stack bounds for one validation thread.
+const VALIDATION_THREAD_RESOURCES = Object.freeze({
+  maxOldGenerationSizeMb: 64,
+  maxYoungGenerationSizeMb: 8,
+  stackSizeMb: 4,
+});
+
 const runtimeUrl = new URL(
   import.meta.url.endsWith('.ts')
     ? '../../../dist/authoring/validation/thread.js'
@@ -240,11 +247,7 @@ export class WorkflowAuthoringValidator {
     let worker: Worker;
     try {
       worker = this.#workerFactory(runtimeUrl, {
-        resourceLimits: {
-          maxOldGenerationSizeMb: 64,
-          maxYoungGenerationSizeMb: 8,
-          stackSizeMb: 4,
-        },
+        resourceLimits: VALIDATION_THREAD_RESOURCES,
       });
     } catch {
       job.payload = undefined;

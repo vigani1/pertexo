@@ -17,6 +17,16 @@ export const WORKFLOW_PORTABILITY_LIMITS = Object.freeze({
   issues: 100,
 });
 
+/** Admission and field bounds inside a portable manifest. */
+export const PORTABLE_MANIFEST_FIELD_LIMITS = Object.freeze({
+  jsonValueDepth: 64,
+  structuredDepth: 32,
+  identifierLength: 1_048_576,
+  keyLength: 128,
+  issuePathLength: 2_048,
+  issueMessageLength: 512,
+});
+
 export class PortableJsonError extends TypeError {
   public override readonly name = 'PortableJsonError';
   public constructor(
@@ -111,8 +121,8 @@ function portableSnapshot(value: unknown): unknown {
   const inspected = inspectWorkflowGraphAdmission(value, {
     graphBytes: WORKFLOW_PORTABILITY_LIMITS.bytes,
     inputDepth: WORKFLOW_PORTABILITY_LIMITS.inputDepth,
-    jsonValueDepth: 64,
-    structuredDepth: 32,
+    jsonValueDepth: PORTABLE_MANIFEST_FIELD_LIMITS.jsonValueDepth,
+    structuredDepth: PORTABLE_MANIFEST_FIELD_LIMITS.structuredDepth,
   });
   if (!inspected.ok)
     throw new PortableJsonError(
@@ -146,8 +156,14 @@ export async function portableGraphDigest(
   );
 }
 
-const identifier = z.string().min(1).max(1_048_576);
-const boundedKey = z.string().min(1).max(128);
+const identifier = z
+  .string()
+  .min(1)
+  .max(PORTABLE_MANIFEST_FIELD_LIMITS.identifierLength);
+const boundedKey = z
+  .string()
+  .min(1)
+  .max(PORTABLE_MANIFEST_FIELD_LIMITS.keyLength);
 export const portableConnectionSlotSchema = z
   .object({
     nodeId: identifier,
@@ -166,8 +182,8 @@ export const portableConnectionBindingSchema = z
 export const portableIssueSchema = z
   .object({
     code: boundedKey,
-    path: z.string().max(2_048),
-    message: z.string().max(512),
+    path: z.string().max(PORTABLE_MANIFEST_FIELD_LIMITS.issuePathLength),
+    message: z.string().max(PORTABLE_MANIFEST_FIELD_LIMITS.issueMessageLength),
   })
   .strict();
 

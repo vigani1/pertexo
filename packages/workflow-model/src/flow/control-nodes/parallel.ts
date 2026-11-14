@@ -18,13 +18,15 @@ export const PARALLEL_BRANCH_PORTS = Object.freeze([
   'branch-15',
   'branch-16',
 ] as const);
+// A parallel step that doesn't split is a plain sequence.
+const MINIMUM_PARALLEL_BRANCHES = 2;
 
 export const parallelBranchPortSchema = z.enum(PARALLEL_BRANCH_PORTS);
 export const parallelConfigSchema = z
   .object({
     branches: z
       .array(z.object({ id: parallelBranchPortSchema }).strict())
-      .min(2)
+      .min(MINIMUM_PARALLEL_BRANCHES)
       .max(PARALLEL_BRANCH_PORTS.length),
     maxConcurrency: z.number().int().min(1).max(PARALLEL_BRANCH_PORTS.length),
   })

@@ -2,6 +2,7 @@ import { storageTextSchema } from '../../values/json/text.js';
 import { z } from 'zod';
 import { inspectJsonValue } from '../../values/json/canonical.js';
 import { FORM_LIMITS, type FormField } from './fields.js';
+import { formatFormFileBytes } from './files.js';
 import {
   FORM_FILE_LIMITS,
   formFileValueSchema,
@@ -89,7 +90,10 @@ export function parseFormValues(
   try {
     if (inspectJsonValue(input).bytes > FORM_LIMITS.submissionBytes)
       throw new FormValuesInvalidError([
-        { name: '', message: 'Keep the form response within 64 KB.' },
+        {
+          name: '',
+          message: `Keep the form response within ${formatFormFileBytes(FORM_LIMITS.submissionBytes)}.`,
+        },
       ]);
   } catch (error) {
     if (error instanceof FormValuesInvalidError) throw error;

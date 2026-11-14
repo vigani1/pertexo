@@ -9,6 +9,24 @@ import {
 import { parseJsonPath } from '../../values/json/path.js';
 import { isStorageText } from '../../values/json/text.js';
 
+/** Bounds on a test case's value checks, its report and the values it shows. */
+export const WORKFLOW_TEST_LIMITS = Object.freeze({
+  expectedValueBytes: 4_096,
+  expectedValueDepth: 64,
+  expectedValueMembers: 10_000,
+  stepIdLength: 256,
+  pathLength: 512,
+  pathSegments: 64,
+  assertions: 20,
+  expectationsBytes: 16_384,
+  // A shown value that is too large keeps this many characters.
+  previewCharacters: 1_000,
+  // A stored report admits previews up to this many UTF-16 units, above what
+  // previewCharacters can produce.
+  previewUnits: 4_000,
+  stepLabelCharacters: 128,
+});
+
 function validText(value: JsonValue): boolean {
   if (typeof value === 'string') return isStorageText(value);
   if (value === null || typeof value !== 'object') return true;
@@ -22,9 +40,9 @@ export const testExpectationValueSchema: z.ZodType<JsonValue> = z
     try {
       const inspected = inspectJsonValue(value);
       const withinExpectationLimits =
-        inspected.bytes <= 4096 &&
-        inspected.depth <= 64 &&
-        inspected.members <= 10000 &&
+        inspected.bytes <= WORKFLOW_TEST_LIMITS.expectedValueBytes &&
+        inspected.depth <= WORKFLOW_TEST_LIMITS.expectedValueDepth &&
+        inspected.members <= WORKFLOW_TEST_LIMITS.expectedValueMembers &&
         validText(canonicalizeJson(value));
       if (withinExpectationLimits) return;
     } catch {
@@ -32,8 +50,7 @@ export const testExpectationValueSchema: z.ZodType<JsonValue> = z
     }
     context.addIssue({
       code: 'custom',
-      message:
-        'Expected value must be ordinary JSON within 4 KiB, depth 64 and 10,000 members.',
+      message: `Expected value must be ordinary JSON within ${String(WORKFLOW_TEST_LIMITS.expectedValueBytes / 1_024)} KiB, depth ${String(WORKFLOW_TEST_LIMITS.expectedValueDepth)} and ${WORKFLOW_TEST_LIMITS.expectedValueMembers.toLocaleString('en-US')} members.`,
     });
   })
   .pipe(z.json());
@@ -44,19 +61,23 @@ export const testAssertionSchema = z
       z
         .object({
           kind: z.literal('step'),
-          nodeId: z.string().min(1).max(256).refine(isStorageText),
+          nodeId: z
+            .string()
+            .min(1)
+            .max(WORKFLOW_TEST_LIMITS.stepIdLength)
+            .refine(isStorageText),
         })
         .strict(),
     ]),
     path: z
       .string()
       .min(1)
-      .max(512)
+      .max(WORKFLOW_TEST_LIMITS.pathLength)
       .refine((value) => {
         const segments = parseJsonPath(value);
         return (
           segments !== undefined &&
-          segments.length <= 64 &&
+          segments.length <= WORKFLOW_TEST_LIMITS.pathSegments &&
           segments.every((segment) =>
             typeof segment === 'string'
               ? isStorageText(segment)
@@ -73,7 +94,7 @@ export const workflowTestExpectationsSchema = z
     outcome: z.enum(['succeeds', 'fails']).default('succeeds'),
     assertions: z
       .array(testAssertionSchema)
-      .max(20)
+      .max(WORKFLOW_TEST_LIMITS.assertions)
       .default([])
       .refine(
         (assertions) =>
@@ -84,8 +105,10 @@ export const workflowTestExpectationsSchema = z
   })
   .strict()
   .refine(
-    (value) => utf8ByteLength(canonicalJson(value)) <= 16384,
-    'Expectations must fit within 16 KiB per case.',
+    (value) =>
+      utf8ByteLength(canonicalJson(value)) <=
+      WORKFLOW_TEST_LIMITS.expectationsBytes,
+    `Expectations must fit within ${String(WORKFLOW_TEST_LIMITS.expectationsBytes / 1_024)} KiB per case.`,
   );
 export const DEFAULT_TEST_EXPECTATIONS: WorkflowTestExpectations =
   Object.freeze({ outcome: 'succeeds', assertions: Object.freeze([]) });

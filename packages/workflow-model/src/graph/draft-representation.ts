@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { canonicalJson } from '../values/json/canonical.js';
 import { parseWorkflowGraphDraft } from './validation/preflight.js';
+
+const COMPATIBILITY_FINGERPRINT_LENGTH = 256;
 export type WorkflowDraftRepresentationTag = `"draft.${string}"`;
 
 export function workflowDraftRepresentationTag(input: {
@@ -16,7 +18,7 @@ export function workflowDraftRepresentationTag(input: {
   const compatibilityFingerprint = z
     .string()
     .min(1)
-    .max(256)
+    .max(COMPATIBILITY_FINGERPRINT_LENGTH)
     .parse(input.compatibilityFingerprint);
   const digest = createHash('sha256')
     .update(

@@ -9,6 +9,7 @@ import {
   type PortableConnectionBinding,
   type PortableConnectionSlot,
   type PortableIssue,
+  PORTABLE_MANIFEST_FIELD_LIMITS,
   WORKFLOW_PORTABILITY_LIMITS,
 } from './portable-manifest.js';
 
@@ -38,7 +39,7 @@ export class WorkflowPortabilityError extends Error {
     this.issues = Object.freeze([
       {
         code,
-        path: path.slice(0, 2_048),
+        path: path.slice(0, PORTABLE_MANIFEST_FIELD_LIMITS.issuePathLength),
         message:
           'Portable workflow content is not supported or safe for this operation',
       },

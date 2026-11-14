@@ -1,4 +1,7 @@
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../workflow-graph.schemas.js';
+import {
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  WORKFLOW_GRAPH_JSON_VALUE_DEPTH,
+} from '../workflow-graph.schemas.js';
 
 export interface WorkflowGraphLimits {
   readonly nodes: number;
@@ -16,8 +19,7 @@ export interface WorkflowGraphLimits {
 
 export const WORKFLOW_GRAPH_LIMITS: WorkflowGraphLimits = Object.freeze({
   ...WORKFLOW_GRAPH_CONTRACT_LIMITS,
-  structuredDepth: 32,
-  jsonValueDepth: 64,
+  jsonValueDepth: WORKFLOW_GRAPH_JSON_VALUE_DEPTH,
 });
 
 export const GRAPH_ISSUE_CODES = [

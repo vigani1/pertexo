@@ -1,7 +1,10 @@
 import { utf8ByteLength } from '../../values/text.js';
 import { canonicalJson, type JsonValue } from '../../values/json/canonical.js';
 import { resolveJsonPath } from '../../values/json/path.js';
-import type { TestAssertion } from './workflow-test-expectations.schemas.js';
+import {
+  WORKFLOW_TEST_LIMITS,
+  type TestAssertion,
+} from './workflow-test-expectations.schemas.js';
 
 export function matchesTestAssertion(
   actual: JsonValue,
@@ -50,12 +53,14 @@ export function observeTestAssertion(
   );
   const text = canonicalJson(resolved.value);
   const bytes = utf8ByteLength(text);
-  return bytes <= 4096
+  return bytes <= WORKFLOW_TEST_LIMITS.expectedValueBytes
     ? { state: 'value', matched, value: resolved.value }
     : {
         state: 'value',
         matched,
-        preview: Array.from(text).slice(0, 1000).join(''),
+        preview: Array.from(text)
+          .slice(0, WORKFLOW_TEST_LIMITS.previewCharacters)
+          .join(''),
         bytes,
         truncated: true,
       };

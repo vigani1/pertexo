@@ -1,4 +1,5 @@
 import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
+import { WORKFLOW_TEST_LIMITS } from './workflow-test-expectations.schemas.js';
 /** Frozen and current test UIs use the same names, including nested steps. */
 export function workflowTestStepChoices(
   graph: WorkflowGraph,
@@ -9,7 +10,7 @@ export function workflowTestStepChoices(
       {
         nodeId: node.id,
         label: Array.from(label.length === 0 ? node.definition.key : label)
-          .slice(0, 128)
+          .slice(0, WORKFLOW_TEST_LIMITS.stepLabelCharacters)
           .join(''),
       },
       ...(node.structured === undefined

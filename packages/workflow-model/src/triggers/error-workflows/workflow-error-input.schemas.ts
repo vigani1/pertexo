@@ -1,15 +1,34 @@
 import { z } from 'zod';
 import { workflowFailureClassificationSchema } from '../../flow/failure-routing/value.js';
 
+const WORKFLOW_ERROR_INPUT_LIMITS = Object.freeze({
+  textLength: 256,
+  safeErrorCodeLength: 128,
+});
+
 const failedStepSchema = z
   .object({
-    id: z.string().min(1).max(256),
-    name: z.string().min(1).max(256).nullable().default(null),
-    nodeType: z.string().min(1).max(256).nullable().default(null),
+    id: z.string().min(1).max(WORKFLOW_ERROR_INPUT_LIMITS.textLength),
+    name: z
+      .string()
+      .min(1)
+      .max(WORKFLOW_ERROR_INPUT_LIMITS.textLength)
+      .nullable()
+      .default(null),
+    nodeType: z
+      .string()
+      .min(1)
+      .max(WORKFLOW_ERROR_INPUT_LIMITS.textLength)
+      .nullable()
+      .default(null),
     errorKind: workflowFailureClassificationSchema.shape.errorKind
       .nullable()
       .default(null),
-    safeErrorCode: z.string().max(128).nullable().default(null),
+    safeErrorCode: z
+      .string()
+      .max(WORKFLOW_ERROR_INPUT_LIMITS.safeErrorCodeLength)
+      .nullable()
+      .default(null),
   })
   .strict()
   .refine(
@@ -26,7 +45,11 @@ const failedStepSchema = z
 export const workflowErrorInputSchema = z
   .object({
     workflow: z
-      .object({ id: z.uuid(), name: z.string().max(256), versionId: z.uuid() })
+      .object({
+        id: z.uuid(),
+        name: z.string().max(WORKFLOW_ERROR_INPUT_LIMITS.textLength),
+        versionId: z.uuid(),
+      })
       .strict(),
     run: z
       .object({

@@ -7,6 +7,8 @@ export const STEP_RETRY_LIMITS = Object.freeze({
   maximumAttempts: 5,
   minimumDelayMillis: 1_000,
   maximumDelayMillis: 60_000,
+  // Delays are whole seconds.
+  delayStepMillis: 1_000,
 });
 
 export const DEFAULT_STEP_RETRY_SETTINGS = Object.freeze({
@@ -26,7 +28,7 @@ export const stepRetrySettingsSchema = z
       .int()
       .min(STEP_RETRY_LIMITS.minimumDelayMillis)
       .max(STEP_RETRY_LIMITS.maximumDelayMillis)
-      .multipleOf(1_000),
+      .multipleOf(STEP_RETRY_LIMITS.delayStepMillis),
   })
   .strict();
 

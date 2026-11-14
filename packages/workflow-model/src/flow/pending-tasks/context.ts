@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { inspectJsonValue } from '../../values/json/canonical.js';
+import {
+  PENDING_TASK_LIMITS,
+  storedTaskBytes,
+  taskKilobytes,
+} from './audience.js';
 import { storageTextSchema } from '../../values/json/text.js';
 import {
   parseFormValues,
@@ -13,18 +17,18 @@ export const taskDetailsSchema = z
   .record(
     storageTextSchema
       .min(1)
-      .max(160)
+      .max(PENDING_TASK_LIMITS.detailNameCharacters)
       .refine((value) => value.trim().length > 0, 'Give each detail a name.'),
-    z.union([scalar, z.array(scalar).max(20)]),
+    z.union([scalar, z.array(scalar).max(PENDING_TASK_LIMITS.detailListItems)]),
   )
   .refine(
-    (value) => Object.keys(value).length <= 20,
-    'Use at most 20 detail fields.',
+    (value) => Object.keys(value).length <= PENDING_TASK_LIMITS.detailFields,
+    `Use at most ${String(PENDING_TASK_LIMITS.detailFields)} detail fields.`,
   )
-  .refine((value) => {
-    const { bytes, members } = inspectJsonValue(value);
-    return bytes + 2 * members <= 8_192;
-  }, 'Keep task details within 8 KB; include only the facts needed to respond.');
+  .refine(
+    (value) => storedTaskBytes(value) <= PENDING_TASK_LIMITS.detailsBytes,
+    `Keep task details within ${taskKilobytes(PENDING_TASK_LIMITS.detailsBytes)}; include only the facts needed to respond.`,
+  );
 
 export const taskContextSchema = z
   .object({
@@ -32,10 +36,10 @@ export const taskContextSchema = z
     prefill: formValuesSchema.optional(),
   })
   .strict()
-  .refine((value) => {
-    const { bytes, members } = inspectJsonValue(value);
-    return bytes + 2 * members <= 73_728;
-  }, 'Keep task context within 72 KB; shorten the details or prefilled values.');
+  .refine(
+    (value) => storedTaskBytes(value) <= PENDING_TASK_LIMITS.contextBytes,
+    `Keep task context within ${taskKilobytes(PENDING_TASK_LIMITS.contextBytes)}; shorten the details or prefilled values.`,
+  );
 
 /** Responders finish partial selections; prefills still enforce choices and maxima. */
 export function parseTaskPrefill(fields: readonly FormField[], input: unknown) {
