@@ -7,7 +7,7 @@ import {
   type JsonValue,
 } from '@pertexo/node-sdk/server';
 import type { RowFormat } from './encode.js';
-import { refuseFileCreation } from './failure.js';
+import { refuseFileCreation } from './create-file.errors.js';
 import { writeWorkbook, XLSX_MEDIA_TYPE } from './xlsx/workbook.js';
 import type {
   CoreCreateFileConfig,

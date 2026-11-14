@@ -1,4 +1,4 @@
-export { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
+export { CORE_NODE_DEFINITION_REGISTRATIONS } from './catalog/definition-registrations.js';
 
 export { CORE_SWITCH_DEFINITION } from './flow/switch/switch.definition.js';
 
@@ -14,7 +14,7 @@ export {
   CORE_PARALLEL_EXECUTOR,
 } from './flow/parallel/parallel.definition.js';
 
-export { CORE_NODE_CATALOG } from './core-node-catalog.js';
+export { CORE_NODE_CATALOG } from './catalog/core-node-catalog.js';
 
 export {
   CORE_SCHEDULE_CONFIG_SCHEMA,
@@ -42,4 +42,4 @@ export { CORE_CODE_DEFINITION } from './data/code/code.definition.js';
 
 export { CORE_CODE_CONFIG_SCHEMA } from './data/code/code.schemas.js';
 
-export { SUMMARY_RESULT_FAILURE } from './data/lists/semantics/summary-failure.js';
+export { SUMMARY_RESULT_FAILURE } from './data/lists/semantics/summary.errors.js';

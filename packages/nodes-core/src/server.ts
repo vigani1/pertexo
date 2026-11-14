@@ -3,12 +3,12 @@ import {
   type NodeRegistry,
 } from '@pertexo/node-sdk/server';
 
-import { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
-import { CORE_NODE_CATALOG } from './core-node-catalog.js';
-import { CORE_NODE_EXECUTOR_REGISTRATIONS } from './registrations.js';
+import { CORE_NODE_DEFINITION_REGISTRATIONS } from './catalog/definition-registrations.js';
+import { CORE_NODE_CATALOG } from './catalog/core-node-catalog.js';
+import { CORE_NODE_EXECUTOR_REGISTRATIONS } from './catalog/executor-registrations.js';
 
-export { CORE_NODE_DEFINITION_REGISTRATIONS } from './definitions.js';
-export { CORE_NODE_EXECUTOR_REGISTRATIONS } from './registrations.js';
+export { CORE_NODE_DEFINITION_REGISTRATIONS } from './catalog/definition-registrations.js';
+export { CORE_NODE_EXECUTOR_REGISTRATIONS } from './catalog/executor-registrations.js';
 
 export function createCoreNodeRegistry(): NodeRegistry {
   return createNodeRegistry({
@@ -18,5 +18,5 @@ export function createCoreNodeRegistry(): NodeRegistry {
   });
 }
 
-export { UTILITY_ERROR_CODE } from './data/utilities/result.js';
-export { FILE_CREATION_ERROR_CODE } from './data/create-file/failure.js';
+export { UTILITY_ERROR_CODE } from './data/utilities/utility-result.js';
+export { FILE_CREATION_ERROR_CODE } from './data/create-file/create-file.errors.js';

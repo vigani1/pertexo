@@ -4,7 +4,7 @@ import {
   type NodeManifest,
 } from '@pertexo/node-sdk';
 
-import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
+import { CORE_BOUNDED_JSON_POLICY } from '../../catalog/core-policies.js';
 import {
   CORE_TERMINATE_CONFIG_SCHEMA,
   CORE_TERMINATE_INPUT_SCHEMA,

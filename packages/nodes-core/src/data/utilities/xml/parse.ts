@@ -1,7 +1,7 @@
 import { parseXml, XmlError } from '@rgrove/parse-xml';
 import { Parser } from 'htmlparser2';
 import { XML_LIMITS } from './xml.schemas.js';
-import { refuseUtility } from '../result.js';
+import { refuseUtility } from '../utility-result.js';
 
 /** Resource preflight protects the strict parser's recursive element reader. */
 export function parseBoundedXml(value: string, signal: AbortSignal) {

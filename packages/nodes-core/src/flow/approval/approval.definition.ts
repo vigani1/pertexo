@@ -3,7 +3,7 @@ import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
 import {
   CORE_BOUNDED_JSON_POLICY,
   CORE_JSONATA_POLICY,
-} from '../../policies.js';
+} from '../../catalog/core-policies.js';
 import {
   CORE_APPROVAL_CONFIG_SCHEMA,
   CORE_APPROVAL_INPUT_SCHEMA,

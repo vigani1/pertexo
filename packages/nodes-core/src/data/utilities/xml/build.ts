@@ -6,7 +6,7 @@ import { parseBoundedXml } from './parse.js';
 import { qName } from 'xml-naming';
 import { XML_LIMITS } from './xml.schemas.js';
 import { isRecord } from '@pertexo/workflow-model';
-import { refuseUtility } from '../result.js';
+import { refuseUtility } from '../utility-result.js';
 
 const reserved = new Set(['__proto__', 'constructor', 'prototype']);
 function addBytes(left: number, right: number): number {

@@ -1,7 +1,7 @@
 import { looksLikeFormula } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { SPREADSHEET_LIMITS } from '../../read-file/xlsx/limits.js';
-import { refuseFileCreation } from '../failure.js';
+import { refuseFileCreation } from '../create-file.errors.js';
 
 export type SheetRow = Readonly<Record<string, JsonValue>>;
 
