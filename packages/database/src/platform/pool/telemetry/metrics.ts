@@ -30,7 +30,7 @@ export interface DatabasePoolDiagnostics {
 }
 
 type DatabasePoolDiagnosticEvent = Readonly<{
-  operation: 'idle_pool_error' | 'lock_wait_sample';
+  operation: 'idle_pool_error' | 'lock_wait_sample' | 'connection_check';
   poolRole: DatabasePoolRole;
   errorType: 'Error' | 'NonError';
 }>;
