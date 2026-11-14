@@ -5,7 +5,6 @@ export {
 } from './definitions/output-variant.js';
 
 export {
-  NODE_JSON_LIMITS,
   boundedNodeJsonRecordSchema,
   boundedNodeJsonSchema,
   generateSchemaDocument,
@@ -14,6 +13,8 @@ export {
   type SchemaObject,
   type SchemaProjectionOptions,
 } from './definitions/schema-document.js';
+
+export { NODE_JSON_LIMITS } from './values/bounded-json.validation.js';
 
 export { labelledChoice } from './definitions/labelled-choice.js';
 

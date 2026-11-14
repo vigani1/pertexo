@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NODE_JSON_LIMITS } from '../../../src/index.js';
 
 import {
   boundedNodeJsonSchema,
@@ -10,7 +11,6 @@ import {
 } from '../../../src/definitions/catalog.js';
 import {
   InvalidBoundedJsonError,
-  NODE_EXECUTION_LIMITS,
   canonicalizeBoundedJson,
 } from '../../../src/server.js';
 import { policy, manifest, catalog } from './registry.fixture.js';
@@ -21,8 +21,8 @@ describe('node-sdk bounded JSON contracts', () => {
       generateSchemaDocument(boundedNodeJsonSchema)[
         'x-pertexo-node-json-limits'
       ],
-    ).toEqual(NODE_EXECUTION_LIMITS);
-    const exact = 'x'.repeat(NODE_EXECUTION_LIMITS.bytes - 2);
+    ).toEqual(NODE_JSON_LIMITS);
+    const exact = 'x'.repeat(NODE_JSON_LIMITS.bytes - 2);
     const over = `${exact}x`;
     expect(boundedNodeJsonSchema.safeParse(exact).success).toBe(true);
     expect(() => canonicalizeBoundedJson(exact)).not.toThrow();
@@ -44,9 +44,7 @@ describe('node-sdk bounded JSON contracts', () => {
       InvalidBoundedJsonError,
     );
 
-    const oversizedSparse = new Array<unknown>(
-      NODE_EXECUTION_LIMITS.members + 1,
-    );
+    const oversizedSparse = new Array<unknown>(NODE_JSON_LIMITS.members + 1);
     expect(boundedNodeJsonSchema.safeParse(oversizedSparse).success).toBe(
       false,
     );
@@ -121,7 +119,7 @@ describe('node-sdk bounded JSON contracts', () => {
     let getterCalls = 0;
     let methodCalls = 0;
     const oversized = Object.defineProperty(
-      { value: 'x'.repeat(NODE_EXECUTION_LIMITS.bytes) },
+      { value: 'x'.repeat(NODE_JSON_LIMITS.bytes) },
       'toJSON',
       {
         get: () => {
@@ -140,7 +138,7 @@ describe('node-sdk bounded JSON contracts', () => {
       },
     });
     const oversizedMethod = Object.defineProperty(
-      { value: 'x'.repeat(NODE_EXECUTION_LIMITS.bytes) },
+      { value: 'x'.repeat(NODE_JSON_LIMITS.bytes) },
       'toJSON',
       {
         value: () => {

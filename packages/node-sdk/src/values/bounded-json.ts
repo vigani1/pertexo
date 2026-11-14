@@ -11,15 +11,13 @@ interface JsonObject {
   readonly [key: string]: JsonValue;
 }
 
-export const NODE_EXECUTION_LIMITS = NODE_JSON_LIMITS;
-
 export function isJsonObject(value: JsonValue): value is JsonObject {
   return value !== null && !Array.isArray(value) && typeof value === 'object';
 }
 
 export function canonicalizeBoundedJson(
   value: unknown,
-  limits: BoundedJsonLimits = NODE_EXECUTION_LIMITS,
+  limits: BoundedJsonLimits = NODE_JSON_LIMITS,
 ): JsonValue {
   const invalidLimits =
     !Number.isSafeInteger(limits.bytes) ||

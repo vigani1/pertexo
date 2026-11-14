@@ -52,10 +52,7 @@ export {
 
 export { describeNodeRefusal } from './execution/refusal.js';
 
-export {
-  canonicalizeBoundedJson,
-  NODE_EXECUTION_LIMITS,
-} from './values/bounded-json.js';
+export { canonicalizeBoundedJson } from './values/bounded-json.js';
 
 export { FileInputFailure } from './artifacts/file-input.errors.js';
 

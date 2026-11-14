@@ -6,9 +6,9 @@ import {
   writeFilePages,
   type EncodedFilePageRecord,
   type NodeArtifactRuntime,
-  NODE_EXECUTION_LIMITS,
   type JsonValue,
 } from '@pertexo/node-sdk/server';
+import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import { inspectJsonValue, resolveJsonPath } from '@pertexo/workflow-model';
 import { inspectProviderHttpError } from '../../providers/http.errors.js';
 import type {
@@ -240,9 +240,9 @@ function exceedsInlinePageEnvelope({
   itemDepth: number;
 }>): boolean {
   return (
-    envelope.bytes + itemBytes > NODE_EXECUTION_LIMITS.bytes ||
-    envelope.members + itemMembers > NODE_EXECUTION_LIMITS.members ||
-    Math.max(envelope.depth, itemDepth + 1) > NODE_EXECUTION_LIMITS.depth
+    envelope.bytes + itemBytes > NODE_JSON_LIMITS.bytes ||
+    envelope.members + itemMembers > NODE_JSON_LIMITS.members ||
+    Math.max(envelope.depth, itemDepth + 1) > NODE_JSON_LIMITS.depth
   );
 }
 
