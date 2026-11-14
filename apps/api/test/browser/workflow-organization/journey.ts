@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { liveJourneyEnvironment } from '../../../../../infrastructure/testing/live-failure-artifacts.mjs';
 import { createServer } from 'node:http';
 
 import { dirname, join } from 'node:path';
@@ -288,7 +289,7 @@ export function registerWorkflowOrganizationJourney(
     if (address === null || typeof address === 'string')
       throw new Error('Owned organization listener unavailable');
     const environment = {
-      ...process.env,
+      ...liveJourneyEnvironment(process.env, `workflow-organization-${role}`),
       EDITOR_BROWSER_INTEGRATION: 'true',
       EDITOR_BROWSER_CASE: 'workflow-organization',
       EDITOR_BROWSER_OWNED_FIXTURE: 'true',
@@ -296,8 +297,6 @@ export function registerWorkflowOrganizationJourney(
       PERTEXO_LIVE_MAIL_ORIGIN: `http://127.0.0.1:${String(address.port)}`,
       PERTEXO_LIVE_WEB_ORIGIN: webOrigin,
       PERTEXO_ORGANIZATION_ROLE: role,
-      // Its accounts are made for this run on a disposable database.
-      PERTEXO_LIVE_FAILURE_ARTIFACTS: `workflow-organization-${role}`,
     };
     // The children's output goes to the journey's log, which CI prints, so a
     // failure shows Playwright's own error and call log.

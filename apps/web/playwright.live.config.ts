@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { failureArtifactJourney } from '../../infrastructure/testing/live-failure-artifacts.mjs';
 
 // Playwright also saves ARIA error-context snapshots independently of trace,
 // video and screenshots. Live pages may reveal transient test credentials.
@@ -21,13 +22,11 @@ function testMatch() {
   return '**/*.spec.ts';
 }
 
-// A journey whose accounts exist only for the run, on a database the run
-// throws away, may ask for a trace and a screenshot of a failure, so a
-// flake that never reproduces locally can be read from CI. Every other
-// journey keeps them off: its pages can show secrets typed into steps.
-const failureArtifacts = process.env.PERTEXO_LIVE_FAILURE_ARTIFACTS;
-if (failureArtifacts !== undefined && !/^[a-z0-9-]+$/u.test(failureArtifacts))
-  throw new Error('PERTEXO_LIVE_FAILURE_ARTIFACTS names the journey.');
+// Only a journey listed in live-failure-artifacts.mjs (run-only accounts on a
+// disposable database, no step secrets) keeps a trace and a screenshot of a
+// failure, so a flake that never reproduces locally can be read from CI.
+// Every other journey keeps them off: its pages can show typed secrets.
+const failureArtifacts = failureArtifactJourney(process.env);
 
 // The API journey owner validates PERTEXO_LIVE_WEB_PORT, serves the preview
 // there and passes its origin, so the port has one reading.
