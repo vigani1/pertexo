@@ -58,6 +58,10 @@ export const ROOT_CONCEPTS = Object.freeze({
     'artifact-identity.ts': 'artifact identity and storage keys',
     'artifact-store.errors.ts': 'the package’s one error family',
   },
+  'packages/workflow-engine': {
+    'workflow-execution.ts': 'the engine’s state vocabulary every area reads',
+    'workflow-engine.errors.ts': 'the engine’s one error family',
+  },
 });
 
 // PENDING_ROOTS as it stood when the check began; it stays within this list.
@@ -82,7 +86,6 @@ export const PENDING_ROOTS = Object.freeze([
   'apps/ops',
   'apps/worker',
   'packages/database',
-  'packages/workflow-engine',
 ]);
 
 /** Findings for one workspace's direct `src` files. */

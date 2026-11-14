@@ -1,4 +1,4 @@
-import type { AdvanceWorkflowInput } from '../../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../../src/transition/advance-workflow.js';
 import {
   advanceWorkflow,
   buildWorkflowExecutable,

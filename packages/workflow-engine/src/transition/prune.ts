@@ -1,4 +1,7 @@
-import { branchPathHasPrefix, iterationPathHasPrefix } from '../scope.js';
+import {
+  branchPathHasPrefix,
+  iterationPathHasPrefix,
+} from '../invocations/invocation-scope.js';
 import type { InvocationState, LoopState } from '../workflow-execution.js';
 import {
   isTerminalNodeStatus,

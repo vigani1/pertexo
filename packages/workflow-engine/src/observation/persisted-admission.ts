@@ -5,7 +5,7 @@ import {
 } from '@pertexo/workflow-model';
 
 import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
-import { operationError } from '../operation-values.js';
+import { operationError } from '../input-checks/engine-values.js';
 
 /** Facts come from our own PostgreSQL rows: JSON, so only its shape needs checking. */
 function admitObservationArray(value: unknown): readonly unknown[] {

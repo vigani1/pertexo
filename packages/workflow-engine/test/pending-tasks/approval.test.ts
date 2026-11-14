@@ -16,7 +16,7 @@ import {
   createCheckpoint,
   parseCheckpoint,
 } from '../../src/server.js';
-import type { AdvanceWorkflowInput } from '../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../src/transition/advance-workflow.js';
 import { graph, nodeCatalog } from '../support/executable-workflow.js';
 import { completion } from '../compilation/calls/call-workflow-fixtures.js';
 

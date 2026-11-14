@@ -5,7 +5,7 @@ import {
 import type { PolicyReference } from '@pertexo/node-sdk';
 
 import type { WorkflowExecutableNode } from '../compilation/workflow-executable.js';
-import { operationError } from '../operation-values.js';
+import { operationError } from '../input-checks/engine-values.js';
 import type { AttemptFailureObservation } from './persisted.js';
 import { decideRetry, resolveRetryPolicy } from '../attempt/retries.js';
 import type { WorkflowObservation } from '../workflow-execution.js';

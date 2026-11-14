@@ -3,7 +3,7 @@ import {
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
 
-import { operationError } from '../operation-values.js';
+import { operationError } from '../input-checks/engine-values.js';
 
 export function assertIdentity(
   value: string,

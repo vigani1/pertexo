@@ -19,11 +19,11 @@ import {
   assertBoundedCheckpointJson,
   WORKFLOW_CHECKPOINT_LIMITS,
 } from '../checkpoint/admission.js';
-import { invocationKey } from '../invocation-identity.js';
+import { invocationKey } from '../invocations/invocation-identity.js';
 import {
   configuredScopedOutputPorts,
   configuredParallelOutputPorts,
-} from '../control-output-ports.js';
+} from '../control-nodes/control-output-ports.js';
 import type {
   InvocationState,
   WorkflowCheckpoint,

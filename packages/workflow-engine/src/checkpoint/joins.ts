@@ -1,4 +1,4 @@
-import { settleJoin } from '../join-settlement.js';
+import { settleJoin } from '../control-nodes/join-settlement.js';
 import { isRecord } from '@pertexo/workflow-model';
 import type { JoinState } from '../workflow-execution.js';
 import {

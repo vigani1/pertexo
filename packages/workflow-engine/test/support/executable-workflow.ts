@@ -1,4 +1,4 @@
-import { invocationKey } from '../../src/invocation-identity.js';
+import { invocationKey } from '../../src/invocations/invocation-identity.js';
 
 export {
   boundedPolicy,

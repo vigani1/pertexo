@@ -1,7 +1,7 @@
 import type {
   BranchScopePart,
   IterationScopePart,
-} from './workflow-execution.js';
+} from '../workflow-execution.js';
 
 export function sameIterationPath(
   left: readonly IterationScopePart[] | undefined,

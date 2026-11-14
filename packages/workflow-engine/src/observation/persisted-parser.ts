@@ -10,7 +10,11 @@ import {
 } from '@pertexo/workflow-model';
 
 import type { WorkflowObservation } from '../workflow-execution.js';
-import { exactKeys, operationError, record } from '../operation-values.js';
+import {
+  exactKeys,
+  operationError,
+  record,
+} from '../input-checks/engine-values.js';
 import type {
   AttemptFailureObservation,
   DeadlineExpiredObservation,

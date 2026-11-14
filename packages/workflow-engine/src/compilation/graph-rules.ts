@@ -23,7 +23,7 @@ import {
 import {
   isCoreMergeDefinition,
   isCoreParallelDefinition,
-} from '../core-definition-identities.js';
+} from '../control-nodes/core-definition-identities.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { fail } from './executable-errors.js';
 import { sameIdentity } from './definition-identity.js';

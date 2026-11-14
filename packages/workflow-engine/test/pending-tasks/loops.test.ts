@@ -15,7 +15,7 @@ import {
   createCheckpoint,
   parseCheckpoint,
 } from '../../src/server.js';
-import type { AdvanceWorkflowInput } from '../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../src/transition/advance-workflow.js';
 import { forEachGraph, nodeCatalog } from '../support/executable-workflow.js';
 import { completion } from '../compilation/calls/call-workflow-fixtures.js';
 it('retains an unfinished loop approval, prunes only its decided scope and ignores retained duplicate outcomes', async () => {

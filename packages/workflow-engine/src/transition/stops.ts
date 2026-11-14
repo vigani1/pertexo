@@ -1,6 +1,6 @@
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { sameIterationPath } from '../scope.js';
+import { sameIterationPath } from '../invocations/invocation-scope.js';
 import { completeLoopIteration } from './scheduling/loops.js';
 import { assertNodeTransition, invocationIdentity } from './status.js';
 import type {

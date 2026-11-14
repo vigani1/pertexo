@@ -1,4 +1,4 @@
-import { WorkflowEngineError } from './workflow-engine.errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 
 export function invocationKey(input: {

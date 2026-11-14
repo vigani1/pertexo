@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { projectSchedulerState } from '../../../src/operations.js';
+import { projectSchedulerState } from '../../../src/transition/advance-workflow.js';
 import type { WorkflowExecutableGraph } from '../../../src/compilation/workflow-executable.js';
 
 describe('scheduler executable projection', () => {
