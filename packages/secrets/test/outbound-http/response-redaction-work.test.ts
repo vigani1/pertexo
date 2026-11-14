@@ -9,7 +9,7 @@ it.each([1, 32, 64])(
   'bounds four-layer masking at the response size limit with %i credentials',
   async (count) => {
     const script = `
-    import { boundedRedactedBody } from ${JSON.stringify(new URL('../../dist/outbound-http/stream-redaction.js', import.meta.url).href)};
+    import { boundedRedactedBody } from ${JSON.stringify(new URL('../../dist/outbound-http/redaction/stream-redaction.js', import.meta.url).href)};
     let source='"'+String.raw\`\\u0061\`.repeat(Math.floor((10485760-100)/13))+'"';
     for(let layer=1;layer<4;layer++) source=JSON.stringify(source);
     const body=Buffer.from(source), retained=[];
