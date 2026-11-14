@@ -103,11 +103,11 @@ export class LookupSlackChannelsUseCase {
             allUnresolved(named, 'provider_unavailable'),
           );
         const budget = lookupBudget();
+        const signal = AbortSignal.any([
+          encryptionSignal(input),
+          budget.signal,
+        ]);
         try {
-          const signal = AbortSignal.any([
-            encryptionSignal(input),
-            budget.signal,
-          ]);
           const resolved = await this.resolveSecret(input, signal);
           if (resolved === undefined)
             return respond(
@@ -123,6 +123,15 @@ export class LookupSlackChannelsUseCase {
               budget: budget.signal,
             }),
           );
+        } catch (error: unknown) {
+          // The budget ran out before any channel was asked: reading or
+          // opening the credential stalled. A caller giving up stays an abort.
+          if (budget.signal.aborted && signal.reason === budget.signal.reason)
+            return respond(
+              channelIds,
+              allUnresolved(named, 'provider_unavailable'),
+            );
+          throw error;
         } finally {
           budget.clear();
         }

@@ -329,6 +329,35 @@ describe('Slack channel lookup past its whole-request budget', () => {
     expect(lookup.plaintext()?.every((byte) => byte === 0)).toBe(true);
   });
 
+  // Review of batch K, P3-2: the budget also covers reading and opening the
+  // credential, before any channel is asked.
+  it('says the provider is unavailable when the credential stalls past the budget', async () => {
+    vi.useFakeTimers();
+    const lookup = fixture();
+    // Opening the credential never answers; only the lookup's signal ends it.
+    lookup.encryption.open.mockImplementation(
+      (...args: unknown[]) =>
+        new Promise<Uint8Array>((_resolve, reject) => {
+          const signal = args[2] as AbortSignal;
+          signal.addEventListener('abort', () => {
+            reject(signal.reason as Error);
+          });
+        }),
+    );
+
+    const answer = lookup.lookup(['C0001', 'G0002']);
+    const settled = answer.catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(await settled).toEqual({
+      items: [
+        unresolved('C0001', 'provider_unavailable'),
+        unresolved('G0002', 'provider_unavailable'),
+      ],
+    });
+    expect(lookup.lookupChannel).not.toHaveBeenCalled();
+  });
+
   it('still reports the caller giving up as an abort, not as Slack being slow', async () => {
     vi.useFakeTimers();
     const lookup = fixture();
