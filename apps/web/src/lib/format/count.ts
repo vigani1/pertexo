@@ -1,6 +1,9 @@
+import { FORMAT_LOCALE } from './locale';
+
 // The one way to put a word in the number its count needs, from the
-// locale's plural rules rather than an `=== 1` written at each place.
-const PLURALS = new Intl.PluralRules('en-US');
+// locale's plural rules rather than an `=== 1` written at each place. The
+// words are English; the number follows the viewer's region, as dates do.
+const PLURALS = new Intl.PluralRules(FORMAT_LOCALE);
 
 /**
  * The word for a count: `pluralWord(2, 'step')` is "steps". Give the plural
@@ -20,5 +23,5 @@ export function formatCount(
   singular: string,
   plural = `${singular}s`,
 ): string {
-  return `${count.toLocaleString('en-US')} ${pluralWord(count, singular, plural)}`;
+  return `${count.toLocaleString(FORMAT_LOCALE)} ${pluralWord(count, singular, plural)}`;
 }
