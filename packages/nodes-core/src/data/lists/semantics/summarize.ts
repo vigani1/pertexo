@@ -4,7 +4,7 @@ import {
   NodeExecutorFailure,
 } from '@pertexo/node-sdk/server';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
-import { SUMMARY_RESULT_FAILURE } from './summary-failure.js';
+import { SUMMARY_RESULT_FAILURE } from './summary.errors.js';
 import {
   canonicalJson,
   parseJsonPath,

@@ -2,7 +2,7 @@ import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import {
   CORE_BOUNDED_JSON_POLICY,
   CORE_JSONATA_POLICY,
-} from '../../../policies.js';
+} from '../../../catalog/core-policies.js';
 import { COLLECTION_SEMANTICS } from '../semantics/semantics.schemas.js';
 import {
   CORE_UNIQUE_CONFIG_SCHEMA,

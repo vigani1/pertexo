@@ -1,6 +1,6 @@
 import { DomHandler, type ChildNode } from 'domhandler';
 import { Parser } from 'htmlparser2';
-import { refuseUtility } from '../result.js';
+import { refuseUtility } from '../utility-result.js';
 
 class BoundedDomHandler extends DomHandler {
   private members = 0;

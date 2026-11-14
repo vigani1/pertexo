@@ -4,7 +4,7 @@ import { SWITCH_CASE_PORTS } from '@pertexo/workflow-model';
 import {
   CORE_BOUNDED_JSON_POLICY,
   CORE_JSONATA_POLICY,
-} from '../../policies.js';
+} from '../../catalog/core-policies.js';
 import {
   CORE_SWITCH_CONFIG_SCHEMA,
   CORE_SWITCH_INPUT_SCHEMA,

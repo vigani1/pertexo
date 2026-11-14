@@ -6,7 +6,7 @@ import {
   fileColumnNameSchema,
   type CoreCreateFileConfig,
 } from './create-file.schemas.js';
-import { refuseFileCreation } from './failure.js';
+import { refuseFileCreation } from './create-file.errors.js';
 import { writeWorkbook, XLSX_MEDIA_TYPE } from './xlsx/workbook.js';
 
 type Row = Readonly<Record<string, JsonValue>>;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CORE_BOUNDED_JSON_POLICY } from '../src/policies.js';
+import { CORE_BOUNDED_JSON_POLICY } from '../src/catalog/core-policies.js';
 import {
   CORE_NODE_DEFINITION_REGISTRATIONS,
   CORE_NODE_CATALOG,

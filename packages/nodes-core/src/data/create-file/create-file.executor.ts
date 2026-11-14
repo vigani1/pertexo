@@ -8,7 +8,10 @@ import {
 import { CORE_CREATE_FILE_EXECUTOR } from './create-file.definition.js';
 import { createFileFromPages } from './pages.js';
 import { encodeFile } from './encode.js';
-import { refuseFileCreation, FILE_CREATION_ERROR_CODE } from './failure.js';
+import {
+  refuseFileCreation,
+  FILE_CREATION_ERROR_CODE,
+} from './create-file.errors.js';
 import type {
   CoreCreateFileConfig,
   CoreCreateFileInput,

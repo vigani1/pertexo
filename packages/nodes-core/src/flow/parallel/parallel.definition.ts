@@ -1,7 +1,7 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import { PARALLEL_BRANCH_PORTS } from '@pertexo/workflow-model';
 
-import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
+import { CORE_BOUNDED_JSON_POLICY } from '../../catalog/core-policies.js';
 import {
   CORE_PARALLEL_CONFIG_SCHEMA,
   CORE_PARALLEL_INPUT_SCHEMA,

@@ -5,7 +5,7 @@ import {
   type NodeManifest,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
+import { CORE_BOUNDED_JSON_POLICY } from '../../catalog/core-policies.js';
 export const CORE_RUN_VALUES_DEFINITION = Object.freeze({
   key: 'core.run_values',
   version: 1,

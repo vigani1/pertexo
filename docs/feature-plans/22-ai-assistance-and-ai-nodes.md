@@ -14,7 +14,7 @@ No complete AI authoring/model/tool product established in inspected core/integr
 
 Inspected anchors (paths may move during the concurrent structural cleanup):
 
-- [packages/nodes-core/src/definitions.ts](../../packages/nodes-core/src/definitions.ts)
+- [packages/nodes-core/src/catalog/definition-registrations.ts](../../packages/nodes-core/src/catalog/definition-registrations.ts)
 - [packages/integrations/src/index.ts](../../packages/integrations/src/index.ts)
 
 “Not established” means no complete product was found in this targeted inventory,

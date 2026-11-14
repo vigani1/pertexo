@@ -1,5 +1,5 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
-import { CORE_BOUNDED_JSON_POLICY } from '../../policies.js';
+import { CORE_BOUNDED_JSON_POLICY } from '../../catalog/core-policies.js';
 import {
   CORE_RESPOND_WEBHOOK_CONFIG_SCHEMA,
   CORE_RESPOND_WEBHOOK_INPUT_SCHEMA,

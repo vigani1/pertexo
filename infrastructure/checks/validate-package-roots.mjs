@@ -82,7 +82,6 @@ export const PENDING_ROOTS = Object.freeze([
   'apps/ops',
   'apps/worker',
   'packages/database',
-  'packages/nodes-core',
   'packages/workflow-engine',
 ]);
 
