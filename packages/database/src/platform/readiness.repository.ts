@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { Pool } from 'pg';
 import type { DatabaseReadiness } from './database-platform.types.js';
+import { DatabaseNotReadyError } from './readiness.errors.js';
 
 export const EXPECTED_MIGRATION_HEAD = '0003_ordered_start_wakeup.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
@@ -30,11 +31,11 @@ export async function checkDatabaseReadiness(
   );
   const row = result.rows[0];
   if (row === undefined)
-    throw new Error('Database readiness metadata is unavailable');
+    throw new DatabaseNotReadyError('metadata_unavailable');
   if (row.postgres_major < MINIMUM_POSTGRES_MAJOR)
-    throw new Error('PostgreSQL major version is unsupported');
+    throw new DatabaseNotReadyError('postgres_unsupported');
   if (row.migration_head !== EXPECTED_MIGRATION_HEAD)
-    throw new Error('Database migration head is incompatible');
+    throw new DatabaseNotReadyError('migration_head_mismatch');
   return Object.freeze({
     migrationHead: row.migration_head,
     postgresMajor: row.postgres_major,
