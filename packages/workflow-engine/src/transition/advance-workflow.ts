@@ -49,19 +49,6 @@ import type { WorkflowTransitionPlan } from '../workflow-execution.js';
 
 import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executable.js';
 import { assertIdentity, assertNotAborted } from '../attempt/admission.js';
-export type {
-  ExecuteNodeAttemptInput,
-  NodeAttemptOutcome,
-  NodeExecutionRegistry,
-} from '../attempt/node-attempt.types.js';
-export type {
-  AttemptFailureObservation,
-  DeadlineExpiredObservation,
-  DueAtObservation,
-  PersistedWorkflowObservation,
-} from '../observation/persisted.js';
-export { resolveSingleNodePreviewInput } from '../attempt/mapping.js';
-export { executeNodeAttempt } from '../attempt/execute.js';
 export interface AdvanceWorkflowInput {
   readonly test?: WorkflowTestPolicy;
   readonly runId: string;
