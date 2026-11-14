@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -11,12 +12,8 @@ import {
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/artifacts/coordinator.js';
 
-export const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-export const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+export const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 const sharedDatabase = process.env.PERTEXO_Q11_SHARED_DATABASE === '1';
 export const databaseName = sharedDatabase
   ? new URL(migrationBaseUrl).pathname.slice(1)
@@ -62,13 +59,9 @@ export async function waitForPostgresLock(
 }
 export const migrationUrl = withDatabase(migrationBaseUrl);
 export const maintenanceUrl = withDatabase(
-  process.env.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+  testStackSetting('DATABASE_MAINTENANCE_URL'),
 );
-export const apiUrl = withDatabase(
-  process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-);
+export const apiUrl = withDatabase(testStackSetting('DATABASE_URL'));
 export const workspaceId = randomUUID();
 export const userId = randomUUID();
 export const runIds = [

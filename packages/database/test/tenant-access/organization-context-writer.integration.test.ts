@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 import {
@@ -9,10 +10,7 @@ import { withDatabase } from '../platform/migrations/upgrade-fixture.js';
 
 it('validates organization IDs and contains organization context within a transaction and its workspace projections', async () => {
   await withDatabase(async ({ config }) => {
-    const url = new URL(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-    );
+    const url = new URL(testStackSetting('DATABASE_URL'));
     url.pathname = new URL(config.connectionString).pathname;
     const pool = new Pool({ connectionString: url.toString(), max: 1 });
     const organization = '11111111-1111-4111-8111-111111111111',

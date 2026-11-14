@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -29,9 +30,7 @@ import {
 } from '../runs/run-store/run-store.fixture.js';
 import { claimDispatchAttempt } from '../runs/run-store/node-attempts.fixture.js';
 
-const maintenanceBaseUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+const maintenanceBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
 const signal = new AbortController().signal;
 const THIRTY_ONE_DAYS = `interval '31 days'`;

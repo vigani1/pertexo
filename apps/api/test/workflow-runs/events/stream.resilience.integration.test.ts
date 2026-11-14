@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
@@ -39,7 +40,7 @@ const redisUrl = process.env.REDIS_URL;
 // Destructive: stops and restarts Redis in this Compose project. The suite
 // first checks that REDIS_URL is that project's Redis.
 const composeProject = process.env.COMPOSE_PROJECT_NAME;
-const redisPort = process.env.REDIS_PORT ?? '6379';
+const redisPort = testStackSetting('REDIS_PORT');
 
 const enabled =
   process.env.API_SSE_RESILIENCE_INTEGRATION === 'true' &&
@@ -49,7 +50,7 @@ const enabled =
   composeProject !== undefined;
 
 const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
-const redisPassword = process.env.REDIS_PASSWORD ?? 'pertexo-local-redis';
+const redisPassword = testStackSetting('REDIS_PASSWORD');
 const databaseConfig = (connectionString: string) =>
   parseDatabaseConfig({
     connectionString,

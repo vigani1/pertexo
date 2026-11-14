@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { waitForBlockedBy } from '../../support/postgres/lock-coordination.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -224,10 +225,7 @@ export async function beforeAllFixture1() {
     }),
     { executableCompiler: testExecutableCompiler },
   );
-  const adminUrl = new URL(
-    process.env.DATABASE_ADMIN_URL ??
-      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-  );
+  const adminUrl = new URL(testStackSetting('DATABASE_ADMIN_URL'));
   adminUrl.pathname = new URL(fixture.apiConnectionString).pathname;
   observer = new Pool({ connectionString: adminUrl.toString(), max: 2 });
 }

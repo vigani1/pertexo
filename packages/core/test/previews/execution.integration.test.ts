@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   resetFixture,
@@ -112,8 +113,7 @@ describe('durable preview acceptance', () => {
     });
     const maintenanceConfig = parseDatabaseConfig({
       connectionString: disposableDatabase.databaseUrl(
-        process.env.DATABASE_MAINTENANCE_URL ??
-          'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+        testStackSetting('DATABASE_MAINTENANCE_URL'),
       ),
       max: 1,
     });

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -27,20 +28,17 @@ describe('trigger management authority linearization', () => {
     const commandApplicationName = `trigger-command-${randomUUID()}`;
     const suspensionApplicationName = `trigger-suspension-${randomUUID()}`;
     const apiUrl = scopedConnectionUrl(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+      testStackSetting('DATABASE_URL'),
       databasePath,
       commandApplicationName,
     );
     const migrationUrl = scopedConnectionUrl(
-      process.env.DATABASE_MIGRATION_URL ??
-        'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+      testStackSetting('DATABASE_MIGRATION_URL'),
       databasePath,
       suspensionApplicationName,
     );
     const adminUrl = scopedConnectionUrl(
-      process.env.DATABASE_ADMIN_URL ??
-        'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
+      testStackSetting('DATABASE_ADMIN_URL'),
       databasePath,
     );
     const commands = createScheduleTriggerStore(

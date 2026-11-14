@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -20,9 +21,7 @@ export async function withDatabase(
   }) => Promise<void>,
   options: { migrate?: false | 'baseline' } = {},
 ): Promise<void> {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     connectRoles: ['pertexo_app', 'pertexo_migration', 'pertexo_maintenance'],
@@ -39,8 +38,7 @@ export async function withDatabase(
     maintenanceRole: 'pertexo_maintenance',
     ownerRole: 'pertexo_owner',
     connectionString: fixture.databaseUrl(
-      process.env.DATABASE_MIGRATION_URL ??
-        'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+      testStackSetting('DATABASE_MIGRATION_URL'),
     ),
   };
   try {

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
@@ -32,10 +33,7 @@ async function upgradedTimers(
         ownerId,
       ],
     );
-    const url = new URL(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-    );
+    const url = new URL(testStackSetting('DATABASE_URL'));
     url.pathname = new URL(config.connectionString).pathname;
     const app = new Pool({ connectionString: url.toString(), max: 1 });
     const scoped = async <T>(

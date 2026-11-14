@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, afterEach } from 'vitest';
@@ -77,10 +78,7 @@ export function read(runId: string) {
   );
 }
 export async function terminal(runId: string, age: string) {
-  const adminUrl = new URL(
-    process.env.DATABASE_ADMIN_URL ??
-      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-  );
+  const adminUrl = new URL(testStackSetting('DATABASE_ADMIN_URL'));
   adminUrl.pathname = new URL(apiUrl).pathname;
   const admin = new Pool({ connectionString: adminUrl.toString(), max: 1 });
   const client = await admin.connect();

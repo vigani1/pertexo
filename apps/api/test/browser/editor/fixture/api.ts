@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import type { createBrowserOidcProvider } from '../federation/oidc-provider.js';
 
 import {
@@ -179,7 +180,7 @@ export function useEditorApiFixture(context: {
     afterMigration: async (databaseUrl) => {
       if (scenario === 'schedule' || controlledHttpScenario) {
         const inspector = new Pool({
-          connectionString: databaseUrl(process.env.DATABASE_ADMIN_URL ?? ''),
+          connectionString: databaseUrl(testStackSetting('DATABASE_ADMIN_URL')),
         });
         try {
           const identity = await inspector.query<{ name: string; oid: number }>(
@@ -196,10 +197,12 @@ export function useEditorApiFixture(context: {
       const ready = phase(context.worker, 'worker-ready');
       context.worker.send({
         ...(scenario === 'approvals' ? { callbackConfig } : {}),
-        workerUrl: databaseUrl(process.env.DATABASE_URL ?? ''),
-        dispatcherUrl: databaseUrl(process.env.DATABASE_MAINTENANCE_URL ?? ''),
-        apiUrl: databaseUrl(process.env.DATABASE_URL ?? ''),
-        migrationUrl: databaseUrl(process.env.DATABASE_MIGRATION_URL ?? ''),
+        workerUrl: databaseUrl(testStackSetting('DATABASE_URL')),
+        dispatcherUrl: databaseUrl(
+          testStackSetting('DATABASE_MAINTENANCE_URL'),
+        ),
+        apiUrl: databaseUrl(testStackSetting('DATABASE_URL')),
+        migrationUrl: databaseUrl(testStackSetting('DATABASE_MIGRATION_URL')),
         ...(httpMaster === undefined
           ? {}
           : {

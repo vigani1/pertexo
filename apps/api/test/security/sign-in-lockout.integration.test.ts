@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import {
   leaseRedisDatabase,
   redisStackLeaseKey,
@@ -47,7 +48,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
 
     beforeAll(async () => {
       const { startStack } = await import('./stack.js');
-      const coordinator = new Redis(process.env.REDIS_URL ?? '');
+      const coordinator = new Redis(testStackSetting('REDIS_URL'));
       try {
         stack = await startStack({
           environment: { AUTH_SIGN_UP_MODE: 'open' },
@@ -72,9 +73,11 @@ describe.runIf(betterAuthIntegrationEnabled)(
       ) as (keyof typeof SUITE_REDIS_DATABASES)[]) {
         reservations.set(
           suite,
-          await leaseRedisDatabase(process.env.REDIS_URL ?? '', randomUUID(), [
-            SUITE_REDIS_DATABASES[suite],
-          ]),
+          await leaseRedisDatabase(
+            testStackSetting('REDIS_URL'),
+            randomUUID(),
+            [SUITE_REDIS_DATABASES[suite]],
+          ),
         );
       }
     }, 120_000);
@@ -148,7 +151,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         ...Object.values(SUITE_REDIS_DATABASES),
         ...SECURITY_REDIS_DATABASES,
       ];
-      const securityUrl = new URL(process.env.REDIS_URL ?? '');
+      const securityUrl = new URL(testStackSetting('REDIS_URL'));
       securityUrl.pathname = '/9';
       const security = new Redis(securityUrl.toString());
       const sentinel = `regression:queue:${randomUUID()}`;

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 
@@ -165,19 +166,16 @@ describe('schedule claim concurrency', () => {
     const databasePath = new URL(workerConnectionString).pathname;
     const acceptanceApplicationName = `schedule-cancel-${randomUUID()}`;
     const workerUrl = scopedConnectionUrl(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+      testStackSetting('DATABASE_URL'),
       databasePath,
     );
     const apiUrl = scopedConnectionUrl(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+      testStackSetting('DATABASE_URL'),
       databasePath,
       acceptanceApplicationName,
     );
     const adminUrl = scopedConnectionUrl(
-      process.env.DATABASE_ADMIN_URL ??
-        'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
+      testStackSetting('DATABASE_ADMIN_URL'),
       databasePath,
     );
     const control = new Pool({ connectionString: adminUrl, max: 2 });

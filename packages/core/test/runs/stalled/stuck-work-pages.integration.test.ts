@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -20,18 +21,12 @@ type QueryPlanNode = Readonly<{
   Plans?: readonly QueryPlanNode[];
 }>;
 const maintenance = new Pool({
-  connectionString: databaseUrl(
-    process.env.DATABASE_MAINTENANCE_URL ??
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo',
-  ),
+  connectionString: databaseUrl(testStackSetting('DATABASE_MAINTENANCE_URL')),
   max: 1,
 });
 const store = createOperatorCommandStore(
   parseDatabaseConfig({
-    connectionString: databaseUrl(
-      process.env.DATABASE_MAINTENANCE_URL ??
-        'postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo',
-    ),
+    connectionString: databaseUrl(testStackSetting('DATABASE_MAINTENANCE_URL')),
     max: 1,
   }),
 );

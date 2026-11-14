@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { createBrowserOidcProvider } from '../federation/oidc-provider.js';
 import * as oidcProtocol from '../../../../src/authentication/federation/protocol/oidc.js';
 import { Resolver } from 'node:dns/promises';
@@ -154,7 +155,7 @@ export function createEditorBrowserFixture() {
     await ready;
   }, 30_000);
 
-  const redis = new URL(process.env.REDIS_URL ?? 'redis://invalid:1/0');
+  const redis = new URL(testStackSetting('REDIS_URL'));
 
   redis.pathname = '/11';
 

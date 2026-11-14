@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import type { ConnectionTestOutcome } from '../../../../src/connections/connection.js';
 import { randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '../../../../src/outbox/dispatcher/outbox-dispatcher.store.js';
@@ -115,8 +116,7 @@ export function createHealthDispatcher() {
   return createOutboxDispatcherDatabase(
     parseDatabaseConfig({
       connectionString: databaseUrl(
-        process.env.DATABASE_MAINTENANCE_URL ??
-          'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+        testStackSetting('DATABASE_MAINTENANCE_URL'),
       ),
     }),
   );

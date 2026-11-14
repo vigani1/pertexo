@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { createRedisTestNamespace } from '../../infrastructure/redis-test-namespace.js';
@@ -9,32 +10,19 @@ export const artifactStoreIntegrationEnabled =
   workerTransportIntegrationEnabled &&
   process.env.ARTIFACT_STORE_INTEGRATION === 'true';
 
-export const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-export const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+export const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-export const apiUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const apiUrl = testStackSetting('DATABASE_URL');
 
-export const workerUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const workerUrl = testStackSetting('DATABASE_URL');
 
-export const dispatcherUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+export const dispatcherUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
-export const maintenanceUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+export const maintenanceUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
-const configuredRedisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+const configuredRedisUrl = testStackSetting('REDIS_URL');
 
 export const redisNamespace = createRedisTestNamespace(
   configuredRedisUrl,

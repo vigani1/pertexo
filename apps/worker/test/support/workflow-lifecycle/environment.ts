@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 export const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 
 export const appRole = process.env.POSTGRES_APP_USER ?? 'pertexo_app';
@@ -8,28 +9,17 @@ export const maintenanceRole =
 export const migrationRole =
   process.env.POSTGRES_MIGRATION_USER ?? 'pertexo_migration';
 
-export const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-export const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+export const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-export const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const apiBaseUrl = testStackSetting('DATABASE_URL');
 
-export const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const workerBaseUrl = testStackSetting('DATABASE_URL');
 
-export const dispatcherBaseUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+export const dispatcherBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
-export const configuredRedisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+export const configuredRedisUrl = testStackSetting('REDIS_URL');
 
 /** The fixture acquires an exclusive lease for Redis database 15 before use. */
 export const workflowLifecycleIntegrationRedisUrl = (() => {

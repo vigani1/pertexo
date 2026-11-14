@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { sql } from 'drizzle-orm';
@@ -41,10 +42,7 @@ describe('a quiet workspace beside a noisy one', () => {
 
   let dispatchers: Pool;
   beforeAll(() => {
-    const url = new URL(
-      process.env.DATABASE_MAINTENANCE_URL ??
-        'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-    );
+    const url = new URL(testStackSetting('DATABASE_MAINTENANCE_URL'));
     url.pathname = new URL(migrationUrl).pathname;
     dispatchers = new Pool({ connectionString: url.toString(), max: 3 });
   });

@@ -13,7 +13,7 @@ import {
   betterAuthIntegrationEnabled,
   useBetterAuthRealApi,
 } from '../../support/better-auth/real-api.support.js';
-import { apiBaseUrl } from '../../support/better-auth/api/environment.js';
+import { apiBaseUrl } from '../../support/better-auth/api/stack.js';
 
 let config: DatabaseConfig | undefined;
 const api = useBetterAuthRealApi('run_failure_reason', {

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   createDisposableDatabaseFixture,
@@ -10,7 +11,7 @@ import { maintenanceConfig } from '../../../../infrastructure/testing/worker-dat
 import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/workspace-inbox-fold.store.js';
 
 it('upgrades pending events and private revisions, then folds them once through the scoped worker', async () => {
-  const adminUrl = process.env.DATABASE_ADMIN_URL ?? '';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     connectRoles: ['pertexo_app', 'pertexo_migration', 'pertexo_maintenance'],
@@ -25,7 +26,7 @@ it('upgrades pending events and private revisions, then folds them once through 
 
     const config = {
       connectionString: fixture.databaseUrl(
-        process.env.DATABASE_MIGRATION_URL ?? '',
+        testStackSetting('DATABASE_MIGRATION_URL'),
       ),
       ownerRole: 'pertexo_owner',
       appRole: 'pertexo_app',
@@ -99,7 +100,9 @@ it('upgrades pending events and private revisions, then folds them once through 
     fold = createWorkspaceInboxFoldStore(
       maintenanceConfig(
         parseDatabaseConfig({
-          connectionString: fixture.databaseUrl(process.env.DATABASE_URL ?? ''),
+          connectionString: fixture.databaseUrl(
+            testStackSetting('DATABASE_URL'),
+          ),
           max: 1,
         }),
       ),

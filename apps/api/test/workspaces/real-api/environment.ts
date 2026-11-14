@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import type {
@@ -7,8 +8,7 @@ import type {
 
 const apiUrl = process.env.DATABASE_URL;
 
-export const redisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+export const redisUrl = testStackSetting('REDIS_URL');
 
 export const enabled =
   process.env.API_IDENTITY_INTEGRATION === 'true' && apiUrl !== undefined;
@@ -28,7 +28,8 @@ export const invitationKeys = {
 };
 
 export const databaseConfig = parseDatabaseConfig({
-  connectionString: apiUrl ?? 'postgresql://invalid:invalid@localhost/invalid',
+  connectionString:
+    apiUrl ?? 'postgresql://invalid:invalid@unconfigured.invalid/invalid',
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 5_000,
   max: 4,

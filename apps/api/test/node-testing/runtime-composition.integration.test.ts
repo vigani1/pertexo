@@ -7,10 +7,7 @@ import {
   betterAuthIntegrationEnabled,
   useBetterAuthRealApi,
 } from '../support/better-auth/real-api.support.js';
-import {
-  apiBaseUrl,
-  redisUrl,
-} from '../support/better-auth/api/environment.js';
+import { apiBaseUrl, redisUrl } from '../support/better-auth/api/stack.js';
 import { httpNodeTestingGraph } from './node-testing.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(

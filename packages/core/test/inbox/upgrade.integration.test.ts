@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   createDisposableDatabaseFixture,
@@ -8,9 +9,7 @@ import { Pool } from 'pg';
 import { expect, it } from 'vitest';
 import { createWorkspaceInboxStore } from '../../src/inbox/threads/workspace-inbox.store.js';
 it('upgrades populated workflow threads and private read revisions without changing their cut or precision', async () => {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     connectRoles: ['pertexo_app', 'pertexo_migration', 'pertexo_maintenance'],
@@ -28,8 +27,7 @@ it('upgrades populated workflow threads and private read revisions without chang
       ownerRole: 'pertexo_owner',
       maintenanceRole: 'pertexo_maintenance',
       connectionString: fixture.databaseUrl(
-        process.env.DATABASE_MIGRATION_URL ??
-          'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+        testStackSetting('DATABASE_MIGRATION_URL'),
       ),
     };
     await migrateDatabase(migration);
@@ -70,10 +68,7 @@ it('upgrades populated workflow threads and private read revisions without chang
 
     read = createWorkspaceInboxStore(
       parseDatabaseConfig({
-        connectionString: fixture.databaseUrl(
-          process.env.DATABASE_URL ??
-            'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-        ),
+        connectionString: fixture.databaseUrl(testStackSetting('DATABASE_URL')),
         max: 1,
       }),
     );

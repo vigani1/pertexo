@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { AuthenticationDiagnostics } from '../../src/authentication/better-auth/diagnostics.js';
 import { silent } from '../support/better-auth/api/environment.js';
 import type { StructuredLogger } from '@pertexo/observability/server';
@@ -24,15 +25,9 @@ import { AuthenticationTransactions } from '../../src/authentication/better-auth
 import { LocalAuthenticationMailSink } from '../../src/authentication/mail/authentication-mail.js';
 import type { OwnedEmailProofs } from '../../src/authentication/mail/email-proofs.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const appUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
+const appUrl = testStackSetting('DATABASE_URL');
 
 const roles = ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'];
 const suffix = randomUUID().replaceAll('-', '');

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -5,12 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { inRetentionTransaction } from '../../src/lifecycle/retention/transaction.js';
 import { dropDisconnectedDatabase } from '@pertexo/database/testing';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const maintenanceUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const maintenanceUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 const databaseName = `pertexo_test_retention_abort_${randomUUID().replaceAll('-', '')}`;
 const options = { lockTimeoutMs: 10_000, statementTimeoutMs: 15_000 };
 function urlFor(base: string): string {

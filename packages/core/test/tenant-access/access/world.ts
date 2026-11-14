@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { withTenantScopedClient } from '@pertexo/database/primitives';
@@ -13,15 +14,9 @@ import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.
 import { createApiTokenStore } from '../../../src/tenant-access/index.js';
 import { createIdentityWorkspaceStore } from '../../../src/tenant-access/identity-workspace.store.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const appUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const appUrl = testStackSetting('DATABASE_URL');
+const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
 const database = createDisposableDatabaseFixture({
   adminUrl,

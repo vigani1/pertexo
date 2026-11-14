@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -18,8 +19,10 @@ it('runs the production verifier against an empty upgraded install and refuses d
     const environment = {
       ...process.env,
       NODE_ENV: 'production',
-      DATABASE_URL: url(process.env.DATABASE_URL ?? ''),
-      DATABASE_MAINTENANCE_URL: url(process.env.DATABASE_MAINTENANCE_URL ?? ''),
+      DATABASE_URL: url(testStackSetting('DATABASE_URL')),
+      DATABASE_MAINTENANCE_URL: url(
+        testStackSetting('DATABASE_MAINTENANCE_URL'),
+      ),
       CONNECTION_ENCRYPTION_MODE: 'self-managed',
       CONNECTION_SELF_MANAGED_KEY_VERSION: 'production-v1',
       CONNECTION_SELF_MANAGED_KEY: randomBytes(32).toString('base64'),

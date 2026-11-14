@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { waitForBlockedBy } from '../../support/postgres/lock-coordination.js';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -14,9 +15,7 @@ import { createWorkflowTriggerPauseFoldStore } from '../../../src/triggers/pause
 
 import { testExecutableCompiler } from '../../../src/authoring/test-executable-compiler.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
@@ -25,28 +24,16 @@ const fixture = createDisposableDatabaseFixture({
   ownerRole: 'pertexo_owner',
 });
 
-const url = (variable: string, fallback: string) =>
-  fixture.databaseUrl(process.env[variable] ?? fallback);
+const url = (variable: string) =>
+  fixture.databaseUrl(testStackSetting(variable));
 
-const migrationUrl = url(
-  'DATABASE_MIGRATION_URL',
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
-);
+const migrationUrl = url('DATABASE_MIGRATION_URL');
 
-const apiUrl = url(
-  'DATABASE_URL',
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-);
+const apiUrl = url('DATABASE_URL');
 
-const workerUrl = url(
-  'DATABASE_URL',
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-);
+const workerUrl = url('DATABASE_URL');
 
-export const maintenanceUrl = url(
-  'DATABASE_MAINTENANCE_URL',
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-);
+export const maintenanceUrl = url('DATABASE_MAINTENANCE_URL');
 
 export let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import {
   createDisposableDatabaseFixture,
   migrateDatabase,
@@ -9,9 +10,7 @@ import { expect, it } from 'vitest';
 import { createWorkflowTriggerPauseFoldStore } from '../../../src/triggers/pause/fold.store.js';
 
 it('continues a populated 0084 streak after upgrade and clears only its opaque carry when an older success arrives', async () => {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     databaseName: `pertexo_test_pause_upgrade_${randomUUID().replaceAll('-', '')}`,
@@ -24,8 +23,7 @@ it('continues a populated 0084 streak after upgrade and clears only its opaque c
     ownerRole: 'pertexo_owner',
     maintenanceRole: 'pertexo_maintenance',
     connectionString: fixture.databaseUrl(
-      process.env.DATABASE_MIGRATION_URL ??
-        'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+      testStackSetting('DATABASE_MIGRATION_URL'),
     ),
   };
   const admin = new Pool({
@@ -117,8 +115,7 @@ it('continues a populated 0084 streak after upgrade and clears only its opaque c
     fold = createWorkflowTriggerPauseFoldStore(
       parseDatabaseConfig({
         connectionString: fixture.databaseUrl(
-          process.env.DATABASE_MAINTENANCE_URL ??
-            'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+          testStackSetting('DATABASE_MAINTENANCE_URL'),
         ),
         max: 2,
       }),

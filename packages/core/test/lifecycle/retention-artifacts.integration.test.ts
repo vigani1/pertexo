@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { databaseSchema } from '@pertexo/database/schema';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
@@ -724,10 +725,7 @@ describe('retention artifact reclamation', () => {
   );
 
   it('fails a late upload finalization once expiry cleanup erased it', async () => {
-    const apiUrl = new URL(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-    );
+    const apiUrl = new URL(testStackSetting('DATABASE_URL'));
     apiUrl.pathname = new URL(maintenanceUrl).pathname;
     const uploadDatabase = createArtifactUploadStore(
       parseDatabaseConfig({ connectionString: apiUrl.toString(), max: 2 }),
@@ -814,10 +812,7 @@ describe('retention artifact reclamation', () => {
   });
 
   it('keeps finalization in progress before expiry and then makes the upload available', async () => {
-    const apiUrl = new URL(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-    );
+    const apiUrl = new URL(testStackSetting('DATABASE_URL'));
     apiUrl.pathname = new URL(maintenanceUrl).pathname;
     const uploadDatabase = createArtifactUploadStore(
       parseDatabaseConfig({ connectionString: apiUrl.toString(), max: 2 }),

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool, type PoolClient } from 'pg';
@@ -12,9 +13,7 @@ import {
 
 // ADR 044: exact run statistics from one bounded, workspace-scoped snapshot,
 // with the index plans that keep the read inside its cost budget.
-export const superuserUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const superuserUrl = testStackSetting('DATABASE_ADMIN_URL');
 
 const statisticsDatabaseName = `pertexo_test_run_statistics_${randomUUID().slice(0, 8)}`;
 
@@ -26,13 +25,11 @@ export const statisticsDatabase = createDisposableDatabaseFixture({
 });
 
 const ownerUrl = statisticsDatabase.databaseUrl(
-  process.env.DATABASE_MIGRATION_URL ??
-    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+  testStackSetting('DATABASE_MIGRATION_URL'),
 );
 
 const runtimeUrl = statisticsDatabase.databaseUrl(
-  process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
+  testStackSetting('DATABASE_URL'),
 );
 
 export const ownerPool = new Pool({ connectionString: ownerUrl, max: 1 });

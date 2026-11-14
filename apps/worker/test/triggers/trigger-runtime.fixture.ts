@@ -1,4 +1,3 @@
-import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import type {
   ScheduleTriggerScanner,
   WorkflowTriggerReconciliationStore,
@@ -104,5 +103,8 @@ const baseOptions = {
 
 export const options = {
   ...baseOptions,
-  maintenanceDatabase: maintenanceConfig(baseOptions.database),
+  maintenanceDatabase: {
+    ...baseOptions.database,
+    connectionString: 'postgresql://maintenance:secret@localhost:5432/pertexo',
+  },
 };

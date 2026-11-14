@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import type * as TransferFixture from './artifact-transfer.fixture.js';
 import type { mutationHeaders as HeadersForMutation } from './transfer-fixture/http.js';
 import { randomUUID } from 'node:crypto';
@@ -42,7 +43,7 @@ describe.skipIf(process.env.API_ARTIFACT_INTEGRATION !== 'true')(
         process.env[name] = database.databaseUrl(value);
       }
       await migrateDatabase({
-        connectionString: process.env.DATABASE_MIGRATION_URL ?? '',
+        connectionString: testStackSetting('DATABASE_MIGRATION_URL'),
         appRole: 'pertexo_app',
         maintenanceRole: 'pertexo_maintenance',
         ownerRole: 'pertexo_owner',

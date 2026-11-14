@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
 import pg from 'pg';
+import { requireTestStack, testStackSetting } from './test-stack.mjs';
 
 /**
  * A database of its own for each Vitest worker, copied from the migrated one, so an
@@ -31,6 +32,7 @@ const databaseName = (url) => new URL(url).pathname.slice(1);
 
 /** Vitest's global setup: runs once, after migrations and before any worker. */
 export default async function copyDatabases() {
+  requireTestStack();
   const template = databaseName(process.env.DATABASE_URL);
   const admin = new pg.Client({
     connectionString: process.env.DATABASE_ADMIN_URL,
@@ -57,10 +59,7 @@ export { WORKERS };
 
 /** Use the maintenance login against the same isolated database as an app fixture. */
 export function maintenanceConfig(config) {
-  const url = new URL(
-    process.env.DATABASE_MAINTENANCE_URL ??
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-  );
+  const url = new URL(testStackSetting('DATABASE_MAINTENANCE_URL'));
   url.pathname = new URL(config.connectionString).pathname;
   return { ...config, connectionString: url.toString() };
 }

@@ -2,6 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Vitest from 'vitest';
 import type { createBetterAuthFixtureApplication } from './fixture-application.js';
 
+// pg and the database are mocked, but the fixture still reads a stack it was
+// given; these names reach nothing.
+vi.hoisted(() => {
+  Object.assign(process.env, {
+    DATABASE_ADMIN_URL: 'postgresql://admin:secret@db.invalid/postgres',
+    DATABASE_MIGRATION_URL: 'postgresql://migration:secret@db.invalid/pertexo',
+    DATABASE_URL: 'postgresql://app:secret@db.invalid/pertexo',
+    REDIS_URL: 'redis://redis.invalid:6379/0',
+  });
+});
+
 const fixture = vi.hoisted(() => ({
   setup: undefined as (() => Promise<void>) | undefined,
   cleanup: undefined as (() => Promise<void>) | undefined,

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { SMTPServer } from 'smtp-server';
@@ -27,7 +28,7 @@ const config = () =>
 const maintenance = () =>
   parseDatabaseConfig({
     connectionString: fixture.databaseUrl(
-      process.env.DATABASE_MAINTENANCE_URL ?? '',
+      testStackSetting('DATABASE_MAINTENANCE_URL'),
     ),
     max: 2,
   });

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { connections as storedConnections } from '@pertexo/database/schema';
 import {
@@ -15,15 +16,9 @@ import {
 } from '../../../src/shared/resources/connection-scope.repository.js';
 
 it('keeps populated connections workspace-shared and isolates shares without FORCE after upgrading', async () => {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-  const migrationUrl =
-    process.env.DATABASE_MIGRATION_URL ??
-    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-  const apiUrl =
-    process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+  const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
+  const apiUrl = testStackSetting('DATABASE_URL');
   const database = createDisposableDatabaseFixture({
     adminUrl,
     databaseName: `pertexo_test_conn_${randomUUID().replaceAll('-', '')}`,

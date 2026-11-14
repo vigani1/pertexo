@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import type { PoolClient } from 'pg';
@@ -20,11 +21,7 @@ import type { acceptRun } from './concurrency-admission.fixtures.js';
 import { withOwner } from './concurrency-admission.fixtures.js';
 
 export function workerUrl() {
-  const url = new URL(process.env.DATABASE_URL ?? migrationUrl);
-  if (process.env.DATABASE_URL === undefined) {
-    url.username = 'pertexo_app';
-    url.password = 'pertexo-local-app';
-  }
+  const url = new URL(testStackSetting('DATABASE_URL'));
   url.pathname = new URL(migrationUrl).pathname;
   return url.toString();
 }

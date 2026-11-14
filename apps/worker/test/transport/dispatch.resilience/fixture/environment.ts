@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { fileURLToPath } from 'node:url';
@@ -20,29 +21,19 @@ export const SERVICE_OPERATION_TIMEOUT_MS = 120_000;
 
 export const PROOF_OPERATION_TIMEOUT_MS = 10_000;
 
-const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo';
+const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-const apiUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@127.0.0.1:5432/pertexo';
+const apiUrl = testStackSetting('DATABASE_URL');
 
-const dispatcherUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo';
+const dispatcherUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
-const configuredRedisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
+const configuredRedisUrl = testStackSetting('REDIS_URL');
 
-export const redisPassword =
-  process.env.REDIS_PASSWORD ?? 'pertexo-local-redis';
+export const redisPassword = testStackSetting('REDIS_PASSWORD');
 
 export const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
 export const databaseName = `pertexo_test_transport_resilience_${randomUUID().replaceAll('-', '')}`;
 

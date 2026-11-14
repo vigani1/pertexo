@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createTwoFactorRecoveryStore } from '@pertexo/core/identity';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { randomUUID } from 'node:crypto';
@@ -138,10 +139,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         .query<{ name: string }>('select current_database() name');
       const name = database.rows[0]?.name;
       if (name === undefined) throw new Error('Fixture database missing');
-      const url = new URL(
-        process.env.DATABASE_URL ??
-          'postgresql://pertexo_app:pertexo-local-app@localhost:5432/postgres',
-      );
+      const url = new URL(testStackSetting('DATABASE_URL'));
       url.pathname = `/${name}`;
       const store = createTwoFactorRecoveryStore(
         parseDatabaseConfig({ connectionString: url.toString(), max: 1 }),

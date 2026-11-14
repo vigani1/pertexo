@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { createTestUser } from '../support/user.js';
 import type { Role } from '@pertexo/policy';
 import { randomUUID } from 'node:crypto';
@@ -44,9 +45,7 @@ export type IdentityCommandFixture = Readonly<{
 export function useIdentityCommandDatabase(
   suite: string,
 ): IdentityCommandFixture {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     connectRoles: ['pertexo_migration', 'pertexo_app', 'pertexo_maintenance'],
@@ -54,17 +53,10 @@ export function useIdentityCommandDatabase(
     ownerRole: 'pertexo_owner',
   });
   const migrationUrl = fixture.databaseUrl(
-    process.env.DATABASE_MIGRATION_URL ??
-      'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+    testStackSetting('DATABASE_MIGRATION_URL'),
   );
-  const apiUrl = fixture.databaseUrl(
-    process.env.DATABASE_URL ??
-      'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-  );
-  const organizationUrl = fixture.databaseUrl(
-    process.env.DATABASE_URL ??
-      'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-  );
+  const apiUrl = fixture.databaseUrl(testStackSetting('DATABASE_URL'));
+  const organizationUrl = fixture.databaseUrl(testStackSetting('DATABASE_URL'));
   const organizationPools: (Pool | undefined)[] = [];
   let identity: ReturnType<typeof createIdentityWorkspaceStore> | undefined;
   const federation: (
