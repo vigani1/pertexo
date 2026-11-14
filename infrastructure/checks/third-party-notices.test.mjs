@@ -104,6 +104,14 @@ test('allows permissive dependencies and only reasoned package exceptions', () =
     () => requireAllowedLicense('another-font', 'OFL-1.1'),
     /Review required/u,
   );
+  assert.match(
+    requireAllowedLicense('@axe-core/playwright', 'MPL-2.0'),
+    /test-only/u,
+  );
+  assert.throws(
+    () => requireAllowedLicense('axe-core-plugin', 'MPL-2.0'),
+    /Review required/u,
+  );
 });
 
 test('notices retain the published copyright and license text', () => {
