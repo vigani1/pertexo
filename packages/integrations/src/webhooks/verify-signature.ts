@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+const SIGNATURE_PREFIX = 'v1=';
+
 export function verifyWebhookSignature(
   input: Readonly<{
     secret: Uint8Array;
@@ -18,7 +20,10 @@ export function verifyWebhookSignature(
     .update('.')
     .update(input.rawBody)
     .digest();
-  const supplied = Buffer.from(input.signature.slice(3), 'hex');
+  const supplied = Buffer.from(
+    input.signature.slice(SIGNATURE_PREFIX.length),
+    'hex',
+  );
   return (
     expected.byteLength === supplied.byteLength &&
     timingSafeEqual(expected, supplied)

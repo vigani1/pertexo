@@ -1,4 +1,7 @@
-import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@pertexo/contracts';
+import {
+  HTTP_FIELD_VALUE_CHARACTERS,
+  isSupportedHttpFieldValue as isSerializableHttpHeaderValue,
+} from '@pertexo/contracts';
 import { HttpPlaceholderError } from './placeholders.errors.js';
 
 /** `{orderId}` in the address after its origin, or in a header value. */
@@ -15,7 +18,7 @@ type Template = Readonly<{
 
 /** Where the origin ends: scheme, host and port never take run data. */
 function splitOrigin(url: string): Readonly<{ origin: string; rest: string }> {
-  const start = url.indexOf('//') + 2;
+  const start = url.indexOf('//') + '//'.length;
   const end = url.slice(start).search(/[/?#]/u);
   const cut = end === -1 ? url.length : start + end;
   return { origin: url.slice(0, cut), rest: url.slice(cut) };
@@ -69,7 +72,7 @@ export function fillHttpTemplate(
       const filled = text.replace(PLACEHOLDER, (_, key: string) => value(key));
       if (
         filled.length === 0 ||
-        filled.length > 8_192 ||
+        filled.length > HTTP_FIELD_VALUE_CHARACTERS ||
         !isSerializableHttpHeaderValue(filled)
       )
         throw new HttpPlaceholderError(

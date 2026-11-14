@@ -6,7 +6,6 @@ import test from 'node:test';
 
 import {
   LIMITS_CHECKED,
-  NOT_LIMITS,
   findWrittenLimits,
   inspectBackendLimits,
   validateLimitsChecked,
@@ -14,6 +13,7 @@ import {
   BYTE_SIZE_OWNER,
   findHandWrittenByteUnits,
 } from './validate-backend-limits.mjs';
+import { NOT_LIMITS } from './backend-limit-exemptions.mjs';
 
 const find = (text) => findWrittenLimits('a.ts', text);
 
@@ -131,4 +131,19 @@ test('refuses a byte unit written after a computed size, outside the formatter',
     'packages/x/src/a.ts: "${…} KB": write byte sizes with formatByteSize (packages/node-sdk/src/values/byte-size.ts).',
   ]);
   assert.deepEqual(findHandWrittenByteUnits(BYTE_SIZE_OWNER, text), []);
+});
+
+test('leaves an HTTP status where HTTP code writes one, and nothing else', () => {
+  const find = (text) => findWrittenLimits('packages/x/src/a.ts', text);
+  assert.deepEqual(
+    find(
+      'if (response.status === 404 || statusCode >= 500) f(); const p = { status: 409 }; const r = { responses: { 200: ok } };',
+    ),
+    [],
+  );
+  assert.deepEqual(find('const wait = sleep(500); const max = limit > 404;'), [
+    '500',
+    '404',
+  ]);
+  assert.deepEqual(find('if (response.status === 600) f();'), ['600']);
 });

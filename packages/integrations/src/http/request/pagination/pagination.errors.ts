@@ -1,4 +1,5 @@
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import { HTTP_PAGINATION_LIMITS } from './pagination.schemas.js';
 
 export const HTTP_PAGINATION_FAILURES = {
   'http.pagination_origin_changed':
@@ -28,7 +29,11 @@ export class HttpPaginationFailure extends NodeExecutorFailure {
       safeErrorCode: code,
       errorSummary: `Page ${String(page)}: ${HTTP_PAGINATION_FAILURES[code]}`,
     });
-    if (!Number.isInteger(page) || page < 1 || page > 100)
+    if (
+      !Number.isInteger(page) ||
+      page < 1 ||
+      page > HTTP_PAGINATION_LIMITS.maxPages
+    )
       throw new TypeError('Invalid pagination page');
   }
   public get summary(): string {

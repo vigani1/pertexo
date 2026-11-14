@@ -6,6 +6,9 @@ import {
 } from '@pertexo/node-sdk/server';
 import { HTTP_REQUEST_LIMITS } from '../request.schemas.js';
 
+// The multipart body is buffered at most this far ahead of the request.
+const MULTIPART_BUFFER_BYTES = 65_536;
+
 /** CombinedStream needs an explicit bridge: it does not expose modern close semantics. */
 export async function collectMultipart(
   form: FormData,
@@ -16,7 +19,7 @@ export async function collectMultipart(
   signal.throwIfAborted();
   if (length > HTTP_REQUEST_LIMITS.maxRequestBodyBytes)
     throw new FileInputFailure({ reason: 'multipart_size' });
-  const bridge = new PassThrough({ highWaterMark: 65536 });
+  const bridge = new PassThrough({ highWaterMark: MULTIPART_BUFFER_BYTES });
   bridge.on('error', () => undefined);
   const fail = () => {
     bridge.destroy(new FileInputFailure({ reason: 'multipart_encoding' }));

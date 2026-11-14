@@ -4,6 +4,12 @@ import {
   type ResendClient,
 } from './client.js';
 import type { ProviderHttpClient } from '../providers/http-client.js';
+
+// Client errors that a later attempt can still succeed past: timeout, conflict,
+// too early, too many requests.
+const RETRYABLE_CLIENT_STATUSES: readonly number[] = Object.freeze([
+  408, 409, 425, 429,
+]);
 type ResendMailMessage = Omit<
   Parameters<ResendClient['sendNotification']>[0],
   'apiKey'
@@ -44,7 +50,7 @@ export function createResendSystemMailClient(
           result.kind === 'rejected' &&
           result.status >= 400 &&
           result.status < 500 &&
-          ![408, 409, 425, 429].includes(result.status) &&
+          !RETRYABLE_CLIENT_STATUSES.includes(result.status) &&
           result.error !== 'concurrent_idempotent_requests';
         return {
           kind: permanentRejection ? 'failed' : 'retryable',

@@ -50,9 +50,17 @@ Each step is `<provider>/<step>/<step>.definition.ts`, `.executor.ts`,
 
 ## Defaults and config
 
-- No environment. Request bounds live in each step's `.schemas.ts`
-  (`httpRequestConfigSchema`, `EMAIL_SEND_NOTIFICATION_LIMITS`); retry waits
-  are bounded by `MAXIMUM_RETRY_DELAY_MILLIS` from `node-sdk`.
+- No environment. Step bounds live in each step's `.schemas.ts`
+  (`HTTP_REQUEST_LIMITS`, `HTTP_HEADER_LIMITS`,
+  `HTTP_PAGINATION_LIMITS`, `EMAIL_SEND_NOTIFICATION_LIMITS`,
+  `SLACK_SEND_MESSAGE_LIMITS`); the provider steps' timeout is
+  `PROVIDER_STEP_TIMEOUT` (`providers/provider-timeout.ts`). Shared bounds
+  come from their owners: email addresses from workflow-model's
+  `EMAIL_ADDRESS_LIMITS`, header values from contracts'
+  `HTTP_FIELD_VALUE_CHARACTERS`, retry waits from node-sdk's
+  `MAXIMUM_RETRY_DELAY_MILLIS`.
+- HTTP statuses are written where HTTP code writes them (compared to a
+  `status`, or a `status` value); the limits check allows exactly those.
 
 ## Rules
 
@@ -71,8 +79,6 @@ Each step is `<provider>/<step>/<step>.definition.ts`, `.executor.ts`,
   renewed request asking to repeat again), `http/request/pagination/execute.ts`
   (a finished loop without its result) and the constructor guards in
   `request.errors.ts` and `pagination.errors.ts`.
-- Limits are not yet named: integrations is outside the backend-limits check
-  until its literals are named.
 
 ## What guards it
 

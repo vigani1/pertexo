@@ -1,6 +1,9 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { httpPaginationSchema } from './pagination/pagination.schemas.js';
+import {
+  HTTP_PAGINATION_LIMITS,
+  httpPaginationSchema,
+} from './pagination/pagination.schemas.js';
 import {
   ARTIFACT_INPUT_MAX_BYTES,
   FILE_PAGE_LIMITS,
@@ -14,65 +17,36 @@ import {
   httpMultipartInputKeySchema,
   httpMultipartValueSchema,
 } from './multipart/multipart.schemas.js';
-import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@pertexo/contracts';
 import { HTTP_PLACEHOLDER_NAME, httpTemplateProblem } from './placeholders.js';
+import {
+  credentialLikeHeader,
+  HTTP_HEADER_LIMITS,
+  httpRequestHeadersSchema,
+} from './request-headers.schemas.js';
 
 const MAX_URL_BYTES = 2_048;
 const MAX_REQUEST_BODY_BYTES = ARTIFACT_INPUT_MAX_BYTES;
 const MAX_RESPONSE_BYTES = 10_485_760;
 const MAX_INLINE_RESPONSE_BYTES = 262_144;
-const MAX_HEADER_BYTES = 32_768;
-
-const headerNameSchema = z
-  .string()
-  .min(1)
-  .max(128)
-  .regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u);
-const headerValueSchema = z
-  .string()
-  .min(1)
-  .max(8_192)
-  .refine(isSerializableHttpHeaderValue);
-const blockedConfiguredHeaders = new Set([
-  'accept-encoding',
-  'authorization',
-  'connection',
-  'content-length',
-  'cookie',
-  'host',
-  'idempotency-key',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'set-cookie',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-]);
-const blockedCredentialHeaders = new Set([
-  'accept-encoding',
-  'connection',
-  'content-length',
-  'host',
-  'idempotency-key',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-]);
-const credentialLikeHeader = /(?:auth|credential|secret|token|api[-_]?key)/iu;
-
-function safeConfiguredHeader(name: string): boolean {
-  const normalized = name.toLowerCase();
-  return (
-    !blockedConfiguredHeaders.has(normalized) &&
-    !credentialLikeHeader.test(normalized)
-  );
-}
+/** HTTP request step bounds beyond the byte sizes above. */
+const HTTP_REQUEST_FIELD_LIMITS = Object.freeze({
+  maxTimeoutMillis: 120_000,
+  defaultTimeoutMillis: 10_000,
+  maxRedirects: 5,
+  defaultRedirects: 3,
+  defaultResponseBytes: 1_048_576,
+  defaultInlineResponseBytes: 65_536,
+  responseHeaderValueCharacters: 2_048,
+});
+const F = HTTP_REQUEST_FIELD_LIMITS;
+// A response status is final (200–599); success is 200–299.
+const RESPONSE_STATUS = Object.freeze({ first: 200, last: 599 });
+const SUCCESS_STATUS = Object.freeze({ first: 200, last: 299 });
+// Base64 writes 4 characters for every 3 bytes, padded to a whole group.
+const BASE64_GROUP = Object.freeze({ bytes: 3, characters: 4 });
+const base64Characters = (bytes: number) =>
+  Math.ceil((bytes * BASE64_GROUP.characters) / BASE64_GROUP.bytes) +
+  BASE64_GROUP.characters;
 
 export function safeRequestUrl(value: string): boolean {
   try {
@@ -91,85 +65,6 @@ export function safeRequestUrl(value: string): boolean {
     return false;
   }
 }
-
-const httpRequestHeadersSchema = z
-  .record(headerNameSchema, headerValueSchema)
-  .superRefine((headers, context) => {
-    const names = Object.keys(headers);
-    if (names.length > 64)
-      context.addIssue({ code: 'custom', message: 'too many headers' });
-    const normalized = new Set<string>();
-    let bytes = 0;
-    for (const [name, value] of Object.entries(headers)) {
-      const canonicalName = name.toLowerCase();
-      bytes += utf8ByteLength(`${canonicalName}:${value}\r\n`);
-      if (normalized.has(canonicalName))
-        context.addIssue({
-          code: 'custom',
-          path: [name],
-          message: 'header names must be case-insensitively unique',
-        });
-      if (!safeConfiguredHeader(canonicalName))
-        context.addIssue({
-          code: 'custom',
-          path: [name],
-          message:
-            'credential-bearing and transport headers are not configurable',
-        });
-      normalized.add(canonicalName);
-    }
-    if (bytes > MAX_HEADER_BYTES)
-      context.addIssue({
-        code: 'custom',
-        message: 'headers exceed byte limit',
-      });
-  });
-
-export const resolvedHttpHeadersCredentialSchema = z
-  .object({
-    type: z.literal('http_headers'),
-    headers: z
-      .record(headerNameSchema, headerValueSchema)
-      .superRefine((headers, context) => {
-        const entries = Object.entries(headers);
-        if (entries.length < 1 || entries.length > 32)
-          context.addIssue({
-            code: 'custom',
-            message: 'credential header count is invalid',
-          });
-        const normalized = new Set<string>();
-        let bytes = 0;
-        for (const [name, value] of entries) {
-          const canonicalName = name.toLowerCase();
-          bytes += utf8ByteLength(`${canonicalName}:${value}\r\n`);
-          if (
-            normalized.has(canonicalName) ||
-            blockedCredentialHeaders.has(canonicalName)
-          )
-            context.addIssue({
-              code: 'custom',
-              path: [name],
-              message: 'credential header is invalid',
-            });
-          normalized.add(canonicalName);
-        }
-        if (bytes > 16_384)
-          context.addIssue({
-            code: 'custom',
-            message: 'credential headers exceed byte limit',
-          });
-      })
-      .transform((headers) =>
-        Object.freeze(
-          Object.fromEntries(
-            Object.entries(headers)
-              .map(([name, value]) => [name.toLowerCase(), value] as const)
-              .sort(([left], [right]) => left.localeCompare(right)),
-          ),
-        ),
-      ),
-  })
-  .strict();
 
 export const httpRequestConfigSchema = z
   .object({
@@ -194,21 +89,26 @@ export const httpRequestConfigSchema = z
       .number()
       .int()
       .min(1)
-      .max(120_000)
-      .meta({ default: 10_000 }),
-    maxRedirects: z.number().int().min(0).max(5).meta({ default: 3 }),
+      .max(F.maxTimeoutMillis)
+      .meta({ default: F.defaultTimeoutMillis }),
+    maxRedirects: z
+      .number()
+      .int()
+      .min(0)
+      .max(F.maxRedirects)
+      .meta({ default: F.defaultRedirects }),
     maxResponseBytes: z
       .number()
       .int()
       .min(1)
       .max(MAX_RESPONSE_BYTES)
-      .meta({ default: 1_048_576 }),
+      .meta({ default: F.defaultResponseBytes }),
     inlineResponseBytes: z
       .number()
       .int()
       .min(1)
       .max(MAX_INLINE_RESPONSE_BYTES)
-      .meta({ default: 65_536 }),
+      .meta({ default: F.defaultInlineResponseBytes }),
     multipart: httpMultipartConfigSchema.optional(),
     pagination: httpPaginationSchema.optional(),
     returnErrorResponses: z.boolean().optional().meta({
@@ -270,7 +170,7 @@ export const httpRequestConfigSchema = z
 const inlineRequestBodySchema = z
   .object({
     encoding: z.enum(['base64', 'utf8']),
-    value: z.string().max(Math.ceil((MAX_REQUEST_BODY_BYTES * 4) / 3) + 4),
+    value: z.string().max(base64Characters(MAX_REQUEST_BODY_BYTES)),
   })
   .strict()
   .readonly();
@@ -323,7 +223,7 @@ const inlineBodySchema = z
   .object({
     kind: z.literal('inline'),
     encoding: z.enum(['base64', 'utf8']),
-    value: z.string().max(Math.ceil((MAX_INLINE_RESPONSE_BYTES * 4) / 3) + 4),
+    value: z.string().max(base64Characters(MAX_INLINE_RESPONSE_BYTES)),
     byteLength: z.number().int().min(0).max(MAX_INLINE_RESPONSE_BYTES),
     // A JSON response, parsed, for later steps to map into.
     json: z.json().optional(),
@@ -342,11 +242,18 @@ const artifactBodySchema = nodeArtifactReferenceSchema
 const singleHttpRequestOutputSchema = z
   .object({
     // Below 300 unless the step returns error responses.
-    status: z.number().int().min(200).max(599),
-    headers: z.record(z.string().max(128), z.string().max(2_048)),
+    status: z
+      .number()
+      .int()
+      .min(RESPONSE_STATUS.first)
+      .max(RESPONSE_STATUS.last),
+    headers: z.record(
+      z.string().max(HTTP_HEADER_LIMITS.nameCharacters),
+      z.string().max(F.responseHeaderValueCharacters),
+    ),
     body: z.discriminatedUnion('kind', [inlineBodySchema, artifactBodySchema]),
     finalOrigin: z.string().max(MAX_URL_BYTES),
-    redirectCount: z.number().int().min(0).max(5),
+    redirectCount: z.number().int().min(0).max(F.maxRedirects),
   })
   .strict()
   .readonly();
@@ -354,10 +261,13 @@ const singleHttpRequestOutputSchema = z
 const paginatedHttpRequestOutputSchema = z
   .object({
     items: z.array(z.json()),
-    pageCount: z.number().int().min(1).max(100),
+    pageCount: z.number().int().min(1).max(HTTP_PAGINATION_LIMITS.maxPages),
     complete: z.boolean(),
-    status: z.number().int().min(200).max(299),
-    headers: z.record(z.string().max(128), z.string().max(2_048)),
+    status: z.number().int().min(SUCCESS_STATUS.first).max(SUCCESS_STATUS.last),
+    headers: z.record(
+      z.string().max(HTTP_HEADER_LIMITS.nameCharacters),
+      z.string().max(F.responseHeaderValueCharacters),
+    ),
     finalOrigin: z.string().max(MAX_URL_BYTES),
   })
   .strict()
@@ -365,10 +275,17 @@ const paginatedHttpRequestOutputSchema = z
 const pagedHttpRequestOutputSchema = filePageBundleSchema
   .unwrap()
   .safeExtend({
-    fetchedPageCount: z.number().int().min(1).max(100),
+    fetchedPageCount: z
+      .number()
+      .int()
+      .min(1)
+      .max(HTTP_PAGINATION_LIMITS.maxPages),
     complete: z.boolean(),
-    status: z.number().int().min(200).max(299),
-    headers: z.record(z.string().max(128), z.string().max(2_048)),
+    status: z.number().int().min(SUCCESS_STATUS.first).max(SUCCESS_STATUS.last),
+    headers: z.record(
+      z.string().max(HTTP_HEADER_LIMITS.nameCharacters),
+      z.string().max(F.responseHeaderValueCharacters),
+    ),
     finalOrigin: z.string().max(MAX_URL_BYTES),
   })
   .readonly();

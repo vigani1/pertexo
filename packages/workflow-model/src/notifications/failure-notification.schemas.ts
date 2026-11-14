@@ -1,10 +1,9 @@
 import { z } from 'zod';
+import { EMAIL_ADDRESS_LIMITS } from '../values/email-address.js';
 
 export const FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES = 4_096;
 export const FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT = 100;
 const FAILURE_NOTIFICATION_FIELD_LIMITS = Object.freeze({
-  // RFC 5321's longest forward path.
-  emailAddressLength: 254,
   nodeIdLength: 128,
   invocationKeyLength: 256,
   failureCount: 10_000,
@@ -30,7 +29,7 @@ export const FailureNotificationDestinationConfigSchema = z.discriminatedUnion(
         connectionId: z.uuid(),
         toEmail: z
           .email()
-          .max(FAILURE_NOTIFICATION_FIELD_LIMITS.emailAddressLength)
+          .max(EMAIL_ADDRESS_LIMITS.characters)
           .overwrite((value) => {
             const at = value.lastIndexOf('@');
             return `${value.slice(0, at)}@${value.slice(at + 1).toLowerCase()}`;

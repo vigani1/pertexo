@@ -275,6 +275,7 @@ export {
 export { CORE_WEBHOOK_CONFIG_SCHEMA } from './triggers/webhook.js';
 
 // Values
+export { EMAIL_ADDRESS_LIMITS } from './values/email-address.js';
 export {
   JSON_LITERAL_BYTES,
   measureBoundedJson,
