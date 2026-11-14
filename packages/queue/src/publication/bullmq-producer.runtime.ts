@@ -1,7 +1,7 @@
 import { Queue } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
 import { Redis, ReplyError } from 'ioredis';
-import { bounded, TIMED_OUT } from '../consumption/deadline.js';
+import { bounded, TIMED_OUT } from '../redis/bounded-operation.js';
 import { QUEUE_CLASS_DEFAULTS } from '../jobs/defaults.js';
 import { jobIdForOutboxEvent } from '../jobs/job-id.js';
 import { parseQueueJob, type QueueJob } from '../jobs/queue-job.schemas.js';
