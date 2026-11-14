@@ -6,7 +6,7 @@ import {
   isTransientDatabaseFailure,
   isUniqueConstraintFailure,
   postgresFailure,
-} from '../../src/platform/query-errors.js';
+} from '../../src/platform/query.errors.js';
 
 const unique = Object.assign(new Error('duplicate key'), {
   code: '23505',

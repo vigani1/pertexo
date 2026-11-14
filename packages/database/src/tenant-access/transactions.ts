@@ -16,7 +16,7 @@ import {
   clearNestedScope,
   installNestedScope,
 } from './transactions/scope.js';
-import { isConnectionLost } from '../platform/query-errors.js';
+import { isConnectionLost } from '../platform/query.errors.js';
 import { runTransaction } from './transactions/run.js';
 
 export {

@@ -5,7 +5,7 @@ import { getTableColumns, getTableName } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { migrateDatabase } from '../../src/migrations.js';
+import { migrateDatabase } from '../../src/migrations/migrate-database.js';
 import { databaseSchema } from '../../src/schema.js';
 import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 

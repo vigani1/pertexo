@@ -58,6 +58,12 @@ export const ROOT_CONCEPTS = Object.freeze({
     'artifact-identity.ts': 'artifact identity and storage keys',
     'artifact-store.errors.ts': 'the package’s one error family',
   },
+  'packages/database': {
+    'migrate.ts':
+      'the migration process entry compose and db:migrate run from dist',
+    'migration-history.ts':
+      'the single-server deploy mounts its dist file alone, so its path is a deploy contract',
+  },
   'packages/workflow-engine': {
     'workflow-execution.ts': 'the engine’s state vocabulary every area reads',
     'workflow-engine.errors.ts': 'the engine’s one error family',
@@ -85,7 +91,6 @@ export const PENDING_ROOTS = Object.freeze([
   'apps/code-runner',
   'apps/ops',
   'apps/worker',
-  'packages/database',
 ]);
 
 /** Findings for one workspace's direct `src` files. */

@@ -5,9 +5,9 @@ import { Pool } from 'pg';
 import type { DatabaseError } from 'pg';
 
 import { parseDatabaseConfig } from '../../../src/config.js';
-import { createWorkspaceDatabase } from '../../../src/database.js';
-import type { WorkspaceDatabase } from '../../../src/database.js';
-import { migrateDatabase } from '../../../src/migrations.js';
+import { createWorkspaceDatabase } from '../../../src/platform/workspace-database.js';
+import type { WorkspaceDatabase } from '../../../src/platform/workspace-database.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 
 import { idempotencyRecords, workflowTags } from '../../../src/schema.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';

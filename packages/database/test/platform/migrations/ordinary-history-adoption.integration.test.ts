@@ -5,7 +5,7 @@ import { expect, it } from 'vitest';
 import {
   migrateDatabase,
   MIGRATIONS_DIRECTORY,
-} from '../../../src/migrations.js';
+} from '../../../src/migrations/migrate-database.js';
 import { seedWorkflow, withBaselineDatabase } from './upgrade-fixture.js';
 
 it('upgrades an adopted baseline through the real later migrations, preserving data and matching the release catalog', async () => {

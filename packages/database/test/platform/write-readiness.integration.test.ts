@@ -5,8 +5,8 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../../src/config.js';
-import { createWorkspaceDatabase } from '../../src/database.js';
-import { migrateDatabase } from '../../src/migrations.js';
+import { createWorkspaceDatabase } from '../../src/platform/workspace-database.js';
+import { migrateDatabase } from '../../src/migrations/migrate-database.js';
 import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 
 const adminUrl = testStackSetting('DATABASE_ADMIN_URL');

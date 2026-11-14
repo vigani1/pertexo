@@ -2,7 +2,7 @@ import { testStackSetting } from '../../../../infrastructure/testing/test-stack.
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { migrateDatabase } from '../../src/migrations.js';
+import { migrateDatabase } from '../../src/migrations/migrate-database.js';
 import { withTenantScopedClient } from '../../src/tenant-access/transactions.js';
 import { seedReferenceIndexOwners } from '../artifacts/reference-index.fixture.js';
 import { withDatabase } from '../platform/migrations/upgrade-fixture.js';

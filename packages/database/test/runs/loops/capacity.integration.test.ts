@@ -9,7 +9,7 @@ import {
   validateWorkflowGraph,
   WORKFLOW_GRAPH_LIMITS,
 } from '@pertexo/workflow-model';
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 import { checkpoints } from './execute.js';
 import { childGraph, childPin, loopScenarios } from './scenarios.js';

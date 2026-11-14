@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Pool, type PoolClient } from 'pg';
 
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import { createDatabasePool } from '../../../src/platform/pool/telemetry/create-pool.js';
 import type { DatabasePoolRole } from '../../../src/platform/pool/policy.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';

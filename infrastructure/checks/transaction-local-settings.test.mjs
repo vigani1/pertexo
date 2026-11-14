@@ -226,7 +226,7 @@ test('scopes by named test directories and by reach to pg, not by file names', (
 test('exempts each marked statement of the migration runner, and nothing else in it', async () => {
   const file = path.resolve(
     import.meta.dirname,
-    '../../packages/database/src/migrations.ts',
+    '../../packages/database/src/migrations/migrate-database.ts',
   );
   const source = await readFile(file, 'utf8');
   assert.equal(findSessionSettings('migrations.ts', source).length, 4);

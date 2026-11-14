@@ -5,12 +5,12 @@ import { fileURLToPath } from 'node:url';
 
 import { Pool, type PoolClient } from 'pg';
 
-import type { MigrationConfig } from './config.js';
+import type { MigrationConfig } from '../config.js';
 import {
   inspectMigrationHistory,
   migrationNames,
-} from './migration-history.js';
-export { PartialMigrationHistoryError } from './migration-history.js';
+} from '../migration-history.js';
+export { PartialMigrationHistoryError } from '../migration-history.js';
 
 // Stable application namespace for serializing Pertexo schema migrations.
 const MIGRATION_LOCK_ID = 7_166_118_812;
@@ -73,7 +73,7 @@ function parseMigrationTimeout(
 }
 
 export const MIGRATIONS_DIRECTORY = fileURLToPath(
-  new URL('../migrations/', import.meta.url),
+  new URL('../../migrations', import.meta.url),
 );
 
 /** Names the file that stopped a migration, so a failed deploy has a reason. */

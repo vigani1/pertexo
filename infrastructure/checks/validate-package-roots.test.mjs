@@ -72,6 +72,8 @@ test('keeps the database’s own doors to the database', () => {
       'platform.ts',
       'schema.ts',
       'primitives.ts',
+      'migrate.ts',
+      'migration-history.ts',
     ]).filter((finding) => !finding.includes('PENDING_ROOTS')),
     [],
   );
