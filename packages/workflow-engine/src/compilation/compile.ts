@@ -30,7 +30,7 @@ import {
 } from './runtime-policies.js';
 import { compareIdentity } from './definition-identity.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { fail, readUntrusted } from './executable-errors.js';
+import { fail, readUntrusted } from './executable.errors.js';
 import { freezeExecutable } from './freeze-executable.js';
 import { registerExecutableIdentity } from './verified-executable.js';
 import { sideEffectClass } from './executable.validation.js';

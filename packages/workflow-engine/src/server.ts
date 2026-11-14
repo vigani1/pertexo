@@ -69,4 +69,4 @@ export {
   MappingRefusalError,
   MappingExecutorFailure,
   type MappingRefusal,
-} from './attempt/mapping-refusal.js';
+} from './attempt/mapping-refusal.errors.js';

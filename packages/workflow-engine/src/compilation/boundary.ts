@@ -6,7 +6,7 @@ import type {
   VerifiedWorkflowExecutable,
   WorkflowExecutable,
 } from './workflow-executable.js';
-import { fail, readUntrusted } from './executable-errors.js';
+import { fail, readUntrusted } from './executable.errors.js';
 import { freezeExecutable } from './freeze-executable.js';
 import { registerExecutableIdentity } from './verified-executable.js';
 import { validateGlobals } from './runtime-policies.js';

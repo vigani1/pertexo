@@ -5,7 +5,7 @@ import {
 } from '@pertexo/node-sdk';
 import type { ExecutableRuntimePolicies } from './workflow-executable.js';
 import { sameIdentity, token } from './definition-identity.js';
-import { fail } from './executable-errors.js';
+import { fail } from './executable.errors.js';
 export const BASELINE_RUNTIME_POLICIES = Object.freeze({
   scheduler: Object.freeze({ key: 'engine.scheduler', version: 1 }),
   checkpoint: Object.freeze({ key: 'engine.checkpoint', version: 1 }),

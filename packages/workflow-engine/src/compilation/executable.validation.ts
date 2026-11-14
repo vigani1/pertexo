@@ -15,7 +15,7 @@ import type { SideEffectClass } from '../workflow-execution.js';
 import type { ExecutableRuntimePolicies } from './workflow-executable.js';
 import { WORKFLOW_EXECUTABLE_LIMITS } from './runtime-policies.js';
 import { compareIdentity, token } from './definition-identity.js';
-import { fail } from './executable-errors.js';
+import { fail } from './executable.errors.js';
 
 export function record(value: unknown, label: string): Record<string, unknown> {
   if (!isRecord(value)) fail(`${label} must be an object`);

@@ -7,7 +7,7 @@ import {
   BASELINE_RUNTIME_POLICIES,
   globalPolicies,
 } from './runtime-policies.js';
-import { fail, readUntrusted } from './executable-errors.js';
+import { fail, readUntrusted } from './executable.errors.js';
 
 export function composeExecutableCatalog(
   nodeCatalogInput: unknown,
