@@ -38,7 +38,6 @@ export const PENDING_DOCS = Object.freeze([
   'packages/core',
   'packages/database',
   'packages/integrations',
-  'packages/node-sdk',
   'packages/nodes-core',
   'packages/workflow-engine',
 ]);
