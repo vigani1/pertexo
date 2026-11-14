@@ -7,6 +7,7 @@ import { parseApiConfig } from '../src/platform/config/api-config.js';
 
 const config = parseApiConfig({
   DATABASE_URL: 'postgresql://api:secret@localhost:5432/pertexo',
+  REDIS_URL: 'redis://localhost:6379/0',
   HOST: '127.0.0.1',
   NODE_ENV: 'test',
   PORT: '4312',

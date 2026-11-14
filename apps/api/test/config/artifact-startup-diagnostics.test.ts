@@ -6,6 +6,7 @@ import { parseApiConfig } from '../../src/platform/config/api-config.js';
 const configured = {
   DATABASE_URL:
     'postgresql://pertexo_app:private-db-password@localhost:5432/pertexo',
+  REDIS_URL: 'redis://localhost:6379/0',
   NODE_ENV: 'test',
   ARTIFACT_STORE_ACCESS_KEY_ID: 'private-access-key',
   ARTIFACT_STORE_SECRET_ACCESS_KEY: 'private-secret-key',

@@ -14,6 +14,7 @@ describe('parseApiConfig', () => {
   it('does not carry a maintenance connection into request configuration', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://localhost:6379/0',
       DATABASE_MAINTENANCE_URL:
         'postgresql://pertexo_maintenance:other@localhost:5432/pertexo',
     });
@@ -22,6 +23,7 @@ describe('parseApiConfig', () => {
   it('preserves configured client pool settings as a frozen record', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://app:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://localhost:6379/0',
       DATABASE_CONNECTION_TIMEOUT_MILLIS: '12345',
       DATABASE_IDLE_TIMEOUT_MILLIS: '60000',
       DATABASE_POOL_MAX: '20',
@@ -49,6 +51,7 @@ describe('parseApiConfig', () => {
     expect(() =>
       parseApiConfig({
         DATABASE_URL: 'postgresql://app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         [key]: value,
       }),
     ).toThrow();
@@ -57,6 +60,7 @@ describe('parseApiConfig', () => {
   it('enables connection and webhook secrets from the same explicit development key', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://localhost:6379/0',
       CONNECTION_ENCRYPTION_MODE: 'local',
       CONNECTION_LOCAL_KEY: Buffer.alloc(32, 4).toString('base64'),
     });
@@ -83,6 +87,7 @@ describe('parseApiConfig', () => {
   it('enables Better Auth from its secret and public origin', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://localhost:6379/0',
       BETTER_AUTH_SECRET:
         'standalone-better-auth-secret-at-least-32-characters',
       AUTH_MAIL_MODE: 'local',
@@ -100,6 +105,7 @@ describe('parseApiConfig', () => {
     expect(() =>
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         BETTER_AUTH_SECRET:
           'standalone-better-auth-secret-at-least-32-characters',
       }),
@@ -110,6 +116,7 @@ describe('parseApiConfig', () => {
     expect(() =>
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         BETTER_AUTH_SECRET:
           'standalone-better-auth-secret-at-least-32-characters',
         AUTH_MAIL_MODE: 'local',
@@ -171,6 +178,7 @@ describe('parseApiConfig', () => {
     expect(() =>
       parseApiConfig({
         DATABASE_URL: validDeployedEnvironment().DATABASE_URL,
+        REDIS_URL: 'redis://localhost:6379/0',
         NODE_ENV: 'test',
         BETTER_AUTH_SECRET:
           'standalone-better-auth-secret-at-least-32-characters',
@@ -195,6 +203,7 @@ describe('parseApiConfig', () => {
   it('uses safe development defaults when optional values are absent', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://localhost:6379/0',
     });
 
     expect(config).toEqual({
@@ -243,6 +252,7 @@ describe('parseApiConfig', () => {
   it('parses valid environment values into the typed public config', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://localhost:6379/0',
       HOST: '127.0.0.1',
       NODE_ENV: 'test',
       PORT: '4312',
@@ -285,6 +295,7 @@ describe('parseApiConfig', () => {
   it('parses an optional complete artifact configuration locally', () => {
     const config = parseApiConfig({
       DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      REDIS_URL: 'redis://localhost:6379/0',
       ARTIFACT_STORE_ACCESS_KEY_ID: 'primary-key',
       ARTIFACT_STORE_SECRET_ACCESS_KEY: 'primary-secret',
       ARTIFACT_STORE_BUCKET: 'pertexo-primary',
@@ -301,6 +312,7 @@ describe('parseApiConfig', () => {
     try {
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         ARTIFACT_STORE_ACCESS_KEY_ID: 'sensitive-access-key',
       });
     } catch (error: unknown) {
@@ -316,6 +328,7 @@ describe('parseApiConfig', () => {
     expect(() =>
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         NODE_ENV: 'staging',
       }),
     ).toThrow(/BETTER_AUTH_SECRET.*set BETTER_AUTH_SECRET/u);
@@ -361,6 +374,7 @@ describe('parseApiConfig', () => {
     try {
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         BETTER_AUTH_SECRET:
           'standalone-better-auth-secret-at-least-32-characters',
         PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:5173',
@@ -380,6 +394,7 @@ describe('parseApiConfig', () => {
     expect(() =>
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         PORT: '70000',
       }),
     ).toThrow();
@@ -389,15 +404,27 @@ describe('parseApiConfig', () => {
     expect(
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         TRUST_PROXY_CIDRS: '127.0.0.1, 10.0.0.0/8, 2001:db8::/32',
       }).trustedProxyCidrs,
     ).toEqual(['127.0.0.1', '10.0.0.0/8', '2001:db8::/32']);
     expect(() =>
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         TRUST_PROXY_CIDRS: '10.0.0.0/99',
       }),
     ).toThrow();
+  });
+
+  // Review of batch K, P3-4: outside deployed environments a missing value
+  // used to fall back to localhost.
+  it('requires a Redis URL in development too, with no localhost fallback', () => {
+    expect(() =>
+      parseApiConfig({
+        DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+      }),
+    ).toThrow(/REDIS_URL.*the API needs Redis in every environment/u);
   });
 
   it('requires a Redis event-hint endpoint when deployed', () => {
@@ -426,6 +453,7 @@ describe('parseApiConfig', () => {
     try {
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         CONNECTION_KMS_KEY_REFERENCE: keyReference,
       });
     } catch (error: unknown) {
@@ -524,6 +552,7 @@ describe('parseApiConfig identity boundary', () => {
     expect(() =>
       parseApiConfig({
         DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+        REDIS_URL: 'redis://localhost:6379/0',
         SESSION_TTL_MILLIS: '60000',
       }),
     ).toThrow(/BETTER_AUTH_SECRET.*set BETTER_AUTH_SECRET/u);
