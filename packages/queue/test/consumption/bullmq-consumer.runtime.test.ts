@@ -9,16 +9,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   InvalidQueueDeliveryError,
   createQueueConsumer,
+  unrecoverableQueueError,
+} from '../../src/server.js';
+import {
   QueueJobTimeoutError,
   QueueConsumerDrainError,
-  unrecoverableQueueError,
-  type QueueJobHandler,
-  type QueueConsumerObserver,
-  type QueueHandlerObservation,
-  type QueueTraceRunner,
-} from '../../src/consumer.js';
+} from '../../src/consumption/queue-consumer.errors.js';
+import type {
+  QueueJobHandler,
+  QueueConsumerObserver,
+  QueueHandlerObservation,
+  QueueTraceRunner,
+} from '../../src/consumption/queue-consumer.types.js';
 import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
-import { jobIdForOutboxEvent } from '../../src/publication/bullmq-producer.runtime.js';
+import { jobIdForOutboxEvent } from '../../src/jobs/job-id.js';
 
 describe('BullMQ queue consumer', () => {
   beforeEach(resetPackagesQueueTestConsumerTestTsBullMQQueueConsumerFixture);

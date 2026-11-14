@@ -13,7 +13,8 @@ import {
   vi,
 } from 'vitest';
 
-import { createQueueConsumer, type QueueConsumer } from '../../src/consumer.js';
+import { createQueueConsumer } from '../../src/consumption/bullmq-consumer.runtime.js';
+import type { QueueConsumer } from '../../src/consumption/queue-consumer.types.js';
 import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
 import { createQueueProducer } from '../../src/publication/bullmq-producer.runtime.js';
 

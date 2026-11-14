@@ -10,6 +10,14 @@ export class InvalidQueueDeliveryError extends UnrecoverableError {
   public override readonly name = 'InvalidQueueDeliveryError';
 }
 
+/**
+ * Explicit policy seam for a handler that has already made the authoritative
+ * PostgreSQL decision that this delivery must not be retried by BullMQ.
+ */
+export function unrecoverableQueueError(message: string): UnrecoverableError {
+  return new UnrecoverableError(message);
+}
+
 /** Validate the envelope and its transport identity before starting a handler. */
 export function admitQueueDelivery(
   queueName: QueueName,

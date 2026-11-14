@@ -1,5 +1,12 @@
 export type RedisEndpointErrorReason = 'invalid_url' | 'unsupported_endpoint';
 
+/** What every queue client says about a Redis URL it can't use. */
+export const REDIS_ENDPOINT_ERROR_MESSAGE = Object.freeze({
+  invalid_url: 'Redis URL is invalid',
+  unsupported_endpoint:
+    'Redis URL must use redis:// or rediss:// with a hostname',
+} satisfies Record<RedisEndpointErrorReason, string>);
+
 export function normalizeRedisEndpoint(
   value: string,
   failure: (reason: RedisEndpointErrorReason) => Error,

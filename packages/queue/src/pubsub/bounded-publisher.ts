@@ -8,13 +8,22 @@ import {
   type RedisTelemetryObserver,
 } from '../redis/redis-instrumentation.js';
 import { createProductionRedisTelemetryObserver } from '../redis/redis-metrics.js';
-import { normalizeRedisEndpoint } from '../redis/endpoint.js';
+import {
+  REDIS_ENDPOINT_ERROR_MESSAGE,
+  normalizeRedisEndpoint,
+} from '../redis/endpoint.js';
 
 const DEFAULT_PUBLISH_TIMEOUT_MS = 2_000;
+const MAX_PUBLISH_TIMEOUT_MS = 60_000;
 
 const optionsSchema = z
   .object({
-    publishTimeoutMs: z.number().int().positive().max(60_000).optional(),
+    publishTimeoutMs: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_PUBLISH_TIMEOUT_MS)
+      .optional(),
     redisUrl: z.string().trim().min(1),
   })
   .strict();
@@ -60,11 +69,7 @@ export class BoundedRedisPublisher {
         `Redis ${errors.label.toLowerCase()} publisher configuration is invalid`,
       );
     const redisUrl = normalizeRedisEndpoint(parsed.data.redisUrl, (reason) =>
-      errors.configuration(
-        reason === 'invalid_url'
-          ? 'Redis URL is invalid'
-          : 'Redis URL must use redis:// or rediss:// with a hostname',
-      ),
+      errors.configuration(REDIS_ENDPOINT_ERROR_MESSAGE[reason]),
     );
     this.publishTimeoutMs =
       parsed.data.publishTimeoutMs ?? DEFAULT_PUBLISH_TIMEOUT_MS;

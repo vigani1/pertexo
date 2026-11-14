@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { normalizeRedisEndpoint } from '../redis/endpoint.js';
+import {
+  REDIS_ENDPOINT_ERROR_MESSAGE,
+  normalizeRedisEndpoint,
+} from '../redis/endpoint.js';
 import type { QueueProducerOptions } from './queue-producer.types.js';
 import { QueueConfigurationError } from './queue-producer.errors.js';
 
@@ -10,12 +13,29 @@ const DEFAULT_PUBLISH_TIMEOUT_MS = 5_000;
 
 const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
 
+const MAX_CONFIGURED_TIMEOUT_MS = 120_000;
+
 const queueProducerOptionsSchema = z
   .object({
     redisUrl: z.string().trim().min(1),
-    readyTimeoutMs: z.number().int().positive().max(120_000).optional(),
-    publishTimeoutMs: z.number().int().positive().max(120_000).optional(),
-    closeTimeoutMs: z.number().int().positive().max(120_000).optional(),
+    readyTimeoutMs: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_CONFIGURED_TIMEOUT_MS)
+      .optional(),
+    publishTimeoutMs: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_CONFIGURED_TIMEOUT_MS)
+      .optional(),
+    closeTimeoutMs: z
+      .number()
+      .int()
+      .positive()
+      .max(MAX_CONFIGURED_TIMEOUT_MS)
+      .optional(),
   })
   .strict();
 
@@ -23,11 +43,7 @@ function parseRedisUrl(value: string): string {
   return normalizeRedisEndpoint(
     value,
     (reason) =>
-      new QueueConfigurationError(
-        reason === 'invalid_url'
-          ? 'Redis URL is invalid'
-          : 'Redis URL must use redis:// or rediss:// with a hostname',
-      ),
+      new QueueConfigurationError(REDIS_ENDPOINT_ERROR_MESSAGE[reason]),
   );
 }
 
