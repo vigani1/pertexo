@@ -11,6 +11,7 @@ import {
   schemaDocumentSchema,
   type SchemaDocument,
 } from './schema-document.js';
+import { NodeCatalogIntegrityError } from './catalog.errors.js';
 
 const NODE_DISPLAY_LIMITS = Object.freeze({
   nameCharacters: 128,
@@ -265,7 +266,7 @@ function rejectDuplicateIdentities(
   for (const identity of identities) {
     const token = identityToken(identity);
     if (seen.has(token))
-      throw new Error(
+      throw new NodeCatalogIntegrityError(
         `duplicate ${label} identity ${identity.key}@${String(identity.version)}`,
       );
     seen.add(token);
@@ -299,7 +300,7 @@ function validateCatalogEdges(input: NodeCatalog): void {
     rejectDuplicateIdentities('definition policy', manifest.policyReferences);
     const executor = executors.get(identityToken(manifest.executor));
     if (executor === undefined)
-      throw new Error(
+      throw new NodeCatalogIntegrityError(
         `definition ${manifest.definition.key}@${String(manifest.definition.version)} references an unknown executor`,
       );
     if (
@@ -308,22 +309,24 @@ function validateCatalogEdges(input: NodeCatalog): void {
           identityToken(candidate) === identityToken(manifest.definition),
       )
     )
-      throw new Error(
+      throw new NodeCatalogIntegrityError(
         `executor ${executor.executor.key}@${String(executor.executor.version)} does not declare definition ${manifest.definition.key}@${String(manifest.definition.version)}`,
       );
     if (manifest.executorAbi !== executor.abiVersion)
-      throw new Error(
+      throw new NodeCatalogIntegrityError(
         'definition executor ABI does not match its pinned executor',
       );
     if (
       !sameIdentityLists(manifest.policyReferences, executor.policyReferences)
     )
-      throw new Error(
+      throw new NodeCatalogIntegrityError(
         'definition policies do not match its pinned executor policies',
       );
     for (const policy of manifest.policyReferences)
       if (!policies.has(identityToken(policy)))
-        throw new Error('definition references an unknown policy');
+        throw new NodeCatalogIntegrityError(
+          'definition references an unknown policy',
+        );
   }
   for (const executor of input.executors) {
     rejectDuplicateIdentities('executor definition', executor.definitions);
@@ -334,11 +337,15 @@ function validateCatalogEdges(input: NodeCatalog): void {
         definition === undefined ||
         identityToken(definition.executor) !== identityToken(executor.executor)
       )
-        throw new Error('executor definition edge is not bidirectional');
+        throw new NodeCatalogIntegrityError(
+          'executor definition edge is not bidirectional',
+        );
     }
     for (const policy of executor.policyReferences)
       if (!policies.has(identityToken(policy)))
-        throw new Error('executor references an unknown policy');
+        throw new NodeCatalogIntegrityError(
+          'executor references an unknown policy',
+        );
   }
 }
 
