@@ -26,6 +26,8 @@ import {
   type WorkflowExpressionPolicyProjection,
 } from './validation-protocol.js';
 import { AuthoringValidationUnavailableError } from './authoring-validation.errors.js';
+import { formatByteSize, formatCount } from '@pertexo/node-sdk';
+import { EXPRESSION_POLICY } from '../../values/expressions/expression-policy.js';
 
 function safeExpressionMessage(result: ExpressionValidation): string {
   if (result.kind === 'valid') return '';
@@ -33,11 +35,11 @@ function safeExpressionMessage(result: ExpressionValidation): string {
     return 'This expression uses a construct unavailable in the expression policy.';
   if (result.code === 'limit_exceeded') {
     if (result.limit === 'expression_bytes')
-      return 'This expression exceeds the 16 KiB source limit.';
+      return `This expression exceeds the ${formatByteSize(EXPRESSION_POLICY.expressionBytes)} source limit.`;
     if (result.limit === 'ast_depth')
-      return 'This expression exceeds the parsed depth limit of 64.';
+      return `This expression exceeds the parsed depth limit of ${String(EXPRESSION_POLICY.astDepth)}.`;
     if (result.limit === 'ast_nodes')
-      return 'This expression exceeds the parsed node limit of 2,048.';
+      return `This expression exceeds the parsed node limit of ${formatCount(EXPRESSION_POLICY.astNodes)}.`;
   }
   return 'This expression is not valid restricted JSONata.';
 }

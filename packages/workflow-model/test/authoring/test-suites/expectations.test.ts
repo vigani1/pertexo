@@ -86,7 +86,7 @@ describe('suite expectations', () => {
           },
         }),
       }),
-    ).toThrow(/4 KiB/u);
+    ).toThrow(/4 KB/u);
     expect(() =>
       workflowTestExpectationsSchema.parse({
         assertions: [assertion(), assertion()],
@@ -103,6 +103,6 @@ describe('suite expectations', () => {
           assertion({ expected: 'x'.repeat(4000) }),
         ),
       }),
-    ).toThrow(/16 KiB/u);
+    ).toThrow(/16 KB/u);
   });
 });

@@ -110,7 +110,7 @@ it('backfills typed defaults, rejects missing/oversized defaults atomically and 
       column: { name: 'large', type: 'text', required: true },
       defaultValue: 'x'.repeat(65536),
     }),
-  ).rejects.toThrow('64 KiB');
+  ).rejects.toThrow('64 KB');
   expect(await current(table.id)).toEqual(before);
   await edit(table.id, {
     operation: 'add_column',

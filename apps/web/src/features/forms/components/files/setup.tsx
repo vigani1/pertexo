@@ -1,15 +1,12 @@
 import { MinusIcon, PlusIcon } from 'lucide-react';
-import {
-  FORM_FILE_LIMITS,
-  formatFormFileBytes,
-  type FormFileGroup,
-} from '@pertexo/workflow-model';
+import { FORM_FILE_LIMITS, type FormFileGroup } from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/class-names';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FILE_GROUPS, type FileField } from '../../model/form-files';
 import { FileGroupGlyph } from './glyph';
 import { formatCount } from '@/lib/format/count';
+import { formatByteSize } from '@pertexo/node-sdk';
 
 const MEBIBYTE = 1_048_576;
 const MAX_MEGABYTES = FORM_FILE_LIMITS.maxBytes / MEBIBYTE;
@@ -112,7 +109,7 @@ export function FileFieldSetup({
               Largest file
             </label>
             <span className="font-mono text-label tabular-nums">
-              {formatFormFileBytes(megabytes * MEBIBYTE)}
+              {formatByteSize(megabytes * MEBIBYTE)}
             </span>
           </div>
           <input

@@ -1,4 +1,6 @@
 import {
+  formatByteSize,
+  formatCount,
   generateSchemaDocument,
   type NodeDisplayMetadata,
   STORED_EXECUTION_VALUE_LIMITS,
@@ -9,6 +11,8 @@ import {
   CORE_BOUNDED_JSON_POLICY,
   CORE_JSONATA_POLICY,
 } from '../../catalog/core-policies.js';
+
+const RETAINED_OUTPUT_SEMANTIC = `Retained output is limited to ${formatByteSize(STORED_EXECUTION_VALUE_LIMITS.inlineBytes)}, depth ${String(STORED_EXECUTION_VALUE_LIMITS.depth)} and ${formatCount(STORED_EXECUTION_VALUE_LIMITS.members)} members, with valid Unicode and no NUL.`;
 
 export function defineUtility({
   key,
@@ -39,17 +43,11 @@ export function defineUtility({
       display: Object.freeze({ ...display }),
       configVersion: 1,
       configSchema: generateSchemaDocument(configSchema, {
-        runtimeOnlySemantics: [
-          ...semantics,
-          `Retained output is limited to ${String(STORED_EXECUTION_VALUE_LIMITS.inlineBytes / 1024)} KiB, depth 64 and 10000 members, with valid Unicode and no NUL.`,
-        ],
+        runtimeOnlySemantics: [...semantics, RETAINED_OUTPUT_SEMANTIC],
       }),
       inputSchema: generateSchemaDocument(inputSchema),
       outputSchema: generateSchemaDocument(outputSchema, {
-        runtimeOnlySemantics: [
-          ...semantics,
-          `Retained output is limited to ${String(STORED_EXECUTION_VALUE_LIMITS.inlineBytes / 1024)} KiB, depth 64 and 10000 members, with valid Unicode and no NUL.`,
-        ],
+        runtimeOnlySemantics: [...semantics, RETAINED_OUTPUT_SEMANTIC],
       }),
       ports: Object.freeze({
         inputs: Object.freeze(['in']),

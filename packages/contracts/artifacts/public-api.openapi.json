@@ -9309,7 +9309,7 @@
                         }
                       }
                     ],
-                    "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                    "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                   }
                 },
                 "required": [
@@ -9468,7 +9468,7 @@
                       }
                     }
                   ],
-                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                 }
               },
               "required": [
@@ -9576,7 +9576,7 @@
                       ]
                     }
                   },
-                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                 }
               },
               "required": [
@@ -9728,7 +9728,7 @@
                             ]
                           }
                         },
-                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                       }
                     },
                     "required": [
@@ -9790,7 +9790,7 @@
                             ]
                           }
                         },
-                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                       }
                     },
                     "required": [
@@ -9865,7 +9865,7 @@
                                       }
                                     }
                                   ],
-                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                                 }
                               },
                               "required": [
@@ -9953,7 +9953,7 @@
                             ]
                           }
                         },
-                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                       }
                     },
                     "required": [
@@ -10029,7 +10029,7 @@
                                       }
                                     }
                                   ],
-                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                                 }
                               },
                               "required": [
@@ -10149,7 +10149,7 @@
                             ]
                           }
                         },
-                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                       }
                     },
                     "required": [
@@ -10211,7 +10211,7 @@
                             ]
                           }
                         },
-                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                       }
                     },
                     "required": [
@@ -10286,7 +10286,7 @@
                                       }
                                     }
                                   ],
-                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                                 }
                               },
                               "required": [
@@ -10374,7 +10374,7 @@
                             ]
                           }
                         },
-                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                        "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                       }
                     },
                     "required": [
@@ -10450,7 +10450,7 @@
                                       }
                                     }
                                   ],
-                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing."
+                                  "description": "Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing."
                                 }
                               },
                               "required": [

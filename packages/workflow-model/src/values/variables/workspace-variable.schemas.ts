@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { STORED_INTEGER_MAX } from '../stored-integer.js';
 import { inspectJsonValue } from '../json/canonical.js';
 import { storageTextSchema } from '../json/text.js';
+import { formatByteSize } from '@pertexo/node-sdk';
 
 export const WORKSPACE_VARIABLE_LIMITS = Object.freeze({
   count: 100,
@@ -32,7 +33,7 @@ export const workspaceVariableValuesSchema = z
     if (inspectJsonValue(values).bytes > WORKSPACE_VARIABLE_LIMITS.bytes)
       context.addIssue({
         code: 'custom',
-        message: `Keep workspace variables within ${String(WORKSPACE_VARIABLE_LIMITS.bytes / 1024)} KB in total.`,
+        message: `Keep workspace variables within ${formatByteSize(WORKSPACE_VARIABLE_LIMITS.bytes)} in total.`,
       });
   })
   .readonly();
@@ -55,7 +56,7 @@ export const workspaceVariableDescriptionsSchema = z
     )
       context.addIssue({
         code: 'custom',
-        message: `Keep variable descriptions within ${String(WORKSPACE_VARIABLE_LIMITS.descriptionsBytes / 1024)} KB in total.`,
+        message: `Keep variable descriptions within ${formatByteSize(WORKSPACE_VARIABLE_LIMITS.descriptionsBytes)} in total.`,
       });
   })
   .readonly();

@@ -41,7 +41,7 @@ describe('typed data table boundary', () => {
     ).toThrow('UTF-8');
     expect(() =>
       validateDataTableValues(columns, { id: 'x', meta: 'x'.repeat(65536) }),
-    ).toThrow('64 KiB');
+    ).toThrow('64 KB');
     expect(() =>
       validateDataTableValues(columns, { id: 'x', amount: Infinity }),
     ).toThrow();
