@@ -1,3 +1,4 @@
+import { ApplicationSecretKeyUnavailableError } from '../encryption.errors.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { z } from 'zod';
@@ -31,13 +32,6 @@ export type ApplicationSecretEnvelope = Readonly<{
   seal(plaintext: string, associatedData: string): ApplicationSealedSecret;
   open(sealed: unknown, associatedData: string): string;
 }>;
-
-export class ApplicationSecretKeyUnavailableError extends Error {
-  public constructor(public readonly keyVersion: string) {
-    super('Application secret key is unavailable');
-    this.name = 'ApplicationSecretKeyUnavailableError';
-  }
-}
 
 export function createApplicationSecretEnvelope(
   config: Readonly<{

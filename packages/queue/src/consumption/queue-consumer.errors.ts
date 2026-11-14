@@ -1,3 +1,5 @@
+import { UnrecoverableError } from 'bullmq';
+
 export class QueueConsumerConfigurationError extends Error {
   public override readonly name = 'QueueConsumerConfigurationError';
 }
@@ -26,4 +28,9 @@ export class QueueConsumerDrainError extends Error {
   public constructor() {
     super('Queue handler was aborted because bounded worker drain expired');
   }
+}
+
+/** An invalid delivery cannot become valid through transport redelivery. */
+export class InvalidQueueDeliveryError extends UnrecoverableError {
+  public override readonly name = 'InvalidQueueDeliveryError';
 }

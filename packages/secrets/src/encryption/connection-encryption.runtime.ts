@@ -10,9 +10,9 @@ import {
 } from './aws-envelope.runtime.js';
 import {
   ConnectionEnvelopeEncryption,
-  ConnectionSecretEncryptionError,
   connectionSecretAssociatedData,
 } from './envelopes/envelope-encryption.js';
+import { ConnectionSecretEncryptionError } from './encryption.errors.js';
 import { SelfManagedEnvelopeKeyProvider } from './keys/self-managed-key-provider.js';
 import {
   APPLICATION_KEY_BYTES,

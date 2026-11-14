@@ -1,3 +1,4 @@
+import { WebhookTriggerSecretEncryptionError } from '../encryption.errors.js';
 import type { KMSClient } from '@aws-sdk/client-kms';
 import { z } from 'zod';
 import {
@@ -56,14 +57,6 @@ export type GeneratedWebhookEnvelopeKey = EnvelopeKeyMaterial;
 export type WebhookKmsClientLike = KmsSendLike;
 export type WebhookEnvelopeKeyProvider =
   EnvelopeKeyProviderCore<WebhookTriggerSecretContext>;
-
-export class WebhookTriggerSecretEncryptionError extends Error {
-  public override readonly name = 'WebhookTriggerSecretEncryptionError';
-
-  public constructor() {
-    super('Webhook trigger secret encryption failed');
-  }
-}
 
 function failure(): WebhookTriggerSecretEncryptionError {
   return new WebhookTriggerSecretEncryptionError();

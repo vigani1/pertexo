@@ -1,3 +1,4 @@
+import { ConnectionSecretEncryptionError } from '../encryption.errors.js';
 import type { KMSClient } from '@aws-sdk/client-kms';
 import { z } from 'zod';
 import {
@@ -34,14 +35,6 @@ export type KmsCommand = KmsCommandLike;
 export type KmsClientLike = KmsSendLike;
 export type EnvelopeKeyProvider =
   EnvelopeKeyProviderCore<ConnectionSecretContext>;
-
-export class ConnectionSecretEncryptionError extends Error {
-  public override readonly name = 'ConnectionSecretEncryptionError';
-
-  public constructor() {
-    super('Connection secret encryption failed');
-  }
-}
 
 function failure(): ConnectionSecretEncryptionError {
   return new ConnectionSecretEncryptionError();

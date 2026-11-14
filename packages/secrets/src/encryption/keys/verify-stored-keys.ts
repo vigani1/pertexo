@@ -1,3 +1,4 @@
+import { StoredKeyVerificationError } from '../encryption.errors.js';
 import { connectionSecretAssociatedData } from '../envelopes/envelope-encryption.js';
 import { webhookTriggerSecretAssociatedData } from '../envelopes/webhook-envelope.js';
 import {
@@ -7,27 +8,6 @@ import {
 import type { ConnectionEnvelopeEncryptionConfig } from '../connection-encryption.runtime.js';
 
 import type { StoredEncryptionKey } from './stored-encryption-key.types.js';
-type VerificationFailure =
-  | 'incompatible_provider'
-  | 'unavailable_key_material'
-  | 'inventory_unavailable'
-  | 'cancelled';
-export class StoredKeyVerificationError extends Error {
-  public override readonly name = 'StoredKeyVerificationError';
-  public constructor(public readonly code: VerificationFailure) {
-    super(
-      {
-        incompatible_provider:
-          'Stored secrets use a different encryption provider; provider migration is not supported',
-        unavailable_key_material:
-          'A stored encryption key is unavailable or damaged; check current and previous master keys',
-        inventory_unavailable: 'Stored encryption key inventory is unavailable',
-        cancelled: 'Stored encryption key verification was cancelled',
-      }[code],
-    );
-  }
-}
-
 /** Connection-purpose keys include saved form links, bound to their workflow context. */
 export async function verifyStoredEncryptionKeys(
   config: ConnectionEnvelopeEncryptionConfig,

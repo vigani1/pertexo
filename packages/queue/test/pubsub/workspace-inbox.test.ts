@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   RedisWorkspaceInboxHintPublisher,
-  WorkspaceInboxHintPublishError,
   encodeWorkspaceInboxHint,
   parseWorkspaceInboxHint,
   workspaceInboxChannel,
 } from '../../src/pubsub/workspace-inbox.js';
+import { WorkspaceInboxHintPublishError } from '../../src/pubsub/pubsub.errors.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const otherWorkspaceId = '22222222-2222-4222-8222-222222222222';

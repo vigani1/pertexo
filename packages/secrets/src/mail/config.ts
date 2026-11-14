@@ -1,3 +1,4 @@
+import { SystemMailConfigurationError } from './mail.errors.js';
 import { isIP } from 'node:net';
 import { z } from 'zod';
 import type { SystemMailConfig } from './system-mail.js';
@@ -7,22 +8,6 @@ const MAX_PORT = 65_535;
 const MAX_API_KEY_LENGTH = 512;
 const MAX_SMTP_USER_LENGTH = 1_024;
 const MAX_SMTP_PASSWORD_LENGTH = 4_096;
-
-export class SystemMailConfigurationError extends Error {
-  public override readonly name = 'SystemMailConfigurationError';
-  public constructor(
-    public readonly setting: string,
-    public readonly reason:
-      | 'api_key_required'
-      | 'mail_transport_required'
-      | 'smtp_hostname_required'
-      | 'smtp_port_required'
-      | 'smtp_tls_required'
-      | 'smtp_credentials_required',
-  ) {
-    super('System mail configuration is invalid');
-  }
-}
 
 const hostname = z
   .string()

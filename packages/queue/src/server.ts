@@ -6,10 +6,8 @@ export type { QueueJob } from './jobs/queue-job.schemas.js';
 export { JOB_NAME, QUEUE_FOR_JOB, QUEUE_NAME } from './jobs/names.js';
 export type { JobName } from './jobs/names.js';
 export { jobIdForOutboxEvent } from './jobs/job-id.js';
-export {
-  InvalidQueueDeliveryError,
-  unrecoverableQueueError,
-} from './jobs/delivery-admission.js';
+export { unrecoverableQueueError } from './jobs/delivery-admission.js';
+export { InvalidQueueDeliveryError } from './consumption/queue-consumer.errors.js';
 export { normalizeRedisEndpoint } from './redis/endpoint.js';
 
 export { createQueueProducer } from './publication/bullmq-producer.runtime.js';
@@ -42,11 +40,13 @@ export type {
 } from './redis/redis-instrumentation.js';
 export {
   RedisRunEventNotificationPublisher,
-  RunEventNotificationConfigurationError,
-  RunEventNotificationPublishError,
   encodeRunEventReference,
   runEventChannel,
 } from './pubsub/run-events.js';
+export {
+  RunEventNotificationConfigurationError,
+  RunEventNotificationPublishError,
+} from './pubsub/pubsub.errors.js';
 export type { RunEventNotificationPublisher } from './pubsub/run-events.js';
 export {
   RedisWorkspaceInboxHintPublisher,

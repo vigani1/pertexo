@@ -34,9 +34,9 @@ export type {
 export {
   AwsKmsEnvelopeKeyProvider,
   ConnectionEnvelopeEncryption,
-  ConnectionSecretEncryptionError,
   connectionSecretAssociatedData,
 } from './encryption/envelopes/envelope-encryption.js';
+export { ConnectionSecretEncryptionError } from './encryption/encryption.errors.js';
 
 export { createAwsConnectionEnvelopeEncryption } from './encryption/aws-envelope.runtime.js';
 
@@ -59,9 +59,9 @@ export {
   createAwsWebhookTriggerEnvelopeEncryption,
   createWebhookTriggerEnvelopeEncryption,
   WebhookTriggerEnvelopeEncryption,
-  WebhookTriggerSecretEncryptionError,
   webhookTriggerSecretAssociatedData,
 } from './encryption/envelopes/webhook-envelope.js';
+export { WebhookTriggerSecretEncryptionError } from './encryption/encryption.errors.js';
 
 export type {
   GeneratedWebhookEnvelopeKey,
@@ -72,10 +72,10 @@ export type {
 
 export {
   createApplicationSecretEnvelope,
-  ApplicationSecretKeyUnavailableError,
   type ApplicationSealedSecret,
   type ApplicationSecretEnvelope,
 } from './encryption/envelopes/application-secret-envelope.js';
+export { ApplicationSecretKeyUnavailableError } from './encryption/encryption.errors.js';
 
 export {
   createConnectionEnvelopeEncryption,
@@ -96,10 +96,8 @@ export {
 
 export type { ApplicationKeyRing } from './encryption/keys/key-ring.js';
 
-export {
-  verifyStoredEncryptionKeys,
-  StoredKeyVerificationError,
-} from './encryption/keys/verify-stored-keys.js';
+export { verifyStoredEncryptionKeys } from './encryption/keys/verify-stored-keys.js';
+export { StoredKeyVerificationError } from './encryption/encryption.errors.js';
 
 export {
   createCallbackTokenKeys,
@@ -159,6 +157,6 @@ export {
   type SystemMailDeliveryHandler,
 } from './mail/deliver-system-mail.js';
 
-export { SystemMailConfigurationError } from './mail/config.js';
+export { SystemMailConfigurationError } from './mail/mail.errors.js';
 
-export { ApplicationKeyConfigurationError } from './encryption/keys/key-ring.js';
+export { ApplicationKeyConfigurationError } from './encryption/encryption.errors.js';

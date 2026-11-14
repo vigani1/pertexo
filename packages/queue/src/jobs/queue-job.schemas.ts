@@ -1,3 +1,4 @@
+import { UnknownQueueJobError } from './queue-job.errors.js';
 import { z } from 'zod';
 
 import { JOB_NAME, QUEUE_FOR_JOB, type JobName } from './names.js';
@@ -181,14 +182,6 @@ export const QUEUE_JOB_REGISTRY = Object.freeze({
 } as const);
 
 for (const entry of Object.values(QUEUE_JOB_REGISTRY)) Object.freeze(entry);
-
-class UnknownQueueJobError extends Error {
-  public override readonly name = 'UnknownQueueJobError';
-
-  public constructor(jobName: unknown) {
-    super(`Unknown queue job name: ${String(jobName)}`);
-  }
-}
 
 interface QueueJobEnvelope {
   readonly name: unknown;
