@@ -76,6 +76,9 @@ const pg = vi.hoisted(() => {
     }
 
     emit(event: string, value: unknown): void {
+      // pg emits connect with the new client, which answers like a session.
+      if (event === 'connect' && typeof value === 'object' && value !== null)
+        this.answerInspection(value);
       for (const listener of this.listeners.get(event) ?? []) listener(value);
     }
 
@@ -115,7 +118,8 @@ const pg = vi.hoisted(() => {
 
     /**
      * Like a PostgreSQL session, every client answers the code under test's
-     * question about inherited app settings; its other queries pass through.
+     * question about inherited app settings and its session setup; its other
+     * queries pass through.
      */
     private answerInspection(client: object): void {
       if (inspectable.has(client)) return;
@@ -123,6 +127,11 @@ const pg = vi.hoisted(() => {
       const own = (client as { query?: (...args: unknown[]) => unknown }).query;
       Object.assign(client, {
         query: (sql: unknown, ...rest: unknown[]) => {
+          if (
+            typeof sql === 'string' &&
+            sql.startsWith('set client_connection_check_interval')
+          )
+            return Promise.resolve({ rows: [] });
           if (typeof sql === 'string' && sql.includes('current_setting(name')) {
             this.inspections += 1;
             const session = FakePool.freshSession;

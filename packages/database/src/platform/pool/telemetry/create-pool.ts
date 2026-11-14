@@ -3,6 +3,7 @@ import { Pool, type PoolClient, type PoolConfig } from 'pg';
 import { withDatabaseDeadlineBudget } from '../policy.js';
 import { instrumentPoolCheckout } from '../checkout-telemetry.js';
 import { surviveConnectionLoss } from '../connection-loss.js';
+import { checkClientConnection } from '../connection-check.js';
 import { refuseInheritedSessionContext } from '../inherited-session-context.js';
 import {
   type DatabasePoolOptions,
@@ -37,6 +38,9 @@ export function createDatabasePool(
   const pool = new Pool(boundedConfig);
   surviveConnectionLoss(pool, (error) => {
     safeDiagnostic(options.diagnostics, 'idle_pool_error', role, error);
+  });
+  checkClientConnection(pool, (error) => {
+    safeDiagnostic(options.diagnostics, 'connection_check', role, error);
   });
   // The proof runs inside the caller's first checkout, so that checkout's
   // duration includes it; later checkouts pay nothing.
