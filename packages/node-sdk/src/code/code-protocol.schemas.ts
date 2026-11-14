@@ -10,7 +10,7 @@ import {
   codeSettingsSchema,
   codeLanguageSchema,
   type CodeLanguage,
-} from './limits.js';
+} from './code-settings.js';
 
 export const CODE_ERROR_CODES = Object.freeze([
   'code.syntax_error',

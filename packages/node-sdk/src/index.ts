@@ -81,7 +81,7 @@ export {
   parseCodeSettings,
   codeContainerLimits,
   codeRunnerSocketPath,
-} from './code/limits.js';
+} from './code/code-settings.js';
 
 export { type CodeSyntaxIssue, inspectCodeSource } from './code/source.js';
 
