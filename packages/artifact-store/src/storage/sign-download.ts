@@ -8,6 +8,8 @@ import {
   type ArtifactIdentity,
 } from '../artifact-identity.js';
 import { observePresign, type ObjectStoreObserver } from '../s3/telemetry.js';
+import { awaitWithSignal, requestSignal } from '../s3/request-lifecycle.js';
+import { SIGNED_URL_LIFETIME_SECONDS } from './metadata.js';
 
 export function createArtifactDownloadPresigner(
   client: S3Client,
@@ -23,7 +25,6 @@ export function createArtifactDownloadPresigner(
   return (request) =>
     observePresign(observer, () => presign(request), 'presign_get_object');
 }
-import { awaitWithSignal, requestSignal } from '../s3/request-lifecycle.js';
 
 export interface BeginDirectDownloadRequest extends ArtifactIdentity {
   readonly expiresInSeconds: number;
@@ -50,7 +51,11 @@ export interface ArtifactDownloadCapability {
 }
 
 const downloadSchema = artifactIdentitySchema.extend({
-  expiresInSeconds: z.number().int().min(60).max(900),
+  expiresInSeconds: z
+    .number()
+    .int()
+    .min(SIGNED_URL_LIFETIME_SECONDS.min)
+    .max(SIGNED_URL_LIFETIME_SECONDS.max),
 });
 
 /** Only canonical artifact identities can produce an attachment capability. */

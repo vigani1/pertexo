@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+// S3's own bucket naming rule.
+const BUCKET_NAME_LENGTH = Object.freeze({ min: 3, max: 63 });
+const REQUEST_TIMEOUT_MS = Object.freeze({
+  min: 100,
+  max: 60_000,
+  default: 5_000,
+});
+
 const objectStoreEndpointSchema = z.url().refine((value) => {
   const url = new URL(value);
   return (
@@ -11,8 +19,8 @@ const objectStoreEndpointSchema = z.url().refine((value) => {
 
 const objectStoreBucketSchema = z
   .string()
-  .min(3)
-  .max(63)
+  .min(BUCKET_NAME_LENGTH.min)
+  .max(BUCKET_NAME_LENGTH.max)
   .regex(/^[a-z0-9][a-z0-9.-]*[a-z0-9]$/u)
   .refine((value) => !value.includes('..'), 'must not contain adjacent dots')
   .refine(
@@ -27,9 +35,9 @@ const objectStoreForcePathStyleSchema = z
 const objectStoreRequestTimeoutSchema = z.coerce
   .number()
   .int()
-  .min(100)
-  .max(60_000)
-  .default(5_000);
+  .min(REQUEST_TIMEOUT_MS.min)
+  .max(REQUEST_TIMEOUT_MS.max)
+  .default(REQUEST_TIMEOUT_MS.default);
 
 const DEFAULT_MAX_OBJECT_BYTES = 10 * 1024 * 1024;
 const MAX_CONFIGURABLE_OBJECT_BYTES = 5 * 1024 * 1024 * 1024;
