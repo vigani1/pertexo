@@ -4,6 +4,10 @@ import {
   workflowControlOutputKind,
   workflowControlOutputNodeIds,
 } from '../../src/graph/control-output-selection.js';
+import {
+  ExecutableControlGraphInvalidError,
+  ExecutableControlGraphTooLargeError,
+} from '../../src/graph/executable-graph.errors.js';
 
 describe('immutable executable control-output selection', () => {
   it('selects current control identities across structured bodies, not output-shaped Set nodes', () => {
@@ -66,7 +70,7 @@ describe('immutable executable control-output selection', () => {
           })),
         },
       }),
-    ).toThrow(RangeError);
+    ).toThrow(ExecutableControlGraphTooLargeError);
   });
 
   it.each([
@@ -88,7 +92,9 @@ describe('immutable executable control-output selection', () => {
   ])(
     'fails closed for invalid or incomplete executable metadata %j',
     (value) => {
-      expect(() => workflowControlOutputNodeIds(value)).toThrow(TypeError);
+      expect(() => workflowControlOutputNodeIds(value)).toThrow(
+        ExecutableControlGraphInvalidError,
+      );
     },
   );
 });

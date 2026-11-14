@@ -1,5 +1,9 @@
 import { isRecord } from '../values/json/object.js';
 import { isCallbackWaitNode } from '../flow/callbacks/callback-wait.js';
+import {
+  ExecutableControlGraphInvalidError,
+  ExecutableControlGraphTooLargeError,
+} from './executable-graph.errors.js';
 
 // Executable graphs nest; selection refuses one that visits more nodes than this.
 const MAX_VISITED_CONTROL_NODES = 10_000;
@@ -40,7 +44,9 @@ export function workflowControlOutputNodeIds(
     executableJson === null ||
     Array.isArray(executableJson)
   )
-    throw new TypeError('Executable control metadata is invalid');
+    throw new ExecutableControlGraphInvalidError(
+      'Executable control metadata is invalid',
+    );
   const pending: unknown[] = [Reflect.get(executableJson, 'graph')];
   const ids = new Set<string>();
   const seen = new Set<string>();
@@ -52,14 +58,18 @@ export function workflowControlOutputNodeIds(
       current === null ||
       Array.isArray(current)
     )
-      throw new TypeError('Executable control graph is invalid');
+      throw new ExecutableControlGraphInvalidError(
+        'Executable control graph is invalid',
+      );
     const nodes = Reflect.get(current, 'nodes') as unknown;
     if (!Array.isArray(nodes))
-      throw new TypeError('Executable control nodes are invalid');
+      throw new ExecutableControlGraphInvalidError(
+        'Executable control nodes are invalid',
+      );
     for (const value of nodes) {
       visited += 1;
       if (visited > MAX_VISITED_CONTROL_NODES)
-        throw new RangeError(
+        throw new ExecutableControlGraphTooLargeError(
           'Executable control node selection exceeds graph bound',
         );
       selectControlNode(value, seen, ids, pending);
@@ -75,7 +85,9 @@ function selectControlNode(
   pending: unknown[],
 ): void {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
-    throw new TypeError('Executable control node is invalid');
+    throw new ExecutableControlGraphInvalidError(
+      'Executable control node is invalid',
+    );
   const nodeId = Reflect.get(value, 'id') as unknown;
   const definition = Reflect.get(value, 'definition') as unknown;
   const invalidIdentity =
@@ -86,7 +98,9 @@ function selectControlNode(
     definition === null ||
     Array.isArray(definition);
   if (invalidIdentity)
-    throw new TypeError('Executable control identity is invalid');
+    throw new ExecutableControlGraphInvalidError(
+      'Executable control identity is invalid',
+    );
   const key = Reflect.get(definition, 'key') as unknown;
   const version = Reflect.get(definition, 'version') as unknown;
   const invalidDefinition =
@@ -95,7 +109,9 @@ function selectControlNode(
     typeof version !== 'number' ||
     !Number.isSafeInteger(version);
   if (invalidDefinition)
-    throw new TypeError('Executable control definition is invalid');
+    throw new ExecutableControlGraphInvalidError(
+      'Executable control definition is invalid',
+    );
   seen.add(nodeId);
   const config: unknown = Reflect.get(value, 'config');
   if (
@@ -112,6 +128,8 @@ function selectControlNode(
     structured === null ||
     Array.isArray(structured)
   )
-    throw new TypeError('Executable structured body is invalid');
+    throw new ExecutableControlGraphInvalidError(
+      'Executable structured body is invalid',
+    );
   pending.push(Reflect.get(structured, 'body'));
 }
