@@ -1,9 +1,11 @@
 import console from 'node:console';
-import { lstat, readdir } from 'node:fs/promises';
+import { lstat, readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
 export const repositoryRoot = path.resolve(import.meta.dirname, '../..');
+const excluded = new Set(['node_modules', 'dist', 'coverage', '.git']);
+const sourceExtension = /\.(?:ts|tsx|mts|cts)$/u;
 
 /** Every app and package directory, as `apps/<name>` or `packages/<name>`. */
 export async function listWorkspaces(root = repositoryRoot) {
@@ -12,6 +14,26 @@ export async function listWorkspaces(root = repositoryRoot) {
     for (const entry of await directoryEntries(path.join(root, category)))
       if (entry.isDirectory()) workspaces.push(`${category}/${entry.name}`);
   return workspaces.sort();
+}
+
+/** A workspace's production TypeScript files, relative to the repository root. */
+export async function listSourceFiles(workspace, root = repositoryRoot) {
+  const files = [];
+  const scan = async (relative) => {
+    for (const entry of await directoryEntries(path.join(root, relative))) {
+      if (entry.isSymbolicLink() || excluded.has(entry.name)) continue;
+      const file = `${relative}/${entry.name}`;
+      if (entry.isDirectory()) await scan(file);
+      else if (entry.isFile() && sourceExtension.test(entry.name))
+        files.push(file);
+    }
+  };
+  await scan(`${workspace}/src`);
+  return files.sort();
+}
+
+export function readSource(file, root = repositoryRoot) {
+  return readFile(path.join(root, file), 'utf8');
 }
 
 export async function directoryEntries(directory) {
