@@ -5,6 +5,7 @@ export { FEDERATION_LIMITS };
 import { z } from 'zod';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
+import { SamlHttpsOriginRequiredError } from './federation.errors.js';
 
 export const federationProtocolSchema = z.enum(['oidc', 'saml']);
 export type FederationProtocol = z.output<typeof federationProtocolSchema>;
@@ -338,8 +339,7 @@ export function samlServiceProviderUrls(
   organizationId: string,
 ) {
   const origin = new URL(publicOrigin);
-  if (origin.protocol !== 'https:')
-    throw new Error('SAML requires an HTTPS public app address');
+  if (origin.protocol !== 'https:') throw new SamlHttpsOriginRequiredError();
   return {
     entityId: new URL(
       `/v1/auth/federation/saml/organizations/${encodeURIComponent(organizationId)}`,
