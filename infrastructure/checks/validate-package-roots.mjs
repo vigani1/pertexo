@@ -85,7 +85,6 @@ export const PENDING_ROOTS = Object.freeze([
   'packages/integrations',
   'packages/nodes-core',
   'packages/workflow-engine',
-  'packages/workflow-model',
 ]);
 
 /** Findings for one workspace's direct `src` files. */

@@ -3,7 +3,6 @@ import {
   type FailureNotificationStore,
 } from '@pertexo/core/notifications';
 
-import { assertNever } from '@pertexo/workflow-model';
 import type { FailureNotificationDeliveryResult } from '@pertexo/workflow-model';
 import type { FailureNotificationDeliveryCapability } from './failure-handler.js';
 import {
@@ -76,8 +75,12 @@ export function createProviderFailureNotificationDelivery(
           return deliverSlack(dependencies, destination, input);
         case 'email':
           return deliverEmail(dependencies, destination, input);
-        default:
-          return assertNever(destination);
+        default: {
+          const unsupported: never = destination;
+          throw new TypeError(
+            `Unexpected failure destination: ${String(unsupported)}`,
+          );
+        }
       }
     },
   });

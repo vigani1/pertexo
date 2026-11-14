@@ -4,7 +4,6 @@ export {
   isWorkflowTriggerKey,
   isWorkflowTriggerDefinition,
 } from './graph/triggers.js';
-export { assertNever } from './assert-never.js';
 export {
   WORKFLOW_FAILURE_PORT,
   WORKFLOW_FAILURE_FIELDS,
