@@ -43,21 +43,17 @@ const shortJsonEscapes = new Set(['"', '\\', '\b', '\f', '\n', '\r', '\t']);
 
 // JSON text: a string's two quotes, a two-byte escape (\n), a six-byte one
 // (\u0001) for other control characters and lone surrogates.
-const JSON_STRING_ENCODING = Object.freeze({
-  quoteBytes: 2,
-  shortEscapeBytes: 2,
-  lastControlCode: 0x1f,
-  unicodeEscapeBytes: 6,
-});
+const JSON_QUOTE_BYTES = 2;
+const JSON_SHORT_ESCAPE_BYTES = 2;
+const JSON_LAST_CONTROL_CODE = 0x1f;
+const JSON_UNICODE_ESCAPE_BYTES = 6;
 // UTF-8 widths by code point; a surrogate pair is two UTF-16 units.
-const UTF8_ENCODING = Object.freeze({
-  oneByteLast: 0x7f,
-  twoByteLast: 0x7ff,
-  twoBytes: 2,
-  threeBytes: 3,
-  fourBytes: 4,
-  surrogatePairUnits: 2,
-});
+const UTF8_ONE_BYTE_LAST = 0x7f;
+const UTF8_TWO_BYTE_LAST = 0x7ff;
+const UTF8_TWO_BYTES = 2;
+const UTF8_THREE_BYTES = 3;
+const UTF8_FOUR_BYTES = 4;
+const SURROGATE_PAIR_UNITS = 2;
 
 /** Includes JSON's quotes and escapes, retaining lone surrogates as escapes:
  * this measures what JSON writes for any string. node-sdk's
@@ -70,16 +66,15 @@ export function jsonStringByteLength(
   options: ByteMeasurementOptions = {},
 ): number {
   const maximum = options.stopAfterBytes ?? Infinity;
-  const encoding = JSON_STRING_ENCODING;
-  let bytes = encoding.quoteBytes;
+  let bytes = JSON_QUOTE_BYTES;
   if (bytes > maximum) return bytes;
   for (const character of value) {
-    if (shortJsonEscapes.has(character)) bytes += encoding.shortEscapeBytes;
+    if (shortJsonEscapes.has(character)) bytes += JSON_SHORT_ESCAPE_BYTES;
     else if (
-      character.charCodeAt(0) <= encoding.lastControlCode ||
+      character.charCodeAt(0) <= JSON_LAST_CONTROL_CODE ||
       !isWellFormed(character)
     )
-      bytes += encoding.unicodeEscapeBytes;
+      bytes += JSON_UNICODE_ESCAPE_BYTES;
     else bytes += scalarUtf8Bytes(character);
     if (bytes > maximum) return bytes;
   }
@@ -87,10 +82,9 @@ export function jsonStringByteLength(
 }
 
 function scalarUtf8Bytes(character: string): number {
-  if (character.length === UTF8_ENCODING.surrogatePairUnits)
-    return UTF8_ENCODING.fourBytes;
+  if (character.length === SURROGATE_PAIR_UNITS) return UTF8_FOUR_BYTES;
   const code = character.charCodeAt(0);
-  if (code <= UTF8_ENCODING.oneByteLast) return 1;
-  if (code <= UTF8_ENCODING.twoByteLast) return UTF8_ENCODING.twoBytes;
-  return UTF8_ENCODING.threeBytes;
+  if (code <= UTF8_ONE_BYTE_LAST) return 1;
+  if (code <= UTF8_TWO_BYTE_LAST) return UTF8_TWO_BYTES;
+  return UTF8_THREE_BYTES;
 }

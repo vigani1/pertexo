@@ -133,7 +133,7 @@ function enterArray(
     count += 1;
     walk.pending.push({
       kind: 'value',
-      value: item[Number(key)],
+      value: item[count - 1],
       depth: depth + 1,
     });
   }
