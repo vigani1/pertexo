@@ -9,7 +9,7 @@ import {
   SecureHttpError,
 } from '@pertexo/secrets/server';
 import type { SlackChannelLookupResult } from '@pertexo/integrations/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   ConnectionLookupPersistence,
@@ -288,5 +288,67 @@ describe('Slack channel-name lookup use case (ADR 046)', () => {
     expect(
       viewer.persistence.resolveConnectionLookupSecret,
     ).not.toHaveBeenCalled();
+  });
+});
+
+// ADR 046 bounds the whole lookup at 15 s. Slack answering slowly but
+// successfully used to run past it; the next channel's dispatch then threw
+// the budget's TimeoutError and the request failed with a 500.
+describe('Slack channel lookup past its whole-request budget', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('keeps the answers it got and says the provider is unavailable for the rest', async () => {
+    vi.useFakeTimers();
+    const lookup = fixture();
+    lookup.lookupChannel.mockImplementation(async (input) => {
+      await input.beforeDispatch();
+      // Every answer arrives, just slowly: 6 s each.
+      await new Promise((resolve) => setTimeout(resolve, 6_000));
+      return {
+        kind: 'succeeded' as const,
+        channelId: input.channelId,
+        name: `name-${input.channelId.toLowerCase()}`,
+      };
+    });
+
+    const answer = lookup.lookup(['C0001', 'C0002', 'C0003', 'C0004', 'G0005']);
+    await vi.advanceTimersByTimeAsync(18_000);
+
+    await expect(answer).resolves.toEqual({
+      items: [
+        { channelId: 'C0001', status: 'resolved', name: 'name-c0001' },
+        { channelId: 'C0002', status: 'resolved', name: 'name-c0002' },
+        { channelId: 'C0003', status: 'resolved', name: 'name-c0003' },
+        unresolved('C0004', 'provider_unavailable'),
+        unresolved('G0005', 'provider_unavailable'),
+      ],
+    });
+    expect(lookup.lookupChannel).toHaveBeenCalledTimes(4);
+    expect(lookup.plaintext()?.every((byte) => byte === 0)).toBe(true);
+  });
+
+  it('still reports the caller giving up as an abort, not as Slack being slow', async () => {
+    vi.useFakeTimers();
+    const lookup = fixture();
+    const controller = new AbortController();
+    lookup.lookupChannel.mockImplementation(async (input) => {
+      await input.beforeDispatch();
+      await new Promise((resolve) => setTimeout(resolve, 6_000));
+      return {
+        kind: 'succeeded' as const,
+        channelId: input.channelId,
+        name: 'name',
+      };
+    });
+
+    const answer = lookup.lookup(['C0001', 'C0002'], controller.signal);
+    const settled = answer.catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(3_000);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    expect(await settled).toMatchObject({ name: 'AbortError' });
   });
 });

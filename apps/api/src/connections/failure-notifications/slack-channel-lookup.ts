@@ -102,24 +102,30 @@ export class LookupSlackChannelsUseCase {
             channelIds,
             allUnresolved(named, 'provider_unavailable'),
           );
-        const signal = AbortSignal.any([
-          encryptionSignal(input),
-          AbortSignal.timeout(LOOKUP_BUDGET_MILLIS),
-        ]);
-        const resolved = await this.resolveSecret(input, signal);
-        if (resolved === undefined)
+        const budget = lookupBudget();
+        try {
+          const signal = AbortSignal.any([
+            encryptionSignal(input),
+            budget.signal,
+          ]);
+          const resolved = await this.resolveSecret(input, signal);
+          if (resolved === undefined)
+            return respond(
+              channelIds,
+              allUnresolved(named, 'connection_unavailable'),
+            );
           return respond(
             channelIds,
-            allUnresolved(named, 'connection_unavailable'),
+            await this.lookupWithSecret(this.slackClient, input, {
+              resolved: resolved,
+              channelIds: named,
+              signal: signal,
+              budget: budget.signal,
+            }),
           );
-        return respond(
-          channelIds,
-          await this.lookupWithSecret(this.slackClient, input, {
-            resolved: resolved,
-            channelIds: named,
-            signal: signal,
-          }),
-        );
+        } finally {
+          budget.clear();
+        }
       },
     );
   }
@@ -155,10 +161,12 @@ export class LookupSlackChannelsUseCase {
       resolved,
       channelIds,
       signal,
+      budget,
     }: Readonly<{
       resolved: ResolvedConnectionSecretRecord;
       channelIds: readonly string[];
       signal: AbortSignal;
+      budget: AbortSignal;
     }>,
   ): Promise<ReadonlyMap<string, SlackChannelLookupItem>> {
     let plaintext: Uint8Array | undefined;
@@ -178,7 +186,7 @@ export class LookupSlackChannelsUseCase {
       for (const channelId of channelIds) {
         const outcome =
           stopped === undefined
-            ? await lookupOne(client, botToken, channelId, signal)
+            ? await lookupOne(client, botToken, channelId, { signal, budget })
             : { item: unresolved(channelId, stopped) };
         items.set(channelId, outcome.item);
         stopped ??= outcome.stop;
@@ -194,7 +202,7 @@ async function lookupOne(
   client: SlackChannelLookupClient,
   botToken: string,
   channelId: string,
-  signal: AbortSignal,
+  { signal, budget }: Readonly<{ signal: AbortSignal; budget: AbortSignal }>,
 ): Promise<ChannelOutcome> {
   let result: Awaited<ReturnType<SlackChannelLookupClient['lookupChannel']>>;
   try {
@@ -209,6 +217,11 @@ async function lookupOne(
       },
     });
   } catch (error: unknown) {
+    // Slack answered, but too slowly across channels for the whole-request
+    // budget: this channel and the rest say so. The caller giving up is
+    // still an abort.
+    if (budget.aborted && signal.reason === budget.reason)
+      return stopWith(channelId, 'provider_unavailable');
     if (!(
       error instanceof SecureHttpError || error instanceof ProviderHttpError
     ))
@@ -228,6 +241,28 @@ async function lookupOne(
     case 'invalid_response':
       return stopWith(channelId, 'provider_unavailable');
   }
+}
+
+/**
+ * The whole-request bound (ADR 046), on the ordinary timer so it is cleared
+ * when the lookup ends rather than left pending.
+ */
+function lookupBudget() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(
+      new DOMException(
+        'The Slack channel lookup ran out of time',
+        'TimeoutError',
+      ),
+    );
+  }, LOOKUP_BUDGET_MILLIS);
+  return {
+    signal: controller.signal,
+    clear: () => {
+      clearTimeout(timer);
+    },
+  };
 }
 
 function rejectedOutcome(channelId: string, error: string): ChannelOutcome {
