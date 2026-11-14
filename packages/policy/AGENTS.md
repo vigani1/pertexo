@@ -33,7 +33,7 @@ One entry, `src/index.ts`, and one file per policy at the root:
   to `WorkspaceStatusList` only if flows pass it to `withWorkspaceAccess`.
 - A new policy area: a new `<subject>-policy.ts` at the root, exported from
   `index.ts` and added to the root allowlist in
-  `infrastructure/checks/package-structure.mjs`.
+  `infrastructure/checks/validate-package-roots.mjs`.
 
 ## Defaults and config
 
