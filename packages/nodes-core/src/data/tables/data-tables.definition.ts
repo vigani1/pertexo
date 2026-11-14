@@ -10,7 +10,6 @@ import {
 } from '@pertexo/node-sdk';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_BOUNDED_JSON_POLICY } from '../../catalog/core-policies.js';
-export { DATA_TABLE_OPERATIONS } from '@pertexo/node-sdk';
 const tableDisplay = {
   find: {
     name: 'Find rows',
@@ -38,11 +37,8 @@ const tableDisplay = {
   },
 };
 const DATA_TABLE_CONFIG_SCHEMA = dataTableConfigSchema;
-const query = dataTableQuerySchema.default({
-  filters: [],
-  limit: 100,
-  offset: 0,
-});
+// prefault parses its value, so the query schema's own defaults apply.
+const query = dataTableQuerySchema.prefault({});
 const DATA_TABLE_INPUT_SCHEMAS = {
   find: z.object({ query }).strict(),
   insert: z.object({ values: dataTableValuesSchema }).strict(),
