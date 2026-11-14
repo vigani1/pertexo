@@ -112,42 +112,65 @@ jobs:
         run: pnpm format:check
 
   check:
+    name: check (${{ matrix.part }})
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    # About 12 minutes on main; slower runners took over 15 and were cancelled
-    # before the last checks ran (#688, #689).
-    timeout-minutes: 25
+    # The checks ran one after another for about 13 minutes, lint alone for 6.
+    # Four parallel parts, each with its own build, finish in about 5.
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [static, deploy, lint-web, lint-rest]
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up workspace
         uses: ./.github/actions/setup
       - name: Format
+        if: matrix.part == 'static'
         run: pnpm format:check
       - name: Build
         run: pnpm build
       - name: Deployment checks and test tools
+        if: matrix.part == 'deploy'
         run:
           node --test infrastructure/single-server/test/*.test.mjs
           infrastructure/testing/*.test.mjs
       - name: Validate observability configuration and alert rules
+        if: matrix.part == 'static'
         env:
           COMPOSE_PROJECT_NAME:
             pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
             }}-observability
         run: pnpm observability:check
-      - name: Lint
-        run: pnpm lint
+      - name: Lint the web app
+        if: matrix.part == 'lint-web'
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: pnpm --filter @pertexo/web exec eslint .
+      - name: Lint infrastructure and the other workspaces
+        if: matrix.part == 'lint-rest'
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: >-
+          pnpm lint:infrastructure && pnpm --recursive --workspace-concurrency=1
+          --filter '!@pertexo/web' exec eslint .
       - name: Typecheck
+        if: matrix.part == 'static'
         run: pnpm typecheck
       - name: Unused code and dependencies
+        if: matrix.part == 'static'
         run: pnpm dependencies:check
       - name: Generated contracts are current
+        if: matrix.part == 'static'
         run: pnpm contracts:check
       - name: Database schema matches migrations
+        if: matrix.part == 'static'
         run: pnpm database:schema:check
       - name: Package boundaries
+        if: matrix.part == 'static'
         run: pnpm architecture:check
 
   unit:

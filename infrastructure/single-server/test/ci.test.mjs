@@ -176,6 +176,32 @@ test('keeps the fast deployment checks in the required check job', () => {
   );
 });
 
+// The checks run as parallel parts; splitting them must not drop one.
+test('runs every static check across the parallel check parts', () => {
+  const check = ci.jobs.check;
+  assert.deepEqual(check.strategy.matrix.part, [
+    'static',
+    'deploy',
+    'lint-web',
+    'lint-rest',
+  ]);
+  const text = jobText(check);
+  for (const command of [
+    'pnpm format:check',
+    'pnpm build',
+    'pnpm observability:check',
+    'pnpm lint:infrastructure',
+    'pnpm --filter @pertexo/web exec eslint .',
+    "--filter '!@pertexo/web'",
+    'pnpm typecheck',
+    'pnpm dependencies:check',
+    'pnpm contracts:check',
+    'pnpm database:schema:check',
+    'pnpm architecture:check',
+  ])
+    assert.ok(text.includes(command), command);
+});
+
 // The drill takes about 22 minutes a leg: a pull request that didn't touch what it
 // covers must not wait for it, and one that did must not get past it.
 test('runs the drill on main, on the schedule, and only on pull requests that touch what it covers', () => {
