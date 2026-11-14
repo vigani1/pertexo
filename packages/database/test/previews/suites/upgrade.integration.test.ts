@@ -2,7 +2,7 @@ import { testStackSetting } from '../../../../../infrastructure/testing/test-sta
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 it('upgrades a populated standalone test without changing its source identity or legacy case charge', async () => {
   const adminUrl = testStackSetting('DATABASE_ADMIN_URL');

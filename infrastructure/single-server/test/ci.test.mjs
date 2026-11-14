@@ -301,7 +301,7 @@ test('runs the drill on main, on the schedule, and only on pull requests that to
   for (const file of [
     'apps/api/src/app.ts',
     'docs/operations/single-server.md',
-    'packages/database/src/database.ts',
+    'packages/database/src/platform/workspace-database.ts',
     'infrastructure/checks/third-party-notices.mjs',
     'infrastructure/development/check-cache.mjs',
   ])

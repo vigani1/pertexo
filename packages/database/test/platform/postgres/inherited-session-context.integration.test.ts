@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '../../../src/config.js';
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import {
   createWorkspaceDatabase,
   InheritedSessionContextError,

@@ -2,7 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import { destroyCanceledPoolClient } from '../../platform/pool/client-disposal.js';
 import { acquireAbortablePoolClient } from '../../platform/pool/abortable-checkout.js';
-import { isConnectionLost } from '../../platform/query-errors.js';
+import { isConnectionLost } from '../../platform/query.errors.js';
 
 import type {
   WorkspaceTransactionOptions,

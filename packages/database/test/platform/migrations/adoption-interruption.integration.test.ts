@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 
 import { expect, it } from 'vitest';
 
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import { withBaselineDatabase } from './upgrade-fixture.js';
 
 it('serializes adoption and retains all old receipts when the first runner is terminated before its replacement receipt', async () => {

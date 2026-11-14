@@ -1,20 +1,20 @@
-import { acquireDatabasePool } from './platform/pool/database-pool.runtime.js';
-import type { DatabaseRuntime } from './platform/pool/database-pool.runtime.js';
+import { acquireDatabasePool } from './pool/database-pool.runtime.js';
+import type { DatabaseRuntime } from './pool/database-pool.runtime.js';
 
-import type { DatabaseConfig } from './config.js';
+import type { DatabaseConfig } from '../config.js';
 import {
   checkDatabaseReadiness,
   checkDatabaseWrites,
-} from './platform/readiness.repository.js';
+} from './readiness.repository.js';
 import type {
   DatabaseReadiness,
   InstanceCapacity,
-} from './platform/database-platform.types.js';
-import { withWorkspaceTransaction } from './tenant-access/transactions.js';
+} from './database-platform.types.js';
+import { withWorkspaceTransaction } from '../tenant-access/transactions.js';
 import type {
   WorkspaceTransaction,
   WorkspaceTransactionOptions,
-} from './tenant-access/transactions.js';
+} from '../tenant-access/transactions.js';
 
 export interface WorkspaceDatabase {
   withWorkspace<T>(

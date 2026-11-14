@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { expect, it } from 'vitest';
 
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import { withDatabase } from './upgrade-fixture.js';
 
 it('times out on a held migration lock, then migrates after its release', async () => {

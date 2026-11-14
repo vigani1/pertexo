@@ -18,7 +18,7 @@ export type {
   DatabaseRuntimeOptions,
 } from './pool/database-pool.runtime.js';
 export { generatePersistedId } from './persisted-id.js';
-export { isTransientDatabaseFailure } from './query-errors.js';
+export { isTransientDatabaseFailure } from './query.errors.js';
 export {
   IdempotencyConflictError,
   credentialCommandScope,
@@ -27,7 +27,7 @@ export type {
   DatabaseReadiness,
   InstanceCapacity,
 } from './database-platform.types.js';
-export { createWorkspaceDatabase } from '../database.js';
-export type { WorkspaceDatabase } from '../database.js';
+export { createWorkspaceDatabase } from './workspace-database.js';
+export type { WorkspaceDatabase } from './workspace-database.js';
 
 export { withPlatformTransaction } from '../tenant-access/transactions.js';

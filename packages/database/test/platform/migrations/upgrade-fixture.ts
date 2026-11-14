@@ -9,7 +9,7 @@ import { Pool } from 'pg';
 import {
   migrateDatabase,
   MIGRATIONS_DIRECTORY,
-} from '../../../src/migrations.js';
+} from '../../../src/migrations/migrate-database.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 /** Each caller owns its database, sessions and migration history, even in parallel suites. */

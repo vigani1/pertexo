@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
 
-import { migrateDatabase } from '../../migrations.js';
+import { migrateDatabase } from '../../migrations/migrate-database.js';
 import { createDisposableDatabaseFixture } from './disposable-database.js';
 
 const SETTING = /^app\.[a-z0-9_]+$/u;

@@ -16,8 +16,8 @@ import {
 } from './rls/fixture.js';
 import { eq, sql } from 'drizzle-orm';
 import { parseDatabaseConfig } from '../../src/config.js';
-import { createWorkspaceDatabase } from '../../src/database.js';
-import { migrateDatabase } from '../../src/migrations.js';
+import { createWorkspaceDatabase } from '../../src/platform/workspace-database.js';
+import { migrateDatabase } from '../../src/migrations/migrate-database.js';
 import { idempotencyRecords, workflowTags } from '../../src/schema.js';
 import { EXPECTED_MIGRATION_HEAD } from '../../src/platform/readiness.repository.js';
 

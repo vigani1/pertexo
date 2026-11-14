@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runMigrationCli } from '../../../src/migrate.js';
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 const adminUrl = testStackSetting('DATABASE_ADMIN_URL');

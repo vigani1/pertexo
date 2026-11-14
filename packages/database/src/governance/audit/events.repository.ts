@@ -1,4 +1,4 @@
-import { rethrowQueryFailure } from '../../platform/query-errors.js';
+import { rethrowQueryFailure } from '../../platform/query.errors.js';
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { auditEvents } from '../../schema/governance/audit-events.js';

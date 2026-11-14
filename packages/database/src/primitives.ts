@@ -27,7 +27,7 @@ export {
   postgresFailure,
   queryFailure,
   rethrowQueryFailure,
-} from './platform/query-errors.js';
+} from './platform/query.errors.js';
 export { checkDatabaseReadiness } from './platform/readiness.repository.js';
 export {
   withActorDiscoveryScope,

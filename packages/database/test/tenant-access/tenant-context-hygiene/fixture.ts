@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
 
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
 const adminUrl = testStackSetting('DATABASE_ADMIN_URL');

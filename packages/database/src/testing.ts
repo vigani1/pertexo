@@ -6,9 +6,12 @@ export {
   parseOperatorDatabaseConfig,
 } from './config.js';
 export type { DatabaseConfig, MigrationConfig } from './config.js';
-export { createWorkspaceDatabase } from './database.js';
-export type { WorkspaceDatabase } from './database.js';
-export { MIGRATIONS_DIRECTORY, migrateDatabase } from './migrations.js';
+export { createWorkspaceDatabase } from './platform/workspace-database.js';
+export type { WorkspaceDatabase } from './platform/workspace-database.js';
+export {
+  MIGRATIONS_DIRECTORY,
+  migrateDatabase,
+} from './migrations/migrate-database.js';
 export {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

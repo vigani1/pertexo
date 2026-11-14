@@ -6,7 +6,7 @@ import {
   MigrationFileFailedError,
   PartialMigrationHistoryError,
   migrateDatabase,
-} from './migrations.js';
+} from './migrations/migrate-database.js';
 
 export interface MigrationCliDependencies {
   readonly loadConfig?: () => MigrationConfig;

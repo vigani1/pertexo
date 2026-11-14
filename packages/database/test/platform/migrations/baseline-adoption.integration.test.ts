@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import type { Pool } from 'pg';
 import { expect, it } from 'vitest';
 
-import { migrateDatabase } from '../../../src/migrations.js';
+import { migrateDatabase } from '../../../src/migrations/migrate-database.js';
 import {
   seedWorkflow,
   withDatabase,
