@@ -31,31 +31,26 @@ import {
   type EmailSendNotificationInput,
   type EmailSendNotificationOutput,
 } from './send-notification.schemas.js';
-
-export interface EmailSendNotificationExecutorTelemetry {
-  measure(
-    work: () => Promise<EmailSendNotificationOutput>,
-  ): Promise<EmailSendNotificationOutput>;
-}
+import {
+  withProviderCredential,
+  type ResolvedProviderConnection,
+} from '../../providers/provider-credential.js';
+import {
+  registerProviderExecutor,
+  type ExecutorTelemetry,
+} from '../../providers/provider-executor.js';
 
 export type EmailSendNotificationExecutorDependencies = Readonly<{
   client: Pick<ResendClient, 'sendNotification'>;
   smtp?: SmtpEmailClient;
-  telemetry?: EmailSendNotificationExecutorTelemetry;
+  telemetry?: ExecutorTelemetry<EmailSendNotificationOutput>;
 }>;
 
-const NOOP_TELEMETRY: EmailSendNotificationExecutorTelemetry = Object.freeze({
-  measure: (work: () => Promise<EmailSendNotificationOutput>) => work(),
-});
-
-type ResolvedEmailConnection = Awaited<
-  ReturnType<NonNullable<NodeExecutionRuntime['connections']>['resolve']>
->;
 const emailCredentialSchema = z.discriminatedUnion('type', [
   resolvedResendApiKeyCredentialSchema,
   smtpCredentialSchema,
 ]);
-type EmailCredential = z.output<typeof emailCredentialSchema>;
+const EMAIL_AUTH_TYPES = ['resend_api_key', 'smtp'] as const;
 type IdempotentEmailRuntime = NodeExecutionRuntime &
   Readonly<{ providerIdempotencyKey: string }>;
 
@@ -68,41 +63,12 @@ function hasIdempotentEmailDispatchPolicy(
   );
 }
 
-async function withEmailCredential<T>(
-  resolved: ResolvedEmailConnection,
-  connectionId: string,
-  runtime: NodeExecutionRuntime,
-  work: (credential: EmailCredential) => Promise<T>,
-): Promise<T> {
-  try {
-    if (
-      resolved.connectionId !== connectionId ||
-      resolved.providerKey !== 'email' ||
-      !['resend_api_key', 'smtp'].includes(resolved.authType)
-    )
-      throw dispatchIdentityFailure(runtime, 'configuration');
-    let credential: EmailCredential;
-    try {
-      credential = emailCredentialSchema.parse(
-        JSON.parse(
-          new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
-        ),
-      );
-    } catch {
-      throw dispatchIdentityFailure(runtime, 'authentication');
-    }
-    return await work(credential);
-  } finally {
-    resolved.secret.fill(0);
-  }
-}
-
 async function resolveEmailConnection(
   connections: NodeConnectionRuntime,
   connectionId: string,
   runtime: NodeExecutionRuntime,
   signal: AbortSignal,
-): Promise<ResolvedEmailConnection> {
+): Promise<ResolvedProviderConnection> {
   try {
     return await connections.resolve({
       connectionId,
@@ -148,10 +114,15 @@ async function execute(
       runtime,
       invocation.signal,
     );
-    return await withEmailCredential(
+    return await withProviderCredential(
       resolved,
-      connectionId,
-      runtime,
+      {
+        connectionId,
+        providerKey: 'email',
+        authTypes: EMAIL_AUTH_TYPES,
+        schema: emailCredentialSchema,
+        refuse: (reason) => dispatchIdentityFailure(runtime, reason),
+      },
       async (credential) => {
         if (credential.type === 'smtp') {
           if (runtime.providerDispatchUnresolved ?? false)
@@ -241,11 +212,9 @@ async function execute(
 export function createEmailSendNotificationExecutorRegistration(
   dependencies: EmailSendNotificationExecutorDependencies,
 ): NodeExecutorRegistration {
-  return Object.freeze({
-    executor: EMAIL_SEND_NOTIFICATION_EXECUTOR,
-    execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
-      (dependencies.telemetry ?? NOOP_TELEMETRY).measure(() =>
-        execute(dependencies, invocation),
-      ),
-  });
+  return registerProviderExecutor(
+    EMAIL_SEND_NOTIFICATION_EXECUTOR,
+    dependencies.telemetry,
+    (invocation) => execute(dependencies, invocation),
+  );
 }

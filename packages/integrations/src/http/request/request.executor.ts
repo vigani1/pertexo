@@ -30,11 +30,14 @@ import { HttpOAuth2Failure } from './execution/oauth2.errors.js';
 import { createOAuth2RenewalClient } from './execution/oauth2-renewal.js';
 
 import {
-  type HttpRequestExecutorDependencies,
-  NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY,
   failedConfiguration,
-} from './execution/request-execution.js';
-import { HttpRequestExecutorError } from './request.errors.js';
+  HttpRequestExecutorError,
+} from './request.errors.js';
+import type { ProviderHttpClient } from '../../providers/http-client.js';
+import {
+  registerProviderExecutor,
+  type ExecutorTelemetry,
+} from '../../providers/provider-executor.js';
 import { consumeResponseBody, releaseHttpMaterial } from './execution/body.js';
 import { requestHeaders } from './execution/request-input.js';
 import {
@@ -45,11 +48,10 @@ import {
   prepareRequestBody,
   resolveRequestConnection,
 } from './execution/invocation.js';
-export {
-  type HttpRequestExecutorDependencies,
-  type HttpRequestExecutorTelemetry,
-} from './execution/request-execution.js';
-export { HttpRequestExecutorError } from './request.errors.js';
+export type HttpRequestExecutorDependencies = Readonly<{
+  httpClient: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>;
+  telemetry?: ExecutorTelemetry<HttpRequestOutput>;
+}>;
 
 async function executeHttpRequest(
   dependencies: HttpRequestExecutorDependencies,
@@ -339,13 +341,11 @@ function rethrowHttpError(error: unknown, context: RequestContext): never {
 export function createHttpRequestExecutorRegistration(
   dependencies: HttpRequestExecutorDependencies,
 ): NodeExecutorRegistration {
-  return Object.freeze({
-    executor: HTTP_REQUEST_EXECUTOR,
-    execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
-      (dependencies.telemetry ?? NOOP_HTTP_REQUEST_EXECUTOR_TELEMETRY).measure(
-        () => executeHttpRequest(dependencies, invocation),
-      ),
-  });
+  return registerProviderExecutor(
+    HTTP_REQUEST_EXECUTOR,
+    dependencies.telemetry,
+    (invocation) => executeHttpRequest(dependencies, invocation),
+  );
 }
 
 function requestCredential(

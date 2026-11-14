@@ -4,13 +4,10 @@ export { platformPortableDefinitionPolicy } from './portable-definition-policy.j
 import {
   createHttpRequestExecutorRegistration,
   type HttpRequestExecutorDependencies,
-  type HttpRequestExecutorTelemetry,
   createSlackSendMessageExecutorRegistration,
   type SlackSendMessageExecutorDependencies,
-  type SlackSendMessageExecutorTelemetry,
   createEmailSendNotificationExecutorRegistration,
   type EmailSendNotificationExecutorDependencies,
-  type EmailSendNotificationExecutorTelemetry,
 } from '@pertexo/integrations/server';
 import {
   PLATFORM_NODE_CATALOG,
@@ -25,11 +22,11 @@ import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
 
 export type PlatformNodeRegistryDependencies = Readonly<{
   httpRequest: HttpRequestExecutorDependencies;
-  httpRequestTelemetry?: HttpRequestExecutorTelemetry;
+  httpRequestTelemetry?: HttpRequestExecutorDependencies['telemetry'];
   slackSendMessage: SlackSendMessageExecutorDependencies;
-  slackSendMessageTelemetry?: SlackSendMessageExecutorTelemetry;
+  slackSendMessageTelemetry?: SlackSendMessageExecutorDependencies['telemetry'];
   emailSendNotification: EmailSendNotificationExecutorDependencies;
-  emailSendNotificationTelemetry?: EmailSendNotificationExecutorTelemetry;
+  emailSendNotificationTelemetry?: EmailSendNotificationExecutorDependencies['telemetry'];
 }>;
 
 /** The executing registry for the platform catalog; provider clients can be injected. */

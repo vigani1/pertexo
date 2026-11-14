@@ -31,7 +31,9 @@ reads the environment.
 - `oauth2/`: consent, endpoints, settings, the token endpoint and
   `OAuth2TokenFailure`.
 - `providers/`: the provider HTTP client interface, provider errors,
-  `Retry-After` failures and the dispatch fence.
+  `Retry-After` failures, the dispatch fence, `withProviderCredential`
+  (`provider-credential.ts`) and `registerProviderExecutor` with its
+  `ExecutorTelemetry` (`provider-executor.ts`).
 - `webhooks/`: inbound webhook signature verification.
 
 Each step is `<provider>/<step>/<step>.definition.ts`, `.executor.ts`,
@@ -53,6 +55,10 @@ Each step is `<provider>/<step>/<step>.definition.ts`, `.executor.ts`,
 
 ## Rules
 
+- Every provider step opens its credential through `withProviderCredential`,
+  which checks the resolved identity, parses the secret and always zeroes it,
+  and registers through `registerProviderExecutor`, which applies the app's
+  telemetry.
 - Provider responses are untrusted: steps keep only redacted, bounded
   excerpts and classify failures through `http/outcome-policy.ts`.
 - `Retry-After` is read only by `parseRetryAfterMillis` (`http/retry-after.ts`).
