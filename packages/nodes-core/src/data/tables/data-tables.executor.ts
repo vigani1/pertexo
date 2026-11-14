@@ -8,7 +8,7 @@ import {
   type NodeExecutorRegistration,
 } from '@pertexo/node-sdk/server';
 import { NodeDataTableFailure } from '@pertexo/node-sdk/server';
-import { DATA_TABLE_OPERATIONS } from './data-tables.definition.js';
+import { DATA_TABLE_OPERATIONS } from '@pertexo/node-sdk';
 export const DATA_TABLE_EXECUTORS: readonly NodeExecutorRegistration[] =
   DATA_TABLE_OPERATIONS.map((operation) => ({
     executor: { key: `core.table_${operation}`, version: 1 },
