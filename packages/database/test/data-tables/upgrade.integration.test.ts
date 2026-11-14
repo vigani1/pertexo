@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
@@ -5,9 +6,7 @@ import { migrateDatabase } from '../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 
 it('backfills stable IDs without changing populated rows or published graphs and retains workspace RLS', async () => {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     connectRoles: ['pertexo_app', 'pertexo_migration', 'pertexo_maintenance'],
@@ -24,8 +23,7 @@ it('backfills stable IDs without changing populated rows or published graphs and
       ownerRole: 'pertexo_owner',
       maintenanceRole: 'pertexo_maintenance',
       connectionString: fixture.databaseUrl(
-        process.env.DATABASE_MIGRATION_URL ??
-          'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+        testStackSetting('DATABASE_MIGRATION_URL'),
       ),
     };
     await migrateDatabase(config);

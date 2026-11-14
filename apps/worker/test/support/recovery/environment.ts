@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { fileURLToPath } from 'node:url';
 
 import { describe } from 'vitest';
@@ -25,23 +26,11 @@ const value = (name: string, fallback: string): string =>
   process.env[name] ?? fallback;
 
 export const composeUrls = Object.freeze({
-  admin: value(
-    'DATABASE_ADMIN_URL',
-    'postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres',
-  ),
-  app: value(
-    'DATABASE_URL',
-    'postgresql://pertexo_app:pertexo-local-app@127.0.0.1:5432/pertexo',
-  ),
-  maintenance: value(
-    'DATABASE_MAINTENANCE_URL',
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo',
-  ),
-  migration: value(
-    'DATABASE_MIGRATION_URL',
-    'postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo',
-  ),
-  redis: value('REDIS_URL', 'redis://:pertexo-local-redis@127.0.0.1:6379/0'),
+  admin: testStackSetting('DATABASE_ADMIN_URL'),
+  app: testStackSetting('DATABASE_URL'),
+  maintenance: testStackSetting('DATABASE_MAINTENANCE_URL'),
+  migration: testStackSetting('DATABASE_MIGRATION_URL'),
+  redis: testStackSetting('REDIS_URL'),
 });
 
 export const roles = Object.freeze({
@@ -51,7 +40,7 @@ export const roles = Object.freeze({
   owner: value('POSTGRES_OWNER_USER', 'pertexo_owner'),
 });
 
-export const redisPassword = value('REDIS_PASSWORD', 'pertexo-local-redis');
+export const redisPassword = testStackSetting('REDIS_PASSWORD');
 
 /** Everything the API and worker read, with development keys and default bounds. */
 export const serviceEnvironment = Object.freeze({

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { Pool } from 'pg';
@@ -56,15 +57,13 @@ describe('draining a limited backlog with concurrent dispatchers', () => {
   beforeAll(() => {
     dispatchers = new Pool({
       connectionString: withFixtureDatabase(
-        process.env.DATABASE_MAINTENANCE_URL ??
-          'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+        testStackSetting('DATABASE_MAINTENANCE_URL'),
       ),
       max: DISPATCHERS,
     });
     observer = new Pool({
       connectionString: withFixtureDatabase(
-        process.env.DATABASE_ADMIN_URL ??
-          'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
+        testStackSetting('DATABASE_ADMIN_URL'),
       ),
       max: 1,
     });

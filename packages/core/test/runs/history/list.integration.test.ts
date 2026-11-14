@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
@@ -91,10 +92,7 @@ beforeAll(async () => {
   runs = createWorkflowRunDatabase(
     parseDatabaseConfig({ connectionString: apiUrl, max: 3 }),
   );
-  const adminUrl = new URL(
-    process.env.DATABASE_ADMIN_URL ??
-      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-  );
+  const adminUrl = new URL(testStackSetting('DATABASE_ADMIN_URL'));
   adminUrl.pathname = new URL(apiUrl).pathname;
   seeder = new Client({ connectionString: adminUrl.toString() });
   await seeder.connect();

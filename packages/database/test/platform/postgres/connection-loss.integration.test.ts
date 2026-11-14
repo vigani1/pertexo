@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -5,9 +6,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import { createDatabasePool } from '../../../src/platform/pool/telemetry/create-pool.js';
 
-const connectionString =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const connectionString = testStackSetting('DATABASE_MIGRATION_URL');
 
 const uncaught: unknown[] = [];
 const recordUncaught = (error: unknown) => uncaught.push(error);

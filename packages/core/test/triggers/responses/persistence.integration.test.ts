@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { describe, it, expect } from 'vitest';
 import { Pool } from 'pg';
 import { createWebhookResponseStore } from '../../../src/triggers/webhooks/responses/webhook-response.store.js';
@@ -275,8 +276,7 @@ describe('durable webhook responses', () => {
       ),
     );
     const maintenanceUrl = databaseUrl(
-      process.env.DATABASE_MAINTENANCE_URL ??
-        'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+      testStackSetting('DATABASE_MAINTENANCE_URL'),
     );
     await purgeWorkspace({
       workspaceId: workspaceB,

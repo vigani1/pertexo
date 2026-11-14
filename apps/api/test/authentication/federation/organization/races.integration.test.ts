@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
@@ -38,10 +39,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       ).rows[0];
       if (owner === undefined || user === undefined || database === undefined)
         throw new Error('Race fixture missing');
-      const url = new URL(
-        process.env.DATABASE_ADMIN_URL ??
-          'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-      );
+      const url = new URL(testStackSetting('DATABASE_ADMIN_URL'));
       url.pathname = '/' + database.name;
       const inspector = new Pool({ connectionString: url.toString(), max: 2 });
       const blocker = await inspector.connect();

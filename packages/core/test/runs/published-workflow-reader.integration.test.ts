@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -13,18 +14,10 @@ import {
 import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/published.repository.js';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../support/workflow-authoring-admission.fixture.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
+const apiBaseUrl = testStackSetting('DATABASE_URL');
+const workerBaseUrl = testStackSetting('DATABASE_URL');
 const databaseName = `pertexo_test_reader_${randomUUID().replaceAll('-', '')}`;
 const disposableDatabase = createDisposableDatabaseFixture({
   adminUrl,

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
@@ -207,7 +208,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
     });
     it('does not count an organization protocol that this process cannot serve', async () => {
       const f = await person();
-      const url = new URL(process.env.DATABASE_URL ?? '');
+      const url = new URL(testStackSetting('DATABASE_URL'));
       url.pathname = new URL(
         api.database().options.connectionString ?? '',
       ).pathname;

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
@@ -15,8 +16,7 @@ import {
 // Authentication is rate limited per origin; a suite-owned origin keeps this
 // suite's sign-ups out of the buckets that parallel identity suites share.
 const origin = 'https://inbox.integration.test';
-const redisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+const redisUrl = testStackSetting('REDIS_URL');
 
 /*
  * ADR 055 through the whole HTTP stack: Better Auth sessions, the capability
@@ -98,7 +98,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const sourceUrl = database.options.connectionString;
       if (sourceUrl === undefined)
         throw new Error('Fixture database URL unavailable');
-      const workerUrl = new URL(process.env.DATABASE_URL ?? sourceUrl);
+      const workerUrl = new URL(testStackSetting('DATABASE_URL'));
       workerUrl.pathname = new URL(sourceUrl).pathname;
       const fold = createWorkspaceInboxFoldStore(
         maintenanceConfig(

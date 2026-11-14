@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { expect, it } from 'vitest';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { databaseSchema } from '@pertexo/database/schema';
@@ -190,7 +191,7 @@ it('records a terminal failure once, reads its daily history without scanning ru
     new Map([[run.workflow_id, [{ day, count: 1 }]]]),
   );
   await asRuntime(
-    process.env.DATABASE_MAINTENANCE_URL ?? '',
+    testStackSetting('DATABASE_MAINTENANCE_URL'),
     workspaceA,
     (client) => purgeRunLeaves(client, workspaceA, 100),
   );

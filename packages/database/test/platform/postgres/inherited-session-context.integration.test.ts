@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -13,18 +14,10 @@ import { createDatabasePool } from '../../../src/platform/pool/telemetry/create-
 import { APP_SETTING_NAMES } from '../../../src/tenant-access/app-settings.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const appBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const maintenanceBaseUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const appBaseUrl = testStackSetting('DATABASE_URL');
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
+const maintenanceBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
 const databaseName = `pertexo_test_inherited_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({

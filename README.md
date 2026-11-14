@@ -169,9 +169,26 @@ pnpm db:generate
 
 `pnpm check` runs formatting, build, lint, typecheck, unused-code detection,
 generated-contract drift, the schema check and package-boundary checks.
-`pnpm test` runs the unit tests. `pnpm test:integration` needs the local
-PostgreSQL, Redis and S3-compatible services above. `pnpm test:e2e` runs the
-browser tests against the mocked API.
+`pnpm test` runs the unit tests. `pnpm test:e2e` runs the browser tests against
+the mocked API.
+
+### Integration tests
+
+`pnpm test:integration` runs against real PostgreSQL, Redis and S3-compatible
+services, and only the ones you name: `DATABASE_URL`, `DATABASE_ADMIN_URL`,
+`DATABASE_MIGRATION_URL`, `DATABASE_MAINTENANCE_URL` and `REDIS_URL` must be set
+(the queue suite needs only `REDIS_URL`). A suite refuses to start when one is
+missing; it never falls back to `localhost:5432` or the development stack,
+because its fixtures create and drop databases. Point it at a stack kept for
+tests, for example a second Compose project on other ports:
+
+```bash
+set -a; . ./.env.test; set +a   # your test stack's URLs and ports
+COMPOSE_PROJECT_NAME=pertexo-test docker compose up -d --wait
+pnpm db:migrate && pnpm test:integration
+```
+
+Loading `.env` instead points the tests at your development stack, on purpose.
 
 `pnpm db:generate` generates incremental SQL from the Drizzle schema and its
 tracked snapshot. Retained SQL exceptions are documented in the architecture

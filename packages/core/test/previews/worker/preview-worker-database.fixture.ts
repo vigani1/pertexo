@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -9,25 +10,15 @@ import {
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const apiBaseUrl = testStackSetting('DATABASE_URL');
 
-const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const workerBaseUrl = testStackSetting('DATABASE_URL');
 
-export const maintenanceBaseUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+export const maintenanceBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
 const databaseName = `pertexo_test_preview_worker_${randomUUID().replaceAll('-', '')}`;
 

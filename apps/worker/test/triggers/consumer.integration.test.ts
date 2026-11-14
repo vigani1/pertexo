@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 
@@ -20,8 +21,7 @@ import { testTriggerRuntime } from '../support/runtime-factories.js';
 
 const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 const describeIntegration = enabled ? describe : describe.skip;
-const configuredRedisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+const configuredRedisUrl = testStackSetting('REDIS_URL');
 function bullConnection(redisUrl: string) {
   const parsed = new URL(redisUrl);
   return {

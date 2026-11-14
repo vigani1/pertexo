@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
@@ -11,13 +12,9 @@ import { seedPurgeRelationships } from './seed/relations.js';
 import { seedPurgeEvidence } from './seed/evidence.js';
 import { seedPurgeExecution } from './seed/execution.js';
 
-const adminBaseUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const adminBaseUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
 export const databaseName = `pertexo_test_workspace_purge_${randomUUID().replaceAll('-', '')}`;
 
@@ -32,8 +29,7 @@ export const adminUrl = withDatabase(adminBaseUrl);
 const databaseUrl = withDatabase(migrationBaseUrl);
 
 export const maintenanceUrl = withDatabase(
-  process.env.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+  testStackSetting('DATABASE_MAINTENANCE_URL'),
 );
 
 export let owner: Pool | undefined;

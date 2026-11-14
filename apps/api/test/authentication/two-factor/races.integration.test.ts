@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
@@ -39,10 +40,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         const database = await api
           .database()
           .query<{ name: string }>('select current_database() name');
-        const url = new URL(
-          process.env.DATABASE_ADMIN_URL ??
-            'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-        );
+        const url = new URL(testStackSetting('DATABASE_ADMIN_URL'));
         const databaseName = database.rows[0]?.name;
         if (databaseName === undefined)
           throw new Error('Fixture database missing');

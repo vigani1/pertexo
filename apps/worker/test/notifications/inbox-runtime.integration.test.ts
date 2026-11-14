@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 
@@ -20,20 +21,11 @@ import { createWorkspaceInboxRuntime } from '../../src/notifications/inbox-runti
 import { dropDisconnectedDatabase } from '../support/infrastructure/disposable-database.js';
 
 const databaseName = `pertexo_test_inbox_runtime_${randomUUID().replaceAll('-', '')}`;
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-const redisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
+const apiBaseUrl = testStackSetting('DATABASE_URL');
+const workerBaseUrl = testStackSetting('DATABASE_URL');
+const redisUrl = testStackSetting('REDIS_URL');
 
 function databaseUrl(base: string): string {
   const url = new URL(base);

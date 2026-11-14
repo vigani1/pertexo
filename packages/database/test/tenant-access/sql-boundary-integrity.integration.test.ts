@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -7,9 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrateDatabase } from '../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../src/testing/postgres/disposable-database.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 const databaseName = `pertexo_test_sql_boundary_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,
@@ -17,29 +16,20 @@ const fixture = createDisposableDatabaseFixture({
   databaseName,
   ownerRole: 'pertexo_owner',
 });
-const roleUrl = (environmentName: string, fallback: string): string =>
-  fixture.databaseUrl(process.env[environmentName] ?? fallback);
+const roleUrl = (environmentName: string): string =>
+  fixture.databaseUrl(testStackSetting(environmentName));
 
 const pools = {
   owner: new Pool({
-    connectionString: roleUrl(
-      'DATABASE_MIGRATION_URL',
-      'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
-    ),
+    connectionString: roleUrl('DATABASE_MIGRATION_URL'),
     max: 1,
   }),
   dispatcher: new Pool({
-    connectionString: roleUrl(
-      'DATABASE_MAINTENANCE_URL',
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-    ),
+    connectionString: roleUrl('DATABASE_MAINTENANCE_URL'),
     max: 1,
   }),
   worker: new Pool({
-    connectionString: roleUrl(
-      'DATABASE_URL',
-      'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-    ),
+    connectionString: roleUrl('DATABASE_URL'),
     max: 1,
   }),
 };
@@ -59,10 +49,7 @@ beforeAll(async () => {
   await fixture.create();
   await migrateDatabase({
     appRole: 'pertexo_app',
-    connectionString: roleUrl(
-      'DATABASE_MIGRATION_URL',
-      'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
-    ),
+    connectionString: roleUrl('DATABASE_MIGRATION_URL'),
     maintenanceRole: 'pertexo_maintenance',
     ownerRole: 'pertexo_owner',
   });

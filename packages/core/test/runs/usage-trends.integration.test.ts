@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Client, Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
@@ -205,10 +206,7 @@ describe('retained usage trends', () => {
       workflows.push(await seedNoticeWorkflow(f.workspaceId, f.members.owner));
     // Only static terminal history is seeded here. Avoid the admission trigger's
     // per-row recount while preparing the isolated read-plan fixture.
-    const fixtureUrl = new URL(
-      process.env.DATABASE_ADMIN_URL ??
-        'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-    );
+    const fixtureUrl = new URL(testStackSetting('DATABASE_ADMIN_URL'));
     fixtureUrl.pathname = new URL(apiUrl).pathname;
     const fixtureAdmin = new Pool({
       connectionString: fixtureUrl.toString(),

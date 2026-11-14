@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
@@ -19,7 +20,7 @@ describe.runIf(
   let maintenanceUrl = '';
   const api = useBetterAuthRealApi('purge_discovery', {
     afterMigration: (url) => {
-      maintenanceUrl = url(process.env.DATABASE_MAINTENANCE_URL ?? '');
+      maintenanceUrl = url(testStackSetting('DATABASE_MAINTENANCE_URL'));
       return Promise.resolve();
     },
   });

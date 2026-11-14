@@ -7,11 +7,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
 import { parseApiConfig } from '../../src/platform/config/api-config.js';
-import {
-  apiBaseUrl,
-  betterAuthIntegrationEnabled,
-  redisUrl,
-} from '../support/better-auth/api/environment.js';
+import { betterAuthIntegrationEnabled } from '../support/better-auth/api/environment.js';
+import { apiBaseUrl, redisUrl } from '../support/better-auth/api/stack.js';
 
 const silent: StructuredLogger = {
   debug: () => undefined,

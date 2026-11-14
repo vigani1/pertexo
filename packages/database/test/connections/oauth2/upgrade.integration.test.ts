@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -11,12 +12,8 @@ import {
   seedWorkspace,
 } from '../../../src/testing/connections/oauth2/fixture.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
 it('the migration leaves existing connections unchanged', async () => {
   const fixture = createDisposableDatabaseFixture({

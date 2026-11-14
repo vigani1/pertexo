@@ -1,24 +1,17 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { queuedCheckpoint } from '../../support/checkpoint.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { WebhookRequest } from '@pertexo/nodes-core';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 
-export const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-export const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+export const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-export const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const apiBaseUrl = testStackSetting('DATABASE_URL');
 
-export const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const workerBaseUrl = testStackSetting('DATABASE_URL');
 
 export const databaseName = `pertexo_test_webhook_${randomUUID().replaceAll('-', '')}`;
 

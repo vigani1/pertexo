@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -17,10 +18,7 @@ export let maintenance: Pool;
 
 beforeAll(async () => {
   sourceRunId = await schedule.initialize();
-  const url = new URL(
-    process.env.DATABASE_MAINTENANCE_URL ??
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-  );
+  const url = new URL(testStackSetting('DATABASE_MAINTENANCE_URL'));
   url.pathname = new URL(schedule.apiConnectionString).pathname;
   maintenance = new Pool({ connectionString: url.toString(), max: 1 });
 });

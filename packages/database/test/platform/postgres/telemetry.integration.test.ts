@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import type { Meter } from '@opentelemetry/api';
@@ -9,9 +10,7 @@ import {
   DATABASE_METRIC_NAME,
 } from '../../../src/platform/pool/telemetry/create-pool.js';
 
-const databaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const databaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
 function uniqueAdvisoryKey(): number {
   return Number.parseInt(randomUUID().slice(0, 8), 16) & 0x7fff_ffff;

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { Pool, type PoolClient } from 'pg';
 
 import { ownerRole } from './environment.js';
@@ -19,9 +20,7 @@ export async function withOwnerWorkspace(
   work: (client: PoolClient) => Promise<unknown>,
 ): Promise<void> {
   const pool = new Pool({
-    connectionString:
-      process.env.DATABASE_MIGRATION_URL ??
-      'postgresql://invalid:invalid@localhost/invalid',
+    connectionString: testStackSetting('DATABASE_MIGRATION_URL'),
     max: 1,
   });
   try {

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
@@ -15,7 +16,7 @@ it.each(['claim', 'read'] as const)(
   async (reader) => {
     await withDatabase(async ({ admin, config }) => {
       const { workspaceId } = await seedWorkflow(admin);
-      const url = new URL(process.env.DATABASE_URL ?? '');
+      const url = new URL(testStackSetting('DATABASE_URL'));
       url.pathname = new URL(config.connectionString).pathname;
       const pool = new Pool({ connectionString: url.href, max: 1 });
       const identity = {
@@ -63,7 +64,7 @@ it.each(['claim', 'read'] as const)(
 it('keeps readable false results and void-result envelopes replayable', async () => {
   await withDatabase(async ({ admin, config }) => {
     const { workspaceId } = await seedWorkflow(admin);
-    const url = new URL(process.env.DATABASE_URL ?? '');
+    const url = new URL(testStackSetting('DATABASE_URL'));
     url.pathname = new URL(config.connectionString).pathname;
     const pool = new Pool({ connectionString: url.href, max: 1 });
     try {

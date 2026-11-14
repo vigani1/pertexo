@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createTestArtifactScratch } from '../../support/infrastructure/artifact-scratch.js';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -8,18 +9,10 @@ import {
 } from '@pertexo/database/testing';
 import { dropDisconnectedDatabase } from '../../support/infrastructure/disposable-database.js';
 
-const adminDatabaseUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationDatabaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const apiDatabaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-const workerDatabaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const adminDatabaseUrl = testStackSetting('DATABASE_ADMIN_URL');
+const migrationDatabaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
+const apiDatabaseUrl = testStackSetting('DATABASE_URL');
+const workerDatabaseUrl = testStackSetting('DATABASE_URL');
 
 function databaseUrl(baseUrl: string, databaseName: string): string {
   const parsed = new URL(baseUrl);
@@ -43,8 +36,7 @@ export function createArtifactDatabaseEnvironment() {
   });
   const maintenanceConfig = parseDatabaseConfig({
     connectionString: databaseUrl(
-      process.env.DATABASE_MAINTENANCE_URL ??
-        'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+      testStackSetting('DATABASE_MAINTENANCE_URL'),
       databaseName,
     ),
     max: 2,

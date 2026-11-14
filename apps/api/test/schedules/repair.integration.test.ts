@@ -18,7 +18,7 @@ import {
   betterAuthIntegrationEnabled,
   useBetterAuthRealApi,
 } from '../support/better-auth/real-api.support.js';
-import { apiBaseUrl } from '../support/better-auth/api/environment.js';
+import { apiBaseUrl } from '../support/better-auth/api/stack.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(
   'schedule repair health over HTTP',

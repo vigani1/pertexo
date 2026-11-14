@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
@@ -22,8 +23,7 @@ export async function fileEnvironment() {
   const store = createArtifactStore(config);
   const pool = new Pool({
     connectionString: fixture.databaseUrl(
-      process.env.DATABASE_MIGRATION_URL ??
-        'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+      testStackSetting('DATABASE_MIGRATION_URL'),
     ),
     max: 1,
   });

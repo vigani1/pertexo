@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -66,7 +67,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         controller.abort();
       }, 38_000);
       const publisher = new RedisWorkspaceInboxHintPublisher({
-        redisUrl: process.env.REDIS_URL ?? '',
+        redisUrl: testStackSetting('REDIS_URL'),
       });
       try {
         const response = await fetch(

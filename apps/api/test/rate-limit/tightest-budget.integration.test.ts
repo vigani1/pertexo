@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Redis } from 'ioredis';
 import { describe, expect, it } from 'vitest';
@@ -13,7 +14,7 @@ describe.runIf(process.env.REDIS_RATE_LIMIT_INTEGRATION === 'true')(
     it.each(['redis', 'local'] as const)(
       'reports the tightest remaining dimension even when it has a larger limit: %s',
       async (kind) => {
-        const redis = new Redis(process.env.REDIS_URL ?? '');
+        const redis = new Redis(testStackSetting('REDIS_URL'));
         const namespace = randomUUID();
         const decision: RateLimitDecision = {
           endpointClass: 'authenticated_read',

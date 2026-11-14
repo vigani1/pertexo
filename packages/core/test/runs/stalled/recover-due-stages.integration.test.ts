@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -31,9 +32,7 @@ import {
   workspaceA,
 } from '../run-store/run-store.fixture.js';
 
-const maintenanceUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+const maintenanceUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
 type Stage = 'expired_leases' | 'overdue_deliveries' | 'failed_run_jobs';
 

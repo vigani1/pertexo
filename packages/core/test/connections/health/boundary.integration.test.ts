@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -31,15 +32,9 @@ import {
 } from './run.fixture.js';
 import { purgeWorkspace } from '../../support/workspace-purge.js';
 
-const dispatcherBase =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
-const maintenanceBase =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
-const adminBase =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const dispatcherBase = testStackSetting('DATABASE_MAINTENANCE_URL');
+const maintenanceBase = testStackSetting('DATABASE_MAINTENANCE_URL');
+const adminBase = testStackSetting('DATABASE_ADMIN_URL');
 const api = new Pool({ connectionString: databaseUrl(apiBaseUrl), max: 1 });
 const worker = new Pool({
   connectionString: databaseUrl(workerBaseUrl),

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -15,10 +16,7 @@ beforeAll(async () => {
   const [row] = await db.asAdmin<{ name: string }>(
     'select current_database() as name',
   );
-  const url = new URL(
-    process.env.DATABASE_ADMIN_URL ??
-      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-  );
+  const url = new URL(testStackSetting('DATABASE_ADMIN_URL'));
   url.pathname = `/${String(row?.name)}`;
   holders = new Pool({ connectionString: url.toString(), max: 1 });
 });

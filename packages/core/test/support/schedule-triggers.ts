@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { queuedCheckpoint } from './checkpoint.js';
 import { createHash, randomUUID } from 'node:crypto';
@@ -23,21 +24,11 @@ import { createWorkflowTriggerReconciliationStore } from '../../src/triggers/rec
 export function createScheduleTriggerTestEnvironment(
   options: Readonly<{ includeOperator?: boolean; scannerCount?: 1 | 2 }> = {},
 ) {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-  const migrationBaseUrl =
-    process.env.DATABASE_MIGRATION_URL ??
-    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-  const apiBaseUrl =
-    process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-  const workerBaseUrl =
-    process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-  const operatorBaseUrl =
-    process.env.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+  const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
+  const apiBaseUrl = testStackSetting('DATABASE_URL');
+  const workerBaseUrl = testStackSetting('DATABASE_URL');
+  const operatorBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
   const databaseName = `pertexo_test_schedule_${randomUUID().replaceAll('-', '')}`;
   const url = (base: string): string => {
     const parsed = new URL(base);

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -85,9 +86,7 @@ async function address(
 }
 
 it('upgrades the lookup in place: open addresses answer as before, closed ones now report why', async () => {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     connectRoles: ['pertexo_app', 'pertexo_migration', 'pertexo_maintenance'],
@@ -104,8 +103,7 @@ it('upgrades the lookup in place: open addresses answer as before, closed ones n
       ownerRole: 'pertexo_owner',
       maintenanceRole: 'pertexo_maintenance',
       connectionString: fixture.databaseUrl(
-        process.env.DATABASE_MIGRATION_URL ??
-          'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+        testStackSetting('DATABASE_MIGRATION_URL'),
       ),
     };
     await migrateDatabase(config);

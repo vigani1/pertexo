@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -21,10 +22,7 @@ it.each(['paused', 'incomplete'] as const)(
   async (stage) => {
     const workspaceId = await createWorkspace();
     const admin = new Pool({ connectionString: adminUrl, max: 1 });
-    const appUrl = new URL(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-    );
+    const appUrl = new URL(testStackSetting('DATABASE_URL'));
     appUrl.pathname = '/' + databaseName;
     const discovery = createIdentityWorkspaceStore(
       parseDatabaseConfig({ connectionString: appUrl.toString(), max: 1 }),
