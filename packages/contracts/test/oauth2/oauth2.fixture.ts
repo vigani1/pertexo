@@ -1,4 +1,4 @@
-import { OAUTH2_CALLBACK_PATH } from '../../src/schemas/oauth2-connections.js';
+import { OAUTH2_CALLBACK_PATH } from '../../src/schemas/connections/oauth2-connections.js';
 
 export const consentSettings = {
   grantType: 'authorization_code',

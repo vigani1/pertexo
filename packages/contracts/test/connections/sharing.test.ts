@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import {
   connectionSharingRequestSchema,
   connectionSharingResponseSchema,
-} from '../../src/schemas/connections.js';
+} from '../../src/schemas/connections/connection-sharing.js';
 
 it('bounds grants, canonicalizes identities and rejects duplicates, groups and credential fields', () => {
   const userId = randomUUID();

@@ -2,7 +2,7 @@ import { formUploadRequestSchema } from '../src/schemas/forms/uploads.js';
 import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 
-import { connectionNameSchema } from '../src/schemas/connection-fields.js';
+import { connectionNameSchema } from '../src/schemas/connections/connection-fields.js';
 import {
   workspaceCreateRequestSchema,
   workspaceRenameRequestSchema,

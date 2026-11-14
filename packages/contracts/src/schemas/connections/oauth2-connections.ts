@@ -1,4 +1,4 @@
-import { responseSchema } from './shared/response-schema.js';
+import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
 import { connectionResponseFields } from './connection-fields.js';

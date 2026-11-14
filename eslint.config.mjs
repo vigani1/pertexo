@@ -827,21 +827,16 @@ export default tseslint.config(
     ...testIntegrity,
   },
   {
-    // Declarative protocol, schema, retention and OpenAPI tables stay together,
-    // as do the entry points that only list their exports.
     files: [
+      // Entry points that only list their exports, by area.
       'packages/database/src/schema.ts',
       'packages/workflow-model/src/index.ts',
       // At the limit already; the move split its test-door import in two.
       'apps/worker/test/support/workflow-lifecycle.integration.support.ts',
+      // The one registry of problem codes: each code's status, title,
+      // severity and detail exposure, read whole by the problem filter and
+      // the OpenAPI writer.
       'packages/contracts/src/errors/api-problem.ts',
-      'packages/contracts/src/openapi/connections.ts',
-      'packages/contracts/src/openapi/execution/runs.ts',
-      'packages/contracts/src/openapi/identity/workspaces.ts',
-      'packages/contracts/src/openapi/workflows/authoring.ts',
-      'packages/contracts/src/openapi/workflows/organization.ts',
-      'packages/contracts/src/schemas/connections.ts',
-      'packages/contracts/src/schemas/execution/runs.ts',
     ],
     rules: { 'max-lines': 'off' },
   },

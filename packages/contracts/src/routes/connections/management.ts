@@ -8,16 +8,20 @@ import {
   connectionListResponseSchema,
   connectionResponseSchema,
   connectionRotateSecretRequestSchema,
-  connectionSharingCommandResponseSchema,
-  connectionSharingRequestSchema,
-  connectionSharingResponseSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
   connectionUsageResponseSchema,
+} from '../../schemas/connections/connections.js';
+import {
+  connectionSharingCommandResponseSchema,
+  connectionSharingRequestSchema,
+  connectionSharingResponseSchema,
+} from '../../schemas/connections/connection-sharing.js';
+import {
   slackChannelLookupQuerySchema,
   slackChannelLookupResponseSchema,
-} from '../../schemas/connections.js';
-import { oauth2AuthorizationStartResponseSchema } from '../../schemas/oauth2-connections.js';
+} from '../../schemas/connections/slack-channel-lookup.js';
+import { oauth2AuthorizationStartResponseSchema } from '../../schemas/connections/oauth2-connections.js';
 import { defineRoute, named } from '../define.js';
 import { managing, problem, readingSession, using } from './access.js';
 

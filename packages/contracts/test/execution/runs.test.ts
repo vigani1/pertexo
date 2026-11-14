@@ -7,10 +7,12 @@ import {
   workflowRunReplayRequestSchema,
   workflowRunListResponseSchema,
   workflowRunStartRequestSchema,
+} from '../../src/schemas/execution/runs.js';
+import {
   workflowRunStatisticsQuerySchema,
   workflowRunStatisticsResponseSchema,
   WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT,
-} from '../../src/schemas/execution/runs.js';
+} from '../../src/schemas/execution/run-statistics.js';
 import { workflowRecoveryRequestSchema } from '../../src/schemas/execution/recovery.js';
 import { workflowRunsOpenApiDocument } from '../../src/server.js';
 

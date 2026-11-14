@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { usageCapacityResponseSchema } from '../../src/schemas/execution/runs.js';
+import { usageCapacityResponseSchema } from '../../src/schemas/execution/run-statistics.js';
 import { workflowRunsOpenApiDocument } from '../../src/server.js';
 
 const capacity = {

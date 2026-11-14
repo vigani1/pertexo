@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { oauth2ClientSettingsSchema } from '../../src/schemas/oauth2-connections.js';
+import { oauth2ClientSettingsSchema } from '../../src/schemas/connections/oauth2-connections.js';
 
 import { consentSettings, serverSettings } from './oauth2.fixture.js';
 

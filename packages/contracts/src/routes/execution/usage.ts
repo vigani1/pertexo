@@ -1,9 +1,7 @@
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
-import {
-  usageCapacityResponseSchema,
-  workflowRunListParamsSchema,
-} from '../../schemas/execution/runs.js';
+import { workflowRunListParamsSchema } from '../../schemas/execution/runs.js';
+import { usageCapacityResponseSchema } from '../../schemas/execution/run-statistics.js';
 import {
   usageTrendsQuerySchema,
   usageTrendsResponseSchema,
