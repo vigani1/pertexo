@@ -54,6 +54,12 @@ const exceptions = [
     reason:
       'Unmodified build-time CSS compiler; its source is not included in the web bundle.',
   },
+  {
+    matches: (name) => name === 'axe-core' || name === '@axe-core/playwright',
+    license: 'MPL-2.0',
+    reason:
+      'Unmodified test-only accessibility checker; absent from the web bundle and the runtime image.',
+  },
 ];
 
 export function requireAllowedLicense(name, license) {

@@ -16,6 +16,9 @@ The explicit exceptions in `infrastructure/checks/third-party-notices.mjs` are:
 - `lightningcss` and its platform binaries: MPL-2.0, unmodified build tooling.
   These compiler sources are absent from the production web bundle and runtime
   install. Retain their license in the build's notices as well.
+- `axe-core` and `@axe-core/playwright`: MPL-2.0, the unmodified accessibility
+  checker the mocked browser suite runs. They are test-only and absent from the
+  web bundle and the runtime image. Retain their license in the notices.
 
 The image build generates `THIRD_PARTY_NOTICES.txt` from the installed manifests
 and published license, copyright, COPYING and NOTICE files. It ships at
