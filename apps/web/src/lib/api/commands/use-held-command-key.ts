@@ -12,6 +12,8 @@ type HeldKey<Input> = Readonly<{
   intent: string;
   slot: string;
   input: Input;
+  /** When a send under this key ended without a confirmed outcome. */
+  unconfirmedAt?: number;
 }> &
   CommandKey;
 
@@ -75,9 +77,23 @@ export function useHeldCommandKey<Input>(
     },
     /** Record a send's outcome: no cause means it succeeded. */
     settle: (cause?: unknown) => {
-      if (cause === undefined || settlesKey(cause)) attempt.clear();
+      if (cause === undefined || settlesKey(cause)) {
+        attempt.clear();
+        return;
+      }
+      const held = attempt.current();
+      if (held !== undefined && isUnconfirmedCommand(cause))
+        attempt.adopt({ ...held, unconfirmedAt: Date.now() });
     },
     held: () => attempt.current(),
+    /** The key held for this input, current or set aside. */
+    heldFor: (input: Input): HeldKey<Input> | undefined => {
+      const intent = intentOf(input);
+      const current = attempt.current();
+      if (current?.intent === intent) return current;
+      const waiting = setAside.get(slotOf(input));
+      return waiting?.intent === intent ? waiting : undefined;
+    },
     /** Drops the key held for this input, wherever it waits. */
     forget: (input: Input) => {
       const intent = intentOf(input);
