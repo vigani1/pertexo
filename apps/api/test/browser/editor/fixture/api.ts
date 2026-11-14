@@ -20,6 +20,10 @@ import { createCuratedTemplateEnvelopeContext } from '../../../../../../infrastr
 import { createEditorWebhookRuntime } from '../webhook-runtime.js';
 
 import { createStructuredLogger } from '@pertexo/observability/server';
+import {
+  SECURE_HTTP_ERROR_CODE,
+  SecureHttpError,
+} from '@pertexo/secrets/server';
 
 import { useBetterAuthRealApi } from '../../../support/better-auth/real-api.support.js';
 
@@ -150,10 +154,17 @@ export function useEditorApiFixture(context: {
                 },
               }
             : connectionEnvelope(scenario, httpMaster),
+        // Refused as the real transport refuses a destination it won't call,
+        // so callers answer as they would in production (a Slack channel
+        // lookup says "provider unavailable"), not with an unexpected 500.
         http: {
           execute: () =>
             Promise.reject(
-              new Error('Provider calls are outside the pure-node gate'),
+              new SecureHttpError(
+                SECURE_HTTP_ERROR_CODE.ssrfBlocked,
+                'definite_failure',
+                { possiblyDispatched: false },
+              ),
             ),
         },
       }),
