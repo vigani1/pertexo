@@ -11,6 +11,10 @@ import {
   projectWorkflowPortableManifest,
 } from '../../../src/authoring/portability/projection.js';
 import { catalog, node, graph } from '../../support/portability.js';
+import {
+  WORKFLOW_GRAPH_JSON_VALUE_DEPTH,
+  workflowGraphSchema,
+} from '../../../src/graph/workflow-graph.schemas.js';
 describe('portable raw JSON admission', () => {
   it('keeps retry settings when exporting and importing a workflow', () => {
     const original = graph([
@@ -106,5 +110,24 @@ describe('portable raw JSON admission', () => {
       '{"__proto__":{"x":1}}',
     );
     expect(Object.prototype).not.toHaveProperty('x');
+  });
+});
+
+describe('portable depth follows the graph', () => {
+  const nested = (depth: number): unknown =>
+    depth <= 1 ? true : { level: nested(depth - 1) };
+
+  it('exports a workflow whose step setup nests as deep as a graph allows', () => {
+    const deepest = graph([
+      {
+        ...node('deep'),
+        config: nested(WORKFLOW_GRAPH_JSON_VALUE_DEPTH) as Record<
+          string,
+          never
+        >,
+      },
+    ]);
+    expect(workflowGraphSchema.safeParse(deepest).success).toBe(true);
+    expect(() => canonicalWorkflowPortableJson(deepest)).not.toThrow();
   });
 });
