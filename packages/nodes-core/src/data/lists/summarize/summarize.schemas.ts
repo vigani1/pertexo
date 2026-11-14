@@ -1,12 +1,12 @@
+import { collectionPathSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { labelledChoice } from '@pertexo/node-sdk';
 import {
   collectionItemsSchema,
-  collectionPathSchema,
   collectionCountSchema,
   collectionScalarSchema,
   COLLECTION_MAX_ITEMS,
-} from '../semantics/semantics.schemas.js';
+} from '../collection.schemas.js';
 export const CORE_SUMMARIZE_CONFIG_SCHEMA = z
   .object({
     valuePath: collectionPathSchema.meta({

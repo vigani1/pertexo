@@ -6,7 +6,7 @@ import {
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
-import { COLLECTION_MAX_ITEMS } from '../lists/semantics/semantics.schemas.js';
+import { COLLECTION_MAX_ITEMS } from '../lists/collection.schemas.js';
 export const fileColumnNameSchema = z
   .string()
   .min(1)

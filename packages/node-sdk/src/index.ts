@@ -70,18 +70,20 @@ export {
 
 export {
   CODE_LIMITS,
+  codeSettingsSchema,
+  type CodeSettings,
+  DEFAULT_CODE_SETTINGS,
+  parseCodeSettings,
+} from './code/code-settings.js';
+export {
   CODE_ALLOWED_BUILTINS,
   CODE_DEFAULT_PACKAGES,
   codeLanguageSchema,
   type CodeLanguage,
   CODE_PYTHON_MODULES,
-  codeSettingsSchema,
-  type CodeSettings,
-  DEFAULT_CODE_SETTINGS,
-  parseCodeSettings,
-  codeContainerLimits,
-  codeRunnerSocketPath,
-} from './code/code-settings.js';
+} from './code/code-modules.js';
+export { codeContainerLimits } from './code/code-container.js';
+export { codeRunnerSocketPath } from './code/runner-socket.js';
 
 export { type CodeSyntaxIssue, inspectCodeSource } from './code/source.js';
 

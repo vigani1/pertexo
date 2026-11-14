@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { NODE_JSON_LIMITS } from '../values/bounded-json.validation.js';
-import { CodeRunnerSocketPathError } from './code.errors.js';
 
 export const CODE_LIMITS = Object.freeze({
   sourceBytes: 65_536,
@@ -24,64 +23,6 @@ export const CODE_SETTING_BOUNDS = Object.freeze({
   packages: 32,
 });
 
-// Container sizing around the settings: the manager's base and per-slot memory,
-// each task's memory beyond its heap, and process and CPU allowances.
-const CODE_CONTAINER_SIZING = Object.freeze({
-  managerBaseMiB: 192,
-  managerPerSlotMiB: 16,
-  taskOverheadMiB: 768,
-  managerHeapBaseMiB: 64,
-  managerHeapPerSlotMiB: 8,
-  taskRssOverheadMiB: 64,
-  maximumCpus: 2,
-  basePids: 16,
-  pidsPerSlot: 16,
-});
-
-// Unix socket paths are bounded by sockaddr_un; 100 bytes fits every platform.
-const CODE_RUNNER_SOCKET_PATH_BYTES = 100;
-export const CODE_ALLOWED_BUILTINS = Object.freeze([
-  'assert',
-  'buffer',
-  'crypto',
-  'events',
-  'path',
-  'querystring',
-  'string_decoder',
-  'url',
-  'util',
-  'zlib',
-]);
-export const CODE_DEFAULT_PACKAGES = Object.freeze(['lodash', 'dayjs']);
-export const codeLanguageSchema = z.enum(['javascript', 'python']);
-export type CodeLanguage = z.output<typeof codeLanguageSchema>;
-export const CODE_PYTHON_MODULES = Object.freeze([
-  'json',
-  'math',
-  'statistics',
-  'datetime',
-  // datetime's C methods import these through the caller's import hook.
-  'time',
-  '_strptime',
-  'zoneinfo',
-  're',
-  'decimal',
-  'fractions',
-  'itertools',
-  'functools',
-  'collections',
-  'string',
-  'textwrap',
-  'hashlib',
-  'hmac',
-  'base64',
-  'uuid',
-  'random',
-  'urllib.parse',
-  'html',
-  'csv',
-  'io',
-]);
 const packageName = z
   .string()
   .max(CODE_SETTING_BOUNDS.packageNameCharacters)
@@ -182,46 +123,4 @@ export function parseCodeSettings(
     extraPackages: raw.CODE_RUNNER_PACKAGES,
     pythonPackages: raw.CODE_RUNNER_PYTHON_PACKAGES,
   };
-}
-
-export function codeContainerLimits(settings: CodeSettings) {
-  const sizing = CODE_CONTAINER_SIZING;
-  const managerMiB =
-    sizing.managerBaseMiB + settings.concurrency * sizing.managerPerSlotMiB;
-  const taskMiB = settings.memoryMiB + sizing.taskOverheadMiB;
-  return Object.freeze({
-    memoryMiB: managerMiB + (settings.concurrency + 1) * taskMiB,
-    managerHeapMiB:
-      sizing.managerHeapBaseMiB +
-      settings.concurrency * sizing.managerHeapPerSlotMiB,
-    taskRssMiB: settings.memoryMiB + sizing.taskRssOverheadMiB,
-    cpus: Math.min(settings.concurrency + 1, sizing.maximumCpus),
-    pids: sizing.basePids + settings.concurrency * sizing.pidsPerSlot,
-  });
-}
-
-/** Shared Unix socket configuration; no process or credential access. */
-export function codeRunnerSocketPath({
-  configured,
-  hardened,
-  uid,
-}: Readonly<{
-  configured: string | undefined;
-  hardened: boolean;
-  uid: number | string;
-}>): string {
-  const path =
-    configured ??
-    (hardened
-      ? '/run/pertexo-code/runner.sock'
-      : `/tmp/pertexo-code-${String(uid)}/runner.sock`);
-  if (
-    !path.startsWith('/') ||
-    path.includes('\0') ||
-    new TextEncoder().encode(path).byteLength > CODE_RUNNER_SOCKET_PATH_BYTES
-  )
-    throw new CodeRunnerSocketPathError(
-      `CODE_RUNNER_SOCKET must be an absolute Unix socket path up to ${String(CODE_RUNNER_SOCKET_PATH_BYTES)} bytes`,
-    );
-  return path;
 }

@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/node-sdk/server';
 import { CORE_TAKE_EXECUTOR } from './take.definition.js';
 import type { CoreTakeConfig, CoreTakeInput } from './take.schemas.js';
-import { takeItems } from '../semantics/take.js';
+import { takeItems } from './semantics.js';
 export const coreTakeExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_TAKE_EXECUTOR,
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>

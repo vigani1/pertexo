@@ -1,5 +1,4 @@
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
-export { collectionPathSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 // One-item batches use 2N+3 members, including their counts, under the SDK's 10,000-member bound.

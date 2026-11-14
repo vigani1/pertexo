@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/node-sdk/server';
 import { CORE_BATCH_EXECUTOR } from './batch.definition.js';
 import type { CoreBatchConfig, CoreBatchInput } from './batch.schemas.js';
-import { batchItems } from '../semantics/batch.js';
+import { batchItems } from './semantics.js';
 export const coreBatchExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_BATCH_EXECUTOR,
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>

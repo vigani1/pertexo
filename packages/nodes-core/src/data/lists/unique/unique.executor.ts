@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/node-sdk/server';
 import { CORE_UNIQUE_EXECUTOR } from './unique.definition.js';
 import type { CoreUniqueConfig, CoreUniqueInput } from './unique.schemas.js';
-import { uniqueItems } from '../semantics/unique.js';
+import { uniqueItems } from './semantics.js';
 export const coreUniqueExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_UNIQUE_EXECUTOR,
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>

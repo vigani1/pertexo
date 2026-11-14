@@ -1,4 +1,4 @@
-import { PROVIDER_RETRY_FAILURE } from './retry-after.errors.js';
+import { PROVIDER_RETRY_FAILURE } from '../http/retry-after.errors.js';
 import type { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import {
   MAXIMUM_RETRY_DELAY_MILLIS,

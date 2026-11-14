@@ -8,9 +8,8 @@ import {
   CODE_LIMITS,
   CODE_SETTING_BOUNDS,
   codeSettingsSchema,
-  codeLanguageSchema,
-  type CodeLanguage,
 } from './code-settings.js';
+import { codeLanguageSchema, type CodeLanguage } from './code-modules.js';
 
 export const CODE_ERROR_CODES = Object.freeze([
   'code.syntax_error',

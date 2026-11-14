@@ -3,7 +3,7 @@ import {
   CORE_BOUNDED_JSON_POLICY,
   CORE_JSONATA_POLICY,
 } from '../../../catalog/core-policies.js';
-import { COLLECTION_SEMANTICS } from '../semantics/semantics.schemas.js';
+import { COLLECTION_SEMANTICS } from '../collection.schemas.js';
 import {
   CORE_TAKE_CONFIG_SCHEMA,
   CORE_TAKE_INPUT_SCHEMA,

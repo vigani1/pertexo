@@ -7,7 +7,7 @@ import type {
   CoreSummarizeConfig,
   CoreSummarizeInput,
 } from './summarize.schemas.js';
-import { summarizeItems } from '../semantics/summarize.js';
+import { summarizeItems } from './semantics.js';
 export const coreSummarizeExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_SUMMARIZE_EXECUTOR,
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>

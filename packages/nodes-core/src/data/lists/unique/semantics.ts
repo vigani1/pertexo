@@ -1,9 +1,6 @@
 import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
-import type {
-  CoreUniqueConfig,
-  CoreUniqueInput,
-} from '../unique/unique.schemas.js';
-import { invalidInput, projectItems } from './selection.js';
+import type { CoreUniqueConfig, CoreUniqueInput } from './unique.schemas.js';
+import { invalidInput, projectItems } from '../selection.js';
 
 export function uniqueItems(
   config: CoreUniqueConfig,

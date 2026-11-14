@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PENDING_TASK_LIMITS, storedTaskBytes } from './audience.js';
+import { PENDING_TASK_LIMITS, storedTaskBytes } from './pending-task-limits.js';
 import { storageTextSchema } from '../../values/json/text.js';
 import {
   parseFormValues,

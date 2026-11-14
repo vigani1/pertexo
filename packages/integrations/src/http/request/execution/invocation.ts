@@ -22,7 +22,7 @@ import { failedConfiguration } from '../request.errors.js';
 import { HttpRequestExecutorError } from '../request.errors.js';
 import { releaseHttpMaterial } from './body.js';
 import { fillPlaceholders } from './request-input.js';
-import { HttpOAuth2Failure } from './oauth2.errors.js';
+import { HttpOAuth2Failure } from './oauth2-renewal.errors.js';
 
 export type RequestContext = ReturnType<typeof prepareInvocation>;
 

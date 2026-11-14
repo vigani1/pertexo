@@ -26,7 +26,7 @@ import {
 import { decodeCredential } from './material.js';
 import { serviceResponseFacts } from './execution/service-response.js';
 import { OAuth2TokenFailure } from '../../oauth2/oauth2.errors.js';
-import { HttpOAuth2Failure } from './execution/oauth2.errors.js';
+import { HttpOAuth2Failure } from './execution/oauth2-renewal.errors.js';
 import { createOAuth2RenewalClient } from './execution/oauth2-renewal.js';
 
 import {

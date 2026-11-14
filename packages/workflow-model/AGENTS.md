@@ -60,7 +60,7 @@ encoding), `jsonata` and `zod`.
 
 - No environment. Limits live with their concept: `WORKFLOW_GRAPH_CONTRACT_LIMITS`
   (`graph/workflow-graph.schemas.ts`), `FORM_LIMITS` and `FORM_FILE_LIMITS`
-  (`triggers/forms/`), `PENDING_TASK_LIMITS` (`flow/pending-tasks/audience.ts`),
+  (`triggers/forms/`), `PENDING_TASK_LIMITS` (`flow/pending-tasks/pending-task-limits.ts`),
   `EVENT_COORDINATION_LIMITS`, `STEP_RETRY_LIMITS`, `WORKFLOW_TEST_LIMITS`,
   `WORKFLOW_PORTABILITY_LIMITS`, `EXPRESSION_POLICY` and
   `AUTHORING_VALIDATION_BUDGET`.

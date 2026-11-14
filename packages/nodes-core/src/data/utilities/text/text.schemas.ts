@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/semantics.schemas.js';
+import { COLLECTION_MAX_ITEMS } from '../../lists/collection.schemas.js';
 
 export const textConfigSchema = z
   .discriminatedUnion('operation', [

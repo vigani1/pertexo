@@ -1,5 +1,5 @@
-import type { CoreTakeConfig, CoreTakeInput } from '../take/take.schemas.js';
-import { checkCanceled } from './selection.js';
+import type { CoreTakeConfig, CoreTakeInput } from './take.schemas.js';
+import { checkCanceled } from '../selection.js';
 export function takeItems(
   config: CoreTakeConfig,
   input: CoreTakeInput,

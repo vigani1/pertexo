@@ -42,4 +42,4 @@ export { CORE_CODE_DEFINITION } from './data/code/code.definition.js';
 
 export { CORE_CODE_CONFIG_SCHEMA } from './data/code/code.schemas.js';
 
-export { SUMMARY_RESULT_FAILURE } from './data/lists/semantics/summary.errors.js';
+export { SUMMARY_RESULT_FAILURE } from './data/lists/summarize/summary.errors.js';

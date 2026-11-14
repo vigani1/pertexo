@@ -25,7 +25,8 @@ runtimes their invocation carries.
 - `flow/`: condition, switch, parallel, merge, for-each, call, wait,
   approval, request-input, respond-webhook and terminate.
 - `data/`: set, code, date, validate, run-values, create-file, read-file,
-  lists (`lists/<step>/` plus their pure `lists/semantics/`), data tables
+  lists (`lists/<step>/`, with the shared collection schemas and item
+  selection in `lists/`), data tables
   (`tables/`) and utilities (`utilities/<operation>/`).
 
 Each step is `<area>/<step>/<step>.definition.ts`, `.executor.ts` and
@@ -37,8 +38,9 @@ Each step is `<area>/<step>/<step>.definition.ts`, `.executor.ts` and
 - A new step: its folder in the right area with the three files, then one
   line each in `catalog/definition-registrations.ts` and
   `catalog/executor-registrations.ts`.
-- A pure decision a step makes: a function beside the step (`semantics.ts`,
-  `lists/semantics/`), tested without an invocation.
+- A pure decision a step makes: `semantics.ts` beside the step
+  (`date/semantics.ts`, `lists/sort/semantics.ts`), tested without an
+  invocation.
 
 ## Defaults and config
 

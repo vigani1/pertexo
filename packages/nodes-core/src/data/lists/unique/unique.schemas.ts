@@ -1,10 +1,10 @@
+import { collectionPathSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { labelledChoice } from '@pertexo/node-sdk';
 import {
   collectionItemsSchema,
-  collectionPathSchema,
   collectionCountSchema,
-} from '../semantics/semantics.schemas.js';
+} from '../collection.schemas.js';
 export const CORE_UNIQUE_CONFIG_SCHEMA = z
   .object({
     path: collectionPathSchema.meta({

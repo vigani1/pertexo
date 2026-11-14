@@ -27,7 +27,8 @@ hands an executor.
   identities, schema documents for the browser, output variants and
   labelled choices.
 - `execution/`: the registry that runs executors, the request and result
-  types, executor failures (`node-execution.errors.ts`), refusal wording and
+  types, the failure vocabulary and its bounds (`node-failure.schemas.ts`),
+  executor failures (`node-execution.errors.ts`), refusal wording and
   webhook responses.
 - `values/`: bounded JSON (`bounded-json.ts`, `bounded-json.validation.ts`),
   stored JSON sizes and their error, canonical encoding, CSV formula safety
@@ -35,8 +36,10 @@ hands an executor.
 - `artifacts/`: artifact references and their limits, file-input diagnostics
   and errors, sheet names, and `pages/` (file pages: encoding, writing,
   bundles and their errors).
-- `code/`: code-step settings and container sizing (`code-settings.ts`), the
-  runner protocol, framing, source checks and errors.
+- `code/`: code-step settings and their environment parsing
+  (`code-settings.ts`), container sizing (`code-container.ts`), the runner
+  socket path (`runner-socket.ts`), languages and module allowlists
+  (`code-modules.ts`), the runner protocol, framing, source checks and errors.
 - `data-tables/`: data-table schemas, bindings, values and errors.
 - `callbacks/`, `credentials/`, `run-values/`: callback types and codes, the
   signing-key credential, and run-value schemas.
