@@ -273,5 +273,7 @@ if (
       );
     process.exitCode = 1;
   } else
-    console.log('Workspace source and test filenames follow docs/naming.md.');
+    console.log(
+      'Workspace source and test filenames follow the naming rules in AGENTS.md.',
+    );
 }
