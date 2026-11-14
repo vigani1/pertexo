@@ -2,6 +2,7 @@ import { ARTIFACT_REFERENCE_LIMITS } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
 import { withoutHiddenCharacters } from '../../values/text.js';
+import { FormFileRejectedError } from './forms.errors.js';
 
 const MEBIBYTE = 1_048_576;
 
@@ -93,15 +94,6 @@ export const formFileValueSchema = z
 export type FormFileValue = z.output<typeof formFileValueSchema>;
 
 export type FormFileRejection = 'type' | 'size';
-export class FormFileRejectedError extends Error {
-  override readonly name = 'FormFileRejectedError';
-  constructor(
-    readonly reason: FormFileRejection,
-    message: string,
-  ) {
-    super(message);
-  }
-}
 
 export function formFileExtension(
   filename: string,

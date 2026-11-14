@@ -1,5 +1,6 @@
 import { encodeJson } from '@pertexo/node-sdk';
 import { utf8ByteLength } from '../text.js';
+import { InvalidJsonValueError } from './json.errors.js';
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue =
   JsonPrimitive | readonly JsonValue[] | { readonly [key: string]: JsonValue };
@@ -9,16 +10,6 @@ export interface JsonInspection {
   readonly members: number;
 }
 export const CANONICAL_JSON_MAX_DEPTH = 256;
-
-export class InvalidJsonValueError extends TypeError {
-  constructor(
-    readonly path: string,
-    message: string,
-  ) {
-    super(`${message} at ${path}`);
-    this.name = 'InvalidJsonValueError';
-  }
-}
 
 interface NormalizationContext {
   path: string;

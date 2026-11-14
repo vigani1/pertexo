@@ -1,11 +1,11 @@
 import type { Worker } from 'node:worker_threads';
 import { utf8ByteLength } from '../../values/text.js';
 import type { GraphValidationResult } from '../../graph/validation/graph-validation.js';
+import { AUTHORING_VALIDATION_BUDGET as budget } from './validation-protocol.js';
 import {
-  AUTHORING_VALIDATION_BUDGET as budget,
   AuthoringValidationUnavailableError,
   type AuthoringValidationUnavailableReason,
-} from './validation-protocol.js';
+} from './authoring-validation.errors.js';
 import { replySchema, type PendingBatch } from './worker-replies.js';
 import { assertReportBudget } from './graph.js';
 

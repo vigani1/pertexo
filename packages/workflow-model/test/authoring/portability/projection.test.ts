@@ -9,9 +9,9 @@ import {
 import {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,
-  WorkflowPortabilityError,
   type WorkflowPortabilityCatalog,
 } from '../../../src/authoring/portability/projection.js';
+import { WorkflowPortabilityError } from '../../../src/authoring/portability/portability.errors.js';
 import {
   catalog,
   node,

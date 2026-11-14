@@ -9,9 +9,9 @@ import {
   type PortableConnectionBinding,
   type PortableConnectionSlot,
   type PortableIssue,
-  PORTABLE_MANIFEST_FIELD_LIMITS,
-  WORKFLOW_PORTABILITY_LIMITS,
 } from './portable-manifest.js';
+import { WORKFLOW_PORTABILITY_LIMITS } from './portability-limits.js';
+import { WorkflowPortabilityError } from './portability.errors.js';
 
 export type WorkflowPortabilityCatalog = Readonly<{
   definitions: readonly Readonly<{
@@ -29,23 +29,6 @@ export type PortableConnectionSlotPolicy = Readonly<{
   /** A step that runs without this connection, such as HTTP to a public API. */
   optional?: boolean;
 }>;
-
-export class WorkflowPortabilityError extends Error {
-  public override readonly name = 'WorkflowPortabilityError';
-  public readonly code = 'workflow.portability_invalid';
-  public readonly issues: readonly PortableIssue[];
-  public constructor(code: string, path = '$') {
-    super('Portable workflow violates its authoring contract');
-    this.issues = Object.freeze([
-      {
-        code,
-        path: path.slice(0, PORTABLE_MANIFEST_FIELD_LIMITS.issuePathLength),
-        message:
-          'Portable workflow content is not supported or safe for this operation',
-      },
-    ]);
-  }
-}
 
 function nodes(graph: WorkflowGraph) {
   const result: WorkflowGraph['nodes'][number][] = [];

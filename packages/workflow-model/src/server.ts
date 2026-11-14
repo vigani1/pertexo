@@ -44,7 +44,7 @@ export {
 // Authoring
 export {
   AUTHORING_VALIDATION_BUDGET,
-  AuthoringValidationUnavailableError,
   type WorkflowAuthoringValidationOptions,
 } from './authoring/validation/validation-protocol.js';
+export { AuthoringValidationUnavailableError } from './authoring/validation/authoring-validation.errors.js';
 export { WorkflowAuthoringValidator } from './authoring/validation/validator.js';

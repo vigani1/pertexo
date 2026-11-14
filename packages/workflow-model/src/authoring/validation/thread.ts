@@ -1,9 +1,7 @@
 import { parentPort } from 'node:worker_threads';
 import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
-import {
-  AuthoringValidationUnavailableError,
-  type WorkflowExpressionPolicyProjection,
-} from './validation-protocol.js';
+import type { WorkflowExpressionPolicyProjection } from './validation-protocol.js';
+import { AuthoringValidationUnavailableError } from './authoring-validation.errors.js';
 import { validateAuthoringBatch } from './graph.js';
 
 const port = parentPort;

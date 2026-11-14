@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AuthoringValidationUnavailableError } from '../../../src/authoring/validation/validation-protocol.js';
+import { AuthoringValidationUnavailableError } from '../../../src/authoring/validation/authoring-validation.errors.js';
 import { WorkflowAuthoringValidator } from '../../../src/authoring/validation/validator.js';
 
 import {

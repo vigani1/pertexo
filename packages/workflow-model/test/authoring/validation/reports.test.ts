@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  AUTHORING_VALIDATION_BUDGET,
-  AuthoringValidationUnavailableError,
-} from '../../../src/authoring/validation/validation-protocol.js';
+import { AUTHORING_VALIDATION_BUDGET } from '../../../src/authoring/validation/validation-protocol.js';
+import { AuthoringValidationUnavailableError } from '../../../src/authoring/validation/authoring-validation.errors.js';
 
 import { parseWorkflowGraphDraft } from '../../../src/graph/validation/preflight.js';
 import { validateWorkflowGraph } from '../../../src/graph/validation/validate-workflow-graph.js';
