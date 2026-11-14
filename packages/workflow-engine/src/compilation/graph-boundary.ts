@@ -19,7 +19,7 @@ import type {
 } from './workflow-executable.js';
 import { compareIdentity, sameIdentity } from './definition-identity.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { fail } from './executable-errors.js';
+import { fail } from './executable.errors.js';
 import {
   exactKeys,
   parseIdentity,

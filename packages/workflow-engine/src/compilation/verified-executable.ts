@@ -13,7 +13,7 @@ import type {
   ExecutionNode,
 } from './workflow-executable.js';
 import { sameIdentity } from './definition-identity.js';
-import { fail } from './executable-errors.js';
+import { fail } from './executable.errors.js';
 type VerifiedExecutableFacts = Readonly<{
   failureRoutes: readonly ExecutionFailureRoute[];
   nodes: readonly ExecutionNode[];

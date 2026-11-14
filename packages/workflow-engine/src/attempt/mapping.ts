@@ -2,7 +2,7 @@ import {
   MappingRefusalError,
   MappingExecutorFailure,
   type MappingRefusal,
-} from './mapping-refusal.js';
+} from './mapping-refusal.errors.js';
 import type { CallbackBindings } from '@pertexo/workflow-model';
 
 import {
