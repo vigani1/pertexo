@@ -4,7 +4,7 @@ import {
   RATE_LIMIT_ENDPOINT_CLASSES,
   type RateLimitDecision,
   type RateLimitDimensionKind,
-} from './policy.js';
+} from '../rate-limit-policy.js';
 
 export type RateLimitScriptExecutor = Readonly<{
   eval(

@@ -4,7 +4,7 @@ import {
   DistributedRateLimiter,
   type RateLimitDecision,
   type RateLimitScriptExecutor,
-} from '../src/server.js';
+} from '../../src/server.js';
 
 const decision: RateLimitDecision = {
   endpointClass: 'provider_test',

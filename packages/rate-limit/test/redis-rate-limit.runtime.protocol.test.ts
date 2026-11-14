@@ -2,7 +2,7 @@ import { once } from 'node:events';
 import { createServer, type Server, type Socket } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { RedisRateLimitRuntime } from '../src/redis-runtime.js';
+import { RedisRateLimitRuntime } from '../src/redis-rate-limit.runtime.js';
 
 const decision = {
   endpointClass: 'ordinary_mutation',

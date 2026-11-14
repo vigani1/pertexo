@@ -2,7 +2,7 @@ import type {
   DistributedRateLimitResult,
   RateLimitQuota,
 } from './distributed-rate-limiter.js';
-import type { RateLimitDecision } from './policy.js';
+import type { RateLimitDecision } from '../rate-limit-policy.js';
 
 /** Enough for an outage's clients. Past it the oldest counters go first. */
 const MAX_COUNTERS = 50_000;

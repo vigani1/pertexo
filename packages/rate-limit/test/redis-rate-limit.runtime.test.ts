@@ -34,7 +34,7 @@ vi.mock('ioredis', () => ({
   },
 }));
 
-import { RedisRateLimitRuntime } from '../src/redis-runtime.js';
+import { RedisRateLimitRuntime } from '../src/redis-rate-limit.runtime.js';
 
 const decision = {
   endpointClass: 'ordinary_mutation',
