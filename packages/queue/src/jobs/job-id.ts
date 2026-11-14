@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 import { QueueConfigurationError } from '../publication/queue-producer.errors.js';
 
+/** Separates an outbox event's id from its redelivery count in a job id. */
+const REDELIVERY_MARK = '-r';
+
 /**
  * The BullMQ job ID of one delivery of an outbox event; a UUID keeps it nonnumeric
  * and colon-free. BullMQ ignores an add under an ID it retains, even one sitting
@@ -19,7 +22,7 @@ export function jobIdForOutboxEvent(
 
   return redeliveries === 0
     ? `outbox-${parsed.data}`
-    : `outbox-${parsed.data}-r${String(redeliveries)}`;
+    : `outbox-${parsed.data}${REDELIVERY_MARK}${String(redeliveries)}`;
 }
 
 /** Whether a job ID names some delivery of this outbox event. */
@@ -30,7 +33,9 @@ export function isJobIdOfOutboxEvent(
   const firstDelivery = jobIdForOutboxEvent(outboxEventId);
   return (
     jobId === firstDelivery ||
-    (jobId.startsWith(`${firstDelivery}-r`) &&
-      /^[1-9]\d*$/u.test(jobId.slice(firstDelivery.length + 2)))
+    (jobId.startsWith(`${firstDelivery}${REDELIVERY_MARK}`) &&
+      /^[1-9]\d*$/u.test(
+        jobId.slice(firstDelivery.length + REDELIVERY_MARK.length),
+      ))
   );
 }
