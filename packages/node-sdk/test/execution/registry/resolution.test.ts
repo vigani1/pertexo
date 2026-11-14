@@ -4,7 +4,7 @@ import { z } from 'zod';
 import {
   createNodeCatalog,
   type NodeManifest,
-} from '../../src/definitions/catalog.js';
+} from '../../../src/definitions/catalog.js';
 import {
   DefinitionNotFoundError,
   ExecutorNotFoundError,
@@ -13,7 +13,7 @@ import {
   NodeRegistryCompatibilityError,
   NODE_EXECUTION_LIMITS,
   createNodeRegistry,
-} from '../../src/server.js';
+} from '../../../src/server.js';
 import {
   definition,
   executor,

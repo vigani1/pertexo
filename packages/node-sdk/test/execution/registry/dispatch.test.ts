@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createNodeCatalog } from '../../src/definitions/catalog.js';
+import { createNodeCatalog } from '../../../src/definitions/catalog.js';
 import {
   NodeDispatchEvidenceError,
   NodeExecutionRuntimeRequiredError,
   createNodeRegistry,
   type NodeConnectionHealthObservation,
-} from '../../src/server.js';
+} from '../../../src/server.js';
 import {
   definition,
   executor,

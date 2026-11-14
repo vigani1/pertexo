@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { inspectBoundedJson } from '../values/bounds.js';
+import { inspectBoundedJson } from '../values/bounded-json.validation.js';
 
 export const DATA_TABLE_OPERATIONS = [
   'find',

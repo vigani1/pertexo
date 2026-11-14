@@ -6,14 +6,14 @@ import {
   generateSchemaDocument,
   type NodeManifest,
   TERMINATES_RUN_CAPABILITY,
-} from '../../src/definitions/catalog.js';
+} from '../../../src/definitions/catalog.js';
 import {
   NodeConfigValidationError,
   NodeExecutionAbortedError,
   NodeInputValidationError,
   NodeOutputValidationError,
   createNodeRegistry,
-} from '../../src/server.js';
+} from '../../../src/server.js';
 import {
   definition,
   executor,

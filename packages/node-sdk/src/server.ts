@@ -55,9 +55,9 @@ export { describeNodeRefusal } from './execution/refusal.js';
 export {
   canonicalizeBoundedJson,
   NODE_EXECUTION_LIMITS,
-} from './values/boundary.js';
+} from './values/bounded-json.js';
 
-export { FileInputFailure } from './artifacts/failure.js';
+export { FileInputFailure } from './artifacts/file-input.errors.js';
 
 export {
   type NodeWebhookResponseRuntime,
@@ -65,7 +65,7 @@ export {
   type NodeWebhookResponseReceipt,
 } from './execution/webhooks.js';
 
-export { NodeCodeFailure } from './code/failure.js';
+export { NodeCodeFailure } from './code/code.errors.js';
 
 export {
   type NodeCodeRuntime,
@@ -75,7 +75,7 @@ export {
 
 export { readCodeFrame, writeCodeFrame } from './code/framing.js';
 
-export { NodeDataTableFailure } from './data-tables/failure.js';
+export { NodeDataTableFailure } from './data-tables/data-table.errors.js';
 
 export { describeFileInputFailure } from './artifacts/describe-failure.js';
 
@@ -104,6 +104,6 @@ export {
   normalizeUnknownError,
 } from './execution/unknown-error.js';
 
-export { FILE_PAGES_ERROR_CODE } from './artifacts/pages/failure.js';
+export { FILE_PAGES_ERROR_CODE } from './artifacts/pages/file-pages.errors.js';
 
-export { CALLBACK_ERROR_CODE } from './callbacks/failure.js';
+export { CALLBACK_ERROR_CODE } from './callbacks/callback.errors.js';

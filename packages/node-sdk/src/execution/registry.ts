@@ -22,7 +22,10 @@ import {
   NodeRegistryCompatibilityError,
   type NodeSdkError,
 } from './node-execution.errors.js';
-import { canonicalizeBoundedJson, isJsonObject } from '../values/boundary.js';
+import {
+  canonicalizeBoundedJson,
+  isJsonObject,
+} from '../values/bounded-json.js';
 
 import {
   type DefinitionIdentity,

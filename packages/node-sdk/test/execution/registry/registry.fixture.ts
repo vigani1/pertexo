@@ -8,11 +8,11 @@ import {
   type ExecutorIdentity,
   type NodeManifest,
   type PolicyReference,
-} from '../../src/definitions/catalog.js';
+} from '../../../src/definitions/catalog.js';
 import {
   createNodeRegistry,
   type NodeExecutorRegistration,
-} from '../../src/server.js';
+} from '../../../src/server.js';
 
 export const definition: DefinitionIdentity = Object.freeze({
   key: 'test.echo',

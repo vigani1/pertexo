@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { boundedNodeJsonSchema } from '../../src/definitions/catalog.js';
+import { boundedNodeJsonSchema } from '../../../src/definitions/catalog.js';
 import {
   InvalidBoundedJsonError,
   NODE_EXECUTION_LIMITS,
   canonicalizeBoundedJson,
   createNodeRegistry,
-} from '../../src/server.js';
+} from '../../../src/server.js';
 import {
   manifest,
   executorRegistration,

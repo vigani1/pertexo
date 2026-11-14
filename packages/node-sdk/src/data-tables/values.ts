@@ -5,7 +5,7 @@ import {
   type DataTableValues,
   type DataTableQuery,
 } from './data-table.schemas.js';
-import { inspectBoundedJson } from '../values/bounds.js';
+import { inspectBoundedJson } from '../values/bounded-json.validation.js';
 
 export function validateDataTableValues(
   columns: readonly DataTableNewColumn[],
