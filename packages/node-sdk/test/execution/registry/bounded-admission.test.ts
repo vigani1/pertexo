@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { NODE_JSON_LIMITS } from '../../../src/index.js';
 
 import { boundedNodeJsonSchema } from '../../../src/definitions/catalog.js';
 import {
   InvalidBoundedJsonError,
-  NODE_EXECUTION_LIMITS,
   canonicalizeBoundedJson,
   createNodeRegistry,
 } from '../../../src/server.js';
@@ -122,15 +122,15 @@ describe('node-sdk bounded JSON contracts', () => {
   });
 
   it('enforces scalar byte limits before returning normalized JSON', () => {
-    const exact = 'x'.repeat(NODE_EXECUTION_LIMITS.bytes - 2);
+    const exact = 'x'.repeat(NODE_JSON_LIMITS.bytes - 2);
     expect(canonicalizeBoundedJson(exact)).toBe(exact);
     expect(() => canonicalizeBoundedJson(`${exact}x`)).toThrow(
       InvalidBoundedJsonError,
     );
-    const unicodePayloadBytes = NODE_EXECUTION_LIMITS.bytes - 2;
+    const unicodePayloadBytes = NODE_JSON_LIMITS.bytes - 2;
     const unicodeExact = `${'🚀'.repeat(Math.floor(unicodePayloadBytes / 4))}${'x'.repeat(unicodePayloadBytes % 4)}`;
     expect(new TextEncoder().encode(JSON.stringify(unicodeExact))).toHaveLength(
-      NODE_EXECUTION_LIMITS.bytes,
+      NODE_JSON_LIMITS.bytes,
     );
     expect(boundedNodeJsonSchema.parse(unicodeExact)).toBe(unicodeExact);
     expect(canonicalizeBoundedJson(unicodeExact)).toBe(unicodeExact);
@@ -147,7 +147,7 @@ describe('node-sdk bounded JSON contracts', () => {
     ).byteLength;
     const aggregateExact = {
       ...envelope,
-      config: { value: 'x'.repeat(NODE_EXECUTION_LIMITS.bytes - overhead) },
+      config: { value: 'x'.repeat(NODE_JSON_LIMITS.bytes - overhead) },
     };
     expect(canonicalizeBoundedJson(aggregateExact)).toEqual(aggregateExact);
     expect(() =>

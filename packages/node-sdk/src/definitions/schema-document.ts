@@ -8,8 +8,6 @@ import { cloneAndFreeze } from '../values/freeze.js';
 
 const RUNTIME_ONLY_SEMANTIC_CHARACTERS = 256;
 
-export { NODE_JSON_LIMITS } from '../values/bounded-json.validation.js';
-
 export type SchemaJson =
   null | boolean | number | string | readonly SchemaJson[] | SchemaObject;
 

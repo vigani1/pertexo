@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NODE_JSON_LIMITS } from '../../../src/index.js';
 import { z } from 'zod';
 
 import {
@@ -11,7 +12,6 @@ import {
   InvalidBoundedJsonError,
   NodeExecutionAbortedError,
   NodeRegistryCompatibilityError,
-  NODE_EXECUTION_LIMITS,
   createNodeRegistry,
 } from '../../../src/server.js';
 import {
@@ -82,7 +82,7 @@ describe('node-sdk exact server registry', () => {
       catalog: catalog(),
     });
     expect(Object.keys(registry).sort()).toEqual(['dispatchMode', 'execute']);
-    const half = 'x'.repeat(Math.ceil(NODE_EXECUTION_LIMITS.bytes / 2));
+    const half = 'x'.repeat(Math.ceil(NODE_JSON_LIMITS.bytes / 2));
     await expect(
       registry.execute({
         config: { value: half },
