@@ -10,13 +10,22 @@ import { isJsonRecord, operationError } from '../input-checks/engine-values.js';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import type { OutputReference } from '../workflow-execution.js';
 
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+
 // At most the graph's concurrent invocations can complete between advances.
 // Each identity carries a 256-character key (at most six JSON bytes per
 // character), UUID, sequence and fixed field punctuation.
+// A UUID's canonical text.
+const UUID_TEXT_LENGTH = 36;
+// A completion's value nests inside its identity record and the window's array,
+// which add this much depth and these members.
+const COMPLETION_ENVELOPE = Object.freeze({ depth: 2, members: 4 });
+// The window array's brackets.
+const WINDOW_BRACKET_BYTES = 2;
 const maximumMaterialIdentityBytes =
   JSON.stringify({
-    sequence: 2_147_483_647,
-    attemptId: '0'.repeat(36),
+    sequence: STORED_INTEGER_MAX,
+    attemptId: '0'.repeat(UUID_TEXT_LENGTH),
     invocationKey: String.fromCharCode(0).repeat(
       WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
     ),
@@ -25,15 +34,15 @@ const maximumMaterialIdentityBytes =
 const COORDINATOR_COMPLETION_OUTPUT_LIMITS = Object.freeze({
   bytes:
     STORED_EXECUTION_VALUE_LIMITS.inlineBytes + maximumMaterialIdentityBytes,
-  depth: STORED_EXECUTION_VALUE_LIMITS.depth + 2,
-  members: STORED_EXECUTION_VALUE_LIMITS.members + 4,
+  depth: STORED_EXECUTION_VALUE_LIMITS.depth + COMPLETION_ENVELOPE.depth,
+  members: STORED_EXECUTION_VALUE_LIMITS.members + COMPLETION_ENVELOPE.members,
 });
 export const COORDINATOR_COMPLETION_WINDOW_LIMITS = Object.freeze({
   count: WORKFLOW_GRAPH_CONTRACT_LIMITS.maxConcurrentInvocations,
   bytes:
     WORKFLOW_GRAPH_CONTRACT_LIMITS.maxConcurrentInvocations *
       (COORDINATOR_COMPLETION_OUTPUT_LIMITS.bytes + 1) +
-    2,
+    WINDOW_BRACKET_BYTES,
   depth: COORDINATOR_COMPLETION_OUTPUT_LIMITS.depth,
   members:
     WORKFLOW_GRAPH_CONTRACT_LIMITS.maxConcurrentInvocations *

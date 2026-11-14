@@ -9,6 +9,8 @@ import { createCheckpoint } from '../checkpoint/create-and-parse.js';
 import { testStepDisposition, type WorkflowTestPins } from './policy.js';
 import { validWorkflowTestPin } from './pins.js';
 
+import { FIRST_CHECKPOINT_EVENT_SEQUENCE } from '../checkpoint/create-and-parse.js';
+
 /** Pure test admission facts; storage freezes these under its own authority locks. */
 export function buildWorkflowTestExecutable(
   input: Readonly<{
@@ -58,7 +60,7 @@ export function buildWorkflowTestExecutable(
     initialCheckpoint: (workflowTestId: string) =>
       createCheckpoint({
         workflowVersionId: workflowTestId,
-        nextEventSequence: 2,
+        nextEventSequence: FIRST_CHECKPOINT_EVENT_SEQUENCE,
         iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
       }),
   };

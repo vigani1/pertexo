@@ -22,6 +22,12 @@ import type {
   PersistedWorkflowObservation,
 } from './persisted.js';
 
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
+
+// Longer than any ISO timestamp, including six-digit years.
+const TIMESTAMP_MAX_LENGTH = 35;
+const REASON_CODE_MAX_LENGTH = 128;
+
 type ParsedObservation =
   | PersistedWorkflowObservation
   | DeadlineExpiredObservation
@@ -38,7 +44,8 @@ function includesValue(values: readonly string[], value: unknown): boolean {
 }
 
 function isCanonicalTimestamp(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > 35) return false;
+  if (typeof value !== 'string' || value.length > TIMESTAMP_MAX_LENGTH)
+    return false;
   const milliseconds = Date.parse(value);
   return (
     Number.isFinite(milliseconds) &&
@@ -47,7 +54,11 @@ function isCanonicalTimestamp(value: unknown): value is string {
 }
 
 function validInvocationKey(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= 256;
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength
+  );
 }
 
 function validAttempt(
@@ -323,7 +334,7 @@ function parseOutcome(
     reasonCode !== undefined &&
     (typeof reasonCode !== 'string' ||
       reasonCode.length === 0 ||
-      reasonCode.length > 128);
+      reasonCode.length > REASON_CODE_MAX_LENGTH);
   if (invalidReasonCode) {
     operationError('observation_invalid', 'reasonCode is invalid');
   }

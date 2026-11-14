@@ -27,6 +27,8 @@ import {
 } from '../transition/transition-state.js';
 import type { WorkflowObservation } from '../workflow-execution.js';
 
+import { ORDINAL_SORT_KEY_WIDTH } from '../invocations/invocation-identity.js';
+
 type CheckpointInvocation = ReturnType<
   typeof parseCheckpoint
 >['invocations'][number];
@@ -70,7 +72,7 @@ function loopObservationKey(observation: WorkflowObservation): string {
     return '';
   const controlKey = observation.controlInvocationKey;
   if (observation.kind === 'loop_started') return `${controlKey}:0:`;
-  return `${controlKey}:1:${String(observation.ordinal).padStart(16, '0')}`;
+  return `${controlKey}:1:${String(observation.ordinal).padStart(ORDINAL_SORT_KEY_WIDTH, '0')}`;
 }
 
 export function forEachCoordinatorObservations({

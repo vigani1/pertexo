@@ -1,6 +1,10 @@
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 
+const ITERATION_MARKER = '|i:';
+/** Loop ordinals in sort keys are zero-padded to this width, so text order is numeric order. */
+export const ORDINAL_SORT_KEY_WIDTH = 16;
+
 export function invocationKey(input: {
   readonly workflowVersionId: string;
   readonly nodeId: string;
@@ -35,9 +39,9 @@ export function loopIterationOrdinal(
     readonly ordinal: number;
   }[] = [],
 ): number | undefined {
-  const marker = key.lastIndexOf('|i:');
+  const marker = key.lastIndexOf(ITERATION_MARKER);
   if (marker === -1) return undefined;
-  const iterations = key.slice(marker + 3);
+  const iterations = key.slice(marker + ITERATION_MARKER.length);
   const prefix = encodeURIComponent(
     [
       ...iterationPath.map(

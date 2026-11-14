@@ -8,6 +8,12 @@ import type { StepRetrySettings } from '@pertexo/workflow-model';
 
 import type { SideEffectClass } from '../workflow-execution.js';
 
+// Delays double per attempt; jitter spreads a retry over 75–125% of its delay,
+// drawn from the first four bytes of the identity's hash.
+const BACKOFF_FACTOR = 2;
+const RETRY_JITTER = Object.freeze({ minimum: 0.75, span: 0.5 });
+const UINT32_RANGE = 0x1_0000_0000;
+
 export interface RetryPolicy {
   readonly maximumAttempts: number;
   readonly baseDelayMs: number;
@@ -106,18 +112,18 @@ export function decideRetry(input: RetryInput): RetryDecision {
     input.settings?.delayMillis ??
     Math.min(
       input.policy.maximumDelayMs,
-      input.policy.baseDelayMs * 2 ** exponent,
+      input.policy.baseDelayMs * BACKOFF_FACTOR ** exponent,
     );
   const jitter =
     input.settings !== undefined || input.jitterIdentity === undefined
       ? 1
-      : 0.75 +
-        createHash('sha256')
+      : RETRY_JITTER.minimum +
+        (createHash('sha256')
           .update(input.jitterIdentity, 'utf8')
           .digest()
           .readUInt32BE(0) /
-          0x1_0000_0000 /
-          2;
+          UINT32_RANGE) *
+          RETRY_JITTER.span;
   return {
     kind: 'retry',
     attemptNumber: nextAttemptNumber,

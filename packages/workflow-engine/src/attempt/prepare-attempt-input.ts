@@ -30,6 +30,15 @@ import {
 import type { ExecuteNodeAttemptInput } from './node-attempt.types.js';
 import { invocationKey as createInvocationKey } from '../invocations/invocation-identity.js';
 
+// Predecessor outputs arrive keyed by step and invocation: JSON may spend six
+// bytes per character of those identities, plus fixed punctuation, and three
+// members and one level for the envelope around each value.
+const PREDECESSOR_ENVELOPE = Object.freeze({
+  bytesPerIdentityCharacter: 6,
+  punctuationBytes: 128,
+  members: 3,
+});
+
 export type PreparedNodeAttemptInput = Readonly<{
   completedOutputs: Readonly<Record<string, JsonValue>>;
   directUpstream: ReadonlySet<string>;
@@ -161,12 +170,12 @@ function parseCompletedOutputs(
       normalized = normalizeBoundedEngineValue(candidate, {
         bytes:
           NODE_JSON_LIMITS.bytes +
-          6 *
+          PREDECESSOR_ENVELOPE.bytesPerIdentityCharacter *
             (WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength +
               WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength) +
-          128,
+          PREDECESSOR_ENVELOPE.punctuationBytes,
         depth: NODE_JSON_LIMITS.depth + 1,
-        members: NODE_JSON_LIMITS.members + 3,
+        members: NODE_JSON_LIMITS.members + PREDECESSOR_ENVELOPE.members,
       });
     } catch {
       operationError(

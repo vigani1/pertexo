@@ -33,6 +33,8 @@ import {
   isTerminalNodeStatus,
 } from '../transition/transition-state.js';
 
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
+
 /** Executor success prepares input; only the child fact settles the logical Call. */
 export function callDeclarationObservations(
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
@@ -100,7 +102,7 @@ function parseCallOutcome(value: JsonValue): WorkflowCallOutcome {
     !UUID_PATTERN.test(callId) ||
     typeof invocationKey !== 'string' ||
     invocationKey.length === 0 ||
-    invocationKey.length > 256 ||
+    invocationKey.length > WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength ||
     typeof nodeId !== 'string' ||
     nodeId.length === 0 ||
     typeof fact.status !== 'string' ||

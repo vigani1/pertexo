@@ -4,6 +4,9 @@ import { assertBoundedCheckpointJson, assertCheckpoint } from './fields.js';
 import { parseCheckpointRecord } from './record.js';
 import { assertPersistedWorkflowVersionId } from './identity.js';
 
+/** Creating a run records event 1, so a new checkpoint's next event is 2. */
+export const FIRST_CHECKPOINT_EVENT_SEQUENCE = 2;
+
 export function parseCheckpoint(value: unknown): WorkflowCheckpoint {
   try {
     assertBoundedCheckpointJson(value);
@@ -52,7 +55,8 @@ export function createCheckpoint(input: {
     workflowVersionId,
     revision: 0,
     runStatus: 'queued',
-    nextEventSequence: input.nextEventSequence ?? 2,
+    nextEventSequence:
+      input.nextEventSequence ?? FIRST_CHECKPOINT_EVENT_SEQUENCE,
     readySet: [],
     admittedInvocationKeys: [],
     invocations: [],
