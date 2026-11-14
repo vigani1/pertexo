@@ -25,8 +25,10 @@ and never returns a response body before redaction.
 - `mail/`: system mail config, sealing, the delivery store and repository,
   delivery with retries, and SMTP.
 - `callbacks/`: signed callback keys and their verification.
-- `outbound-http/`: the client (`secure.ts`), request parsing and errors;
-  `execution/` routing, responses and cancellation; `redaction/` response
+- `outbound-http/`: the client (`secure-http-client.ts`), its public types
+  (`secure-http.types.ts`), request parsing (`parse-secure-request.ts`) and
+  errors (`secure-http.errors.ts`); `execution/` routing, responses and
+  cancellation; `redaction/` response
   and stream redaction; `transport/` the socket and address policy.
 
 ## Where new code goes

@@ -10,21 +10,21 @@ import {
   normalizeUrlHostname,
   type ResolvedAddress,
 } from './transport/address-policy.js';
-import { parseRequest } from './secure-request.js';
+import { parseRequest } from './parse-secure-request.js';
 
-import {
-  type SecureHttpAddressPolicy,
-  type SecureHttpObserver,
-  type SecureHttpRequest,
-  type SecureHttpResponse,
-  type SecureHttpBodyConsumer,
-  type SecureHttpResolver,
-  type SecureHttpTransportResponse,
-  type SecureHttpTransport,
-  type RedirectState,
-  type DispatchFailureContext,
-  POST_DISPATCH_AMBIGUITY,
-} from './execution/secure-http.js';
+import type {
+  SecureHttpAddressPolicy,
+  SecureHttpObserver,
+  SecureHttpRequest,
+  SecureHttpResponse,
+  SecureHttpBodyConsumer,
+  SecureHttpResolver,
+  SecureHttpTransportResponse,
+  SecureHttpTransport,
+  RedirectState,
+  DispatchFailureContext,
+} from './secure-http.types.js';
+import { POST_DISPATCH_AMBIGUITY } from './execution/cancellation.js';
 import {
   assertResponseStatus,
   redirectTransition,
@@ -39,25 +39,6 @@ import {
   mapTransportError,
   raceWithSignal,
 } from './execution/cancellation.js';
-export {
-  SECURE_HTTP_ERROR_CODE,
-  SecureHttpError,
-  type SecureHttpErrorCode,
-} from './secure-http.errors.js';
-export {
-  type SecureHttpAddressPolicy,
-  type SecureHttpFailureStage,
-  type SecureHttpFailureObservation,
-  type SecureHttpObserver,
-  type SecureHttpRequest,
-  type SecureHttpResponse,
-  type SecureHttpStreamingBody,
-  type SecureHttpBodyConsumer,
-  type SecureHttpResolver,
-  type SecureHttpTransportRequest,
-  type SecureHttpTransportResponse,
-  type SecureHttpTransport,
-} from './execution/secure-http.js';
 
 /** A host resolving to more addresses than this is refused. */
 const MAX_RESOLVED_ADDRESSES = 16;

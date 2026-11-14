@@ -9,13 +9,13 @@ import {
   SecureHttpRejection,
 } from '../secure-http.errors.js';
 
-import type { ParsedSecureHttpRequest } from '../secure-request.js';
+import type { ParsedSecureHttpRequest } from '../parse-secure-request.js';
 
 import type {
   SecureHttpRequest,
   SecureHttpTransportResponse,
   RedirectState,
-} from './secure-http.js';
+} from '../secure-http.types.js';
 
 const HTTP_STATUS_RANGE = Object.freeze({ min: 100, max: 599 });
 const REDIRECT_STATUSES: ReadonlySet<number> = new Set([

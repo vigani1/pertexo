@@ -1,10 +1,10 @@
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 
-import type { SecureHttpErrorCode } from '../secure-http.errors.js';
+import type { SecureHttpErrorCode } from './secure-http.errors.js';
 import type {
   AllowedPrivateNetwork,
   ResolvedAddress,
-} from '../transport/address-policy.js';
+} from './transport/address-policy.js';
 
 /**
  * The HTTP request step's policy: the private networks its operator allows
@@ -115,8 +115,3 @@ export type DispatchFailureContext = Readonly<{
   possiblyDispatched: boolean;
   ambiguous: boolean;
 }>;
-
-export const POST_DISPATCH_AMBIGUITY: DispatchFailureContext = Object.freeze({
-  possiblyDispatched: true,
-  ambiguous: true,
-});
