@@ -8,41 +8,6 @@ export const ROLES = Object.freeze([
 ] as const);
 export type Role = (typeof ROLES)[number];
 
-/** A change needs an active workspace. */
-export const ACTIVE_WORKSPACE_STATUSES = Object.freeze(['active'] as const);
-/** A suspended workspace reads but does not change (ADR 013/027). */
-export const BROWSABLE_WORKSPACE_STATUSES = Object.freeze([
-  'active',
-  'suspended',
-] as const);
-/**
- * A workspace scheduled for deletion can still be restored, and its owner opens
- * it to decide. Reads using this list stay open until the purge starts.
- */
-export const UNPURGED_WORKSPACE_STATUSES = Object.freeze([
-  ...BROWSABLE_WORKSPACE_STATUSES,
-  'pending_deletion',
-] as const);
-/** Current members can observe deletion until their membership is purged. */
-export const DISCOVERABLE_WORKSPACE_STATUSES = Object.freeze([
-  ...UNPURGED_WORKSPACE_STATUSES,
-  'purging',
-] as const);
-/**
- * For a flow that decides for itself what each status allows, so a member of a
- * workspace being purged gets that flow's answer rather than a denial.
- */
-export const ALL_WORKSPACE_STATUSES = Object.freeze([
-  ...UNPURGED_WORKSPACE_STATUSES,
-  'purging',
-  'deleted',
-] as const);
-/** A rule names the list it means, so two with different values can't be mistaken. */
-export type WorkspaceStatusList =
-  | typeof ACTIVE_WORKSPACE_STATUSES
-  | typeof BROWSABLE_WORKSPACE_STATUSES
-  | typeof UNPURGED_WORKSPACE_STATUSES
-  | typeof ALL_WORKSPACE_STATUSES;
 export const DELEGATED_ROLES = Object.freeze(
   ROLES.filter((role) => role !== 'owner'),
 );
@@ -164,77 +129,4 @@ export function capabilitiesForRole(
   role: Role,
 ): readonly AuthorizationCapability[] {
   return roleCapabilities[role];
-}
-
-const administratorManagedRoles = DELEGATED_ROLES.filter(
-  (role) => role !== 'admin',
-);
-
-/** ADR 037 role-transition policy, shared by UI projection and the database command. */
-export function canChangeWorkspaceMemberRole(
-  actorRole: Role,
-  targetRole: Role,
-  nextRole: Role,
-): boolean {
-  if (nextRole === 'owner' || targetRole === 'owner') return false;
-  if (actorRole === 'owner') return true;
-  return (
-    actorRole === 'admin' &&
-    administratorManagedRoles.some((role) => role === targetRole) &&
-    administratorManagedRoles.some((role) => role === nextRole)
-  );
-}
-
-/**
- * ADR 042 removal policy: owners remove any non-owner member, admins remove
- * only builder, operator or viewer members. Self-removal is decided by the
- * caller, which knows both identities.
- */
-export function canRemoveWorkspaceMember(
-  actorRole: Role,
-  targetRole: Role,
-): boolean {
-  if (targetRole === 'owner') return false;
-  if (actorRole === 'owner') return true;
-  return (
-    actorRole === 'admin' &&
-    administratorManagedRoles.some((role) => role === targetRole)
-  );
-}
-
-/**
- * ADR 047 suspension policy, for suspending and reactivating: the removal
- * matrix. Self-suspension is decided by the caller.
- */
-export function canSuspendWorkspaceMember(
-  actorRole: Role,
-  targetRole: Role,
-): boolean {
-  return canRemoveWorkspaceMember(actorRole, targetRole);
-}
-
-/** ADR 047: only the owner hands the workspace to another member. */
-export function canTransferWorkspaceOwnership(
-  actorRole: Role,
-  targetRole: Role,
-): boolean {
-  return actorRole === 'owner' && targetRole !== 'owner';
-}
-
-/** ADR 047: every member except the owner may leave. */
-export function canLeaveWorkspace(role: Role): boolean {
-  return role !== 'owner';
-}
-
-/** ADR 038 invitation policy. Current database state remains authoritative. */
-export function canInviteWorkspaceRole(
-  actorRole: Role,
-  invitedRole: Role,
-): boolean {
-  if (invitedRole === 'owner') return false;
-  if (actorRole === 'owner') return true;
-  return (
-    actorRole === 'admin' &&
-    administratorManagedRoles.some((role) => role === invitedRole)
-  );
 }

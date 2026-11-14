@@ -4,17 +4,19 @@ import {
   AUTHORIZATION_CAPABILITIES,
   ROLES,
   capabilitiesForRole,
+  hasCapability,
+  rolesForCapability,
+  type AuthorizationCapability,
+  type Role,
+} from '../src/authorization-policy.js';
+import {
   canChangeWorkspaceMemberRole,
   canInviteWorkspaceRole,
   canLeaveWorkspace,
   canRemoveWorkspaceMember,
   canSuspendWorkspaceMember,
   canTransferWorkspaceOwnership,
-  hasCapability,
-  rolesForCapability,
-  type AuthorizationCapability,
-  type Role,
-} from '../src/authorization-policy.js';
+} from '../src/membership-policy.js';
 
 const expectedCapabilitiesByRole = {
   owner: AUTHORIZATION_CAPABILITIES,
