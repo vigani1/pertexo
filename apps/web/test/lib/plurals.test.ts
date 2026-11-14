@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { formatCount, pluralWord } from '@/lib/format/count';
 
 it('puts words in the number their count needs', () => {
@@ -69,4 +69,17 @@ it('chooses plurals through pluralWord, never by hand', () => {
   expect(handWrittenPlurals(join(import.meta.dirname, '../../src'))).toEqual(
     [],
   );
+});
+
+it('writes counts in the viewer’s region, like every other number', async () => {
+  vi.spyOn(navigator, 'language', 'get').mockReturnValue('de-DE');
+  vi.resetModules();
+  try {
+    const { formatCount: inGermany } = await import('@/lib/format/count');
+    expect(inGermany(1_234_567, 'row')).toBe('1.234.567 rows');
+    expect(inGermany(1, 'row')).toBe('1 row');
+  } finally {
+    vi.restoreAllMocks();
+    vi.resetModules();
+  }
 });
