@@ -45,6 +45,51 @@
   that the plan does not contain, stop and ask the user instead of building it.
 - Write ADRs only for hard-to-reverse decisions.
 
+## Where code lives
+
+Before changing files in a package or app, read its `AGENTS.md`. A package's
+`AGENTS.md` adds to these rules or names exceptions with reasons; it never
+restates or contradicts them.
+
+| Kind of code | Lives in | Never |
+|---|---|---|
+| Defaults and limits (timeouts, sizes, retention, batch sizes) | One named constant at its owner, beside the concept it limits; browser-safe ones in `contracts` or `workflow-model` | A bare number or duration string in logic or copy |
+| Configuration (environment) | Read and validated once in a config module (`config.ts`, `<subject>-config.ts`, or an app's `config/` folder), then passed inward typed | `process.env` anywhere else |
+| Decisions | Pure functions with no I/O (`variables/replacement.ts`) | Mixed into database or HTTP code |
+| Database access | `.repository.ts`, or `.store.ts` as a flow's facade | Inline in an operation |
+| Live connections | `.runtime.ts` | Created ad hoc |
+| Operations | One verb-named file per operation, reading as the happy path, helpers below | Rules buried in a controller or hook |
+| Errors | One `.errors.ts` per subject; safe messages made once, at the boundary | A generic `throw new Error` in domain code |
+| Helpers | With their one owner; shared only when two or more owners use them and they name a real concept | `utils`, `helpers` or `common` |
+| Shared jobs | The one named way, listed below | A second hand-rolled version |
+| User-facing text | The web app, with numbers taken from their owners | Text in backend logic |
+
+The one named way for each shared job:
+
+- **Persisted ids:** `generatePersistedId` (`@pertexo/database/platform`).
+- **Time:** stored facts take `statement_timestamp()` in SQL; process code that
+  decides by time takes an injected `now` (default `Date.now`).
+- **Audit:** `appendAuditFact`/`appendAuditFacts` (`core/governance/audit/facts.ts`).
+- **Idempotent commands:** `claimCommand`/`completeCommand` (database
+  `/primitives`), keyed by `commandKeyHash`/`commandRequestHash`
+  (`core/shared/command-fingerprints.ts`), with receipts read by
+  `core/shared/receipts.ts`.
+- **Logging:** `createStructuredLogger` and `redactCredentialFields`
+  (`@pertexo/observability/server`).
+- **Retries:** step retries `decideRetry` (`workflow-engine/attempt/retries.ts`);
+  transport redelivery in the queue's job defaults (`queue/jobs/defaults.ts`);
+  provider `Retry-After` through `parseRetryAfterMillis` (`integrations/http/retry-after.ts`).
+- **Outbound HTTP:** the secure client in `@pertexo/secrets/server`.
+
+**Crowding:**
+
+- A file has one reason to change.
+- A package's `src` root holds only its entry files and at most a few named
+  core concepts, each listed with a reason in the package's `AGENTS.md` (a
+  check enforces it).
+- A folder with about ten files is a prompt to look for a sub-area.
+- Long functions are split by step.
+
 ## Code conventions
 
 - Dependencies run `apps -> core -> secrets -> database`, and
@@ -77,17 +122,7 @@
 
   `/testing` is for tests and never loads from a `src`. Do not add consumer-named
   barrels or expose database or core entry points to the browser.
-- Follow `docs/naming.md`. Group files by area, then sub-area, then role;
-  keep the web app's documented role directories. About ten direct files
-  prompts a review, not a forced split. Split by a real responsibility, never
-  just to meet a count. Single-file folders need an area, interface or consistent
-  role to name. Prefer at most four directories below `src`; review five or more.
-- Name files for a specific subject and, where useful, their role
-  (`workspace-variables.store.ts`, `connections.repository.ts`). Repeat a
-  directory's subject when it makes the file easier to identify; do not repeat
-  the whole path. Operations use a complete verb and object (`start-run.ts`).
-  Backend database access uses `.repository.ts` for reads and writes; browser
-  query definitions use `.queries.ts`. Keep established entry-point filenames.
+- Name and place files by [Naming and layout](#naming-and-layout) below.
 - Validate unknown input once, at the boundary that owns it, and pass typed
   values inward. Don't repeat `typeof` or property-existence checks, and don't
   re-check what a schema, constructor or type already guarantees.
@@ -112,6 +147,67 @@
   dependency, contract, schema and architecture). Before handoff, run it plus
   the tests for every package you touched.
 - Comments explain why, not what.
+
+## Naming and layout
+
+[docs/naming.md](docs/naming.md) explains these rules with examples; the rules
+live here.
+
+- **Words:** lowercase kebab-case for directories and the words of a filename;
+  dots separate a subject from a role (`workspace-variables.store.ts`). Use
+  `.tsx` only for JSX. Exported names keep TypeScript conventions.
+- **Subjects:** an operation is a complete verb and object (`start-run.ts`);
+  a clear owning path may supply the object for a short private operation
+  (`variables/replace.ts`). A concept is a concrete noun (`command-retry.ts`).
+  Choose the shortest subject that identifies the file with its path; repeat
+  the directory's subject when it helps, never the whole ancestor chain. Never
+  shorten a name by truncating words, acronyms or a sentence.
+- **Banned names:** `contract.ts`, `types.ts`, `utils.ts`, `helpers.ts`,
+  `common.ts`, or any name that avoids choosing a responsibility. Keep types
+  and the small values that change with them together under the concept's name;
+  never split a coherent module just to earn a `.types.ts` or `.schemas.ts`.
+- **Roles** are optional suffixes that say how a module takes part; they are not
+  layers or mandatory files, and renaming one moves no authority. Only these
+  exist (a check enforces it):
+
+  | Role | Meaning |
+  |---|---|
+  | `.repository.ts` | Database reads and writes, locks, row projections and persistence orchestration |
+  | `.store.ts` | A bound interface to state that assembles operations and owns their context (core flow facade; browser local state) |
+  | `.service.ts` | API operations that adapt requests and coordinate dependencies (one role for the API's service and use-case modules) |
+  | `.controller.ts` / `.module.ts` | Framework transport handlers / framework composition |
+  | `.guard.ts` / `.filter.ts` / `.tokens.ts` | NestJS guards / exception filters / injection tokens |
+  | `.definition.ts` / `.executor.ts` | A step's identity, manifest and registration / its execution |
+  | `.errors.ts` | An error family and its boundary translation |
+  | `.runtime.ts` | Construction and lifetime of live resources (a time helper is an operation, not a runtime) |
+  | `.schemas.ts` | Runtime schemas and their parsing support |
+  | `.validation.ts` | Semantic validation and inspection functions |
+  | `.types.ts` | Only erased declarations and type-only re-exports |
+  | `.openapi.ts` | An area's OpenAPI description (`contracts`) |
+  | `.queries.ts` / `.api.ts` / `.mutations.ts` / `.public.ts` | Browser only: query cache reads / endpoint calls / mutations / a feature's interface |
+
+- **Entry files:** `index.ts` only re-exports. Keep `server.ts`, `main.ts`,
+  `testing.ts`, `startup.ts`, `public.ts`, the database's `schema.ts`,
+  `primitives.ts` and `platform.ts`, and tool-defined filenames in their roles.
+  Do not add entry points to make names uniform.
+- **Directories:** start with a real area, then a sub-area with its own
+  responsibility, then a role directory only inside it; keep the web app's
+  `pages`, `components`, `hooks`, `data`, `forms`, `model` layout. No top-level
+  collections of all repositories or controllers. A single-file directory needs
+  an area, a deliberate interface or a role slot shared with peers; no empty
+  slots. About ten direct files prompts a review, not a forced split: eleven to
+  fifteen related files stay together when splitting adds navigation without
+  separating a responsibility, and a deliberate catalog of named peers (UI
+  primitives) can be larger. Prefer at most four directories below `src`;
+  review five or more. Neither number justifies a move without a better
+  grouping.
+- **Tests:** in the workspace `test/` tree (browser `e2e/`, `e2e-live/`),
+  mirroring the owning area, named by topic or a finished behavioural sentence.
+  `.test.ts` is discovered, `.integration.test.ts` is the integration lane,
+  `.spec.ts` is Playwright, and `.cases.ts` registers cases for one discovered
+  suite and is never discovered itself. Fixtures and support stay beside the
+  tests they serve; tests sharing one fixture lifecycle stay under their owner,
+  not one test file per source helper. Full sentences go in `it` descriptions.
 
 ## Agent skills
 

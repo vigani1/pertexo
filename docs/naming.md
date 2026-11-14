@@ -1,45 +1,69 @@
+The rules are in `AGENTS.md`; this file explains them.
+
 # File and directory naming
 
-### Names
+[`AGENTS.md`](../AGENTS.md) holds the rules under "Where code lives" and
+"Naming and layout". This page says why they exist and shows them applied.
 
-Use lowercase kebab-case for directories and the words in a filename. Use dots to separate a subject from a recognized role: `workspace-variables.store.ts`, `connections.repository.ts`, `slack-send-message.executor.ts`. Use `.tsx` when a file contains JSX. Exported TypeScript names keep their language conventions.
+## Why one way of naming
 
-Name an operation with a complete verb and object: `advance-run.ts`, `validate-workflow-graph.ts`. A clear owning path may supply the object for a short private operation, such as `variables/replace.ts`. Name a concept with a concrete noun: `command-retry.ts`, `portable-manifest.ts`. A role suffix is useful when it tells the reader how the module participates; it is not required on every function or data model.
+A reader finds code by its path before they read it. When every package names
+the same kind of file the same way, a path says what the file does and who may
+change it: `connections.repository.ts` touches the database, `start-run.ts` is
+one operation, `artifact-store.errors.ts` is where that store's failures are
+named and translated. A file "just there with a different name" makes the
+reader open it to learn what another package already says in its name.
 
-Choose the shortest subject that makes the file identifiable with its path. Repeat the directory's subject when it makes an editor tab, import, or search result clearer. Do not strip the subject from a filename to avoid repetition. Do not repeat an entire ancestor chain. `runs/advance/advance-run.ts` is fine.
+## Names, with examples
 
-Do not use `contract.ts`, `types.ts`, `utils.ts`, `helpers.ts`, or `common.ts` to avoid choosing a responsibility. Keep types and their small, related values together when they change together; name that concept. Use `<subject>.types.ts` only for erased type declarations and type-only re-exports. Use `<subject>.schemas.ts` for runtime schemas and closely related parsing/validation support. Do not split a coherent module solely to earn either suffix.
+| Instead of | Write | Because |
+|---|---|---|
+| `utils.ts`, `helpers.ts` | `command-retry.ts`, `response-charset.ts` | The name says the one concept the file owns. |
+| `run.ts` holding three operations | `start-run.ts`, `advance-run.ts` | One operation per file, named verb and object. |
+| `variables/replace-workspace-variables.ts` | `variables/replace.ts` | A private operation can take its object from the folder. |
+| `runs/advance/run.ts` | `runs/advance/advance-run.ts` | Repeating the subject keeps an editor tab clear. |
+| `runs/advance/runs-advance-advance-run.ts` | `runs/advance/advance-run.ts` | Never repeat the whole path. |
+| `wf-cfg.ts` | `workflow-configuration.ts` | Words are never truncated. |
+| `jobs.types.ts` holding a `const` | `jobs.ts` | `.types.ts` promises nothing survives compilation. |
 
-### Roles
+A role suffix is worth adding when it tells the reader how the module takes
+part. It is not a layer: renaming `storage.ts` to `storage.repository.ts`
+moves no authority and changes no transaction. Keep a concept's types and
+small values together under the concept's name rather than splitting a
+coherent module just to earn a `.types.ts` or `.schemas.ts`.
 
-| Role | Meaning |
-|---|---|
-| `<subject>.repository.ts` | Database access, reads and writes, including locks, row projections and persistence orchestration; it is not a promise of read-only behavior or of an ORM class. |
-| `<subject>.store.ts` | A bound interface to state that assembles operations for its caller and owns or receives their state context and resource lifecycle; in core this is the flow facade, in the browser it is local state. |
-| `<subject>.service.ts` | Application operations that adapt boundary requests and coordinate their dependencies; use one filename role for today's API `service` and `use-case` modules. |
-| `<subject>.queries.ts` | Browser server-state query keys/options and reads for the query cache; backend database access uses `repository`. |
-| `<subject>.api.ts` / `<subject>.mutations.ts` | Browser endpoint calls / mutation and cache-update definitions. |
-| `<subject>.controller.ts` / `<subject>.module.ts` | Framework transport handlers / framework composition and dependency registration. |
-| `<subject>.definition.ts` / `<subject>.executor.ts` | A step's declared identity, manifest and registration / its execution implementation. |
-| `<subject>.errors.ts` | An error family and its boundary translation. |
-| `<subject>.runtime.ts` | Construction and lifetime of live resources; a time helper is named as an operation instead. |
-| `<subject>.validation.ts` | Semantic validation/inspection functions; schema declarations use `schemas`. |
+## Where code lives, with examples
 
-These are roles, not new layers or mandatory files. Repositories may contain existing transaction orchestration. A filename change does not move authority, change transaction ownership or create an interface.
+- **A limit:** the queue's transport attempts are `TRANSPORT_ATTEMPTS` in
+  `queue/src/jobs/defaults.ts`, beside the job defaults they shape. A test or
+  a log message imports it; nobody writes `8` again.
+- **Configuration:** `observability/src/config.ts` reads the environment once
+  and returns a typed object; the telemetry runtime takes that object, never
+  `process.env`.
+- **A decision:** `rate-limit/src/policy/limit-policy.ts` decides how many
+  requests a key may make with no I/O; the limiters apply it against memory or
+  Redis.
+- **Live connections:** `rate-limit/src/redis/redis.runtime.ts` owns the Redis
+  client's construction and shutdown.
 
-`index.ts` is an intentional re-export entry point, not an implementation. Keep `public.ts` and `<subject>.public.ts` for intentional browser feature interfaces. Keep `server.ts`, `main.ts`, `testing.ts`, `startup.ts`, database `schema.ts`/`primitives.ts`/`platform.ts`, and tool-defined configuration/declaration filenames in their existing roles. Do not make more entry points to make filenames uniform. ADR 091's core imports still reach the files named by an area's index directly.
+## Directories, with examples
 
-### Directories
+`secrets/src/outbound-http/transport/` is a sub-area: the transport has its own
+responsibility (address policy, the socket) inside outbound HTTP. A folder of
+every repository in a package would be a role collection with no
+responsibility, so it doesn't exist.
 
-Start with a real area or feature. Inside it, introduce a sub-area when it has an independently describable responsibility. Use a role directory only to organize that sub-area's files; keep the web app's established `pages`, `components`, `hooks`, `data`, `forms`, `model` layout. Do not create top-level collections of all repositories or controllers.
+A single-file folder earns its place when it is an area that will be read on
+its own (`templates/src/manifests/` holds one file per template) or a role slot
+its peers share. An empty folder for code that might come later does not.
 
-A single-file directory is useful when it is a genuine area, a deliberate interface, or a required role slot shared with peer areas. Otherwise prefer a descriptive file in its parent. Do not create empty slots for imagined future code.
+The ten-file prompt is a question, not a quota: fifteen executors for fifteen
+nodes in one catalog are easier to scan than three folders invented to keep
+each under ten.
 
-About ten direct files prompts a review, not a forced split. Keep eleven to fifteen related files together if splitting would add navigation without separating a responsibility. A deliberate catalog of directly named peer items, such as UI primitives, can be larger. Prefer at most four directories below `src`; review five or more. Neither number justifies moving code without a better grouping.
+## Tests, with examples
 
-### Tests
-
-Keep tests in the existing workspace `test/` tree and browser `e2e/` or `e2e-live/` trees. Mirror the owning area, then name the behavior or scenario. A file can name a topic (`quotas.test.ts`); a behavioral name must finish its thought (`retains-pending-charge-until-deletion.cases.ts`). Put full statements in `it` descriptions. Never shorten a name by truncating words, acronyms or a sentence.
-
-Use `.test.ts` for discovered tests, `.integration.test.ts` for the existing integration lane, and `.spec.ts` for Playwright. An imported module that registers cases keeps `.cases.ts`; it must be called by a discovered suite, not discovered a second time. Keep fixtures and test support beside the tests they serve. Tests sharing one fixture lifecycle stay under their owner; do not invent one test file per source helper.
-
+`queue/test/jobs/defaults.test.ts` mirrors `queue/src/jobs/defaults.ts`.
+A behavioural name finishes its thought:
+`retains-pending-charge-until-deletion.cases.ts`, not `retains-pending.ts`.
+A `.cases.ts` file is imported by one discovered suite, so its cases run once.
