@@ -7,7 +7,6 @@ import type { FieldParseResult } from '../../../model/inspector/draft';
 import {
   addValidateRule,
   parseRuleEnum,
-  readValidateRules,
   VALIDATE_BOUNDS,
   VALIDATE_MAX_RULES,
   VALIDATE_TYPES,
@@ -61,34 +60,23 @@ export function ValidateRules({
   rules: stored,
   form,
 }: Readonly<{ rules: readonly ValidateRule[]; form: NodeFormApi }>) {
-  // A new Validate step opens with one blank rule to fill, as n8n, Zapier
-  // and Make do. It lives here until it has a path, so the stored setup
-  // stays empty rather than holding a rule nobody wrote.
-  const [blank, setBlank] = useState(() => addValidateRule([]));
-  const rules = stored.length === 0 ? blank : stored;
+  // A rule without a path is a draft: it shows here but is never saved, so
+  // the stored setup holds only rules someone wrote. A new Validate step
+  // opens with one draft to fill, as n8n, Zapier and Make do.
+  const [drafts, setDrafts] = useState<readonly ValidateRule[]>(() =>
+    stored.length === 0 ? addValidateRule([]) : [],
+  );
+  const rules = [...stored, ...drafts];
   function change(
     update: (current: readonly ValidateRule[]) => readonly ValidateRule[],
     key: string,
   ) {
-    if (stored.length === 0) {
-      const next = update(blank);
-      if (next.every((rule) => rule.path === '')) {
-        setBlank(next);
-        return;
-      }
-      form.commit(
-        (node) => ({ config: withValidateRules(node.config, next) }),
-        `${form.nodeId}:config:rules:${key}`,
-      );
-      return;
-    }
+    const next = update(rules);
+    const written = next.filter((rule) => rule.path !== '');
+    setDrafts(next.filter((rule) => rule.path === ''));
+    if (JSON.stringify(written) === JSON.stringify(stored)) return;
     form.commit(
-      (node) => ({
-        config: withValidateRules(
-          node.config,
-          update(readValidateRules(node.config) ?? rules),
-        ),
-      }),
+      (node) => ({ config: withValidateRules(node.config, written) }),
       `${form.nodeId}:config:rules:${key}`,
     );
   }
