@@ -18,7 +18,7 @@ import type {
 
 import { encodeMultipart } from '../multipart/encode.js';
 import { readRequestBody } from '../read-body.js';
-import { failedConfiguration } from './request-execution.js';
+import { failedConfiguration } from '../request.errors.js';
 import { HttpRequestExecutorError } from '../request.errors.js';
 import { releaseHttpMaterial } from './body.js';
 import { fillPlaceholders } from './request-input.js';

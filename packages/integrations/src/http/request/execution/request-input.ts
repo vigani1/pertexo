@@ -21,7 +21,7 @@ import { HttpPlaceholderError } from '../placeholders.errors.js';
 import { mergeHeaders } from '../material.js';
 
 import { artifactContentType } from '../read-body.js';
-import { failedConfiguration } from './request-execution.js';
+import { failedConfiguration } from '../request.errors.js';
 
 export function requestHeaders(
   input: HttpRequestInput,

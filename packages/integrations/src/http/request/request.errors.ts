@@ -68,3 +68,11 @@ function responseFailureCode(code: ProviderHttpErrorCode | undefined) {
     return 'http.response_redaction_limit' as const;
   return undefined;
 }
+
+/** The step's setup or runtime can't make this request; nothing was sent. */
+export function failedConfiguration(): HttpRequestExecutorError {
+  return new HttpRequestExecutorError(
+    Object.freeze({ kind: 'failed', errorKind: 'configuration' }),
+    { possiblyDispatched: false },
+  );
+}

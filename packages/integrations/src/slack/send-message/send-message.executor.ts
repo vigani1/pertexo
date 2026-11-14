@@ -27,28 +27,16 @@ import {
   providerFailure,
 } from '../../providers/provider.errors.js';
 import { SlackSendMessageExecutorError } from './send-message.errors.js';
-
-type ResolvedSlackConnection = Awaited<
-  ReturnType<NonNullable<NodeExecutionRuntime['connections']>['resolve']>
->;
-type SlackCredential = ReturnType<
-  typeof resolvedSlackBotTokenCredentialSchema.parse
->;
-
-export interface SlackSendMessageExecutorTelemetry {
-  measure(
-    work: () => Promise<SlackSendMessageOutput>,
-  ): Promise<SlackSendMessageOutput>;
-}
+import { withProviderCredential } from '../../providers/provider-credential.js';
+import {
+  registerProviderExecutor,
+  type ExecutorTelemetry,
+} from '../../providers/provider-executor.js';
 
 export type SlackSendMessageExecutorDependencies = Readonly<{
   client: Pick<SlackClient, 'sendMessage'>;
-  telemetry?: SlackSendMessageExecutorTelemetry;
+  telemetry?: ExecutorTelemetry<SlackSendMessageOutput>;
 }>;
-
-const NOOP_TELEMETRY: SlackSendMessageExecutorTelemetry = Object.freeze({
-  measure: (work: () => Promise<SlackSendMessageOutput>) => work(),
-});
 
 const failure = providerFailure(SlackSendMessageExecutorError);
 
@@ -90,34 +78,6 @@ function classifyResult(
   }
 }
 
-async function withSlackCredential<T>(
-  resolved: ResolvedSlackConnection,
-  connectionId: string,
-  work: (credential: SlackCredential) => Promise<T>,
-): Promise<T> {
-  try {
-    if (
-      resolved.connectionId !== connectionId ||
-      resolved.providerKey !== 'slack' ||
-      resolved.authType !== 'slack_bot_token'
-    )
-      throw failure('failed', 'configuration', { possiblyDispatched: false });
-    let credential: SlackCredential;
-    try {
-      credential = resolvedSlackBotTokenCredentialSchema.parse(
-        JSON.parse(
-          new TextDecoder('utf-8', { fatal: true }).decode(resolved.secret),
-        ),
-      );
-    } catch {
-      throw failure('failed', 'authentication', { possiblyDispatched: false });
-    }
-    return await work(credential);
-  } finally {
-    resolved.secret.fill(0);
-  }
-}
-
 async function execute(
   dependencies: SlackSendMessageExecutorDependencies,
   invocation: NodeExecutionInvocation<unknown, unknown>,
@@ -156,60 +116,70 @@ async function execute(
       signal: invocation.signal,
     });
   }
-  return withSlackCredential(resolved, connectionId, async (credential) => {
-    let result;
-    try {
-      result = await dependencies.client.sendMessage({
-        botToken: credential.botToken,
-        channelId: input.channelId,
-        text: input.text,
-        sensitiveValues: invocation.runtime?.callbacks?.sensitiveValues() ?? [],
-        timeoutMillis: config.timeoutMillis,
-        signal: invocation.signal,
-        beforeDispatch: createProviderBeforeDispatch({
-          assertCurrent,
-          connectionId,
-          expectedProviderKey: 'slack',
-          expectedAuthType: 'slack_bot_token',
-          secretVersionId: resolved.secretVersionId,
+  return withProviderCredential(
+    resolved,
+    {
+      connectionId,
+      providerKey: 'slack',
+      authTypes: ['slack_bot_token'],
+      schema: resolvedSlackBotTokenCredentialSchema,
+      refuse: (reason) =>
+        failure('failed', reason, { possiblyDispatched: false }),
+    },
+    async (credential) => {
+      let result;
+      try {
+        result = await dependencies.client.sendMessage({
+          botToken: credential.botToken,
+          channelId: input.channelId,
+          text: input.text,
+          sensitiveValues:
+            invocation.runtime?.callbacks?.sensitiveValues() ?? [],
+          timeoutMillis: config.timeoutMillis,
           signal: invocation.signal,
-          runtime,
-        }),
+          beforeDispatch: createProviderBeforeDispatch({
+            assertCurrent,
+            connectionId,
+            expectedProviderKey: 'slack',
+            expectedAuthType: 'slack_bot_token',
+            secretVersionId: resolved.secretVersionId,
+            signal: invocation.signal,
+            runtime,
+          }),
+        });
+      } catch (error: unknown) {
+        rethrowSlackDispatchError(error, runtime);
+      }
+      if (result.kind !== 'succeeded') {
+        const observation = classifySlackConnectionHealth(result);
+        if (observation !== undefined)
+          runtime.observeConnectionHealth?.(observation);
+        classifyResult(result);
+      }
+      if (result.channelId !== input.channelId)
+        throw failure('outcome_unknown', 'provider', {
+          possiblyDispatched: true,
+        });
+      const output = slackSendMessageOutputSchema.parse({
+        channelId: result.channelId,
+        messageTs: result.messageTs,
       });
-    } catch (error: unknown) {
-      rethrowSlackDispatchError(error, runtime);
-    }
-    if (result.kind !== 'succeeded') {
       const observation = classifySlackConnectionHealth(result);
       if (observation !== undefined)
         runtime.observeConnectionHealth?.(observation);
-      classifyResult(result);
-    }
-    if (result.channelId !== input.channelId)
-      throw failure('outcome_unknown', 'provider', {
-        possiblyDispatched: true,
-      });
-    const output = slackSendMessageOutputSchema.parse({
-      channelId: result.channelId,
-      messageTs: result.messageTs,
-    });
-    const observation = classifySlackConnectionHealth(result);
-    if (observation !== undefined)
-      runtime.observeConnectionHealth?.(observation);
-    return output;
-  });
+      return output;
+    },
+  );
 }
 
 export function createSlackSendMessageExecutorRegistration(
   dependencies: SlackSendMessageExecutorDependencies,
 ): NodeExecutorRegistration {
-  return Object.freeze({
-    executor: SLACK_SEND_MESSAGE_EXECUTOR,
-    execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
-      (dependencies.telemetry ?? NOOP_TELEMETRY).measure(() =>
-        execute(dependencies, invocation),
-      ),
-  });
+  return registerProviderExecutor(
+    SLACK_SEND_MESSAGE_EXECUTOR,
+    dependencies.telemetry,
+    (invocation) => execute(dependencies, invocation),
+  );
 }
 
 function rethrowSlackDispatchError(

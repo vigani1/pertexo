@@ -27,7 +27,6 @@ export {
 export {
   createEmailSendNotificationExecutorRegistration,
   type EmailSendNotificationExecutorDependencies,
-  type EmailSendNotificationExecutorTelemetry,
 } from './email/send-notification/send-notification.executor.js';
 
 export { EmailSendNotificationExecutorError } from './email/send-notification/send-notification.errors.js';
@@ -35,16 +34,15 @@ export { EmailSendNotificationExecutorError } from './email/send-notification/se
 export {
   createSlackSendMessageExecutorRegistration,
   type SlackSendMessageExecutorDependencies,
-  type SlackSendMessageExecutorTelemetry,
 } from './slack/send-message/send-message.executor.js';
 export { SlackSendMessageExecutorError } from './slack/send-message/send-message.errors.js';
 
 export {
   createHttpRequestExecutorRegistration,
-  HttpRequestExecutorError,
   type HttpRequestExecutorDependencies,
-  type HttpRequestExecutorTelemetry,
 } from './http/request/request.executor.js';
+export { HttpRequestExecutorError } from './http/request/request.errors.js';
+export type { ExecutorTelemetry } from './providers/provider-executor.js';
 
 export {
   createOAuth2RenewalClient,
