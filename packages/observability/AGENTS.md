@@ -47,8 +47,10 @@ message or a value a schema rejected.
 ## Rules
 
 - `/startup` stays free of pino, pg, HTTP and the application.
-- Error text is private: descriptions are built from closed vocabularies and
-  checked fields, and everything else is `[Redacted]`.
+- Error text is private: descriptions are built from closed vocabularies
+  (system error codes, setting repairs) and fields checked to be plain tokens
+  (the inherited-settings role and setting names), and everything else is
+  `[Redacted]`.
 
 ## Exceptions
 

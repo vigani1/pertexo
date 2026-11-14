@@ -44,8 +44,9 @@ timeouts) and never logs (it reports through observers).
 - Per-queue attempts, backoff, locks, timeouts, concurrency and retention:
   `QUEUE_CLASS_DEFAULTS` in `jobs/defaults.ts`.
 - Producer and consumer timeouts and their bounds: `producer-options.ts` and
-  `consumer-options.ts`; runtime poll and teardown intervals: constants at
-  the top of each runtime.
+  `consumer-options.ts`; runtime poll intervals: constants at the top of
+  each runtime; the consumer's forced-teardown budget:
+  `consumption/close-consumer-connections.ts`.
 - Hint sizes and publish timeouts: constants at the top of each `pubsub/` file.
 
 ## Rules

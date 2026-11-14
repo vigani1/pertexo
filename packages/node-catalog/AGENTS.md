@@ -47,8 +47,10 @@ None: node limits and defaults belong to each node's definition.
 
 ## Exceptions
 
-- Its four concepts sit at the `src` root: the package is one small area, and
-  each file is the catalog's one view of its kind.
+- Its five root files (the catalog, its browser projection, the two policies
+  and the errors) sit at the `src` root: the package is one small area, and
+  each is the catalog's one view of its kind. Their reasons are in
+  `ROOT_CONCEPTS` (`infrastructure/checks/validate-package-roots.mjs`).
 
 ## What guards it
 

@@ -49,8 +49,10 @@ No configuration. Its one limit, `MAX_AUTO_PAUSE_THRESHOLD`, lives in
 
 ## Exceptions
 
-- The policy files sit at the `src` root with no sub-area: the package is one
-  small area, and a folder per four files would add navigation only.
+- The four policy files sit at the `src` root with no sub-area: the package
+  is one small area, and a folder for four files would add navigation only.
+  Their reasons are in `ROOT_CONCEPTS`
+  (`infrastructure/checks/validate-package-roots.mjs`).
 
 ## What guards it
 

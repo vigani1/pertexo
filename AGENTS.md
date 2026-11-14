@@ -85,9 +85,11 @@ The one named way for each shared job:
 
 - A file has one reason to change.
 - A package's `src` root holds only its entry files and at most a few named
-  core concepts, each listed with a reason in the package's `AGENTS.md` (a
-  check enforces it).
-- A folder with about ten files is a prompt to look for a sub-area.
+  core concepts. Each concept and its reason is listed in `ROOT_CONCEPTS`
+  (`infrastructure/checks/validate-package-roots.mjs`), which the check
+  enforces; the package's `AGENTS.md` points there.
+- How full a folder may get is under Directories in
+  [Naming and layout](#naming-and-layout).
 - Long functions are split by step.
 
 ## Code conventions

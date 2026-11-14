@@ -56,8 +56,9 @@ never logs or records metrics (the caller does, from the result).
 
 ## Exceptions
 
-- Two named concepts sit at the `src` root beside the entry: the policy and
-  the Redis runtime. Each is the package's one file of its kind.
+- The policy, the errors and the Redis runtime sit at the `src` root beside
+  the entry, each the package's one file of its kind; their reasons are in
+  `ROOT_CONCEPTS` (`infrastructure/checks/validate-package-roots.mjs`).
 
 ## What guards it
 
