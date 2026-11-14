@@ -22,15 +22,18 @@ never stores artifact rows (PostgreSQL does, through `core`) and never logs
 - `src/artifact-identity.ts`: an artifact's identity and storage key.
 - `src/artifact-store.errors.ts`: integrity, not-found and closed errors.
 - `storage/`: the S3 implementation, one file per operation (read, signed
-  upload and download, purge), stored metadata, stream verification and the
-  observed wrapper.
-- `s3/`: the S3 client seam, request deadlines and object-store telemetry.
+  upload and download, purge), the request schemas and their bounds
+  (`artifact-request.schemas.ts`), stored metadata (`metadata.ts`), stream
+  verification, the S3-backed store runtime (`s3-artifact-storage.runtime.ts`)
+  and the observed wrapper.
+- `s3/`: the S3 client seam, request deadlines, response handling (not-found,
+  draining and closing bodies) and object-store telemetry.
 
 ## Where new code goes
 
 - A new store operation: a method on `ArtifactStore`
   (`storage/artifact-storage.types.ts`), its operation file in `storage/`,
-  wired in `storage/aws.ts` and observed in `storage/observed.ts`.
+  wired in `storage/s3-artifact-storage.runtime.ts` and observed in `storage/observed.ts`.
 - A new S3 command: add it to `ObjectStoreS3Command` in `s3/s3-client.ts` and
   name its operation in `s3/telemetry.ts`.
 - A new setting: `config.ts`, with its default and bounds named there.
@@ -40,7 +43,7 @@ never stores artifact rows (PostgreSQL does, through `core`) and never logs
 - Environment: `config.ts` (`ARTIFACT_STORE_*`, `ARTIFACT_MAX_BYTES`), with
   the default and ceiling object sizes, bucket-name and request-timeout bounds.
 - Signed URL lifetime, purge page size and media-type length:
-  `storage/metadata.ts`.
+  `storage/artifact-request.schemas.ts`.
 
 ## Rules
 

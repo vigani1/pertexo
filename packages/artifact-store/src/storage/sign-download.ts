@@ -9,7 +9,7 @@ import {
 } from '../artifact-identity.js';
 import { observePresign, type ObjectStoreObserver } from '../s3/telemetry.js';
 import { awaitWithSignal, requestSignal } from '../s3/request-lifecycle.js';
-import { SIGNED_URL_LIFETIME_SECONDS } from './metadata.js';
+import { SIGNED_URL_LIFETIME_SECONDS } from './artifact-request.schemas.js';
 
 export function createArtifactDownloadPresigner(
   client: S3Client,
