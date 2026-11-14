@@ -41,7 +41,6 @@ export const PENDING_DOCS = Object.freeze([
   'packages/node-sdk',
   'packages/nodes-core',
   'packages/workflow-engine',
-  'packages/workflow-model',
 ]);
 
 // A link to the root rules from `apps/<name>` or `packages/<name>`.
