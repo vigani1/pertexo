@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+/** An application key is an AES-256 key. */
+export const APPLICATION_KEY_BYTES = 32;
+/** Retired keys kept to open older secrets during a rotation. */
+const MAX_PREVIOUS_KEYS = 8;
+
 export class ApplicationKeyConfigurationError extends TypeError {
   public override readonly name = 'ApplicationKeyConfigurationError';
   public constructor(
@@ -29,7 +34,7 @@ export function parseApplicationPreviousKeys(
   try {
     const keys = z
       .array(keySchema)
-      .max(8)
+      .max(MAX_PREVIOUS_KEYS)
       .parse(JSON.parse(input) as unknown);
     assertUniqueVersions(keys);
     return Object.freeze(keys.map((key) => Object.freeze(key)));
@@ -59,9 +64,14 @@ export function decodeApplicationKey(encoded: string): Buffer {
     .replaceAll('/', '_')
     .replace(/=+$/u, '');
   const key = Buffer.from(normalized, 'base64url');
-  if (key.byteLength !== 32 || key.toString('base64url') !== normalized) {
+  if (
+    key.byteLength !== APPLICATION_KEY_BYTES ||
+    key.toString('base64url') !== normalized
+  ) {
     key.fill(0);
-    throw new TypeError('Application secret key must encode exactly 32 bytes');
+    throw new TypeError(
+      `Application secret key must encode exactly ${String(APPLICATION_KEY_BYTES)} bytes`,
+    );
   }
   return key;
 }
@@ -75,7 +85,7 @@ export function validateApplicationKeyRing(
   const parsed = z
     .object({
       current: keySchema,
-      previous: z.array(keySchema).max(8).default([]),
+      previous: z.array(keySchema).max(MAX_PREVIOUS_KEYS).default([]),
     })
     .strict()
     .safeParse(config);
@@ -92,7 +102,7 @@ export function validateApplicationKeyRing(
     } catch {
       throw new ApplicationKeyConfigurationError(
         index === 0 ? 'current' : 'previous',
-        'Application secret key must encode exactly 32 bytes',
+        `Application secret key must encode exactly ${String(APPLICATION_KEY_BYTES)} bytes`,
       );
     }
   }

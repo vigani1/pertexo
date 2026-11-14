@@ -1,5 +1,9 @@
 import type { KMSClient } from '@aws-sdk/client-kms';
 import { z } from 'zod';
+import {
+  MAX_KEY_REFERENCE_BYTES,
+  MAX_KMS_REGION_LENGTH,
+} from './envelope-format.js';
 import { createBoundedKmsClient } from '../keys/kms-client.js';
 import { SelfManagedEnvelopeKeyProvider } from '../keys/self-managed-key-provider.js';
 import type { ConnectionEnvelopeEncryptionConfig } from '../connection-encryption.runtime.js';
@@ -20,9 +24,9 @@ const kmsConfigSchema = z
     keyReference: z
       .string()
       .min(1)
-      .max(2_048)
+      .max(MAX_KEY_REFERENCE_BYTES)
       .refine(isValidEnvelopeKeyReference),
-    region: z.string().min(1).max(128),
+    region: z.string().min(1).max(MAX_KMS_REGION_LENGTH),
     endpoint: z.url().optional(),
   })
   .strict();
