@@ -34,6 +34,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/secrets',
   'packages/workflow-model',
   'packages/node-sdk',
+  'packages/workflow-engine',
 ]);
 
 /**
@@ -95,6 +96,14 @@ export const NOT_LIMITS = Object.freeze({
   'packages/node-sdk/src/code/framing.ts: 10': 'the newline byte ends a frame',
   'packages/node-sdk/src/values/stored-json.ts: *':
     'JSON string encoding: quotes, escape widths, UTF-8 widths and surrogates',
+  'packages/workflow-engine/src/checkpoint/admission.ts: *':
+    'JSON text layout: literal widths, brackets and separators',
+  'packages/workflow-engine/src/compilation/executable.validation.ts: *':
+    'JSON text layout: literal widths, brackets and separators',
+  'packages/workflow-engine/src/compilation/checkpoint-capacity.ts: 64':
+    'a SHA-256 digest is 64 hex digits',
+  'packages/workflow-engine/src/completion/failure-notification.ts: 2':
+    'the rank of a failed outcome among failure severities',
   'packages/workflow-model/src/authoring/portability/portable-manifest.ts: 16':
     'a digest byte printed in hex',
   'packages/workflow-model/src/authoring/portability/portable-manifest.ts: 2':

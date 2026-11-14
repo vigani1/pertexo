@@ -5,12 +5,15 @@ import {
 
 import { operationError } from '../input-checks/engine-values.js';
 
+// Run, version, node and attempt identities the engine accepts.
+const ENGINE_IDENTITY_MAX_LENGTH = 256;
+
 export function assertIdentity(
   value: string,
   label: string,
   code: 'attempt_invalid' | 'workflow_identity_invalid',
 ): void {
-  if (value.length === 0 || value.length > 256)
+  if (value.length === 0 || value.length > ENGINE_IDENTITY_MAX_LENGTH)
     operationError(code, `${label} is invalid`);
 }
 

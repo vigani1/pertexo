@@ -16,6 +16,8 @@ import type {
   RecoveryRefused,
 } from './workflow-recovery.types.js';
 
+import { FIRST_CHECKPOINT_EVENT_SEQUENCE } from '../checkpoint/create-and-parse.js';
+
 export interface RecoveryCopy {
   readonly id: string;
   readonly nodeId: string;
@@ -88,7 +90,7 @@ export function seedRecovery(
       ...createCheckpoint({
         workflowVersionId: plan.source.workflowVersionId,
         iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
-        nextEventSequence: 2 + copies.length,
+        nextEventSequence: FIRST_CHECKPOINT_EVENT_SEQUENCE + copies.length,
       }),
       invocations,
       branchSelections: plan.branchSelections,

@@ -34,6 +34,8 @@ import type {
   WorkflowExecutableGraph,
 } from './workflow-executable.js';
 
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+
 const versionId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 type ScopeBounds = Readonly<{ identity: Scope; retained: Scope }>;
 const jsonBytes = (value: unknown) => utf8ByteLength(JSON.stringify(value));
@@ -73,7 +75,7 @@ export function assertExecutablePersistenceCapacity(
       iterationBudget: WORKFLOW_GRAPH_CONTRACT_LIMITS.maxTotalLoopIterations,
     }),
     revision: Number.MAX_SAFE_INTEGER,
-    nextEventSequence: 2_147_483_647,
+    nextEventSequence: STORED_INTEGER_MAX,
     retiredIterationBudget:
       WORKFLOW_GRAPH_CONTRACT_LIMITS.maxTotalLoopIterations,
     invocations: [] as InvocationState[],

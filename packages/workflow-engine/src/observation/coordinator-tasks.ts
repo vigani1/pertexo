@@ -42,6 +42,8 @@ import type {
   WorkflowObservation,
 } from '../workflow-execution.js';
 
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
+
 /** A successful declaration opens a task; it cannot choose a decision path. */
 export function taskDeclarationObservations(
   completedItems: readonly JsonValue[],
@@ -149,7 +151,7 @@ function parseTaskOutcome(value: JsonValue): PendingTaskOutcome {
     !UUID_PATTERN.test(taskId) ||
     typeof invocationKey !== 'string' ||
     invocationKey.length === 0 ||
-    invocationKey.length > 256 ||
+    invocationKey.length > WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength ||
     typeof nodeId !== 'string' ||
     nodeId.length === 0 ||
     typeof fact.status !== 'string' ||

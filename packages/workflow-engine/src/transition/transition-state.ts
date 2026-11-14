@@ -28,6 +28,8 @@ import type {
   WorkflowObservation,
 } from '../workflow-execution.js';
 
+import { ORDINAL_SORT_KEY_WIDTH } from '../invocations/invocation-identity.js';
+
 export interface MutableWorkflowTransition {
   readonly current: WorkflowCheckpoint;
   readonly graph: SchedulerState | undefined;
@@ -159,7 +161,7 @@ function observationKey(observation: WorkflowObservation): string {
     case 'loop_started':
       return `1:loop:${observation.controlInvocationKey}`;
     case 'loop_iteration_completed':
-      return `2:loop:${observation.controlInvocationKey}:${String(observation.ordinal).padStart(16, '0')}`;
+      return `2:loop:${observation.controlInvocationKey}:${String(observation.ordinal).padStart(ORDINAL_SORT_KEY_WIDTH, '0')}`;
     case 'call_started':
     case 'outcome':
     case 'ready':
