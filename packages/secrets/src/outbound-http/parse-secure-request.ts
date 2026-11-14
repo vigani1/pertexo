@@ -9,7 +9,7 @@ import {
   inspectSecureHttpError,
   SecureHttpRejection,
 } from './secure-http.errors.js';
-import type { SecureHttpRequest } from './secure.js';
+import type { SecureHttpRequest } from './secure-http.types.js';
 import { safeInstanceOf } from '@pertexo/node-sdk/server';
 
 const MAX_REQUEST_BODY_BYTES = 1_048_576;

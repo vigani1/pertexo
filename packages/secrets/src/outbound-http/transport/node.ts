@@ -13,8 +13,9 @@ import type {
   SecureHttpTransport,
   SecureHttpTransportRequest,
   SecureHttpTransportResponse,
-} from '../secure.js';
-import { SecureHttpClient, type SecureHttpAddressPolicy } from '../secure.js';
+} from '../secure-http.types.js';
+import { SecureHttpClient } from '../secure-http-client.js';
+import type { SecureHttpAddressPolicy } from '../secure-http.types.js';
 
 const MAX_RESPONSE_HEADER_BYTES = 32 * 1_024;
 const BODY_CHUNK_BYTES = 64 * 1_024;

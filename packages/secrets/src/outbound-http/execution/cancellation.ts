@@ -11,7 +11,7 @@ import { normalizeUnknownError } from '@pertexo/node-sdk/server';
 import type {
   SecureHttpFailureStage,
   DispatchFailureContext,
-} from './secure-http.js';
+} from '../secure-http.types.js';
 
 export function failureStage(
   code: SecureHttpErrorCode,
@@ -121,3 +121,8 @@ export function raceWithSignal<T>(
     if (signal.aborted) aborted();
   });
 }
+
+export const POST_DISPATCH_AMBIGUITY: DispatchFailureContext = Object.freeze({
+  possiblyDispatched: true,
+  ambiguous: true,
+});

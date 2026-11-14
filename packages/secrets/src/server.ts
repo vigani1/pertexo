@@ -108,15 +108,14 @@ export {
 
 export { verifyCallbackTokenKeys } from './callbacks/verify.js';
 
+export { SecureHttpClient } from './outbound-http/secure-http-client.js';
 export {
   SECURE_HTTP_ERROR_CODE,
-  SecureHttpClient,
   SecureHttpError,
-} from './outbound-http/secure.js';
+} from './outbound-http/secure-http.errors.js';
 
 export type {
   SecureHttpAddressPolicy,
-  SecureHttpErrorCode,
   SecureHttpFailureObservation,
   SecureHttpFailureStage,
   SecureHttpObserver,
@@ -128,7 +127,8 @@ export type {
   SecureHttpTransport,
   SecureHttpTransportRequest,
   SecureHttpTransportResponse,
-} from './outbound-http/secure.js';
+} from './outbound-http/secure-http.types.js';
+export type { SecureHttpErrorCode } from './outbound-http/secure-http.errors.js';
 
 export {
   createNodeSecureHttpClient,

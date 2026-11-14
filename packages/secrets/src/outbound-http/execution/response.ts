@@ -8,15 +8,15 @@ import {
 import { boundedRedactedBody } from '../redaction/stream-redaction.js';
 import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-http.errors.js';
 
-import type { ParsedSecureHttpRequest } from '../secure-request.js';
+import type { ParsedSecureHttpRequest } from '../parse-secure-request.js';
 
-import {
-  type SecureHttpResponse,
-  type SecureHttpBodyConsumer,
-  type SecureHttpTransportResponse,
-  type RedirectState,
-  POST_DISPATCH_AMBIGUITY,
-} from './secure-http.js';
+import type {
+  SecureHttpResponse,
+  SecureHttpBodyConsumer,
+  SecureHttpTransportResponse,
+  RedirectState,
+} from '../secure-http.types.js';
+import { POST_DISPATCH_AMBIGUITY } from './cancellation.js';
 import { MAX_URL_BYTES } from './routing.js';
 import { raceWithSignal } from './cancellation.js';
 
