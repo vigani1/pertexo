@@ -87,7 +87,7 @@ export function redisClient(index = mocks.redisClients.length - 1) {
   return client;
 }
 
-export function resetPackagesQueueTestProducerTestTsBullMQQueueProducerFixture() {
+export function resetProducerFixture() {
   vi.clearAllMocks();
   mocks.queueInstances.length = 0;
   mocks.redisClients.length = 0;

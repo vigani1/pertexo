@@ -122,7 +122,7 @@ export const validJob = {
 
 export const TRACEPARENT = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 
-export function resetPackagesQueueTestConsumerTestTsBullMQQueueConsumerFixture() {
+export function resetConsumerFixture() {
   vi.clearAllMocks();
   mocks.workerInstances.length = 0;
   mocks.workerListeners.clear();
