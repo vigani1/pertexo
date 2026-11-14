@@ -5,6 +5,7 @@ import {
   formThankYouMessageSchema,
 } from '@pertexo/workflow-model';
 import { Input } from '@/components/ui/input';
+import { formatCount } from '@/lib/format/count';
 import { Textarea } from '@/components/ui/textarea';
 import { LabelledField } from '@/components/ui/field';
 import { useInspectorDraftField } from '../use-draft-field';
@@ -12,16 +13,16 @@ import type { NodeFormApi } from '../../../model/inspector/node-form';
 const TEXT_FIELDS = {
   title: {
     label: 'Request title',
-    error: 'Enter a title up to 160 characters.',
+    error: `Enter a title up to ${formatCount(PENDING_TASK_LIMITS.titleCharacters, 'character')}.`,
   },
   instructions: {
     label: 'Instructions',
-    error: 'Use at most 2,000 characters.',
+    error: `Use at most ${formatCount(PENDING_TASK_LIMITS.instructionsCharacters, 'character')}.`,
     description: 'Optional context for the person responding.',
   },
   thankYouMessage: {
     label: 'Thank-you message',
-    error: `Use 1–${FORM_LIMITS.thankYouCharacters.toLocaleString('en-US')} characters.`,
+    error: `Use 1–${formatCount(FORM_LIMITS.thankYouCharacters, 'character')}.`,
     description:
       'Shown after acceptance. HTTP and HTTPS URLs become links. The run may still be waiting or running.',
   },

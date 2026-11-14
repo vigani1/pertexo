@@ -1,6 +1,7 @@
 import { useDeferredValue, useId, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { COLLABORATION_LIMITS } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadMore } from '@/components/patterns/lists/load-more';
@@ -130,7 +131,10 @@ export function MentionPicker({
             onLoadMore={() => void people.fetchNextPage()}
           />
           {selected.length >= COLLABORATION_LIMITS.mentions ? (
-            <p className="text-sm">Mention up to twenty people.</p>
+            <p className="text-sm">
+              Mention up to{' '}
+              {formatCount(COLLABORATION_LIMITS.mentions, 'person', 'people')}.
+            </p>
           ) : null}
         </div>
       ) : null}

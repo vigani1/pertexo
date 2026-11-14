@@ -1,5 +1,11 @@
 import { useId } from 'react';
-import type { FormField } from '@pertexo/workflow-model';
+import {
+  FORM_FILE_LIMITS,
+  FORM_LIMITS,
+  type FormField,
+} from '@pertexo/workflow-model';
+import { formatByteLength } from '@/lib/format/bytes';
+import { formatCount } from '@/lib/format/count';
 import { Button } from '@/components/ui/button';
 import { FormFieldCard } from './field-card';
 
@@ -67,14 +73,16 @@ export function FormFieldsEditor({
         type="button"
         variant="outline"
         className="self-start"
-        disabled={disabled || fields.length >= 20}
+        disabled={disabled || fields.length >= FORM_LIMITS.fields}
         onClick={add}
       >
         Add field
       </Button>
       <p className="text-xs text-muted-foreground">
-        Up to 20 fields. A file question takes up to 5 files of up to 10 MB
-        each; files are not virus-checked.
+        Up to {formatCount(FORM_LIMITS.fields, 'field')}. A file question takes
+        up to {formatCount(FORM_FILE_LIMITS.maxFiles, 'file')} of up to{' '}
+        {formatByteLength(FORM_FILE_LIMITS.maxBytes)} each; files are not
+        virus-checked.
       </p>
     </fieldset>
   );
