@@ -100,8 +100,14 @@ function readDisagrees<Input, Data>(
   );
 }
 
+// "Won't change anything twice", not "won't apply twice": after a client
+// timeout the server may still be writing, so the refresh can answer before
+// the commit and show the old state. Saving again then drops the held key
+// and applies a second time. No read the browser can make tells "not yet
+// written" from "undone by someone else", so the key can't be kept safely;
+// the change sets a fixed state, so the second apply only adds an audit fact.
 export function lowEffectError(error: unknown, action: string): string {
   return isUnconfirmedCommand(error)
-    ? 'We couldn’t confirm that change. Saving it again is safe — it won’t apply twice.'
+    ? 'We couldn’t confirm that change. Saving it again is safe — it won’t change anything twice.'
     : describeCommandError(error, action);
 }
