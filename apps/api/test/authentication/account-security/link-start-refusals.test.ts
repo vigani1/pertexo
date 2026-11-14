@@ -65,10 +65,12 @@ describe('link start refusals', () => {
     });
   });
 
-  it('keeps a wrong current password a plain 403', async () => {
+  // Batch K: a wrong password, a CSRF refusal and an unheld source method
+  // were all the same 403, so the dialog couldn't tell them apart.
+  it('answers a wrong current password as Change password does', async () => {
     expect(await startLink(true)).toEqual({
-      status: 403,
-      code: 'auth.forbidden',
+      status: 400,
+      code: 'auth.invalid_password',
     });
   });
 });
