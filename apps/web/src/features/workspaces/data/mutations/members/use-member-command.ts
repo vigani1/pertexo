@@ -73,6 +73,8 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
   const mutation = useLowEffectMutation({
     send: (attempt: Attempt, key) =>
       input.send({ ...attempt, idempotencyKey: key }),
+    // One held key per member changed.
+    slotOf: ({ targetUserId }) => targetUserId,
     refresh: () =>
       Promise.all([
         cache.invalidateQueries({

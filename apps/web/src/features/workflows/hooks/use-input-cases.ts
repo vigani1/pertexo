@@ -119,7 +119,12 @@ export function useInputCases({
     sendInputCaseCommand(api, workspaceId, workflowId, { ...command, key });
   // Updates and deletes carry the case's tag, so a resend can't repeat them;
   // a create is told apart only by its key.
-  const change = useLowEffectMutation({ send: sendCommand, refresh });
+  // One held key per case changed; a create goes through useCreateCommand.
+  const change = useLowEffectMutation({
+    send: sendCommand,
+    refresh,
+    slotOf: (command) => ('caseId' in command ? command.caseId : ''),
+  });
   const create = useCreateCommand({ send: sendCommand, refresh });
   const sending = change.isPending || create.pending;
   async function send({ command }: CaseSendInput) {

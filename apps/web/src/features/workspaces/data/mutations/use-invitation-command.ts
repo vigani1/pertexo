@@ -307,6 +307,8 @@ function useInvitationRevocation(input: InvitationCommandInput) {
         input: { expectedRevision: invitation.revision, idempotencyKey: key },
       }),
     refresh: () => queryClient.invalidateQueries({ queryKey: invitationsKey }),
+    // One held key per invitation revoked.
+    slotOf: ({ id }) => id,
   });
   async function revoke(
     invitation: WorkspaceInvitation,

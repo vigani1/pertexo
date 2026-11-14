@@ -19,6 +19,8 @@ export function useAutoPauseCommand(
   const mutation = useLowEffectMutation({
     send: (command: AutoPauseCommand, key) =>
       commandAutoPause({ apiClient, workspaceId, workflowId, command, key }),
+    // Workflow settings, workspace settings and Resume are separate targets.
+    slotOf: ({ kind }) => kind,
     refresh: (command) =>
       Promise.all([
         cache.invalidateQueries({
