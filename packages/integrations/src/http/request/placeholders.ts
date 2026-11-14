@@ -1,4 +1,5 @@
 import { isSupportedHttpFieldValue as isSerializableHttpHeaderValue } from '@pertexo/contracts';
+import { HttpPlaceholderError } from './placeholders.errors.js';
 
 /** `{orderId}` in the address after its origin, or in a header value. */
 const PLACEHOLDER = /\{([A-Za-z][A-Za-z0-9_]{0,63})\}/gu;
@@ -41,10 +42,6 @@ export function httpTemplateProblem(template: Template): string | undefined {
   if (httpPlaceholders(template).length > HTTP_PLACEHOLDER_LIMIT)
     return `Use at most ${String(HTTP_PLACEHOLDER_LIMIT)} different {placeholders}.`;
   return undefined;
-}
-
-export class HttpPlaceholderError extends Error {
-  public override readonly name = 'HttpPlaceholderError';
 }
 
 /**

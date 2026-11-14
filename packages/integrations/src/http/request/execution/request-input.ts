@@ -14,9 +14,9 @@ import {
 import {
   fillHttpTemplate,
   HTTP_PLACEHOLDER_NAME,
-  HttpPlaceholderError,
   type HttpPlaceholderValue,
 } from '../placeholders.js';
+import { HttpPlaceholderError } from '../placeholders.errors.js';
 
 import { mergeHeaders } from '../material.js';
 

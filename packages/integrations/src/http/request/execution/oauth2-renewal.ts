@@ -4,7 +4,7 @@ import type {
   ProviderHttpRequest,
   ProviderHttpResponse,
 } from '../../../providers/http-client.js';
-import { OAuth2TokenFailure } from '../../../oauth2/oauth2-token.js';
+import { OAuth2TokenFailure } from '../../../oauth2/oauth2.errors.js';
 
 export type OAuth2RenewalCredential = Readonly<{
   accessToken: string;

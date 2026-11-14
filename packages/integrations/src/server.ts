@@ -34,10 +34,10 @@ export { EmailSendNotificationExecutorError } from './email/send-notification/se
 
 export {
   createSlackSendMessageExecutorRegistration,
-  SlackSendMessageExecutorError,
   type SlackSendMessageExecutorDependencies,
   type SlackSendMessageExecutorTelemetry,
 } from './slack/send-message/send-message.executor.js';
+export { SlackSendMessageExecutorError } from './slack/send-message/send-message.errors.js';
 
 export {
   createHttpRequestExecutorRegistration,
@@ -60,7 +60,7 @@ export {
   oauth2VerifierPurpose,
 } from './oauth2/consent.js';
 
-export { OAuth2TokenFailure } from './oauth2/oauth2-token.js';
+export { OAuth2TokenFailure } from './oauth2/oauth2.errors.js';
 
 export {
   refusedEndpoint,
@@ -91,7 +91,7 @@ export {
   type ProviderHttpErrorCode,
 } from './providers/http.errors.js';
 
-export { EMAIL_ATTACHMENT_ERROR_CODES } from './email/attachments/plan.js';
+export { EMAIL_ATTACHMENT_ERROR_CODES } from './email/attachments/attachment.errors.js';
 
 export { HTTP_PAGINATION_FAILURES } from './http/request/pagination/pagination.errors.js';
 
