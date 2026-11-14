@@ -45,6 +45,9 @@ for (const file of [
   `${browser}/public.ts`,
   `${browser}/picker.public.ts`,
   'apps/api/src/platform/config/api-config.ts',
+  `${source}/http/problem-details.filter.ts`,
+  `${source}/storage/artifact.store.ts`,
+  `${source}/live/redis-rate-limit.runtime.ts`,
 ]) {
   test(`accepts ${file}`, () => assert.deepEqual(check(file), []));
 }
@@ -483,4 +486,21 @@ test('runner native and Python modules also name their concrete subject', () => 
     'apps/code-runner/python/helpers.py',
   ])
     assert.ok(rules(file).includes('FN008'), file);
+});
+
+for (const file of [
+  `${source}/config/artifact-store.config.ts`,
+  `${source}/jobs/queue-job.contract.ts`,
+  `${source}/send-mail.helper.ts`,
+  `${source}/connections.public.ts`,
+  `${source}/runs.mutations.ts`,
+]) {
+  test(`refuses the unlisted role in ${file}`, () =>
+    assert.deepEqual(rules(file), ['FN009']));
+}
+
+test('leaves test files, declarations and tool configs without a role check', () => {
+  assert.deepEqual(rules('packages/example/test/store.fixture.ts'), []);
+  assert.deepEqual(rules(`${source}/environment.d.ts`), []);
+  assert.deepEqual(rules(`${source}/tool.config.cts`), []);
 });

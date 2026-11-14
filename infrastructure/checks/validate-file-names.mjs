@@ -66,6 +66,27 @@ const vagueExecutionSubjects = new Set([
   'state',
   'index',
 ]);
+// The roles AGENTS.md defines under "Naming and layout"; a production file's
+// last dotted part is one of these or the file has no role.
+const ROLES = new Set([
+  'repository',
+  'store',
+  'service',
+  'controller',
+  'module',
+  'guard',
+  'filter',
+  'tokens',
+  'definition',
+  'executor',
+  'errors',
+  'runtime',
+  'schemas',
+  'validation',
+  'types',
+  'openapi',
+]);
+const BROWSER_ROLES = new Set(['queries', 'api', 'mutations', 'public']);
 const excluded = new Set(['node_modules', 'dist', 'coverage', '.git']);
 const roots = ['src', 'test', 'e2e', 'e2e-live', 'native', 'python'];
 const vagueRuntimeSubjects = new Set([
@@ -109,6 +130,17 @@ export function validateFileName(file, text) {
       );
   }
   if (!production) return diagnostics;
+  const role = roleOf(name, stem);
+  if (
+    role !== undefined &&
+    role !== 'queries' && // FN003 names the backend's alternative.
+    !ROLES.has(role) &&
+    !(BROWSER_ROLES.has(role) && file.startsWith('apps/web/'))
+  )
+    report(
+      'FN009',
+      `"${role}" is not a role in AGENTS.md; use one of its roles or name the subject without a dot.`,
+    );
   if (reserved.has(stem))
     report('FN002', 'Name the specific subject of this production module.');
   if (
@@ -157,6 +189,16 @@ export function validateFileName(file, text) {
       'Keep discovered suites and case registrations outside production src.',
     );
   return diagnostics;
+}
+
+/** A file's role suffix, ignoring declaration files and tool-defined configs. */
+function roleOf(name, stem) {
+  const parts = stem.split('.');
+  if (parts.length < 2) return undefined;
+  const role = parts.at(-1);
+  if (role === 'd') return undefined;
+  if (role === 'config' && !/\.tsx?$/u.test(name)) return undefined;
+  return role;
 }
 
 function isEntryStatement(statement) {
