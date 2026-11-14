@@ -25,7 +25,8 @@ encoding), `jsonata` and `zod`.
 - `src/index.ts`, `src/server.ts`: the entries, grouped by the area each
   export comes from.
 - `graph/`: the graph schema and its limits, admission and validation
-  (`validation/`), canvas notes, definition catalogs and fingerprints.
+  (`validation/`), canvas notes, definition catalogs and fingerprints, and
+  the decoding of a stored executable's control metadata.
 - `flow/`: control steps (`control-nodes/`), workflow calls (`callable/`),
   callbacks, failure routes and pending tasks.
 - `execution/`: run and step lifecycle, retry settings, failures, recovery,
@@ -51,6 +52,9 @@ encoding), `jsonata` and `zod`.
   exported only from `server.ts`.
 - A shared bound: a named constant in the owning file, beside the schema
   that enforces it; messages that state it are built from it.
+- A new error: a class in the area's `.errors.ts` (`graph-validation.errors.ts`,
+  `portability.errors.ts`, `forms.errors.ts`, `callable.errors.ts`, …),
+  extending the built-in the old throw used, so callers' checks still hold.
 
 ## Defaults and config
 
@@ -75,9 +79,29 @@ encoding), `jsonata` and `zod`.
 
 ## Exceptions
 
-- `graph/` holds thirteen direct files: each is one graph concept read across
+- `graph/` holds fourteen direct files: each is one graph concept read across
   the package (aggregate bounds, catalogs, placement, fingerprints), and
   splitting them would add navigation without separating a responsibility.
+- `values/expressions/evaluation-child.ts` keeps its private
+  `NonfiniteResultError`: the child may not import relative files, because
+  tests start it from source.
+- Generic throws that stay, each an assertion no caller handles as a domain
+  outcome:
+  - `values/expressions/ast.ts`: JSONata returned an AST of an unexpected
+    shape (a library fault).
+  - `values/expressions/expression-policy.ts` and `values/time-zone.schemas.ts`:
+    bare throws caught in the same function, which turns them into
+    `ExpressionContextInvalidError` or a schema issue.
+  - `values/expressions/evaluation-child.ts`: a function in a result, answered
+    by the child as a non-JSON result.
+  - `authoring/validation/validator.ts`, `values/expressions/evaluator.ts`:
+    constructor options outside their bounds, and a duplicate policy in the
+    catalog the validator was built with (programmer errors).
+  - `authoring/validation/thread.ts`: the module was loaded outside a worker.
+  - `execution/notice-schedule.ts`: no local hour within the probed offsets,
+    which no IANA zone produces.
+  - `graph/integration-usage.ts`: a published graph lacks a required
+    connection, which publication refuses before this runs.
 
 ## What guards it
 
