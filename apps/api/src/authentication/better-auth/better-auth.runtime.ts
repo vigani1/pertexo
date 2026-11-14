@@ -20,7 +20,10 @@ import {
 } from '../federation/protocol/oidc.js';
 import type { BetterAuthOptions } from 'better-auth';
 import { SignUpAvailability, type SignUpMode } from '@pertexo/core/identity';
-import { surviveConnectionLoss } from '@pertexo/database/platform';
+import {
+  checkClientConnection,
+  surviveConnectionLoss,
+} from '@pertexo/database/platform';
 import { Pool } from 'pg';
 import { refuseClosedSignUp } from './sign-up-gate.js';
 import { AuthenticationTransactions } from './transactions/authentication-transactions.js';
@@ -98,6 +101,10 @@ export function createBetterAuthRuntime(
     application_name: 'pertexo-api-authentication',
   });
   surviveConnectionLoss(pool);
+  // Like every Pertexo pool: a statement whose client has gone ends. This
+  // runtime has no pool diagnostics, so a failed SET leaves the client
+  // unchecked, as a pool without diagnostics does.
+  checkClientConnection(pool, () => undefined);
   const emailProofs = new OwnedEmailProofs(
     pool,
     config.mail,

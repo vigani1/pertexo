@@ -5,6 +5,7 @@ import { Pool, type PoolClient } from 'pg';
 import { afterAll, expect, it } from 'vitest';
 
 import { createDatabasePool } from '../../../src/platform/pool/telemetry/create-pool.js';
+import { checkClientConnection } from '../../../src/platform/index.js';
 
 const connectionString = testStackSetting('DATABASE_MIGRATION_URL');
 
@@ -72,6 +73,21 @@ it('ends a statement whose client has gone, with no cancel reaching it', async (
     await expect
       .poll(() => backendOf(application), { timeout: 5_000 })
       .toEqual([]);
+  } finally {
+    await pool.end();
+  }
+});
+
+// Review of batch K, P3-5: Better Auth builds its own pg Pool, so it applies
+// the check directly; its connections end abandoned statements the same way.
+it('gives a pool built outside createDatabasePool the same check', async () => {
+  const pool = new Pool({ connectionString, max: 1 });
+  checkClientConnection(pool, () => undefined);
+  try {
+    const shown = await pool.query<{
+      client_connection_check_interval: string;
+    }>('show client_connection_check_interval');
+    expect(shown.rows).toEqual([{ client_connection_check_interval: '1s' }]);
   } finally {
     await pool.end();
   }
