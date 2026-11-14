@@ -33,6 +33,8 @@ export const ROOT_CONCEPTS = Object.freeze({
     'membership-policy.ts': 'member-management transitions',
     'workspace-status-policy.ts': 'the named workspace status lists',
     'auto-pause-policy.ts': 'the auto-pause ceiling',
+    'instance-limits-policy.ts':
+      'the instance defaults, kept out of core so startup settings stay light',
   },
   'packages/rate-limit': {
     'rate-limit-policy.ts': 'the budgets every limiter applies',

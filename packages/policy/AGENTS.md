@@ -23,6 +23,9 @@ One entry, `src/index.ts`, and one file per policy at the root:
 - `workspace-status-policy.ts`: the named status lists a flow passes to
   `withWorkspaceAccess`.
 - `auto-pause-policy.ts`: the auto-pause threshold ceiling (ADR 056).
+- `instance-limits-policy.ts`: an instance's run, artifact and webhook burst
+  limits when its operator sets none. They live here, not in `core`, so
+  reading startup settings never loads the core runtime.
 
 ## Where new code goes
 
