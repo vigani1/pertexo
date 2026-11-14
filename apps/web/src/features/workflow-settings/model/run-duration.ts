@@ -1,7 +1,6 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import { formatDurationMs } from '@/lib/format/time';
 import { formatCount } from '@/lib/format/count';
-import { formatTimeSpan } from '@/lib/format/time';
+import { formatDurationMs, formatTimeSpan } from '@/lib/format/time';
 
 /**
  * The longest duration a workflow may set (`WORKFLOW_EXECUTION_LIMITS` in
