@@ -34,7 +34,6 @@ export const PENDING_DOCS = Object.freeze([
   'apps/code-runner',
   'apps/ops',
   'apps/worker',
-  'packages/contracts',
   'packages/core',
   'packages/database',
 ]);
