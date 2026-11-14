@@ -4,6 +4,9 @@ import {
 } from '@pertexo/workflow-model';
 import { EMAIL_SEND_NOTIFICATION_LIMITS } from '../send-notification/send-notification.schemas.js';
 
+// A shortened filename keeps its extension when the extension is this short.
+const KEPT_EXTENSION_BYTES = 32;
+
 // File references carry no name (ADR 075), so an unnamed attachment is named
 // after its stored media type.
 const EXTENSIONS: Readonly<Record<string, string>> = {
@@ -54,7 +57,7 @@ export function sanitizeAttachmentFilename(value: string): string | undefined {
   if (utf8ByteLength(cleaned) <= limit) return cleaned;
   const dot = cleaned.lastIndexOf('.');
   const extension =
-    dot > 0 && utf8ByteLength(cleaned.slice(dot)) <= 32
+    dot > 0 && utf8ByteLength(cleaned.slice(dot)) <= KEPT_EXTENSION_BYTES
       ? cleaned.slice(dot)
       : '';
   const stem = Array.from(cleaned.slice(0, cleaned.length - extension.length));

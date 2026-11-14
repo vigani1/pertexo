@@ -362,7 +362,10 @@ export {
   type WorkspacePeoplePage,
 } from './schemas/identity/people.js';
 
-export { isSupportedHttpFieldValue } from './schemas/shared/http-field-value.js';
+export {
+  HTTP_FIELD_VALUE_CHARACTERS,
+  isSupportedHttpFieldValue,
+} from './schemas/shared/http-field-value.js';
 export * from './schemas/identity/authentication.js';
 export * from './schemas/identity/membership.js';
 export * from './schemas/workflows/sharing.js';

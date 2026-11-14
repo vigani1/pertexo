@@ -7,6 +7,9 @@ import {
   type ProviderHttpError,
 } from '../providers/http.errors.js';
 
+// Request Timeout and Too Early: the service didn't act, so a retry is safe.
+const TIMEOUT_STATUSES: readonly number[] = Object.freeze([408, 425]);
+
 export const HTTP_SIDE_EFFECT_CLASS = Object.freeze({
   idempotentWithKey: 'idempotent_with_key',
   safe: 'safe',
@@ -81,7 +84,7 @@ export function classifySecureHttpResponse(
         })
       : decision;
   }
-  if ([408, 425].includes(status))
+  if (TIMEOUT_STATUSES.includes(status))
     return retryDefinite('timeout', sideEffectClass, {
       providerKeyPresent,
     });

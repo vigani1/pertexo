@@ -1,10 +1,24 @@
 import { z } from 'zod';
 import { collectionPathSchema } from '@pertexo/workflow-model';
+import {
+  FILE_PAGE_LIMITS,
+  formatByteSize,
+  formatCount,
+  NODE_JSON_LIMITS,
+} from '@pertexo/node-sdk';
+
+/** HTTP pagination bounds; the request output and its failures read them too. */
+export const HTTP_PAGINATION_LIMITS = Object.freeze({
+  maxPages: 100,
+  defaultPages: 10,
+  maxDelayMillis: 10_000,
+  keyCharacters: 128,
+});
 
 const parameter = z
   .string()
   .min(1)
-  .max(128)
+  .max(HTTP_PAGINATION_LIMITS.keyCharacters)
   .regex(
     /^[A-Za-z_][A-Za-z0-9._-]*$/u,
     'Use a query parameter name like page, offset or cursor.',
@@ -17,26 +31,39 @@ const counter = z
   .number()
   .int()
   .min(0)
-  .max(Number.MAX_SAFE_INTEGER - 100);
+  .max(Number.MAX_SAFE_INTEGER - HTTP_PAGINATION_LIMITS.maxPages);
 const common = {
-  outputMode: z.literal('pages').optional().meta({
-    title: 'Save items as pages',
-    description:
-      'Store up to 10 MB / 100,000 records as JSON-array file pages instead of one inline list.',
-  }),
+  outputMode: z
+    .literal('pages')
+    .optional()
+    .meta({
+      title: 'Save items as pages',
+      description: `Store up to ${formatByteSize(FILE_PAGE_LIMITS.totalBytes)} / ${formatCount(FILE_PAGE_LIMITS.totalItems)} records as JSON-array file pages instead of one inline list.`,
+    }),
   itemsPath: collectionPathSchema.meta({
     title: 'Items path',
     description: 'The list on each page, for example $.data or $',
   }),
-  maxPages: z.number().int().min(1).max(100).default(10).meta({
-    title: 'Max pages',
-    description:
-      'Stop after at most 100 pages. Inline output must fit 1 MB; Save items as pages supports up to 10 MB.',
-  }),
-  delayMillis: z.number().int().min(0).max(10_000).default(0).meta({
-    title: 'Delay between pages',
-    description: 'Pause before fetching the next page, up to 10 seconds.',
-  }),
+  maxPages: z
+    .number()
+    .int()
+    .min(1)
+    .max(HTTP_PAGINATION_LIMITS.maxPages)
+    .default(HTTP_PAGINATION_LIMITS.defaultPages)
+    .meta({
+      title: 'Max pages',
+      description: `Stop after at most ${String(HTTP_PAGINATION_LIMITS.maxPages)} pages. Inline output must fit ${formatByteSize(NODE_JSON_LIMITS.bytes)}; Save items as pages supports up to ${formatByteSize(FILE_PAGE_LIMITS.totalBytes)}.`,
+    }),
+  delayMillis: z
+    .number()
+    .int()
+    .min(0)
+    .max(HTTP_PAGINATION_LIMITS.maxDelayMillis)
+    .default(0)
+    .meta({
+      title: 'Delay between pages',
+      description: `Pause before fetching the next page, up to ${String(HTTP_PAGINATION_LIMITS.maxDelayMillis / 1_000)} seconds.`,
+    }),
 };
 export const httpPaginationSchema = z
   .discriminatedUnion('mode', [
@@ -78,7 +105,11 @@ export const httpPaginationSchema = z
           .number()
           .int()
           .min(1)
-          .max(Math.floor(Number.MAX_SAFE_INTEGER / 100))
+          .max(
+            Math.floor(
+              Number.MAX_SAFE_INTEGER / HTTP_PAGINATION_LIMITS.maxPages,
+            ),
+          )
           .meta({
             title: 'Offset step',
             description:

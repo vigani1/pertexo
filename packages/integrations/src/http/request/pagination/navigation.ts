@@ -4,6 +4,7 @@ import type { JsonValue } from '@pertexo/node-sdk/server';
 import { resolveJsonPath } from '@pertexo/workflow-model';
 import type { HttpPagination } from './pagination.schemas.js';
 import { nextLink } from './link.js';
+import { HTTP_REQUEST_LIMITS } from '../request.schemas.js';
 
 function scalar(
   value: JsonValue | undefined,
@@ -100,7 +101,7 @@ export function nextPage(
     url.username !== '' ||
     url.password !== '' ||
     url.hash !== '' ||
-    utf8ByteLength(target) > 2048;
+    utf8ByteLength(target) > HTTP_REQUEST_LIMITS.maxUrlBytes;
   if (unsafeTarget)
     throw new HttpPaginationFailure('http.pagination_invalid_navigation', page);
   if (seen.has(identity)) return { kind: 'cycle' };

@@ -92,7 +92,7 @@ const INVALID = Object.freeze({
 /** RFC 6749 §2.3.1: both parts are form-encoded before Base64, so `+` and `/` survive. */
 function basicCredentials(clientId: string, clientSecret: string): string {
   const encode = (value: string): string =>
-    new URLSearchParams({ v: value }).toString().slice(2);
+    new URLSearchParams({ v: value }).toString().slice('v='.length);
   return `Basic ${Buffer.from(`${encode(clientId)}:${encode(clientSecret)}`).toString('base64')}`;
 }
 

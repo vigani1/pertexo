@@ -13,6 +13,9 @@ import type { HttpMultipartConfig } from './multipart.schemas.js';
 import { multipartValues } from './values.js';
 import { collectMultipart } from './collect.js';
 
+// A random boundary that occurs in a part is drawn again, this many times at most.
+const BOUNDARY_ATTEMPTS = 3;
+
 type Part = Readonly<{
   name: string;
   value: Buffer | NodeVerifiedByteSource;
@@ -92,7 +95,7 @@ export async function encodeMultipart(
             : value.mediaType),
       });
     }
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < BOUNDARY_ATTEMPTS; attempt++) {
       input.signal.throwIfAborted();
       const form = new FormData();
       const boundary = form.getBoundary();

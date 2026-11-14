@@ -6,11 +6,27 @@ import {
 } from '@pertexo/node-sdk';
 
 export const HTTP_MULTIPART_MAX_PARTS = 64;
+const MULTIPART_FIELD_LIMITS = Object.freeze({
+  nameBytes: 128,
+  filenameBytes: 255,
+  // `a/b` is the shortest media type.
+  minimumContentTypeCharacters: 3,
+  contentTypeCharacters: 255,
+});
+// C0 controls end at 0x1f; DEL and the C1 controls run from 0x7f to 0x9f.
+const CONTROL_CODES = Object.freeze({
+  firstPrintable: 0x20,
+  del: 0x7f,
+  lastC1: 0x9f,
+});
 
 function noControls(value: string): boolean {
   return Array.from(value).every((character) => {
     const code = character.charCodeAt(0);
-    return code >= 32 && (code < 127 || code > 159);
+    return (
+      code >= CONTROL_CODES.firstPrintable &&
+      (code < CONTROL_CODES.del || code > CONTROL_CODES.lastC1)
+    );
   });
 }
 export const httpMultipartInputKeySchema = z
@@ -21,25 +37,25 @@ export const httpMultipartInputKeySchema = z
 const nameSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(MULTIPART_FIELD_LIMITS.nameBytes)
   .refine(noControls, 'Do not use control characters')
-  .refine((value) => utf8ByteLength(value) <= 128);
+  .refine((value) => utf8ByteLength(value) <= MULTIPART_FIELD_LIMITS.nameBytes);
 const filenameSchema = z
   .string()
   .min(1)
-  .max(255)
+  .max(MULTIPART_FIELD_LIMITS.filenameBytes)
   .refine(noControls, 'Do not use control characters')
   .refine(
     (value) =>
-      utf8ByteLength(value) <= 255 &&
+      utf8ByteLength(value) <= MULTIPART_FIELD_LIMITS.filenameBytes &&
       !/[\\/]/u.test(value) &&
       value !== '.' &&
       value !== '..',
   );
 const contentTypeSchema = z
   .string()
-  .min(3)
-  .max(255)
+  .min(MULTIPART_FIELD_LIMITS.minimumContentTypeCharacters)
+  .max(MULTIPART_FIELD_LIMITS.contentTypeCharacters)
   .regex(
     /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+(?:;[\x20-\x7e]*)?$/u,
   );

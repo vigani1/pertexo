@@ -1,7 +1,20 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
+import { PROVIDER_STEP_TIMEOUT } from '../../providers/provider-timeout.js';
 
 const MAX_TEXT_BYTES = 16_384;
+const SLACK_FIELD_LIMITS = Object.freeze({
+  minimumChannelIdCharacters: 2,
+  channelIdCharacters: 255,
+  // Slack's limit on a message's text, in characters.
+  textCharacters: 4_000,
+  // A message timestamp is `seconds.micros`.
+  minimumTimestampCharacters: 3,
+  timestampCharacters: 32,
+  minimumBotTokenCharacters: 10,
+  botTokenCharacters: 512,
+  responseBytes: 65_536,
+});
 
 export const slackSendMessageConfigSchema = z
   .object({
@@ -9,22 +22,22 @@ export const slackSendMessageConfigSchema = z
       .number()
       .int()
       .min(1)
-      .max(30_000)
-      .meta({ default: 10_000 }),
+      .max(PROVIDER_STEP_TIMEOUT.maxMillis)
+      .meta({ default: PROVIDER_STEP_TIMEOUT.defaultMillis }),
   })
   .strict()
   .readonly();
 
 export const slackChannelIdSchema = z
   .string()
-  .min(2)
-  .max(255)
+  .min(SLACK_FIELD_LIMITS.minimumChannelIdCharacters)
+  .max(SLACK_FIELD_LIMITS.channelIdCharacters)
   .regex(/^[CDGU][A-Z0-9]+$/u);
 
 const slackMessageTextSchema = z
   .string()
   .min(1)
-  .max(4_000)
+  .max(SLACK_FIELD_LIMITS.textCharacters)
   .refine((value) => utf8ByteLength(value) <= MAX_TEXT_BYTES);
 
 export const slackSendMessageInputSchema = z
@@ -34,8 +47,8 @@ export const slackSendMessageInputSchema = z
 
 export const slackMessageTimestampSchema = z
   .string()
-  .min(3)
-  .max(32)
+  .min(SLACK_FIELD_LIMITS.minimumTimestampCharacters)
+  .max(SLACK_FIELD_LIMITS.timestampCharacters)
   .regex(/^\d{1,20}\.\d{1,10}$/u);
 
 export const slackSendMessageOutputSchema = z
@@ -51,8 +64,8 @@ export const resolvedSlackBotTokenCredentialSchema = z
     type: z.literal('slack_bot_token'),
     botToken: z
       .string()
-      .min(10)
-      .max(512)
+      .min(SLACK_FIELD_LIMITS.minimumBotTokenCharacters)
+      .max(SLACK_FIELD_LIMITS.botTokenCharacters)
       .regex(/^xoxb-[A-Za-z0-9-]+$/u),
   })
   .strict()
@@ -69,6 +82,6 @@ export type SlackSendMessageOutput = z.output<
 >;
 
 export const SLACK_SEND_MESSAGE_LIMITS = Object.freeze({
-  maxResponseBytes: 65_536,
+  maxResponseBytes: SLACK_FIELD_LIMITS.responseBytes,
   maxTextBytes: MAX_TEXT_BYTES,
 });

@@ -9,6 +9,7 @@ import {
   report,
   repositoryRoot,
 } from './workspace-sources.mjs';
+import { NOT_LIMITS } from './backend-limit-exemptions.mjs';
 
 // LIMITS_CHECKED as it stood when the check began; it never drops one of these.
 const ORIGINAL_LIMITS_CHECKED = Object.freeze([
@@ -36,84 +37,8 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/node-sdk',
   'packages/workflow-engine',
   'packages/nodes-core',
+  'packages/integrations',
 ]);
-
-/**
- * Literals that are not limits, as `<file>: <literal>` (or `<file>: *` for a
- * file that is a format's parser) with the reason. A wire-format offset or a
- * protocol code stays a literal where it is read.
- */
-export const NOT_LIMITS = Object.freeze({
-  'packages/artifact-store/src/s3/telemetry.ts: 404':
-    'S3 answers not-found with HTTP 404',
-  'packages/artifact-store/src/s3/telemetry.ts: 412':
-    'S3 answers a failed precondition with HTTP 412',
-  'packages/artifact-store/src/s3/s3-responses.ts: 404':
-    'S3 answers not-found with HTTP 404',
-  'packages/queue/src/jobs/queue-job.schemas.ts: *':
-    'the W3C traceparent layout: field offsets and widths',
-  'packages/rate-limit/src/limiters/distributed-rate-limiter.ts: 3':
-    'the length of the Lua script’s refusal reply',
-  'packages/rate-limit/src/limiters/distributed-rate-limiter.ts: 6':
-    'the length of the Lua script’s admission reply',
-  'packages/templates/src/catalog.ts: 2': 'template versions',
-  'packages/templates/src/catalog.ts: "five minutes"':
-    'reviewed copy; catalog.test.ts ties it to each manifest’s run duration',
-  'packages/templates/src/catalog.ts: "one-second"':
-    'reviewed copy; catalog.test.ts ties it to the HTTP step’s timeout',
-  'packages/templates/src/catalog.ts: "1,024 bytes"':
-    'reviewed copy; catalog.test.ts ties it to the HTTP step’s answer size',
-  'packages/templates/src/https-endpoint.validation.ts: 2':
-    'a label’s first and last characters; a domain’s two labels',
-  'packages/secrets/src/encryption/envelopes/envelope-format.ts: 3':
-    'base64 encodes 3 bytes as 4 characters',
-  'packages/secrets/src/encryption/envelopes/envelope-format.ts: 4':
-    'base64 encodes 3 bytes as 4 characters',
-  'packages/secrets/src/mail/deliver-system-mail.ts: 2': 'retry delays double',
-  'packages/secrets/src/outbound-http/execution/routing.ts: 4':
-    'IPv4 address family',
-  'packages/secrets/src/outbound-http/execution/routing.ts: 6':
-    'IPv6 address family',
-  'packages/secrets/src/outbound-http/transport/node.ts: 4':
-    'IPv4 address family',
-  'packages/secrets/src/outbound-http/transport/node.ts: 6':
-    'IPv6 address family',
-  'packages/secrets/src/outbound-http/transport/address-policy.ts: *':
-    'IP address parsing: families, prefix lengths, octets and word widths',
-  'packages/secrets/src/outbound-http/redaction/decoded-body-view.ts: *':
-    'JSON and percent escape layouts: escape lengths, hex radix, the space byte',
-  'packages/secrets/src/outbound-http/redaction/response-charset.ts: *':
-    'byte-order marks',
-  'packages/secrets/src/outbound-http/redaction/response-redactor.ts: 11':
-    'the unfinished escape kept past a credential’s length at a chunk boundary',
-  'packages/secrets/src/outbound-http/redaction/sensitive-representations.ts: *':
-    'credential spellings: hex radix and width, base64 padding, a query prefix',
-  'packages/node-sdk/src/artifacts/pages/bundle.ts: 2':
-    'JSON text: an empty page is its two brackets',
-  'packages/node-sdk/src/artifacts/pages/encode-record.ts: 2':
-    'JSON text: a page’s two brackets',
-  'packages/node-sdk/src/artifacts/pages/write.ts: 2':
-    'JSON text: a page’s two brackets',
-  'packages/node-sdk/src/code/framing.ts: 10': 'the newline byte ends a frame',
-  'packages/workflow-engine/src/compilation/checkpoint-capacity.ts: 64':
-    'a SHA-256 digest is 64 hex digits',
-  'packages/workflow-engine/src/completion/failure-notification.ts: 2':
-    'the rank of a failed outcome among failure severities',
-  'packages/workflow-model/src/authoring/portability/portable-manifest.ts: 16':
-    'a digest byte printed in hex',
-  'packages/workflow-model/src/authoring/portability/portable-manifest.ts: 2':
-    'two hex digits per digest byte',
-  'packages/workflow-model/src/execution/notice-schedule.ts: 2':
-    'the bisection halves its interval',
-  'packages/workflow-model/src/graph/validation/admission.ts: 2':
-    'JSON text layout: the two brackets of a container',
-  'packages/workflow-model/src/triggers/forms/files.ts: 2':
-    'a list of two or more names joins with “or”',
-  'packages/workflow-model/src/triggers/schedule-cron.ts: 3':
-    'the month field’s position in a cron expression',
-  'packages/workflow-model/src/triggers/schedule-cron.ts: 4':
-    'the weekday field’s position in a cron expression',
-});
 
 // Unit factors: 1_000 ms in a second, 60 seconds in a minute, 1_024 bytes in a KB.
 const UNIT_FACTORS = new Set([60, 24, 1_000, 1_024]);
@@ -209,6 +134,7 @@ function isLimit(node) {
   if (value === 0 || value === 1) return false;
   const parent = node.parent;
   if (ts.isElementAccessExpression(parent)) return false;
+  if (isHttpStatus(node, value)) return false;
   if (ts.isBinaryExpression(parent)) {
     const operator = parent.operatorToken.kind;
     if (
@@ -222,6 +148,63 @@ function isLimit(node) {
     if (BIT_OPERATORS.has(operator)) return false;
   }
   return true;
+}
+
+const COMPARISONS = new Set([
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+  ts.SyntaxKind.LessThanToken,
+  ts.SyntaxKind.LessThanEqualsToken,
+  ts.SyntaxKind.GreaterThanToken,
+  ts.SyntaxKind.GreaterThanEqualsToken,
+]);
+const STATUS_NAME = /^(?:status|statusCode)$/u;
+const FIRST_HTTP_STATUS = 100;
+const LAST_HTTP_STATUS = 599;
+
+/**
+ * An HTTP status where HTTP code writes one: compared to something named
+ * `status` or `statusCode`, the value of such a property, or a key of a
+ * route's `responses`. Naming 200 or 404 there only adds noise; any other
+ * three-digit number is still a limit.
+ */
+function isHttpStatus(node, value) {
+  if (
+    !Number.isInteger(value) ||
+    value < FIRST_HTTP_STATUS ||
+    value > LAST_HTTP_STATUS
+  )
+    return false;
+  const parent = node.parent;
+  if (
+    ts.isBinaryExpression(parent) &&
+    COMPARISONS.has(parent.operatorToken.kind)
+  ) {
+    const other = parent.left === node ? parent.right : parent.left;
+    return isStatusName(other);
+  }
+  if (ts.isPropertyAssignment(parent)) {
+    if (parent.initializer === node) return isStatusName(parent.name);
+    return parent.name === node && isResponsesObject(parent.parent);
+  }
+  return false;
+}
+
+function isStatusName(node) {
+  if (ts.isIdentifier(node)) return STATUS_NAME.test(node.text);
+  if (ts.isPropertyAccessExpression(node))
+    return STATUS_NAME.test(node.name.text);
+  return false;
+}
+
+function isResponsesObject(object) {
+  const owner = object.parent;
+  return (
+    ts.isObjectLiteralExpression(object) &&
+    ts.isPropertyAssignment(owner) &&
+    ts.isIdentifier(owner.name) &&
+    owner.name.text === 'responses'
+  );
 }
 
 function literalText(node) {

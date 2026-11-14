@@ -5,12 +5,15 @@ import {
   type OAuth2ClientSettings,
 } from '@pertexo/contracts';
 
+// 256 random bits.
+const STATE_SECRET_BYTES = 32;
+
 const WORKSPACE_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 /** 256 random bits, shown once; only its digest is stored. */
 export function newOAuth2Secret(): string {
-  return randomBytes(32).toString('base64url');
+  return randomBytes(STATE_SECRET_BYTES).toString('base64url');
 }
 
 export function oauth2Digest(value: string): Buffer {
@@ -33,7 +36,7 @@ export function oauth2StateWorkspace(state: unknown): string | undefined {
     parsed.data.slice(0, parsed.data.indexOf('.')),
     'base64url',
   ).toString('hex');
-  const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  const id = uuidFromHex(hex);
   return WORKSPACE_ID.test(id) ? id : undefined;
 }
 
@@ -64,4 +67,17 @@ export function oauth2AuthorizationAddress(
   for (const [name, value] of Object.entries(settings.authorizationParameters))
     parameters.set(name, value);
   return url.toString();
+}
+
+// A UUID's hex groups end at 8, 12, 16 and 20 characters.
+const UUID_GROUP_ENDS: readonly number[] = Object.freeze([8, 12, 16, 20]);
+function uuidFromHex(hex: string): string {
+  const groups: string[] = [];
+  let start = 0;
+  for (const end of UUID_GROUP_ENDS) {
+    groups.push(hex.slice(start, end));
+    start = end;
+  }
+  groups.push(hex.slice(start));
+  return groups.join('-');
 }

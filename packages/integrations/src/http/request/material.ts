@@ -4,10 +4,10 @@ import type { z } from 'zod';
 
 import {
   HTTP_REQUEST_LIMITS,
-  resolvedHttpHeadersCredentialSchema,
   type HttpRequestConfig,
   type HttpRequestInput,
 } from './request.schemas.js';
+import { resolvedHttpHeadersCredentialSchema } from './request-headers.schemas.js';
 
 type FailureFactory = () => Error;
 type HttpCredential = z.output<typeof resolvedHttpHeadersCredentialSchema>;

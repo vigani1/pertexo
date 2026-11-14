@@ -20,6 +20,9 @@ import type { HttpPagination } from './pagination.schemas.js';
 import { hasNextPage, nextPage, setPaginationParameter } from './navigation.js';
 import { JSON_MEDIA_TYPE } from '../../content-type.js';
 
+// Each page's items join one JSON array: drop each page's two brackets.
+const JSON_ARRAY_BRACKET_BYTES = 2;
+
 type Page = Readonly<{ value: JsonValue; url: string; link?: string }>;
 async function readPage(
   stream: ProviderHttpStreamingBody,
@@ -123,10 +126,12 @@ export async function executePagination(input: PaginationExecutionInput) {
         throw new HttpPaginationFailure('http.pagination_invalid_page', page);
       const pageItems = found.value as readonly JsonValue[];
       const added = paged
-        ? { bytes: 2, members: 0, depth: 1 }
+        ? { bytes: JSON_ARRAY_BRACKET_BYTES, members: 0, depth: 1 }
         : inspectJsonValue(pageItems);
       itemBytes +=
-        added.bytes - 2 + (items.length > 0 && pageItems.length > 0 ? 1 : 0);
+        added.bytes -
+        JSON_ARRAY_BRACKET_BYTES +
+        (items.length > 0 && pageItems.length > 0 ? 1 : 0);
       itemMembers += added.members;
       itemDepth = Math.max(itemDepth, added.depth);
       const next =

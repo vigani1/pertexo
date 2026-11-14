@@ -8,6 +8,9 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import { encodedAttachmentBytes } from '../send-notification/send-notification.schemas.js';
 import { EmailAttachmentFailure } from './attachment.errors.js';
 
+// Base64 encodes 3 input bytes as 4 characters.
+const BASE64_INPUT_GROUP_BYTES = 3;
+
 export type ResendAttachment = Readonly<{
   filename: string;
   contentType: string;
@@ -33,7 +36,8 @@ async function* base64Chunks(
       chunk.fill(0);
       carry.fill(0);
       // Base64 encodes 3 bytes at a time; the remainder waits for the next chunk.
-      const whole = joined.byteLength - (joined.byteLength % 3);
+      const whole =
+        joined.byteLength - (joined.byteLength % BASE64_INPUT_GROUP_BYTES);
       carry = Buffer.from(joined.subarray(whole));
       if (whole > 0)
         yield Buffer.from(

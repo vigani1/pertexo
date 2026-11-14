@@ -17,10 +17,15 @@ export const SLACK_API_ENDPOINTS = Object.freeze({
   sendMessage: 'https://slack.com/api/chat.postMessage',
 });
 
+// Slack error names, and channel names (Slack allows 80 characters).
+const SLACK_TEXT_LIMITS = Object.freeze({
+  errorCharacters: 128,
+  channelNameCharacters: 80,
+});
 const slackErrorSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(SLACK_TEXT_LIMITS.errorCharacters)
   .regex(/^[a-z0-9_]+$/u);
 const slackResponseSchema = z
   .object({
@@ -40,7 +45,7 @@ const slackConversationResponseSchema = z
         name: z
           .string()
           .min(1)
-          .max(80)
+          .max(SLACK_TEXT_LIMITS.channelNameCharacters)
           .regex(/^[\p{L}\p{N}\p{M}._-]+$/u),
       })
       .strip()

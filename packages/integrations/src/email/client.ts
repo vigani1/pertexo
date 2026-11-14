@@ -18,10 +18,11 @@ import {
 export const RESEND_API_ENDPOINT = 'https://api.resend.com/emails' as const;
 
 const successSchema = z.object({ id: z.uuid() }).strip();
+const RESEND_ERROR_NAME_CHARACTERS = 128;
 const errorTypeSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(RESEND_ERROR_NAME_CHARACTERS)
   .regex(/^[a-z0-9_]+$/u);
 const errorSchema = z.object({ name: errorTypeSchema }).strip();
 
