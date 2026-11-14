@@ -50,7 +50,21 @@ export async function startProviderLink(scenario: ProviderLinkScenario) {
       existingMethod: { kind: 'password', password: 'wrong' },
     },
   });
-  expect(wrongPassword.status).toBe(403);
+  expect(wrongPassword.status).toBe(400);
+  expect(await wrongPassword.json()).toEqual({ code: 'INVALID_PASSWORD' });
+  // The person has no GitHub sign-in to confirm with (it went in another tab).
+  const unheldSource = await linkRequest({
+    path: '/v1/auth/account-security/methods/link/start',
+    method: 'POST',
+    session: originalCookie ?? '',
+    binding: undefined,
+    body: {
+      provider: 'google',
+      existingMethod: { kind: 'social', provider: 'github' },
+    },
+  });
+  expect(unheldSource.status).toBe(409);
+  expect(await unheldSource.json()).toEqual({ code: 'AUTHENTICATION_CHANGED' });
   const started = await linkRequest({
     path: '/v1/auth/account-security/methods/link/start',
     method: 'POST',

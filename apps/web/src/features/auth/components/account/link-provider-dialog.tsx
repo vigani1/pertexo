@@ -37,14 +37,25 @@ function methodLabel(method: Method): string {
     : providerName(method.provider ?? 'provider');
 }
 
+// Link start's refusals, each named by its code.
+const LINK_REFUSALS: Partial<Record<string, string>> = {
+  'auth.email_not_verified':
+    'Verify your email address before adding a sign-in method. Check your inbox for the link.',
+  'auth.invalid_password':
+    'That didn’t confirm it’s you. Check your current password and try again.',
+  // The method picked to confirm was removed since this dialog opened.
+  'auth.authentication_changed':
+    'That sign-in method is no longer on your account. Close this and pick another one.',
+};
+
 function linkFailure(error: unknown, provider: string): string {
   if (isApiError(error)) {
     if (isSessionExpired(error)) return 'Your session ended. Sign in again.';
-    if (error.problem?.code === 'auth.email_not_verified')
-      return 'Verify your email address before adding a sign-in method. Check your inbox for the link.';
-    // Link start's other 403 is a current password it couldn't confirm.
+    const refusal = LINK_REFUSALS[error.problem?.code ?? ''];
+    if (refusal !== undefined) return refusal;
+    // Link start's only other 403 is a request it couldn't verify (CSRF).
     if (error.status === 403)
-      return 'That didn’t confirm it’s you. Check your current password and try again.';
+      return 'We couldn’t verify this request. Reload the page and try again.';
     if (error.status === 409)
       return `${provider} is already connected. Close this and check your methods.`;
     if (error.status === 503)
