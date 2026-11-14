@@ -12,6 +12,10 @@ import {
 } from './validate.schemas.js';
 import { CoreValidateExecutionAbortedError } from './validate.errors.js';
 
+// Code points above the Basic Multilingual Plane take two UTF-16 units.
+const LAST_BMP_CODE_POINT = 0xffff;
+const SURROGATE_PAIR_UNITS = 2;
+
 type RuleValueType = NonNullable<CoreValidateRule['type']>;
 
 function valueType(value: JsonValue): RuleValueType {
@@ -31,7 +35,10 @@ function countCodePointsUpTo(value: string, stopAfter: number): number {
   let length = 0;
   for (let offset = 0; offset < value.length;) {
     const codePoint = value.codePointAt(offset);
-    offset += codePoint !== undefined && codePoint > 0xffff ? 2 : 1;
+    offset +=
+      codePoint !== undefined && codePoint > LAST_BMP_CODE_POINT
+        ? SURROGATE_PAIR_UNITS
+        : 1;
     length += 1;
     if (length >= stopAfter) break;
   }

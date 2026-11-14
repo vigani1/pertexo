@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import { crc32, createDeflateRaw, deflateRawSync } from 'node:zlib';
+import { ZIP_FORMAT } from '../../zip-format.js';
 
 export type ZipPart = Readonly<{
   name: string;
@@ -14,8 +15,8 @@ type Written = Readonly<{
   offset: number;
 }>;
 
-// A streamed entry's sizes and CRC follow its data in a descriptor.
-const DESCRIPTOR_FLAG = 0x08;
+const { localHeader: LOCAL, descriptor: DESCRIPTOR } = ZIP_FORMAT;
+const { directoryEntry: ENTRY, endOfDirectory: END } = ZIP_FORMAT;
 // 1980-01-01 00:00 in DOS form, so the same rows give the same bytes.
 const DOS_DATE = 0x21;
 
@@ -48,7 +49,7 @@ export async function* writeZip(
     }
     const header = localHeader({
       name,
-      flags: DESCRIPTOR_FLAG,
+      flags: ZIP_FORMAT.descriptorFlag,
       crc: 0,
       compressedSize: 0,
       size: 0,
@@ -60,22 +61,22 @@ export async function* writeZip(
       tally.compressedSize += chunk.length;
       yield chunk;
     }
-    const descriptor = Buffer.alloc(16);
-    descriptor.writeUInt32LE(0x08074b50, 0);
-    descriptor.writeUInt32LE(tally.crc, 4);
-    descriptor.writeUInt32LE(tally.compressedSize, 8);
-    descriptor.writeUInt32LE(tally.size, 12);
+    const descriptor = Buffer.alloc(DESCRIPTOR.bytes);
+    descriptor.writeUInt32LE(DESCRIPTOR.signature, 0);
+    descriptor.writeUInt32LE(tally.crc, DESCRIPTOR.crc);
+    descriptor.writeUInt32LE(tally.compressedSize, DESCRIPTOR.compressedSize);
+    descriptor.writeUInt32LE(tally.size, DESCRIPTOR.size);
     yield descriptor;
-    written.push({ name, flags: DESCRIPTOR_FLAG, ...tally, offset });
+    written.push({ name, flags: ZIP_FORMAT.descriptorFlag, ...tally, offset });
     offset += header.length + tally.compressedSize + descriptor.length;
   }
   const directory = Buffer.concat(written.flatMap(directoryEntry));
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(written.length, 8);
-  end.writeUInt16LE(written.length, 10);
-  end.writeUInt32LE(directory.length, 12);
-  end.writeUInt32LE(offset, 16);
+  const end = Buffer.alloc(END.bytes);
+  end.writeUInt32LE(END.signature, 0);
+  end.writeUInt16LE(written.length, END.diskEntries);
+  end.writeUInt16LE(written.length, END.entries);
+  end.writeUInt32LE(directory.length, END.directorySize);
+  end.writeUInt32LE(offset, END.directoryOffset);
   yield directory;
   yield end;
 }
@@ -105,31 +106,31 @@ async function* deflated(
 }
 
 function localHeader(entry: Written): Buffer {
-  const header = Buffer.alloc(30);
-  header.writeUInt32LE(0x04034b50, 0);
-  header.writeUInt16LE(20, 4);
-  header.writeUInt16LE(entry.flags, 6);
-  header.writeUInt16LE(8, 8);
-  header.writeUInt16LE(DOS_DATE, 12);
-  header.writeUInt32LE(entry.crc, 14);
-  header.writeUInt32LE(entry.compressedSize, 18);
-  header.writeUInt32LE(entry.size, 22);
-  header.writeUInt16LE(entry.name.length, 26);
+  const header = Buffer.alloc(LOCAL.bytes);
+  header.writeUInt32LE(LOCAL.signature, 0);
+  header.writeUInt16LE(ZIP_FORMAT.versionNeeded, LOCAL.version);
+  header.writeUInt16LE(entry.flags, LOCAL.flags);
+  header.writeUInt16LE(ZIP_FORMAT.methodDeflated, LOCAL.method);
+  header.writeUInt16LE(DOS_DATE, LOCAL.date);
+  header.writeUInt32LE(entry.crc, LOCAL.crc);
+  header.writeUInt32LE(entry.compressedSize, LOCAL.compressedSize);
+  header.writeUInt32LE(entry.size, LOCAL.size);
+  header.writeUInt16LE(entry.name.length, LOCAL.nameLength);
   return Buffer.concat([header, entry.name]);
 }
 
 function directoryEntry(entry: Written): Buffer[] {
-  const header = Buffer.alloc(46);
-  header.writeUInt32LE(0x02014b50, 0);
-  header.writeUInt16LE(20, 4);
-  header.writeUInt16LE(20, 6);
-  header.writeUInt16LE(entry.flags, 8);
-  header.writeUInt16LE(8, 10);
-  header.writeUInt16LE(DOS_DATE, 14);
-  header.writeUInt32LE(entry.crc, 16);
-  header.writeUInt32LE(entry.compressedSize, 20);
-  header.writeUInt32LE(entry.size, 24);
-  header.writeUInt16LE(entry.name.length, 28);
-  header.writeUInt32LE(entry.offset, 42);
+  const header = Buffer.alloc(ENTRY.bytes);
+  header.writeUInt32LE(ENTRY.signature, 0);
+  header.writeUInt16LE(ZIP_FORMAT.versionNeeded, ENTRY.versionMadeBy);
+  header.writeUInt16LE(ZIP_FORMAT.versionNeeded, ENTRY.versionNeeded);
+  header.writeUInt16LE(entry.flags, ENTRY.flags);
+  header.writeUInt16LE(ZIP_FORMAT.methodDeflated, ENTRY.method);
+  header.writeUInt16LE(DOS_DATE, ENTRY.date);
+  header.writeUInt32LE(entry.crc, ENTRY.crc);
+  header.writeUInt32LE(entry.compressedSize, ENTRY.compressedSize);
+  header.writeUInt32LE(entry.size, ENTRY.size);
+  header.writeUInt16LE(entry.name.length, ENTRY.nameLength);
+  header.writeUInt32LE(entry.offset, ENTRY.localHeaderOffset);
   return [header, entry.name];
 }

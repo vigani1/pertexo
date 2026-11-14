@@ -1,4 +1,9 @@
 import { NodeInputValidationError } from '@pertexo/node-sdk/server';
+
+// ISO 8601 without an expanded year: four digits, so years 0000 to 9999.
+const ISO_YEAR_DIGITS = 4;
+const LAST_ISO_YEAR = 9999;
+const MILLISECOND_DIGITS = 3;
 type Format = 'date_only' | 'date_time' | 'iso';
 export function formatInstant(
   instant: number,
@@ -17,7 +22,7 @@ export function formatInstant(
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    fractionalSecondDigits: 3,
+    fractionalSecondDigits: MILLISECOND_DIGITS,
     timeZoneName: 'longOffset',
   });
   const parts = new Map(
@@ -34,11 +39,11 @@ export function formatInstant(
   };
   const year =
     part('era') === 'BC' ? 1 - Number(part('year')) : Number(part('year'));
-  if (year < 0 || year > 9999)
+  if (year < 0 || year > LAST_ISO_YEAR)
     throw new NodeInputValidationError(
-      'The local date must stay within years 0000 through 9999',
+      `The local date must stay within years 0000 through ${String(LAST_ISO_YEAR)}`,
     );
-  const date = `${String(year).padStart(4, '0')}-${part('month')}-${part('day')}`;
+  const date = `${String(year).padStart(ISO_YEAR_DIGITS, '0')}-${part('month')}-${part('day')}`;
   if (format === 'date_only') return date;
   const time = `${part('hour')}:${part('minute')}:${part('second')}`;
   if (format === 'date_time') return `${date} ${time}`;
@@ -47,5 +52,5 @@ export function formatInstant(
     throw new NodeInputValidationError(
       'This historical timezone offset cannot be represented by a minute-offset ISO timestamp; use a display format or another timezone',
     );
-  return `${date}T${time}.${part('fractionalSecond')}${/^GMT(?:[+-]00:00)?$/u.test(offset) ? 'Z' : offset.slice(3)}`;
+  return `${date}T${time}.${part('fractionalSecond')}${/^GMT(?:[+-]00:00)?$/u.test(offset) ? 'Z' : offset.slice('GMT'.length)}`;
 }

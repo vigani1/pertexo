@@ -276,6 +276,7 @@ export { CORE_WEBHOOK_CONFIG_SCHEMA } from './triggers/webhook.js';
 
 // Values
 export {
+  JSON_LITERAL_BYTES,
   measureBoundedJson,
   type BoundedJsonSize,
   type BoundedJsonSizeBounds,

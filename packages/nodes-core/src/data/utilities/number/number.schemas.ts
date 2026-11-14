@@ -1,12 +1,30 @@
 import { z } from 'zod';
 
+const NUMBER_FORMAT_LIMITS = Object.freeze({
+  // Intl.NumberFormat accepts at most 20 fraction digits.
+  fractionDigits: 20,
+  defaultMaximumFractionDigits: 2,
+  // ISO 4217 currency codes are three letters.
+  currencyCodeLength: 3,
+});
+
 const common = {
   locale: z
     .enum(['en-US', 'en-GB', 'de-DE', 'fr-FR', 'ja-JP'])
     .meta({ default: 'en-US' }),
   grouping: z.boolean().meta({ default: true }),
-  minimumFractionDigits: z.number().int().min(0).max(20).meta({ default: 0 }),
-  maximumFractionDigits: z.number().int().min(0).max(20).meta({ default: 2 }),
+  minimumFractionDigits: z
+    .number()
+    .int()
+    .min(0)
+    .max(NUMBER_FORMAT_LIMITS.fractionDigits)
+    .meta({ default: 0 }),
+  maximumFractionDigits: z
+    .number()
+    .int()
+    .min(0)
+    .max(NUMBER_FORMAT_LIMITS.fractionDigits)
+    .meta({ default: NUMBER_FORMAT_LIMITS.defaultMaximumFractionDigits }),
 };
 export const numberConfigSchema = z
   .discriminatedUnion('operation', [
@@ -28,7 +46,7 @@ export const numberConfigSchema = z
         ...common,
         currency: z
           .string()
-          .length(3)
+          .length(NUMBER_FORMAT_LIMITS.currencyCodeLength)
           .regex(/^[A-Z]{3}$/u)
           .meta({ default: 'USD' }),
       })
@@ -46,7 +64,7 @@ export const numberConfigSchema = z
       locale: 'en-US',
       grouping: true,
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
+      maximumFractionDigits: NUMBER_FORMAT_LIMITS.defaultMaximumFractionDigits,
     },
   });
 export const numberInputSchema = z.object({ value: z.number() }).strict();

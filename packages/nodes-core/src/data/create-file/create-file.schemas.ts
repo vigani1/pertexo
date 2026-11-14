@@ -7,10 +7,11 @@ import {
 import { z } from 'zod';
 
 import { COLLECTION_MAX_ITEMS } from '../lists/collection.schemas.js';
+export const FILE_COLUMN_NAME_CHARACTERS = 256;
 export const fileColumnNameSchema = z
   .string()
   .min(1)
-  .max(256)
+  .max(FILE_COLUMN_NAME_CHARACTERS)
   .refine((name) => name.trim() !== '', 'Column names cannot be blank.');
 const fileColumnsSchema = z
   .array(fileColumnNameSchema)

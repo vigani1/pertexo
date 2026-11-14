@@ -44,9 +44,15 @@ Each step is `<area>/<step>/<step>.definition.ts`, `.executor.ts` and
 
 ## Defaults and config
 
-- No environment. Step bounds live in each step's `.schemas.ts`; shared
-  value bounds come from `node-sdk` (`NODE_JSON_LIMITS`,
-  `STORED_EXECUTION_VALUE_LIMITS`, `FILE_PAGE_LIMITS`, `DATA_TABLE_LIMITS`).
+- No environment. Step bounds live in each step's `.schemas.ts` (for
+  example `HTML_LIMITS`, `FILE_COLUMN_NAME_CHARACTERS`); shared value bounds
+  come from `node-sdk` (`NODE_JSON_LIMITS`, `STORED_EXECUTION_VALUE_LIMITS`,
+  `FILE_PAGE_LIMITS`, `DATA_TABLE_LIMITS`).
+- File formats are tables, not literals: `data/zip-format.ts` (the zip layout
+  the workbook writer and reader share), `data/excel-format.ts` (column
+  letters and the `_xHHHH_` escape), and `read-file/xlsx/limits.ts`
+  (`SPREADSHEET_LIMITS`, the workbook reader's bounds). Readers pause for the
+  event loop by `read-file/read-pacing.ts`.
 
 ## Rules
 
@@ -65,8 +71,6 @@ Each step is `<area>/<step>/<step>.definition.ts`, `.executor.ts` and
   (a non-`Error` stream rejection, turned into a file failure by the catch
   below it) and `data/validate/semantics.ts` (a rule path the schema already
   checked).
-- Limits are not yet named: nodes-core is outside the backend-limits check
-  until its literals are named.
 
 ## What guards it
 

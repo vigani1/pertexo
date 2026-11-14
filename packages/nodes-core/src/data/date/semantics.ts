@@ -3,6 +3,26 @@ import { formatInstant } from './format-instant.js';
 import { NodeInputValidationError } from '@pertexo/node-sdk/server';
 import type { CoreDateConfig, CoreDateInput } from './date.schemas.js';
 
+const CALENDAR = Object.freeze({
+  months: 12,
+  lastHour: 23,
+  lastMinute: 59,
+  lastSecond: 59,
+});
+const LEAP_YEARS = Object.freeze({
+  every: 4,
+  exceptCenturies: 100,
+  butEvery: 400,
+});
+const FEBRUARY = 2;
+const FEBRUARY_DAYS = Object.freeze({ common: 28, leap: 29 });
+const MONTH_DAYS: readonly number[] = Object.freeze([
+  31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+]);
+// An offset `+HH:MM`: hours at 1–3, minutes from 4.
+const OFFSET_HOURS = Object.freeze({ start: 1, end: 3 });
+const OFFSET_MINUTES_START = 4;
+
 const MIN_INSTANT = -62_167_219_200_000;
 const MAX_INSTANT = 253_402_300_799_999;
 const INSTANT =
@@ -30,20 +50,20 @@ function parseInstant(value: string): number {
     minute = Number(parts[5]),
     second = Number(parts[6]);
   const offset = String(parts[8]);
-  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const daysInMonth = days[month - 1];
+  const daysInMonth = daysInMonthOf(year, month);
   const invalidParts =
     month < 1 ||
-    month > 12 ||
+    month > CALENDAR.months ||
     day < 1 ||
     daysInMonth === undefined ||
     day > daysInMonth ||
-    hour > 23 ||
-    minute > 59 ||
-    second > 59 ||
+    hour > CALENDAR.lastHour ||
+    minute > CALENDAR.lastMinute ||
+    second > CALENDAR.lastSecond ||
     (offset !== 'Z' &&
-      (Number(offset.slice(1, 3)) > 23 || Number(offset.slice(4)) > 59));
+      (Number(offset.slice(OFFSET_HOURS.start, OFFSET_HOURS.end)) >
+        CALENDAR.lastHour ||
+        Number(offset.slice(OFFSET_MINUTES_START)) > CALENDAR.lastMinute));
   if (invalidParts) return invalidDate();
   return checkInstant(Date.parse(parts[0]));
 }
@@ -79,4 +99,15 @@ export function transformDateValue(
       checkInstant(addDuration(instant, input.amount, config.unit)),
     ).toISOString(),
   };
+}
+
+/** Days in a Gregorian month: leap years are divisible by 4, except centuries not divisible by 400. */
+function daysInMonthOf(year: number, month: number): number | undefined {
+  const leap =
+    year % LEAP_YEARS.every === 0 &&
+    (year % LEAP_YEARS.exceptCenturies !== 0 ||
+      year % LEAP_YEARS.butEvery === 0);
+  if (month === FEBRUARY)
+    return leap ? FEBRUARY_DAYS.leap : FEBRUARY_DAYS.common;
+  return MONTH_DAYS[month - 1];
 }

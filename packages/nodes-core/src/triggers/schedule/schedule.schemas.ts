@@ -3,21 +3,32 @@ import { z } from 'zod';
 import { cronHasUnsupportedOperators } from '@pertexo/workflow-model';
 
 const CORE_SCHEDULE_MAX_INTERVAL_MINUTES = 43_200;
+const CRON_EXPRESSION = Object.freeze({
+  // `* * * * *`: five one-character fields and their spaces.
+  minimumCharacters: 9,
+  maximumCharacters: 255,
+  fields: 5,
+});
+const SCHEDULE_NODE_ID_CHARACTERS = 128;
+const SCHEDULE_TIME_ZONE_CHARACTERS = 255;
 const CORE_SCHEDULE_MISFIRE_POLICY_SCHEMA = z
   .enum(['catch_up_once', 'skip'])
   .default('catch_up_once');
 
 const strictCronExpressionSchema = z
   .string()
-  .min(9)
-  .max(255)
+  .min(CRON_EXPRESSION.minimumCharacters)
+  .max(CRON_EXPRESSION.maximumCharacters)
   .refine((expression) => expression === expression.trim(), {
     message: 'Cron expression must not contain surrounding whitespace',
   })
   .refine(
     (expression) => {
       const fields = expression.trim().split(/\s+/u);
-      return fields.length === 5 && expression === fields.join(' ');
+      return (
+        fields.length === CRON_EXPRESSION.fields &&
+        expression === fields.join(' ')
+      );
     },
     { message: 'Expected a strict five-field cron expression' },
   )
@@ -28,7 +39,7 @@ const canonicalIanaTimezones = new Set(Intl.supportedValuesOf('timeZone'));
 const timezoneSchema = z
   .string()
   .min(1)
-  .max(255)
+  .max(SCHEDULE_TIME_ZONE_CHARACTERS)
   .refine(
     (timezone) => canonicalIanaTimezones.has(timezone),
     'Expected a canonical IANA timezone',
@@ -77,7 +88,7 @@ export const CORE_SCHEDULE_CONFIG_SCHEMA = z.discriminatedUnion('kind', [
 const scheduleTriggerEnvelopeSchema = z
   .object({
     triggerId: z.uuid(),
-    nodeId: z.string().trim().min(1).max(128),
+    nodeId: z.string().trim().min(1).max(SCHEDULE_NODE_ID_CHARACTERS),
     scheduledAt: z.iso.datetime({ offset: true }),
   })
   .strict();

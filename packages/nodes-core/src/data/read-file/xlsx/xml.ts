@@ -2,6 +2,7 @@ import { setImmediate } from 'node:timers/promises';
 import { Parser } from 'htmlparser2';
 import { unsupported } from './archive.js';
 import { SPREADSHEET_LIMITS } from './limits.js';
+import { READ_YIELD_BYTES } from '../read-pacing.js';
 
 export type XmlAttributes = Readonly<Record<string, string | undefined>>;
 export type XmlVisitor = Readonly<{
@@ -38,7 +39,7 @@ export async function* readXmlPart(
       yield;
     }
     sinceYield += chunk.byteLength;
-    if (sinceYield >= 65_536) {
+    if (sinceYield >= READ_YIELD_BYTES) {
       await setImmediate(undefined, { signal });
       sinceYield = 0;
     }

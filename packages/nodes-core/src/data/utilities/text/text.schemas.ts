@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { COLLECTION_MAX_ITEMS } from '../../lists/collection.schemas.js';
 
+const TRUNCATE_LIMITS = Object.freeze({
+  maxCharacters: 1_048_576,
+  defaultCharacters: 100,
+});
+
 export const textConfigSchema = z
   .discriminatedUnion('operation', [
     z
@@ -34,8 +39,11 @@ export const textConfigSchema = z
           .number()
           .int()
           .min(1)
-          .max(1_048_576)
-          .meta({ title: 'Maximum characters', default: 100 }),
+          .max(TRUNCATE_LIMITS.maxCharacters)
+          .meta({
+            title: 'Maximum characters',
+            default: TRUNCATE_LIMITS.defaultCharacters,
+          }),
         ellipsis: z.boolean().meta({ title: 'Add ellipsis', default: true }),
       })
       .strict(),

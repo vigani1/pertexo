@@ -35,6 +35,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/workflow-model',
   'packages/node-sdk',
   'packages/workflow-engine',
+  'packages/nodes-core',
 ]);
 
 /**

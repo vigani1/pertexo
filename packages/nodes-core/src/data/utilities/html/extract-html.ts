@@ -4,7 +4,7 @@ import type { ChildNode, Element } from 'domhandler';
 import { parse, SelectorType, type Selector } from 'css-what';
 import { selectAll } from 'css-select';
 import { textContent } from 'domutils';
-import type { HtmlConfig } from './html.schemas.js';
+import { HTML_LIMITS, type HtmlConfig } from './html.schemas.js';
 import { parseBoundedHtml } from './parse.js';
 import { refuseUtility } from '../utility-result.js';
 
@@ -50,8 +50,8 @@ export function extractHtml(
     );
   }
   const unsupportedSelection =
-    selector.length > 4 ||
-    selector.flat().length > 16 ||
+    selector.length > HTML_LIMITS.selectorGroups ||
+    selector.flat().length > HTML_LIMITS.selectorTokens ||
     selector.flat().some((token) => !supportedSelector(token)) ||
     selector.some(
       (group) =>
@@ -62,7 +62,7 @@ export function extractHtml(
   if (unsupportedSelection)
     return refuseUtility(
       'html_selector',
-      'Use up to four selector groups and 16 tokens, with one descendant and one structural pseudo-class per group. Use child (>) or adjacent (+) links for longer paths; general sibling (~), nested selectors and pseudo-elements are not supported.',
+      `Use up to ${String(HTML_LIMITS.selectorGroups)} selector groups and ${String(HTML_LIMITS.selectorTokens)} tokens, with one descendant and one structural pseudo-class per group. Use child (>) or adjacent (+) links for longer paths; general sibling (~), nested selectors and pseudo-elements are not supported.`,
     );
   const dom = parseBoundedHtml(value, signal);
   let matches: Element[];

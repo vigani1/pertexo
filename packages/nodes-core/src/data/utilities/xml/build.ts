@@ -7,6 +7,20 @@ import { qName } from 'xml-naming';
 import { XML_LIMITS } from './xml.schemas.js';
 import { isRecord } from '@pertexo/workflow-model';
 import { refuseUtility } from '../utility-result.js';
+import { formatCount } from '@pertexo/node-sdk';
+
+// fast-xml-parser's attribute key prefix.
+const ATTRIBUTE_PREFIX = '@_';
+// XML text widths: the fixed bytes around an attribute and an element's tags,
+// and the bytes each escape adds (&amp;, &lt; or &gt;, &quot;).
+const XML_TEXT = Object.freeze({
+  attributeBytes: 4,
+  openTagBytes: 3,
+  closeTagBytes: 2,
+  ampersandExpansion: 4,
+  angleExpansion: 3,
+  quoteExpansion: 5,
+});
 
 const reserved = new Set(['__proto__', 'constructor', 'prototype']);
 function addBytes(left: number, right: number): number {
@@ -64,7 +78,7 @@ function measureElement(
     if (value.length > COLLECTION_MAX_ITEMS)
       refuseUtility(
         'too_many_items',
-        'An XML input list exceeds 4,998 items. Split the input into smaller batches.',
+        `An XML input list exceeds ${formatCount(COLLECTION_MAX_ITEMS)} items. Split the input into smaller batches.`,
       );
     let bytes = 0;
     for (const item of value) {
@@ -94,13 +108,13 @@ function measureElement(
   let content = 0;
   if (isRecord(value)) {
     for (const [key, item] of Object.entries(value)) {
-      if (key.startsWith('@_')) {
+      if (key.startsWith(ATTRIBUTE_PREFIX)) {
         counts.members++;
-        const attributeBytes = nameBytes(key.slice(2));
+        const attributeBytes = nameBytes(key.slice(ATTRIBUTE_PREFIX.length));
         if (item !== null)
           attributes = addBytes(
             attributes,
-            addBytes(attributeBytes + 4, textBytes(item)),
+            addBytes(attributeBytes + XML_TEXT.attributeBytes, textBytes(item)),
           );
       } else if (key === '#text') content = addBytes(content, textBytes(item));
       else
@@ -120,8 +134,8 @@ function measureElement(
       'The XML has too many elements or attributes. Split the document.',
     );
   return addBytes(
-    addBytes(tagBytes + 3, attributes),
-    content === 0 ? 0 : addBytes(tagBytes + 2, content),
+    addBytes(tagBytes + XML_TEXT.openTagBytes, attributes),
+    content === 0 ? 0 : addBytes(tagBytes + XML_TEXT.closeTagBytes, content),
   );
 }
 export function buildXml(value: unknown, signal: AbortSignal) {
@@ -167,7 +181,7 @@ export function buildXml(value: unknown, signal: AbortSignal) {
 }
 
 function escapeExpansion(character: string): number {
-  if (character === '&') return 4;
-  if (character === '<' || character === '>') return 3;
-  return 5;
+  if (character === '&') return XML_TEXT.ampersandExpansion;
+  if (character === '<' || character === '>') return XML_TEXT.angleExpansion;
+  return XML_TEXT.quoteExpansion;
 }

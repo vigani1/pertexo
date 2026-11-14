@@ -1,5 +1,6 @@
 import { unsupported } from './archive.js';
 import type { DateKind } from './styles.js';
+import { EXCEL_ESCAPE } from '../../excel-format.js';
 
 /** A cell as typed data and as the text Excel's own CSV export would give. */
 export type Cell = Readonly<{ value: string | number | boolean; text: string }>;
@@ -18,6 +19,14 @@ export type CellContext = Readonly<{
 const DOUBLE = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/u;
 const ESCAPED = /_x([0-9A-Fa-f]{4})_/gu;
 const DAY = 86_400_000;
+const EXCEL_EPOCHS = Object.freeze({
+  date1904: Date.UTC(1904, 0, 1),
+  date1900BeforeLeapDay: Date.UTC(1899, 11, 31),
+  date1900: Date.UTC(1899, 11, 30),
+  missingLeapDaySerial: 60,
+});
+// `YYYY-MM-DD` and `HH:MM:SS` within an ISO timestamp.
+const ISO_PARTS = Object.freeze({ dateEnd: 10, timeStart: 11, timeEnd: 19 });
 // Serial 2,958,465 is 9999-12-31, the last date Excel shows.
 const LAST_SERIAL = 2_958_466;
 
@@ -50,7 +59,7 @@ export function decodeCell(
 /** Excel escapes characters XML can't hold as `_xHHHH_`. */
 export function plainText(value: string): string {
   return value.replace(ESCAPED, (_, code: string) =>
-    String.fromCharCode(Number.parseInt(code, 16)),
+    String.fromCharCode(Number.parseInt(code, EXCEL_ESCAPE.radix)),
   );
 }
 
@@ -100,11 +109,17 @@ function isoDate(
     days++;
     time = 0;
   }
-  const epoch = date1904
-    ? Date.UTC(1904, 0, 1)
-    : Date.UTC(1899, 11, days < 60 ? 31 : 30);
+  // Serial 60 is Lotus's 29 February 1900, which never existed: serials before
+  // it count from 31 December 1899, the rest from the day before.
+  const epoch = date1904 ? EXCEL_EPOCHS.date1904 : date1900Epoch(days);
   const iso = new Date(epoch + days * DAY + time).toISOString();
-  if (kind === 'date') return iso.slice(0, 10);
-  if (kind === 'time') return iso.slice(11, 19);
+  if (kind === 'date') return iso.slice(0, ISO_PARTS.dateEnd);
+  if (kind === 'time') return iso.slice(ISO_PARTS.timeStart, ISO_PARTS.timeEnd);
   return iso;
+}
+
+function date1900Epoch(days: number): number {
+  return days < EXCEL_EPOCHS.missingLeapDaySerial
+    ? EXCEL_EPOCHS.date1900BeforeLeapDay
+    : EXCEL_EPOCHS.date1900;
 }

@@ -3,6 +3,7 @@ import type { JsonValue } from '@pertexo/node-sdk/server';
 import type { CoreReadFileConfig } from '../read-file.schemas.js';
 import { admitFileRows } from '../admit-value.js';
 import { readCsvRecords } from './csv-records.js';
+import { INLINE_CHUNK_BYTES } from '../read-pacing.js';
 
 type CsvConfig = Extract<CoreReadFileConfig, { format: 'csv' }>;
 export async function parseCsvFile(
@@ -12,9 +13,15 @@ export async function parseCsvFile(
 ): Promise<JsonValue> {
   const encoded = Buffer.from(text, 'utf8');
   async function* chunks() {
-    for (let offset = 0; offset < encoded.length; offset += 4096) {
+    for (
+      let offset = 0;
+      offset < encoded.length;
+      offset += INLINE_CHUNK_BYTES
+    ) {
       signal.throwIfAborted();
-      yield await Promise.resolve(encoded.subarray(offset, offset + 4096));
+      yield await Promise.resolve(
+        encoded.subarray(offset, offset + INLINE_CHUNK_BYTES),
+      );
     }
   }
   try {
