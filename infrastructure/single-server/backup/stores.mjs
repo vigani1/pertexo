@@ -1,4 +1,4 @@
-import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/config.js';
+import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/server.js';
 
 export function parseRecoveryStores(environment) {
   const source = parseArtifactStoreConfig(environment);
