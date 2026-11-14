@@ -9,7 +9,7 @@ import {
   migrateDatabase,
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
-import { createEncryptionKeyRepository } from '../../src/encryption/keys.repository.js';
+import { createEncryptionKeyRepository } from '../../../src/encryption/keys/keys.repository.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??
@@ -207,7 +207,7 @@ describe('retained encryption key inventory', () => {
     const execute = promisify(execFile);
     const script = fileURLToPath(
       new URL(
-        '../../../../infrastructure/single-server/encryption/verify.mjs',
+        '../../../../../infrastructure/single-server/encryption/verify.mjs',
         import.meta.url,
       ),
     );

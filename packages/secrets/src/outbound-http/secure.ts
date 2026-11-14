@@ -2,7 +2,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   failure,
   inspectSecureHttpError,
-} from './secure-error.js';
+} from './secure-http.errors.js';
 import {
   assertPublicAddress,
   isAllowedPrivateAddress,
@@ -42,7 +42,7 @@ export {
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
   type SecureHttpErrorCode,
-} from './secure-error.js';
+} from './secure-http.errors.js';
 export {
   type SecureHttpAddressPolicy,
   type SecureHttpFailureStage,

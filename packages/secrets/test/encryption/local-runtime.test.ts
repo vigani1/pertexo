@@ -3,7 +3,7 @@ import {
   createConnectionEnvelopeEncryption,
   parseConnectionEncryptionConfig,
 } from '../../src/encryption/connection-encryption.runtime.js';
-import { createWebhookTriggerEnvelopeEncryption } from '../../src/encryption/webhook-envelope.js';
+import { createWebhookTriggerEnvelopeEncryption } from '../../src/encryption/envelopes/webhook-envelope.js';
 
 const key = Buffer.alloc(32, 7).toString('base64');
 const secondKey = Buffer.alloc(32, 8).toString('base64');

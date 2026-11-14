@@ -4,7 +4,7 @@ import { z } from 'zod';
 import {
   applicationKeyVersionSchema,
   validateApplicationKeyRing,
-} from './key-ring.js';
+} from '../keys/key-ring.js';
 
 const NONCE_BYTES = 12;
 const AUTH_TAG_BYTES = 16;

@@ -1,10 +1,10 @@
-import { connectionSecretAssociatedData } from './envelope-encryption.js';
-import { webhookTriggerSecretAssociatedData } from './webhook-envelope.js';
+import { connectionSecretAssociatedData } from '../envelopes/envelope-encryption.js';
+import { webhookTriggerSecretAssociatedData } from '../envelopes/webhook-envelope.js';
 import {
   SelfManagedEnvelopeKeyProvider,
   isSelfManagedKeyReference,
 } from './self-managed-key-provider.js';
-import type { ConnectionEnvelopeEncryptionConfig } from './connection-encryption.runtime.js';
+import type { ConnectionEnvelopeEncryptionConfig } from '../connection-encryption.runtime.js';
 
 import type { StoredEncryptionKey } from './stored-encryption-key.types.js';
 type VerificationFailure =

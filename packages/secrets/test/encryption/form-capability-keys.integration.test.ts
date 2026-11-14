@@ -10,8 +10,8 @@ import {
   parseDatabaseConfig,
 } from '@pertexo/database/testing';
 import { createConnectionEnvelopeEncryption } from '../../src/encryption/connection-encryption.runtime.js';
-import { createEncryptionKeyRepository } from '../../src/encryption/keys.repository.js';
-import { verifyStoredEncryptionKeys } from '../../src/encryption/verify-stored-keys.js';
+import { createEncryptionKeyRepository } from '../../src/encryption/keys/keys.repository.js';
+import { verifyStoredEncryptionKeys } from '../../src/encryption/keys/verify-stored-keys.js';
 
 const adminUrl =
   process.env.DATABASE_ADMIN_URL ??

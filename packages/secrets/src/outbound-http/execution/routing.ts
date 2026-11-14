@@ -3,7 +3,7 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 import { isIP } from 'node:net';
 
-import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-error.js';
+import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-http.errors.js';
 
 import type { ParsedSecureHttpRequest } from '../secure-request.js';
 

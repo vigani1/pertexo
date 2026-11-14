@@ -7,7 +7,7 @@ import {
   SECURE_HTTP_ERROR_CODE,
   failure,
   inspectSecureHttpError,
-} from './secure-error.js';
+} from './secure-http.errors.js';
 import type { SecureHttpRequest } from './secure.js';
 import { safeInstanceOf } from '@pertexo/node-sdk/server';
 

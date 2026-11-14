@@ -12,7 +12,7 @@ import {
   abortFailure,
   inspectSecureHttpError,
   isTimeoutError,
-} from './secure-error.js';
+} from '../secure-http.errors.js';
 
 const BODY_CHUNK_BYTES = 65_536;
 

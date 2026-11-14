@@ -1,4 +1,4 @@
-import { boundedRedactedBody } from '../../src/outbound-http/stream-redaction.js';
+import { boundedRedactedBody } from '../../src/outbound-http/redaction/stream-redaction.js';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { expect, it } from 'vitest';

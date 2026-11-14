@@ -2,8 +2,8 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { GenerateDataKeyCommand } from '@aws-sdk/client-kms';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createBoundedKmsClient } from '../../src/encryption/kms-client.js';
-import { createAwsConnectionEnvelopeEncryption } from '../../src/server.js';
+import { createBoundedKmsClient } from '../../../src/encryption/keys/kms-client.js';
+import { createAwsConnectionEnvelopeEncryption } from '../../../src/server.js';
 
 afterEach(() => vi.unstubAllEnvs());
 

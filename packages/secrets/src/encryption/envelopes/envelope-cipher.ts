@@ -14,7 +14,7 @@ import {
   encode,
   decode,
 } from './envelope-format.js';
-import type { EnvelopeKeyProviderCore } from './key-provider.js';
+import type { EnvelopeKeyProviderCore } from '../keys/key-provider.js';
 
 export {
   encodedEnvelopeSchemaFields,
@@ -27,7 +27,7 @@ export {
   type KmsCommandLike,
   type KmsSendLike,
   AwsKmsEnvelopeKeyProviderCore,
-} from './key-provider.js';
+} from '../keys/key-provider.js';
 export class EnvelopeCipher<Context> {
   public constructor(
     private readonly keys: EnvelopeKeyProviderCore<Context>,

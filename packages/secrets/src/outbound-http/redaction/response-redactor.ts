@@ -1,4 +1,4 @@
-import { SECURE_HTTP_ERROR_CODE, failure } from './secure-error.js';
+import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-http.errors.js';
 import { decodedBodyView, type DecodedBodyView } from './decoded-body-view.js';
 import { prepareSensitiveBytePatterns } from './sensitive-representations.js';
 

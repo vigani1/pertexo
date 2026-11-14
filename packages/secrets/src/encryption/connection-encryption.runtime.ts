@@ -3,19 +3,19 @@ import {
   createAwsConnectionEnvelopeEncryption,
   type AwsConnectionEnvelopeEncryptionConfig,
   type AwsConnectionEnvelopeEncryptionRuntime,
-} from './aws-envelope-runtime.js';
+} from './aws-envelope.runtime.js';
 import {
   ConnectionEnvelopeEncryption,
   ConnectionSecretEncryptionError,
   connectionSecretAssociatedData,
-} from './envelope-encryption.js';
-import { SelfManagedEnvelopeKeyProvider } from './self-managed-key-provider.js';
+} from './envelopes/envelope-encryption.js';
+import { SelfManagedEnvelopeKeyProvider } from './keys/self-managed-key-provider.js';
 import {
   decodeApplicationKey,
   parseApplicationPreviousKeys,
   validateApplicationKeyRing,
   type ApplicationKeyRing,
-} from './key-ring.js';
+} from './keys/key-ring.js';
 
 export type SelfManagedConnectionEncryptionConfig = Readonly<{
   mode: 'self-managed';

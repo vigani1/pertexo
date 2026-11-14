@@ -1,4 +1,4 @@
-import type { WebhookKmsClientLike } from '../../src/encryption/webhook-envelope.js';
+import type { WebhookKmsClientLike } from '../../../src/encryption/envelopes/webhook-envelope.js';
 import { randomBytes } from 'node:crypto';
 
 import {
@@ -14,7 +14,7 @@ import {
   WebhookTriggerSecretEncryptionError,
   webhookTriggerSecretAssociatedData,
   type WebhookEnvelopeKeyProvider,
-} from '../../src/server.js';
+} from '../../../src/server.js';
 
 const context = {
   workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
