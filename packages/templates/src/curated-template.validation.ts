@@ -16,6 +16,12 @@ import {
 } from './catalog.js';
 import { isCuratedHttpsEndpoint } from './https-endpoint.validation.js';
 
+/** Curated setup accepts Slack's channel ids, within a reviewed length. */
+export const CURATED_SLACK_CHANNEL_ID_LENGTH = Object.freeze({
+  min: 2,
+  max: 128,
+});
+
 type ValidationResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly issues: readonly PortableIssue[] };
@@ -45,8 +51,8 @@ export function validateCuratedTemplateSetupValue(
   if (typeof value !== 'string')
     return invalid('template_setup_invalid', 'setup');
   if (valueKind === 'slack_channel_id') {
-    return value.length >= 2 &&
-      value.length <= 128 &&
+    return value.length >= CURATED_SLACK_CHANNEL_ID_LENGTH.min &&
+      value.length <= CURATED_SLACK_CHANNEL_ID_LENGTH.max &&
       /^[CDGU][A-Z0-9]+$/u.test(value)
       ? { ok: true }
       : invalid('template_setup_invalid', 'setup');

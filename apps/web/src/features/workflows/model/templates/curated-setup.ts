@@ -1,9 +1,13 @@
 import type { NodeDefinitionListResponse } from '@pertexo/contracts';
 import type { WorkflowPortableManifest } from '@pertexo/workflow-model';
 import {
+  CURATED_HTTPS_ENDPOINT_LIMITS,
+  CURATED_SLACK_CHANNEL_ID_LENGTH,
   type CuratedWorkflowTemplate,
   validateCuratedTemplateSetupValue,
 } from '@pertexo/templates';
+
+import { formatCount } from '@/lib/format/count';
 
 export type CuratedTemplate = CuratedWorkflowTemplate;
 export type SetupTarget = CuratedTemplate['setupTargets'][number];
@@ -40,8 +44,8 @@ export function setupValueError(target: SetupTarget, value: string) {
   if (validateCuratedTemplateSetupValue(target.valueKind, value).ok)
     return undefined;
   return target.valueKind === 'https_endpoint'
-    ? 'Use lowercase https://, a lowercase ASCII DNS host and an explicit /path (at most 2,048 bytes). No ports, punycode, userinfo, fragments, dot segments or credential query names; escapes must be uppercase %HH.'
-    : 'Use a Slack channel ID of 2–128 characters beginning C, D, G or U, followed by uppercase letters or digits.';
+    ? `Use lowercase https://, a lowercase ASCII DNS host and an explicit /path (at most ${formatCount(CURATED_HTTPS_ENDPOINT_LIMITS.bytes, 'byte')}). No ports, punycode, userinfo, fragments, dot segments or credential query names; escapes must be uppercase %HH.`
+    : `Use a Slack channel ID of ${String(CURATED_SLACK_CHANNEL_ID_LENGTH.min)}–${formatCount(CURATED_SLACK_CHANNEL_ID_LENGTH.max, 'character')} beginning C, D, G or U, followed by uppercase letters or digits.`;
 }
 
 /** Only reviewed graph-node properties; never traverse arbitrary literal data. */

@@ -112,8 +112,6 @@ const STILL_WRITTEN: readonly string[] = [
   'features/workflows/components/organization/folders/dialogs.tsx: up to 128 characters',
   'features/workflows/components/organization/tags/management.tsx: up to 32 characters',
   'features/workflows/model/rename.ts: 128 characters',
-  'features/workflows/model/templates/curated-setup.ts: 128 characters',
-  'features/workflows/model/templates/curated-setup.ts: 2,048 bytes',
   'features/workspaces/components/creation/workspace-creation-form.tsx: up to 128 characters',
   'features/workspaces/components/creation/workspace-creation-form.tsx: up to 64 characters',
   'features/workspaces/components/invitations/email-chips-field.tsx: for seven days',
