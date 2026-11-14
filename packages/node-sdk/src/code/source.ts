@@ -10,10 +10,10 @@ export type CodeSyntaxIssue = Readonly<{
 }>;
 // acorn parses code steps as this language edition.
 const ECMASCRIPT_EDITION = 2025;
-// The wrapper puts the step's first line on line 3.
-const WRAPPER_LINES = 2;
 const prefix =
   'async function pertexoCode(input, $vars, require, console) {\n"use strict";\n';
+// The wrapper's own lines come before the step's first line.
+const WRAPPER_LINES = prefix.split('\n').length - 1;
 /** Parse an async body without evaluating it, in the browser and at publication. */
 export function inspectCodeSource(
   source: string,
