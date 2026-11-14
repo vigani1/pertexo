@@ -1,17 +1,13 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
-  HTTP_FIELD_VALUE_CHARACTERS,
+  HTTP_HEADER_LIMITS,
   isSupportedHttpFieldValue as isSerializableHttpHeaderValue,
 } from '@pertexo/contracts';
 
-/** Header bounds for configured and credential headers. */
-export const HTTP_HEADER_LIMITS = Object.freeze({
-  nameCharacters: 128,
+/** A step's own configured headers: how many, and their bytes together. */
+const CONFIGURED_HEADER_LIMITS = Object.freeze({
   headers: 64,
-  credentialHeaders: 32,
-  credentialHeaderBytes: 16_384,
-  // All configured headers together.
   totalBytes: 32_768,
 });
 
@@ -23,7 +19,7 @@ const headerNameSchema = z
 const headerValueSchema = z
   .string()
   .min(1)
-  .max(HTTP_FIELD_VALUE_CHARACTERS)
+  .max(HTTP_HEADER_LIMITS.valueCharacters)
   .refine(isSerializableHttpHeaderValue);
 const blockedConfiguredHeaders = new Set([
   'accept-encoding',
@@ -69,7 +65,7 @@ export const httpRequestHeadersSchema = z
   .record(headerNameSchema, headerValueSchema)
   .superRefine((headers, context) => {
     const names = Object.keys(headers);
-    if (names.length > HTTP_HEADER_LIMITS.headers)
+    if (names.length > CONFIGURED_HEADER_LIMITS.headers)
       context.addIssue({ code: 'custom', message: 'too many headers' });
     const normalized = new Set<string>();
     let bytes = 0;
@@ -91,7 +87,7 @@ export const httpRequestHeadersSchema = z
         });
       normalized.add(canonicalName);
     }
-    if (bytes > HTTP_HEADER_LIMITS.totalBytes)
+    if (bytes > CONFIGURED_HEADER_LIMITS.totalBytes)
       context.addIssue({
         code: 'custom',
         message: 'headers exceed byte limit',

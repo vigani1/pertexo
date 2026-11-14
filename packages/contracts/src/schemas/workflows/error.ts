@@ -1,18 +1,21 @@
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 export const workflowErrorSettingsSchema = responseSchema(
   z
     .object({
       targetWorkflowId: z.uuid().nullable(),
       targetWorkflowName: z.string().max(128).nullable().optional(),
-      revision: z.number().int().positive().max(2_147_483_647),
+      revision: z.number().int().positive().max(STORED_INTEGER_MAX),
     })
     .strict(),
 );
 export const workflowErrorSettingsRequestSchema = workflowErrorSettingsSchema
   .omit({ revision: true, targetWorkflowName: true })
-  .extend({ expectedRevision: z.number().int().positive().max(2_147_483_647) })
+  .extend({
+    expectedRevision: z.number().int().positive().max(STORED_INTEGER_MAX),
+  })
   .strict();
 export const workflowErrorSettingsResponseSchema = responseSchema(
   z

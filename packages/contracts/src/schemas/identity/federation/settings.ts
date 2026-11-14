@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 import { SamlHttpsOriginRequiredError } from './federation.errors.js';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 export const federationProtocolSchema = z.enum(['oidc', 'saml']);
 export type FederationProtocol = z.output<typeof federationProtocolSchema>;
@@ -84,7 +85,7 @@ export const federationDomainNameSchema = z
       return z.NEVER;
     }
   });
-const revision = z.number().int().positive().max(2147483647);
+const revision = z.number().int().positive().max(STORED_INTEGER_MAX);
 const name = storageTextSchema.trim().min(1).max(128);
 const issuer = z
   .url({ protocol: /^https$/u })

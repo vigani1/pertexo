@@ -1,6 +1,7 @@
 import { responseSchema } from '../../shared/response-schema.js';
 import { z } from 'zod';
 import { COLLABORATION_LIMITS } from './comments.js';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 export const workflowPresenceQuerySchema = z
   .object({ tabId: z.uuid() })
   .strict();
@@ -9,7 +10,12 @@ export const workflowPresenceHeartbeatSchema = z
     sequence: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
     editing: z.boolean(),
     dirty: z.boolean(),
-    baseRevision: z.number().int().positive().max(2147483647).nullable(),
+    baseRevision: z
+      .number()
+      .int()
+      .positive()
+      .max(STORED_INTEGER_MAX)
+      .nullable(),
   })
   .strict()
   .refine(

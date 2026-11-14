@@ -187,7 +187,25 @@ function isHttpStatus(node, value) {
     if (parent.initializer === node) return isStatusName(parent.name);
     return parent.name === node && isResponsesObject(parent.parent);
   }
-  return false;
+  return isArgumentOfStatusSchema(node);
+}
+
+// `status: z.literal(409)` or `status: z.number().min(400).max(599)`: an
+// argument of the call chain that is a status property's value.
+function isArgumentOfStatusSchema(node) {
+  let current = node.parent;
+  if (!ts.isCallExpression(current)) return false;
+  while (
+    ts.isCallExpression(current.parent) ||
+    ts.isPropertyAccessExpression(current.parent)
+  )
+    current = current.parent;
+  const owner = current.parent;
+  return (
+    ts.isPropertyAssignment(owner) &&
+    owner.initializer === current &&
+    isStatusName(owner.name)
+  );
 }
 
 function isStatusName(node) {

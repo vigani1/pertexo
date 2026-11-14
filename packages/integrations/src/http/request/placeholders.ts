@@ -1,5 +1,5 @@
 import {
-  HTTP_FIELD_VALUE_CHARACTERS,
+  HTTP_HEADER_LIMITS,
   isSupportedHttpFieldValue as isSerializableHttpHeaderValue,
 } from '@pertexo/contracts';
 import { HttpPlaceholderError } from './placeholders.errors.js';
@@ -72,7 +72,7 @@ export function fillHttpTemplate(
       const filled = text.replace(PLACEHOLDER, (_, key: string) => value(key));
       if (
         filled.length === 0 ||
-        filled.length > HTTP_FIELD_VALUE_CHARACTERS ||
+        filled.length > HTTP_HEADER_LIMITS.valueCharacters ||
         !isSerializableHttpHeaderValue(filled)
       )
         throw new HttpPlaceholderError(

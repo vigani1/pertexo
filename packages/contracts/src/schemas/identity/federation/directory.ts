@@ -5,8 +5,9 @@ export { DIRECTORY_LIMITS };
 import { FEDERATION_LIMITS } from './settings.js';
 import { z } from 'zod';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
-const revision = z.number().int().positive().max(2147483647);
+const revision = z.number().int().positive().max(STORED_INTEGER_MAX);
 export const directoryCredentialSchema = z
   .object({
     id: z.uuid(),

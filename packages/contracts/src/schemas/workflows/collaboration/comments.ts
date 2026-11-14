@@ -3,9 +3,10 @@ import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 export { COLLABORATION_LIMITS };
 import { z } from 'zod';
 import { isStorageText } from '@pertexo/workflow-model';
+import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 const id = z.uuid().overwrite((value) => value.toLowerCase());
-const revision = z.number().int().positive().max(2147483647);
+const revision = z.number().int().positive().max(STORED_INTEGER_MAX);
 export const workflowCommentStepIdSchema = z
   .string()
   .min(1)
