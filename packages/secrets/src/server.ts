@@ -77,16 +77,13 @@ export {
 } from './encryption/envelopes/application-secret-envelope.js';
 export { ApplicationSecretKeyUnavailableError } from './encryption/encryption.errors.js';
 
-export {
-  createConnectionEnvelopeEncryption,
-  parseConnectionEncryptionConfig,
-} from './encryption/connection-encryption.runtime.js';
-
+export { createConnectionEnvelopeEncryption } from './encryption/connection-encryption.runtime.js';
+export type { ConnectionEnvelopeEncryptionRuntime } from './encryption/connection-encryption.runtime.js';
+export { parseConnectionEncryptionConfig } from './encryption/connection-encryption-config.js';
 export type {
   ConnectionEnvelopeEncryptionConfig,
-  ConnectionEnvelopeEncryptionRuntime,
   SelfManagedConnectionEncryptionConfig,
-} from './encryption/connection-encryption.runtime.js';
+} from './encryption/connection-encryption-config.js';
 
 export {
   applicationKeyVersionSchema,

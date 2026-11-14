@@ -5,7 +5,7 @@ import {
   SelfManagedEnvelopeKeyProvider,
   isSelfManagedKeyReference,
 } from './self-managed-key-provider.js';
-import type { ConnectionEnvelopeEncryptionConfig } from '../connection-encryption.runtime.js';
+import type { ConnectionEnvelopeEncryptionConfig } from '../connection-encryption-config.js';
 
 import type { StoredEncryptionKey } from './stored-encryption-key.types.js';
 /** Connection-purpose keys include saved form links, bound to their workflow context. */

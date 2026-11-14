@@ -7,7 +7,7 @@ import {
 } from './envelope-format.js';
 import { createBoundedKmsClient } from '../keys/kms-client.js';
 import { SelfManagedEnvelopeKeyProvider } from '../keys/self-managed-key-provider.js';
-import type { ConnectionEnvelopeEncryptionConfig } from '../connection-encryption.runtime.js';
+import type { ConnectionEnvelopeEncryptionConfig } from '../connection-encryption-config.js';
 import {
   AwsKmsEnvelopeKeyProviderCore,
   EnvelopeCipher,
