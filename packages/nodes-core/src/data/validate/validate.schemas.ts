@@ -10,7 +10,7 @@ import {
   coreValidateIssueMessages,
 } from './issue-metadata.js';
 
-const CORE_VALIDATE_MAX_RULES = 64;
+export const CORE_VALIDATE_MAX_RULES = 64;
 export const CORE_VALIDATE_MAX_ISSUES = 16;
 const CORE_VALIDATE_MAX_PATH_BYTES = 512;
 const CORE_VALIDATE_MAX_PATH_SEGMENTS = 64;

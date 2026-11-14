@@ -1,5 +1,6 @@
-import { isRecord } from '@pertexo/workflow-model';
+import { isRecord, SWITCH_CASE_PORTS } from '@pertexo/workflow-model';
 import type { FieldParseResult, NodeConfig } from './draft';
+import { CORE_VALIDATE_MAX_RULES } from '@pertexo/nodes-core';
 
 // Setup for the steps whose settings are lists (Switch cases, Parallel
 // branches, Validate rules), read from and written back to the step's
@@ -43,7 +44,6 @@ export function moved<Entry>(
 // ---------------------------------------------------------------- Switch
 
 /** Switch's fixed case ports (ADR 018). */
-export const SWITCH_CASE_IDS = numbered('case', 16);
 
 export type SwitchScalar = null | boolean | number | string;
 export type SwitchCase = Readonly<{ id: string; equals: SwitchScalar }>;
@@ -68,7 +68,10 @@ export function readSwitchCases(
   for (const entry of cases) {
     if (!isRecord(entry) || Object.keys(entry).length !== 2) return undefined;
     const { id, equals } = entry;
-    if (typeof id !== 'string' || !SWITCH_CASE_IDS.includes(id))
+    if (
+      typeof id !== 'string' ||
+      !SWITCH_CASE_PORTS.some((port) => port === id)
+    )
       return undefined;
     if (!isScalar(equals)) return undefined;
     read.push({ id, equals });
@@ -91,7 +94,7 @@ export function addSwitchCase(
   cases: readonly SwitchCase[],
 ): readonly SwitchCase[] {
   const id = nextFree(
-    SWITCH_CASE_IDS,
+    SWITCH_CASE_PORTS,
     cases.map((entry) => entry.id),
   );
   return id === undefined ? cases : [...cases, { id, equals: '' }];
@@ -202,7 +205,6 @@ export const VALIDATE_TYPES = [
   'null',
 ] as const;
 export type ValidateType = (typeof VALIDATE_TYPES)[number];
-export const VALIDATE_MAX_RULES = 64;
 
 /** The bounds each type allows (ADR 032); other types allow none. */
 export const VALIDATE_BOUNDS: Readonly<
@@ -266,7 +268,7 @@ export function withValidateRules(
 export function addValidateRule(
   rules: readonly ValidateRule[],
 ): readonly ValidateRule[] {
-  if (rules.length >= VALIDATE_MAX_RULES) return rules;
+  if (rules.length >= CORE_VALIDATE_MAX_RULES) return rules;
   const ids = new Set(rules.map((rule) => rule.id));
   let number = rules.length + 1;
   while (ids.has(`rule-${String(number)}`)) number += 1;

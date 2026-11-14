@@ -33,7 +33,10 @@ export {
 
 export { evaluateCoreValidate } from './data/validate/semantics.js';
 
-export { CORE_VALIDATE_CONFIG_SCHEMA } from './data/validate/validate.schemas.js';
+export {
+  CORE_VALIDATE_CONFIG_SCHEMA,
+  CORE_VALIDATE_MAX_RULES,
+} from './data/validate/validate.schemas.js';
 
 export { CORE_CODE_DEFINITION } from './data/code/code.definition.js';
 
