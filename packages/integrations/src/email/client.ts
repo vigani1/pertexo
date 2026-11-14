@@ -9,7 +9,7 @@ import type {
   ProviderHttpClient,
   ProviderHttpRequest,
 } from '../providers/http-client.js';
-import { EMAIL_SEND_NOTIFICATION_LIMITS } from './email-send-notification.schemas.js';
+import { EMAIL_SEND_NOTIFICATION_LIMITS } from './send-notification/send-notification.schemas.js';
 import {
   encodeMessageWithAttachments,
   type ResendAttachment,

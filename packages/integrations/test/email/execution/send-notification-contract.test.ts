@@ -5,7 +5,7 @@ import { EMAIL_SEND_NOTIFICATION_MANIFEST } from '../../../src/index.js';
 import {
   providerEmailMailboxSchema,
   emailSendNotificationInputSchema,
-} from '../../../src/email/email-send-notification.schemas.js';
+} from '../../../src/email/send-notification/send-notification.schemas.js';
 import {
   createEmailSendNotificationExecutorRegistration,
   createResendClient,

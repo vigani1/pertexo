@@ -2,7 +2,7 @@ import type { smtpCredentialSchema } from '@pertexo/contracts';
 import type { z } from 'zod';
 import type { ResendClient } from './client.js';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
-import { failure } from './failure.js';
+import { failure } from './send-notification/send-notification.errors.js';
 
 export type SmtpCredential = z.output<typeof smtpCredentialSchema>;
 export type SmtpEmailResult =

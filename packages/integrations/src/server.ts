@@ -28,28 +28,28 @@ export {
   createEmailSendNotificationExecutorRegistration,
   type EmailSendNotificationExecutorDependencies,
   type EmailSendNotificationExecutorTelemetry,
-} from './email/email-send-notification.executor.js';
+} from './email/send-notification/send-notification.executor.js';
 
-export { EmailSendNotificationExecutorError } from './email/failure.js';
+export { EmailSendNotificationExecutorError } from './email/send-notification/send-notification.errors.js';
 
 export {
   createSlackSendMessageExecutorRegistration,
   SlackSendMessageExecutorError,
   type SlackSendMessageExecutorDependencies,
   type SlackSendMessageExecutorTelemetry,
-} from './slack/slack-send-message.executor.js';
+} from './slack/send-message/send-message.executor.js';
 
 export {
   createHttpRequestExecutorRegistration,
   HttpRequestExecutorError,
   type HttpRequestExecutorDependencies,
   type HttpRequestExecutorTelemetry,
-} from './http-request/http-request.executor.js';
+} from './http/request/request.executor.js';
 
 export {
   createOAuth2RenewalClient,
   isOAuth2HostAllowed,
-} from './http-request/execution/oauth2-renewal.js';
+} from './http/request/execution/oauth2-renewal.js';
 
 export {
   newOAuth2Secret,
@@ -93,8 +93,8 @@ export {
 
 export { EMAIL_ATTACHMENT_ERROR_CODES } from './email/attachments/plan.js';
 
-export { HTTP_PAGINATION_FAILURES } from './http-request/pagination/failure.js';
+export { HTTP_PAGINATION_FAILURES } from './http/request/pagination/pagination.errors.js';
 
-export { HTTP_OAUTH2_FAILURES } from './http-request/execution/oauth2-failure.js';
+export { HTTP_OAUTH2_FAILURES } from './http/request/execution/oauth2.errors.js';
 
 export type { SmtpEmailClient } from './email/smtp.js';

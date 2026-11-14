@@ -23,7 +23,7 @@ import {
 import {
   httpRequestConfigSchema,
   httpRequestInputSchema,
-} from '../../../../../../packages/integrations/src/http-request/http-request.schemas.js';
+} from '../../../../../../packages/integrations/src/http/request/request.schemas.js';
 import {
   connectionId,
   encoder,
