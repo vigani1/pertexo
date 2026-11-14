@@ -276,6 +276,7 @@ const isSource = (file) => /^(?:apps|packages)\/[^/]+\/src\//u.test(file);
 export function validateModuleImports(sources) {
   const errors = [];
   const graph = new Map();
+  const coreImporters = new Set();
   const namedFiles = indexNamedFiles(sources);
   for (const [file, text] of Object.entries(sources)) {
     const source = ts.createSourceFile(
@@ -312,16 +313,8 @@ export function validateModuleImports(sources) {
       errors.push(...directionViolations(file, specifier));
       if (!isSource(file)) return;
       errors.push(...sourceViolations(file, specifier));
-      // A refused start reads its settings first; loading the core runtime
-      // for a default made each refusal take seconds (batch K).
-      if (
-        runtime &&
-        /^apps\/[^/]+\/src\/platform\/config\//u.test(file) &&
-        /^@pertexo\/core(?:\/|$)/u.test(specifier)
-      )
-        errors.push(
-          `${file}: startup settings load before the runtime; take defaults from @pertexo/policy, not ${specifier}`,
-        );
+      if (runtime && /^@pertexo\/core(?:\/|$)/u.test(specifier))
+        coreImporters.add(file);
       if (
         file.startsWith('apps/code-runner/src/') &&
         specifier.startsWith('@pertexo/') &&
@@ -462,7 +455,39 @@ export function validateModuleImports(sources) {
     completed.add(file);
   };
   for (const file of graph.keys()) visit(file, []);
+  errors.push(...startupCoreViolations(graph, coreImporters));
   return errors;
+}
+
+// A refused start reads its settings first; loading the core runtime for a
+// default made each refusal take seconds (batch K). Followed through local
+// helpers, so a config file can't reach core one import away.
+const STARTUP_CONFIG =
+  /^apps\/(?:api\/src\/platform\/config|worker\/src\/config)\//u;
+
+function startupCoreViolations(graph, coreImporters) {
+  const violations = [];
+  for (const file of graph.keys()) {
+    if (!STARTUP_CONFIG.test(file)) continue;
+    const trails = [[file]];
+    const seen = new Set([file]);
+    while (trails.length > 0) {
+      const trail = trails.shift();
+      const current = trail.at(-1);
+      if (coreImporters.has(current)) {
+        violations.push(
+          `${file}: startup settings load before the runtime, but ${trail.join(' -> ')} loads @pertexo/core; take defaults from @pertexo/policy`,
+        );
+        break;
+      }
+      for (const next of graph.get(current) ?? [])
+        if (!seen.has(next)) {
+          seen.add(next);
+          trails.push([...trail, next]);
+        }
+    }
+  }
+  return violations;
 }
 
 export async function inspectModuleImports(directory = root) {

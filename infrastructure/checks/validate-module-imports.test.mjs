@@ -1031,25 +1031,42 @@ test('keeps removed workflow forwarding modules out of API dependencies', () => 
 });
 
 test('startup settings never load the core runtime, though types may name it', () => {
-  const config = (text) => ({
-    'apps/api/src/platform/config/limits.ts': text,
-  });
+  for (const file of [
+    'apps/api/src/platform/config/limits.ts',
+    'apps/worker/src/config/limits.ts',
+  ]) {
+    const config = (text) => ({ [file]: text });
+    assert.match(
+      validateModuleImports(
+        config("import { DEFAULT_LIMIT } from '@pertexo/core/runs';"),
+      ).join('\n'),
+      /startup settings load before the runtime/u,
+    );
+    assert.deepEqual(
+      validateModuleImports(
+        config("import type { Limit } from '@pertexo/core/runs';"),
+      ),
+      [],
+    );
+    assert.deepEqual(
+      validateModuleImports(
+        config("import { DEFAULT_LIMIT } from '@pertexo/policy';"),
+      ),
+      [],
+    );
+  }
+});
+
+// Review of batch K, P3-3: a local helper one import away reached core too.
+test('startup settings never reach the core runtime through a local helper', () => {
+  const errors = validateModuleImports({
+    'apps/worker/src/config/worker.ts':
+      "import { limits } from '../shared/limits.js';",
+    'apps/worker/src/shared/limits.ts':
+      "export { DEFAULT_LIMIT as limits } from '@pertexo/core/runs';",
+  }).join('\n');
   assert.match(
-    validateModuleImports(
-      config("import { DEFAULT_LIMIT } from '@pertexo/core/runs';"),
-    ).join('\n'),
-    /startup settings load before the runtime/u,
-  );
-  assert.deepEqual(
-    validateModuleImports(
-      config("import type { Limit } from '@pertexo/core/runs';"),
-    ),
-    [],
-  );
-  assert.deepEqual(
-    validateModuleImports(
-      config("import { DEFAULT_LIMIT } from '@pertexo/policy';"),
-    ),
-    [],
+    errors,
+    /apps\/worker\/src\/config\/worker\.ts -> apps\/worker\/src\/shared\/limits\.ts loads @pertexo\/core/u,
   );
 });
