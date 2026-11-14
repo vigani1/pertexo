@@ -1,4 +1,3 @@
-import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => ({
@@ -42,6 +41,10 @@ const config: DatabaseConfig = {
 const acceptanceConfig: DatabaseConfig = {
   ...config,
   connectionString: 'postgresql://api:secret@db/pertexo',
+};
+const claimConfig: DatabaseConfig = {
+  ...config,
+  connectionString: 'postgresql://maintenance:secret@db/pertexo',
 };
 
 describe('trigger repository construction ownership', () => {
@@ -236,13 +239,9 @@ describe('trigger repository construction ownership', () => {
       monitorLockWaits: false,
     });
     expect(() =>
-      createScheduleTriggerScanner(
-        maintenanceConfig(config),
-        acceptanceConfig,
-        {
-          acceptance: wrongAcceptanceRuntime,
-        },
-      ),
+      createScheduleTriggerScanner(claimConfig, acceptanceConfig, {
+        acceptance: wrongAcceptanceRuntime,
+      }),
     ).toThrow('authority does not match');
     await Promise.resolve();
 
@@ -254,14 +253,14 @@ describe('trigger repository construction ownership', () => {
   });
 
   it('attempts both scanner closers and keeps borrowed runtimes open', async () => {
-    const claimRuntime = createDatabaseRuntime(maintenanceConfig(config), {
+    const claimRuntime = createDatabaseRuntime(claimConfig, {
       monitorLockWaits: false,
     });
     const acceptanceRuntime = createDatabaseRuntime(acceptanceConfig, {
       monitorLockWaits: false,
     });
     const scanner = createScheduleTriggerScanner(
-      maintenanceConfig(config),
+      claimConfig,
       acceptanceConfig,
       {
         acceptance: acceptanceRuntime,
@@ -278,10 +277,7 @@ describe('trigger repository construction ownership', () => {
   });
 
   it('attempts both owned scanner closers when each rejects', async () => {
-    const scanner = createScheduleTriggerScanner(
-      maintenanceConfig(config),
-      acceptanceConfig,
-    );
+    const scanner = createScheduleTriggerScanner(claimConfig, acceptanceConfig);
     const firstFailure = new Error('claim pool close failed');
     const secondFailure = new Error('acceptance pool close failed');
     database.pools[0]?.end.mockRejectedValueOnce(firstFailure);

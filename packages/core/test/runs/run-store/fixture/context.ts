@@ -1,20 +1,13 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
-export const adminBaseUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const adminBaseUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-export const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+export const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-export const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const workerBaseUrl = testStackSetting('DATABASE_URL');
 
-export const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const apiBaseUrl = testStackSetting('DATABASE_URL');
 
 export const runnerOwnsDatabase =
   process.env.PERTEXO_Q11_RUNNER_OWNS_DATABASE === '1';

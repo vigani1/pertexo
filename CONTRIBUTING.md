@@ -26,7 +26,8 @@ runs `pnpm prepush` (formatting, typecheck, and lint for changed packages; a
 docs-only push checks formatting alone). CI runs every suite on the pull
 request, so run the tests for what you changed before pushing. Run
 `pnpm test:integration` locally when PostgreSQL, Redis, queue, object-store or
-HTTP behavior changes.
+HTTP behavior changes, against a test stack you name explicitly (see the
+README's [Integration tests](./README.md#integration-tests)).
 
 Pull requests explain the behavior being changed, the tests that prove it and
 any migration impact. When code moves or is deleted, the description lists what

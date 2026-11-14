@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
@@ -14,21 +15,13 @@ import {
 import type { acceptPreviewRun } from '../../../src/previews/runs/accept.js';
 import { createPreviewRunStore } from '../../../src/previews/runs/preview-run.store.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const apiBaseUrl = testStackSetting('DATABASE_URL');
 
-const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const workerBaseUrl = testStackSetting('DATABASE_URL');
 
 const databaseName = `pertexo_test_preview_${randomUUID().replaceAll('-', '')}`;
 

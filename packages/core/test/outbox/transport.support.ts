@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
@@ -28,24 +29,12 @@ function deferredHandle<T extends object>(resolve: () => T): T {
 
 export function createTransportTestEnvironment() {
   const sharedDatabase = process.env.PERTEXO_Q11_SHARED_DATABASE === '1';
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-  const migrationBaseUrl =
-    process.env.DATABASE_MIGRATION_URL ??
-    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-  const apiBaseUrl =
-    process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-  const workerBaseUrl =
-    process.env.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-  const dispatcherBaseUrl =
-    process.env.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
-  const operatorBaseUrl =
-    process.env.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+  const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
+  const apiBaseUrl = testStackSetting('DATABASE_URL');
+  const workerBaseUrl = testStackSetting('DATABASE_URL');
+  const dispatcherBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
+  const operatorBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
   const databaseName = `pertexo_test_transport_${randomUUID().replaceAll('-', '')}`;
   const disposableDatabase = createDisposableDatabaseFixture({
     adminUrl,

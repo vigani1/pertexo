@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { createSystemMailClient } from '../../src/mail/system-mail-client.js';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import {
@@ -58,9 +59,7 @@ const KEY_RECORD = {
     'eyJjaXBoZXJ0ZXh0IjoiSnBzQWR6Y3pyak16YzFmLW1oMUVQNkdacVM0Z1lleW81WGtsV3RERnRNcDB2TU8zZ3YwcDZiTGJpUSIsIm5vbmNlIjoiRWwwTkZQSVJqaWN3OUJnUCIsInRhZyI6ImhHdnNXQmlpUHc4NUY4WnFiNEFLQkEiLCJrZXlWZXJzaW9uIjoidjEifQ',
 };
 
-const maintenanceUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+const maintenanceUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
 async function seedMail(owner: Pool, purpose: string): Promise<void> {
   await owner.query(
@@ -304,10 +303,7 @@ it('delivers real personal notice mail, refuses revoked content before DATA, and
   const owner = new Pool({ connectionString: databaseUrl(adminUrl), max: 1 });
   const apiConfig = storeConfig(databaseUrl(apiBaseUrl));
   const maintenanceConfig = storeConfig(
-    databaseUrl(
-      process.env.DATABASE_MAINTENANCE_URL ??
-        'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-    ),
+    databaseUrl(testStackSetting('DATABASE_MAINTENANCE_URL')),
   );
   const identity = createIdentityWorkspaceStore(apiConfig);
   const preferences = createNoticePreferencesStore(apiConfig, {

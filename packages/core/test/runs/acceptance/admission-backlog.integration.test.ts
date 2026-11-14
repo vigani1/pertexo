@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
@@ -31,10 +32,7 @@ describe('run admission under a backlog', () => {
   // the eligibility checks one claim makes.
   let dispatcher: Pool;
   beforeAll(async () => {
-    const adminUrl = new URL(
-      process.env.DATABASE_ADMIN_URL ??
-        'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-    );
+    const adminUrl = new URL(testStackSetting('DATABASE_ADMIN_URL'));
     adminUrl.pathname = new URL(migrationUrl).pathname;
     dispatcher = new Pool({ connectionString: adminUrl.toString(), max: 1 });
     const client = await dispatcher.connect();

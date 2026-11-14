@@ -19,15 +19,8 @@ import { createFixtureConnectionRuntime } from '../../connection-runtime.js';
 import { createBetterAuthFixtureApplication } from '../fixture-application.js';
 
 import { createApiNotificationRuntime } from '../../../../src/platform/notifications/notifications-runtime.module.js';
-import {
-  adminUrl,
-  migrationBaseUrl,
-  apiBaseUrl,
-  origin,
-  password,
-  silent,
-  telemetry,
-} from './environment.js';
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
+import { origin, password, silent, telemetry } from './environment.js';
 import type {
   Browser,
   Application,
@@ -54,6 +47,9 @@ export function useBetterAuthRealApi(
   options: ApiFixtureOptions = {},
 ) {
   const fixtureOrigin = options.publicWebOrigin ?? origin;
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+  const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
+  const apiBaseUrl = testStackSetting('DATABASE_URL');
   const owner = new FixtureResourceOwner();
   let disposableDatabase: object | undefined;
   let databaseCleanupLabel: DatabaseCleanupFailure | undefined;

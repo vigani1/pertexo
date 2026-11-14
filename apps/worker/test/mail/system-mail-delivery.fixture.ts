@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { migrateDatabase } from '@pertexo/database/testing';
@@ -6,21 +7,13 @@ import { Pool } from 'pg';
 
 const databaseName = `pertexo_test_auth_delivery_${randomUUID().replaceAll('-', '')}`;
 
-export const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-export const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const apiBaseUrl = testStackSetting('DATABASE_URL');
 
-export const workerBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const workerBaseUrl = testStackSetting('DATABASE_URL');
 
 export function databaseUrl(base: string): string {
   const url = new URL(base);

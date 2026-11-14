@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 import { expect } from 'vitest';
@@ -9,21 +10,13 @@ import {
 } from '@pertexo/database/testing';
 import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 
-export const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-const apiBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const apiBaseUrl = testStackSetting('DATABASE_URL');
 
-const maintenanceBaseUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+const maintenanceBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
 const databaseName = `pertexo_test_run_api_${randomUUID().replaceAll('-', '')}`;
 

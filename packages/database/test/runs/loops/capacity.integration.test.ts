@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,16 +15,13 @@ import { checkpoints } from './execute.js';
 import { childGraph, childPin, loopScenarios } from './scenarios.js';
 
 const database = createDisposableDatabaseFixture({
-  adminUrl:
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
+  adminUrl: testStackSetting('DATABASE_ADMIN_URL'),
   databaseName: `pertexo_test_loop_capacity_${randomUUID().slice(0, 8)}`,
   ownerRole: 'pertexo_owner',
   connectRoles: ['pertexo_migration'],
 });
 const connectionString = database.databaseUrl(
-  process.env.DATABASE_MIGRATION_URL ??
-    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+  testStackSetting('DATABASE_MIGRATION_URL'),
 );
 const pool = new Pool({ connectionString, max: 1 });
 beforeAll(async () => {

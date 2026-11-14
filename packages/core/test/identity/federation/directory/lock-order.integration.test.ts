@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
@@ -28,10 +29,7 @@ beforeAll(async () => {
   const [row] = await db.asAdmin<{ name: string }>(
     'select current_database() as name',
   );
-  const url = new URL(
-    process.env.DATABASE_URL ??
-      'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-  );
+  const url = new URL(testStackSetting('DATABASE_URL'));
   url.pathname = `/${String(row?.name)}`;
   databaseUrl = url.toString();
   const config = parseDatabaseConfig({ connectionString: databaseUrl, max: 8 });

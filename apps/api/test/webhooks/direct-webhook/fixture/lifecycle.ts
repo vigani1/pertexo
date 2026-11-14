@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { DEFAULT_INSTANCE_LIMITS } from '../../../../src/platform/config/instance-limits.js';
 import { createWebhookTestEventStore } from '@pertexo/core/triggers';
 import { WebhookTestEventService } from '../../../../src/webhooks/test-events/webhook-test-event.service.js';
@@ -249,7 +250,7 @@ async function createFixture(): Promise<FixtureResourceOwner> {
         otlpHeaders: {},
       },
       port: 3000,
-      redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379/0',
+      redisUrl: testStackSetting('REDIS_URL'),
     };
     const rateLimiter = resources.acquire(
       'rate limiter',

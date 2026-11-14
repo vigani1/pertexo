@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
@@ -97,7 +98,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         // The owner whose stored email changed needs the newly issued cookie for enforcement.
         await api.enforce(owner ? { ...f, owner: { ...signedIn, cookie } } : f);
         const appUrl = new URL(api.database().options.connectionString ?? '');
-        const base = new URL(process.env.DATABASE_URL ?? '');
+        const base = new URL(testStackSetting('DATABASE_URL'));
         base.pathname = appUrl.pathname;
         const pool = new Pool({ connectionString: base.toString(), max: 1 });
         try {

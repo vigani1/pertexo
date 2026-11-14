@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { describe, it, expect } from 'vitest';
 import { Pool } from 'pg';
@@ -192,8 +193,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
     const operator = createOperatorCommandStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(
-          process.env.DATABASE_MAINTENANCE_URL ??
-            'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+          testStackSetting('DATABASE_MAINTENANCE_URL'),
         ),
         max: 1,
       }),
@@ -1900,9 +1900,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
   });
 
   it('lets only the operator record commands and replays a fence dry run', async () => {
-    const operatorBaseUrl =
-      process.env.DATABASE_MAINTENANCE_URL ??
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+    const operatorBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
     const operator = createOperatorCommandStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(operatorBaseUrl),
@@ -2002,9 +2000,7 @@ describe('Coordinator node-attempt persistence invariants', () => {
   });
 
   it('preserves exact 100/101 due-work boundaries and dry-run nonmutation', async () => {
-    const operatorBaseUrl =
-      process.env.DATABASE_MAINTENANCE_URL ??
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+    const operatorBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
     const operator = createOperatorCommandStore(
       parseDatabaseConfig({
         connectionString: databaseUrl(operatorBaseUrl),

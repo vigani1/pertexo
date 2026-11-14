@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -18,14 +19,10 @@ describeIntegration('preview fixture setup failure', () => {
   it(
     'preserves a Redis acquisition failure without closing pools that were never created',
     async () => {
-      const redis = new Redis(
-        process.env.REDIS_URL ??
-          'redis://:pertexo-local-redis@localhost:6379/0',
-        {
-          lazyConnect: true,
-          maxRetriesPerRequest: 1,
-        },
-      );
+      const redis = new Redis(testStackSetting('REDIS_URL'), {
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+      });
       const marker = `pertexo:test:preview-setup-failure:${randomUUID()}`;
       try {
         await redis.connect();

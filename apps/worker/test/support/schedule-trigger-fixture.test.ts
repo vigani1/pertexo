@@ -30,9 +30,19 @@ function admission(fixture: ReturnType<typeof createScheduleTriggerFixture>) {
   return options.validateAuthoringGraph;
 }
 
+// These cases never connect; the fixture still needs a stack it was given.
+const unreachableStack = {
+  DATABASE_ADMIN_URL: 'postgresql://admin:secret@db.invalid/postgres',
+  DATABASE_MIGRATION_URL: 'postgresql://migration:secret@db.invalid/pertexo',
+  DATABASE_URL: 'postgresql://app:secret@db.invalid/pertexo',
+  DATABASE_MAINTENANCE_URL:
+    'postgresql://maintenance:secret@db.invalid/pertexo',
+  REDIS_URL: 'redis://redis.invalid:6379/0',
+};
+
 describe('Schedule fixture authoring admission ownership', () => {
   it('compiles the supported schedule and refuses a version outside its catalog', async () => {
-    const fixture = createScheduleTriggerFixture({});
+    const fixture = createScheduleTriggerFixture(unreachableStack);
     try {
       const compile =
         fixture.authoringOptions.databaseOptions.executableCompiler;
@@ -55,7 +65,7 @@ describe('Schedule fixture authoring admission ownership', () => {
   });
 
   it('rejects malformed expressions through the real restricted parser', async () => {
-    const fixture = createScheduleTriggerFixture({});
+    const fixture = createScheduleTriggerFixture(unreachableStack);
     try {
       const validate = admission(fixture);
       expect(validate).toBeTypeOf('function');
@@ -93,7 +103,7 @@ describe('Schedule fixture authoring admission ownership', () => {
   });
 
   it('preserves cancellation and closes the admission owner idempotently', async () => {
-    const fixture = createScheduleTriggerFixture({});
+    const fixture = createScheduleTriggerFixture(unreachableStack);
     const validate = admission(fixture);
     try {
       expect(validate).toBeTypeOf('function');
@@ -118,7 +128,7 @@ describe('Schedule fixture authoring admission ownership', () => {
   });
 
   it('does not acquire an admission worker after a never-started fixture closes', async () => {
-    const fixture = createScheduleTriggerFixture({});
+    const fixture = createScheduleTriggerFixture(unreachableStack);
     const validate = admission(fixture);
     const closing = fixture.close();
     try {

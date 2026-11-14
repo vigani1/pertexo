@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import {
   createDisposableDatabaseFixture,
   migrateDatabase,
@@ -9,9 +10,7 @@ import { expect, it } from 'vitest';
 import { createSystemMailDeliveryStore } from '../../src/mail/system-mail.store.js';
 
 it('claims sealed mail payloads from the baseline with narrow enqueue, settle and retention privileges', async () => {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     connectRoles: ['pertexo_app', 'pertexo_migration', 'pertexo_maintenance'],
@@ -29,8 +28,7 @@ it('claims sealed mail payloads from the baseline with narrow enqueue, settle an
       ownerRole: 'pertexo_owner',
       maintenanceRole: 'pertexo_maintenance',
       connectionString: fixture.databaseUrl(
-        process.env.DATABASE_MIGRATION_URL ??
-          'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
+        testStackSetting('DATABASE_MIGRATION_URL'),
       ),
     };
     await migrateDatabase(migration);
@@ -68,10 +66,7 @@ it('claims sealed mail payloads from the baseline with narrow enqueue, settle an
     ]);
     worker = createSystemMailDeliveryStore(
       parseDatabaseConfig({
-        connectionString: fixture.databaseUrl(
-          process.env.DATABASE_URL ??
-            'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-        ),
+        connectionString: fixture.databaseUrl(testStackSetting('DATABASE_URL')),
         max: 1,
       }),
     );

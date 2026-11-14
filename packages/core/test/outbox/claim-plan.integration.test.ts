@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
@@ -21,10 +22,7 @@ it('claims a fair bounded batch using the real indexed plan amid due, disabled a
     from generate_series(1,12000) n
   `),
     );
-  const adminUrl = new URL(
-    process.env.DATABASE_ADMIN_URL ??
-      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-  );
+  const adminUrl = new URL(testStackSetting('DATABASE_ADMIN_URL'));
   adminUrl.pathname = new URL(transport.dispatcherUrl).pathname;
   const pool = new Pool({ connectionString: adminUrl.toString(), max: 1 });
   const plans: string[] = [];

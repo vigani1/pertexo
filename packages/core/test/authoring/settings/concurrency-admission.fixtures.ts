@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool, type PoolClient } from 'pg';
@@ -107,10 +108,7 @@ export async function withDispatcher<T>(
   operation: (client: PoolClient) => Promise<T>,
   protocol = true,
 ) {
-  const url = new URL(
-    process.env.DATABASE_MAINTENANCE_URL ??
-      'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-  );
+  const url = new URL(testStackSetting('DATABASE_MAINTENANCE_URL'));
   url.pathname = new URL(migrationUrl).pathname;
   const pool = new Pool({ connectionString: url.toString(), max: 1 });
   const client = await pool.connect();
@@ -137,11 +135,7 @@ export async function withDispatcher<T>(
 
 /** Runs retention and returns how many idempotency records it removed. */
 export async function reapConcurrencyReceipts() {
-  const url = new URL(process.env.DATABASE_MAINTENANCE_URL ?? migrationUrl);
-  if (process.env.DATABASE_MAINTENANCE_URL === undefined) {
-    url.username = 'pertexo_maintenance';
-    url.password = 'pertexo-local-maintenance';
-  }
+  const url = new URL(testStackSetting('DATABASE_MAINTENANCE_URL'));
   url.pathname = new URL(migrationUrl).pathname;
   return (await enforceRetention(url.toString())).idempotency_records;
 }

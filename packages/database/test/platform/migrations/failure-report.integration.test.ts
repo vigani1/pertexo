@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -9,12 +10,8 @@ import { runMigrationCli } from '../../../src/migrate.js';
 import { migrateDatabase } from '../../../src/migrations.js';
 import { createDisposableDatabaseFixture } from '../../../src/testing/postgres/disposable-database.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
 const BROKEN_FILE = '0000_broken_on_purpose.sql';
 

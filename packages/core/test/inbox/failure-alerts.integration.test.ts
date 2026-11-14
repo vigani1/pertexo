@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/workspace-inbox-fold.store.js';
@@ -38,8 +39,7 @@ beforeAll(() => {
     undefined,
     parseDatabaseConfig({
       connectionString: namedDatabaseUrl(
-        process.env.DATABASE_MAINTENANCE_URL ??
-          'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
+        testStackSetting('DATABASE_MAINTENANCE_URL'),
         databaseName,
       ),
       max: 1,

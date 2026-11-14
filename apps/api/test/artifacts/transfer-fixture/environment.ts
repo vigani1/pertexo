@@ -1,15 +1,13 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 export const apiUrl = process.env.DATABASE_URL;
 
-export const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo';
+export const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
 export const ownerRole = process.env.POSTGRES_OWNER_USER ?? 'pertexo_owner';
 
-export const redisUrl =
-  process.env.REDIS_URL ?? 'redis://:pertexo-local-redis@127.0.0.1:6379/0';
+export const redisUrl = testStackSetting('REDIS_URL');
 
 export const emailDomain = 'artifact-transfer.integration.test';
 
@@ -34,7 +32,7 @@ export const artifactTransferIntegrationEnabled =
 
 export const artifactTransferDatabaseConfig = parseDatabaseConfig({
   connectionString:
-    apiUrl ?? 'postgresql://invalid:invalid@127.0.0.1:5432/invalid',
+    apiUrl ?? 'postgresql://invalid:invalid@unconfigured.invalid:5432/invalid',
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 5_000,
   max: 8,

@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -17,9 +18,7 @@ import type {
 } from '@pertexo/secrets/server';
 
 describe('privileged two-factor recovery with application grants', () => {
-  const adminUrl =
-    process.env.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
   const fixture = createDisposableDatabaseFixture({
     adminUrl,
     databaseName: `pertexo_test_factor_support_${randomUUID().replaceAll('-', '')}`,
@@ -34,8 +33,7 @@ describe('privileged two-factor recovery with application grants', () => {
     await fixture.create();
     await migrateDatabase({
       connectionString: fixture.databaseUrl(
-        process.env.DATABASE_MIGRATION_URL ??
-          'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/postgres',
+        testStackSetting('DATABASE_MIGRATION_URL'),
       ),
       appRole: 'pertexo_app',
       maintenanceRole: 'pertexo_maintenance',
@@ -48,20 +46,14 @@ describe('privileged two-factor recovery with application grants', () => {
     closers.push(() => admin.end());
     store = createTwoFactorRecoveryStore(
       parseDatabaseConfig({
-        connectionString: fixture.databaseUrl(
-          process.env.DATABASE_URL ??
-            'postgresql://pertexo_app:pertexo-local-app@localhost:5432/postgres',
-        ),
+        connectionString: fixture.databaseUrl(testStackSetting('DATABASE_URL')),
         max: 2,
       }),
     );
     closers.push(() => store.close());
     delivery = createSystemMailDeliveryStore(
       parseDatabaseConfig({
-        connectionString: fixture.databaseUrl(
-          process.env.DATABASE_URL ??
-            'postgresql://pertexo_app:pertexo-local-app@localhost:5432/postgres',
-        ),
+        connectionString: fixture.databaseUrl(testStackSetting('DATABASE_URL')),
         max: 1,
       }),
     );

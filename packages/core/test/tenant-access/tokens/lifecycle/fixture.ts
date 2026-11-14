@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import {
   createWorkspaceLifecycleStore,
   type WorkspaceLifecycleStore,
@@ -17,21 +18,13 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 
-export const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
-export const appUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+export const appUrl = testStackSetting('DATABASE_URL');
 
-const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
+const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
 
-export const maintenanceUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+export const maintenanceUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
 export const fixture = createDisposableDatabaseFixture({
   adminUrl,

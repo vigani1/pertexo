@@ -11,7 +11,7 @@ import {
   betterAuthIntegrationEnabled,
   useBetterAuthRealApi,
 } from '../../support/better-auth/real-api.support.js';
-import { apiBaseUrl } from '../../support/better-auth/api/environment.js';
+import { apiBaseUrl } from '../../support/better-auth/api/stack.js';
 import { createPreviewBoundary } from '../../node-testing/preview-boundary.fixture.js';
 
 describe.runIf(betterAuthIntegrationEnabled)(

@@ -6,7 +6,8 @@ import type { DatabaseConfig } from '@pertexo/database/testing';
 
 import type { ApiConfig } from '../../../../src/platform/config/api-config.js';
 
-import { redisUrl, origin, invitationKeys } from './environment.js';
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
+import { origin, invitationKeys } from './environment.js';
 import type { ApiFixtureOptions } from './contract.js';
 
 export function apiConfig(database: DatabaseConfig): ApiConfig {
@@ -37,7 +38,7 @@ export function apiConfig(database: DatabaseConfig): ApiConfig {
       serviceVersion: 'better-auth-integration',
     },
     port: 3000,
-    redisUrl,
+    redisUrl: testStackSetting('REDIS_URL'),
   };
 }
 
@@ -80,7 +81,7 @@ export function fixtureApiConfiguration(
       ? {}
       : { callbacks: options.callbacks }),
     identity,
-    redisUrl: options.redisUrl ?? redisUrl,
+    redisUrl: options.redisUrl ?? testStackSetting('REDIS_URL'),
     ...(options.artifacts === undefined
       ? {}
       : { artifacts: options.artifacts }),

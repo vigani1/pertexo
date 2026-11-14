@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { lockManualFixtureClient } from '../attempts/manual-start.js';
 import {
@@ -22,23 +23,18 @@ import type { ScheduleTriggerFixture } from './schedule-trigger.types.js';
 export function createScheduleTriggerFixture(
   environment: NodeJS.ProcessEnv = process.env,
 ): ScheduleTriggerFixture {
-  const adminUrl =
-    environment.DATABASE_ADMIN_URL ??
-    'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-  const migrationBaseUrl =
-    environment.DATABASE_MIGRATION_URL ??
-    'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-  const apiBaseUrl =
-    environment.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-  const workerBaseUrl =
-    environment.DATABASE_URL ??
-    'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-  const dispatcherBaseUrl =
-    environment.DATABASE_MAINTENANCE_URL ??
-    'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
-  const configuredRedisUrl =
-    environment.REDIS_URL ?? 'redis://:pertexo-local-redis@localhost:6379/0';
+  const adminUrl = testStackSetting('DATABASE_ADMIN_URL', environment);
+  const migrationBaseUrl = testStackSetting(
+    'DATABASE_MIGRATION_URL',
+    environment,
+  );
+  const apiBaseUrl = testStackSetting('DATABASE_URL', environment);
+  const workerBaseUrl = testStackSetting('DATABASE_URL', environment);
+  const dispatcherBaseUrl = testStackSetting(
+    'DATABASE_MAINTENANCE_URL',
+    environment,
+  );
+  const configuredRedisUrl = testStackSetting('REDIS_URL', environment);
   const runnerOwnsDatabase =
     environment.PERTEXO_Q11_RUNNER_OWNS_DATABASE === '1';
   const databaseName = runnerOwnsDatabase

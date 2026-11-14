@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
@@ -102,10 +103,7 @@ it('refuses a fresh baseline when the maintenance role lacks BYPASSRLS', async (
 
 it('rejects malformed workspace input at the app context writer and leaves the pooled session unscoped', async () => {
   await withDatabase(async ({ config }) => {
-    const url = new URL(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-    );
+    const url = new URL(testStackSetting('DATABASE_URL'));
     url.pathname = new URL(config.connectionString).pathname;
     const pool = new Pool({ connectionString: url.toString(), max: 1 });
     try {
@@ -129,10 +127,7 @@ it('rejects malformed workspace input at the app context writer and leaves the p
 
 it('keeps global maintenance claims and schedule retirement unavailable to the app login', async () => {
   await withDatabase(async ({ config }) => {
-    const url = new URL(
-      process.env.DATABASE_URL ??
-        'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-    );
+    const url = new URL(testStackSetting('DATABASE_URL'));
     url.pathname = new URL(config.connectionString).pathname;
     const app = new Pool({ connectionString: url.toString(), max: 1 });
     try {

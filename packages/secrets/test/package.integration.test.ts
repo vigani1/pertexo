@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../infrastructure/testing/test-stack.mjs';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -13,15 +14,9 @@ import {
 const execute = promisify(execFile);
 const packageDirectory = fileURLToPath(new URL('..', import.meta.url));
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const appUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
+const appUrl = testStackSetting('DATABASE_URL');
 const databaseName = `pertexo_test_secrets_process_${randomUUID().replaceAll('-', '')}`;
 const fixture = createDisposableDatabaseFixture({
   adminUrl,

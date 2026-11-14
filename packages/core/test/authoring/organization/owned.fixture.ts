@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import {
@@ -35,7 +36,7 @@ export const commandKey = () =>
 async function ownership() {
   const canonical = await verifyCuratedFixtureOwnership();
   const urls = {} as Record<keyof typeof roles, string>;
-  const reference = new URL(process.env.DATABASE_ADMIN_URL ?? '');
+  const reference = new URL(testStackSetting('DATABASE_ADMIN_URL'));
   for (const [name, role] of Object.entries(roles)) {
     const raw = process.env[name];
     if (raw === undefined) throw new Error(`Explicit ${name} is required`);

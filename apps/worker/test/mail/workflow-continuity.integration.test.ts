@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { createWorkspaceInvitationDeliveryStore } from '@pertexo/core/tenant-access';
 import { createWorkspaceInvitationDeliveryHandler } from '../../src/mail/invitation-delivery.js';
@@ -176,7 +177,7 @@ describe.runIf(process.env.WORKER_TRANSPORT_INTEGRATION === 'true')(
       const [database] = await activeStack.sql<{ name: string }>(
         'select current_database() name',
       );
-      const url = new URL(process.env.DATABASE_URL ?? '');
+      const url = new URL(testStackSetting('DATABASE_URL'));
       url.pathname = `/${database?.name ?? ''}`;
       const deliveryStore = createWorkspaceInvitationDeliveryStore({
         connectionString: url.toString(),

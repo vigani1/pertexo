@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import {
@@ -21,8 +22,8 @@ it.skipIf(!workflowLifecycleIntegrationEnabled)(
   'bounds list endpoint buffer work despite thousands of newer test runs',
   async () => {
     const session = await fixture.login('viewer');
-    const adminUrl = new URL(process.env.DATABASE_ADMIN_URL ?? '');
-    adminUrl.pathname = new URL(process.env.DATABASE_URL ?? '').pathname;
+    const adminUrl = new URL(testStackSetting('DATABASE_ADMIN_URL'));
+    adminUrl.pathname = new URL(testStackSetting('DATABASE_URL')).pathname;
     const pool = new Pool({
       connectionString: adminUrl.toString(),
       max: 1,

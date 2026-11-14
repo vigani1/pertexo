@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Client } from 'pg';
@@ -19,10 +20,7 @@ const SIGNAL = 'outbox_rows';
 const CAUGHT_UP = 'row_signal_caught_up';
 
 const adminUrl = (): string => {
-  const url = new URL(
-    process.env.DATABASE_ADMIN_URL ??
-      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-  );
+  const url = new URL(testStackSetting('DATABASE_ADMIN_URL'));
   url.pathname = new URL(transport.migrationUrl).pathname;
   return url.toString();
 };

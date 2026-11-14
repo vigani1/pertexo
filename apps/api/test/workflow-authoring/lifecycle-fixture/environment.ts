@@ -30,7 +30,7 @@ export const workflowLifecycleIntegrationEnabled =
 
 export const workflowLifecycleDatabaseConfig = parseDatabaseConfig({
   connectionString:
-    apiUrl ?? 'postgresql://invalid:invalid@127.0.0.1:5432/invalid',
+    apiUrl ?? 'postgresql://invalid:invalid@unconfigured.invalid:5432/invalid',
   connectionTimeoutMillis: 5_000,
   idleTimeoutMillis: 5_000,
   max: 8,

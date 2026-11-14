@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -16,18 +17,10 @@ const WORKSPACE_LIMIT = 3;
 const WORKFLOW_LIMIT = 2;
 const QUEUED_PER_WORKFLOW = 6;
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
-const migrationBaseUrl =
-  process.env.DATABASE_MIGRATION_URL ??
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo';
-const appBaseUrl =
-  process.env.DATABASE_URL ??
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo';
-const maintenanceBaseUrl =
-  process.env.DATABASE_MAINTENANCE_URL ??
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
+const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
+const appBaseUrl = testStackSetting('DATABASE_URL');
+const maintenanceBaseUrl = testStackSetting('DATABASE_MAINTENANCE_URL');
 
 it('keeps admitting a queued backlog in order and within limits after upgrading from v0.2.0 plus 0001', async () => {
   await withV020Plus0001(async ({ admin, upgrade, url }) => {

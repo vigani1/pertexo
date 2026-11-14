@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { createRetentionStore } from '@pertexo/core/lifecycle';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -67,9 +68,7 @@ it.each([false, true])(
     // Missing retained mail keys are warnings; startup must not gate unrelated work.
     await expect(
       verifySystemMailKeys(
-        storeConfig(
-          databaseUrl(process.env.DATABASE_MAINTENANCE_URL ?? apiBaseUrl),
-        ),
+        storeConfig(databaseUrl(testStackSetting('DATABASE_MAINTENANCE_URL'))),
         ['v2'],
         (version) => warnings.push(version),
       ),
@@ -186,9 +185,7 @@ it('keeps malformed and wrong-key payloads recoverable until their actual expiry
     );
     await expect(handler.runOnce()).resolves.toBe(0);
     const retention = createRetentionStore(
-      storeConfig(
-        databaseUrl(process.env.DATABASE_MAINTENANCE_URL ?? apiBaseUrl),
-      ),
+      storeConfig(databaseUrl(testStackSetting('DATABASE_MAINTENANCE_URL'))),
     );
     try {
       await retention.enforce();

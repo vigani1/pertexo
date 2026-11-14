@@ -1,11 +1,10 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { Pool } from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { readDurationSettingMillis } from '../../src/primitives.js';
 
-const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
 const pool = new Pool({ connectionString: adminUrl, max: 1 });
 

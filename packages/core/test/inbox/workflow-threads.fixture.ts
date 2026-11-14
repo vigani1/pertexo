@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { recordInboxFailureDay } from '../../src/inbox/failure-days.repository.js';
 import { createTestUser } from '../support/user.js';
@@ -19,9 +20,7 @@ import { createWorkspaceInboxStore } from '../../src/inbox/threads/workspace-inb
 
 type Kind = 'failed' | 'timed_out' | 'outcome_unknown';
 
-export const adminUrl =
-  process.env.DATABASE_ADMIN_URL ??
-  'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres';
+export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 
 export const fixture = createDisposableDatabaseFixture({
   adminUrl,
@@ -30,28 +29,16 @@ export const fixture = createDisposableDatabaseFixture({
   ownerRole: 'pertexo_owner',
 });
 
-const url = (variable: string, fallback: string) =>
-  fixture.databaseUrl(process.env[variable] ?? fallback);
+const url = (variable: string) =>
+  fixture.databaseUrl(testStackSetting(variable));
 
-const migrationUrl = url(
-  'DATABASE_MIGRATION_URL',
-  'postgresql://pertexo_migration:pertexo-local-migration@localhost:5432/pertexo',
-);
+const migrationUrl = url('DATABASE_MIGRATION_URL');
 
-export const apiUrl = url(
-  'DATABASE_URL',
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-);
+export const apiUrl = url('DATABASE_URL');
 
-const workerUrl = url(
-  'DATABASE_URL',
-  'postgresql://pertexo_app:pertexo-local-app@localhost:5432/pertexo',
-);
+const workerUrl = url('DATABASE_URL');
 
-export const maintenanceUrl = url(
-  'DATABASE_MAINTENANCE_URL',
-  'postgresql://pertexo_maintenance:pertexo-local-maintenance@localhost:5432/pertexo',
-);
+export const maintenanceUrl = url('DATABASE_MAINTENANCE_URL');
 
 let identity: ReturnType<typeof createIdentityWorkspaceStore>;
 

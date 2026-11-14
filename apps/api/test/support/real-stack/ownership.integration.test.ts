@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { betterAuthIntegrationEnabled } from '../better-auth/real-api.support.js';
@@ -17,8 +18,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
     });
     it('keeps queued work intact until the current helper releases its database', async () => {
       const second = createRealStack('capacity'),
-        control = new Redis(process.env.REDIS_URL ?? '');
-      const queueUrl = new URL(process.env.REDIS_URL ?? '');
+        control = new Redis(testStackSetting('REDIS_URL'));
+      const queueUrl = new URL(testStackSetting('REDIS_URL'));
       queueUrl.pathname = '/1';
       const queue = new Redis(queueUrl.toString()),
         monitor = await control.monitor();

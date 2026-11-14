@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 
 import { Client } from 'pg';
@@ -25,10 +26,7 @@ beforeEach(resetFixture);
 afterAll(afterAllFixture2);
 
 const adminUrl = () =>
-  disposableDatabase.databaseUrl(
-    process.env.DATABASE_ADMIN_URL ??
-      'postgresql://postgres:pertexo-local-superuser@localhost:5432/postgres',
-  );
+  disposableDatabase.databaseUrl(testStackSetting('DATABASE_ADMIN_URL'));
 
 async function asAdmin<Row extends Record<string, unknown>>(
   text: string,

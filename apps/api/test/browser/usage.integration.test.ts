@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -33,12 +34,12 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
     afterMigration: async (databaseUrl) => {
       const store = createWorkspaceInboxFoldStore(
         parseDatabaseConfig({
-          connectionString: databaseUrl(process.env.DATABASE_URL ?? ''),
+          connectionString: databaseUrl(testStackSetting('DATABASE_URL')),
         }),
         undefined,
         parseDatabaseConfig({
           connectionString: databaseUrl(
-            process.env.DATABASE_MAINTENANCE_URL ?? '',
+            testStackSetting('DATABASE_MAINTENANCE_URL'),
           ),
         }),
       );

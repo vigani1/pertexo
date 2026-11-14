@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -12,7 +13,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
     let proxy: FixtureRedisProxy;
     const options: { redisUrl?: string } = {};
     beforeAll(async () => {
-      proxy = await FixtureRedisProxy.create(process.env.REDIS_URL ?? '');
+      proxy = await FixtureRedisProxy.create(testStackSetting('REDIS_URL'));
       options.redisUrl = proxy.url;
     });
     const api = useBetterAuthRealApi('rate_headers', options);

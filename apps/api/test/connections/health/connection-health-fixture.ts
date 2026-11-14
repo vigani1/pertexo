@@ -1,3 +1,4 @@
+import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { fork, type ChildProcess } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
 import type { ServerResponse } from 'node:http';
@@ -221,7 +222,7 @@ export function useConnectionHealthFixture(
     });
     await phase(worker, 'namespace-ready');
   }, 30000);
-  const redis = new URL(process.env.REDIS_URL ?? 'redis://invalid:1/0');
+  const redis = new URL(testStackSetting('REDIS_URL'));
   redis.pathname = '/13';
   const api = useBetterAuthRealApi(suite, {
     ...(options.webOrigin === undefined
@@ -249,10 +250,12 @@ export function useConnectionHealthFixture(
     afterMigration: async (databaseUrl) => {
       const ready = phase(worker, 'worker-ready');
       worker.send({
-        workerUrl: databaseUrl(process.env.DATABASE_URL ?? ''),
-        dispatcherUrl: databaseUrl(process.env.DATABASE_MAINTENANCE_URL ?? ''),
-        apiUrl: databaseUrl(process.env.DATABASE_URL ?? ''),
-        migrationUrl: databaseUrl(process.env.DATABASE_MIGRATION_URL ?? ''),
+        workerUrl: databaseUrl(testStackSetting('DATABASE_URL')),
+        dispatcherUrl: databaseUrl(
+          testStackSetting('DATABASE_MAINTENANCE_URL'),
+        ),
+        apiUrl: databaseUrl(testStackSetting('DATABASE_URL')),
+        migrationUrl: databaseUrl(testStackSetting('DATABASE_MIGRATION_URL')),
         connectionMasterKey: master.toString('hex'),
         controlOrigin,
       });
