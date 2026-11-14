@@ -16,6 +16,7 @@ import {
   clearNestedScope,
   installNestedScope,
 } from './transactions/scope.js';
+import { isConnectionLost } from '../platform/query-errors.js';
 import { runTransaction } from './transactions/run.js';
 
 export {
@@ -151,6 +152,8 @@ async function withInstalledScope<T>(
   try {
     result = await operation(client);
   } catch (error: unknown) {
+    // A lost connection took the transaction and its scope with it.
+    if (isConnectionLost(error)) throw error;
     try {
       await clearNestedScope(client);
     } catch (cleanupError: unknown) {

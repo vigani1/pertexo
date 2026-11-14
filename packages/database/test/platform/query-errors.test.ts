@@ -2,6 +2,7 @@ import { DrizzleQueryError } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import {
+  isConnectionLost,
   isTransientDatabaseFailure,
   isUniqueConstraintFailure,
   postgresFailure,
@@ -119,5 +120,36 @@ describe('isTransientDatabaseFailure', () => {
   it('never retries an ordinary error or a thrown value', () => {
     expect(isTransientDatabaseFailure(new Error('stale lease'))).toBe(false);
     expect(isTransientDatabaseFailure('nope')).toBe(false);
+  });
+});
+
+describe('isConnectionLost', () => {
+  const coded = (code: string) => Object.assign(new Error(code), { code });
+
+  it.each([['57P01'], ['57P02'], ['57P03'], ['08006']])(
+    'knows the session ended at %s',
+    (code) => {
+      expect(isConnectionLost(coded(code))).toBe(true);
+    },
+  );
+
+  it('knows the socket closed under the client', () => {
+    expect(
+      isConnectionLost(new Error('Connection terminated unexpectedly')),
+    ).toBe(true);
+  });
+
+  // A cancelled or failed statement leaves a live transaction to roll back.
+  it.each([['57014'], ['23505'], ['40001']])(
+    'keeps %s a failure on a live connection',
+    (code) => {
+      expect(isConnectionLost(coded(code))).toBe(false);
+    },
+  );
+
+  it('sees through the query wrapper', () => {
+    expect(
+      isConnectionLost(new DrizzleQueryError('select 1', [], coded('57P01'))),
+    ).toBe(true);
   });
 });
