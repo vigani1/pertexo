@@ -12,6 +12,16 @@ import {
   type SchemaDocument,
 } from './schema-document.js';
 
+const NODE_DISPLAY_LIMITS = Object.freeze({
+  nameCharacters: 128,
+  descriptionCharacters: 512,
+  sideEffectCharacters: 512,
+});
+const INTEGRATION_OPERATION_LIMITS = Object.freeze({
+  providerKeyCharacters: 64,
+  operationKeyCharacters: 128,
+});
+
 export {
   boundedNodeJsonRecordSchema,
   boundedNodeJsonSchema,
@@ -65,9 +75,16 @@ export interface ReadOnlyConfigCondition {
 
 export const nodeDisplayMetadataSchema = z
   .object({
-    name: z.string().min(1).max(128),
-    description: z.string().min(1).max(512),
-    sideEffect: z.string().min(1).max(512).optional(),
+    name: z.string().min(1).max(NODE_DISPLAY_LIMITS.nameCharacters),
+    description: z
+      .string()
+      .min(1)
+      .max(NODE_DISPLAY_LIMITS.descriptionCharacters),
+    sideEffect: z
+      .string()
+      .min(1)
+      .max(NODE_DISPLAY_LIMITS.sideEffectCharacters)
+      .optional(),
   })
   .strict()
   .readonly();
@@ -139,12 +156,12 @@ const integrationOperationSchema = z
     providerKey: z
       .string()
       .min(1)
-      .max(64)
+      .max(INTEGRATION_OPERATION_LIMITS.providerKeyCharacters)
       .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u),
     operationKey: z
       .string()
       .min(1)
-      .max(128)
+      .max(INTEGRATION_OPERATION_LIMITS.operationKeyCharacters)
       .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u),
   })
   .strict();

@@ -28,7 +28,11 @@ export function unsupported(): never {
   throw new FileInputFailure({ reason: 'unsupported_spreadsheet' });
 }
 export function tooLarge(): never {
-  throw new FileInputFailure({ reason: 'spreadsheet_too_large' });
+  const { uncompressedBytes, entries, sheets, cells } = SPREADSHEET_LIMITS;
+  throw new FileInputFailure({
+    reason: 'spreadsheet_too_large',
+    limits: { uncompressedBytes, entries, sheets, cells },
+  });
 }
 
 /** Reads the zip directory only; nothing is inflated until an entry is read. */

@@ -43,6 +43,7 @@ export {
 export {
   ARTIFACT_INPUT_CAPABILITY,
   ARTIFACT_INPUT_MAX_BYTES,
+  ARTIFACT_REFERENCE_LIMITS,
   nodeArtifactReferenceSchema,
   type NodeArtifactReference,
 } from './artifacts/reference.js';

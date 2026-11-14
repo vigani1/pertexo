@@ -32,6 +32,10 @@ export const DATA_TABLE_LIMITS = Object.freeze({
   batchRows: 1_000,
   resultBytes: 1_048_576,
   keyBytes: 1024,
+  queryFilters: 10,
+  defaultQueryRows: 100,
+  // Table and column names; the two patterns below spell the same length.
+  identifierCharacters: 64,
 });
 
 const KEY_COLUMN_TYPES: readonly string[] = ['text', 'number', 'date'];
@@ -48,6 +52,7 @@ export const DATA_TABLE_JSON_LIMITS = Object.freeze({
   depth: 32,
   members: 8_000,
 });
+const ROW_KIBIBYTES = String(DATA_TABLE_JSON_LIMITS.bytes / 1_024);
 // A table's name is shown to people and finds the table for its steps, so
 // like n8n it may hold words with spaces; column names stay identifiers.
 const DATA_TABLE_NAME_PATTERN =
@@ -57,13 +62,13 @@ export const dataTableNameSchema = z
   .trim()
   .regex(
     new RegExp(DATA_TABLE_NAME_PATTERN, 'u'),
-    'Use letters, numbers, spaces, hyphens and underscores, starting with a letter or number (64 at most).',
+    `Use letters, numbers, spaces, hyphens and underscores, starting with a letter or number (${String(DATA_TABLE_LIMITS.identifierCharacters)} at most).`,
   );
 export const dataTableIdentifierSchema = z
   .string()
   .regex(
     /^[A-Za-z][A-Za-z0-9_]{0,63}$/u,
-    'Use letters, numbers and underscores, starting with a letter (64 at most).',
+    `Use letters, numbers and underscores, starting with a letter (${String(DATA_TABLE_LIMITS.identifierCharacters)} at most).`,
   );
 export const dataTableNewColumnSchema = z
   .object({
@@ -122,8 +127,7 @@ const boundedTableJson = z.unknown().superRefine((value, context) => {
   if (!checked.ok)
     context.addIssue({
       code: 'custom',
-      message:
-        'A row or filter value must fit 64 KiB and bounded JSON. Split large values.',
+      message: `A row or filter value must fit ${ROW_KIBIBYTES} KiB and bounded JSON. Split large values.`,
     });
 });
 export const dataTableValueSchema = boundedTableJson.pipe(
@@ -148,7 +152,10 @@ const dataTableFilterSchema = z
   .strict();
 export const dataTableQuerySchema = z
   .object({
-    filters: z.array(dataTableFilterSchema).max(10).default([]),
+    filters: z
+      .array(dataTableFilterSchema)
+      .max(DATA_TABLE_LIMITS.queryFilters)
+      .default([]),
     sort: z
       .object({
         column: dataTableIdentifierSchema,
@@ -161,7 +168,7 @@ export const dataTableQuerySchema = z
       .int()
       .min(1)
       .max(DATA_TABLE_LIMITS.batchRows)
-      .default(100),
+      .default(DATA_TABLE_LIMITS.defaultQueryRows),
     offset: z.number().int().min(0).max(DATA_TABLE_LIMITS.maxRows).default(0),
   })
   .strict();

@@ -33,6 +33,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/observability',
   'packages/secrets',
   'packages/workflow-model',
+  'packages/node-sdk',
 ]);
 
 /**
@@ -85,6 +86,15 @@ export const NOT_LIMITS = Object.freeze({
     'the unfinished escape kept past a credential’s length at a chunk boundary',
   'packages/secrets/src/outbound-http/redaction/sensitive-representations.ts: *':
     'credential spellings: hex radix and width, base64 padding, a query prefix',
+  'packages/node-sdk/src/artifacts/pages/bundle.ts: 2':
+    'JSON text: an empty page is its two brackets',
+  'packages/node-sdk/src/artifacts/pages/encode-record.ts: 2':
+    'JSON text: a page’s two brackets',
+  'packages/node-sdk/src/artifacts/pages/write.ts: 2':
+    'JSON text: a page’s two brackets',
+  'packages/node-sdk/src/code/framing.ts: 10': 'the newline byte ends a frame',
+  'packages/node-sdk/src/values/stored-json.ts: *':
+    'JSON string encoding: quotes, escape widths, UTF-8 widths and surrogates',
   'packages/workflow-model/src/authoring/portability/portable-manifest.ts: 16':
     'a digest byte printed in hex',
   'packages/workflow-model/src/authoring/portability/portable-manifest.ts: 2':

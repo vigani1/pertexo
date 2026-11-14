@@ -6,6 +6,7 @@ import {
 import type { JsonValue } from '../execution/node-execution.types.js';
 import {
   CODE_LIMITS,
+  CODE_SETTING_BOUNDS,
   codeSettingsSchema,
   codeLanguageSchema,
   type CodeLanguage,
@@ -69,7 +70,12 @@ export const codeTaskSchema = z
         (value) =>
           new TextEncoder().encode(value).byteLength <= CODE_LIMITS.sourceBytes,
       ),
-    timeoutSeconds: z.number().int().min(1).max(300),
+    // A task never runs longer than the runner's own ceiling.
+    timeoutSeconds: z
+      .number()
+      .int()
+      .min(1)
+      .max(CODE_SETTING_BOUNDS.maximumSeconds),
     input: boundedNodeJsonSchema,
     variables: boundedNodeJsonRecordSchema,
   })

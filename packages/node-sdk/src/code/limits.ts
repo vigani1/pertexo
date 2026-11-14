@@ -11,6 +11,34 @@ export const CODE_LIMITS = Object.freeze({
   resultBytes: 2 * NODE_JSON_LIMITS.bytes,
   defaultTimeoutSeconds: 5,
 });
+
+/** What an administrator may set for code steps. */
+export const CODE_SETTING_BOUNDS = Object.freeze({
+  // npm's longest package name.
+  packageNameCharacters: 214,
+  minimumMemoryMiB: 32,
+  maximumMemoryMiB: 1_024,
+  maximumSeconds: 300,
+  maximumConcurrency: 16,
+  packages: 32,
+});
+
+// Container sizing around the settings: the manager's base and per-slot memory,
+// each task's memory beyond its heap, and process and CPU allowances.
+const CODE_CONTAINER_SIZING = Object.freeze({
+  managerBaseMiB: 192,
+  managerPerSlotMiB: 16,
+  taskOverheadMiB: 768,
+  managerHeapBaseMiB: 64,
+  managerHeapPerSlotMiB: 8,
+  taskRssOverheadMiB: 64,
+  maximumCpus: 2,
+  basePids: 16,
+  pidsPerSlot: 16,
+});
+
+// Unix socket paths are bounded by sockaddr_un; 100 bytes fits every platform.
+const CODE_RUNNER_SOCKET_PATH_BYTES = 100;
 export const CODE_ALLOWED_BUILTINS = Object.freeze([
   'assert',
   'buffer',
@@ -55,23 +83,38 @@ export const CODE_PYTHON_MODULES = Object.freeze([
 ]);
 const packageName = z
   .string()
-  .max(214)
+  .max(CODE_SETTING_BOUNDS.packageNameCharacters)
   .regex(/^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u);
 export const codeSettingsSchema = z
   .object({
     enabled: z.boolean(),
-    memoryMiB: z.number().int().min(32).max(1_024),
-    maximumSeconds: z.number().int().min(1).max(300),
-    concurrency: z.number().int().min(1).max(16),
-    extraPackages: z.array(packageName).max(32).readonly(),
+    memoryMiB: z
+      .number()
+      .int()
+      .min(CODE_SETTING_BOUNDS.minimumMemoryMiB)
+      .max(CODE_SETTING_BOUNDS.maximumMemoryMiB),
+    maximumSeconds: z
+      .number()
+      .int()
+      .min(1)
+      .max(CODE_SETTING_BOUNDS.maximumSeconds),
+    concurrency: z
+      .number()
+      .int()
+      .min(1)
+      .max(CODE_SETTING_BOUNDS.maximumConcurrency),
+    extraPackages: z
+      .array(packageName)
+      .max(CODE_SETTING_BOUNDS.packages)
+      .readonly(),
     pythonPackages: z
       .array(
         z
           .string()
-          .max(214)
+          .max(CODE_SETTING_BOUNDS.packageNameCharacters)
           .regex(/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*$/u),
       )
-      .max(32)
+      .max(CODE_SETTING_BOUNDS.packages)
       .readonly()
       .default([]),
   })
@@ -141,14 +184,18 @@ export function parseCodeSettings(
 }
 
 export function codeContainerLimits(settings: CodeSettings) {
-  const managerMiB = 192 + settings.concurrency * 16;
-  const taskMiB = settings.memoryMiB + 768;
+  const sizing = CODE_CONTAINER_SIZING;
+  const managerMiB =
+    sizing.managerBaseMiB + settings.concurrency * sizing.managerPerSlotMiB;
+  const taskMiB = settings.memoryMiB + sizing.taskOverheadMiB;
   return Object.freeze({
     memoryMiB: managerMiB + (settings.concurrency + 1) * taskMiB,
-    managerHeapMiB: 64 + settings.concurrency * 8,
-    taskRssMiB: settings.memoryMiB + 64,
-    cpus: Math.min(settings.concurrency + 1, 2),
-    pids: 16 + settings.concurrency * 16,
+    managerHeapMiB:
+      sizing.managerHeapBaseMiB +
+      settings.concurrency * sizing.managerHeapPerSlotMiB,
+    taskRssMiB: settings.memoryMiB + sizing.taskRssOverheadMiB,
+    cpus: Math.min(settings.concurrency + 1, sizing.maximumCpus),
+    pids: sizing.basePids + settings.concurrency * sizing.pidsPerSlot,
   });
 }
 
@@ -170,10 +217,10 @@ export function codeRunnerSocketPath({
   if (
     !path.startsWith('/') ||
     path.includes('\0') ||
-    new TextEncoder().encode(path).byteLength > 100
+    new TextEncoder().encode(path).byteLength > CODE_RUNNER_SOCKET_PATH_BYTES
   )
     throw new Error(
-      'CODE_RUNNER_SOCKET must be an absolute Unix socket path up to 100 bytes',
+      `CODE_RUNNER_SOCKET must be an absolute Unix socket path up to ${String(CODE_RUNNER_SOCKET_PATH_BYTES)} bytes`,
     );
   return path;
 }
