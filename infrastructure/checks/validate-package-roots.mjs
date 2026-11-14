@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 import {
   directoryEntries,
+  entriesAddedSince,
   listWorkspaces,
   report,
   repositoryRoot,
@@ -17,12 +18,12 @@ const ENTRY_FILES = new Set([
   'main.tsx',
   'testing.ts',
   'startup.ts',
-  'schema.ts',
-  'primitives.ts',
-  'platform.ts',
-  'public.ts',
   'config.ts',
 ]);
+/** Entries only one workspace has (the database's doors for core and secrets). */
+const WORKSPACE_ENTRY_FILES = Object.freeze({
+  'packages/database': new Set(['schema.ts', 'primitives.ts', 'platform.ts']),
+});
 
 /** The named core concepts a workspace keeps beside its entries, each with a reason. */
 export const ROOT_CONCEPTS = Object.freeze({
@@ -57,6 +58,20 @@ export const ROOT_CONCEPTS = Object.freeze({
   },
 });
 
+// PENDING_ROOTS as it stood when the check began; it stays within this list.
+const ORIGINAL_PENDING_ROOTS = Object.freeze([
+  'apps/api',
+  'apps/cli',
+  'apps/code-runner',
+  'apps/ops',
+  'apps/worker',
+  'packages/database',
+  'packages/integrations',
+  'packages/nodes-core',
+  'packages/workflow-engine',
+  'packages/workflow-model',
+]);
+
 /** Workspaces whose roots haven't been reworked yet; this list may only shrink. */
 export const PENDING_ROOTS = Object.freeze([
   'apps/api',
@@ -74,8 +89,12 @@ export const PENDING_ROOTS = Object.freeze([
 /** Findings for one workspace's direct `src` files. */
 export function validatePackageRoot(workspace, files) {
   const concepts = ROOT_CONCEPTS[workspace] ?? {};
+  const ownEntries = WORKSPACE_ENTRY_FILES[workspace] ?? new Set();
   const loose = files.filter(
-    (file) => !ENTRY_FILES.has(file) && !Object.hasOwn(concepts, file),
+    (file) =>
+      !ENTRY_FILES.has(file) &&
+      !ownEntries.has(file) &&
+      !Object.hasOwn(concepts, file),
   );
   const findings = [];
   if (PENDING_ROOTS.includes(workspace)) {
@@ -97,8 +116,13 @@ export function validatePackageRoot(workspace, files) {
   return findings;
 }
 
+/** A pending list that gained an entry since the check began. */
+export function validatePendingRoots(pending = PENDING_ROOTS) {
+  return entriesAddedSince('PENDING_ROOTS', pending, ORIGINAL_PENDING_ROOTS);
+}
+
 export async function inspectPackageRoots(root = repositoryRoot) {
-  const findings = [];
+  const findings = [...validatePendingRoots()];
   for (const workspace of await listWorkspaces(root)) {
     const entries = await directoryEntries(path.join(root, workspace, 'src'));
     const files = entries

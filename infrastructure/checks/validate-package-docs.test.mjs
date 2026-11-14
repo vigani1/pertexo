@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   PENDING_DOCS,
+  validatePendingDocs,
   inspectPackageDocs,
   validatePackageDoc,
 } from './validate-package-docs.mjs';
@@ -55,4 +56,12 @@ test('reads each workspace’s AGENTS.md from disk', async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('refuses a workspace added to the pending list', () => {
+  assert.deepEqual(validatePendingDocs(PENDING_DOCS), []);
+  assert.match(
+    validatePendingDocs([...PENDING_DOCS, 'packages/queue']).join(),
+    /packages\/queue: PENDING_DOCS may only shrink/u,
+  );
 });

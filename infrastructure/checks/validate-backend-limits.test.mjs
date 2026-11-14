@@ -9,6 +9,7 @@ import {
   NOT_LIMITS,
   findWrittenLimits,
   inspectBackendLimits,
+  validateLimitsChecked,
   validateBackendLimits,
 } from './validate-backend-limits.mjs';
 
@@ -84,4 +85,35 @@ test('scans the reworked packages from disk', async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('finds a limit written into text', () => {
+  assert.deepEqual(find("const hint = 'use 100 to 30000 milliseconds';"), [
+    '"30000 milliseconds"',
+  ]);
+  assert.deepEqual(find('const hint = `a ${kind} key of 32-byte length`;'), [
+    '"32-byte"',
+  ]);
+  assert.deepEqual(find("const hint = 'runs stop after five minutes';"), [
+    '"five minutes"',
+  ]);
+  assert.deepEqual(
+    find('const hint = `at most ${String(MAX)} characters`;'),
+    [],
+  );
+});
+
+test('names a limit only at module level, not in a function body', () => {
+  assert.deepEqual(
+    find('export function wait() { const DELAY_MS = 2_500; return DELAY_MS; }'),
+    ['2500'],
+  );
+});
+
+test('refuses dropping a reworked package from the check', () => {
+  assert.deepEqual(validateLimitsChecked(LIMITS_CHECKED), []);
+  assert.match(
+    validateLimitsChecked(LIMITS_CHECKED.slice(1)).join(),
+    /LIMITS_CHECKED may only grow/u,
+  );
 });

@@ -46,6 +46,19 @@ export async function directoryEntries(directory) {
   }
 }
 
+/**
+ * A pending list may only shrink: an entry missing from the list as it stood
+ * when the check began is refused, so the list can't quietly grow.
+ */
+export function entriesAddedSince(name, list, original) {
+  return list
+    .filter((entry) => !original.includes(entry))
+    .map(
+      (entry) =>
+        `${entry}: ${name} may only shrink; fix this instead of listing it.`,
+    );
+}
+
 /** Print a check's findings and set the exit code. */
 export function report(findings, success) {
   if (findings.length === 0) {
