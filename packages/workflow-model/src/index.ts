@@ -92,7 +92,7 @@ export { remapCallbackReferences } from './flow/callbacks/references.js';
 export {
   inspectControlNodeConfig,
   type ControlNodeConfig,
-} from './flow/control-nodes/config.js';
+} from './flow/control-nodes/control-node-config.js';
 export {
   mergeConfigSchema,
   type MergeConfig,
@@ -135,10 +135,10 @@ export {
   type ApprovalConfig,
 } from './flow/pending-tasks/approval.js';
 export {
-  PENDING_TASK_LIMITS,
   taskAudienceSchema,
   type TaskAudience,
 } from './flow/pending-tasks/audience.js';
+export { PENDING_TASK_LIMITS } from './flow/pending-tasks/pending-task-limits.js';
 export {
   taskDetailsSchema,
   taskContextSchema,

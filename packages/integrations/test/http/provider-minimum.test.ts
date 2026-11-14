@@ -5,7 +5,7 @@ import {
   SlackSendMessageExecutorError,
 } from '../../src/server.js';
 import { providerFailure } from '../../src/providers/provider.errors.js';
-import { HttpOAuth2Failure } from '../../src/http/request/execution/oauth2.errors.js';
+import { HttpOAuth2Failure } from '../../src/http/request/execution/oauth2-renewal.errors.js';
 import { OAuth2TokenFailure } from '../../src/oauth2/oauth2.errors.js';
 
 beforeEach(() => {

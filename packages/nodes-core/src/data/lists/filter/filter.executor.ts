@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/node-sdk/server';
 import { CORE_FILTER_EXECUTOR } from './filter.definition.js';
 import type { CoreFilterConfig, CoreFilterInput } from './filter.schemas.js';
-import { filterItems } from '../semantics/filter.js';
+import { filterItems } from './semantics.js';
 export const coreFilterExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_FILTER_EXECUTOR,
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>

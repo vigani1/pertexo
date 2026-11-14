@@ -1,4 +1,4 @@
-import { PROVIDER_RETRY_FAILURE } from '../../../providers/retry-after.errors.js';
+import { PROVIDER_RETRY_FAILURE } from '../../retry-after.errors.js';
 import type { OAuth2StepFailureCode } from '@pertexo/contracts';
 import {
   MAXIMUM_RETRY_DELAY_MILLIS,

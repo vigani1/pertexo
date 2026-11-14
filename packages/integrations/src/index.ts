@@ -72,7 +72,7 @@ export {
   sanitizeAttachmentFilename,
 } from './email/attachments/filename.js';
 
-export { PROVIDER_RETRY_FAILURE } from './providers/retry-after.errors.js';
+export { PROVIDER_RETRY_FAILURE } from './http/retry-after.errors.js';
 
 export { SLACK_REJECTIONS } from './slack/rejection-policy.js';
 

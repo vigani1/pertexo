@@ -1,9 +1,6 @@
-import type {
-  CoreFilterConfig,
-  CoreFilterInput,
-} from '../filter/filter.schemas.js';
+import type { CoreFilterConfig, CoreFilterInput } from './filter.schemas.js';
 import type { JsonValue } from '@pertexo/workflow-model';
-import { invalidInput, projectItems } from './selection.js';
+import { invalidInput, projectItems } from '../selection.js';
 
 function matches(
   value: JsonValue | undefined,

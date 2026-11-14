@@ -1,8 +1,5 @@
-import type {
-  CoreBatchConfig,
-  CoreBatchInput,
-} from '../batch/batch.schemas.js';
-import { checkCanceled } from './selection.js';
+import type { CoreBatchConfig, CoreBatchInput } from './batch.schemas.js';
+import { checkCanceled } from '../selection.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 export function batchItems(
   config: CoreBatchConfig,

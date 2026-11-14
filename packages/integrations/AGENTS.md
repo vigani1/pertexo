@@ -21,7 +21,8 @@ reads the environment.
 ## Layout
 
 - `src/index.ts`, `src/server.ts`: the entries.
-- `http/`: content types, the outcome policy, `Retry-After` parsing, and the
+- `http/`: content types, the outcome policy, `Retry-After` parsing and its
+  failures (`retry-after.ts`, `retry-after.errors.ts`), and the
   HTTP request step (`request/`, with `execution/`, `multipart/` and
   `pagination/`).
 - `slack/`: the Slack client, connection health, rejection policy and the
@@ -31,7 +32,7 @@ reads the environment.
 - `oauth2/`: consent, endpoints, settings, the token endpoint and
   `OAuth2TokenFailure`.
 - `providers/`: the provider HTTP client interface, provider errors,
-  `Retry-After` failures, the dispatch fence, `withProviderCredential`
+  the dispatch fence, `withProviderCredential`
   (`provider-credential.ts`) and `registerProviderExecutor` with its
   `ExecutorTelemetry` (`provider-executor.ts`).
 - `webhooks/`: inbound webhook signature verification.

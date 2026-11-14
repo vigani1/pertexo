@@ -1,6 +1,6 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
-import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/semantics.schemas.js';
+import { COLLECTION_MAX_ITEMS } from '../../lists/collection.schemas.js';
 import { refuseUtility } from '../utility-result.js';
 import type { TextConfig, TextInput } from './text.schemas.js';
 

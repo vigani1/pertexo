@@ -1,7 +1,8 @@
 import { ADMINISTRATIVE_ROLES } from '@pertexo/policy';
 import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
-import { PENDING_TASK_LIMITS, taskAudienceSchema } from './audience.js';
+import { taskAudienceSchema } from './audience.js';
+import { PENDING_TASK_LIMITS } from './pending-task-limits.js';
 
 /** What happens when nobody responds before the task expires. */
 export const taskExpiryChoiceSchema = z.enum(['fail', 'continue']);

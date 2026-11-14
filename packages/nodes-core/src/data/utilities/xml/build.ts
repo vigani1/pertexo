@@ -1,5 +1,5 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { COLLECTION_MAX_ITEMS } from '../../lists/semantics/semantics.schemas.js';
+import { COLLECTION_MAX_ITEMS } from '../../lists/collection.schemas.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import XMLBuilder from 'fast-xml-builder';
 import { parseBoundedXml } from './parse.js';

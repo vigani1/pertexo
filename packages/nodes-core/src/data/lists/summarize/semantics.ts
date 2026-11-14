@@ -13,8 +13,8 @@ import {
 import type {
   CoreSummarizeConfig,
   CoreSummarizeInput,
-} from '../summarize/summarize.schemas.js';
-import { invalidInput, projectItems } from './selection.js';
+} from './summarize.schemas.js';
+import { invalidInput, projectItems } from '../selection.js';
 
 interface Group {
   key: string | number | boolean | null;

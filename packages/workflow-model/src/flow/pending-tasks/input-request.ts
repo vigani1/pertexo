@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { PENDING_TASK_LIMITS, storedTaskBytes } from './audience.js';
+import { PENDING_TASK_LIMITS, storedTaskBytes } from './pending-task-limits.js';
 import { formConfigSchema } from '../../triggers/forms/fields.js';
 import { approvalConfigSchema } from './approval.js';
 import { formatByteSize } from '@pertexo/node-sdk';

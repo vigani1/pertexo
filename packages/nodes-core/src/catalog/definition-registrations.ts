@@ -1,9 +1,9 @@
+import { CORE_RUN_VALUES_MANIFEST } from '../data/run-values/run-values.definition.js';
 import {
-  CORE_RUN_VALUES_MANIFEST,
   CORE_RUN_VALUES_CONFIG_SCHEMA,
   CORE_RUN_VALUES_INPUT_SCHEMA,
   CORE_RUN_VALUES_OUTPUT_SCHEMA,
-} from '../data/run-values/run-values.definition.js';
+} from '../data/run-values/run-values.schemas.js';
 import { CORE_CREATE_FILE_MANIFEST } from '../data/create-file/create-file.definition.js';
 import {
   CORE_CREATE_FILE_CONFIG_SCHEMA,

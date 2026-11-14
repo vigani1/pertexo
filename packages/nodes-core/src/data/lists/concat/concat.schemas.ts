@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   collectionItemsSchema,
   collectionCountSchema,
-} from '../semantics/semantics.schemas.js';
+} from '../collection.schemas.js';
 export const CORE_CONCAT_CONFIG_SCHEMA = z.object({}).strict();
 export const CORE_CONCAT_INPUT_SCHEMA = z
   .object({ items: collectionItemsSchema, otherItems: collectionItemsSchema })

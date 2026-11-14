@@ -1,6 +1,6 @@
 import type { JsonValue } from '@pertexo/workflow-model';
-import type { CoreSortConfig, CoreSortInput } from '../sort/sort.schemas.js';
-import { checkCanceled, invalidInput, projectItems } from './selection.js';
+import type { CoreSortConfig, CoreSortInput } from './sort.schemas.js';
+import { checkCanceled, invalidInput, projectItems } from '../selection.js';
 
 interface SortEntry {
   item: JsonValue;

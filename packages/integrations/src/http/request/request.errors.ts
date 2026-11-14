@@ -1,4 +1,4 @@
-import { PROVIDER_RETRY_FAILURE } from '../../providers/retry-after.errors.js';
+import { PROVIDER_RETRY_FAILURE } from '../retry-after.errors.js';
 import { HTTP_RESPONSE_FAILURES } from './response.errors.js';
 import {
   NodeExecutorFailure,

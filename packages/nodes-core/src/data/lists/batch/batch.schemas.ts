@@ -3,7 +3,7 @@ import {
   collectionItemsSchema,
   collectionCountSchema,
   COLLECTION_MAX_ITEMS,
-} from '../semantics/semantics.schemas.js';
+} from '../collection.schemas.js';
 export const CORE_BATCH_CONFIG_SCHEMA = z
   .object({
     size: z.number().int().min(1).max(COLLECTION_MAX_ITEMS).meta({

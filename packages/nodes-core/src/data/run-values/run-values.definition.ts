@@ -1,18 +1,14 @@
-import {
-  generateSchemaDocument,
-  saveRunValuesInputSchema,
-  saveRunValuesOutputSchema,
-  type NodeManifest,
-} from '@pertexo/node-sdk';
-import { z } from 'zod';
+import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import { CORE_BOUNDED_JSON_POLICY } from '../../catalog/core-policies.js';
+import {
+  CORE_RUN_VALUES_CONFIG_SCHEMA,
+  CORE_RUN_VALUES_INPUT_SCHEMA,
+  CORE_RUN_VALUES_OUTPUT_SCHEMA,
+} from './run-values.schemas.js';
 export const CORE_RUN_VALUES_DEFINITION = Object.freeze({
   key: 'core.run_values',
   version: 1,
 });
-export const CORE_RUN_VALUES_CONFIG_SCHEMA = z.object({}).strict();
-export const CORE_RUN_VALUES_INPUT_SCHEMA = saveRunValuesInputSchema;
-export const CORE_RUN_VALUES_OUTPUT_SCHEMA = saveRunValuesOutputSchema;
 export const CORE_RUN_VALUES_MANIFEST: NodeManifest = Object.freeze({
   definition: CORE_RUN_VALUES_DEFINITION,
   family: 'transform',

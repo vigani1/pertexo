@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/node-sdk/server';
 import { CORE_SORT_EXECUTOR } from './sort.definition.js';
 import type { CoreSortConfig, CoreSortInput } from './sort.schemas.js';
-import { sortItems } from '../semantics/sort.js';
+import { sortItems } from './semantics.js';
 export const coreSortExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_SORT_EXECUTOR,
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>

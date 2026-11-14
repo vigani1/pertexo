@@ -4,7 +4,7 @@ import type {
 } from '@pertexo/node-sdk/server';
 import { CORE_CONCAT_EXECUTOR } from './concat.definition.js';
 import type { CoreConcatConfig, CoreConcatInput } from './concat.schemas.js';
-import { concatenateItems } from '../semantics/concat.js';
+import { concatenateItems } from './semantics.js';
 export const coreConcatExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_CONCAT_EXECUTOR,
   execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>

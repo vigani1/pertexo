@@ -93,6 +93,6 @@ export { EMAIL_ATTACHMENT_ERROR_CODES } from './email/attachments/attachment.err
 
 export { HTTP_PAGINATION_FAILURES } from './http/request/pagination/pagination.errors.js';
 
-export { HTTP_OAUTH2_FAILURES } from './http/request/execution/oauth2.errors.js';
+export { HTTP_OAUTH2_FAILURES } from './http/request/execution/oauth2-renewal.errors.js';
 
 export type { SmtpEmailClient } from './email/smtp.js';
