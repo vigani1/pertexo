@@ -1,5 +1,5 @@
-export { parseArtifactStoreConfig } from './config/artifact-store.config.js';
-export type { ArtifactStoreConfig } from './config/artifact-store.config.js';
+export { parseArtifactStoreConfig } from './config.js';
+export type { ArtifactStoreConfig } from './config.js';
 export {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
@@ -11,4 +11,4 @@ export type {
   PutArtifactRequest,
   DirectUpload,
 } from './artifact.store.js';
-export type { ArtifactDownloadCapability } from './download.js';
+export type { ArtifactDownloadCapability } from './storage/sign-download.js';

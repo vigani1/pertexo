@@ -7,7 +7,10 @@ import type { Readable } from 'node:stream';
 
 import { z } from 'zod';
 
-import { artifactIdentitySchema, type ArtifactIdentity } from '../identity.js';
+import {
+  artifactIdentitySchema,
+  type ArtifactIdentity,
+} from '../artifact-identity.js';
 import { ArtifactIntegrityError } from '../artifact-store.errors.js';
 
 import type {
@@ -144,4 +147,25 @@ function isDestroyable(value: unknown): value is Destroyable {
   }
   const candidate = value as { readonly destroy?: unknown };
   return typeof candidate.destroy === 'function';
+}
+
+type ComparableArtifactMetadata = Readonly<{
+  artifactId: string;
+  workspaceId: string;
+  byteLength: number;
+  mediaType: string;
+  sha256: string;
+}>;
+
+export function artifactMetadataMatches(
+  actual: ComparableArtifactMetadata,
+  expected: ComparableArtifactMetadata,
+): boolean {
+  return (
+    actual.artifactId === expected.artifactId &&
+    actual.workspaceId === expected.workspaceId &&
+    actual.byteLength === expected.byteLength &&
+    actual.mediaType === expected.mediaType &&
+    actual.sha256 === expected.sha256
+  );
 }

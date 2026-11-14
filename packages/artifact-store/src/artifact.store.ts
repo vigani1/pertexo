@@ -2,7 +2,7 @@ import { S3Client } from '@aws-sdk/client-s3';
 
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-import type { ArtifactStoreConfig } from './config/artifact-store.config.js';
+import type { ArtifactStoreConfig } from './config.js';
 import {
   createProductionObjectStoreObserver,
   ObservedS3Client,
@@ -14,7 +14,7 @@ import {
   createArtifactDownloadPresigner,
   type ArtifactDownloadCapability,
   type GetObjectPresigner,
-} from './download.js';
+} from './storage/sign-download.js';
 
 import type {
   S3ClientLike,
@@ -30,7 +30,7 @@ export {
   ArtifactNotFoundError,
   ArtifactStoreClosedError,
 } from './artifact-store.errors.js';
-export type { ArtifactIdentity } from './identity.js';
+export type { ArtifactIdentity } from './artifact-identity.js';
 export {
   type S3ClientLike,
   type ArtifactMetadata,

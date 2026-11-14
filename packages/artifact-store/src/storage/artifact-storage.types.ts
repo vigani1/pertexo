@@ -2,7 +2,7 @@ import type { PutObjectCommand } from '@aws-sdk/client-s3';
 
 import type { Readable } from 'node:stream';
 
-import type { ArtifactIdentity } from '../identity.js';
+import type { ArtifactIdentity } from '../artifact-identity.js';
 
 import type { ObjectStoreS3Client } from '../s3/s3-client.js';
 

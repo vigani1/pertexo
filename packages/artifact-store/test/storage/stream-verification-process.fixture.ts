@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { getEventListeners } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { setImmediate } from 'node:timers/promises';
-import { verifiedBody } from '../../src/stream-verification.js';
+import { verifiedBody } from '../../src/storage/stream-verification.js';
 
 const mode = process.argv[2];
 const controller = new AbortController();

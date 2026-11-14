@@ -2,14 +2,17 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import type { GetObjectCommandOutput } from '@aws-sdk/client-s3';
 
 import { Readable } from 'node:stream';
-import { verifiedBody } from '../stream-verification.js';
-import { artifactMetadataMatches } from '../metadata.js';
-import { artifactStorageKey, type ArtifactIdentity } from '../identity.js';
+import { verifiedBody } from './stream-verification.js';
+import { artifactMetadataMatches } from './metadata.js';
+import {
+  artifactStorageKey,
+  type ArtifactIdentity,
+} from '../artifact-identity.js';
 import {
   ArtifactIntegrityError,
   ArtifactNotFoundError,
 } from '../artifact-store.errors.js';
-import type { ArtifactStoreConfig } from '../config/artifact-store.config.js';
+import type { ArtifactStoreConfig } from '../config.js';
 
 import { sendS3 } from '../s3/s3-client.js';
 

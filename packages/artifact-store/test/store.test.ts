@@ -13,7 +13,7 @@ import {
   createStore,
   readAll,
   MemoryS3Client,
-} from './store/fixture.js';
+} from './store.fixture.js';
 import {
   DeleteObjectCommand,
   DeleteObjectsCommand,

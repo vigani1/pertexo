@@ -10,11 +10,11 @@ import {
 } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 
-import { createArtifactStore } from '../../src/artifact.store.js';
+import { createArtifactStore } from '../src/artifact.store.js';
 
-import type { S3ClientLike } from '../../src/artifact.store.js';
-import type { PutObjectPresignRequest } from '../../src/artifact.store.js';
-import type { GetObjectPresignRequest } from '../../src/download.js';
+import type { S3ClientLike } from '../src/artifact.store.js';
+import type { PutObjectPresignRequest } from '../src/artifact.store.js';
+import type { GetObjectPresignRequest } from '../src/storage/sign-download.js';
 
 export const WORKSPACE_ID = '018f47a0-7b5c-7e2d-8c3f-12ad4e8b9c01';
 

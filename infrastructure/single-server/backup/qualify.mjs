@@ -24,7 +24,7 @@ import { join, resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import { parseEnv } from 'node:util';
 import { createArtifactStore } from '../../../packages/artifact-store/dist/artifact.store.js';
-import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/config/artifact-store.config.js';
+import { parseArtifactStoreConfig } from '../../../packages/artifact-store/dist/config.js';
 
 const directory = mkdtempSync(join(tmpdir(), 'pertexo-recovery-'));
 const network = `pertexo-recovery-${randomUUID()}`;

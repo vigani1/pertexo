@@ -3,7 +3,7 @@ import {
   ListObjectVersionsCommand,
 } from '@aws-sdk/client-s3';
 
-import type { ArtifactStoreConfig } from '../config/artifact-store.config.js';
+import type { ArtifactStoreConfig } from '../config.js';
 
 import { sendS3 } from '../s3/s3-client.js';
 import { requestSignal } from '../s3/request-lifecycle.js';
@@ -12,13 +12,13 @@ import {
   assertWorkspaceVersionListing,
   validateWorkspaceVersionDeletion,
   workspaceVersionDeleteObjects,
-} from '../workspace-purge-validation.js';
+} from './workspace-purge.validation.js';
 import type {
   S3ClientLike,
   PurgeWorkspaceObjectsRequest,
   WorkspaceObjectPurgePage,
 } from './artifact-storage.types.js';
-import { workspacePrefix } from '../identity.js';
+import { workspacePrefix } from '../artifact-identity.js';
 import { purgeWorkspaceSchema } from './metadata.js';
 
 export async function purgeWorkspaceObjects(
