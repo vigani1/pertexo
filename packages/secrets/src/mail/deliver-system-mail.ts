@@ -14,15 +14,27 @@ import type {
   SystemMailClient,
 } from './system-mail.js';
 
+// RFC 5321 address length, RFC 5322 subject line length.
+const MAX_ADDRESS_LENGTH = 320;
+const MAX_SUBJECT_LENGTH = 998;
+const MAX_TEXT_LENGTH = 32_768;
+const MAX_UNSUBSCRIBE_URL_LENGTH = 8_192;
+/** A sealed payload whose key is missing is tried again after this long. */
+const PAYLOAD_UNAVAILABLE_RETRY_MS = 60_000;
+// Retries double from one second to an hour, each with up to a quarter more.
+const FIRST_RETRY_DELAY_MS = 1_000;
+const MAX_RETRY_DELAY_MS = 60 * 60 * 1_000;
+const RETRY_JITTER = 0.25;
+
 const payload = z
   .object({
-    fromEmail: z.email().max(320),
-    toEmail: z.email().max(320),
-    subject: z.string().min(1).max(998),
-    text: z.string().min(1).max(32_768),
+    fromEmail: z.email().max(MAX_ADDRESS_LENGTH),
+    toEmail: z.email().max(MAX_ADDRESS_LENGTH),
+    subject: z.string().min(1).max(MAX_SUBJECT_LENGTH),
+    text: z.string().min(1).max(MAX_TEXT_LENGTH),
     unsubscribeUrl: z
       .url({ protocol: /^https?$/u })
-      .max(8192)
+      .max(MAX_UNSUBSCRIBE_URL_LENGTH)
       .optional(),
   })
   .strict();
@@ -128,7 +140,7 @@ async function deliverClaim(
       ...claimIdentity(claim),
       outcome: 'payload_unavailable',
       failureCode: 'delivery.payload_unavailable',
-      retryAt: new Date(now().getTime() + 60_000),
+      retryAt: new Date(now().getTime() + PAYLOAD_UNAVAILABLE_RETRY_MS),
     });
     if (error instanceof ApplicationSecretKeyUnavailableError) {
       dependencies.onUnavailableKey?.(error.keyVersion);
@@ -247,8 +259,11 @@ function settleRetry(
     uncertain?: true;
   }>,
 ): Promise<boolean> {
-  const base = Math.min(3_600_000, 1_000 * 2 ** (claim.attemptCount - 1));
-  const delay = Math.round(base + base * 0.25 * random());
+  const base = Math.min(
+    MAX_RETRY_DELAY_MS,
+    FIRST_RETRY_DELAY_MS * 2 ** (claim.attemptCount - 1),
+  );
+  const delay = Math.round(base + base * RETRY_JITTER * random());
   return store.settle({
     ...claimIdentity(claim),
     outcome: 'retry',

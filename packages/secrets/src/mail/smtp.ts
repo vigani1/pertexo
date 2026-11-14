@@ -166,9 +166,9 @@ async function session(
     const failure = (error?: SMTPConnection.SMTPError) => {
       const code = error?.responseCode;
       const detail = smtpFailure(error);
-      if (code !== undefined && code >= 500 && code < 600)
+      if (code !== undefined && isSmtpReply(code, 'permanent'))
         finish({ kind: 'failed', failure: detail });
-      else if (code !== undefined && code >= 400 && code < 500)
+      else if (code !== undefined && isSmtpReply(code, 'transient'))
         finish({ kind: 'retryable', failure: detail });
       else
         finish({
@@ -257,7 +257,8 @@ function smtpFailure(
   const status = error?.responseCode;
   return {
     category,
-    ...(status !== undefined && status >= 400 && status < 600
+    ...(status !== undefined &&
+    (isSmtpReply(status, 'transient') || isSmtpReply(status, 'permanent'))
       ? { status }
       : {}),
   };
@@ -285,4 +286,19 @@ async function resolveHost(host: string, input: SmtpCheck) {
     if (aborted !== undefined)
       input.signal?.removeEventListener('abort', aborted);
   }
+}
+
+// RFC 5321: 4yz replies are transient failures, 5yz permanent ones.
+const SMTP_REPLY_CLASS = Object.freeze({
+  transient: 400,
+  permanent: 500,
+});
+const SMTP_REPLY_CLASS_WIDTH = 100;
+
+function isSmtpReply(
+  code: number,
+  replyClass: keyof typeof SMTP_REPLY_CLASS,
+): boolean {
+  const start = SMTP_REPLY_CLASS[replyClass];
+  return code >= start && code < start + SMTP_REPLY_CLASS_WIDTH;
 }

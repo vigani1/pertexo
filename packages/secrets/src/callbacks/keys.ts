@@ -8,6 +8,8 @@ import {
   type ApplicationKeyRing,
 } from '../encryption/keys/key-ring.js';
 
+const MAX_ORIGIN_LENGTH = 512;
+
 export type CallbackTokenIdentity = Readonly<{ id: string }>;
 export type CallbackKeyConfig = Readonly<{
   origin: string;
@@ -56,7 +58,7 @@ export function parseCallbackKeyConfig(
     throw new Error('Configure PUBLIC_WEB_ORIGIN for callback URLs.');
   const parsed = new URL(origin);
   const invalidOrigin =
-    origin.length > 512 ||
+    origin.length > MAX_ORIGIN_LENGTH ||
     parsed.origin !== origin ||
     !['http:', 'https:'].includes(parsed.protocol) ||
     (deployed && parsed.protocol !== 'https:');

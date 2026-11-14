@@ -1,6 +1,18 @@
 import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-http.errors.js';
-import { decodedBodyView, type DecodedBodyView } from './decoded-body-view.js';
+import {
+  decodedBodyView,
+  type DecodedBodyView,
+  ESCAPE_BYTE,
+} from './decoded-body-view.js';
 import { prepareSensitiveBytePatterns } from './sensitive-representations.js';
+
+const DEFAULT_RAW_BYTE_LIMIT = 128 * 1_024;
+// Decoding escapes may read each raw byte several times, within these bounds.
+const DECODING_BUDGET_FACTOR = 8;
+const DECODING_BUDGET_BYTES = Object.freeze({
+  min: 32 * 1_024,
+  max: 1_024 * 1_024,
+});
 
 /** The documented bound includes the outer response's JSON-string encoding. */
 const JSON_ESCAPE_LAYERS = 4;
@@ -18,14 +30,14 @@ interface Match {
 /** One response-scoped automaton matches every credential representation together. */
 export function prepareResponseRedactor(
   sensitiveValues: readonly string[],
-  rawByteLimit = 131_072,
+  rawByteLimit = DEFAULT_RAW_BYTE_LIMIT,
 ) {
   let decodingBytesLeft = Math.min(
-    1_048_576,
-    Math.max(32_768, 8 * rawByteLimit),
+    DECODING_BUDGET_BYTES.max,
+    Math.max(DECODING_BUDGET_BYTES.min, DECODING_BUDGET_FACTOR * rawByteLimit),
   );
   const decode = (parent: DecodedBodyView, format: 'json' | 'percent') => {
-    if (!parent.bytes.includes(format === 'json' ? 92 : 37)) return undefined;
+    if (!parent.bytes.includes(ESCAPE_BYTE[format])) return undefined;
     // Charge the input before allocating escape spans, including repeated suffixes.
     if (parent.bytes.length > decodingBytesLeft)
       throw failure(SECURE_HTTP_ERROR_CODE.responseRedactionLimit, {

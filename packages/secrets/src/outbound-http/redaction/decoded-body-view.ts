@@ -1,3 +1,9 @@
+/** The byte that starts an escape in each format: a backslash or a percent sign. */
+export const ESCAPE_BYTE = Object.freeze({
+  json: '\\'.charCodeAt(0),
+  percent: '%'.charCodeAt(0),
+});
+
 /** Byte offsets retain the original spelling; only a matching credential is replaced. */
 export type DecodedBodyView = Readonly<{
   bytes: Buffer;
@@ -18,7 +24,7 @@ export function decodedBodyView(
   source: Buffer,
   format: 'json' | 'percent' = 'json',
 ): DecodedBodyView | undefined {
-  if (!source.includes(format === 'json' ? 92 : 37)) return undefined;
+  if (!source.includes(ESCAPE_BYTE[format])) return undefined;
   const text = source.toString('latin1');
   const escapes =
     format === 'json'

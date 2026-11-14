@@ -14,6 +14,9 @@ import {
   isTimeoutError,
 } from '../secure-http.errors.js';
 
+/** Redacting a long stream yields to the event loop after this many chunks. */
+const CHUNKS_PER_YIELD = 4_096;
+
 const BODY_CHUNK_BYTES = 65_536;
 
 export async function* boundedRedactedBody(
@@ -130,7 +133,7 @@ async function* boundedSourceChunks(
   let chunks = 0;
   try {
     for await (const chunk of ownedSourceChunks(body, limit, signal)) {
-      if (++chunks % 4096 === 0) await yieldToEventLoop();
+      if (++chunks % CHUNKS_PER_YIELD === 0) await yieldToEventLoop();
       let offset = 0;
       while (offset < chunk.byteLength) {
         const size = Math.min(

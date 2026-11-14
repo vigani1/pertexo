@@ -15,6 +15,9 @@ import type {
 } from '../secure.js';
 import { SecureHttpClient, type SecureHttpAddressPolicy } from '../secure.js';
 
+const MAX_RESPONSE_HEADER_BYTES = 32 * 1_024;
+const BODY_CHUNK_BYTES = 64 * 1_024;
+
 export class NodeDnsResolver implements SecureHttpResolver {
   public async resolve(hostname: string): Promise<readonly ResolvedAddress[]> {
     const answers = await lookup(hostname, { all: true, order: 'verbatim' });
@@ -82,7 +85,7 @@ export class NodeHttpTransport implements SecureHttpTransport {
               : { 'content-length': String(input.body.byteLength) }),
           },
           lookup: pinnedLookup,
-          maxHeaderSize: 32_768,
+          maxHeaderSize: MAX_RESPONSE_HEADER_BYTES,
           method: input.method,
           signal: input.signal,
         },
@@ -122,7 +125,7 @@ export class NodeHttpTransport implements SecureHttpTransport {
       // End the HTTP message at its declared length, but independently require
       // the source's verified EOF before publishing a successful response.
       const counter = new Writable({
-        highWaterMark: 65536,
+        highWaterMark: BODY_CHUNK_BYTES,
         write(chunk: unknown, _encoding, callback) {
           if (
             !(chunk instanceof Uint8Array) ||
