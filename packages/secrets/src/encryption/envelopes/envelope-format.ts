@@ -10,7 +10,10 @@ export const GCM_TAG_BYTES = 16;
 
 export const MAX_ENCRYPTED_DATA_KEY_BYTES = 8_192;
 
-const MAX_KEY_REFERENCE_BYTES = 2_048;
+export const MAX_KEY_REFERENCE_BYTES = 2_048;
+
+/** The longest AWS region name a KMS setting may give. */
+export const MAX_KMS_REGION_LENGTH = 128;
 
 export const encodedEnvelopeSchemaFields = Object.freeze({
   kmsKeyReference: z.string().min(1).max(MAX_KEY_REFERENCE_BYTES),

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  MAX_KEY_REFERENCE_BYTES,
+  MAX_KMS_REGION_LENGTH,
+} from './envelopes/envelope-format.js';
+import {
   createAwsConnectionEnvelopeEncryption,
   type AwsConnectionEnvelopeEncryptionConfig,
   type AwsConnectionEnvelopeEncryptionRuntime,
@@ -11,6 +15,7 @@ import {
 } from './envelopes/envelope-encryption.js';
 import { SelfManagedEnvelopeKeyProvider } from './keys/self-managed-key-provider.js';
 import {
+  APPLICATION_KEY_BYTES,
   decodeApplicationKey,
   parseApplicationPreviousKeys,
   validateApplicationKeyRing,
@@ -52,8 +57,16 @@ const environmentSchema = z.object({
   CONNECTION_SELF_MANAGED_KEY: z.string().min(1).optional(),
   CONNECTION_SELF_MANAGED_KEY_VERSION: z.string().min(1).optional(),
   CONNECTION_SELF_MANAGED_PREVIOUS_KEYS: z.string().optional(),
-  CONNECTION_KMS_KEY_REFERENCE: z.string().min(1).max(2_048).optional(),
-  CONNECTION_KMS_REGION: z.string().min(1).max(128).optional(),
+  CONNECTION_KMS_KEY_REFERENCE: z
+    .string()
+    .min(1)
+    .max(MAX_KEY_REFERENCE_BYTES)
+    .optional(),
+  CONNECTION_KMS_REGION: z
+    .string()
+    .min(1)
+    .max(MAX_KMS_REGION_LENGTH)
+    .optional(),
   CONNECTION_KMS_ENDPOINT: z.url().optional(),
 });
 
@@ -186,7 +199,9 @@ function selfManagedEncryptionConfig(
       if (
         deployed &&
         bytes.equals(
-          Buffer.from(Array.from({ length: 32 }, (_, index) => index)),
+          Buffer.from(
+            Array.from({ length: APPLICATION_KEY_BYTES }, (_, index) => index),
+          ),
         )
       )
         throw new Error(

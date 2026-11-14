@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  MAX_KEY_REFERENCE_BYTES,
+  MAX_KMS_REGION_LENGTH,
+} from './envelopes/envelope-format.js';
 
 import {
   AwsKmsEnvelopeKeyProvider,
@@ -12,9 +16,9 @@ const configSchema = z
     keyReference: z
       .string()
       .min(1)
-      .max(2_048)
+      .max(MAX_KEY_REFERENCE_BYTES)
       .refine(isValidEnvelopeKeyReference),
-    region: z.string().min(1).max(128),
+    region: z.string().min(1).max(MAX_KMS_REGION_LENGTH),
     endpoint: z.url().optional(),
   })
   .strict();

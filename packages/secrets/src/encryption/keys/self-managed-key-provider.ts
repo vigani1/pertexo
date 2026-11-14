@@ -1,10 +1,14 @@
 import { randomBytes } from 'node:crypto';
-import type { ApplicationKeyRing } from './key-ring.js';
+import { APPLICATION_KEY_BYTES, type ApplicationKeyRing } from './key-ring.js';
+import { DATA_KEY_BYTES } from '../envelopes/envelope-format.js';
 import { createApplicationSecretEnvelope } from '../envelopes/application-secret-envelope.js';
 import type {
   EnvelopeKeyProviderCore,
   EnvelopeKeyMaterial,
 } from '../envelopes/envelope-cipher.js';
+
+/** A data key wrapped by the application envelope is far smaller than this. */
+const MAX_WRAPPED_DATA_KEY_BYTES = 1_024;
 
 const KEY_REFERENCE = 'self-managed';
 const LEGACY_REFERENCE = 'local:development';
@@ -32,7 +36,7 @@ export class SelfManagedEnvelopeKeyProvider<
     signal?: AbortSignal,
   ): Promise<EnvelopeKeyMaterial> {
     signal?.throwIfAborted();
-    const plaintextKey = randomBytes(32);
+    const plaintextKey = randomBytes(DATA_KEY_BYTES);
     try {
       const sealed = this.envelope.seal(
         plaintextKey.toString('base64url'),
@@ -59,7 +63,7 @@ export class SelfManagedEnvelopeKeyProvider<
     try {
       if (
         !isSelfManagedKeyReference(keyReference) ||
-        encryptedDataKey.byteLength > 1_024
+        encryptedDataKey.byteLength > MAX_WRAPPED_DATA_KEY_BYTES
       )
         throw this.failure();
       const sealed: unknown = JSON.parse(
@@ -78,7 +82,10 @@ export class SelfManagedEnvelopeKeyProvider<
         Buffer.from(this.associatedData(context)).toString('utf8'),
       );
       const key = Buffer.from(encoded, 'base64url');
-      if (key.byteLength !== 32 || key.toString('base64url') !== encoded) {
+      if (
+        key.byteLength !== APPLICATION_KEY_BYTES ||
+        key.toString('base64url') !== encoded
+      ) {
         key.fill(0);
         throw this.failure();
       }
