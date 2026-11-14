@@ -3,8 +3,16 @@
 export * from './errors/api-problem.js';
 export * from './schemas/execution/artifact-transfer.js';
 export * from './schemas/catalog.js';
-export * from './schemas/connections.js';
-export * from './schemas/oauth2-connections.js';
+export * from './schemas/connections/connections.js';
+export {
+  httpHeadersCredentialSchema,
+  resendApiKeyCredentialSchema,
+  slackBotTokenCredentialSchema,
+  smtpCredentialSchema,
+} from './schemas/connections/connection-credentials.js';
+export * from './schemas/connections/connection-sharing.js';
+export * from './schemas/connections/slack-channel-lookup.js';
+export * from './schemas/connections/oauth2-connections.js';
 export * from './schemas/failure-notification-destinations.js';
 export * from './schemas/identity/workspaces.js';
 export * from './schemas/execution/node-testing.js';
@@ -18,6 +26,8 @@ export {
 export * from './schemas/workflows/authoring.js';
 export * from './schemas/workflows/portability.js';
 export * from './schemas/execution/runs.js';
+export * from './schemas/execution/run-events.js';
+export * from './schemas/execution/run-statistics.js';
 export * from './schemas/identity/inbox.js';
 export * from './schemas/identity/api-tokens.js';
 
@@ -29,7 +39,11 @@ export {
   type WorkflowErrorSettingsRequest,
 } from './schemas/workflows/error.js';
 
-export { type WorkflowRunErrorWorkflow } from './schemas/execution/runs.js';
+export {
+  type WorkflowCallSummary,
+  type WorkflowParentCall,
+  type WorkflowRunErrorWorkflow,
+} from './schemas/execution/run-calls.js';
 
 export {
   workflowErrorTargetsQuerySchema,

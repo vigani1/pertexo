@@ -16,7 +16,7 @@ import {
   oauth2ConnectionResponseSchema,
   oauth2CredentialSchema,
   oauth2StepFailureCodeSchema,
-} from '../schemas/oauth2-connections.js';
+} from '../schemas/connections/oauth2-connections.js';
 import {
   authenticatedComponents,
   jsonSchema,

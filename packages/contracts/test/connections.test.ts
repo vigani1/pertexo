@@ -7,12 +7,16 @@ import {
   connectionTestRequestSchema,
   connectionTestResponseSchema,
   connectionUsageResponseSchema,
+} from '../src/schemas/connections/connections.js';
+import {
   httpHeaderCredentialSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
+} from '../src/schemas/connections/connection-credentials.js';
+import {
   slackChannelLookupQuerySchema,
   slackChannelLookupResponseSchema,
-} from '../src/schemas/connections.js';
+} from '../src/schemas/connections/slack-channel-lookup.js';
 import { API_PROBLEM_MANIFEST } from '../src/errors/api-problem.js';
 
 const connection = {

@@ -9,7 +9,7 @@ import {
   oauth2CallbackStateSchema,
   oauth2ConnectionErrorCodeSchema,
   oauth2StepFailureCodeSchema,
-} from '../../src/schemas/oauth2-connections.js';
+} from '../../src/schemas/connections/oauth2-connections.js';
 
 import { connectionFields } from './oauth2.fixture.js';
 

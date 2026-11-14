@@ -14,11 +14,11 @@ import { workflowRunDataRoutes } from '../../routes/execution/run-data.js';
 import { usageRoutes } from '../../routes/execution/usage.js';
 import {
   workflowNodeRunSummarySchema,
-  workflowRunEventSchema,
   workflowRunListItemSchema,
   workflowRunReadSummarySchema,
   workflowRunSummarySchema,
 } from '../../schemas/execution/runs.js';
+import { workflowRunEventSchema } from '../../schemas/execution/run-events.js';
 import { workflowRecoveryUnavailableProblemSchema } from '../../schemas/execution/recovery.js';
 
 const routes = [

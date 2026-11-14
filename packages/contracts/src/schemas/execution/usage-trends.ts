@@ -1,6 +1,6 @@
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
-import { workflowRunStatisticsResponseSchema } from './runs.js';
+import { workflowRunStatisticsResponseSchema } from './run-statistics.js';
 
 export const usageTrendPeriodSchema = z.enum(['30d', '90d']);
 export const usageTrendsQuerySchema = z

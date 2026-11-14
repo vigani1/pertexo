@@ -4,12 +4,12 @@ import {
   connectionCreateRequestSchema,
   connectionResponseSchema,
   connectionRotateSecretRequestSchema,
-} from '../../src/schemas/connections.js';
+} from '../../src/schemas/connections/connections.js';
 import {
   oauth2AuthorizationStartResponseSchema,
   oauth2ConnectionResponseSchema,
   oauth2CredentialSchema,
-} from '../../src/schemas/oauth2-connections.js';
+} from '../../src/schemas/connections/oauth2-connections.js';
 
 import { connectionFields, consentSettings, grant } from './oauth2.fixture.js';
 

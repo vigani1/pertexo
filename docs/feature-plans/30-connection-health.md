@@ -26,7 +26,7 @@ first-slice corrections; the qualified result is recorded in the delivery tracke
 
 Inspected anchors (paths may move):
 
-- [packages/contracts/src/schemas/connections.ts](../../packages/contracts/src/schemas/connections.ts)
+- [packages/contracts/src/schemas/connections/connections.ts](../../packages/contracts/src/schemas/connections/connections.ts)
 - [docs/adr/023-slack-send-message-provider.md](../adr/023-slack-send-message-provider.md)
 - [accepted-completion health persistence](../../packages/core/src/attempts/completion/connection-health.repository.ts)
 - [connection test persistence](../../packages/core/src/connections/connection-tests/complete.repository.ts)

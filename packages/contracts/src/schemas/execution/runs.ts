@@ -17,6 +17,11 @@ import {
   workflowRecoverySummarySchema,
   workflowNodeReuseSchema,
 } from './recovery.js';
+import {
+  workflowCallSummarySchema,
+  workflowParentCallSchema,
+  workflowRunErrorWorkflowSchema,
+} from './run-calls.js';
 
 export const workflowRunIdentifierSchema = z.uuid();
 export const workflowRunParamsSchema = z
@@ -236,134 +241,6 @@ export const workflowRunListResponseSchema = responseSchema(
     .strict(),
 );
 
-/** Fixed statistics windows; every one lies well inside run retention. */
-export const workflowRunStatisticsWindowSchema = z.enum([
-  '1h',
-  '6h',
-  '24h',
-  '7d',
-]);
-const workflowRunStatisticsBreakdownSchema = z.enum(['workflow']);
-/** Workflows returned by a per-workflow breakdown, busiest first. */
-export const WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT = 50;
-
-export const workflowRunStatisticsQuerySchema = z
-  .object({
-    window: workflowRunStatisticsWindowSchema.optional(),
-    breakdown: workflowRunStatisticsBreakdownSchema.optional(),
-  })
-  .strict();
-
-const workflowRunCountSchema = z.number().int().nonnegative();
-const workflowRunStatisticsTimestampSchema = z.iso.datetime({ precision: 6 });
-
-/** Exact PostgreSQL bigint bytes; never rounded through a JSON number. */
-const capacityBytesSchema = z.string().regex(/^(?:0|[1-9][0-9]{0,18})$/u);
-const capacityCountSchema = z
-  .number()
-  .int()
-  .min(0)
-  .max(Number.MAX_SAFE_INTEGER);
-
-/** ADR057: operational capacity is separate from retained run activity. */
-export const usageCapacityResponseSchema = responseSchema(
-  z
-    .object({
-      asOf: workflowRunStatisticsTimestampSchema,
-      execution: z
-        .object({
-          activeRuns: capacityCountSchema,
-          reservedActiveSlots: capacityCountSchema,
-          activeCapacityConsumed: capacityCountSchema,
-          queuedRuns: capacityCountSchema,
-          policy: z
-            .object({
-              state: z.enum([
-                'active',
-                'suspended',
-                'not_yet_effective',
-                'expired',
-                'unavailable',
-              ]),
-              version: z.number().int().positive().nullable(),
-              activeRunLimit: z.number().int().min(1).max(10_000).nullable(),
-              queuedRunLimit: z.number().int().min(1).max(100_000).nullable(),
-            })
-            .strict(),
-        })
-        .strict(),
-      artifacts: z
-        .object({
-          chargedBytes: capacityBytesSchema,
-          byteLimit: capacityBytesSchema,
-          chargedCount: capacityCountSchema,
-          artifactCountLimit: capacityCountSchema,
-          source: z.enum(['stored', 'default']),
-        })
-        .strict(),
-    })
-    .strict(),
-);
-
-export type UsageCapacityResponse = z.infer<typeof usageCapacityResponseSchema>;
-
-/** One exact count per run status. */
-const workflowRunStatusCountsSchema = z
-  .object({
-    queued: workflowRunCountSchema,
-    running: workflowRunCountSchema,
-    waiting: workflowRunCountSchema,
-    succeeded: workflowRunCountSchema,
-    failed: workflowRunCountSchema,
-    canceled: workflowRunCountSchema,
-    timed_out: workflowRunCountSchema,
-    outcome_unknown: workflowRunCountSchema,
-  })
-  .strict();
-
-/** Runs that are not finished yet, whenever they were created. */
-const workflowRunCurrentCountsSchema = workflowRunStatusCountsSchema
-  .pick({ queued: true, running: true, waiting: true })
-  .strict();
-
-const workflowRunWorkflowStatisticsSchema = z
-  .object({
-    workflowId: z.uuid(),
-    workflowName: workflowNameSchema.nullable().optional(),
-    total: workflowRunCountSchema,
-    byStatus: workflowRunStatusCountsSchema,
-  })
-  .strict();
-
-export const workflowRunStatisticsResponseSchema = responseSchema(
-  z
-    .object({
-      asOf: workflowRunStatisticsTimestampSchema,
-      current: workflowRunCurrentCountsSchema,
-      window: z
-        .object({
-          duration: workflowRunStatisticsWindowSchema,
-          createdAtFrom: workflowRunStatisticsTimestampSchema,
-          createdAtBefore: workflowRunStatisticsTimestampSchema,
-          total: workflowRunCountSchema,
-          skippedTriggerEvents: workflowRunCountSchema.optional(),
-          coordinatedTriggerEvents: workflowRunCountSchema.optional(),
-          byStatus: workflowRunStatusCountsSchema,
-        })
-        .strict(),
-      workflows: z
-        .object({
-          items: z
-            .array(workflowRunWorkflowStatisticsSchema)
-            .max(WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT),
-          truncated: z.boolean(),
-        })
-        .strict()
-        .nullable(),
-    })
-    .strict(),
-);
-
 export const workflowNodeRunSummarySchema = responseSchema(
   z
     .object({
@@ -422,62 +299,6 @@ export const workflowNodeRunInputResponseSchema = responseSchema(
 export const workflowRunStartResponseSchema = responseSchema(
   z.object({ run: workflowRunSummarySchema, replayed: z.boolean() }).strict(),
 );
-/** A logical Call's retained identity, without mapped input or result payloads. */
-const workflowCallSummarySchema = z
-  .object({
-    id: z.uuid(),
-    invocationKey: z.string().min(1).max(256),
-    targetWorkflowId: z.uuid(),
-    targetVersionId: z.uuid(),
-    childRunId: z.uuid().nullable(),
-    childHistory: z.enum(['not_started', 'retained', 'expired', 'unavailable']),
-    status: z.enum([
-      'pending',
-      'accepted',
-      'refused',
-      'succeeded',
-      'failed',
-      'canceled',
-      'timed_out',
-      'outcome_unknown',
-    ]),
-    slotLent: z.boolean(),
-    detailsRetired: z.boolean(),
-    safeErrorCode: z.string().min(1).max(128).nullable(),
-  })
-  .strict();
-const workflowParentCallSchema = z
-  .object({
-    id: z.uuid(),
-    parentRunId: z.uuid(),
-    invocationKey: z.string().min(1).max(256),
-  })
-  .strict();
-export type WorkflowCallSummary = z.output<typeof workflowCallSummarySchema>;
-export type WorkflowParentCall = z.output<typeof workflowParentCallSchema>;
-
-export const workflowRunErrorWorkflowSchema = z
-  .object({
-    status: z.enum(['pending', 'accepted', 'refused']),
-    targetWorkflowId: z.uuid(),
-    targetVersionId: z.uuid().nullable(),
-    acceptedRunId: z.uuid().nullable(),
-    queueWaitExpiresAt: z.iso.datetime().nullable().default(null),
-    refusalCode: z
-      .enum([
-        'target_unavailable',
-        'target_not_published',
-        'workspace_unavailable',
-        'queue_full',
-        'concurrency_limit',
-        'invalid_target',
-      ])
-      .nullable(),
-  })
-  .strict();
-export type WorkflowRunErrorWorkflow = z.infer<
-  typeof workflowRunErrorWorkflowSchema
->;
 
 export const workflowRunResponseSchema = responseSchema(
   z
@@ -501,66 +322,6 @@ export const workflowRunCancelResponseSchema = responseSchema(
     .strict(),
 );
 
-const workflowRunEventTypeSchema = z.enum([
-  'run.queued',
-  'run.started',
-  'run.waiting',
-  'run.cancel_requested',
-  'run.succeeded',
-  'run.failed',
-  'run.canceled',
-  'run.timed_out',
-  'run.outcome_unknown',
-  'node.ready',
-  'node.started',
-  'node.progress',
-  'node.waiting',
-  'node.retry_scheduled',
-  'node.succeeded',
-  'node.reused',
-  'node.failure_routed',
-  'node.failure_handled',
-  'node.failed',
-  'node.skipped',
-  'node.canceled',
-  'node.timed_out',
-  'node.outcome_unknown',
-]);
-const workflowRunOutputReferenceSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('reused'), nodeRunId: z.uuid() }).strict(),
-  z.object({ kind: z.literal('call'), callId: z.uuid() }).strict(),
-  z.object({ kind: z.literal('inline'), attemptId: z.uuid() }).strict(),
-  z.object({ kind: z.literal('artifact'), artifactId: z.uuid() }).strict(),
-]);
-export const workflowRunEventPayloadSchema = z
-  .object({
-    invocationKey: z.string().min(1).max(1_024).optional(),
-    nodeId: z.string().min(1).max(256).optional(),
-    nodeRunId: z.uuid().optional(),
-    attemptId: z.uuid().optional(),
-    sourceRunId: z.uuid().optional(),
-    sourceNodeRunId: z.uuid().optional(),
-    sourceCompletedAt: z.iso.datetime({ offset: true }).optional(),
-    attemptNumber: z.number().int().nonnegative().optional(),
-    dueAt: z.iso.datetime({ offset: true }).optional(),
-    safeErrorCode: z.string().min(1).max(128).optional(),
-    reasonCode: z.string().min(1).max(128).optional(),
-    outputRef: workflowRunOutputReferenceSchema.optional(),
-  })
-  .strict();
-export const workflowRunEventSchema = z
-  .object({
-    sequence: z.number().int().positive(),
-    type: workflowRunEventTypeSchema,
-    createdAt: z.iso.datetime({ offset: true }),
-    payload: workflowRunEventPayloadSchema,
-  })
-  .strict();
-
-export const lastRunEventIdHeaderSchema = z
-  .string()
-  .regex(/^(?:0|[1-9][0-9]{0,14})$/u);
-
 export type WorkflowRunSummary = z.output<typeof workflowRunSummarySchema>;
 export type WorkflowRunReadSummary = z.output<
   typeof workflowRunReadSummarySchema
@@ -583,19 +344,9 @@ export type WorkflowNodeRunInputResponse = z.output<
 export type WorkflowRunListResponse = z.output<
   typeof workflowRunListResponseSchema
 >;
-export type WorkflowRunStatisticsWindow = z.output<
-  typeof workflowRunStatisticsWindowSchema
->;
-export type WorkflowRunStatisticsQuery = z.output<
-  typeof workflowRunStatisticsQuerySchema
->;
-export type WorkflowRunStatisticsResponse = z.output<
-  typeof workflowRunStatisticsResponseSchema
->;
 export type WorkflowNodeRunSummary = z.output<
   typeof workflowNodeRunSummarySchema
 >;
-export type WorkflowRunEvent = z.output<typeof workflowRunEventSchema>;
 export type WorkflowRunStartResponse = z.output<
   typeof workflowRunStartResponseSchema
 >;

@@ -6,7 +6,6 @@ import { z } from 'zod';
 
 import { problemResponse } from '../openapi-primitives.js';
 import {
-  lastRunEventIdHeaderSchema,
   workflowRunCancelRequestSchema,
   workflowRunCancelResponseSchema,
   workflowRunListParamsSchema,
@@ -18,9 +17,12 @@ import {
   workflowRunStartParamsSchema,
   workflowRunStartRequestSchema,
   workflowRunStartResponseSchema,
+} from '../../schemas/execution/runs.js';
+import { lastRunEventIdHeaderSchema } from '../../schemas/execution/run-events.js';
+import {
   workflowRunStatisticsQuerySchema,
   workflowRunStatisticsResponseSchema,
-} from '../../schemas/execution/runs.js';
+} from '../../schemas/execution/run-statistics.js';
 import {
   workflowRecoveryPreviewSchema,
   workflowRecoveryRequestSchema,
