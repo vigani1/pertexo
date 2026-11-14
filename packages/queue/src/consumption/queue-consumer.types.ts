@@ -1,7 +1,7 @@
-import type { QueueJob } from '../jobs/contracts.js';
+import type { QueueJob } from '../jobs/queue-job.schemas.js';
 
 import type { QueueName } from '../jobs/names.js';
-import type { RedisTelemetryObserver } from '../redis/telemetry-contracts.js';
+import type { RedisTelemetryObserver } from '../redis/redis-instrumentation.js';
 
 export interface QueueDeliveryTransport {
   readonly attemptsMade: number;

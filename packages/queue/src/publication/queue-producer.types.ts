@@ -1,8 +1,8 @@
 import type { Queue } from 'bullmq';
 
-import type { QueueJob } from '../jobs/contracts.js';
+import type { QueueJob } from '../jobs/queue-job.schemas.js';
 import type { JobName, QueueName } from '../jobs/names.js';
-import type { RedisTelemetryObserver } from '../redis/telemetry-contracts.js';
+import type { RedisTelemetryObserver } from '../redis/redis-instrumentation.js';
 
 export type QueueProducerOptions = Readonly<{
   readonly redisUrl: string;

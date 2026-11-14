@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { QUEUE_CLASS_DEFAULTS } from '../jobs/defaults.js';
 import { QUEUE_NAME } from '../jobs/names.js';
 
-import { createProductionRedisTelemetryObserver } from '../redis/telemetry.js';
+import { createProductionRedisTelemetryObserver } from '../redis/redis-metrics.js';
 import { normalizeRedisEndpoint } from '../redis/endpoint.js';
 import type {
   QueueConsumerOptions,

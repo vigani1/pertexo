@@ -1,18 +1,18 @@
 import { Queue } from 'bullmq';
 import type { JobsOptions } from 'bullmq';
 import { Redis, ReplyError } from 'ioredis';
-import { bounded, TIMED_OUT } from './consumption/deadline.js';
-import { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
-import { jobIdForOutboxEvent } from './jobs/job-id.js';
-import { parseQueueJob, type QueueJob } from './jobs/contracts.js';
-import { QUEUE_FOR_JOB, QUEUE_NAME, type QueueName } from './jobs/names.js';
+import { bounded, TIMED_OUT } from '../consumption/deadline.js';
+import { QUEUE_CLASS_DEFAULTS } from '../jobs/defaults.js';
+import { jobIdForOutboxEvent } from '../jobs/job-id.js';
+import { parseQueueJob, type QueueJob } from '../jobs/queue-job.schemas.js';
+import { QUEUE_FOR_JOB, QUEUE_NAME, type QueueName } from '../jobs/names.js';
 import {
   instrumentRedisCommands,
   notifyRedisConnectionEvent,
   observeRedisOperation,
   type RedisTelemetryObserver,
-} from './redis/telemetry-contracts.js';
-import { createProductionRedisTelemetryObserver } from './redis/telemetry.js';
+} from '../redis/redis-instrumentation.js';
+import { createProductionRedisTelemetryObserver } from '../redis/redis-metrics.js';
 
 import type {
   QueueProducerOptions,
@@ -20,13 +20,13 @@ import type {
   QueueStateObservation,
   QueueProducer,
   QueueMap,
-} from './publication/queue-producer.types.js';
-import { parseProducerOptions } from './publication/configuration.js';
+} from './queue-producer.types.js';
+import { parseProducerOptions } from './producer-options.js';
 import {
   QueueNotReadyError,
   QueuePublicationUnavailableError,
   QueueWriteTimedOutError,
-} from './publication/queue-producer.errors.js';
+} from './queue-producer.errors.js';
 
 export {
   type QueueProducerOptions,
@@ -34,13 +34,13 @@ export {
   type QueuePublishResult,
   type QueueStateObservation,
   type QueueProducer,
-} from './publication/queue-producer.types.js';
+} from './queue-producer.types.js';
 export {
   QueueNotReadyError,
   QueuePublicationUnavailableError,
   QueueWriteTimedOutError,
-} from './publication/queue-producer.errors.js';
-export { jobIdForOutboxEvent } from './jobs/job-id.js';
+} from './queue-producer.errors.js';
+export { jobIdForOutboxEvent } from '../jobs/job-id.js';
 function createQueues(redis: Redis): QueueMap {
   return {
     [QUEUE_NAME.workflowCoordinator]: new Queue(

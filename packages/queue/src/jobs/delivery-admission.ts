@@ -1,7 +1,7 @@
 import { UnrecoverableError } from 'bullmq';
 import type { Job } from 'bullmq';
 
-import { parseQueueJob, type QueueJob } from './contracts.js';
+import { parseQueueJob, type QueueJob } from './queue-job.schemas.js';
 import { isJobIdOfOutboxEvent } from './job-id.js';
 import { QUEUE_FOR_JOB, type QueueName } from './names.js';
 

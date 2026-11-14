@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { admitQueueDelivery } from '../src/jobs/delivery-admission.js';
+import { admitQueueDelivery } from '../../src/jobs/delivery-admission.js';
 import {
   isJobIdOfOutboxEvent,
   jobIdForOutboxEvent,
-} from '../src/jobs/job-id.js';
+} from '../../src/jobs/job-id.js';
 
 const EVENT = '44444444-4444-4444-8444-444444444444';
 const OTHER = '55555555-5555-4555-8555-555555555555';

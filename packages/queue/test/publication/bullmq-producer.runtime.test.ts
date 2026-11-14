@@ -3,15 +3,15 @@ import {
   mocks,
   IDS,
   redisClient,
-} from './producer/fixture.js';
+} from './producer.fixture.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BullMqQueueProducer,
   createQueueProducer,
   jobIdForOutboxEvent,
-} from '../src/producer.js';
-import { JOB_NAME, QUEUE_NAME } from '../src/jobs/names.js';
-import type { RedisTelemetryObserver } from '../src/redis/telemetry-contracts.js';
+} from '../../src/publication/bullmq-producer.runtime.js';
+import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
+import type { RedisTelemetryObserver } from '../../src/redis/redis-instrumentation.js';
 
 describe('BullMQ queue producer', () => {
   beforeEach(resetPackagesQueueTestProducerTestTsBullMQQueueProducerFixture);
