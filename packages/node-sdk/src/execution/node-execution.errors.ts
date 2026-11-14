@@ -34,12 +34,24 @@ export const MAXIMUM_SERVICE_RESPONSE_URL_CHARACTERS = 512;
 /** The longest response excerpt a failure keeps. */
 export const MAXIMUM_RESPONSE_EXCERPT_CHARACTERS = 1_500;
 
+const NODE_FAILURE_FIELD_LIMITS = Object.freeze({
+  methodCharacters: 16,
+  safeErrorCodeCharacters: 128,
+  errorSummaryCharacters: 2_048,
+});
+// HTTP status codes are three digits from 100 to 599.
+const HTTP_STATUS_RANGE = Object.freeze({ minimum: 100, maximum: 599 });
+
 const serviceResponseSchema = z
   .object({
-    method: z.string().min(1).max(16),
+    method: z.string().min(1).max(NODE_FAILURE_FIELD_LIMITS.methodCharacters),
     /** Origin and path only: a query can hold credentials. */
     url: z.url().max(MAXIMUM_SERVICE_RESPONSE_URL_CHARACTERS),
-    status: z.number().int().min(100).max(599),
+    status: z
+      .number()
+      .int()
+      .min(HTTP_STATUS_RANGE.minimum)
+      .max(HTTP_STATUS_RANGE.maximum),
     /** Already redacted by the secure HTTP client, and bounded here. */
     body: z.discriminatedUnion('kind', [
       z.object({
@@ -81,10 +93,14 @@ const nodeExecutorFailureSchema = z
     safeErrorCode: z
       .string()
       .min(1)
-      .max(128)
+      .max(NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters)
       .regex(/^[a-z][a-z0-9_.]*$/u)
       .optional(),
-    errorSummary: z.string().min(1).max(2048).optional(),
+    errorSummary: z
+      .string()
+      .min(1)
+      .max(NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters)
+      .optional(),
     serviceResponse: serviceResponseSchema.optional(),
   })
   .strict();
@@ -151,7 +167,7 @@ export class ProviderExecutionRateLimitError extends Error {
     if (
       !Number.isSafeInteger(retryAfterSeconds) ||
       retryAfterSeconds < 1 ||
-      retryAfterSeconds > 60
+      retryAfterSeconds * 1_000 > MAXIMUM_RETRY_DELAY_MILLIS
     )
       throw new TypeError('Invalid provider rate-limit retry duration');
     super('Provider execution rate limit reached');

@@ -6,6 +6,8 @@ import {
 } from '../values/bounded-json.validation.js';
 import { cloneAndFreeze } from '../values/freeze.js';
 
+const RUNTIME_ONLY_SEMANTIC_CHARACTERS = 256;
+
 export { NODE_JSON_LIMITS } from '../values/bounded-json.validation.js';
 
 export type SchemaJson =
@@ -77,7 +79,9 @@ export function generateSchemaDocument(
     options.runtimeOnlySemantics !== undefined &&
     (options.runtimeOnlySemantics.length === 0 ||
       options.runtimeOnlySemantics.some(
-        (semantic) => semantic.length === 0 || semantic.length > 256,
+        (semantic) =>
+          semantic.length === 0 ||
+          semantic.length > RUNTIME_ONLY_SEMANTIC_CHARACTERS,
       ))
   )
     throw new TypeError(

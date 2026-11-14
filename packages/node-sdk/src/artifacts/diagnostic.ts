@@ -11,11 +11,14 @@ const location = z
 export const SHEET_NAME_MAX_LENGTH = 31;
 /** A missing-sheet failure lists this many names so a test shows real ones. */
 export const SHEET_NAME_SUGGESTIONS = 20;
+/** The count of further sheets a missing-sheet failure states, at most. */
+export const SHEET_NAME_MORE_COUNT_MAX = 256;
 // Counted in code points plus a closing ellipsis; one may take two units.
+const SHEET_NAME_MAX_UNITS = SHEET_NAME_MAX_LENGTH * 2 + 1;
 const sheetName = z
   .string()
   .min(1)
-  .max(SHEET_NAME_MAX_LENGTH * 2 + 1)
+  .max(SHEET_NAME_MAX_UNITS)
   .regex(/^[^\p{Cc}\p{Cf}]+$/u);
 export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
   z
@@ -33,7 +36,6 @@ export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
         'file_unavailable',
         'file_integrity',
         'csv_empty',
-        'spreadsheet_too_large',
         'unsupported_spreadsheet',
         'multipart_size',
         'multipart_values',
@@ -45,6 +47,20 @@ export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
     .strict(),
   z
     .object({ reason: z.literal('json_syntax'), position: location.optional() })
+    .strict(),
+  // The reader owns its workbook bounds and states them, so the copy names them.
+  z
+    .object({
+      reason: z.literal('spreadsheet_too_large'),
+      limits: z
+        .object({
+          uncompressedBytes: z.number().int().positive(),
+          entries: z.number().int().positive(),
+          sheets: z.number().int().positive(),
+          cells: z.number().int().positive(),
+        })
+        .strict(),
+    })
     .strict(),
   z
     .object({ reason: z.literal('csv_syntax'), line: location.optional() })
@@ -62,7 +78,7 @@ export const fileInputDiagnosticSchema = z.discriminatedUnion('reason', [
     .object({
       reason: z.literal('sheet_missing'),
       sheets: z.array(sheetName).max(SHEET_NAME_SUGGESTIONS),
-      more: z.number().int().min(0).max(256),
+      more: z.number().int().min(0).max(SHEET_NAME_MORE_COUNT_MAX),
     })
     .strict(),
   z.object({ reason: z.literal('sheet_header_row'), row: location }).strict(),

@@ -1,26 +1,43 @@
 import { z } from 'zod';
 
+const OUTPUT_VARIANT_LIMITS = Object.freeze({
+  propertyCharacters: 128,
+  // Output unions have at most 64 branches.
+  lastVariant: 63,
+  pathSegments: 8,
+  overrides: 8,
+});
+
 /** Browser discovery: select one output-union branch from a config property's presence. */
 export const outputVariantSelectionSchema = z
   .object({
-    configProperty: z.string().min(1).max(128),
-    whenPresent: z.number().int().min(0).max(63),
-    whenAbsent: z.number().int().min(0).max(63),
+    configProperty: z
+      .string()
+      .min(1)
+      .max(OUTPUT_VARIANT_LIMITS.propertyCharacters),
+    whenPresent: z.number().int().min(0).max(OUTPUT_VARIANT_LIMITS.lastVariant),
+    whenAbsent: z.number().int().min(0).max(OUTPUT_VARIANT_LIMITS.lastVariant),
     overrides: z
       .array(
         z
           .object({
             configPath: z
-              .array(z.string().min(1).max(128))
+              .array(
+                z.string().min(1).max(OUTPUT_VARIANT_LIMITS.propertyCharacters),
+              )
               .min(1)
-              .max(8)
+              .max(OUTPUT_VARIANT_LIMITS.pathSegments)
               .readonly(),
-            variant: z.number().int().min(0).max(63),
+            variant: z
+              .number()
+              .int()
+              .min(0)
+              .max(OUTPUT_VARIANT_LIMITS.lastVariant),
           })
           .strict()
           .readonly(),
       )
-      .max(8)
+      .max(OUTPUT_VARIANT_LIMITS.overrides)
       .readonly()
       .optional(),
   })

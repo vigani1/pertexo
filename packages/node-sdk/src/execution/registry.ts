@@ -75,9 +75,11 @@ export interface NodeRegistry {
   ) => Promise<NodeExecutionResult>;
 }
 
+// A step names at most this many connection slots.
+const MAX_CONNECTION_REFERENCES = 16;
 const connectionRefsSchema = z
   .record(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u), z.uuid())
-  .refine((value) => Object.keys(value).length <= 16)
+  .refine((value) => Object.keys(value).length <= MAX_CONNECTION_REFERENCES)
   .transform((value) => Object.freeze({ ...value }));
 
 function stableComparable(value: unknown): unknown {

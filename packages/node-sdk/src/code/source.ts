@@ -6,6 +6,10 @@ export type CodeSyntaxIssue = Readonly<{
   line: number;
   column: number;
 }>;
+// acorn parses code steps as this language edition.
+const ECMASCRIPT_EDITION = 2025;
+// The wrapper puts the step's first line on line 3.
+const WRAPPER_LINES = 2;
 const prefix =
   'async function pertexoCode(input, $vars, require, console) {\n"use strict";\n';
 /** Parse an async body without evaluating it, in the browser and at publication. */
@@ -21,14 +25,14 @@ export function inspectCodeSource(
     };
   if (new TextEncoder().encode(source).byteLength > CODE_LIMITS.sourceBytes)
     return {
-      message: 'Code is limited to 64 KB. Shorten this step.',
+      message: `Code is limited to ${String(CODE_LIMITS.sourceBytes / 1_024)} KB. Shorten this step.`,
       line: 1,
       column: 1,
     };
   if (language === 'python') return undefined;
   try {
     const parsed = parse(prefix + source + '\n}', {
-      ecmaVersion: 2025,
+      ecmaVersion: ECMASCRIPT_EDITION,
       sourceType: 'script',
       locations: true,
     });
@@ -47,7 +51,10 @@ export function inspectCodeSource(
       message: located.message
         .replace(/\s\(\d+:\d+\)$/u, '')
         .slice(0, CODE_LIMITS.messageCharacters),
-      line: Math.max(1, (located.loc?.line ?? 3) - 2),
+      line: Math.max(
+        1,
+        (located.loc?.line ?? WRAPPER_LINES + 1) - WRAPPER_LINES,
+      ),
       column: (located.loc?.column ?? 0) + 1,
     };
   }

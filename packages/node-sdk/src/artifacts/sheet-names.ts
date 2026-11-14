@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { SHEET_NAME_MAX_LENGTH, SHEET_NAME_SUGGESTIONS } from './diagnostic.js';
+import {
+  SHEET_NAME_MAX_LENGTH,
+  SHEET_NAME_MORE_COUNT_MAX,
+  SHEET_NAME_SUGGESTIONS,
+} from './diagnostic.js';
 
 /** Excel's sheet-name rules, for the sheet a step reads or writes. */
 export const sheetNameSchema = z
@@ -14,6 +18,7 @@ export const sheetNameSchema = z
   );
 
 const LIST_START = 'Its sheets: ';
+const LIST_SEPARATOR = ', ';
 const UNSAFE = /[\p{Cc}\p{Cf}]/gu;
 
 /**
@@ -34,7 +39,10 @@ export function listSheetNames(
         ? `${points.slice(0, SHEET_NAME_MAX_LENGTH).join('')}…`
         : points.join(''),
     );
-  return { sheets, more: Math.min(256, usable.length - sheets.length) };
+  return {
+    sheets,
+    more: Math.min(SHEET_NAME_MORE_COUNT_MAX, usable.length - sheets.length),
+  };
 }
 
 /** JSON string literals keep quotes, commas and full stops in names unambiguous. */
@@ -42,7 +50,9 @@ export function describeSheetList(
   listed: Readonly<{ sheets: readonly string[]; more: number }>,
 ): string {
   if (listed.sheets.length === 0) return 'It has no worksheets.';
-  const names = listed.sheets.map((name) => JSON.stringify(name)).join(', ');
+  const names = listed.sheets
+    .map((name) => JSON.stringify(name))
+    .join(LIST_SEPARATOR);
   return `${LIST_START}${names}${listed.more > 0 ? ` and ${String(listed.more)} more` : ''}.`;
 }
 
@@ -58,8 +68,8 @@ export function readSheetSuggestions(summary: string): readonly string[] {
     const name = parseJsonString(summary.slice(cursor, end));
     // A shortened name can't match the sheet, so it isn't offered.
     if (name !== undefined && !isShortened(name)) names.push(name);
-    if (!summary.startsWith(', ', end)) break;
-    cursor = end + 2;
+    if (!summary.startsWith(LIST_SEPARATOR, end)) break;
+    cursor = end + LIST_SEPARATOR.length;
   }
   return names;
 }

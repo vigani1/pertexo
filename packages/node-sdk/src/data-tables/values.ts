@@ -7,6 +7,9 @@ import {
 } from './data-table.schemas.js';
 import { inspectBoundedJson } from '../values/bounded-json.validation.js';
 
+// The `YYYY-MM-DD` prefix of an ISO timestamp.
+const ISO_DATE_LENGTH = 10;
+
 export function validateDataTableValues(
   columns: readonly DataTableNewColumn[],
   values: DataTableValues,
@@ -46,7 +49,7 @@ export function validateDataTableValues(
   if (!checked.ok)
     throw new DataTableError(
       'invalid_values',
-      'A row must fit 64 KiB. Split large values.',
+      `A row must fit ${String(DATA_TABLE_JSON_LIMITS.bytes / 1_024)} KiB. Split large values.`,
     );
   assertStoredRowText(result);
   return result;
@@ -190,6 +193,6 @@ function isDateOnly(value: unknown): boolean {
     typeof value === 'string' &&
     /^\d{4}-\d{2}-\d{2}$/u.test(value) &&
     Number.isFinite(Date.parse(value)) &&
-    new Date(value).toISOString().slice(0, 10) === value;
+    new Date(value).toISOString().slice(0, ISO_DATE_LENGTH) === value;
   return validDate;
 }

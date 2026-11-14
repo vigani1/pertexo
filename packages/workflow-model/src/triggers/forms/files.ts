@@ -1,3 +1,4 @@
+import { ARTIFACT_REFERENCE_LIMITS } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
 import { withoutHiddenCharacters } from '../../values/text.js';
@@ -19,9 +20,6 @@ export const FORM_FILE_LIMITS = Object.freeze({
   unsentPublicBytes: 100 * MEBIBYTE,
   /** Leading bytes read to recognise a file's real type. */
   sniffBytes: 512,
-  // `a/b` is the shortest media type; RFC 6838 bounds each half at 127 characters.
-  minimumMediaTypeCharacters: 3,
-  mediaTypeCharacters: 255,
 });
 
 type FileSignature =
@@ -84,8 +82,8 @@ export const formFileValueSchema = z
         byteLength: z.number().int().min(0).max(FORM_FILE_LIMITS.maxBytes),
         mediaType: z
           .string()
-          .min(FORM_FILE_LIMITS.minimumMediaTypeCharacters)
-          .max(FORM_FILE_LIMITS.mediaTypeCharacters),
+          .min(ARTIFACT_REFERENCE_LIMITS.minimumMediaTypeCharacters)
+          .max(ARTIFACT_REFERENCE_LIMITS.mediaTypeCharacters),
         sha256: z.string().regex(/^[a-f0-9]{64}$/u),
       })
       .strict(),
