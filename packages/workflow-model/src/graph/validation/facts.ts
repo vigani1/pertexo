@@ -2,7 +2,7 @@ import {
   failure,
   type WorkflowGraphAdmissionFailure,
   type WorkflowGraphAdmissionLimits,
-} from './admission-contract.js';
+} from './admission-result.js';
 
 function valueDepthFailure(
   value: unknown,

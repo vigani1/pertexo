@@ -1,5 +1,5 @@
 import { authoringMessageHandler } from './worker-messages.js';
-import type { Limits, PendingBatch, ActiveBatch } from './worker-contract.js';
+import type { Limits, PendingBatch, ActiveBatch } from './worker-replies.js';
 import { utf8ByteLength } from '../../values/text.js';
 import { Worker, type WorkerOptions } from 'node:worker_threads';
 
@@ -14,7 +14,7 @@ import {
   type AuthoringValidationUnavailableReason,
   type WorkflowExpressionPolicyProjection,
   type WorkflowAuthoringValidationOptions,
-} from './contracts.js';
+} from './validation-protocol.js';
 
 const runtimeUrl = new URL(
   import.meta.url.endsWith('.ts')

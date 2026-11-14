@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import type { Worker } from 'node:worker_threads';
 import { afterEach, vi } from 'vitest';
-import type { WorkflowExpressionPolicyProjection } from '../../src/authoring/validation/contracts.js';
+import type { WorkflowExpressionPolicyProjection } from '../../src/authoring/validation/validation-protocol.js';
 import { WorkflowAuthoringValidator } from '../../src/authoring/validation/validator.js';
 
 export const policies: WorkflowExpressionPolicyProjection = {

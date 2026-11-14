@@ -316,7 +316,7 @@ export {
   type CallbackBindings,
 } from './flow/callbacks/callback-wait.js';
 
-export { supportsExpressionMappings } from './values/mapping/policy.js';
+export { supportsExpressionMappings } from './values/mapping/mapping-support.js';
 
 export {
   callbackTargetNodes,

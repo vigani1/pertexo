@@ -5,12 +5,12 @@ import {
   type WorkflowGraphAdmissionOptions,
   type WorkflowGraphAdmissionFailure,
   type WorkflowGraphAdmission,
-} from './admission-contract.js';
+} from './admission-result.js';
 export type {
   WorkflowGraphAdmissionLimits,
   WorkflowGraphAdmissionOptions,
   WorkflowGraphAdmission,
-} from './admission-contract.js';
+} from './admission-result.js';
 import { jsonStringByteLength, utf8ByteLength } from '../../values/text.js';
 
 type JsonContainer = Record<string, unknown> | unknown[];

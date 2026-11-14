@@ -5,7 +5,7 @@ import {
   inspectExpression,
   isTemporaryExpressionFailure,
   type ExpressionEvaluator,
-} from '../../values/expressions/policy.js';
+} from '../../values/expressions/expression-policy.js';
 import {
   EVENT_COORDINATION_LIMITS,
   type EventCoordinationPolicy,
