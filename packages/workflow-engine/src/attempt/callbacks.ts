@@ -5,7 +5,7 @@ import {
 import { inspectExpression } from '@pertexo/workflow-model/server';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import type { WorkflowExecutableNode } from '../compilation/workflow-executable.js';
-import { operationError } from '../operation-values.js';
+import { operationError } from '../input-checks/engine-values.js';
 import type { ExecuteNodeAttemptInput } from './node-attempt.types.js';
 
 export async function resolveAttemptCallbacks(

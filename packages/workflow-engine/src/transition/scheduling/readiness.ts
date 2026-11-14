@@ -1,4 +1,4 @@
-import { invocationKey } from '../../invocation-identity.js';
+import { invocationKey } from '../../invocations/invocation-identity.js';
 import { WorkflowEngineError } from '../../workflow-engine.errors.js';
 import {
   descendants,
@@ -6,7 +6,10 @@ import {
   type SchedulerGraphIndexes,
 } from './indexes.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { branchPathHasPrefix, sameIterationPath } from '../../scope.js';
+import {
+  branchPathHasPrefix,
+  sameIterationPath,
+} from '../../invocations/invocation-scope.js';
 import type {
   BranchScopePart,
   BranchSelection,
@@ -18,7 +21,7 @@ import type { SchedulerState, ReadyNodeDecision } from './policy.js';
 import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
-} from '../../control-output-ports.js';
+} from '../../control-nodes/control-output-ports.js';
 
 type SchedulerNode = SchedulerState['nodes'][number];
 

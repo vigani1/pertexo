@@ -34,7 +34,7 @@ import {
 import type { WorkflowExecutableNode } from '../compilation/workflow-executable.js';
 import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
 
-import { operationError, record } from '../operation-values.js';
+import { operationError, record } from '../input-checks/engine-values.js';
 
 import { assertNotAborted, isAbortError } from './admission.js';
 

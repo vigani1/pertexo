@@ -1,6 +1,6 @@
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { completeLoopIteration, createLoopState } from './scheduling/loops.js';
-import { sameOutputReference } from '../output-reference.js';
+import { sameOutputReference } from '../invocations/output-reference.js';
 import { assertNodeTransition, invocationIdentity } from './status.js';
 import type {
   InvocationState,

@@ -11,7 +11,7 @@ import {
   composeExecutableCatalog,
   createCheckpoint,
 } from '../../../src/server.js';
-import type { AdvanceWorkflowInput } from '../../../src/operations.js';
+import type { AdvanceWorkflowInput } from '../../../src/transition/advance-workflow.js';
 import { graph, nodeCatalog } from '../../support/executable-workflow.js';
 
 export const target = {

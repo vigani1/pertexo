@@ -7,7 +7,7 @@ import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { assertAuthenticExecutableIdentity } from '../compilation/verified-executable.js';
 import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
 
-import { operationError } from '../operation-values.js';
+import { operationError } from '../input-checks/engine-values.js';
 
 import { prepareNodeAttemptInput } from './prepare-attempt-input.js';
 import type {
@@ -15,7 +15,7 @@ import type {
   NodeAttemptOutcome,
 } from './node-attempt.types.js';
 
-import { isCoreMergeDefinition } from '../core-definition-identities.js';
+import { isCoreMergeDefinition } from '../control-nodes/core-definition-identities.js';
 
 import {
   assertIdentity,

@@ -20,7 +20,7 @@ import type {
 } from '../compilation/workflow-executable.js';
 import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executable.js';
 import { resolveRetryPolicy, type RetryPolicy } from '../attempt/retries.js';
-import { invocationKey } from '../invocation-identity.js';
+import { invocationKey } from '../invocations/invocation-identity.js';
 import type {
   BranchScopePart,
   InvocationState,

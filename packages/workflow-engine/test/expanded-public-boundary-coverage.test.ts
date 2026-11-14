@@ -6,7 +6,7 @@ import {
   composeExecutableCatalog,
 } from '../src/server.js';
 import { parseWorkflowExecutable } from '../src/compilation/boundary.js';
-import { branchPathHasPrefix } from '../src/scope.js';
+import { branchPathHasPrefix } from '../src/invocations/invocation-scope.js';
 import {
   boundedPolicy,
   graph,

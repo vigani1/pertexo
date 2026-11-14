@@ -14,9 +14,12 @@ import {
   isJsonRecord,
   operationError,
   record,
-} from '../operation-values.js';
+} from '../input-checks/engine-values.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { branchPathHasPrefix, sameIterationPath } from '../scope.js';
+import {
+  branchPathHasPrefix,
+  sameIterationPath,
+} from '../invocations/invocation-scope.js';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import {
   isTerminalNodeStatus,

@@ -57,8 +57,8 @@ export {
 export {
   recordBranchDisposition,
   settleJoin,
-} from '../../src/join-settlement.js';
-export type { JoinDecision } from '../../src/join-settlement.js';
+} from '../../src/control-nodes/join-settlement.js';
+export type { JoinDecision } from '../../src/control-nodes/join-settlement.js';
 export {
   decideRetry,
   ENGINE_RETRY_POLICY,

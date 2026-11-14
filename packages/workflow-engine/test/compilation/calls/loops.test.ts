@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import { parseCheckpoint } from '../../../src/server.js';
-import { invocationKey } from '../../../src/invocation-identity.js';
+import { invocationKey } from '../../../src/invocations/invocation-identity.js';
 import { forEachGraph } from '../../support/executable-workflow.js';
 import {
   childOutcome,

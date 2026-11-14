@@ -3,7 +3,7 @@ import {
   utf8ByteLength,
   type ControlNodeConfig,
 } from '@pertexo/workflow-model';
-import { configuredScopedOutputPorts } from '../control-output-ports.js';
+import { configuredScopedOutputPorts } from '../control-nodes/control-output-ports.js';
 import type {
   BranchScopePart,
   IterationScopePart,

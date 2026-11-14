@@ -5,9 +5,9 @@ import type {
 import type { JsonValue } from '@pertexo/workflow-model';
 import type { parseCheckpoint } from '../checkpoint/create-and-parse.js';
 
-import { operationError } from '../operation-values.js';
+import { operationError } from '../input-checks/engine-values.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { sameOutputReference } from '../output-reference.js';
+import { sameOutputReference } from '../invocations/output-reference.js';
 import { parsePersistedObservation } from './persisted-parser.js';
 import type {
   OutputReference,

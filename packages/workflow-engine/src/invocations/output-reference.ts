@@ -1,4 +1,4 @@
-import type { OutputReference } from './workflow-execution.js';
+import type { OutputReference } from '../workflow-execution.js';
 
 export function sameOutputReference(
   left: OutputReference | undefined,

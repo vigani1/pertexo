@@ -1,11 +1,11 @@
 import { executableFailureRoutes } from '../compilation/verified-executable.js';
 import type { CompiledWorkflowExecutable } from '../compilation/workflow-executable.js';
-import { operationError } from '../operation-values.js';
+import { operationError } from '../input-checks/engine-values.js';
 import type {
   InvocationState,
   WorkflowCheckpoint,
 } from '../workflow-execution.js';
-import { invocationKey } from '../invocation-identity.js';
+import { invocationKey } from '../invocations/invocation-identity.js';
 import { isSelectedFailureScope, isCompletedFailureHandler } from './scope.js';
 
 function expectedInvocationKey(

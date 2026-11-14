@@ -5,13 +5,13 @@ import {
   compareOrdinal,
   type WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
-import { sameOutputReference } from '../output-reference.js';
+import { sameOutputReference } from '../invocations/output-reference.js';
 import {
   branchPathHasPrefix,
   iterationPathHasPrefix,
   sameBranchPath,
   sameIterationPath,
-} from '../scope.js';
+} from '../invocations/invocation-scope.js';
 import type {
   AttemptAdmissionPlan,
   BranchScopePart,

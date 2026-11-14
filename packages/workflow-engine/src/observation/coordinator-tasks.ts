@@ -19,13 +19,17 @@ import type {
 } from '../compilation/workflow-executable.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
 import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
-import { exactKeys, operationError, record } from '../operation-values.js';
+import {
+  exactKeys,
+  operationError,
+  record,
+} from '../input-checks/engine-values.js';
 import { parseBranchPath, parseIterationPath } from '../checkpoint/fields.js';
 import {
   configuredBranchOutputPorts,
   configuredScopedOutputPorts,
-} from '../control-output-ports.js';
-import { invocationKey } from '../invocation-identity.js';
+} from '../control-nodes/control-output-ports.js';
+import { invocationKey } from '../invocations/invocation-identity.js';
 import {
   isFinishedIterationScope,
   isTerminalNodeStatus,

@@ -22,9 +22,13 @@ import type {
   WorkflowExecutableNode,
 } from '../compilation/workflow-executable.js';
 import { normalizeBoundedEngineValue } from '../compilation/executable.validation.js';
-import { exactKeys, operationError, record } from '../operation-values.js';
+import {
+  exactKeys,
+  operationError,
+  record,
+} from '../input-checks/engine-values.js';
 import type { ExecuteNodeAttemptInput } from './node-attempt.types.js';
-import { invocationKey as createInvocationKey } from '../invocation-identity.js';
+import { invocationKey as createInvocationKey } from '../invocations/invocation-identity.js';
 
 export type PreparedNodeAttemptInput = Readonly<{
   completedOutputs: Readonly<Record<string, JsonValue>>;

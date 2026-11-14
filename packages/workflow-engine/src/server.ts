@@ -2,12 +2,12 @@ export {
   advanceWorkflow,
   executeNodeAttempt,
   resolveSingleNodePreviewInput,
-} from './operations.js';
+} from './transition/advance-workflow.js';
 export type {
   ExecuteNodeAttemptInput,
   NodeAttemptOutcome,
   NodeExecutionRegistry,
-} from './operations.js';
+} from './transition/advance-workflow.js';
 export {
   createCheckpoint,
   parseCheckpoint,
@@ -31,7 +31,10 @@ export type {
   VerifiedWorkflowExecutable,
   WorkflowExecutableNode,
 } from './compilation/workflow-executable.js';
-export { invocationKey, loopIterationOrdinal } from './invocation-identity.js';
+export {
+  invocationKey,
+  loopIterationOrdinal,
+} from './invocations/invocation-identity.js';
 
 export { selectRecoveryPrefix } from './recovery/select-prefix.js';
 export { planRecovery } from './recovery/plan.js';

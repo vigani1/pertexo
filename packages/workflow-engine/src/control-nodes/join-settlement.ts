@@ -1,11 +1,11 @@
-import { WorkflowEngineError } from './workflow-engine.errors.js';
+import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import { sameOutputReference } from './output-reference.js';
+import { sameOutputReference } from '../invocations/output-reference.js';
 import type {
   BranchLedgerEntry,
   JoinPolicy,
   JoinState,
-} from './workflow-execution.js';
+} from '../workflow-execution.js';
 
 const terminalDispositions = new Set([
   'arrived',

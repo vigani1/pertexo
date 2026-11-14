@@ -4,7 +4,7 @@ import {
   branchPathHasPrefix,
   sameBranchPath,
   sameIterationPath,
-} from '../src/scope.js';
+} from '../../src/invocations/invocation-scope.js';
 
 describe('structured scope identity', () => {
   it('compares branch scope exactly and by prefix', () => {

@@ -6,7 +6,7 @@ import {
 import type { JsonValue } from '@pertexo/workflow-model';
 
 import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
-import { isJsonRecord, operationError } from '../operation-values.js';
+import { isJsonRecord, operationError } from '../input-checks/engine-values.js';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import type { OutputReference } from '../workflow-execution.js';
 
