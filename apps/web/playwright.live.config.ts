@@ -21,6 +21,14 @@ function testMatch() {
   return '**/*.spec.ts';
 }
 
+// A journey whose accounts exist only for the run, on a database the run
+// throws away, may ask for a trace and a screenshot of a failure, so a
+// flake that never reproduces locally can be read from CI. Every other
+// journey keeps them off: its pages can show secrets typed into steps.
+const failureArtifacts = process.env.PERTEXO_LIVE_FAILURE_ARTIFACTS;
+if (failureArtifacts !== undefined && !/^[a-z0-9-]+$/u.test(failureArtifacts))
+  throw new Error('PERTEXO_LIVE_FAILURE_ARTIFACTS names the journey.');
+
 // The API journey owner validates PERTEXO_LIVE_WEB_PORT, serves the preview
 // there and passes its origin, so the port has one reading.
 const liveWebOrigin = process.env.PERTEXO_LIVE_WEB_ORIGIN;
@@ -32,7 +40,7 @@ if (liveWebOrigin === undefined)
 export default defineConfig({
   testDir: './e2e-live',
   // Playwright empties this when it starts, and journeys run side by side.
-  outputDir: `test-results/live-${new URL(liveWebOrigin).port}`,
+  outputDir: `test-results/live-${new URL(liveWebOrigin).port}${failureArtifacts === undefined ? '' : `/${failureArtifacts}`}`,
   testMatch: testMatch(),
   forbidOnly: true,
   retries: 0,
@@ -40,9 +48,10 @@ export default defineConfig({
   timeout: 60_000,
   use: {
     baseURL: liveWebOrigin,
-    // Live authentication cookies/verification URLs must not become artifacts.
-    trace: 'off',
-    screenshot: 'off',
+    // Live authentication cookies/verification URLs must not become artifacts,
+    // except for a journey that asked for failure artifacts (above).
+    trace: failureArtifacts === undefined ? 'off' : 'retain-on-failure',
+    screenshot: failureArtifacts === undefined ? 'off' : 'only-on-failure',
     video: 'off',
     ...devices['Desktop Chrome'],
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH

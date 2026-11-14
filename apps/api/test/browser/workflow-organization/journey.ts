@@ -296,20 +296,26 @@ export function registerWorkflowOrganizationJourney(
       PERTEXO_LIVE_MAIL_ORIGIN: `http://127.0.0.1:${String(address.port)}`,
       PERTEXO_LIVE_WEB_ORIGIN: webOrigin,
       PERTEXO_ORGANIZATION_ROLE: role,
+      // Its accounts are made for this run on a disposable database.
+      PERTEXO_LIVE_FAILURE_ARTIFACTS: `workflow-organization-${role}`,
     };
-    const start = (args: string[], kind: 'vite' | 'browser') =>
-      ownChild(
-        spawn(process.execPath, args, {
-          cwd: webDirectory,
-          env:
-            kind === 'vite'
-              ? { ...environment, NODE_ENV: 'production' }
-              : environment,
-          stdio: 'ignore',
-          detached: true,
-        }),
-        kind,
-      );
+    // The children's output goes to the journey's log, which CI prints, so a
+    // failure shows Playwright's own error and call log.
+    const start = (args: string[], kind: 'vite' | 'browser') => {
+      const child = spawn(process.execPath, args, {
+        cwd: webDirectory,
+        env:
+          kind === 'vite'
+            ? { ...environment, NODE_ENV: 'production' }
+            : environment,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+      });
+      child.stdout.pipe(process.stdout);
+      child.stderr.pipe(process.stderr);
+      ownChild(child, kind);
+      return child;
+    };
     const vite = join(
       dirname(webRequire.resolve('vite/package.json')),
       'bin/vite.js',
@@ -341,6 +347,8 @@ export function registerWorkflowOrganizationJourney(
           'workflow-organization.spec.ts',
           '--grep',
           'ordinary owner persists',
+          '--reporter',
+          'line',
         ],
         'browser',
       ),
