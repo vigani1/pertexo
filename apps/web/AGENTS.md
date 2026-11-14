@@ -1,6 +1,6 @@
 # Web frontend instructions
 
-This is a browser-only React/Vite application, not Next.js. Root instructions
+This is a browser-only React/Vite application, not Next.js. The [root rules](../../AGENTS.md)
 still apply. Read [README.md](README.md) for current scope and
 [ARCHITECTURE.md](ARCHITECTURE.md) for ownership, coding patterns, the visual
 system and tests.
