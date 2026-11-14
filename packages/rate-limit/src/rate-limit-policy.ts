@@ -1,3 +1,8 @@
+import { RateLimitDecisionError } from './rate-limit.errors.js';
+
+/** Every budget counts requests over this one window. */
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+
 export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'webhook_preflight',
   'callback_ingress',
@@ -263,7 +268,9 @@ function requiredSubject(
 ): string {
   const value = subject[key]?.trim();
   if (value === undefined || value.length === 0) {
-    throw new Error(`Rate-limit ${SUBJECT_LABELS[key]} subject is required`);
+    throw new RateLimitDecisionError(
+      `Rate-limit ${SUBJECT_LABELS[key]} subject is required`,
+    );
   }
   return value;
 }
@@ -292,7 +299,7 @@ export class AbuseRateLimitPolicy {
     return {
       endpointClass,
       failureMode: rule.failureMode,
-      windowSeconds: 60,
+      windowSeconds: RATE_LIMIT_WINDOW_SECONDS,
       dimensions,
     };
   }
