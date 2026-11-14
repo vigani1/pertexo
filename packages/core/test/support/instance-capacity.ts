@@ -2,8 +2,10 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
 import type { InstanceCapacity } from '@pertexo/database/platform';
-import { DEFAULT_RUN_CAPACITY_LIMITS } from '../../src/runs/run-capacity-limits.js';
-import { DEFAULT_ARTIFACT_COUNT_LIMIT } from '../../src/artifacts/artifact-limits.js';
+import {
+  DEFAULT_ARTIFACT_COUNT_LIMIT,
+  DEFAULT_RUN_CAPACITY_LIMITS,
+} from '@pertexo/policy';
 
 async function apply(
   { activeRunLimit, queuedRunLimit, artifactCountLimit }: InstanceCapacity,
