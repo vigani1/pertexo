@@ -60,3 +60,43 @@ test('ignores package specifiers that only contain a dist segment', () => {
     [],
   );
 });
+
+const entries = (workspace) =>
+  workspace === 'packages/artifact-store'
+    ? ['packages/artifact-store/dist/server.js']
+    : [];
+const withConfig = (absolute) =>
+  exists(absolute) ||
+  absolute.endsWith('/packages/artifact-store/src/config.ts') ||
+  absolute.endsWith('/packages/artifact-store/src/server.ts');
+
+test('a host-mounted script may load only entry points or named internals', () => {
+  const script = 'infrastructure/single-server/backup/stores.mjs';
+  assert.deepEqual(
+    unresolvedDistReferences(
+      script,
+      "import { parse } from '../../../packages/artifact-store/dist/server.js';",
+      withConfig,
+      entries,
+    ),
+    [],
+  );
+  assert.match(
+    unresolvedDistReferences(
+      script,
+      "import { parse } from '../../../packages/artifact-store/dist/config.js';",
+      withConfig,
+      entries,
+    ).join(),
+    /internal file that can move between releases/u,
+  );
+  assert.deepEqual(
+    unresolvedDistReferences(
+      'infrastructure/single-server/backup/qualify.mjs',
+      "import { parse } from '../../../packages/artifact-store/dist/config.js';",
+      withConfig,
+      entries,
+    ),
+    [],
+  );
+});
