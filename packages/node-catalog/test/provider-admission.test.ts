@@ -8,7 +8,7 @@ import {
   SLACK_SEND_MESSAGE_EXECUTOR,
 } from '@pertexo/integrations';
 
-import { createPlatformNodeRegistry } from './registry.js';
+import { createPlatformNodeRegistry } from './platform-registry.fixture.js';
 
 // The platform registry validates a provider step's config and input once,
 // before its executor runs, so no provider is ever called with either.

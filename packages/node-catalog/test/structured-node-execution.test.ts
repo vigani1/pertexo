@@ -6,7 +6,7 @@ import {
   CORE_PARALLEL_EXECUTOR,
 } from '@pertexo/nodes-core';
 
-import { createPlatformNodeRegistry } from './registry.js';
+import { createPlatformNodeRegistry } from './platform-registry.fixture.js';
 
 describe('platform structured node execution', () => {
   it('passes on what each selected branch of a settled Merge produced', async () => {
