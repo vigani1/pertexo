@@ -24,7 +24,7 @@ import type {
 } from './storage/artifact-storage.types.js';
 
 import { ObservedArtifactStore } from './storage/observed.js';
-import { AwsArtifactStore } from './storage/aws.js';
+import { AwsArtifactStore } from './storage/s3-artifact-storage.runtime.js';
 export {
   ArtifactIntegrityError,
   ArtifactNotFoundError,

@@ -19,7 +19,7 @@ import type {
   WorkspaceObjectPurgePage,
 } from './artifact-storage.types.js';
 import { workspacePrefix } from '../artifact-identity.js';
-import { purgeWorkspaceSchema } from './metadata.js';
+import { purgeWorkspaceSchema } from './artifact-request.schemas.js';
 
 export async function purgeWorkspaceObjects(
   {

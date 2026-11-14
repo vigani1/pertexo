@@ -1,57 +1,13 @@
+import { metadataSchema } from './artifact-request.schemas.js';
 import type {
   GetObjectCommandOutput,
   HeadObjectCommandOutput,
 } from '@aws-sdk/client-s3';
 
-import type { Readable } from 'node:stream';
-
-import { z } from 'zod';
-
-import {
-  artifactIdentitySchema,
-  type ArtifactIdentity,
-} from '../artifact-identity.js';
+import type { ArtifactIdentity } from '../artifact-identity.js';
 import { ArtifactIntegrityError } from '../artifact-store.errors.js';
 
-import type {
-  ArtifactMetadata,
-  Destroyable,
-} from './artifact-storage.types.js';
-
-/** The most object versions one purge page lists and deletes. */
-const MAX_PURGE_PAGE_OBJECTS = 500;
-// RFC 6838: a type and subtype of at most 127 characters each, and a slash.
-const MEDIA_TYPE_LENGTH = Object.freeze({ min: 3, max: 255 });
-/** How long a signed upload or download address stays valid. */
-export const SIGNED_URL_LIFETIME_SECONDS = Object.freeze({
-  min: 60,
-  max: 15 * 60,
-});
-
-export const purgeWorkspaceSchema = z.object({
-  maxObjects: z.number().int().min(1).max(MAX_PURGE_PAGE_OBJECTS),
-  workspaceId: z.uuid(),
-});
-
-export const metadataSchema = artifactIdentitySchema.extend({
-  byteLength: z.number().int().nonnegative(),
-  mediaType: z
-    .string()
-    .trim()
-    .min(MEDIA_TYPE_LENGTH.min)
-    .max(MEDIA_TYPE_LENGTH.max)
-    .regex(/^[^\s/;]+\/[^\r\n]+$/u)
-    .regex(/^[\t\x20-\x7e\x80-\xff]+$/u),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/u),
-});
-
-export const beginDirectUploadSchema = metadataSchema.extend({
-  expiresInSeconds: z
-    .number()
-    .int()
-    .min(SIGNED_URL_LIFETIME_SECONDS.min)
-    .max(SIGNED_URL_LIFETIME_SECONDS.max),
-});
+import type { ArtifactMetadata } from './artifact-storage.types.js';
 
 const STORAGE_METADATA = {
   artifactId: 'artifact-id',
@@ -73,26 +29,6 @@ export const DIRECT_UPLOAD_UNHOISTABLE_HEADERS = new Set([
   'x-amz-checksum-sha256',
   ...USER_METADATA_KEYS.map((key) => `x-amz-meta-${key}`),
 ]);
-
-export function isNotFound(error: unknown): boolean {
-  try {
-    if (typeof error !== 'object' || error === null) {
-      return false;
-    }
-
-    const candidate = error as {
-      readonly $metadata?: { readonly httpStatusCode?: number };
-      readonly name?: string;
-    };
-    return (
-      candidate.$metadata?.httpStatusCode === 404 ||
-      candidate.name === 'NoSuchKey' ||
-      candidate.name === 'NotFound'
-    );
-  } catch {
-    return false;
-  }
-}
 
 export function objectMetadata(
   metadata: ArtifactMetadata,
@@ -141,26 +77,6 @@ export function metadataFromHead(
   }
 
   return Object.freeze(candidate.data);
-}
-
-export async function consume(body: Readable): Promise<void> {
-  for await (const _chunk of body) {
-    // Integrity is enforced by the verifier while bytes are discarded.
-  }
-}
-
-export function destroyResponseBody(body: unknown): void {
-  if (isDestroyable(body)) {
-    body.destroy();
-  }
-}
-
-function isDestroyable(value: unknown): value is Destroyable {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const candidate = value as { readonly destroy?: unknown };
-  return typeof candidate.destroy === 'function';
 }
 
 type ComparableArtifactMetadata = Readonly<{

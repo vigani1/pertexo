@@ -8,7 +8,6 @@ import {
 import type { HeadObjectCommandOutput } from '@aws-sdk/client-s3';
 
 import { verifiedBody } from './stream-verification.js';
-import { artifactMetadataMatches } from './metadata.js';
 import {
   artifactIdentitySchema,
   artifactStorageKey,
@@ -49,14 +48,16 @@ import type {
   WorkspaceObjectPurgeStore,
 } from './artifact-storage.types.js';
 import {
-  metadataSchema,
-  beginDirectUploadSchema,
-  isNotFound,
-  objectMetadata,
+  artifactMetadataMatches,
   checksumSha256Base64,
   metadataFromHead,
-  consume,
+  objectMetadata,
 } from './metadata.js';
+import { isNotFound, consume } from '../s3/s3-responses.js';
+import {
+  metadataSchema,
+  beginDirectUploadSchema,
+} from './artifact-request.schemas.js';
 
 import { readVerifiedArtifact } from './read.js';
 import { signArtifactUpload } from './sign-upload.js';

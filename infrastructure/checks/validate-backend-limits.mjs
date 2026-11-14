@@ -32,7 +32,7 @@ export const NOT_LIMITS = Object.freeze({
     'S3 answers not-found with HTTP 404',
   'packages/artifact-store/src/s3/telemetry.ts: 412':
     'S3 answers a failed precondition with HTTP 412',
-  'packages/artifact-store/src/storage/metadata.ts: 404':
+  'packages/artifact-store/src/s3/s3-responses.ts: 404':
     'S3 answers not-found with HTTP 404',
   'packages/queue/src/jobs/queue-job.schemas.ts: *':
     'the W3C traceparent layout: field offsets and widths',

@@ -3,7 +3,6 @@ import type { GetObjectCommandOutput } from '@aws-sdk/client-s3';
 
 import { Readable } from 'node:stream';
 import { verifiedBody } from './stream-verification.js';
-import { artifactMetadataMatches } from './metadata.js';
 import {
   artifactStorageKey,
   type ArtifactIdentity,
@@ -21,11 +20,8 @@ import type {
   ArtifactMetadata,
   ArtifactDownload,
 } from './artifact-storage.types.js';
-import {
-  isNotFound,
-  metadataFromHead,
-  destroyResponseBody,
-} from './metadata.js';
+import { artifactMetadataMatches, metadataFromHead } from './metadata.js';
+import { isNotFound, destroyResponseBody } from '../s3/s3-responses.js';
 
 export async function readVerifiedArtifact({
   client,
