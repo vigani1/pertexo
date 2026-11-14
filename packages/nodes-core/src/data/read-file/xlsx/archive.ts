@@ -2,6 +2,7 @@ import { Readable } from 'node:stream';
 import { crc32, createInflateRaw } from 'node:zlib';
 import { FileInputFailure } from '@pertexo/node-sdk/server';
 import { SPREADSHEET_LIMITS } from './limits.js';
+import { ZIP_FORMAT } from '../../zip-format.js';
 
 type ArchiveEntry = Readonly<{
   method: 0 | 8;
@@ -17,9 +18,8 @@ export type WorkbookArchive = Readonly<{
   read(name: string, signal: AbortSignal): AsyncGenerator<Uint8Array>;
 }>;
 
-const END_OF_DIRECTORY = 0x06054b50;
-const DIRECTORY_ENTRY = 0x02014b50;
-const LOCAL_HEADER = 0x04034b50;
+const { localHeader: LOCAL, directoryEntry: ENTRY } = ZIP_FORMAT;
+const { endOfDirectory: END } = ZIP_FORMAT;
 const SLICE = 65_536;
 // Legacy .xls and password-protected .xlsx are both OLE compound files.
 const COMPOUND_FILE = Buffer.from('d0cf11e0a1b11ae1', 'hex');
@@ -52,15 +52,19 @@ function openArchive(view: Buffer): WorkbookArchive {
   if (view.subarray(0, COMPOUND_FILE.length).equals(COMPOUND_FILE))
     unsupported();
   const end = findEndOfDirectory(view);
-  const count = view.readUInt16LE(end + 10);
-  const directorySize = view.readUInt32LE(end + 12);
-  const directoryOffset = view.readUInt32LE(end + 16);
+  const count = view.readUInt16LE(end + END.entries);
+  const directorySize = view.readUInt32LE(end + END.directorySize);
+  const directoryOffset = view.readUInt32LE(end + END.directoryOffset);
   const singleDisk =
-    view.readUInt16LE(end + 4) === 0 &&
-    view.readUInt16LE(end + 6) === 0 &&
-    view.readUInt16LE(end + 8) === count;
+    view.readUInt16LE(end + END.disk) === 0 &&
+    view.readUInt16LE(end + END.directoryDisk) === 0 &&
+    view.readUInt16LE(end + END.diskEntries) === count;
   // Zip64 marks its sizes with all-ones fields; a workbook this small never needs them.
-  if (!singleDisk || count === 0xffff || directoryOffset === 0xffffffff)
+  if (
+    !singleDisk ||
+    count === ZIP_FORMAT.zip64Count ||
+    directoryOffset === ZIP_FORMAT.zip64Offset
+  )
     unsupported();
   if (count > SPREADSHEET_LIMITS.entries) tooLarge();
   if (directoryOffset + directorySize > end) unsupported();
@@ -77,11 +81,15 @@ function openArchive(view: Buffer): WorkbookArchive {
 }
 
 function findEndOfDirectory(view: Buffer): number {
-  const earliest = Math.max(0, view.length - 22 - 0xffff);
-  for (let offset = view.length - 22; offset >= earliest; offset--)
+  const earliest = Math.max(
+    0,
+    view.length - END.bytes - ZIP_FORMAT.maxCommentBytes,
+  );
+  for (let offset = view.length - END.bytes; offset >= earliest; offset--)
     if (
-      view.readUInt32LE(offset) === END_OF_DIRECTORY &&
-      offset + 22 + view.readUInt16LE(offset + 20) === view.length
+      view.readUInt32LE(offset) === END.signature &&
+      offset + END.bytes + view.readUInt16LE(offset + END.commentLength) ===
+        view.length
     )
       return offset;
   return unsupported();
@@ -97,45 +105,54 @@ function readDirectory(
     declared = 0;
   for (let index = 0; index < count; index++) {
     if (
-      offset + 46 > view.length ||
-      view.readUInt32LE(offset) !== DIRECTORY_ENTRY
+      offset + ENTRY.bytes > view.length ||
+      view.readUInt32LE(offset) !== ENTRY.signature
     )
       unsupported();
-    const flags = view.readUInt16LE(offset + 8);
-    const method = view.readUInt16LE(offset + 10);
-    const compressedSize = view.readUInt32LE(offset + 20);
-    const uncompressedSize = view.readUInt32LE(offset + 24);
-    const nameLength = view.readUInt16LE(offset + 28);
+    const flags = view.readUInt16LE(offset + ENTRY.flags);
+    const method = view.readUInt16LE(offset + ENTRY.method);
+    const compressedSize = view.readUInt32LE(offset + ENTRY.compressedSize);
+    const uncompressedSize = view.readUInt32LE(offset + ENTRY.size);
+    const nameLength = view.readUInt16LE(offset + ENTRY.nameLength);
     const next =
       offset +
-      46 +
+      ENTRY.bytes +
       nameLength +
-      view.readUInt16LE(offset + 30) +
-      view.readUInt16LE(offset + 32);
+      view.readUInt16LE(offset + ENTRY.extraLength) +
+      view.readUInt16LE(offset + ENTRY.commentLength);
     if (next > view.length) unsupported();
     // Bit 0 marks encryption; only stored and deflated entries are standard.
-    if ((flags & 1) !== 0 || (method !== 0 && method !== 8)) unsupported();
+    if (
+      (flags & ZIP_FORMAT.encryptedFlag) !== 0 ||
+      (method !== ZIP_FORMAT.methodStored &&
+        method !== ZIP_FORMAT.methodDeflated)
+    )
+      unsupported();
     declared += uncompressedSize;
     if (declared > SPREADSHEET_LIMITS.uncompressedBytes) tooLarge();
     const name = view
-      .subarray(offset + 46, offset + 46 + nameLength)
+      .subarray(offset + ENTRY.bytes, offset + ENTRY.bytes + nameLength)
       .toString('utf8')
       .replaceAll('\\', '/')
       .replace(/^\/+/u, '');
     if (entries.has(name)) unsupported();
     entries.set(name, {
       method,
-      crc: view.readUInt32LE(offset + 16),
+      crc: view.readUInt32LE(offset + ENTRY.crc),
       compressedSize,
       uncompressedSize,
       dataOffset: dataOffset(
         view,
-        view.readUInt32LE(offset + 42),
+        view.readUInt32LE(offset + ENTRY.localHeaderOffset),
         compressedSize,
         start,
       ),
     });
-    if (method === 0 && compressedSize !== uncompressedSize) unsupported();
+    if (
+      method === ZIP_FORMAT.methodStored &&
+      compressedSize !== uncompressedSize
+    )
+      unsupported();
     offset = next;
   }
   return entries;
@@ -148,15 +165,15 @@ function dataOffset(
   directoryStart: number,
 ): number {
   if (
-    header + 30 > directoryStart ||
-    view.readUInt32LE(header) !== LOCAL_HEADER
+    header + LOCAL.bytes > directoryStart ||
+    view.readUInt32LE(header) !== LOCAL.signature
   )
     unsupported();
   const start =
     header +
-    30 +
-    view.readUInt16LE(header + 26) +
-    view.readUInt16LE(header + 28);
+    LOCAL.bytes +
+    view.readUInt16LE(header + LOCAL.nameLength) +
+    view.readUInt16LE(header + LOCAL.extraLength);
   if (start + compressedSize > directoryStart) unsupported();
   return start;
 }
@@ -177,12 +194,14 @@ async function* inflate(
       const slice = data.subarray(offset, offset + SLICE);
       // A stored entry's chunks are wiped after use below; copying keeps the
       // workbook intact, as the sheet part is read twice.
-      yield entry.method === 0 ? Buffer.from(slice) : slice;
+      yield entry.method === ZIP_FORMAT.methodStored
+        ? Buffer.from(slice)
+        : slice;
     }
   }
   const source = Readable.from(slices(), { objectMode: false });
   const output =
-    entry.method === 0
+    entry.method === ZIP_FORMAT.methodStored
       ? source
       : source.pipe(createInflateRaw({ chunkSize: SLICE }));
   try {

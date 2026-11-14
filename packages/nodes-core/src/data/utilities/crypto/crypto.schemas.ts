@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { labelledChoice } from '@pertexo/node-sdk';
 import { outputEncodingSchema } from '../encoding.schemas.js';
+
+const CRYPTO_LIMITS = Object.freeze({
+  randomIdLength: 256,
+  defaultRandomIdLength: 24,
+  outputCharacters: 256,
+});
 export const cryptoConfigSchema = z
   .discriminatedUnion('operation', [
     z
@@ -22,7 +28,12 @@ export const cryptoConfigSchema = z
     z
       .object({
         operation: z.literal('random_id').meta({ title: 'Random ID' }),
-        length: z.number().int().min(1).max(256).meta({ default: 24 }),
+        length: z
+          .number()
+          .int()
+          .min(1)
+          .max(CRYPTO_LIMITS.randomIdLength)
+          .meta({ default: CRYPTO_LIMITS.defaultRandomIdLength }),
       })
       .strict(),
   ])
@@ -35,6 +46,6 @@ export const cryptoInputSchema = z
   .object({ value: z.string().optional() })
   .strict();
 export const cryptoOutputSchema = z
-  .object({ value: z.string().max(256) })
+  .object({ value: z.string().max(CRYPTO_LIMITS.outputCharacters) })
   .strict();
 export type CryptoConfig = z.output<typeof cryptoConfigSchema>;

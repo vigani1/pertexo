@@ -1,5 +1,10 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { FILE_PAGE_LIMITS, escapeCsvValue } from '@pertexo/node-sdk';
+import {
+  FILE_PAGE_LIMITS,
+  escapeCsvValue,
+  formatByteSize,
+  formatCount,
+} from '@pertexo/node-sdk';
 import {
   canonicalizeBoundedJson,
   encodeFilePageRecord,
@@ -33,7 +38,7 @@ async function* records(
     if (bytes > FILE_PAGE_LIMITS.totalBytes)
       refuseFileCreation(
         'size',
-        'The input pages exceed 10 MB. Split the data into smaller files.',
+        `The input pages exceed ${formatByteSize(FILE_PAGE_LIMITS.totalBytes)}. Split the data into smaller files.`,
       );
     const input = await artifacts.read({
       reference,
@@ -54,7 +59,7 @@ async function* records(
       } catch {
         refuseFileCreation(
           'data',
-          'A page is malformed or exceeds the 64 KB page limits. Read the source with Output pages again.',
+          `A page is malformed or exceeds the ${formatByteSize(FILE_PAGE_LIMITS.bytes)} page limits. Read the source with Output pages again.`,
         );
       }
       if (!Array.isArray(value) || value.length > FILE_PAGE_LIMITS.items)
@@ -66,7 +71,7 @@ async function* records(
         if (++count > FILE_PAGE_LIMITS.totalItems)
           refuseFileCreation(
             'size',
-            'The pages exceed 100,000 records. Split the data into smaller files.',
+            `The pages exceed ${formatCount(FILE_PAGE_LIMITS.totalItems)} records. Split the data into smaller files.`,
           );
         encodeFilePageRecord(record);
         yield record;
@@ -120,7 +125,7 @@ export function createFileFromPages(
       if (size > FILE_PAGE_LIMITS.fileBytes)
         refuseFileCreation(
           'size',
-          'The created file exceeds 10 MB, including headers and quoting. Choose fewer columns or split the data into smaller files.',
+          `The created file exceeds ${formatByteSize(FILE_PAGE_LIMITS.fileBytes)}, including headers and quoting. Choose fewer columns or split the data into smaller files.`,
         );
       const bytes = Buffer.from(text, 'utf8');
       try {
@@ -188,7 +193,7 @@ async function* limitedWorkbook(
     if (size > FILE_PAGE_LIMITS.fileBytes)
       refuseFileCreation(
         'size',
-        'The created workbook exceeds 10 MB. Choose fewer columns or split the data into smaller files.',
+        `The created workbook exceeds ${formatByteSize(FILE_PAGE_LIMITS.fileBytes)}. Choose fewer columns or split the data into smaller files.`,
       );
     yield part;
   }

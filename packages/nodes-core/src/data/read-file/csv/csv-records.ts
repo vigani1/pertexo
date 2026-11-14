@@ -7,6 +7,16 @@ import { FileInputFailure, type JsonValue } from '@pertexo/node-sdk/server';
 import { convertCsvValue } from '../conversion.js';
 import { admitHeaders } from '../headers.js';
 import type { CoreReadFileConfig } from '../read-file.schemas.js';
+import { READ_YIELD_BYTES } from '../read-pacing.js';
+
+// One parse window holds at most this many source bytes, and at most the
+// header budget divided by the header's size, since short rows repeat its keys.
+const CSV_PARSE_WINDOW = Object.freeze({
+  maxChunkBytes: 4_096,
+  headerBudgetBytes: 32_768,
+});
+// The header is line 1, so record N is line N + 1, counted from 1.
+const CSV_FIRST_RECORD_LINE = 2;
 
 type CsvConfig = Extract<CoreReadFileConfig, { format: 'csv' }>;
 /** Header, column and conversion rules are shared by inline and paged reads. */
@@ -41,7 +51,12 @@ export async function* readCsvRecords<T>(
         const headerBytes = utf8ByteLength(JSON.stringify(headers));
         chunkBytes = Math.max(
           1,
-          Math.min(4096, Math.floor(32768 / Math.max(1, headerBytes))),
+          Math.min(
+            CSV_PARSE_WINDOW.maxChunkBytes,
+            Math.floor(
+              CSV_PARSE_WINDOW.headerBudgetBytes / Math.max(1, headerBytes),
+            ),
+          ),
         );
         return null;
       }
@@ -84,7 +99,7 @@ export async function* readCsvRecords<T>(
         offset += part.byteLength;
         yield text;
         sinceYield += part.byteLength;
-        if (sinceYield >= 65536) {
+        if (sinceYield >= READ_YIELD_BYTES) {
           await setImmediate(undefined, { signal });
           sinceYield = 0;
         }
@@ -119,7 +134,8 @@ export async function* readCsvRecords<T>(
     if (mismatch !== undefined)
       throw new FileInputFailure({
         reason: 'csv_columns',
-        record: count + 2,
+        // Records count from 1, after the header line.
+        record: count + CSV_FIRST_RECORD_LINE,
         ...mismatch,
       });
     if (error.code === 'CSV_MAX_RECORD_SIZE')

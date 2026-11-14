@@ -42,7 +42,7 @@ const CORE_VALIDATE_PATH_SCHEMA = z
     if (utf8ByteLength(path) > CORE_VALIDATE_MAX_PATH_BYTES)
       context.addIssue({
         code: 'custom',
-        message: 'Validate paths must be at most 512 UTF-8 bytes',
+        message: `Validate paths must be at most ${String(CORE_VALIDATE_MAX_PATH_BYTES)} UTF-8 bytes`,
       });
     const segments = parseJsonPath(path);
     if (segments === undefined)
@@ -53,7 +53,7 @@ const CORE_VALIDATE_PATH_SCHEMA = z
     else if (segments.length > CORE_VALIDATE_MAX_PATH_SEGMENTS)
       context.addIssue({
         code: 'custom',
-        message: 'Validate paths must contain at most 64 segments',
+        message: `Validate paths must contain at most ${String(CORE_VALIDATE_MAX_PATH_SEGMENTS)} segments`,
       });
   });
 
@@ -69,12 +69,12 @@ const ruleTypeSchema = CORE_VALIDATE_VALUE_TYPE_SCHEMA;
 
 const enumStringSchema = z
   .string()
-  .max(256)
+  .max(CORE_VALIDATE_MAX_ENUM_STRING_BYTES)
   .superRefine((value, context) => {
     if (utf8ByteLength(value) > CORE_VALIDATE_MAX_ENUM_STRING_BYTES)
       context.addIssue({
         code: 'custom',
-        message: 'Enum strings must be at most 256 UTF-8 bytes',
+        message: `Enum strings must be at most ${String(CORE_VALIDATE_MAX_ENUM_STRING_BYTES)} UTF-8 bytes`,
       });
   });
 
@@ -237,7 +237,7 @@ const issueMessageSchema = z
   .max(CORE_VALIDATE_MAX_MESSAGE_BYTES)
   .refine(
     (message) => utf8ByteLength(message) <= CORE_VALIDATE_MAX_MESSAGE_BYTES,
-    'Validate issue messages must be at most 128 UTF-8 bytes',
+    `Validate issue messages must be at most ${String(CORE_VALIDATE_MAX_MESSAGE_BYTES)} UTF-8 bytes`,
   );
 
 export const CORE_VALIDATE_ISSUE_SCHEMA = z

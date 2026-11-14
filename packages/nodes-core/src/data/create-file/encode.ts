@@ -1,8 +1,13 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { ARTIFACT_INPUT_MAX_BYTES, escapeCsvValue } from '@pertexo/node-sdk';
+import {
+  ARTIFACT_INPUT_MAX_BYTES,
+  escapeCsvValue,
+  formatByteSize,
+} from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { COLLECTION_MAX_ITEMS } from '../lists/collection.schemas.js';
 import {
+  FILE_COLUMN_NAME_CHARACTERS,
   fileColumnNameSchema,
   type CoreCreateFileConfig,
 } from './create-file.schemas.js';
@@ -46,7 +51,7 @@ function tableColumns(
       if (!fileColumnNameSchema.safeParse(name).success)
         refuseFileCreation(
           'columns',
-          `${format} field names must be nonblank and at most 256 characters. Choose columns explicitly or rename the fields.`,
+          `${format} field names must be nonblank and at most ${String(FILE_COLUMN_NAME_CHARACTERS)} characters. Choose columns explicitly or rename the fields.`,
         );
       columns.add(name);
       if (columns.size > COLLECTION_MAX_ITEMS)
@@ -91,7 +96,7 @@ export async function encodeFile(
     if (byteLength > ARTIFACT_INPUT_MAX_BYTES)
       refuseFileCreation(
         'size',
-        'The created file exceeds 1 MB, including its header and quoting. Choose fewer columns or split the data into smaller files.',
+        `The created file exceeds ${formatByteSize(ARTIFACT_INPUT_MAX_BYTES)}, including its header and quoting. Choose fewer columns or split the data into smaller files.`,
       );
     chunks.push(Buffer.from(text, 'utf8'));
   };
@@ -139,7 +144,7 @@ async function collectWorkbook(
       if (byteLength > ARTIFACT_INPUT_MAX_BYTES)
         refuseFileCreation(
           'size',
-          'The created workbook exceeds 1 MB. Choose From pages, fewer columns or split the data into smaller files.',
+          `The created workbook exceeds ${formatByteSize(ARTIFACT_INPUT_MAX_BYTES)}. Choose From pages, fewer columns or split the data into smaller files.`,
         );
       chunks.push(Buffer.from(chunk));
     }

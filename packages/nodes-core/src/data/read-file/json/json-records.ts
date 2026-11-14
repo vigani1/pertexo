@@ -12,9 +12,18 @@ import {
   FileInputFailure,
   InvalidBoundedJsonError,
 } from '@pertexo/node-sdk/server';
+import { READ_YIELD_BYTES } from '../read-pacing.js';
+import { JSON_LITERAL_BYTES } from '@pertexo/workflow-model';
 
 const INPUT_CHUNK_BYTES = 1_024;
-const YIELD_BYTES = 65_536;
+// A page is a JSON array: its two brackets, and its items inside them.
+const JSON_ARRAY_BRACKET_BYTES = 2;
+// An escaped character can take six bytes (\u0000) for every byte it stands for.
+const JSON_ESCAPE_EXPANSION = 6;
+// Space, tab, line feed and carriage return separate JSON tokens.
+const JSON_WHITESPACE_BYTES: ReadonlySet<number> = new Set([
+  0x20, 0x09, 0x0a, 0x0d,
+]);
 
 function tooLarge(): never {
   throw new FileInputFailure({ reason: 'page_value_size' });
@@ -63,7 +72,8 @@ function createParser(
     const insideRecord = tokenIsInsideRecord(containers, token);
     if (insideRecord) {
       encodedBytes += tokenJsonBytes(token, info.value);
-      if (encodedBytes > FILE_PAGE_LIMITS.bytes - 2) tooLarge();
+      if (encodedBytes > FILE_PAGE_LIMITS.bytes - JSON_ARRAY_BRACKET_BYTES)
+        tooLarge();
     }
     const addsMember = tokenAddsMember(containers, token, previous);
     if (addsMember) {
@@ -116,11 +126,13 @@ function createParser(
       // Whitespace between tokens consumes no parser allocation. String
       // whitespace remains covered by the decoded partial-string bound above.
       for (const byte of chunk) {
-        const significantByte =
-          byte !== 0x20 && byte !== 0x09 && byte !== 0x0a && byte !== 0x0d;
+        const significantByte = !JSON_WHITESPACE_BYTES.has(byte);
         if (significantByte) rawTokenBytes += 1;
       }
-      if (rawTokenBytes > 6 * FILE_PAGE_LIMITS.bytes + INPUT_CHUNK_BYTES)
+      if (
+        rawTokenBytes >
+        JSON_ESCAPE_EXPANSION * FILE_PAGE_LIMITS.bytes + INPUT_CHUNK_BYTES
+      )
         tooLarge();
       tokenizer.write(chunk);
     },
@@ -153,7 +165,7 @@ export async function* readJsonRecords(
       pending = [];
       yield* ready;
       sinceYield += part.byteLength;
-      if (sinceYield >= YIELD_BYTES) {
+      if (sinceYield >= READ_YIELD_BYTES) {
         await setImmediate(undefined, { signal });
         sinceYield = 0;
       }
@@ -173,10 +185,11 @@ function tokenJsonBytes(token: TokenType, value: unknown): number {
         throw new FileInputFailure({ reason: 'json_number' });
       return JSON.stringify(value).length;
     case TokenType.NULL:
+      return JSON_LITERAL_BYTES.null;
     case TokenType.TRUE:
-      return 4;
+      return JSON_LITERAL_BYTES.true;
     case TokenType.FALSE:
-      return 5;
+      return JSON_LITERAL_BYTES.false;
     case TokenType.COLON:
     case TokenType.COMMA:
     case TokenType.LEFT_BRACE:

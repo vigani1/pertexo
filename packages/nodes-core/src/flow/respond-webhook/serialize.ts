@@ -1,5 +1,6 @@
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
+  formatByteSize,
   WEBHOOK_RESPONSE_MAX_BYTES,
   type NodeWebhookResponse,
 } from '@pertexo/node-sdk';
@@ -9,12 +10,16 @@ import type {
   CoreRespondWebhookInput,
 } from './respond-webhook.schemas.js';
 
+const DEFAULT_STATUS = 200;
+// HTTP statuses that carry no body.
+const NO_CONTENT_STATUSES: readonly number[] = Object.freeze([204, 205, 304]);
+
 export function serializeWebhookResponse(
   config: CoreRespondWebhookConfig,
   input: CoreRespondWebhookInput,
 ): NodeWebhookResponse {
   const bodyType = config.bodyType ?? 'json';
-  const statusCode = input.statusCode ?? 200;
+  const statusCode = input.statusCode ?? DEFAULT_STATUS;
   let body: string;
   if (bodyType === 'json') body = JSON.stringify(input.body);
   else {
@@ -30,14 +35,14 @@ export function serializeWebhookResponse(
     );
   if (utf8ByteLength(body) > WEBHOOK_RESPONSE_MAX_BYTES)
     throw new InvalidBoundedJsonError(
-      'The webhook response exceeds 1 MB. Send a smaller response.',
+      `The webhook response exceeds ${formatByteSize(WEBHOOK_RESPONSE_MAX_BYTES)}. Send a smaller response.`,
     );
   if (
-    [204, 205, 304].includes(statusCode) &&
+    NO_CONTENT_STATUSES.includes(statusCode) &&
     (bodyType !== 'text' || body !== '')
   )
     throw new InvalidBoundedJsonError(
-      'Status 204, 205 and 304 require an empty text response.',
+      `Status ${NO_CONTENT_STATUSES.join(', ').replace(/, (?=\d+$)/u, ' and ')} require an empty text response.`,
     );
   return {
     statusCode,

@@ -8,6 +8,9 @@ import {
 } from '@pertexo/node-sdk/server';
 import { COLLECTION_MAX_ITEMS } from '../lists/collection.schemas.js';
 
+// The rows form a JSON array: its two brackets come first.
+const JSON_ARRAY_BRACKET_BYTES = 2;
+
 export function admitFileValue(value: unknown): JsonValue {
   let admitted: JsonValue;
   try {
@@ -40,7 +43,7 @@ export async function admitFileRows(
 ): Promise<JsonValue> {
   const rows: JsonValue[] = [];
   let members = 0,
-    bytes = 2;
+    bytes = JSON_ARRAY_BRACKET_BYTES;
   for await (const row of records) {
     if (rows.length >= COLLECTION_MAX_ITEMS)
       throw new FileInputFailure({ reason: 'item_count' });

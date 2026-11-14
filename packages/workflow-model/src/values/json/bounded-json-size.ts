@@ -31,10 +31,11 @@ const UNBOUNDED: BoundedJsonSizeBounds = Object.freeze({
   members: Infinity,
 });
 
-// JSON text widths: `null` and `true` are four bytes, `false` five, `-0` writes as `0`.
-const NULL_BYTES = 4;
-const TRUE_BYTES = 4;
-const FALSE_BYTES = 5;
+/** JSON text widths of the literals: `null` and `true` are four bytes, `false` five. */
+export const JSON_LITERAL_BYTES = Object.freeze({ null: 4, true: 4, false: 5 });
+const NULL_BYTES = JSON_LITERAL_BYTES.null;
+const TRUE_BYTES = JSON_LITERAL_BYTES.true;
+const FALSE_BYTES = JSON_LITERAL_BYTES.false;
 // A container's brackets, and the colon after an object key.
 const BRACKET_BYTES = 2;
 const COLON_BYTES = 1;

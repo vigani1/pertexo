@@ -2,6 +2,7 @@ import { looksLikeFormula } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { SPREADSHEET_LIMITS } from '../../read-file/xlsx/limits.js';
 import { refuseFileCreation } from '../create-file.errors.js';
+import { EXCEL_COLUMN_LETTERS, EXCEL_ESCAPE } from '../../excel-format.js';
 
 export type SheetRow = Readonly<Record<string, JsonValue>>;
 
@@ -89,14 +90,16 @@ function excelText(text: string): string {
     .replace(
       UNWRITABLE,
       (character) =>
-        `_x${character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}_`,
+        `_x${character.charCodeAt(0).toString(EXCEL_ESCAPE.radix).toUpperCase().padStart(EXCEL_ESCAPE.digits, '0')}_`,
     );
 }
 
 /** 0 → A, 25 → Z, 26 → AA. */
 function columnLetters(index: number): string {
   let letters = '';
-  for (let rest = index + 1; rest > 0; rest = Math.floor((rest - 1) / 26))
-    letters = String.fromCharCode(65 + ((rest - 1) % 26)) + letters;
+  const { count, codeBeforeA } = EXCEL_COLUMN_LETTERS;
+  for (let rest = index + 1; rest > 0; rest = Math.floor((rest - 1) / count))
+    letters =
+      String.fromCharCode(codeBeforeA + 1 + ((rest - 1) % count)) + letters;
   return letters;
 }

@@ -1,6 +1,7 @@
 import { DomHandler, type ChildNode } from 'domhandler';
 import { Parser } from 'htmlparser2';
 import { refuseUtility } from '../utility-result.js';
+import { HTML_LIMITS } from './html.schemas.js';
 
 class BoundedDomHandler extends DomHandler {
   private members = 0;
@@ -10,7 +11,7 @@ class BoundedDomHandler extends DomHandler {
   private count(count: number) {
     this.signal.throwIfAborted();
     this.members += count;
-    if (this.members > 8_000)
+    if (this.members > HTML_LIMITS.nodes)
       refuseUtility(
         'html_size',
         'The HTML has too many elements, attributes or text nodes. Split the document.',
@@ -21,7 +22,7 @@ class BoundedDomHandler extends DomHandler {
     super.addNode(node);
   }
   public override onopentag(name: string, attributes: Record<string, string>) {
-    if (this.tagStack.length > 48)
+    if (this.tagStack.length > HTML_LIMITS.depth)
       refuseUtility(
         'html_depth',
         'The HTML is nested too deeply. Use a smaller document.',

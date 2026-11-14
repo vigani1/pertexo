@@ -3,6 +3,7 @@ import { tooLarge, unsupported, type WorkbookArchive } from './archive.js';
 import { decodeCell, type Cell, type CellContext } from './cells.js';
 import { SPREADSHEET_LIMITS } from './limits.js';
 import { readXml, readXmlPart } from './xml.js';
+import { EXCEL_COLUMN_LETTERS } from '../../excel-format.js';
 
 /** One sheet row: cells with a value, by 1-based column. */
 export type SheetRow = Readonly<{ index: number; cells: Map<number, Cell> }>;
@@ -155,6 +156,9 @@ function cellAt(reference: string | undefined) {
   if (match === null) return unsupported();
   let column = 0;
   for (const letter of match[1] ?? '')
-    column = column * 26 + letter.charCodeAt(0) - 64;
+    column =
+      column * EXCEL_COLUMN_LETTERS.count +
+      letter.charCodeAt(0) -
+      EXCEL_COLUMN_LETTERS.codeBeforeA;
   return { column, row: Number(match[2]) };
 }
