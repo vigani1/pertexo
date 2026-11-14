@@ -896,14 +896,19 @@ describe('run statistics query-plan budget', () => {
     );
     expect(plan.Settings?.enable_seqscan).not.toBe('off');
     expect(explainWork(plan.Plan).nodeTypes).not.toContain('Seq Scan');
-    expect(indexScans(plan.Plan)).toMatchObject([
+    const scans = indexScans(plan.Plan);
+    expect(scans).toMatchObject([
       {
         index: 'workflow_run_active_admissions_workspace_idx',
         nodeType: 'Index Only Scan',
         rows: 1,
-        heapFetches: 0,
       },
     ]);
+    // Heap fetches depend on the visibility map, which VACUUM can't set
+    // while any older snapshot (an autovacuum worker, another test's pool)
+    // is alive. The bound is this workspace's own row: none from another
+    // tenant's 900 is ever fetched.
+    expect(scans[0]?.heapFetches).toBeLessThanOrEqual(1);
     expect(explainWork(plan.Plan).rejectedRowInstances).toBe(0);
     expect(explainWork(plan.Plan).summedNodeRowWork).toBeLessThanOrEqual(3);
     expect(
