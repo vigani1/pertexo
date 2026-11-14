@@ -17,6 +17,7 @@ import {
 import { availableParallelism } from 'node:os';
 import jsonata from 'jsonata';
 import { normalizeJson, type JsonValue } from '../json/canonical.js';
+import { ExpressionContextInvalidError } from './expression.errors.js';
 
 export const EXPRESSION_POLICY = Object.freeze({
   expressionBytes: 16_384,
@@ -233,7 +234,7 @@ export function projectExpressionContext(
       ...(loop === undefined ? {} : { loop }),
     };
   } catch {
-    throw new TypeError('invalid expression context');
+    throw new ExpressionContextInvalidError();
   }
 }
 
