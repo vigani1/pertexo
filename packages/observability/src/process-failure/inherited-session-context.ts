@@ -1,21 +1,13 @@
 // The database package refuses a pool whose fresh connection already carries
 // app.* settings (InheritedSessionContextError). Its text never reaches a log;
 // this builds the operator's description from its checked fields alone.
-// Observability can't depend on the database package, so the pool roles and
-// the error's name and fields are repeated here; the API's process-failure
-// test requires DESCRIBED_POOL_ROLES to equal DATABASE_POOL_ROLES and
-// describes a real refusal for every role and every APP_SETTING_NAMES name,
-// so the copies can't drift apart unnoticed.
+// Observability loads before the database package and can't depend on it, so
+// it reads only the error's name and two fields, each checked to be a plain
+// token; the pool roles and setting names stay defined once, in the database.
+// The API's process-failure test describes a real refusal for every pool role
+// and every app setting, so the two sides can't drift apart unnoticed.
 
-/** The pool roles a refusal may name; the API test holds them equal to the database's. */
-export const DESCRIBED_POOL_ROLES: readonly string[] = Object.freeze([
-  'api',
-  'dispatcher',
-  'maintenance',
-  'other',
-  'worker',
-]);
-const POOL_ROLES = new Set(DESCRIBED_POOL_ROLES);
+const POOL_ROLE = /^[a-z][a-z_]{0,31}$/u;
 const SETTING_NAME = /^app\.[a-z0-9_]+$/u;
 const MAX_SETTINGS = 32;
 
@@ -32,7 +24,7 @@ export function describeInheritedSessionContext(
     role?: unknown;
     settings?: unknown;
   };
-  if (typeof role !== 'string' || !POOL_ROLES.has(role)) return undefined;
+  if (typeof role !== 'string' || !POOL_ROLE.test(role)) return undefined;
   if (
     !Array.isArray(settings) ||
     settings.length === 0 ||

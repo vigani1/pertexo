@@ -184,7 +184,12 @@ describe('describing a pool that refused inherited app settings', () => {
     ['an upper-case name', 'worker', ['app.Workspace_id']],
     ['no settings', 'worker', []],
     ['settings that are not a list', 'worker', 'app.workspace_id'],
-    ['an unknown pool role', 'browser', ['app.workspace_id']],
+    [
+      'a pool role carrying text',
+      'api pool: secret-value',
+      ['app.workspace_id'],
+    ],
+    ['a pool role that is not text', 7, ['app.workspace_id']],
   ])('stays redacted for %s', (_case, role, settings) => {
     expect(
       describeProcessFailure(inheritedSettingsRefusal(role, settings)),
