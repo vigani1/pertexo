@@ -8,7 +8,6 @@ import {
   addValidateRule,
   parseRuleEnum,
   VALIDATE_BOUNDS,
-  VALIDATE_MAX_RULES,
   VALIDATE_TYPES,
   withRuleType,
   withValidateRules,
@@ -23,6 +22,8 @@ import {
 } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from '../fields/choice-select';
 import { BuilderCard, EntryActions, LiveTextField } from './parts';
+import { CORE_VALIDATE_MAX_RULES } from '@pertexo/nodes-core';
+import { formatCount } from '@/lib/format/count';
 
 const TYPE_LABELS: Readonly<Record<ValidateType, string>> = {
   string: 'Text',
@@ -80,7 +81,7 @@ export function ValidateRules({
       `${form.nodeId}:config:rules:${key}`,
     );
   }
-  const full = rules.length >= VALIDATE_MAX_RULES;
+  const full = rules.length >= CORE_VALIDATE_MAX_RULES;
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className="text-sm font-medium">Rules</legend>
@@ -112,7 +113,9 @@ export function ValidateRules({
         }}
       >
         <PlusIcon data-icon="inline-start" />
-        {full ? 'All 64 rules are in use' : 'Add rule'}
+        {full
+          ? `All ${formatCount(CORE_VALIDATE_MAX_RULES, 'rule')} are in use`
+          : 'Add rule'}
       </Button>
     </fieldset>
   );

@@ -1,6 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { formatDurationMs } from '@/lib/format/time';
 import { formatCount } from '@/lib/format/count';
+import { formatTimeSpan } from '@/lib/format/time';
 
 /**
  * The longest duration a workflow may set (`WORKFLOW_EXECUTION_LIMITS` in
@@ -50,7 +51,8 @@ export function withMaxRunDuration(
 /** "No limit", "1 minute", "15 minutes", "1 hour"; others as a compact duration. */
 export function describeRunDuration(duration: RunDuration): string {
   if (duration === undefined) return 'No limit';
-  if (duration === RUN_DURATION_LIMIT_MS) return '1 hour';
+  if (duration === RUN_DURATION_LIMIT_MS)
+    return formatTimeSpan(RUN_DURATION_LIMIT_MS / 1000);
   if (duration % MINUTE_MS === 0) {
     const minutes = duration / MINUTE_MS;
     return formatCount(minutes, 'minute');

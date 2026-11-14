@@ -7,7 +7,6 @@ import {
   readSwitchCases,
   scalarKind,
   scalarOfKind,
-  SWITCH_CASE_IDS,
   SWITCH_TEXT_MAX,
   withSwitchCases,
   type ScalarKind,
@@ -20,6 +19,8 @@ import {
 } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from '../fields/choice-select';
 import { BuilderCard, EntryActions, LiveTextField } from './parts';
+import { SWITCH_CASE_PORTS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 const KIND_CHOICES: readonly Readonly<{ value: ScalarKind; label: string }>[] =
   [
@@ -63,7 +64,7 @@ export function SwitchCases({
       `${form.nodeId}:config:cases:${key}`,
     );
   }
-  const full = cases.length >= SWITCH_CASE_IDS.length;
+  const full = cases.length >= SWITCH_CASE_PORTS.length;
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className="text-sm font-medium">Cases</legend>
@@ -101,7 +102,9 @@ export function SwitchCases({
         }}
       >
         <PlusIcon data-icon="inline-start" />
-        {full ? 'All 16 cases are in use' : 'Add case'}
+        {full
+          ? `All ${formatCount(SWITCH_CASE_PORTS.length, 'case')} are in use`
+          : 'Add case'}
       </Button>
     </fieldset>
   );
