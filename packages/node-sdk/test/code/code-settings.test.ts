@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_CODE_SETTINGS, parseCodeSettings } from '../../src/index.js';
+import {
+  codeRunnerSocketPath,
+  DEFAULT_CODE_SETTINGS,
+  parseCodeSettings,
+} from '../../src/index.js';
+import { CodeRunnerSocketPathError } from '../../src/code/code.errors.js';
 
 // docs/guides/code.md "Limits": instance maximum time 30 seconds by default,
 // up to 300; heap 128 MB by default, 32 MB to 1 GB; 2 concurrent tasks by
@@ -48,4 +53,25 @@ describe('Code runner settings from the environment', () => {
       );
     },
   );
+});
+
+describe('Code runner socket path', () => {
+  it.each(['relative/runner.sock', `/${'x'.repeat(100)}`, '/run/a\0b.sock'])(
+    'refuses %j with its named error',
+    (configured) => {
+      expect(() =>
+        codeRunnerSocketPath({ configured, hardened: true, uid: 1 }),
+      ).toThrow(CodeRunnerSocketPathError);
+    },
+  );
+
+  it('accepts an absolute path that fits', () => {
+    expect(
+      codeRunnerSocketPath({
+        configured: '/run/pertexo-code/runner.sock',
+        hardened: true,
+        uid: 1,
+      }),
+    ).toBe('/run/pertexo-code/runner.sock');
+  });
 });

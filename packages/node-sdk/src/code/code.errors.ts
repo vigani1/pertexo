@@ -30,3 +30,8 @@ function errorKind(code: CodeErrorCode) {
   if (runtimeFailed) return 'internal';
   return 'configuration';
 }
+
+/** CODE_RUNNER_SOCKET (or its default) isn't an absolute Unix socket path that fits. */
+export class CodeRunnerSocketPathError extends Error {
+  public override readonly name = 'CodeRunnerSocketPathError';
+}

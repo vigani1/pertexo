@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { NodeCatalogIntegrityError } from '../../../src/definitions/catalog.errors.js';
 
 import {
   createNodeCatalog,
@@ -198,6 +199,19 @@ describe('node-sdk catalog contracts', () => {
         policies: one.policies,
       }),
     ).toThrow(/unknown executor/u);
+  });
+
+  it('refuses a catalog whose edges disagree with its named error', () => {
+    const one = catalog();
+    expect(() =>
+      createNodeCatalog({
+        definitions: [
+          { ...manifest, executor: { key: 'test.other', version: 1 } },
+        ],
+        executors: one.executors,
+        policies: one.policies,
+      }),
+    ).toThrow(NodeCatalogIntegrityError);
   });
 
   it('validates configuration-selected output branches at catalog registration', () => {

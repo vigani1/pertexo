@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { NODE_JSON_LIMITS } from '../values/bounded-json.validation.js';
+import { CodeRunnerSocketPathError } from './code.errors.js';
 
 export const CODE_LIMITS = Object.freeze({
   sourceBytes: 65_536,
@@ -219,7 +220,7 @@ export function codeRunnerSocketPath({
     path.includes('\0') ||
     new TextEncoder().encode(path).byteLength > CODE_RUNNER_SOCKET_PATH_BYTES
   )
-    throw new Error(
+    throw new CodeRunnerSocketPathError(
       `CODE_RUNNER_SOCKET must be an absolute Unix socket path up to ${String(CODE_RUNNER_SOCKET_PATH_BYTES)} bytes`,
     );
   return path;
