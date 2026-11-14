@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { boundedRedactedBody } from '../../src/outbound-http/stream-redaction.js';
+import { boundedRedactedBody } from '../../src/outbound-http/redaction/stream-redaction.js';
 
 it.each([1, 32, 100])(
   'drains a 10 MiB JSON response with %i credentials including a long value',

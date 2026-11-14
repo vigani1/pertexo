@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { boundedRedactedBody } from '../../src/outbound-http/stream-redaction.js';
+import { boundedRedactedBody } from '../../src/outbound-http/redaction/stream-redaction.js';
 
 it.each([1, 2, 3, 4])(
   'masks %i JSON-string layers across a sanitizer buffer boundary',

@@ -8,7 +8,7 @@ import {
   boundedBytes,
   validKeyReference,
   responseRecord,
-} from './envelope-format.js';
+} from '../envelopes/envelope-format.js';
 
 export type EnvelopeKeyMaterial = Readonly<{
   plaintextKey: Uint8Array;

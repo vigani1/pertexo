@@ -1,8 +1,8 @@
 import type { KMSClient } from '@aws-sdk/client-kms';
 import { z } from 'zod';
-import { createBoundedKmsClient } from './kms-client.js';
-import { SelfManagedEnvelopeKeyProvider } from './self-managed-key-provider.js';
-import type { ConnectionEnvelopeEncryptionConfig } from './connection-encryption.runtime.js';
+import { createBoundedKmsClient } from '../keys/kms-client.js';
+import { SelfManagedEnvelopeKeyProvider } from '../keys/self-managed-key-provider.js';
+import type { ConnectionEnvelopeEncryptionConfig } from '../connection-encryption.runtime.js';
 import {
   AwsKmsEnvelopeKeyProviderCore,
   EnvelopeCipher,

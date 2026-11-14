@@ -4,7 +4,7 @@ const fixtures = vi.hoisted(() => ({
   createBoundedKmsClient: vi.fn(),
 }));
 
-vi.mock('../../src/encryption/kms-client.js', () => ({
+vi.mock('../../src/encryption/keys/kms-client.js', () => ({
   createBoundedKmsClient: fixtures.createBoundedKmsClient,
 }));
 

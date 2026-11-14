@@ -1,12 +1,12 @@
-import { responseCharset } from '../response-charset.js';
+import { responseCharset } from '../redaction/response-charset.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   prepareResponseRedactor,
   type ResponseRedactor,
-} from '../response-redactor.js';
+} from '../redaction/response-redactor.js';
 
-import { boundedRedactedBody } from '../stream-redaction.js';
-import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-error.js';
+import { boundedRedactedBody } from '../redaction/stream-redaction.js';
+import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-http.errors.js';
 
 import type { ParsedSecureHttpRequest } from '../secure-request.js';
 

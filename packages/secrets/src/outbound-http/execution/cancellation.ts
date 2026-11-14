@@ -1,11 +1,11 @@
-import type { SecureHttpError } from '../secure-error.js';
+import type { SecureHttpError } from '../secure-http.errors.js';
 import {
   SECURE_HTTP_ERROR_CODE,
   type SecureHttpErrorCode,
   failure,
   abortFailure,
   isTimeoutError,
-} from '../secure-error.js';
+} from '../secure-http.errors.js';
 
 import { normalizeUnknownError } from '@pertexo/node-sdk/server';
 import type {

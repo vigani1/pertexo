@@ -4,8 +4,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ConnectionEnvelopeEncryption,
   ConnectionSecretEncryptionError,
-} from '../../src/server.js';
-import { context, ContextBoundKeyProvider } from '../support/envelope-key.js';
+} from '../../../src/server.js';
+import {
+  context,
+  ContextBoundKeyProvider,
+} from '../../support/envelope-key.js';
 describe('connection envelope encryption', () => {
   afterEach(() => {
     vi.restoreAllMocks();

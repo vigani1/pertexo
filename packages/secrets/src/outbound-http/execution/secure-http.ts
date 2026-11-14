@@ -1,6 +1,6 @@
 import type { NodeVerifiedByteSource } from '@pertexo/node-sdk/server';
 
-import type { SecureHttpErrorCode } from '../secure-error.js';
+import type { SecureHttpErrorCode } from '../secure-http.errors.js';
 import type {
   AllowedPrivateNetwork,
   ResolvedAddress,

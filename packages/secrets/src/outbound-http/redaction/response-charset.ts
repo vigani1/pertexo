@@ -1,5 +1,5 @@
 import { TextDecoder } from 'node:util';
-import { SECURE_HTTP_ERROR_CODE, failure } from './secure-error.js';
+import { SECURE_HTTP_ERROR_CODE, failure } from '../secure-http.errors.js';
 
 export function responseCharset(contentType: string): string | undefined {
   let charset: string | undefined;

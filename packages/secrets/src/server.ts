@@ -1,5 +1,5 @@
-export { createEncryptionKeyRepository } from './encryption/keys.repository.js';
-export type { EncryptionKeyRepository } from './encryption/keys.repository.js';
+export { createEncryptionKeyRepository } from './encryption/keys/keys.repository.js';
+export type { EncryptionKeyRepository } from './encryption/keys/keys.repository.js';
 export { insertSystemMail } from './mail/deliveries.repository.js';
 export {
   verifySystemMailKeys,
@@ -36,14 +36,14 @@ export {
   ConnectionEnvelopeEncryption,
   ConnectionSecretEncryptionError,
   connectionSecretAssociatedData,
-} from './encryption/envelope-encryption.js';
+} from './encryption/envelopes/envelope-encryption.js';
 
-export { createAwsConnectionEnvelopeEncryption } from './encryption/aws-envelope-runtime.js';
+export { createAwsConnectionEnvelopeEncryption } from './encryption/aws-envelope.runtime.js';
 
 export type {
   AwsConnectionEnvelopeEncryptionConfig,
   AwsConnectionEnvelopeEncryptionRuntime,
-} from './encryption/aws-envelope-runtime.js';
+} from './encryption/aws-envelope.runtime.js';
 
 export type {
   ConnectionSecretContext,
@@ -52,7 +52,7 @@ export type {
   KmsClientLike,
   KmsCommand,
   SealedConnectionSecret,
-} from './encryption/envelope-encryption.js';
+} from './encryption/envelopes/envelope-encryption.js';
 
 export {
   AwsKmsWebhookEnvelopeKeyProvider,
@@ -61,21 +61,21 @@ export {
   WebhookTriggerEnvelopeEncryption,
   WebhookTriggerSecretEncryptionError,
   webhookTriggerSecretAssociatedData,
-} from './encryption/webhook-envelope.js';
+} from './encryption/envelopes/webhook-envelope.js';
 
 export type {
   GeneratedWebhookEnvelopeKey,
   SealedWebhookTriggerSecretEnvelope,
   WebhookEnvelopeKeyProvider,
   WebhookTriggerSecretContext,
-} from './encryption/webhook-envelope.js';
+} from './encryption/envelopes/webhook-envelope.js';
 
 export {
   createApplicationSecretEnvelope,
   ApplicationSecretKeyUnavailableError,
   type ApplicationSealedSecret,
   type ApplicationSecretEnvelope,
-} from './encryption/application-secret-envelope.js';
+} from './encryption/envelopes/application-secret-envelope.js';
 
 export {
   createConnectionEnvelopeEncryption,
@@ -92,14 +92,14 @@ export {
   applicationKeyVersionSchema,
   validateApplicationKeyRing,
   parseApplicationPreviousKeys,
-} from './encryption/key-ring.js';
+} from './encryption/keys/key-ring.js';
 
-export type { ApplicationKeyRing } from './encryption/key-ring.js';
+export type { ApplicationKeyRing } from './encryption/keys/key-ring.js';
 
 export {
   verifyStoredEncryptionKeys,
   StoredKeyVerificationError,
-} from './encryption/verify-stored-keys.js';
+} from './encryption/keys/verify-stored-keys.js';
 
 export {
   createCallbackTokenKeys,
@@ -146,9 +146,9 @@ export {
   type AllowedPrivateNetwork,
 } from './outbound-http/transport/address-policy.js';
 
-export { redactText } from './outbound-http/redact-text.js';
+export { redactText } from './outbound-http/redaction/redact-text.js';
 
-export { inspectSecureHttpError } from './outbound-http/secure-error.js';
+export { inspectSecureHttpError } from './outbound-http/secure-http.errors.js';
 export {
   isAllowedPrivateAddress,
   normalizeUrlHostname,
@@ -161,4 +161,4 @@ export {
 
 export { SystemMailConfigurationError } from './mail/config.js';
 
-export { ApplicationKeyConfigurationError } from './encryption/key-ring.js';
+export { ApplicationKeyConfigurationError } from './encryption/keys/key-ring.js';
