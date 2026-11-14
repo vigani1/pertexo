@@ -66,16 +66,19 @@ export async function openEveryStepAndSave(
       .click({ timeout: 10_000 });
     const content = panel.getByRole('tabpanel').filter({ visible: true });
     const drawn = DRAWN_SETTINGS[node.definition.key] ?? [];
-    // Unfold each folded group on screen; one inside another shows once
-    // its outer group is open.
+    // Unfold each folded group on screen, first one first: opening one
+    // shrinks the list, and one inside another shows once its outer group
+    // is open. The bound only stops a group that won't stay open.
     if (drawn.length > 0)
       await expect(content.locator(`[name="${drawn[0] ?? ''}"]`)).toBeVisible();
     const folded = content
       .locator('details:not([open]) > summary')
       .filter({ visible: true });
-    for (let round = 0; round < 5 && (await folded.count()) > 0; round += 1)
-      for (const summary of await folded.all())
-        await summary.click({ timeout: 10_000 });
+    for (let opened = 0; (await folded.count()) > 0; opened += 1) {
+      if (opened >= 20)
+        throw new Error(`${node.id} has a group that won't open`);
+      await folded.first().click({ timeout: 10_000 });
+    }
     for (const name of drawn)
       await expect(content.locator(`[name="${name}"]`)).toBeVisible();
     const names: string[] = [];
