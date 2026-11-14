@@ -207,6 +207,12 @@ test('owned complete examples retain historical origin through independent edits
     info.outputPath('open-and-save-retyped.json'),
     JSON.stringify(retyped, null, 2),
   );
+  // The examples are pinned by digest, so the walk reaches the same typed
+  // fields each time; fewer means a field it should retype was skipped.
+  const fieldCount = Object.values(retyped)
+    .flatMap((steps) => Object.values(steps))
+    .reduce((total, fields) => total + fields.length, 0);
+  expect(fieldCount).toBe(15);
   const editedWorkflowId = importedWorkflowIds[0];
   if (editedWorkflowId === undefined)
     throw new Error('Reviewed first template was not imported');
