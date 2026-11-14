@@ -11,10 +11,10 @@ import {
   migrationNames,
 } from '../migration-history.js';
 import { MigrationFileFailedError } from './migration.errors.js';
+import { MAX_POSTGRES_TIMEOUT_MILLIS } from '../config.js';
 
 // Stable application namespace for serializing Pertexo schema migrations.
 const MIGRATION_LOCK_ID = 7_166_118_812;
-const maximumPostgresTimeoutMs = 2_147_483_647;
 const migrationRunnerDefaults = Object.freeze({
   connectionTimeoutMs: 10_000,
   lockTimeoutMs: 10_000,
@@ -64,10 +64,10 @@ function parseMigrationTimeout(
   const invalidTimeout =
     !Number.isSafeInteger(selected) ||
     selected < minimum ||
-    selected > maximumPostgresTimeoutMs;
+    selected > MAX_POSTGRES_TIMEOUT_MILLIS;
   if (invalidTimeout)
     throw new TypeError(
-      `Migration ${label} timeout must be between ${String(minimum)}ms and ${String(maximumPostgresTimeoutMs)}ms`,
+      `Migration ${label} timeout must be between ${String(minimum)}ms and ${String(MAX_POSTGRES_TIMEOUT_MILLIS)}ms`,
     );
   return selected;
 }

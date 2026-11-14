@@ -7,6 +7,7 @@ import type {
   WorkspaceId,
   TransactionScope,
 } from './workspace-transaction.types.js';
+import { MAX_POSTGRES_TIMEOUT_MILLIS } from '../../config.js';
 
 export function parseWorkspaceId(value: string): WorkspaceId {
   return scopeIdSchema.parse(value) as WorkspaceId;
@@ -117,7 +118,11 @@ export function parseStatementTimeout(
   value: number | undefined,
 ): number | undefined {
   if (value === undefined) return undefined;
-  const invalidTimeout = !isIntegerInRange(value, 1, 2_147_483_647);
+  const invalidTimeout = !isIntegerInRange(
+    value,
+    1,
+    MAX_POSTGRES_TIMEOUT_MILLIS,
+  );
   if (invalidTimeout) {
     throw new RangeError('Invalid PostgreSQL statement timeout');
   }
