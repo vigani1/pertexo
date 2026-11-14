@@ -521,7 +521,10 @@ jobs:
           set -euo pipefail
           files=$(gh api --paginate "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" --jq '.[].filename')
           touched=false
-          if printf '%s\n' "$files" | grep -qE '^infrastructure/|(^|/)Dockerfile|^apps/web/deployment/'; then touched=true; fi
+          # Only what the drill exercises: the single-server scripts and images, not
+          # the static checks, development tooling or test helpers, which `check` and
+          # `image` already cover on every pull request.
+          if printf '%s\n' "$files" | grep -qE '^infrastructure/(single-server|images|quickstart|postgres|support)/|(^|/)Dockerfile|^apps/web/deployment/'; then touched=true; fi
           echo "touched=$touched" >> "$GITHUB_OUTPUT"
 
   # The operator's whole life with the single-server stack, through the real scripts
