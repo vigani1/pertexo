@@ -29,6 +29,7 @@ export function validDeployedEnvironment(): Record<string, string> {
 export function standaloneBetterAuthEnvironment(): Record<string, string> {
   return {
     DATABASE_URL: 'postgresql://pertexo_app:secret@localhost:5432/pertexo',
+    REDIS_URL: 'redis://localhost:6379/0',
     BETTER_AUTH_SECRET: 'standalone-better-auth-secret-at-least-32-characters',
     AUTH_MAIL_MODE: 'local',
     PUBLIC_WEB_ORIGIN: 'https://app.example.test',

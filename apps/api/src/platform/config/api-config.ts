@@ -186,10 +186,13 @@ export function parseApiConfig(
   const connections = parseConnectionsConfig(parsed, environment);
   const deployed =
     parsed.NODE_ENV === 'staging' || parsed.NODE_ENV === 'production';
-  if (deployed && parsed.REDIS_URL === undefined) {
+  // Required everywhere, as the worker requires it: a missing value used to
+  // fall back to localhost outside deployed environments.
+  const redisUrl = parsed.REDIS_URL;
+  if (redisUrl === undefined) {
     throw new ApiConfigurationError(
       'REDIS_URL',
-      'configure a Redis connection URL when deployed.',
+      'configure a Redis connection URL (redis:// or rediss://); the API needs Redis in every environment.',
     );
   }
   if (deployed && parsed.TRUST_PROXY_CIDRS === undefined) {
@@ -238,7 +241,7 @@ export function parseApiConfig(
     nodeEnv: parsed.NODE_ENV,
     observability,
     port: parsed.PORT,
-    redisUrl: parsed.REDIS_URL ?? 'redis://localhost:6379/0',
+    redisUrl,
     trustedProxyCidrs: Object.freeze(parsed.TRUST_PROXY_CIDRS ?? []),
   });
 }
