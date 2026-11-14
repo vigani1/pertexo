@@ -47,25 +47,14 @@ const SECRET_NORMALIZED_NAMES = new Set([
   'xpertexounsubscribekey',
 ]);
 
+const SCHEME_SEPARATOR = '://';
+
 function isSchemeCharacter(character: string): boolean {
-  const code = character.codePointAt(0);
-  return (
-    code !== undefined &&
-    ((code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122) ||
-      character === '+' ||
-      character === '-' ||
-      character === '.')
-  );
+  return /^[A-Za-z0-9+.-]$/u.test(character);
 }
 
 function isAsciiLetter(character: string): boolean {
-  const code = character.codePointAt(0);
-  return (
-    code !== undefined &&
-    ((code >= 65 && code <= 90) || (code >= 97 && code <= 122))
-  );
+  return /^[A-Za-z]$/u.test(character);
 }
 
 function isAuthorityBoundary(character: string): boolean {
@@ -85,16 +74,16 @@ function redactUrlUserInfo(value: string): string {
   let searchFrom = 0;
   let result = '';
   while (searchFrom < value.length) {
-    const separator = value.indexOf('://', searchFrom);
+    const separator = value.indexOf(SCHEME_SEPARATOR, searchFrom);
     if (separator === -1) break;
     let schemeStart = separator;
     while (schemeStart > 0 && isSchemeCharacter(value[schemeStart - 1] ?? ''))
       schemeStart -= 1;
     if (!isAsciiLetter(value[schemeStart] ?? '')) {
-      searchFrom = separator + 3;
+      searchFrom = separator + SCHEME_SEPARATOR.length;
       continue;
     }
-    const authorityStart = separator + 3;
+    const authorityStart = separator + SCHEME_SEPARATOR.length;
     let authorityEnd = authorityStart;
     while (
       authorityEnd < value.length &&
