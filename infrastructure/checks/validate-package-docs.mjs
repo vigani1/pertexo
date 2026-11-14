@@ -37,7 +37,6 @@ export const PENDING_DOCS = Object.freeze([
   'packages/contracts',
   'packages/core',
   'packages/database',
-  'packages/workflow-engine',
 ]);
 
 // A link to the root rules from `apps/<name>` or `packages/<name>`.
