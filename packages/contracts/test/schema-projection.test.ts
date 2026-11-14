@@ -52,10 +52,10 @@ describe('contract schema projection', () => {
       'input',
     );
     expect(Array.isArray(scalar.anyOf)).toBe(true);
-    expect(scalar.description).toContain('64 KiB');
+    expect(scalar.description).toContain('64 KB');
     expect(values.type).toBe('object');
     expect(typeof values.additionalProperties).toBe('object');
-    expect(values.description).toContain('64 KiB');
+    expect(values.description).toContain('64 KB');
     expect(input).toMatchObject({ 'x-pertexo-runtime-max-depth': 256 });
     for (const [name, projected] of Object.entries({
       Value: scalar,
@@ -138,7 +138,7 @@ describe('contract schema projection', () => {
   it('describes the data-table value limits the runtime enforces', () => {
     for (const schema of [dataTableValueSchema, dataTableValuesSchema])
       expect(projectContractSchema('Value', schema, 'input').description).toBe(
-        'Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KiB) before recursive parsing.',
+        'Runtime validation checks JSON depth (32), members (8,000) and bytes (64 KB) before recursive parsing.',
       );
     const nested = (depth: number) => {
       let value: unknown = null;

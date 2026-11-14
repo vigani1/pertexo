@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
 import { withoutHiddenCharacters } from '../../values/text.js';
 import { FormFileRejectedError } from './forms.errors.js';
+import { formatByteSize } from '@pertexo/node-sdk';
 
 const MEBIBYTE = 1_048_576;
 
@@ -125,8 +126,8 @@ export function formFileType(
 
 export function assertFormFileSize(byteLength: number, maxBytes: number) {
   if (byteLength <= maxBytes) return;
-  const size = formatFormFileBytes(byteLength);
-  const limit = formatFormFileBytes(maxBytes);
+  const size = formatByteSize(byteLength);
+  const limit = formatByteSize(maxBytes);
   throw new FormFileRejectedError(
     'size',
     // Rounded sizes can read the same; then say it is just over.
@@ -217,12 +218,4 @@ function describeFormFileGroups(groups: readonly FormFileGroup[]): string {
   return names.length < 2
     ? (names[0] ?? 'files')
     : `${names.slice(0, -1).join(', ')} or ${names.at(-1) ?? ''}`;
-}
-
-export function formatFormFileBytes(byteLength: number): string {
-  if (byteLength < 1_024) return `${String(byteLength)} B`;
-  if (byteLength < MEBIBYTE)
-    return `${String(Math.round(byteLength / 1_024))} KB`;
-  // One decimal at most, and none when it rounds away: "2 MB", "2.4 MB".
-  return `${String(Math.round((byteLength / MEBIBYTE) * 10) / 10)} MB`;
 }

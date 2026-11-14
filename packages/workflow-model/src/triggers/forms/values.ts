@@ -2,13 +2,13 @@ import { storageTextSchema } from '../../values/json/text.js';
 import { z } from 'zod';
 import { inspectJsonValue } from '../../values/json/canonical.js';
 import { FORM_LIMITS, type FormField } from './fields.js';
-import { formatFormFileBytes } from './files.js';
 import {
   FORM_FILE_LIMITS,
   formFileValueSchema,
   type FormFileValue,
 } from './files.js';
 import { FormValuesInvalidError } from './forms.errors.js';
+import { formatByteSize } from '@pertexo/node-sdk';
 
 const selectionSchema = z
   .array(storageTextSchema)
@@ -81,7 +81,7 @@ export function parseFormValues(
       throw new FormValuesInvalidError([
         {
           name: '',
-          message: `Keep the form response within ${formatFormFileBytes(FORM_LIMITS.submissionBytes)}.`,
+          message: `Keep the form response within ${formatByteSize(FORM_LIMITS.submissionBytes)}.`,
         },
       ]);
   } catch (error) {

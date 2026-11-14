@@ -57,8 +57,3 @@ export function storedTaskBytes(value: unknown): number {
   const { bytes, members } = inspectJsonValue(value);
   return bytes + JSONB_SEPARATOR_BYTES * members;
 }
-
-/** `16 KB` for 16,384 bytes: the size people read in a task limit message. */
-export function taskKilobytes(bytes: number): string {
-  return `${String(bytes / 1_024)} KB`;
-}

@@ -2,13 +2,9 @@ import type { FileInputDiagnostic } from './diagnostic.js';
 import { describeSheetList } from './sheet-names.js';
 import { FILE_PAGE_LIMITS } from './page-limits.js';
 import { ARTIFACT_INPUT_MAX_BYTES } from './reference.js';
+import { formatByteSize, formatCount } from '../values/byte-size.js';
 
-// Sizes use the guide's binary units: 10 MB is 10 MiB.
-const MEBIBYTE = 1_048_576;
-const megabytes = (bytes: number) => `${String(bytes / MEBIBYTE)} MB`;
-const kilobytes = (bytes: number) => `${String(bytes / 1_024)} KB`;
-const count = (value: number) => value.toLocaleString('en-US');
-const FILE_SIZE = megabytes(FILE_PAGE_LIMITS.fileBytes);
+const FILE_SIZE = formatByteSize(FILE_PAGE_LIMITS.fileBytes);
 
 const split = 'Split the file into smaller files and run them separately.';
 
@@ -31,13 +27,13 @@ export function describeFileInputFailure(
     case 'file_size':
       return `The file exceeds this operation's file limit (up to ${FILE_SIZE}, or the lower configured storage limit). ${split}`;
     case 'inline_file_size':
-      return `Inline Read file accepts up to ${megabytes(ARTIFACT_INPUT_MAX_BYTES)}. For CSV, Excel or a JSON list, choose Output pages (up to ${FILE_SIZE}); otherwise split the file.`;
+      return `Inline Read file accepts up to ${formatByteSize(ARTIFACT_INPUT_MAX_BYTES)}. For CSV, Excel or a JSON list, choose Output pages (up to ${FILE_SIZE}); otherwise split the file.`;
     case 'page_array':
       return 'Output pages needs a top-level JSON list. Choose Inline data for a small object, or export a list.';
     case 'page_value_size':
-      return `One record exceeds a data page (${kilobytes(FILE_PAGE_LIMITS.bytes)}, depth ${String(FILE_PAGE_LIMITS.depth)} or ${count(FILE_PAGE_LIMITS.members)} fields/items). Narrow or flatten the record. ${split}`;
+      return `One record exceeds a data page (${formatByteSize(FILE_PAGE_LIMITS.bytes)}, depth ${String(FILE_PAGE_LIMITS.depth)} or ${formatCount(FILE_PAGE_LIMITS.members)} fields/items). Narrow or flatten the record. ${split}`;
     case 'page_item_count':
-      return `The file contains more than ${count(FILE_PAGE_LIMITS.totalItems)} records. ${split}`;
+      return `The file contains more than ${formatCount(FILE_PAGE_LIMITS.totalItems)} records. ${split}`;
     case 'value_size':
       return `The parsed file exceeds the step's value limits. Wide rows fit fewer records. ${split}`;
     case 'item_count':
@@ -61,7 +57,7 @@ export function describeFileInputFailure(
     case 'csv_columns':
       return `CSV record ${String(diagnostic.record)} has ${String(diagnostic.actual)} ${diagnostic.actual === 1 ? 'column' : 'columns'}; the header has ${String(diagnostic.expected)}. Check the delimiter and quoting, then upload the corrected file.`;
     case 'spreadsheet_too_large':
-      return `The workbook is too large to read safely. Read file opens workbooks up to ${megabytes(diagnostic.limits.uncompressedBytes)} uncompressed, with at most ${count(diagnostic.limits.entries)} internal parts and ${count(diagnostic.limits.sheets)} sheets, and reads up to ${count(diagnostic.limits.cells)} cells per step. Delete unused sheets, or split the rows into smaller workbooks and run them separately.`;
+      return `The workbook is too large to read safely. Read file opens workbooks up to ${formatByteSize(diagnostic.limits.uncompressedBytes)} uncompressed, with at most ${formatCount(diagnostic.limits.entries)} internal parts and ${formatCount(diagnostic.limits.sheets)} sheets, and reads up to ${formatCount(diagnostic.limits.cells)} cells per step. Delete unused sheets, or split the rows into smaller workbooks and run them separately.`;
     case 'unsupported_spreadsheet':
       return 'The file is not a readable Excel workbook (.xlsx). Legacy .xls, macro-enabled .xlsm, password-protected and damaged files cannot be read. Open it in Excel, save it as Excel Workbook (.xlsx) and upload it again.';
     case 'sheet_missing':

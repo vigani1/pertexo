@@ -251,7 +251,6 @@ export {
   formFilename,
   assertFormFileSize,
   formFileMatchesType,
-  formatFormFileBytes,
   type FormFileGroup,
   type FormFileValue,
 } from './triggers/forms/files.js';

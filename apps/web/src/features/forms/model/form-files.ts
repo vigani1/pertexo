@@ -2,13 +2,13 @@ import {
   assertFormFileSize,
   FORM_FILE_GROUPS,
   FormFileRejectedError,
-  formatFormFileBytes,
   formFileExtension,
   formFileType,
   type FormField,
   type FormFileGroup,
 } from '@pertexo/workflow-model';
 import { formatCount, pluralWord } from '@/lib/format/count';
+import { formatByteSize } from '@pertexo/node-sdk';
 
 export type FileField = Extract<FormField, { type: 'file' }>;
 
@@ -29,7 +29,7 @@ export function acceptSummary(field: FileField): string {
   const kinds = FILE_GROUPS.filter(({ group }) =>
     field.accept.includes(group),
   ).map(({ short }) => short);
-  const size = `up to ${formatFormFileBytes(field.maxBytes)}${pluralWord(field.maxFiles, '', ' each')}`;
+  const size = `up to ${formatByteSize(field.maxBytes)}${pluralWord(field.maxFiles, '', ' each')}`;
   const count =
     field.maxFiles > 1 ? ` · ${formatCount(field.maxFiles, 'file')}` : '';
   return `${kinds.join(', ')} · ${size}${count}`;

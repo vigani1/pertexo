@@ -6,6 +6,7 @@ import {
   isStorageText,
   workflowTestExpectationsSchema,
 } from '@pertexo/workflow-model';
+import { formatByteSize, formatCount } from '@pertexo/node-sdk';
 
 const WORKFLOW_INPUT_CASE_MAX_BYTES = 65_536;
 const WORKFLOW_INPUT_CASE_MAX_DEPTH = 64;
@@ -89,8 +90,7 @@ export const workflowInputCaseJsonSchema = z
     if (!boundedCaseJson(value))
       context.addIssue({
         code: 'custom',
-        message:
-          'Run-input case must be ordinary JSON within 64 KiB, depth 64 and 10,000 members.',
+        message: `Run-input case must be ordinary JSON within ${formatByteSize(WORKFLOW_INPUT_CASE_MAX_BYTES)}, depth ${String(WORKFLOW_INPUT_CASE_MAX_DEPTH)} and ${formatCount(WORKFLOW_INPUT_CASE_MAX_MEMBERS)} members.`,
       });
   })
   .pipe(z.json())

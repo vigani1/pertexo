@@ -3,6 +3,8 @@ import {
   STORED_EXECUTION_VALUE_LIMITS,
   storedExecutionJsonStringBytes,
   StoredExecutionValueInvalidError,
+  formatByteSize,
+  formatCount,
 } from '@pertexo/node-sdk';
 import {
   canonicalizeBoundedJson,
@@ -56,7 +58,7 @@ export function boundedUtilityResult(value: unknown): JsonValue {
   } catch {
     return refuseUtility(
       'result_too_large',
-      `The result exceeds the retained step-data limits (${String(STORED_EXECUTION_VALUE_LIMITS.inlineBytes / 1_024)} KB, depth ${String(STORED_EXECUTION_VALUE_LIMITS.depth)} and ${STORED_EXECUTION_VALUE_LIMITS.members.toLocaleString('en-US')} members). Split the input into smaller batches.`,
+      `The result exceeds the retained step-data limits (${formatByteSize(STORED_EXECUTION_VALUE_LIMITS.inlineBytes)}, depth ${String(STORED_EXECUTION_VALUE_LIMITS.depth)} and ${formatCount(STORED_EXECUTION_VALUE_LIMITS.members)} members). Split the input into smaller batches.`,
     );
   }
   try {

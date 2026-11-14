@@ -19,10 +19,11 @@ import {
 import { z } from 'zod';
 
 import { boundedNodeTestJsonInputSchema } from '../schemas/shared/bounded-json-input.js';
+import { formatByteSize, formatCount } from '@pertexo/node-sdk';
 
 type JsonSchema = Record<string, unknown>;
 
-const DATA_TABLE_VALUE_DESCRIPTION = `Runtime validation checks JSON depth (${String(DATA_TABLE_JSON_LIMITS.depth)}), members (${DATA_TABLE_JSON_LIMITS.members.toLocaleString('en-US')}) and bytes (${String(DATA_TABLE_JSON_LIMITS.bytes / 1_024)} KiB) before recursive parsing.`;
+const DATA_TABLE_VALUE_DESCRIPTION = `Runtime validation checks JSON depth (${String(DATA_TABLE_JSON_LIMITS.depth)}), members (${formatCount(DATA_TABLE_JSON_LIMITS.members)}) and bytes (${formatByteSize(DATA_TABLE_JSON_LIMITS.bytes)}) before recursive parsing.`;
 
 const structuralWorkflowGraph = z.toJSONSchema(workflowGraphStructuralSchema, {
   target: 'draft-2020-12',

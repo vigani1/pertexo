@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  PENDING_TASK_LIMITS,
-  storedTaskBytes,
-  taskKilobytes,
-} from './audience.js';
+import { PENDING_TASK_LIMITS, storedTaskBytes } from './audience.js';
 import { storageTextSchema } from '../../values/json/text.js';
 import {
   parseFormValues,
@@ -11,6 +7,7 @@ import {
 } from '../../triggers/forms/values.js';
 import { FormValuesInvalidError } from '../../triggers/forms/forms.errors.js';
 import type { FormField } from '../../triggers/forms/fields.js';
+import { formatByteSize } from '@pertexo/node-sdk';
 
 const scalar = z.union([storageTextSchema, z.number(), z.boolean(), z.null()]);
 export const taskDetailsSchema = z
@@ -27,7 +24,7 @@ export const taskDetailsSchema = z
   )
   .refine(
     (value) => storedTaskBytes(value) <= PENDING_TASK_LIMITS.detailsBytes,
-    `Keep task details within ${taskKilobytes(PENDING_TASK_LIMITS.detailsBytes)}; include only the facts needed to respond.`,
+    `Keep task details within ${formatByteSize(PENDING_TASK_LIMITS.detailsBytes)}; include only the facts needed to respond.`,
   );
 
 export const taskContextSchema = z
@@ -38,7 +35,7 @@ export const taskContextSchema = z
   .strict()
   .refine(
     (value) => storedTaskBytes(value) <= PENDING_TASK_LIMITS.contextBytes,
-    `Keep task context within ${taskKilobytes(PENDING_TASK_LIMITS.contextBytes)}; shorten the details or prefilled values.`,
+    `Keep task context within ${formatByteSize(PENDING_TASK_LIMITS.contextBytes)}; shorten the details or prefilled values.`,
   );
 
 /** Responders finish partial selections; prefills still enforce choices and maxima. */

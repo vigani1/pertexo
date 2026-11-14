@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { inspectBoundedJson } from '../values/bounded-json.validation.js';
+import { formatByteSize } from '../values/byte-size.js';
 
 export const DATA_TABLE_OPERATIONS = [
   'find',
@@ -52,7 +53,7 @@ export const DATA_TABLE_JSON_LIMITS = Object.freeze({
   depth: 32,
   members: 8_000,
 });
-const ROW_KIBIBYTES = String(DATA_TABLE_JSON_LIMITS.bytes / 1_024);
+const ROW_SIZE = formatByteSize(DATA_TABLE_JSON_LIMITS.bytes);
 // A table's name is shown to people and finds the table for its steps, so
 // like n8n it may hold words with spaces; column names stay identifiers.
 const DATA_TABLE_NAME_PATTERN =
@@ -127,7 +128,7 @@ const boundedTableJson = z.unknown().superRefine((value, context) => {
   if (!checked.ok)
     context.addIssue({
       code: 'custom',
-      message: `A row or filter value must fit ${ROW_KIBIBYTES} KiB and bounded JSON. Split large values.`,
+      message: `A row or filter value must fit ${ROW_SIZE} and bounded JSON. Split large values.`,
     });
 });
 export const dataTableValueSchema = boundedTableJson.pipe(

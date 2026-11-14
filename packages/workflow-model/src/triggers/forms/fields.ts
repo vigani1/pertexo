@@ -2,12 +2,9 @@ import { eventCoordinationPolicySchema } from '../event-coordination/event-coord
 import { formRedirectUrlSchema } from './links.js';
 import { storageTextSchema } from '../../values/json/text.js';
 import { inspectJsonValue } from '../../values/json/canonical.js';
-import {
-  FORM_FILE_LIMITS,
-  formatFormFileBytes,
-  formFileGroupSchema,
-} from './files.js';
+import { FORM_FILE_LIMITS, formFileGroupSchema } from './files.js';
 import { z } from 'zod';
+import { formatByteSize } from '@pertexo/node-sdk';
 
 export const FORM_LIMITS = Object.freeze({
   fields: 20,
@@ -88,7 +85,7 @@ export const formFieldSchema = z
           .min(1)
           .max(
             FORM_FILE_LIMITS.maxBytes,
-            `Keep each file within ${formatFormFileBytes(FORM_FILE_LIMITS.maxBytes)}.`,
+            `Keep each file within ${formatByteSize(FORM_FILE_LIMITS.maxBytes)}.`,
           )
           .default(FORM_FILE_LIMITS.defaultMaxBytes),
       })
@@ -137,7 +134,7 @@ export const formFieldsSchema = z
   )
   .refine(
     (fields) => inspectJsonValue(fields).bytes <= FORM_LIMITS.schemaBytes,
-    `Keep field definitions within ${formatFormFileBytes(FORM_LIMITS.schemaBytes)}; shorten help text or options.`,
+    `Keep field definitions within ${formatByteSize(FORM_LIMITS.schemaBytes)}; shorten help text or options.`,
   );
 export const DEFAULT_FORM_THANK_YOU_MESSAGE = 'Thanks for your response.';
 export const formThankYouMessageSchema = storageTextSchema

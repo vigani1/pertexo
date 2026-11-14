@@ -8,6 +8,7 @@ import {
 } from '../../values/json/canonical.js';
 import { parseJsonPath } from '../../values/json/path.js';
 import { isStorageText } from '../../values/json/text.js';
+import { formatByteSize, formatCount } from '@pertexo/node-sdk';
 
 /** Bounds on a test case's value checks, its report and the values it shows. */
 export const WORKFLOW_TEST_LIMITS = Object.freeze({
@@ -50,7 +51,7 @@ export const testExpectationValueSchema: z.ZodType<JsonValue> = z
     }
     context.addIssue({
       code: 'custom',
-      message: `Expected value must be ordinary JSON within ${String(WORKFLOW_TEST_LIMITS.expectedValueBytes / 1_024)} KiB, depth ${String(WORKFLOW_TEST_LIMITS.expectedValueDepth)} and ${WORKFLOW_TEST_LIMITS.expectedValueMembers.toLocaleString('en-US')} members.`,
+      message: `Expected value must be ordinary JSON within ${formatByteSize(WORKFLOW_TEST_LIMITS.expectedValueBytes)}, depth ${String(WORKFLOW_TEST_LIMITS.expectedValueDepth)} and ${formatCount(WORKFLOW_TEST_LIMITS.expectedValueMembers)} members.`,
     });
   })
   .pipe(z.json());
@@ -108,7 +109,7 @@ export const workflowTestExpectationsSchema = z
     (value) =>
       utf8ByteLength(canonicalJson(value)) <=
       WORKFLOW_TEST_LIMITS.expectationsBytes,
-    `Expectations must fit within ${String(WORKFLOW_TEST_LIMITS.expectationsBytes / 1_024)} KiB per case.`,
+    `Expectations must fit within ${formatByteSize(WORKFLOW_TEST_LIMITS.expectationsBytes)} per case.`,
   );
 export const DEFAULT_TEST_EXPECTATIONS: WorkflowTestExpectations =
   Object.freeze({ outcome: 'succeeds', assertions: Object.freeze([]) });

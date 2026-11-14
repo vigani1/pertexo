@@ -116,10 +116,6 @@ export const NOT_LIMITS = Object.freeze({
     'JSON text layout: the two brackets of a container',
   'packages/workflow-model/src/triggers/forms/files.ts: 2':
     'a list of two or more names joins with “or”',
-  'packages/workflow-model/src/triggers/forms/files.ts: 1024':
-    'bytes below a kilobyte print as bytes',
-  'packages/workflow-model/src/triggers/forms/files.ts: 10':
-    'megabytes print with one decimal',
   'packages/workflow-model/src/triggers/schedule-cron.ts: 3':
     'the month field’s position in a cron expression',
   'packages/workflow-model/src/triggers/schedule-cron.ts: 4':
@@ -164,6 +160,30 @@ export function findWrittenLimits(file, text) {
     else if (isTextNode(node))
       for (const [match] of node.text.matchAll(LIMIT_IN_TEXT))
         found.push(`"${match}"`);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
+}
+
+/** The one file that may write a byte unit after a number it computed. */
+export const BYTE_SIZE_OWNER = 'packages/node-sdk/src/values/byte-size.ts';
+// A unit written straight after an interpolated number: `${…} KB`.
+const UNIT_AFTER_VALUE = /^\s?(B|KB|KiB|MB|MiB|GB|GiB)\b/u;
+
+/** Byte sizes in text written by hand instead of through `formatByteSize`. */
+export function findHandWrittenByteUnits(file, text) {
+  if (file === BYTE_SIZE_OWNER) return [];
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const found = [];
+  const visit = (node) => {
+    if (ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+      const unit = UNIT_AFTER_VALUE.exec(node.text)?.[1];
+      if (unit !== undefined)
+        found.push(
+          `${file}: "\${…} ${unit}": write byte sizes with formatByteSize (${BYTE_SIZE_OWNER}).`,
+        );
+    }
     ts.forEachChild(node, visit);
   };
   visit(source);
@@ -255,13 +275,18 @@ export function validateLimitsChecked(checked = LIMITS_CHECKED) {
 
 export async function inspectBackendLimits(root = repositoryRoot) {
   const written = [];
+  const units = [];
   for (const workspace of LIMITS_CHECKED)
-    for (const file of await listSourceFiles(workspace, root))
-      written.push([
-        file,
-        findWrittenLimits(file, await readSource(file, root)),
-      ]);
-  return [...validateLimitsChecked(), ...validateBackendLimits(written)];
+    for (const file of await listSourceFiles(workspace, root)) {
+      const text = await readSource(file, root);
+      written.push([file, findWrittenLimits(file, text)]);
+      units.push(...findHandWrittenByteUnits(file, text));
+    }
+  return [
+    ...validateLimitsChecked(),
+    ...validateBackendLimits(written),
+    ...units,
+  ];
 }
 
 if (

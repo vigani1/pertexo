@@ -191,3 +191,5 @@ export {
 
 export { encodeJson, encodeCanonicalJson } from './values/json-encoding.js';
 export type { JsonValue } from './execution/node-execution.types.js';
+
+export { formatByteSize, formatCount } from './values/byte-size.js';

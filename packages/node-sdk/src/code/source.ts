@@ -1,5 +1,6 @@
 import { parse } from 'acorn';
 import { CODE_LIMITS, type CodeLanguage } from './code-settings.js';
+import { formatByteSize } from '../values/byte-size.js';
 
 export type CodeSyntaxIssue = Readonly<{
   message: string;
@@ -25,7 +26,7 @@ export function inspectCodeSource(
     };
   if (new TextEncoder().encode(source).byteLength > CODE_LIMITS.sourceBytes)
     return {
-      message: `Code is limited to ${String(CODE_LIMITS.sourceBytes / 1_024)} KB. Shorten this step.`,
+      message: `Code is limited to ${formatByteSize(CODE_LIMITS.sourceBytes)}. Shorten this step.`,
       line: 1,
       column: 1,
     };

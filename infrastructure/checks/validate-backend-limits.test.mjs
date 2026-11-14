@@ -11,6 +11,8 @@ import {
   inspectBackendLimits,
   validateLimitsChecked,
   validateBackendLimits,
+  BYTE_SIZE_OWNER,
+  findHandWrittenByteUnits,
 } from './validate-backend-limits.mjs';
 
 const find = (text) => findWrittenLimits('a.ts', text);
@@ -120,4 +122,13 @@ test('refuses dropping a reworked package from the check', () => {
     validateLimitsChecked(LIMITS_CHECKED.slice(1)).join(),
     /LIMITS_CHECKED may only grow/u,
   );
+});
+
+test('refuses a byte unit written after a computed size, outside the formatter', () => {
+  const text =
+    'const a = `fits ${String(bytes / 1_024)} KB`; const b = `of ${count} items`;';
+  assert.deepEqual(findHandWrittenByteUnits('packages/x/src/a.ts', text), [
+    'packages/x/src/a.ts: "${…} KB": write byte sizes with formatByteSize (packages/node-sdk/src/values/byte-size.ts).',
+  ]);
+  assert.deepEqual(findHandWrittenByteUnits(BYTE_SIZE_OWNER, text), []);
 });
