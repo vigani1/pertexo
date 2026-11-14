@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { LocalRateLimiter } from '../src/local-rate-limiter.js';
-import type { RateLimitDecision } from '../src/policy.js';
+import { LocalRateLimiter } from '../../src/limiters/local-rate-limiter.js';
+import type { RateLimitDecision } from '../../src/rate-limit-policy.js';
 
 const decision = (
   overrides: Partial<RateLimitDecision> = {},

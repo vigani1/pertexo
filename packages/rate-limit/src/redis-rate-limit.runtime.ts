@@ -4,8 +4,8 @@ import { Redis } from 'ioredis';
 import {
   DistributedRateLimiter,
   type DistributedRateLimitResult,
-} from './distributed-rate-limiter.js';
-import type { RateLimitDecision } from './policy.js';
+} from './limiters/distributed-rate-limiter.js';
+import type { RateLimitDecision } from './rate-limit-policy.js';
 
 export type RedisRateLimitRuntimeOptions = Readonly<{
   operationTimeoutMs?: number;

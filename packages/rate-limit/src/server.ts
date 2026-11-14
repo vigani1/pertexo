@@ -3,8 +3,8 @@ export {
   type DistributedRateLimitResult,
   type RateLimitQuota,
   type RateLimitScriptExecutor,
-} from './distributed-rate-limiter.js';
-export { LocalRateLimiter } from './local-rate-limiter.js';
+} from './limiters/distributed-rate-limiter.js';
+export { LocalRateLimiter } from './limiters/local-rate-limiter.js';
 export {
   AbuseRateLimitPolicy,
   type RateLimitDecision,
@@ -12,5 +12,5 @@ export {
   type RateLimitEndpointClass,
   type RateLimitFailureMode,
   type RateLimitSubject,
-} from './policy.js';
-export { RedisRateLimitRuntime } from './redis-runtime.js';
+} from './rate-limit-policy.js';
+export { RedisRateLimitRuntime } from './redis-rate-limit.runtime.js';
