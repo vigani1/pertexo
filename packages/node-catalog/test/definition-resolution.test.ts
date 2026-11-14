@@ -30,5 +30,8 @@ describe('platform node definition resolution', () => {
         version: 1,
       }),
     ).toThrow(PlatformNodeDefinitionUnavailableError);
+    expect(() =>
+      resolvePlatformNodeDefinition({ key: 'Future-Node', version: 1 }),
+    ).toThrow(PlatformNodeDefinitionUnavailableError);
   });
 });

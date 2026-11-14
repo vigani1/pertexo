@@ -1,9 +1,25 @@
 import { randomUUID } from 'node:crypto';
 
 import { nodeValidationResponseSchema } from '@pertexo/contracts';
-import { describe, expect, it } from 'vitest';
+import type * as NodeCatalog from '@pertexo/node-catalog';
+import { describe, expect, it, vi } from 'vitest';
 
 import { prepareNodeValidation } from '../../src/node-testing/prepare-node-validation.js';
+
+// A step whose lookup fails for a reason other than "not in the catalog".
+const BROKEN_KEY = 'broken.lookup';
+
+vi.mock('@pertexo/node-catalog', async (importOriginal) => {
+  const actual = await importOriginal<typeof NodeCatalog>();
+  return {
+    ...actual,
+    resolvePlatformNodeDefinition: (definition: { key?: unknown }) => {
+      if (definition.key === BROKEN_KEY)
+        throw new TypeError('catalog registration is corrupt');
+      return actual.resolvePlatformNodeDefinition(definition);
+    },
+  };
+});
 
 function graph(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
@@ -169,6 +185,29 @@ describe('pure node preview validation', () => {
     expect(unknown.issues).toEqual([
       expect.objectContaining({ code: 'node.definition_unavailable' }),
     ]);
+  });
+
+  it('reports a definition whose key is not even well formed as unavailable', async () => {
+    const malformed = await prepareNodeValidation({
+      graph: graph({ definition: { key: 'Future-Node', version: 1 } }),
+      nodeId: 'http',
+    });
+
+    expect(malformed.issues).toEqual([
+      expect.objectContaining({
+        path: '$.definition',
+        code: 'node.definition_unavailable',
+      }),
+    ]);
+  });
+
+  it('lets any other lookup failure through instead of calling the definition unavailable', async () => {
+    await expect(
+      prepareNodeValidation({
+        graph: graph({ definition: { key: BROKEN_KEY, version: 1 } }),
+        nodeId: 'http',
+      }),
+    ).rejects.toThrow('catalog registration is corrupt');
   });
 
   it('distinguishes a malformed and an unexpected connection, and lets an optional one stay empty', async () => {

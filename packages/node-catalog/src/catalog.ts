@@ -64,7 +64,11 @@ const REGISTRATIONS_BY_IDENTITY = new Map(
 export function resolvePlatformNodeDefinition(
   definitionInput: unknown,
 ): PlatformNodeDefinition {
-  const { key, version } = definitionIdentitySchema.parse(definitionInput);
+  // A malformed identity names no catalog node, so it is as unavailable as an
+  // unknown one; drafts may hold keys the catalog's grammar never accepts.
+  const identity = definitionIdentitySchema.safeParse(definitionInput);
+  if (!identity.success) throw new PlatformNodeDefinitionUnavailableError();
+  const { key, version } = identity.data;
   const registration = REGISTRATIONS_BY_IDENTITY.get(
     `${key}@${String(version)}`,
   );
