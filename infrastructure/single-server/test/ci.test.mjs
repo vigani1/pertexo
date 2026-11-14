@@ -201,6 +201,8 @@ test('runs the drill on main, on the schedule, and only on pull requests that to
     'apps/api/src/app.ts',
     'docs/operations/single-server.md',
     'packages/database/src/database.ts',
+    'infrastructure/checks/third-party-notices.mjs',
+    'infrastructure/development/check-cache.mjs',
   ])
     assert.ok(!touches(file), file);
 });
