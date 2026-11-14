@@ -1,3 +1,7 @@
+import {
+  RunEventNotificationConfigurationError,
+  RunEventNotificationPublishError,
+} from './pubsub.errors.js';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
@@ -31,13 +35,6 @@ export interface RunEventNotificationPublisher {
     reference: RunEventReference,
   ): Promise<{ readonly receivers: number }>;
   resync(identity: RunEventIdentity): Promise<{ readonly receivers: number }>;
-}
-
-export class RunEventNotificationConfigurationError extends Error {
-  public override readonly name = 'RunEventNotificationConfigurationError';
-}
-export class RunEventNotificationPublishError extends Error {
-  public override readonly name = 'RunEventNotificationPublishError';
 }
 
 export function runEventChannel(workspaceId: string, runId: string): string {

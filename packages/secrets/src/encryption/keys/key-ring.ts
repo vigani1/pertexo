@@ -1,19 +1,10 @@
+import { ApplicationKeyConfigurationError } from '../encryption.errors.js';
 import { z } from 'zod';
 
 /** An application key is an AES-256 key. */
 export const APPLICATION_KEY_BYTES = 32;
 /** Retired keys kept to open older secrets during a rotation. */
 const MAX_PREVIOUS_KEYS = 8;
-
-export class ApplicationKeyConfigurationError extends TypeError {
-  public override readonly name = 'ApplicationKeyConfigurationError';
-  public constructor(
-    public readonly section: 'current' | 'previous',
-    message: string,
-  ) {
-    super(message);
-  }
-}
 
 export const applicationKeyVersionSchema = z
   .string()

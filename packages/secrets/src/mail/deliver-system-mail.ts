@@ -2,7 +2,7 @@ import { authenticationMailAssociatedData } from './mail-associated-data.js';
 import { z } from 'zod';
 import type { SystemMailDeliveryClaim } from './system-mail.types.js';
 import type { SystemMailDeliveryStore } from './system-mail.store.js';
-import { ApplicationSecretKeyUnavailableError } from '../encryption/envelopes/application-secret-envelope.js';
+import { ApplicationSecretKeyUnavailableError } from '../encryption/encryption.errors.js';
 import {
   systemMailFailureInstruction,
   systemMailFailureCode,

@@ -1,3 +1,7 @@
+import {
+  WorkspaceInboxHintConfigurationError,
+  WorkspaceInboxHintPublishError,
+} from './pubsub.errors.js';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 
@@ -32,13 +36,6 @@ export interface WorkspaceInboxHintPublisher {
     change: WorkspaceInboxChangeHint,
   ): Promise<{ readonly receivers: number }>;
   close(): Promise<void>;
-}
-
-class WorkspaceInboxHintConfigurationError extends Error {
-  public override readonly name = 'WorkspaceInboxHintConfigurationError';
-}
-export class WorkspaceInboxHintPublishError extends Error {
-  public override readonly name = 'WorkspaceInboxHintPublishError';
 }
 
 /** ADR 055: an opaque per-workspace channel for content-free inbox hints. */

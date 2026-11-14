@@ -1,14 +1,10 @@
+import { InvalidQueueDeliveryError } from '../consumption/queue-consumer.errors.js';
 import { UnrecoverableError } from 'bullmq';
 import type { Job } from 'bullmq';
 
 import { parseQueueJob, type QueueJob } from './queue-job.schemas.js';
 import { isJobIdOfOutboxEvent } from './job-id.js';
 import { QUEUE_FOR_JOB, type QueueName } from './names.js';
-
-/** An invalid delivery cannot become valid through transport redelivery. */
-export class InvalidQueueDeliveryError extends UnrecoverableError {
-  public override readonly name = 'InvalidQueueDeliveryError';
-}
 
 /**
  * Explicit policy seam for a handler that has already made the authoritative
