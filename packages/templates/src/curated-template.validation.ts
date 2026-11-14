@@ -14,7 +14,7 @@ import {
   type CuratedTemplateSetupTarget,
   type CuratedWorkflowTemplate,
 } from './catalog.js';
-import { isCuratedHttpsEndpoint } from './https-endpoint.js';
+import { isCuratedHttpsEndpoint } from './https-endpoint.validation.js';
 
 type ValidationResult =
   | { readonly ok: true }

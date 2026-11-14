@@ -5,8 +5,8 @@ export {
   type CuratedTemplateSetupValueKind,
   type CuratedWorkflowTemplate,
 } from './catalog.js';
-export { isCuratedHttpsEndpoint } from './https-endpoint.js';
+export { isCuratedHttpsEndpoint } from './https-endpoint.validation.js';
 export {
   validateCuratedTemplateSetupValue,
   verifyCuratedTemplateManifest,
-} from './verify.js';
+} from './curated-template.validation.js';
