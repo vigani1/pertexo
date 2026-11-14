@@ -18,6 +18,8 @@ const MAX_HEADER_COUNT = 64;
 const MAX_HEADER_VALUE_LENGTH = 8_192;
 const MAX_SENSITIVE_VALUE_COUNT = 64;
 const MAX_SENSITIVE_VALUE_LENGTH = 8_192;
+
+const MAX_NAVIGATION_ORIGIN_LENGTH = 2_048;
 const MAX_TIMEOUT_MILLIS = 120_000;
 const MAX_REDIRECTS = 5;
 const methodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']);
@@ -51,7 +53,7 @@ const requestSchema = z
       .object({
         origin: z
           .url()
-          .max(2048)
+          .max(MAX_NAVIGATION_ORIGIN_LENGTH)
           .refine((value) => new URL(value).origin === value),
         link: z.boolean(),
       })

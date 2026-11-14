@@ -13,6 +13,13 @@ import type {
   RedirectState,
 } from './secure-http.js';
 
+const HTTP_STATUS_RANGE = Object.freeze({ min: 100, max: 599 });
+const REDIRECT_STATUSES: ReadonlySet<number> = new Set([
+  301, 302, 303, 307, 308,
+]);
+// 307 and 308 repeat the method and body; the others become a GET.
+const BODY_PRESERVING_REDIRECTS: ReadonlySet<number> = new Set([307, 308]);
+
 export const MAX_URL_BYTES = 2_048;
 
 export function assertResponseStatus(
@@ -20,8 +27,8 @@ export function assertResponseStatus(
 ): void {
   if (
     !Number.isInteger(response.status) ||
-    response.status < 100 ||
-    response.status > 599
+    response.status < HTTP_STATUS_RANGE.min ||
+    response.status > HTTP_STATUS_RANGE.max
   ) {
     response.close();
     throw failure(SECURE_HTTP_ERROR_CODE.networkFailed, {
@@ -118,7 +125,7 @@ export function literalAddressFamily(hostname: string): 4 | 6 | undefined {
 export function redirectLocation(
   response: SecureHttpTransportResponse,
 ): string | undefined {
-  if (![301, 302, 303, 307, 308].includes(response.status)) return undefined;
+  if (!REDIRECT_STATUSES.has(response.status)) return undefined;
   const location = response.headers.location;
   return typeof location === 'string' ? location : location?.[0];
 }
@@ -133,7 +140,7 @@ function redirectRequest(
   body?: Uint8Array | NodeVerifiedByteSource;
   headers: Readonly<Record<string, string>>;
 }> {
-  if (status === 307 || status === 308)
+  if (BODY_PRESERVING_REDIRECTS.has(status))
     return {
       method,
       ...(body === undefined ? {} : { body }),

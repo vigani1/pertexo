@@ -8,12 +8,20 @@ import {
 
 const NONCE_BYTES = 12;
 const AUTH_TAG_BYTES = 16;
+// A sealed secret's plaintext and context, and its encoded parts' lengths.
+const MAX_PLAINTEXT_BYTES = 12_288;
+const MAX_ASSOCIATED_DATA_BYTES = 512;
+const SEALED_TEXT_LENGTH = Object.freeze({
+  ciphertext: 16_384,
+  nonce: 128,
+  tag: 256,
+});
 
 const sealedSchema = z
   .object({
-    ciphertext: z.string().min(1).max(16_384),
-    nonce: z.string().min(1).max(128),
-    tag: z.string().min(1).max(256),
+    ciphertext: z.string().min(1).max(SEALED_TEXT_LENGTH.ciphertext),
+    nonce: z.string().min(1).max(SEALED_TEXT_LENGTH.nonce),
+    tag: z.string().min(1).max(SEALED_TEXT_LENGTH.tag),
     keyVersion: applicationKeyVersionSchema,
   })
   .strict();
@@ -49,8 +57,8 @@ export function createApplicationSecretEnvelope(
 
   return Object.freeze({
     seal: (plaintext, associatedData) => {
-      assertBounded(plaintext, 12_288);
-      assertBounded(associatedData, 512);
+      assertBounded(plaintext, MAX_PLAINTEXT_BYTES);
+      assertBounded(associatedData, MAX_ASSOCIATED_DATA_BYTES);
       const nonce = randomBytes(NONCE_BYTES);
       const cipher = createCipheriv('aes-256-gcm', currentKey, nonce, {
         authTagLength: AUTH_TAG_BYTES,
@@ -75,7 +83,7 @@ export function createApplicationSecretEnvelope(
     },
     open: (raw, associatedData) => {
       const sealed = sealedSchema.parse(raw);
-      assertBounded(associatedData, 512);
+      assertBounded(associatedData, MAX_ASSOCIATED_DATA_BYTES);
       const key = keys.get(sealed.keyVersion);
       if (key === undefined)
         throw new ApplicationSecretKeyUnavailableError(sealed.keyVersion);

@@ -2,6 +2,12 @@ import { isIP } from 'node:net';
 import { z } from 'zod';
 import type { SystemMailConfig } from './system-mail.js';
 
+const MAX_HOSTNAME_LENGTH = 253;
+const MAX_PORT = 65_535;
+const MAX_API_KEY_LENGTH = 512;
+const MAX_SMTP_USER_LENGTH = 1_024;
+const MAX_SMTP_PASSWORD_LENGTH = 4_096;
+
 export class SystemMailConfigurationError extends Error {
   public override readonly name = 'SystemMailConfigurationError';
   public constructor(
@@ -21,7 +27,7 @@ export class SystemMailConfigurationError extends Error {
 const hostname = z
   .string()
   .min(1)
-  .max(253)
+  .max(MAX_HOSTNAME_LENGTH)
   .refine(
     (value) =>
       isIP(value) !== 0 ||
@@ -33,10 +39,14 @@ const hostname = z
   );
 const smtp = z.object({
   SYSTEM_MAIL_SMTP_HOST: hostname,
-  SYSTEM_MAIL_SMTP_PORT: z.coerce.number().int().min(1).max(65535),
+  SYSTEM_MAIL_SMTP_PORT: z.coerce.number().int().min(1).max(MAX_PORT),
   SYSTEM_MAIL_SMTP_TLS: z.enum(['starttls', 'implicit', 'none']),
-  SYSTEM_MAIL_SMTP_USER: z.string().min(1).max(1024).optional(),
-  SYSTEM_MAIL_SMTP_PASSWORD: z.string().min(1).max(4096).optional(),
+  SYSTEM_MAIL_SMTP_USER: z.string().min(1).max(MAX_SMTP_USER_LENGTH).optional(),
+  SYSTEM_MAIL_SMTP_PASSWORD: z
+    .string()
+    .min(1)
+    .max(MAX_SMTP_PASSWORD_LENGTH)
+    .optional(),
 });
 
 const smtpRemedies: Readonly<
@@ -62,7 +72,11 @@ export function parseSystemMailConfig(
   const mode = environment.SYSTEM_MAIL_TRANSPORT ?? 'resend';
   if (mode === 'resend') {
     const apiKey = environment[apiKeyName];
-    if (apiKey === undefined || apiKey.length === 0 || apiKey.length > 512)
+    if (
+      apiKey === undefined ||
+      apiKey.length === 0 ||
+      apiKey.length > MAX_API_KEY_LENGTH
+    )
       throw new SystemMailConfigurationError(apiKeyName, 'api_key_required');
     return Object.freeze({ mode, apiKey });
   }

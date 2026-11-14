@@ -57,6 +57,9 @@ export {
   type SecureHttpTransportResponse,
   type SecureHttpTransport,
 } from './execution/secure-http.js';
+
+/** A host resolving to more addresses than this is refused. */
+const MAX_RESOLVED_ADDRESSES = 16;
 export class SecureHttpClient {
   public constructor(
     private readonly resolver: SecureHttpResolver,
@@ -249,7 +252,7 @@ export class SecureHttpClient {
         cause: error,
       });
     }
-    if (addresses.length === 0 || addresses.length > 16)
+    if (addresses.length === 0 || addresses.length > MAX_RESOLVED_ADDRESSES)
       throw failure(SECURE_HTTP_ERROR_CODE.dnsFailed, {
         possiblyDispatched: failureContext.possiblyDispatched,
         ambiguous: false,

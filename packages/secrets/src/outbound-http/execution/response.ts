@@ -20,6 +20,10 @@ import {
 import { MAX_URL_BYTES } from './routing.js';
 import { raceWithSignal } from './cancellation.js';
 
+/** A response header kept for the caller is cut to this length. */
+const MAX_KEPT_HEADER_LENGTH = 2_048;
+const MAX_LINK_HEADER_BYTES = 8_192;
+
 const safeResponseHeaders = new Set([
   'content-language',
   'content-type',
@@ -156,7 +160,7 @@ function selectResponseHeaders(
             )
           : value,
       )
-      .slice(0, 2_048);
+      .slice(0, MAX_KEPT_HEADER_LENGTH);
   }
   return Object.freeze(selected);
 }
@@ -187,7 +191,7 @@ function pageNavigation(
 ): Readonly<{ url: string; link?: string }> {
   const raw = includeLink ? response.headers.link : undefined;
   const link = raw === undefined ? undefined : normalizedHeaderValue(raw);
-  if (link !== undefined && utf8ByteLength(link) > 8192)
+  if (link !== undefined && utf8ByteLength(link) > MAX_LINK_HEADER_BYTES)
     throw failure(SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid, {
       possiblyDispatched: true,
       ambiguous: false,
