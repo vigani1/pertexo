@@ -9,3 +9,4 @@ export {
   resolvePlatformNodeDefinition,
   type PlatformNodeDefinition,
 } from './catalog.js';
+export { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js';

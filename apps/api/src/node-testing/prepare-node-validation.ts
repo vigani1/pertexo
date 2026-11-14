@@ -1,6 +1,9 @@
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
-import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
+import {
+  PlatformNodeDefinitionUnavailableError,
+  resolvePlatformNodeDefinition,
+} from '@pertexo/node-catalog';
 import {
   normalizeJson,
   type JsonValue,
@@ -114,7 +117,8 @@ export async function prepareNodeValidation(
   let definition;
   try {
     definition = resolvePlatformNodeDefinition(node.definition);
-  } catch {
+  } catch (error) {
+    if (!(error instanceof PlatformNodeDefinitionUnavailableError)) throw error;
     issue(issues, {
       path: '$.definition',
       code: 'node.definition_unavailable',

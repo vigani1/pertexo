@@ -3,11 +3,12 @@ import {
   approvalOutputSchema,
   formSubmissionSchema,
 } from '@pertexo/workflow-model';
+
+import { PLATFORM_NODE_CATALOG } from './catalog.js';
+
 const inputBrowserOutputSchema = generateSchemaDocument(formSubmissionSchema);
 const approvalBrowserOutputSchema =
   generateSchemaDocument(approvalOutputSchema);
-
-import { PLATFORM_NODE_CATALOG } from './catalog.js';
 
 /**
  * The metadata exposed to browser clients.  Runtime schemas are retained as

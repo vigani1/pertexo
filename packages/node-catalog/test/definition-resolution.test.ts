@@ -4,7 +4,10 @@ import {
   HTTP_REQUEST_MANIFEST,
 } from '@pertexo/integrations';
 
-import { resolvePlatformNodeDefinition } from '../src/index.js';
+import {
+  PlatformNodeDefinitionUnavailableError,
+  resolvePlatformNodeDefinition,
+} from '../src/index.js';
 
 describe('platform node definition resolution', () => {
   it('resolves exact schemas without constructing or calling an executor', () => {
@@ -26,6 +29,6 @@ describe('platform node definition resolution', () => {
         key: 'missing.node',
         version: 1,
       }),
-    ).toThrow(/not implemented/u);
+    ).toThrow(PlatformNodeDefinitionUnavailableError);
   });
 });

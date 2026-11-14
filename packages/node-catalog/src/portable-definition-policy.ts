@@ -7,6 +7,7 @@ import {
   resolvePlatformNodeDefinition,
 } from './catalog.js';
 import { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
+import { PortableConnectionSlotPolicyError } from './node-catalog.errors.js';
 
 const CONNECTION_SLOT_POLICIES: Readonly<
   Record<string, Readonly<{ providerKey: string; authType: string }>>
@@ -23,8 +24,7 @@ export function platformPortableDefinitionPolicy() {
     const registration = resolvePlatformNodeDefinition(manifest.definition);
     const slots = manifest.connectionRequirements.map((slot) => {
       const policy = CONNECTION_SLOT_POLICIES[slot];
-      if (policy === undefined)
-        throw new Error('Portable connection slot policy is unavailable');
+      if (policy === undefined) throw new PortableConnectionSlotPolicyError();
       return Object.freeze({
         slot,
         ...policy,
