@@ -12,7 +12,6 @@ export {
 } from './lifecycle/nest-observability.runtime.js';
 export { createStructuredLogger } from './logging/structured-logger.js';
 export { describeProcessFailure } from './process-failure/describe-process-failure.js';
-export { DESCRIBED_POOL_ROLES } from './process-failure/inherited-session-context.js';
 export type {
   TransportMetrics,
   TransportJob,
