@@ -12,26 +12,17 @@ import { and, eq, or, sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 
 import type { PublishedWorkflow } from '../../../runs/queries/execution/workflow-execution.types.js';
-import { readHealth } from '../../reconciliation/health.repository.js';
-import type { WorkflowTriggerHealth } from '../../reconciliation/trigger-reconciliation.types.js';
-
-import {
-  WebhookDeliveryIneligibleError,
-  WebhookTriggerNotFoundError,
-  WebhookWorkflowPausedError,
-} from '../webhook-trigger.errors.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type {
   WebhookConfig,
   WebhookVerificationReference,
 } from './webhook-runtime.types.js';
-import { endpointTakesDeliveries } from './endpoint-rules.js';
 
-export async function oneHealth(
+export async function readTriggerWorkflowId(
   client: PoolClient,
   workspaceId: string,
   triggerId: string,
-): Promise<WorkflowTriggerHealth> {
+): Promise<string | undefined> {
   const identity = await drizzle(client)
     .select({ workflowId: workflowTriggers.workflowId })
     .from(workflowTriggers)
@@ -42,12 +33,7 @@ export async function oneHealth(
       ),
     )
     .catch(rethrowQueryFailure);
-  const workflowId = identity[0]?.workflowId;
-  if (workflowId === undefined) throw new WebhookTriggerNotFoundError();
-  const health = await readHealth(client, workspaceId, workflowId);
-  const trigger = health.find(({ id }) => id === triggerId);
-  if (trigger === undefined) throw new WebhookTriggerNotFoundError();
-  return trigger;
+  return identity[0]?.workflowId;
 }
 
 /** The config this version of the trigger was published with. */
@@ -69,10 +55,10 @@ export async function readTriggerConfig(
   return result[0]?.config;
 }
 
-export async function executableProjection(
+export async function readExecutableProjection(
   transaction: WorkspaceTransaction,
   workflowVersionId: string,
-): Promise<PublishedWorkflow> {
+): Promise<PublishedWorkflow | undefined> {
   const result = await transaction.db
     .select({
       id: workflowVersions.id,
@@ -90,20 +76,19 @@ export async function executableProjection(
       ),
     );
   const published = result[0];
-  if (published === undefined) throw new WebhookDeliveryIneligibleError();
-  return Object.freeze(published);
+  return published === undefined ? undefined : Object.freeze(published);
 }
 
 /**
- * Locks the verified endpoint and everything that must stay admissible. The statuses
- * are read from the locked rows, so a change that committed during the wait is seen.
+ * Share-locks the verified endpoint with its workflow and workspace, and reads
+ * the statuses from the locked rows, so a change that committed during the wait
+ * is seen. Undefined when the endpoint no longer matches the verification.
  */
-export async function lockEligibleEndpoint(
+export async function lockEndpointEligibility(
   transaction: WorkspaceTransaction,
   verification: WebhookVerificationReference,
   verifiedSecretVersionId: string,
-  { replaying = false }: Readonly<{ replaying?: boolean | undefined }> = {},
-): Promise<void> {
+) {
   const endpoint = alias(webhookTriggerEndpoints, 'endpoint');
   const workflow = alias(workflows, 'workflow');
   const workspace = alias(workspaces, 'workspace');
@@ -144,29 +129,14 @@ export async function lockEligibleEndpoint(
     // Workflow before endpoint, the order every trigger command takes them in. The other
     // way round, a delivery between a command's two locks deadlocks with it.
     .for('share', { of: [workflow, endpoint, workspace] });
-  const row = eligible[0];
-  // A publish that lands after verification leaves this delivery on the version it
-  // verified against, as if it had arrived first. Only a removed step refuses it.
-  if (
-    row === undefined ||
-    !endpointTakesDeliveries(row) ||
-    !(await stepIsPublished(
-      transaction,
-      verification,
-      row.published_version_id,
-    ))
-  )
-    throw new WebhookDeliveryIneligibleError();
-  // ADR 056: the shared workflow lock orders this admission against a pause.
-  if (!replaying && row.trigger_pause_state === 'paused')
-    throw new WebhookWorkflowPausedError();
+  return eligible[0];
 }
 
 /**
  * A separate statement on purpose: joined under the row lock above, a publish committing
  * during the wait would re-check this row against the old trigger and refuse a valid delivery.
  */
-async function stepIsPublished(
+export async function stepIsPublished(
   transaction: WorkspaceTransaction,
   verification: WebhookVerificationReference,
   publishedVersionId: string | null,

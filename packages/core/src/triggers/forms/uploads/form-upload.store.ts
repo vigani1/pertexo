@@ -20,7 +20,7 @@ import {
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
 import { artifacts, formUploads } from '@pertexo/database/schema';
-import { discoverPublicForm } from '../discover.repository.js';
+import { discoverPublicForm } from '../discover.js';
 import { FormChangedError } from '../form.errors.js';
 import { ArtifactUploadNotFoundError } from '../../../artifacts/uploads/artifact-upload.errors.js';
 import {

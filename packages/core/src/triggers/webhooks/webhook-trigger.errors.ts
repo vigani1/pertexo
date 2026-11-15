@@ -4,6 +4,11 @@ const INTAKE_BUSY_RETRY_SECONDS = 5;
 export class WebhookTriggerNotFoundError extends Error {
   public override readonly name = 'WebhookTriggerNotFoundError';
 }
+
+export function requireWebhookTrigger<T>(found: T | undefined): T {
+  if (found === undefined) throw new WebhookTriggerNotFoundError();
+  return found;
+}
 /** The trigger exists but can't take an endpoint in its current state. */
 export class WebhookTriggerStateError extends Error {
   public override readonly name = 'WebhookTriggerStateError';

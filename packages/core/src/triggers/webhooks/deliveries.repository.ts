@@ -1,13 +1,10 @@
-import { TRIGGER_HISTORY_PAGE_LIMIT } from '../../shared/page-limits.js';
 import type { CoordinatedEvent } from '@pertexo/contracts';
-import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
-import type { Pool, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import {
   rethrowQueryFailure,
-  withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
 import {
@@ -19,7 +16,6 @@ import {
 import { COORDINATED_EVENT_METADATA } from '../coordination/history.repository.js';
 import type {
   ListWebhookDeliveriesInput,
-  RejectedWebhookDelivery,
   WebhookDeliveryEndpoint,
   WebhookDeliveryOutcome,
   WebhookDeliveryPage,
@@ -30,35 +26,6 @@ import type {
 import { HTTP_STATUS } from './delivery.js';
 
 import { generatePersistedId } from '@pertexo/database/platform';
-import { withWorkflowAccess } from '../../shared/workflow-access.js';
-import { WebhookTriggerNotFoundError } from './webhook-trigger.errors.js';
-
-/**
- * Owners, admins and builders read trigger state, on a suspended workspace too. The
- * folder only has to be visible to them. Takes no locks, so it reads one snapshot.
- */
-export function withWebhookReader<T>(
-  pool: Pool,
-  input: Readonly<{ workspaceId: string; actorId: string; workflowId: string }>,
-  work: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  return withWorkflowAccess(
-    pool,
-    {
-      workspaceId: input.workspaceId,
-      actorId: input.actorId,
-      workflowId: input.workflowId,
-    },
-    {
-      mode: 'read',
-      capability: 'workflow:update',
-      statuses: BROWSABLE_WORKSPACE_STATUSES,
-      folderCapability: 'workflow:read',
-      denied: () => new WebhookTriggerNotFoundError(),
-    },
-    work,
-  );
-}
 
 /** Writes one delivery row inside the caller's workspace transaction. */
 export async function insertWebhookDelivery(
@@ -89,7 +56,7 @@ export async function insertWebhookDelivery(
   });
 }
 
-async function readDeliveryPage(
+export async function readDeliveryPage(
   client: PoolClient,
   input: Readonly<{
     workspaceId: string;
@@ -161,61 +128,35 @@ async function readDeliveryPage(
   });
 }
 
-export function createWebhookDeliveryLog(pool: Pool) {
-  return Object.freeze({
-    listDeliveries: (
-      input: ListWebhookDeliveriesInput,
-    ): Promise<WebhookDeliveryPage> => {
-      const { workspaceId, workflowId, triggerId } = input;
-      const limit = input.limit ?? TRIGGER_HISTORY_PAGE_LIMIT;
-      const after = input.after;
-      return withWebhookReader(pool, input, async (client) => {
-        // History follows the endpoint, so a trigger row of any version finds all of it.
-        const trigger = await drizzle(client)
-          .select({ endpointId: endpoints.id })
-          .from(workflowTriggers)
-          .leftJoin(
-            endpoints,
-            and(
-              eq(endpoints.workspaceId, workflowTriggers.workspaceId),
-              eq(endpoints.workflowId, workflowTriggers.workflowId),
-              eq(endpoints.nodeId, workflowTriggers.nodeId),
-            ),
-          )
-          .where(
-            and(
-              eq(workflowTriggers.workspaceId, workspaceId),
-              eq(workflowTriggers.id, triggerId),
-              eq(workflowTriggers.workflowId, workflowId),
-              eq(workflowTriggers.kind, 'webhook'),
-            ),
-          )
-          .catch(rethrowQueryFailure);
-        const found = trigger[0];
-        if (found === undefined) throw new WebhookTriggerNotFoundError();
-        if (found.endpointId === null) return Object.freeze({ items: [] });
-        return readDeliveryPage(client, {
-          workspaceId,
-          endpointId: found.endpointId,
-          limit,
-          after,
-        });
-      });
-    },
-    // The sender is the actor here, and has only proved it knows the address.
-    recordRejectedDelivery: async (input: RejectedWebhookDelivery) => {
-      const outcome = input.outcome;
-      await withWorkspaceTransaction(
-        pool,
-        input.endpoint.workspaceId,
-        (transaction) =>
-          insertWebhookDelivery(transaction, input.endpoint, {
-            outcome,
-            signatureCheck: input.signatureCheck,
-            replayCheck: input.replayCheck,
-            bodyBytes: input.bodyBytes,
-          }),
-      );
-    },
-  });
+/** The trigger's endpoint ID, null before it has one, or undefined when the trigger isn't visible. */
+export async function readTriggerEndpointId(
+  client: PoolClient,
+  input: Pick<
+    ListWebhookDeliveriesInput,
+    'workspaceId' | 'workflowId' | 'triggerId'
+  >,
+): Promise<string | null | undefined> {
+  const { workspaceId, workflowId, triggerId } = input;
+  // History follows the endpoint, so a trigger row of any version finds all of it.
+  const trigger = await drizzle(client)
+    .select({ endpointId: endpoints.id })
+    .from(workflowTriggers)
+    .leftJoin(
+      endpoints,
+      and(
+        eq(endpoints.workspaceId, workflowTriggers.workspaceId),
+        eq(endpoints.workflowId, workflowTriggers.workflowId),
+        eq(endpoints.nodeId, workflowTriggers.nodeId),
+      ),
+    )
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, workspaceId),
+        eq(workflowTriggers.id, triggerId),
+        eq(workflowTriggers.workflowId, workflowId),
+        eq(workflowTriggers.kind, 'webhook'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return trigger[0]?.endpointId;
 }

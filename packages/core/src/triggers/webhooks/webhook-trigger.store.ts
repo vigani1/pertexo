@@ -17,7 +17,7 @@ import { readHealth } from '../reconciliation/health.repository.js';
 import {
   createWebhookDeliveryLog,
   withWebhookReader,
-} from './deliveries.repository.js';
+} from './delivery-log.store.js';
 
 import type {
   AcceptVerifiedWebhookDeliveryInput,
@@ -35,11 +35,9 @@ import {
   provisionWebhook,
   rotateWebhookEndpoint,
   rotateWebhookSecret,
-} from './runtime/management.repository.js';
-import {
-  consumeWebhookIngressLimit,
-  resolveWebhookVerification,
-} from './runtime/verification.repository.js';
+} from './runtime/manage-webhook.js';
+import { resolveWebhookVerification } from './runtime/verification.repository.js';
+import { consumeWebhookIngressLimit } from './runtime/consume-ingress-limit.js';
 
 /**
  * Measured on a loaded machine with the default pool of 5: one acceptance at a

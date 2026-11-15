@@ -10,7 +10,8 @@ import {
   parseFormValues,
   FormValuesInvalidError,
 } from '@pertexo/workflow-model';
-import { authorizeForm, readFormVersion } from './form-versions.repository.js';
+import { readFormVersion } from './read-form-version.js';
+import { authorizeForm } from './authorize-form.js';
 import type {
   PublicFormGrant,
   SubmitFormInput,

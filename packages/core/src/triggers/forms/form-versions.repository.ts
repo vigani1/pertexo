@@ -1,4 +1,3 @@
-import { publicFormIsAvailable } from './public-form-standing.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -9,77 +8,47 @@ import {
   workspaces,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { rolesForCapability } from '@pertexo/policy';
-import { authorizeWorkflowResource } from '../../shared/resources/workflow-authority.repository.js';
-import { readFormDefinition } from './read-form-definition.js';
 import type { PoolClient } from 'pg';
-import { FormUnavailableError } from './form.errors.js';
 import type { FormScope, PublicFormGrant } from './form-admission.types.js';
 
-/**
- * Who may read or submit a published form: someone with its current link, on an
- * active workspace, or a member. Submitting takes the admission lock before this
- * check, so it can't use the authority helper, whose share locks must come first.
- */
-export async function authorizeForm(
+/** The granted form's access and workspace status, share-locked when writing. */
+export async function readGrantedFormStanding(
   client: PoolClient,
   input: FormScope,
-  {
-    grant,
-    write,
-  }: Readonly<{ grant: PublicFormGrant | undefined; write: boolean }>,
-): Promise<void> {
-  if (grant !== undefined) {
-    if (
-      input.workspaceId !== grant.workspaceId ||
-      input.workflowId !== grant.workflowId
-    )
-      throw new FormUnavailableError();
-    const form = alias(workflowForms, 'form');
-    const query = drizzle(client)
-      .select({ access: form.access, workspaceStatus: workspaces.status })
-      .from(form)
-      .innerJoin(workspaces, eq(workspaces.id, form.workspaceId))
-      .where(
-        and(
-          eq(form.workspaceId, input.workspaceId),
-          eq(form.workflowId, input.workflowId),
-          eq(form.publicId, grant.publicId),
-          eq(form.capabilityHash, grant.capabilityHash),
-          eq(form.nodeId, grant.nodeId),
-        ),
-      );
-    const current = await (
-      write ? query.for('share', { of: form }) : query
-    ).catch(rethrowQueryFailure);
-    const standing = current[0];
-    if (standing === undefined || !publicFormIsAvailable(standing))
-      throw new FormUnavailableError();
-  } else {
-    if (input.actorId === undefined) throw new FormUnavailableError();
-    if (
-      !(await authorizeWorkflowResource(
-        client,
-        { ...input, actorId: input.actorId },
-        {
-          capability: 'workflow:read',
-          locking: write,
-          roles: rolesForCapability('workspace:read'),
-        },
-      ))
-    )
-      throw new FormUnavailableError();
-  }
+  grant: PublicFormGrant,
+  write: boolean,
+) {
+  const form = alias(workflowForms, 'form');
+  const query = drizzle(client)
+    .select({ access: form.access, workspaceStatus: workspaces.status })
+    .from(form)
+    .innerJoin(workspaces, eq(workspaces.id, form.workspaceId))
+    .where(
+      and(
+        eq(form.workspaceId, input.workspaceId),
+        eq(form.workflowId, input.workflowId),
+        eq(form.publicId, grant.publicId),
+        eq(form.capabilityHash, grant.capabilityHash),
+        eq(form.nodeId, grant.nodeId),
+      ),
+    );
+  const current = await (
+    write ? query.for('share', { of: form }) : query
+  ).catch(rethrowQueryFailure);
+  return current[0];
 }
-/** The caller has already decided who is asking and which workspace statuses count. */
-export async function readFormVersion(
+
+/**
+ * The active workflow's published version ID, locked unless only reading. Lock
+ * before reading the version: a locked join waiting on a concurrent publication
+ * re-checks against the old version row and finds no form.
+ */
+export async function lockPublishedVersionId(
   client: PoolClient,
   input: FormScope,
   locking: 'read' | 'share' | 'update',
-  { allowPaused = false }: Readonly<{ allowPaused?: boolean | undefined }> = {},
-) {
-  // Lock before reading the version: a locked join waiting on a concurrent
-  // publication re-checks against the old version row and finds no form.
+  allowPaused: boolean,
+): Promise<string | null | undefined> {
   const db = drizzle(client);
   const workflow = alias(workflows, 'workflow');
   const query = db
@@ -96,9 +65,15 @@ export async function readFormVersion(
   const locked = await (
     locking === 'read' ? query : query.for(locking, { of: workflow })
   ).catch(rethrowQueryFailure);
-  const publishedVersionId = locked[0]?.publishedVersionId;
-  if (publishedVersionId === undefined || publishedVersionId === null)
-    throw new FormUnavailableError();
+  return locked[0]?.publishedVersionId;
+}
+
+export async function readPublishedVersion(
+  client: PoolClient,
+  input: FormScope,
+  publishedVersionId: string,
+) {
+  const db = drizzle(client);
   const rows = await db
     .select({
       graphJson: workflowVersions.graphJson,
@@ -120,12 +95,7 @@ export async function readFormVersion(
       ),
     )
     .catch(rethrowQueryFailure);
-  const row = rows[0];
-  if (row === undefined) throw new FormUnavailableError();
-  return {
-    version: Object.freeze(row.version),
-    ...readFormDefinition(row.graphJson),
-  };
+  return rows[0];
 }
 
 /** The graph a form was published in, as a replay after republication reads it. */

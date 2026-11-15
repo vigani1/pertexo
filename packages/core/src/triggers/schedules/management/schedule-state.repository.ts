@@ -9,7 +9,6 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowTriggers, triggerSchedules } from '@pertexo/database/schema';
 
 import { publishedVersionOf } from '../../reconciliation/health.repository.js';
-import { ScheduleTriggerError } from '../schedule-trigger.errors.js';
 import {
   parsePersistedScheduleRecurrence,
   readPersistedScheduleRecurrence,
@@ -122,7 +121,7 @@ export async function readSchedule(
   workspaceId: string,
   workflowId: string,
   triggerId: string,
-): Promise<ScheduleTriggerRecord> {
+): Promise<ScheduleTriggerRecord | undefined> {
   const result = await scheduleQuery(client)
     .where(
       and(
@@ -134,8 +133,7 @@ export async function readSchedule(
     )
     .catch(rethrowQueryFailure);
   const row = result[0];
-  if (row === undefined) throw new ScheduleTriggerError('not_found');
-  return scheduleRecord(row);
+  return row === undefined ? undefined : scheduleRecord(row);
 }
 
 export async function readScheduleCommandTarget(
@@ -178,9 +176,7 @@ export async function readScheduleCommandTarget(
     )
     .for('update', { of: [schedule, trigger] })
     .catch(rethrowQueryFailure);
-  const row = result[0];
-  if (row === undefined) throw new ScheduleTriggerError('not_found');
-  return row;
+  return result[0];
 }
 
 export function scheduleHealthTransition(

@@ -26,10 +26,8 @@ import type { InitialCheckpointFactory } from '../../runs/commands/initial-check
 import { FormChangedError, FormUnavailableError } from './form.errors.js';
 import type { SubmitFormInput } from './form-admission.types.js';
 import { markFormUploadsSubmitted } from '../../artifacts/form-uploads/unsent.repository.js';
-import {
-  readFormVersionGraph,
-  type readFormVersion,
-} from './form-versions.repository.js';
+import { readFormVersionGraph } from './form-versions.repository.js';
+import type { readFormVersion } from './read-form-version.js';
 import { admitInSavepoint } from '../admission-savepoint.repository.js';
 
 export async function submitForm(
