@@ -13,3 +13,11 @@ export class CallbackResponseError extends Error {
     super('This callback cannot be accepted.');
   }
 }
+
+/** A preview's run is a rehearsal: it never hands out a live callback URL. */
+export class CallbackPreviewRefusedError extends Error {
+  override readonly name = 'CallbackPreviewRefusedError';
+  constructor() {
+    super('Previews cannot issue live callback URLs.');
+  }
+}

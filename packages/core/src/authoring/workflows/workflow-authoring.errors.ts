@@ -72,3 +72,11 @@ export class WorkflowDefinitionPlacementError extends Error {
     super('Workflow draft adds a definition that is not placeable');
   }
 }
+
+/** An authoring store refuses work once it is closing, so nothing outlives its pool. */
+export class AuthoringStoreClosedError extends Error {
+  public override readonly name = 'AuthoringStoreClosedError';
+  public constructor() {
+    super('This authoring store is closed');
+  }
+}
