@@ -15,30 +15,39 @@ import {
   DISPLAY_NAME_MAX_CHARACTERS,
   EMAIL_ADDRESS_LIMITS,
 } from '@pertexo/workflow-model';
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 
 export { idempotencyKeySchema } from '../shared/transport-headers.js';
 
+/** What a workspace's own text fields hold. */
+export const WORKSPACE_TEXT_LIMITS = Object.freeze({
+  slugCharacters: 64,
+  deletionReasonCharacters: 512,
+});
 export const workspaceCreateRequestSchema = z
   .object({
-    name: storageTextSchema.trim().min(1).max(128),
+    name: storageTextSchema.trim().min(1).max(RESOURCE_NAME_MAX_LENGTH),
     slug: z
       .string()
       .trim()
       .min(1)
-      .max(64)
+      .max(WORKSPACE_TEXT_LIMITS.slugCharacters)
       .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/u),
   })
   .strict();
 const workspaceRevisionSchema = z.number().int().positive();
 export const workspaceRenameRequestSchema = z
   .object({
-    name: storageTextSchema.trim().min(1).max(128),
+    name: storageTextSchema.trim().min(1).max(RESOURCE_NAME_MAX_LENGTH),
     expectedRevision: workspaceRevisionSchema,
   })
   .strict();
 export const workspaceDeletionRequestSchema = z
   .object({
-    reason: storageTextSchema.trim().min(1).max(512),
+    reason: storageTextSchema
+      .trim()
+      .min(1)
+      .max(WORKSPACE_TEXT_LIMITS.deletionReasonCharacters),
   })
   .strict();
 export const workspaceIdentifierSchema = z.uuid();

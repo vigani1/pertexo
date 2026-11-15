@@ -1,3 +1,8 @@
+import {
+  RESOURCE_NAME_MAX_LENGTH,
+  WORKSPACE_TEXT_LIMITS,
+} from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { workspaceCreateRequestSchema } from '@pertexo/contracts';
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -9,8 +14,8 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { WorkspaceCreationCommand } from '../../data/mutations/use-workspace-creation';
 type Field = 'name' | 'slug';
 const FIELD_MESSAGES: Record<Field, string> = {
-  name: 'Give the workspace a name of up to 128 characters.',
-  slug: 'Use lowercase letters, numbers and single hyphens, up to 64 characters.',
+  name: `Give the workspace a name of up to ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}.`,
+  slug: `Use lowercase letters, numbers and single hyphens, up to ${formatCount(WORKSPACE_TEXT_LIMITS.slugCharacters, 'character')}.`,
 };
 function suggestWorkspaceSlug(name: string): string {
   return name

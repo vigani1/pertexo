@@ -1,3 +1,5 @@
+import { SHEET_NAME_MAX_LENGTH } from '@pertexo/node-sdk';
+import { formatCount } from '@/lib/format/count';
 import { sheetNameSchema } from '@pertexo/node-sdk';
 import { PlusIcon } from 'lucide-react';
 import { FieldError } from '@/components/ui/field';
@@ -108,7 +110,7 @@ function parseSheetName(
         ok: false,
         error:
           text.length > 31
-            ? 'Sheet names hold up to 31 characters.'
+            ? `Sheet names hold up to ${formatCount(SHEET_NAME_MAX_LENGTH, 'character')}.`
             : (result.error.issues[0]?.message ?? 'Use another sheet name.'),
       };
 }

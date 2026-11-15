@@ -1,3 +1,5 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { useId, useRef, useState, type RefObject } from 'react';
 import {
   API_TOKEN_DEFAULT_LIFETIME_DAYS,
@@ -52,7 +54,7 @@ export function CreateTokenForm({
           const next = {
             ...(parsed.error.issues.some((issue) => issue.path[0] === 'name')
               ? {
-                  name: 'Enter a name, up to 128 characters, without control characters.',
+                  name: `Enter a name, up to ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}, without control characters.`,
                 }
               : {}),
             ...(parsed.error.issues.some((issue) => issue.path[0] === 'scopes')
@@ -88,7 +90,7 @@ export function CreateTokenForm({
               {...props}
               ref={nameInput}
               autoComplete="off"
-              maxLength={128}
+              maxLength={RESOURCE_NAME_MAX_LENGTH}
               value={name}
               disabled={pending}
               onChange={(event) => {

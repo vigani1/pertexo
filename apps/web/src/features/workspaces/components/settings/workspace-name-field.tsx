@@ -1,3 +1,5 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { workspaceRenameRequestSchema } from '@pertexo/contracts';
 import { InlineRename } from '@/components/patterns/actions/rename/inline';
@@ -9,7 +11,7 @@ import { useWorkspaceRename } from '../../data/mutations/use-workspace-rename';
 function nameError(name: string): string | undefined {
   return workspaceRenameRequestSchema.shape.name.safeParse(name).success
     ? undefined
-    : 'Name the workspace in 1 to 128 characters.';
+    : `Name the workspace in 1 to ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}.`;
 }
 
 /**

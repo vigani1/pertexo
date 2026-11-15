@@ -1,4 +1,5 @@
 import { responseSchema } from '../shared/response-schema.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import {
   workflowCursorSchema,
   workflowListQuerySchema,
@@ -63,7 +64,10 @@ export const workflowVersionRestoreParamsSchema = z
   })
   .strict();
 export const workflowVersionRestoreRequestSchema = z.object({}).strict();
-export const workflowNameSchema = storageTextSchema.trim().min(1).max(128);
+export const workflowNameSchema = storageTextSchema
+  .trim()
+  .min(1)
+  .max(RESOURCE_NAME_MAX_LENGTH);
 
 const positiveVersionSchema = z.number().int().positive();
 export { workflowGraphSchema };

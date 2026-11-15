@@ -1,3 +1,4 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
 import { SamlIdentityFields, SamlClaimFields } from './fields/saml';
 import { useId, useState } from 'react';
 import {
@@ -180,7 +181,7 @@ const SAML_FIELD_RULES = {
   name: (value: string) =>
     samlProviderCreateSchema.shape.name.safeParse(value).success
       ? undefined
-      : 'Enter a name of up to 128 characters.',
+      : `Enter a name of up to ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}.`,
   issuer: (value: string) =>
     samlProviderCreateSchema.shape.issuer.safeParse(value).success
       ? undefined

@@ -1,3 +1,4 @@
+import { FILE_PAGE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
 import { useState, type ReactNode } from 'react';
 import { UploadIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -117,7 +118,7 @@ function UploadSession({
       <LabelledField
         id="upload-file"
         label="File"
-        description="Up to 10 MB (or the server’s lower storage limit). Files are not virus-checked."
+        description={`Up to ${formatByteSize(FILE_PAGE_LIMITS.fileBytes)} (or the server’s lower storage limit). Files are not virus-checked.`}
       >
         {(control) => (
           <FileDrop

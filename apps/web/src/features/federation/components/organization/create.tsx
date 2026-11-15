@@ -1,3 +1,5 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { useId } from 'react';
 import { federationOrganizationCreateSchema } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
@@ -18,7 +20,7 @@ export function CreateOrganization({
       name: (value: string) =>
         federationOrganizationCreateSchema.shape.name.safeParse(value).success
           ? undefined
-          : 'Enter a name of up to 128 characters.',
+          : `Enter a name of up to ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}.`,
     },
     { name: '' },
   );

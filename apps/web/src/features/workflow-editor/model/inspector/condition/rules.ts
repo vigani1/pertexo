@@ -3,7 +3,7 @@ import {
   REFERENCE_PATTERN,
   sourceReference,
 } from '../input-mappings/reference';
-import { EXPRESSION_BYTES_LIMIT } from '../object-mappings/expressions';
+import { EXPRESSION_BYTES_MAX } from '@pertexo/workflow-model';
 
 /*
  * A Condition step's rules are its existing stored format: one JSONata
@@ -182,7 +182,7 @@ export function writeCondition(draft: ConditionDraft): ConditionWriting {
     written.length === 1
       ? (written[0] ?? '')
       : written.map((rule) => `(${rule})`).join(` ${draft.combinator} `);
-  return new TextEncoder().encode(expression).length > EXPRESSION_BYTES_LIMIT
+  return new TextEncoder().encode(expression).length > EXPRESSION_BYTES_MAX
     ? { kind: 'too_long' }
     : { kind: 'written', expression };
 }

@@ -104,8 +104,10 @@ export {
   parallelConfigSchema,
   type ParallelConfig,
 } from './flow/control-nodes/parallel.js';
+export { EXPRESSION_BYTES_MAX } from './values/expression-limits.js';
 export {
   SWITCH_CASE_PORTS,
+  SWITCH_SCALAR_STRING_LENGTH,
   switchConfigSchema,
   switchScalarSchema,
   type SwitchConfig,
@@ -385,6 +387,7 @@ export { workflowTestStepChoices } from './authoring/test-suites/steps.js';
 export {
   workflowTestExpectationsSchema,
   DEFAULT_TEST_EXPECTATIONS,
+  WORKFLOW_TEST_LIMITS,
   type WorkflowTestExpectations,
 } from './authoring/test-suites/workflow-test-expectations.schemas.js';
 

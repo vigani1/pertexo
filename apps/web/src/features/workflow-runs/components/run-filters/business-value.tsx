@@ -1,6 +1,11 @@
+import { formatCount } from '@/lib/format/count';
 import { useId, useState } from 'react';
 import { ChevronDownIcon, TagIcon } from 'lucide-react';
-import { runValueKeySchema, runValueTextSchema } from '@pertexo/node-sdk';
+import {
+  RUN_VALUE_LIMITS,
+  runValueKeySchema,
+  runValueTextSchema,
+} from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
@@ -86,11 +91,13 @@ function ExactValueFields({
           ...(runValueKeySchema.safeParse(key).success
             ? {}
             : {
-                key: 'Use the name the step saved: letters, numbers, dots, hyphens or underscores, up to 50.',
+                key: `Use the name the step saved: letters, numbers, dots, hyphens or underscores, up to ${formatCount(RUN_VALUE_LIMITS.keyCharacters, 'character')}.`,
               }),
           ...(runValueTextSchema.safeParse(value).success
             ? {}
-            : { value: 'Use a value up to 255 characters.' }),
+            : {
+                value: `Use a value up to ${formatCount(RUN_VALUE_LIMITS.valueCharacters, 'character')}.`,
+              }),
         };
         setErrors(next);
         if (next.key === undefined && next.value === undefined)

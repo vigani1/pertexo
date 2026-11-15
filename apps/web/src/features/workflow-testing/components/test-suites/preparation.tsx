@@ -1,3 +1,4 @@
+import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/contracts';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
 import { LabelledField } from '@/components/ui/field';
@@ -23,7 +24,8 @@ export function SuitePreparation({
       </p>
       {preparation.cases.length === 0 ? (
         <Notice>
-          Create a saved input case first. A suite can contain up to 50 cases.
+          Create a saved input case first. A suite can contain up to{' '}
+          {formatCount(WORKFLOW_TEST_SUITE_MAX_CASES, 'case')}.
         </Notice>
       ) : (
         <ol className="list-inside list-decimal text-sm">

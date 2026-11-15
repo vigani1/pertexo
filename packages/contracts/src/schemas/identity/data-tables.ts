@@ -9,6 +9,7 @@ import {
   dataTableResultSchema as storedDataTableResultSchema,
   dataTableSchemaChangeSchema,
   dataTableWriteCommandSchema,
+  formatByteSize,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 export const dataTableCreateSchema = z
@@ -96,7 +97,10 @@ export const dataTableCsvImportSchema = z
     csv: z
       .string()
       .min(1, 'The CSV is empty. Add a header row and at least one row.')
-      .max(1_048_576, 'CSV imports must fit 1 MB. Split the file.'),
+      .max(
+        DATA_TABLE_LIMITS.csvImportBytes,
+        `CSV imports must fit ${formatByteSize(DATA_TABLE_LIMITS.csvImportBytes)}. Split the file.`,
+      ),
   })
   .strict();
 export { dataTableQuerySchema };

@@ -1,3 +1,4 @@
+import { SWITCH_SCALAR_STRING_LENGTH } from '@pertexo/workflow-model';
 import { PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -7,7 +8,6 @@ import {
   readSwitchCases,
   scalarKind,
   scalarOfKind,
-  SWITCH_TEXT_MAX,
   withSwitchCases,
   type ScalarKind,
   type SwitchCase,
@@ -264,8 +264,11 @@ function CaseValue({
         value: typeof equals === 'string' ? equals : '',
         format: (value) => value,
         parse: (text) =>
-          text.length > SWITCH_TEXT_MAX
-            ? { ok: false, error: 'Keep it under 1,024 characters.' }
+          text.length > SWITCH_SCALAR_STRING_LENGTH
+            ? {
+                ok: false,
+                error: `Keep it under ${formatCount(SWITCH_SCALAR_STRING_LENGTH, 'character')}.`,
+              }
             : { ok: true, value: text },
         onCommit: onCommit,
       }}

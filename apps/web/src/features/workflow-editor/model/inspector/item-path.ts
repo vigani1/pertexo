@@ -1,8 +1,7 @@
-import { parseJsonPath } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
+import { COLLECTION_PATH_LIMITS, parseJsonPath } from '@pertexo/workflow-model';
 import type { FieldParseResult } from './draft';
 
-const MAX_PATH_BYTES = 512;
-const MAX_PATH_SEGMENTS = 64;
 const PATH_EXAMPLE = 'Write a field like email, or a path like items[0].id.';
 
 /**
@@ -19,12 +18,12 @@ export function parseItemPath(text: string): FieldParseResult<string> {
   if (path === undefined || segments === undefined)
     return { ok: false, error: PATH_EXAMPLE };
   if (
-    new TextEncoder().encode(path).byteLength > MAX_PATH_BYTES ||
-    segments.length > MAX_PATH_SEGMENTS
+    new TextEncoder().encode(path).byteLength > COLLECTION_PATH_LIMITS.bytes ||
+    segments.length > COLLECTION_PATH_LIMITS.segments
   )
     return {
       ok: false,
-      error: `Paths can be at most ${String(MAX_PATH_BYTES)} bytes and ${String(MAX_PATH_SEGMENTS)} levels deep.`,
+      error: `Paths can be at most ${formatCount(COLLECTION_PATH_LIMITS.bytes, 'byte')} and ${formatCount(COLLECTION_PATH_LIMITS.segments, 'level')} deep.`,
     };
   return { ok: true, value: path };
 }

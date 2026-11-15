@@ -1,11 +1,16 @@
+import { formatCount } from '@/lib/format/count';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { workflowNameSchema, type WorkflowSummary } from '@pertexo/contracts';
+import {
+  RESOURCE_NAME_MAX_LENGTH,
+  workflowNameSchema,
+  type WorkflowSummary,
+} from '@pertexo/contracts';
 
 /** The field message for a name the API would reject. */
 export function workflowNameError(name: string): string | undefined {
   return workflowNameSchema.safeParse(name).success
     ? undefined
-    : 'Name the workflow in 1 to 128 characters.';
+    : `Name the workflow in 1 to ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}.`;
 }
 
 /**

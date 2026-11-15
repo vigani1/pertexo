@@ -1,3 +1,4 @@
+import { DATA_TABLE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -262,7 +263,8 @@ function NewTableKey({
         onChange={onChange}
       />
       <p className="text-xs text-muted-foreground">
-        Upsert uses this required column. Key values must fit 1 KB.
+        Upsert uses this required column. Key values must fit{' '}
+        {formatByteSize(DATA_TABLE_LIMITS.keyBytes)}.
       </p>
     </div>
   );

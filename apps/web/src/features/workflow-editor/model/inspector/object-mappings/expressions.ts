@@ -1,5 +1,9 @@
 import jsonata from 'jsonata';
-import { isRecord, type ValueSource } from '@pertexo/workflow-model';
+import {
+  EXPRESSION_BYTES_MAX,
+  isRecord,
+  type ValueSource,
+} from '@pertexo/workflow-model';
 import { sourceFromExpression } from './sources';
 
 type ObjectEntry = Readonly<{
@@ -8,14 +12,11 @@ type ObjectEntry = Readonly<{
   source?: ValueSource;
 }>;
 
-/** What the server's expression policy accepts, checked again when it saves. */
-export const EXPRESSION_BYTES_LIMIT = 16_384;
-
 /** Use the existing parser's key positions; never interpret/evaluate expressions in the browser. */
 export function objectExpressions(
   expression: string,
 ): readonly ObjectEntry[] | undefined {
-  if (new TextEncoder().encode(expression).length > EXPRESSION_BYTES_LIMIT)
+  if (new TextEncoder().encode(expression).length > EXPRESSION_BYTES_MAX)
     return undefined;
   try {
     const ast: unknown = jsonata(expression).ast();
@@ -64,7 +65,7 @@ export function objectExpressions(
 export function listExpressions(
   expression: string,
 ): readonly (readonly ObjectEntry[])[] | undefined {
-  if (new TextEncoder().encode(expression).length > EXPRESSION_BYTES_LIMIT)
+  if (new TextEncoder().encode(expression).length > EXPRESSION_BYTES_MAX)
     return undefined;
   try {
     const ast: unknown = jsonata(expression).ast();

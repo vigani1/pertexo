@@ -1,3 +1,5 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { smtpCredentialSchema } from '@pertexo/contracts';
 
 export type SmtpField =
@@ -54,8 +56,7 @@ export function smtpDraftErrors(
     username: 'Enter the SMTP username.',
     password: 'Enter the SMTP password.',
     fromEmail: 'Enter a valid sender email address.',
-    fromName:
-      'Use a sender name of at most 128 characters without line breaks.',
+    fromName: `Use a sender name of at most ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')} without line breaks.`,
   };
   for (const issue of parsed.error.issues) {
     const field = SMTP_FIELDS.find((field) => field === issue.path[0]);

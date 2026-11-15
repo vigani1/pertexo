@@ -1,3 +1,5 @@
+import { SIGNING_KEY_MAX_BYTES } from '@pertexo/node-sdk';
+import { formatCount } from '@/lib/format/count';
 import {
   smtpCredential,
   emptySmtpDraft,
@@ -226,8 +228,7 @@ export function credentialErrors(
       }).success
         ? {}
         : {
-            signingKey:
-              'Enter valid Unicode text of 1–4,096 UTF-8 bytes. Whitespace is preserved.',
+            signingKey: `Enter valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}. Whitespace is preserved.`,
           };
     case 'slack': {
       const botToken = slackTokenError(draft.botToken);
@@ -326,7 +327,7 @@ export function credentialServerErrors(
       }
       case 'signing':
         if (field === 'signingKey')
-          errors.signingKey = 'Use valid Unicode text of 1–4,096 UTF-8 bytes.';
+          errors.signingKey = `Use valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}.`;
         break;
       case 'slack':
         if (field === 'botToken') errors.botToken = SLACK_TOKEN_FORMAT;

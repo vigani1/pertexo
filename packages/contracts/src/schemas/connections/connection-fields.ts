@@ -1,5 +1,6 @@
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();
@@ -22,7 +23,10 @@ export const connectionStatusSchema = z.enum([
   'reauthorization_required',
   'revoked',
 ]);
-export const connectionNameSchema = storageTextSchema.trim().min(1).max(128);
+export const connectionNameSchema = storageTextSchema
+  .trim()
+  .min(1)
+  .max(RESOURCE_NAME_MAX_LENGTH);
 
 /** The fields every connection answers with; an OAuth2 connection narrows them. */
 export const connectionResponseFields = {

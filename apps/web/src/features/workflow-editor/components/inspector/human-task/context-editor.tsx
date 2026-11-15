@@ -1,9 +1,13 @@
+import { formatByteSize } from '@pertexo/node-sdk';
+import { formatCount } from '@/lib/format/count';
 import { ContextFieldRow } from './context-row';
 
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import jsonata from 'jsonata';
 import {
   canonicalJson,
+  EXPRESSION_BYTES_MAX,
+  PENDING_TASK_LIMITS,
   taskDetailsSchema,
   parseTaskPrefill,
   type FormField,
@@ -53,7 +57,7 @@ function ContextFields(props: ContextFieldsProps) {
   const model = useContextMappings(props);
   const addingContextBlocked =
     !model.form.editable ||
-    model.draft.text.length >= 20 ||
+    model.draft.text.length >= PENDING_TASK_LIMITS.detailFields ||
     (model.group === 'prefill' && model.available.length === 0);
   return (
     <fieldset
@@ -120,7 +124,7 @@ function ContextFields(props: ContextFieldsProps) {
         Values are saved once when the task opens.
         {model.group === 'prefill'
           ? ' The person can edit them before responding.'
-          : ' Up to 20 details within 8 KB; each list has up to 20 plain values.'}
+          : ` Up to ${formatCount(PENDING_TASK_LIMITS.detailFields, 'detail')} within ${formatByteSize(PENDING_TASK_LIMITS.detailsBytes)}; each list has up to ${formatCount(PENDING_TASK_LIMITS.detailListItems, 'plain value')}.`}
       </p>
       {model.draft.error === undefined ? null : (
         <Notice tone="destructive">{model.draft.error}</Notice>
@@ -149,12 +153,16 @@ function useContextMappings({
       canonicalJson(left ?? null) === canonicalJson(right ?? null),
     parse: (rows) => {
       if (
-        rows.length > 20 ||
-        rows.some((row) => row.destinationKey.length > 160)
+        rows.length > PENDING_TASK_LIMITS.detailFields ||
+        rows.some(
+          (row) =>
+            row.destinationKey.length >
+            PENDING_TASK_LIMITS.detailNameCharacters,
+        )
       )
         return {
           ok: false,
-          error: 'Use up to 20 fields with names up to 160 characters.',
+          error: `Use up to ${formatCount(PENDING_TASK_LIMITS.detailFields, 'field')} with names up to ${formatCount(PENDING_TASK_LIMITS.detailNameCharacters, 'character')}.`,
         };
       if (
         group === 'prefill' &&
@@ -187,8 +195,14 @@ function useContextMappings({
         };
       try {
         if (mapping.kind === 'expression') {
-          if (new TextEncoder().encode(mapping.expression).length > 16384)
-            return { ok: false, error: 'Keep these mappings within 16 KB.' };
+          if (
+            new TextEncoder().encode(mapping.expression).length >
+            EXPRESSION_BYTES_MAX
+          )
+            return {
+              ok: false,
+              error: `Keep these mappings within ${formatByteSize(EXPRESSION_BYTES_MAX)}.`,
+            };
           jsonata(mapping.expression);
         } else if (mapping.kind === 'literal') {
           if (group === 'details') taskDetailsSchema.parse(mapping.value);
@@ -200,7 +214,7 @@ function useContextMappings({
           ok: false,
           error:
             group === 'details'
-              ? 'Use plain details or lists of up to 20 plain values within 8 KB, with complete expressions.'
+              ? `Use plain details or lists of up to ${formatCount(PENDING_TASK_LIMITS.detailListItems, 'plain value')} within ${formatByteSize(PENDING_TASK_LIMITS.detailsBytes)}, with complete expressions.`
               : 'Check prefill types, choices, selection limits and expressions.',
         };
       }

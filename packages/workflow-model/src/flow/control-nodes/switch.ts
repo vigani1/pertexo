@@ -19,7 +19,7 @@ export const SWITCH_CASE_PORTS = Object.freeze([
   'case-16',
 ] as const);
 
-const SWITCH_SCALAR_STRING_LENGTH = 1_024;
+export const SWITCH_SCALAR_STRING_LENGTH = 1_024;
 const switchCasePortSchema = z.enum(SWITCH_CASE_PORTS);
 export const switchScalarSchema = z.union([
   z.null(),

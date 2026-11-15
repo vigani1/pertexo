@@ -20,6 +20,7 @@ export { httpPlaceholders } from './http/request/placeholders.js';
 
 export {
   HTTP_MULTIPART_MAX_PARTS,
+  MULTIPART_FIELD_LIMITS,
   httpMultipartConfigSchema,
   httpMultipartValueSchema,
   type HttpMultipartConfig,
