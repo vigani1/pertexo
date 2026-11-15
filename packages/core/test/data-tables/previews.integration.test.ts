@@ -7,7 +7,7 @@ import {
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { markPreviewDispatched } from '../../src/previews/attempts/mark-dispatched.js';
 import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
-import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/preview-retention.store.js';
+import { createPreviewRetentionStore } from '../../src/lifecycle/previews/preview-retention.store.js';
 import {
   actorUserId,
   workspaceId,
@@ -230,7 +230,7 @@ it('retains preview effects until preview retention and then cascades their priv
       [f.claimed.lease.previewRunId],
     );
   });
-  const retention = createPreviewRetentionCoordinator(
+  const retention = createPreviewRetentionStore(
     parseDatabaseConfig({
       connectionString: databaseUrl(maintenanceBaseUrl),
       max: 2,

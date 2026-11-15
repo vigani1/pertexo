@@ -10,7 +10,7 @@ import {
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
-import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/artifacts/artifact-retention.store.js';
+import { createRunArtifactRetentionStore } from '../../src/lifecycle/artifacts/artifact-retention.store.js';
 
 export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 export const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');
@@ -189,7 +189,7 @@ afterAll(async () => {
 
 export {
   Pool,
-  createRunArtifactRetentionCoordinator,
+  createRunArtifactRetentionStore,
   parseDatabaseConfig,
   randomUUID,
 };

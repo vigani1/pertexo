@@ -17,7 +17,7 @@ import {
   type ArtifactStoreInput,
 } from './retention-artifacts.fixture.js';
 import {
-  createRunArtifactRetentionCoordinator,
+  createRunArtifactRetentionStore,
   maintenanceUrl,
   parseDatabaseConfig,
   randomUUID,
@@ -116,7 +116,7 @@ describe('retention artifact reclamation', () => {
       delete: vi.fn(() => Promise.resolve()),
       head: vi.fn(() => Promise.resolve(null)),
     };
-    const coordinator = createRunArtifactRetentionCoordinator(
+    const coordinator = createRunArtifactRetentionStore(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
       store,
     );
@@ -179,7 +179,7 @@ describe('retention artifact reclamation', () => {
         return Promise.resolve(null);
       }),
     };
-    const coordinator = createRunArtifactRetentionCoordinator(
+    const coordinator = createRunArtifactRetentionStore(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
       artifacts,
     );
@@ -260,7 +260,7 @@ describe('retention artifact reclamation', () => {
           Promise.resolve(objects.has(id) ? {} : null),
       };
       const create = () =>
-        createRunArtifactRetentionCoordinator(
+        createRunArtifactRetentionStore(
           parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
           store,
         );
@@ -330,7 +330,7 @@ describe('retention artifact reclamation', () => {
         ),
       );
       const remove = vi.fn(() => Promise.resolve());
-      const retention = createRunArtifactRetentionCoordinator(
+      const retention = createRunArtifactRetentionStore(
         parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
         { delete: remove, head: () => Promise.resolve(null) },
       );
@@ -376,7 +376,7 @@ describe('retention artifact reclamation', () => {
         .mockResolvedValueOnce(null),
     };
     const createCoordinator = () =>
-      createRunArtifactRetentionCoordinator(
+      createRunArtifactRetentionStore(
         parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
         artifacts,
       );
@@ -530,7 +530,7 @@ describe('retention artifact reclamation', () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null),
     };
-    const coordinator = createRunArtifactRetentionCoordinator(
+    const coordinator = createRunArtifactRetentionStore(
       parseDatabaseConfig({
         connectionString: withApplicationName(
           maintenanceUrl,
@@ -698,7 +698,7 @@ describe('retention artifact reclamation', () => {
         delete: vi.fn(() => Promise.resolve()),
         head: vi.fn().mockResolvedValue(null),
       };
-      const coordinator = createRunArtifactRetentionCoordinator(
+      const coordinator = createRunArtifactRetentionStore(
         parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
         store,
       );
@@ -732,7 +732,7 @@ describe('retention artifact reclamation', () => {
     );
     const releaseVerification = Promise.withResolvers<undefined>();
     let coordinator:
-      ReturnType<typeof createRunArtifactRetentionCoordinator> | undefined;
+      ReturnType<typeof createRunArtifactRetentionStore> | undefined;
     let finalization: Promise<unknown> | undefined;
     try {
       await withOwnerTransaction(async (client) => {
@@ -785,7 +785,7 @@ describe('retention artifact reclamation', () => {
         delete: vi.fn(() => Promise.resolve()),
         head: vi.fn(() => Promise.resolve(null)),
       };
-      coordinator = createRunArtifactRetentionCoordinator(
+      coordinator = createRunArtifactRetentionStore(
         parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
         artifacts,
       );
@@ -819,7 +819,7 @@ describe('retention artifact reclamation', () => {
     );
     const releaseVerification = Promise.withResolvers<undefined>();
     let coordinator:
-      ReturnType<typeof createRunArtifactRetentionCoordinator> | undefined;
+      ReturnType<typeof createRunArtifactRetentionStore> | undefined;
     let finalization: Promise<unknown> | undefined;
     try {
       await withOwnerTransaction(async (client) => {
@@ -872,7 +872,7 @@ describe('retention artifact reclamation', () => {
         delete: vi.fn(() => Promise.resolve()),
         head: vi.fn(() => Promise.resolve(null)),
       };
-      coordinator = createRunArtifactRetentionCoordinator(
+      coordinator = createRunArtifactRetentionStore(
         parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
         artifacts,
       );
@@ -941,7 +941,7 @@ describe('retention artifact reclamation', () => {
       delete: vi.fn().mockResolvedValue(undefined),
       head: vi.fn().mockResolvedValue(null),
     };
-    const coordinator = createRunArtifactRetentionCoordinator(
+    const coordinator = createRunArtifactRetentionStore(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
       artifacts,
     );
@@ -975,7 +975,7 @@ it('defers byte erasure while an online backup holds the deletion lock and resum
   const client = await pool.connect();
   await beforeEachFixture1();
   await insertExpiredPendingUserUpload(id, 'a');
-  const retention = createRunArtifactRetentionCoordinator(
+  const retention = createRunArtifactRetentionStore(
     parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
     { delete: () => Promise.resolve(), head: () => Promise.resolve(null) },
   );

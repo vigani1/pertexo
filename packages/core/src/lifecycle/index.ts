@@ -1,6 +1,6 @@
 export {
-  createPreviewRetentionCoordinator,
-  type PreviewRetentionCoordinator,
+  createPreviewRetentionStore,
+  type PreviewRetentionStore,
 } from './previews/preview-retention.store.js';
 export type { PreviewRetentionProcessResult } from './previews/preview-retention.types.js';
 export {
@@ -12,13 +12,13 @@ export type {
   RetentionRuleName,
 } from './retention/retention-pass.types.js';
 export {
-  createRunArtifactRetentionCoordinator,
-  type RunArtifactRetentionCoordinator,
+  createRunArtifactRetentionStore,
+  type RunArtifactRetentionStore,
 } from './artifacts/artifact-retention.store.js';
 export type { RunArtifactRetentionProcessResult } from './artifacts/artifact-retention.types.js';
 export {
-  createWorkspacePurgeCoordinator,
-  type WorkspacePurgeCoordinator,
+  createWorkspacePurgeStore,
+  type WorkspacePurgeStore,
 } from './purge/workspace-purge.store.js';
 export type { WorkspacePurgeProcessResult } from './purge/workspace-purge.types.js';
 

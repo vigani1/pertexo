@@ -32,9 +32,7 @@ import {
 } from './workspace-purge-options.schemas.js';
 import { PURGE_STEPS } from './steps.js';
 
-export type WorkspacePurgeCoordinator = ReturnType<
-  typeof createWorkspacePurgeCoordinator
->;
+export type WorkspacePurgeStore = ReturnType<typeof createWorkspacePurgeStore>;
 
 /**
  * Purges workspaces whose recovery period has ended. Each call does one
@@ -44,7 +42,7 @@ export type WorkspacePurgeCoordinator = ReturnType<
  * workspace while it changes rows. No member is acting, so this stays off
  * `withWorkspaceAccess`: it runs on the maintenance role.
  */
-export function createWorkspacePurgeCoordinator(
+export function createWorkspacePurgeStore(
   config: DatabaseConfig,
   objectStore: WorkspacePurgeObjectStore,
   inputOptions: WorkspacePurgeOptions = {},

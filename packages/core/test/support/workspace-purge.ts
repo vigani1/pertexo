@@ -1,7 +1,7 @@
 import { Client } from 'pg';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createWorkspacePurgeCoordinator } from '../../src/lifecycle/purge/workspace-purge.store.js';
+import { createWorkspacePurgeStore } from '../../src/lifecycle/purge/workspace-purge.store.js';
 import type { WorkspacePurgeObjectStore } from '../../src/lifecycle/purge/workspace-purge.types.js';
 
 /** An object store with nothing in it. */
@@ -51,7 +51,7 @@ export async function purgeWorkspace(
   }>,
 ): Promise<readonly string[]> {
   await makeWorkspaceDueForPurge(input.adminUrl, input.workspaceId);
-  const coordinator = createWorkspacePurgeCoordinator(
+  const coordinator = createWorkspacePurgeStore(
     parseDatabaseConfig({ connectionString: input.maintenanceUrl, max: 2 }),
     input.objectStore ?? emptyObjectStore,
     input.pageSize === undefined ? {} : { pageSize: input.pageSize },

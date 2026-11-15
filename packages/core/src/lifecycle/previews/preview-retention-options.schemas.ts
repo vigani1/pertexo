@@ -10,7 +10,7 @@ const ARTIFACT_QUIESCENCE_SECONDS = Object.freeze({
   default: 60,
 });
 
-export type PreviewRetentionCoordinatorOptions = Readonly<
+export type PreviewRetentionStoreOptions = Readonly<
   z.input<typeof optionsSchema>
 >;
 

@@ -2,9 +2,9 @@ import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { createRunArtifactRetentionCoordinator } from '../../src/lifecycle/artifacts/artifact-retention.store.js';
-import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/preview-retention.store.js';
-import { createWorkspacePurgeCoordinator } from '../../src/lifecycle/purge/workspace-purge.store.js';
+import { createRunArtifactRetentionStore } from '../../src/lifecycle/artifacts/artifact-retention.store.js';
+import { createPreviewRetentionStore } from '../../src/lifecycle/previews/preview-retention.store.js';
+import { createWorkspacePurgeStore } from '../../src/lifecycle/purge/workspace-purge.store.js';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { createOperatorCommandStore } from '../../src/operator/operator-command.store.js';
 
@@ -44,19 +44,18 @@ const flows: readonly Readonly<{
   {
     name: 'run artifact retention',
     create: (options) =>
-      createRunArtifactRetentionCoordinator(config, artifacts, options),
+      createRunArtifactRetentionStore(config, artifacts, options),
     maximum: { lock: 300_000, statement: 300_000 },
   },
   {
     name: 'preview retention',
     create: (options) =>
-      createPreviewRetentionCoordinator(config, artifacts, options),
+      createPreviewRetentionStore(config, artifacts, options),
     maximum: { lock: 300_000, statement: 300_000 },
   },
   {
     name: 'workspace purge',
-    create: (options) =>
-      createWorkspacePurgeCoordinator(config, objects, options),
+    create: (options) => createWorkspacePurgeStore(config, objects, options),
     maximum: { lock: 60_000, statement: 120_000 },
   },
 ];

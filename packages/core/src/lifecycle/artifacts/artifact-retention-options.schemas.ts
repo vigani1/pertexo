@@ -17,7 +17,7 @@ export const externalOperationTimeoutSchema = timeoutMillisSchema(
   EXTERNAL_OPERATION_TIMEOUT_MILLIS,
 );
 
-export type RunArtifactRetentionCoordinatorOptions = Readonly<
+export type RunArtifactRetentionStoreOptions = Readonly<
   z.input<typeof optionsSchema>
 >;
 

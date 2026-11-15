@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/workspace-purge.store.js';
+import { createWorkspacePurgeStore } from '../../../src/lifecycle/purge/workspace-purge.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { maintenanceUrl } from '../../lifecycle/retention.support.js';
 import { admin, taskFixture } from './pending-tasks.fixture.js';
@@ -9,7 +9,7 @@ it('deletes pending human tasks with their workspace through the maintenance rol
     "update app.workspaces set status='purging',deletion_requested_at=clock_timestamp()-interval '2 days',deletion_requested_by=created_by,deletion_reason='Owned approval qualification',purge_after=clock_timestamp()-interval '1 day' where id=$1",
     [f.workspaceId],
   );
-  const purge = createWorkspacePurgeCoordinator(
+  const purge = createWorkspacePurgeStore(
     parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
     {
       purgeWorkspacePage: () =>

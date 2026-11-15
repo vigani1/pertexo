@@ -1,6 +1,6 @@
 import { beforeEach, expect, it } from 'vitest';
 import {
-  createRunArtifactRetentionCoordinator,
+  createRunArtifactRetentionStore,
   maintenanceUrl,
   parseDatabaseConfig,
   randomUUID,
@@ -21,7 +21,7 @@ const store = {
   head: () => Promise.resolve(null),
 };
 const coordinator = () =>
-  createRunArtifactRetentionCoordinator(
+  createRunArtifactRetentionStore(
     parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
     store,
   );

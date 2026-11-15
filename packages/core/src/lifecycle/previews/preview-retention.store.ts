@@ -2,7 +2,7 @@ import { expireUnclaimedPreview } from '../../previews/attempts/expire-unclaimed
 import type { PreviewRetentionProcessResult } from './preview-retention.types.js';
 import {
   optionsSchema,
-  type PreviewRetentionCoordinatorOptions,
+  type PreviewRetentionStoreOptions,
 } from './preview-retention-options.schemas.js';
 import {
   eraseArtifact,
@@ -27,8 +27,8 @@ import {
   removePreview,
 } from './expired-previews.repository.js';
 
-export type PreviewRetentionCoordinator = ReturnType<
-  typeof createPreviewRetentionCoordinator
+export type PreviewRetentionStore = ReturnType<
+  typeof createPreviewRetentionStore
 >;
 
 /**
@@ -38,10 +38,10 @@ export type PreviewRetentionCoordinator = ReturnType<
  * is acting, so this stays off `withWorkspaceAccess`: it runs on the maintenance
  * role.
  */
-export function createPreviewRetentionCoordinator(
+export function createPreviewRetentionStore(
   config: DatabaseConfig,
   artifacts: RetentionArtifactStore,
-  inputOptions: PreviewRetentionCoordinatorOptions = {},
+  inputOptions: PreviewRetentionStoreOptions = {},
   runtime?: DatabaseRuntime,
 ) {
   const options = optionsSchema.parse(inputOptions);
