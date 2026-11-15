@@ -4,7 +4,7 @@ import {
   failedOutboxEvents,
   inboxReceiptsPastEvents,
   publishedOutboxEvents,
-} from '../../outbox/retention.js';
+} from '../../outbox/retention.repository.js';
 import {
   runInputs,
   runDetails,

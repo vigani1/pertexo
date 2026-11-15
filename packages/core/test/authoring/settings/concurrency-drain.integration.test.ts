@@ -4,7 +4,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { claimOutboxBatch } from '../../../src/outbox/dispatcher/claim.js';
+import { claimOutboxBatch } from '../../../src/outbox/dispatcher/claim.repository.js';
 import type { LeasedOutboxEvent } from '../../../src/outbox/dispatcher/outbox-dispatcher.types.js';
 import {
   apiUrl,

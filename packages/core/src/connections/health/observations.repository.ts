@@ -18,10 +18,8 @@ import {
   canonicalOutboxPayloadChecksum,
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import {
-  consumeInboxMessage,
-  InboxReceiptUnavailableError,
-} from '../../outbox/consume-message.js';
+import { consumeInboxMessage } from '../../outbox/consume-message.js';
+import { InboxReceiptUnavailableError } from '../../outbox/outbox.errors.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 import { isStaleRunObservation } from './rules.js';
 

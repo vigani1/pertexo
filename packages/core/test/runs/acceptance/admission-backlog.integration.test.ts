@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { claimOutboxBatch } from '../../../src/outbox/dispatcher/claim.js';
+import { claimOutboxBatch } from '../../../src/outbox/dispatcher/claim.repository.js';
 import { acceptWorkflowRun } from '../../../src/runs/commands/acceptance/accept.js';
 import { useInstanceCapacity } from '../../support/instance-capacity.js';
 import {

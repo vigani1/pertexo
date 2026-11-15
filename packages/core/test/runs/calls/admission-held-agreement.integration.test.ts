@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { claimOutboxBatch } from '../../../src/outbox/dispatcher/claim.js';
+import { claimOutboxBatch } from '../../../src/outbox/dispatcher/claim.repository.js';
 import { useInstanceCapacity } from '../../support/instance-capacity.js';
 import {
   admin,
