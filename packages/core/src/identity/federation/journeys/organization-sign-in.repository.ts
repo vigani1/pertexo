@@ -5,40 +5,48 @@ import {
   workspaces,
   authFederationAttempts,
 } from '@pertexo/database/schema';
+
 import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
+
 import {
   rethrowQueryFailure,
   isUniqueConstraintFailure,
 } from '@pertexo/database/primitives';
-import {
-  ACTIVE_WORKSPACE_STATUSES,
-  UNPURGED_WORKSPACE_STATUSES,
-} from '@pertexo/policy';
+
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
-import type { Pool } from 'pg';
+
+import type { Pool, PoolClient } from 'pg';
+
 import type { FederationDiscovery } from '@pertexo/contracts';
-import { withPlatformTransaction } from '@pertexo/database/platform';
-import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
+
 import {
-  lockFederationWorkspace,
-  organizationForWorkspace,
-  requireFederationOwner,
-} from '../management/authority.repository.js';
-import { FederationConflictError } from '../management/federation-management.errors.js';
+  startFederationJourney,
+  testOrganizationProvider,
+} from './organization-sign-in.js';
+
+import { withPlatformTransaction } from '@pertexo/database/platform';
+
 import type { FederationScope } from '../management/federation-management.types.js';
-import { readEligibleAuthenticationSession } from '../sessions/authority.repository.js';
+
 import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';
+
 import {
   readFederationProvider,
   findFederationAttempt,
 } from './federation-journeys.repository.js';
-import { completeFederationJourney } from './complete.repository.js';
+
+import { completeFederationJourney } from './complete.js';
+
 import type { CompleteFederationJourney } from './federation-journey.types.js';
+
 import type {
   StartFederationJourney,
   FederationCompletion,
 } from './federation-journey.types.js';
+
 import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 // An organization sign-in must come back from its provider within this.
@@ -103,162 +111,10 @@ export class OrganizationSignInCommands {
   testProvider(
     input: FederationScope & Readonly<{ providerId: string; domainId: string }>,
   ) {
-    return withWorkspaceAccess(
-      this.input.pool,
-      input,
-      {
-        mode: 'exclusive',
-        capability: 'governance:manage',
-        statuses: ACTIVE_WORKSPACE_STATUSES,
-      },
-      async (client, role) => {
-        requireFederationOwner(role, 'change');
-        const organization = await organizationForWorkspace(
-          client,
-          input.workspaceId,
-        );
-        if (organization?.control_workspace_id !== input.workspaceId)
-          throw new FederationConflictError(
-            'unavailable',
-            'The provider or verified domain is unavailable.',
-          );
-        const [domain] = await drizzle(client)
-          .select({ domain: authDomains.domain })
-          .from(authDomains)
-          .where(
-            and(
-              eq(authDomains.id, input.domainId),
-              eq(authDomains.organizationId, organization.id),
-              isNotNull(authDomains.verifiedAt),
-            ),
-          )
-          .catch(rethrowQueryFailure);
-        if (domain === undefined)
-          throw new FederationConflictError(
-            'unavailable',
-            'The provider or verified domain is unavailable.',
-          );
-        const material = await readFederationProvider(
-          client,
-          input.providerId,
-          domain.domain,
-          { testing: true },
-        );
-        if (material?.provider.organizationId !== organization.id)
-          throw new FederationConflictError(
-            'unavailable',
-            'The provider or verified domain is unavailable.',
-          );
-        return material;
-      },
-    );
+    return testOrganizationProvider(this.input.pool, input);
   }
-  async start(input: StartFederationJourney): Promise<void> {
-    await withPlatformTransaction(this.input.pool, async (client) => {
-      const [provider] = await drizzle(client)
-        .select({ control_workspace_id: authOrganizations.controlWorkspaceId })
-        .from(authProviders)
-        .innerJoin(
-          authOrganizations,
-          eq(authOrganizations.id, authProviders.organizationId),
-        )
-        .where(eq(authProviders.id, input.providerId))
-        .catch(rethrowQueryFailure);
-      if (provider === undefined) throw new SignInProofRejectedError();
-      if (input.purpose === 'test') {
-        if (
-          input.ownerUserId === undefined ||
-          input.ownerSessionId === undefined
-        )
-          throw new SignInProofRejectedError();
-        await lockFederationWorkspace(client, {
-          workspaceId: provider.control_workspace_id,
-          actorId: input.ownerUserId,
-        });
-        if (
-          (
-            await readEligibleAuthenticationSession(
-              client,
-              input.ownerSessionId,
-            )
-          )?.userId !== input.ownerUserId
-        )
-          throw new SignInProofRejectedError();
-      } else
-        await drizzle(client)
-          .select({ id: workspaces.id })
-          .from(workspaces)
-          .where(eq(workspaces.id, provider.control_workspace_id))
-          .for('share')
-          .catch(rethrowQueryFailure);
-      const db = drizzle(client);
-      const source = db
-        .select({
-          id: sql<string>`${input.id}::uuid`.as('id'),
-          organizationId: authProviders.organizationId,
-          providerId: authProviders.id,
-          providerRevision: authProviders.revision,
-          domainId: authDomains.id,
-          purpose: sql<'sign_in' | 'test'>`${input.purpose}::text`.as(
-            'purpose',
-          ),
-          ownerUserId: sql<
-            string | null
-          >`${input.ownerUserId ?? null}::uuid`.as('owner_user_id'),
-          ownerSessionId: sql<
-            string | null
-          >`${input.ownerSessionId ?? null}::uuid`.as('owner_session_id'),
-          stateDigest:
-            sql<Buffer>`${sql.param(input.stateDigest, authFederationAttempts.stateDigest)}::bytea`.as(
-              'state_digest',
-            ),
-          browserDigest:
-            sql<Buffer>`${sql.param(input.browserDigest, authFederationAttempts.browserDigest)}::bytea`.as(
-              'browser_digest',
-            ),
-          returnPath: sql<string>`${input.returnPath}::text`.as('return_path'),
-          requestId: sql<string | null>`null::text`.as('request_id'),
-          requestCreatedAt: sql<Date | null>`null::timestamptz`.as(
-            'request_created_at',
-          ),
-          expiresAt: sql<Date>`clock_timestamp()+${JOURNEY_LIFETIME}`.as(
-            'expires_at',
-          ),
-          consumedAt: sql<Date | null>`null::timestamptz`.as('consumed_at'),
-          createdAt: sql<Date>`clock_timestamp()`.as('created_at'),
-        })
-        .from(authProviders)
-        .innerJoin(
-          authOrganizations,
-          eq(authOrganizations.id, authProviders.organizationId),
-        )
-        .innerJoin(
-          workspaces,
-          eq(workspaces.id, authOrganizations.controlWorkspaceId),
-        )
-        .innerJoin(
-          authDomains,
-          and(
-            eq(authDomains.organizationId, authProviders.organizationId),
-            isNotNull(authDomains.verifiedAt),
-          ),
-        )
-        .where(
-          and(
-            eq(authProviders.id, input.providerId),
-            eq(authProviders.revision, input.providerRevision),
-            eq(authDomains.id, input.domainId),
-            inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
-            or(eq(authProviders.enabled, true), sql`${input.purpose}='test'`),
-          ),
-        );
-      const inserted = await db
-        .insert(authFederationAttempts)
-        .select(source)
-        .returning({ id: authFederationAttempts.id })
-        .catch(rethrowQueryFailure);
-      if (inserted.length !== 1) throw new SignInProofRejectedError();
-    });
+  start(input: StartFederationJourney): Promise<void> {
+    return startFederationJourney(this.input.pool, input);
   }
   find(stateDigest: Buffer, browserDigest: Buffer) {
     return findFederationAttempt(this.input.pool, stateDigest, browserDigest);
@@ -274,4 +130,126 @@ export class OrganizationSignInCommands {
       throw error;
     });
   }
+}
+
+/** The organization's verified domain name, if the domain is its and verified. */
+export async function readVerifiedDomain(
+  client: PoolClient,
+  domainId: string,
+  organizationId: string,
+): Promise<string | undefined> {
+  const [domain] = await drizzle(client)
+    .select({ domain: authDomains.domain })
+    .from(authDomains)
+    .where(
+      and(
+        eq(authDomains.id, domainId),
+        eq(authDomains.organizationId, organizationId),
+        isNotNull(authDomains.verifiedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return domain?.domain;
+}
+
+/** The control workspace of the provider's organization, if the provider exists. */
+export async function readProviderControlWorkspace(
+  client: PoolClient,
+  providerId: string,
+): Promise<string | undefined> {
+  const [provider] = await drizzle(client)
+    .select({ control_workspace_id: authOrganizations.controlWorkspaceId })
+    .from(authProviders)
+    .innerJoin(
+      authOrganizations,
+      eq(authOrganizations.id, authProviders.organizationId),
+    )
+    .where(eq(authProviders.id, providerId))
+    .catch(rethrowQueryFailure);
+  return provider?.control_workspace_id;
+}
+
+/** Holds the control workspace still while a sign-in attempt is written. */
+export async function shareLockWorkspace(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  await drizzle(client)
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .for('share')
+    .catch(rethrowQueryFailure);
+}
+
+/** Whether the attempt was written: the provider, revision and verified domain must still match. */
+export async function insertFederationAttempt(
+  client: PoolClient,
+  input: StartFederationJourney,
+): Promise<boolean> {
+  const db = drizzle(client);
+  const source = db
+    .select({
+      id: sql<string>`${input.id}::uuid`.as('id'),
+      organizationId: authProviders.organizationId,
+      providerId: authProviders.id,
+      providerRevision: authProviders.revision,
+      domainId: authDomains.id,
+      purpose: sql<'sign_in' | 'test'>`${input.purpose}::text`.as('purpose'),
+      ownerUserId: sql<string | null>`${input.ownerUserId ?? null}::uuid`.as(
+        'owner_user_id',
+      ),
+      ownerSessionId: sql<
+        string | null
+      >`${input.ownerSessionId ?? null}::uuid`.as('owner_session_id'),
+      stateDigest:
+        sql<Buffer>`${sql.param(input.stateDigest, authFederationAttempts.stateDigest)}::bytea`.as(
+          'state_digest',
+        ),
+      browserDigest:
+        sql<Buffer>`${sql.param(input.browserDigest, authFederationAttempts.browserDigest)}::bytea`.as(
+          'browser_digest',
+        ),
+      returnPath: sql<string>`${input.returnPath}::text`.as('return_path'),
+      requestId: sql<string | null>`null::text`.as('request_id'),
+      requestCreatedAt: sql<Date | null>`null::timestamptz`.as(
+        'request_created_at',
+      ),
+      expiresAt: sql<Date>`clock_timestamp()+${JOURNEY_LIFETIME}`.as(
+        'expires_at',
+      ),
+      consumedAt: sql<Date | null>`null::timestamptz`.as('consumed_at'),
+      createdAt: sql<Date>`clock_timestamp()`.as('created_at'),
+    })
+    .from(authProviders)
+    .innerJoin(
+      authOrganizations,
+      eq(authOrganizations.id, authProviders.organizationId),
+    )
+    .innerJoin(
+      workspaces,
+      eq(workspaces.id, authOrganizations.controlWorkspaceId),
+    )
+    .innerJoin(
+      authDomains,
+      and(
+        eq(authDomains.organizationId, authProviders.organizationId),
+        isNotNull(authDomains.verifiedAt),
+      ),
+    )
+    .where(
+      and(
+        eq(authProviders.id, input.providerId),
+        eq(authProviders.revision, input.providerRevision),
+        eq(authDomains.id, input.domainId),
+        inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
+        or(eq(authProviders.enabled, true), sql`${input.purpose}='test'`),
+      ),
+    );
+  const inserted = await db
+    .insert(authFederationAttempts)
+    .select(source)
+    .returning({ id: authFederationAttempts.id })
+    .catch(rethrowQueryFailure);
+  return inserted.length === 1;
 }

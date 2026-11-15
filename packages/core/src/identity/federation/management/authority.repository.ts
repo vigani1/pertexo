@@ -2,60 +2,32 @@ import {
   authOrganizationWorkspaces,
   authOrganizations,
 } from '@pertexo/database/schema';
+
 import { eq, getTableName } from 'drizzle-orm';
+
 import { alias } from 'drizzle-orm/pg-core';
+
 import {
   rethrowQueryFailure,
   setOrganizationContext,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
+
 import { appendAuditFact } from '../../../governance/audit/facts.js';
+
 import { organizationRecords } from './identity-organizations.repository.js';
+
 import {
-  ADMINISTRATIVE_ROLES,
   BROWSABLE_WORKSPACE_STATUSES,
   rolesForCapability,
-  type Role,
 } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
-import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
-import {
-  lockWorkspaceAuthority,
-  readWorkspaceAuthority,
-} from '../../../shared/workspace-authority.js';
-import { FederationConflictError } from './federation-management.errors.js';
+
+import { readWorkspaceAuthority } from '../../../shared/workspace-authority.js';
 import type { FederationScope } from './federation-management.types.js';
+
 import type { OrganizationRow } from './identity-organizations.repository.js';
 
-export function requireFederationOwner(
-  role: Role,
-  action: 'manage' | 'change',
-): void {
-  if (role !== 'owner')
-    throw new FederationConflictError(
-      'owner_required',
-      `Only the control workspace owner can ${action} organization sign-in.`,
-    );
-}
-
-/** Takes the row first, as `withWorkspaceAccess` would, for flows that can't sit on it. */
-export async function lockFederationWorkspace(
-  client: PoolClient,
-  scope: FederationScope,
-): Promise<void> {
-  await lockWorkspaceRow(client, scope.workspaceId);
-  await withWorkspaceScope(client, scope, async (scoped) => {
-    requireFederationOwner(
-      await lockWorkspaceAuthority(
-        scoped,
-        scope.workspaceId,
-        scope.actorId,
-        ADMINISTRATIVE_ROLES,
-      ),
-      'change',
-    );
-  });
-}
 export async function organizationForWorkspace(
   client: PoolClient,
   workspaceId: string,

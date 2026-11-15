@@ -1,14 +1,9 @@
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { authSignInAttempts } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  isUniqueConstraintFailure,
-} from '@pertexo/database/primitives';
-import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool } from 'pg';
-import { withPlatformTransaction } from '@pertexo/database/platform';
-import { completeSocialSignIn } from './complete.repository.js';
+import { completeSocialSignInCommand } from './complete-sign-in.js';
 import type { SignUpMode } from '../../sign-up.js';
 import type {
   ProvenSocialSignIn,
@@ -73,15 +68,6 @@ export class SocialSignInCommands {
   }
 
   public complete(input: ProvenSocialSignIn): Promise<SocialSignInResult> {
-    return withPlatformTransaction(this.input.pool, async (client) => {
-      const result = await completeSocialSignIn(client, input, this.input);
-      if (result.kind === 'failed') throw new SignInProofRejectedError();
-      return result;
-    }).catch((error: unknown) => {
-      if (error instanceof SignInProofRejectedError)
-        return { kind: 'failed' } as const;
-      if (isUniqueConstraintFailure(error)) return { kind: 'failed' } as const;
-      throw error;
-    });
+    return completeSocialSignInCommand(this.input.pool, input, this.input);
   }
 }

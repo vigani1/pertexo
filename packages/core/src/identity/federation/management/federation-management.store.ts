@@ -15,7 +15,7 @@ import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../../../shared/workspace-access.js';
-import { requireFederationOwner } from './authority.repository.js';
+import { requireFederationOwner } from './federation-authority.js';
 import type {
   ConfigureEnforcementInput,
   CreateDomainInput,

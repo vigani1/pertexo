@@ -10,37 +10,43 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 
 import type { PoolClient } from 'pg';
 
-import {
-  compileDirectoryFilter,
-  directoryField,
-  type DirectoryKind,
-} from './filter.repository.js';
+import type { SQL } from 'drizzle-orm';
+import type { directoryField, DirectoryKind } from './filter.repository.js';
 
-import type { DirectoryUser } from '../directory-provisioning.types.js';
-import type { DirectoryGroup } from '../directory-provisioning.types.js';
-async function listRows(
+type ResolvedQuery = Readonly<{
+  query: DirectoryQuery;
+  filter: SQL;
+  /** Undefined when the sort attribute can't be used; it only matters for a non-empty page. */
+  sort: ReturnType<typeof directoryField>;
+}>;
+
+/** A page of directory rows, or `invalid_sort` when rows must be ordered by an unusable attribute. */
+export async function listRows(
   client: PoolClient,
   organizationId: string,
   kind: 'User',
-  query: DirectoryQuery,
-): Promise<DirectoryPage<DirectoryUserRow>>;
-async function listRows(
+  resolved: ResolvedQuery,
+): Promise<DirectoryPage<DirectoryUserRow> | 'invalid_sort'>;
+export async function listRows(
   client: PoolClient,
   organizationId: string,
   kind: 'Group',
-  query: DirectoryQuery,
-): Promise<DirectoryPage<DirectoryGroupRow>>;
-async function listRows(
+  resolved: ResolvedQuery,
+): Promise<DirectoryPage<DirectoryGroupRow> | 'invalid_sort'>;
+export async function listRows(
   client: PoolClient,
   organizationId: string,
   kind: DirectoryKind,
-  query: DirectoryQuery,
-): Promise<DirectoryPage<DirectoryUserRow | DirectoryGroupRow>> {
+  resolved: ResolvedQuery,
+): Promise<
+  DirectoryPage<DirectoryUserRow | DirectoryGroupRow> | 'invalid_sort'
+> {
+  const { query } = resolved;
   const table = kind === 'User' ? directoryUsers : directoryGroups;
   const condition = and(
     eq(table.organizationId, organizationId),
     kind === 'User' ? isNull(directoryUsers.deletedAt) : undefined,
-    compileDirectoryFilter(kind, query.filter),
+    resolved.filter,
   );
   const [total] = await drizzle(client)
     .select({ count: count() })
@@ -53,7 +59,8 @@ async function listRows(
       startIndex: query.startIndex,
       Resources: [],
     };
-  const sort = directoryField(kind, query.sortBy ?? 'id');
+  const sort = resolved.sort;
+  if (sort === undefined) return 'invalid_sort';
   const order =
     sort.caseExact || sort.type !== 'string'
       ? sort.sql
@@ -78,12 +85,12 @@ async function listRows(
     Resources: rows,
   };
 }
-export async function listDirectoryUsers(
+/** Group memberships of the listed users, by group. */
+export async function readUserGroupMembers(
   client: PoolClient,
   organizationId: string,
-  query: DirectoryQuery,
-): Promise<DirectoryPage<DirectoryUser>> {
-  const page = await listRows(client, organizationId, 'User', query);
+  userIds: readonly string[],
+) {
   const members = await drizzle(client)
     .select({
       directory_user_id: authDirectoryGroupMembers.directoryUserId,
@@ -93,29 +100,20 @@ export async function listDirectoryUsers(
     .where(
       and(
         eq(authDirectoryGroupMembers.organizationId, organizationId),
-        inArray(
-          authDirectoryGroupMembers.directoryUserId,
-          page.Resources.map((user) => user.id),
-        ),
+        inArray(authDirectoryGroupMembers.directoryUserId, [...userIds]),
       ),
     )
     .orderBy(asc(authDirectoryGroupMembers.groupId))
     .catch(rethrowQueryFailure);
-  const groups = Map.groupBy(members, (member) => member.directory_user_id);
-  return {
-    ...page,
-    Resources: page.Resources.map((user) => ({
-      ...user,
-      groupIds: (groups.get(user.id) ?? []).map((member) => member.group_id),
-    })),
-  };
+  return members;
 }
-export async function listDirectoryGroups(
+
+/** Members of the listed groups, by user. */
+export async function readGroupMembers(
   client: PoolClient,
   organizationId: string,
-  query: DirectoryQuery,
-): Promise<DirectoryPage<DirectoryGroup>> {
-  const page = await listRows(client, organizationId, 'Group', query);
+  groupIds: readonly string[],
+) {
   const members = await drizzle(client)
     .select({
       directory_user_id: authDirectoryGroupMembers.directoryUserId,
@@ -125,26 +123,13 @@ export async function listDirectoryGroups(
     .where(
       and(
         eq(authDirectoryGroupMembers.organizationId, organizationId),
-        inArray(
-          authDirectoryGroupMembers.groupId,
-          page.Resources.map((group) => group.id),
-        ),
+        inArray(authDirectoryGroupMembers.groupId, [...groupIds]),
       ),
     )
     .orderBy(asc(authDirectoryGroupMembers.directoryUserId))
     .catch(rethrowQueryFailure);
-  const groups = Map.groupBy(members, (member) => member.group_id);
-  return {
-    ...page,
-    Resources: page.Resources.map((group) => ({
-      ...group,
-      memberIds: (groups.get(group.id) ?? []).map(
-        (member) => member.directory_user_id,
-      ),
-    })),
-  };
+  return members;
 }
-
 export function directoryUserRecords(client: PoolClient) {
   return drizzle(client)
     .select({

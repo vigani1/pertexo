@@ -18,12 +18,12 @@ import type { Pool, PoolClient } from 'pg';
 import type { FederationSettings } from '@pertexo/contracts';
 import { FederationConflictError } from './federation-management.errors.js';
 import { recordFederationAudit } from './authority.repository.js';
+import { advanceOrganization } from './commands.repository.js';
 import {
-  advanceOrganization,
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
-} from './commands.repository.js';
+} from './federation-authority.js';
 import type { ConfigureEnforcementInput } from './federation-management.types.js';
 import { requireOrganizationDomain } from './domains.repository.js';
 
