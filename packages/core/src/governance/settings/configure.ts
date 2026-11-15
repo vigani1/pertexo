@@ -11,7 +11,10 @@ import type { PoolClient } from 'pg';
 import type { GovernanceSettings } from '@pertexo/contracts';
 import { requiresPublicationReviewer } from '@pertexo/workflow-model';
 import type { ConfigureGovernanceInput } from '../governance.types.js';
-import { GovernanceError } from '../governance.errors.js';
+import {
+  GovernanceError,
+  requireGovernanceSettings,
+} from '../governance.errors.js';
 export async function configureGovernance(
   client: PoolClient,
   input: ConfigureGovernanceInput,
@@ -32,7 +35,9 @@ export async function configureGovernance(
       .digest('hex'),
   });
   if (replay !== null) return replay;
-  const previous = await readGovernanceSettings(client, input.workspaceId);
+  const previous = requireGovernanceSettings(
+    await readGovernanceSettings(client, input.workspaceId),
+  );
   if (
     requiresPublicationReviewer(previous, input) &&
     !(await hasAnotherManager(client, input))

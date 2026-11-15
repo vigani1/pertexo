@@ -23,6 +23,7 @@ import type {
 } from './governance.types.js';
 import { configureGovernance } from './settings/configure.js';
 import { readGovernanceSettings } from './settings/policy.repository.js';
+import { requireGovernanceSettings } from './governance.errors.js';
 
 export type GovernanceStore = ReturnType<typeof createGovernanceStore>;
 
@@ -53,8 +54,10 @@ export function createGovernanceStore(
       return read(input, (client) => readAuditPage(client, input, after));
     },
     settings: (actor: WorkspaceActor) =>
-      read(actor, (client) =>
-        readGovernanceSettings(client, actor.workspaceId),
+      read(actor, async (client) =>
+        requireGovernanceSettings(
+          await readGovernanceSettings(client, actor.workspaceId),
+        ),
       ),
     configure: (input: ConfigureGovernanceInput) =>
       withWorkspaceAccess(

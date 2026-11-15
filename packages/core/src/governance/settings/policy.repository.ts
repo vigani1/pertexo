@@ -10,13 +10,12 @@ import {
 } from '@pertexo/database/schema';
 import { rolesForCapability } from '@pertexo/policy';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { GovernanceError } from '../governance.errors.js';
 import type { ConfigureGovernanceInput } from '../governance.types.js';
 
 export async function readGovernanceSettings(
   client: PoolClient,
   workspaceId: string,
-): Promise<GovernanceSettings> {
+): Promise<GovernanceSettings | undefined> {
   const [row] = await drizzle(client)
     .select({
       revision: workspaces.governanceRevision,
@@ -26,11 +25,6 @@ export async function readGovernanceSettings(
     .from(workspaces)
     .where(eq(workspaces.id, workspaceId))
     .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new GovernanceError(
-      'conflict',
-      'Workspace settings are unavailable.',
-    );
   return row;
 }
 

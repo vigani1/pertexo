@@ -98,7 +98,6 @@ export const REPOSITORY_THROW_BACKLOG = Object.freeze({
   'packages/core/src/data-tables/rows/lock.repository.ts': 7,
   'packages/core/src/data-tables/rows/mutate.repository.ts': 4,
   'packages/core/src/data-tables/table-lookups.repository.ts': 1,
-  'packages/core/src/governance/settings/policy.repository.ts': 1,
   'packages/core/src/identity/federation/journeys/complete.repository.ts': 7,
   'packages/core/src/identity/federation/journeys/organization-sign-in.repository.ts': 7,
   'packages/core/src/identity/federation/management/authority.repository.ts': 1,
