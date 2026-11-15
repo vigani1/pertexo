@@ -1,4 +1,4 @@
-import { WORKFLOW_TEST_LIMITS } from '@pertexo/workflow-model';
+import { WORKFLOW_INPUT_CASE_LIMITS } from '@pertexo/workflow-model';
 import type {
   WorkflowTestSuiteSummary,
   WorkflowTestSuiteDetail,
@@ -27,7 +27,7 @@ const WIDTHS = Object.freeze({
   signature: 64,
   status: 16,
   stopReason: 64,
-  name: WORKFLOW_TEST_LIMITS.suiteNameCharacters,
+  name: WORKFLOW_INPUT_CASE_LIMITS.nameCharacters,
 });
 export const workflowTestSuites = appSchema.table(
   'workflow_test_suites',

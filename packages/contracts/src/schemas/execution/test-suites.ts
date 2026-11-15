@@ -1,4 +1,4 @@
-import { WORKFLOW_TEST_LIMITS } from '@pertexo/workflow-model';
+import { WORKFLOW_INPUT_CASE_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import {
   WORKFLOW_TEST_SUITE_MAX_CASES,
@@ -11,7 +11,7 @@ import {
 } from './workflow-tests.js';
 
 const TEST_SUITES_BOUNDS = Object.freeze({
-  nameCharacters: WORKFLOW_TEST_LIMITS.suiteNameCharacters,
+  nameCharacters: WORKFLOW_INPUT_CASE_LIMITS.nameCharacters,
   stopReasonCharacters: 64,
   workflowTestSuiteListPageItems: 20,
   stepLabelsCharacters: 256,
