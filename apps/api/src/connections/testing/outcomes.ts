@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { OAuth2StepFailureCode } from '@pertexo/contracts';
 import type { ConnectionTestOutcome } from '@pertexo/core/connections';
 import type { SecureHttpError } from '@pertexo/secrets/server';
@@ -5,16 +6,22 @@ import { classifySlackConnectionHealth } from '@pertexo/integrations/server';
 
 import type { ConnectionEmailClient, ConnectionSlackClient } from '../ports.js';
 
+/** A test the provider accepted. */
+export const SUCCEEDED_TEST: ConnectionTestOutcome = Object.freeze({
+  ok: true,
+  httpStatus: HttpStatus.OK,
+});
+
 export function slackTestOutcome(
   result: Awaited<ReturnType<ConnectionSlackClient['authTest']>>,
 ): ConnectionTestOutcome {
   switch (result.kind) {
     case 'succeeded':
-      return Object.freeze({ ok: true, httpStatus: 200 });
+      return SUCCEEDED_TEST;
     case 'rate_limited':
       return Object.freeze({
         ok: false,
-        httpStatus: 429,
+        httpStatus: HttpStatus.TOO_MANY_REQUESTS,
         errorCode: 'connection.provider_rate_limited',
         reauthorizationRequired: false,
       });
@@ -37,7 +44,7 @@ export function slackTestOutcome(
       const rejected = observation?.kind === 'reauthorization_required';
       return Object.freeze({
         ok: false,
-        httpStatus: 200,
+        httpStatus: HttpStatus.OK,
         errorCode: rejected
           ? observation.reasonCode
           : 'connection.provider_rejected',
@@ -53,11 +60,11 @@ export function resendTestOutcome(
 ): ConnectionTestOutcome {
   switch (result.kind) {
     case 'succeeded':
-      return Object.freeze({ ok: true, httpStatus: 200 });
+      return SUCCEEDED_TEST;
     case 'rate_limited':
       return Object.freeze({
         ok: false,
-        httpStatus: 429,
+        httpStatus: HttpStatus.TOO_MANY_REQUESTS,
         errorCode: 'connection.provider_rate_limited',
         reauthorizationRequired: false,
       });

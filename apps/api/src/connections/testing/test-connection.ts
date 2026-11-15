@@ -42,6 +42,7 @@ import {
   resendTestOutcome,
   responseOutcome,
   secureErrorOutcome,
+  SUCCEEDED_TEST,
 } from './outcomes.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
 import { oauth2TestActor, testOAuth2Connection } from './oauth2.js';
@@ -51,7 +52,6 @@ const CONNECTION_TEST_MAXIMUM_REDIRECTS = 3;
 const CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES = 65_536;
 
 type ParsedConnectionTestRequest = ReturnType<typeof requestSchema.parse>;
-
 type DecodedConnectionCredential = ReturnType<typeof decodeCredential>;
 
 export type TestConnectionCommand = ConnectionCommandInput &
@@ -376,7 +376,7 @@ export class TestConnectionService {
       request.providerKey === 'signing'
     ) {
       await beforeDispatch();
-      return Object.freeze({ ok: true, httpStatus: 200 });
+      return SUCCEEDED_TEST;
     }
     if (credential.type !== 'http_headers' || !('url' in request))
       throw new ConnectionSecretEncryptionError();

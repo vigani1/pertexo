@@ -182,7 +182,7 @@ export class SocialSignIn {
         result.token,
         () =>
           new Response(null, {
-            status: 302,
+            status: HttpStatus.FOUND,
             headers: {
               location: new URL(
                 result.returnPath,
@@ -230,7 +230,7 @@ export class SocialSignIn {
     if (returnPath !== undefined && returnPath !== '/workspaces')
       url.searchParams.set('returnTo', returnPath);
     return new Response(null, {
-      status: 302,
+      status: HttpStatus.FOUND,
       headers: { location: url.toString(), 'cache-control': 'no-store' },
     });
   }

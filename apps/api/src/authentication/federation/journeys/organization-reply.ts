@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { FederationFailureReason } from '@pertexo/contracts';
 
 export function failure(status: number) {
@@ -19,7 +20,7 @@ export function organizationLanding(
     destination.searchParams.set('ssoReason', test.failed);
   }
   return new Response(null, {
-    status: 302,
+    status: HttpStatus.FOUND,
     headers: {
       location: destination.toString(),
       'cache-control': 'no-store',

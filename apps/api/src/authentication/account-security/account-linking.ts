@@ -67,7 +67,7 @@ export class AccountLinking {
         if (provider.success)
           return await this.callback(request, provider.data);
       }
-      return new Response(null, { status: 404 });
+      return new Response(null, { status: HttpStatus.NOT_FOUND });
     } catch {
       const callback = new URL(request.url).pathname.includes('/callback/');
       recordAuthenticationFailure(
@@ -160,7 +160,7 @@ export class AccountLinking {
     const headers = new Headers({ 'content-type': 'application/json' });
     headers.append('set-cookie', this.bindingCookie(binding));
     return new Response(JSON.stringify({ authorizationUrl }), {
-      status: 200,
+      status: HttpStatus.OK,
       headers,
     });
   }
@@ -356,7 +356,7 @@ export class AccountLinking {
     // The five-minute HttpOnly cookie expires naturally and cannot replay a
     // consumed state.
     return new Response(null, {
-      status: 302,
+      status: HttpStatus.FOUND,
       headers: { location: url.toString() },
     });
   }

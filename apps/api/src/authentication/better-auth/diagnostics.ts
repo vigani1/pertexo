@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { StructuredLogger } from '@pertexo/observability/server';
 import type { BetterAuthOptions } from 'better-auth';
@@ -52,7 +53,7 @@ export class AuthenticationDiagnostics {
       return response;
     } catch {
       this.report('internal_failure');
-      return new Response(null, { status: 500 });
+      return new Response(null, { status: HttpStatus.INTERNAL_SERVER_ERROR });
     }
   }
 
