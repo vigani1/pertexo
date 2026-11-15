@@ -1,88 +1,68 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { lockWorkspaceExecutionCounter } from '../admission-locks.repository.js';
-import {
-  runErrorWorkflowIntents,
-  workflows,
-  databaseSchema,
-} from '@pertexo/database/schema';
-import { and, eq, lte, sql } from 'drizzle-orm';
-import {
-  rethrowQueryFailure,
-  parseWorkspaceId,
-} from '@pertexo/database/primitives';
-import { WorkflowAlreadyRunningError } from '../commands/acceptance/run-admission.errors.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { recordWorkflowTriggerSkip } from '../commands/acceptance/trigger-skips.repository.js';
 import { createHash } from 'node:crypto';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import {
   isWorkflowErrorTarget,
   workflowErrorInputSchema,
-  CallableInputInvalidError,
   canonicalJson,
 } from '@pertexo/workflow-model';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
 } from '../commands/acceptance/accept.js';
-import {
-  WorkspaceRunAdmissionDeniedError,
-  WorkspaceRunQuotaExceededError,
-} from '../commands/acceptance/run-admission.errors.js';
 import { findPublishedWorkflow } from '../queries/execution/published.repository.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.types.js';
-import {
-  ErrorWorkflowDeliveryMismatchError,
-  ErrorWorkflowVersionUnavailableError,
-} from './error-workflow.errors.js';
+import { ErrorWorkflowDeliveryMismatchError } from './error-workflow.errors.js';
 import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
 import { deferErrorWorkflowForQueue } from './queue-wait.repository.js';
+import {
+  discardErrorWorkflowAdmission,
+  errorWorkflowQueueWaitExpired,
+  errorWorkflowTransaction,
+  keepErrorWorkflowAdmission,
+  lockErrorWorkflowIntent,
+  lockErrorWorkflowTarget,
+  markErrorWorkflowAccepted,
+  openErrorWorkflowAdmission,
+  readErrorWorkflowCandidate,
+  refuseErrorWorkflow,
+  type ErrorWorkflowRefusalCode,
+} from './intents.repository.js';
+import { errorWorkflowRefusal } from './refusal.js';
 
 export async function acceptErrorWorkflow(
   client: PoolClient,
   input: ErrorWorkflowDeliveryInput,
   prepare: InitialCheckpointFactory,
 ): Promise<void> {
-  const db = drizzle(client);
-  const selected = await lockErrorWorkflowIntent(client, input);
+  const transaction = errorWorkflowTransaction(client, input.workspaceId);
+  const selected = await lockErrorWorkflowSource(client, input);
   if (selected === undefined) return;
   const { candidate, target, row } = selected;
   if (row.outbox_event_id !== input.outboxEventId)
     throw new ErrorWorkflowDeliveryMismatchError();
   if (row.status !== 'pending') return;
-  const refuse = (code: RefusalCode) =>
+  const refuse = (code: ErrorWorkflowRefusalCode) =>
     refuseErrorWorkflow(client, input, code);
-  if (target[0]?.lifecycle_status !== 'active') {
+  if (target?.lifecycle_status !== 'active') {
     await refuse('target_unavailable');
     return;
   }
   // Keep the capacity fence outside the savepoint: a refusal and its deferred
   // wakeup must commit before a releasing run can observe the pending intent.
-  await lockWorkspaceExecutionCounter(db, input.workspaceId);
+  await lockWorkspaceExecutionCounter(transaction.db, input.workspaceId);
   if (
     row.queue_wait_expires_at !== null &&
-    (
-      await db
-        .select({ one: sql`1` })
-        .from(runErrorWorkflowIntents)
-        .where(
-          and(
-            eq(runErrorWorkflowIntents.workspaceId, input.workspaceId),
-            eq(runErrorWorkflowIntents.sourceRunId, input.sourceRunId),
-            lte(
-              runErrorWorkflowIntents.queueWaitExpiresAt,
-              sql`clock_timestamp()`,
-            ),
-          ),
-        )
-        .catch(rethrowQueryFailure)
-    ).length === 1
+    (await errorWorkflowQueueWaitExpired(client, input))
   ) {
     await refuse('queue_full');
     return;
   }
-  const projection = await findPublishedWorkflow(db, {
+  const projection = await findPublishedWorkflow(transaction.db, {
     workspaceId: input.workspaceId,
     workflowId: candidate.target_workflow_id,
     id: candidate.target_version_id,
@@ -99,18 +79,12 @@ export async function acceptErrorWorkflow(
     await refuse('invalid_target');
     return;
   }
-  await db
-    .execute(sql`savepoint error_workflow_admission`)
-    .catch(rethrowQueryFailure);
+  await openErrorWorkflowAdmission(client);
   try {
     const summary = decodeStoredValue(() =>
       workflowErrorInputSchema.parse(row.context),
     );
     const initial = prepare(projection);
-    const transaction = {
-      db: drizzle(client, { schema: databaseSchema }),
-      workspaceId: parseWorkspaceId(input.workspaceId),
-    };
     const prepared = await prepareWorkflowRunAcceptance(
       transaction,
       candidate.target_workflow_id,
@@ -140,32 +114,12 @@ export async function acceptErrorWorkflow(
       },
       prepared,
     );
-    await db
-      .update(runErrorWorkflowIntents)
-      .set({
-        status: 'accepted',
-        acceptedRunId: accepted.runId,
-        completedAt: sql`clock_timestamp()`,
-      })
-      .where(
-        and(
-          eq(runErrorWorkflowIntents.workspaceId, input.workspaceId),
-          eq(runErrorWorkflowIntents.sourceRunId, input.sourceRunId),
-        ),
-      )
-      .catch(rethrowQueryFailure);
-    await db
-      .execute(sql`release savepoint error_workflow_admission`)
-      .catch(rethrowQueryFailure);
+    await markErrorWorkflowAccepted(client, input, accepted.runId);
+    await keepErrorWorkflowAdmission(client);
   } catch (error) {
     const reason = errorWorkflowRefusal(error);
     if (reason === undefined) throw error;
-    await db
-      .execute(sql`rollback to savepoint error_workflow_admission`)
-      .catch(rethrowQueryFailure);
-    await db
-      .execute(sql`release savepoint error_workflow_admission`)
-      .catch(rethrowQueryFailure);
+    await discardErrorWorkflowAdmission(client);
     if (
       reason === 'queue_full' &&
       (await deferErrorWorkflowForQueue(client, input))
@@ -173,10 +127,7 @@ export async function acceptErrorWorkflow(
       return;
     if (reason === 'concurrency_limit')
       await recordWorkflowTriggerSkip(
-        {
-          db: drizzle(client, { schema: databaseSchema }),
-          workspaceId: parseWorkspaceId(input.workspaceId),
-        },
+        transaction,
         candidate.target_workflow_id,
         'workflow_error',
       );
@@ -184,97 +135,18 @@ export async function acceptErrorWorkflow(
   }
 }
 
-type RefusalCode = NonNullable<
-  (typeof runErrorWorkflowIntents.$inferSelect)['refusalCode']
->;
-function errorWorkflowRefusal(error: unknown): RefusalCode | undefined {
-  if (error instanceof WorkflowAlreadyRunningError) {
-    return 'concurrency_limit';
-  }
-  if (error instanceof WorkspaceRunQuotaExceededError) {
-    return 'queue_full';
-  }
-  if (error instanceof WorkspaceRunAdmissionDeniedError) {
-    return 'workspace_unavailable';
-  }
-  if (
-    error instanceof ErrorWorkflowVersionUnavailableError ||
-    error instanceof CallableInputInvalidError
-  ) {
-    return 'invalid_target';
-  }
-  return undefined;
-}
-
-async function lockErrorWorkflowIntent(
+/** Candidate, then its target workflow, then the intent row: the delivery's lock order. */
+async function lockErrorWorkflowSource(
   client: PoolClient,
   input: ErrorWorkflowDeliveryInput,
 ) {
-  const db = drizzle(client);
-  const [candidate] = await db
-    .select({
-      target_workflow_id: runErrorWorkflowIntents.targetWorkflowId,
-      target_version_id: runErrorWorkflowIntents.targetVersionId,
-    })
-    .from(runErrorWorkflowIntents)
-    .where(
-      and(
-        eq(runErrorWorkflowIntents.workspaceId, input.workspaceId),
-        eq(runErrorWorkflowIntents.sourceRunId, input.sourceRunId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  const candidate = await readErrorWorkflowCandidate(client, input);
   if (candidate === undefined) return undefined;
-  const target = await db
-    .select({ lifecycle_status: workflows.lifecycleStatus })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, candidate.target_workflow_id),
-      ),
-    )
-    .for('share')
-    .catch(rethrowQueryFailure);
-  const [row] = await db
-    .select({
-      status: runErrorWorkflowIntents.status,
-      context: runErrorWorkflowIntents.context,
-      outbox_event_id: runErrorWorkflowIntents.outboxEventId,
-      queue_wait_expires_at: runErrorWorkflowIntents.queueWaitExpiresAt,
-    })
-    .from(runErrorWorkflowIntents)
-    .where(
-      and(
-        eq(runErrorWorkflowIntents.workspaceId, input.workspaceId),
-        eq(runErrorWorkflowIntents.sourceRunId, input.sourceRunId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
+  const target = await lockErrorWorkflowTarget(client, {
+    workspaceId: input.workspaceId,
+    workflowId: candidate.target_workflow_id,
+  });
+  const row = await lockErrorWorkflowIntent(client, input);
   if (row === undefined) return undefined;
   return { candidate, target, row };
-}
-
-async function refuseErrorWorkflow(
-  client: PoolClient,
-  input: ErrorWorkflowDeliveryInput,
-  code: RefusalCode,
-): Promise<void> {
-  const db = drizzle(client);
-
-  await db
-    .update(runErrorWorkflowIntents)
-    .set({
-      status: 'refused',
-      refusalCode: code,
-      completedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(runErrorWorkflowIntents.workspaceId, input.workspaceId),
-        eq(runErrorWorkflowIntents.sourceRunId, input.sourceRunId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
 }

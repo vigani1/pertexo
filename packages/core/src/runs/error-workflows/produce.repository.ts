@@ -1,17 +1,3 @@
-import {
-  workflows,
-  workflowErrorPolicies,
-  workflowRuns,
-  runErrorWorkflowIntents,
-  outboxEvents,
-} from '@pertexo/database/schema';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  rethrowQueryFailure,
-  canonicalOutboxPayloadChecksum,
-} from '@pertexo/database/primitives';
-import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -20,6 +6,13 @@ import {
   errorWorkflowFailure,
 } from '@pertexo/workflow-engine/server';
 import { readErrorWorkflowStep } from './step.repository.js';
+import {
+  enqueueErrorWorkflowStart,
+  insertErrorWorkflowIntent,
+  insertRefusedErrorWorkflowIntent,
+  readErrorWorkflowPolicy,
+} from './intents.repository.js';
+import { transitionStartsErrorWorkflow } from './refusal.js';
 
 /** The terminal transition and its unique intent/outbox either all commit or none do. */
 export async function persistErrorWorkflowIntent(
@@ -34,53 +27,8 @@ export async function persistErrorWorkflowIntent(
     traceparent?: string;
   }>,
 ): Promise<void> {
-  if (
-    input.cancellationRequested ||
-    !input.plan.events.some((event) =>
-      ['run.failed', 'run.timed_out', 'run.outcome_unknown'].includes(
-        event.name,
-      ),
-    )
-  )
-    return;
-  const source = alias(workflows, 'source'),
-    target = alias(workflows, 'target');
-  const [row] = await drizzle(client)
-    .select({
-      target_workflow_id: target.id,
-      target_version_id: target.publishedVersionId,
-      workflow_name: source.name,
-    })
-    .from(workflowErrorPolicies)
-    .innerJoin(
-      source,
-      and(
-        eq(source.workspaceId, workflowErrorPolicies.workspaceId),
-        eq(source.id, workflowErrorPolicies.workflowId),
-      ),
-    )
-    .innerJoin(
-      target,
-      and(
-        eq(target.workspaceId, workflowErrorPolicies.workspaceId),
-        eq(target.id, workflowErrorPolicies.targetWorkflowId),
-      ),
-    )
-    .innerJoin(
-      workflowRuns,
-      and(
-        eq(workflowRuns.workspaceId, workflowErrorPolicies.workspaceId),
-        eq(workflowRuns.id, input.runId),
-      ),
-    )
-    .where(
-      and(
-        eq(workflowErrorPolicies.workspaceId, input.workspaceId),
-        eq(workflowErrorPolicies.workflowId, input.workflowId),
-        eq(workflowRuns.errorWorkflowOrigin, false),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  if (!transitionStartsErrorWorkflow(input)) return;
+  const row = await readErrorWorkflowPolicy(client, input);
   if (row === undefined) return;
   const failed = errorWorkflowFailure(input.plan);
   const context = errorWorkflowInput({
@@ -97,48 +45,22 @@ export async function persistErrorWorkflowIntent(
         }),
   });
   if (row.target_version_id === null) {
-    await drizzle(client)
-      .insert(runErrorWorkflowIntents)
-      .values({
-        workspaceId: input.workspaceId,
-        sourceRunId: input.runId,
-        targetWorkflowId: row.target_workflow_id,
-        targetVersionId: null,
-        context,
-        outboxEventId: null,
-        status: 'refused',
-        refusalCode: 'target_not_published',
-        completedAt: sql`clock_timestamp()`,
-      })
-      .onConflictDoNothing({
-        target: [
-          runErrorWorkflowIntents.workspaceId,
-          runErrorWorkflowIntents.sourceRunId,
-        ],
-      })
-      .catch(rethrowQueryFailure);
+    await insertRefusedErrorWorkflowIntent(client, {
+      ...input,
+      targetWorkflowId: row.target_workflow_id,
+      context,
+    });
     return;
   }
   const outboxEventId = generatePersistedId();
-  const inserted = await drizzle(client)
-    .insert(runErrorWorkflowIntents)
-    .values({
-      workspaceId: input.workspaceId,
-      sourceRunId: input.runId,
-      targetWorkflowId: row.target_workflow_id,
-      targetVersionId: row.target_version_id,
-      context,
-      outboxEventId,
-    })
-    .onConflictDoNothing({
-      target: [
-        runErrorWorkflowIntents.workspaceId,
-        runErrorWorkflowIntents.sourceRunId,
-      ],
-    })
-    .returning({ id: runErrorWorkflowIntents.sourceRunId })
-    .catch(rethrowQueryFailure);
-  if (inserted.length !== 1) return;
+  const inserted = await insertErrorWorkflowIntent(client, {
+    ...input,
+    targetWorkflowId: row.target_workflow_id,
+    targetVersionId: row.target_version_id,
+    context,
+    outboxEventId,
+  });
+  if (!inserted) return;
   const payload = {
     workspaceId: input.workspaceId,
     sourceRunId: input.runId,
@@ -147,16 +69,9 @@ export async function persistErrorWorkflowIntent(
       ? {}
       : { traceparent: input.traceparent }),
   };
-  await drizzle(client)
-    .insert(outboxEvents)
-    .values({
-      id: outboxEventId,
-      workspaceId: input.workspaceId,
-      jobName: 'start-error-workflow',
-      aggregateType: 'workflow-run',
-      aggregateId: input.runId,
-      payload,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-    })
-    .catch(rethrowQueryFailure);
+  await enqueueErrorWorkflowStart(client, {
+    ...input,
+    outboxEventId,
+    payload,
+  });
 }
