@@ -41,7 +41,12 @@ export function verifyCallbackRequest(
       Number.isSafeInteger(seconds) &&
       Math.abs(callback.databaseTime.getTime() / 1000 - seconds) <=
         WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS &&
-      verifyWebhookSignature({ secret, timestamp, signature, rawBody: body })
+      verifyWebhookSignature({
+        signingKey: secret,
+        timestamp,
+        signature,
+        rawBody: body,
+      })
     );
   } finally {
     secret.fill(0);

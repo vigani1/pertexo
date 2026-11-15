@@ -58,6 +58,8 @@ Each step is `<area>/<step>/<step>.definition.ts`, `.executor.ts` and
 
 - An executor reads its invocation and returns a result or throws a
   `NodeExecutorFailure`; it keeps no state between invocations.
+- A step that needs a connection secret (the HMAC step) opens it through
+  node-sdk's `withProviderCredential`, never by reading `secret` itself.
 
 ## Exceptions
 

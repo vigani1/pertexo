@@ -36,6 +36,8 @@ export type RequestMaterial = PreparedBody &
   Readonly<{
     resolved: Awaited<ReturnType<typeof resolveRequestConnection>>;
     dispatch: DispatchState;
+    // Opened by withProviderCredential when the connection carries header credentials.
+    credentialHeaders?: Readonly<Record<string, string>> | undefined;
   }>;
 
 export function prepareInvocation(
@@ -141,7 +143,7 @@ export async function resolveRequestConnection(
       signal: invocation.signal,
     });
   } catch (error: unknown) {
-    await releaseHttpMaterial(body, undefined, {
+    await releaseHttpMaterial(body, {
       repeatable,
       possiblyDispatched: dispatch.possiblyDispatched,
     });

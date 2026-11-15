@@ -27,7 +27,7 @@ import {
   providerFailure,
 } from '../../providers/provider.errors.js';
 import { SlackSendMessageExecutorError } from './send-message.errors.js';
-import { withProviderCredential } from '../../providers/provider-credential.js';
+import { withProviderCredential } from '@pertexo/node-sdk/server';
 import {
   registerProviderExecutor,
   type ExecutorTelemetry,

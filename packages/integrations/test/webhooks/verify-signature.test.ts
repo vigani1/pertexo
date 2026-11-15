@@ -13,11 +13,16 @@ it('verifies lowercase v1 HMAC over timestamp dot exact raw bytes', () => {
     .digest('hex')}`;
 
   expect(
-    verifyWebhookSignature({ secret, timestamp, signature, rawBody }),
+    verifyWebhookSignature({
+      signingKey: secret,
+      timestamp,
+      signature,
+      rawBody,
+    }),
   ).toBe(true);
   expect(
     verifyWebhookSignature({
-      secret,
+      signingKey: secret,
       timestamp,
       signature: signature.toUpperCase(),
       rawBody,
@@ -25,7 +30,7 @@ it('verifies lowercase v1 HMAC over timestamp dot exact raw bytes', () => {
   ).toBe(false);
   expect(
     verifyWebhookSignature({
-      secret,
+      signingKey: secret,
       timestamp,
       signature,
       rawBody: new TextEncoder().encode('{"value":1}\n'),

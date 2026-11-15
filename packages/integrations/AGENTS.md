@@ -32,8 +32,7 @@ reads the environment.
 - `oauth2/`: consent, endpoints, settings, the token endpoint and
   `OAuth2TokenFailure`.
 - `providers/`: the provider HTTP client interface, provider errors,
-  the dispatch fence, `withProviderCredential`
-  (`provider-credential.ts`) and `registerProviderExecutor` with its
+  the dispatch fence, and `registerProviderExecutor` with its
   `ExecutorTelemetry` (`provider-executor.ts`).
 - `webhooks/`: inbound webhook signature verification.
 
@@ -64,10 +63,12 @@ Each step is `<provider>/<step>/<step>.definition.ts`, `.executor.ts`,
 
 ## Rules
 
-- Every provider step opens its credential through `withProviderCredential`,
-  which checks the resolved identity, parses the secret and always zeroes it,
-  and registers through `registerProviderExecutor`, which applies the app's
-  telemetry.
+- Every provider step opens its credential through node-sdk's
+  `withProviderCredential`, which checks the resolved identity and auth type,
+  parses the secret and always zeroes it (the HTTP step for header
+  credentials too), and registers through `registerProviderExecutor`, which
+  applies the app's telemetry. `validate-connection-secrets` refuses reading
+  a `secret` anywhere else in node-sdk, nodes-core and integrations.
 - Provider responses are untrusted: steps keep only redacted, bounded
   excerpts and classify failures through `http/outcome-policy.ts`.
 - `Retry-After` is read only by `parseRetryAfterMillis` (`http/retry-after.ts`).

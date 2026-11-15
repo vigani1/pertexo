@@ -1,16 +1,12 @@
 import { Buffer } from 'node:buffer';
 
-import type { z } from 'zod';
-
 import {
   HTTP_REQUEST_LIMITS,
   type HttpRequestConfig,
   type HttpRequestInput,
 } from './request.schemas.js';
-import { resolvedHttpHeadersCredentialSchema } from './request-headers.schemas.js';
 
 type FailureFactory = () => Error;
-type HttpCredential = z.output<typeof resolvedHttpHeadersCredentialSchema>;
 
 export function requestBody(
   input: HttpRequestInput,
@@ -39,19 +35,6 @@ export function requestBody(
   )
     throw createFailure();
   return new Uint8Array(bytes);
-}
-
-export function decodeCredential(
-  secret: Uint8Array,
-  createFailure: FailureFactory,
-): HttpCredential {
-  try {
-    return resolvedHttpHeadersCredentialSchema.parse(
-      JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(secret)),
-    );
-  } catch {
-    throw createFailure();
-  }
 }
 
 export function mergeHeaders(
