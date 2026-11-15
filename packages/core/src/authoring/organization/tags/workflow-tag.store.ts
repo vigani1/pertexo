@@ -14,14 +14,14 @@ import type {
   ReplaceTagsInput,
 } from './workflow-tag.types.js';
 
+import { replaceWorkflowTags, detachTag } from './commands/tag-commands.js';
 import {
   createTag,
   renameTag,
   deleteTagCommand,
-  replaceWorkflowTags,
-  detachTag,
-} from './commands/mutations.repository.js';
-import { listTags, listTagAssignments } from './list.repository.js';
+} from './commands/tag-commands.js';
+import { listTags } from './list.repository.js';
+import { listTagAssignments } from './list-assignments.js';
 
 export type WorkflowTagStore = ReturnType<typeof createWorkflowTagStore>;
 

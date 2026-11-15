@@ -1,73 +1,64 @@
 import { WORKFLOW_ORGANIZATION_LIMITS } from '@pertexo/workflow-model';
+
 import { generatePersistedId } from '@pertexo/database/platform';
+
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
+
 import type { PoolClient } from 'pg';
+
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+
 import {
   workflowOrganizationState,
   workflowTagAssignments,
   workflowTags,
   workflows,
 } from '@pertexo/database/schema';
-import { runOrganizationCommand } from '../../run-command.js';
-import type {
-  OrganizationScope,
-  createOrganizationSession,
-} from '../../session.js';
-import { WorkflowTagConflictError } from '../../workflow-organization.errors.js';
-import type {
-  CreateTagInput,
-  DeleteTagInput,
-  DetachTagInput,
-  RenameTagInput,
-  ReplaceTagsInput,
-  WorkflowTagAssignmentResult,
-  WorkflowTagCommandResult,
-  WorkflowTagDeleteResult,
-  WorkflowTagReplaceResult,
-} from '../workflow-tag.types.js';
-import {
-  assignment,
-  deleteResult,
-  replaceResult,
-} from '../tag-receipts.schemas.js';
+
 import { tagProjection } from '../tag-state.repository.js';
-import { readTag, requireFreeKey, requireRevision } from '../tag-state.js';
-import { assignmentCommand, tagCommand } from './receipts.js';
 
 /** A workflow without an organization row reads as revision 1; its first change writes 2. */
 const REVISION_AFTER_FIRST_CHANGE = 2;
 
-/** Detaches a tag from at most 50 workflows, advancing each one's revision. */
-async function deleteTag(
+/** The tag's assignments in workflow order, one past the cleanup cap so an overfull set shows. */
+export async function readTagAssignments(
   client: PoolClient,
-  scope: OrganizationScope,
+  workspaceId: string,
   tagId: string,
-): Promise<number> {
+) {
   const db = drizzle(client);
   const assigned = await db
     .select({ workflowId: workflowTagAssignments.workflowId })
     .from(workflowTagAssignments)
     .where(
       and(
-        eq(workflowTagAssignments.workspaceId, scope.workspaceId),
+        eq(workflowTagAssignments.workspaceId, workspaceId),
         eq(workflowTagAssignments.tagId, tagId),
       ),
     )
     .orderBy(asc(workflowTagAssignments.workflowId))
     .limit(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems + 1)
     .catch(rethrowQueryFailure);
-  if (assigned.length > WORKFLOW_ORGANIZATION_LIMITS.cleanupItems)
-    throw new WorkflowTagConflictError('delete_overflow');
-  const workflowIds = assigned.map((row) => row.workflowId);
+  return assigned;
+}
+
+/** Locks the workflows, advances each one's revision and deletes the tag with its assignments. */
+export async function detachTagFromWorkflows(
+  client: PoolClient,
+  workspaceId: string,
+  tagId: string,
+  workflowIds: readonly string[],
+): Promise<void> {
+  const db = drizzle(client);
   await db
     .select({ id: workflows.id })
     .from(workflows)
     .where(
       and(
-        eq(workflows.workspaceId, scope.workspaceId),
-        inArray(workflows.id, workflowIds),
+        eq(workflows.workspaceId, workspaceId),
+        inArray(workflows.id, [...workflowIds]),
       ),
     )
     .orderBy(asc(workflows.id))
@@ -78,7 +69,7 @@ async function deleteTag(
       .insert(workflowOrganizationState)
       .values(
         workflowIds.map((workflowId) => ({
-          workspaceId: scope.workspaceId,
+          workspaceId: workspaceId,
           workflowId,
           revision: REVISION_AFTER_FIRST_CHANGE,
         })),
@@ -95,7 +86,7 @@ async function deleteTag(
     .delete(workflowTagAssignments)
     .where(
       and(
-        eq(workflowTagAssignments.workspaceId, scope.workspaceId),
+        eq(workflowTagAssignments.workspaceId, workspaceId),
         eq(workflowTagAssignments.tagId, tagId),
       ),
     )
@@ -104,128 +95,57 @@ async function deleteTag(
     .delete(workflowTags)
     .where(
       and(
-        eq(workflowTags.workspaceId, scope.workspaceId),
+        eq(workflowTags.workspaceId, workspaceId),
         eq(workflowTags.id, tagId),
       ),
     )
     .catch(rethrowQueryFailure);
-  return workflowIds.length;
 }
 
-export async function createTag(
-  session: ReturnType<typeof createOrganizationSession>,
-  input: CreateTagInput,
-): Promise<WorkflowTagCommandResult> {
-  const request = { key: input.key };
-  return tagCommand(session, input, {
-    operation: 'tag.create',
-    target: null,
-    request,
-    apply: async (client, workspaceId) => {
-      await requireFreeKey(client, workspaceId, request.key, null);
-      const db = drizzle(client);
-      const [count] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(workflowTags)
-        .where(eq(workflowTags.workspaceId, workspaceId))
-        .catch(rethrowQueryFailure);
-      if ((count?.count ?? 0) >= WORKFLOW_ORGANIZATION_LIMITS.tagsPerWorkspace)
-        throw new WorkflowTagConflictError('limit');
-      const [row] = await db
-        .insert(workflowTags)
-        .values({ workspaceId, id: generatePersistedId(), key: request.key })
-        .returning(tagProjection)
-        .catch(rethrowQueryFailure);
-      if (row === undefined) throw new Error('Tag was not created');
-      return row;
-    },
-  });
+export async function countTags(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<number> {
+  const db = drizzle(client);
+  const [count] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(workflowTags)
+    .where(eq(workflowTags.workspaceId, workspaceId))
+    .catch(rethrowQueryFailure);
+  return count?.count ?? 0;
 }
 
-export async function renameTag(
-  session: ReturnType<typeof createOrganizationSession>,
-  input: RenameTagInput,
-): Promise<WorkflowTagCommandResult> {
-  const tagId = input.tagId;
-  const request = {
-    key: input.key,
-    expectedTagRevision: input.expectedTagRevision,
-  };
-  return tagCommand(session, input, {
-    operation: 'tag.rename',
-    target: tagId,
-    request,
-    apply: async (client, workspaceId) => {
-      const current = await readTag(client, workspaceId, tagId);
-      requireRevision(current, request.expectedTagRevision);
-      await requireFreeKey(client, workspaceId, request.key, tagId);
-      const [renamed] = await drizzle(client)
-        .update(workflowTags)
-        .set({ key: request.key, revision: sql`${workflowTags.revision}+1` })
-        .where(
-          and(
-            eq(workflowTags.workspaceId, workspaceId),
-            eq(workflowTags.id, tagId),
-          ),
-        )
-        .returning(tagProjection)
-        .catch(rethrowQueryFailure);
-      return renamed ?? current;
-    },
-  });
+export async function insertTag(
+  client: PoolClient,
+  workspaceId: string,
+  key: string,
+) {
+  const db = drizzle(client);
+  const [row] = await db
+    .insert(workflowTags)
+    .values({ workspaceId, id: generatePersistedId(), key: key })
+    .returning(tagProjection)
+    .catch(rethrowQueryFailure);
+  if (row === undefined) throw new Error('Tag was not created');
+  return row;
 }
 
-export async function deleteTagCommand(
-  session: ReturnType<typeof createOrganizationSession>,
-  input: DeleteTagInput,
-): Promise<WorkflowTagDeleteResult> {
-  const tagId = input.tagId;
-  const request = {
-    expectedTagRevision: input.expectedTagRevision,
-  };
-  return session.command(input, 'governance:manage', async (client, scope) => {
-    const { result, replayed } = await runOrganizationCommand(client, scope, {
-      receipt: deleteResult,
-      operation: 'tag.delete',
-      target: tagId,
-      idempotencyKey: input.idempotencyKey,
-      request,
-      apply: async () => {
-        const current = await readTag(client, scope.workspaceId, tagId);
-        requireRevision(current, request.expectedTagRevision);
-        const detachedWorkflowCount = await deleteTag(client, scope, tagId);
-        return {
-          result: { tagId, deleted: true as const, detachedWorkflowCount },
-          audit: {
-            action: 'workflow.tag.delete',
-            targetId: tagId,
-            metadata: { detachedWorkflowCount },
-          },
-        };
-      },
-    });
-    return Object.freeze({ ...result, replayed });
-  });
-}
-
-export async function replaceWorkflowTags(
-  session: ReturnType<typeof createOrganizationSession>,
-  input: ReplaceTagsInput,
-): Promise<WorkflowTagReplaceResult> {
-  return assignmentCommand(session, input, {
-    operation: 'tags.replace',
-    change: { kind: 'replace_tags', tagIds: input.tagIds },
-    schema: replaceResult,
-  });
-}
-
-export async function detachTag(
-  session: ReturnType<typeof createOrganizationSession>,
-  input: DetachTagInput,
-): Promise<WorkflowTagAssignmentResult> {
-  return assignmentCommand(session, input, {
-    operation: 'tag.detach',
-    change: { kind: 'detach_tag', tagId: input.tagId },
-    schema: assignment,
-  });
+export async function renameTagRow(
+  client: PoolClient,
+  workspaceId: string,
+  tagId: string,
+  key: string,
+) {
+  const [renamed] = await drizzle(client)
+    .update(workflowTags)
+    .set({ key: key, revision: sql`${workflowTags.revision}+1` })
+    .where(
+      and(
+        eq(workflowTags.workspaceId, workspaceId),
+        eq(workflowTags.id, tagId),
+      ),
+    )
+    .returning(tagProjection)
+    .catch(rethrowQueryFailure);
+  return renamed;
 }
