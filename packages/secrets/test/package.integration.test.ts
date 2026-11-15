@@ -85,6 +85,7 @@ describe('@pertexo/secrets/server as a built package', () => {
       'WebhookTriggerEnvelopeEncryption',
       'WebhookTriggerSecretEncryptionError',
       'applicationKeyVersionSchema',
+      'applicationSealedSecretSchema',
       'authenticationMailAssociatedData',
       'callbackTokenHash',
       'connectionSecretAssociatedData',
