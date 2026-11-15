@@ -1,8 +1,8 @@
 import {
-  USER_DISPLAY_NAME_MAX_LENGTH,
   userDisplayNameSchema,
   type UserProfileResponse,
 } from '@pertexo/contracts';
+import { USER_DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 import { useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
@@ -19,8 +19,8 @@ function nameProblem(value: string): string | undefined {
   if (userDisplayNameSchema.safeParse(value).success) return undefined;
   const name = value.trim();
   if (name.length === 0) return 'Enter the name teammates should see.';
-  if (name.length > USER_DISPLAY_NAME_MAX_LENGTH)
-    return `Use ${String(USER_DISPLAY_NAME_MAX_LENGTH)} characters or fewer.`;
+  if (name.length > USER_DISPLAY_NAME_MAX_CHARACTERS)
+    return `Use ${String(USER_DISPLAY_NAME_MAX_CHARACTERS)} characters or fewer.`;
   return 'Remove line breaks and tabs from the name.';
 }
 
@@ -97,7 +97,7 @@ export function DisplayNameForm({
             ref={validation.register('name')}
             autoComplete="name"
             autoFocus
-            maxLength={USER_DISPLAY_NAME_MAX_LENGTH + 32}
+            maxLength={USER_DISPLAY_NAME_MAX_CHARACTERS + 32}
             value={name}
             disabled={locked}
             onChange={(event) => {

@@ -15,6 +15,9 @@ import {
 } from '@pertexo/database/schema';
 import { decodeAcceptanceReceipt } from '../receipts.repository.js';
 
+// Past this many replacements a lineage counts as live, as a cycle does.
+const REPLACEMENT_CHAIN_MAX_DEPTH = 32;
+
 export async function selectIntent(
   client: PoolClient,
   predicate: SQL,
@@ -126,7 +129,7 @@ export async function replacementLineageIsLive(
 ): Promise<boolean> {
   let current = initial;
   const visited = new Set<string>();
-  for (let depth = 0; depth < 32; depth += 1) {
+  for (let depth = 0; depth < REPLACEMENT_CHAIN_MAX_DEPTH; depth += 1) {
     const identity = `${current.workspaceId}:${current.intentId}`;
     if (visited.has(identity)) return true;
     visited.add(identity);
