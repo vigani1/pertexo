@@ -1,6 +1,7 @@
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
-import { DIRECTORY_LIMITS, type DirectorySettings } from '@pertexo/contracts';
+import type { DirectorySettings } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';

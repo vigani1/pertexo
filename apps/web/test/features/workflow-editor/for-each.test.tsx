@@ -1,11 +1,9 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { projectWorkflowGraph } from '@/features/workflow-editor/model/graph/adapter';
 
 import { BODY_ORIGIN } from '@/features/workflow-editor/model/graph/for-each-body-layout';
 
-import {
-  WORKFLOW_GRAPH_CONTRACT_LIMITS,
-  type WorkflowGraphContract,
-} from '@pertexo/contracts';
+import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 

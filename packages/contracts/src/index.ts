@@ -20,7 +20,6 @@ export * from './schemas/identity/invitation-acceptance.js';
 export * from './schemas/execution/node-testing.js';
 export * from './schemas/triggers/schedules.js';
 export * from './schemas/shared/transport-headers.js';
-export { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 export * from './schemas/shared/secret-token.js';
 export * from './schemas/triggers/webhooks.js';
 export {
@@ -203,7 +202,6 @@ export {
 export {
   publicationReviewRequestSchema,
   publicationReviewDecisionSchema,
-  PUBLICATION_REVIEW_TEXT_MAX_LENGTH,
   publicationReviewSchema,
   publicationReviewOverviewSchema,
   publicationReviewDetailSchema,
@@ -218,7 +216,6 @@ export {
 } from './schemas/identity/federation/social.js';
 export { authorizationStartedSchema } from './schemas/identity/federation/authorization.js';
 export {
-  FEDERATION_LIMITS,
   federationDomainNameSchema,
   SAML_LIMITS,
   samlServiceProviderUrls,
@@ -265,7 +262,6 @@ export { delegatedWorkspaceRoleSchema } from './schemas/identity/membership.js';
 export { authenticationProviderSchema } from './schemas/identity/authentication.js';
 
 export {
-  DIRECTORY_LIMITS,
   directoryCredentialCreateSchema,
   directoryCredentialResultSchema,
   directoryRevisionSchema,
@@ -294,7 +290,6 @@ export type {
 } from './schemas/identity/federation/directory.js';
 
 export {
-  PROMOTION_LIMITS,
   workflowPromotionSettingsSchema,
   workflowPromotionTargetSchema,
   workflowPromotionTargetResultSchema,
@@ -328,7 +323,6 @@ export {
 } from './schemas/workflows/promotions/history.js';
 
 export {
-  COLLABORATION_LIMITS,
   workflowCommentBodySchema,
   workflowCommentCreateSchema,
   workflowCommentEditSchema,

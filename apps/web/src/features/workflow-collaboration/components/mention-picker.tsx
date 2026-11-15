@@ -1,6 +1,6 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import { useDeferredValue, useId, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { COLLABORATION_LIMITS } from '@pertexo/contracts';
 import { formatCount } from '@/lib/format/count';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

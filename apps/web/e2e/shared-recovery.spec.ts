@@ -1,5 +1,5 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import type { Route } from '@playwright/test';
-import { COLLABORATION_LIMITS } from '@pertexo/contracts';
 import { mappingGraph } from './workflow-editor/graph';
 import {
   addCsrfCookie,

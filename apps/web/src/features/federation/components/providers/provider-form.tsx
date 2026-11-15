@@ -1,8 +1,10 @@
-import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import {
+  RESOURCE_NAME_MAX_LENGTH,
+  FEDERATION_LIMITS,
+} from '@pertexo/workflow-model';
 import { OidcIdentityFields, OidcClaimFields } from './fields/oidc';
 import { useId, useState } from 'react';
 import {
-  FEDERATION_LIMITS,
   oidcProviderCreateSchema,
   oidcConfigurationSchema,
   type FederationSettings,

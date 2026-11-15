@@ -10,7 +10,11 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowStepSamples } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
-import { DATA_RETENTION_DAYS, utf8ByteLength } from '@pertexo/workflow-model';
+import {
+  DATA_RETENTION_DAYS,
+  utf8ByteLength,
+  STEP_SAMPLE_LIMITS,
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
@@ -159,8 +163,8 @@ async function assertSampleQuota(
     usage.bytes - (current?.retainedBytes ?? 0) + retainedBytes >
       SAMPLE_RETAINED_BYTES ||
     (current === undefined &&
-      (usage.workflowCount >= STEP_SAMPLES_PER_WORKFLOW ||
-        usage.workspaceCount >= STEP_SAMPLES_PER_WORKSPACE));
+      (usage.workflowCount >= STEP_SAMPLE_LIMITS.perWorkflow ||
+        usage.workspaceCount >= STEP_SAMPLE_LIMITS.perWorkspace));
   if (sampleQuotaExceeded) throw new WorkflowStepSampleError('limit_reached');
 }
 
@@ -231,7 +235,3 @@ async function persistCapturedSample(
 const SAMPLE_RETENTION_SECONDS = DATA_RETENTION_DAYS.stepSamples * 86_400;
 
 const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;
-
-/** Saved samples: one per step, so at most this many steps per workflow and per workspace. */
-const STEP_SAMPLES_PER_WORKFLOW = 200;
-const STEP_SAMPLES_PER_WORKSPACE = 1000;

@@ -200,7 +200,7 @@ export const apiProblemShape = {
     .string()
     .min(1)
     .max(API_PROBLEM_BOUNDS.requestIdCharacters)
-    .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u),
   errors: z
     .array(apiProblemIssueSchema)
     .max(API_PROBLEM_BOUNDS.errorsItems)

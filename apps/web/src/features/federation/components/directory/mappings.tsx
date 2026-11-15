@@ -1,10 +1,10 @@
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 import { MappingRows } from './mapping-rows';
 import type { DelegatedRole } from '@pertexo/policy';
 import { Status } from '@/components/ui/status';
 import { useId, useState } from 'react';
 import {
   delegatedWorkspaceRoleSchema,
-  DIRECTORY_LIMITS,
   type DirectorySettings,
   type DirectoryMappings,
   type FederationSettings,

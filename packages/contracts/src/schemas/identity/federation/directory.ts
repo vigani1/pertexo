@@ -1,8 +1,7 @@
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
-export { DIRECTORY_LIMITS };
-import { FEDERATION_LIMITS } from './settings.js';
 import { z } from 'zod';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';

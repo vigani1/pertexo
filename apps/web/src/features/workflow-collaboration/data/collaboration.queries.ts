@@ -1,13 +1,11 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import {
   infiniteQueryOptions,
   queryOptions,
   keepPreviousData,
 } from '@tanstack/react-query';
-import {
-  COLLABORATION_LIMITS,
-  type WorkflowCommentListQuery,
-} from '@pertexo/contracts';
+import type { WorkflowCommentListQuery } from '@pertexo/contracts';
 import {
   readThreads,
   readDiscussion,

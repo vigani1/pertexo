@@ -1,14 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
-import { PROMOTION_LIMITS } from '../../src/schemas/workflows/promotions/settings.js';
-import { COLLABORATION_LIMITS } from '../../src/schemas/workflows/collaboration/comments.js';
-import { FEDERATION_LIMITS } from '../../src/schemas/identity/federation/settings.js';
+import {
+  COLLABORATION_LIMITS,
+  FEDERATION_LIMITS,
+  PROMOTION_LIMITS,
+} from '@pertexo/workflow-model';
 import {
   AUDIT_RETENTION_MIN_DAYS,
   AUDIT_RETENTION_MAX_DAYS,
   auditRetentionSchema,
 } from '../../src/schemas/identity/governance.js';
-import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '../../src/schemas/identity/authentication.js';
+import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
 import {
   apiTokenScopeSchema,
   API_TOKEN_ACTIVE_LIMIT,

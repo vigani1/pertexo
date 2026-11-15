@@ -1,10 +1,8 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { responseSchema } from '../../shared/response-schema.js';
 import { z } from 'zod';
-import {
-  PROMOTION_LIMITS,
-  promotionIdentifierSchema as id,
-} from './settings.js';
+import { promotionIdentifierSchema as id } from './settings.js';
 import { workflowPromotionModeSchema } from './review.js';
 import {
   STORED_INTEGER_MAX,

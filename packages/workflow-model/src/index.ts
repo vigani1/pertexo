@@ -409,6 +409,7 @@ export {
   stepSampleIdentity,
   stepSampleBindings,
 } from './authoring/samples/identity.js';
+export { STEP_SAMPLE_LIMITS } from './authoring/samples/step-sample-limits.js';
 export type { StepSampleSource } from './authoring/samples/step-sample-source.types.js';
 export {
   observeTestAssertion,

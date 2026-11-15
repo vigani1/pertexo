@@ -1,8 +1,9 @@
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { Link } from '@tanstack/react-router';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import type { FederationSection } from '../../model/federation-search';
 import { DirectoryPanel } from '../directory/panel';
-import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
+import type { FederationSettings } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { OrganizationWorkspaces } from './workspaces';

@@ -1,5 +1,5 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import {
-  PROMOTION_LIMITS,
   workflowPromotionPreviewRequestSchema,
   type WorkflowPromotionPreviewRequest,
 } from '@pertexo/contracts';

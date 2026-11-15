@@ -33,7 +33,6 @@ const WORKSPACES_BOUNDS = Object.freeze({
 
 export { idempotencyKeySchema } from '../shared/transport-headers.js';
 
-export { WORKSPACE_TEXT_LIMITS };
 export const workspaceCreateRequestSchema = z
   .object({
     name: storageTextSchema.trim().min(1).max(RESOURCE_NAME_MAX_LENGTH),

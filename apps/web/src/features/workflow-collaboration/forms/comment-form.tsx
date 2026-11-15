@@ -1,3 +1,4 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import {
   commentDraftChanged,
   commentDraftState,
@@ -13,7 +14,6 @@ import {
 } from 'react';
 import {
   workflowCommentBodySchema,
-  COLLABORATION_LIMITS,
   type WorkflowCommentBody,
   type WorkflowCommentCommandResult,
 } from '@pertexo/contracts';

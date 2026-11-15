@@ -1,5 +1,6 @@
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { useState } from 'react';
-import { FEDERATION_LIMITS, type FederationSettings } from '@pertexo/contracts';
+import type { FederationSettings } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import {
   ConfirmDialog,

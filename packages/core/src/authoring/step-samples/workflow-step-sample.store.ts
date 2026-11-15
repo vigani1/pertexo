@@ -1,3 +1,4 @@
+import { STEP_SAMPLE_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, asc, eq } from 'drizzle-orm';
@@ -22,8 +23,6 @@ import type {
   SampleTransaction,
 } from './step-sample.types.js';
 import { readDatabaseClock } from '../../shared/database-clock.repository.js';
-
-const SAMPLES_LISTED = 200;
 
 export type WorkflowStepSampleStore = ReturnType<
   typeof createWorkflowStepSampleStore
@@ -62,7 +61,7 @@ export function createWorkflowStepSampleStore(access: AuthoringAccess) {
               ),
             )
             .orderBy(asc(workflowStepSamples.nodeId))
-            .limit(SAMPLES_LISTED)
+            .limit(STEP_SAMPLE_LIMITS.perWorkflow)
             .catch(rethrowQueryFailure);
           const now = await readDatabaseClock(client);
           return {

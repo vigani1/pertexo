@@ -1,4 +1,4 @@
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/contracts';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import {
   Field,
   FieldDescription,

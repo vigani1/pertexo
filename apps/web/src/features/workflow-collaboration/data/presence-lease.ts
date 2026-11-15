@@ -1,6 +1,6 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import { useEffect, useRef, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { COLLABORATION_LIMITS } from '@pertexo/contracts';
 import type { EditingPresence } from '../model/presence';
 import {
   heartbeatPresence,

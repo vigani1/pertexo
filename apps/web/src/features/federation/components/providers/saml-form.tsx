@@ -1,4 +1,4 @@
-import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { SamlIdentityFields, SamlClaimFields } from './fields/saml';
 import { useId, useState } from 'react';
 import {
