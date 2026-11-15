@@ -1,11 +1,8 @@
 import type { FolderSharing } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { useSharingEditor } from '@/lib/resource-sharing/use-editor';
-import {
-  readFolderSharing,
-  replaceFolderSharing,
-} from '../data/organization/sharing.api';
-import { workflowOrganizationKeys } from '../data/organization/workflow-organization.queries';
+import { readFolderSharing, replaceFolderSharing } from './sharing.api';
+import { workflowOrganizationKeys } from './workflow-organization.queries';
 export function useFolderSharingEditor(
   scope: WorkspaceApiScope,
   folderId: string | undefined,

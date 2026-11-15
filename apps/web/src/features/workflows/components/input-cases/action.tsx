@@ -13,7 +13,7 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import type { ApiClient } from '@/lib/api/client';
-import { useInputCases } from '../../hooks/use-input-cases';
+import { useInputCases } from '../../data/input-cases/workflow-input-cases.mutations';
 import type { LoadedInputCase } from './panel';
 // The case editor loads with the dialog's first open, not with the workflow
 // bar that holds its trigger.

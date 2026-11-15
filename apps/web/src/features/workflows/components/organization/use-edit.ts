@@ -16,7 +16,7 @@ import {
   workflowOrganizationProjectionQueryOptions,
   workflowTagsInfiniteQueryOptions,
 } from '../../data/organization/workflow-organization.queries';
-import { useWorkflowOrganizationCommand } from '../../hooks/organization/use-workflow-organization-command';
+import { useWorkflowOrganizationCommand } from '../../data/organization/workflow-organization-command.mutations';
 import {
   canEditOrganization,
   organizationEditAttempt,

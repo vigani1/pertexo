@@ -9,9 +9,9 @@ import {
   changeStepSample,
   type SampleCommand,
   type SampleScope,
-} from '../../data/samples/step-samples.api';
+} from './step-samples.api';
 import { sampleErrorDetail } from '@/lib/workflows/command-errors';
-import { stepSamplesKey } from '../../data/samples/step-samples.queries';
+import { stepSamplesKey } from './step-samples.queries';
 export function useSampleCommand(
   scope: SampleScope,
   nodeId: string,

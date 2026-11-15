@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { Button } from '@/components/ui/button';
-import { useTestSuites } from '@/features/workflow-testing/hooks/use-test-suites';
+import { useTestSuites } from '@/features/workflow-testing/data/test-suites/workflow-test-suites.mutations';
 import { TestSuiteDialog } from '@/features/workflow-testing/components/test-suites/dialog';
 import { SuitePublishNotice } from '@/features/workflow-publish/components/publication/suite-readiness';
 import { TestCaseReport } from '@/features/workflow-testing/components/test-suites/report';

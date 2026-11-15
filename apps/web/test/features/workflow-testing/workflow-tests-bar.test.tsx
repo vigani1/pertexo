@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
-import { useWorkflowTests } from '@/features/workflow-testing/hooks/use-workflow-tests';
+import { useWorkflowTests } from '@/features/workflow-testing/data/workflow-tests/workflow-tests.mutations';
 import {
   WorkflowTestButton,
   WorkflowTestHistory,

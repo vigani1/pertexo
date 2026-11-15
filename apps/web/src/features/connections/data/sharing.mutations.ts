@@ -1,11 +1,8 @@
 import type { ConnectionSharing } from '@pertexo/contracts';
 import { useSharingEditor } from '@/lib/resource-sharing/use-editor';
-import type { ConnectionMutationScope } from '../data/connections.mutations';
-import { connectionKeys } from '../data/connections.queries';
-import {
-  readConnectionSharing,
-  replaceConnectionSharing,
-} from '../data/sharing.api';
+import type { ConnectionMutationScope } from './connections.mutations';
+import { connectionKeys } from './connections.queries';
+import { readConnectionSharing, replaceConnectionSharing } from './sharing.api';
 export function useConnectionSharingEditor(
   scope: ConnectionMutationScope,
   connectionId: string | undefined,

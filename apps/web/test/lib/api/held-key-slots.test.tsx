@@ -5,7 +5,7 @@ import type { WorkspaceInvitation, WorkspaceMember } from '@pertexo/contracts';
 import { expect, it } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
 import { useAutoPauseCommand } from '@/features/workflow-settings/data/mutations/use-auto-pause-command';
-import { useInputCases } from '@/features/workflows/hooks/use-input-cases';
+import { useInputCases } from '@/features/workflows/data/input-cases/workflow-input-cases.mutations';
 import { useMemberRemovalCommand } from '@/features/workspaces/data/mutations/members/use-removal-command';
 import { useInvitationCommand } from '@/features/workspaces/data/mutations/use-invitation-command';
 import { invitation } from '../../features/workspaces/members/fixture';

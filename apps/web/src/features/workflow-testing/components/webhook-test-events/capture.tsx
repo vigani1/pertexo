@@ -10,7 +10,7 @@ import {
 } from '@/components/patterns/actions/confirm-dialog';
 import type { SampleScope } from '../../data/samples/step-samples.api';
 import { stepSampleQueryOptions } from '../../data/samples/step-samples.queries';
-import { useSampleCommand } from '../samples/use-command';
+import { useSampleCommand } from '../../data/samples/step-sample.mutations';
 export function CapturedEvent({
   scope,
   nodeId,

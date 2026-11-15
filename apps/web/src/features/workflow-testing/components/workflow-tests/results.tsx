@@ -13,7 +13,7 @@ import { JsonTree } from '@/components/patterns/code/json-tree';
 import { nodeRunOutputQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { workflowTestStepLabels } from '../../model/workflow-test';
 import { PinRecordedOutputButton } from '../samples/controls';
-import type { WorkflowTests } from '../../hooks/use-workflow-tests';
+import type { WorkflowTests } from '../../data/workflow-tests/workflow-tests.mutations';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
 

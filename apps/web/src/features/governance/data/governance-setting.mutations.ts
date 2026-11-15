@@ -3,8 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { GovernanceSettings } from '@pertexo/contracts';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { isApiError } from '@/lib/api/error';
-import { saveSettings, type GovernanceScope } from '../data/audit.api';
-import { governanceKeys, governanceQueryOptions } from '../data/audit.queries';
+import { saveSettings, type GovernanceScope } from './audit.api';
+import { governanceKeys, governanceQueryOptions } from './audit.queries';
 import {
   settingEdit,
   type SettingField,

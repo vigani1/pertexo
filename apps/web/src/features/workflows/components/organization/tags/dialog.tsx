@@ -11,7 +11,7 @@ import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { workflowTagsInfiniteQueryOptions } from '../../../data/organization/workflow-organization.queries';
 import type { WorkflowOrganizationInput } from '../../../model/organization/requests';
-import { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
+import { useWorkflowOrganizationCommand } from '../../../data/organization/workflow-organization-command.mutations';
 import { TagManagement } from './management';
 import { WorkflowTagCleanup } from './cleanup';
 import { ADMINISTRATORS } from '@/features/workspaces/public';

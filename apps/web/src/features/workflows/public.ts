@@ -4,7 +4,7 @@ export type { VersionDiff, GraphChange } from './model/comparison';
 export { countWorkflowStates } from './model/list-view';
 export { canDuplicateWorkflow } from './model/duplicate/allowed';
 export { describeWorkflowState } from './model/workflow-state';
-export { useInputCases } from './hooks/use-input-cases';
+export { useInputCases } from './data/input-cases/workflow-input-cases.mutations';
 export {
   LIFECYCLE_CONSEQUENCES,
   lifecycleIntentFor,

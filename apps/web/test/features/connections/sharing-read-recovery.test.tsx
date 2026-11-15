@@ -7,7 +7,7 @@ import type { ConnectionSharing, FolderSharing } from '@pertexo/contracts';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { ConnectionSharingPanel } from '@/features/connections/components/connection-sharing';
 import { FolderShareDialog } from '@/features/workflows/components/organization/folders/share-dialog';
-import { useConnectionSharingEditor } from '@/features/connections/hooks/use-sharing-editor';
+import { useConnectionSharingEditor } from '@/features/connections/data/sharing.mutations';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';

@@ -1,7 +1,7 @@
 export { useStepOutputSample } from './hooks/use-step-output-sample';
 export type { StepOutputSample } from './hooks/use-step-output-sample';
-export { useWorkflowTests } from './hooks/use-workflow-tests';
-export type { WorkflowTests } from './hooks/use-workflow-tests';
+export { useWorkflowTests } from './data/workflow-tests/workflow-tests.mutations';
+export type { WorkflowTests } from './data/workflow-tests/workflow-tests.mutations';
 export { SchedulePreviewScope } from './model/schedule-preview-scope';
 export { useSchedulePreview } from './hooks/use-schedule-preview';
 export { describePreviewStatus } from './model/preview-observation';

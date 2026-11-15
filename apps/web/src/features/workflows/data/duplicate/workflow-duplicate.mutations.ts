@@ -16,9 +16,9 @@ import {
   duplicateWorkflow,
   getWorkflowDuplicateDraft,
   type WorkflowDuplicateAttempt,
-} from '../../data/workflows.api';
-import { workflowKeys } from '../../data/workflows.queries';
-import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
+} from '../workflows.api';
+import { workflowKeys } from '../workflows.queries';
+import { workflowOrganizationKeys } from '../organization/workflow-organization.queries';
 import type { DuplicateState } from '../../model/duplicate/duplicate-command-state';
 
 export function useWorkflowDuplicate({

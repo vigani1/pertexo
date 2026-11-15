@@ -1,4 +1,4 @@
-import { useCaseOwner } from './use-case-owner';
+import { useCaseOwner } from '../../hooks/use-case-owner';
 import {
   RETRY_WINDOW_ENDED,
   isUnconfirmedCommand,
@@ -19,11 +19,11 @@ import {
   getInputCase,
   sendInputCaseCommand,
   type InputCaseIntent,
-} from '../data/input-cases/workflow-input-cases.api';
+} from './workflow-input-cases.api';
 import {
   inputCasesKey,
   inputCasesQueryOptions,
-} from '../data/input-cases/workflow-input-cases.queries';
+} from './workflow-input-cases.queries';
 
 function denied(cause: unknown) {
   return isApiError(cause) && [401, 403, 404].includes(cause.status ?? 0);

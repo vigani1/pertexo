@@ -3,7 +3,7 @@ import { SharingRevisionNotice } from '@/components/patterns/sharing/revision-no
 import { QueryView } from '@/components/patterns/states/query-view';
 import { XIcon } from 'lucide-react';
 import type { ConnectionMutationScope } from '../data/connections.mutations';
-import type { useConnectionSharingEditor } from '../hooks/use-sharing-editor';
+import type { useConnectionSharingEditor } from '../data/sharing.mutations';
 import { ADMINISTRATORS, ROLE_NAMES } from '@/features/workspaces/public';
 import { SharingModeChoice } from '@/components/patterns/sharing/mode-choice';
 import {

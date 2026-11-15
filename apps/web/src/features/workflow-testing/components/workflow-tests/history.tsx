@@ -19,7 +19,7 @@ import {
   isActiveRunStatus,
 } from '@/features/workflow-runs/public';
 import { useRunEvents } from '@/features/workflow-runs/public';
-import type { WorkflowTests } from '../../hooks/use-workflow-tests';
+import type { WorkflowTests } from '../../data/workflow-tests/workflow-tests.mutations';
 
 /**
  * The tests dock below the canvas. It shows only for test activity: a test or
