@@ -317,7 +317,7 @@ export {
 export {
   createScheduleTriggerScanner,
   type ScheduleTriggerScanner,
-} from './triggers/schedules/scanner.js';
+} from './triggers/schedules/schedule-scanner.store.js';
 export { ScheduleClaimLostError } from './triggers/schedules/schedule-trigger.errors.js';
 export type { ScanDueSchedulesResult } from './triggers/schedules/scanning/schedule-scanning.types.js';
 export { ScheduleTriggerError } from './triggers/schedules/schedule-trigger.errors.js';

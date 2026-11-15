@@ -28,7 +28,7 @@ import { createDatabaseRuntime } from '@pertexo/database/platform';
 import { createPublishedWorkflowReader } from '../../src/runs/queries/execution/published.repository.js';
 import { createOutboxDispatcherDatabase } from '../../src/outbox/dispatcher/outbox-dispatcher.store.js';
 import { createWorkflowRunDatabase } from '../../src/runs/workflow-run.store.js';
-import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
+import { createScheduleTriggerScanner } from '../../src/triggers/schedules/schedule-scanner.store.js';
 import { createWebhookTriggerStore } from '../../src/triggers/webhooks/webhook-trigger.store.js';
 
 const config: DatabaseConfig = {

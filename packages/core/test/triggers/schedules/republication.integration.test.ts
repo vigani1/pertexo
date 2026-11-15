@@ -1,7 +1,7 @@
 import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/scanner.js';
+import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/schedule-scanner.store.js';
 import {
   beforeAllFixture1,
   afterAllFixture2,
