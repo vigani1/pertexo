@@ -123,6 +123,7 @@ export async function acceptPreviewRun(
     resolvedInput,
     variableSetRevision: await captureWorkspaceVariableRevision(transaction),
   });
+  if (insertedRun === undefined) throw new PreviewAcceptanceCorruptError();
   if (dispatch.kind === 'execution')
     await persistPreviewAttempt(transaction, input, {
       previewRunId,
