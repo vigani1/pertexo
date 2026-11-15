@@ -46,6 +46,7 @@ export type { TwoFactorRecoveryResult } from './two-factor/two-factor-recovery.t
 export type {} from './federation/provisioning/management/detach.repository.js';
 export type {} from './federation/sessions/policy.js';
 export type {} from './federation/sessions/recovery.repository.js';
+export type {} from './federation/sessions/user-sessions.repository.js';
 export { revokeAuthenticationSession } from './federation/sessions/revocation.repository.js';
 
 export { canonicalEmail } from './email-policy.js';
@@ -55,3 +56,4 @@ export {
   readAccountProviderNames,
   readCredentialPasswordHash,
 } from './account-security.repository.js';
+export type {} from './federation/sessions/authentication-session.types.js';

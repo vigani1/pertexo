@@ -86,5 +86,3 @@ export type {} from './members/discovery.repository.js';
 export type {} from './members/records.repository.js';
 export type {} from './resources/principals.repository.js';
 export type {} from './resources/revocation.repository.js';
-export type {} from './users/authentication-replacement.types.js';
-export type {} from './users/sessions.repository.js';

@@ -23,7 +23,7 @@ import type {
   MembershipAddition,
 } from '../../../tenant-access/members/membership.types.js';
 
-import { revokeSessionsForUsers } from '../../../tenant-access/users/sessions.repository.js';
+import { revokeSessionsForUsers } from '../sessions/user-sessions.repository.js';
 import type { DirectoryOrganization } from './directory-provisioning.types.js';
 
 import { projectMember } from './projection.js';
