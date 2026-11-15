@@ -2,7 +2,7 @@ import type { DynamicModule } from '@nestjs/common';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
-import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../src/problems/application-error-mappers.js';
 import {
   ProblemDetailsFilter,
   RequestContextStore,

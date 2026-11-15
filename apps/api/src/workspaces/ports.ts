@@ -35,7 +35,7 @@ export type IdentityWorkspaceConfig = Readonly<{
   }>;
 }>;
 
-/** Application composition supplies every command; use cases select their own subset. */
+/** Application composition supplies every command; services select their own subset. */
 export type IdentityWorkspacePersistence = Pick<
   IdentityWorkspaceStore,
   | 'findUserById'

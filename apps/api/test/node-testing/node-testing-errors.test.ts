@@ -14,8 +14,8 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context-error.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../src/problems/application-error-mappers.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context.errors.js';
 import {
   NodeTestInvalidError,
   NodeTestRequestError,

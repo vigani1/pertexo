@@ -2,7 +2,7 @@ import type { ConnectionSharingRequest } from '@pertexo/contracts';
 import type { ConnectionSharingStore } from '@pertexo/core/connections';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import { authorizeConnectionOperation } from '../authorization.js';
-import type { ConnectionCommandInput } from '../use-cases/connection-serialization.js';
+import type { ConnectionCommandInput } from '../management/connection-serialization.js';
 import {
   CONNECTION_OPERATION,
   NOOP_CONNECTION_TELEMETRY,
@@ -10,7 +10,7 @@ import {
 } from '../telemetry.js';
 
 type SharingInput = ConnectionCommandInput & Readonly<{ connectionId: string }>;
-export class ConnectionSharingUseCases {
+export class ConnectionSharingServices {
   constructor(
     private readonly persistence: ConnectionSharingStore,
     private readonly authorization: WorkspaceAuthorizationSource,

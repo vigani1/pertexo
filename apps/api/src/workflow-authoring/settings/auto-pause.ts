@@ -25,7 +25,7 @@ type CommandInput<Request> = WorkflowApplicationInput &
   Readonly<{ request: Request; idempotencyKey: string }>;
 
 /** Operational controls never modify a draft, a published version or trigger enablement. */
-export class WorkflowAutoPauseUseCase {
+export class WorkflowAutoPauseService {
   public constructor(
     private readonly persistence: WorkflowAutoPauseStore,
     private readonly authorization: WorkspaceAuthorizationSource,

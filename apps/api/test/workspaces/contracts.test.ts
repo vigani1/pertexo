@@ -86,9 +86,11 @@ import {
   invitationAcceptanceCompleteRequestSchema,
   invitationAcceptanceJourneySchema,
   invitationAcceptanceReceiptSchema,
-  identityWorkspaceOpenApiDocument,
 } from '../../src/workspaces/index.js';
-import { jsonSchema as generated } from '@pertexo/contracts/server';
+import {
+  identityWorkspaceOpenApiDocument,
+  jsonSchema as generated,
+} from '@pertexo/contracts/server';
 
 type DocumentedOperation = Readonly<{
   requestBody: Readonly<{

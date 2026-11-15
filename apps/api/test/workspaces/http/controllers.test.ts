@@ -9,22 +9,22 @@ import {
 } from 'vitest';
 
 import {
-  ChangeWorkspaceMemberRoleUseCase,
-  CreateWorkspaceUseCase,
-  GetCurrentUserUseCase,
-  ListAccessibleWorkspacesUseCase,
-  ListWorkspaceMembersUseCase,
-  RenameWorkspaceUseCase,
-  UpdateUserProfileUseCase,
+  ChangeWorkspaceMemberRoleService,
+  CreateWorkspaceService,
+  GetCurrentUserService,
+  ListAccessibleWorkspacesService,
+  ListWorkspaceMembersService,
+  RenameWorkspaceService,
+  UpdateUserProfileService,
   UserController,
   WorkspaceController,
   WorkspaceDiscoveryController,
-  WorkspaceLifecycleUseCase,
+  WorkspaceLifecycleService,
   WorkspaceMembersController,
   WorkspaceMembershipController,
-  WorkspaceMembershipLifecycleUseCase,
+  WorkspaceMembershipLifecycleService,
 } from '../../../src/workspaces/index.js';
-import { RemoveWorkspaceMemberUseCase } from '../../../src/workspaces/members/removal.js';
+import { RemoveWorkspaceMemberService } from '../../../src/workspaces/members/removal.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import {
@@ -94,38 +94,38 @@ beforeAll(async () => {
     providers: [
       { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
       {
-        provide: GetCurrentUserUseCase,
-        useValue: new GetCurrentUserUseCase(store),
+        provide: GetCurrentUserService,
+        useValue: new GetCurrentUserService(store),
       },
       {
-        provide: UpdateUserProfileUseCase,
-        useValue: new UpdateUserProfileUseCase(store),
+        provide: UpdateUserProfileService,
+        useValue: new UpdateUserProfileService(store),
       },
       {
-        provide: ListAccessibleWorkspacesUseCase,
-        useValue: new ListAccessibleWorkspacesUseCase(store),
+        provide: ListAccessibleWorkspacesService,
+        useValue: new ListAccessibleWorkspacesService(store),
       },
       {
-        provide: ListWorkspaceMembersUseCase,
-        useValue: new ListWorkspaceMembersUseCase(store, ownerAccess),
+        provide: ListWorkspaceMembersService,
+        useValue: new ListWorkspaceMembersService(store, ownerAccess),
       },
       {
-        provide: ChangeWorkspaceMemberRoleUseCase,
-        useValue: new ChangeWorkspaceMemberRoleUseCase(store),
+        provide: ChangeWorkspaceMemberRoleService,
+        useValue: new ChangeWorkspaceMemberRoleService(store),
       },
       {
-        provide: RemoveWorkspaceMemberUseCase,
-        useValue: new RemoveWorkspaceMemberUseCase(store),
+        provide: RemoveWorkspaceMemberService,
+        useValue: new RemoveWorkspaceMemberService(store),
       },
       {
-        provide: CreateWorkspaceUseCase,
-        useValue: new CreateWorkspaceUseCase(store),
+        provide: CreateWorkspaceService,
+        useValue: new CreateWorkspaceService(store),
       },
-      { provide: WorkspaceLifecycleUseCase, useValue: lifecycle },
-      { provide: WorkspaceMembershipLifecycleUseCase, useValue: membership },
+      { provide: WorkspaceLifecycleService, useValue: lifecycle },
+      { provide: WorkspaceMembershipLifecycleService, useValue: membership },
       {
-        provide: RenameWorkspaceUseCase,
-        useValue: new RenameWorkspaceUseCase(store),
+        provide: RenameWorkspaceService,
+        useValue: new RenameWorkspaceService(store),
       },
     ],
   });

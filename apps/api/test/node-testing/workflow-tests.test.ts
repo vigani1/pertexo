@@ -5,7 +5,7 @@ import {
   createActorContext,
   authorizeWorkspace,
 } from '../../src/authorization/index.js';
-import { WorkflowTestsUseCase } from '../../src/node-testing/workflows/workflow-tests.service.js';
+import { WorkflowTestsService } from '../../src/node-testing/workflows/workflow-tests.service.js';
 const workspaceId = randomUUID(),
   actorId = randomUUID(),
   workflowId = randomUUID();
@@ -33,7 +33,7 @@ function fixture(role: Role = 'owner') {
       workspaceStatus: 'active',
     }),
   };
-  return { store, access, useCase: new WorkflowTestsUseCase(store, access) };
+  return { store, access, service: new WorkflowTestsService(store, access) };
 }
 describe('draft workflow test boundary', () => {
   it('uses the guard proof only for its original capability and independently checks run permissions', async () => {
@@ -47,7 +47,7 @@ describe('draft workflow test boundary', () => {
     const preparation = { draftRevision: 1, samples: [], effectfulSteps: [] };
     f.store.prepare.mockResolvedValue(preparation);
     await expect(
-      f.useCase.prepare({ ...input, authorizedWorkspace }),
+      f.service.prepare({ ...input, authorizedWorkspace }),
     ).resolves.toEqual(preparation);
   });
   // api-13: the run capabilities come from one membership read, not one each.
@@ -65,7 +65,7 @@ describe('draft workflow test boundary', () => {
       samples: [],
       effectfulSteps: [],
     });
-    await f.useCase.prepare({ ...input, authorizedWorkspace });
+    await f.service.prepare({ ...input, authorizedWorkspace });
     expect(f.access.findAccess.mock.calls.length).toBeLessThanOrEqual(1);
   });
   it('passes an explicit effects acknowledgement and frozen pin/revision expectations to transactional admission', async () => {
@@ -78,7 +78,7 @@ describe('draft workflow test boundary', () => {
       acknowledgeSideEffects: true,
     };
     const idempotencyKey = randomUUID();
-    await f.useCase.start({ ...input, request, idempotencyKey });
+    await f.service.start({ ...input, request, idempotencyKey });
     expect(f.store.start).toHaveBeenCalledExactlyOnceWith({
       workspaceId,
       workflowId,
@@ -89,11 +89,11 @@ describe('draft workflow test boundary', () => {
   });
   it('requires edit authority even when a person can read normal run data', async () => {
     const f = fixture('viewer');
-    await expect(f.useCase.prepare(input)).rejects.toMatchObject({
+    await expect(f.service.prepare(input)).rejects.toMatchObject({
       name: 'AuthorizationError',
       code: 'resource.not_found',
     });
-    await expect(f.useCase.list(input)).rejects.toMatchObject({
+    await expect(f.service.list(input)).rejects.toMatchObject({
       name: 'AuthorizationError',
       code: 'resource.not_found',
     });

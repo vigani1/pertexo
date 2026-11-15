@@ -10,27 +10,27 @@ import type { WorkspaceAuthorizationSource } from '../../authorization/index.js'
 import {
   authorizeWorkflowTesting,
   workflowTestScope,
-  type WorkflowTestUseCaseInput,
+  type WorkflowTestServiceInput,
 } from '../workflows/authorization.js';
 import type { WorkflowTestSuiteStartRequest } from '@pertexo/contracts';
-export class WorkflowTestSuitesUseCase {
+export class WorkflowTestSuitesService {
   constructor(
     private readonly store: WorkflowTestSuiteStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
-  async prepare(input: WorkflowTestUseCaseInput) {
+  async prepare(input: WorkflowTestServiceInput) {
     await authorizeWorkflowTesting(this.authorization, input);
     return workflowTestSuitePreparationSchema.parse(
       await this.store.prepare(workflowTestScope(input)),
     );
   }
-  async list(input: WorkflowTestUseCaseInput) {
+  async list(input: WorkflowTestServiceInput) {
     await authorizeWorkflowTesting(this.authorization, input);
     return workflowTestSuiteListSchema.parse(
       await this.store.list(workflowTestScope(input)),
     );
   }
-  async get(input: WorkflowTestUseCaseInput & { suiteId: string }) {
+  async get(input: WorkflowTestServiceInput & { suiteId: string }) {
     await authorizeWorkflowTesting(this.authorization, input);
     return workflowTestSuiteDetailSchema.parse(
       await this.store.get({
@@ -40,7 +40,7 @@ export class WorkflowTestSuitesUseCase {
     );
   }
   async report(
-    input: WorkflowTestUseCaseInput & { suiteId: string; ordinal: number },
+    input: WorkflowTestServiceInput & { suiteId: string; ordinal: number },
   ) {
     await authorizeWorkflowTesting(this.authorization, input);
     return workflowTestSuiteCaseReportSchema.parse(
@@ -52,7 +52,7 @@ export class WorkflowTestSuitesUseCase {
     );
   }
   async start(
-    input: WorkflowTestUseCaseInput & {
+    input: WorkflowTestServiceInput & {
       request: WorkflowTestSuiteStartRequest;
       idempotencyKey: string;
     },
@@ -67,7 +67,7 @@ export class WorkflowTestSuitesUseCase {
     );
   }
   /** Core decides who may stop this suite: only it knows who started it. */
-  async cancel(input: WorkflowTestUseCaseInput & { suiteId: string }) {
+  async cancel(input: WorkflowTestServiceInput & { suiteId: string }) {
     await authorizeWorkflowTesting(this.authorization, input);
     await this.store.cancel({
       ...workflowTestScope(input),

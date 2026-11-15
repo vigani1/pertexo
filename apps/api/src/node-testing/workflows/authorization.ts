@@ -2,12 +2,12 @@ import {
   authorizeWorkspaceCapabilities,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
-import type { NodeTestUseCaseInput } from '../node-testing.service.js';
-export type WorkflowTestUseCaseInput = Pick<
-  NodeTestUseCaseInput,
+import type { NodeTestServiceInput } from '../node-testing.service.js';
+export type WorkflowTestServiceInput = Pick<
+  NodeTestServiceInput,
   'actor' | 'routeWorkspaceId' | 'authorizedWorkspace' | 'workflowId'
 > & { signal?: AbortSignal };
-export function workflowTestScope(input: WorkflowTestUseCaseInput) {
+export function workflowTestScope(input: WorkflowTestServiceInput) {
   return {
     workspaceId: input.routeWorkspaceId,
     workflowId: input.workflowId,
@@ -17,7 +17,7 @@ export function workflowTestScope(input: WorkflowTestUseCaseInput) {
 }
 export async function authorizeWorkflowTesting(
   authorization: WorkspaceAuthorizationSource,
-  input: WorkflowTestUseCaseInput,
+  input: WorkflowTestServiceInput,
 ): Promise<void> {
   await authorizeWorkspaceCapabilities({
     access: authorization,

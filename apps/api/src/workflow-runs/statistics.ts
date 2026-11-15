@@ -27,7 +27,7 @@ export type GetWorkflowRunStatisticsInput = WorkflowRunApplicationInput &
  * list may read its counts; workflow names follow `workflow:read`, as on the
  * list itself.
  */
-export class GetWorkflowRunStatisticsUseCase {
+export class GetWorkflowRunStatisticsService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'statistics'>,
     private readonly authorization: WorkspaceAuthorizationSource,

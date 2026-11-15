@@ -1,8 +1,8 @@
-import { GetUsageTrendsUseCase } from './usage/trends.js';
+import { GetUsageTrendsService } from './usage/trends.js';
 import { UsageTrendsController } from './usage/usage-trends.controller.js';
 import {
-  GetRunRecoveryUseCase,
-  RecoverRunUseCase,
+  GetRunRecoveryService,
+  RecoverRunService,
 } from './recovery/run-recovery.service.js';
 import { RunRecoveryController } from './recovery/run-recovery.controller.js';
 import { Module } from '@nestjs/common';
@@ -22,25 +22,25 @@ import type {
 } from './ports.js';
 import { WorkflowRunDataController } from './run-data/workflow-run-data.controller.js';
 import {
-  GetWorkflowNodeRunInputUseCase,
-  GetWorkflowNodeRunDiagnosticsUseCase,
-  GetWorkflowNodeRunOutputUseCase,
-  GetWorkflowRunInputUseCase,
-  GetWorkflowRunVariablesUseCase,
-  GetWorkflowStepHealthUseCase,
-  ListWorkflowStepRunsUseCase,
+  GetWorkflowNodeRunInputService,
+  GetWorkflowNodeRunDiagnosticsService,
+  GetWorkflowNodeRunOutputService,
+  GetWorkflowRunInputService,
+  GetWorkflowRunVariablesService,
+  GetWorkflowStepHealthService,
+  ListWorkflowStepRunsService,
 } from './run-data/run-data.service.js';
-import { GetWorkflowRunStatisticsUseCase } from './statistics.js';
-import { GetUsageCapacityUseCase } from './usage/capacity.js';
+import { GetWorkflowRunStatisticsService } from './statistics.js';
+import { GetUsageCapacityService } from './usage/capacity.js';
 import { UsageCapacityController } from './usage/usage-capacity.controller.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import {
-  CancelWorkflowRunUseCase,
-  GetWorkflowRunUseCase,
-  ListWorkflowRunsUseCase,
-  ReplayWorkflowRunUseCase,
-  StartWorkflowRunUseCase,
-  StreamRunEventsUseCase,
+  CancelWorkflowRunService,
+  GetWorkflowRunService,
+  ListWorkflowRunsService,
+  ReplayWorkflowRunService,
+  StartWorkflowRunService,
+  StreamRunEventsService,
 } from './workflow-runs.service.js';
 
 export type WorkflowRunsDependencies = Readonly<{
@@ -69,80 +69,80 @@ export class WorkflowRunsModule {
           dependencies.visibilityMetrics ?? createSseVisibilityMetrics(),
       },
       {
-        provide: GetUsageTrendsUseCase,
-        useValue: new GetUsageTrendsUseCase(
+        provide: GetUsageTrendsService,
+        useValue: new GetUsageTrendsService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       {
-        provide: GetUsageCapacityUseCase,
-        useValue: new GetUsageCapacityUseCase(
+        provide: GetUsageCapacityService,
+        useValue: new GetUsageCapacityService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       {
-        provide: GetRunRecoveryUseCase,
-        useValue: new GetRunRecoveryUseCase(
+        provide: GetRunRecoveryService,
+        useValue: new GetRunRecoveryService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       {
-        provide: RecoverRunUseCase,
-        useValue: new RecoverRunUseCase(
+        provide: RecoverRunService,
+        useValue: new RecoverRunService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       {
-        provide: StartWorkflowRunUseCase,
-        useValue: new StartWorkflowRunUseCase(
+        provide: StartWorkflowRunService,
+        useValue: new StartWorkflowRunService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       {
-        provide: ReplayWorkflowRunUseCase,
-        useValue: new ReplayWorkflowRunUseCase(
+        provide: ReplayWorkflowRunService,
+        useValue: new ReplayWorkflowRunService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       {
-        provide: GetWorkflowRunUseCase,
-        useValue: new GetWorkflowRunUseCase(
+        provide: GetWorkflowRunService,
+        useValue: new GetWorkflowRunService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       {
-        provide: ListWorkflowRunsUseCase,
-        useValue: new ListWorkflowRunsUseCase(
+        provide: ListWorkflowRunsService,
+        useValue: new ListWorkflowRunsService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       ...runDataProviders(dependencies),
       {
-        provide: GetWorkflowRunStatisticsUseCase,
-        useValue: new GetWorkflowRunStatisticsUseCase(
+        provide: GetWorkflowRunStatisticsService,
+        useValue: new GetWorkflowRunStatisticsService(
           dependencies.persistence,
           dependencies.authorization,
         ),
       },
       {
-        provide: StreamRunEventsUseCase,
-        useValue: new StreamRunEventsUseCase(
+        provide: StreamRunEventsService,
+        useValue: new StreamRunEventsService(
           dependencies.persistence,
           dependencies.authorization,
           dependencies.streamer,
         ),
       },
       {
-        provide: CancelWorkflowRunUseCase,
-        useValue: new CancelWorkflowRunUseCase(
+        provide: CancelWorkflowRunService,
+        useValue: new CancelWorkflowRunService(
           dependencies.persistence,
           dependencies.authorization,
         ),
@@ -160,22 +160,22 @@ export class WorkflowRunsModule {
       ],
       providers,
       exports: [
-        StartWorkflowRunUseCase,
-        ReplayWorkflowRunUseCase,
-        GetWorkflowRunUseCase,
-        ListWorkflowRunsUseCase,
-        GetWorkflowRunStatisticsUseCase,
-        GetUsageCapacityUseCase,
-        GetUsageTrendsUseCase,
-        GetWorkflowRunInputUseCase,
-        GetWorkflowRunVariablesUseCase,
-        GetWorkflowNodeRunOutputUseCase,
-        GetWorkflowNodeRunInputUseCase,
-        GetWorkflowNodeRunDiagnosticsUseCase,
-        GetWorkflowStepHealthUseCase,
-        ListWorkflowStepRunsUseCase,
-        StreamRunEventsUseCase,
-        CancelWorkflowRunUseCase,
+        StartWorkflowRunService,
+        ReplayWorkflowRunService,
+        GetWorkflowRunService,
+        ListWorkflowRunsService,
+        GetWorkflowRunStatisticsService,
+        GetUsageCapacityService,
+        GetUsageTrendsService,
+        GetWorkflowRunInputService,
+        GetWorkflowRunVariablesService,
+        GetWorkflowNodeRunOutputService,
+        GetWorkflowNodeRunInputService,
+        GetWorkflowNodeRunDiagnosticsService,
+        GetWorkflowStepHealthService,
+        ListWorkflowStepRunsService,
+        StreamRunEventsService,
+        CancelWorkflowRunService,
       ],
     };
   }
@@ -184,50 +184,50 @@ export class WorkflowRunsModule {
 function runDataProviders(dependencies: WorkflowRunsDependencies): Provider[] {
   return [
     {
-      provide: GetWorkflowRunVariablesUseCase,
-      useValue: new GetWorkflowRunVariablesUseCase(
+      provide: GetWorkflowRunVariablesService,
+      useValue: new GetWorkflowRunVariablesService(
         dependencies.persistence,
         dependencies.authorization,
       ),
     },
     {
-      provide: GetWorkflowRunInputUseCase,
-      useValue: new GetWorkflowRunInputUseCase(
+      provide: GetWorkflowRunInputService,
+      useValue: new GetWorkflowRunInputService(
         dependencies.persistence,
         dependencies.authorization,
       ),
     },
     {
-      provide: GetWorkflowNodeRunOutputUseCase,
-      useValue: new GetWorkflowNodeRunOutputUseCase(
+      provide: GetWorkflowNodeRunOutputService,
+      useValue: new GetWorkflowNodeRunOutputService(
         dependencies.persistence,
         dependencies.authorization,
       ),
     },
     {
-      provide: GetWorkflowNodeRunDiagnosticsUseCase,
-      useValue: new GetWorkflowNodeRunDiagnosticsUseCase(
+      provide: GetWorkflowNodeRunDiagnosticsService,
+      useValue: new GetWorkflowNodeRunDiagnosticsService(
         dependencies.persistence,
         dependencies.authorization,
       ),
     },
     {
-      provide: GetWorkflowNodeRunInputUseCase,
-      useValue: new GetWorkflowNodeRunInputUseCase(
+      provide: GetWorkflowNodeRunInputService,
+      useValue: new GetWorkflowNodeRunInputService(
         dependencies.persistence,
         dependencies.authorization,
       ),
     },
     {
-      provide: GetWorkflowStepHealthUseCase,
-      useValue: new GetWorkflowStepHealthUseCase(
+      provide: GetWorkflowStepHealthService,
+      useValue: new GetWorkflowStepHealthService(
         dependencies.persistence,
         dependencies.authorization,
       ),
     },
     {
-      provide: ListWorkflowStepRunsUseCase,
-      useValue: new ListWorkflowStepRunsUseCase(
+      provide: ListWorkflowStepRunsService,
+      useValue: new ListWorkflowStepRunsService(
         dependencies.persistence,
         dependencies.authorization,
       ),

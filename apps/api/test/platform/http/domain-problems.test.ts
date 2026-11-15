@@ -10,7 +10,7 @@ import {
 import { ConnectionSecretVersionConflictError } from '@pertexo/core/connections';
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/problems/application-error-mappers.js';
 import { HttpPlatformModule } from '../../../src/platform/http/index.js';
 import { domainErrors } from '../../../src/platform/http/problems/interceptor.js';
 import { resourceFailure } from '../../../src/problems/context/normalize-context-errors.js';

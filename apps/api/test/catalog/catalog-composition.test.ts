@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { CatalogController } from '../../src/catalog/catalog.controller.js';
 import { CatalogModule } from '../../src/catalog/catalog.module.js';
 import {
-  ListIntegrationsUseCase,
-  ListNodeDefinitionsUseCase,
+  ListIntegrationsService,
+  ListNodeDefinitionsService,
 } from '../../src/catalog/catalog.service.js';
 import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
@@ -36,11 +36,11 @@ describe('catalog Nest module', () => {
           .items.some((node) => node.definition.key === 'core.set'),
       ).toBe(true);
       expect(controller.listIntegrations().items.length).toBeGreaterThan(0);
-      expect(testing.get(ListNodeDefinitionsUseCase)).toBeInstanceOf(
-        ListNodeDefinitionsUseCase,
+      expect(testing.get(ListNodeDefinitionsService)).toBeInstanceOf(
+        ListNodeDefinitionsService,
       );
-      expect(testing.get(ListIntegrationsUseCase)).toBeInstanceOf(
-        ListIntegrationsUseCase,
+      expect(testing.get(ListIntegrationsService)).toBeInstanceOf(
+        ListIntegrationsService,
       );
     } finally {
       await testing.close();

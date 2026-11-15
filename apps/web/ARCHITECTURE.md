@@ -438,7 +438,7 @@ stable Idempotency-Key for that logical command, not a new key per retry.
 
 Source:
 [identity controllers](../../apps/api/src/workspaces/http/workspaces.controller.ts),
-[session controller](../../apps/api/src/workspaces/http/session-controller.ts),
+[session controller](../../apps/api/src/workspaces/http/session.controller.ts),
 [authoring controller](../../apps/api/src/workflow-authoring/http/workflow-authoring.controller.ts),
 [run controllers](../../apps/api/src/workflow-runs/http/workflow-runs.controller.ts),
 [connection controllers](../../apps/api/src/connections/http/connections.controller.ts),

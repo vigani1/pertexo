@@ -21,7 +21,7 @@ type WorkspaceMemberRemovalPersistence = Pick<
 >;
 
 /** ADR 042: removes an existing member at the revision the actor saw. */
-export class RemoveWorkspaceMemberUseCase {
+export class RemoveWorkspaceMemberService {
   public constructor(
     private readonly persistence: WorkspaceMemberRemovalPersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,

@@ -27,7 +27,7 @@ import {
   createNodeExecutionEnvironment,
   type NodeExecutionEnvironment,
 } from '../execution/environment.js';
-import { NodeAttemptHandlerStateError } from './handler-state-error.js';
+import { NodeAttemptHandlerStateError } from './handler-state.errors.js';
 import { connectionHealthCompletionFields } from '../../connections/health-completion.js';
 import { completionResult } from './completion-result.js';
 import type {
@@ -46,7 +46,7 @@ import {
   persistPreparedOutcome,
   hasProviderDispatchUncertainty,
 } from './complete.js';
-export { NodeAttemptHandlerStateError } from './handler-state-error.js';
+export { NodeAttemptHandlerStateError } from './handler-state.errors.js';
 export {
   type PreparedNodeAttempt,
   type NodeAttemptExecutionEngine,

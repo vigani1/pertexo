@@ -8,8 +8,8 @@ import { In, Route } from '../../platform/http/route.js';
 import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';
 import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import {
-  GetRunRecoveryUseCase,
-  RecoverRunUseCase,
+  GetRunRecoveryService,
+  RecoverRunService,
 } from './run-recovery.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize-context-errors.js';
@@ -18,8 +18,8 @@ import { runFailure } from '../../problems/context/normalize-context-errors.js';
 @Controller()
 export class RunRecoveryController {
   public constructor(
-    private readonly preview: GetRunRecoveryUseCase,
-    private readonly recover: RecoverRunUseCase,
+    private readonly preview: GetRunRecoveryService,
+    private readonly recover: RecoverRunService,
   ) {}
 
   @Route(routes.recovery)

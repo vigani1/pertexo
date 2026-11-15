@@ -6,7 +6,7 @@ import { operatorRunReplayFactories } from '../operator/run-replay.js';
 import {
   connectionHealthObservationFactories,
   type ConnectionHealthObservationStore,
-} from '../connections/health-runtime.js';
+} from '../connections/health.runtime.js';
 import type {
   DatabaseConfig,
   DatabaseRuntime,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
-import { missingConnectionIssues } from '../../../src/platform/workflow/connection-validation.js';
+import { missingConnectionIssues } from '../../../src/platform/workflow/connection.validation.js';
 
 const catalog: WorkflowDefinitionCatalog = {
   definitions: [

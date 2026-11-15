@@ -40,7 +40,7 @@ export function memberCommandFields(input: WorkspaceMemberCommandInput) {
   };
 }
 
-export class ChangeWorkspaceMemberRoleUseCase {
+export class ChangeWorkspaceMemberRoleService {
   public constructor(
     private readonly persistence: WorkspaceMemberRolePersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,

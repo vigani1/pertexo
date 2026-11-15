@@ -16,7 +16,7 @@ import type { NodeTestingPersistence } from '../ports.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import { previewOutputResponse, previewIdentityResponse } from './response.js';
 
-export class GetPreviewRunUseCase {
+export class GetPreviewRunService {
   public constructor(
     private readonly persistence: Pick<NodeTestingPersistence, 'readPreview'>,
     private readonly authorization: WorkspaceAuthorizationSource,

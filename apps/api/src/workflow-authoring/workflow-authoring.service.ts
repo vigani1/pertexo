@@ -44,11 +44,11 @@ import {
 export { InvalidWorkflowCursorError };
 export {
   type CreateWorkflowInput,
-  CreateWorkflowUseCase,
+  CreateWorkflowService,
 } from './commands/create.js';
 export {
   type PublishWorkflowInput,
-  PublishWorkflowUseCase,
+  PublishWorkflowService,
 } from './publish-workflow.js';
 export type ListWorkflowsInput = WorkflowApplicationInput &
   Readonly<{
@@ -78,7 +78,7 @@ export type ListWorkflowVersionsInput = WorkflowResourceInput &
     includeGraphDigest?: boolean;
   }>;
 
-export class ListWorkflowsUseCase {
+export class ListWorkflowsService {
   public constructor(
     private readonly persistence: AuthoringPersistence<'listWorkflows'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -136,7 +136,7 @@ export type WorkflowListResult = Readonly<{
   nextCursor: string | null;
 }>;
 
-export class GetWorkflowUseCase {
+export class GetWorkflowService {
   public constructor(
     private readonly persistence: AuthoringPersistence<
       'getWorkflow' | 'getWorkflowWithTemplateOrigin'
@@ -186,7 +186,7 @@ export class GetWorkflowUseCase {
   }
 }
 
-export class GetWorkflowDraftUseCase {
+export class GetWorkflowDraftService {
   public constructor(
     private readonly persistence: AuthoringPersistence<'getDraft'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -213,7 +213,7 @@ export class GetWorkflowDraftUseCase {
   }
 }
 
-export class SaveWorkflowDraftUseCase {
+export class SaveWorkflowDraftService {
   public constructor(
     private readonly persistence: AuthoringPersistence<
       'saveDraft' | 'getDraft'
@@ -268,7 +268,7 @@ export class SaveWorkflowDraftUseCase {
   }
 }
 
-export class ValidateWorkflowDraftUseCase {
+export class ValidateWorkflowDraftService {
   public constructor(
     private readonly persistence: AuthoringPersistence<'validateDraft'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -300,7 +300,7 @@ export class ValidateWorkflowDraftUseCase {
   }
 }
 
-export class ListWorkflowVersionsUseCase {
+export class ListWorkflowVersionsService {
   public constructor(
     private readonly persistence: AuthoringPersistence<'listVersions'>,
     private readonly authorization: WorkspaceAuthorizationSource,

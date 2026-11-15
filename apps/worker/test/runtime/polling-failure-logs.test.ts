@@ -6,7 +6,7 @@ import type {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseWorkerConfig } from '../../src/config/worker.js';
-import { WORKSPACE_INBOX_RUNTIME } from '../../src/notifications/inbox-runtime.js';
+import { WORKSPACE_INBOX_RUNTIME } from '../../src/notifications/inbox.runtime.js';
 import { SYSTEM_MAIL_RUNTIME } from '../../src/mail/system-mail.runtime.js';
 import { configuredRetentionRuntime } from '../../src/retention/composition.js';
 import { RETENTION_RUNTIME } from '../../src/retention/retention.runtime.js';
@@ -22,7 +22,7 @@ import {
   TRIGGER_RUNTIME,
 } from '../../src/transport/transport.module.js';
 import { configuredWorkflowAutoPauseRuntime } from '../../src/workflows/auto-pause-provider.js';
-import { WORKFLOW_AUTO_PAUSE_RUNTIME } from '../../src/workflows/auto-pause-runtime.js';
+import { WORKFLOW_AUTO_PAUSE_RUNTIME } from '../../src/workflows/auto-pause.runtime.js';
 import { WorkerModule } from '../../src/worker.module.js';
 import { workerEnvironment } from '../support/worker-environment.js';
 

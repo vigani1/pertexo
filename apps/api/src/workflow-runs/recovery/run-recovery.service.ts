@@ -38,7 +38,7 @@ async function authorize(
   });
 }
 
-export class GetRunRecoveryUseCase {
+export class GetRunRecoveryService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'recovery'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -75,7 +75,7 @@ export function recoveryRequestHash(input: RecoverRunInput): string {
   );
 }
 
-export class RecoverRunUseCase {
+export class RecoverRunService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'recover'>,
     private readonly authorization: WorkspaceAuthorizationSource,

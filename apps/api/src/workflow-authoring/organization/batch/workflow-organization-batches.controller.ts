@@ -8,13 +8,13 @@ import { authoringFailure } from '../../../problems/context/normalize-context-er
 import { In, Route } from '../../../platform/http/route.js';
 import type { WorkflowAuthoringRequest } from '../../workflow-authoring-request.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
-import { WorkflowOrganizationBatchesUseCase } from './workflow-organization-batches.service.js';
+import { WorkflowOrganizationBatchesService } from './workflow-organization-batches.service.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowOrganizationBatchesController {
   public constructor(
-    private readonly batches: WorkflowOrganizationBatchesUseCase,
+    private readonly batches: WorkflowOrganizationBatchesService,
   ) {}
 
   @Route(routes.bulk)

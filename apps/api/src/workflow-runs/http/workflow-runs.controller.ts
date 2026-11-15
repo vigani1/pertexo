@@ -28,16 +28,16 @@ import {
   type SseVisibilityPath,
 } from '../../platform/observability/sse-visibility-metrics.js';
 import { prepareSseResponse } from '../../platform/http/sse-response.js';
-import { GetWorkflowRunStatisticsUseCase } from '../statistics.js';
+import { GetWorkflowRunStatisticsService } from '../statistics.js';
 import { streamCleanupCompletion } from '../events/stream-cleanup.js';
 import { writeSseFrames } from '../events/sse-transport.js';
 import {
-  CancelWorkflowRunUseCase,
-  GetWorkflowRunUseCase,
-  ListWorkflowRunsUseCase,
-  ReplayWorkflowRunUseCase,
-  StartWorkflowRunUseCase,
-  StreamRunEventsUseCase,
+  CancelWorkflowRunService,
+  GetWorkflowRunService,
+  ListWorkflowRunsService,
+  ReplayWorkflowRunService,
+  StartWorkflowRunService,
+  StreamRunEventsService,
 } from '../workflow-runs.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize-context-errors.js';
@@ -48,13 +48,13 @@ export class WorkflowRunsController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
   public constructor(
-    private readonly startWorkflowRun: StartWorkflowRunUseCase,
-    private readonly replayWorkflowRun: ReplayWorkflowRunUseCase,
-    private readonly getWorkflowRun: GetWorkflowRunUseCase,
-    private readonly listWorkflowRuns: ListWorkflowRunsUseCase,
-    private readonly getWorkflowRunStatistics: GetWorkflowRunStatisticsUseCase,
-    private readonly streamEvents: StreamRunEventsUseCase,
-    private readonly cancelWorkflowRun: CancelWorkflowRunUseCase,
+    private readonly startWorkflowRun: StartWorkflowRunService,
+    private readonly replayWorkflowRun: ReplayWorkflowRunService,
+    private readonly getWorkflowRun: GetWorkflowRunService,
+    private readonly listWorkflowRuns: ListWorkflowRunsService,
+    private readonly getWorkflowRunStatistics: GetWorkflowRunStatisticsService,
+    private readonly streamEvents: StreamRunEventsService,
+    private readonly cancelWorkflowRun: CancelWorkflowRunService,
     @Optional()
     @Inject(SSE_VISIBILITY_METRICS)
     private readonly visibilityMetrics: SseVisibilityMetrics = createSseVisibilityMetrics(),

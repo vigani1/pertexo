@@ -13,7 +13,7 @@ import type {
   WorkflowRunPersistence,
 } from '../ports.js';
 
-export class GetUsageTrendsUseCase {
+export class GetUsageTrendsService {
   constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'usageTrends'>,
     private readonly authorization: WorkspaceAuthorizationSource,

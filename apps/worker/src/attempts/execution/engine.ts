@@ -1,4 +1,4 @@
-import { NodeAttemptHandlerStateError } from '../delivery/handler-state-error.js';
+import { NodeAttemptHandlerStateError } from '../delivery/handler-state.errors.js';
 import { testStepDisposition } from '@pertexo/workflow-engine/server';
 import { compareOrdinal, WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import {

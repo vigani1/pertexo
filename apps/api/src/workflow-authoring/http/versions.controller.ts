@@ -11,19 +11,19 @@ import { requestHeaderValue } from '../../platform/http/request-headers.js';
 
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
-import { RestoreWorkflowVersionUseCase } from '../commands/restore-version.js';
+import { RestoreWorkflowVersionService } from '../commands/restore-version.js';
 import type {
   WorkflowAuthoringRequest,
   WorkflowResponse,
 } from '../workflow-authoring-request.js';
-import { ListWorkflowVersionsUseCase } from '../workflow-authoring.service.js';
+import { ListWorkflowVersionsService } from '../workflow-authoring.service.js';
 import { parseStrongIfMatch } from './preconditions.js';
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowVersionsController {
   public constructor(
-    private readonly listVersions: ListWorkflowVersionsUseCase,
-    private readonly restoreWorkflowVersion: RestoreWorkflowVersionUseCase,
+    private readonly listVersions: ListWorkflowVersionsService,
+    private readonly restoreWorkflowVersion: RestoreWorkflowVersionService,
   ) {}
 
   @Route(routes.restoreVersion)

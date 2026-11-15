@@ -30,7 +30,7 @@ export type RenameWorkflowInput = WorkflowApplicationInput &
  * ADR 041: the display name has its own revision, so a rename never races a
  * draft save or a lifecycle command. Editing authority is enough to rename.
  */
-export class RenameWorkflowUseCase {
+export class RenameWorkflowService {
   public constructor(
     private readonly persistence: Pick<
       WorkflowAuthoringPersistence,

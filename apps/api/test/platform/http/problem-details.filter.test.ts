@@ -7,7 +7,7 @@ import {
   applicationError,
   isApplicationError,
 } from '../../../src/platform/http/index.js';
-import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/problems/application-error-mappers.js';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { WorkflowTagConflictError } from '@pertexo/core/authoring';
 import {

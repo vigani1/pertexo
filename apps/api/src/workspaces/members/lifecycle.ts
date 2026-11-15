@@ -41,7 +41,7 @@ type StatusCommand = WorkspaceMemberCommandInput<
  * ADR 047: leaving a workspace, suspending and reactivating members, and
  * transferring ownership. Persistence rechecks every rule under lock.
  */
-export class WorkspaceMembershipLifecycleUseCase {
+export class WorkspaceMembershipLifecycleService {
   public constructor(
     private readonly persistence: MembershipLifecyclePersistence,
     private readonly clock: IdentityClock,

@@ -1,6 +1,6 @@
 import type { ExecutionContext } from '@nestjs/common';
 import 'reflect-metadata';
-import { APPLICATION_ERROR_MAPPERS } from '../../../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../../../src/problems/application-error-mappers.js';
 import { AutomationAuthenticationGuard } from '../../../../src/authentication/automation/guard.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../../src/workspaces/tokens.js';
 
@@ -16,12 +16,12 @@ import type {
 import { vi } from 'vitest';
 import { WorkflowAuthoringController } from '../../../../src/workflow-authoring/http/workflow-authoring.controller.js';
 import { WorkflowOrganizationBatchesController } from '../../../../src/workflow-authoring/organization/batch/workflow-organization-batches.controller.js';
-import { WorkflowOrganizationBatchesUseCase } from '../../../../src/workflow-authoring/organization/batch/workflow-organization-batches.service.js';
-import { WorkflowOrganizationCommandsUseCase } from '../../../../src/workflow-authoring/organization/organization-commands.service.js';
+import { WorkflowOrganizationBatchesService } from '../../../../src/workflow-authoring/organization/batch/workflow-organization-batches.service.js';
+import { WorkflowOrganizationCommandsService } from '../../../../src/workflow-authoring/organization/organization-commands.service.js';
 import { WorkflowOrganizationController } from '../../../../src/workflow-authoring/organization/workflow-organization.controller.js';
 import { WorkflowFoldersController } from '../../../../src/workflow-authoring/organization/folders/workflow-folders.controller.js';
-import { WorkflowFoldersUseCase } from '../../../../src/workflow-authoring/organization/folders/workflow-folders.service.js';
-import { WorkflowOrganizationReadsUseCase } from '../../../../src/workflow-authoring/organization/organization-reads.service.js';
+import { WorkflowFoldersService } from '../../../../src/workflow-authoring/organization/folders/workflow-folders.service.js';
+import { WorkflowOrganizationReadsService } from '../../../../src/workflow-authoring/organization/organization-reads.service.js';
 
 import { DoubleSubmitCsrfPolicy } from '../../../../src/identity/index.js';
 import {
@@ -191,8 +191,8 @@ export async function setup() {
     }),
   };
   const contexts = new RequestContextStore();
-  const folderUseCase = new WorkflowFoldersUseCase(folders, authorization);
-  const batchUseCase = new WorkflowOrganizationBatchesUseCase(
+  const folderService = new WorkflowFoldersService(folders, authorization);
+  const batchService = new WorkflowOrganizationBatchesService(
     batches,
     authorization,
   );
@@ -220,11 +220,11 @@ export async function setup() {
 
       { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       { provide: RequestContextStore, useValue: contexts },
-      { provide: WorkflowFoldersUseCase, useValue: folderUseCase },
-      { provide: WorkflowOrganizationBatchesUseCase, useValue: batchUseCase },
+      { provide: WorkflowFoldersService, useValue: folderService },
+      { provide: WorkflowOrganizationBatchesService, useValue: batchService },
       // The sibling tag/favorite routes are registered for collisions only.
-      { provide: WorkflowOrganizationCommandsUseCase, useValue: {} },
-      { provide: WorkflowOrganizationReadsUseCase, useValue: {} },
+      { provide: WorkflowOrganizationCommandsService, useValue: {} },
+      { provide: WorkflowOrganizationReadsService, useValue: {} },
     ],
   });
   const controlledAuthentication = {
@@ -259,10 +259,10 @@ export async function setup() {
   // The source transform does not retain constructor design:paramtypes.
   {
     Object.assign(module.get(WorkflowFoldersController), {
-      folders: folderUseCase,
+      folders: folderService,
     });
     Object.assign(module.get(WorkflowOrganizationBatchesController), {
-      batches: batchUseCase,
+      batches: batchService,
     });
   }
   const app = module.createNestApplication<NestFastifyApplication>(

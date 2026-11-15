@@ -30,7 +30,7 @@ export type WorkflowLifecycleInput = WorkflowApplicationInput &
   }>;
 
 /** Desired lifecycle is independent of draft edits and existing run execution. */
-export class TransitionWorkflowLifecycleUseCase {
+export class TransitionWorkflowLifecycleService {
   public constructor(
     private readonly persistence: Pick<
       WorkflowAuthoringPersistence,

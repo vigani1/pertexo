@@ -112,7 +112,7 @@ function landingOfConsentError(
  * landing page, an unexpected failure included; exchange and commit don't follow
  * the request, so closing the tab can't lose a code that has already been spent.
  */
-export class FinishOAuth2AuthorizationUseCase {
+export class FinishOAuth2AuthorizationService {
   public constructor(
     private readonly oauth2: ConnectionOAuth2Dependencies,
     private readonly encryption: ConnectionSecretEncryptionPort,

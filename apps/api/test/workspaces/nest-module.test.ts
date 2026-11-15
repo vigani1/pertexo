@@ -3,16 +3,16 @@ import { NestFactory } from '@nestjs/core';
 import { describe, expect, it } from 'vitest';
 
 import {
-  CreateWorkspaceUseCase,
+  CreateWorkspaceService,
   INVITATION_ALLOWED_ORIGIN,
   IdentityWorkspaceModule,
   InvitationAcceptanceController,
-  InvitationAcceptanceUseCase,
-  RenameWorkspaceUseCase,
+  InvitationAcceptanceService,
+  RenameWorkspaceService,
   SessionController,
   UserController,
   WorkspaceManageGuard,
-  WorkspaceInvitationManagementUseCase,
+  WorkspaceInvitationManagementService,
   type IdentityWorkspaceDependencies,
   type IdentitySessionAuthority,
   SESSION_AUTHORITY,
@@ -75,7 +75,7 @@ describe('identity/workspace Nest module', () => {
 
     expect(dynamic.controllers).toContain(InvitationAcceptanceController);
     expect(dynamic.controllers).toContain(SessionController);
-    expect(dynamic.exports).toContain(InvitationAcceptanceUseCase);
+    expect(dynamic.exports).toContain(InvitationAcceptanceService);
     expect(dynamic.providers).toContainEqual({
       provide: INVITATION_ALLOWED_ORIGIN,
       useValue: 'https://app.example.test',
@@ -86,8 +86,8 @@ describe('identity/workspace Nest module', () => {
     );
     try {
       expect(context.get(SESSION_AUTHORITY)).toBe(sessions);
-      expect(context.get(InvitationAcceptanceUseCase)).toBeInstanceOf(
-        InvitationAcceptanceUseCase,
+      expect(context.get(InvitationAcceptanceService)).toBeInstanceOf(
+        InvitationAcceptanceService,
       );
     } finally {
       await context.close();
@@ -101,8 +101,8 @@ describe('identity/workspace Nest module', () => {
     );
     try {
       expect(context.get(SESSION_AUTHORITY)).toBe(sessions);
-      expect(context.get(CreateWorkspaceUseCase)).toBeInstanceOf(
-        CreateWorkspaceUseCase,
+      expect(context.get(CreateWorkspaceService)).toBeInstanceOf(
+        CreateWorkspaceService,
       );
       expect(context.get(WorkspaceManageGuard)).toBeInstanceOf(
         WorkspaceManageGuard,
@@ -138,14 +138,14 @@ describe('identity/workspace Nest module', () => {
     );
 
     try {
-      expect(context.get(RenameWorkspaceUseCase)).toBeInstanceOf(
-        RenameWorkspaceUseCase,
+      expect(context.get(RenameWorkspaceService)).toBeInstanceOf(
+        RenameWorkspaceService,
       );
-      expect(context.get(WorkspaceInvitationManagementUseCase)).toBeInstanceOf(
-        WorkspaceInvitationManagementUseCase,
+      expect(context.get(WorkspaceInvitationManagementService)).toBeInstanceOf(
+        WorkspaceInvitationManagementService,
       );
-      expect(context.get(InvitationAcceptanceUseCase)).toBeInstanceOf(
-        InvitationAcceptanceUseCase,
+      expect(context.get(InvitationAcceptanceService)).toBeInstanceOf(
+        InvitationAcceptanceService,
       );
     } finally {
       await context.close();

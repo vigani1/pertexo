@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts/server';
 
 import { In, Route } from '../../platform/http/route.js';
-import { ListConnectionUsageUseCase } from '../use-cases/usage.js';
+import { ListConnectionUsageService } from '../management/connection-usage.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
@@ -15,7 +15,7 @@ import { context } from './connections.controller.js';
 @UseInterceptors(domainErrors(connectionFailure))
 @Controller()
 export class ConnectionUsageController {
-  public constructor(private readonly usage: ListConnectionUsageUseCase) {}
+  public constructor(private readonly usage: ListConnectionUsageService) {}
 
   @Route(routes.usage)
   public list(

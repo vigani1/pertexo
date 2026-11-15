@@ -37,7 +37,7 @@ type AcceptancePersistence = Pick<
   | 'abandonInvitationAcceptance'
 >;
 
-export class InvitationAcceptanceUseCase {
+export class InvitationAcceptanceService {
   public constructor(
     private readonly persistence: AcceptancePersistence,
     private readonly crypto: IdentityCrypto,

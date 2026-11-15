@@ -1,22 +1,22 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WorkflowAuthoringController } from '../../../src/workflow-authoring/http/workflow-authoring.controller.js';
-import { WorkflowLifecycleController } from '../../../src/workflow-authoring/http/lifecycle-controller.js';
-import { WorkflowVersionsController } from '../../../src/workflow-authoring/http/versions-controller.js';
+import { WorkflowLifecycleController } from '../../../src/workflow-authoring/http/lifecycle.controller.js';
+import { WorkflowVersionsController } from '../../../src/workflow-authoring/http/versions.controller.js';
 import {
-  CreateWorkflowUseCase,
-  GetWorkflowUseCase,
-  GetWorkflowDraftUseCase,
-  ListWorkflowsUseCase,
-  PublishWorkflowUseCase,
-  SaveWorkflowDraftUseCase,
-  ValidateWorkflowDraftUseCase,
-  ListWorkflowVersionsUseCase,
+  CreateWorkflowService,
+  GetWorkflowService,
+  GetWorkflowDraftService,
+  ListWorkflowsService,
+  PublishWorkflowService,
+  SaveWorkflowDraftService,
+  ValidateWorkflowDraftService,
+  ListWorkflowVersionsService,
 } from '../../../src/workflow-authoring/workflow-authoring.service.js';
-import { TransitionWorkflowLifecycleUseCase } from '../../../src/workflow-authoring/commands/lifecycle.js';
-import { RenameWorkflowUseCase } from '../../../src/workflow-authoring/commands/rename.js';
-import { DuplicateWorkflowUseCase } from '../../../src/workflow-authoring/commands/duplicate.js';
-import { RestoreWorkflowVersionUseCase } from '../../../src/workflow-authoring/commands/restore-version.js';
-import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/organization-reads.service.js';
+import { TransitionWorkflowLifecycleService } from '../../../src/workflow-authoring/commands/lifecycle.js';
+import { RenameWorkflowService } from '../../../src/workflow-authoring/commands/rename.js';
+import { DuplicateWorkflowService } from '../../../src/workflow-authoring/commands/duplicate.js';
+import { RestoreWorkflowVersionService } from '../../../src/workflow-authoring/commands/restore-version.js';
+import { WorkflowOrganizationReadsService } from '../../../src/workflow-authoring/organization/organization-reads.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { routeHarness } from '../../support/route-harness.js';
@@ -51,23 +51,23 @@ beforeAll(async () => {
     ],
     providers: [
       { provide: WORKSPACE_AUTHORIZATION, useValue: access },
-      { provide: WorkflowOrganizationReadsUseCase, useValue: {} },
+      { provide: WorkflowOrganizationReadsService, useValue: {} },
       ...[
-        CreateWorkflowUseCase,
-        GetWorkflowUseCase,
-        GetWorkflowDraftUseCase,
-        ListWorkflowsUseCase,
-        PublishWorkflowUseCase,
-        SaveWorkflowDraftUseCase,
-        ValidateWorkflowDraftUseCase,
-        ListWorkflowVersionsUseCase,
-        TransitionWorkflowLifecycleUseCase,
-        RenameWorkflowUseCase,
-        DuplicateWorkflowUseCase,
-        RestoreWorkflowVersionUseCase,
-      ].map((useCase) => ({
-        provide: useCase,
-        useValue: new useCase(store, access),
+        CreateWorkflowService,
+        GetWorkflowService,
+        GetWorkflowDraftService,
+        ListWorkflowsService,
+        PublishWorkflowService,
+        SaveWorkflowDraftService,
+        ValidateWorkflowDraftService,
+        ListWorkflowVersionsService,
+        TransitionWorkflowLifecycleService,
+        RenameWorkflowService,
+        DuplicateWorkflowService,
+        RestoreWorkflowVersionService,
+      ].map((service) => ({
+        provide: service,
+        useValue: new service(store, access),
       })),
     ],
   });

@@ -38,7 +38,7 @@ export function projectUserProfile(
  * ADR 043: the signed-in user changes their own display name at the profile
  * revision they saw. The session authority already identified the actor.
  */
-export class UpdateUserProfileUseCase {
+export class UpdateUserProfileService {
   public constructor(
     private readonly persistence: ProfilePersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,

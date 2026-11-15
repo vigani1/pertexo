@@ -6,7 +6,7 @@ import { encodeStoredClientSecret } from '@pertexo/core/connections';
 import { newOAuth2State } from '@pertexo/integrations/server';
 import type { SecureHttpResponse } from '@pertexo/secrets/server';
 
-import { FinishOAuth2AuthorizationUseCase } from '../../../src/connections/oauth2/finish-authorization.js';
+import { FinishOAuth2AuthorizationService } from '../../../src/connections/oauth2/finish-authorization.js';
 import type {
   ConnectionOAuth2Dependencies,
   ConnectionSecretEncryptionPort,
@@ -79,7 +79,7 @@ function callback(sealFailures: number) {
       },
     },
   } as unknown as ConnectionOAuth2Dependencies;
-  const finish = new FinishOAuth2AuthorizationUseCase(
+  const finish = new FinishOAuth2AuthorizationService(
     dependencies,
     encryption,
     'application-secret-of-enough-length-for-this-test',

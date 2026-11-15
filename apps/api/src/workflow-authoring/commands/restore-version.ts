@@ -26,7 +26,7 @@ export type RestoreWorkflowVersionInput = WorkflowApplicationInput &
   }>;
 
 /** Source identity, current tag and draft mutation share database authority. */
-export class RestoreWorkflowVersionUseCase {
+export class RestoreWorkflowVersionService {
   public constructor(
     private readonly persistence: Pick<
       WorkflowAuthoringPersistence,

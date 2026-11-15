@@ -9,12 +9,12 @@ import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import {
   authorizeWorkflowTesting,
   workflowTestScope,
-  type WorkflowTestUseCaseInput,
+  type WorkflowTestServiceInput,
 } from './authorization.js';
 import type { WorkflowTestStartRequest } from '@pertexo/contracts';
 
-type Input = WorkflowTestUseCaseInput;
-export class WorkflowTestsUseCase {
+type Input = WorkflowTestServiceInput;
+export class WorkflowTestsService {
   constructor(
     private readonly store: WorkflowTestStore,
     private readonly authorization: WorkspaceAuthorizationSource,

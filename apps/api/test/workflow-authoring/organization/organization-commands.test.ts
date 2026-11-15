@@ -11,7 +11,7 @@ import {
   AuthorizationError,
   createActorContext,
 } from '../../../src/authorization/index.js';
-import { WorkflowOrganizationCommandsUseCase } from '../../../src/workflow-authoring/organization/organization-commands.service.js';
+import { WorkflowOrganizationCommandsService } from '../../../src/workflow-authoring/organization/organization-commands.service.js';
 
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -73,7 +73,7 @@ function fixture(role: Role = 'owner') {
       workspaceStatus: 'active',
     }),
   };
-  const commands = new WorkflowOrganizationCommandsUseCase(
+  const commands = new WorkflowOrganizationCommandsService(
     tags,
     favorites,
     authorization,

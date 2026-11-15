@@ -1,7 +1,7 @@
-import { requestInputError } from '../../../platform/http/request-input.js';
+import { requestInputError } from '../../platform/http/request-input.js';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
-import type { TestConnectionCommand } from '../test-connection.js';
-import { connectionTestProviderKey } from '../connection-serialization.js';
+import type { TestConnectionCommand } from './test-connection.js';
+import { connectionTestProviderKey } from '../management/connection-serialization.js';
 import { createSmtpClient } from '@pertexo/secrets/server';
 import type { smtpCredentialSchema } from '@pertexo/contracts';
 import type { ConnectionTestOutcome } from '@pertexo/core/connections';

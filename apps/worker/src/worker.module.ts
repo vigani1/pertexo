@@ -33,11 +33,11 @@ import {
   createWorkspaceInboxRuntime,
   WORKSPACE_INBOX_RUNTIME,
   type WorkspaceInboxRuntime,
-} from './notifications/inbox-runtime.js';
+} from './notifications/inbox.runtime.js';
 import {
   WORKFLOW_AUTO_PAUSE_RUNTIME,
   type WorkflowAutoPauseRuntime,
-} from './workflows/auto-pause-runtime.js';
+} from './workflows/auto-pause.runtime.js';
 import { configuredWorkflowAutoPauseRuntime } from './workflows/auto-pause-provider.js';
 import {
   DatabaseModule,

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { IdentityError } from '../../../src/identity/index.js';
 import {
   WorkspaceMembershipController,
-  WorkspaceMembershipLifecycleUseCase,
+  WorkspaceMembershipLifecycleService,
   type IdentitySessionAuthority,
 } from '../../../src/workspaces/index.js';
 import { routeInput } from '../../support/route-input.js';
@@ -80,7 +80,7 @@ function controller(
           }),
   } as unknown as IdentitySessionAuthority;
   return new WorkspaceMembershipController(
-    new WorkspaceMembershipLifecycleUseCase(store, { now: () => now }),
+    new WorkspaceMembershipLifecycleService(store, { now: () => now }),
     sessions,
   );
 }

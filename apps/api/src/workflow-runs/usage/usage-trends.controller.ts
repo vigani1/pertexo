@@ -8,14 +8,14 @@ import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
-import { GetUsageTrendsUseCase } from './trends.js';
+import { GetUsageTrendsService } from './trends.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(runFailure))
 @Controller()
 export class UsageTrendsController {
-  constructor(private readonly trends: GetUsageTrendsUseCase) {}
+  constructor(private readonly trends: GetUsageTrendsService) {}
 
   @Route(routes.trends)
   get(

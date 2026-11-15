@@ -11,8 +11,8 @@ import {
   type PlatformNodeDefinitionBrowserProjection,
 } from '@pertexo/node-catalog';
 import {
-  ListIntegrationsUseCase,
-  createCatalogUseCases,
+  ListIntegrationsService,
+  createCatalogServices,
 } from '../../src/catalog/catalog.service.js';
 import {
   integrationListResponseSchema,
@@ -22,10 +22,10 @@ import { RATE_LIMIT_METADATA } from '../../src/platform/rate-limit/metadata.js';
 
 describe('catalog controller public seam', () => {
   it('returns the safe node projection', () => {
-    const useCases = createCatalogUseCases();
+    const services = createCatalogServices();
     const controller = new CatalogController(
-      useCases.listNodeDefinitions,
-      useCases.listIntegrations,
+      services.listNodeDefinitions,
+      services.listIntegrations,
     );
     const response = controller.listNodeDefinitions();
     expect(nodeDefinitionListResponseSchema.parse(response)).toEqual(response);
@@ -38,8 +38,8 @@ describe('catalog controller public seam', () => {
 
   it('groups shuffled definitions with ordinal ties and numeric versions', () => {
     const catalog = customCatalog();
-    const useCase = new ListIntegrationsUseCase(catalog);
-    const response = useCase.execute();
+    const service = new ListIntegrationsService(catalog);
+    const response = service.execute();
     expect(integrationListResponseSchema.parse(response)).toEqual(response);
     expect(response.items).toEqual([
       {
@@ -69,7 +69,7 @@ describe('catalog controller public seam', () => {
       throw new Error('Custom catalog projection is unexpectedly empty');
     Reflect.set(firstOperation, 'providerKey', 'zzz');
     Reflect.set(firstDefinition, 'version', 999);
-    expect(useCase.execute().items).toEqual([
+    expect(service.execute().items).toEqual([
       expect.objectContaining({
         providerKey: 'email',
         operationKey: 'archive',

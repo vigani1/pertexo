@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { ConnectionCommandPersistence } from '../../src/connections/ports.js';
 import {
-  CreateConnectionUseCase,
-  RevokeConnectionUseCase,
-  RotateConnectionSecretUseCase,
-} from '../../src/connections/use-cases/management.js';
+  CreateConnectionService,
+  RevokeConnectionService,
+  RotateConnectionSecretService,
+} from '../../src/connections/management/connection-management.js';
 import { authorizeWorkspace } from '../../src/authorization/index.js';
 import {
   actor,
@@ -32,7 +32,7 @@ describe('connection management use cases', () => {
       disclosure: 'not_found',
     });
 
-    await new RevokeConnectionUseCase(commandPersistence(), access).execute({
+    await new RevokeConnectionService(commandPersistence(), access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       authorizedWorkspace,
@@ -58,7 +58,7 @@ describe('connection management use cases', () => {
       }),
     };
     const signal = new AbortController().signal;
-    const result = await new CreateConnectionUseCase(store, authorization(), {
+    const result = await new CreateConnectionService(store, authorization(), {
       encryption: encryption,
       applicationSecret: 'fixture-application-secret',
     }).execute({
@@ -106,7 +106,7 @@ describe('connection management use cases', () => {
     };
 
     await expect(
-      new CreateConnectionUseCase(store, authorization(), {
+      new CreateConnectionService(store, authorization(), {
         encryption: encryption,
         applicationSecret: 'fixture-application-secret',
       }).execute({
@@ -129,7 +129,7 @@ describe('connection management use cases', () => {
       seal: vi.fn().mockRejectedValue(new Error('KMS down')),
     };
 
-    const result = await new CreateConnectionUseCase(store, authorization(), {
+    const result = await new CreateConnectionService(store, authorization(), {
       encryption: encryption,
       applicationSecret: 'fixture-application-secret',
     }).execute({
@@ -156,7 +156,7 @@ describe('connection management use cases', () => {
       seal: vi.fn().mockRejectedValue(new Error('KMS down')),
     };
 
-    const result = await new RotateConnectionSecretUseCase(
+    const result = await new RotateConnectionSecretService(
       store,
       authorization(),
       {
@@ -197,7 +197,7 @@ describe('connection management use cases', () => {
       }),
     };
 
-    const rotated = await new RotateConnectionSecretUseCase(
+    const rotated = await new RotateConnectionSecretService(
       store,
       authorization(),
       {
@@ -221,7 +221,7 @@ describe('connection management use cases', () => {
     );
     expect(plaintext?.every((byte) => byte === 0)).toBe(true);
 
-    const revoked = await new RevokeConnectionUseCase(
+    const revoked = await new RevokeConnectionService(
       store,
       authorization(),
     ).execute({ actor, routeWorkspaceId: workspaceId, connectionId });
@@ -236,7 +236,7 @@ describe('connection management use cases', () => {
     const encryption = { seal: vi.fn() };
 
     await expect(
-      new CreateConnectionUseCase(store, authorization(), {
+      new CreateConnectionService(store, authorization(), {
         encryption: encryption,
         applicationSecret: 'fixture-application-secret',
       }).execute({

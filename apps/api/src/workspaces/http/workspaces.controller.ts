@@ -7,9 +7,9 @@ import {
 } from '@pertexo/contracts/server';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize-context-errors.js';
-import { RenameWorkspaceUseCase } from '../commands/rename.js';
-import { UpdateUserProfileUseCase } from '../commands/user-profile.js';
-import { RemoveWorkspaceMemberUseCase } from '../members/removal.js';
+import { RenameWorkspaceService } from '../commands/rename.js';
+import { UpdateUserProfileService } from '../commands/user-profile.js';
+import { RemoveWorkspaceMemberService } from '../members/removal.js';
 import {
   optionalAuthorizedWorkspace,
   projectAuthenticatedWorkspaceContext,
@@ -18,12 +18,12 @@ import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import { memberCommand } from '../request/member-commands.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import {
-  ChangeWorkspaceMemberRoleUseCase,
-  CreateWorkspaceUseCase,
-  GetCurrentUserUseCase,
-  ListAccessibleWorkspacesUseCase,
-  ListWorkspaceMembersUseCase,
-  WorkspaceLifecycleUseCase,
+  ChangeWorkspaceMemberRoleService,
+  CreateWorkspaceService,
+  GetCurrentUserService,
+  ListAccessibleWorkspacesService,
+  ListWorkspaceMembersService,
+  WorkspaceLifecycleService,
 } from '../workspaces.service.js';
 import { authenticatedSession } from './guards.js';
 import { In, Route } from '../../platform/http/route.js';
@@ -32,8 +32,8 @@ import { In, Route } from '../../platform/http/route.js';
 @Controller()
 export class UserController {
   public constructor(
-    private readonly currentUser: GetCurrentUserUseCase,
-    private readonly profile: UpdateUserProfileUseCase,
+    private readonly currentUser: GetCurrentUserService,
+    private readonly profile: UpdateUserProfileService,
   ) {}
 
   @Route(sessionRoutes.me)
@@ -58,7 +58,7 @@ export class UserController {
 @Controller()
 export class WorkspaceDiscoveryController {
   public constructor(
-    private readonly workspaces: ListAccessibleWorkspacesUseCase,
+    private readonly workspaces: ListAccessibleWorkspacesService,
   ) {}
 
   @Route(routes.list)
@@ -77,9 +77,9 @@ export class WorkspaceDiscoveryController {
 @Controller()
 export class WorkspaceMembersController {
   public constructor(
-    private readonly members: ListWorkspaceMembersUseCase,
-    private readonly roleChange: ChangeWorkspaceMemberRoleUseCase,
-    private readonly removal: RemoveWorkspaceMemberUseCase,
+    private readonly members: ListWorkspaceMembersService,
+    private readonly roleChange: ChangeWorkspaceMemberRoleService,
+    private readonly removal: RemoveWorkspaceMemberService,
   ) {}
 
   @Route(routes.members)
@@ -117,9 +117,9 @@ export class WorkspaceMembersController {
 @Controller()
 export class WorkspaceController {
   public constructor(
-    private readonly createWorkspace: CreateWorkspaceUseCase,
-    private readonly lifecycle: WorkspaceLifecycleUseCase,
-    private readonly renameWorkspace: RenameWorkspaceUseCase,
+    private readonly createWorkspace: CreateWorkspaceService,
+    private readonly lifecycle: WorkspaceLifecycleService,
+    private readonly renameWorkspace: RenameWorkspaceService,
   ) {}
 
   @Route(routes.create)

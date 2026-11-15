@@ -11,7 +11,7 @@ import {
   IdentityError,
 } from '../../../src/identity/index.js';
 import {
-  WorkspaceInvitationManagementUseCase,
+  WorkspaceInvitationManagementService,
   InvitationAcceptanceController,
   type CookieResponse,
   type IdentityWorkspaceRequest,
@@ -28,7 +28,7 @@ import {
   actorId,
   now,
   invitationRecord,
-  acceptanceUseCase,
+  acceptanceService,
   pendingIntent,
 } from './member-invitation-fixture.js';
 
@@ -65,7 +65,7 @@ describe('workspace invitation use cases', () => {
       tag: 'tag',
       keyVersion: 'invite-v1',
     });
-    const useCase = new WorkspaceInvitationManagementUseCase(
+    const service = new WorkspaceInvitationManagementService(
       {
         listWorkspaceInvitations: vi.fn(),
         createWorkspaceInvitation,
@@ -76,7 +76,7 @@ describe('workspace invitation use cases', () => {
       nodeIdentityCrypto,
     );
 
-    const response = await useCase.create({
+    const response = await service.create({
       actor: {
         actorId,
         kind: 'user',
@@ -106,9 +106,9 @@ describe('workspace invitation use cases', () => {
 
   it('does not create an intent for a malformed token', async () => {
     const resolveInvitationAcceptance = vi.fn();
-    const useCase = acceptanceUseCase({ resolveInvitationAcceptance });
+    const service = acceptanceService({ resolveInvitationAcceptance });
 
-    await expect(useCase.resolve({ token: 'x'.repeat(48) })).resolves.toEqual({
+    await expect(service.resolve({ token: 'x'.repeat(48) })).resolves.toEqual({
       journey: { state: 'unavailable' },
     });
     expect(resolveInvitationAcceptance).not.toHaveBeenCalled();
@@ -135,13 +135,13 @@ describe('workspace invitation use cases', () => {
           receipt: null,
         }),
     );
-    const useCase = acceptanceUseCase({
+    const service = acceptanceService({
       resolveInvitationAcceptance,
     });
     const token = `wi1.${workspaceId}.${invitationId}.${'a'.repeat(43)}`;
-    const first = await useCase.resolve({ token });
+    const first = await service.resolve({ token });
     expect(first.binding).toBeDefined();
-    const second = await useCase.resolve({ token }, first.binding);
+    const second = await service.resolve({ token }, first.binding);
 
     expect(second.binding).not.toBe(first.binding);
     const firstCommand = resolveInvitationAcceptance.mock.calls[0]?.[0];
@@ -179,12 +179,12 @@ describe('workspace invitation use cases', () => {
         });
       },
     );
-    const useCase = acceptanceUseCase({ resolveInvitationAcceptance });
+    const service = acceptanceService({ resolveInvitationAcceptance });
     const token = `wi1.${workspaceId}.${invitationId}.${'a'.repeat(43)}`;
     const priorBinding = `wb1.${workspaceId}.${intentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`;
 
-    const committed = await useCase.resolve({ token }, priorBinding);
-    const recovered = await useCase.resolve({ token }, priorBinding);
+    const committed = await service.resolve({ token }, priorBinding);
+    const recovered = await service.resolve({ token }, priorBinding);
 
     expect(recovered).toEqual(committed);
     expect(commands).toHaveLength(2);
@@ -212,9 +212,9 @@ describe('workspace invitation use cases', () => {
           receipt: null,
         }),
     );
-    const useCase = acceptanceUseCase({ resolveInvitationAcceptance });
+    const service = acceptanceService({ resolveInvitationAcceptance });
     const controller = new InvitationAcceptanceController(
-      useCase,
+      service,
       {} as IdentitySessionAuthority,
       new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
       { secure: true, sameSite: 'lax' },
@@ -254,7 +254,7 @@ describe('workspace invitation use cases', () => {
   });
 
   it('reports an abandoned bound journey as unavailable', async () => {
-    const useCase = acceptanceUseCase({
+    const service = acceptanceService({
       readInvitationAcceptance: vi.fn().mockResolvedValue({
         ...pendingIntent(),
         status: 'abandoned',
@@ -262,7 +262,7 @@ describe('workspace invitation use cases', () => {
     });
     const binding = `wb1.${workspaceId}.${intentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`;
 
-    await expect(useCase.read(binding)).resolves.toEqual({
+    await expect(service.read(binding)).resolves.toEqual({
       state: 'unavailable',
     });
   });
@@ -306,14 +306,14 @@ describe('workspace invitation use cases', () => {
         membershipCreated: true,
       },
     });
-    const useCase = acceptanceUseCase({ readInvitationAcceptance });
+    const service = acceptanceService({ readInvitationAcceptance });
     const binding = `wb1.${workspaceId}.${intentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`;
 
-    await expect(useCase.read(binding)).resolves.toMatchObject({
+    await expect(service.read(binding)).resolves.toMatchObject({
       state: 'sign_in_required',
       intentId,
     });
-    await expect(useCase.read(binding, actorId)).resolves.toMatchObject({
+    await expect(service.read(binding, actorId)).resolves.toMatchObject({
       state: 'completed',
       intentId,
       membershipCreated: true,
@@ -329,7 +329,7 @@ describe('workspace invitation use cases', () => {
       replayed: false,
       replacementSessionCreated: true,
     });
-    const useCase = acceptanceUseCase({
+    const service = acceptanceService({
       readInvitationAcceptance: vi.fn().mockResolvedValue({
         ...pendingIntent(),
         status: 'verified',
@@ -341,7 +341,7 @@ describe('workspace invitation use cases', () => {
       completeInvitationAcceptance,
     });
 
-    const result = await useCase.complete({
+    const result = await service.complete({
       binding: `wb1.${workspaceId}.${intentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`,
       csrfToken: 'c'.repeat(43),
       authenticatedUserId: actorId,
@@ -367,11 +367,11 @@ describe('workspace invitation use cases', () => {
   });
 
   it('rejects a sign-in whose email is not verified as recipient proof', async () => {
-    const useCase = acceptanceUseCase({
+    const service = acceptanceService({
       readInvitationAcceptance: vi.fn().mockResolvedValue(pendingIntent()),
     });
     await expect(
-      useCase.recordSessionProof({
+      service.recordSessionProof({
         binding: `wb1.${workspaceId}.${intentId}.${'b'.repeat(43)}.${'c'.repeat(43)}`,
         csrfToken: 'c'.repeat(43),
         evidence: {

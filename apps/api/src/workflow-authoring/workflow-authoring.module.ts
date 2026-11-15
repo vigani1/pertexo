@@ -1,57 +1,57 @@
 import type { DynamicModule, Provider } from '@nestjs/common';
 import { Module } from '@nestjs/common';
-import { WorkflowCommentsController } from './collaboration/comments-controller.js';
-import { WorkflowPresenceController } from './collaboration/presence-controller.js';
-import { WorkflowCollaborationUseCase } from './collaboration/workflow-collaboration.service.js';
-import { WorkflowLifecycleController } from './http/lifecycle-controller.js';
-import { WorkflowVersionsController } from './http/versions-controller.js';
+import { WorkflowCommentsController } from './collaboration/comments.controller.js';
+import { WorkflowPresenceController } from './collaboration/presence.controller.js';
+import { WorkflowCollaborationService } from './collaboration/workflow-collaboration.service.js';
+import { WorkflowLifecycleController } from './http/lifecycle.controller.js';
+import { WorkflowVersionsController } from './http/versions.controller.js';
 import { WorkflowPromotionController } from './promotion/workflow-promotion.controller.js';
 import { workflowPromotionProviders } from './promotion/providers.js';
 import {
   PublicationReviewController,
   WorkflowPublicationReviewController,
 } from './reviews/publication-review.controller.js';
-import { PublicationReviewUseCase } from './reviews/publication-review.service.js';
-import { WorkflowErrorController } from './settings/error-workflow-controller.js';
-import { WorkflowErrorUseCase } from './settings/error-workflow.js';
+import { PublicationReviewService } from './reviews/publication-review.service.js';
+import { WorkflowErrorController } from './settings/error-workflow.controller.js';
+import { WorkflowErrorService } from './settings/error-workflow.js';
 
 import {
-  CreateWorkflowUseCase,
-  GetWorkflowDraftUseCase,
-  GetWorkflowUseCase,
-  ListWorkflowVersionsUseCase,
-  ListWorkflowsUseCase,
-  PublishWorkflowUseCase,
-  SaveWorkflowDraftUseCase,
-  ValidateWorkflowDraftUseCase,
+  CreateWorkflowService,
+  GetWorkflowDraftService,
+  GetWorkflowService,
+  ListWorkflowVersionsService,
+  ListWorkflowsService,
+  PublishWorkflowService,
+  SaveWorkflowDraftService,
+  ValidateWorkflowDraftService,
 } from './workflow-authoring.service.js';
 
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
-import { DuplicateWorkflowUseCase } from './commands/duplicate.js';
-import { TransitionWorkflowLifecycleUseCase } from './commands/lifecycle.js';
-import { RenameWorkflowUseCase } from './commands/rename.js';
-import { RestoreWorkflowVersionUseCase } from './commands/restore-version.js';
+import { DuplicateWorkflowService } from './commands/duplicate.js';
+import { TransitionWorkflowLifecycleService } from './commands/lifecycle.js';
+import { RenameWorkflowService } from './commands/rename.js';
+import { RestoreWorkflowVersionService } from './commands/restore-version.js';
 import { WorkflowAuthoringController } from './http/workflow-authoring.controller.js';
 import { WorkflowInputCasesController } from './input-cases/workflow-input-cases.controller.js';
-import { WorkflowInputCasesUseCase } from './input-cases/workflow-input-cases.service.js';
+import { WorkflowInputCasesService } from './input-cases/workflow-input-cases.service.js';
 import {
   workflowOrganizationControllers,
   workflowOrganizationProviders,
 } from './organization/providers.js';
 import { WorkflowPortabilityController } from './portability/workflow-portability.controller.js';
 import {
-  ExportWorkflowUseCase,
-  ImportWorkflowUseCase,
-  PreviewWorkflowImportUseCase,
+  ExportWorkflowService,
+  ImportWorkflowService,
+  PreviewWorkflowImportService,
 } from './portability/workflow-portability.service.js';
 import type { WorkflowAuthoringDependencies } from './ports.js';
 import {
   WorkflowAutoPauseController,
   WorkspaceAutoPauseController,
 } from './settings/auto-pause-controllers.js';
-import { WorkflowAutoPauseUseCase } from './settings/auto-pause.js';
-import { WorkflowConcurrencyController } from './settings/concurrency-controller.js';
-import { WorkflowConcurrencyUseCase } from './settings/concurrency.js';
+import { WorkflowAutoPauseService } from './settings/auto-pause.js';
+import { WorkflowConcurrencyController } from './settings/concurrency.controller.js';
+import { WorkflowConcurrencyService } from './settings/concurrency.js';
 import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   type WorkflowAuthoringTelemetry,
@@ -83,64 +83,64 @@ export class WorkflowAuthoringModule {
       },
 
       {
-        provide: ListWorkflowsUseCase,
-        useValue: new ListWorkflowsUseCase(
+        provide: ListWorkflowsService,
+        useValue: new ListWorkflowsService(
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
         ),
       },
       {
-        provide: GetWorkflowUseCase,
-        useValue: new GetWorkflowUseCase(
+        provide: GetWorkflowService,
+        useValue: new GetWorkflowService(
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
         ),
       },
       {
-        provide: CreateWorkflowUseCase,
-        useValue: new CreateWorkflowUseCase(
+        provide: CreateWorkflowService,
+        useValue: new CreateWorkflowService(
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
         ),
       },
       {
-        provide: GetWorkflowDraftUseCase,
-        useValue: new GetWorkflowDraftUseCase(
+        provide: GetWorkflowDraftService,
+        useValue: new GetWorkflowDraftService(
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
         ),
       },
       {
-        provide: SaveWorkflowDraftUseCase,
-        useValue: new SaveWorkflowDraftUseCase(
+        provide: SaveWorkflowDraftService,
+        useValue: new SaveWorkflowDraftService(
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
         ),
       },
       {
-        provide: ValidateWorkflowDraftUseCase,
-        useValue: new ValidateWorkflowDraftUseCase(
+        provide: ValidateWorkflowDraftService,
+        useValue: new ValidateWorkflowDraftService(
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
         ),
       },
       {
-        provide: PublishWorkflowUseCase,
-        useValue: new PublishWorkflowUseCase(
+        provide: PublishWorkflowService,
+        useValue: new PublishWorkflowService(
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
         ),
       },
       {
-        provide: ListWorkflowVersionsUseCase,
-        useValue: new ListWorkflowVersionsUseCase(
+        provide: ListWorkflowVersionsService,
+        useValue: new ListWorkflowVersionsService(
           dependencies.persistence,
           dependencies.authorization,
           telemetry,
@@ -182,18 +182,18 @@ export class WorkflowAuthoringModule {
       ],
       providers,
       exports: [
-        DuplicateWorkflowUseCase,
-        RestoreWorkflowVersionUseCase,
-        TransitionWorkflowLifecycleUseCase,
-        RenameWorkflowUseCase,
-        ListWorkflowsUseCase,
-        CreateWorkflowUseCase,
-        GetWorkflowUseCase,
-        GetWorkflowDraftUseCase,
-        SaveWorkflowDraftUseCase,
-        ValidateWorkflowDraftUseCase,
-        PublishWorkflowUseCase,
-        ListWorkflowVersionsUseCase,
+        DuplicateWorkflowService,
+        RestoreWorkflowVersionService,
+        TransitionWorkflowLifecycleService,
+        RenameWorkflowService,
+        ListWorkflowsService,
+        CreateWorkflowService,
+        GetWorkflowService,
+        GetWorkflowDraftService,
+        SaveWorkflowDraftService,
+        ValidateWorkflowDraftService,
+        PublishWorkflowService,
+        ListWorkflowVersionsService,
       ],
     };
   }
@@ -211,8 +211,8 @@ function workflowFeatureProviders(
       ? []
       : [
           {
-            provide: WorkflowCollaborationUseCase,
-            useValue: new WorkflowCollaborationUseCase(
+            provide: WorkflowCollaborationService,
+            useValue: new WorkflowCollaborationService(
               dependencies.collaborationPersistence,
               dependencies.authorization,
             ),
@@ -222,8 +222,8 @@ function workflowFeatureProviders(
       ? []
       : [
           {
-            provide: PublicationReviewUseCase,
-            useValue: new PublicationReviewUseCase(
+            provide: PublicationReviewService,
+            useValue: new PublicationReviewService(
               dependencies.publicationReviewPersistence,
               dependencies.authorization,
             ),
@@ -232,12 +232,12 @@ function workflowFeatureProviders(
     ...(portabilityPersistence === undefined
       ? []
       : [
-          ExportWorkflowUseCase,
-          ImportWorkflowUseCase,
-          PreviewWorkflowImportUseCase,
-        ].map((useCase) => ({
-          provide: useCase,
-          useValue: new useCase(
+          ExportWorkflowService,
+          ImportWorkflowService,
+          PreviewWorkflowImportService,
+        ].map((service) => ({
+          provide: service,
+          useValue: new service(
             portabilityPersistence,
             dependencies.authorization,
             telemetry,
@@ -247,16 +247,16 @@ function workflowFeatureProviders(
       ? []
       : [
           {
-            provide: WorkflowInputCasesUseCase,
-            useValue: new WorkflowInputCasesUseCase(
+            provide: WorkflowInputCasesService,
+            useValue: new WorkflowInputCasesService(
               dependencies.inputCasePersistence,
               dependencies.authorization,
             ),
           },
         ]),
     {
-      provide: DuplicateWorkflowUseCase,
-      useValue: new DuplicateWorkflowUseCase(
+      provide: DuplicateWorkflowService,
+      useValue: new DuplicateWorkflowService(
         dependencies.persistence,
         dependencies.authorization,
         telemetry,
@@ -266,8 +266,8 @@ function workflowFeatureProviders(
       ? []
       : [
           {
-            provide: WorkflowErrorUseCase,
-            useValue: new WorkflowErrorUseCase(
+            provide: WorkflowErrorService,
+            useValue: new WorkflowErrorService(
               dependencies.errorWorkflowPersistence,
               dependencies.authorization,
             ),
@@ -277,8 +277,8 @@ function workflowFeatureProviders(
       ? []
       : [
           {
-            provide: WorkflowConcurrencyUseCase,
-            useValue: new WorkflowConcurrencyUseCase(
+            provide: WorkflowConcurrencyService,
+            useValue: new WorkflowConcurrencyService(
               dependencies.concurrencyPersistence,
               dependencies.authorization,
             ),
@@ -288,8 +288,8 @@ function workflowFeatureProviders(
       ? []
       : [
           {
-            provide: WorkflowAutoPauseUseCase,
-            useValue: new WorkflowAutoPauseUseCase(
+            provide: WorkflowAutoPauseService,
+            useValue: new WorkflowAutoPauseService(
               dependencies.autoPausePersistence,
               dependencies.authorization,
             ),
@@ -304,24 +304,24 @@ function workflowLifecycleProviders(
 ): Provider[] {
   return [
     {
-      provide: RestoreWorkflowVersionUseCase,
-      useValue: new RestoreWorkflowVersionUseCase(
+      provide: RestoreWorkflowVersionService,
+      useValue: new RestoreWorkflowVersionService(
         dependencies.persistence,
         dependencies.authorization,
         telemetry,
       ),
     },
     {
-      provide: TransitionWorkflowLifecycleUseCase,
-      useValue: new TransitionWorkflowLifecycleUseCase(
+      provide: TransitionWorkflowLifecycleService,
+      useValue: new TransitionWorkflowLifecycleService(
         dependencies.persistence,
         dependencies.authorization,
         telemetry,
       ),
     },
     {
-      provide: RenameWorkflowUseCase,
-      useValue: new RenameWorkflowUseCase(
+      provide: RenameWorkflowService,
+      useValue: new RenameWorkflowService(
         dependencies.persistence,
         dependencies.authorization,
         telemetry,

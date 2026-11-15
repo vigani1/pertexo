@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  GetWorkflowUseCase,
-  CreateWorkflowUseCase,
-  GetWorkflowDraftUseCase,
-  ListWorkflowVersionsUseCase,
-  ListWorkflowsUseCase,
-  PublishWorkflowUseCase,
-  SaveWorkflowDraftUseCase,
-  ValidateWorkflowDraftUseCase,
+  GetWorkflowService,
+  CreateWorkflowService,
+  GetWorkflowDraftService,
+  ListWorkflowVersionsService,
+  ListWorkflowsService,
+  PublishWorkflowService,
+  SaveWorkflowDraftService,
+  ValidateWorkflowDraftService,
   InvalidWorkflowCursorError,
 } from '../../src/workflow-authoring/workflow-authoring.service.js';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -21,8 +21,8 @@ import {
   type PublishWorkflowInput as DatabasePublishWorkflowInput,
   type WorkflowRecord,
 } from '@pertexo/core/testing';
-import { TransitionWorkflowLifecycleUseCase } from '../../src/workflow-authoring/commands/lifecycle.js';
-import { RestoreWorkflowVersionUseCase } from '../../src/workflow-authoring/commands/restore-version.js';
+import { TransitionWorkflowLifecycleService } from '../../src/workflow-authoring/commands/lifecycle.js';
+import { RestoreWorkflowVersionService } from '../../src/workflow-authoring/commands/restore-version.js';
 import {
   actorId,
   workspaceId,
@@ -40,7 +40,7 @@ import {
   draft,
   encodedCursor,
 } from './workflow-commands.fixture.js';
-import { RenameWorkflowUseCase } from '../../src/workflow-authoring/commands/rename.js';
+import { RenameWorkflowService } from '../../src/workflow-authoring/commands/rename.js';
 import type { WorkflowAuthoringPersistence } from '../../src/workflow-authoring/ports.js';
 
 describe('workflow authoring application seams', () => {
@@ -52,8 +52,8 @@ describe('workflow authoring application seams', () => {
         templateOrigin: origin,
       });
       const store = persistence({ getWorkflowWithTemplateOrigin });
-      const useCase = new GetWorkflowUseCase(store, authorization());
-      const ordinary = await useCase.execute({
+      const service = new GetWorkflowService(store, authorization());
+      const ordinary = await service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -61,7 +61,7 @@ describe('workflow authoring application seams', () => {
       expect(ordinary).not.toHaveProperty('templateOrigin');
       expect(getWorkflowWithTemplateOrigin).not.toHaveBeenCalled();
       vi.mocked(store.getWorkflow).mockClear();
-      const projected = await useCase.execute({
+      const projected = await service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -80,7 +80,7 @@ describe('workflow authoring application seams', () => {
   it('fails unavailable rather than inventing origin-null on an unsupported reader', async () => {
     const store = persistence();
     await expect(
-      new GetWorkflowUseCase(store, authorization()).execute({
+      new GetWorkflowService(store, authorization()).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -94,7 +94,7 @@ describe('workflow authoring application seams', () => {
     const getWorkflowWithTemplateOrigin = vi.fn();
     const store = persistence({ getWorkflowWithTemplateOrigin });
     await expect(
-      new GetWorkflowUseCase(
+      new GetWorkflowService(
         store,
         authorization({ membershipStatus: 'suspended' }),
       ).execute({
@@ -117,7 +117,7 @@ describe('workflow authoring application seams', () => {
         workflow: workflow(),
         templateOrigin: { ...templateOrigin, privateSetup: 'must not escape' },
       });
-    const useCase = new GetWorkflowUseCase(
+    const service = new GetWorkflowService(
       persistence({ getWorkflowWithTemplateOrigin: read }),
       authorization(),
     );
@@ -127,20 +127,20 @@ describe('workflow authoring application seams', () => {
       workflowId,
       include: 'templateOrigin',
     } as const;
-    await expect(useCase.execute(input)).rejects.toBeInstanceOf(
+    await expect(service.execute(input)).rejects.toBeInstanceOf(
       WorkflowNotFoundError,
     );
-    await expect(useCase.execute(input)).rejects.toMatchObject({
+    await expect(service.execute(input)).rejects.toMatchObject({
       name: 'ZodError',
     });
-    const sanitized = await useCase.execute(input);
+    const sanitized = await service.execute(input);
     expect(sanitized).toHaveProperty('templateOrigin', templateOrigin);
     expect(sanitized).not.toHaveProperty('templateOrigin.privateSetup');
   });
 
   it('reads one workflow without relying on list pagination', async () => {
     const store = persistence();
-    const result = await new GetWorkflowUseCase(store, authorization()).execute(
+    const result = await new GetWorkflowService(store, authorization()).execute(
       {
         actor,
         routeWorkspaceId: workspaceId,
@@ -159,7 +159,7 @@ describe('workflow authoring application seams', () => {
     const store = persistence({ getWorkflow: vi.fn().mockResolvedValue(null) });
 
     await expect(
-      new GetWorkflowUseCase(store, authorization()).execute({
+      new GetWorkflowService(store, authorization()).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -175,7 +175,7 @@ describe('workflow authoring application seams', () => {
       graph,
       compatibilityFingerprint: fingerprint,
     });
-    const result = await new RestoreWorkflowVersionUseCase(
+    const result = await new RestoreWorkflowVersionService(
       store,
       authorization(),
     ).execute({
@@ -219,7 +219,7 @@ describe('workflow authoring application seams', () => {
       compatibilityFingerprint: fingerprint,
     });
 
-    await new RestoreWorkflowVersionUseCase(store, access).execute({
+    await new RestoreWorkflowVersionService(store, access).execute({
       actor: tracedActor,
       authorizedWorkspace,
       routeWorkspaceId: workspaceId,
@@ -235,7 +235,7 @@ describe('workflow authoring application seams', () => {
       access,
       disclosure: 'not_found',
     });
-    await new TransitionWorkflowLifecycleUseCase(store, access).execute({
+    await new TransitionWorkflowLifecycleService(store, access).execute({
       actor: tracedActor,
       authorizedWorkspace: lifecycleAuthorization,
       routeWorkspaceId: workspaceId,
@@ -272,7 +272,7 @@ describe('workflow authoring application seams', () => {
         workflow: accepted,
         replayed: true,
       });
-      const result = await new TransitionWorkflowLifecycleUseCase(
+      const result = await new TransitionWorkflowLifecycleService(
         store,
         access,
       ).execute({
@@ -314,7 +314,7 @@ describe('workflow authoring application seams', () => {
       const access = authorization();
       access.findAccess.mockResolvedValue({ actorId, workspaceId, ...denial });
       await expect(
-        new TransitionWorkflowLifecycleUseCase(store, access).execute({
+        new TransitionWorkflowLifecycleService(store, access).execute({
           actor,
           routeWorkspaceId: workspaceId,
           workflowId,
@@ -339,7 +339,7 @@ describe('workflow authoring application seams', () => {
       disclosure: 'not_found',
     });
 
-    const result = await new RenameWorkflowUseCase(store, access).execute({
+    const result = await new RenameWorkflowService(store, access).execute({
       actor: tracedActor,
       authorizedWorkspace,
       routeWorkspaceId: workspaceId,
@@ -377,7 +377,7 @@ describe('workflow authoring application seams', () => {
     });
 
     await expect(
-      new RenameWorkflowUseCase(store, authorization()).execute({
+      new RenameWorkflowService(store, authorization()).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -398,7 +398,7 @@ describe('workflow authoring application seams', () => {
     const access = authorization();
     access.findAccess.mockResolvedValue({ actorId, workspaceId, ...denial });
     await expect(
-      new RenameWorkflowUseCase(store, access).execute({
+      new RenameWorkflowService(store, access).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -419,7 +419,7 @@ describe('workflow authoring application seams', () => {
       disclosure: 'not_found',
     });
 
-    await new ListWorkflowsUseCase(persistence(), access).execute({
+    await new ListWorkflowsService(persistence(), access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       authorizedWorkspace,
@@ -431,10 +431,10 @@ describe('workflow authoring application seams', () => {
   it('hides a route workspace mismatch through not-found authorization and does not touch persistence', async () => {
     const store = persistence();
     const access = authorization();
-    const useCase = new GetWorkflowDraftUseCase(store, access);
+    const service = new GetWorkflowDraftService(store, access);
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
         workflowId,
@@ -453,10 +453,10 @@ describe('workflow authoring application seams', () => {
     const common = { actor, routeWorkspaceId: workspaceId, workflowId };
 
     await expect(
-      new GetWorkflowDraftUseCase(store, access).execute(common),
+      new GetWorkflowDraftService(store, access).execute(common),
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     await expect(
-      new SaveWorkflowDraftUseCase(store, access).execute({
+      new SaveWorkflowDraftService(store, access).execute({
         ...common,
         representationTag:
           '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
@@ -464,7 +464,7 @@ describe('workflow authoring application seams', () => {
       }),
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     await expect(
-      new ValidateWorkflowDraftUseCase(store, access).execute(common),
+      new ValidateWorkflowDraftService(store, access).execute(common),
     ).rejects.toBeInstanceOf(WorkflowNotFoundError);
     expect(store.saveDraft).not.toHaveBeenCalled();
   });
@@ -479,13 +479,13 @@ describe('workflow authoring application seams', () => {
       compatibilityFingerprint: fingerprint,
     });
 
-    await new ListWorkflowsUseCase(store, access).execute({
+    await new ListWorkflowsService(store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       limit: 10,
       order: 'updated_desc',
     });
-    await new CreateWorkflowUseCase(store, access).execute({
+    await new CreateWorkflowService(store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       request: { name: 'Operations' },
@@ -493,7 +493,7 @@ describe('workflow authoring application seams', () => {
       requestId: 'request-create',
       traceId: 'trace-create',
     });
-    await new SaveWorkflowDraftUseCase(store, access).execute({
+    await new SaveWorkflowDraftService(store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -502,7 +502,7 @@ describe('workflow authoring application seams', () => {
       requestId: 'request-save',
       traceId: 'trace-save',
     });
-    await new PublishWorkflowUseCase(store, access).execute({
+    await new PublishWorkflowService(store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -512,7 +512,7 @@ describe('workflow authoring application seams', () => {
       traceId: 'trace-publish',
       traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
     });
-    await new ListWorkflowVersionsUseCase(store, access).execute({
+    await new ListWorkflowVersionsService(store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -549,8 +549,8 @@ describe('workflow authoring application seams', () => {
   it('returns a strong ETag on draft reads and uses the same codec for a matching save', async () => {
     const store = persistence();
     const access = authorization();
-    const get = new GetWorkflowDraftUseCase(store, access);
-    const save = new SaveWorkflowDraftUseCase(store, access);
+    const get = new GetWorkflowDraftService(store, access);
+    const save = new SaveWorkflowDraftService(store, access);
     const read = await get.execute({
       actor,
       routeWorkspaceId: workspaceId,
@@ -583,7 +583,7 @@ describe('workflow authoring application seams', () => {
   it('rejects a stale save before mutation and includes the current validator details', async () => {
     const store = persistence();
     const access = authorization();
-    const save = new SaveWorkflowDraftUseCase(store, access);
+    const save = new SaveWorkflowDraftService(store, access);
 
     const failure = await save
       .execute({
@@ -615,10 +615,10 @@ describe('workflow authoring application seams', () => {
         });
       },
     });
-    const useCase = new PublishWorkflowUseCase(store, authorization());
+    const service = new PublishWorkflowService(store, authorization());
     const tag = '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"';
 
-    await useCase.execute({
+    await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -639,7 +639,7 @@ describe('workflow authoring application seams', () => {
         reused: false,
         replayed: false,
       });
-    const useCase = new PublishWorkflowUseCase(
+    const service = new PublishWorkflowService(
       persistence({ publishWorkflow }),
       authorization(),
     );
@@ -651,14 +651,14 @@ describe('workflow authoring application seams', () => {
       idempotencyKey: 'publish-hash',
     } as const;
 
-    const withoutSignal = await useCase.execute(base);
+    const withoutSignal = await service.execute(base);
     const expected =
       '84b9b240331d7c501453089c5a0083f865ba22275af0b6bcc443b7be7a7cd475';
     expect(publishWorkflow).toHaveBeenLastCalledWith(
       expect.objectContaining({ requestHash: expected }),
     );
     const signal = new AbortController().signal;
-    const withSignal = await useCase.execute({
+    const withSignal = await service.execute({
       ...base,
       signal,
       requestId: 'diagnostic-request',
@@ -707,7 +707,7 @@ describe('workflow authoring application seams', () => {
           replayed: false,
         });
       });
-      await new PublishWorkflowUseCase(
+      await new PublishWorkflowService(
         persistence({ publishWorkflow }),
         access,
       ).execute({
@@ -775,7 +775,7 @@ describe('workflow authoring application seams', () => {
       replayed: true,
     });
     const store = persistence({ getDraft, publishWorkflow });
-    const result = await new PublishWorkflowUseCase(
+    const result = await new PublishWorkflowService(
       store,
       authorization(),
     ).execute({
@@ -803,7 +803,7 @@ describe('workflow authoring application seams', () => {
       .fn()
       .mockRejectedValue(new WorkflowRevisionConflictError(2, currentEtag));
     const store = persistence({ getDraft, saveDraft });
-    const failure = await new SaveWorkflowDraftUseCase(store, authorization())
+    const failure = await new SaveWorkflowDraftService(store, authorization())
       .execute({
         actor,
         routeWorkspaceId: workspaceId,
@@ -829,16 +829,16 @@ describe('workflow authoring application seams', () => {
   it('uses named read capability for list, validate, and version listing', async () => {
     const access = authorization();
     const store = persistence();
-    await new ListWorkflowsUseCase(store, access).execute({
+    await new ListWorkflowsService(store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
     });
-    await new ValidateWorkflowDraftUseCase(store, access).execute({
+    await new ValidateWorkflowDraftService(store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
     });
-    await new ListWorkflowVersionsUseCase(store, access).execute({
+    await new ListWorkflowVersionsService(store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -851,7 +851,7 @@ describe('workflow authoring application seams', () => {
     const access = authorization({ role: 'viewer' });
     const store = persistence();
     await expect(
-      new GetWorkflowDraftUseCase(store, access).execute({
+      new GetWorkflowDraftService(store, access).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -865,7 +865,7 @@ describe('workflow authoring application seams', () => {
       compatibilityFingerprint: fingerprint,
     });
     await expect(
-      new SaveWorkflowDraftUseCase(store, access).execute({
+      new SaveWorkflowDraftService(store, access).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -874,7 +874,7 @@ describe('workflow authoring application seams', () => {
       }),
     ).rejects.toMatchObject({ code: 'resource.not_found' });
     await expect(
-      new PublishWorkflowUseCase(store, access).execute({
+      new PublishWorkflowService(store, access).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -912,7 +912,7 @@ describe('workflow authoring application seams', () => {
     });
 
     await expect(
-      new ValidateWorkflowDraftUseCase(store, authorization()).execute({
+      new ValidateWorkflowDraftService(store, authorization()).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -924,11 +924,11 @@ describe('workflow authoring application seams', () => {
 
   it('serializes exact workflow and version allowlists, retained graph, and timestamps', async () => {
     const store = persistence();
-    const workflows = await new ListWorkflowsUseCase(
+    const workflows = await new ListWorkflowsService(
       store,
       authorization(),
     ).execute({ actor, routeWorkspaceId: workspaceId });
-    const versions = await new ListWorkflowVersionsUseCase(
+    const versions = await new ListWorkflowVersionsService(
       store,
       authorization(),
     ).execute({ actor, routeWorkspaceId: workspaceId, workflowId });
@@ -975,13 +975,13 @@ describe('workflow authoring application seams', () => {
       listVersions: vi.fn().mockResolvedValue({ items: [] }),
     });
     await expect(
-      new ListWorkflowsUseCase(emptyStore, authorization()).execute({
+      new ListWorkflowsService(emptyStore, authorization()).execute({
         actor,
         routeWorkspaceId: workspaceId,
       }),
     ).resolves.toEqual({ items: [], nextCursor: null });
     await expect(
-      new ListWorkflowVersionsUseCase(emptyStore, authorization()).execute({
+      new ListWorkflowVersionsService(emptyStore, authorization()).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -996,7 +996,7 @@ describe('workflow authoring application seams', () => {
       listWorkflows: vi.fn().mockResolvedValue({ items: [invalid] }),
     });
     await expect(
-      new ListWorkflowsUseCase(invalidStore, authorization()).execute({
+      new ListWorkflowsService(invalidStore, authorization()).execute({
         actor,
         routeWorkspaceId: workspaceId,
       }),
@@ -1012,19 +1012,19 @@ describe('workflow authoring application seams', () => {
       .fn()
       .mockResolvedValueOnce({ items: [workflow()], nextCursor: cursor })
       .mockResolvedValueOnce({ items: [] });
-    const useCase = new ListWorkflowsUseCase(
+    const service = new ListWorkflowsService(
       persistence({ listWorkflows }),
       authorization(),
     );
 
-    const first = await useCase.execute({
+    const first = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
     });
     expect(first.nextCursor).toBe(
       'eyJraW5kIjoid29ya2Zsb3ciLCJjcmVhdGVkQXQiOiIyMDI2LTA4LTIwVDEyOjAwOjAwLjAwMFoiLCJpZCI6ImRkZGRkZGRkLWRkZGQtNGRkZC04ZGRkLWRkZGRkZGRkZGRkZCJ9',
     );
-    await useCase.execute({
+    await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       after: first.nextCursor ?? '',
@@ -1044,16 +1044,16 @@ describe('workflow authoring application seams', () => {
       .fn()
       .mockResolvedValueOnce({ items: [workflow()], nextCursor: cursor })
       .mockResolvedValueOnce({ items: [] });
-    const useCase = new ListWorkflowsUseCase(
+    const service = new ListWorkflowsService(
       persistence({ listWorkflows }),
       authorization(),
     );
-    const first = await useCase.execute({
+    const first = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       order: 'updated_desc',
     });
-    await useCase.execute({
+    await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       order: 'updated_desc',
@@ -1063,7 +1063,7 @@ describe('workflow authoring application seams', () => {
       expect.objectContaining({ after: cursor, order: 'updated_desc' }),
     );
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         after: first.nextCursor ?? '',
@@ -1073,7 +1073,7 @@ describe('workflow authoring application seams', () => {
 
   it('rejects cursor payload fields outside the feature-private contract', async () => {
     const listWorkflows = vi.fn();
-    const useCase = new ListWorkflowsUseCase(
+    const service = new ListWorkflowsService(
       persistence({ listWorkflows }),
       authorization(),
     );
@@ -1088,19 +1088,19 @@ describe('workflow authoring application seams', () => {
     ).toString('base64url');
 
     await expect(
-      useCase.execute({ actor, routeWorkspaceId: workspaceId, after: cursor }),
+      service.execute({ actor, routeWorkspaceId: workspaceId, after: cursor }),
     ).rejects.toMatchObject({ name: 'InvalidWorkflowCursorError' });
     expect(listWorkflows).not.toHaveBeenCalled();
   });
 
   it('reads an exact immutable version through the authorized persistence seam', async () => {
     const listVersions = vi.fn().mockResolvedValue({ items: [version()] });
-    const useCase = new ListWorkflowVersionsUseCase(
+    const service = new ListWorkflowVersionsService(
       persistence({ listVersions }),
       authorization(),
     );
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -1126,12 +1126,12 @@ describe('workflow authoring application seams', () => {
         nextCursor: { beforeVersionNumber: 2 },
       })
       .mockResolvedValueOnce({ items: [] });
-    const useCase = new ListWorkflowVersionsUseCase(
+    const service = new ListWorkflowVersionsService(
       persistence({ listVersions }),
       authorization(),
     );
 
-    const first = await useCase.execute({
+    const first = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -1139,7 +1139,7 @@ describe('workflow authoring application seams', () => {
     expect(first.nextCursor).toBe(
       'eyJraW5kIjoidmVyc2lvbnMiLCJiZWZvcmVWZXJzaW9uTnVtYmVyIjoyfQ',
     );
-    await useCase.execute({
+    await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -1195,7 +1195,7 @@ describe('workflow authoring application seams', () => {
     async ({ cursor }) => {
       const listWorkflows = vi.fn();
       await expect(
-        new ListWorkflowsUseCase(
+        new ListWorkflowsService(
           persistence({ listWorkflows }),
           authorization(),
         ).execute({ actor, routeWorkspaceId: workspaceId, after: cursor }),
@@ -1236,7 +1236,7 @@ describe('workflow authoring application seams', () => {
   ])('rejects version cursor with $name before listing', async ({ cursor }) => {
     const listVersions = vi.fn();
     await expect(
-      new ListWorkflowVersionsUseCase(
+      new ListWorkflowVersionsService(
         persistence({ listVersions }),
         authorization(),
       ).execute({
@@ -1251,7 +1251,7 @@ describe('workflow authoring application seams', () => {
 
   it('projects one create command and its returned workflow plus empty draft', async () => {
     const store = persistence();
-    const result = await new CreateWorkflowUseCase(
+    const result = await new CreateWorkflowService(
       store,
       authorization(),
     ).execute({

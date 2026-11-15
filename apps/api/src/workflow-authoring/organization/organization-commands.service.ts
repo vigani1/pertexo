@@ -32,7 +32,7 @@ type WorkflowInput<Request = unknown> = CommandInput<Request> &
   Readonly<{ workflowId: string }>;
 
 /** Transport validation and role fences; persistence owns transactional authority. */
-export class WorkflowOrganizationCommandsUseCase {
+export class WorkflowOrganizationCommandsService {
   public constructor(
     private readonly tags: WorkflowTagStore,
     private readonly favorites: WorkflowFavoriteStore,

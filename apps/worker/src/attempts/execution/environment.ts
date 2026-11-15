@@ -17,7 +17,7 @@ import type {
   NodeExecutionCapabilityContext,
 } from './capabilities.js';
 import { nodeExecutionOptionalFields } from './runtime-fields.js';
-import { NodeAttemptHandlerStateError } from '../delivery/handler-state-error.js';
+import { NodeAttemptHandlerStateError } from '../delivery/handler-state.errors.js';
 import { createConnectionHealthCapture } from '../../connections/health-capture.js';
 
 export type NodeExecutionEnvironment = Readonly<{

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 import { nodeIdentityCrypto } from '../../../src/identity/index.js';
-import { InvitationAcceptanceUseCase } from '../../../src/workspaces/index.js';
+import { InvitationAcceptanceService } from '../../../src/workspaces/index.js';
 import type { IdentityWorkspacePersistence } from '../../../src/workspaces/ports.js';
 
 export const workspaceId = '11111111-1111-4111-8111-111111111111';
@@ -49,7 +49,7 @@ export function pendingIntent() {
   };
 }
 
-export function acceptanceUseCase(
+export function acceptanceService(
   overrides: Partial<
     Pick<
       IdentityWorkspacePersistence,
@@ -61,7 +61,7 @@ export function acceptanceUseCase(
     >
   >,
 ) {
-  return new InvitationAcceptanceUseCase(
+  return new InvitationAcceptanceService(
     {
       resolveInvitationAcceptance: vi.fn(),
       readInvitationAcceptance: vi.fn(),

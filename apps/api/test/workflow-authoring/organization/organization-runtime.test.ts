@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import type { WorkflowInputCaseStore } from '@pertexo/core/authoring';
-import { createApiWorkflowMetadataRuntime } from '../../../src/platform/workflow/metadata-runtime.js';
+import { createApiWorkflowMetadataRuntime } from '../../../src/platform/workflow/metadata.runtime.js';
 
 // Construction/ownership tests use lazy real stores and never send a query.
 const config = parseDatabaseConfig({

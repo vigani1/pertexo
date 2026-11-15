@@ -30,7 +30,7 @@ type Scope = WorkflowApplicationInput & {
 type Read<Request> = Scope & { request: Request };
 type Command<Request> = Read<Request> & { idempotencyKey: string };
 type Of<Schema extends z.ZodType> = z.output<Schema>;
-export class WorkflowPromotionUseCase {
+export class WorkflowPromotionService {
   constructor(
     private readonly store: WorkflowPromotionStore,
     private readonly authorization: WorkspaceAuthorizationSource,

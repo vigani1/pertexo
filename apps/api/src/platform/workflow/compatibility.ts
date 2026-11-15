@@ -1,7 +1,7 @@
-import { codeStepPublicationIssues } from './code-validation.js';
-import { missingConnectionIssues } from './connection-validation.js';
-import { stepSetupIssues } from './step-setup-validation.js';
-import { switchCaseIssues } from './switch-validation.js';
+import { codeStepPublicationIssues } from './code.validation.js';
+import { missingConnectionIssues } from './connection.validation.js';
+import { stepSetupIssues } from './step-setup.validation.js';
+import { switchCaseIssues } from './switch.validation.js';
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import {
   createWorkflowAuthoringStore,

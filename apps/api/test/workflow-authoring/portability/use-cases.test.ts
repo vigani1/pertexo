@@ -1,9 +1,9 @@
 import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  ExportWorkflowUseCase,
-  ImportWorkflowUseCase,
-  PreviewWorkflowImportUseCase,
+  ExportWorkflowService,
+  ImportWorkflowService,
+  PreviewWorkflowImportService,
 } from '../../../src/workflow-authoring/portability/workflow-portability.service.js';
 import {
   authorizeWorkspace,
@@ -98,9 +98,9 @@ function fixture(role: Role = 'owner') {
   return {
     persistence,
     authorization,
-    export: new ExportWorkflowUseCase(persistence, authorization),
-    preview: new PreviewWorkflowImportUseCase(persistence, authorization),
-    import: new ImportWorkflowUseCase(persistence, authorization),
+    export: new ExportWorkflowService(persistence, authorization),
+    preview: new PreviewWorkflowImportService(persistence, authorization),
+    import: new ImportWorkflowService(persistence, authorization),
   };
 }
 describe('workflow portability application authority and exact commands', () => {

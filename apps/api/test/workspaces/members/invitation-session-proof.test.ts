@@ -14,7 +14,7 @@ import {
 } from '../../../src/authentication/index.js';
 import {
   InvitationAcceptanceController,
-  InvitationAcceptanceUseCase,
+  InvitationAcceptanceService,
   type CookieResponse,
   type IdentitySessionAuthority,
 } from '../../../src/workspaces/index.js';
@@ -62,9 +62,9 @@ function evidence(overrides: Partial<SignInEvidence> = {}): SignInEvidence {
   };
 }
 
-function useCase(recorded = intent('verified')) {
+function service(recorded = intent('verified')) {
   const recordInvitationAcceptanceProof = vi.fn().mockResolvedValue(recorded);
-  const acceptance = new InvitationAcceptanceUseCase(
+  const acceptance = new InvitationAcceptanceService(
     {
       resolveInvitationAcceptance: vi.fn(),
       readInvitationAcceptance: vi.fn().mockResolvedValue(intent('pending')),
@@ -81,7 +81,7 @@ function useCase(recorded = intent('verified')) {
 
 describe('invitation acceptance under the active session authority', () => {
   it('records a fresh verified sign-in as the bound recipient proof', async () => {
-    const { acceptance, recordInvitationAcceptanceProof } = useCase();
+    const { acceptance, recordInvitationAcceptanceProof } = service();
     await expect(
       acceptance.recordSessionProof({
         binding,
@@ -107,7 +107,7 @@ describe('invitation acceptance under the active session authority', () => {
   });
 
   it('reports a different signed-in account without accepting', async () => {
-    const { acceptance } = useCase(intent('wrong_account'));
+    const { acceptance } = service(intent('wrong_account'));
     await expect(
       acceptance.recordSessionProof({
         binding,
@@ -129,7 +129,7 @@ describe('invitation acceptance under the active session authority', () => {
       { reason: 'proof_expired' },
     ],
   ])('refuses %s', async (_case, stale, failure) => {
-    const { acceptance, recordInvitationAcceptanceProof } = useCase();
+    const { acceptance, recordInvitationAcceptanceProof } = service();
     if ('reason' in failure)
       recordInvitationAcceptanceProof.mockRejectedValue(
         new InvitationAcceptanceConflictError(
@@ -146,7 +146,7 @@ describe('invitation acceptance under the active session authority', () => {
   });
 
   it('fails closed on a wrong CSRF token and a vanished intent', async () => {
-    const { acceptance } = useCase(null as never);
+    const { acceptance } = service(null as never);
     await expect(
       acceptance.recordSessionProof({
         binding,
@@ -167,7 +167,7 @@ describe('invitation acceptance under the active session authority', () => {
     const recordSessionProof = vi.fn().mockResolvedValue({ state: 'ready' });
     const controllerWith = (sessions: Partial<IdentitySessionAuthority>) =>
       new InvitationAcceptanceController(
-        { recordSessionProof } as unknown as InvitationAcceptanceUseCase,
+        { recordSessionProof } as unknown as InvitationAcceptanceService,
         sessions as IdentitySessionAuthority,
         new DoubleSubmitCsrfPolicy(nodeIdentityCrypto),
         { secure: true, sameSite: 'lax' },

@@ -28,7 +28,7 @@ import {
   WorkflowAuthoringValidator,
 } from '@pertexo/workflow-model/server';
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
-import { createApiWorkflowMetadataRuntime } from './metadata-runtime.js';
+import { createApiWorkflowMetadataRuntime } from './metadata.runtime.js';
 import { createPostgresRunEventReader } from '../../workflow-runs/events/postgres-reader.js';
 import { RedisRunEventNotificationPublisher as RedisRunEventPublisher } from '@pertexo/queue/server';
 import { RedisRunEventSource } from '../../workflow-runs/events/redis-source.js';

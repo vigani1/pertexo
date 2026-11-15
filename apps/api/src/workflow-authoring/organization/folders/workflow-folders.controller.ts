@@ -8,12 +8,12 @@ import { authoringFailure } from '../../../problems/context/normalize-context-er
 import { In, Route } from '../../../platform/http/route.js';
 import type { WorkflowAuthoringRequest } from '../../workflow-authoring-request.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
-import { WorkflowFoldersUseCase } from './workflow-folders.service.js';
+import { WorkflowFoldersService } from './workflow-folders.service.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowFoldersController {
-  public constructor(private readonly folders: WorkflowFoldersUseCase) {}
+  public constructor(private readonly folders: WorkflowFoldersService) {}
 
   @Route(routes.list)
   public list(

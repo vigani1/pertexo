@@ -9,8 +9,8 @@ import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/auth
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { In, Route } from '../platform/http/route.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
-import { GetPreviewRunUseCase } from './previews/read.js';
-import { TestWorkflowNodeUseCase } from './node-testing.service.js';
+import { GetPreviewRunService } from './previews/read.js';
+import { TestWorkflowNodeService } from './node-testing.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../problems/context/normalize-context-errors.js';
 
@@ -22,8 +22,8 @@ interface StatusResponse {
 @Controller()
 export class NodeTestingController {
   public constructor(
-    private readonly testNode: TestWorkflowNodeUseCase,
-    private readonly getPreview: GetPreviewRunUseCase,
+    private readonly testNode: TestWorkflowNodeService,
+    private readonly getPreview: GetPreviewRunService,
   ) {}
 
   @Route(routes.preview)

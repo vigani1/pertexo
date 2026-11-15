@@ -2,7 +2,7 @@ import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../src/problems/application-error-mappers.js';
 import { RequestContextStore } from '../../src/platform/http/request-context.js';
 import { ProblemDetailsFilter } from '../../src/platform/http/problem-details.filter.js';
 import { authoringFailure } from '../../src/problems/context/normalize-context-errors.js';

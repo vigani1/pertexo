@@ -29,7 +29,7 @@ import {
   requireSignInEvidence,
 } from '../http/guards.js';
 import { firstRequestHeader } from '../../platform/http/request-headers.js';
-import { InvitationAcceptanceUseCase } from './acceptance.js';
+import { InvitationAcceptanceService } from './acceptance.js';
 import type {
   IdentitySessionAuthority,
   SessionCookiePolicy,
@@ -56,7 +56,7 @@ export class InvitationAcceptanceController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
   public constructor(
-    private readonly acceptance: InvitationAcceptanceUseCase,
+    private readonly acceptance: InvitationAcceptanceService,
     @Inject(SESSION_AUTHORITY)
     private readonly sessions: IdentitySessionAuthority,
     private readonly csrf: DoubleSubmitCsrfPolicy,

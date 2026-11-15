@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
-import { DuplicateWorkflowUseCase } from '../../../src/workflow-authoring/commands/duplicate.js';
+import { DuplicateWorkflowService } from '../../../src/workflow-authoring/commands/duplicate.js';
 import {
   authorizeWorkspace,
   createActorContext,
@@ -28,7 +28,7 @@ function fixture(role: Role = 'owner') {
   return {
     duplicateWorkflow,
     access,
-    useCase: new DuplicateWorkflowUseCase({ duplicateWorkflow }, access),
+    service: new DuplicateWorkflowService({ duplicateWorkflow }, access),
   };
 }
 const input = {
@@ -50,7 +50,7 @@ describe('workflow duplication application seam', () => {
   it.each(['workflow:read', 'workflow:create'] as const)(
     'reuses only the matching %s guard proof and freshly authorizes the other capability',
     async (capability) => {
-      const { useCase, duplicateWorkflow, access } = fixture();
+      const { service, duplicateWorkflow, access } = fixture();
       const authorizedWorkspace = await authorizeWorkspace({
         actor: input.actor,
         routeWorkspaceId: workspaceId,
@@ -60,16 +60,16 @@ describe('workflow duplication application seam', () => {
       });
       access.findAccess.mockClear();
       await expect(
-        useCase.execute({ ...input, authorizedWorkspace }),
+        service.execute({ ...input, authorizedWorkspace }),
       ).resolves.toEqual({ workflowId: destinationId });
       expect(access.findAccess).toHaveBeenCalledTimes(1);
       expect(duplicateWorkflow).toHaveBeenCalledTimes(1);
     },
   );
   it('accepts the normalized name and forwards exact selector/tag/key and cancellation to the atomic command', async () => {
-    const { useCase, duplicateWorkflow } = fixture('builder');
+    const { service, duplicateWorkflow } = fixture('builder');
     const signal = new AbortController().signal;
-    await expect(useCase.execute({ ...input, signal })).resolves.toEqual({
+    await expect(service.execute({ ...input, signal })).resolves.toEqual({
       workflowId: destinationId,
     });
     expect(duplicateWorkflow).toHaveBeenCalledExactlyOnceWith({
@@ -87,8 +87,8 @@ describe('workflow duplication application seam', () => {
   });
 
   it('selects the immutable version explicitly without substituting or sending a draft tag', async () => {
-    const { useCase, duplicateWorkflow } = fixture();
-    await useCase.execute({
+    const { service, duplicateWorkflow } = fixture();
+    await service.execute({
       ...input,
       request: { name: 'Version copy', source: { kind: 'version', versionId } },
     });
@@ -101,14 +101,14 @@ describe('workflow duplication application seam', () => {
   });
 
   it('handles a version command without optional trace, signal or precondition context', async () => {
-    const { useCase, duplicateWorkflow } = fixture();
+    const { service, duplicateWorkflow } = fixture();
     const actor = createActorContext({
       actorId,
       workspaceId,
       sessionId: versionId,
       requestId: 'copy-no-trace',
     });
-    await useCase.execute({
+    await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -131,8 +131,8 @@ describe('workflow duplication application seam', () => {
 
   it('requires destination creation authority even when the actor can read the source', async () => {
     for (const role of ['viewer', 'operator'] as const) {
-      const { useCase, duplicateWorkflow } = fixture(role);
-      await expect(useCase.execute(input)).rejects.toMatchObject({
+      const { service, duplicateWorkflow } = fixture(role);
+      await expect(service.execute(input)).rejects.toMatchObject({
         name: 'AuthorizationError',
         code: 'resource.not_found',
       });
@@ -141,11 +141,11 @@ describe('workflow duplication application seam', () => {
   });
 
   it('rejects missing/malformed draft tags before persistence', async () => {
-    const { useCase, duplicateWorkflow } = fixture();
+    const { service, duplicateWorkflow } = fixture();
     for (const representationTag of [undefined, '*', 'W/"tag"']) {
       const { representationTag: _tag, ...withoutTag } = input;
       await expect(
-        useCase.execute({
+        service.execute({
           ...withoutTag,
           ...(representationTag === undefined ? {} : { representationTag }),
         }),
@@ -155,26 +155,26 @@ describe('workflow duplication application seam', () => {
   });
 
   it('strips extra response fields and rejects malformed persistence results', async () => {
-    const { useCase, duplicateWorkflow } = fixture();
+    const { service, duplicateWorkflow } = fixture();
     duplicateWorkflow.mockResolvedValue({
       workflowId: destinationId,
       graph: {},
     });
-    await expect(useCase.execute(input)).resolves.toEqual({
+    await expect(service.execute(input)).resolves.toEqual({
       workflowId: destinationId,
     });
     duplicateWorkflow.mockResolvedValue({ workflowId: 'invalid' });
-    await expect(useCase.execute(input)).rejects.toMatchObject({
+    await expect(service.execute(input)).rejects.toMatchObject({
       name: 'ZodError',
     });
   });
 
   it('does not start persistence after the request has been cancelled', async () => {
-    const { useCase, duplicateWorkflow } = fixture();
+    const { service, duplicateWorkflow } = fixture();
     const controller = new AbortController();
     controller.abort();
     await expect(
-      useCase.execute({ ...input, signal: controller.signal }),
+      service.execute({ ...input, signal: controller.signal }),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(duplicateWorkflow).not.toHaveBeenCalled();
   });

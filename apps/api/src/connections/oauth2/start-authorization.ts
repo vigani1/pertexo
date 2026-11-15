@@ -33,7 +33,7 @@ import {
   encryptionSignal,
   toResponse,
   type ConnectionCommandInput,
-} from '../use-cases/connection-serialization.js';
+} from '../management/connection-serialization.js';
 import {
   OAuth2EndpointRefusedError,
   OAuth2ProviderUnavailableError,
@@ -69,7 +69,7 @@ export function oauth2Verifier(
 export const oauth2RedirectUri = (publicWebOrigin: string): string =>
   `${publicWebOrigin}${OAUTH2_CALLBACK_PATH}`;
 
-export class StartOAuth2AuthorizationUseCase {
+export class StartOAuth2AuthorizationService {
   public constructor(
     private readonly oauth2: ConnectionOAuth2Dependencies,
     private readonly authorization: WorkspaceAuthorizationSource,

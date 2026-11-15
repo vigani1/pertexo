@@ -16,7 +16,7 @@ import type {
   WorkflowAuthoringValidator,
 } from '@pertexo/workflow-model/server';
 import type { ApiIdentityRuntime } from '../../identity/identity-runtime.module.js';
-import type { ApiWorkflowMetadataRuntime } from '../metadata-runtime.js';
+import type { ApiWorkflowMetadataRuntime } from '../metadata.runtime.js';
 import type { LiveRunEventSource } from '../../../workflow-runs/events/stream.js';
 import type { RunEventNotificationPublisher } from '@pertexo/queue/server';
 import type { WorkflowAuthoringDependencies } from '../../../workflow-authoring/index.js';

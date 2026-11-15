@@ -40,7 +40,7 @@ type InvitationPersistence = Pick<
   | 'revokeWorkspaceInvitation'
 >;
 
-export class WorkspaceInvitationManagementUseCase {
+export class WorkspaceInvitationManagementService {
   public constructor(
     private readonly persistence: InvitationPersistence,
     private readonly tokens: InvitationTokenProtector | undefined,

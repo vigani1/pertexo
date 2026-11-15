@@ -44,7 +44,7 @@ import {
   normalizedExecutableNode,
 } from './previews/request.js';
 
-export type NodeTestUseCaseInput = Readonly<{
+export type NodeTestServiceInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
   authorizedWorkspace?: AuthorizedWorkspaceContext;
@@ -57,7 +57,7 @@ export type NodeTestUseCaseInput = Readonly<{
   traceparent?: string;
 }>;
 
-export class TestWorkflowNodeUseCase {
+export class TestWorkflowNodeService {
   // Variable reads retain their own workspace authority; preview acceptance rechecks it.
   // eslint-disable-next-line max-params
   public constructor(
@@ -72,7 +72,7 @@ export class TestWorkflowNodeUseCase {
   ) {}
 
   public async execute(
-    input: NodeTestUseCaseInput,
+    input: NodeTestServiceInput,
   ): Promise<NodeValidationResponse | NodeTestExecuteAcceptedResponse> {
     const request = input.request;
     await this.authorize(input, 'workflow:update');
@@ -148,7 +148,7 @@ export class TestWorkflowNodeUseCase {
   }
 
   private async replay(
-    input: NodeTestUseCaseInput,
+    input: NodeTestServiceInput,
     executionIdentity: ReturnType<typeof previewExecutionIdentity>,
   ): Promise<NodeTestExecuteAcceptedResponse | undefined> {
     const replay = await this.persistence.resolvePreviewReplay({
@@ -163,7 +163,7 @@ export class TestWorkflowNodeUseCase {
   }
 
   private async currentSample(
-    input: NodeTestUseCaseInput,
+    input: NodeTestServiceInput,
     request: NodeTestRequest,
     draft: WorkflowDraftRecord,
   ): Promise<string | undefined> {
@@ -193,7 +193,7 @@ export class TestWorkflowNodeUseCase {
   }
 
   private async accept(
-    input: NodeTestUseCaseInput,
+    input: NodeTestServiceInput,
     {
       request,
       executionIdentity,
@@ -289,7 +289,7 @@ export class TestWorkflowNodeUseCase {
   }
 
   private async currentDraft(
-    input: NodeTestUseCaseInput,
+    input: NodeTestServiceInput,
   ): Promise<WorkflowDraftRecord> {
     const draft = await this.persistence.getDraft(
       input.routeWorkspaceId,
@@ -302,7 +302,7 @@ export class TestWorkflowNodeUseCase {
   }
 
   private async authorize(
-    input: NodeTestUseCaseInput,
+    input: NodeTestServiceInput,
     capability: 'workflow:update' | 'connection:use',
   ): Promise<void> {
     const authorize =

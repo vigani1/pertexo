@@ -3,7 +3,7 @@ import { authoringFailure } from '../../../src/problems/context/normalize-contex
 import { problemResult } from '../../support/problem.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowAutoPauseStore } from '@pertexo/core/authoring';
-import { WorkflowAutoPauseUseCase } from '../../../src/workflow-authoring/settings/auto-pause.js';
+import { WorkflowAutoPauseService } from '../../../src/workflow-authoring/settings/auto-pause.js';
 import { createActorContext } from '../../../src/authorization/index.js';
 
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
@@ -54,7 +54,7 @@ function fixture(role: Role = 'owner') {
       workspaceStatus: 'active',
     }),
   };
-  const controls = new WorkflowAutoPauseUseCase(persistence, authorization);
+  const controls = new WorkflowAutoPauseService(persistence, authorization);
   return { persistence, authorization, controls };
 }
 

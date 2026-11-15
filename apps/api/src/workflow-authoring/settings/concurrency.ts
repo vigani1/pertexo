@@ -15,7 +15,7 @@ type CommandInput<Request> = ReadInput &
   Readonly<{ request: Request; idempotencyKey: string }>;
 
 /** Operational policy never mutates drafts, publication or trigger state. */
-export class WorkflowConcurrencyUseCase {
+export class WorkflowConcurrencyService {
   public constructor(
     private readonly persistence: WorkflowConcurrencyStore,
     private readonly authorization: WorkspaceAuthorizationSource,

@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 import { createWorkerApplication } from '../../dist/worker-application.js';
-import { WORKSPACE_INBOX_RUNTIME } from '../../dist/notifications/inbox-runtime.js';
+import { WORKSPACE_INBOX_RUNTIME } from '../../dist/notifications/inbox.runtime.js';
 import { WORKSPACE_DATABASE } from '../../dist/platform/database/database.module.js';
 import { RETENTION_RUNTIME } from '../../dist/retention/retention.runtime.js';
 import { STALLED_WORK_RUNTIME } from '../../dist/runs/stalled-work.js';
@@ -19,7 +19,7 @@ import {
 } from '../../dist/transport/transport.module.js';
 import { OutboxDispatcher } from '../../dist/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { createOwnedOutboxDispatcher } from '../../dist/transport/providers/dispatcher.js';
-import { WORKFLOW_AUTO_PAUSE_RUNTIME } from '../../dist/workflows/auto-pause-runtime.js';
+import { WORKFLOW_AUTO_PAUSE_RUNTIME } from '../../dist/workflows/auto-pause.runtime.js';
 import process from 'node:process';
 import { clearInterval, setInterval } from 'node:timers';
 

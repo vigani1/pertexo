@@ -4,8 +4,8 @@ import type { Role } from '@pertexo/policy';
 import { vi } from 'vitest';
 import { createActorContext } from '../../src/authorization/index.js';
 import {
-  ReplayWorkflowRunUseCase,
-  StartWorkflowRunUseCase,
+  ReplayWorkflowRunService,
+  StartWorkflowRunService,
   type ReplayWorkflowRunInput,
   type StartWorkflowRunInput,
 } from '../../src/workflow-runs/workflow-runs.service.js';
@@ -103,7 +103,7 @@ export async function startCommand(
     ...overrides,
   };
   const fixture = persistence();
-  await new StartWorkflowRunUseCase(
+  await new StartWorkflowRunService(
     fixture.store,
     accessFor(input.actor.actorId, input.routeWorkspaceId),
   ).execute(input);
@@ -125,7 +125,7 @@ export async function replayCommand(
     ...overrides,
   };
   const fixture = persistence();
-  await new ReplayWorkflowRunUseCase(
+  await new ReplayWorkflowRunService(
     fixture.store,
     accessFor(input.actor.actorId, input.routeWorkspaceId),
   ).execute(input);

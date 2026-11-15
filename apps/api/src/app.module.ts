@@ -43,7 +43,7 @@ import { WebhookModule } from './webhooks/webhook.module.js';
 import { ScheduleModule } from './schedules/schedule.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
-import { APPLICATION_ERROR_MAPPERS } from './application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from './problems/application-error-mappers.js';
 import {
   ArtifactRuntimeModule,
   DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,

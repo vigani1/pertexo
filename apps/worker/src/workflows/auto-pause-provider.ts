@@ -6,7 +6,7 @@ import type { WorkerConfig } from '../config/worker.js';
 import {
   createWorkflowAutoPauseRuntime,
   type WorkflowAutoPauseRuntime,
-} from './auto-pause-runtime.js';
+} from './auto-pause.runtime.js';
 
 /** ADR 056: an injected runtime, else the fold loop. */
 export function configuredWorkflowAutoPauseRuntime(

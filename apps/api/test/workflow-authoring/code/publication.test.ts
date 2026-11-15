@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import { codeStepPublicationIssues } from '../../../src/platform/workflow/code-validation.js';
+import { codeStepPublicationIssues } from '../../../src/platform/workflow/code.validation.js';
 
 const graph = (
   code = 'return input;',

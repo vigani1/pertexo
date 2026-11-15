@@ -35,7 +35,7 @@ type FolderCommand<Request = unknown> = Command<Request> &
   Readonly<{ folderId: string }>;
 
 /** Folder metadata does not grant authority or change workflow lifecycle. */
-export class WorkflowFoldersUseCase {
+export class WorkflowFoldersService {
   public constructor(
     private readonly folders: WorkflowFolderStore,
     private readonly authorization: WorkspaceAuthorizationSource,

@@ -12,7 +12,7 @@ import {
   type PlatformNodeDefinitionBrowserProjection,
 } from '@pertexo/node-catalog';
 
-export class ListNodeDefinitionsUseCase {
+export class ListNodeDefinitionsService {
   private readonly catalog: PlatformNodeDefinitionBrowserCatalog;
 
   public constructor(
@@ -30,7 +30,7 @@ export class ListNodeDefinitionsUseCase {
   }
 }
 
-export class ListIntegrationsUseCase {
+export class ListIntegrationsService {
   private readonly catalog: PlatformNodeDefinitionBrowserCatalog;
 
   public constructor(catalog: PlatformNodeDefinitionBrowserCatalog) {
@@ -97,15 +97,15 @@ function compareDefinition(
 }
 
 /** Construct the immutable browser catalog once during module registration. */
-export function createCatalogUseCases(
+export function createCatalogServices(
   codeSettings: CodeSettings = DEFAULT_CODE_SETTINGS,
 ): Readonly<{
-  readonly listNodeDefinitions: ListNodeDefinitionsUseCase;
-  readonly listIntegrations: ListIntegrationsUseCase;
+  readonly listNodeDefinitions: ListNodeDefinitionsService;
+  readonly listIntegrations: ListIntegrationsService;
 }> {
   const catalog = platformBrowserNodeDefinitionCatalog();
   return Object.freeze({
-    listNodeDefinitions: new ListNodeDefinitionsUseCase(catalog, codeSettings),
-    listIntegrations: new ListIntegrationsUseCase(catalog),
+    listNodeDefinitions: new ListNodeDefinitionsService(catalog, codeSettings),
+    listIntegrations: new ListIntegrationsService(catalog),
   });
 }

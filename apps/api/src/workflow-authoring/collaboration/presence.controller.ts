@@ -4,7 +4,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../platform/http/route.js';
-import { WorkflowCollaborationUseCase } from './workflow-collaboration.service.js';
+import { WorkflowCollaborationService } from './workflow-collaboration.service.js';
 import { collaborationOperation } from './http.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
@@ -12,7 +12,7 @@ import { collaborationFailure } from '../../problems/context/normalize-context-e
 @UseInterceptors(domainErrors(collaborationFailure))
 @Controller()
 export class WorkflowPresenceController {
-  constructor(private readonly collaboration: WorkflowCollaborationUseCase) {}
+  constructor(private readonly collaboration: WorkflowCollaborationService) {}
   @Route(routes.presence)
   async read(
     @Req() request: WorkflowAuthoringRequest,

@@ -14,7 +14,7 @@ import type {
 } from '../ports.js';
 
 /** Current operational capacity, never a billing or retained-activity meter. */
-export class GetUsageCapacityUseCase {
+export class GetUsageCapacityService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'usageCapacity'>,
     private readonly authorization: WorkspaceAuthorizationSource,

@@ -14,18 +14,18 @@ import type {
   WorkflowResponse,
 } from '../workflow-authoring-request.js';
 import {
-  ExportWorkflowUseCase,
-  ImportWorkflowUseCase,
-  PreviewWorkflowImportUseCase,
+  ExportWorkflowService,
+  ImportWorkflowService,
+  PreviewWorkflowImportService,
 } from './workflow-portability.service.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowPortabilityController {
   public constructor(
-    private readonly exportWorkflow: ExportWorkflowUseCase,
-    private readonly previewImport: PreviewWorkflowImportUseCase,
-    private readonly importWorkflow: ImportWorkflowUseCase,
+    private readonly exportWorkflow: ExportWorkflowService,
+    private readonly previewImport: PreviewWorkflowImportService,
+    private readonly importWorkflow: ImportWorkflowService,
   ) {}
 
   @Route(routes.export)

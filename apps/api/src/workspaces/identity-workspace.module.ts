@@ -13,16 +13,16 @@ import {
   WorkspaceMembersController,
   WorkspaceController,
 } from './http/workspaces.controller.js';
-import { SessionController } from './http/session-controller.js';
-import { WorkspaceInvitationsController } from './invitations/management-controller.js';
-import { WorkspaceInvitationManagementUseCase } from './invitations/management.js';
-import { InvitationAcceptanceController } from './invitations/acceptance-controller.js';
-import { InvitationAcceptanceUseCase } from './invitations/acceptance.js';
-import { RemoveWorkspaceMemberUseCase } from './members/removal.js';
-import { WorkspaceMembershipController } from './members/lifecycle-controller.js';
-import { WorkspaceMembershipLifecycleUseCase } from './members/lifecycle.js';
-import { UpdateUserProfileUseCase } from './commands/user-profile.js';
-import { RenameWorkspaceUseCase } from './commands/rename.js';
+import { SessionController } from './http/session.controller.js';
+import { WorkspaceInvitationsController } from './invitations/management.controller.js';
+import { WorkspaceInvitationManagementService } from './invitations/management.js';
+import { InvitationAcceptanceController } from './invitations/acceptance.controller.js';
+import { InvitationAcceptanceService } from './invitations/acceptance.js';
+import { RemoveWorkspaceMemberService } from './members/removal.js';
+import { WorkspaceMembershipController } from './members/lifecycle.controller.js';
+import { WorkspaceMembershipLifecycleService } from './members/lifecycle.js';
+import { UpdateUserProfileService } from './commands/user-profile.js';
+import { RenameWorkspaceService } from './commands/rename.js';
 import {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
@@ -32,12 +32,12 @@ import {
   WorkspaceMembershipGuard,
 } from './http/guards.js';
 import {
-  CreateWorkspaceUseCase,
-  ChangeWorkspaceMemberRoleUseCase,
-  GetCurrentUserUseCase,
-  ListAccessibleWorkspacesUseCase,
-  ListWorkspaceMembersUseCase,
-  WorkspaceLifecycleUseCase,
+  CreateWorkspaceService,
+  ChangeWorkspaceMemberRoleService,
+  GetCurrentUserService,
+  ListAccessibleWorkspacesService,
+  ListWorkspaceMembersService,
+  WorkspaceLifecycleService,
 } from './workspaces.service.js';
 import type {
   IdentityWorkspaceDependencies,
@@ -74,12 +74,12 @@ export class IdentityWorkspaceModule {
       ...identityCoreProviders(dependencies, crypto, clock),
       ...identityReadProviders(),
       {
-        provide: WorkspaceInvitationManagementUseCase,
+        provide: WorkspaceInvitationManagementService,
         useFactory: (
           persistence: IdentityWorkspaceDependencies['persistence'],
           identityCrypto: IdentityCrypto,
         ) =>
-          new WorkspaceInvitationManagementUseCase(
+          new WorkspaceInvitationManagementService(
             persistence,
             dependencies.invitationTokens,
             identityCrypto,
@@ -87,13 +87,13 @@ export class IdentityWorkspaceModule {
         inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_CRYPTO],
       },
       {
-        provide: InvitationAcceptanceUseCase,
+        provide: InvitationAcceptanceService,
         useFactory: (
           persistence: IdentityWorkspaceDependencies['persistence'],
           identityCrypto: IdentityCrypto,
           identityClock: IdentityClock,
         ) =>
-          new InvitationAcceptanceUseCase(
+          new InvitationAcceptanceService(
             persistence,
             identityCrypto,
             identityClock,
@@ -142,18 +142,18 @@ export class IdentityWorkspaceModule {
         SESSION_AUTHORITY,
         CSRF_POLICY,
         DoubleSubmitCsrfPolicy,
-        CreateWorkspaceUseCase,
-        RenameWorkspaceUseCase,
-        WorkspaceLifecycleUseCase,
-        GetCurrentUserUseCase,
-        ListAccessibleWorkspacesUseCase,
-        ListWorkspaceMembersUseCase,
-        ChangeWorkspaceMemberRoleUseCase,
-        RemoveWorkspaceMemberUseCase,
-        WorkspaceMembershipLifecycleUseCase,
-        UpdateUserProfileUseCase,
-        WorkspaceInvitationManagementUseCase,
-        InvitationAcceptanceUseCase,
+        CreateWorkspaceService,
+        RenameWorkspaceService,
+        WorkspaceLifecycleService,
+        GetCurrentUserService,
+        ListAccessibleWorkspacesService,
+        ListWorkspaceMembersService,
+        ChangeWorkspaceMemberRoleService,
+        RemoveWorkspaceMemberService,
+        WorkspaceMembershipLifecycleService,
+        UpdateUserProfileService,
+        WorkspaceInvitationManagementService,
+        InvitationAcceptanceService,
         SessionAuthenticationGuard,
         CsrfProtectionGuard,
         WorkspaceManageGuard,
@@ -168,29 +168,29 @@ export class IdentityWorkspaceModule {
 function identityReadProviders(): Provider[] {
   return [
     {
-      provide: ChangeWorkspaceMemberRoleUseCase,
+      provide: ChangeWorkspaceMemberRoleService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) => new ChangeWorkspaceMemberRoleUseCase(persistence, telemetry),
+      ) => new ChangeWorkspaceMemberRoleService(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
-      provide: RemoveWorkspaceMemberUseCase,
+      provide: RemoveWorkspaceMemberService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) => new RemoveWorkspaceMemberUseCase(persistence, telemetry),
+      ) => new RemoveWorkspaceMemberService(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
-      provide: WorkspaceMembershipLifecycleUseCase,
+      provide: WorkspaceMembershipLifecycleService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         clock: IdentityClock,
         telemetry: IdentityWorkspaceTelemetry,
       ) =>
-        new WorkspaceMembershipLifecycleUseCase(persistence, clock, telemetry),
+        new WorkspaceMembershipLifecycleService(persistence, clock, telemetry),
       inject: [
         IDENTITY_WORKSPACE_PERSISTENCE,
         IDENTITY_CLOCK,
@@ -198,37 +198,37 @@ function identityReadProviders(): Provider[] {
       ],
     },
     {
-      provide: UpdateUserProfileUseCase,
+      provide: UpdateUserProfileService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) => new UpdateUserProfileUseCase(persistence, telemetry),
+      ) => new UpdateUserProfileService(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
-      provide: ListAccessibleWorkspacesUseCase,
+      provide: ListAccessibleWorkspacesService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) => new ListAccessibleWorkspacesUseCase(persistence, telemetry),
+      ) => new ListAccessibleWorkspacesService(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
-      provide: GetCurrentUserUseCase,
+      provide: GetCurrentUserService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) => new GetCurrentUserUseCase(persistence, telemetry),
+      ) => new GetCurrentUserService(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
-      provide: ListWorkspaceMembersUseCase,
+      provide: ListWorkspaceMembersService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         authorization: IdentityWorkspaceDependencies['authorization'],
         telemetry: IdentityWorkspaceTelemetry,
       ) =>
-        new ListWorkspaceMembersUseCase(persistence, authorization, telemetry),
+        new ListWorkspaceMembersService(persistence, authorization, telemetry),
       inject: [
         IDENTITY_WORKSPACE_PERSISTENCE,
         WORKSPACE_AUTHORIZATION,
@@ -281,28 +281,28 @@ function identityCoreProviders(
       useExisting: CSRF_POLICY,
     },
     {
-      provide: CreateWorkspaceUseCase,
+      provide: CreateWorkspaceService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) => new CreateWorkspaceUseCase(persistence, telemetry),
+      ) => new CreateWorkspaceService(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
-      provide: RenameWorkspaceUseCase,
+      provide: RenameWorkspaceService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) => new RenameWorkspaceUseCase(persistence, telemetry),
+      ) => new RenameWorkspaceService(persistence, telemetry),
       inject: [IDENTITY_WORKSPACE_PERSISTENCE, IDENTITY_WORKSPACE_TELEMETRY],
     },
     {
-      provide: WorkspaceLifecycleUseCase,
+      provide: WorkspaceLifecycleService,
       useFactory: (
         persistence: IdentityWorkspaceDependencies['persistence'],
         authorization: IdentityWorkspaceDependencies['authorization'],
         telemetry: IdentityWorkspaceTelemetry,
-      ) => new WorkspaceLifecycleUseCase(persistence, authorization, telemetry),
+      ) => new WorkspaceLifecycleService(persistence, authorization, telemetry),
       inject: [
         IDENTITY_WORKSPACE_PERSISTENCE,
         WORKSPACE_AUTHORIZATION,

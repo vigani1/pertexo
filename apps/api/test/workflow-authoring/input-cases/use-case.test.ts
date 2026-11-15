@@ -26,7 +26,7 @@ import {
   fixture,
 } from './input-cases-service.fixture.js';
 import { toProblem } from '../../../src/problems/api-problem-registry.js';
-import { WorkflowInputCasesUseCase } from '../../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
+import { WorkflowInputCasesService } from '../../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';
@@ -311,7 +311,7 @@ describe('workflow input case HTTP interface', () => {
       controllers: [WorkflowInputCasesController],
       providers: [
         { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
-        { provide: WorkflowInputCasesUseCase, useValue: cases },
+        { provide: WorkflowInputCasesService, useValue: cases },
       ],
     });
     try {

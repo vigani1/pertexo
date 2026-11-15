@@ -11,7 +11,7 @@ import {
 import type { createOperatorRunReplayHandler } from '../operator/run-replay.js';
 import type { FailureNotificationHandler } from '../notifications/failure-handler.js';
 import type { WorkspaceInvitationDeliveryHandler } from '../mail/invitation-delivery.js';
-import type { createConnectionHealthObservationHandler } from '../connections/health-runtime.js';
+import type { createConnectionHealthObservationHandler } from '../connections/health.runtime.js';
 
 export type MaintenanceHandlers = Readonly<{
   failureNotification?: FailureNotificationHandler;

@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { connectionUsageResponseSchema } from '@pertexo/contracts';
 
 import {
-  ListConnectionUsageUseCase,
+  ListConnectionUsageService,
   encodeConnectionUsageCursor,
   decodeConnectionUsageCursor,
-} from '../../../src/connections/use-cases/usage.js';
+} from '../../../src/connections/management/connection-usage.js';
 import { InvalidConnectionCursorError } from '../../../src/connections/cursor.js';
-import { toResponse } from '../../../src/connections/use-cases/connection-serialization.js';
+import { toResponse } from '../../../src/connections/management/connection-serialization.js';
 import {
   actor,
   actorId,
@@ -60,11 +60,11 @@ describe('connection usage read', () => {
     const listConnectionUsage = vi
       .fn()
       .mockResolvedValue({ items: [item], nextCursor: { workflowVersionId } });
-    const useCase = new ListConnectionUsageUseCase(
+    const service = new ListConnectionUsageService(
       { listConnectionUsage },
       authorization(),
     );
-    const response = await useCase.execute({
+    const response = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       connectionId,
@@ -100,7 +100,7 @@ describe('connection usage read', () => {
       } as never);
       const listConnectionUsage = vi.fn();
       await expect(
-        new ListConnectionUsageUseCase({ listConnectionUsage }, access).execute(
+        new ListConnectionUsageService({ listConnectionUsage }, access).execute(
           { actor, routeWorkspaceId: workspaceId, connectionId },
         ),
       ).rejects.toMatchObject({
@@ -121,7 +121,7 @@ describe('connection usage read', () => {
       workspaceStatus: 'active',
     } as never);
     const listConnectionUsage = vi.fn().mockResolvedValue({ items: [] });
-    const result = await new ListConnectionUsageUseCase(
+    const result = await new ListConnectionUsageService(
       { listConnectionUsage },
       access,
     ).execute({ actor, routeWorkspaceId: workspaceId, connectionId });

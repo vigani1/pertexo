@@ -10,14 +10,14 @@ import {
   draftContext as context,
   type DraftRequest as Request,
 } from '../draft-context.js';
-import { StepSamplesUseCase } from './step-samples.service.js';
+import { StepSamplesService } from './step-samples.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller()
 export class StepSamplesController {
-  constructor(private readonly samples: StepSamplesUseCase) {}
+  constructor(private readonly samples: StepSamplesService) {}
 
   @Route(routes.list)
   list(

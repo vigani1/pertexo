@@ -1,4 +1,4 @@
-import { NodeAttemptHandlerStateError } from '../../src/attempts/delivery/handler-state-error.js';
+import { NodeAttemptHandlerStateError } from '../../src/attempts/delivery/handler-state.errors.js';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   NodeAttemptLease,

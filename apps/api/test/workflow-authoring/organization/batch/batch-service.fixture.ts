@@ -11,7 +11,7 @@ import {
   type WorkspaceAccess,
   type WorkspaceAuthorizationPort,
 } from '../../../../src/authorization/index.js';
-import { WorkflowOrganizationBatchesUseCase } from '../../../../src/workflow-authoring/organization/batch/workflow-organization-batches.service.js';
+import { WorkflowOrganizationBatchesService } from '../../../../src/workflow-authoring/organization/batch/workflow-organization-batches.service.js';
 
 export const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
@@ -99,7 +99,7 @@ export function fixture(role: WorkspaceAccess['role'] = 'owner') {
   return {
     batches,
     authorization,
-    useCase: new WorkflowOrganizationBatchesUseCase(batches, authorization),
+    service: new WorkflowOrganizationBatchesService(batches, authorization),
   };
 }
 

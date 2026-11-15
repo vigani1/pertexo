@@ -1,7 +1,7 @@
 import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
 import type { WorkflowErrorStore } from '@pertexo/core/authoring';
-import { WorkflowErrorUseCase } from '../../../src/workflow-authoring/settings/error-workflow.js';
+import { WorkflowErrorService } from '../../../src/workflow-authoring/settings/error-workflow.js';
 import { createActorContext } from '../../../src/authorization/index.js';
 
 const workspaceId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
@@ -32,7 +32,7 @@ function fixture(role: Role = 'owner') {
   };
   return {
     persistence,
-    controls: new WorkflowErrorUseCase(persistence, authorization),
+    controls: new WorkflowErrorService(persistence, authorization),
   };
 }
 describe('error workflow Settings boundary', () => {

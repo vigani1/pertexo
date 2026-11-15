@@ -8,7 +8,7 @@ import {
   type NodeAttemptRuntimeOptions,
 } from '../../src/attempts/delivery/node-attempt.runtime.js';
 import type { NodeExecutionCapabilityFactories } from '../../src/attempts/execution/capabilities.js';
-import { connectionHealthObservationFactories } from '../../src/connections/health-runtime.js';
+import { connectionHealthObservationFactories } from '../../src/connections/health.runtime.js';
 import {
   createMaintenanceRuntime,
   type MaintenanceRuntimeFactories,

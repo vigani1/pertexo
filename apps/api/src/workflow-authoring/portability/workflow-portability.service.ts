@@ -93,7 +93,7 @@ class PortabilityAuthority {
   }
 }
 
-export class ExportWorkflowUseCase extends PortabilityAuthority {
+export class ExportWorkflowService extends PortabilityAuthority {
   public execute(
     input: Input &
       Readonly<{ workflowId: string; representationTag?: unknown }>,
@@ -116,7 +116,7 @@ export class ExportWorkflowUseCase extends PortabilityAuthority {
     });
   }
 }
-export class PreviewWorkflowImportUseCase extends PortabilityAuthority {
+export class PreviewWorkflowImportService extends PortabilityAuthority {
   public execute(input: Input) {
     return this.telemetry.measure('workflow.import.preview', async () => {
       const command = parse(workflowImportPreviewRequestSchema, input.request);
@@ -140,7 +140,7 @@ export class PreviewWorkflowImportUseCase extends PortabilityAuthority {
     });
   }
 }
-export class ImportWorkflowUseCase extends PortabilityAuthority {
+export class ImportWorkflowService extends PortabilityAuthority {
   public execute(input: Input & Readonly<{ idempotencyKey: string }>) {
     return this.telemetry.measure('workflow.import', async () => {
       const command = parse(workflowImportRequestSchema, input.request);

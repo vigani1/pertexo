@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import type { PublicationReviewStore } from '@pertexo/core/authoring';
 import { PublicationReviewError } from '@pertexo/core/authoring';
 import { createActorContext } from '../../../src/authorization/index.js';
-import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/publication-review.service.js';
+import { PublicationReviewService } from '../../../src/workflow-authoring/reviews/publication-review.service.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -56,7 +56,7 @@ function fixture(role: Role) {
   };
   return {
     store,
-    controls: new PublicationReviewUseCase(store, authorization),
+    controls: new PublicationReviewService(store, authorization),
   };
 }
 it('lets a builder request the exact representation', async () => {

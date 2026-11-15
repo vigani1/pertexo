@@ -2,7 +2,7 @@ import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { createActorContext } from '../../src/authorization/index.js';
-import { WorkflowTestSuitesUseCase } from '../../src/node-testing/suites/workflow-test-suites.service.js';
+import { WorkflowTestSuitesService } from '../../src/node-testing/suites/workflow-test-suites.service.js';
 const workspaceId = randomUUID(),
   actorId = randomUUID(),
   workflowId = randomUUID(),
@@ -32,7 +32,7 @@ function fixture(role: Role = 'owner') {
       workspaceStatus: 'active',
     }),
   };
-  return { store, useCase: new WorkflowTestSuitesUseCase(store, access) };
+  return { store, service: new WorkflowTestSuitesService(store, access) };
 }
 const request = {
   expectedRevision: 1,
@@ -48,7 +48,7 @@ describe('draft suite boundary', () => {
     const f = fixture(),
       idempotencyKey = randomUUID();
     expect(
-      await f.useCase.start({ ...input, request, idempotencyKey }),
+      await f.service.start({ ...input, request, idempotencyKey }),
     ).toEqual({ suiteId });
     expect(f.store.start).toHaveBeenCalledExactlyOnceWith({
       workspaceId,
@@ -60,25 +60,25 @@ describe('draft suite boundary', () => {
   });
   it('requires editor and run permissions for all reports and commands', async () => {
     const f = fixture('viewer');
-    await expect(f.useCase.prepare(input)).rejects.toMatchObject({
+    await expect(f.service.prepare(input)).rejects.toMatchObject({
       name: 'AuthorizationError',
       code: 'resource.not_found',
     });
-    await expect(f.useCase.list(input)).rejects.toMatchObject({
+    await expect(f.service.list(input)).rejects.toMatchObject({
       name: 'AuthorizationError',
       code: 'resource.not_found',
     });
-    await expect(f.useCase.get({ ...input, suiteId })).rejects.toMatchObject({
+    await expect(f.service.get({ ...input, suiteId })).rejects.toMatchObject({
       name: 'AuthorizationError',
       code: 'resource.not_found',
     });
     await expect(
-      f.useCase.report({ ...input, suiteId, ordinal: 0 }),
+      f.service.report({ ...input, suiteId, ordinal: 0 }),
     ).rejects.toMatchObject({
       name: 'AuthorizationError',
       code: 'resource.not_found',
     });
-    await expect(f.useCase.cancel({ ...input, suiteId })).rejects.toMatchObject(
+    await expect(f.service.cancel({ ...input, suiteId })).rejects.toMatchObject(
       { name: 'AuthorizationError', code: 'resource.not_found' },
     );
     expect(f.store.prepare).not.toHaveBeenCalled();
@@ -91,7 +91,7 @@ describe('draft suite boundary', () => {
       report: { unbounded: 'x'.repeat(100000) },
     });
     await expect(
-      f.useCase.report({ ...input, suiteId, ordinal: 0 }),
+      f.service.report({ ...input, suiteId, ordinal: 0 }),
     ).rejects.toMatchObject({ name: 'ZodError' });
   });
 });

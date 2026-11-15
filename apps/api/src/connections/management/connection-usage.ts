@@ -47,7 +47,7 @@ export function decodeConnectionUsageCursor(
   return Object.freeze({ workflowVersionId: cursor.workflowVersionId });
 }
 
-export class ListConnectionUsageUseCase {
+export class ListConnectionUsageService {
   public constructor(
     private readonly persistence: ConnectionUsageStore,
     private readonly authorization: WorkspaceAuthorizationSource,

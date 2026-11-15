@@ -9,7 +9,7 @@ import type {
   WorkflowRunPersistence,
   WorkflowRunStatisticsRecord,
 } from '../../src/workflow-runs/ports.js';
-import { GetWorkflowRunStatisticsUseCase } from '../../src/workflow-runs/statistics.js';
+import { GetWorkflowRunStatisticsService } from '../../src/workflow-runs/statistics.js';
 
 const actorId = '11111111-1111-4111-8111-111111111111';
 const workspaceId = '22222222-2222-4222-8222-222222222222';
@@ -74,7 +74,7 @@ describe('workflow run statistics use case', () => {
   it('reads the 24-hour window without a breakdown by default', async () => {
     const store = persistence();
 
-    const result = await new GetWorkflowRunStatisticsUseCase(
+    const result = await new GetWorkflowRunStatisticsService(
       store,
       access(),
     ).execute({ actor, routeWorkspaceId: workspaceId });
@@ -99,7 +99,7 @@ describe('workflow run statistics use case', () => {
       (_role: string, capability: string) => capability !== 'workflow:read',
     );
 
-    const result = await new GetWorkflowRunStatisticsUseCase(
+    const result = await new GetWorkflowRunStatisticsService(
       store,
       access('pending_deletion'),
       policy,
@@ -129,7 +129,7 @@ describe('workflow run statistics use case', () => {
 
     for (const authorization of [outsider, access('deleted')])
       await expect(
-        new GetWorkflowRunStatisticsUseCase(store, authorization).execute({
+        new GetWorkflowRunStatisticsService(store, authorization).execute({
           actor,
           routeWorkspaceId: workspaceId,
         }),
@@ -144,7 +144,7 @@ describe('workflow run statistics use case', () => {
     });
 
     await expect(
-      new GetWorkflowRunStatisticsUseCase(store, access()).execute({
+      new GetWorkflowRunStatisticsService(store, access()).execute({
         actor,
         routeWorkspaceId: workspaceId,
       }),

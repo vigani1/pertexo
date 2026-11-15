@@ -8,19 +8,19 @@ import {
   vi,
 } from 'vitest';
 import { CONNECTION_OPERATION } from '../../../src/connections/telemetry.js';
-import { TestConnectionUseCase } from '../../../src/connections/use-cases/test-connection.js';
+import { TestConnectionService } from '../../../src/connections/testing/test-connection.js';
 import {
   authorization,
   connectionTestPersistence,
   sealed,
 } from '../support/use-case-fixture.js';
 import { FailureNotificationDestinationsController } from '../../../src/connections/failure-notifications/failure-notification-destinations.controller.js';
-import { FailureNotificationDestinationUseCases } from '../../../src/connections/failure-notifications/destinations.js';
+import { FailureNotificationDestinationServices } from '../../../src/connections/failure-notifications/destinations.js';
 import { ConnectionsModule } from '../../../src/connections/connections.module.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';
-import { hashRequest } from '../../../src/connections/use-cases/connection-serialization.js';
+import { hashRequest } from '../../../src/connections/management/connection-serialization.js';
 import {
   actorId,
   workspaceId,
@@ -36,31 +36,31 @@ import { FailureNotificationDestinationError } from '@pertexo/core/testing';
 describe('failure notification destination API seams', () => {
   it('accepts typed application commands for all seven operations', async () => {
     const database = persistence();
-    const useCases = new FailureNotificationDestinationUseCases(
+    const services = new FailureNotificationDestinationServices(
       database,
       'fixture-application-secret',
     );
     const mutation = { ...command, idempotencyKey: 'typed-command-42' };
 
-    const created = await useCases.create({ ...mutation, body: record.config });
-    const listed = await useCases.list(command);
-    const fetched = await useCases.get({ ...command, destinationId });
-    const appended = await useCases.append({
+    const created = await services.create({ ...mutation, body: record.config });
+    const listed = await services.list(command);
+    const fetched = await services.get({ ...command, destinationId });
+    const appended = await services.append({
       ...mutation,
       destinationId,
       body: { expectedVersion: 1, config: record.config },
     });
-    const status = await useCases.status({
+    const status = await services.status({
       ...mutation,
       destinationId,
       body: { status: 'disabled' },
     });
-    await useCases.setPolicy({
+    await services.setPolicy({
       ...mutation,
       workflowId,
       body: { destinationId },
     });
-    await useCases.clearPolicy({ ...mutation, workflowId });
+    await services.clearPolicy({ ...mutation, workflowId });
 
     const exactResponse = {
       id: destinationId,
@@ -153,7 +153,7 @@ describe('failure notification destination API seams', () => {
   it('keeps GET idempotency-free and measures destination-specific commands', async () => {
     const database = persistence();
     const measured: string[] = [];
-    const useCases = new FailureNotificationDestinationUseCases(
+    const services = new FailureNotificationDestinationServices(
       database,
       'fixture-application-secret',
       {
@@ -164,8 +164,8 @@ describe('failure notification destination API seams', () => {
       },
     );
 
-    await useCases.list(command);
-    await useCases.status({
+    await services.list(command);
+    await services.status({
       ...command,
       idempotencyKey: 'destination-status-42',
       destinationId,
@@ -208,15 +208,15 @@ describe('failure notification destination routes', () => {
       providers: [
         { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
         {
-          provide: FailureNotificationDestinationUseCases,
-          useValue: new FailureNotificationDestinationUseCases(
+          provide: FailureNotificationDestinationServices,
+          useValue: new FailureNotificationDestinationServices(
             database,
             'fixture-application-secret',
           ),
         },
         {
-          provide: TestConnectionUseCase,
-          useValue: new TestConnectionUseCase(
+          provide: TestConnectionService,
+          useValue: new TestConnectionService(
             connectionTests,
             authorization(),
             {
