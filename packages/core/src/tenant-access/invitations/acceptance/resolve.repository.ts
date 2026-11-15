@@ -1,5 +1,5 @@
 import { ACCEPTANCE_INTENT_TTL_MILLIS } from '../deadlines.js';
-import { readInvitationTime } from '../clock.repository.js';
+import { readDatabaseClock } from '../../../shared/database-clock.repository.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
@@ -90,7 +90,7 @@ export async function resolveInvitationAcceptance(
         )
         .catch(rethrowQueryFailure);
     }
-    const now = await readInvitationTime(client);
+    const now = await readDatabaseClock(client);
     if (current.expires_at.getTime() <= now.getTime()) {
       await expireWorkspaceInvitations(client, {
         workspaceId,
@@ -106,7 +106,7 @@ export async function resolveInvitationAcceptance(
       });
       if (resolution.kind === 'resolved') return resolution.intent;
     }
-    const issuedAt = await readInvitationTime(client);
+    const issuedAt = await readDatabaseClock(client);
     if (current.expires_at.getTime() <= issuedAt.getTime()) {
       await expireWorkspaceInvitations(client, { workspaceId, invitationId });
       return null;
@@ -249,7 +249,7 @@ async function resolveReplacementBinding(
     claim.successor_intent_id,
   );
   const successor = claimedIntent[0];
-  const now = await readInvitationTime(client);
+  const now = await readDatabaseClock(client);
   if (exactClaim) {
     const successorUnavailable =
       successor === undefined ||

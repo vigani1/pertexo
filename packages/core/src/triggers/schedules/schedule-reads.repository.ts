@@ -32,6 +32,7 @@ import {
   readPersistedScheduleRecurrence,
   projectScheduleOccurrences,
 } from './recurrence.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 
 /**
  * ADR 048: reads of what a schedule did and will do. Occurrence history is
@@ -157,16 +158,6 @@ async function readScheduleState(client: PoolClient, read: TriggerRead) {
   return row;
 }
 
-async function readDatabaseTime(client: PoolClient): Promise<Date> {
-  const result = await drizzle(client)
-    .execute<{ observedAt: string }>(sql`select clock_timestamp() "observedAt"`)
-    .catch(rethrowQueryFailure);
-  const at = result.rows[0]?.observedAt;
-  if (at === undefined)
-    throw new Error('Schedule database observation is unavailable');
-  return new Date(at);
-}
-
 /** Computed after the read transaction ends, so no connection waits on it. */
 function projectPersistedSchedule(
   row: ScheduleState,
@@ -229,7 +220,7 @@ export function createScheduleTriggerReads(pool: Pool) {
       const observedAt = await withScheduleReader(
         pool,
         input,
-        readDatabaseTime,
+        readDatabaseClock,
       );
       // Publication anchors a new schedule at database time (ADR 014), so an
       // unsaved rule is projected as if it were published at this instant.

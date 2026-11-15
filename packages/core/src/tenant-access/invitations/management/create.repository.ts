@@ -1,5 +1,5 @@
 import { INVITATION_TTL_MILLIS } from '../deadlines.js';
-import { readInvitationTime } from '../clock.repository.js';
+import { readDatabaseClock } from '../../../shared/database-clock.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -110,7 +110,7 @@ export async function createWorkspaceInvitation(
             deliveryStatus: 'queued',
             createdBy: actorUserId,
             expiresAt: new Date(
-              (await readInvitationTime(client)).getTime() +
+              (await readDatabaseClock(client)).getTime() +
                 INVITATION_TTL_MILLIS,
             ),
           })

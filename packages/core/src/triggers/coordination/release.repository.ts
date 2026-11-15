@@ -29,11 +29,8 @@ import type { InitialCheckpointFactory } from '../../runs/commands/initial-check
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import { recordWorkflowTriggerSkip } from '../skips.repository.js';
 import { finishCoordinatedEvent } from './events.repository.js';
-import {
-  eventDatabaseTime,
-  chargeEventWindow,
-  lockEventCoordination,
-} from './keys.repository.js';
+import { chargeEventWindow, lockEventCoordination } from './keys.repository.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 
 /**
  * When a held event is tried again: after a full workspace's retry hint, at
@@ -65,7 +62,7 @@ export async function releaseCoordinatedEvent(
   if (endpoint.kind === 'refused')
     return refuseCoordinatedEvent(transaction, id, 'endpoint_disabled');
   const { webhookTriggerId } = endpoint;
-  const now = await eventDatabaseTime(transaction);
+  const now = await readDatabaseClock(transaction.db);
   if (now >= event.deadline_at)
     return refuseCoordinatedEvent(transaction, id, 'coordination_timeout');
   if (
@@ -289,7 +286,7 @@ export async function restFailedCoordinatedEvent(
 ): Promise<void> {
   const locked = await lockCoordinatedEvent(transaction, id);
   if (locked === undefined) return;
-  const now = await eventDatabaseTime(transaction);
+  const now = await readDatabaseClock(transaction.db);
   if (locked.event.due_at > now) return;
   await transaction.db
     .update(events)

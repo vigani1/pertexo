@@ -1,5 +1,5 @@
 import { INVITATION_TTL_MILLIS } from '../deadlines.js';
-import { readInvitationTime } from '../clock.repository.js';
+import { readDatabaseClock } from '../../../shared/database-clock.repository.js';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
@@ -99,7 +99,7 @@ async function changeInvitation(
           'role_forbidden',
           'The actor cannot manage this invitation',
         );
-      const now = await readInvitationTime(client);
+      const now = await readDatabaseClock(client);
       if (
         current.status === 'pending' &&
         current.expiresAt.getTime() <= now.getTime()
@@ -139,7 +139,7 @@ async function changeInvitation(
         );
       const nextRevision = current.revision + 1;
       await retireInvitationEvidence(client, workspaceId, invitationId);
-      const mutationTime = await readInvitationTime(client);
+      const mutationTime = await readDatabaseClock(client);
       if (current.expiresAt.getTime() <= mutationTime.getTime())
         throw new WorkspaceInvitationCommandConflictError(
           'invitation_inactive',

@@ -38,16 +38,6 @@ function readEventWindow(
 export type EventWindowRow = Awaited<
   ReturnType<typeof readEventWindow>
 >[number];
-export async function eventDatabaseTime(
-  transaction: WorkspaceTransaction,
-): Promise<Date> {
-  const result = await transaction.db.execute<{ now: string }>(
-    sql`select clock_timestamp() now`,
-  );
-  const at = result.rows[0]?.now;
-  if (at === undefined) throw new Error('Event coordination clock unavailable');
-  return new Date(at);
-}
 export async function loadEventWindow(
   transaction: WorkspaceTransaction,
   input: CoordinateEventInput,

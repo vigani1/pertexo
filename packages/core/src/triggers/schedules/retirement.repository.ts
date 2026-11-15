@@ -5,6 +5,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool } from 'pg';
 
 import { withPlatformTransaction } from '@pertexo/database/platform';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 
 /** A schedule claim the scanner holds: the trigger and its lease. */
 type RetirableClaim = Readonly<{ trigger_id: string; lease_token: string }>;
@@ -50,17 +51,8 @@ export async function retireScheduleClaim(
         retirement.reason !== 'schedule.scan_failed'
           ? 'unhealthy'
           : 'degraded';
-      const observation = await drizzle(client)
-        .execute<{ observed_at: string }>(
-          sql`select clock_timestamp() observed_at`,
-        )
-        .catch(rethrowQueryFailure);
-      const observed = observation.rows[0]?.observed_at;
-      if (observed === undefined)
-        throw new Error('Schedule retirement database time is unavailable');
-      const retryAt = new Date(
-        new Date(observed).getTime() + retrySeconds * 1_000,
-      );
+      const observed = await readDatabaseClock(client);
+      const retryAt = new Date(observed.getTime() + retrySeconds * 1_000);
       await drizzle(client)
         .execute(
           sql`select app.store_trigger_schedule_retirement(${claim.trigger_id},${claim.lease_token},${health},${reason},${retryAt})`,

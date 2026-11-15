@@ -20,6 +20,7 @@ export type {} from './command-receipt.errors.js';
 export type {} from './retention-deletion.repository.js';
 export type {} from './workflow-actor.types.js';
 export type {} from './sql-intervals.repository.js';
+export type {} from './database-clock.repository.js';
 export type {} from './transaction-timeouts.schemas.js';
 
 // Resource authority is shared by authoring, execution and tenant discovery.

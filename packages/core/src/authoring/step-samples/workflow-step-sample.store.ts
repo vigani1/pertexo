@@ -12,11 +12,7 @@ import {
 import { BROWSABLE_WORKSPACE_STATUSES, hasCapability } from '@pertexo/policy';
 import type { AuthoringAccess } from '../workflows/access.js';
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
-import {
-  sampleDatabaseTime,
-  sampleDraft,
-  sampleMetadata,
-} from './step-sample-state.repository.js';
+import { sampleDraft, sampleMetadata } from './step-sample-state.repository.js';
 import { mutateStepSample } from './step-sample-commands.repository.js';
 import type {
   PutSampleInput,
@@ -25,6 +21,7 @@ import type {
   SampleRead,
   SampleTransaction,
 } from './step-sample.types.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 
 const SAMPLES_LISTED = 200;
 
@@ -67,7 +64,7 @@ export function createWorkflowStepSampleStore(access: AuthoringAccess) {
             .orderBy(asc(workflowStepSamples.nodeId))
             .limit(SAMPLES_LISTED)
             .catch(rethrowQueryFailure);
-          const now = await sampleDatabaseTime(client);
+          const now = await readDatabaseClock(client);
           return {
             items: rows.map((row) =>
               sampleMetadata(row, draft.bindings.get(row.nodeId), now),
@@ -92,7 +89,7 @@ export function createWorkflowStepSampleStore(access: AuthoringAccess) {
               ),
             )
             .catch(rethrowQueryFailure);
-          const now = await sampleDatabaseTime(client);
+          const now = await readDatabaseClock(client);
           const sample =
             row === undefined
               ? null

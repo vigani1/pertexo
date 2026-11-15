@@ -41,6 +41,7 @@ import {
   completeCoordinatorReceipt,
 } from './receipts.repository.js';
 import { withCoordinatorWriteClient } from './coordinator-transaction.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 
 const OPEN_STATUSES = ['pending', 'ready', 'running', 'waiting'] as const;
 
@@ -130,7 +131,7 @@ export function failUnadvanceableRun(
         type,
         payload: { reasonCode: safeErrorCode },
       });
-      const occurredAt = await readDatabaseTime(client);
+      const occurredAt = (await readDatabaseClock(client)).toISOString();
       const plan: WorkflowTransitionPlan = {
         expectedRevision: revision,
         expectedNextEventSequence: sequence,
@@ -190,13 +191,6 @@ function isStaleEmergencyReport(
   return (
     input.expectedRevision === undefined || input.expectedRevision !== revision
   );
-}
-
-async function readDatabaseTime(client: PoolClient): Promise<string> {
-  const { rows } = await drizzle(client)
-    .execute<{ now: string }>(sql`select clock_timestamp() now`)
-    .catch(rethrowQueryFailure);
-  return new Date(rows[0]?.now ?? Number.NaN).toISOString();
 }
 
 /** Close physical work while preserving the current durable outcome, even before consumption. */
