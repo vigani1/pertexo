@@ -13,7 +13,7 @@ export {
   reportSessionChange,
   type SessionChangeEvent,
 } from './model/session/sync';
-export { SigningOut } from './pages/sign-out';
+export { SigningOut } from './components/session/sign-out-screen';
 // The sign-in family's stage and lens, for other entry journeys (invitations,
 // the workspace picker) that belong to the same moment.
 export {
