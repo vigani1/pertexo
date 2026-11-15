@@ -2,17 +2,17 @@ import { sql, type SQL } from 'drizzle-orm';
 import { alias as tableAlias } from 'drizzle-orm/pg-core';
 import { workflowRuns } from '@pertexo/database/schema';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { DAY_INTERVAL } from '../shared/sql-intervals.repository.js';
 const TEST_TRIGGER_TYPE = 'test';
 const TEST_DAYS = DATA_RETENTION_DAYS.testRuns;
 const DETAILS_DAYS = DATA_RETENTION_DAYS.runDetails;
 const SUMMARY_DAYS = DATA_RETENTION_DAYS.runSummaries;
 export const TEST_RUN_RETENTION_MILLIS = TEST_DAYS * 24 * 60 * 60 * 1000;
 export const RUN_DETAILS_RETENTION_SQL =
-  sql`make_interval(days=>${DETAILS_DAYS})`.inlineParams();
+  sql`${DETAILS_DAYS}*${DAY_INTERVAL}`.inlineParams();
 export const RUN_SUMMARY_RETENTION_SQL =
-  sql`make_interval(days=>${SUMMARY_DAYS})`.inlineParams();
-const TEST_RETENTION_SQL =
-  sql`make_interval(days=>${TEST_DAYS})`.inlineParams();
+  sql`${SUMMARY_DAYS}*${DAY_INTERVAL}`.inlineParams();
+const TEST_RETENTION_SQL = sql`${TEST_DAYS}*${DAY_INTERVAL}`.inlineParams();
 type RunAlias = 'run' | 'workflow_runs';
 type Clock = 'statement_timestamp()' | 'clock_timestamp()';
 type RetentionKind = 'details' | 'summary';

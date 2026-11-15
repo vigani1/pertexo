@@ -1,5 +1,3 @@
-import { workflowRuns, workflows } from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   UNPURGED_WORKSPACE_STATUSES,
   type WorkspaceStatusList,
@@ -11,10 +9,13 @@ import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../shared/workspace-access.js';
-import { and, eq, sql } from 'drizzle-orm';
 import { WorkflowRunNotFoundError } from './workflow-run.errors.js';
 import type { ResourceTransaction } from '../shared/folder-access.types.js';
-import { workflowScopeSql } from '../shared/folder-scope.repository.js';
+import {
+  ownerVisible,
+  runInScope,
+  workflowInScope,
+} from './run-access.repository.js';
 import type { WorkflowResourceCapability } from '../shared/folder-access.types.js';
 
 /** The command already holds the workspace authority fence before touching run rows. */
@@ -23,21 +24,8 @@ export async function requireRunAccess(
   runId: string,
   capability: WorkflowResourceCapability,
 ): Promise<void> {
-  const found = await transaction.db
-    .select({ one: sql`1` })
-    .from(workflowRuns)
-    .where(
-      and(
-        eq(workflowRuns.workspaceId, transaction.workspaceId),
-        eq(workflowRuns.id, runId),
-        workflowScopeSql(
-          transaction.resources,
-          sql`${workflowRuns.workflowId}`,
-          capability,
-        ),
-      ),
-    );
-  if (found.length === 0) throw new WorkflowRunNotFoundError();
+  if (!(await runInScope(transaction, runId, capability)))
+    throw new WorkflowRunNotFoundError();
 }
 
 export async function requireWorkflowAccess(
@@ -45,21 +33,8 @@ export async function requireWorkflowAccess(
   workflowId: string,
   capability: WorkflowResourceCapability,
 ): Promise<void> {
-  const found = await transaction.db
-    .select({ one: sql`1` })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, transaction.workspaceId),
-        eq(workflows.id, workflowId),
-        workflowScopeSql(
-          transaction.resources,
-          sql`${workflows.id}`,
-          capability,
-        ),
-      ),
-    );
-  if (found.length === 0) throw new WorkflowRunNotFoundError();
+  if (!(await workflowInScope(transaction, workflowId, capability)))
+    throw new WorkflowRunNotFoundError();
 }
 
 /** A denial reads as not found, so a command can't tell an outsider a run exists. */
@@ -118,22 +93,7 @@ function withResourceOwnerRead<T>(
   read: (transaction: ResourceTransaction) => Promise<T>,
 ): Promise<T | undefined> {
   return withRetainedRunRead(pool, input, async (transaction) => {
-    const source = owner.kind === 'run' ? workflowRuns : workflows;
-    const workflowId =
-      owner.kind === 'run' ? workflowRuns.workflowId : workflows.id;
-    const visible = await transaction.db
-      .select({ one: sql`1` })
-      .from(source)
-      .where(
-        and(
-          eq(source.workspaceId, transaction.workspaceId),
-          eq(source.id, owner.id),
-          workflowScopeSql(transaction.resources, sql`${workflowId}`),
-        ),
-      )
-      .limit(1)
-      .catch(rethrowQueryFailure);
-    if (visible.length === 0) return undefined;
+    if (!(await ownerVisible(transaction, owner))) return undefined;
     return read(transaction);
   });
 }

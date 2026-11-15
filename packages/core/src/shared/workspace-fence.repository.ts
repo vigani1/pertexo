@@ -20,3 +20,15 @@ export async function lockWorkspaceRunAdmission(
     .catch(rethrowQueryFailure);
   return result.rows[0]?.status ?? undefined;
 }
+
+/**
+ * Tells the run-admission functions this transaction follows the concurrency
+ * protocol, for the rest of the transaction.
+ */
+export async function enterRunAdmissionProtocol(db: Executor): Promise<void> {
+  await db
+    .execute(
+      sql`select set_config('app.workflow_concurrency_protocol','1',true)`,
+    )
+    .catch(rethrowQueryFailure);
+}
