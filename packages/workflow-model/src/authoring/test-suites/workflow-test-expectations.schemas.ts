@@ -12,6 +12,9 @@ import { formatByteSize, formatCount } from '@pertexo/node-sdk';
 
 /** Bounds on a test case's value checks, its report and the values it shows. */
 export const WORKFLOW_TEST_LIMITS = Object.freeze({
+  // A suite's and a saved input case's names.
+  suiteNameCharacters: 128,
+  inputCaseNameCharacters: 128,
   expectedValueBytes: 4_096,
   expectedValueDepth: 64,
   expectedValueMembers: 10_000,

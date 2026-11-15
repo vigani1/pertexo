@@ -55,6 +55,15 @@ and `@pertexo/policy` for the shapes it stores.
   timeout bounds beside them.
 - Pool sizes and timeouts per role: `platform/pool/policy.ts`; the expected
   migration head and minimum PostgreSQL: `platform/readiness.repository.ts`.
+- Column widths: each schema file names its widths in one
+  `<FILE>_COLUMN_WIDTHS` table at its top, and a width reads the limit its
+  schema enforces (`NODE_FAILURE_FIELD_LIMITS`, `EMAIL_ADDRESS_LIMITS`,
+  `RESOURCE_NAME_MAX_LENGTH`, …) whenever the values agree; one with no owner
+  keeps its number there. Every hash, digest and checksum column is
+  `SHA256_HEX_CHARACTERS` (`schema/column-widths.ts`). A CHECK interval reads
+  its owner too (`PENDING_TASK_LIMITS`, `DATA_RETENTION_DAYS`,
+  `API_TOKEN_MAX_LIFETIME_DAYS`); `database:schema:check` and
+  `db:generate` confirm the SQL is unchanged.
 
 ## Rules
 
@@ -78,9 +87,6 @@ and `@pertexo/policy` for the shapes it stores.
   `migrations/migrate-database.ts`, missing rows after a write in
   `outbox/events.repository.ts` and `platform/idempotency/repository.ts`,
   pool misuse in `platform/pool/`, and test fixtures in `testing/`.
-- Limits are not yet named: database is outside the backend-limits check.
-  Most of its literals are column widths, which should come from their
-  owners' limits.
 
 ## What guards it
 

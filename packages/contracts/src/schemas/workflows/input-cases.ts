@@ -1,3 +1,4 @@
+import { WORKFLOW_TEST_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
@@ -10,7 +11,7 @@ import { formatByteSize, formatCount } from '@pertexo/node-sdk';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 const INPUT_CASES_BOUNDS = Object.freeze({
-  workflowInputCaseNameCharacters: 128,
+  nameCharacters: WORKFLOW_TEST_LIMITS.inputCaseNameCharacters,
   workflowInputCaseListPageItems: 100,
   nextCursorCharacters: 1024,
   afterCharacters: 1024,
@@ -155,7 +156,7 @@ const workflowInputCaseNameSchema = z
   .string()
   .trim()
   .min(1)
-  .max(INPUT_CASES_BOUNDS.workflowInputCaseNameCharacters)
+  .max(INPUT_CASES_BOUNDS.nameCharacters)
   .refine(isStorageText, 'Case names must contain supported Unicode text');
 export const workflowInputCaseMetadataSchema = z
   .object({

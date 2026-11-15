@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import { users } from '../identity/users.js';
 import { workflows, workflowTriggers } from '../authoring/workflows.js';
@@ -16,6 +17,16 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  nodeId: 128,
+  purpose: 32,
+  kmsKeyReference: 2048,
+  nonce: 64,
+  authTag: 64,
+  endpointKeyHash: SHA256_HEX_CHARACTERS,
+  status: 16,
+});
+
 export const webhookTriggerSecretVersions = appSchema.table(
   'webhook_trigger_secret_versions',
   {
@@ -25,15 +36,17 @@ export const webhookTriggerSecretVersions = appSchema.table(
     // context names this id, so it stays fixed while the endpoint moves on.
     triggerId: uuid('trigger_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
-    nodeId: varchar('node_id', { length: 128 }).notNull(),
-    purpose: varchar('purpose', { length: 32 })
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
+    purpose: varchar('purpose', { length: WIDTHS.purpose })
       .notNull()
       .default(sql`'webhook_hmac_sha256'::character varying`),
-    kmsKeyReference: varchar('kms_key_reference', { length: 2048 }).notNull(),
+    kmsKeyReference: varchar('kms_key_reference', {
+      length: WIDTHS.kmsKeyReference,
+    }).notNull(),
     encryptedDataKey: text('encrypted_data_key').notNull(),
     ciphertext: text('ciphertext').notNull(),
-    nonce: varchar('nonce', { length: 64 }).notNull(),
-    authTag: varchar('auth_tag', { length: 64 }).notNull(),
+    nonce: varchar('nonce', { length: WIDTHS.nonce }).notNull(),
+    authTag: varchar('auth_tag', { length: WIDTHS.authTag }).notNull(),
     createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
@@ -82,13 +95,15 @@ export const webhookTriggerEndpoints = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
-    nodeId: varchar('node_id', { length: 128 }).notNull(),
-    endpointKeyHash: char('endpoint_key_hash', { length: 64 }).notNull(),
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
+    endpointKeyHash: char('endpoint_key_hash', {
+      length: WIDTHS.endpointKeyHash,
+    }).notNull(),
     authentication: jsonb('authentication')
       .$type<WebhookAuthentication>()
       .notNull()
       .default(sql`'{"mode":"signed","allowedOrigins":[]}'::jsonb`),
-    status: varchar('status', { length: 16 })
+    status: varchar('status', { length: WIDTHS.status })
       .notNull()
       .default(sql`'active'::character varying`),
     currentSecretVersionId: uuid('current_secret_version_id').notNull(),

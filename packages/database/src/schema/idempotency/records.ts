@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import {
   type PgTableExtraConfigValue,
   char,
@@ -13,16 +14,24 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 
+const WIDTHS = Object.freeze({
+  operation: 64,
+  scope: 128,
+  keyHash: SHA256_HEX_CHARACTERS,
+  requestHash: SHA256_HEX_CHARACTERS,
+  status: 16,
+});
+
 export const idempotencyRecords = appSchema.table(
   'idempotency_records',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    operation: varchar('operation', { length: 64 }).notNull(),
-    scope: varchar('scope', { length: 128 }).notNull(),
-    keyHash: char('key_hash', { length: 64 }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
-    status: varchar('status', { length: 16 }).notNull(),
+    operation: varchar('operation', { length: WIDTHS.operation }).notNull(),
+    scope: varchar('scope', { length: WIDTHS.scope }).notNull(),
+    keyHash: char('key_hash', { length: WIDTHS.keyHash }).notNull(),
+    requestHash: char('request_hash', { length: WIDTHS.requestHash }).notNull(),
+    status: varchar('status', { length: WIDTHS.status }).notNull(),
     resourceId: uuid('resource_id').notNull(),
     resultRef: jsonb('result_ref').notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })

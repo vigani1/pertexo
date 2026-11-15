@@ -1,3 +1,4 @@
+import { WORKSPACE_TEXT_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import {
   ALL_WORKSPACE_STATUSES,
@@ -16,7 +17,7 @@ import {
   EMAIL_ADDRESS_LIMITS,
   USER_DISPLAY_NAME_MAX_CHARACTERS,
 } from '@pertexo/workflow-model';
-import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 
 const WORKSPACES_BOUNDS = Object.freeze({
   emailMinimumCharacters: EMAIL_ADDRESS_LIMITS.minimumCharacters,
@@ -33,11 +34,7 @@ const WORKSPACES_BOUNDS = Object.freeze({
 
 export { idempotencyKeySchema } from '../shared/transport-headers.js';
 
-/** What a workspace's own text fields hold. */
-export const WORKSPACE_TEXT_LIMITS = Object.freeze({
-  slugCharacters: 64,
-  deletionReasonCharacters: 512,
-});
+export { WORKSPACE_TEXT_LIMITS };
 export const workspaceCreateRequestSchema = z
   .object({
     name: storageTextSchema.trim().min(1).max(RESOURCE_NAME_MAX_LENGTH),

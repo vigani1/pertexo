@@ -1,3 +1,8 @@
+import {
+  API_TOKEN_MAX_LIFETIME_DAYS,
+  RESOURCE_NAME_MAX_LENGTH,
+} from '@pertexo/workflow-model';
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import { API_TOKEN_SCOPES } from '@pertexo/policy';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
@@ -17,14 +22,23 @@ import type { ApiTokenScope } from '@pertexo/contracts';
 import { workspaceMemberships } from '../tenant-access/memberships.js';
 import { appSchema } from '../namespace.js';
 
+const SECONDS_PER_DAY = 24 * 60 * 60;
+
+const WIDTHS = Object.freeze({
+  name: RESOURCE_NAME_MAX_LENGTH,
+  secretDigest: SHA256_HEX_CHARACTERS,
+});
+
 export const apiTokens = appSchema.table(
   'api_tokens',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     ownerUserId: uuid('owner_user_id').notNull(),
-    name: varchar('name', { length: 128 }).notNull(),
-    secretDigest: char('secret_digest', { length: 64 }).notNull(),
+    name: varchar('name', { length: WIDTHS.name }).notNull(),
+    secretDigest: char('secret_digest', {
+      length: WIDTHS.secretDigest,
+    }).notNull(),
     scopes: jsonb('scopes').$type<readonly ApiTokenScope[]>().notNull(),
     membershipRevision: integer('membership_revision').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -54,7 +68,7 @@ export const apiTokens = appSchema.table(
     check('api_tokens_revision_positive', sql`membership_revision > 0`),
     check(
       'api_tokens_expiry_valid',
-      sql`expires_at > created_at and expires_at <= created_at + interval '31536000 seconds'`,
+      sql`expires_at > created_at and expires_at <= created_at + interval '${sql.raw(String(API_TOKEN_MAX_LIFETIME_DAYS * SECONDS_PER_DAY))} seconds'`,
     ),
     check(
       'api_tokens_scopes_valid',

@@ -1,3 +1,4 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import type { PreviewAttemptLease, PreviewStatus } from '../stored-shapes.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 import {
@@ -17,26 +18,38 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 import { previewRuns } from './runs.js';
 
+const WIDTHS = Object.freeze({
+  status: 32,
+  sideEffectClass: 32,
+  providerIdempotencyKey: 256,
+  providerDispatchBinding: 128,
+  leaseOwner: 128,
+  safeErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  errorSummary: NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters,
+});
+
 export const previewAttempts = appSchema.table(
   'preview_attempts',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     previewRunId: uuid('preview_run_id').notNull(),
-    status: varchar('status', { length: 32 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<PreviewStatus>()
       .default('queued')
       .notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 })
+    sideEffectClass: varchar('side_effect_class', {
+      length: WIDTHS.sideEffectClass,
+    })
       .$type<PreviewAttemptLease['sideEffectClass']>()
       .notNull(),
     providerIdempotencyKey: varchar('provider_idempotency_key', {
-      length: 256,
+      length: WIDTHS.providerIdempotencyKey,
     }),
     providerDispatchBinding: varchar('provider_dispatch_binding', {
-      length: 128,
+      length: WIDTHS.providerDispatchBinding,
     }),
-    leaseOwner: varchar('lease_owner', { length: 128 }),
+    leaseOwner: varchar('lease_owner', { length: WIDTHS.leaseOwner }),
     leaseExpiresAt: timestamp('lease_expires_at', {
       withTimezone: true,
       mode: 'date',
@@ -48,8 +61,8 @@ export const previewAttempts = appSchema.table(
     }),
     outputRef: json('output_ref'),
     codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
-    safeErrorCode: varchar('safe_error_code', { length: 128 }),
-    errorSummary: varchar('error_summary', { length: 2048 }),
+    safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
+    errorSummary: varchar('error_summary', { length: WIDTHS.errorSummary }),
     reconciliationRef: jsonb('reconciliation_ref'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)

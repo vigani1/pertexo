@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_KEY_MAX_CHARACTERS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -14,16 +15,26 @@ import {
 import { appSchema } from '../namespace.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 
+const WIDTHS = Object.freeze({
+  category: 64,
+  resourceType: 64,
+  idempotencyKey: IDEMPOTENCY_KEY_MAX_CHARACTERS,
+});
+
 export const usageEvents = appSchema.table(
   'usage_events',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    category: varchar('category', { length: 64 }).notNull(),
+    category: varchar('category', { length: WIDTHS.category }).notNull(),
     quantity: bigint('quantity', { mode: 'number' }).notNull(),
-    resourceType: varchar('resource_type', { length: 64 }).notNull(),
+    resourceType: varchar('resource_type', {
+      length: WIDTHS.resourceType,
+    }).notNull(),
     resourceId: uuid('resource_id').notNull(),
-    idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull(),
+    idempotencyKey: varchar('idempotency_key', {
+      length: WIDTHS.idempotencyKey,
+    }).notNull(),
     metadata: jsonb('metadata')
       .$type<Record<string, unknown>>()
       .default(sql`'{}'::jsonb`)

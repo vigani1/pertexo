@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -13,17 +14,22 @@ import {
 import { appSchema } from '../namespace.js';
 import { workflows } from './workflows.js';
 
+const WIDTHS = Object.freeze({
+  nodeId: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+  sourceKind: 16,
+});
+
 export const workflowStepSamples = appSchema.table(
   'workflow_step_samples',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
-    nodeId: varchar('node_id', { length: 64 }).notNull(),
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
     binding: text('binding').notNull(),
     outputRef: text('output_ref').notNull(),
     retainedBytes: integer('retained_bytes').notNull(),
-    sourceKind: varchar('source_kind', { length: 16 })
+    sourceKind: varchar('source_kind', { length: WIDTHS.sourceKind })
       .$type<'json' | 'run' | 'preview' | 'webhook_test'>()
       .notNull(),
     sourceRunId: uuid('source_run_id'),

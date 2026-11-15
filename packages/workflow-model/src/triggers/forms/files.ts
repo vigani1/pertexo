@@ -13,6 +13,7 @@ export const FORM_FILE_LIMITS = Object.freeze({
   maxBytes: 10 * MEBIBYTE,
   defaultMaxBytes: 5 * MEBIBYTE,
   filenameCharacters: 255,
+  mediaTypeCharacters: 255,
   /** Uploads one response may begin, including removed and replaced files. */
   sessionUploads: 25,
   /**

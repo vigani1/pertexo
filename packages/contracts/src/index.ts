@@ -20,7 +20,7 @@ export * from './schemas/identity/invitation-acceptance.js';
 export * from './schemas/execution/node-testing.js';
 export * from './schemas/triggers/schedules.js';
 export * from './schemas/shared/transport-headers.js';
-export * from './schemas/shared/resource-name.js';
+export { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 export * from './schemas/shared/secret-token.js';
 export * from './schemas/triggers/webhooks.js';
 export {

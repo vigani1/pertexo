@@ -6,6 +6,9 @@ import { migrateDatabase } from './migrations/migrate-database.js';
 import { MigrationFileFailedError } from './migrations/migration.errors.js';
 import { PartialMigrationHistoryError } from './migration-history.js';
 
+// A failure's code is reported, never its message; a long code is cut here.
+const REPORTED_CODE_CHARACTERS = 32;
+
 export interface MigrationCliDependencies {
   readonly loadConfig?: () => MigrationConfig;
   readonly migrate?: typeof migrateDatabase;
@@ -46,7 +49,9 @@ function failureDetails(error: unknown): Readonly<Record<string, unknown>> {
         })),
       };
     const code = (error as { code?: unknown } | null | undefined)?.code;
-    return typeof code === 'string' ? { code: code.slice(0, 32) } : {};
+    return typeof code === 'string'
+      ? { code: code.slice(0, REPORTED_CODE_CHARACTERS) }
+      : {};
   } catch {
     return {};
   }

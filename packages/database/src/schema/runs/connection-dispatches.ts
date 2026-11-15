@@ -12,6 +12,12 @@ import type { ConnectionAuthType } from '../stored-shapes.js';
 import { appSchema } from '../namespace.js';
 import { nodeAttempts } from './node-executions.js';
 
+const WIDTHS = Object.freeze({
+  providerKey: 64,
+  authType: 64,
+  workerId: 128,
+});
+
 /** The connection a run attempt dispatched through. */
 export const nodeAttemptConnectionDispatches = appSchema.table(
   'node_attempt_connection_dispatches',
@@ -19,13 +25,15 @@ export const nodeAttemptConnectionDispatches = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     attemptId: uuid('attempt_id').notNull(),
     connectionId: uuid('connection_id').notNull(),
-    providerKey: varchar('provider_key', { length: 64 }).notNull(),
-    authType: varchar('auth_type', { length: 64 })
+    providerKey: varchar('provider_key', {
+      length: WIDTHS.providerKey,
+    }).notNull(),
+    authType: varchar('auth_type', { length: WIDTHS.authType })
       .$type<ConnectionAuthType>()
       .notNull(),
     secretVersionId: uuid('secret_version_id').notNull(),
     healthRevision: bigint('health_revision', { mode: 'number' }).notNull(),
-    workerId: varchar('worker_id', { length: 128 }).notNull(),
+    workerId: varchar('worker_id', { length: WIDTHS.workerId }).notNull(),
     fenceToken: bigint('fence_token', { mode: 'number' }).notNull(),
   },
   (table): PgTableExtraConfigValue[] => [

@@ -14,6 +14,10 @@ import { appSchema } from '../namespace.js';
 import { workflows } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/workflow-runs.js';
 
+const WIDTHS = Object.freeze({
+  kind: 32,
+});
+
 // ADR 055. String-mode timestamps and bigint revisions preserve PostgreSQL
 // precision.
 
@@ -28,7 +32,7 @@ export const workspaceInboxEvents = appSchema.table(
     terminalEventSequence: bigint('terminal_event_sequence', {
       mode: 'bigint',
     }).notNull(),
-    kind: varchar('kind', { length: 32 }).notNull(),
+    kind: varchar('kind', { length: WIDTHS.kind }).notNull(),
     occurredAt: timestamp('occurred_at', {
       withTimezone: true,
       mode: 'string',

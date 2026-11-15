@@ -15,10 +15,16 @@ import { MAX_POSTGRES_TIMEOUT_MILLIS } from '../config.js';
 
 // Stable application namespace for serializing Pertexo schema migrations.
 const MIGRATION_LOCK_ID = 7_166_118_812;
-const migrationRunnerDefaults = Object.freeze({
+const MIGRATION_RUNNER_DEFAULTS = Object.freeze({
   connectionTimeoutMs: 10_000,
   lockTimeoutMs: 10_000,
   statementTimeoutMs: 300_000,
+});
+// The shortest timeouts a runner accepts: shorter would fail on a healthy server.
+const MIGRATION_RUNNER_MINIMUMS = Object.freeze({
+  connectionTimeoutMs: 100,
+  lockTimeoutMs: 100,
+  statementTimeoutMs: 1_000,
 });
 
 function preserveMigrationFailureDuringCleanup(
@@ -98,20 +104,20 @@ export async function migrateDatabase(
   const applied: string[] = [];
   const connectionTimeoutMs = parseMigrationTimeout(
     runnerOptions.connectionTimeoutMs,
-    migrationRunnerDefaults.connectionTimeoutMs,
-    100,
+    MIGRATION_RUNNER_DEFAULTS.connectionTimeoutMs,
+    MIGRATION_RUNNER_MINIMUMS.connectionTimeoutMs,
     'connection',
   );
   const lockTimeoutMs = parseMigrationTimeout(
     runnerOptions.lockTimeoutMs,
-    migrationRunnerDefaults.lockTimeoutMs,
-    100,
+    MIGRATION_RUNNER_DEFAULTS.lockTimeoutMs,
+    MIGRATION_RUNNER_MINIMUMS.lockTimeoutMs,
     'lock',
   );
   const statementTimeoutMs = parseMigrationTimeout(
     runnerOptions.statementTimeoutMs,
-    migrationRunnerDefaults.statementTimeoutMs,
-    1_000,
+    MIGRATION_RUNNER_DEFAULTS.statementTimeoutMs,
+    MIGRATION_RUNNER_MINIMUMS.statementTimeoutMs,
     'statement',
   );
   const pool = new Pool({

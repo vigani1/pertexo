@@ -4,7 +4,7 @@ import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 export { FEDERATION_LIMITS };
 import { z } from 'zod';
-import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 import { SamlHttpsOriginRequiredError } from './federation.errors.js';

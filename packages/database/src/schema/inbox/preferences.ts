@@ -1,3 +1,4 @@
+import { TIME_ZONE_NAME_CHARACTERS } from '@pertexo/workflow-model';
 import type { NoticeEmailMode } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import {
@@ -16,17 +17,30 @@ import { workspaceMemberships } from '../tenant-access/memberships.js';
 import { workflows } from '../authoring/workflows.js';
 import { connections } from '../connections.js';
 
+/** The local hour a new notice schedule sends at. */
+const NOTICE_PREFERENCE_DEFAULTS = Object.freeze({
+  hour: 9,
+});
+
+const WIDTHS = Object.freeze({
+  mode: 16,
+  timeZone: TIME_ZONE_NAME_CHARACTERS,
+  subjectKind: 16,
+});
+
 export const noticeWorkspaceSettings = appSchema.table(
   'notice_workspace_settings',
   {
     workspaceId: uuid('workspace_id').primaryKey(),
     revision: integer('revision').notNull().default(0),
-    mode: varchar('mode', { length: 16 })
+    mode: varchar('mode', { length: WIDTHS.mode })
       .$type<NoticeEmailMode>()
       .notNull()
       .default('off'),
-    hour: integer('hour').notNull().default(9),
-    timeZone: varchar('time_zone', { length: 128 }).notNull().default('UTC'),
+    hour: integer('hour').notNull().default(NOTICE_PREFERENCE_DEFAULTS.hour),
+    timeZone: varchar('time_zone', { length: WIDTHS.timeZone })
+      .notNull()
+      .default('UTC'),
     changedAt: timestamp('changed_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .default(sql`clock_timestamp()`),
@@ -49,9 +63,11 @@ export const noticePreferences = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     userId: uuid('user_id').notNull(),
     revision: integer('revision').notNull().default(0),
-    mode: varchar('mode', { length: 16 }).$type<NoticeEmailMode>(),
-    hour: integer('hour').notNull().default(9),
-    timeZone: varchar('time_zone', { length: 128 }).notNull().default('UTC'),
+    mode: varchar('mode', { length: WIDTHS.mode }).$type<NoticeEmailMode>(),
+    hour: integer('hour').notNull().default(NOTICE_PREFERENCE_DEFAULTS.hour),
+    timeZone: varchar('time_zone', { length: WIDTHS.timeZone })
+      .notNull()
+      .default('UTC'),
     changedAt: timestamp('changed_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .default(sql`clock_timestamp()`),
@@ -84,7 +100,9 @@ export const noticeSubscriptions = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     userId: uuid('user_id').notNull(),
-    subjectKind: varchar('subject_kind', { length: 16 }).notNull(),
+    subjectKind: varchar('subject_kind', {
+      length: WIDTHS.subjectKind,
+    }).notNull(),
     subjectId: uuid('subject_id').notNull(),
     workflowId: uuid('workflow_id'),
     connectionId: uuid('connection_id'),

@@ -1,3 +1,4 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type {
   StoredExecutionValue,
@@ -25,6 +26,26 @@ import { appSchema } from '../namespace.js';
 import { workflowRuns } from './workflow-runs.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 
+const WIDTHS = Object.freeze({
+  nodeId: 128,
+  status: 32,
+  sideEffectClass: 32,
+  providerIdempotencyKey: 256,
+  providerDispatchBinding: 128,
+  failureHandlerEntryKey: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+  failureHandlerSinkKey: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+  failureHandling: 16,
+  controlKind: 32,
+  waitKind: 32,
+  safeErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  leaseOwner: 128,
+  errorSummary: NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters,
+  executorFailureKind: 32,
+  executorErrorKind: 32,
+  retryDecision: 32,
+  admissionKind: 32,
+});
+
 // The current-attempt and owning-node foreign keys require one initialization module.
 export const nodeRuns = appSchema.table(
   'node_runs',
@@ -32,35 +53,39 @@ export const nodeRuns = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     workflowRunId: uuid('workflow_run_id').notNull(),
-    nodeId: varchar('node_id', { length: 128 }).notNull(),
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
     invocationKey: varchar('invocation_key', {
       length: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
     }).notNull(),
     branchContext: jsonb('branch_context')
       .notNull()
       .default(sql`'{}'::jsonb`),
-    status: varchar('status', { length: 32 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<RecoveryNode['status']>()
       .notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 })
+    sideEffectClass: varchar('side_effect_class', {
+      length: WIDTHS.sideEffectClass,
+    })
       .$type<RecoveryNode['sideEffectClass']>()
       .notNull(),
     providerIdempotencyKey: varchar('provider_idempotency_key', {
-      length: 256,
+      length: WIDTHS.providerIdempotencyKey,
     }),
     providerDispatchBinding: varchar('provider_dispatch_binding', {
-      length: 128,
+      length: WIDTHS.providerDispatchBinding,
     }),
     inputRef: json('input_ref').$type<StoredExecutionValue>(),
     outputRef: json('output_ref').$type<StoredExecutionValue>(),
     failureRef: json('failure_ref').$type<StoredExecutionValue>(),
     failureHandlerEntryKey: varchar('failure_handler_entry_key', {
-      length: 256,
+      length: WIDTHS.failureHandlerEntryKey,
     }),
-    failureHandlerSinkKey: varchar('failure_handler_sink_key', { length: 256 }),
-    failureHandling: varchar('failure_handling', { length: 16 }).$type<
-      'pending' | 'handled'
-    >(),
+    failureHandlerSinkKey: varchar('failure_handler_sink_key', {
+      length: WIDTHS.failureHandlerSinkKey,
+    }),
+    failureHandling: varchar('failure_handling', {
+      length: WIDTHS.failureHandling,
+    }).$type<'pending' | 'handled'>(),
     currentAttemptId: uuid('current_attempt_id'),
     currentAttemptNumber: integer('current_attempt_number'),
     // No source-node FK: copied values outlive independently retired source details.
@@ -79,11 +104,11 @@ export const nodeRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    controlKind: varchar('control_kind', { length: 32 }),
-    waitKind: varchar('wait_kind', { length: 32 }).$type<
+    controlKind: varchar('control_kind', { length: WIDTHS.controlKind }),
+    waitKind: varchar('wait_kind', { length: WIDTHS.waitKind }).$type<
       'node_wait' | 'retry_backoff'
     >(),
-    safeErrorCode: varchar('safe_error_code', { length: 128 }),
+    safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -223,16 +248,18 @@ export const nodeAttempts = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     nodeRunId: uuid('node_run_id').notNull(),
     attemptNumber: integer('attempt_number').notNull(),
-    status: varchar('status', { length: 32 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<RecoveryNode['status']>()
       .notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 })
+    sideEffectClass: varchar('side_effect_class', {
+      length: WIDTHS.sideEffectClass,
+    })
       .$type<NodeAttemptLease['sideEffectClass']>()
       .notNull(),
     providerIdempotencyKey: varchar('provider_idempotency_key', {
-      length: 256,
+      length: WIDTHS.providerIdempotencyKey,
     }),
-    leaseOwner: varchar('lease_owner', { length: 128 }),
+    leaseOwner: varchar('lease_owner', { length: WIDTHS.leaseOwner }),
     leaseExpiresAt: timestamp('lease_expires_at', {
       withTimezone: true,
       mode: 'date',
@@ -244,18 +271,18 @@ export const nodeAttempts = appSchema.table(
     }),
     outputRef: json('output_ref').$type<StoredExecutionValue>(),
     codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
-    safeErrorCode: varchar('safe_error_code', { length: 128 }),
-    errorSummary: varchar('error_summary', { length: 2048 }),
+    safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
+    errorSummary: varchar('error_summary', { length: WIDTHS.errorSummary }),
     executorRetryAfterMillis: integer('executor_retry_after_millis'),
-    executorFailureKind: varchar('executor_failure_kind', { length: 32 }).$type<
-      NonNullable<RecoveryNode['attempts'][number]['failureKind']>
-    >(),
-    executorErrorKind: varchar('executor_error_kind', { length: 32 }).$type<
-      NonNullable<RecoveryNode['attempts'][number]['errorKind']>
-    >(),
+    executorFailureKind: varchar('executor_failure_kind', {
+      length: WIDTHS.executorFailureKind,
+    }).$type<NonNullable<RecoveryNode['attempts'][number]['failureKind']>>(),
+    executorErrorKind: varchar('executor_error_kind', {
+      length: WIDTHS.executorErrorKind,
+    }).$type<NonNullable<RecoveryNode['attempts'][number]['errorKind']>>(),
     executorPossiblyDispatched: boolean('executor_possibly_dispatched'),
-    retryDecision: varchar('retry_decision', { length: 32 }),
-    admissionKind: varchar('admission_kind', { length: 32 })
+    retryDecision: varchar('retry_decision', { length: WIDTHS.retryDecision }),
+    admissionKind: varchar('admission_kind', { length: WIDTHS.admissionKind })
       .$type<NodeAttemptLease['admissionKind']>()
       .notNull()
       .default(sql`'execute'::character varying`),

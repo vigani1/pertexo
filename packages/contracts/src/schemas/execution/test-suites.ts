@@ -1,3 +1,4 @@
+import { WORKFLOW_TEST_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { workflowTestSuiteReportSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -7,7 +8,7 @@ import {
 } from './workflow-tests.js';
 
 const TEST_SUITES_BOUNDS = Object.freeze({
-  nameCharacters: 128,
+  nameCharacters: WORKFLOW_TEST_LIMITS.suiteNameCharacters,
   stopReasonCharacters: 64,
   workflowTestSuiteListPageItems: 20,
   stepLabelsCharacters: 256,
@@ -27,7 +28,9 @@ export const workflowTestSuiteCurrentSchema = z
     cases: z
       .array(
         caseIdentity
-          .extend({ name: z.string().max(TEST_SUITES_BOUNDS.nameCharacters) })
+          .extend({
+            name: z.string().max(TEST_SUITES_BOUNDS.nameCharacters),
+          })
           .strict(),
       )
       .max(WORKFLOW_TEST_SUITE_MAX_CASES),

@@ -1,3 +1,5 @@
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
+import { SHA256_HEX_CHARACTERS } from './column-widths.js';
 import {
   type PgTableExtraConfigValue,
   char,
@@ -19,6 +21,19 @@ import { authProviders } from './identity/federation/providers.js';
 
 import { appSchema, bytea } from './namespace.js';
 import { users } from './identity/users.js';
+
+const WIDTHS = Object.freeze({
+  keyHash: SHA256_HEX_CHARACTERS,
+  requestHash: SHA256_HEX_CHARACTERS,
+  status: 32,
+  sourceProvider: 32,
+  targetProvider: 32,
+  phase: 16,
+  purpose: 32,
+  email: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+  newEmail: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+  eventType: 64,
+});
 
 export const authAccounts = appSchema.table(
   'auth_accounts',
@@ -164,9 +179,9 @@ export const userProfileCommandReceipts = appSchema.table(
   {
     id: uuid().primaryKey().notNull(),
     actorUserId: uuid('actor_user_id').notNull(),
-    keyHash: char('key_hash', { length: 64 }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
-    status: varchar({ length: 32 }).notNull(),
+    keyHash: char('key_hash', { length: WIDTHS.keyHash }).notNull(),
+    requestHash: char('request_hash', { length: WIDTHS.requestHash }).notNull(),
+    status: varchar({ length: WIDTHS.status }).notNull(),
     resultRef: jsonb('result_ref'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
@@ -207,11 +222,15 @@ export const authMethodLinkAttempts = appSchema.table(
     userId: uuid('user_id').notNull(),
     sessionId: uuid('session_id').notNull(),
     browserDigest: bytea('browser_digest').notNull(),
-    sourceProvider: varchar('source_provider', { length: 32 }).notNull(),
-    targetProvider: varchar('target_provider', { length: 32 })
+    sourceProvider: varchar('source_provider', {
+      length: WIDTHS.sourceProvider,
+    }).notNull(),
+    targetProvider: varchar('target_provider', {
+      length: WIDTHS.targetProvider,
+    })
       .$type<'google' | 'github' | 'microsoft' | 'apple'>()
       .notNull(),
-    phase: varchar({ length: 16 }).notNull(),
+    phase: varchar({ length: WIDTHS.phase }).notNull(),
     stateDigest: bytea('state_digest'),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,
@@ -271,9 +290,9 @@ export const authEmailProofs = appSchema.table(
     id: uuid().primaryKey().notNull(),
     tokenDigest: bytea('token_digest').notNull(),
     userId: uuid('user_id').notNull(),
-    purpose: varchar({ length: 32 }).notNull(),
-    email: varchar({ length: 320 }).notNull(),
-    newEmail: varchar('new_email', { length: 320 }),
+    purpose: varchar({ length: WIDTHS.purpose }).notNull(),
+    email: varchar({ length: WIDTHS.email }).notNull(),
+    newEmail: varchar('new_email', { length: WIDTHS.newEmail }),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,
       mode: 'string',
@@ -320,7 +339,7 @@ export const identitySecurityAuditFacts = appSchema.table(
   {
     id: uuid().primaryKey().notNull(),
     userId: uuid('user_id').notNull(),
-    eventType: varchar('event_type', { length: 64 }).notNull(),
+    eventType: varchar('event_type', { length: WIDTHS.eventType }).notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
       .notNull(),

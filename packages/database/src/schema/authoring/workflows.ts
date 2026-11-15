@@ -1,3 +1,5 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import type {
   WorkflowLifecycleStatus,
   WorkflowActivationStatus,
@@ -26,19 +28,38 @@ import { sql } from 'drizzle-orm';
 
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  name: RESOURCE_NAME_MAX_LENGTH,
+  lifecycleStatus: 32,
+  activationStatus: 32,
+  triggerPauseState: 16,
+  triggerPauseReason: 32,
+  checksum: 77,
+  nodeId: 128,
+  kind: 16,
+  status: 32,
+  configFingerprint: 79,
+  healthStatus: 32,
+  lastErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+});
+
 export const workflows = appSchema.table(
   'workflows',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    name: varchar('name', { length: 128 }).notNull(),
+    name: varchar('name', { length: WIDTHS.name }).notNull(),
     nameRevision: integer('name_revision').default(1).notNull(),
-    lifecycleStatus: varchar('lifecycle_status', { length: 32 })
+    lifecycleStatus: varchar('lifecycle_status', {
+      length: WIDTHS.lifecycleStatus,
+    })
       .$type<WorkflowLifecycleStatus>()
       .default('active')
       .notNull(),
     lifecycleRevision: integer('lifecycle_revision').default(1).notNull(),
-    activationStatus: varchar('activation_status', { length: 32 })
+    activationStatus: varchar('activation_status', {
+      length: WIDTHS.activationStatus,
+    })
       .$type<WorkflowActivationStatus>()
       .default('inactive')
       .notNull(),
@@ -49,7 +70,9 @@ export const workflows = appSchema.table(
     autoPauseSettingsRevision: integer('auto_pause_settings_revision')
       .default(1)
       .notNull(),
-    triggerPauseState: varchar('trigger_pause_state', { length: 16 })
+    triggerPauseState: varchar('trigger_pause_state', {
+      length: WIDTHS.triggerPauseState,
+    })
       .$type<'none' | 'paused'>()
       .default('none')
       .notNull(),
@@ -58,7 +81,7 @@ export const workflows = appSchema.table(
       mode: 'date',
     }),
     triggerPauseReason: varchar('trigger_pause_reason', {
-      length: 32,
+      length: WIDTHS.triggerPauseReason,
     }).$type<'consecutive_failures'>(),
     triggerPauseFailures: integer('trigger_pause_failures'),
     triggerPauseLastRunId: uuid('trigger_pause_last_run_id'),
@@ -193,7 +216,7 @@ export const workflowVersions = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     versionNumber: integer('version_number').notNull(),
     graphJson: json('graph_json').notNull(),
-    checksum: varchar('checksum', { length: 77 }).notNull(),
+    checksum: varchar('checksum', { length: WIDTHS.checksum }).notNull(),
     executableJson: json('executable_json').notNull(),
     publishedBy: uuid('published_by').notNull(),
     publishedAt: timestamp('published_at', {
@@ -264,21 +287,23 @@ export const workflowTriggers = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
-    nodeId: varchar('node_id', { length: 128 }).notNull(),
-    kind: varchar('kind', { length: 16 })
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
+    kind: varchar('kind', { length: WIDTHS.kind })
       .$type<WorkflowTriggerHealth['kind']>()
       .notNull(),
-    status: varchar('status', { length: 32 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<WorkflowTriggerStatus>()
       .notNull()
       .default(sql`'desired'::character varying`),
     desiredConfig: jsonb('desired_config').notNull(),
-    configFingerprint: varchar('config_fingerprint', { length: 79 }).notNull(),
-    healthStatus: varchar('health_status', { length: 32 })
+    configFingerprint: varchar('config_fingerprint', {
+      length: WIDTHS.configFingerprint,
+    }).notNull(),
+    healthStatus: varchar('health_status', { length: WIDTHS.healthStatus })
       .$type<WorkflowTriggerHealth['healthStatus']>()
       .notNull()
       .default(sql`'pending'::character varying`),
-    lastErrorCode: varchar('last_error_code', { length: 128 }),
+    lastErrorCode: varchar('last_error_code', { length: WIDTHS.lastErrorCode }),
     reconciledAt: timestamp('reconciled_at', {
       withTimezone: true,
       mode: 'date',

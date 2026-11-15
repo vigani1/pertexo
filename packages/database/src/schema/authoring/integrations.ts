@@ -12,13 +12,22 @@ import { appSchema } from '../namespace.js';
 import { connections } from '../connections.js';
 import { workflowVersions } from './workflows.js';
 
+const WIDTHS = Object.freeze({
+  providerKey: 64,
+  operationKey: 128,
+});
+
 export const workflowIntegrationUsage = appSchema.table(
   'workflow_integration_usage',
   {
     workspaceId: uuid('workspace_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
-    providerKey: varchar('provider_key', { length: 64 }).notNull(),
-    operationKey: varchar('operation_key', { length: 128 }).notNull(),
+    providerKey: varchar('provider_key', {
+      length: WIDTHS.providerKey,
+    }).notNull(),
+    operationKey: varchar('operation_key', {
+      length: WIDTHS.operationKey,
+    }).notNull(),
     connectionId: uuid('connection_id').notNull(),
   },
   (table): PgTableExtraConfigValue[] => [

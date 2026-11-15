@@ -1,3 +1,5 @@
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
+import { SHA256_HEX_CHARACTERS } from '../../column-widths.js';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -17,6 +19,13 @@ import { users } from '../../identity/users.js';
 import { workspaces } from '../workspaces.js';
 import { workspaceInvitations } from './invitations.js';
 
+const WIDTHS = Object.freeze({
+  bindingDigest: SHA256_HEX_CHARACTERS,
+  csrfDigest: SHA256_HEX_CHARACTERS,
+  status: 32,
+  verifiedEmail: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+});
+
 export const workspaceInvitationAcceptanceIntents = appSchema.table(
   'workspace_invitation_acceptance_intents',
   {
@@ -24,9 +33,11 @@ export const workspaceInvitationAcceptanceIntents = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     invitationId: uuid('invitation_id').notNull(),
     invitationRevision: integer('invitation_revision').notNull(),
-    bindingDigest: char('binding_digest', { length: 64 }).notNull(),
-    csrfDigest: char('csrf_digest', { length: 64 }).notNull(),
-    status: varchar('status', { length: 32 })
+    bindingDigest: char('binding_digest', {
+      length: WIDTHS.bindingDigest,
+    }).notNull(),
+    csrfDigest: char('csrf_digest', { length: WIDTHS.csrfDigest }).notNull(),
+    status: varchar('status', { length: WIDTHS.status })
       .$type<
         | 'pending'
         | 'verified'
@@ -39,7 +50,7 @@ export const workspaceInvitationAcceptanceIntents = appSchema.table(
       .default('pending'),
     verifiedUserId: uuid('verified_user_id'),
     verifiedSessionId: uuid('verified_session_id'),
-    verifiedEmail: varchar('verified_email', { length: 320 }),
+    verifiedEmail: varchar('verified_email', { length: WIDTHS.verifiedEmail }),
     verifiedAt: timestamp('verified_at', { withTimezone: true, mode: 'date' }),
     acceptedUserId: uuid('accepted_user_id'),
     receipt: jsonb('receipt'),

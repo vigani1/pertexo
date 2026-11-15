@@ -1,3 +1,5 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
+import { SHA256_HEX_CHARACTERS } from '../../column-widths.js';
 import type { FailureNotificationClaimResult } from '../../stored-shapes.js';
 import {
   type PgTableExtraConfigValue,
@@ -18,6 +20,16 @@ import { appSchema } from '../../namespace.js';
 import { failureNotificationDestinationVersions } from '../../notifications.js';
 import { workflowRuns } from '../workflow-runs.js';
 
+const WIDTHS = Object.freeze({
+  sideEffectClass: 32,
+  contextChecksum: SHA256_HEX_CHARACTERS,
+  pending: 32,
+  safeErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  providerReference: 256,
+  deliveryBinding: 128,
+  factType: 64,
+});
+
 export const runFailureNotificationIntents = appSchema.table(
   'run_failure_notification_intents',
   {
@@ -27,7 +39,9 @@ export const runFailureNotificationIntents = appSchema.table(
     terminalEventSequence: integer('terminal_event_sequence').notNull(),
     destinationId: uuid('destination_id').notNull(),
     destinationConfigVersion: integer('destination_config_version').notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 })
+    sideEffectClass: varchar('side_effect_class', {
+      length: WIDTHS.sideEffectClass,
+    })
       .$type<
         Extract<
           FailureNotificationClaimResult,
@@ -36,8 +50,10 @@ export const runFailureNotificationIntents = appSchema.table(
       >()
       .notNull(),
     context: jsonb().notNull(),
-    contextChecksum: char('context_checksum', { length: 64 }).notNull(),
-    status: varchar({ length: 32 }).default('pending').notNull(),
+    contextChecksum: char('context_checksum', {
+      length: WIDTHS.contextChecksum,
+    }).notNull(),
+    status: varchar({ length: WIDTHS.pending }).default('pending').notNull(),
     deliveryAttempts: integer('delivery_attempts').default(0).notNull(),
     dispatchMarkedAt: timestamp('dispatch_marked_at', {
       withTimezone: true,
@@ -51,9 +67,11 @@ export const runFailureNotificationIntents = appSchema.table(
       withTimezone: true,
       mode: 'string',
     }),
-    safeErrorCode: varchar('safe_error_code', { length: 128 }),
+    safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     possiblyDispatched: boolean('possibly_dispatched'),
-    providerReference: varchar('provider_reference', { length: 256 }),
+    providerReference: varchar('provider_reference', {
+      length: WIDTHS.providerReference,
+    }),
     completedAt: timestamp('completed_at', {
       withTimezone: true,
       mode: 'string',
@@ -65,7 +83,9 @@ export const runFailureNotificationIntents = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
     connectionSecretVersionId: uuid('connection_secret_version_id'),
-    deliveryBinding: varchar('delivery_binding', { length: 128 }),
+    deliveryBinding: varchar('delivery_binding', {
+      length: WIDTHS.deliveryBinding,
+    }),
     // What the latest send went through, which a retry of it has to stay on.
     dispatchedConfigVersion: integer('dispatched_config_version'),
     dispatchedSecretVersionId: uuid('dispatched_secret_version_id'),
@@ -186,9 +206,9 @@ export const runFailureNotificationAuditFacts = appSchema.table(
     id: uuid().primaryKey().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     notificationIntentId: uuid('notification_intent_id').notNull(),
-    factType: varchar('fact_type', { length: 64 }).notNull(),
+    factType: varchar('fact_type', { length: WIDTHS.factType }).notNull(),
     attemptNumber: integer('attempt_number').notNull(),
-    safeErrorCode: varchar('safe_error_code', { length: 128 }),
+    safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     possiblyDispatched: boolean('possibly_dispatched').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)

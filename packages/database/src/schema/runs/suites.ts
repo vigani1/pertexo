@@ -1,3 +1,4 @@
+import { WORKFLOW_TEST_LIMITS } from '@pertexo/workflow-model';
 import type {
   WorkflowTestSuiteSummary,
   WorkflowTestSuiteDetail,
@@ -21,6 +22,13 @@ import {
 import { appSchema } from '../namespace.js';
 import { workflowTestSnapshots } from './tests.js';
 import { workspaceVariableSetRevisions } from '../variables.js';
+
+const WIDTHS = Object.freeze({
+  signature: 64,
+  status: 16,
+  stopReason: 64,
+  name: WORKFLOW_TEST_LIMITS.suiteNameCharacters,
+});
 export const workflowTestSuites = appSchema.table(
   'workflow_test_suites',
   {
@@ -29,16 +37,16 @@ export const workflowTestSuites = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     startedBy: uuid('started_by').notNull(),
     snapshotId: uuid('snapshot_id').notNull(),
-    signature: varchar('signature', { length: 64 }).notNull(),
+    signature: varchar('signature', { length: WIDTHS.signature }).notNull(),
     variableSetRevision: integer('variable_set_revision'),
     usesConnections: boolean('uses_connections').notNull(),
     caseDurationMs: integer('case_duration_ms').notNull(),
     initialCheckpoint: jsonb('initial_checkpoint').notNull(),
-    status: varchar('status', { length: 16 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<WorkflowTestSuiteSummary['status']>()
       .notNull()
       .default('running'),
-    stopReason: varchar('stop_reason', { length: 64 }),
+    stopReason: varchar('stop_reason', { length: WIDTHS.stopReason }),
     cancelRequested: boolean('cancel_requested').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
@@ -122,11 +130,11 @@ export const workflowTestSuiteCases = appSchema.table(
     ordinal: integer('ordinal').notNull(),
     caseId: uuid('case_id').notNull(),
     caseRevision: integer('case_revision').notNull(),
-    name: varchar('name', { length: 128 }).notNull(),
+    name: varchar('name', { length: WIDTHS.name }).notNull(),
     input: text('input').notNull(),
     expectations: text('expectations').notNull(),
     runId: uuid('run_id'),
-    status: varchar('status', { length: 16 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<WorkflowTestSuiteDetail['cases'][number]['status']>()
       .notNull()
       .default('pending'),

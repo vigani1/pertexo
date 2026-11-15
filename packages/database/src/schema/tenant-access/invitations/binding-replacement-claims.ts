@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../../column-widths.js';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -13,12 +14,20 @@ import {
 import { appSchema } from '../../namespace.js';
 import { workspaces } from '../workspaces.js';
 
+const WIDTHS = Object.freeze({
+  priorBindingDigest: SHA256_HEX_CHARACTERS,
+  successorBindingDigest: SHA256_HEX_CHARACTERS,
+  successorCsrfDigest: SHA256_HEX_CHARACTERS,
+});
+
 export const workspaceInvitationBindingReplacementClaims = appSchema.table(
   'workspace_invitation_binding_replacement_claims',
   {
     priorWorkspaceId: uuid('prior_workspace_id').notNull(),
     priorIntentId: uuid('prior_intent_id').notNull(),
-    priorBindingDigest: char('prior_binding_digest', { length: 64 }).notNull(),
+    priorBindingDigest: char('prior_binding_digest', {
+      length: WIDTHS.priorBindingDigest,
+    }).notNull(),
     successorWorkspaceId: uuid('successor_workspace_id').notNull(),
     successorIntentId: uuid('successor_intent_id').notNull(),
     successorInvitationId: uuid('successor_invitation_id').notNull(),
@@ -26,10 +35,10 @@ export const workspaceInvitationBindingReplacementClaims = appSchema.table(
       'successor_invitation_revision',
     ).notNull(),
     successorBindingDigest: char('successor_binding_digest', {
-      length: 64,
+      length: WIDTHS.successorBindingDigest,
     }).notNull(),
     successorCsrfDigest: char('successor_csrf_digest', {
-      length: 64,
+      length: WIDTHS.successorCsrfDigest,
     }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)

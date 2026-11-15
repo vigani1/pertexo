@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import { users } from '../identity/users.js';
 import { workspaces } from './workspaces.js';
 import {
@@ -16,15 +17,22 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 
+const WIDTHS = Object.freeze({
+  operation: 64,
+  keyHash: SHA256_HEX_CHARACTERS,
+  requestHash: SHA256_HEX_CHARACTERS,
+  status: 16,
+});
+
 export const workspaceCreationIdempotencyRecords = appSchema.table(
   'workspace_creation_idempotency_records',
   {
     id: uuid('id').primaryKey(),
     actorUserId: uuid('actor_user_id').notNull(),
-    operation: varchar('operation', { length: 64 }).notNull(),
-    keyHash: char('key_hash', { length: 64 }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
-    status: varchar('status', { length: 16 }).notNull(),
+    operation: varchar('operation', { length: WIDTHS.operation }).notNull(),
+    keyHash: char('key_hash', { length: WIDTHS.keyHash }).notNull(),
+    requestHash: char('request_hash', { length: WIDTHS.requestHash }).notNull(),
+    status: varchar('status', { length: WIDTHS.status }).notNull(),
     resourceId: uuid('resource_id'),
     resultRef: jsonb('result_ref')
       .notNull()

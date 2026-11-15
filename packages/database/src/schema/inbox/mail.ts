@@ -1,3 +1,4 @@
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -15,6 +16,11 @@ import { appSchema } from '../namespace.js';
 import { workspaceMemberships } from '../tenant-access/memberships.js';
 import { systemMailDeliveries } from '../mail/deliveries.js';
 import { workspaceInboxThreads } from './threads.js';
+
+const WIDTHS = Object.freeze({
+  recipient: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+  windowKey: 64,
+});
 export const noticeMailBatches = appSchema.table(
   'notice_mail_batches',
   {
@@ -24,8 +30,8 @@ export const noticeMailBatches = appSchema.table(
     preferenceRevision: integer('preference_revision').notNull(),
     defaultRevision: integer('default_revision').notNull(),
     memberRevision: integer('member_revision').notNull(),
-    recipient: varchar('recipient', { length: 320 }).notNull(),
-    windowKey: varchar('window_key', { length: 64 }).notNull(),
+    recipient: varchar('recipient', { length: WIDTHS.recipient }).notNull(),
+    windowKey: varchar('window_key', { length: WIDTHS.windowKey }).notNull(),
     itemCount: integer('item_count').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()

@@ -17,6 +17,12 @@ import { workspaceMemberships } from './tenant-access/memberships.js';
 import { connectionSecretVersions } from './connections.js';
 import { appSchema, bytea } from './namespace.js';
 
+const WIDTHS = Object.freeze({
+  kmsKeyReference: 2048,
+  nonce: 64,
+  authTag: 64,
+});
+
 /** A client's settings never change: new settings are a new secret version. */
 export const connectionOAuth2Clients = appSchema.table(
   'connection_oauth2_clients',
@@ -58,11 +64,13 @@ export const connectionOAuth2Tokens = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     connectionId: uuid('connection_id').notNull(),
     secretVersionId: uuid('secret_version_id').notNull(),
-    kmsKeyReference: varchar('kms_key_reference', { length: 2048 }).notNull(),
+    kmsKeyReference: varchar('kms_key_reference', {
+      length: WIDTHS.kmsKeyReference,
+    }).notNull(),
     encryptedDataKey: text('encrypted_data_key').notNull(),
     ciphertext: text('ciphertext').notNull(),
-    nonce: varchar('nonce', { length: 64 }).notNull(),
-    authTag: varchar('auth_tag', { length: 64 }).notNull(),
+    nonce: varchar('nonce', { length: WIDTHS.nonce }).notNull(),
+    authTag: varchar('auth_tag', { length: WIDTHS.authTag }).notNull(),
     authorizedAt: timestamp('authorized_at', {
       withTimezone: true,
       mode: 'date',

@@ -1,3 +1,5 @@
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import type {
   StoredExecutionValue,
   AcceptanceInput,
@@ -26,6 +28,17 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  recoveryTargetNodeId: 128,
+  recoveryEffectRisk: 32,
+  triggerType: 32,
+  failureNotificationSideEffectClass: 32,
+  status: 32,
+  cancelRequestedBy: 128,
+  cancelReason: 512,
+  errorSummary: NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters,
+});
+
 export const workflowRuns = appSchema.table(
   'workflow_runs',
   {
@@ -37,10 +50,12 @@ export const workflowRuns = appSchema.table(
     replayCommandId: uuid('replay_command_id'),
     handledFailureCount: integer('handled_failure_count').notNull().default(0),
     recoveryTargetNodeRunId: uuid('recovery_target_node_run_id'),
-    recoveryTargetNodeId: varchar('recovery_target_node_id', { length: 128 }),
+    recoveryTargetNodeId: varchar('recovery_target_node_id', {
+      length: WIDTHS.recoveryTargetNodeId,
+    }),
     recoveryReusedCount: integer('recovery_reused_count'),
     recoveryEffectRisk: varchar('recovery_effect_risk', {
-      length: 32,
+      length: WIDTHS.recoveryEffectRisk,
     }).$type<WorkflowRecoveryEffectRisk>(),
     recoveryEffectsAcknowledged: boolean('recovery_effects_acknowledged'),
     errorWorkflowOrigin: boolean('error_workflow_origin')
@@ -62,7 +77,7 @@ export const workflowRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    triggerType: varchar('trigger_type', { length: 32 })
+    triggerType: varchar('trigger_type', { length: WIDTHS.triggerType })
       .$type<AcceptanceInput['triggerType']>()
       .notNull(),
     failureNotificationDestinationId: uuid(
@@ -73,7 +88,7 @@ export const workflowRuns = appSchema.table(
     ),
     failureNotificationSideEffectClass: varchar(
       'failure_notification_side_effect_class',
-      { length: 32 },
+      { length: WIDTHS.failureNotificationSideEffectClass },
     ),
     failureNotificationConnectionSecretVersionId: uuid(
       'failure_notification_connection_secret_version_id',
@@ -84,7 +99,9 @@ export const workflowRuns = appSchema.table(
     admissionTicket: bigint('admission_ticket', { mode: 'bigint' })
       .notNull()
       .$defaultFn(() => sql`null`),
-    status: varchar('status', { length: 32 }).$type<RunStatus>().notNull(),
+    status: varchar('status', { length: WIDTHS.status })
+      .$type<RunStatus>()
+      .notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
     deadlineWakeupAt: timestamp('deadline_wakeup_at', {
       withTimezone: true,
@@ -94,8 +111,10 @@ export const workflowRuns = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    cancelRequestedBy: varchar('cancel_requested_by', { length: 128 }),
-    cancelReason: varchar('cancel_reason', { length: 512 }),
+    cancelRequestedBy: varchar('cancel_requested_by', {
+      length: WIDTHS.cancelRequestedBy,
+    }),
+    cancelReason: varchar('cancel_reason', { length: WIDTHS.cancelReason }),
     startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }),
     completedAt: timestamp('completed_at', {
       withTimezone: true,
@@ -112,7 +131,7 @@ export const workflowRuns = appSchema.table(
       mode: 'date',
     }),
     outputRef: json('output_ref').$type<StoredExecutionValue>(),
-    errorSummary: varchar('error_summary', { length: 2048 }),
+    errorSummary: varchar('error_summary', { length: WIDTHS.errorSummary }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -177,7 +196,7 @@ export const workflowRuns = appSchema.table(
     ),
     check(
       'workflow_runs_input_ref_expiry_valid',
-      sql`(((input_ref IS NULL) AND (input_ref_expires_at IS NULL)) OR ((input_ref IS NOT NULL) AND (input_ref_expires_at IS NOT NULL) AND (input_ref_expires_at > created_at) AND (input_ref_expires_at <= (created_at + '30 days'::interval))))`,
+      sql`(((input_ref IS NULL) AND (input_ref_expires_at IS NULL)) OR ((input_ref IS NOT NULL) AND (input_ref_expires_at IS NOT NULL) AND (input_ref_expires_at > created_at) AND (input_ref_expires_at <= (created_at + '${sql.raw(String(DATA_RETENTION_DAYS.runDetails))} days'::interval))))`,
     ),
     check(
       'workflow_runs_replay_lineage_valid',

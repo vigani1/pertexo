@@ -14,6 +14,10 @@ import { workflowFolders } from './organization.js';
 import { authDirectoryGroups } from '../identity/federation/directory/groups.js';
 import { authOrganizationWorkspaces } from '../identity/federation/organizations.js';
 
+const WIDTHS = Object.freeze({
+  access: 16,
+});
+
 export const workflowFolderGrants = appSchema.table(
   'workflow_folder_grants',
   {
@@ -23,7 +27,7 @@ export const workflowFolderGrants = appSchema.table(
     userId: uuid('user_id'),
     organizationId: uuid('organization_id'),
     groupId: uuid('group_id'),
-    access: varchar({ length: 16 }).$type<FolderAccess>().notNull(),
+    access: varchar({ length: WIDTHS.access }).$type<FolderAccess>().notNull(),
   },
   (table) => [
     check(
