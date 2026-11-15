@@ -10,7 +10,7 @@ import {
  * A purge pass is bounded more tightly than other maintenance: it holds the
  * workspace row, so its lock and statement waits stop sooner.
  */
-const PURGE_TIMEOUT_MAXIMUM_MILLIS = Object.freeze({
+const PURGE_TIMEOUT_MAX_MILLIS = Object.freeze({
   lock: 60_000,
   statement: 120_000,
 });
@@ -42,14 +42,14 @@ export const optionsSchema = z
   .object({
     lockTimeoutMs: timeoutMillisSchema({
       ...LOCK_TIMEOUT_MILLIS,
-      maximum: PURGE_TIMEOUT_MAXIMUM_MILLIS.lock,
+      maximum: PURGE_TIMEOUT_MAX_MILLIS.lock,
     }),
     objectPageSize: pageSizeSchema,
     objectTimeoutMs: timeoutMillisSchema(OBJECT_TIMEOUT_MILLIS),
     pageSize: pageSizeSchema,
     statementTimeoutMs: timeoutMillisSchema({
       ...STATEMENT_TIMEOUT_MILLIS,
-      maximum: PURGE_TIMEOUT_MAXIMUM_MILLIS.statement,
+      maximum: PURGE_TIMEOUT_MAX_MILLIS.statement,
     }),
   })
   .strict();

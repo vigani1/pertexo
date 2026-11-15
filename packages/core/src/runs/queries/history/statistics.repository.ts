@@ -17,7 +17,7 @@ type CurrentStatus = Extract<RunStatus, 'queued' | 'running' | 'waiting'>;
 /** Windows are whole hours so daylight-saving changes never skew them. */
 const WINDOW_HOURS = Object.freeze({ '1h': 1, '6h': 6, '24h': 24, '7d': 168 });
 type Window = '1h' | '6h' | '24h' | '7d';
-const WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT = 50;
+const STATISTICS_WORKFLOWS_MAX = 50;
 /** The read's cost ceiling: it never holds a pooled connection longer. */
 const WORKFLOW_RUN_STATISTICS_STATEMENT_TIMEOUT_MILLIS = 2_000;
 
@@ -117,7 +117,7 @@ async function readWorkflowBreakdown(
   const result = await readWorkflowBreakdownRows(transaction, {
     hours,
     includeWorkflowName: input.includeWorkflowName ?? false,
-    limit: WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT + 1,
+    limit: STATISTICS_WORKFLOWS_MAX + 1,
   });
   const workflows = new Map<
     string,
@@ -145,9 +145,7 @@ async function readWorkflowBreakdown(
     }),
   );
   return Object.freeze({
-    items: Object.freeze(
-      items.slice(0, WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT),
-    ),
-    truncated: items.length > WORKFLOW_RUN_STATISTICS_WORKFLOW_LIMIT,
+    items: Object.freeze(items.slice(0, STATISTICS_WORKFLOWS_MAX)),
+    truncated: items.length > STATISTICS_WORKFLOWS_MAX,
   });
 }

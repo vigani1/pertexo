@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  MAX_SCHEDULE_PROJECTION,
+  SCHEDULE_PROJECTION_MAX,
   parseScheduleRecurrence,
   projectScheduleOccurrences,
   resolveScheduleObservation,
@@ -151,7 +151,7 @@ describe('schedule fire-time projection', () => {
         cron('* 2 * * *', 'America/New_York'),
         '2026-03-08T06:00:00.000Z',
         '2026-03-08T06:00:00.000Z',
-        MAX_SCHEDULE_PROJECTION,
+        SCHEDULE_PROJECTION_MAX,
       ).slice(0, 3),
     ).toEqual([
       '2026-03-08T07:00:00.000Z',

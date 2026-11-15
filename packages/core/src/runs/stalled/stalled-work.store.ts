@@ -45,7 +45,7 @@ const STATEMENT_TIMEOUT_MILLIS = 15_000;
 
 /** Confirmed history must not queue ahead of lost jobs; each cycle is bounded. */
 const DELIVERY_BATCH_SIZE = 1_000;
-const MAXIMUM_DELIVERY_BATCHES_PER_CYCLE = 20;
+const DELIVERY_BATCHES_PER_CYCLE_MAX = 20;
 
 /** Fail a hung query before the worker's five-minute scan-health deadline. */
 export const STALLED_WORK_POOL_ROLE = 'worker';
@@ -245,7 +245,7 @@ async function settleDeliveries(
   signal: AbortSignal,
 ): Promise<StalledWorkRecovery[]> {
   const recovered: StalledWorkRecovery[] = [];
-  for (let batch = 0; batch < MAXIMUM_DELIVERY_BATCHES_PER_CYCLE; batch += 1) {
+  for (let batch = 0; batch < DELIVERY_BATCHES_PER_CYCLE_MAX; batch += 1) {
     signal.throwIfAborted();
     const { settled, asked } = await settleOverdueDeliveries(
       pool,
