@@ -14,7 +14,7 @@ import {
   compileDirectoryFilter,
   directoryField,
   type DirectoryKind,
-} from './filter.js';
+} from './filter.repository.js';
 
 import type { DirectoryUser } from '../directory-provisioning.types.js';
 import type { DirectoryGroup } from '../directory-provisioning.types.js';

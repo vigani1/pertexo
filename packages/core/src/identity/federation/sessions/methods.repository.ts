@@ -11,7 +11,7 @@ import {
   workspaces,
 } from '@pertexo/database/schema';
 import { withActorDiscoveryScope } from '@pertexo/database/primitives';
-import { canonicalEmailDomainSql } from '../../canonical-email.js';
+import { canonicalEmailDomainSql } from '../../canonical-email.repository.js';
 import { canCreateAuthenticationSession } from './authority.repository.js';
 
 /**

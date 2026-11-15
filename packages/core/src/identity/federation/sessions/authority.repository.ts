@@ -1,4 +1,4 @@
-import { canonicalEmailDomainSql } from '../../canonical-email.js';
+import { canonicalEmailDomainSql } from '../../canonical-email.repository.js';
 import type {
   AuthenticationSession,
   IdentityEmailChangeEligibility,

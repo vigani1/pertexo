@@ -5,7 +5,7 @@ import {
   insertSystemMail,
   type SystemMailInput,
 } from '@pertexo/secrets/server';
-import { canonicalEmailSql } from './canonical-email.js';
+import { canonicalEmailSql } from './canonical-email.repository.js';
 import { and, eq, like, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';

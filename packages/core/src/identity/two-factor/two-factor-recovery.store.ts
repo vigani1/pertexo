@@ -13,7 +13,7 @@ import {
 } from '@pertexo/database/platform';
 import { insertSystemMail } from '@pertexo/secrets/server';
 import { authTwoFactors, users } from '@pertexo/database/schema';
-import { canonicalEmailSql } from '../canonical-email.js';
+import { canonicalEmailSql } from '../canonical-email.repository.js';
 import { recordIdentitySecurityFact } from '../facts.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
