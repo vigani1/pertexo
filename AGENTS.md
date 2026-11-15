@@ -108,9 +108,10 @@ The one named way for each shared job:
   values; `validate-workspace-status-lists.mjs` refuses a list written out.
 - From the one-shot move on, a core area imports the files another area's
   `index.ts` names, directly, never through that `index.ts`, so no barrel edges
-  appear. Until
-  the areas' strongly connected group is broken up, an area's entry point doesn't
-  narrow what a process loads.
+  appear. Core's areas form no runtime import cycle except `identity` and
+  `tenant-access`, kept with reasons in `KEPT_AREA_CYCLE_EDGES`
+  (`validate-core-area-cycles.mjs`, which refuses any new one). So an area's
+  entry point loads only the areas below it.
 - Packages use at most two entry points: `@pertexo/<name>` (safe anywhere,
   including the browser) and `@pertexo/<name>/server` (Node only). The accepted
   exceptions, all Node only:
