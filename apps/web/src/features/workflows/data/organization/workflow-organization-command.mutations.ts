@@ -14,10 +14,10 @@ import {
   lowEffectError,
 } from '@/lib/api/commands/low-effect-mutation';
 import type { WorkflowOrganizationInput } from '../../model/organization/requests';
-import { sendWorkflowOrganizationCommand } from '../../data/organization/workflow-organization.api';
-import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
-import { workflowKeys } from '../../data/workflows.queries';
-import { allowed, type RequiredRole } from '../../data/organization/authority';
+import { sendWorkflowOrganizationCommand } from './workflow-organization.api';
+import { workflowOrganizationKeys } from './workflow-organization.queries';
+import { workflowKeys } from '../workflows.queries';
+import { allowed, type RequiredRole } from './authority';
 
 export type WorkflowOrganizationCommandResult = Awaited<
   ReturnType<typeof sendWorkflowOrganizationCommand>

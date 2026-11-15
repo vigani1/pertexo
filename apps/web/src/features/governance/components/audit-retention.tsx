@@ -12,7 +12,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { GovernanceScope } from '../data/audit.api';
-import { useSettingForm } from '../hooks/use-governance-setting-form';
+import { useSettingForm } from '../data/governance-setting.mutations';
 import { AUDIT_RETENTION_RANGE } from '../model/governance-setting-edit';
 export function AuditRetention({
   scope,

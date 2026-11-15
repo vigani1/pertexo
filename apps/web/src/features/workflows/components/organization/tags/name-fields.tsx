@@ -4,7 +4,7 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { useFieldValidation } from '@/components/ui/use-field-validation';
-import type { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
+import type { useWorkflowOrganizationCommand } from '../../../data/organization/workflow-organization-command.mutations';
 import type { WorkflowOrganizationInput } from '../../../model/organization/requests';
 const TAG_HINT = 'Lowercase letters, numbers and hyphens, like eu-region.';
 export function TagNameActions({

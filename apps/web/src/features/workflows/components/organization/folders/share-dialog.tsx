@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { useFolderSharingEditor } from '../../../hooks/use-folder-sharing';
+import { useFolderSharingEditor } from '../../../data/organization/folder-sharing.mutations';
 import { folderTrail } from '../../../model/organization/folder-navigation';
 import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
 import { pluralWord } from '@/lib/format/count';

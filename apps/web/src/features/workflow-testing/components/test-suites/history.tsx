@@ -12,7 +12,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { formatDate, formatClock } from '@/lib/format/time';
-import type { TestSuites } from '../../hooks/use-test-suites';
+import type { TestSuites } from '../../data/test-suites/workflow-test-suites.mutations';
 import { TestCaseReport } from './report';
 const tones: Record<string, StatusTone> = {
   passed: 'success',

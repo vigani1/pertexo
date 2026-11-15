@@ -8,8 +8,8 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 import { expect, it, vi } from 'vitest';
-import { useConnectionSharingEditor } from '@/features/connections/hooks/use-sharing-editor';
-import { useFolderSharingEditor } from '@/features/workflows/hooks/use-folder-sharing';
+import { useConnectionSharingEditor } from '@/features/connections/data/sharing.mutations';
+import { useFolderSharingEditor } from '@/features/workflows/data/organization/folder-sharing.mutations';
 import { useFederationCommand } from '@/features/federation/data/federation-command.mutations';
 import { federationSettingsQueryOptions } from '@/features/federation/data/federation-settings.queries';
 import { createApiClient } from '@/lib/api/client';

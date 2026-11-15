@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/class-names';
-import type { WorkflowTests } from '../../hooks/use-workflow-tests';
+import type { WorkflowTests } from '../../data/workflow-tests/workflow-tests.mutations';
 
 function testBusy(tests: WorkflowTests) {
   return tests.preparing || tests.blocked || tests.start.pending;

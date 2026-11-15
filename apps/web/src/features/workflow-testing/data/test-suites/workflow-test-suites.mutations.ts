@@ -1,5 +1,5 @@
-import { useSuiteHistory } from './use-suite-history';
-import { commandIsLive } from '../model/test-ownership';
+import { useSuiteHistory } from '../../hooks/use-suite-history';
+import { commandIsLive } from '../../model/test-ownership';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -11,14 +11,14 @@ import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError, UserFacingError } from '@/lib/api/error';
 import { commandErrorMessage } from '@/lib/workflows/command-errors';
-import type { WorkflowTestScope } from '../data/workflow-tests/workflow-tests.api';
-import { workflowTestsKey } from '../data/workflow-tests/workflow-tests.queries';
+import type { WorkflowTestScope } from '../workflow-tests/workflow-tests.api';
+import { workflowTestsKey } from '../workflow-tests/workflow-tests.queries';
 import {
   prepareSuite,
   startSuite,
   cancelSuite,
-} from '../data/test-suites/workflow-test-suites.api';
-import { suitesKey } from '../data/test-suites/workflow-test-suites.queries';
+} from './workflow-test-suites.api';
+import { suitesKey } from './workflow-test-suites.queries';
 export function useTestSuites({
   scope,
   enabled,

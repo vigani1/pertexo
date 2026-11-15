@@ -1,7 +1,7 @@
-import { useTestHistory } from './use-test-history';
-import { commandIsLive } from '../model/test-ownership';
-import { useTestSuites } from './use-test-suites';
-import { getStepSample } from '../data/samples/step-samples.api';
+import { useTestHistory } from '../../hooks/use-test-history';
+import { commandIsLive } from '../../model/test-ownership';
+import { useTestSuites } from '../test-suites/workflow-test-suites.mutations';
+import { getStepSample } from '../samples/step-samples.api';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -17,8 +17,8 @@ import {
   startWorkflowTest,
   cancelWorkflowTest,
   type WorkflowTestScope,
-} from '../data/workflow-tests/workflow-tests.api';
-import { workflowTestsKey } from '../data/workflow-tests/workflow-tests.queries';
+} from './workflow-tests.api';
+import { workflowTestsKey } from './workflow-tests.queries';
 
 export function useWorkflowTests({
   scope,

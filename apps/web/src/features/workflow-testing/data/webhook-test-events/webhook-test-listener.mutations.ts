@@ -4,12 +4,9 @@ import type {
   WebhookAuthentication,
   WebhookTestEventStarted,
 } from '@pertexo/contracts';
-import type { SampleScope } from '../../data/samples/step-samples.api';
-import {
-  startWebhookTest,
-  stopWebhookTest,
-} from '../../data/webhook-test-events/webhook-test-events.api';
-import { webhookTestQuery } from '../../data/webhook-test-events/webhook-test-events.queries';
+import type { SampleScope } from '../samples/step-samples.api';
+import { startWebhookTest, stopWebhookTest } from './webhook-test-events.api';
+import { webhookTestQuery } from './webhook-test-events.queries';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';
 

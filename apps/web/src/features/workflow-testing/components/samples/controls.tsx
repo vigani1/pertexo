@@ -8,7 +8,7 @@ import type { SampleDialogSource } from '../../model/step-samples';
 import { SampleSummary } from './summary';
 import { SampleActions } from './actions';
 import { PinSampleDialog } from './dialog';
-import { useSampleCommand } from './use-command';
+import { useSampleCommand } from '../../data/samples/step-sample.mutations';
 export function SampleControls({
   scope,
   nodeId,

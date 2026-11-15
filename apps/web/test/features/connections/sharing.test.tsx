@@ -1,5 +1,5 @@
 import { NotificationsProvider } from '@/components/ui/toast';
-import { useConnectionSharingEditor } from '@/features/connections/hooks/use-sharing-editor';
+import { useConnectionSharingEditor } from '@/features/connections/data/sharing.mutations';
 import { discoveryHandlers } from '../workflows/list/fixtures';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

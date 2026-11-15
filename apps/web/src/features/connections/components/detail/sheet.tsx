@@ -1,4 +1,4 @@
-import { useConnectionSharingEditor } from '../../hooks/use-sharing-editor';
+import { useConnectionSharingEditor } from '../../data/sharing.mutations';
 import { ConnectionSharingPanel } from '../connection-sharing';
 import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
 import { useState } from 'react';

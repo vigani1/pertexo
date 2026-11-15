@@ -5,7 +5,7 @@ import { expect, it } from 'vitest';
 import { accessibleWorkspaceSchema } from '@pertexo/contracts';
 import { createApiClient } from '@/lib/api/client';
 import { useOrganizationList } from '@/features/workflows/hooks/organization/use-organization-list';
-import { useWorkflowOrganizationCommand } from '@/features/workflows/hooks/organization/use-workflow-organization-command';
+import { useWorkflowOrganizationCommand } from '@/features/workflows/data/organization/workflow-organization-command.mutations';
 import { readAccessLost } from '@/lib/api/error-copy';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';

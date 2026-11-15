@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
-import type { useInputCases } from '../../hooks/use-input-cases';
+import type { useInputCases } from '../../data/input-cases/workflow-input-cases.mutations';
 import { InputCaseEditor } from './editor';
 export type LoadedInputCase = Readonly<{
   name: string;

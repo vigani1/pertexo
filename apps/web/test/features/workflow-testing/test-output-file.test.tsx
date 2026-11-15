@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { TestOutputValue } from '@/features/workflow-testing/components/workflow-tests/results';
-import type { WorkflowTests } from '@/features/workflow-testing/hooks/use-workflow-tests';
+import type { WorkflowTests } from '@/features/workflow-testing/data/workflow-tests/workflow-tests.mutations';
 import { createApiClient } from '@/lib/api/client';
 
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

@@ -10,9 +10,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { updateCurrentUserProfile } from '../../../data/auth.api';
-import { currentUserQueryKey } from '../../../data/auth.queries';
-import { accountCommandFailure } from '../../../model/account/failure';
+import { updateCurrentUserProfile } from './auth.api';
+import { currentUserQueryKey } from './auth.queries';
+import { accountCommandFailure } from '../model/account/failure';
 
 type NameAttempt = Readonly<{
   displayName: string;

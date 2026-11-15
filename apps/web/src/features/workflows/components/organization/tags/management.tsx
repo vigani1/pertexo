@@ -17,7 +17,7 @@ import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { cn } from '@/lib/class-names';
 import type { WorkflowOrganizationInput } from '../../../model/organization/requests';
-import type { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
+import type { useWorkflowOrganizationCommand } from '../../../data/organization/workflow-organization-command.mutations';
 type StartCommand = (attempt: WorkflowOrganizationInput) => void;
 const TAG_HINT = 'Lowercase letters, numbers and hyphens, like eu-region.';
 const DONE: Partial<Record<WorkflowOrganizationInput['kind'], string>> = {
