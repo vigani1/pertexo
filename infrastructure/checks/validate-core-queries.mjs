@@ -39,7 +39,7 @@ const ORIGINAL_PENDING_AREAS = Object.freeze([
 ]);
 
 /** Core areas whose queries haven't moved yet; this list may only shrink. */
-export const PENDING_AREAS = Object.freeze(['authoring', 'runs']);
+export const PENDING_AREAS = Object.freeze(['runs']);
 
 // The calls that run or start a query on a drizzle database, a pg client or
 // a pool.
