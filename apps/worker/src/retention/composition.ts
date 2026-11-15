@@ -15,6 +15,9 @@ import {
   type RetentionRuntime,
 } from './retention.runtime.js';
 
+/** The longest an in-flight upload is given before retention removes its bytes. */
+const MAXIMUM_ARTIFACT_QUIESCENCE_SECONDS = 2 * 60;
+
 /**
  * The wait once nothing is left. Nobody waits on this work: windows are days long,
  * and a backlog keeps the runtime's busy rate. A shorter poll only costs an idle
@@ -46,7 +49,7 @@ export function configuredRetentionRuntime(
           {
             // Uploads still in flight must time out before their bytes go.
             artifactQuiescenceSeconds: Math.min(
-              120,
+              MAXIMUM_ARTIFACT_QUIESCENCE_SECONDS,
               Math.ceil(artifactStore.requestTimeoutMs / 1_000) + 1,
             ),
           },

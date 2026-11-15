@@ -53,6 +53,14 @@ import {
   createScannerRuntime,
   type ScannerRuntime,
 } from '../runtime/scanner.js';
+import { BACKGROUND_TASK_SHUTDOWN_TIMEOUT_MILLIS } from '../runtime/background-task-deadline.js';
+
+/** The coordinator's scan sizes and cadence when its options leave them out. */
+const COORDINATOR_DEFAULTS = Object.freeze({
+  dueWakeupBatchSize: 25,
+  suiteBatchSize: 25,
+  dueWakeupPollIntervalMillis: 250,
+});
 
 export type CoordinatorRuntime = ScannerRuntime;
 
@@ -282,7 +290,10 @@ export async function createCoordinatorRuntime(
       if (signal.aborted) return;
       await deadlineScanner.claimDueWakeups(dueWakeupBatchSize, signal);
       signal.throwIfAborted();
-      await suiteScanner.scan(Math.min(25, dueWakeupBatchSize), signal);
+      await suiteScanner.scan(
+        Math.min(COORDINATOR_DEFAULTS.suiteBatchSize, dueWakeupBatchSize),
+        signal,
+      );
     },
     scanFailed: (error) => {
       options.logger?.error(
@@ -295,11 +306,14 @@ export async function createCoordinatorRuntime(
 }
 
 function coordinatorRuntimeSettings(options: CoordinatorRuntimeOptions) {
-  const dueWakeupBatchSize = options.dueWakeupBatchSize ?? 25;
+  const dueWakeupBatchSize =
+    options.dueWakeupBatchSize ?? COORDINATOR_DEFAULTS.dueWakeupBatchSize;
   const dueWakeupPollIntervalMillis =
-    options.dueWakeupPollIntervalMillis ?? 250;
+    options.dueWakeupPollIntervalMillis ??
+    COORDINATOR_DEFAULTS.dueWakeupPollIntervalMillis;
   const backgroundTaskShutdownTimeoutMillis =
-    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
+    options.backgroundTaskShutdownTimeoutMillis ??
+    BACKGROUND_TASK_SHUTDOWN_TIMEOUT_MILLIS;
 
   return {
     dueWakeupBatchSize,

@@ -28,6 +28,9 @@ import type {
 } from './handle-preview-delivery.js';
 import { PreviewAttemptHandlerStateError } from './handle-preview-delivery.js';
 
+/** The longest node id a preview names. */
+const PREVIEW_NODE_ID_MAX_CHARACTERS = 256;
+
 export type { PreviewAttemptHandler } from './handle-preview-delivery.js';
 
 const previewExecutableNodeSchema = z
@@ -38,7 +41,7 @@ const previewExecutableNodeSchema = z
     definition: z
       .object({ key: z.string().min(1), version: z.number().int().positive() })
       .strict(),
-    id: z.string().min(1).max(256),
+    id: z.string().min(1).max(PREVIEW_NODE_ID_MAX_CHARACTERS),
     inputMappings: z.record(z.string(), z.json()),
   })
   .strict();

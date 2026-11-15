@@ -41,6 +41,9 @@ import {
   WorkerConfigurationError,
 } from './worker-configuration.errors.js';
 
+// Linux's PATH_MAX.
+const PATH_MAX_CHARACTERS = 4_096;
+
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     publicWebOrigin?: string;
@@ -108,7 +111,7 @@ export function parseWorkerConfig(
     const artifactStore = artifactStoreConfig(raw, { deployed: deployed });
     const artifactScratchDirectory = z
       .object({
-        ARTIFACT_SCRATCH_DIRECTORY: z.string().min(1).max(4096),
+        ARTIFACT_SCRATCH_DIRECTORY: z.string().min(1).max(PATH_MAX_CHARACTERS),
       })
       .parse({
         ARTIFACT_SCRATCH_DIRECTORY:

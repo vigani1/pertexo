@@ -1,5 +1,8 @@
 import type { OutboxDispatchResult } from './outbox-dispatch.types.js';
 
+// An idle dispatcher doubles its wait each time, up to the idle interval.
+const IDLE_BACKOFF_FACTOR = 2;
+
 export const ACTIVE_POLL_INTERVAL_MILLIS = 25;
 
 // A run's next step reaches the outbox a few dozen milliseconds after its
@@ -40,6 +43,9 @@ export function nextDispatchPolling(
     };
   return {
     lastActivityAt: previous.lastActivityAt,
-    intervalMillis: Math.min(previous.intervalMillis * 2, idleIntervalMillis),
+    intervalMillis: Math.min(
+      previous.intervalMillis * IDLE_BACKOFF_FACTOR,
+      idleIntervalMillis,
+    ),
   };
 }

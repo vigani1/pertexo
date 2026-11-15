@@ -8,6 +8,12 @@ import {
   type ApplicationKeyRing,
 } from '@pertexo/secrets/server';
 
+/** How long one mail send may take, and how often the mail queue is read, in milliseconds. */
+export const MAIL_SETTING_BOUNDS = Object.freeze({
+  sendTimeoutMillis: { minimum: 100, maximum: 30_000, default: 5_000 },
+  pollMillis: { minimum: 100, maximum: 60_000, default: 1_000 },
+});
+
 export function readMailPreviousKeys(
   setting: 'AUTH_MAIL_PREVIOUS_KEYS' | 'INVITATION_TOKEN_PREVIOUS_KEYS',
   value: string | undefined,

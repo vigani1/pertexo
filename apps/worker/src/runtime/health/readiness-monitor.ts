@@ -9,6 +9,13 @@ import type { StructuredLogger } from '@pertexo/observability/server';
 
 import { boundedBackgroundTask } from '../background-task-deadline.js';
 
+const MARKER_FILE_MODE = 0o600;
+/** How often readiness is checked, and how long one check may take. */
+const READINESS = Object.freeze({
+  checkIntervalMillis: 10_000,
+  operationTimeoutMillis: 5_000,
+});
+
 const readinessMarker = '/tmp/pertexo-worker-ready';
 const readinessRevocationMarker = '/tmp/pertexo-worker-not-ready';
 
@@ -26,12 +33,12 @@ type WorkerReadinessMonitorState = 'idle' | 'checking' | 'stopping' | 'stopped';
 const fileReadinessMarker: WorkerReadinessMarker = {
   async setReady({ ready }: Readonly<{ ready: boolean }>): Promise<void> {
     if (ready) {
-      await writeFile(readinessMarker, '', { mode: 0o600 });
+      await writeFile(readinessMarker, '', { mode: MARKER_FILE_MODE });
       await rm(readinessRevocationMarker, { force: true });
       return;
     }
     const results = await Promise.allSettled([
-      writeFile(readinessRevocationMarker, '', { mode: 0o600 }),
+      writeFile(readinessRevocationMarker, '', { mode: MARKER_FILE_MODE }),
       rm(readinessMarker, { force: true }),
     ]);
     const failures: unknown[] = [];
@@ -71,7 +78,7 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
     {
       marker = fileReadinessMarker,
       failClosed = markProcessUnhealthy,
-      operationTimeoutMillis = 5_000,
+      operationTimeoutMillis = READINESS.operationTimeoutMillis,
     }: Readonly<{
       marker?: WorkerReadinessMarker | undefined;
       failClosed?:
@@ -95,7 +102,7 @@ export class WorkerReadinessMonitor implements BeforeApplicationShutdown {
     // through a dependency blip, and every client here reconnects by itself.
     this.timer = setInterval(() => {
       void this.check().catch(() => undefined);
-    }, 10_000);
+    }, READINESS.checkIntervalMillis);
     this.timer.unref();
   }
 

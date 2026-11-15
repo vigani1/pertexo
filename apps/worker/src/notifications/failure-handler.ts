@@ -8,6 +8,14 @@ import type {
 import { FailureNotificationDeliveryResultSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
+/** What a failure-notification delivery may be configured with. */
+const FAILURE_DELIVERY_BOUNDS = Object.freeze({
+  maxAttempts: 10,
+  retryDelaySeconds: 60 * 60,
+  // Just under the hour a delivery's claim lasts.
+  timeoutMillis: 60 * 60_000 - 1_000,
+});
+
 type Delivery = Extract<
   QueueDelivery,
   { readonly name: 'deliver-run-failure-notification' }
@@ -53,9 +61,21 @@ export function createFailureNotificationHandler(
   }>,
 ): FailureNotificationHandler {
   z.object({
-    maxAttempts: z.number().int().min(1).max(10),
-    retryDelaySeconds: z.number().int().min(0).max(3600),
-    timeoutMillis: z.number().int().positive().max(3_599_000),
+    maxAttempts: z
+      .number()
+      .int()
+      .min(1)
+      .max(FAILURE_DELIVERY_BOUNDS.maxAttempts),
+    retryDelaySeconds: z
+      .number()
+      .int()
+      .min(0)
+      .max(FAILURE_DELIVERY_BOUNDS.retryDelaySeconds),
+    timeoutMillis: z
+      .number()
+      .int()
+      .positive()
+      .max(FAILURE_DELIVERY_BOUNDS.timeoutMillis),
   }).parse(dependencies);
   const pendingOperations = new Set<Promise<void>>();
   const trackPending = (operation: Promise<unknown>): void => {

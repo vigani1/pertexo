@@ -2,6 +2,9 @@ import { FILE_TRANSFER_NO_PROGRESS_MILLIS } from '@pertexo/node-sdk';
 import { pipeline, Transform, Readable } from 'node:stream';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import { ArtifactSourceCleanupError } from './consume.js';
+
+/** How many bytes scratch files move in one chunk. */
+export const SCRATCH_CHUNK_BYTES = 64 * 1_024;
 export const FILE_TRANSFER_ERROR_CODE = Object.freeze({
   deadline: 'execution.file_deadline',
   progressTimeout: 'execution.file_progress_timeout',
@@ -20,7 +23,7 @@ function timedOut({
       : FILE_TRANSFER_ERROR_CODE.progressTimeout,
     errorSummary: deadline
       ? 'The execution deadline expired during the file transfer.'
-      : 'The file transfer made no byte progress for 60 seconds. Check storage or the receiving service before retrying.',
+      : `The file transfer made no byte progress for ${String(FILE_TRANSFER_NO_PROGRESS_MILLIS / 1_000)} seconds. Check storage or the receiving service before retrying.`,
   });
 }
 /** One byte-progress/deadline owner, including a native source's cancellation. */
@@ -119,8 +122,8 @@ export function withByteProgress(
         'File bytes could not be read. Check worker storage before retrying.',
     });
   const guarded = new Transform({
-    readableHighWaterMark: 65536,
-    writableHighWaterMark: 65536,
+    readableHighWaterMark: SCRATCH_CHUNK_BYTES,
+    writableHighWaterMark: SCRATCH_CHUNK_BYTES,
     transform(chunk: unknown, _encoding, callback) {
       if (!(chunk instanceof Uint8Array)) {
         callback(mapError());
@@ -156,7 +159,7 @@ export function withByteProgress(
     }
     const bytes = Readable.from(readBytes(), {
       objectMode: false,
-      highWaterMark: 65536,
+      highWaterMark: SCRATCH_CHUNK_BYTES,
     });
     pipeline(bytes, guarded, () => undefined);
   }

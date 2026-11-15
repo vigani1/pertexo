@@ -22,6 +22,95 @@ const workerLogLevels = [
   'trace',
 ] as const;
 
+type SettingBounds = Readonly<{
+  minimum: number;
+  maximum?: number;
+  default: number;
+}>;
+
+/**
+ * Every numeric worker setting's bounds and default, read once at startup.
+ * Times are in the unit their name ends with.
+ */
+const WORKER_SETTING_BOUNDS = Object.freeze({
+  DATABASE_DISPATCHER_POOL_MAX: { minimum: 1, maximum: 10, default: 2 },
+  OUTBOX_DISPATCH_BATCH_SIZE: { minimum: 1, maximum: 100, default: 25 },
+  OUTBOX_DISPATCH_LEASE_MILLIS: {
+    minimum: 1_000,
+    maximum: 300_000,
+    default: 30_000,
+  },
+  OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS: {
+    minimum: 100,
+    maximum: 120_000,
+    default: 5_000,
+  },
+  OUTBOX_DISPATCH_POLL_MILLIS: { minimum: 10, maximum: 60_000, default: 1_000 },
+  OUTBOX_DISPATCH_RETRY_MILLIS: {
+    minimum: 1,
+    maximum: 300_000,
+    default: 1_000,
+  },
+  WORKFLOW_COORDINATOR_MAX_ADMISSIONS: { minimum: 1, maximum: 64, default: 32 },
+  WORKSPACE_INBOX_FOLD_BATCH_SIZE: { minimum: 1, maximum: 1_000, default: 500 },
+  WORKSPACE_INBOX_FOLD_POLL_MILLIS: {
+    minimum: 100,
+    maximum: 60_000,
+    default: 1_000,
+  },
+  WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE: {
+    minimum: 1,
+    maximum: 1_000,
+    default: 500,
+  },
+  WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS: {
+    minimum: 100,
+    maximum: 60_000,
+    default: 1_000,
+  },
+  WORKFLOW_DUE_WAKEUP_BATCH_SIZE: { minimum: 1, maximum: 100, default: 25 },
+  WORKFLOW_DUE_WAKEUP_POLL_MILLIS: {
+    minimum: 10,
+    maximum: 60_000,
+    default: 1_000,
+  },
+  TRIGGER_SCHEDULE_BATCH_SIZE: { minimum: 1, maximum: 100, default: 25 },
+  TRIGGER_SCHEDULE_LEASE_SECONDS: { minimum: 1, maximum: 300, default: 30 },
+  TRIGGER_SCHEDULE_POLL_MILLIS: {
+    minimum: 10,
+    maximum: 60_000,
+    default: 1_000,
+  },
+  TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS: {
+    minimum: 60,
+    maximum: 3_600,
+    default: 300,
+  },
+  NODE_ATTEMPT_LEASE_SECONDS: { minimum: 1, maximum: 300, default: 30 },
+  NODE_ATTEMPT_HEARTBEAT_MILLIS: {
+    minimum: 10,
+    maximum: 299_999,
+    default: 10_000,
+  },
+  WORKER_MAX_EVENT_LOOP_DELAY_MILLIS: { minimum: 1, default: 200 },
+  // 768 MB.
+  WORKER_MAX_RSS_BYTES: { minimum: 1, default: 768 * 1_024 * 1_024 },
+  // The largest delay a timer accepts.
+  WORKER_RESOURCE_SAMPLE_MILLIS: {
+    minimum: 100,
+    maximum: 2_147_483_647,
+    default: 5_000,
+  },
+  WORKER_RESOURCE_UNHEALTHY_SAMPLES: { minimum: 1, maximum: 12, default: 3 },
+} satisfies Record<string, SettingBounds>);
+
+function boundedSetting({ minimum, maximum, default: value }: SettingBounds) {
+  const integer = z.coerce.number().int().min(minimum);
+  return (maximum === undefined ? integer : integer.max(maximum)).default(
+    value,
+  );
+}
+
 export const workerConfigSchema = databaseClientEnvironmentSchema
   .extend({
     DATABASE_MAINTENANCE_URL: z
@@ -29,12 +118,9 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
       .refine((value) => value.startsWith('postgresql://'), {
         message: 'DATABASE_MAINTENANCE_URL must be a postgresql:// URL',
       }),
-    DATABASE_DISPATCHER_POOL_MAX: z.coerce
-      .number()
-      .int()
-      .positive()
-      .max(10)
-      .default(2),
+    DATABASE_DISPATCHER_POOL_MAX: boundedSetting(
+      WORKER_SETTING_BOUNDS.DATABASE_DISPATCHER_POOL_MAX,
+    ),
     REDIS_URL: z
       .url()
       .refine(
@@ -44,117 +130,63 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
           message: 'REDIS_URL must be a redis:// or rediss:// URL',
         },
       ),
-    OUTBOX_DISPATCH_BATCH_SIZE: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(100)
-      .default(25),
-    OUTBOX_DISPATCH_LEASE_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
-    OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(100)
-      .max(120_000)
-      .default(5_000),
-    OUTBOX_DISPATCH_POLL_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(10)
-      .max(60_000)
-      .default(1_000),
-    OUTBOX_DISPATCH_RETRY_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(300_000)
-      .default(1_000),
-    WORKFLOW_COORDINATOR_MAX_ADMISSIONS: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(64)
-      .default(32),
-    WORKSPACE_INBOX_FOLD_BATCH_SIZE: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(1_000)
-      .default(500),
-    WORKSPACE_INBOX_FOLD_POLL_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(100)
-      .max(60_000)
-      .default(1_000),
+    OUTBOX_DISPATCH_BATCH_SIZE: boundedSetting(
+      WORKER_SETTING_BOUNDS.OUTBOX_DISPATCH_BATCH_SIZE,
+    ),
+    OUTBOX_DISPATCH_LEASE_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.OUTBOX_DISPATCH_LEASE_MILLIS,
+    ),
+    OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
+    ),
+    OUTBOX_DISPATCH_POLL_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.OUTBOX_DISPATCH_POLL_MILLIS,
+    ),
+    OUTBOX_DISPATCH_RETRY_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.OUTBOX_DISPATCH_RETRY_MILLIS,
+    ),
+    WORKFLOW_COORDINATOR_MAX_ADMISSIONS: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
+    ),
+    WORKSPACE_INBOX_FOLD_BATCH_SIZE: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKSPACE_INBOX_FOLD_BATCH_SIZE,
+    ),
+    WORKSPACE_INBOX_FOLD_POLL_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKSPACE_INBOX_FOLD_POLL_MILLIS,
+    ),
     // Pending run outcomes folded per database call, and the idle wait
     // between folds once nothing is pending.
-    WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(1_000)
-      .default(500),
-    WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(100)
-      .max(60_000)
-      .default(1_000),
-    WORKFLOW_DUE_WAKEUP_BATCH_SIZE: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(100)
-      .default(25),
-    WORKFLOW_DUE_WAKEUP_POLL_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(10)
-      .max(60_000)
-      .default(1_000),
-    TRIGGER_SCHEDULE_BATCH_SIZE: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(100)
-      .default(25),
-    TRIGGER_SCHEDULE_LEASE_SECONDS: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(300)
-      .default(30),
-    TRIGGER_SCHEDULE_POLL_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(10)
-      .max(60_000)
-      .default(1_000),
+    WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKFLOW_AUTO_PAUSE_FOLD_BATCH_SIZE,
+    ),
+    WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKFLOW_AUTO_PAUSE_FOLD_POLL_MILLIS,
+    ),
+    WORKFLOW_DUE_WAKEUP_BATCH_SIZE: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
+    ),
+    WORKFLOW_DUE_WAKEUP_POLL_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
+    ),
+    TRIGGER_SCHEDULE_BATCH_SIZE: boundedSetting(
+      WORKER_SETTING_BOUNDS.TRIGGER_SCHEDULE_BATCH_SIZE,
+    ),
+    TRIGGER_SCHEDULE_LEASE_SECONDS: boundedSetting(
+      WORKER_SETTING_BOUNDS.TRIGGER_SCHEDULE_LEASE_SECONDS,
+    ),
+    TRIGGER_SCHEDULE_POLL_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.TRIGGER_SCHEDULE_POLL_MILLIS,
+    ),
     // ADR 049: how late a `skip` schedule's occurrence may start and still run.
-    TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS: z.coerce
-      .number()
-      .int()
-      .min(60)
-      .max(3_600)
-      .default(300),
-    NODE_ATTEMPT_LEASE_SECONDS: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(300)
-      .default(30),
-    NODE_ATTEMPT_HEARTBEAT_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(10)
-      .max(299_999)
-      .default(10_000),
+    TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS: boundedSetting(
+      WORKER_SETTING_BOUNDS.TRIGGER_SCHEDULE_ON_TIME_WINDOW_SECONDS,
+    ),
+    NODE_ATTEMPT_LEASE_SECONDS: boundedSetting(
+      WORKER_SETTING_BOUNDS.NODE_ATTEMPT_LEASE_SECONDS,
+    ),
+    NODE_ATTEMPT_HEARTBEAT_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.NODE_ATTEMPT_HEARTBEAT_MILLIS,
+    ),
     WORKER_INSTANCE_ID: z
       .string()
       .regex(/^[A-Za-z0-9._:-]{1,96}$/u)
@@ -163,28 +195,18 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
     LOG_LEVEL: z.enum(workerLogLevels).default('info'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
     SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
-    WORKER_MAX_EVENT_LOOP_DELAY_MILLIS: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(200),
-    WORKER_MAX_RSS_BYTES: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(805_306_368),
-    WORKER_RESOURCE_SAMPLE_MILLIS: z.coerce
-      .number()
-      .int()
-      .min(100)
-      .max(2_147_483_647)
-      .default(5_000),
-    WORKER_RESOURCE_UNHEALTHY_SAMPLES: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(12)
-      .default(3),
+    WORKER_MAX_EVENT_LOOP_DELAY_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKER_MAX_EVENT_LOOP_DELAY_MILLIS,
+    ),
+    WORKER_MAX_RSS_BYTES: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKER_MAX_RSS_BYTES,
+    ),
+    WORKER_RESOURCE_SAMPLE_MILLIS: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKER_RESOURCE_SAMPLE_MILLIS,
+    ),
+    WORKER_RESOURCE_UNHEALTHY_SAMPLES: boundedSetting(
+      WORKER_SETTING_BOUNDS.WORKER_RESOURCE_UNHEALTHY_SAMPLES,
+    ),
   })
   .superRefine((value, context) => {
     if (

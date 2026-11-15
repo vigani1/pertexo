@@ -21,6 +21,10 @@ import {
   OutboxContractError,
 } from './outbox-dispatch.errors.js';
 
+// Each failed publication doubles the wait, a bounded number of times.
+const RETRY_BACKOFF_FACTOR = 2;
+const MAXIMUM_RETRY_DOUBLINGS = 16;
+
 export function transportJobName(jobName: string): TransportJob | undefined {
   return Object.values<string>(JOB_NAME).includes(jobName)
     ? transportJobForName(jobName as JobName)
@@ -87,9 +91,12 @@ export function publicationRetryDelay(
   baseDelayMillis: number,
   publishAttempts: number,
 ): number {
-  const doublings = Math.min(Math.max(publishAttempts - 1, 0), 16);
+  const doublings = Math.min(
+    Math.max(publishAttempts - 1, 0),
+    MAXIMUM_RETRY_DOUBLINGS,
+  );
   return Math.min(
-    baseDelayMillis * 2 ** doublings,
+    baseDelayMillis * RETRY_BACKOFF_FACTOR ** doublings,
     MAXIMUM_PUBLICATION_RETRY_DELAY_MILLIS,
   );
 }

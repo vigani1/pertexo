@@ -8,6 +8,9 @@ import {
   ArtifactRetentionExpiredError,
 } from './artifact-policy.errors.js';
 
+/** The longest purpose label an artifact may carry. */
+const ARTIFACT_PURPOSE_MAX_CHARACTERS = 64;
+
 export function assertArtifactByteLimit(maxBytes: number): void {
   if (
     !Number.isSafeInteger(maxBytes) ||
@@ -43,6 +46,6 @@ export const artifactWriteMetadataSchema = z.object({
   purpose: z
     .string()
     .min(1)
-    .max(64)
-    .regex(/^[a-z][a-z0-9-]{0,63}$/u),
+    .max(ARTIFACT_PURPOSE_MAX_CHARACTERS)
+    .regex(/^[a-z][a-z0-9-]*$/u),
 });

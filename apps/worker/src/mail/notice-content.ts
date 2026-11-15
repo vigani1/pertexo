@@ -3,6 +3,15 @@ import { sealNoticeUnsubscribe } from '@pertexo/core/inbox';
 import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type { NoticeMailItem, NoticeMailToSeal } from '@pertexo/core/inbox';
 import { NoticeMailTooLargeError } from './notice-mail.errors.js';
+
+/** A notice mail's bounds: notices listed, sealed size and quoted names. */
+const NOTICE_MAIL_LIMITS = Object.freeze({
+  items: 25,
+  envelopeBytes: 12 * 1_024,
+  nameCharacters: 64,
+  // The unsubscribe link outlives the notice, so a late reader can still use it.
+  unsubscribeExtraDays: 89,
+});
 const labels = {
   workflow_failure: 'Workflow failed',
   workflow_auto_paused: 'Workflow auto-paused',
@@ -28,7 +37,8 @@ export function sealNoticeMail(
     revision: input.revision,
     memberRevision: input.memberRevision,
     expiresAt: new Date(
-      input.expiresAt.getTime() + 89 * 86400000,
+      input.expiresAt.getTime() +
+        NOTICE_MAIL_LIMITS.unsubscribeExtraDays * 24 * 60 * 60 * 1_000,
     ).toISOString(),
   });
   const unsubscribe = new URL('/notifications/unsubscribe', publicWebOrigin);
@@ -46,7 +56,11 @@ export function sealNoticeMail(
     text: '',
   };
   let serialized = '';
-  for (let count = Math.min(input.items.length, 25); count >= 0; count--) {
+  for (
+    let count = Math.min(input.items.length, NOTICE_MAIL_LIMITS.items);
+    count >= 0;
+    count--
+  ) {
     message.text = [
       ...input.items
         .slice(0, count)
@@ -60,7 +74,10 @@ export function sealNoticeMail(
       'Turn off personal email notifications: ' + unsubscribe.href,
     ].join('\n');
     serialized = JSON.stringify(message);
-    if (Buffer.byteLength(serialized, 'utf8') <= 12_288) break;
+    if (
+      Buffer.byteLength(serialized, 'utf8') <= NOTICE_MAIL_LIMITS.envelopeBytes
+    )
+      break;
     if (count === 0)
       throw new NoticeMailTooLargeError(
         'Notification mail exceeds its bounded envelope',
@@ -78,7 +95,7 @@ export function sealNoticeMail(
 
 function noticeName(name: string): string {
   return Array.from(name.replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, ' '))
-    .slice(0, 64)
+    .slice(0, NOTICE_MAIL_LIMITS.nameCharacters)
     .join('')
     .trim();
 }

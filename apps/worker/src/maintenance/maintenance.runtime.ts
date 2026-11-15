@@ -38,6 +38,10 @@ import {
   maintenanceDeliveryHandler,
   type MaintenanceHandlers,
 } from './delivery-handler.js';
+import { BACKGROUND_TASK_SHUTDOWN_TIMEOUT_MILLIS } from '../runtime/background-task-deadline.js';
+
+/** How often stopped failure-notification deliveries are looked for. */
+const FAILURE_NOTIFICATION_RECOVERY_POLL_MILLIS = 1_000;
 
 export type MaintenanceRuntime = ScannerRuntime;
 
@@ -99,7 +103,8 @@ export async function createMaintenanceRuntime(
 ): Promise<MaintenanceRuntime> {
   const factories = { ...productionFactories, ...overrides };
   const shutdownTimeoutMillis =
-    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
+    options.backgroundTaskShutdownTimeoutMillis ??
+    BACKGROUND_TASK_SHUTDOWN_TIMEOUT_MILLIS;
   const traceRunner = factories.traceRunner();
   let reconciliationStore:
     (PreviewReconciliationStore & { close?: () => Promise<void> }) | undefined;
@@ -199,7 +204,7 @@ export async function createMaintenanceRuntime(
       ...(options.deliveryOwners ?? []),
     ],
     // Recovers failure-notification deliveries whose worker stopped.
-    pollIntervalMillis: 1_000,
+    pollIntervalMillis: FAILURE_NOTIFICATION_RECOVERY_POLL_MILLIS,
     shutdownTimeoutMillis,
     scan: async (signal) => {
       await recoveryStore?.recoverDue(
