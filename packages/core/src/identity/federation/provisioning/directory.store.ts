@@ -8,7 +8,7 @@ import type { FederationScope } from '../management/federation-management.types.
 import {
   authenticateDirectory,
   withDirectoryRead,
-} from './authority.repository.js';
+} from './directory-authority.js';
 import type {
   AdoptMembershipInput,
   CreateCredentialInput,
@@ -27,13 +27,13 @@ import {
   changeDirectoryUser,
   deleteDirectoryUser,
   readDirectoryUser,
-} from './resources/users.repository.js';
+} from './resources/users.js';
 import {
   createDirectoryGroup,
   changeDirectoryGroup,
   deleteDirectoryGroup,
   readDirectoryGroup,
-} from './resources/groups.repository.js';
+} from './resources/groups.js';
 import {
   listDirectoryUsers,
   listDirectoryGroups,
@@ -41,16 +41,16 @@ import {
 import {
   readDirectoryAdoption,
   readDirectoryManagement,
-} from './management/commands.repository.js';
+} from './management/directory-commands.js';
 import {
   createDirectoryCredential,
   revokeDirectoryCredential,
-} from './management/credentials.repository.js';
+} from './management/credentials.js';
 import {
   replaceDirectoryMappings,
   adoptDirectoryMembership,
-} from './management/mappings.repository.js';
-import { unlinkDirectoryWorkspace } from './management/unlink.repository.js';
+} from './management/mappings.js';
+import { unlinkDirectoryWorkspace } from './management/unlink.js';
 import {
   projectDirectorySettings,
   listDirectoryPeople,

@@ -7,21 +7,21 @@ import { useIdentityCommandDatabase } from '../../command.support.js';
 import {
   authenticateDirectory,
   lockDirectoryOrganization,
-} from '../../../../src/identity/federation/provisioning/authority.repository.js';
+} from '../../../../src/identity/federation/provisioning/directory-authority.js';
 import {
   createDirectoryUser,
   changeDirectoryUser,
   deleteDirectoryUser,
-} from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
+} from '../../../../src/identity/federation/provisioning/resources/users.js';
 import {
   createDirectoryGroup,
   changeDirectoryGroup,
   deleteDirectoryGroup,
-} from '../../../../src/identity/federation/provisioning/resources/groups.repository.js';
+} from '../../../../src/identity/federation/provisioning/resources/groups.js';
 import {
   bindDirectorySignIn,
   directorySignInCandidate,
-} from '../../../../src/identity/federation/provisioning/sign-in.repository.js';
+} from '../../../../src/identity/federation/provisioning/directory-sign-in.js';
 import { directorySessionAllowed } from '../../../../src/identity/federation/provisioning/session.repository.js';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import type { DirectoryUserValues } from '../../../../src/identity/federation/provisioning/directory-provisioning.types.js';

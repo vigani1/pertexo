@@ -7,10 +7,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createFederationManagementStore } from '../../../../src/identity/index.js';
 import type { DirectoryUserValues } from '../../../../src/identity/federation/provisioning/directory-provisioning.types.js';
-import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.repository.js';
-import { authenticateDirectory } from '../../../../src/identity/federation/provisioning/authority.repository.js';
-import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.repository.js';
-import { createDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
+import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.js';
+import { authenticateDirectory } from '../../../../src/identity/federation/provisioning/directory-authority.js';
+import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.js';
+import { createDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.js';
 import { createDirectoryStore } from '../../../../src/identity/federation/provisioning/directory.store.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 

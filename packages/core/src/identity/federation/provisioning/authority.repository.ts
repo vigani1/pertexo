@@ -1,4 +1,3 @@
-import type { DirectoryOrganization } from './directory-provisioning.types.js';
 import {
   workspaces,
   users,
@@ -9,14 +8,8 @@ import {
 } from '@pertexo/database/schema';
 import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  rethrowQueryFailure,
-  setOrganizationContext,
-} from '@pertexo/database/primitives';
-import type { Pool, PoolClient } from 'pg';
-import { withPlatformTransaction } from '@pertexo/database/platform';
-import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
-import { DirectoryError } from './directory.errors.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import type { PoolClient } from 'pg';
 import type { DirectoryPrincipal } from './directory-provisioning.types.js';
 import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
@@ -24,14 +17,10 @@ import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 const LAST_USED_WRITE_MINUTES = 1;
 const LAST_USED_WRITE_INTERVAL = sql`${LAST_USED_WRITE_MINUTES}*${MINUTE_INTERVAL}`;
 
-/** Workspace locks precede organization and member locks in every identity writer. */
-export async function lockDirectoryOrganization(
+export async function lockOrganizationRow(
   client: PoolClient,
   organizationId: string,
-): Promise<DirectoryOrganization> {
-  const linkedWorkspaces = await directoryWorkspaces(client, organizationId);
-  for (const workspace of linkedWorkspaces)
-    await lockWorkspaceRow(client, workspace.workspace_id);
+) {
   const [organization] = await drizzle(client)
     .select({
       id: authOrganizations.id,
@@ -42,17 +31,7 @@ export async function lockDirectoryOrganization(
     .where(eq(authOrganizations.id, organizationId))
     .for('update')
     .catch(rethrowQueryFailure);
-  if (organization === undefined) throw new DirectoryError('not_found');
-  const current = await directoryWorkspaces(client, organizationId);
-  if (
-    current.length !== linkedWorkspaces.length ||
-    current.some(
-      (workspace, index) =>
-        workspace.workspace_id !== linkedWorkspaces[index]?.workspace_id,
-    )
-  )
-    throw new DirectoryError('stale');
-  return { ...organization, workspaces: current };
+  return organization;
 }
 
 /** A human owner proof must not lock one global user ahead of a later fan-out. */
@@ -83,32 +62,27 @@ export async function lockDirectoryParticipants(
     .catch(rethrowQueryFailure);
 }
 
-export async function authenticateDirectory(
-  pool: Pool,
+/** The live credential with this digest, for an active control workspace. */
+export async function findActiveCredential(
+  client: PoolClient,
   organizationId: string,
   digest: string,
-): Promise<DirectoryPrincipal> {
-  return withPlatformTransaction(pool, async (client) => {
-    const [row] = await credentialQuery(client)
-      .where(
-        and(
-          eq(authProvisioningCredentials.organizationId, organizationId),
-          eq(authProvisioningCredentials.secretDigest, digest),
-          isNull(authProvisioningCredentials.revokedAt),
-          eq(workspaces.status, 'active'),
-        ),
-      )
-      .catch(rethrowQueryFailure);
-    if (row === undefined) throw new DirectoryError('unauthorized');
-    return {
-      credentialId: row.credential_id,
-      organizationId: row.organization_id,
-      controlWorkspaceId: row.control_workspace_id,
-    };
-  });
+) {
+  const [row] = await credentialQuery(client)
+    .where(
+      and(
+        eq(authProvisioningCredentials.organizationId, organizationId),
+        eq(authProvisioningCredentials.secretDigest, digest),
+        isNull(authProvisioningCredentials.revokedAt),
+        eq(workspaces.status, 'active'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return row;
 }
 
-async function requireDirectoryCredential(
+/** Every credential that still matches the principal; exactly one means it's valid. */
+export async function readPrincipalCredentials(
   client: PoolClient,
   principal: DirectoryPrincipal,
 ) {
@@ -126,68 +100,39 @@ async function requireDirectoryCredential(
       ),
     )
     .catch(rethrowQueryFailure);
-  const [credential] = valid;
-  if (valid.length !== 1 || credential === undefined)
-    throw new DirectoryError('unauthorized');
-  return credential;
+  return valid;
 }
 
-/**
- * Shared short reads keep each resource and its reference-list ETag consistent.
- * SCIM has a credential, not a member, behind it: this and the next stay off
- * `withWorkspaceAccess`, and check the credential themselves.
- */
-export function withDirectoryRead<T>(
-  pool: Pool,
-  principal: DirectoryPrincipal,
-  read: (client: PoolClient) => Promise<T>,
-): Promise<T> {
-  return withPlatformTransaction(pool, async (client) => {
-    await drizzle(client)
-      .select({ id: authOrganizations.id })
-      .from(authOrganizations)
-      .where(eq(authOrganizations.id, principal.organizationId))
-      .for('share')
-      .catch(rethrowQueryFailure);
-    const credential = await requireDirectoryCredential(client, principal);
-    await setOrganizationContext(client, credential.organization_id);
-    return read(client);
-  });
+export async function shareLockOrganization(
+  client: PoolClient,
+  organizationId: string,
+): Promise<void> {
+  await drizzle(client)
+    .select({ id: authOrganizations.id })
+    .from(authOrganizations)
+    .where(eq(authOrganizations.id, organizationId))
+    .for('share')
+    .catch(rethrowQueryFailure);
 }
 
-/** Revocation and every resource mutation serialize on the same organization. */
-export function withDirectoryTransaction<T>(
-  pool: Pool,
-  principal: DirectoryPrincipal,
-  change: (
-    client: PoolClient,
-    organization: DirectoryOrganization,
-  ) => Promise<T>,
-): Promise<T> {
-  return withPlatformTransaction(pool, async (client) => {
-    const credential = await requireDirectoryCredential(client, principal);
-    await setOrganizationContext(client, credential.organization_id);
-    const organization = await lockDirectoryOrganization(
-      client,
-      credential.organization_id,
-    );
-    await requireDirectoryCredential(client, principal);
-    const result = await change(client, organization);
-    await drizzle(client)
-      .update(authProvisioningCredentials)
-      .set({ lastUsedAt: sql`clock_timestamp()` })
-      .where(
-        and(
-          eq(authProvisioningCredentials.id, principal.credentialId),
-          or(
-            isNull(authProvisioningCredentials.lastUsedAt),
-            sql`${authProvisioningCredentials.lastUsedAt}<clock_timestamp()-${LAST_USED_WRITE_INTERVAL}`,
-          ),
+/** Writes the credential's last use, at most once a minute. */
+export async function touchCredential(
+  client: PoolClient,
+  credentialId: string,
+): Promise<void> {
+  await drizzle(client)
+    .update(authProvisioningCredentials)
+    .set({ lastUsedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(authProvisioningCredentials.id, credentialId),
+        or(
+          isNull(authProvisioningCredentials.lastUsedAt),
+          sql`${authProvisioningCredentials.lastUsedAt}<clock_timestamp()-${LAST_USED_WRITE_INTERVAL}`,
         ),
-      )
-      .catch(rethrowQueryFailure);
-    return result;
-  });
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 
 export function directoryWorkspaces(

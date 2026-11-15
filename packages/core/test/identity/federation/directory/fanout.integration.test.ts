@@ -2,12 +2,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import { expect, it, vi } from 'vitest';
 import type { QueryResult } from 'pg';
 import { useIdentityCommandDatabase } from '../../command.support.js';
-import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.repository.js';
-import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.repository.js';
+import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.js';
+import { replaceDirectoryMappings } from '../../../../src/identity/federation/provisioning/management/mappings.js';
 import {
   authenticateDirectory,
   withDirectoryTransaction,
-} from '../../../../src/identity/federation/provisioning/authority.repository.js';
+} from '../../../../src/identity/federation/provisioning/directory-authority.js';
 import { projectDirectoryMemberships } from '../../../../src/identity/federation/provisioning/projection.repository.js';
 import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 

@@ -1,8 +1,4 @@
-import { authOrganizations } from '@pertexo/database/schema';
-import { eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import {
-  rethrowQueryFailure,
   setOrganizationContext,
   claimCommand,
   completeCommand,
@@ -13,38 +9,53 @@ import {
   rolesForCapability,
   type Role,
 } from '@pertexo/policy';
+
 import type {
   DirectoryAdoptionPreview,
   DirectoryAdoptionQuery,
 } from '@pertexo/contracts';
+
 import type { Pool, PoolClient } from 'pg';
+
 import {
   generatePersistedId,
   withPlatformTransaction,
 } from '@pertexo/database/platform';
+
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
 } from '../../../../shared/workspace-authority.js';
+
 import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
+
 import {
   organizationForWorkspace,
   authorizeOrganizationContext,
   recordFederationAudit,
 } from '../../management/authority.repository.js';
+
 import { advanceOrganization } from '../../management/commands.repository.js';
+
 import type {
   FederationCommand,
   FederationScope,
 } from '../../management/federation-management.types.js';
+
 import { DirectoryError } from '../directory.errors.js';
+
 import {
   directoryWorkspaces,
-  lockDirectoryOrganization,
   lockDirectoryParticipants,
+  shareLockOrganization,
 } from '../authority.repository.js';
+
+import { lockDirectoryOrganization } from '../directory-authority.js';
+
 import type { DirectoryOrganization } from '../directory-provisioning.types.js';
-import { previewDirectoryAdoption } from './adoption.repository.js';
+
+import { previewDirectoryAdoption } from './adoption.js';
+
 type ManagedOrganization = Readonly<{
   organization: DirectoryOrganization;
   canManage: boolean;
@@ -60,12 +71,7 @@ async function readManagedOrganization(
     organizationForWorkspace(scoped, workspaceId),
   );
   if (preview === undefined) throw new DirectoryError('not_found');
-  await drizzle(client)
-    .select({ id: authOrganizations.id })
-    .from(authOrganizations)
-    .where(eq(authOrganizations.id, preview.id))
-    .for('share')
-    .catch(rethrowQueryFailure);
+  await shareLockOrganization(client, preview.id);
   const row = await withWorkspaceScope(client, { workspaceId }, (scoped) =>
     organizationForWorkspace(scoped, workspaceId),
   );
