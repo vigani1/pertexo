@@ -154,5 +154,4 @@ export const REPOSITORY_THROW_BACKLOG = Object.freeze({
   'packages/core/src/triggers/webhooks/runtime/receipts.repository.ts': 1,
   'packages/core/src/triggers/webhooks/runtime/verification.repository.ts': 1,
   'packages/core/src/triggers/webhooks/runtime/webhook-state.repository.ts': 5,
-  'packages/core/src/variables/set.repository.ts': 2,
 });
