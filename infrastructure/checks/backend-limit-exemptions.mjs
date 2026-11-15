@@ -4,6 +4,18 @@
  * protocol code stays a literal where it is read.
  */
 export const NOT_LIMITS = Object.freeze({
+  "packages/contracts/src/schemas/execution/run-statistics.ts: '1h'":
+    'a statistics window’s name on the wire; core decides its length',
+  "packages/contracts/src/schemas/execution/run-statistics.ts: '6h'":
+    'a statistics window’s name on the wire; core decides its length',
+  "packages/contracts/src/schemas/execution/run-statistics.ts: '24h'":
+    'a statistics window’s name on the wire; core decides its length',
+  "packages/contracts/src/schemas/execution/run-statistics.ts: '7d'":
+    'a statistics window’s name on the wire; core decides its length',
+  "packages/contracts/src/schemas/execution/usage-trends.ts: '30d'":
+    'a usage period’s name on the wire; core decides its length',
+  "packages/contracts/src/schemas/execution/usage-trends.ts: '90d'":
+    'a usage period’s name on the wire; core decides its length',
   'apps/cli/src/main.ts: 2':
     'process.argv: the node binary and the script come before the arguments',
   'apps/ops/src/identity/two-factor-recovery-config.ts: 2':

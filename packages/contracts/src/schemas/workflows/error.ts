@@ -1,12 +1,23 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+
+const ERROR_BOUNDS = Object.freeze({
+  targetWorkflowNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  nameCharacters: 128,
+  workflowErrorTargetsPageItems: 50,
+});
 
 export const workflowErrorSettingsSchema = responseSchema(
   z
     .object({
       targetWorkflowId: z.uuid().nullable(),
-      targetWorkflowName: z.string().max(128).nullable().optional(),
+      targetWorkflowName: z
+        .string()
+        .max(ERROR_BOUNDS.targetWorkflowNameCharacters)
+        .nullable()
+        .optional(),
       revision: z.number().int().positive().max(STORED_INTEGER_MAX),
     })
     .strict(),
@@ -35,9 +46,14 @@ export const workflowErrorTargetsPageSchema = responseSchema(
     .object({
       items: z
         .array(
-          z.object({ id: z.uuid(), name: z.string().min(1).max(128) }).strict(),
+          z
+            .object({
+              id: z.uuid(),
+              name: z.string().min(1).max(ERROR_BOUNDS.nameCharacters),
+            })
+            .strict(),
         )
-        .max(50),
+        .max(ERROR_BOUNDS.workflowErrorTargetsPageItems),
       nextCursor: z.uuid().nullable(),
     })
     .strict(),

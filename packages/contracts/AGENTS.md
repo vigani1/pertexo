@@ -44,9 +44,17 @@ its types, never its runtime schemas (a lint rule enforces it).
 
 ## Defaults and config
 
-- No environment. Field bounds sit beside their schemas or come from their
-  owners (`WORKFLOW_GRAPH_CONTRACT_LIMITS`, `PENDING_TASK_LIMITS`,
-  `WORKFLOW_PORTABILITY_LIMITS` in `workflow-model`).
+- No environment. Each schema file names its field bounds in one table at
+  its top (`<SUBJECT>_BOUNDS`, or an exported `<SUBJECT>_LIMITS` when the API
+  or the database reads it too). An entry reads its owner wherever one
+  exists: `WORKFLOW_GRAPH_CONTRACT_LIMITS`, `EMAIL_ADDRESS_LIMITS`,
+  `PASSWORD_LIMITS`, `DISPLAY_NAME_MAX_CHARACTERS`, `TIME_ZONE_NAME_CHARACTERS`
+  (`workflow-model`), `NODE_FAILURE_FIELD_LIMITS` (`node-sdk`) and
+  `RESOURCE_NAME_MAX_LENGTH` (`schemas/shared/`).
+- Bounds the API enforces and these documents state live here, and the API
+  reads them: `CALLBACK_LIMITS`, `SECRET_TOKEN_CHARACTERS`,
+  `ARTIFACT_OBJECT_MAX_BYTES`, `NOTICE_UNSUBSCRIBE_LIMITS`. OpenAPI text
+  writes a size with `formatByteSize` and a duration from its owner.
 
 ## Rules
 
@@ -68,9 +76,6 @@ its types, never its runtime schemas (a lint rule enforces it).
   `schemas/identity/federation/settings.ts` and
   `schemas/workflows/input-cases.ts` (bare throws caught in the same
   function and turned into schema issues).
-- Limits are not yet named: contracts is outside the backend-limits check.
-  Most of its literals are HTTP status codes and field bounds, and the check
-  needs a rule for status codes first.
 
 ## What guards it
 
@@ -79,5 +84,5 @@ its types, never its runtime schemas (a lint rule enforces it).
   the generated artifacts.
 - `pnpm contracts:check` (part of `pnpm check`): regenerated artifacts and
   Redocly lint.
-- `pnpm check`: package structure, naming, browser-entry and environment
-  checks.
+- `pnpm check`: package structure, naming, browser-entry, environment and
+  backend-limits checks.

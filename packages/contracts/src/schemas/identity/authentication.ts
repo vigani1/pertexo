@@ -1,9 +1,30 @@
 import { responseSchema } from '../shared/response-schema.js';
-import { AUTHENTICATION_PROVIDERS } from '@pertexo/workflow-model';
+import {
+  AUTHENTICATION_PROVIDERS,
+  PASSWORD_LIMITS,
+  EMAIL_ADDRESS_LIMITS,
+} from '@pertexo/workflow-model';
 import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
 export { ACCOUNT_SIGN_IN_METHOD_LIMIT };
 import { authorizationStartedSchema } from './federation/authorization.js';
 import { z } from 'zod';
+
+const AUTHENTICATION_BOUNDS = Object.freeze({
+  authenticationReturnPathCharacters: 128,
+  minimumLengthMinimum: 8,
+  minimumLengthMaximum: PASSWORD_LIMITS.maximumCharacters,
+  socialProvidersItems: AUTHENTICATION_PROVIDERS.length,
+  accountSecuritySessionsPageItems: 100,
+  labelCharacters: 128,
+  providerCharacters: 64,
+  emailCharacters: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+  availableProvidersItems: AUTHENTICATION_PROVIDERS.length,
+  recoveryCodesRemainingMaximum: 10,
+  passwordCharacters: PASSWORD_LIMITS.maximumCharacters,
+  currentPasswordCharacters: PASSWORD_LIMITS.maximumCharacters,
+  newPasswordMinimumCharacters: PASSWORD_LIMITS.minimumCharacters,
+  newPasswordCharacters: PASSWORD_LIMITS.maximumCharacters,
+});
 
 /**
  * Where a sign-in may return. Only same-origin app paths matching these
@@ -18,7 +39,7 @@ const AUTHENTICATION_RETURN_PATHS = Object.freeze([
 ]);
 export const authenticationReturnPathSchema = z
   .string()
-  .max(128)
+  .max(AUTHENTICATION_BOUNDS.authenticationReturnPathCharacters)
   .refine((path) =>
     AUTHENTICATION_RETURN_PATHS.some((pattern) => pattern.test(path)),
   );
@@ -29,11 +50,17 @@ export const authenticationCapabilitiesResponseSchema = responseSchema(
       password: z
         .object({
           enabled: z.boolean(),
-          minimumLength: z.number().int().min(8).max(128),
+          minimumLength: z
+            .number()
+            .int()
+            .min(AUTHENTICATION_BOUNDS.minimumLengthMinimum)
+            .max(AUTHENTICATION_BOUNDS.minimumLengthMaximum),
           verificationRequired: z.boolean(),
         })
         .strict(),
-      socialProviders: z.array(authenticationProviderSchema).max(4),
+      socialProviders: z
+        .array(authenticationProviderSchema)
+        .max(AUTHENTICATION_BOUNDS.socialProvidersItems),
       /** `invitation`: only an invited address can make an account here now. */
       signUp: z.enum(['open', 'invitation']),
     })
@@ -51,7 +78,13 @@ const accountSecuritySessionSchema = z
   })
   .strict();
 export const accountSecuritySessionsResponseSchema = responseSchema(
-  z.object({ items: z.array(accountSecuritySessionSchema).max(100) }).strict(),
+  z
+    .object({
+      items: z
+        .array(accountSecuritySessionSchema)
+        .max(AUTHENTICATION_BOUNDS.accountSecuritySessionsPageItems),
+    })
+    .strict(),
 );
 export const accountSecuritySessionRevokeRequestSchema = z
   .object({ sessionId: z.uuid() })
@@ -67,20 +100,35 @@ const accountSecurityMethodSchema = z
   .object({
     id: z.uuid(),
     kind: z.enum(['password', 'social', 'organization']),
-    label: z.string().min(1).max(128).optional(),
-    provider: z.string().min(1).max(64).nullable(),
+    label: z
+      .string()
+      .min(1)
+      .max(AUTHENTICATION_BOUNDS.labelCharacters)
+      .optional(),
+    provider: z
+      .string()
+      .min(1)
+      .max(AUTHENTICATION_BOUNDS.providerCharacters)
+      .nullable(),
   })
   .strict();
 export const accountSecurityResponseSchema = responseSchema(
   z
     .object({
-      email: z.email().max(320),
+      email: z.email().max(AUTHENTICATION_BOUNDS.emailCharacters),
       emailVerified: z.boolean(),
-      availableProviders: z.array(authenticationProviderSchema).max(4),
+      availableProviders: z
+        .array(authenticationProviderSchema)
+        .max(AUTHENTICATION_BOUNDS.availableProvidersItems),
       twoFactor: z
         .object({
           enabled: z.boolean(),
-          recoveryCodesRemaining: z.number().int().min(0).max(10).nullable(),
+          recoveryCodesRemaining: z
+            .number()
+            .int()
+            .min(0)
+            .max(AUTHENTICATION_BOUNDS.recoveryCodesRemainingMaximum)
+            .nullable(),
         })
         .strict(),
       methods: z
@@ -102,7 +150,10 @@ export const accountSecurityLinkStartRequestSchema = z
       z
         .object({
           kind: z.literal('password'),
-          password: z.string().min(1).max(128),
+          password: z
+            .string()
+            .min(1)
+            .max(AUTHENTICATION_BOUNDS.passwordCharacters),
         })
         .strict(),
       z
@@ -119,12 +170,23 @@ export const accountSecurityLinkStartResponseSchema = responseSchema(
 );
 export const accountSecurityPasswordChangeRequestSchema = z
   .object({
-    currentPassword: z.string().min(1).max(128),
-    newPassword: z.string().min(12).max(128),
+    currentPassword: z
+      .string()
+      .min(1)
+      .max(AUTHENTICATION_BOUNDS.currentPasswordCharacters),
+    newPassword: z
+      .string()
+      .min(AUTHENTICATION_BOUNDS.newPasswordMinimumCharacters)
+      .max(AUTHENTICATION_BOUNDS.newPasswordCharacters),
   })
   .strict();
 export const accountSecurityPasswordSetupRequestSchema = z
-  .object({ newPassword: z.string().min(12).max(128) })
+  .object({
+    newPassword: z
+      .string()
+      .min(AUTHENTICATION_BOUNDS.newPasswordMinimumCharacters)
+      .max(AUTHENTICATION_BOUNDS.newPasswordCharacters),
+  })
   .strict();
 export const accountSecurityPasswordChangeResponseSchema = responseSchema(
   z.object({ changed: z.literal(true) }).strict(),

@@ -23,7 +23,7 @@ import {
   newJourneyToken,
   readCookie,
 } from '../journeys/browser-proof.js';
-import { CALLBACK_LIMITS } from '../journeys/callback-limits.js';
+import { CALLBACK_LIMITS } from '@pertexo/contracts';
 
 type BrowserSession = Readonly<{
   userId: string;

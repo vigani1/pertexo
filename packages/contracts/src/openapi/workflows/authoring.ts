@@ -133,7 +133,7 @@ const problemResponses = Object.freeze({
     headers: {
       'Retry-After': {
         description:
-          'One-second explicit retry delay for validation or limiter unavailability; absent when automation tokens are disabled',
+          'Explicit retry delay in seconds for validation or limiter unavailability; absent when automation tokens are disabled',
         required: false,
         schema: { type: 'integer', const: 1 },
       },

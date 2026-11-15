@@ -6,6 +6,10 @@ import {
   FailureNotificationDestinationConfigSchema,
 } from '@pertexo/workflow-model';
 
+const FAILURE_NOTIFICATION_DESTINATIONS_BOUNDS = Object.freeze({
+  reasonCharacters: 300,
+});
+
 const failureNotificationDestinationKindSchema = z.enum([
   'slack',
   'email',
@@ -51,7 +55,10 @@ export const failureNotificationDestinationListResponseSchema = responseSchema(
           z
             .object({
               available: z.literal(false),
-              reason: z.string().min(1).max(300),
+              reason: z
+                .string()
+                .min(1)
+                .max(FAILURE_NOTIFICATION_DESTINATIONS_BOUNDS.reasonCharacters),
             })
             .strict(),
         ])

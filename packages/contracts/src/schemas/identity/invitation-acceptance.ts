@@ -6,11 +6,20 @@ import {
 import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import { workspaceIdentifierSchema } from './workspaces.js';
 
+/** What an invitation link and its acceptance journey carry. */
+export const INVITATION_ACCEPTANCE_LIMITS = Object.freeze({
+  tokenCharacters: 1024,
+  csrfTokenMinimumCharacters: 32,
+  csrfTokenCharacters: 512,
+});
+
 // The journey an invitation link starts: resolving its token, binding it to
 // a session and completing it into a membership.
 
 export const invitationAcceptanceResolveRequestSchema = z
-  .object({ token: z.string().min(1).max(1_024) })
+  .object({
+    token: z.string().min(1).max(INVITATION_ACCEPTANCE_LIMITS.tokenCharacters),
+  })
   .strict();
 export const invitationAcceptanceSessionRequestSchema = z.object({}).strict();
 export const invitationAcceptanceCompleteRequestSchema = z
@@ -22,7 +31,10 @@ export const invitationAcceptanceCompleteRequestSchema = z
 const acceptanceBaseShape = {
   intentId: z.uuid(),
   expiresAt: z.iso.datetime(),
-  csrfToken: z.string().min(32).max(512),
+  csrfToken: z
+    .string()
+    .min(INVITATION_ACCEPTANCE_LIMITS.csrfTokenMinimumCharacters)
+    .max(INVITATION_ACCEPTANCE_LIMITS.csrfTokenCharacters),
 } satisfies z.ZodRawShape;
 const acceptanceUnavailableSchema = z
   .object({ state: z.literal('unavailable') })

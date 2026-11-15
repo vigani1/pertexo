@@ -1,3 +1,4 @@
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
@@ -76,8 +77,7 @@ export const apiTokenRoutes = {
     rateLimit: 'ordinary_mutation',
     idempotent: true,
     cacheControl: noStore,
-    description:
-      'Browser-only, with sign-in evidence from the last five minutes. First success returns the secret once. Exact command replay returns metadata without a secret.',
+    description: `Browser-only, with sign-in evidence from the last ${String(FRESH_SIGN_IN_WINDOW_MILLIS / (60 * 1_000))} minutes. First success returns the secret once. Exact command replay returns metadata without a secret.`,
     body: named('ApiTokenCreateRequest', apiTokenCreateRequestSchema),
     success: {
       status: 201,

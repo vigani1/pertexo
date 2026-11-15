@@ -10,6 +10,8 @@ export const WORKSPACE_VARIABLE_LIMITS = Object.freeze({
   bytes: 32_768,
   descriptionCharacters: 500,
   descriptionsBytes: 16_384,
+  // The workflow name a variable's usage list shows, cut to this length.
+  usageWorkflowNameCharacters: 160,
 });
 export const workspaceVariableNameSchema = z
   .string()

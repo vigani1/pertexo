@@ -1,6 +1,12 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
+
+const STEP_SAMPLES_BOUNDS = Object.freeze({
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+  stepSampleListPageItems: 200,
+});
 
 export const stepSampleSourceSchema = z.discriminatedUnion('kind', [
   z
@@ -29,7 +35,7 @@ export const stepSampleDeleteRequestSchema = z
 export const stepSampleMetadataSchema = z
   .object({
     id: z.uuid(),
-    nodeId: z.string().min(1).max(64),
+    nodeId: z.string().min(1).max(STEP_SAMPLES_BOUNDS.nodeIdCharacters),
     binding: z.string(),
     state: z.enum(['pinned', 'stale', 'expired']),
     source: z.discriminatedUnion('kind', [
@@ -58,7 +64,9 @@ const sampleLimitsSchema = z
 export const stepSampleListResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(stepSampleMetadataSchema).max(200),
+      items: z
+        .array(stepSampleMetadataSchema)
+        .max(STEP_SAMPLES_BOUNDS.stepSampleListPageItems),
       draftRevision: z.number().int().positive(),
       limits: sampleLimitsSchema,
     })

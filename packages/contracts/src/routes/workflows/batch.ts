@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 import { problemResponse } from '../openapi-primitives.js';
 import * as folders from '../../schemas/workflows/organization-folders.js';
 import * as organization from '../../schemas/workflows/organization.js';
@@ -28,8 +29,7 @@ export const batchRoutes = {
     params: workspaceParams,
     access: participating,
     rateLimit: 'ordinary_mutation',
-    description:
-      'One move or replace_tags operation over 1–50 explicit ordered unique workflows, never select-all. Active workflows require workflow:update; archived move requires owner/admin, archived tag replacement is forbidden. Full-parent identity is admitted before independent sequential item transactions; admission is not atomic completion. Retain the entire frozen body/key on unknown outcomes; exact recovery is bounded to 24 hours. Recheck current authority per item/replay; forbidden stops processing and remaining items are not_processed. Historical replay is not current projection; no internal hash, proof or actor selectors.',
+    description: `One move or replace_tags operation over 1–50 explicit ordered unique workflows, never select-all. Active workflows require workflow:update; archived move requires owner/admin, archived tag replacement is forbidden. Full-parent identity is admitted before independent sequential item transactions; admission is not atomic completion. Retain the entire frozen body/key on unknown outcomes; exact recovery is bounded to ${String(IDEMPOTENCY_KEY_RETENTION_HOURS)} hours. Recheck current authority per item/replay; forbidden stops processing and remaining items are not_processed. Historical replay is not current projection; no internal hash, proof or actor selectors.`,
     cacheControl: 'private, no-store',
     body: projected(
       'WorkflowOrganizationBulkRequest',

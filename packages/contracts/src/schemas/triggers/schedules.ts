@@ -1,5 +1,25 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
+import { TIME_ZONE_NAME_CHARACTERS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
+
+const SCHEDULES_BOUNDS = Object.freeze({
+  expressionCharacters: 256,
+  timezoneCharacters: TIME_ZONE_NAME_CHARACTERS,
+  intervalMinutesMaximum: 43200,
+  nodeIdCharacters: 256,
+  lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  scheduleTriggerListPageItems: 1000,
+  scheduleOccurrenceCursorCharacters: 512,
+  scheduleOccurrencePageLimitMaximum: 100,
+  scheduleOccurrenceListPageItems: 100,
+  scheduleFireTimeCountMaximum: 10,
+  scheduleFireTimesPageItems: 10,
+  expressionMinimumCharacters: 9,
+  previewExpressionCharacters: 255,
+  previewTimezoneCharacters: 255,
+  countMaximum: 10,
+});
 
 const scheduleTriggerStatusSchema = z.enum([
   'desired',
@@ -20,14 +40,18 @@ const scheduleRecurrenceSummarySchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('cron'),
-      expression: z.string().min(1).max(256),
-      timezone: z.string().min(1).max(128),
+      expression: z.string().min(1).max(SCHEDULES_BOUNDS.expressionCharacters),
+      timezone: z.string().min(1).max(SCHEDULES_BOUNDS.timezoneCharacters),
     })
     .strict(),
   z
     .object({
       kind: z.literal('interval'),
-      intervalMinutes: z.number().int().min(1).max(43_200),
+      intervalMinutes: z
+        .number()
+        .int()
+        .min(1)
+        .max(SCHEDULES_BOUNDS.intervalMinutesMaximum),
     })
     .strict(),
 ]);
@@ -36,11 +60,14 @@ export const scheduleTriggerHealthSchema = z
     id: z.uuid(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
-    nodeId: z.string().min(1).max(256),
+    nodeId: z.string().min(1).max(SCHEDULES_BOUNDS.nodeIdCharacters),
     kind: z.literal('schedule'),
     status: scheduleTriggerStatusSchema,
     healthStatus: scheduleTriggerHealthStatusSchema,
-    lastErrorCode: z.string().max(128).nullable(),
+    lastErrorCode: z
+      .string()
+      .max(SCHEDULES_BOUNDS.lastErrorCodeCharacters)
+      .nullable(),
     reconciledAt: z.iso.datetime().nullable(),
     recurrence: scheduleRecurrenceSummarySchema.nullable(),
     misfirePolicy: z.enum(['catch_up_once', 'skip']),
@@ -49,7 +76,13 @@ export const scheduleTriggerHealthSchema = z
   })
   .strict();
 export const scheduleTriggerListResponseSchema = responseSchema(
-  z.object({ items: z.array(scheduleTriggerHealthSchema).max(1_000) }).strict(),
+  z
+    .object({
+      items: z
+        .array(scheduleTriggerHealthSchema)
+        .max(SCHEDULES_BOUNDS.scheduleTriggerListPageItems),
+    })
+    .strict(),
 );
 export const scheduleManagementCommandRequestSchema = z.object({}).strict();
 export const scheduleManagementCommandResponseSchema = responseSchema(
@@ -67,12 +100,15 @@ const scheduleOccurrenceOutcomeSchema = z.enum([
   'skipped',
   'paused',
 ]);
-const scheduleOccurrenceCursorSchema = z.string().min(1).max(512);
+const scheduleOccurrenceCursorSchema = z
+  .string()
+  .min(1)
+  .max(SCHEDULES_BOUNDS.scheduleOccurrenceCursorCharacters);
 const scheduleOccurrencePageLimitSchema = z.coerce
   .number()
   .int()
   .min(1)
-  .max(100);
+  .max(SCHEDULES_BOUNDS.scheduleOccurrencePageLimitMaximum);
 export const scheduleOccurrenceListQuerySchema = z
   .object({
     limit: scheduleOccurrencePageLimitSchema.optional(),
@@ -92,7 +128,9 @@ export const scheduleOccurrenceSchema = z
 export const scheduleOccurrenceListResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(scheduleOccurrenceSchema).max(100),
+      items: z
+        .array(scheduleOccurrenceSchema)
+        .max(SCHEDULES_BOUNDS.scheduleOccurrenceListPageItems),
       nextCursor: scheduleOccurrenceCursorSchema.nullable(),
     })
     .strict(),
@@ -100,7 +138,11 @@ export const scheduleOccurrenceListResponseSchema = responseSchema(
 
 /** ADR 048: upcoming fire times are bounded; three unless asked otherwise. */
 export const SCHEDULE_FIRE_TIME_DEFAULT_COUNT = 3;
-const scheduleFireTimeCountSchema = z.coerce.number().int().min(1).max(10);
+const scheduleFireTimeCountSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(SCHEDULES_BOUNDS.scheduleFireTimeCountMaximum);
 export const scheduleNextRunsQuerySchema = z
   .object({ count: scheduleFireTimeCountSchema.optional() })
   .strict();
@@ -110,7 +152,7 @@ export const scheduleFireTimesResponseSchema = responseSchema(
       observedAt: z.iso.datetime(),
       items: z
         .array(z.object({ scheduledAt: z.iso.datetime() }).strict())
-        .max(10),
+        .max(SCHEDULES_BOUNDS.scheduleFireTimesPageItems),
     })
     .strict(),
 );
@@ -128,17 +170,24 @@ export const scheduleStepConfigSchema = z.discriminatedUnion('kind', [
       kind: z.literal('cron'),
       expression: z
         .string()
-        .min(9)
-        .max(255)
+        .min(SCHEDULES_BOUNDS.expressionMinimumCharacters)
+        .max(SCHEDULES_BOUNDS.previewExpressionCharacters)
         .regex(/^[^\sH?#L]+(?: [^\sH?#L]+){4}$/u),
-      timezone: z.string().min(1).max(255),
+      timezone: z
+        .string()
+        .min(1)
+        .max(SCHEDULES_BOUNDS.previewTimezoneCharacters),
       misfirePolicy: scheduleStepMisfirePolicySchema,
     })
     .strict(),
   z
     .object({
       kind: z.literal('interval'),
-      intervalMinutes: z.number().int().min(1).max(43_200),
+      intervalMinutes: z
+        .number()
+        .int()
+        .min(1)
+        .max(SCHEDULES_BOUNDS.intervalMinutesMaximum),
       misfirePolicy: scheduleStepMisfirePolicySchema,
     })
     .strict(),
@@ -146,7 +195,12 @@ export const scheduleStepConfigSchema = z.discriminatedUnion('kind', [
 export const schedulePreviewRequestSchema = z
   .object({
     config: scheduleStepConfigSchema,
-    count: z.number().int().min(1).max(10).optional(),
+    count: z
+      .number()
+      .int()
+      .min(1)
+      .max(SCHEDULES_BOUNDS.countMaximum)
+      .optional(),
   })
   .strict();
 

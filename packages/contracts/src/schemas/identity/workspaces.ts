@@ -18,6 +18,19 @@ import {
 } from '@pertexo/workflow-model';
 import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 
+const WORKSPACES_BOUNDS = Object.freeze({
+  emailMinimumCharacters: EMAIL_ADDRESS_LIMITS.minimumCharacters,
+  emailCharacters: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+  workspaceInvitationsPageItems: 100,
+  nextCursorCharacters: 512,
+  workspaceInvitationsPageMaximum: 100,
+  afterCharacters: 512,
+  workspaceMembersPageItems: 100,
+  workspaceMembersPageMaximum: 100,
+  accessibleWorkspacesPageMaximum: 100,
+  accessibleWorkspacesPageItems: 100,
+});
+
 export { idempotencyKeySchema } from '../shared/transport-headers.js';
 
 /** What a workspace's own text fields hold. */
@@ -85,7 +98,11 @@ export const userProfileResponseSchema = responseSchema(
   z
     .object({
       id: z.uuid(),
-      email: z.string().trim().min(3).max(320),
+      email: z
+        .string()
+        .trim()
+        .min(WORKSPACES_BOUNDS.emailMinimumCharacters)
+        .max(WORKSPACES_BOUNDS.emailCharacters),
       displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_CHARACTERS),
       status: z.enum(['active', 'suspended', 'deleted']),
       revision: userProfileRevisionSchema,
@@ -119,7 +136,11 @@ export const userProfileUpdateResponseSchema = responseSchema(
 export const workspaceMemberSchema = z
   .object({
     userId: z.uuid(),
-    email: z.string().trim().min(3).max(320),
+    email: z
+      .string()
+      .trim()
+      .min(WORKSPACES_BOUNDS.emailMinimumCharacters)
+      .max(WORKSPACES_BOUNDS.emailCharacters),
     displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_CHARACTERS),
     role: workspaceRoleSchema,
     roleRevision: z.number().int().positive(),
@@ -175,7 +196,7 @@ const workspaceInvitationDeliveryStatusSchema = z.enum([
 export const workspaceInvitationSchema = z
   .object({
     id: workspaceInvitationIdentifierSchema,
-    email: z.email().max(320),
+    email: z.email().max(WORKSPACES_BOUNDS.emailCharacters),
     role: delegatedWorkspaceRoleSchema,
     status: workspaceInvitationStatusSchema,
     revision: z.number().int().positive(),
@@ -209,35 +230,62 @@ export const workspaceInvitationsResponseSchema = responseSchema(
   z
     .object({
       issuanceAvailable: z.boolean(),
-      items: z.array(workspaceInvitationSchema).max(100),
-      nextCursor: z.string().min(1).max(512).nullable(),
+      items: z
+        .array(workspaceInvitationSchema)
+        .max(WORKSPACES_BOUNDS.workspaceInvitationsPageItems),
+      nextCursor: z
+        .string()
+        .min(1)
+        .max(WORKSPACES_BOUNDS.nextCursorCharacters)
+        .nullable(),
     })
     .strict(),
 );
 export const workspaceInvitationsQuerySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(100).optional(),
-    after: z.string().min(1).max(512).optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(WORKSPACES_BOUNDS.workspaceInvitationsPageMaximum)
+      .optional(),
+    after: z.string().min(1).max(WORKSPACES_BOUNDS.afterCharacters).optional(),
   })
   .strict();
 
 export const workspaceMembersResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(workspaceMemberSchema).max(100),
-      nextCursor: z.string().min(1).max(512).nullable(),
+      items: z
+        .array(workspaceMemberSchema)
+        .max(WORKSPACES_BOUNDS.workspaceMembersPageItems),
+      nextCursor: z
+        .string()
+        .min(1)
+        .max(WORKSPACES_BOUNDS.nextCursorCharacters)
+        .nullable(),
     })
     .strict(),
 );
 export const workspaceMembersQuerySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(100).optional(),
-    after: z.string().min(1).max(512).optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(WORKSPACES_BOUNDS.workspaceMembersPageMaximum)
+      .optional(),
+    after: z.string().min(1).max(WORKSPACES_BOUNDS.afterCharacters).optional(),
   })
   .strict();
 export const accessibleWorkspacesQuerySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(100).optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(WORKSPACES_BOUNDS.accessibleWorkspacesPageMaximum)
+      .optional(),
     after: workspaceIdentifierSchema.optional(),
   })
   .strict();
@@ -266,7 +314,9 @@ export const workspaceRenameResponseSchema = responseSchema(
 export const accessibleWorkspacesResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(accessibleWorkspaceSchema).max(100),
+      items: z
+        .array(accessibleWorkspaceSchema)
+        .max(WORKSPACES_BOUNDS.accessibleWorkspacesPageItems),
       nextCursor: workspaceIdentifierSchema.nullable(),
     })
     .strict(),

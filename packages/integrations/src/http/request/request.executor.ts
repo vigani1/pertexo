@@ -1,3 +1,4 @@
+import { httpHeadersCredentialSchema } from '@pertexo/contracts';
 import { executePagination } from './pagination/execute.js';
 import {
   type NodeExecutionInvocation,
@@ -47,7 +48,6 @@ import {
   resolveRequestConnection,
 } from './execution/invocation.js';
 import { withProviderCredential } from '@pertexo/node-sdk/server';
-import { resolvedHttpHeadersCredentialSchema } from './request-headers.schemas.js';
 import { requestClient } from './execution/request-client.js';
 export type HttpRequestExecutorDependencies = Readonly<{
   httpClient: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>;
@@ -87,7 +87,7 @@ async function executeHttpRequest(
         connectionId: context.connectionId ?? '',
         providerKey: 'http',
         authTypes: ['http_headers'],
-        schema: resolvedHttpHeadersCredentialSchema,
+        schema: httpHeadersCredentialSchema,
         refuse: (reason) =>
           reason === 'configuration'
             ? failedConfiguration()

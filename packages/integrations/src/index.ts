@@ -14,7 +14,6 @@ export {
   type HttpRequestInput,
   type HttpRequestOutput,
 } from './http/request/request.schemas.js';
-export { resolvedHttpHeadersCredentialSchema } from './http/request/request-headers.schemas.js';
 
 export { httpPlaceholders } from './http/request/placeholders.js';
 

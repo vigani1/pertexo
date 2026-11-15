@@ -1,5 +1,9 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import { responseSchema } from '../shared/response-schema.js';
-import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
+import {
+  signingKeyCredentialSchema,
+  NODE_FAILURE_FIELD_LIMITS,
+} from '@pertexo/node-sdk';
 export { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { utf8ByteLength } from '@pertexo/workflow-model';
@@ -21,13 +25,32 @@ import {
   smtpCredentialSchema,
   connectionCredentialSchema,
 } from './connection-credentials.js';
+
+const CONNECTIONS_BOUNDS = Object.freeze({
+  connectionCursorCharacters: 512,
+  connectionPageLimitMaximum: 100,
+  urlCharacters: 2048,
+  connectionListPageItems: 100,
+  workflowNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  operationKeysItemCharacters: 128,
+  connectionUsagePageItems: 100,
+  errorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  urlBytes: 2048,
+});
 export { connectionStatusSchema } from './connection-fields.js';
 
 /** How long testing a connection waits for the provider before it gives up. */
 export const CONNECTION_TEST_TIMEOUT_MILLIS = 15_000;
 
-const connectionCursorSchema = z.string().min(1).max(512);
-const connectionPageLimitSchema = z.coerce.number().int().min(1).max(100);
+const connectionCursorSchema = z
+  .string()
+  .min(1)
+  .max(CONNECTIONS_BOUNDS.connectionCursorCharacters);
+const connectionPageLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(CONNECTIONS_BOUNDS.connectionPageLimitMaximum);
 
 export const connectionCreateRequestSchema = z.discriminatedUnion(
   'providerKey',
@@ -85,9 +108,9 @@ const httpConnectionTestRequestSchema = z
   .object({
     url: z
       .url()
-      .max(2_048)
+      .max(CONNECTIONS_BOUNDS.urlCharacters)
       .refine(
-        (value) => utf8ByteLength(value) <= 2_048,
+        (value) => utf8ByteLength(value) <= CONNECTIONS_BOUNDS.urlBytes,
         'URL exceeds byte limit',
       )
       .refine(
@@ -155,7 +178,9 @@ export const connectionListQuerySchema = z
 export const connectionListResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(connectionResponseSchema).max(100),
+      items: z
+        .array(connectionResponseSchema)
+        .max(CONNECTIONS_BOUNDS.connectionListPageItems),
       nextCursor: connectionCursorSchema.nullable(),
     })
     .strict()
@@ -165,12 +190,17 @@ export const connectionListResponseSchema = responseSchema(
 const connectionUsageItemSchema = z
   .object({
     workflowId: z.uuid(),
-    workflowName: z.string().min(1).max(128),
+    workflowName: z
+      .string()
+      .min(1)
+      .max(CONNECTIONS_BOUNDS.workflowNameCharacters),
     workflowLifecycleStatus: z.enum(['active', 'archived']),
     workflowVersionId: z.uuid(),
     versionNumber: z.number().int().positive(),
     isCurrentPublication: z.boolean(),
-    operationKeys: z.array(z.string().min(1).max(128)),
+    operationKeys: z.array(
+      z.string().min(1).max(CONNECTIONS_BOUNDS.operationKeysItemCharacters),
+    ),
   })
   .strict()
   .readonly();
@@ -178,7 +208,9 @@ const connectionUsageItemSchema = z
 export const connectionUsageResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(connectionUsageItemSchema).max(100),
+      items: z
+        .array(connectionUsageItemSchema)
+        .max(CONNECTIONS_BOUNDS.connectionUsagePageItems),
       nextCursor: connectionCursorSchema.nullable(),
     })
     .strict()
@@ -202,7 +234,7 @@ const connectionTestOutcomeSchema = z.discriminatedUnion('ok', [
     .object({
       ok: z.literal(false),
       httpStatus: z.number().int().min(100).max(599).nullable(),
-      errorCode: z.string().min(1).max(128),
+      errorCode: z.string().min(1).max(CONNECTIONS_BOUNDS.errorCodeCharacters),
     })
     .strict()
     .readonly(),

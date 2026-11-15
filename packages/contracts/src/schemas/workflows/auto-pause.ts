@@ -4,10 +4,14 @@ import { z } from 'zod';
 
 import { createApiProblemSchema } from '../../errors/api-problem.js';
 
+const AUTO_PAUSE_BOUNDS = Object.freeze({
+  autoPauseThresholdMinimum: 3,
+});
+
 export const autoPauseThresholdSchema = z
   .number()
   .int()
-  .min(3)
+  .min(AUTO_PAUSE_BOUNDS.autoPauseThresholdMinimum)
   .max(MAX_AUTO_PAUSE_THRESHOLD);
 export const autoPauseSettingsRevisionSchema = z
   .number()

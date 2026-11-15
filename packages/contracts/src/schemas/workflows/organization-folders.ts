@@ -10,6 +10,10 @@ import {
   workflowTagReplaceRequestSchema,
 } from './organization.js';
 
+const ORGANIZATION_FOLDERS_BOUNDS = Object.freeze({
+  canonicalIdentifierCharacters: 36,
+});
+
 export const WORKFLOW_FOLDER_LIMITS = Object.freeze({
   nameBytes: 128,
   depth: 4,
@@ -40,7 +44,7 @@ const workflowFolderRevisionSchema = workflowOrganizationRevisionSchema.clone();
 const identifier = z.uuid().overwrite((id) => id.toLowerCase());
 const canonicalIdentifier = z
   .uuid()
-  .length(36)
+  .length(ORGANIZATION_FOLDERS_BOUNDS.canonicalIdentifierCharacters)
   .regex(/^[0-9a-f-]+$(?![\s\S])/u);
 export const workflowOrganizationFolderFilterSchema = z.union([
   identifier,

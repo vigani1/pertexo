@@ -1,6 +1,15 @@
+import { storedTimestampSchema } from '../shared/stored-timestamp.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { workflowRunStatisticsResponseSchema } from './run-statistics.js';
+
+const USAGE_TRENDS_BOUNDS = Object.freeze({
+  workflowNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  daysItems: 90,
+  busiestItems: 10,
+  mostFailuresItems: 10,
+});
 
 export const usageTrendPeriodSchema = z.enum(['30d', '90d']);
 export const usageTrendsQuerySchema = z
@@ -19,7 +28,10 @@ const elapsed = z
 const ranked = z
   .object({
     workflowId: z.uuid(),
-    workflowName: z.string().max(128).nullable(),
+    workflowName: z
+      .string()
+      .max(USAGE_TRENDS_BOUNDS.workflowNameCharacters)
+      .nullable(),
     runs: count,
     failures: count,
   })
@@ -28,10 +40,10 @@ export const usageTrendsResponseSchema = responseSchema(
   z
     .object({
       period: usageTrendPeriodSchema,
-      asOf: z.iso.datetime({ precision: 6 }),
-      from: z.iso.datetime({ precision: 6 }),
-      before: z.iso.datetime({ precision: 6 }),
-      coverageFrom: z.iso.datetime({ precision: 6 }),
+      asOf: storedTimestampSchema,
+      from: storedTimestampSchema,
+      before: storedTimestampSchema,
+      coverageFrom: storedTimestampSchema,
       total: count,
       byStatus: counts,
       elapsed,
@@ -46,9 +58,9 @@ export const usageTrendsResponseSchema = responseSchema(
             })
             .strict(),
         )
-        .max(90),
-      busiest: z.array(ranked).max(10),
-      mostFailures: z.array(ranked).max(10),
+        .max(USAGE_TRENDS_BOUNDS.daysItems),
+      busiest: z.array(ranked).max(USAGE_TRENDS_BOUNDS.busiestItems),
+      mostFailures: z.array(ranked).max(USAGE_TRENDS_BOUNDS.mostFailuresItems),
     })
     .strict(),
 );

@@ -25,7 +25,7 @@ import {
 import { journey } from './acceptance/view.js';
 import { parseToken, parseBinding } from './acceptance/proof.js';
 import { parseRequestInput } from '../../platform/http/request-input.js';
-import { SECRET_TOKEN_BYTES } from '../../identity/secret-token.js';
+import { SECRET_TOKEN_BYTES } from '@pertexo/contracts';
 import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
 const UUID_BYTES = 16;

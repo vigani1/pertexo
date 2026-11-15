@@ -1,6 +1,6 @@
 import { SAML_LIMITS, type FederationProtocol } from '@pertexo/contracts';
 import { isJourneyToken } from '../../journeys/browser-proof.js';
-import { CALLBACK_LIMITS } from '../../journeys/callback-limits.js';
+import { CALLBACK_LIMITS } from '@pertexo/contracts';
 
 // A SAML callback posts exactly RelayState and SAMLResponse.
 const SAML_CALLBACK_FIELDS = 2;

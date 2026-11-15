@@ -1,9 +1,7 @@
 import { createHash, createHmac } from 'node:crypto';
 import { JourneyCookieConfigurationError } from './journey.errors.js';
-import {
-  randomSecretToken,
-  SECRET_TOKEN_CHARACTERS,
-} from '../../identity/secret-token.js';
+import { SECRET_TOKEN_CHARACTERS } from '@pertexo/contracts';
+import { randomSecretToken } from '../../identity/secret-token.js';
 
 /*
  * Primitives of a browser-bound identity journey. A journey binds

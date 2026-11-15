@@ -5,6 +5,14 @@ import {
   workflowTestPreparationSchema,
   workflowTestStartRequestSchema,
 } from './workflow-tests.js';
+
+const TEST_SUITES_BOUNDS = Object.freeze({
+  nameCharacters: 128,
+  stopReasonCharacters: 64,
+  workflowTestSuiteListPageItems: 20,
+  stepLabelsCharacters: 256,
+  stepLabelsEntries: 20,
+});
 /** How many saved input cases one suite runs. */
 export const WORKFLOW_TEST_SUITE_MAX_CASES = 50;
 const caseIdentity = z
@@ -17,7 +25,11 @@ export const workflowTestSuiteCurrentSchema = z
     variableSetRevision: z.number().int().positive().nullable(),
     samples: workflowTestPreparationSchema.shape.samples,
     cases: z
-      .array(caseIdentity.extend({ name: z.string().max(128) }).strict())
+      .array(
+        caseIdentity
+          .extend({ name: z.string().max(TEST_SUITES_BOUNDS.nameCharacters) })
+          .strict(),
+      )
       .max(WORKFLOW_TEST_SUITE_MAX_CASES),
   })
   .strict();
@@ -66,7 +78,10 @@ export const workflowTestSuiteSummarySchema = responseSchema(
       draftRevision: z.number().int().positive(),
       signature: z.string().regex(/^[0-9a-f]{64}$/u),
       status: workflowTestSuiteStatusSchema,
-      stopReason: z.string().max(64).nullable(),
+      stopReason: z
+        .string()
+        .max(TEST_SUITES_BOUNDS.stopReasonCharacters)
+        .nullable(),
       createdAt: z.iso.datetime(),
       completedAt: z.iso.datetime().nullable(),
       expiresAt: z.iso.datetime(),
@@ -82,7 +97,9 @@ export const workflowTestSuiteListSchema = responseSchema(
   z
     .object({
       current: workflowTestSuiteCurrentSchema,
-      items: z.array(workflowTestSuiteSummarySchema).max(20),
+      items: z
+        .array(workflowTestSuiteSummarySchema)
+        .max(TEST_SUITES_BOUNDS.workflowTestSuiteListPageItems),
     })
     .strict(),
 );
@@ -100,7 +117,7 @@ export const workflowTestSuiteDetailSchema = responseSchema(
                 .max(WORKFLOW_TEST_SUITE_MAX_CASES - 1),
               caseId: z.uuid(),
               caseRevision: z.number().int().positive(),
-              name: z.string().max(128),
+              name: z.string().max(TEST_SUITES_BOUNDS.nameCharacters),
               status: workflowTestSuiteCaseStatusSchema,
               runId: z.uuid().nullable(),
             })
@@ -115,8 +132,14 @@ export const workflowTestSuiteCaseReportSchema = responseSchema(
     .object({
       report: workflowTestSuiteReportSchema.nullable(),
       stepLabels: z
-        .record(z.string().max(256), z.string().max(256))
-        .refine((value) => Object.keys(value).length <= 20)
+        .record(
+          z.string().max(TEST_SUITES_BOUNDS.stepLabelsCharacters),
+          z.string().max(TEST_SUITES_BOUNDS.stepLabelsCharacters),
+        )
+        .refine(
+          (value) =>
+            Object.keys(value).length <= TEST_SUITES_BOUNDS.stepLabelsEntries,
+        )
         .default({}),
     })
     .strict(),

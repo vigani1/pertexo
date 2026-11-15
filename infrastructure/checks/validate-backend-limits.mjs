@@ -61,6 +61,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/core/src/shared',
   'packages/core/src/tenant-access',
   'packages/core/src/variables',
+  'packages/contracts',
 ]);
 
 // Unit factors: 1_000 ms in a second, 60 seconds in a minute, 1_024 bytes in a KB.

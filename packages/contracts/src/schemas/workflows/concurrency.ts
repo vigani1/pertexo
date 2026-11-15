@@ -1,7 +1,12 @@
+import { storedTimestampSchema } from '../shared/stored-timestamp.js';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { createApiProblemSchema } from '../../errors/api-problem.js';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+
+const CONCURRENCY_BOUNDS = Object.freeze({
+  workflowConcurrencyLimitMaximum: 10000,
+});
 
 /** How many recent skipped triggers one settings read returns. */
 export const WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX = 20;
@@ -15,11 +20,11 @@ export const workflowConcurrencyLimitSchema = z
   .number()
   .int()
   .min(1)
-  .max(10_000);
+  .max(CONCURRENCY_BOUNDS.workflowConcurrencyLimitMaximum);
 const workflowConcurrencySkipSchema = z
   .object({
     id: z.uuid(),
-    at: z.iso.datetime({ precision: 6 }),
+    at: storedTimestampSchema,
     triggerType: z.enum(['webhook', 'schedule', 'form', 'workflow_error']),
     reason: z.literal('concurrency_limit'),
   })
@@ -27,7 +32,7 @@ const workflowConcurrencySkipSchema = z
 export const workflowConcurrencySettingsSchema = responseSchema(
   z
     .object({
-      asOf: z.iso.datetime({ precision: 6 }),
+      asOf: storedTimestampSchema,
       limit: workflowConcurrencyLimitSchema.nullable(),
       revision: workflowConcurrencyRevisionSchema,
       workspaceActiveRunLimit: workflowConcurrencyLimitSchema.nullable(),

@@ -1,3 +1,4 @@
+import { formatByteSize } from '@pertexo/node-sdk';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
@@ -6,6 +7,7 @@ import { z } from 'zod';
 
 import { problemResponse } from '../openapi-primitives.js';
 import {
+  NOTICE_UNSUBSCRIBE_LIMITS,
   noticeCommandResponseSchema,
   noticeDefaultsRequestSchema,
   noticeOneClickQuerySchema,
@@ -152,8 +154,7 @@ export const notificationPreferenceRoutes = {
   }),
   oneClick: defineRoute({
     operationId: 'oneClickNotificationUnsubscribe',
-    description:
-      'RFC 8058 capability-authorized opt-out. The URL token authorizes the request. Form contents are ignored within 8 KiB. No session, cookies, CSRF header or redirect. Only turns personal email Off.',
+    description: `RFC 8058 capability-authorized opt-out. The URL token authorizes the request. Form contents are ignored within ${formatByteSize(NOTICE_UNSUBSCRIBE_LIMITS.formBytes)}. No session, cookies, CSRF header or redirect. Only turns personal email Off.`,
     method: 'post',
     path: '/v1/notifications/unsubscribe/one-click',
     query: noticeOneClickQuerySchema,
@@ -161,8 +162,7 @@ export const notificationPreferenceRoutes = {
     rateLimit: 'notice_unsubscribe',
     requestDocument: {
       required: false,
-      description:
-        'Opaque body, ignored. Mail clients normally send List-Unsubscribe=One-Click. Maximum 8 KiB.',
+      description: `Opaque body, ignored. Mail clients normally send List-Unsubscribe=One-Click. Maximum ${formatByteSize(NOTICE_UNSUBSCRIBE_LIMITS.formBytes)}.`,
       content: {
         'application/x-www-form-urlencoded': { schema: {} },
         'multipart/form-data': { schema: {} },
@@ -172,7 +172,9 @@ export const notificationPreferenceRoutes = {
     problems: {
       '400': problems['400'],
       '404': problems['404'],
-      '413': problemResponse('Form exceeds 8 KiB'),
+      '413': problemResponse(
+        `Form exceeds ${formatByteSize(NOTICE_UNSUBSCRIBE_LIMITS.formBytes)}`,
+      ),
       '415': problemResponse('Expected a standard form MIME type'),
       '429': problems['429'],
       '500': problems['500'],
@@ -185,7 +187,10 @@ export const notificationPreferenceRoutes = {
     method: 'post',
     path: '/v1/notifications/unsubscribe',
     headers: z.object({
-      'x-pertexo-unsubscribe-key': z.string().min(1).max(4096),
+      'x-pertexo-unsubscribe-key': z
+        .string()
+        .min(1)
+        .max(NOTICE_UNSUBSCRIBE_LIMITS.keyCharacters),
     }),
     access: { auth: 'public' },
     rateLimit: 'notice_unsubscribe',

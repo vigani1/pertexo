@@ -329,7 +329,10 @@ export {
   jsonStringByteLength,
   withoutHiddenCharacters,
 } from './values/text.js';
-export { ianaTimeZoneSchema } from './values/time-zone.schemas.js';
+export {
+  ianaTimeZoneSchema,
+  TIME_ZONE_NAME_CHARACTERS,
+} from './values/time-zone.schemas.js';
 export {
   WORKSPACE_VARIABLE_LIMITS,
   workspaceVariableNameSchema,

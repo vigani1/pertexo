@@ -1,11 +1,20 @@
 import { z } from 'zod';
 
-export const csrfTokenSchema = z.string().min(16).max(256);
+const TRANSPORT_HEADERS_BOUNDS = Object.freeze({
+  csrfTokenMinimumCharacters: 16,
+  csrfTokenCharacters: 256,
+  idempotencyKeyCharacters: 128,
+});
+
+export const csrfTokenSchema = z
+  .string()
+  .min(TRANSPORT_HEADERS_BOUNDS.csrfTokenMinimumCharacters)
+  .max(TRANSPORT_HEADERS_BOUNDS.csrfTokenCharacters);
 
 export const idempotencyKeySchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(TRANSPORT_HEADERS_BOUNDS.idempotencyKeyCharacters)
   .regex(/^[\x21-\x2b\x2d-\x7e]+$/u);
 /** How long a key is honored: a retry with the same key inside it replays. */
 export { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';

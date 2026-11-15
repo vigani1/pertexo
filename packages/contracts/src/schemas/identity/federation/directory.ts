@@ -8,6 +8,13 @@ import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
+const DIRECTORY_BOUNDS = Object.freeze({
+  credentialsItems: 50,
+  searchCharacters: 320,
+  directoryPeoplePageItems: 100,
+  directoryPeoplePageDefault: 50,
+});
+
 const revision = z.number().int().positive().max(STORED_INTEGER_MAX);
 export const directoryCredentialSchema = z
   .object({
@@ -112,7 +119,9 @@ export const directorySettingsSchema = responseSchema(
           groups: z.number().int(),
         })
         .strict(),
-      credentials: z.array(directoryCredentialSchema).max(50),
+      credentials: z
+        .array(directoryCredentialSchema)
+        .max(DIRECTORY_BOUNDS.credentialsItems),
       groups: z
         .array(
           z
@@ -130,9 +139,14 @@ export const directorySettingsSchema = responseSchema(
 );
 export const directoryPeopleQuerySchema = z
   .object({
-    search: z.string().max(320).optional(),
+    search: z.string().max(DIRECTORY_BOUNDS.searchCharacters).optional(),
     after: z.uuid().optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(50),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(DIRECTORY_BOUNDS.directoryPeoplePageItems)
+      .default(DIRECTORY_BOUNDS.directoryPeoplePageDefault),
   })
   .strict();
 export const directoryPeoplePageSchema = responseSchema(
@@ -152,7 +166,7 @@ export const directoryPeoplePageSchema = responseSchema(
             })
             .strict(),
         )
-        .max(100),
+        .max(DIRECTORY_BOUNDS.directoryPeoplePageItems),
       nextCursor: z.uuid().nullable(),
     })
     .strict(),

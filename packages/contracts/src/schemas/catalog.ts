@@ -6,19 +6,25 @@ import {
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
-const identityKey = z
-  .string()
-  .min(1)
-  .max(256)
-  .regex(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u);
-
-export const catalogLimits = Object.freeze({
+/** How large the step and integration catalog may grow, and how long its names are. */
+export const CATALOG_LIMITS = Object.freeze({
   definitions: 256,
   integrations: 128,
   requirements: 64,
   capabilities: 64,
+  ports: 64,
   schemaProperties: 10_000,
+  identityKeyCharacters: 256,
+  schemaKeyCharacters: 256,
+  // A port, requirement or capability name.
+  nameCharacters: 128,
 });
+
+const identityKey = z
+  .string()
+  .min(1)
+  .max(CATALOG_LIMITS.identityKeyCharacters)
+  .regex(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u);
 
 const catalogDefinitionIdentitySchema = z
   .object({ key: identityKey, version: z.number().int().positive() })
@@ -29,9 +35,9 @@ const catalogDefinitionIdentitySchema = z
 export const catalogQuerySchema = z.object({}).strict();
 
 const schemaDocumentSchema = z
-  .record(z.string().max(256), z.json())
+  .record(z.string().max(CATALOG_LIMITS.schemaKeyCharacters), z.json())
   .superRefine((document, context) => {
-    if (Object.keys(document).length > catalogLimits.schemaProperties)
+    if (Object.keys(document).length > CATALOG_LIMITS.schemaProperties)
       context.addIssue({
         code: 'custom',
         message: 'schema document exceeds the property limit',
@@ -41,8 +47,12 @@ const schemaDocumentSchema = z
 
 const nodePortsSchema = z
   .object({
-    inputs: z.array(z.string().min(1).max(128)).max(64),
-    outputs: z.array(z.string().min(1).max(128)).max(64),
+    inputs: z
+      .array(z.string().min(1).max(CATALOG_LIMITS.nameCharacters))
+      .max(CATALOG_LIMITS.ports),
+    outputs: z
+      .array(z.string().min(1).max(CATALOG_LIMITS.nameCharacters))
+      .max(CATALOG_LIMITS.ports),
   })
   .strict()
   .readonly();
@@ -67,21 +77,21 @@ export const nodeDefinitionCatalogItemSchema = z
     outputVariant: outputVariantSelectionSchema.optional(),
     ports: nodePortsSchema,
     credentialRequirements: z
-      .array(z.string().min(1).max(128))
-      .max(catalogLimits.requirements),
+      .array(z.string().min(1).max(CATALOG_LIMITS.nameCharacters))
+      .max(CATALOG_LIMITS.requirements),
     connectionRequirements: z
-      .array(z.string().min(1).max(128))
-      .max(catalogLimits.requirements),
+      .array(z.string().min(1).max(CATALOG_LIMITS.nameCharacters))
+      .max(CATALOG_LIMITS.requirements),
     optionalConnections: z
-      .array(z.string().min(1).max(128))
-      .max(catalogLimits.requirements)
+      .array(z.string().min(1).max(CATALOG_LIMITS.nameCharacters))
+      .max(CATALOG_LIMITS.requirements)
       .optional(),
     integration: nodeIntegrationSchema.optional(),
     retryClass: z.enum(['safe', 'idempotent-with-key', 'unsafe']),
     resourceClass: z.enum(['io', 'cpu']),
     capabilities: z
-      .array(z.string().min(1).max(128))
-      .max(catalogLimits.capabilities),
+      .array(z.string().min(1).max(CATALOG_LIMITS.nameCharacters))
+      .max(CATALOG_LIMITS.capabilities),
   })
   .strict()
   .readonly();
@@ -92,7 +102,7 @@ export const nodeDefinitionListResponseSchema = responseSchema(
       codeSettings: codeSettingsSchema.optional(),
       items: z
         .array(nodeDefinitionCatalogItemSchema)
-        .max(catalogLimits.definitions),
+        .max(CATALOG_LIMITS.definitions),
     })
     .strict()
     .readonly(),
@@ -104,7 +114,7 @@ const integrationCatalogItemSchema = z
     operationKey: identityKey,
     nodeDefinitions: z
       .array(catalogDefinitionIdentitySchema)
-      .max(catalogLimits.definitions),
+      .max(CATALOG_LIMITS.definitions),
   })
   .strict()
   .readonly();
@@ -114,7 +124,7 @@ export const integrationListResponseSchema = responseSchema(
     .object({
       items: z
         .array(integrationCatalogItemSchema)
-        .max(catalogLimits.integrations),
+        .max(CATALOG_LIMITS.integrations),
     })
     .strict()
     .readonly(),

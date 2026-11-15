@@ -1,6 +1,7 @@
 import { responseSchema } from '../shared/response-schema.js';
 import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import {
+  WORKFLOW_PAGE_LIMITS,
   workflowCursorSchema,
   workflowListQuerySchema,
 } from './read-queries.js';
@@ -36,6 +37,20 @@ import {
   apiProblemIssueSchema,
   createApiProblemSchema,
 } from '../../errors/api-problem.js';
+
+const AUTHORING_BOUNDS = Object.freeze({
+  definitionKeyCharacters: 256,
+  issuesItems: 1000,
+});
+/** A page of workflows, or of their versions, with the cursor to the next. */
+function workflowPageSchema<Item extends z.ZodType>(item: Item) {
+  return z
+    .object({
+      items: z.array(item).max(WORKFLOW_PAGE_LIMITS.items),
+      nextCursor: workflowCursorSchema.nullable(),
+    })
+    .apply(responseSchema);
+}
 
 /** Opaque, quoted strong HTTP entity tag. Its internal value is not a client contract. */
 export const strongEtagSchema = z
@@ -109,7 +124,10 @@ export { workflowActivationStatusSchema, workflowLifecycleStatusSchema };
 const workflowCompatibilityIssueSchema = z
   .object({
     code: z.literal('unknown_definition'),
-    definitionKey: z.string().min(1).max(256),
+    definitionKey: z
+      .string()
+      .min(1)
+      .max(AUTHORING_BOUNDS.definitionKeyCharacters),
     version: positiveVersionSchema,
   })
   .strict();
@@ -118,7 +136,9 @@ export const workflowCompatibilityReportSchema = responseSchema(
     .object({
       compatible: z.boolean(),
       fingerprint: z.string().regex(/^wf-compat:sha256:[0-9a-f]{64}$/u),
-      issues: z.array(workflowCompatibilityIssueSchema).max(1_000),
+      issues: z
+        .array(workflowCompatibilityIssueSchema)
+        .max(AUTHORING_BOUNDS.issuesItems),
     })
     .strict(),
 );
@@ -242,18 +262,12 @@ export const workflowPublishResponseSchema = z
     reused: z.boolean(),
   })
   .apply(responseSchema);
-export const workflowVersionsResponseSchema = z
-  .object({
-    items: z.array(workflowVersionResponseSchema).max(100),
-    nextCursor: workflowCursorSchema.nullable(),
-  })
-  .apply(responseSchema);
-export const workflowListResponseSchema = z
-  .object({
-    items: z.array(workflowSummarySchema).max(100),
-    nextCursor: workflowCursorSchema.nullable(),
-  })
-  .apply(responseSchema);
+export const workflowVersionsResponseSchema = workflowPageSchema(
+  workflowVersionResponseSchema,
+);
+export const workflowListResponseSchema = workflowPageSchema(
+  workflowSummarySchema,
+);
 export const workflowCreateResponseSchema = z
   .object({
     workflow: workflowSummarySchema,
@@ -323,12 +337,9 @@ export const workflowCombinedOrganizationProjectionResponseSchema = z
     organization: workflowOrganizationSchema,
   })
   .apply(responseSchema);
-export const workflowOrganizationListResponseSchema = z
-  .object({
-    items: z.array(workflowOrganizationProjectionResponseSchema).max(100),
-    nextCursor: workflowCursorSchema.nullable(),
-  })
-  .apply(responseSchema);
+export const workflowOrganizationListResponseSchema = workflowPageSchema(
+  workflowOrganizationProjectionResponseSchema,
+);
 export type WorkflowOrganizationProjectionResponse = z.output<
   typeof workflowOrganizationProjectionResponseSchema
 >;

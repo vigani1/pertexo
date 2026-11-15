@@ -2,7 +2,10 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
-import { webhookAuthenticationSchema } from '@pertexo/workflow-model';
+import {
+  webhookAuthenticationSchema,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 import { responseReference } from '../openapi-primitives.js';
@@ -23,13 +26,19 @@ import {
   type RouteAccess,
 } from '../define.js';
 
+const WEBHOOKS_BOUNDS = Object.freeze({
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+});
+
 const TRIGGERS = '/v1/workspaces/{workspaceId}/workflows/{workflowId}/triggers';
 const WEBHOOK = `${TRIGGERS}/{triggerId}/webhook` as const;
 const TEST_EVENTS =
   '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/webhook-test-events';
 const workflow = z.object({ workspaceId: z.uuid(), workflowId: z.uuid() });
 const trigger = workflow.extend({ triggerId: z.uuid() });
-const node = workflow.extend({ nodeId: z.string().min(1).max(64) });
+const node = workflow.extend({
+  nodeId: z.string().min(1).max(WEBHOOKS_BOUNDS.nodeIdCharacters),
+});
 const testEvent = node.extend({ id: z.uuid() });
 
 const reading: RouteAccess = {

@@ -1,4 +1,12 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { z } from 'zod';
+
+const RUN_EVENTS_BOUNDS = Object.freeze({
+  invocationKeyCharacters: 1024,
+  nodeIdCharacters: 256,
+  safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  reasonCodeCharacters: 128,
+});
 
 const workflowRunEventTypeSchema = z.enum([
   'run.queued',
@@ -33,8 +41,16 @@ const workflowRunOutputReferenceSchema = z.discriminatedUnion('kind', [
 ]);
 export const workflowRunEventPayloadSchema = z
   .object({
-    invocationKey: z.string().min(1).max(1_024).optional(),
-    nodeId: z.string().min(1).max(256).optional(),
+    invocationKey: z
+      .string()
+      .min(1)
+      .max(RUN_EVENTS_BOUNDS.invocationKeyCharacters)
+      .optional(),
+    nodeId: z
+      .string()
+      .min(1)
+      .max(RUN_EVENTS_BOUNDS.nodeIdCharacters)
+      .optional(),
     nodeRunId: z.uuid().optional(),
     attemptId: z.uuid().optional(),
     sourceRunId: z.uuid().optional(),
@@ -42,8 +58,16 @@ export const workflowRunEventPayloadSchema = z
     sourceCompletedAt: z.iso.datetime({ offset: true }).optional(),
     attemptNumber: z.number().int().nonnegative().optional(),
     dueAt: z.iso.datetime({ offset: true }).optional(),
-    safeErrorCode: z.string().min(1).max(128).optional(),
-    reasonCode: z.string().min(1).max(128).optional(),
+    safeErrorCode: z
+      .string()
+      .min(1)
+      .max(RUN_EVENTS_BOUNDS.safeErrorCodeCharacters)
+      .optional(),
+    reasonCode: z
+      .string()
+      .min(1)
+      .max(RUN_EVENTS_BOUNDS.reasonCodeCharacters)
+      .optional(),
     outputRef: workflowRunOutputReferenceSchema.optional(),
   })
   .strict();

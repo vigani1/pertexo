@@ -3,6 +3,11 @@ import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 export { PROMOTION_LIMITS };
 import { z } from 'zod';
 
+const SETTINGS_BOUNDS = Object.freeze({
+  nameCharacters: 128,
+  reasonCharacters: 512,
+});
+
 export const promotionIdentifierSchema = z
   .uuid()
   .overwrite((id) => id.toLowerCase());
@@ -17,7 +22,7 @@ export const workflowPromotionSettingsSchema = responseSchema(
             .object({
               status: z.literal('available'),
               workspaceId: promotionIdentifierSchema,
-              name: z.string().max(128),
+              name: z.string().max(SETTINGS_BOUNDS.nameCharacters),
               requireApproval: z.boolean(),
             })
             .strict(),
@@ -25,7 +30,7 @@ export const workflowPromotionSettingsSchema = responseSchema(
             .object({
               status: z.literal('unavailable'),
               workspaceId: promotionIdentifierSchema,
-              reason: z.string().max(512),
+              reason: z.string().max(SETTINGS_BOUNDS.reasonCharacters),
             })
             .strict(),
         ])

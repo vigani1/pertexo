@@ -1,6 +1,11 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+
+const CONNECTION_FIELDS_BOUNDS = Object.freeze({
+  lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+});
 
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();
@@ -41,7 +46,11 @@ export const connectionResponseFields = {
     .object({
       lastTestedAt: z.iso.datetime().nullable(),
       lastHealthyAt: z.iso.datetime().nullable(),
-      lastErrorCode: z.string().min(1).max(128).nullable(),
+      lastErrorCode: z
+        .string()
+        .min(1)
+        .max(CONNECTION_FIELDS_BOUNDS.lastErrorCodeCharacters)
+        .nullable(),
       lastRunObservedAt: z.iso.datetime().nullable().optional(),
       lastHealthTransitionAt: z.iso.datetime().nullable().optional(),
       lastHealthTransitionSource: z

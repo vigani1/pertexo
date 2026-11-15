@@ -4,13 +4,23 @@ import { z } from 'zod';
 import { FORM_FILE_LIMITS } from '@pertexo/workflow-model';
 import { artifactUploadResponseSchema } from '../execution/artifact-transfer.js';
 
+const UPLOADS_BOUNDS = Object.freeze({
+  fieldIdCharacters: 64,
+  filenameCharacters: 1024,
+  mediaTypeMinimumCharacters: 3,
+  mediaTypeCharacters: 255,
+});
+
 /** A responder's random token for one response; only its digest is stored. */
 export const formUploadSessionSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
 export const formUploadRequestSchema = z
   .object({
     versionId: z.uuid(),
-    fieldId: z.string().min(1).max(64),
-    filename: storageTextSchema.trim().min(1).max(1_024),
+    fieldId: z.string().min(1).max(UPLOADS_BOUNDS.fieldIdCharacters),
+    filename: storageTextSchema
+      .trim()
+      .min(1)
+      .max(UPLOADS_BOUNDS.filenameCharacters),
     byteLength: z.number().int().min(0).max(FORM_FILE_LIMITS.maxBytes),
     sha256: z.string().regex(/^[a-f0-9]{64}$/u),
   })
@@ -37,7 +47,10 @@ export const formUploadSchema = responseSchema(
       id: z.uuid(),
       filename: z.string().min(1).max(FORM_FILE_LIMITS.filenameCharacters),
       byteLength: z.number().int().min(0).max(FORM_FILE_LIMITS.maxBytes),
-      mediaType: z.string().min(3).max(255),
+      mediaType: z
+        .string()
+        .min(UPLOADS_BOUNDS.mediaTypeMinimumCharacters)
+        .max(UPLOADS_BOUNDS.mediaTypeCharacters),
       status: z.enum(['pending', 'available']),
       expiresAt: z.iso.datetime(),
     })
