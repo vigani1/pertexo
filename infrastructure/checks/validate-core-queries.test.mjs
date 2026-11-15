@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   findCoreQueries,
+  findStoreProblems,
   isPending,
   validatePendingAreas,
 } from './validate-core-queries.mjs';
@@ -97,4 +98,41 @@ test('pending areas are skipped, and the pending list may only shrink', () => {
   assert.equal(isPending('packages/core/src/testing.ts', ['runs']), false);
   assert.deepEqual(validatePendingAreas(['runs']), []);
   assert.equal(validatePendingAreas(['runs', 'artifacts']).length, 1);
+});
+
+test('a store is a facade: it exports a factory and something composes it', () => {
+  const store = 'packages/core/src/variables/workspace-variables.store.ts';
+  const entry = [
+    'packages/core/src/variables/index.ts',
+    "export { createWorkspaceVariablesStore } from './workspace-variables.store.js';",
+  ];
+  const facade = 'export function createWorkspaceVariablesStore(pool) {}';
+  assert.deepEqual(findStoreProblems([entry, [store, facade]]), []);
+
+  const composer = [
+    'packages/core/src/tenant-access/identity-workspace.store.ts',
+    "import { createUserStore } from './users/user.store.js';\nexport const createIdentityWorkspaceStore = () => {};",
+  ];
+  const composedStore = [
+    'packages/core/src/tenant-access/users/user.store.ts',
+    'export function createUserStore(pool) {}',
+  ];
+  assert.deepEqual(
+    findStoreProblems([
+      [
+        'packages/core/src/tenant-access/index.ts',
+        "export * from './identity-workspace.store.js';",
+      ],
+      composer,
+      composedStore,
+    ]),
+    [],
+  );
+
+  assert.equal(
+    findStoreProblems([entry, [store, 'export async function readRows() {}']])
+      .length,
+    1,
+  );
+  assert.equal(findStoreProblems([[store, facade]]).length, 1);
 });
