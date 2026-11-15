@@ -1,10 +1,9 @@
-import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { sql } from 'drizzle-orm';
 import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
+  enterRunAdmissionProtocol,
+  lockWorkspaceRunAdmission,
+} from '../../shared/workspace-fence.repository.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';
 
 export function assertCoordinatorNotAborted(signal: AbortSignal): void {
@@ -24,11 +23,7 @@ export function withCoordinatorWriteClient<T>(
     pool,
     { workspaceId },
     async (client) => {
-      await drizzle(client)
-        .execute(
-          sql`select set_config('app.workflow_concurrency_protocol','1',true)`,
-        )
-        .catch(rethrowQueryFailure);
+      await enterRunAdmissionProtocol(drizzle(client));
       // Lifecycle/purge holds workspace before run rows. Acquire the shared
       // workspace lock before any coordinator run/checkpoint lock or FK write.
       await lockWorkspaceRunAdmission(drizzle(client), workspaceId);

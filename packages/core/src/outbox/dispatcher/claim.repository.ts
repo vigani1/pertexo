@@ -1,3 +1,4 @@
+import { enterRunAdmissionProtocol } from '../../shared/workspace-fence.repository.js';
 import { sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -31,11 +32,7 @@ export async function claimOutboxBatch(
   try {
     await client.query('begin');
     transactionState = 'open';
-    await drizzle(client)
-      .execute(
-        sql`select set_config('app.workflow_concurrency_protocol','1',true)`,
-      )
-      .catch(rethrowQueryFailure);
+    await enterRunAdmissionProtocol(drizzle(client));
     await drizzle(client)
       .execute(
         sql`select app.recover_due_workflow_run_active_admissions(${ADMISSION_RECOVERY_BATCH})`,
