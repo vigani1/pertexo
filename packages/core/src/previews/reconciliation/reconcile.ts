@@ -1,5 +1,4 @@
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
 import type {
   PreviewDeliveryReconciliationResult,
   PreviewReconciliationScope,
@@ -9,11 +8,7 @@ import { lockPreviewReconciliationState } from './preview-reconciliation-state.r
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
-import { previewAttempts, previewRuns } from '@pertexo/database/schema';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 
 import {
   auditingDeliveryMismatch,
@@ -29,8 +24,13 @@ import {
   mayHaveDispatchedUnsafely,
   PREVIEW_STATUS,
   TERMINAL_PREVIEW_STATUSES,
-  UNFINISHED_PREVIEW_STATUSES,
 } from '../preview-state.js';
+import {
+  closeExpiredAttempt,
+  closeExpiredRun,
+  requeueExpiredAttempt,
+  requeuePreviewRun,
+} from './transitions.repository.js';
 
 type LockedPreviewReconciliationState = Awaited<
   ReturnType<typeof lockPreviewReconciliationState>
@@ -58,50 +58,16 @@ async function completeExpiredOrUnsafePreview(
     reason,
     attemptFenceToken: scope.attemptFenceToken,
   });
-  const db = drizzle(client);
-  const attempt = await db
-    .update(previewAttempts)
-    .set({
+  if (
+    !(await closeExpiredAttempt(client, scope, {
       status,
       safeErrorCode,
-      reconciliationRef: sql`${reconciliationRef}::jsonb`,
-      completedAt: sql`clock_timestamp()`,
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      fenceToken: sql`${previewAttempts.fenceToken}+1`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(previewAttempts.workspaceId, scope.workspaceId),
-        eq(previewAttempts.id, scope.previewAttemptId),
-        eq(previewAttempts.previewRunId, scope.previewRunId),
-        eq(previewAttempts.status, 'running'),
-        eq(previewAttempts.fenceToken, scope.attemptFenceToken),
-      ),
-    )
-    .returning({ id: previewAttempts.id })
-    .catch(rethrowQueryFailure);
-  if (attempt.length !== 1)
+      reconciliationRef,
+    }))
+  )
     throw new PreviewAttemptStateError('reconciliation_lost');
-  const run = await db
-    .update(previewRuns)
-    .set({
-      status,
-      safeErrorCode,
-      completedAt: sql`clock_timestamp()`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(previewRuns.workspaceId, scope.workspaceId),
-        eq(previewRuns.id, scope.previewRunId),
-        inArray(previewRuns.status, UNFINISHED_PREVIEW_STATUSES),
-      ),
-    )
-    .returning({ id: previewRuns.id })
-    .catch(rethrowQueryFailure);
-  if (run.length !== 1) throw new PreviewAttemptStateError('run_sync_lost');
+  if (!(await closeExpiredRun(client, scope, { status, safeErrorCode })))
+    throw new PreviewAttemptStateError('run_sync_lost');
   await appendPreviewTerminalFacts(client, {
     previewAttemptId: scope.previewAttemptId,
     previewRunId: scope.previewRunId,
@@ -237,43 +203,13 @@ async function redeliverExpiredPreview(
   // Fence the expired owner before making the replacement delivery
   // visible. The stable provider key and prior dispatch marker remain
   // pinned for safe/idempotent repetition under ADR 007.
-  const db = drizzle(client);
-  const reclaimed = await db
-    .update(previewAttempts)
-    .set({
-      status: 'queued',
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      fenceToken: sql`${previewAttempts.fenceToken}+1`,
-      reconciliationRef: sql`${JSON.stringify({ reason: 'lease_expired_redelivery', attemptFenceToken: scope.attemptFenceToken })}::jsonb`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(previewAttempts.workspaceId, scope.workspaceId),
-        eq(previewAttempts.id, scope.previewAttemptId),
-        eq(previewAttempts.previewRunId, scope.previewRunId),
-        eq(previewAttempts.status, 'running'),
-        eq(previewAttempts.fenceToken, scope.attemptFenceToken),
-      ),
-    )
-    .returning({ id: previewAttempts.id })
-    .catch(rethrowQueryFailure);
-  if (reclaimed.length !== 1)
+  const reconciliationRef = JSON.stringify({
+    reason: 'lease_expired_redelivery',
+    attemptFenceToken: scope.attemptFenceToken,
+  });
+  if (!(await requeueExpiredAttempt(client, scope, reconciliationRef)))
     throw new PreviewAttemptStateError('reconciliation_lost');
-  const queuedRun = await db
-    .update(previewRuns)
-    .set({ status: 'queued', updatedAt: sql`clock_timestamp()` })
-    .where(
-      and(
-        eq(previewRuns.workspaceId, scope.workspaceId),
-        eq(previewRuns.id, scope.previewRunId),
-        eq(previewRuns.status, 'running'),
-      ),
-    )
-    .returning({ id: previewRuns.id })
-    .catch(rethrowQueryFailure);
-  if (queuedRun.length !== 1)
+  if (!(await requeuePreviewRun(client, scope)))
     throw new PreviewAttemptStateError('run_sync_lost');
   const execution = await insertPreviewOutboxDelivery(client, {
     jobName: 'execute-preview-attempt',

@@ -1,17 +1,11 @@
 import type { WorkflowActor } from '../../shared/workflow-actor.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { workflowTestExpectationsSchema } from '@pertexo/workflow-model';
-import { and, eq, sql } from 'drizzle-orm';
-import {
-  workflowTestSuiteCases,
-  workflowTestSuites,
-  databaseSchema,
-} from '@pertexo/database/schema';
+import { databaseSchema } from '@pertexo/database/schema';
 import {
   parseWorkspaceId,
   claimCommand,
   completeCommand,
-  rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import type { Role } from '@pertexo/policy';
@@ -42,6 +36,8 @@ import {
   saveTestSnapshot,
 } from '../workflows/snapshot.repository.js';
 import { admitSuiteCase } from './admit.js';
+import { insertSuiteCases, readSuiteCase } from './cases.repository.js';
+import { insertSuite } from './suite-state.repository.js';
 import type { WorkflowTestSuiteStartInput } from './workflow-test-suite.types.js';
 import {
   readSuiteCasePayloads,
@@ -96,7 +92,6 @@ export async function startTestSuite(
   if (snapshot.usesConnections) requireTestCapability(role, 'connection:use');
   await requireNoActiveSuite(client, input);
   await requireNoActiveTest(client, input);
-  const db = drizzle(client);
   const cases = await readSuiteCasePayloads(client, input);
   if (cases.length !== current.cases.length)
     throw new WorkflowTestError('cases_changed');
@@ -140,28 +135,23 @@ export async function startTestSuite(
     snapshot,
     expiresAt: new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
   });
-  const inserted = await db
-    .insert(workflowTestSuites)
-    .values({
-      id: suiteId,
-      workspaceId: input.workspaceId,
-      workflowId: input.workflowId,
-      startedBy: input.actorId,
-      snapshotId,
-      signature: current.signature,
-      variableSetRevision: current.variableSetRevision,
-      usesConnections: snapshot.usesConnections,
-      caseDurationMs: testRunDurationMs(
-        snapshot.graph.settings.maxRunDurationMs,
-      ),
-      initialCheckpoint: sql`${JSON.stringify(snapshot.compiled.initialCheckpoint(snapshotId))}::jsonb`,
-      createdAt: snapshot.now,
-      deadlineAt: new Date(snapshot.now.getTime() + SUITE_MAX_DURATION_MS),
-      expiresAt: new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
-    })
-    .returning()
-    .catch(rethrowQueryFailure);
-  const suite = inserted[0];
+  const suite = await insertSuite(client, {
+    id: suiteId,
+    workspaceId: input.workspaceId,
+    workflowId: input.workflowId,
+    startedBy: input.actorId,
+    snapshotId,
+    signature: current.signature,
+    variableSetRevision: current.variableSetRevision,
+    usesConnections: snapshot.usesConnections,
+    caseDurationMs: testRunDurationMs(snapshot.graph.settings.maxRunDurationMs),
+    initialCheckpointJson: JSON.stringify(
+      snapshot.compiled.initialCheckpoint(snapshotId),
+    ),
+    createdAt: snapshot.now,
+    deadlineAt: new Date(snapshot.now.getTime() + SUITE_MAX_DURATION_MS),
+    expiresAt: new Date(snapshot.now.getTime() + TEST_RUN_RETENTION_MILLIS),
+  });
   if (suite === undefined) throw new Error('Suite admission is missing');
   const manifest = cases.map((entry, ordinal) => ({
     workspaceId: input.workspaceId,
@@ -174,22 +164,12 @@ export async function startTestSuite(
     expectations:
       entry.expectations ?? canonicalJson(DEFAULT_TEST_EXPECTATIONS),
   }));
-  await db
-    .insert(workflowTestSuiteCases)
-    .values(manifest)
-    .catch(rethrowQueryFailure);
-  const first = await db
-    .select()
-    .from(workflowTestSuiteCases)
-    .where(
-      and(
-        eq(workflowTestSuiteCases.workspaceId, input.workspaceId),
-        eq(workflowTestSuiteCases.suiteId, suiteId),
-        eq(workflowTestSuiteCases.ordinal, 0),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  const entry = first[0];
+  await insertSuiteCases(client, manifest);
+  const entry = await readSuiteCase(
+    client,
+    { workspaceId: input.workspaceId, suiteId },
+    0,
+  );
   if (entry === undefined) throw new Error('Suite has no first case');
   await admitSuiteCase(client, suite, entry, snapshot.now);
   const result = { suiteId };

@@ -21,6 +21,10 @@ import {
   workflowTestSnapshots,
 } from '@pertexo/database/schema';
 import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
+import { SUITE_MAX_CASES } from './rules.js';
+
+/** How many recent suites the history shows. */
+const SUITE_HISTORY_ROWS = 20;
 
 const suite = alias(workflowTestSuites, 'suite');
 const historyFields = {
@@ -113,7 +117,7 @@ async function listSuiteRows(client: PoolClient, input: WorkflowActor) {
         desc(suite.createdAt),
         desc(suite.id),
       )
-      .limit(20),
+      .limit(SUITE_HISTORY_ROWS),
   );
   const counts = suiteCounts(db, history);
   return db
@@ -201,7 +205,7 @@ export async function readSuite(
       ),
     )
     .orderBy(asc(workflowTestSuiteCases.ordinal))
-    .limit(50)
+    .limit(SUITE_MAX_CASES)
     .catch(rethrowQueryFailure);
   return { ...summary(row), cases };
 }

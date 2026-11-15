@@ -95,3 +95,50 @@ export async function readPreviewRun(
     expiresAt: row.expiresAt,
   });
 }
+
+/** The accepted preview run a replay returns, while it has not expired. */
+export async function readLivePreviewReplay(
+  transaction: WorkspaceTransaction,
+  previewRunId: string,
+  now: Date,
+) {
+  const rows = await transaction.db
+    .select({
+      id: previewRuns.id,
+      workspaceId: previewRuns.workspaceId,
+      workflowId: previewRuns.workflowId,
+      draftRevision: previewRuns.draftRevision,
+      nodeId: previewRuns.nodeId,
+      status: previewRuns.status,
+      sideEffectClass: previewRuns.sideEffectClass,
+      mayContactProvider: previewRuns.mayContactProvider,
+      mayCauseExternalSideEffect: previewRuns.mayCauseExternalSideEffect,
+      dryRun: previewRuns.dryRun,
+      pinnedSampleId: previewRuns.pinnedSampleId,
+      outputRef: previewRuns.outputRef,
+      createdAt: previewRuns.createdAt,
+      completedAt: previewRuns.completedAt,
+      startedAt: previewRuns.startedAt,
+      safeErrorCode: previewRuns.safeErrorCode,
+      errorSummary: previewAttempts.errorSummary,
+      codeDiagnostics: previewAttempts.codeDiagnostics,
+      expiresAt: previewRuns.expiresAt,
+    })
+    .from(previewRuns)
+    .leftJoin(
+      previewAttempts,
+      and(
+        eq(previewAttempts.workspaceId, previewRuns.workspaceId),
+        eq(previewAttempts.previewRunId, previewRuns.id),
+      ),
+    )
+    .where(
+      and(
+        eq(previewRuns.workspaceId, transaction.workspaceId),
+        eq(previewRuns.id, previewRunId),
+        gt(previewRuns.expiresAt, now),
+      ),
+    )
+    .limit(1);
+  return rows[0];
+}

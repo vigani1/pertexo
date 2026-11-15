@@ -118,3 +118,23 @@ export async function saveTestSnapshot(
     })
     .catch(rethrowQueryFailure);
 }
+
+/** A test snapshot lives at least until this run's retention ends. */
+export async function extendTestSnapshotRetention(
+  client: PoolClient,
+  snapshot: Readonly<{ workspaceId: string; snapshotId: string }>,
+  until: Date,
+): Promise<void> {
+  await drizzle(client)
+    .update(workflowTestSnapshots)
+    .set({
+      expiresAt: sql`greatest(${workflowTestSnapshots.expiresAt},${until})`,
+    })
+    .where(
+      and(
+        eq(workflowTestSnapshots.workspaceId, snapshot.workspaceId),
+        eq(workflowTestSnapshots.id, snapshot.snapshotId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+}

@@ -79,7 +79,7 @@ user-facing copy beyond the safe messages of its errors.
   scope themselves: workers and scanners (`withTenantScopedClient`),
   connection use and token refresh (`connections/transaction.ts`), and the
   operator (`operator/run-command.ts`).
-- `authoring`, `previews` and `runs` still run queries outside
+- `authoring` and `runs` still run queries outside
   repositories and aren't in the backend-limits check yet; they are listed in
   `PENDING_AREAS` (`validate-core-queries.mjs`) until their pass.
 - Generic throws that stay are storage integrity assertions: a write that

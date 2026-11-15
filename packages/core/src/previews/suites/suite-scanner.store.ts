@@ -1,17 +1,16 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
-import { workflowTestSuites } from '@pertexo/database/schema';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { advanceSuite } from './advance.js';
+import { findDueSuites } from './suite-state.repository.js';
 import type { WorkflowTestSuiteScanner } from './workflow-test-suite.types.js';
+/** How long one statement of advancing a suite may run. */
+const ADVANCE_STATEMENT_TIMEOUT_MILLIS = 2_000;
+
 /**
  * Global discovery uses maintenance; all progress and admission are tenant
  * scoped. The worker acts for whoever started the suite, and losing their
@@ -45,31 +44,11 @@ export async function createWorkflowTestSuiteScanner(
   return {
     scan: async (limit, signal) => {
       signal?.throwIfAborted();
-      const candidates = await drizzle(discovery.pool)
-        .select({
-          id: workflowTestSuites.id,
-          workspaceId: workflowTestSuites.workspaceId,
-          workflowId: workflowTestSuites.workflowId,
-          startedBy: workflowTestSuites.startedBy,
-          nextCheckAt: workflowTestSuites.nextCheckAt,
-        })
-        .from(workflowTestSuites)
-        .where(
-          and(
-            eq(workflowTestSuites.status, 'running'),
-            sql`${workflowTestSuites.expiresAt}>clock_timestamp()`,
-            sql`${workflowTestSuites.nextCheckAt}<=clock_timestamp()`,
-            after === undefined
-              ? undefined
-              : sql`(${workflowTestSuites.nextCheckAt},${workflowTestSuites.id})>(${after.at},${after.id}::uuid)`,
-          ),
-        )
-        .orderBy(
-          asc(workflowTestSuites.nextCheckAt),
-          asc(workflowTestSuites.id),
-        )
-        .limit(limit)
-        .catch(rethrowQueryFailure);
+      const candidates = await findDueSuites(
+        drizzle(discovery.pool),
+        after,
+        limit,
+      );
       let advanced = 0;
       for (const candidate of candidates) {
         signal?.throwIfAborted();
@@ -83,7 +62,7 @@ export async function createWorkflowTestSuiteScanner(
             (client) => advanceSuite(client, candidate),
             {
               ...(signal === undefined ? {} : { signal }),
-              statementTimeoutMillis: 2000,
+              statementTimeoutMillis: ADVANCE_STATEMENT_TIMEOUT_MILLIS,
             },
           )
         )

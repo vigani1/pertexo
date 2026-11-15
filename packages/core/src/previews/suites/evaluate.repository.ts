@@ -22,6 +22,9 @@ import {
 } from '@pertexo/database/schema';
 import { isActiveTestRun } from '../workflows/rules.js';
 import type { SuiteCaseRow } from './workflow-test-suite.types.js';
+
+// Two rows are enough to tell a step that ran more than once.
+const AMBIGUOUS_STEP_ROWS = 2;
 export interface SuiteRunOutcome {
   status: WorkflowTestSuiteReport['actualOutcome'];
   outputRef: unknown;
@@ -69,7 +72,7 @@ export async function evaluateSuiteCase(
             ),
           )
           .orderBy(asc(nodeRuns.id))
-          .limit(2)
+          .limit(AMBIGUOUS_STEP_ROWS)
           .catch(rethrowQueryFailure);
         const one = rows[0];
         if (rows.length > 1) output = { state: 'ambiguous' };
