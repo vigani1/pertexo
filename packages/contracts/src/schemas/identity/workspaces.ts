@@ -181,7 +181,7 @@ export const workspaceInvitationCreateRequestSchema = z
     email: z
       .string()
       .trim()
-      .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.characters)),
+      .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.newAddressCharacters)),
     role: delegatedWorkspaceRoleSchema,
   })
   .strict();

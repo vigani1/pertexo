@@ -88,7 +88,9 @@ export function parseSystemMailDeliveryConfig(
       : {
           fromEmail: parseStartupSettings(
             z.object({
-              AUTH_MAIL_FROM: z.email().max(EMAIL_ADDRESS_LIMITS.characters),
+              AUTH_MAIL_FROM: z
+                .email()
+                .max(EMAIL_ADDRESS_LIMITS.newAddressCharacters),
             }),
             environment,
             { AUTH_MAIL_FROM: 'email_required' },

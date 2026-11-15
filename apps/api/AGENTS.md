@@ -65,9 +65,12 @@ environment only in `platform/config/`.
   (`identity/secret-token.ts`); a provider callback's parameters are
   `CALLBACK_LIMITS` (`authentication/journeys/callback-limits.ts`);
   passwords, display names and the fresh sign-in window come from
-  `workflow-model`; every arriving email address is bounded by
-  `EMAIL_ADDRESS_LIMITS.characters` (254), and Better Auth's sign-up and
-  email change by `email-length-plugin.ts`; raw headers are read through
+  `workflow-model`; a newly entered email address (sign-up, email change,
+  invitations, mail senders) is bounded by
+  `EMAIL_ADDRESS_LIMITS.newAddressCharacters` (254), and Better Auth's sign-up
+  and email change by `email-length-plugin.ts`, while a lookup of an existing
+  account (sign-in, SSO, SCIM, password reset) accepts the stored
+  `storedAddressCharacters` (320); raw headers are read through
   `platform/http/raw-headers.ts`.
 - How routes check their answers: `platform/http/route-answer-check.ts`
   (production projects to the declared shape; other environments check

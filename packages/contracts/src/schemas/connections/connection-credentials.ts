@@ -118,7 +118,7 @@ export const slackBotTokenCredentialSchema = z
 const emailMailboxSchema = z
   .string()
   .min(EMAIL_ADDRESS_LIMITS.minimumCharacters)
-  .max(EMAIL_ADDRESS_LIMITS.characters)
+  .max(EMAIL_ADDRESS_LIMITS.newAddressCharacters)
   .refine((value) => /^[\x21-\x7e]+$/u.test(value))
   .refine((value) => {
     if (unsafeMailboxCharacters.some((character) => value.includes(character)))
