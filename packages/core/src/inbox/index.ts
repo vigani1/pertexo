@@ -7,7 +7,6 @@ export type {
   MarkAllReadInput,
   MarkThreadReadInput,
   WorkspaceInboxCursor,
-  WorkspaceInboxFailureKind,
   WorkspaceInboxSummary,
   WorkspaceInboxThreadPage,
   WorkspaceInboxThreadRecord,
@@ -45,7 +44,6 @@ export type {
 export type { WorkspaceActor } from '../shared/workspace-access.js';
 
 // A run's completion and retention use these directly (ADR 091).
-export type {} from './folding/events.repository.js';
 export type {} from './retention.repository.js';
 
 export {
