@@ -8,11 +8,11 @@ import { operatorCommands } from '@pertexo/database/schema';
 import { eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 
-import {
-  OperatorCommandConflictError,
-  type CommandRequest,
-  type GenericOperatorCommandResult,
+import type {
+  CommandRequest,
+  GenericOperatorCommandResult,
 } from './operator-command.js';
+import { OperatorCommandConflictError } from './operator-command.errors.js';
 import { requestFingerprint } from './fingerprint.js';
 
 /** Seed of the advisory lock that serializes requests reusing one command id. */

@@ -4,13 +4,6 @@ import type {
 } from '@pertexo/database/primitives';
 import type { OperatorDecision } from './handlers/decision.js';
 
-export class OperatorCommandConflictError extends Error {
-  public constructor() {
-    super('Operator command replay conflicts with the existing request');
-    this.name = 'OperatorCommandConflictError';
-  }
-}
-
 export type OperatorCommandStoreOptions = Readonly<{
   lockTimeoutMs?: number;
   statementTimeoutMs?: number;

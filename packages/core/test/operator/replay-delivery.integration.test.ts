@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/database/primitives';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { OperatorRunReplayMismatchError } from '../../src/operator/replay/operator-replay.js';
+import { OperatorRunReplayMismatchError } from '../../src/operator/operator-command.errors.js';
 import { createScheduleTriggerTestEnvironment } from '../support/schedule-triggers.js';
 
 const schedule = createScheduleTriggerTestEnvironment({
