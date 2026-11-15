@@ -50,6 +50,6 @@ the Code settings and limits.
 ## What guards it
 
 - `pnpm --filter @pertexo/code-runner test`: isolation checks against a
-  fake host, and real JavaScript and Python task processes (the Python
+  fake host, the launcher's task user ids against `TASK_USER_ID_BASE`, and real JavaScript and Python task processes (the Python
   cases need `python3.15` on the PATH).
 - `pnpm check`: package structure, naming and environment checks.

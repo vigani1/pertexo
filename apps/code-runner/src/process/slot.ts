@@ -34,9 +34,9 @@ const STARTUP_STDERR_CHARACTERS = 8_192;
 const STARTUP_TIMEOUT_MILLIS = 10_000;
 /** The largest ready greeting a task process may send. */
 const GREETING_FRAME_BYTES = 1_024;
-// Each slot's task runs as its own user; native/launch.c accepts only
-// TASK_USER_ID_BASE through TASK_USER_ID_BASE + 15.
-const TASK_USER_ID_BASE = 20_000;
+// Each slot's task runs as its own user. native/launch.c accepts exactly
+// the ids one per slot needs; test/task-user-ids.test.ts keeps them equal.
+export const TASK_USER_ID_BASE = 20_000;
 /** How often a hardened task's memory is read. */
 const MEMORY_CHECK_INTERVAL_MILLIS = 50;
 
