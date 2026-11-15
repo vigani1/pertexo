@@ -57,9 +57,10 @@ interface Walk {
 
 /**
  * Measures a value as compact JSON text without building it, and refuses
- * anything that isn't plain, acyclic, dense JSON within its bounds. Every
- * bounded-JSON guard (checkpoints, executables, measured values) uses this
- * one walk, so they agree on what a value costs.
+ * anything that isn't plain, acyclic, dense JSON within its bounds. Guards on
+ * untrusted values (checkpoints, executables) use this walk, which stops at the
+ * first bound crossed; an already-normalized value is measured natively by
+ * `inspectJsonValue`, and json-measures.test.ts keeps the two in agreement.
  */
 export function measureBoundedJson(
   value: unknown,
