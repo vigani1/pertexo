@@ -1,3 +1,4 @@
+import { UNSUCCESSFUL_RUN_STATUSES } from '../execution/run-status.js';
 import { z } from 'zod';
 import { EMAIL_ADDRESS_LIMITS } from '../values/email-address.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../graph/workflow-graph.schemas.js';
@@ -51,7 +52,7 @@ export const FailureNotificationContextSchema = z
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
     terminalEventSequence: z.number().int().positive(),
-    terminalStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
+    terminalStatus: z.enum(UNSUCCESSFUL_RUN_STATUSES),
     triggerType: z.enum([
       'api',
       'manual',
@@ -75,7 +76,7 @@ export const FailureNotificationContextSchema = z
             .string()
             .min(1)
             .max(FAILURE_NOTIFICATION_FIELD_LIMITS.invocationKeyLength),
-          nodeStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
+          nodeStatus: z.enum(UNSUCCESSFUL_RUN_STATUSES),
           attemptNumber: z.number().int().nonnegative(),
           safeErrorCode: safeCodeSchema,
         })
@@ -83,7 +84,7 @@ export const FailureNotificationContextSchema = z
       z
         .object({
           source: z.literal('run'),
-          runStatus: z.enum(['failed', 'timed_out', 'outcome_unknown']),
+          runStatus: z.enum(UNSUCCESSFUL_RUN_STATUSES),
           safeErrorCode: safeCodeSchema,
         })
         .strict(),

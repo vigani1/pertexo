@@ -1,3 +1,4 @@
+import { isUnsuccessfulRunEvent } from '../../statuses.js';
 import { notificationFailures } from '@pertexo/workflow-engine/server';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -48,7 +49,7 @@ export async function persistFailureNotificationIntent(
   const terminalEvent = input.plan.events.find(
     ({ name }) =>
       name === `run.${input.plan.checkpoint.runStatus}` &&
-      ['run.failed', 'run.timed_out', 'run.outcome_unknown'].includes(name),
+      isUnsuccessfulRunEvent(name),
   );
   const notificationUnavailable =
     terminalEvent === undefined ||

@@ -1,5 +1,9 @@
 import { decodeStoredValue } from '../../../shared/stored-values.js';
-import { isTerminalRunEvent, TERMINAL_RUN_STATUSES } from '../../statuses.js';
+import {
+  isTerminalRunEvent,
+  isUnsuccessfulRunEvent,
+  TERMINAL_RUN_STATUSES,
+} from '../../statuses.js';
 import { WORKSPACE_INBOX_FAILURE_KINDS } from '../../statuses.js';
 import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { isTestRun } from '../../../shared/run-retention.repository.js';
@@ -28,12 +32,8 @@ export function transitionMoments(plan: WorkflowTransitionPlan) {
       ?.occurredAt,
     completedAt: plan.events.find(({ name }) => isTerminalRunEvent(name))
       ?.occurredAt,
-    runFailure: plan.events.find(
-      ({ name }) =>
-        name === 'run.failed' ||
-        name === 'run.timed_out' ||
-        name === 'run.outcome_unknown',
-    )?.reasonCode,
+    runFailure: plan.events.find(({ name }) => isUnsuccessfulRunEvent(name))
+      ?.reasonCode,
   };
 }
 

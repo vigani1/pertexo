@@ -1,3 +1,5 @@
+// Which runs count toward the streak is workflow-model's failureStreakOutcome
+// (ADR 056); runs record each outcome as they end, and this folds them.
 /** UTC timestamps include all six PostgreSQL fractional digits, so text order is time order. */
 export type CompletionPosition = Readonly<{ endedAt: string; id: string }>;
 export type TriggerOutcome = CompletionPosition &

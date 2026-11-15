@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { streakOutcome } from '../../../src/runs/advance/persist/trigger-outcome-rule.js';
+import { failureStreakOutcome } from '../../src/triggers/failure-streak.js';
 
 const finished = (status: string, triggerType = 'webhook') => ({
   triggerType,
@@ -12,38 +12,46 @@ describe('what a finished run means for the failure streak', () => {
   it.each(['failed', 'timed_out', 'outcome_unknown'])(
     'counts %s as a failure',
     (status) => {
-      expect(streakOutcome(finished(status))).toBe('failure');
+      expect(failureStreakOutcome(finished(status))).toBe('failure');
     },
   );
 
   it('does not charge a timeout the workflow never got to run into', () => {
     expect(
-      streakOutcome({ ...finished('timed_out'), waitedForCapacity: true }),
+      failureStreakOutcome({
+        ...finished('timed_out'),
+        waitedForCapacity: true,
+      }),
     ).toBe('not_counted');
     expect(
-      streakOutcome({ ...finished('failed'), waitedForCapacity: true }),
+      failureStreakOutcome({ ...finished('failed'), waitedForCapacity: true }),
     ).toBe('failure');
   });
 
   it('resets on success', () => {
-    expect(streakOutcome(finished('succeeded'))).toBe('success');
+    expect(failureStreakOutcome(finished('succeeded'))).toBe('success');
   });
 
   it.each(['canceled', 'running', 'queued'])('does not count %s', (status) => {
-    expect(streakOutcome(finished(status))).toBe('not_counted');
+    expect(failureStreakOutcome(finished(status))).toBe('not_counted');
   });
 
   it.each(['schedule', 'webhook', 'form'])('counts a %s run', (trigger) => {
-    expect(streakOutcome(finished('failed', trigger))).toBe('failure');
+    expect(failureStreakOutcome(finished('failed', trigger))).toBe('failure');
   });
 
   it.each(['manual', 'api', 'replay'])('ignores a %s run', (trigger) => {
-    expect(streakOutcome(finished('failed', trigger))).toBe('not_counted');
+    expect(failureStreakOutcome(finished('failed', trigger))).toBe(
+      'not_counted',
+    );
   });
 
   it('ignores a failure someone asked to cancel', () => {
     expect(
-      streakOutcome({ ...finished('failed'), cancellationRequested: true }),
+      failureStreakOutcome({
+        ...finished('failed'),
+        cancellationRequested: true,
+      }),
     ).toBe('not_counted');
   });
 });

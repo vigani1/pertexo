@@ -19,7 +19,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { workflowGraphStepSql } from '../execution/graph-step.repository.js';
 import type { Pool } from 'pg';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { UNSUCCESSFUL_STATUSES } from '../../statuses.js';
+import { UNSUCCESSFUL_RUN_STATUSES } from '@pertexo/workflow-model';
 import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
 import type { StoredExecutionJsonValue } from '@pertexo/database/schema';
 
@@ -216,7 +216,7 @@ export async function readWorkflowRunFailedSteps(
       and(
         eq(node.workspaceId, transaction.workspaceId),
         inArray(node.workflowRunId, [...runIds]),
-        inArray(node.status, UNSUCCESSFUL_STATUSES),
+        inArray(node.status, UNSUCCESSFUL_RUN_STATUSES),
         sql`${node.failureHandling} is distinct from 'handled'`,
       ),
     )

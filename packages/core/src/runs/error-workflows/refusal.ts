@@ -1,3 +1,4 @@
+import { isUnsuccessfulRunEvent } from '../statuses.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import {
@@ -24,12 +25,6 @@ export function errorWorkflowRefusal(
   return undefined;
 }
 
-const ERROR_WORKFLOW_RUN_EVENTS: ReadonlySet<string> = new Set([
-  'run.failed',
-  'run.timed_out',
-  'run.outcome_unknown',
-]);
-
 /** A run that fails, times out or ends unknown starts its error workflow, unless it was cancelled. */
 export function transitionStartsErrorWorkflow(
   input: Readonly<{
@@ -39,6 +34,6 @@ export function transitionStartsErrorWorkflow(
 ): boolean {
   return (
     !input.cancellationRequested &&
-    input.plan.events.some((event) => ERROR_WORKFLOW_RUN_EVENTS.has(event.name))
+    input.plan.events.some((event) => isUnsuccessfulRunEvent(event.name))
   );
 }

@@ -118,7 +118,8 @@ user-facing copy beyond the safe messages of its errors.
   `operator`. Session authority stays in `identity`, which `tenant-access`
   calls. A new area gets a layer there first. When a lower area needs a higher one's fact, the
   writer moves down to the producer (the run transition writes the inbox's
-  intake), or the shared piece moves to `shared/` (`run-events.repository.ts`,
+  intake and the failure streak's outcomes, whose rule is workflow-model's
+  `failureStreakOutcome`), or the shared piece moves to `shared/` (`run-events.repository.ts`,
   `execution-source.repository.ts`). `validate-core-area-cycles.mjs` refuses
   any cycle between areas, type-only imports, `import()` calls and core's own
   `@pertexo/core/<area>` entries included.
