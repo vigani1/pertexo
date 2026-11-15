@@ -12,22 +12,26 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-export async function lockCapabilityExecution(
+export async function shareLockWorkspaceStatus(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<string | undefined> {
+  const workspace = await drizzle(client)
+    .select({ status: workspaces.status })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .for('share')
+    .catch(rethrowQueryFailure);
+  return workspace[0]?.status;
+}
+
+/** Locks the run or preview rows the capability acts on, in their fixed order. */
+export async function lockCapabilityRows(
   client: PoolClient,
   input: ExecutionCapabilityScope,
 ): Promise<void> {
   const db = drizzle(client);
-  const workspace = await db
-    .select({ status: workspaces.status })
-    .from(workspaces)
-    .where(eq(workspaces.id, input.workspaceId))
-    .for('share')
-    .catch(rethrowQueryFailure);
-  if (workspace[0]?.status !== 'active')
-    throw new ExecutionCapabilityExpiredError('The workspace is not active.');
   if (input.previewRunId !== undefined) {
-    if (input.previewRunId !== input.runId)
-      throw new ExecutionCapabilityExpiredError();
     await db
       .select({ id: previewRuns.id })
       .from(previewRuns)

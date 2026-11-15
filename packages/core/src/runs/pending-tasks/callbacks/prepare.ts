@@ -9,10 +9,8 @@ import {
 } from '../lifecycle/allowance.repository.js';
 import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
-import {
-  lockCapabilityExecution,
-  assertCapabilityExecution,
-} from '../../../attempts/dispatch/fence.repository.js';
+import { assertCapabilityExecution } from '../../../attempts/dispatch/fence.repository.js';
+import { lockCapabilityExecution } from '../../../attempts/dispatch/fence.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { CallbackCapacityError } from './callback.errors.js';
 import type {

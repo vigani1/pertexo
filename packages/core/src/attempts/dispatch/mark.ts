@@ -1,4 +1,4 @@
-import { lockCapabilityExecution } from './fence.repository.js';
+import { lockCapabilityExecution } from './fence.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { publishesSlackBinding } from './slack-binding.js';
 import {

@@ -25,10 +25,8 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import {
-  assertCapabilityExecution,
-  lockCapabilityExecution,
-} from '../attempts/dispatch/fence.repository.js';
+import { assertCapabilityExecution } from '../attempts/dispatch/fence.repository.js';
+import { lockCapabilityExecution } from '../attempts/dispatch/fence.js';
 import type {
   DataTableAttempt,
   DataTableDefinition,
