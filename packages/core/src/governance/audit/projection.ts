@@ -57,9 +57,11 @@ const NUMBER_KEYS = [
   'rowLimit',
   'byteLimit',
 ] as const;
+// A replacement can remove every old name and add as many new ones.
+const CHANGED_VARIABLE_NAMES_MAX = WORKSPACE_VARIABLE_LIMITS.count * 2;
 const changedNamesSchema = workspaceVariableNameSchema
   .array()
-  .max(WORKSPACE_VARIABLE_LIMITS.count * 2);
+  .max(CHANGED_VARIABLE_NAMES_MAX);
 const BOOLEAN_KEYS = [
   'reused',
   'dryRun',

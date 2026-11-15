@@ -1,22 +1,14 @@
-import { readGovernanceSettings } from './policy.repository.js';
 import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
+  hasAnotherManager,
+  invalidatePendingReviews,
+  readGovernanceSettings,
+  updateGovernanceSettings,
+} from './policy.repository.js';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../audit/facts.js';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import { and, eq, ne, inArray, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  workspaces,
-  workspaceMemberships,
-  users,
-  workflowPublicationRequests,
-} from '@pertexo/database/schema';
 import type { GovernanceSettings } from '@pertexo/contracts';
-import { rolesForCapability } from '@pertexo/policy';
 import { requiresPublicationReviewer } from '@pertexo/workflow-model';
 import type { ConfigureGovernanceInput } from '../governance.types.js';
 import { GovernanceError } from '../governance.errors.js';
@@ -24,7 +16,6 @@ export async function configureGovernance(
   client: PoolClient,
   input: ConfigureGovernanceInput,
 ): Promise<GovernanceSettings> {
-  const db = drizzle(client);
   const identity = {
     workspaceId: input.workspaceId,
     scope: input.actorId,
@@ -50,22 +41,7 @@ export async function configureGovernance(
       'invalid',
       'Add another active owner or admin before requiring approval to publish.',
     );
-  const [row] = await db
-    .update(workspaces)
-    .set({
-      auditRetentionDays: input.auditRetentionDays,
-      requirePublishApproval: input.requirePublishApproval,
-      governanceRevision: sql`${workspaces.governanceRevision}+1`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workspaces.id, input.workspaceId),
-        eq(workspaces.governanceRevision, input.expectedRevision),
-      ),
-    )
-    .returning({ revision: workspaces.governanceRevision })
-    .catch(rethrowQueryFailure);
+  const row = await updateGovernanceSettings(client, input);
   if (row === undefined)
     throw new GovernanceError(
       'conflict',
@@ -89,45 +65,4 @@ export async function configureGovernance(
   });
   await completeCommand(client, identity, result);
   return result;
-}
-
-async function hasAnotherManager(
-  client: PoolClient,
-  { workspaceId, actorId }: ConfigureGovernanceInput,
-): Promise<boolean> {
-  const reviewers = await drizzle(client)
-    .select({ id: workspaceMemberships.userId })
-    .from(workspaceMemberships)
-    .innerJoin(users, eq(users.id, workspaceMemberships.userId))
-    .where(
-      and(
-        eq(workspaceMemberships.workspaceId, workspaceId),
-        ne(workspaceMemberships.userId, actorId),
-        eq(workspaceMemberships.status, 'active'),
-        eq(users.status, 'active'),
-        inArray(workspaceMemberships.role, [
-          ...rolesForCapability('governance:manage'),
-        ]),
-      ),
-    )
-    .limit(1)
-    .catch(rethrowQueryFailure);
-  return reviewers.length > 0;
-}
-
-/** A review asked for under the old rule no longer decides anything. */
-async function invalidatePendingReviews(
-  client: PoolClient,
-  workspaceId: string,
-): Promise<void> {
-  await drizzle(client)
-    .update(workflowPublicationRequests)
-    .set({ status: 'stale' })
-    .where(
-      and(
-        eq(workflowPublicationRequests.workspaceId, workspaceId),
-        eq(workflowPublicationRequests.status, 'pending'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
 }

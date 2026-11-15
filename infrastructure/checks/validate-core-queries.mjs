@@ -43,7 +43,6 @@ export const PENDING_AREAS = Object.freeze([
   'authoring',
   'connections',
   'data-tables',
-  'governance',
   'identity',
   'inbox',
   'lifecycle',
