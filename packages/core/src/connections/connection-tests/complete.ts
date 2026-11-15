@@ -1,14 +1,6 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { classifyConnectionTestCompletion } from '../health/completion-policy.js';
-import { eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
-
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  idempotencyRecords as records,
-  workspaces,
-} from '@pertexo/database/schema';
 
 import type {
   CompleteConnectionTestInput,
@@ -29,7 +21,12 @@ import {
   completionNeedsDispatchEvidence,
   connectionTestClaimSchema,
 } from './claim.js';
-import { connectionTestClaimRow } from './claim.repository.js';
+import {
+  completeClaim,
+  connectionTestClaimRow,
+  lockClaimResult,
+  readWorkspaceStatus,
+} from './claim.repository.js';
 
 /**
  * Owning the claim is the authority: a test that started under current access
@@ -43,13 +40,7 @@ export async function completeConnectionTest(
     input;
   const { identity, ownership } = connectionTestClaimRow(input);
   return withConnectionTransaction(pool, input, async (client) => {
-    const db = drizzle(client);
-    const [claim] = await db
-      .select({ resultRef: records.resultRef })
-      .from(records)
-      .where(ownership)
-      .for('update')
-      .catch(rethrowQueryFailure);
+    const claim = await lockClaimResult(client, ownership);
     if (claim === undefined)
       throw new ConnectionTestInProgressError(
         'Connection test completion ownership was lost',
@@ -87,15 +78,11 @@ export async function completeConnectionTest(
     );
     // Integrations stay off outside an active workspace, so a test that finishes
     // after the workspace left that state reports what it found and changes nothing.
-    const [workspace] = await db
-      .select({ status: workspaces.status })
-      .from(workspaces)
-      .where(eq(workspaces.id, workspaceId))
-      .catch(rethrowQueryFailure);
+    const workspaceStatus = await readWorkspaceStatus(client, workspaceId);
     const connection = await withOneOAuth2Fact(
       client,
       workspaceId,
-      workspace?.status === 'active'
+      workspaceStatus === 'active'
         ? await applyCurrentConnectionTestHealth(client, {
             current,
             secretVersionId,
@@ -120,15 +107,11 @@ export async function completeConnectionTest(
       metadata: classification.eventMetadata,
     });
     const result = Object.freeze({ connection, outcome });
-    await db
-      .update(records)
-      .set({
-        status: 'completed',
-        resultRef: serializeConnectionTestResult(result),
-        updatedAt: sql`transaction_timestamp()`,
-      })
-      .where(identity)
-      .catch(rethrowQueryFailure);
+    await completeClaim(
+      client,
+      identity,
+      serializeConnectionTestResult(result),
+    );
     return result;
   });
 }

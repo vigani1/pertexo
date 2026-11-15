@@ -15,7 +15,6 @@ import {
 } from '../shared/resources/connection-scope.repository.js';
 import type { ResourceActor } from '../shared/folder-access.types.js';
 import type { ConnectionRecord } from './connection.types.js';
-import { ConnectionNotFoundError } from './connection.errors.js';
 
 export const connectionFields = {
   id: connections.id,
@@ -66,13 +65,13 @@ export async function selectConnection(
   return row === undefined ? null : Object.freeze(row);
 }
 
-/** A restricted connection only exists for the members its shares and role reach. */
-export async function requireVisibleConnection(
+/** Whether the connection exists for this member: a restricted one only for those its shares and role reach. */
+export async function connectionVisible(
   client: PoolClient,
   actor: ResourceActor & Readonly<{ connectionId: string }>,
   role: Role,
   capability: ConnectionCapability,
-): Promise<void> {
+): Promise<boolean> {
   const found = await drizzle(client)
     .select({ id: connections.id })
     .from(connections)
@@ -87,6 +86,5 @@ export async function requireVisibleConnection(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (found.length !== 1)
-    throw new ConnectionNotFoundError('Connection is not visible');
+  return found.length === 1;
 }
