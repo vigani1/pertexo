@@ -5,7 +5,7 @@ import {
   rethrowQueryFailure,
   isUniqueConstraintFailure,
 } from '@pertexo/database/primitives';
-import { SignInProofRejectedError } from '../accounts/rejection.js';
+import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';
 import type { Pool } from 'pg';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { completeSocialSignIn } from './complete.repository.js';
