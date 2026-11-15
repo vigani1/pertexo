@@ -32,7 +32,7 @@ import {
   optionalConnectionSlots,
 } from '../model/portability';
 import { authoringCatalogQueryOptions } from '@/features/catalog/catalog-queries.public';
-import { usePortabilityLifetime } from '../components/portability/use-portability-lifetime';
+import { usePortabilityLifetime } from '../data/portability/portability-lifetime';
 import { useWorkflowImportCommand } from '../data/portability/mutations';
 import {
   configureTemplate,
