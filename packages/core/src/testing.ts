@@ -246,7 +246,7 @@ export type {
   GetWorkflowRunInput,
   WorkflowNodeRunRecord as ApiWorkflowNodeRunRecord,
   WorkflowRunReadModel as ApiWorkflowRunReadModel,
-} from './runs/queries/run.repository.js';
+} from './runs/queries/read-run.js';
 export type { WorkflowRunRecord as ApiWorkflowRunRecord } from './runs/commands/workflow-run-records.repository.js';
 export * from './lifecycle/testing.js';
 export {

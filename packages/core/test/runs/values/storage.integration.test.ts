@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { ExecutionCapabilityExpiredError } from '../../../src/attempts/node-attempt.errors.js';
 import { RunValuesLimitError } from '../../../src/runs/values/run-values.errors.js';
-import { copyRecoveryRunValues } from '../../../src/runs/values/rows.repository.js';
+import { copyRecoveryRunValues } from '../../../src/runs/values/copy-recovery-values.js';
 import { readWorkflowRunListPage } from '../../../src/runs/queries/history/list.repository.js';
 import {
   withWorkspaceTransaction,

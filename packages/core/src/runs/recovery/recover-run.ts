@@ -1,6 +1,6 @@
 import { requireWorkflowRun } from '../workflow-run.errors.js';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
-import { copyRecoveryRunValues } from '../values/rows.repository.js';
+import { copyRecoveryRunValues } from '../values/copy-recovery-values.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { insertReusedNodeRuns } from './reused-nodes.repository.js';

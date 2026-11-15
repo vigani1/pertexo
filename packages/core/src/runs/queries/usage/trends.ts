@@ -11,7 +11,7 @@ import {
   USAGE_TREND_PERIOD_DAYS,
   USAGE_TREND_RANKED_WORKFLOWS,
 } from '@pertexo/workflow-model';
-import { USAGE_READ_STATEMENT_TIMEOUT_MILLIS } from './capacity.repository.js';
+import { USAGE_READ_STATEMENT_TIMEOUT_MILLIS } from './capacity.js';
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
 import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';

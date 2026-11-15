@@ -1,6 +1,3 @@
-import { CallbackPreviewRefusedError } from './callback.errors.js';
-import { decodeStoredValue } from '../../../shared/stored-values.js';
-import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import {
@@ -9,35 +6,17 @@ import {
   pendingRunTasks,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { callbackScopeHash } from './scope-hash.js';
-import {
-  readPendingTaskAllowance,
-  hasPendingTaskCapacity,
-} from '../lifecycle/allowance.repository.js';
-import { callbackWaitConfigSchema } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
-import {
-  lockCapabilityExecution,
-  assertCapabilityExecution,
-} from '../../../attempts/dispatch/fence.repository.js';
-import { generatePersistedId } from '@pertexo/database/platform';
-import { CallbackCapacityError } from './callback.errors.js';
-import type {
-  CallbackPreparation,
-  PreparedCallback,
-} from './callback.types.js';
-export async function prepareCallbacks(
+import type { CallbackPreparation } from './callback.types.js';
+
+/** The calling node's branch context, or undefined when it isn't in this run. */
+export async function readCallbackOwner(
   client: PoolClient,
   input: CallbackPreparation,
-): Promise<readonly PreparedCallback[]> {
-  await lockCapabilityExecution(client, input);
-  await assertCapabilityExecution(client, input);
-  if (input.previewRunId !== undefined) throw new CallbackPreviewRefusedError();
-  const db = drizzle(client),
-    n = nodeRuns,
-    r = workflowRuns,
-    t = pendingRunTasks;
-  const [owner] = await db
+) {
+  const n = nodeRuns,
+    r = workflowRuns;
+  const [owner] = await drizzle(client)
     .select({
       branch_context: sql<
         Readonly<{ iterationPath?: unknown }>
@@ -56,78 +35,38 @@ export async function prepareCallbacks(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (owner === undefined)
-    throw new Error('The callback execution scope is unavailable.');
-  const iteration = owner.branch_context.iterationPath ?? [];
-  const scopeHash = callbackScopeHash(iteration);
-  await lockWorkspaceExecutionCounter(db, input.workspaceId);
-  const allowance = await readPendingTaskAllowance(client, input.workspaceId);
-  let count = allowance.count;
-  const result: PreparedCallback[] = [];
-  for (const target of input.targets) {
-    // A non-null callback node identity selects the callback-kind CHECK's complete key pair.
-    const [found] = await db
-      .select({
-        id: t.id,
-        callback_key_version: sql<string>`${t.callbackKeyVersion}`,
-        callback_token_hash: sql<string>`${t.callbackTokenHash}`,
-        config: t.config,
-      })
-      .from(t)
-      .where(
-        and(
-          eq(t.workspaceId, input.workspaceId),
-          eq(t.runId, input.runId),
-          eq(t.callbackNodeId, target.nodeId),
-          eq(t.callbackScopeHash, scopeHash),
-        ),
-      )
-      .catch(rethrowQueryFailure);
-    const identity = {
-      id: found?.id ?? generatePersistedId(),
-      workspaceId: input.workspaceId,
-      runId: input.runId,
-      nodeId: target.nodeId,
-      scopeHash,
-    };
-    if (found !== undefined) {
-      result.push({
-        ...identity,
-        id: found.id,
-        keyVersion: found.callback_key_version,
-        tokenHash: found.callback_token_hash,
-        config: decodeStoredValue(() =>
-          callbackWaitConfigSchema.parse(found.config),
-        ),
-      });
-      continue;
-    }
-    if (!hasPendingTaskCapacity({ ...allowance, count }))
-      throw new CallbackCapacityError();
-    count++;
-    const id = identity.id,
-      tokenHash = input.tokenHash(identity);
-    await persistPreparedCallback(client, {
-      input,
-      target,
-      iteration,
-      scopeHash,
-      id,
-      tokenHash,
-    });
-    result.push({
-      ...identity,
-      id,
-      keyVersion: input.keyVersion,
-      tokenHash,
-      config: target.config,
-    });
-  }
-  await assertCapabilityExecution(client, input);
-  return result;
+  return owner;
 }
 
-function persistPreparedCallback(
+export async function findPreparedCallback(
+  client: PoolClient,
+  input: CallbackPreparation,
+  nodeId: string,
+  scopeHash: string,
+) {
+  const t = pendingRunTasks;
+  // A non-null callback node identity selects the callback-kind CHECK's complete key pair.
+  const [found] = await drizzle(client)
+    .select({
+      id: t.id,
+      callback_key_version: sql<string>`${t.callbackKeyVersion}`,
+      callback_token_hash: sql<string>`${t.callbackTokenHash}`,
+      config: t.config,
+    })
+    .from(t)
+    .where(
+      and(
+        eq(t.workspaceId, input.workspaceId),
+        eq(t.runId, input.runId),
+        eq(t.callbackNodeId, nodeId),
+        eq(t.callbackScopeHash, scopeHash),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return found;
+}
+
+export function persistPreparedCallback(
   client: PoolClient,
   options: Readonly<{
     input: CallbackPreparation;
