@@ -2,7 +2,6 @@ import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
 import { PublicationReviewError } from '../reviews/publication-review.errors.js';
 import { requiresPublishApproval } from '../reviews/requests.repository.js';
-
 import { sameWorkflowNotes } from '@pertexo/workflow-model';
 import {
   workflowCompatibilityReport,
@@ -12,12 +11,9 @@ import type { PoolClient } from 'pg';
 import type { z } from 'zod';
 import type { CommandIdentity } from '@pertexo/database/primitives';
 import { credentialCommandScope } from '@pertexo/database/platform';
-import {
-  lockActiveWorkflow,
-  lockDraft,
-} from '../workflows/commands/locks.repository.js';
+import { lockDraft } from '../workflows/commands/locks.repository.js';
+import { lockActiveWorkflow } from '../workflows/commands/lock-active-workflow.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
-
 import type {
   PublishWorkflowInput,
   PublishWorkflowResult,
@@ -32,7 +28,6 @@ import {
   projectVersion,
 } from '../workflows/representation/workflow-representations.repository.js';
 import { readVersionRow } from '../workflows/commands/version-sources.repository.js';
-
 import type {
   CompiledPublication,
   PublicationCandidateInput,

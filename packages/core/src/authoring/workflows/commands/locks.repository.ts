@@ -4,8 +4,6 @@ import { workflowDrafts, workflows } from '@pertexo/database/schema';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-
-import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
 import {
   draftProjection,
   workflowProjection,
@@ -16,10 +14,10 @@ import {
  * publication, restoring a version and duplicating a draft. An archived workflow
  * is read-only, so it reads as missing.
  */
-export async function lockActiveWorkflow(
+export async function lockActiveWorkflowRow(
   client: PoolClient,
   { workspaceId, workflowId }: WorkflowRef,
-): Promise<void> {
+): Promise<boolean> {
   const [workflow] = await drizzle(client)
     .select({ id: workflows.id })
     .from(workflows)
@@ -32,8 +30,8 @@ export async function lockActiveWorkflow(
     )
     .for('update')
     .catch(rethrowQueryFailure);
-  if (workflow === undefined)
-    throw new WorkflowNotFoundError('Workflow is not visible');
+  if (workflow === undefined) return false;
+  return true;
 }
 
 export async function lockDraft(

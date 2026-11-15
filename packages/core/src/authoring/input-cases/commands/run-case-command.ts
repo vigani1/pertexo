@@ -2,7 +2,6 @@ import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
-
 import type {
   WorkflowInputCaseResult,
   Command,
@@ -10,9 +9,9 @@ import type {
 } from '../workflow-input-case.types.js';
 import { resultSchema } from '../input-case-storage.js';
 import { lockInputCaseQuota } from '../metadata.repository.js';
-import { requireCaseWorkflow } from '../case-guards.js';
+import { requireCaseWorkflow } from '../require-case-workflow.js';
 
-export async function mutate(
+export async function runCaseCommand(
   transact: CaseTransaction,
   input: Command,
   {

@@ -12,11 +12,8 @@ import type {
   ReviewDependencies,
 } from './publication-review.types.js';
 import { PublicationReviewError } from './publication-review.errors.js';
-import {
-  projectReview,
-  readReviewDraft,
-  readReviewRow,
-} from './read.repository.js';
+import { projectReview } from './read.repository.js';
+import { readReviewDraft, readReviewRow } from './read.js';
 import {
   lockReviewedDraftAndRequest,
   recordReviewDecision,

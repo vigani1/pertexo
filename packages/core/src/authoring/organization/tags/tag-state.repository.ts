@@ -4,11 +4,6 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowTags } from '@pertexo/database/schema';
-
-import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
-
-import { WorkflowTagConflictError } from '../workflow-organization.errors.js';
-
 import type { Page, PageInput } from './workflow-tag.types.js';
 
 export const tagProjection = {
@@ -21,11 +16,11 @@ export type TagRow = Pick<
   keyof typeof tagProjection
 >;
 
-export async function readTag(
+export async function findTag(
   client: PoolClient,
   workspaceId: string,
   tagId: string,
-): Promise<TagRow> {
+): Promise<TagRow | undefined> {
   const [row] = await drizzle(client)
     .select(tagProjection)
     .from(workflowTags)
@@ -36,16 +31,16 @@ export async function readTag(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (row === undefined) throw new WorkflowNotFoundError('Tag is not visible');
+  if (row === undefined) return undefined;
   return row;
 }
 
-export async function requireFreeKey(
+export async function tagKeyIsFree(
   client: PoolClient,
   workspaceId: string,
   tagKey: string,
   tagId: string | null,
-): Promise<void> {
+): Promise<boolean> {
   const taken = await drizzle(client)
     .select({ id: workflowTags.id })
     .from(workflowTags)
@@ -57,12 +52,8 @@ export async function requireFreeKey(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (taken.length !== 0) throw new WorkflowTagConflictError('key');
-}
-
-export function requireRevision(row: TagRow, expected: number): void {
-  if (row.revision !== expected)
-    throw new WorkflowTagConflictError('tag_revision');
+  if (taken.length !== 0) return false;
+  return true;
 }
 
 export function page(input: PageInput) {

@@ -16,7 +16,6 @@ import {
 } from '@pertexo/database/schema';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
 import { command } from './command.repository.js';
-
 import type {
   AutoPauseCommandResult,
   ResumeWorkflowInput,
@@ -38,12 +37,11 @@ import {
   workspaceSettings,
 } from './auto-pause-receipts.schemas.js';
 import {
-  lockWorkflow,
-  lockWorkspace,
   workflowProjection,
   workflowSettingsOf,
   workspaceProjection,
 } from './auto-pause-state.repository.js';
+import { lockWorkflow, lockWorkspace } from './lock-settings.js';
 
 const EDITORS: readonly Role[] = WORKFLOW_EDITOR_ROLES;
 

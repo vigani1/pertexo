@@ -10,12 +10,12 @@ import {
   workflowTags,
   workflows,
 } from '@pertexo/database/schema';
-
 import { runOrganizationCommand } from '../../run-command.js';
-import type { OrganizationScope } from '../../session.js';
+import type {
+  OrganizationScope,
+  createOrganizationSession,
+} from '../../session.js';
 import { WorkflowTagConflictError } from '../../workflow-organization.errors.js';
-
-import type { createOrganizationSession } from '../../session.js';
 import type {
   CreateTagInput,
   DeleteTagInput,
@@ -32,12 +32,8 @@ import {
   deleteResult,
   replaceResult,
 } from '../tag-receipts.schemas.js';
-import {
-  readTag,
-  requireFreeKey,
-  requireRevision,
-  tagProjection,
-} from '../tag-state.repository.js';
+import { tagProjection } from '../tag-state.repository.js';
+import { readTag, requireFreeKey, requireRevision } from '../tag-state.js';
 import { assignmentCommand, tagCommand } from './receipts.js';
 
 /** A workflow without an organization row reads as revision 1; its first change writes 2. */

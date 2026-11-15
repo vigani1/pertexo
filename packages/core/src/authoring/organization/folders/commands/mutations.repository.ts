@@ -9,10 +9,8 @@ import {
   workflowOrganizationState,
 } from '@pertexo/database/schema';
 import { requireMoveAudienceReview } from '../../sharing/audience.repository.js';
-
 import { runOrganizationCommand } from '../../run-command.js';
 import { WorkflowFolderConflictError } from '../../workflow-organization.errors.js';
-
 import type { createOrganizationSession } from '../../session.js';
 import type {
   CreateFolderInput,
@@ -22,13 +20,13 @@ import type {
   WorkflowFolderCommandResult,
   WorkflowFolderDeleteResult,
 } from '../workflow-folder.types.js';
+import { folderProjection } from '../hierarchy.repository.js';
 import {
   folderDepth,
-  folderProjection,
   readFolder,
   requireFreeName,
   requireRevision,
-} from '../hierarchy.repository.js';
+} from '../hierarchy.js';
 import { deleteResult, nameKey } from '../folder-receipts.schemas.js';
 import { folderCommand } from './receipt.js';
 
