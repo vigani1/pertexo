@@ -12,9 +12,9 @@ import type {
   ConnectionEmailClient,
 } from '../../src/connections/ports.js';
 import {
-  TestConnectionUseCase,
+  TestConnectionService,
   type TestConnectionCommand,
-} from '../../src/connections/use-cases/test-connection.js';
+} from '../../src/connections/testing/test-connection.js';
 import { authorizeWorkspace } from '../../src/authorization/index.js';
 import {
   actor,
@@ -83,7 +83,7 @@ describe('connection testing use case', () => {
       ),
     } satisfies ConnectionHttpClient;
 
-    const result = await new TestConnectionUseCase(store, access, {
+    const result = await new TestConnectionService(store, access, {
       encryption: encryption,
       httpClient: httpClient,
       applicationSecret: 'fixture-application-secret',
@@ -129,7 +129,7 @@ describe('connection testing use case', () => {
     const encryption = { seal: vi.fn(), open: vi.fn() };
     const httpClient = { execute: vi.fn() };
 
-    const result = await new TestConnectionUseCase(store, authorization(), {
+    const result = await new TestConnectionService(store, authorization(), {
       encryption: encryption,
       httpClient: httpClient,
       applicationSecret: 'fixture-application-secret',
@@ -180,7 +180,7 @@ describe('connection testing use case', () => {
       return { kind: 'succeeded' };
     });
 
-    const result = await new TestConnectionUseCase(store, authorization(), {
+    const result = await new TestConnectionService(store, authorization(), {
       encryption: {
         seal: vi.fn(),
         open: vi.fn(() => Promise.resolve(plaintext)),
@@ -255,7 +255,7 @@ describe('connection testing use case', () => {
         };
       },
     );
-    const useCase = new TestConnectionUseCase(store, authorization(), {
+    const service = new TestConnectionService(store, authorization(), {
       encryption: {
         seal: vi.fn(),
         open: vi.fn(() => Promise.resolve(plaintext)),
@@ -274,7 +274,7 @@ describe('connection testing use case', () => {
     };
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...command,
         request: {
           providerKey: 'email',
@@ -302,7 +302,7 @@ describe('connection testing use case', () => {
     };
 
     await expect(
-      new TestConnectionUseCase(store, authorization(), {
+      new TestConnectionService(store, authorization(), {
         encryption: encryption,
         httpClient: {
           execute,
@@ -340,7 +340,7 @@ describe('connection testing use case', () => {
     const httpClient = { execute: vi.fn() };
 
     await expect(
-      new TestConnectionUseCase(store, deniedAuthorization, {
+      new TestConnectionService(store, deniedAuthorization, {
         encryption: encryption,
         httpClient: httpClient,
         applicationSecret: 'fixture-application-secret',
@@ -375,7 +375,7 @@ describe('connection testing use case', () => {
           ),
         ),
     };
-    const failed = await new TestConnectionUseCase(
+    const failed = await new TestConnectionService(
       securityStore,
       authorization(),
       {
@@ -410,7 +410,7 @@ describe('connection testing use case', () => {
         ),
     };
     await expect(
-      new TestConnectionUseCase(markerStore, authorization(), {
+      new TestConnectionService(markerStore, authorization(), {
         encryption: encryption,
         httpClient: markerClient,
         applicationSecret: 'fixture-application-secret',
@@ -439,7 +439,7 @@ describe('connection testing use case', () => {
     async (status, errorCode) => {
       const store = connectionTestPersistence();
       const body = new Uint8Array();
-      const result = await new TestConnectionUseCase(store, authorization(), {
+      const result = await new TestConnectionService(store, authorization(), {
         encryption: {
           seal: vi.fn(),
           open: vi.fn(() =>
@@ -505,7 +505,7 @@ describe('connection testing use case', () => {
           botToken: 'xoxb-123456789-deeply-secret',
         }),
       );
-      const result = await new TestConnectionUseCase(store, authorization(), {
+      const result = await new TestConnectionService(store, authorization(), {
         encryption: {
           seal: vi.fn(),
           open: vi.fn(() => Promise.resolve(plaintext)),
@@ -546,7 +546,7 @@ describe('connection testing use case', () => {
           fromEmail: 'sender@example.com',
         }),
       );
-      const result = await new TestConnectionUseCase(store, authorization(), {
+      const result = await new TestConnectionService(store, authorization(), {
         encryption: {
           seal: vi.fn(),
           open: vi.fn(() => Promise.resolve(plaintext)),
@@ -577,7 +577,7 @@ describe('connection testing use case', () => {
     const execute = vi.fn();
 
     await expect(
-      new TestConnectionUseCase(store, authorization(), {
+      new TestConnectionService(store, authorization(), {
         encryption: {
           seal: vi.fn(),
           open: vi.fn(() => Promise.resolve(plaintext)),
@@ -613,7 +613,7 @@ describe('connection testing use case', () => {
         ),
       );
       await expect(
-        new TestConnectionUseCase(store, authorization(), {
+        new TestConnectionService(store, authorization(), {
           encryption: {
             seal: vi.fn(),
             open: vi.fn(() => Promise.resolve(plaintext)),

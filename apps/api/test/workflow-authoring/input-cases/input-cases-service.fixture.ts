@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 
 import { createWorkflowInputCaseTag } from '@pertexo/contracts';
 import type { WorkflowInputCaseStore } from '@pertexo/core/authoring';
-import { WorkflowInputCasesUseCase } from '../../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
+import { WorkflowInputCasesService } from '../../../src/workflow-authoring/input-cases/workflow-input-cases.service.js';
 
 import { createActorContext } from '../../../src/authorization/index.js';
 
@@ -72,6 +72,6 @@ export function fixture(role: Role = 'owner') {
   return {
     persistence,
     authorization,
-    cases: new WorkflowInputCasesUseCase(persistence, authorization),
+    cases: new WorkflowInputCasesService(persistence, authorization),
   };
 }

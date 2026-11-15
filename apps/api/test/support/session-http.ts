@@ -17,7 +17,7 @@ import { Test } from '@nestjs/testing';
 import type { Role } from '@pertexo/policy';
 import { vi } from 'vitest';
 
-import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../src/problems/application-error-mappers.js';
 import type { AuthorizationCapability } from '../../src/authorization/index.js';
 import { DoubleSubmitCsrfPolicy } from '../../src/identity/index.js';
 import {

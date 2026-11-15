@@ -5,14 +5,14 @@ import {
 } from '@pertexo/contracts/server';
 
 import { In, Route } from '../../platform/http/route.js';
-import { TestConnectionUseCase } from '../use-cases/test-connection.js';
+import { TestConnectionService } from '../testing/test-connection.js';
 import {
   applicationError,
   throwApplicationError,
 } from '../../platform/http/application-error.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { context } from '../http/connections.controller.js';
-import { FailureNotificationDestinationUseCases } from './destinations.js';
+import { FailureNotificationDestinationServices } from './destinations.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
@@ -21,8 +21,8 @@ import { connectionFailure } from '../../problems/context/normalize-context-erro
 @Controller()
 export class FailureNotificationDestinationsController {
   public constructor(
-    private readonly useCases: FailureNotificationDestinationUseCases,
-    private readonly testConnection: TestConnectionUseCase,
+    private readonly services: FailureNotificationDestinationServices,
+    private readonly testConnection: TestConnectionService,
   ) {}
 
   @Route(routes.create)
@@ -30,7 +30,7 @@ export class FailureNotificationDestinationsController {
     @Req() request: ConnectionRequest,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    return this.useCases.create({
+    return this.services.create({
       ...context(request, params),
       idempotencyKey,
       body,
@@ -42,7 +42,7 @@ export class FailureNotificationDestinationsController {
     @Req() request: ConnectionRequest,
     @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    return this.useCases.list({ ...context(request, params), ...query });
+    return this.services.list({ ...context(request, params), ...query });
   }
 
   @Route(routes.get)
@@ -50,7 +50,7 @@ export class FailureNotificationDestinationsController {
     @Req() request: ConnectionRequest,
     @In() { params }: RouteInput<typeof routes.get>,
   ) {
-    return this.useCases.get({
+    return this.services.get({
       ...context(request, params),
       destinationId: params.destinationId,
     });
@@ -63,7 +63,7 @@ export class FailureNotificationDestinationsController {
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.test>,
   ) {
     const caller = context(request, params);
-    const destination = await this.useCases.get({
+    const destination = await this.services.get({
       ...caller,
       destinationId: params.destinationId,
     });
@@ -88,7 +88,7 @@ export class FailureNotificationDestinationsController {
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.appendVersion>,
   ) {
-    return this.useCases.append({
+    return this.services.append({
       ...context(request, params),
       idempotencyKey,
       destinationId: params.destinationId,
@@ -102,7 +102,7 @@ export class FailureNotificationDestinationsController {
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.setStatus>,
   ) {
-    return this.useCases.status({
+    return this.services.status({
       ...context(request, params),
       idempotencyKey,
       destinationId: params.destinationId,
@@ -115,7 +115,7 @@ export class FailureNotificationDestinationsController {
     @Req() request: ConnectionRequest,
     @In() { params }: RouteInput<typeof routes.policy>,
   ) {
-    return this.useCases.getPolicy({
+    return this.services.getPolicy({
       ...context(request, params),
       workflowId: params.workflowId,
     });
@@ -127,7 +127,7 @@ export class FailureNotificationDestinationsController {
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.setPolicy>,
   ) {
-    await this.useCases.setPolicy({
+    await this.services.setPolicy({
       ...context(request, params),
       idempotencyKey,
       workflowId: params.workflowId,
@@ -140,7 +140,7 @@ export class FailureNotificationDestinationsController {
     @Req() request: ConnectionRequest,
     @In() { params, idempotencyKey }: RouteInput<typeof routes.clearPolicy>,
   ) {
-    await this.useCases.clearPolicy({
+    await this.services.clearPolicy({
       ...context(request, params),
       idempotencyKey,
       workflowId: params.workflowId,

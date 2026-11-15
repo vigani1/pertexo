@@ -9,7 +9,7 @@ import {
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
 } from '@pertexo/core/authoring';
-import { WorkflowConcurrencyUseCase } from '../../../src/workflow-authoring/settings/concurrency.js';
+import { WorkflowConcurrencyService } from '../../../src/workflow-authoring/settings/concurrency.js';
 
 import { createActorContext } from '../../../src/authorization/index.js';
 
@@ -48,7 +48,7 @@ function fixture(role: Role = 'owner') {
   return {
     persistence,
     authorization,
-    controls: new WorkflowConcurrencyUseCase(persistence, authorization),
+    controls: new WorkflowConcurrencyService(persistence, authorization),
   };
 }
 const readInput = { actor, routeWorkspaceId: workspaceId, workflowId };

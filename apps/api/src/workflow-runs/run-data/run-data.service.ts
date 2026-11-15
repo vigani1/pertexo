@@ -55,7 +55,7 @@ async function authorizeRunData(
 }
 
 /** The input a run started with, as stored. */
-export class GetWorkflowRunInputUseCase {
+export class GetWorkflowRunInputService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'readInput'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -76,7 +76,7 @@ export class GetWorkflowRunInputUseCase {
 }
 
 /** One node run's current output, only through the run it belongs to. */
-export class GetWorkflowNodeRunOutputUseCase {
+export class GetWorkflowNodeRunOutputService {
   public constructor(
     private readonly persistence: Pick<
       WorkflowRunPersistence,
@@ -101,7 +101,7 @@ export class GetWorkflowNodeRunOutputUseCase {
 }
 
 /** What one node run received, when it was recorded (ADR 052). */
-export class GetWorkflowNodeRunInputUseCase {
+export class GetWorkflowNodeRunInputService {
   public constructor(
     private readonly persistence: Pick<
       WorkflowRunPersistence,
@@ -136,7 +136,7 @@ function iso(value: Date | null): string | null {
 }
 
 /** Each step across the workflow's last 100 runs (ADR 051). */
-export class GetWorkflowStepHealthUseCase {
+export class GetWorkflowStepHealthService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'stepHealth'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -164,7 +164,7 @@ export class GetWorkflowStepHealthUseCase {
 }
 
 /** One step's runs in the workflow's last 100 runs, newest first. */
-export class ListWorkflowStepRunsUseCase {
+export class ListWorkflowStepRunsService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'stepRuns'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -193,7 +193,7 @@ export class ListWorkflowStepRunsUseCase {
   }
 }
 
-export class GetWorkflowRunVariablesUseCase {
+export class GetWorkflowRunVariablesService {
   constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'readVariables'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -212,7 +212,7 @@ export class GetWorkflowRunVariablesUseCase {
   }
 }
 
-export class GetWorkflowNodeRunDiagnosticsUseCase {
+export class GetWorkflowNodeRunDiagnosticsService {
   constructor(
     private readonly persistence: Pick<
       WorkflowRunPersistence,

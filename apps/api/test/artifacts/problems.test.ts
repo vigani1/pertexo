@@ -15,7 +15,7 @@ import {
   ArtifactUploadNotFoundError,
 } from '@pertexo/core/artifacts';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { APPLICATION_ERROR_MAPPERS } from '../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../src/problems/application-error-mappers.js';
 import { HttpPlatformModule } from '../../src/platform/http/index.js';
 import { ArtifactsController } from '../../src/artifacts/artifacts.controller.js';
 import { ArtifactService } from '../../src/artifacts/artifact.service.js';

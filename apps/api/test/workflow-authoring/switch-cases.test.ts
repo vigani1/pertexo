@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { JsonValue, WorkflowGraph } from '@pertexo/workflow-model';
-import { switchCaseIssues } from '../../src/platform/workflow/switch-validation.js';
+import { switchCaseIssues } from '../../src/platform/workflow/switch.validation.js';
 
 type Node = WorkflowGraph['nodes'][number];
 const switchNode = (

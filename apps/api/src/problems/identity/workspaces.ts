@@ -25,7 +25,7 @@ import {
   applicationError,
   type ApplicationError,
 } from '../../platform/http/index.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/request/authenticated-context-error.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/request/authenticated-context.errors.js';
 import { IdentityError } from '../../identity/identity.errors.js';
 
 export const identityProblems = [

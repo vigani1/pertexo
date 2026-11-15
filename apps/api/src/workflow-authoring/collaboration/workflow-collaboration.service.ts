@@ -36,7 +36,7 @@ interface Command<Request> {
   request: Request;
   idempotencyKey: string;
 }
-export class WorkflowCollaborationUseCase {
+export class WorkflowCollaborationService {
   constructor(
     private readonly store: WorkflowCollaborationStore,
     private readonly authorization: WorkspaceAuthorizationSource,

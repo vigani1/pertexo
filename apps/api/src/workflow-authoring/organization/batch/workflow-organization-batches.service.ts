@@ -33,7 +33,7 @@ type Input<Request = unknown> = WorkflowOrganizationInput &
 
 /** Commit one shared parent before sequential, independently committed items.
  * Retrying always resubmits the full original parent, never just failed items. */
-export class WorkflowOrganizationBatchesUseCase {
+export class WorkflowOrganizationBatchesService {
   public constructor(
     private readonly batches: WorkflowOrganizationBatchStore,
     private readonly authorization: WorkspaceAuthorizationSource,

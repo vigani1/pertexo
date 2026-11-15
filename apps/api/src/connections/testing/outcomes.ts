@@ -3,10 +3,7 @@ import type { ConnectionTestOutcome } from '@pertexo/core/connections';
 import type { SecureHttpError } from '@pertexo/secrets/server';
 import { classifySlackConnectionHealth } from '@pertexo/integrations/server';
 
-import type {
-  ConnectionEmailClient,
-  ConnectionSlackClient,
-} from '../../ports.js';
+import type { ConnectionEmailClient, ConnectionSlackClient } from '../ports.js';
 
 export function slackTestOutcome(
   result: Awaited<ReturnType<ConnectionSlackClient['authTest']>>,

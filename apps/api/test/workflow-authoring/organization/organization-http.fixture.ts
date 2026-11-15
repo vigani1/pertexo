@@ -1,7 +1,7 @@
 import { AutomationAuthenticationGuard } from '../../../src/authentication/automation/guard.js';
 import type { Role } from '@pertexo/policy';
 import 'reflect-metadata';
-import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/problems/application-error-mappers.js';
 
 import type { ExecutionContext } from '@nestjs/common';
 
@@ -15,9 +15,9 @@ import type {
   WorkflowTagStore,
 } from '@pertexo/core/authoring';
 import { vi } from 'vitest';
-import { WorkflowOrganizationCommandsUseCase } from '../../../src/workflow-authoring/organization/organization-commands.service.js';
+import { WorkflowOrganizationCommandsService } from '../../../src/workflow-authoring/organization/organization-commands.service.js';
 import { WorkflowOrganizationController } from '../../../src/workflow-authoring/organization/workflow-organization.controller.js';
-import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/organization-reads.service.js';
+import { WorkflowOrganizationReadsService } from '../../../src/workflow-authoring/organization/organization-reads.service.js';
 
 import { DoubleSubmitCsrfPolicy } from '../../../src/identity/index.js';
 import {
@@ -158,12 +158,12 @@ export function fixture(role: Role = 'owner') {
       workspaceStatus: 'active',
     }),
   };
-  const commands = new WorkflowOrganizationCommandsUseCase(
+  const commands = new WorkflowOrganizationCommandsService(
     tags,
     favorites,
     authorization,
   );
-  const reads = new WorkflowOrganizationReadsUseCase(
+  const reads = new WorkflowOrganizationReadsService(
     { getWorkflow: vi.fn(), listWorkflows: vi.fn() },
     tags,
     authorization,
@@ -201,8 +201,8 @@ export async function httpFixture(role: Role = 'owner') {
     providers: [
       { provide: WORKSPACE_AUTHORIZATION, useValue: f.authorization },
       { provide: RequestContextStore, useValue: contexts },
-      { provide: WorkflowOrganizationCommandsUseCase, useValue: f.commands },
-      { provide: WorkflowOrganizationReadsUseCase, useValue: f.reads },
+      { provide: WorkflowOrganizationCommandsService, useValue: f.commands },
+      { provide: WorkflowOrganizationReadsService, useValue: f.reads },
     ],
   })
     .overrideGuard(SessionAuthenticationGuard)

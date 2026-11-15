@@ -8,11 +8,11 @@ import {
 import {
   WORKSPACE_INBOX_RUNTIME,
   type WorkspaceInboxRuntime,
-} from '../../notifications/inbox-runtime.js';
+} from '../../notifications/inbox.runtime.js';
 import {
   WORKFLOW_AUTO_PAUSE_RUNTIME,
   type WorkflowAutoPauseRuntime,
-} from '../../workflows/auto-pause-runtime.js';
+} from '../../workflows/auto-pause.runtime.js';
 import { WORKSPACE_DATABASE } from '../../platform/database/database.module.js';
 import {
   COORDINATOR_RUNTIME,

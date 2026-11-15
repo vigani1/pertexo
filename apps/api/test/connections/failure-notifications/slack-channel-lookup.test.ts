@@ -15,7 +15,7 @@ import type {
   ConnectionLookupPersistence,
   ConnectionSlackClient,
 } from '../../../src/connections/ports.js';
-import { LookupSlackChannelsUseCase } from '../../../src/connections/failure-notifications/slack-channel-lookup.js';
+import { LookupSlackChannelsService } from '../../../src/connections/failure-notifications/slack-channel-lookup.js';
 import {
   actor,
   actorId,
@@ -89,7 +89,7 @@ function fixture(
       membershipStatus: 'active',
       workspaceStatus: 'active',
     });
-  const useCase = new LookupSlackChannelsUseCase(persistence, access, {
+  const service = new LookupSlackChannelsService(persistence, access, {
     encryption: encryption,
     slackClient: options.withoutSlack === true ? undefined : { lookupChannel },
   });
@@ -105,7 +105,7 @@ function fixture(
         requestId: 'request-lookup',
       },
     ) =>
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         connectionId,

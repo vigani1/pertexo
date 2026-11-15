@@ -29,7 +29,7 @@ export type DuplicateWorkflowInput = WorkflowApplicationInput &
   }>;
 
 /** Source selection and destination creation remain one authoritative transaction. */
-export class DuplicateWorkflowUseCase {
+export class DuplicateWorkflowService {
   public constructor(
     private readonly persistence: Pick<
       WorkflowAuthoringPersistence,

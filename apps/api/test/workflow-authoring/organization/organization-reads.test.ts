@@ -11,7 +11,7 @@ import {
   createActorContext,
   AuthorizationError,
 } from '../../../src/authorization/index.js';
-import { WorkflowOrganizationReadsUseCase } from '../../../src/workflow-authoring/organization/organization-reads.service.js';
+import { WorkflowOrganizationReadsService } from '../../../src/workflow-authoring/organization/organization-reads.service.js';
 import { InvalidWorkflowCursorError } from '../../../src/workflow-authoring/cursor.js';
 
 function fixture(role: Role = 'viewer') {
@@ -80,7 +80,7 @@ function fixture(role: Role = 'viewer') {
       .fn()
       .mockResolvedValue({ workflow: item.workflow, templateOrigin: null }),
   };
-  const reads = new WorkflowOrganizationReadsUseCase(
+  const reads = new WorkflowOrganizationReadsService(
     reader,
     tags,
     authorization,
@@ -318,7 +318,7 @@ describe('workflow organization read interface', () => {
 
   it('does not fabricate origin-null when the compatible reader is missing or denies visibility', async () => {
     const f = fixture();
-    const reads = new WorkflowOrganizationReadsUseCase(
+    const reads = new WorkflowOrganizationReadsService(
       f.reader,
       f.tags,
       f.authorization,

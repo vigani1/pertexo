@@ -7,7 +7,7 @@ import {
 import { memberCommand } from '../request/member-commands.js';
 import { requireSignInEvidence } from '../http/guards.js';
 import { In, Route } from '../../platform/http/route.js';
-import { WorkspaceMembershipLifecycleUseCase } from './lifecycle.js';
+import { WorkspaceMembershipLifecycleService } from './lifecycle.js';
 import type { IdentitySessionAuthority } from '../ports.js';
 import { SESSION_AUTHORITY } from '../tokens.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
@@ -23,7 +23,7 @@ import { workspaceFailure } from '../../problems/context/normalize-context-error
 @Controller()
 export class WorkspaceMembershipController {
   public constructor(
-    private readonly lifecycle: WorkspaceMembershipLifecycleUseCase,
+    private readonly lifecycle: WorkspaceMembershipLifecycleService,
     @Inject(SESSION_AUTHORITY)
     private readonly sessions: IdentitySessionAuthority,
   ) {}

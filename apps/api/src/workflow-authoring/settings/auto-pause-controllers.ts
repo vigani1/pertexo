@@ -4,7 +4,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../platform/http/route.js';
-import { WorkflowAutoPauseUseCase } from './auto-pause.js';
+import { WorkflowAutoPauseService } from './auto-pause.js';
 import { asker } from './asker.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
@@ -13,7 +13,7 @@ import { authoringFailure } from '../../problems/context/normalize-context-error
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowAutoPauseController {
-  public constructor(private readonly controls: WorkflowAutoPauseUseCase) {}
+  public constructor(private readonly controls: WorkflowAutoPauseService) {}
 
   @Route(routes.autoPause)
   public async read(
@@ -57,7 +57,7 @@ export class WorkflowAutoPauseController {
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkspaceAutoPauseController {
-  public constructor(private readonly controls: WorkflowAutoPauseUseCase) {}
+  public constructor(private readonly controls: WorkflowAutoPauseService) {}
 
   @Route(routes.workspaceAutoPause)
   public async read(

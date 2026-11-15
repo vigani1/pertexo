@@ -78,7 +78,7 @@ const redirectUriOf = (oauth2: OAuth2EndpointPolicyHolder | undefined) =>
     ? undefined
     : oauth2RedirectUri(oauth2.endpointPolicy.publicWebOrigin);
 
-export class ListConnectionsUseCase {
+export class ListConnectionsService {
   public constructor(
     private readonly persistence: ConnectionReadPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -112,7 +112,7 @@ export class ListConnectionsUseCase {
   }
 }
 
-export class GetConnectionUseCase {
+export class GetConnectionService {
   public constructor(
     private readonly persistence: ConnectionReadPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -139,7 +139,7 @@ export class GetConnectionUseCase {
   }
 }
 
-export class CreateConnectionUseCase {
+export class CreateConnectionService {
   private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
   private readonly smtpPolicy:
     Readonly<{ allowPlaintext: boolean }> | undefined;
@@ -236,7 +236,7 @@ export class CreateConnectionUseCase {
   }
 }
 
-export class RotateConnectionSecretUseCase {
+export class RotateConnectionSecretService {
   private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'seal'>;
   private readonly smtpPolicy:
     Readonly<{ allowPlaintext: boolean }> | undefined;
@@ -337,7 +337,7 @@ export class RotateConnectionSecretUseCase {
   }
 }
 
-export class RevokeConnectionUseCase {
+export class RevokeConnectionService {
   public constructor(
     private readonly persistence: ConnectionCommandPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,

@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeTestingModule } from '../../src/node-testing/node-testing.module.js';
-import { TestWorkflowNodeUseCase } from '../../src/node-testing/node-testing.service.js';
+import { TestWorkflowNodeService } from '../../src/node-testing/node-testing.service.js';
 import {
   httpNodeTestingGraph,
   nodeTestingDependencies,
@@ -40,9 +40,9 @@ describe('node testing Nest module', () => {
       ],
     }).compile();
     try {
-      const useCase = testing.get(TestWorkflowNodeUseCase);
+      const service = testing.get(TestWorkflowNodeService);
       await expect(
-        useCase.execute({
+        service.execute({
           actor: {
             actorId: nodeTestingIds.actorId,
             kind: 'user',

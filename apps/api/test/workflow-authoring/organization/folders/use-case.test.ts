@@ -10,7 +10,7 @@ import {
   createActorContext,
   AuthorizationError,
 } from '../../../../src/authorization/index.js';
-import { WorkflowFoldersUseCase } from '../../../../src/workflow-authoring/organization/folders/workflow-folders.service.js';
+import { WorkflowFoldersService } from '../../../../src/workflow-authoring/organization/folders/workflow-folders.service.js';
 
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const actorId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -112,37 +112,37 @@ function setup(role: Role = 'owner') {
   } satisfies WorkflowFolderStore;
   for (const operation of operations)
     store[operation.port].mockResolvedValue(operation.result);
-  const useCase = new WorkflowFoldersUseCase(store, authorization);
+  const service = new WorkflowFoldersService(store, authorization);
   async function invoke(operation: Operation, overrides: object = {}) {
     const input = { ...base, request: operation.request, ...overrides };
     switch (operation.method) {
       case 'list':
-        return useCase.list({
+        return service.list({
           ...input,
           query: foldersRoutes.list.query.parse(operation.request),
         });
       case 'create':
-        return useCase.create({
+        return service.create({
           ...input,
           request: foldersRoutes.create.body.schema.parse(input.request),
         });
       case 'rename':
-        return useCase.rename({
+        return service.rename({
           ...input,
           request: foldersRoutes.rename.body.schema.parse(input.request),
         });
       case 'move':
-        return useCase.move({
+        return service.move({
           ...input,
           request: foldersRoutes.move.body.schema.parse(input.request),
         });
       case 'delete':
-        return useCase.delete({
+        return service.delete({
           ...input,
           request: foldersRoutes.delete.body.schema.parse(input.request),
         });
       case 'place':
-        return useCase.place({
+        return service.place({
           ...input,
           request: foldersRoutes.place.body.schema.parse(input.request),
         });

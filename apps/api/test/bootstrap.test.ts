@@ -39,8 +39,8 @@ import type { ApiNotificationRuntime } from '../src/platform/notifications/notif
 import { WorkspaceInboxService } from '../src/notifications/workspace-inbox.service.js';
 import { ScheduleManagementService } from '../src/schedules/schedule-management.service.js';
 import { NOOP_SCHEDULE_TELEMETRY } from '../src/schedules/telemetry.js';
-import { GetPreviewRunUseCase } from '../src/node-testing/previews/read.js';
-import { TestWorkflowNodeUseCase } from '../src/node-testing/node-testing.service.js';
+import { GetPreviewRunService } from '../src/node-testing/previews/read.js';
+import { TestWorkflowNodeService } from '../src/node-testing/node-testing.service.js';
 
 describe('API bootstrap ownership and health', () => {
   afterEach(cleanAPIBootstrapOwnershipHealthFixture);
@@ -1487,11 +1487,11 @@ describe('API bootstrap ownership and health', () => {
       await applicationFixture.application.init();
 
       expect(
-        applicationFixture.application.get(TestWorkflowNodeUseCase),
-      ).toBeInstanceOf(TestWorkflowNodeUseCase);
+        applicationFixture.application.get(TestWorkflowNodeService),
+      ).toBeInstanceOf(TestWorkflowNodeService);
       expect(
-        applicationFixture.application.get(GetPreviewRunUseCase),
-      ).toBeInstanceOf(GetPreviewRunUseCase);
+        applicationFixture.application.get(GetPreviewRunService),
+      ).toBeInstanceOf(GetPreviewRunService);
 
       const testResponse = await applicationFixture.application.inject({
         method: 'POST',

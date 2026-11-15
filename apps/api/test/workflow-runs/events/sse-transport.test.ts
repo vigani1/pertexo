@@ -21,7 +21,7 @@ import {
 import { ZodError } from 'zod';
 import { createWorkflowRunEventStreamer } from '../../../src/workflow-runs/events/streamer.js';
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
-import { StreamRunEventsUseCase } from '../../../src/workflow-runs/workflow-runs.service.js';
+import { StreamRunEventsService } from '../../../src/workflow-runs/workflow-runs.service.js';
 
 describe('workflow run SSE transport', () => {
   it.each([
@@ -629,7 +629,7 @@ describe('workflow run SSE transport', () => {
       let observed: Promise<unknown> | undefined;
       let failure: StreamCleanupIncompleteError | undefined;
       try {
-        const frames = await new StreamRunEventsUseCase(
+        const frames = await new StreamRunEventsService(
           {
             canRead: () => Promise.resolve(true),
             get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
@@ -786,7 +786,7 @@ describe('workflow run SSE transport', () => {
     destination.destroyed = false;
     let observed: Promise<unknown> | undefined;
     try {
-      const frames = await new StreamRunEventsUseCase(
+      const frames = await new StreamRunEventsService(
         {
           canRead: () => Promise.resolve(true),
           get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
@@ -857,7 +857,7 @@ describe('workflow run SSE transport', () => {
     const returnError = new Error('producer cleanup failed');
     const returned = vi.fn().mockRejectedValue(returnError);
     try {
-      const frames = await new StreamRunEventsUseCase(
+      const frames = await new StreamRunEventsService(
         {
           canRead: () => Promise.resolve(true),
           get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
@@ -944,7 +944,7 @@ describe('workflow run SSE transport', () => {
         workspaceStatus: 'active' as const,
       }),
     };
-    const useCase = new StreamRunEventsUseCase(
+    const service = new StreamRunEventsService(
       {
         canRead: () => Promise.resolve(true),
         get: vi.fn().mockResolvedValue({ run: {}, nodes: [] }),
@@ -999,7 +999,7 @@ describe('workflow run SSE transport', () => {
 
     let writing: Promise<void> | undefined;
     try {
-      const frames = await useCase.execute(streamInput);
+      const frames = await service.execute(streamInput);
       writing = writeSseFrames(frames, destination, {
         controller: controller,
         visibilityMetrics: { recordFirstEligibleFrame: vi.fn() },

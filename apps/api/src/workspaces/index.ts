@@ -1,5 +1,5 @@
 export { IdentityWorkspaceModule } from './identity-workspace.module.js';
-export { SessionController } from './http/session-controller.js';
+export { SessionController } from './http/session.controller.js';
 export {
   UserController,
   WorkspaceDiscoveryController,
@@ -13,28 +13,27 @@ export {
   authenticatedSession,
 } from './http/guards.js';
 export {
-  CreateWorkspaceUseCase,
-  ChangeWorkspaceMemberRoleUseCase,
-  GetCurrentUserUseCase,
-  ListAccessibleWorkspacesUseCase,
-  ListWorkspaceMembersUseCase,
-  WorkspaceLifecycleUseCase,
+  CreateWorkspaceService,
+  ChangeWorkspaceMemberRoleService,
+  GetCurrentUserService,
+  ListAccessibleWorkspacesService,
+  ListWorkspaceMembersService,
+  WorkspaceLifecycleService,
 } from './workspaces.service.js';
 export { createIdentityWorkspaceAdapter } from './core-workspace-adapter.js';
-export { WorkspaceInvitationManagementUseCase } from './invitations/management.js';
-export { InvitationAcceptanceController } from './invitations/acceptance-controller.js';
-export { WorkspaceMembershipLifecycleUseCase } from './members/lifecycle.js';
-export { WorkspaceMembershipController } from './members/lifecycle-controller.js';
-export { UpdateUserProfileUseCase } from './commands/user-profile.js';
-export { InvitationAcceptanceUseCase } from './invitations/acceptance.js';
-export { RenameWorkspaceUseCase } from './commands/rename.js';
+export { WorkspaceInvitationManagementService } from './invitations/management.js';
+export { InvitationAcceptanceController } from './invitations/acceptance.controller.js';
+export { WorkspaceMembershipLifecycleService } from './members/lifecycle.js';
+export { WorkspaceMembershipController } from './members/lifecycle.controller.js';
+export { UpdateUserProfileService } from './commands/user-profile.js';
+export { InvitationAcceptanceService } from './invitations/acceptance.js';
+export { RenameWorkspaceService } from './commands/rename.js';
 
 export * from './ports.js';
 export * from './tokens.js';
 export * from './workspace-transport.js';
 export { requestIdentifier, traceIdentifier } from './request/identifiers.js';
 export { encodeWorkspaceMemberCursor } from './cursor.js';
-export { identityWorkspaceOpenApiDocument } from './contracts.js';
 export {
   createIdentityWorkspaceTelemetry,
   IDENTITY_WORKSPACE_METRIC_NAME,

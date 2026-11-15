@@ -6,7 +6,7 @@ import {
   resendApiKeyCredentialSchema,
   smtpCredentialSchema,
   slackBotTokenCredentialSchema,
-} from '../../connection-request.js';
+} from '../connection-request.js';
 
 export function decodeCredential(plaintext: Uint8Array) {
   try {

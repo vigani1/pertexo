@@ -31,7 +31,7 @@ import {
 import {
   encryptionSignal,
   type ConnectionCommandInput,
-} from '../use-cases/connection-serialization.js';
+} from '../management/connection-serialization.js';
 
 /** ADR 046: per call and for the whole request, both bounded by the caller. */
 const LOOKUP_CALL_TIMEOUT_MILLIS = 5_000;
@@ -61,7 +61,7 @@ export type LookupSlackChannelsQuery = ConnectionCommandInput &
  * never changes, and a channel that cannot be resolved says why instead of
  * failing the request.
  */
-export class LookupSlackChannelsUseCase {
+export class LookupSlackChannelsService {
   private readonly encryption: Pick<ConnectionSecretEncryptionPort, 'open'>;
   private readonly slackClient: SlackChannelLookupClient | undefined;
   private readonly telemetry: ConnectionTelemetry;

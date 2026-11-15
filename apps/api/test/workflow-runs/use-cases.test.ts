@@ -7,13 +7,13 @@ import {
 } from '../../src/authorization/index.js';
 import { WorkflowRunNotFoundError } from '../../src/workflow-runs/access/authorize.js';
 import {
-  GetWorkflowRunUseCase,
-  ListWorkflowRunsUseCase,
-  StartWorkflowRunUseCase,
-  ReplayWorkflowRunUseCase,
+  GetWorkflowRunService,
+  ListWorkflowRunsService,
+  StartWorkflowRunService,
+  ReplayWorkflowRunService,
   WorkflowRunNotFoundError as WorkflowRunNotFoundError2,
-  CancelWorkflowRunUseCase,
-  StreamRunEventsUseCase,
+  CancelWorkflowRunService,
+  StreamRunEventsService,
   WorkflowRunNotFoundError as WorkflowRunNotFoundError3,
 } from '../../src/workflow-runs/workflow-runs.service.js';
 import {
@@ -34,8 +34,8 @@ import {
 } from './workflow-run-commands.fixture.js';
 import { createHash } from 'node:crypto';
 import {
-  GetWorkflowNodeRunOutputUseCase,
-  GetWorkflowRunInputUseCase,
+  GetWorkflowNodeRunOutputService,
+  GetWorkflowRunInputService,
 } from '../../src/workflow-runs/run-data/run-data.service.js';
 import type { WorkflowRunEventStreamer } from '../../src/workflow-runs/ports.js';
 
@@ -53,7 +53,7 @@ describe('workflow run application seams', () => {
   it('passes an exact run-value pair through paging without changing other filters', async () => {
     const fixture = persistence();
     fixture.list.mockResolvedValue({ items: [listRun()] });
-    await new ListWorkflowRunsUseCase(fixture.store, authorization()).execute({
+    await new ListWorkflowRunsService(fixture.store, authorization()).execute({
       actor,
       routeWorkspaceId: workspaceId,
       runValueKey: 'orderId',
@@ -85,8 +85,8 @@ describe('workflow run application seams', () => {
         },
       })
       .mockResolvedValueOnce({ items: [] });
-    const useCase = new ListWorkflowRunsUseCase(fixture.store, authorization());
-    const first = await useCase.execute({
+    const service = new ListWorkflowRunsService(fixture.store, authorization());
+    const first = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -98,7 +98,7 @@ describe('workflow run application seams', () => {
 
     expect(first.nextCursor).toEqual(expect.any(String));
     if (first.nextCursor === null) throw new Error('expected a next cursor');
-    await useCase.execute({
+    await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -121,7 +121,7 @@ describe('workflow run application seams', () => {
     );
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -145,8 +145,8 @@ describe('workflow run application seams', () => {
         },
       })
       .mockResolvedValueOnce({ items: [] });
-    const useCase = new ListWorkflowRunsUseCase(fixture.store, authorization());
-    const first = await useCase.execute({
+    const service = new ListWorkflowRunsService(fixture.store, authorization());
+    const first = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       limit: 1,
@@ -158,7 +158,7 @@ describe('workflow run application seams', () => {
     expect(payload.filters).not.toHaveProperty('workflowNamePrefix');
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         limit: 1,
@@ -166,7 +166,7 @@ describe('workflow run application seams', () => {
       }),
     ).resolves.toMatchObject({ items: [] });
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowNamePrefix: 'Oper',
@@ -209,14 +209,14 @@ describe('workflow run application seams', () => {
       const token = tokenActor(scopes);
       const access = authorization('owner');
 
-      const detail = await new GetWorkflowRunUseCase(
+      const detail = await new GetWorkflowRunService(
         fixture.store,
         access,
       ).execute({ actor: token, routeWorkspaceId: workspaceId, runId });
       expect(detail.run.workflowName).toBe(workflowName);
 
       await expect(
-        new ListWorkflowRunsUseCase(fixture.store, access).execute({
+        new ListWorkflowRunsService(fixture.store, access).execute({
           actor: token,
           routeWorkspaceId: workspaceId,
         }),
@@ -229,7 +229,7 @@ describe('workflow run application seams', () => {
   it('hides that a workflow name matched from a token without workflow:read', async () => {
     const fixture = persistence();
     await expect(
-      new ListWorkflowRunsUseCase(
+      new ListWorkflowRunsService(
         fixture.store,
         authorization('owner'),
       ).execute({
@@ -244,7 +244,7 @@ describe('workflow run application seams', () => {
   it('preserves fractional run-history boundaries through the use-case seam', async () => {
     const fixture = persistence();
     fixture.list.mockResolvedValue({ items: [] });
-    await new ListWorkflowRunsUseCase(fixture.store, authorization()).execute({
+    await new ListWorkflowRunsService(fixture.store, authorization()).execute({
       actor,
       routeWorkspaceId: workspaceId,
       createdAtFrom: '2026-08-21T00:00:00.000100Z',
@@ -270,7 +270,7 @@ describe('workflow run application seams', () => {
       disclosure: 'not_found',
     });
 
-    await new GetWorkflowRunUseCase(fixture.store, access).execute({
+    await new GetWorkflowRunService(fixture.store, access).execute({
       actor,
       routeWorkspaceId: workspaceId,
       authorizedWorkspace,
@@ -282,9 +282,9 @@ describe('workflow run application seams', () => {
 
   it('authorizes and canonicalizes one idempotent start command', async () => {
     const fixture = persistence();
-    const useCase = new StartWorkflowRunUseCase(fixture.store, authorization());
+    const service = new StartWorkflowRunService(fixture.store, authorization());
 
-    const result = await useCase.execute({
+    const result = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       workflowId,
@@ -450,11 +450,11 @@ describe('workflow run application seams', () => {
       workflowId,
       idempotencyKey: 'accepted-run-recovery',
     };
-    await new StartWorkflowRunUseCase(fixture.store, authorization()).execute(
+    await new StartWorkflowRunService(fixture.store, authorization()).execute(
       input,
     );
     await expect(
-      new StartWorkflowRunUseCase(
+      new StartWorkflowRunService(
         fixture.store,
         authorization('viewer'),
       ).execute(input),
@@ -467,7 +467,7 @@ describe('workflow run application seams', () => {
     const access = authorization('builder');
 
     await expect(
-      new StartWorkflowRunUseCase(fixture.store, access).execute({
+      new StartWorkflowRunService(fixture.store, access).execute({
         actor,
         routeWorkspaceId: workspaceId,
         workflowId,
@@ -476,7 +476,7 @@ describe('workflow run application seams', () => {
     ).resolves.toMatchObject({ replayed: false });
 
     await expect(
-      new ReplayWorkflowRunUseCase(fixture.store, access).execute({
+      new ReplayWorkflowRunService(fixture.store, access).execute({
         actor,
         routeWorkspaceId: workspaceId,
         runId,
@@ -494,7 +494,7 @@ describe('workflow run application seams', () => {
     const fixture = persistence();
     const nodeRunId = '99999999-9999-4999-8999-999999999999';
     await expect(
-      new GetWorkflowRunInputUseCase(
+      new GetWorkflowRunInputService(
         fixture.store,
         authorization('viewer'),
       ).execute({ actor, routeWorkspaceId: workspaceId, runId }),
@@ -505,7 +505,7 @@ describe('workflow run application seams', () => {
       runId,
     });
 
-    const output = new GetWorkflowNodeRunOutputUseCase(
+    const output = new GetWorkflowNodeRunOutputService(
       fixture.store,
       authorization('viewer'),
     );
@@ -530,10 +530,10 @@ describe('workflow run application seams', () => {
 
   it('rejects a route workspace mismatch before touching persistence', async () => {
     const fixture = persistence();
-    const useCase = new StartWorkflowRunUseCase(fixture.store, authorization());
+    const service = new StartWorkflowRunService(fixture.store, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: '11111111-1111-4111-8111-111111111111',
         workflowId,
@@ -545,12 +545,12 @@ describe('workflow run application seams', () => {
 
   it('authorizes and canonicalizes an explicit user replay command', async () => {
     const fixture = persistence();
-    const useCase = new ReplayWorkflowRunUseCase(
+    const service = new ReplayWorkflowRunService(
       fixture.store,
       authorization(),
     );
 
-    const result = await useCase.execute({
+    const result = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       runId,
@@ -583,13 +583,13 @@ describe('workflow run application seams', () => {
 
   it('rejects a replay route workspace mismatch before touching persistence', async () => {
     const fixture = persistence();
-    const useCase = new ReplayWorkflowRunUseCase(
+    const service = new ReplayWorkflowRunService(
       fixture.store,
       authorization(),
     );
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: '11111111-1111-4111-8111-111111111111',
         runId,
@@ -603,13 +603,13 @@ describe('workflow run application seams', () => {
 
   it('requires the dedicated replay capability instead of run start access', async () => {
     const fixture = persistence();
-    const useCase = new ReplayWorkflowRunUseCase(
+    const service = new ReplayWorkflowRunService(
       fixture.store,
       authorization('viewer'),
     );
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         runId,
@@ -634,7 +634,7 @@ describe('workflow run application seams', () => {
         workspaceStatus,
       });
       await expect(
-        new ReplayWorkflowRunUseCase(fixture.store, access).execute({
+        new ReplayWorkflowRunService(fixture.store, access).execute({
           actor,
           routeWorkspaceId: workspaceId,
           runId,
@@ -649,7 +649,7 @@ describe('workflow run application seams', () => {
 
   it('reads bounded run state only after run:read authorization', async () => {
     const fixture = persistence();
-    const result = await new GetWorkflowRunUseCase(
+    const result = await new GetWorkflowRunService(
       fixture.store,
       authorization('viewer'),
     ).execute({ actor, routeWorkspaceId: workspaceId, runId });
@@ -666,7 +666,7 @@ describe('workflow run application seams', () => {
 
   it('authorizes cancellation and forwards canonical actor/request context', async () => {
     const fixture = persistence();
-    await new CancelWorkflowRunUseCase(fixture.store, authorization()).execute({
+    await new CancelWorkflowRunService(fixture.store, authorization()).execute({
       actor,
       routeWorkspaceId: workspaceId,
       runId,
@@ -695,14 +695,14 @@ describe('workflow run application seams', () => {
       requestId: 'actor-request',
     });
 
-    await new StartWorkflowRunUseCase(fixture.store, authorization()).execute({
+    await new StartWorkflowRunService(fixture.store, authorization()).execute({
       actor: actorWithoutTrace,
       routeWorkspaceId: workspaceId,
       workflowId,
       idempotencyKey: 'start-minimal',
       requestId: 'start-request',
     });
-    await new ReplayWorkflowRunUseCase(fixture.store, authorization()).execute({
+    await new ReplayWorkflowRunService(fixture.store, authorization()).execute({
       actor: actorWithoutTrace,
       routeWorkspaceId: workspaceId,
       runId,
@@ -712,14 +712,14 @@ describe('workflow run application seams', () => {
       requestId: 'replay-request',
       traceId: 'replay-trace',
     });
-    await new CancelWorkflowRunUseCase(fixture.store, authorization()).execute({
+    await new CancelWorkflowRunService(fixture.store, authorization()).execute({
       actor: actorWithoutTrace,
       routeWorkspaceId: workspaceId,
       runId,
       requestId: 'cancel-request',
       traceId: 'cancel-trace',
     });
-    await new CancelWorkflowRunUseCase(fixture.store, authorization()).execute({
+    await new CancelWorkflowRunService(fixture.store, authorization()).execute({
       actor: actorWithoutTrace,
       routeWorkspaceId: workspaceId,
       runId,
@@ -754,11 +754,11 @@ describe('workflow run application seams', () => {
 
       const execution =
         operation === 'get'
-          ? new GetWorkflowRunUseCase(
+          ? new GetWorkflowRunService(
               fixture.store,
               authorization('viewer'),
             ).execute({ actor, routeWorkspaceId: workspaceId, runId })
-          : new StreamRunEventsUseCase(fixture.store, authorization('viewer'), {
+          : new StreamRunEventsService(fixture.store, authorization('viewer'), {
               stream: vi.fn(),
             }).execute({
               actor,
@@ -802,7 +802,7 @@ describe('workflow run application seams', () => {
       ],
     });
 
-    const result = await new GetWorkflowRunUseCase(
+    const result = await new GetWorkflowRunService(
       fixture.store,
       authorization('viewer'),
     ).execute({ actor, routeWorkspaceId: workspaceId, runId });
@@ -829,7 +829,7 @@ describe('workflow run application seams', () => {
         .fn<WorkflowRunEventStreamer['stream']>()
         .mockReturnValue(frames),
     };
-    const result = await new StreamRunEventsUseCase(
+    const result = await new StreamRunEventsService(
       fixture.store,
       authorization('viewer'),
       streamer,
@@ -877,7 +877,7 @@ describe('workflow run application seams', () => {
     const fixture = persistence();
     const stream = vi.fn<WorkflowRunEventStreamer['stream']>();
     const reauthorizeSession = vi.fn();
-    const frames = await new StreamRunEventsUseCase(
+    const frames = await new StreamRunEventsService(
       fixture.store,
       authorization('viewer'),
       { stream },
@@ -915,7 +915,7 @@ describe('workflow run application seams', () => {
           },
         };
       });
-      const frames = await new StreamRunEventsUseCase(
+      const frames = await new StreamRunEventsService(
         fixture.store,
         authorization('viewer'),
         { stream },
@@ -954,7 +954,7 @@ describe('workflow run application seams', () => {
         },
       }),
     };
-    const frames = await new StreamRunEventsUseCase(
+    const frames = await new StreamRunEventsService(
       fixture.store,
       access,
       streamer,
@@ -1015,7 +1015,7 @@ describe('workflow run application seams', () => {
         },
       }),
     };
-    const frames = await new StreamRunEventsUseCase(
+    const frames = await new StreamRunEventsService(
       fixture.store,
       access,
       streamer,
@@ -1061,7 +1061,7 @@ describe('workflow run application seams', () => {
         sessionId,
         expiresAt: new Date(Date.now() + 60_000),
       });
-      const frames = await new StreamRunEventsUseCase(fixture.store, access, {
+      const frames = await new StreamRunEventsService(fixture.store, access, {
         stream: () => ({
           async *[Symbol.asyncIterator]() {
             yield { id: 1, event: 'run.started', data: '{}' };
@@ -1112,7 +1112,7 @@ describe('workflow run application seams', () => {
       const access = authorization('viewer');
       let producerCleanedUp = false;
       let producerSignal: AbortSignal | undefined;
-      const frames = await new StreamRunEventsUseCase(fixture.store, access, {
+      const frames = await new StreamRunEventsService(fixture.store, access, {
         stream: ({ signal }) => {
           producerSignal = signal;
           return {
@@ -1192,7 +1192,7 @@ describe('workflow run application seams', () => {
     let returning: Promise<unknown> | undefined;
     try {
       const fixture = persistence();
-      const frames = await new StreamRunEventsUseCase(fixture.store, access, {
+      const frames = await new StreamRunEventsService(fixture.store, access, {
         stream: () => ({
           async *[Symbol.asyncIterator]() {
             await Promise.resolve();

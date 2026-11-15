@@ -1,4 +1,4 @@
-import * as smtp from './testing/smtp.js';
+import * as smtp from './smtp.js';
 import { ProviderHttpError } from '@pertexo/integrations/server';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { randomUUID } from 'node:crypto';
@@ -28,7 +28,7 @@ import {
   hashRequest,
   toTestResponse,
   type ConnectionCommandInput,
-} from './connection-serialization.js';
+} from '../management/connection-serialization.js';
 import {
   CONNECTION_OPERATION,
   NOOP_CONNECTION_TELEMETRY,
@@ -36,15 +36,15 @@ import {
 } from '../telemetry.js';
 import type { connectionTestRequestSchema as requestSchema } from '../connection-request.js';
 import type { ConnectionTestResponse } from '../connection-request.js';
-import { decodeCredential } from './testing/credentials.js';
+import { decodeCredential } from './credentials.js';
 import {
   slackTestOutcome,
   resendTestOutcome,
   responseOutcome,
   secureErrorOutcome,
-} from './testing/outcomes.js';
+} from './outcomes.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
-import { oauth2TestActor, testOAuth2Connection } from './testing/oauth2.js';
+import { oauth2TestActor, testOAuth2Connection } from './oauth2.js';
 
 const CONNECTION_TEST_TIMEOUT_MILLIS = 15_000;
 const CONNECTION_TEST_MAXIMUM_REDIRECTS = 3;
@@ -61,7 +61,7 @@ export type TestConnectionCommand = ConnectionCommandInput &
     idempotencyKey: string;
   }>;
 
-export class TestConnectionUseCase {
+export class TestConnectionService {
   private readonly smtpPolicy: smtp.SmtpTestPolicy | undefined;
   private readonly encryption: ConnectionSecretEncryptionPort;
   private readonly httpClient: ConnectionHttpClient;
@@ -117,7 +117,7 @@ export class TestConnectionUseCase {
     return this.run(input);
   }
 
-  /** The target is resolved and authorized by the destination use case, never caller supplied. */
+  /** The target is resolved and authorized by the destination service, never caller supplied. */
   public executeDestination(
     input: Omit<TestConnectionCommand, 'connectionId' | 'request'>,
     destination: FailureNotificationDestinationResponse,

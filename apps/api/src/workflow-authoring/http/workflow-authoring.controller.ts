@@ -10,7 +10,7 @@ import { In, Route } from '../../platform/http/route.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 
 import { withWorkflowOrganizationRequest } from '../organization/http.js';
-import { WorkflowOrganizationReadsUseCase } from '../organization/organization-reads.service.js';
+import { WorkflowOrganizationReadsService } from '../organization/organization-reads.service.js';
 
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { singleRequestHeader } from '../../platform/http/request-headers.js';
@@ -21,13 +21,13 @@ import type {
   WorkflowResponse,
 } from '../workflow-authoring-request.js';
 import {
-  CreateWorkflowUseCase,
-  GetWorkflowDraftUseCase,
-  GetWorkflowUseCase,
-  ListWorkflowsUseCase,
-  PublishWorkflowUseCase,
-  SaveWorkflowDraftUseCase,
-  ValidateWorkflowDraftUseCase,
+  CreateWorkflowService,
+  GetWorkflowDraftService,
+  GetWorkflowService,
+  ListWorkflowsService,
+  PublishWorkflowService,
+  SaveWorkflowDraftService,
+  ValidateWorkflowDraftService,
 } from '../workflow-authoring.service.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { parseStrongIfMatch } from './preconditions.js';
@@ -38,14 +38,14 @@ export class WorkflowAuthoringController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
   public constructor(
-    private readonly listWorkflows: ListWorkflowsUseCase,
-    private readonly createWorkflow: CreateWorkflowUseCase,
-    private readonly getWorkflow: GetWorkflowUseCase,
-    private readonly getDraft: GetWorkflowDraftUseCase,
-    private readonly saveDraft: SaveWorkflowDraftUseCase,
-    private readonly validateDraft: ValidateWorkflowDraftUseCase,
-    private readonly publishWorkflow: PublishWorkflowUseCase,
-    private readonly organization: WorkflowOrganizationReadsUseCase,
+    private readonly listWorkflows: ListWorkflowsService,
+    private readonly createWorkflow: CreateWorkflowService,
+    private readonly getWorkflow: GetWorkflowService,
+    private readonly getDraft: GetWorkflowDraftService,
+    private readonly saveDraft: SaveWorkflowDraftService,
+    private readonly validateDraft: ValidateWorkflowDraftService,
+    private readonly publishWorkflow: PublishWorkflowService,
+    private readonly organization: WorkflowOrganizationReadsService,
   ) {}
 
   @Route(routes.list)

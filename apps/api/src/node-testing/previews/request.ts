@@ -12,7 +12,7 @@ import { z } from 'zod';
 
 import { NodeTestRequestError } from '../node-test.errors.js';
 
-import type { NodeTestUseCaseInput } from '../node-testing.service.js';
+import type { NodeTestServiceInput } from '../node-testing.service.js';
 
 const executableNodeSchema = z
   .record(z.string(), z.json())
@@ -38,7 +38,7 @@ export function digest(value: unknown): string {
 }
 
 export function previewExecutionIdentity(
-  input: NodeTestUseCaseInput,
+  input: NodeTestServiceInput,
   request: Extract<NodeTestRequest, Readonly<{ mode: 'test_execute' }>>,
 ): Readonly<{ keyHash: string; requestHash: string }> {
   if (input.idempotencyKey === undefined)

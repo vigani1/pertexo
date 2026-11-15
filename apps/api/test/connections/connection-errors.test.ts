@@ -14,7 +14,7 @@ import { SecureHttpError } from '@pertexo/secrets/server';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context-error.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../../src/workspaces/request/authenticated-context.errors.js';
 import { applicationError } from '../../src/platform/http/index.js';
 import { AuthorizationError } from '../../src/authorization/index.js';
 

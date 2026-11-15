@@ -51,8 +51,8 @@ export {
   type StreamRunEventsInput,
 } from './access/workflow-run-inputs.types.js';
 export { WorkflowRunNotFoundError } from './access/authorize.js';
-export { StreamRunEventsUseCase } from './events/authorized.js';
-export class StartWorkflowRunUseCase {
+export { StreamRunEventsService } from './events/authorized.js';
+export class StartWorkflowRunService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'start'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -85,7 +85,7 @@ export class StartWorkflowRunUseCase {
   }
 }
 
-export class ReplayWorkflowRunUseCase {
+export class ReplayWorkflowRunService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'replay'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -113,7 +113,7 @@ export class ReplayWorkflowRunUseCase {
   }
 }
 
-export class GetWorkflowRunUseCase {
+export class GetWorkflowRunService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'get'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -141,7 +141,7 @@ export class GetWorkflowRunUseCase {
   }
 }
 
-export class ListWorkflowRunsUseCase {
+export class ListWorkflowRunsService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'list'>,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -203,7 +203,7 @@ export class ListWorkflowRunsUseCase {
   }
 }
 
-export class CancelWorkflowRunUseCase {
+export class CancelWorkflowRunService {
   public constructor(
     private readonly persistence: Pick<WorkflowRunPersistence, 'cancel'>,
     private readonly authorization: WorkspaceAuthorizationSource,

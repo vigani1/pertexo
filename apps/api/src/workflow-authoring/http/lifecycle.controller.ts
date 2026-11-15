@@ -10,9 +10,9 @@ import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
 
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
-import { DuplicateWorkflowUseCase } from '../commands/duplicate.js';
-import { TransitionWorkflowLifecycleUseCase } from '../commands/lifecycle.js';
-import { RenameWorkflowUseCase } from '../commands/rename.js';
+import { DuplicateWorkflowService } from '../commands/duplicate.js';
+import { TransitionWorkflowLifecycleService } from '../commands/lifecycle.js';
+import { RenameWorkflowService } from '../commands/rename.js';
 
 import { parseStrongIfMatch } from './preconditions.js';
 
@@ -26,9 +26,9 @@ import type {
 @Controller()
 export class WorkflowLifecycleController {
   public constructor(
-    private readonly transitionLifecycle: TransitionWorkflowLifecycleUseCase,
-    private readonly renameWorkflow: RenameWorkflowUseCase,
-    private readonly duplicateWorkflow: DuplicateWorkflowUseCase,
+    private readonly transitionLifecycle: TransitionWorkflowLifecycleService,
+    private readonly renameWorkflow: RenameWorkflowService,
+    private readonly duplicateWorkflow: DuplicateWorkflowService,
   ) {}
 
   @Route(routes.archive)

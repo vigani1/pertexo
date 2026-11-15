@@ -8,7 +8,7 @@ import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
-import { GetUsageCapacityUseCase } from './capacity.js';
+import { GetUsageCapacityService } from './capacity.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize-context-errors.js';
 
@@ -16,7 +16,7 @@ import { runFailure } from '../../problems/context/normalize-context-errors.js';
 @Controller()
 export class UsageCapacityController {
   public constructor(
-    private readonly getUsageCapacity: GetUsageCapacityUseCase,
+    private readonly getUsageCapacity: GetUsageCapacityService,
   ) {}
 
   @Route(routes.capacity)

@@ -1,8 +1,8 @@
 import type { ConnectionReadPersistence } from '../../src/connections/ports.js';
 import {
-  GetConnectionUseCase,
-  ListConnectionsUseCase,
-} from '../../src/connections/use-cases/management.js';
+  GetConnectionService,
+  ListConnectionsService,
+} from '../../src/connections/management/connection-management.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   actor,
@@ -41,9 +41,9 @@ describe('connection read use cases', () => {
         .mockResolvedValueOnce({ items: [] }),
     });
     const access = authorization();
-    const useCase = new ListConnectionsUseCase(persistence, access);
+    const service = new ListConnectionsService(persistence, access);
 
-    const first = await useCase.execute({
+    const first = await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       limit: 1,
@@ -57,7 +57,7 @@ describe('connection read use cases', () => {
     expect(first.nextCursor).toEqual(expect.any(String));
 
     if (first.nextCursor === null) throw new Error('expected a next cursor');
-    await useCase.execute({
+    await service.execute({
       actor,
       routeWorkspaceId: workspaceId,
       after: first.nextCursor,
@@ -76,9 +76,9 @@ describe('connection read use cases', () => {
 
   it('rejects an invalid cursor before reading persistence', async () => {
     const persistence = readPersistence();
-    const useCase = new ListConnectionsUseCase(persistence, authorization());
+    const service = new ListConnectionsService(persistence, authorization());
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         after: 'invalid',
@@ -92,14 +92,14 @@ describe('connection read use cases', () => {
       () => Promise.resolve(record()),
     );
     const persistence = readPersistence({ readConnection });
-    const useCase = new GetConnectionUseCase(persistence, authorization());
+    const service = new GetConnectionService(persistence, authorization());
     await expect(
-      useCase.execute({ actor, routeWorkspaceId: workspaceId, connectionId }),
+      service.execute({ actor, routeWorkspaceId: workspaceId, connectionId }),
     ).resolves.toMatchObject({ id: connectionId, workspaceId });
 
     readConnection.mockResolvedValueOnce(null);
     await expect(
-      useCase.execute({ actor, routeWorkspaceId: workspaceId, connectionId }),
+      service.execute({ actor, routeWorkspaceId: workspaceId, connectionId }),
     ).rejects.toThrow('Connection is not visible');
   });
 });

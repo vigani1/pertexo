@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { InvalidWorkspaceMemberCursorError } from '../../src/workspaces/cursor.js';
 import {
-  ChangeWorkspaceMemberRoleUseCase,
-  GetCurrentUserUseCase,
-  ListAccessibleWorkspacesUseCase,
-  ListWorkspaceMembersUseCase,
+  ChangeWorkspaceMemberRoleService,
+  GetCurrentUserService,
+  ListAccessibleWorkspacesService,
+  ListWorkspaceMembersService,
   encodeWorkspaceMemberCursor,
-  CreateWorkspaceUseCase,
-  WorkspaceLifecycleUseCase,
+  CreateWorkspaceService,
+  WorkspaceLifecycleService,
   workspaceCreateRequestSchema,
 } from '../../src/workspaces/index.js';
 import type { WorkspaceAuthorizationReader } from '../../src/workspaces/ports.js';
@@ -30,7 +30,7 @@ describe('identity/workspace application use cases', () => {
     const store = persistence();
     const targetUserId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
     await expect(
-      new ChangeWorkspaceMemberRoleUseCase(store).execute({
+      new ChangeWorkspaceMemberRoleService(store).execute({
         actor: actor(),
         routeWorkspaceId: workspaceId,
         targetUserId,
@@ -61,7 +61,7 @@ describe('identity/workspace application use cases', () => {
   it('returns only the allowlisted current-user profile fields', async () => {
     const store = persistence();
     vi.mocked(store.findUserById).mockResolvedValue(user());
-    const result = await new GetCurrentUserUseCase(store).execute(actorId);
+    const result = await new GetCurrentUserService(store).execute(actorId);
     expect(result).toEqual({
       id: actorId,
       email: 'person@example.test',
@@ -81,7 +81,7 @@ describe('identity/workspace application use cases', () => {
     vi.mocked(store.findUserById).mockResolvedValue(profile);
 
     await expect(
-      new GetCurrentUserUseCase(store).execute(actorId),
+      new GetCurrentUserService(store).execute(actorId),
     ).rejects.toMatchObject({ code: 'auth.unauthenticated' });
   });
 
@@ -92,7 +92,7 @@ describe('identity/workspace application use cases', () => {
       nextCursor: workspaceId,
     });
 
-    const result = await new ListAccessibleWorkspacesUseCase(store).execute(
+    const result = await new ListAccessibleWorkspacesService(store).execute(
       actorId,
       { limit: 1 },
     );
@@ -146,7 +146,7 @@ describe('identity/workspace application use cases', () => {
         .fn<NonNullable<WorkspaceAuthorizationReader['findAccess']>>()
         .mockResolvedValue(activeAccess('owner')),
     } satisfies WorkspaceAuthorizationReader;
-    const result = await new ListWorkspaceMembersUseCase(
+    const result = await new ListWorkspaceMembersService(
       store,
       authorization,
     ).execute({
@@ -181,7 +181,7 @@ describe('identity/workspace application use cases', () => {
     } satisfies WorkspaceAuthorizationReader;
 
     await expect(
-      new ListWorkspaceMembersUseCase(store, authorization).execute({
+      new ListWorkspaceMembersService(store, authorization).execute({
         actor: actor(),
         routeWorkspaceId: workspaceId,
       }),
@@ -197,7 +197,7 @@ describe('identity/workspace application use cases', () => {
     } satisfies WorkspaceAuthorizationReader;
 
     await expect(
-      new ListWorkspaceMembersUseCase(store, authorization).execute({
+      new ListWorkspaceMembersService(store, authorization).execute({
         actor: actor(),
         routeWorkspaceId: workspaceId,
         after: 'not-a-canonical-cursor',
@@ -221,7 +221,7 @@ describe('identity/workspace application use cases', () => {
           .mockResolvedValue(activeAccess('owner')),
       } satisfies WorkspaceAuthorizationReader;
       await expect(
-        new ListWorkspaceMembersUseCase(store, authorization).execute({
+        new ListWorkspaceMembersService(store, authorization).execute({
           actor: actor(),
           routeWorkspaceId: workspaceId,
           after: Buffer.from(
@@ -254,7 +254,7 @@ describe('identity/workspace application use cases', () => {
       allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
     });
 
-    await new WorkspaceLifecycleUseCase(store, authorization).requestDeletion({
+    await new WorkspaceLifecycleService(store, authorization).requestDeletion({
       actor: requestActor,
       authorizedWorkspace,
       idempotencyKey,
@@ -296,7 +296,7 @@ describe('identity/workspace application use cases', () => {
     ]) {
       const store = persistence();
       await expect(
-        new CreateWorkspaceUseCase(store).execute({
+        new CreateWorkspaceService(store).execute({
           actorId,
           idempotencyKey,
           request: { name: 'Operations', slug: 'operations' },
@@ -309,7 +309,7 @@ describe('identity/workspace application use cases', () => {
 
   it('preserves omitted optional audit identity for workspace creation', async () => {
     const store = persistence();
-    await new CreateWorkspaceUseCase(store).execute({
+    await new CreateWorkspaceService(store).execute({
       actorId,
       idempotencyKey,
       request: { name: 'Operations', slug: 'operations' },
@@ -326,7 +326,7 @@ describe('identity/workspace application use cases', () => {
         .fn<NonNullable<WorkspaceAuthorizationReader['findAccess']>>()
         .mockResolvedValue(activeAccess()),
     } satisfies WorkspaceAuthorizationReader;
-    const app = new WorkspaceLifecycleUseCase(store, authorization);
+    const app = new WorkspaceLifecycleService(store, authorization);
 
     await expect(
       app.requestDeletion({
@@ -347,7 +347,7 @@ describe('identity/workspace application use cases', () => {
         .fn<NonNullable<WorkspaceAuthorizationReader['findAccess']>>()
         .mockResolvedValue(activeAccess('builder')),
     } satisfies WorkspaceAuthorizationReader;
-    const app = new WorkspaceLifecycleUseCase(store, authorization);
+    const app = new WorkspaceLifecycleService(store, authorization);
 
     await expect(
       app.requestDeletion({
@@ -367,7 +367,7 @@ describe('identity/workspace application use cases', () => {
         .fn<NonNullable<WorkspaceAuthorizationReader['findAccess']>>()
         .mockResolvedValue(undefined),
     } satisfies WorkspaceAuthorizationReader;
-    const app = new WorkspaceLifecycleUseCase(store, authorization);
+    const app = new WorkspaceLifecycleService(store, authorization);
 
     await expect(
       app.requestDeletion({
@@ -389,7 +389,7 @@ describe('identity/workspace application use cases', () => {
         .mockResolvedValueOnce(activeAccess('owner', 'pending_deletion'))
         .mockResolvedValueOnce(activeAccess()),
     };
-    const app = new WorkspaceLifecycleUseCase(store, authorization);
+    const app = new WorkspaceLifecycleService(store, authorization);
 
     await expect(
       app.requestDeletion({
@@ -422,7 +422,7 @@ describe('identity/workspace application use cases', () => {
   });
 
   it('answers a deletion request with the change it applied', async () => {
-    const app = new WorkspaceLifecycleUseCase(persistence(), {
+    const app = new WorkspaceLifecycleService(persistence(), {
       findAccess: vi.fn().mockResolvedValue(activeAccess()),
     });
 
@@ -447,7 +447,7 @@ describe('identity/workspace application use cases', () => {
         .fn<NonNullable<WorkspaceAuthorizationReader['findAccess']>>()
         .mockResolvedValue(activeAccess('owner', 'deleted')),
     } satisfies WorkspaceAuthorizationReader;
-    const app = new WorkspaceLifecycleUseCase(store, authorization);
+    const app = new WorkspaceLifecycleService(store, authorization);
 
     await expect(
       app.restore({
@@ -468,7 +468,7 @@ describe('identity/workspace application use cases', () => {
         .mockResolvedValueOnce(activeAccess('owner', 'pending_deletion'))
         .mockResolvedValue(activeAccess()),
     };
-    const app = new WorkspaceLifecycleUseCase(store, authorization);
+    const app = new WorkspaceLifecycleService(store, authorization);
 
     await expect(
       app.requestDeletion({

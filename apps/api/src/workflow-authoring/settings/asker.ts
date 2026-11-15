@@ -1,7 +1,7 @@
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 
-/** Who asks, in which workspace: what every settings use case starts from. */
+/** Who asks, in which workspace: what every settings service starts from. */
 export function asker(
   request: WorkflowAuthoringRequest,
   { workspaceId }: Readonly<{ workspaceId: string }>,

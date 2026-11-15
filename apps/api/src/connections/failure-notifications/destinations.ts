@@ -22,7 +22,7 @@ import {
 import {
   hashRequest,
   type ConnectionCommandInput,
-} from '../use-cases/connection-serialization.js';
+} from '../management/connection-serialization.js';
 
 function databaseCommand(input: DestinationCommandInput) {
   return {
@@ -102,7 +102,7 @@ export type GetWorkflowFailureNotificationPolicyInput =
   DestinationCommandInput & Readonly<{ workflowId: string }>;
 
 @Injectable()
-export class FailureNotificationDestinationUseCases {
+export class FailureNotificationDestinationServices {
   public constructor(
     private readonly database: NotificationDestinationStore,
     private readonly applicationSecret: string,

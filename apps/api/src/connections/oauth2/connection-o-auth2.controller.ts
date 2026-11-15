@@ -25,10 +25,10 @@ import { In, Route } from '../../platform/http/route.js';
 import { context } from '../http/connections.controller.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import {
-  FinishOAuth2AuthorizationUseCase,
+  FinishOAuth2AuthorizationService,
   logOAuth2CallbackFailure,
 } from './finish-authorization.js';
-import { StartOAuth2AuthorizationUseCase } from './start-authorization.js';
+import { StartOAuth2AuthorizationService } from './start-authorization.js';
 
 type OAuth2Reply = Readonly<{
   header(name: string, value: string): unknown;
@@ -42,7 +42,7 @@ type OAuth2Reply = Readonly<{
 @Catch()
 class OAuth2CallbackFailureFilter implements ExceptionFilter {
   public constructor(
-    private readonly finish: FinishOAuth2AuthorizationUseCase,
+    private readonly finish: FinishOAuth2AuthorizationService,
   ) {}
 
   public catch(exception: unknown, host: ArgumentsHost): void {
@@ -66,8 +66,8 @@ class OAuth2CallbackFailureFilter implements ExceptionFilter {
 @Controller()
 export class ConnectionOAuth2Controller {
   public constructor(
-    private readonly start: StartOAuth2AuthorizationUseCase,
-    private readonly finish: FinishOAuth2AuthorizationUseCase,
+    private readonly start: StartOAuth2AuthorizationService,
+    private readonly finish: FinishOAuth2AuthorizationService,
   ) {}
 
   @Route(routes.startOAuth2)

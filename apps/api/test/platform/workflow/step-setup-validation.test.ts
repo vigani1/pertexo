@@ -2,7 +2,7 @@ import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type * as NodeCatalog from '@pertexo/node-catalog';
 import { describe, expect, it, vi } from 'vitest';
 
-import { stepSetupIssues } from '../../../src/platform/workflow/step-setup-validation.js';
+import { stepSetupIssues } from '../../../src/platform/workflow/step-setup.validation.js';
 
 // A step whose lookup fails for a reason other than "not in the catalog".
 const BROKEN_KEY = 'broken.lookup';

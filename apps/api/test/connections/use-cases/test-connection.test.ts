@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { TestConnectionUseCase } from '../../../src/connections/use-cases/test-connection.js';
+import { TestConnectionService } from '../../../src/connections/testing/test-connection.js';
 import type {
   ConnectionEmailClient,
   ConnectionSlackClient,
@@ -46,7 +46,7 @@ describe('connection testing security and cleanup regressions', () => {
       const execute = vi.fn();
 
       await expect(
-        new TestConnectionUseCase(store, authorization, {
+        new TestConnectionService(store, authorization, {
           encryption: { seal: vi.fn(), open },
           httpClient: { execute },
           applicationSecret: 'fixture-application-secret',
@@ -85,7 +85,7 @@ describe('connection testing security and cleanup regressions', () => {
       };
 
       await expect(
-        new TestConnectionUseCase(store, authorization, {
+        new TestConnectionService(store, authorization, {
           encryption: {
             seal: vi.fn(),
             open: vi.fn(() => Promise.resolve(plaintext)),
@@ -125,7 +125,7 @@ describe('connection testing security and cleanup regressions', () => {
     });
 
     await expect(
-      new TestConnectionUseCase(
+      new TestConnectionService(
         store,
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
         {
@@ -251,7 +251,7 @@ describe('connection testing security and cleanup regressions', () => {
         clients === 'email' ? { sendNotification } : undefined;
 
       await expect(
-        new TestConnectionUseCase(
+        new TestConnectionService(
           store,
           { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
           {
@@ -351,7 +351,7 @@ describe('connection provider outcome projection', () => {
         ),
       } satisfies ConnectionHttpClient;
 
-      const result = await new TestConnectionUseCase(
+      const result = await new TestConnectionService(
         store,
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
         {
@@ -502,7 +502,7 @@ describe('connection provider outcome projection', () => {
         }),
       } satisfies Pick<ConnectionSlackClient, 'authTest'>;
 
-      const result = await new TestConnectionUseCase(
+      const result = await new TestConnectionService(
         store,
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
         {
@@ -608,7 +608,7 @@ describe('connection provider outcome projection', () => {
         ),
       } satisfies ConnectionEmailClient;
 
-      const result = await new TestConnectionUseCase(
+      const result = await new TestConnectionService(
         store,
         { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
         {
@@ -669,7 +669,7 @@ describe('alert destination tests', () => {
         messageTs: '1.0',
       };
     });
-    const useCase = new TestConnectionUseCase(
+    const service = new TestConnectionService(
       store,
       { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
       {
@@ -693,7 +693,7 @@ describe('alert destination tests', () => {
       },
     );
     expect(
-      (await useCase.executeDestination(input, destination)).outcome.ok,
+      (await service.executeDestination(input, destination)).outcome.ok,
     ).toBe(true);
     expect(authTest).not.toHaveBeenCalled();
     const message = sendMessage.mock.calls[0]?.[0];
@@ -701,7 +701,7 @@ describe('alert destination tests', () => {
     expect(message?.text).toContain('No workflow failed');
     const firstHash = vi.mocked(store.startConnectionTest).mock.calls[0]?.[0]
       .requestHash;
-    await useCase.executeDestination(input, {
+    await service.executeDestination(input, {
       ...destination,
       currentVersion: 3,
     });
@@ -718,7 +718,7 @@ describe('alert destination tests', () => {
         return { kind: 'succeeded', emailId: 'test-message' };
       },
     );
-    const useCase = new TestConnectionUseCase(
+    const service = new TestConnectionService(
       store,
       { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
       {
@@ -741,7 +741,7 @@ describe('alert destination tests', () => {
         emailClient: { sendNotification },
       },
     );
-    await useCase.executeDestination(input, {
+    await service.executeDestination(input, {
       ...destination,
       kind: 'email',
       config: {
@@ -768,7 +768,7 @@ describe('alert destination tests', () => {
     });
     const open = vi.fn();
     const sendMessage = vi.fn();
-    const useCase = new TestConnectionUseCase(
+    const service = new TestConnectionService(
       store,
       { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
       {
@@ -780,7 +780,7 @@ describe('alert destination tests', () => {
       },
     );
     expect(
-      (await useCase.executeDestination(input, destination)).outcome.ok,
+      (await service.executeDestination(input, destination)).outcome.ok,
     ).toBe(true);
     expect(open).not.toHaveBeenCalled();
     expect(sendMessage).not.toHaveBeenCalled();

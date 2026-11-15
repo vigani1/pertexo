@@ -22,7 +22,7 @@ type CommandInput<Request> = ReadInput &
   Readonly<{ request: Request; idempotencyKey: string }>;
 
 /** Operational policy never mutates drafts, publication or trigger state. */
-export class WorkflowErrorUseCase {
+export class WorkflowErrorService {
   public constructor(
     private readonly persistence: WorkflowErrorStore,
     private readonly authorization: WorkspaceAuthorizationSource,

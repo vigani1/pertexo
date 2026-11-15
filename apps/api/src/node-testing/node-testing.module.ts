@@ -1,17 +1,17 @@
 import { WorkflowTestSuitesController } from './suites/workflow-test-suites.controller.js';
-import { WorkflowTestSuitesUseCase } from './suites/workflow-test-suites.service.js';
+import { WorkflowTestSuitesService } from './suites/workflow-test-suites.service.js';
 import { WorkflowTestsController } from './workflows/workflow-tests.controller.js';
-import { WorkflowTestsUseCase } from './workflows/workflow-tests.service.js';
+import { WorkflowTestsService } from './workflows/workflow-tests.service.js';
 import { StepSamplesController } from './samples/step-samples.controller.js';
-import { StepSamplesUseCase } from './samples/step-samples.service.js';
+import { StepSamplesService } from './samples/step-samples.service.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { NodeTestingController } from './node-testing.controller.js';
 import type { NodeTestingDependencies } from './ports.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
-import { GetPreviewRunUseCase } from './previews/read.js';
-import { TestWorkflowNodeUseCase } from './node-testing.service.js';
+import { GetPreviewRunService } from './previews/read.js';
+import { TestWorkflowNodeService } from './node-testing.service.js';
 
 @Module({})
 // Nest dynamic modules require a class container.
@@ -27,29 +27,29 @@ export class NodeTestingModule {
         useValue: dependencies.authorization,
       },
       {
-        provide: WorkflowTestSuitesUseCase,
-        useValue: new WorkflowTestSuitesUseCase(
+        provide: WorkflowTestSuitesService,
+        useValue: new WorkflowTestSuitesService(
           dependencies.persistence.workflowTestSuites,
           dependencies.authorization,
         ),
       },
       {
-        provide: WorkflowTestsUseCase,
-        useValue: new WorkflowTestsUseCase(
+        provide: WorkflowTestsService,
+        useValue: new WorkflowTestsService(
           dependencies.persistence.workflowTests,
           dependencies.authorization,
         ),
       },
       {
-        provide: StepSamplesUseCase,
-        useValue: new StepSamplesUseCase(
+        provide: StepSamplesService,
+        useValue: new StepSamplesService(
           dependencies.persistence.stepSamples,
           dependencies.authorization,
         ),
       },
       {
-        provide: TestWorkflowNodeUseCase,
-        useValue: new TestWorkflowNodeUseCase(
+        provide: TestWorkflowNodeService,
+        useValue: new TestWorkflowNodeService(
           dependencies.persistence,
           dependencies.authorization,
           undefined,
@@ -58,8 +58,8 @@ export class NodeTestingModule {
         ),
       },
       {
-        provide: GetPreviewRunUseCase,
-        useValue: new GetPreviewRunUseCase(
+        provide: GetPreviewRunService,
+        useValue: new GetPreviewRunService(
           dependencies.persistence,
           dependencies.authorization,
         ),
@@ -75,7 +75,7 @@ export class NodeTestingModule {
         WorkflowTestSuitesController,
       ],
       providers,
-      exports: [TestWorkflowNodeUseCase, GetPreviewRunUseCase],
+      exports: [TestWorkflowNodeService, GetPreviewRunService],
     };
   }
 }

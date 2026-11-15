@@ -10,14 +10,14 @@ import { parseStrongIfMatch } from '../http/preconditions.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
-import { PublicationReviewUseCase } from './publication-review.service.js';
+import { PublicationReviewService } from './publication-review.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowPublicationReviewController {
-  constructor(private readonly controls: PublicationReviewUseCase) {}
+  constructor(private readonly controls: PublicationReviewService) {}
 
   @Route(routes.overview)
   async overview(
@@ -58,7 +58,7 @@ export class WorkflowPublicationReviewController {
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class PublicationReviewController {
-  constructor(private readonly controls: PublicationReviewUseCase) {}
+  constructor(private readonly controls: PublicationReviewService) {}
 
   @Route(routes.read)
   async read(

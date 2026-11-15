@@ -11,14 +11,14 @@ import {
 import { ConnectionsModule } from '../../../src/connections/connections.module.js';
 import { ConnectionsController } from '../../../src/connections/http/connections.controller.js';
 import {
-  CreateConnectionUseCase,
-  GetConnectionUseCase,
-  ListConnectionsUseCase,
-  RevokeConnectionUseCase,
-  RotateConnectionSecretUseCase,
-} from '../../../src/connections/use-cases/management.js';
-import { LookupSlackChannelsUseCase } from '../../../src/connections/failure-notifications/slack-channel-lookup.js';
-import { TestConnectionUseCase } from '../../../src/connections/use-cases/test-connection.js';
+  CreateConnectionService,
+  GetConnectionService,
+  ListConnectionsService,
+  RevokeConnectionService,
+  RotateConnectionSecretService,
+} from '../../../src/connections/management/connection-management.js';
+import { LookupSlackChannelsService } from '../../../src/connections/failure-notifications/slack-channel-lookup.js';
+import { TestConnectionService } from '../../../src/connections/testing/test-connection.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import {
@@ -54,7 +54,7 @@ const rotation = {
 };
 const created = { providerKey: 'http', name: 'Operations API', credential };
 
-const useCases = {
+const services = {
   list: { execute: vi.fn() },
   read: { execute: vi.fn() },
   create: { execute: vi.fn() },
@@ -73,34 +73,34 @@ beforeAll(async () => {
     controllers: [ConnectionsController],
     providers: [
       { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
-      { provide: ListConnectionsUseCase, useValue: useCases.list },
-      { provide: GetConnectionUseCase, useValue: useCases.read },
-      { provide: CreateConnectionUseCase, useValue: useCases.create },
-      { provide: RotateConnectionSecretUseCase, useValue: useCases.rotate },
-      { provide: RevokeConnectionUseCase, useValue: useCases.revoke },
-      { provide: TestConnectionUseCase, useValue: useCases.test },
-      { provide: LookupSlackChannelsUseCase, useValue: useCases.lookup },
+      { provide: ListConnectionsService, useValue: services.list },
+      { provide: GetConnectionService, useValue: services.read },
+      { provide: CreateConnectionService, useValue: services.create },
+      { provide: RotateConnectionSecretService, useValue: services.rotate },
+      { provide: RevokeConnectionService, useValue: services.revoke },
+      { provide: TestConnectionService, useValue: services.test },
+      { provide: LookupSlackChannelsService, useValue: services.lookup },
     ],
   });
 });
 afterAll(() => harness.close());
 beforeEach(() => {
   vi.clearAllMocks();
-  useCases.list.execute.mockResolvedValue({
+  services.list.execute.mockResolvedValue({
     items: [connection],
     nextCursor: null,
   });
-  for (const answer of [useCases.read, useCases.create, useCases.rotate])
+  for (const answer of [services.read, services.create, services.rotate])
     answer.execute.mockResolvedValue(connection);
-  useCases.revoke.execute.mockResolvedValue({
+  services.revoke.execute.mockResolvedValue({
     ...connection,
     status: 'revoked',
   });
-  useCases.test.execute.mockResolvedValue({
+  services.test.execute.mockResolvedValue({
     connection,
     outcome: { ok: true, httpStatus: 204, errorCode: null },
   });
-  useCases.lookup.execute.mockResolvedValue({ items: [] });
+  services.lookup.execute.mockResolvedValue({ items: [] });
 });
 
 const command = (
@@ -115,8 +115,8 @@ const command = (
       idempotencyKey === null ? {} : { 'idempotency-key': idempotencyKey },
   });
 
-const forwarded = (useCase: { execute: ReturnType<typeof vi.fn> }) =>
-  useCase.execute.mock.calls[0]?.[0] as Record<string, unknown>;
+const forwarded = (service: { execute: ReturnType<typeof vi.fn> }) =>
+  service.execute.mock.calls[0]?.[0] as Record<string, unknown>;
 
 describe('connection routes', () => {
   it('lists a page and reads one for the signed-in actor', async () => {
@@ -126,13 +126,13 @@ describe('connection routes', () => {
     const read = await harness.send('GET', one);
     expect(list.statusCode, list.payload).toBe(200);
     expect(read.statusCode, read.payload).toBe(200);
-    expect(forwarded(useCases.list)).toMatchObject({
+    expect(forwarded(services.list)).toMatchObject({
       routeWorkspaceId: workspaceId,
       limit: 1,
       after: 'cursor-1',
       actor: { actorId, workspaceId },
     });
-    expect(forwarded(useCases.read)).toMatchObject({
+    expect(forwarded(services.read)).toMatchObject({
       routeWorkspaceId: workspaceId,
       connectionId,
       actor: { actorId, workspaceId },
@@ -144,7 +144,7 @@ describe('connection routes', () => {
       query: { provider: 'http' },
     });
     expect(reply.statusCode).toBe(400);
-    expect(useCases.list.execute).not.toHaveBeenCalled();
+    expect(services.list.execute).not.toHaveBeenCalled();
   });
 
   it('looks up the listed Slack channels with the request signal', async () => {
@@ -152,11 +152,11 @@ describe('connection routes', () => {
       query: { channelIds: 'C0123,D0456' },
     });
     expect(reply.statusCode, reply.payload).toBe(200);
-    expect(forwarded(useCases.lookup)).toMatchObject({
+    expect(forwarded(services.lookup)).toMatchObject({
       connectionId,
       channelIds: ['C0123', 'D0456'],
     });
-    expect(forwarded(useCases.lookup).signal).toBeInstanceOf(AbortSignal);
+    expect(forwarded(services.lookup).signal).toBeInstanceOf(AbortSignal);
   });
 
   it.each([{}, { channelIds: 'C0001,C0001' }, { channelIds: 'c0001' }])(
@@ -166,15 +166,15 @@ describe('connection routes', () => {
         query,
       });
       expect(reply.statusCode).toBe(400);
-      expect(useCases.lookup.execute).not.toHaveBeenCalled();
+      expect(services.lookup.execute).not.toHaveBeenCalled();
     },
   );
 
   it('creates once, with the request, its key and the actor', async () => {
     const reply = await command('POST', connections, created);
     expect(reply.statusCode, reply.payload).toBe(201);
-    expect(useCases.create.execute).toHaveBeenCalledOnce();
-    expect(forwarded(useCases.create)).toMatchObject({
+    expect(services.create.execute).toHaveBeenCalledOnce();
+    expect(forwarded(services.create)).toMatchObject({
       routeWorkspaceId: workspaceId,
       request: created,
       idempotencyKey: 'command-42',
@@ -185,12 +185,12 @@ describe('connection routes', () => {
   it('rotates a secret with the identifiers, key and request signal', async () => {
     const reply = await command('PUT', `${one}/secret`, rotation);
     expect(reply.statusCode, reply.payload).toBe(200);
-    expect(forwarded(useCases.rotate)).toMatchObject({
+    expect(forwarded(services.rotate)).toMatchObject({
       connectionId,
       request: rotation,
       idempotencyKey: 'command-42',
     });
-    expect(forwarded(useCases.rotate).signal).toBeInstanceOf(AbortSignal);
+    expect(forwarded(services.rotate).signal).toBeInstanceOf(AbortSignal);
   });
 
   it('refuses a credential header that would redirect the request', async () => {
@@ -202,7 +202,7 @@ describe('connection routes', () => {
       },
     });
     expect(reply.statusCode).toBe(400);
-    expect(useCases.create.execute).not.toHaveBeenCalled();
+    expect(services.create.execute).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -214,32 +214,32 @@ describe('connection routes', () => {
     async (_name, method, url, body) => {
       for (const key of [null, '', 'first,second'])
         expect((await command(method, url, body, key)).statusCode).toBe(400);
-      for (const useCase of Object.values(useCases))
-        expect(useCase.execute).not.toHaveBeenCalled();
+      for (const service of Object.values(services))
+        expect(service.execute).not.toHaveBeenCalled();
     },
   );
 
   it('revokes with only the identifiers', async () => {
     const reply = await harness.send('DELETE', one);
     expect(reply.statusCode, reply.payload).toBe(200);
-    expect(forwarded(useCases.revoke)).toMatchObject({
+    expect(forwarded(services.revoke)).toMatchObject({
       routeWorkspaceId: workspaceId,
       connectionId,
     });
-    expect(forwarded(useCases.revoke)).not.toHaveProperty('request');
+    expect(forwarded(services.revoke)).not.toHaveProperty('request');
   });
 
   it('tests a connection with the request, key and signal', async () => {
     const body = { url: 'https://provider.example.test/health' };
     const reply = await command('POST', `${one}/test`, body);
     expect(reply.statusCode, reply.payload).toBe(200);
-    expect(forwarded(useCases.test)).toMatchObject({
+    expect(forwarded(services.test)).toMatchObject({
       connectionId,
       request: body,
       idempotencyKey: 'command-42',
       actor: { actorId, workspaceId },
     });
-    expect(forwarded(useCases.test).signal).toBeInstanceOf(AbortSignal);
+    expect(forwarded(services.test).signal).toBeInstanceOf(AbortSignal);
   });
 
   it.each([
@@ -250,6 +250,6 @@ describe('connection routes', () => {
   ])('refuses test request %# before claiming any work', async (body) => {
     const reply = await command('POST', `${one}/test`, body);
     expect(reply.statusCode).toBe(400);
-    expect(useCases.test.execute).not.toHaveBeenCalled();
+    expect(services.test.execute).not.toHaveBeenCalled();
   });
 });

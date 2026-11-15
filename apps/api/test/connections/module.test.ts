@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   ConnectionsController,
   ConnectionsModule,
-  CreateConnectionUseCase,
-  GetConnectionUseCase,
-  ListConnectionsUseCase,
-  LookupSlackChannelsUseCase,
+  CreateConnectionService,
+  GetConnectionService,
+  ListConnectionsService,
+  LookupSlackChannelsService,
   FailureNotificationDestinationsController,
-  FailureNotificationDestinationUseCases,
+  FailureNotificationDestinationServices,
   type ConnectionDependencies,
 } from '../../src/connections/index.js';
 import { WORKSPACE_AUTHORIZATION } from '../../src/workspaces/tokens.js';
@@ -63,12 +63,12 @@ describe('connections Nest module', () => {
     });
     expect(dynamic.providers).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ provide: CreateConnectionUseCase }),
-        expect.objectContaining({ provide: ListConnectionsUseCase }),
-        expect.objectContaining({ provide: GetConnectionUseCase }),
-        expect.objectContaining({ provide: LookupSlackChannelsUseCase }),
+        expect.objectContaining({ provide: CreateConnectionService }),
+        expect.objectContaining({ provide: ListConnectionsService }),
+        expect.objectContaining({ provide: GetConnectionService }),
+        expect.objectContaining({ provide: LookupSlackChannelsService }),
         expect.objectContaining({
-          provide: FailureNotificationDestinationUseCases,
+          provide: FailureNotificationDestinationServices,
         }),
       ]),
     );
@@ -101,14 +101,14 @@ describe('connections Nest module', () => {
     );
     expect(dynamic.providers).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ provide: CreateConnectionUseCase }),
+        expect.objectContaining({ provide: CreateConnectionService }),
         expect.objectContaining({ provide: WORKSPACE_AUTHORIZATION }),
       ]),
     );
     expect(dynamic.providers).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          provide: FailureNotificationDestinationUseCases,
+          provide: FailureNotificationDestinationServices,
         }),
       ]),
     );

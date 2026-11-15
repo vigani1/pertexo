@@ -34,7 +34,7 @@ type CaseCommandInput = CaseInput &
   Readonly<{ idempotencyKey: string; representationTag: string }>;
 
 /** Durable case commands remain independent of manual run admission and loaded JSON. */
-export class WorkflowInputCasesUseCase {
+export class WorkflowInputCasesService {
   public constructor(
     private readonly persistence: WorkflowInputCaseStore,
     private readonly authorization: WorkspaceAuthorizationSource,

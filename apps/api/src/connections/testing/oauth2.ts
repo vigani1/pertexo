@@ -10,7 +10,7 @@ import {
 } from '@pertexo/integrations/server';
 import type { OAuth2GrantLossActor } from '@pertexo/core/connections';
 
-import type { ConnectionOAuth2Dependencies } from '../../ports.js';
+import type { ConnectionOAuth2Dependencies } from '../ports.js';
 import {
   oauth2ApiResponseOutcome,
   oauth2NotActiveOutcome,

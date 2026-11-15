@@ -13,21 +13,21 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
-import type { NodeTestUseCaseInput } from '../node-testing.service.js';
+import type { NodeTestServiceInput } from '../node-testing.service.js';
 import type {
   StepSampleDeleteRequest,
   StepSampleWriteRequest,
 } from '@pertexo/contracts';
 
 type ReadInput = Pick<
-  NodeTestUseCaseInput,
+  NodeTestServiceInput,
   'actor' | 'routeWorkspaceId' | 'authorizedWorkspace' | 'workflowId'
 > &
   Readonly<{ signal?: AbortSignal }>;
 type NodeInput = ReadInput & Readonly<{ nodeId: string }>;
 type CommandInput<Request> = NodeInput &
   Readonly<{ request: Request; idempotencyKey: string }>;
-export class StepSamplesUseCase {
+export class StepSamplesService {
   constructor(
     private readonly store: WorkflowStepSampleStore,
     private readonly authorization: WorkspaceAuthorizationSource,

@@ -11,7 +11,7 @@ import type { AbortableRequest } from '../../platform/http/request-operation-sig
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { WorkflowHeaderError } from '../http/preconditions.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
-import { WorkflowInputCasesUseCase } from './workflow-input-cases.service.js';
+import { WorkflowInputCasesService } from './workflow-input-cases.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { inputCaseFailure } from '../../problems/context/normalize-context-errors.js';
 
@@ -20,7 +20,7 @@ type Request = WorkflowAuthoringRequest & AbortableRequest;
 @UseInterceptors(domainErrors(inputCaseFailure))
 @Controller()
 export class WorkflowInputCasesController {
-  public constructor(private readonly cases: WorkflowInputCasesUseCase) {}
+  public constructor(private readonly cases: WorkflowInputCasesService) {}
 
   @Route(routes.list)
   public async list(

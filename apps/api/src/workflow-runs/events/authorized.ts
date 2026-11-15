@@ -23,7 +23,7 @@ import { WorkflowRunNotFoundError, authorize } from '../access/authorize.js';
 /** Maximum time an open stream may rely on a previously verified access fact. */
 const SSE_REAUTHORIZATION_INTERVAL_MS = 5_000;
 
-export class StreamRunEventsUseCase {
+export class StreamRunEventsService {
   public constructor(
     private readonly persistence: Pick<
       WorkflowRunPersistence,

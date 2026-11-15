@@ -1,8 +1,8 @@
 import type { Provider } from '@nestjs/common';
-import { WorkflowOrganizationCommandsUseCase } from './organization-commands.service.js';
-import { WorkflowOrganizationReadsUseCase } from './organization-reads.service.js';
-import { WorkflowFoldersUseCase } from './folders/workflow-folders.service.js';
-import { WorkflowOrganizationBatchesUseCase } from './batch/workflow-organization-batches.service.js';
+import { WorkflowOrganizationCommandsService } from './organization-commands.service.js';
+import { WorkflowOrganizationReadsService } from './organization-reads.service.js';
+import { WorkflowFoldersService } from './folders/workflow-folders.service.js';
+import { WorkflowOrganizationBatchesService } from './batch/workflow-organization-batches.service.js';
 import type { WorkflowAuthoringDependencies } from '../ports.js';
 import { WorkflowOrganizationController } from './workflow-organization.controller.js';
 import { WorkflowFoldersController } from './folders/workflow-folders.controller.js';
@@ -20,30 +20,30 @@ export function workflowOrganizationProviders(
   const { organization } = dependencies;
   return [
     {
-      provide: WorkflowFoldersUseCase,
-      useValue: new WorkflowFoldersUseCase(
+      provide: WorkflowFoldersService,
+      useValue: new WorkflowFoldersService(
         organization.folders,
         dependencies.authorization,
       ),
     },
     {
-      provide: WorkflowOrganizationBatchesUseCase,
-      useValue: new WorkflowOrganizationBatchesUseCase(
+      provide: WorkflowOrganizationBatchesService,
+      useValue: new WorkflowOrganizationBatchesService(
         organization.batches,
         dependencies.authorization,
       ),
     },
     {
-      provide: WorkflowOrganizationCommandsUseCase,
-      useValue: new WorkflowOrganizationCommandsUseCase(
+      provide: WorkflowOrganizationCommandsService,
+      useValue: new WorkflowOrganizationCommandsService(
         organization.tags,
         organization.favorites,
         dependencies.authorization,
       ),
     },
     {
-      provide: WorkflowOrganizationReadsUseCase,
-      useValue: new WorkflowOrganizationReadsUseCase(
+      provide: WorkflowOrganizationReadsService,
+      useValue: new WorkflowOrganizationReadsService(
         organization.reader,
         organization.tags,
         dependencies.authorization,

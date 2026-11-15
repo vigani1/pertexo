@@ -19,7 +19,7 @@ type Scope = WorkflowApplicationInput & {
 };
 type WorkflowInput = Scope & { workflowId: string };
 type RequestInput = Scope & { reviewId: string };
-export class PublicationReviewUseCase {
+export class PublicationReviewService {
   constructor(
     private readonly store: PublicationReviewStore,
     private readonly authorization: WorkspaceAuthorizationSource,

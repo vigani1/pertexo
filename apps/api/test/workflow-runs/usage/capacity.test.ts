@@ -7,7 +7,7 @@ import {
   type WorkspaceStatus,
 } from '../../../src/authorization/index.js';
 import type { WorkflowRunPersistence } from '../../../src/workflow-runs/ports.js';
-import { GetUsageCapacityUseCase } from '../../../src/workflow-runs/usage/capacity.js';
+import { GetUsageCapacityService } from '../../../src/workflow-runs/usage/capacity.js';
 import { usageCapacitySnapshot } from './capacity.fixture.js';
 
 const actorId = '11111111-1111-4111-8111-111111111111';
@@ -43,7 +43,7 @@ describe('workspace usage capacity use case', () => {
   // api-13: both capabilities come from one membership read.
   it('reads membership once for both capabilities', async () => {
     const authorization = access();
-    await new GetUsageCapacityUseCase(persistence(), authorization).execute({
+    await new GetUsageCapacityService(persistence(), authorization).execute({
       actor,
       routeWorkspaceId: workspaceId,
     });
@@ -54,7 +54,7 @@ describe('workspace usage capacity use case', () => {
     const store = persistence();
     const authorization = access();
     const signal = new AbortController().signal;
-    const result = await new GetUsageCapacityUseCase(
+    const result = await new GetUsageCapacityService(
       store,
       authorization,
     ).execute({
@@ -75,7 +75,7 @@ describe('workspace usage capacity use case', () => {
     async (status) => {
       const store = persistence();
       await expect(
-        new GetUsageCapacityUseCase(store, access(status)).execute({
+        new GetUsageCapacityService(store, access(status)).execute({
           actor,
           routeWorkspaceId: workspaceId,
         }),
@@ -87,7 +87,7 @@ describe('workspace usage capacity use case', () => {
   it('reads capacity in a suspended workspace, which can still be browsed', async () => {
     const store = persistence();
     await expect(
-      new GetUsageCapacityUseCase(store, access('suspended')).execute({
+      new GetUsageCapacityService(store, access('suspended')).execute({
         actor,
         routeWorkspaceId: workspaceId,
       }),
@@ -109,7 +109,7 @@ describe('workspace usage capacity use case', () => {
       inactive,
     ]) {
       await expect(
-        new GetUsageCapacityUseCase(store, authorization).execute({
+        new GetUsageCapacityService(store, authorization).execute({
           actor,
           routeWorkspaceId: workspaceId,
         }),
@@ -129,7 +129,7 @@ describe('workspace usage capacity use case', () => {
     });
     authorization.findAccess.mockResolvedValue(undefined);
     await expect(
-      new GetUsageCapacityUseCase(store, authorization).execute({
+      new GetUsageCapacityService(store, authorization).execute({
         actor,
         routeWorkspaceId: workspaceId,
         authorizedWorkspace: proof,
@@ -149,7 +149,7 @@ describe('workspace usage capacity use case', () => {
     });
     authorization.findAccess.mockClear();
     await expect(
-      new GetUsageCapacityUseCase(store, authorization).execute({
+      new GetUsageCapacityService(store, authorization).execute({
         actor,
         routeWorkspaceId: workspaceId,
         authorizedWorkspace: proof,
@@ -163,7 +163,7 @@ describe('workspace usage capacity use case', () => {
     const abort = new AbortController();
     abort.abort();
     await expect(
-      new GetUsageCapacityUseCase(store, access()).execute({
+      new GetUsageCapacityService(store, access()).execute({
         actor,
         routeWorkspaceId: workspaceId,
         signal: abort.signal,
@@ -175,7 +175,7 @@ describe('workspace usage capacity use case', () => {
       artifacts: { ...usageCapacitySnapshot().artifacts, chargedBytes: '-1' },
     });
     await expect(
-      new GetUsageCapacityUseCase(store, access()).execute({
+      new GetUsageCapacityService(store, access()).execute({
         actor,
         routeWorkspaceId: workspaceId,
       }),

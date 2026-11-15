@@ -8,14 +8,14 @@ import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/a
 import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import {
-  CreateConnectionUseCase,
-  GetConnectionUseCase,
-  ListConnectionsUseCase,
-  RevokeConnectionUseCase,
-  RotateConnectionSecretUseCase,
-} from '../use-cases/management.js';
-import { LookupSlackChannelsUseCase } from '../failure-notifications/slack-channel-lookup.js';
-import { TestConnectionUseCase } from '../use-cases/test-connection.js';
+  CreateConnectionService,
+  GetConnectionService,
+  ListConnectionsService,
+  RevokeConnectionService,
+  RotateConnectionSecretService,
+} from '../management/connection-management.js';
+import { LookupSlackChannelsService } from '../failure-notifications/slack-channel-lookup.js';
+import { TestConnectionService } from '../testing/test-connection.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
@@ -26,13 +26,13 @@ export class ConnectionsController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
   public constructor(
-    private readonly listConnections: ListConnectionsUseCase,
-    private readonly getConnection: GetConnectionUseCase,
-    private readonly createConnection: CreateConnectionUseCase,
-    private readonly rotateSecret: RotateConnectionSecretUseCase,
-    private readonly revokeConnection: RevokeConnectionUseCase,
-    private readonly testConnection: TestConnectionUseCase,
-    private readonly lookupSlackChannels: LookupSlackChannelsUseCase,
+    private readonly listConnections: ListConnectionsService,
+    private readonly getConnection: GetConnectionService,
+    private readonly createConnection: CreateConnectionService,
+    private readonly rotateSecret: RotateConnectionSecretService,
+    private readonly revokeConnection: RevokeConnectionService,
+    private readonly testConnection: TestConnectionService,
+    private readonly lookupSlackChannels: LookupSlackChannelsService,
   ) {}
 
   @Route(routes.list)
@@ -134,7 +134,7 @@ export class ConnectionsController {
   }
 }
 
-/** Who is asking, in which workspace: what every connection use case starts from. */
+/** Who is asking, in which workspace: what every connection service starts from. */
 export function context(
   request: ConnectionRequest,
   { workspaceId }: Readonly<{ workspaceId: string }>,

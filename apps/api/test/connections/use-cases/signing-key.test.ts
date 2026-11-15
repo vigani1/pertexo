@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest';
-import { CreateConnectionUseCase } from '../../../src/connections/use-cases/management.js';
-import { TestConnectionUseCase } from '../../../src/connections/use-cases/test-connection.js';
+import { CreateConnectionService } from '../../../src/connections/management/connection-management.js';
+import { TestConnectionService } from '../../../src/connections/testing/test-connection.js';
 import type {
   ConnectionTestPersistence,
   ConnectionHttpClient,
@@ -35,7 +35,7 @@ it('seals exact signing keys and tests local access without any provider request
     });
     return Promise.resolve(sealed);
   });
-  const created = await new CreateConnectionUseCase(store, authorization(), {
+  const created = await new CreateConnectionService(store, authorization(), {
     encryption: {
       seal,
     },
@@ -77,7 +77,7 @@ it('seals exact signing keys and tests local access without any provider request
     ),
   });
   const execute = vi.fn<ConnectionHttpClient['execute']>();
-  const tested = await new TestConnectionUseCase(tests, authorization(), {
+  const tested = await new TestConnectionService(tests, authorization(), {
     encryption: { seal, open: () => Promise.resolve(secret) },
     httpClient: { execute },
     applicationSecret: 'fixture-application-secret',

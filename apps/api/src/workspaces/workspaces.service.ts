@@ -59,7 +59,7 @@ type WorkspaceLifecyclePersistence = Pick<
   'requestWorkspaceLifecycleOperation'
 >;
 
-export class GetCurrentUserUseCase {
+export class GetCurrentUserService {
   public constructor(
     private readonly persistence: CurrentUserPersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
@@ -82,7 +82,7 @@ export class GetCurrentUserUseCase {
   }
 }
 
-export class ListAccessibleWorkspacesUseCase {
+export class ListAccessibleWorkspacesService {
   public constructor(
     private readonly persistence: AccessibleWorkspacesPersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
@@ -126,7 +126,7 @@ export type ListWorkspaceMembersInput = Readonly<{
   after?: string;
 }>;
 
-export class ListWorkspaceMembersUseCase {
+export class ListWorkspaceMembersService {
   public constructor(
     private readonly persistence: WorkspaceMembersPersistence,
     private readonly authorization: WorkspaceAuthorizationSource,
@@ -186,7 +186,7 @@ export class ListWorkspaceMembersUseCase {
   }
 }
 
-export { ChangeWorkspaceMemberRoleUseCase } from './members/role.js';
+export { ChangeWorkspaceMemberRoleService } from './members/role.js';
 
 export type CreateWorkspaceInput = Readonly<{
   actorId: string;
@@ -197,7 +197,7 @@ export type CreateWorkspaceInput = Readonly<{
   metadata?: Record<string, unknown>;
 }>;
 
-export class CreateWorkspaceUseCase {
+export class CreateWorkspaceService {
   public constructor(
     private readonly persistence: WorkspaceCreationPersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,
@@ -240,7 +240,7 @@ export type WorkspaceLifecycleInput = Readonly<{
 export type RequestDeletionInput = WorkspaceLifecycleInput &
   Readonly<{ reason: string }>;
 
-export class WorkspaceLifecycleUseCase {
+export class WorkspaceLifecycleService {
   public constructor(
     private readonly persistence: WorkspaceLifecyclePersistence,
     private readonly authorization: WorkspaceAuthorizationSource,

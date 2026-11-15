@@ -28,7 +28,7 @@ export type CreateWorkflowInput = WorkflowApplicationInput &
     traceId?: string;
   }>;
 
-export class CreateWorkflowUseCase {
+export class CreateWorkflowService {
   public constructor(
     private readonly persistence: AuthoringPersistence<'createWorkflow'>,
     private readonly authorization: WorkspaceAuthorizationSource,

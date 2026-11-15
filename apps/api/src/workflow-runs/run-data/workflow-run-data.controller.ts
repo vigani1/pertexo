@@ -7,13 +7,13 @@ import {
 import { In, Route } from '../../platform/http/route.js';
 import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import {
-  GetWorkflowNodeRunInputUseCase,
-  GetWorkflowNodeRunDiagnosticsUseCase,
-  GetWorkflowNodeRunOutputUseCase,
-  GetWorkflowRunInputUseCase,
-  GetWorkflowRunVariablesUseCase,
-  GetWorkflowStepHealthUseCase,
-  ListWorkflowStepRunsUseCase,
+  GetWorkflowNodeRunInputService,
+  GetWorkflowNodeRunDiagnosticsService,
+  GetWorkflowNodeRunOutputService,
+  GetWorkflowRunInputService,
+  GetWorkflowRunVariablesService,
+  GetWorkflowStepHealthService,
+  ListWorkflowStepRunsService,
 } from './run-data.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize-context-errors.js';
@@ -29,13 +29,13 @@ export class WorkflowRunDataController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
   // eslint-disable-next-line max-params
   public constructor(
-    private readonly getRunInput: GetWorkflowRunInputUseCase,
-    private readonly getRunVariables: GetWorkflowRunVariablesUseCase,
-    private readonly getNodeRunOutput: GetWorkflowNodeRunOutputUseCase,
-    private readonly getNodeRunDiagnostics: GetWorkflowNodeRunDiagnosticsUseCase,
-    private readonly getNodeRunInput: GetWorkflowNodeRunInputUseCase,
-    private readonly getStepHealth: GetWorkflowStepHealthUseCase,
-    private readonly listStepRuns: ListWorkflowStepRunsUseCase,
+    private readonly getRunInput: GetWorkflowRunInputService,
+    private readonly getRunVariables: GetWorkflowRunVariablesService,
+    private readonly getNodeRunOutput: GetWorkflowNodeRunOutputService,
+    private readonly getNodeRunDiagnostics: GetWorkflowNodeRunDiagnosticsService,
+    private readonly getNodeRunInput: GetWorkflowNodeRunInputService,
+    private readonly getStepHealth: GetWorkflowStepHealthService,
+    private readonly listStepRuns: ListWorkflowStepRunsService,
   ) {}
 
   @Route(routes.variables)

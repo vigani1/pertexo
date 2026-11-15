@@ -1,5 +1,5 @@
 import { ConnectionSharingController } from './sharing/connection-sharing.controller.js';
-import { ConnectionSharingUseCases } from './sharing/connection-sharing.service.js';
+import { ConnectionSharingServices } from './sharing/connection-sharing.service.js';
 import { UnconfiguredConnectionsController } from './http/unavailable.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { Module } from '@nestjs/common';
@@ -7,12 +7,12 @@ import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { ConnectionsController } from './http/connections.controller.js';
 import { ConnectionOAuth2Controller } from './oauth2/connection-o-auth2.controller.js';
-import { FinishOAuth2AuthorizationUseCase } from './oauth2/finish-authorization.js';
-import { StartOAuth2AuthorizationUseCase } from './oauth2/start-authorization.js';
+import { FinishOAuth2AuthorizationService } from './oauth2/finish-authorization.js';
+import { StartOAuth2AuthorizationService } from './oauth2/start-authorization.js';
 import { ConnectionUsageController } from './http/usage.js';
-import { ListConnectionUsageUseCase } from './use-cases/usage.js';
+import { ListConnectionUsageService } from './management/connection-usage.js';
 import { FailureNotificationDestinationsController } from './failure-notifications/failure-notification-destinations.controller.js';
-import { FailureNotificationDestinationUseCases } from './failure-notifications/destinations.js';
+import { FailureNotificationDestinationServices } from './failure-notifications/destinations.js';
 import type { ConnectionDependencies } from './ports.js';
 import {
   NOOP_CONNECTION_TELEMETRY,
@@ -20,14 +20,14 @@ import {
 } from './telemetry.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import {
-  CreateConnectionUseCase,
-  GetConnectionUseCase,
-  ListConnectionsUseCase,
-  RevokeConnectionUseCase,
-  RotateConnectionSecretUseCase,
-} from './use-cases/management.js';
-import { LookupSlackChannelsUseCase } from './failure-notifications/slack-channel-lookup.js';
-import { TestConnectionUseCase } from './use-cases/test-connection.js';
+  CreateConnectionService,
+  GetConnectionService,
+  ListConnectionsService,
+  RevokeConnectionService,
+  RotateConnectionSecretService,
+} from './management/connection-management.js';
+import { LookupSlackChannelsService } from './failure-notifications/slack-channel-lookup.js';
+import { TestConnectionService } from './testing/test-connection.js';
 
 function oauth2Providers({
   oauth2,
@@ -38,8 +38,8 @@ function oauth2Providers({
   if (oauth2 === undefined) return [];
   return [
     {
-      provide: StartOAuth2AuthorizationUseCase,
-      useValue: new StartOAuth2AuthorizationUseCase(
+      provide: StartOAuth2AuthorizationService,
+      useValue: new StartOAuth2AuthorizationService(
         oauth2,
         authorization,
         encryption,
@@ -47,8 +47,8 @@ function oauth2Providers({
       ),
     },
     {
-      provide: FinishOAuth2AuthorizationUseCase,
-      useValue: new FinishOAuth2AuthorizationUseCase(
+      provide: FinishOAuth2AuthorizationService,
+      useValue: new FinishOAuth2AuthorizationService(
         oauth2,
         encryption,
         applicationSecret,
@@ -57,7 +57,7 @@ function oauth2Providers({
   ];
 }
 
-/** The usual three arguments of a use case that only reads and answers. */
+/** The usual three arguments of a service that only reads and answers. */
 const answering = (
   dependencies: ConnectionDependencies,
   telemetry: ConnectionTelemetry,
@@ -98,20 +98,20 @@ export class ConnectionsModule {
         useValue: dependencies.authorization,
       },
       {
-        provide: ListConnectionsUseCase,
-        useValue: new ListConnectionsUseCase(
+        provide: ListConnectionsService,
+        useValue: new ListConnectionsService(
           ...answering(dependencies, telemetry),
         ),
       },
       {
-        provide: GetConnectionUseCase,
-        useValue: new GetConnectionUseCase(
+        provide: GetConnectionService,
+        useValue: new GetConnectionService(
           ...answering(dependencies, telemetry),
         ),
       },
       {
-        provide: CreateConnectionUseCase,
-        useValue: new CreateConnectionUseCase(
+        provide: CreateConnectionService,
+        useValue: new CreateConnectionService(
           dependencies.persistence,
           dependencies.authorization,
           {
@@ -124,8 +124,8 @@ export class ConnectionsModule {
         ),
       },
       {
-        provide: RotateConnectionSecretUseCase,
-        useValue: new RotateConnectionSecretUseCase(
+        provide: RotateConnectionSecretService,
+        useValue: new RotateConnectionSecretService(
           dependencies.persistence,
           dependencies.authorization,
           {
@@ -138,14 +138,14 @@ export class ConnectionsModule {
         ),
       },
       {
-        provide: RevokeConnectionUseCase,
-        useValue: new RevokeConnectionUseCase(
+        provide: RevokeConnectionService,
+        useValue: new RevokeConnectionService(
           ...answering(dependencies, telemetry),
         ),
       },
       {
-        provide: TestConnectionUseCase,
-        useValue: new TestConnectionUseCase(
+        provide: TestConnectionService,
+        useValue: new TestConnectionService(
           dependencies.persistence,
           dependencies.authorization,
           {
@@ -161,8 +161,8 @@ export class ConnectionsModule {
         ),
       },
       {
-        provide: LookupSlackChannelsUseCase,
-        useValue: new LookupSlackChannelsUseCase(
+        provide: LookupSlackChannelsService,
+        useValue: new LookupSlackChannelsService(
           dependencies.persistence,
           dependencies.authorization,
           {
@@ -176,8 +176,8 @@ export class ConnectionsModule {
     providers.push(...oauth2Providers(dependencies));
     if (dependencies.sharingPersistence !== undefined)
       providers.push({
-        provide: ConnectionSharingUseCases,
-        useValue: new ConnectionSharingUseCases(
+        provide: ConnectionSharingServices,
+        useValue: new ConnectionSharingServices(
           dependencies.sharingPersistence,
           dependencies.authorization,
           telemetry,
@@ -185,8 +185,8 @@ export class ConnectionsModule {
       });
     if (dependencies.destinationPersistence !== undefined)
       providers.push({
-        provide: FailureNotificationDestinationUseCases,
-        useValue: new FailureNotificationDestinationUseCases(
+        provide: FailureNotificationDestinationServices,
+        useValue: new FailureNotificationDestinationServices(
           dependencies.destinationPersistence,
           dependencies.applicationSecret,
           telemetry,
@@ -195,8 +195,8 @@ export class ConnectionsModule {
       });
     if (dependencies.usagePersistence !== undefined)
       providers.push({
-        provide: ListConnectionUsageUseCase,
-        useValue: new ListConnectionUsageUseCase(
+        provide: ListConnectionUsageService,
+        useValue: new ListConnectionUsageService(
           dependencies.usagePersistence,
           dependencies.authorization,
           telemetry,
@@ -222,13 +222,13 @@ export class ConnectionsModule {
       ],
       providers,
       exports: [
-        ListConnectionsUseCase,
-        GetConnectionUseCase,
-        CreateConnectionUseCase,
-        RotateConnectionSecretUseCase,
-        RevokeConnectionUseCase,
-        TestConnectionUseCase,
-        LookupSlackChannelsUseCase,
+        ListConnectionsService,
+        GetConnectionService,
+        CreateConnectionService,
+        RotateConnectionSecretService,
+        RevokeConnectionService,
+        TestConnectionService,
+        LookupSlackChannelsService,
       ],
     };
   }

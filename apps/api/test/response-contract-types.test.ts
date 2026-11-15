@@ -9,11 +9,11 @@ import { describe, expectTypeOf, it } from 'vitest';
 import type { z } from 'zod';
 
 import type {
-  ListWorkflowVersionsUseCase,
-  ValidateWorkflowDraftUseCase,
+  ListWorkflowVersionsService,
+  ValidateWorkflowDraftService,
 } from '../src/workflow-authoring/workflow-authoring.service.js';
-import type { GetPreviewRunUseCase } from '../src/node-testing/previews/read.js';
-import type { TestWorkflowNodeUseCase } from '../src/node-testing/node-testing.service.js';
+import type { GetPreviewRunService } from '../src/node-testing/previews/read.js';
+import type { TestWorkflowNodeService } from '../src/node-testing/node-testing.service.js';
 import type {
   AuthenticatedRequestSession,
   IdentityWorkspaceRequest,
@@ -67,7 +67,7 @@ describe('validated response contract types', () => {
   });
   it('preserves exact workflow response outputs', () => {
     expectTypeOf<
-      ReturnType<ValidateWorkflowDraftUseCase['execute']>
+      ReturnType<ValidateWorkflowDraftService['execute']>
     >().toEqualTypeOf<
       Promise<
         Readonly<{
@@ -77,7 +77,7 @@ describe('validated response contract types', () => {
       >
     >();
     expectTypeOf<
-      ReturnType<ListWorkflowVersionsUseCase['execute']>
+      ReturnType<ListWorkflowVersionsService['execute']>
     >().toEqualTypeOf<
       Promise<z.output<typeof workflowVersionsResponseSchema>>
     >();
@@ -85,14 +85,14 @@ describe('validated response contract types', () => {
 
   it('preserves the node-test response union and preview output', () => {
     expectTypeOf<
-      ReturnType<TestWorkflowNodeUseCase['execute']>
+      ReturnType<TestWorkflowNodeService['execute']>
     >().toEqualTypeOf<
       Promise<
         | z.output<typeof nodeValidationResponseSchema>
         | z.output<typeof nodeTestExecuteAcceptedResponseSchema>
       >
     >();
-    expectTypeOf<ReturnType<GetPreviewRunUseCase['execute']>>().toEqualTypeOf<
+    expectTypeOf<ReturnType<GetPreviewRunService['execute']>>().toEqualTypeOf<
       Promise<z.output<typeof previewRunResponseSchema>>
     >();
   });

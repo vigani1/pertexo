@@ -6,7 +6,7 @@ import {
 import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
-import { WorkflowConcurrencyUseCase } from './concurrency.js';
+import { WorkflowErrorService } from './error-workflow.js';
 import { asker } from './asker.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
@@ -16,13 +16,28 @@ type Request = WorkflowAuthoringRequest & AbortableRequest;
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
-export class WorkflowConcurrencyController {
-  public constructor(private readonly controls: WorkflowConcurrencyUseCase) {}
+export class WorkflowErrorController {
+  public constructor(private readonly controls: WorkflowErrorService) {}
 
-  @Route(routes.concurrency)
+  @Route(routes.errorTargets)
+  public async targets(
+    @Req() request: Request,
+    @In() { params, query }: RouteInput<typeof routes.errorTargets>,
+  ) {
+    return await withRequestOperationSignal(request, (signal) =>
+      this.controls.targets({
+        ...asker(request, params),
+        workflowId: params.workflowId,
+        request: query,
+        signal,
+      }),
+    );
+  }
+
+  @Route(routes.errorWorkflow)
   public async read(
     @Req() request: Request,
-    @In() { params }: RouteInput<typeof routes.concurrency>,
+    @In() { params }: RouteInput<typeof routes.errorWorkflow>,
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.read({
@@ -33,7 +48,7 @@ export class WorkflowConcurrencyController {
     );
   }
 
-  @Route(routes.updateConcurrency)
+  @Route(routes.updateErrorWorkflow)
   public async update(
     @Req() request: Request,
     @In()
@@ -41,7 +56,7 @@ export class WorkflowConcurrencyController {
       params,
       body,
       idempotencyKey,
-    }: RouteInput<typeof routes.updateConcurrency>,
+    }: RouteInput<typeof routes.updateErrorWorkflow>,
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.update({

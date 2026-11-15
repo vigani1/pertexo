@@ -10,7 +10,7 @@ import type {
   WorkflowAuthoringValidator,
 } from '@pertexo/workflow-model/server';
 
-import type { ApiWorkflowMetadataRuntime } from '../metadata-runtime.js';
+import type { ApiWorkflowMetadataRuntime } from '../metadata.runtime.js';
 import type { RunEventNotificationPublisher } from '@pertexo/queue/server';
 
 import type { createPostgresWorkflowRunPersistence } from '../../../workflow-runs/postgres-persistence.js';

@@ -42,7 +42,7 @@ type QueryInput<Request = unknown> = WorkflowOrganizationInput &
   Readonly<{ query: Request }>;
 
 /** Owns normalized organization filters and purpose-bound continuations. */
-export class WorkflowOrganizationReadsUseCase {
+export class WorkflowOrganizationReadsService {
   public constructor(
     private readonly reader: Pick<
       WorkflowOrganizationReadStore,

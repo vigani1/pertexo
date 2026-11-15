@@ -9,7 +9,7 @@ import type { DatabaseConfig } from '@pertexo/database/platform';
 import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import { RedisWorkspaceInboxHintPublisher } from '@pertexo/queue/server';
-import { createWorkspaceInboxRuntime } from '../../../src/notifications/inbox-runtime.js';
+import { createWorkspaceInboxRuntime } from '../../../src/notifications/inbox.runtime.js';
 import { createSystemMailRuntime } from '../../../src/mail/system-mail.runtime.js';
 import { createSystemMailDeliveryHandler } from '@pertexo/secrets/server';
 import { sealNoticeMail } from '../../../src/mail/notice-content.js';

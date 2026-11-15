@@ -14,7 +14,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createConnectionHealthObservationHandler,
   type ConnectionHealthObservationStore,
-} from '../../src/connections/health-runtime.js';
+} from '../../src/connections/health.runtime.js';
 import { maintenanceDeliveryHandler } from '../../src/maintenance/delivery-handler.js';
 import { testMaintenanceRuntime } from '../support/runtime-factories.js';
 

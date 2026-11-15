@@ -6,7 +6,7 @@ import {
 
 import { projectAuthenticatedWorkspaceContext } from '../request/authenticated-context.js';
 import { In, Route } from '../../platform/http/route.js';
-import { WorkspaceInvitationManagementUseCase } from './management.js';
+import { WorkspaceInvitationManagementService } from './management.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
@@ -16,7 +16,7 @@ import { workspaceFailure } from '../../problems/context/normalize-context-error
 @Controller()
 export class WorkspaceInvitationsController {
   public constructor(
-    private readonly invitations: WorkspaceInvitationManagementUseCase,
+    private readonly invitations: WorkspaceInvitationManagementService,
   ) {}
 
   @Route(routes.list)

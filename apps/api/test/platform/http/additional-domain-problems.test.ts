@@ -4,10 +4,10 @@ import { Test } from '@nestjs/testing';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { PreviewIdempotencyConflictError } from '@pertexo/core/previews';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { APPLICATION_ERROR_MAPPERS } from '../../../src/application-errors.js';
+import { APPLICATION_ERROR_MAPPERS } from '../../../src/problems/application-error-mappers.js';
 import { HttpPlatformModule } from '../../../src/platform/http/index.js';
 import { InvalidWorkspaceMemberCursorError } from '../../../src/workspaces/cursor.js';
-import { InvalidAuthenticatedWorkspaceContextError } from '../../../src/workspaces/request/authenticated-context-error.js';
+import { InvalidAuthenticatedWorkspaceContextError } from '../../../src/workspaces/request/authenticated-context.errors.js';
 
 import { workspaceFailure } from '../../../src/problems/context/normalize-context-errors.js';
 

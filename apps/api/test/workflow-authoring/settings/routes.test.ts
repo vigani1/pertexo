@@ -8,15 +8,15 @@ import {
   vi,
 } from 'vitest';
 
-import { WorkflowConcurrencyController } from '../../../src/workflow-authoring/settings/concurrency-controller.js';
-import { WorkflowConcurrencyUseCase } from '../../../src/workflow-authoring/settings/concurrency.js';
-import { WorkflowErrorController } from '../../../src/workflow-authoring/settings/error-workflow-controller.js';
-import { WorkflowErrorUseCase } from '../../../src/workflow-authoring/settings/error-workflow.js';
+import { WorkflowConcurrencyController } from '../../../src/workflow-authoring/settings/concurrency.controller.js';
+import { WorkflowConcurrencyService } from '../../../src/workflow-authoring/settings/concurrency.js';
+import { WorkflowErrorController } from '../../../src/workflow-authoring/settings/error-workflow.controller.js';
+import { WorkflowErrorService } from '../../../src/workflow-authoring/settings/error-workflow.js';
 import {
   WorkflowAutoPauseController,
   WorkspaceAutoPauseController,
 } from '../../../src/workflow-authoring/settings/auto-pause-controllers.js';
-import { WorkflowAutoPauseUseCase } from '../../../src/workflow-authoring/settings/auto-pause.js';
+import { WorkflowAutoPauseService } from '../../../src/workflow-authoring/settings/auto-pause.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';
@@ -59,9 +59,9 @@ beforeAll(async () => {
     ],
     providers: [
       { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
-      { provide: WorkflowConcurrencyUseCase, useValue: concurrency },
-      { provide: WorkflowErrorUseCase, useValue: errorWorkflow },
-      { provide: WorkflowAutoPauseUseCase, useValue: autoPause },
+      { provide: WorkflowConcurrencyService, useValue: concurrency },
+      { provide: WorkflowErrorService, useValue: errorWorkflow },
+      { provide: WorkflowAutoPauseService, useValue: autoPause },
     ],
   });
 });
@@ -75,8 +75,8 @@ beforeEach(() => {
 const put = (url: string, body: unknown, key = 'setting-once') =>
   harness.send('PUT', url, { body, headers: { 'idempotency-key': key } });
 const untouched = () => {
-  for (const useCase of [concurrency, errorWorkflow, autoPause])
-    for (const method of Object.values(useCase))
+  for (const service of [concurrency, errorWorkflow, autoPause])
+    for (const method of Object.values(service))
       expect(method).not.toHaveBeenCalled();
 };
 

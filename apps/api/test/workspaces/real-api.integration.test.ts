@@ -18,7 +18,7 @@ import {
   type IdentitySessionAuthority,
 } from '../../src/workspaces/index.js';
 import { createActorContext } from '../../src/authorization/index.js';
-import { StreamRunEventsUseCase } from '../../src/workflow-runs/events/authorized.js';
+import { StreamRunEventsService } from '../../src/workflow-runs/events/authorized.js';
 import {
   mutationHeaders,
   sessionCookies,
@@ -362,7 +362,7 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       .authenticate(cookies.rawSession);
     const streamAbort = new AbortController();
     const frames = await caseFixture.application
-      .get(StreamRunEventsUseCase)
+      .get(StreamRunEventsService)
       .execute({
         actor: createActorContext({
           actorId: storedSession.userId,

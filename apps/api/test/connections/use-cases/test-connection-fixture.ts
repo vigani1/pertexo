@@ -1,4 +1,4 @@
-import type { TestConnectionCommand } from '../../../src/connections/use-cases/test-connection.js';
+import type { TestConnectionCommand } from '../../../src/connections/testing/test-connection.js';
 import type { ConnectionRecord } from '@pertexo/core/testing';
 
 import { vi } from 'vitest';

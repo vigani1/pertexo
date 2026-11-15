@@ -12,8 +12,8 @@ import type { WorkerApplicationCompositionFactories } from '../../src/worker-app
 import type { NodeAttemptRuntime } from '../../src/attempts/delivery/node-attempt.runtime.js';
 import type { WorkerConfig } from '../../src/config/worker.js';
 import type { MaintenanceRuntime } from '../../src/maintenance/maintenance.runtime.js';
-import type { WorkspaceInboxRuntime } from '../../src/notifications/inbox-runtime.js';
-import { WORKSPACE_INBOX_RUNTIME } from '../../src/notifications/inbox-runtime.js';
+import type { WorkspaceInboxRuntime } from '../../src/notifications/inbox.runtime.js';
+import { WORKSPACE_INBOX_RUNTIME } from '../../src/notifications/inbox.runtime.js';
 import { WORKSPACE_DATABASE } from '../../src/platform/database/database.module.js';
 import {
   RETENTION_RUNTIME,
@@ -44,7 +44,7 @@ import type { TriggerRuntime } from '../../src/triggers/trigger.runtime.js';
 import {
   WORKFLOW_AUTO_PAUSE_RUNTIME,
   type WorkflowAutoPauseRuntime,
-} from '../../src/workflows/auto-pause-runtime.js';
+} from '../../src/workflows/auto-pause.runtime.js';
 import { emptyCallbackStore } from './callback-store.js';
 
 /** What a test puts in place of the worker's real services. */

@@ -3,24 +3,24 @@ import { catalogRoutes as routes } from '@pertexo/contracts/server';
 
 import { Route } from '../platform/http/route.js';
 import {
-  ListIntegrationsUseCase,
-  ListNodeDefinitionsUseCase,
+  ListIntegrationsService,
+  ListNodeDefinitionsService,
 } from './catalog.service.js';
 
 @Controller()
 export class CatalogController {
   public constructor(
-    private readonly listNodeDefinitionsUseCase: ListNodeDefinitionsUseCase,
-    private readonly listIntegrationsUseCase: ListIntegrationsUseCase,
+    private readonly listNodeDefinitionsService: ListNodeDefinitionsService,
+    private readonly listIntegrationsService: ListIntegrationsService,
   ) {}
 
   @Route(routes.nodeDefinitions)
   public listNodeDefinitions() {
-    return this.listNodeDefinitionsUseCase.execute();
+    return this.listNodeDefinitionsService.execute();
   }
 
   @Route(routes.integrations)
   public listIntegrations() {
-    return this.listIntegrationsUseCase.execute();
+    return this.listIntegrationsService.execute();
   }
 }

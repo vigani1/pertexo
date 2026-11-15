@@ -4,9 +4,9 @@ import type { DynamicModule, Provider } from '@nestjs/common';
 
 import { CatalogController } from './catalog.controller.js';
 import {
-  createCatalogUseCases,
-  ListIntegrationsUseCase,
-  ListNodeDefinitionsUseCase,
+  createCatalogServices,
+  ListIntegrationsService,
+  ListNodeDefinitionsService,
 } from './catalog.service.js';
 
 @Module({})
@@ -17,15 +17,15 @@ export class CatalogModule {
     identityModule: DynamicModule,
     codeSettings: CodeSettings = DEFAULT_CODE_SETTINGS,
   ): DynamicModule {
-    const useCases = createCatalogUseCases(codeSettings);
+    const services = createCatalogServices(codeSettings);
     const providers: Provider[] = [
       {
-        provide: ListNodeDefinitionsUseCase,
-        useValue: useCases.listNodeDefinitions,
+        provide: ListNodeDefinitionsService,
+        useValue: services.listNodeDefinitions,
       },
       {
-        provide: ListIntegrationsUseCase,
-        useValue: useCases.listIntegrations,
+        provide: ListIntegrationsService,
+        useValue: services.listIntegrations,
       },
     ];
     return {

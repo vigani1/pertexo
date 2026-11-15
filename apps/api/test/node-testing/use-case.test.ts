@@ -5,8 +5,8 @@ import {
   WorkflowNotFoundError,
   PreviewIdempotencyConflictError,
 } from '@pertexo/core/testing';
-import { TestWorkflowNodeUseCase } from '../../src/node-testing/node-testing.service.js';
-import { GetPreviewRunUseCase } from '../../src/node-testing/previews/read.js';
+import { TestWorkflowNodeService } from '../../src/node-testing/node-testing.service.js';
+import { GetPreviewRunService } from '../../src/node-testing/previews/read.js';
 import { authorizeWorkspace } from '../../src/authorization/index.js';
 import {
   workspaceId,
@@ -61,13 +61,13 @@ describe('node test application use case', () => {
     const evaluate = vi
       .fn()
       .mockRejectedValue(new Error('Unused mapping must not execute'));
-    const useCase = new TestWorkflowNodeUseCase(
+    const service = new TestWorkflowNodeService(
       store,
       access,
       () => acceptedAt,
       { evaluate },
     );
-    const response = await useCase.execute({
+    const response = await service.execute({
       ...requestInput(),
       idempotencyKey: randomUUID(),
       request: {
@@ -94,13 +94,13 @@ describe('node test application use case', () => {
     expect(evaluate).not.toHaveBeenCalled();
     expect(access.findAccess).toHaveBeenCalledTimes(1);
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         request: { mode: 'validate', expectedRevision: 3, sampleInput: {} },
       }),
     ).resolves.toMatchObject({ valid: false });
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: randomUUID(),
         request: {
@@ -145,7 +145,7 @@ describe('node test application use case', () => {
         }),
       ),
     });
-    const useCase = new TestWorkflowNodeUseCase(
+    const service = new TestWorkflowNodeService(
       store,
       authorization(),
       undefined,
@@ -153,7 +153,7 @@ describe('node test application use case', () => {
     );
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         request: {
           mode: 'validate',
@@ -177,9 +177,9 @@ describe('node test application use case', () => {
       access,
       disclosure: 'not_found',
     });
-    const useCase = new TestWorkflowNodeUseCase(store, access);
+    const service = new TestWorkflowNodeService(store, access);
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         authorizedWorkspace,
         request: {
@@ -212,10 +212,10 @@ describe('node test application use case', () => {
     const store = persistence({
       getDraft: vi.fn().mockResolvedValue(null),
     });
-    const useCase = new TestWorkflowNodeUseCase(store, authorization());
+    const service = new TestWorkflowNodeService(store, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         request: { mode: 'validate', expectedRevision: 3 },
       }),
@@ -227,10 +227,10 @@ describe('node test application use case', () => {
     const store = persistence({
       getDraft: vi.fn().mockResolvedValue(draft({ revision: 4 })),
     });
-    const useCase = new TestWorkflowNodeUseCase(store, authorization());
+    const service = new TestWorkflowNodeService(store, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         request: { mode: 'validate', expectedRevision: 3 },
       }),
@@ -246,10 +246,10 @@ describe('node test application use case', () => {
     const store = persistence({
       getDraft: vi.fn().mockRejectedValue(failure),
     });
-    const useCase = new TestWorkflowNodeUseCase(store, authorization());
+    const service = new TestWorkflowNodeService(store, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         request: { mode: 'validate', expectedRevision: 3 },
       }),
@@ -284,9 +284,9 @@ describe('node test application use case', () => {
           }),
         ),
       });
-      const useCase = new TestWorkflowNodeUseCase(store, authorization());
+      const service = new TestWorkflowNodeService(store, authorization());
 
-      const result = await useCase
+      const result = await service
         .execute({
           ...requestInput(),
           idempotencyKey: 'preview-invalid-config',
@@ -338,10 +338,10 @@ describe('node test application use case', () => {
         membershipStatus: 'active',
         workspaceStatus: 'active',
       });
-    const useCase = new TestWorkflowNodeUseCase(store, access);
+    const service = new TestWorkflowNodeService(store, access);
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         request: {
           mode: 'validate',
@@ -370,10 +370,10 @@ describe('node test application use case', () => {
       membershipStatus: 'active',
       workspaceStatus: 'active',
     });
-    const useCase = new TestWorkflowNodeUseCase(store, access);
+    const service = new TestWorkflowNodeService(store, access);
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-denied-workflow-update',
         request: {
@@ -413,10 +413,10 @@ describe('node test application use case', () => {
         membershipStatus: 'active',
         workspaceStatus: 'active',
       });
-    const useCase = new TestWorkflowNodeUseCase(store, access);
+    const service = new TestWorkflowNodeService(store, access);
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-denied-connection-use',
         request: {
@@ -439,9 +439,9 @@ describe('node test application use case', () => {
   });
 
   it('requires idempotency before accepting acknowledged execution', async () => {
-    const useCase = new TestWorkflowNodeUseCase(persistence(), authorization());
+    const service = new TestWorkflowNodeService(persistence(), authorization());
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         request: {
           mode: 'test_execute',
@@ -470,10 +470,10 @@ describe('node test application use case', () => {
         }),
       ),
     });
-    const useCase = new TestWorkflowNodeUseCase(store, authorization());
+    const service = new TestWorkflowNodeService(store, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-config-mismatch',
         request: {
@@ -506,10 +506,10 @@ describe('node test application use case', () => {
       resolvePreviewReplay: vi.fn().mockResolvedValue(retained),
     });
     const access = authorization();
-    const useCase = new TestWorkflowNodeUseCase(store, access);
+    const service = new TestWorkflowNodeService(store, access);
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-replay',
         request: {
@@ -554,10 +554,10 @@ describe('node test application use case', () => {
         .fn()
         .mockRejectedValue(new PreviewIdempotencyConflictError()),
     });
-    const useCase = new TestWorkflowNodeUseCase(store, authorization());
+    const service = new TestWorkflowNodeService(store, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-conflict',
         request: {
@@ -578,10 +578,10 @@ describe('node test application use case', () => {
         .fn()
         .mockRejectedValue(new PreviewIdempotencyConflictError()),
     });
-    const useCase = new TestWorkflowNodeUseCase(store, authorization());
+    const service = new TestWorkflowNodeService(store, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-raced-conflict',
         request: {
@@ -603,10 +603,10 @@ describe('node test application use case', () => {
     const store = persistence({
       getDraft: vi.fn().mockResolvedValue(draft({ revision: 4 })),
     });
-    const useCase = new TestWorkflowNodeUseCase(store, authorization());
+    const service = new TestWorkflowNodeService(store, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-new-key',
         request: {
@@ -630,13 +630,13 @@ describe('node test application use case', () => {
       acceptPreview: vi.fn().mockResolvedValue(result),
     });
     const access = authorization();
-    const useCase = new TestWorkflowNodeUseCase(
+    const service = new TestWorkflowNodeService(
       store,
       access,
       () => acceptedAt,
     );
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-key-1',
         requestId: 'request-node-test',
@@ -716,14 +716,14 @@ describe('node test application use case', () => {
 
   it('defers prior-preview value resolution to the tenant transaction', async () => {
     const store = persistence();
-    const useCase = new TestWorkflowNodeUseCase(
+    const service = new TestWorkflowNodeService(
       store,
       authorization(),
       () => acceptedAt,
     );
     const priorPreviewRunId = randomUUID();
     await expect(
-      useCase.execute({
+      service.execute({
         ...requestInput(),
         idempotencyKey: 'preview-key-2',
         request: {
@@ -754,13 +754,13 @@ describe('node test application use case', () => {
         }),
       ),
     });
-    const useCase = new TestWorkflowNodeUseCase(
+    const service = new TestWorkflowNodeService(
       store,
       authorization(),
       () => acceptedAt,
     );
 
-    await useCase.execute({
+    await service.execute({
       ...requestInput(),
       nodeId: 'email',
       idempotencyKey: 'preview-email-key',
@@ -799,10 +799,10 @@ describe('preview status application use case', () => {
     const readPreview = vi.fn().mockResolvedValue(nodeTestingPreview());
     const access = authorization();
     access.findAccess.mockResolvedValue(undefined);
-    const useCase = new GetPreviewRunUseCase({ readPreview }, access);
+    const service = new GetPreviewRunService({ readPreview }, access);
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         previewRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -816,10 +816,10 @@ describe('preview status application use case', () => {
 
   it('maps a missing scoped preview to hidden not-found', async () => {
     const readPreview = vi.fn().mockResolvedValue(null);
-    const useCase = new GetPreviewRunUseCase({ readPreview }, authorization());
+    const service = new GetPreviewRunService({ readPreview }, authorization());
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         previewRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -859,13 +859,13 @@ describe('preview status application use case', () => {
           completedAt,
         }),
       );
-      const useCase = new GetPreviewRunUseCase(
+      const service = new GetPreviewRunService(
         { readPreview },
         authorization(),
       );
 
       await expect(
-        useCase.execute({
+        service.execute({
           actor,
           routeWorkspaceId: workspaceId,
           previewRunId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -911,10 +911,10 @@ describe('preview status application use case', () => {
     });
     const readPreview = vi.fn().mockResolvedValue(nodeTestingPreview());
     access.findAccess.mockClear();
-    const useCase = new GetPreviewRunUseCase({ readPreview }, access);
+    const service = new GetPreviewRunService({ readPreview }, access);
 
     await expect(
-      useCase.execute({
+      service.execute({
         actor,
         routeWorkspaceId: workspaceId,
         authorizedWorkspace,

@@ -34,7 +34,7 @@ import { DurableAuthenticationMail } from '../../src/authentication/mail/authent
 import { createBetterAuthRuntime } from '../../src/authentication/better-auth/better-auth.runtime.js';
 import { createIdentityWorkspaceStore } from '@pertexo/core/tenant-access';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
-import { BetterAuthSessionService } from '../../src/authentication/better-auth/session-service.js';
+import { BetterAuthSessionService } from '../../src/authentication/better-auth/session.service.js';
 
 type VerifiedSession = Awaited<ReturnType<typeof createVerifiedSession>>;
 

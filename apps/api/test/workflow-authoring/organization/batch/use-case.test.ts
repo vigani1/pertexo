@@ -49,7 +49,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       items,
     };
     expect(
-      await f.useCase.bulk({
+      await f.service.bulk({
         ...base,
         request: batchRoutes.bulk.body.schema.parse(request),
         signal,
@@ -90,7 +90,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       firstStarted.resolve(undefined);
       return firstCompleted.promise;
     });
-    const pending = f.useCase.bulk({
+    const pending = f.service.bulk({
       ...base,
       request: batchRoutes.bulk.body.schema.parse(move),
     });
@@ -126,7 +126,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       const f = fixture();
       f.batches.admitBatch.mockRejectedValueOnce(error);
       await expect(
-        f.useCase.bulk({
+        f.service.bulk({
           ...base,
           request: batchRoutes.bulk.body.schema.parse(move),
         }),
@@ -167,7 +167,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       })),
     };
     expect(
-      await f.useCase.bulk({
+      await f.service.bulk({
         ...base,
         request: batchRoutes.bulk.body.schema.parse(request),
       }),
@@ -219,7 +219,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       .mockResolvedValueOnce(access())
       .mockResolvedValueOnce(access('viewer'));
     expect(
-      await f.useCase.bulk({
+      await f.service.bulk({
         ...base,
         authorizedWorkspace,
         request: batchRoutes.bulk.body.schema.parse({
@@ -252,7 +252,7 @@ describe('workflow organization full-parent batch orchestration', () => {
     f.authorization.findAccess.mockClear();
     f.authorization.findAccess.mockResolvedValue(undefined);
     await expect(
-      f.useCase.bulk({
+      f.service.bulk({
         ...base,
         authorizedWorkspace,
         request: batchRoutes.bulk.body.schema.parse(move),
@@ -288,7 +288,7 @@ describe('workflow organization full-parent batch orchestration', () => {
         status = 'not_visible';
       }
       expect(
-        await f.useCase.bulk({
+        await f.service.bulk({
           ...base,
           request: batchRoutes.bulk.body.schema.parse(move),
         }),
@@ -318,7 +318,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       ),
     );
     expect(
-      await f.useCase.bulk({
+      await f.service.bulk({
         ...base,
         request: batchRoutes.bulk.body.schema.parse(move),
       }),
@@ -349,7 +349,7 @@ describe('workflow organization full-parent batch orchestration', () => {
     );
     expect(
       (
-        await f.useCase.bulk({
+        await f.service.bulk({
           ...base,
           request: batchRoutes.bulk.body.schema.parse(move),
         })
@@ -359,7 +359,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       Promise.resolve({ ...result(input), replayed: true }),
     );
     expect(
-      await f.useCase.bulk({
+      await f.service.bulk({
         ...base,
         request: batchRoutes.bulk.body.schema.parse(move),
       }),
@@ -388,7 +388,7 @@ describe('workflow organization full-parent batch orchestration', () => {
     ]) {
       f.batches.executeBatchItem.mockClear();
       await expect(
-        f.useCase.bulk({
+        f.service.bulk({
           ...base,
           request: batchRoutes.bulk.body.schema.parse(changed),
         }),
@@ -396,7 +396,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       expect(f.batches.executeBatchItem).not.toHaveBeenCalled();
     }
     await expect(
-      f.useCase.cleanup({
+      f.service.cleanup({
         ...base,
         request: batchRoutes.cleanup.body.schema.parse(cleanup),
       }),
@@ -423,7 +423,7 @@ describe('workflow organization full-parent batch orchestration', () => {
         })),
       };
       expect(
-        await f.useCase.cleanup({
+        await f.service.cleanup({
           ...base,
           request: batchRoutes.cleanup.body.schema.parse(request),
         }),
@@ -451,7 +451,7 @@ describe('workflow organization full-parent batch orchestration', () => {
     async (role) => {
       const f = fixture(role);
       await expect(
-        f.useCase.cleanup({
+        f.service.cleanup({
           ...base,
           request: batchRoutes.cleanup.body.schema.parse(cleanup),
         }),
@@ -468,7 +468,7 @@ describe('workflow organization full-parent batch orchestration', () => {
     );
     expect(
       (
-        await f.useCase.cleanup({
+        await f.service.cleanup({
           ...base,
           request: batchRoutes.cleanup.body.schema.parse(cleanup),
         })
@@ -477,7 +477,7 @@ describe('workflow organization full-parent batch orchestration', () => {
     f.batches.executeBatchItem.mockImplementation((input) =>
       Promise.resolve({ ...result(input), replayed: true }),
     );
-    const recovered = await f.useCase.cleanup({
+    const recovered = await f.service.cleanup({
       ...base,
       request: batchRoutes.cleanup.body.schema.parse(cleanup),
     });
@@ -495,7 +495,7 @@ describe('workflow organization full-parent batch orchestration', () => {
       .mockResolvedValueOnce(access('builder'));
     f.batches.executeBatchItem.mockClear();
     expect(
-      await f.useCase.cleanup({
+      await f.service.cleanup({
         ...base,
         request: batchRoutes.cleanup.body.schema.parse(cleanup),
       }),
@@ -531,11 +531,11 @@ describe('workflow organization full-parent batch orchestration', () => {
         } as unknown as WorkflowOrganizationBatchItemResult);
         const response =
           operation === 'tag_cleanup'
-            ? await f.useCase.cleanup({
+            ? await f.service.cleanup({
                 ...base,
                 request: batchRoutes.cleanup.body.schema.parse(cleanup),
               })
-            : await f.useCase.bulk({
+            : await f.service.bulk({
                 ...base,
                 request: batchRoutes.bulk.body.schema.parse(
                   operation === 'move'
@@ -568,7 +568,7 @@ describe('workflow organization full-parent batch orchestration', () => {
         .mockRejectedValueOnce(new WorkflowFolderConflictError('name'))
         .mockRejectedValueOnce(new WorkflowTagConflictError('key'));
       expect(
-        await f.useCase.bulk({
+        await f.service.bulk({
           ...base,
           request: batchRoutes.bulk.body.schema.parse(request),
         }),
@@ -585,7 +585,7 @@ describe('workflow organization full-parent batch orchestration', () => {
     );
     expect(
       (
-        await f.useCase.bulk({
+        await f.service.bulk({
           ...base,
           request: batchRoutes.bulk.body.schema.parse({
             operation: 'replace_tags',
@@ -640,7 +640,7 @@ describe('workflow organization full-parent batch orchestration', () => {
           });
       }
       await expect(
-        f.useCase.bulk({
+        f.service.bulk({
           ...base,
           request: batchRoutes.bulk.body.schema.parse(move),
           signal: controller.signal,

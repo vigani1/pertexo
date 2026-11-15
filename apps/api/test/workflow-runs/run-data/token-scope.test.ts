@@ -5,7 +5,7 @@ import {
   AuthorizationError,
   createAutomationActorContext,
 } from '../../../src/authorization/index.js';
-import { GetWorkflowRunInputUseCase } from '../../../src/workflow-runs/run-data/run-data.service.js';
+import { GetWorkflowRunInputService } from '../../../src/workflow-runs/run-data/run-data.service.js';
 
 const actorId = '11111111-1111-4111-8111-111111111111';
 const workspaceId = '22222222-2222-4222-8222-222222222222';
@@ -15,7 +15,7 @@ function read(scopes: readonly ApiTokenScope[]) {
   const readInput = vi
     .fn()
     .mockResolvedValue({ kind: 'inline', value: { order: 'A-17' } });
-  const useCase = new GetWorkflowRunInputUseCase(
+  const service = new GetWorkflowRunInputService(
     { readInput },
     {
       findAccess: vi.fn().mockResolvedValue({
@@ -29,7 +29,7 @@ function read(scopes: readonly ApiTokenScope[]) {
   );
   return {
     readInput,
-    result: useCase.execute({
+    result: service.execute({
       actor: createAutomationActorContext({
         actorId,
         workspaceId,

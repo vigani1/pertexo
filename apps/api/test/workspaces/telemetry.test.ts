@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createIdentityWorkspaceTelemetry,
-  CreateWorkspaceUseCase,
+  CreateWorkspaceService,
   IDENTITY_WORKSPACE_METRIC_NAME,
   IDENTITY_WORKSPACE_OPERATION,
   type IdentityWorkspaceCounter,
@@ -17,9 +17,9 @@ describe('identity/workspace telemetry', () => {
     const fixture = telemetryFixture([1_000, 1_250]);
     const telemetry = createIdentityWorkspaceTelemetry(fixture.options);
     const persistence = workspacePersistence();
-    const useCase = new CreateWorkspaceUseCase(persistence, telemetry);
+    const service = new CreateWorkspaceService(persistence, telemetry);
 
-    await useCase.execute({
+    await service.execute({
       actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       idempotencyKey: 'telemetry-workspace-command',
       request: { name: 'Operations', slug: 'operations' },

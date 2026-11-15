@@ -9,7 +9,7 @@ import {
 } from 'vitest';
 
 import { WorkflowPublicationReviewController } from '../../../src/workflow-authoring/reviews/publication-review.controller.js';
-import { PublicationReviewUseCase } from '../../../src/workflow-authoring/reviews/publication-review.service.js';
+import { PublicationReviewService } from '../../../src/workflow-authoring/reviews/publication-review.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import { ownerAccess, routeHarness } from '../../support/route-harness.js';
@@ -31,7 +31,7 @@ beforeAll(async () => {
     controllers: [WorkflowPublicationReviewController],
     providers: [
       { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
-      { provide: PublicationReviewUseCase, useValue: reviews },
+      { provide: PublicationReviewService, useValue: reviews },
     ],
   });
 });

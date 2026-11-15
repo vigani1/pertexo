@@ -10,14 +10,14 @@ import {
 
 import { WorkflowRunsController } from '../../../src/workflow-runs/http/workflow-runs.controller.js';
 import { WorkflowRunsModule } from '../../../src/workflow-runs/workflow-runs.module.js';
-import { GetWorkflowRunStatisticsUseCase } from '../../../src/workflow-runs/statistics.js';
+import { GetWorkflowRunStatisticsService } from '../../../src/workflow-runs/statistics.js';
 import {
-  CancelWorkflowRunUseCase,
-  GetWorkflowRunUseCase,
-  ListWorkflowRunsUseCase,
-  ReplayWorkflowRunUseCase,
-  StartWorkflowRunUseCase,
-  StreamRunEventsUseCase,
+  CancelWorkflowRunService,
+  GetWorkflowRunService,
+  ListWorkflowRunsService,
+  ReplayWorkflowRunService,
+  StartWorkflowRunService,
+  StreamRunEventsService,
 } from '../../../src/workflow-runs/workflow-runs.service.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
@@ -40,13 +40,13 @@ beforeAll(async () => {
     controllers: [WorkflowRunsController],
     providers: [
       { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
-      { provide: StartWorkflowRunUseCase, useValue: start },
-      { provide: ReplayWorkflowRunUseCase, useValue: unused },
-      { provide: GetWorkflowRunUseCase, useValue: unused },
-      { provide: ListWorkflowRunsUseCase, useValue: list },
-      { provide: GetWorkflowRunStatisticsUseCase, useValue: statistics },
-      { provide: StreamRunEventsUseCase, useValue: stream },
-      { provide: CancelWorkflowRunUseCase, useValue: unused },
+      { provide: StartWorkflowRunService, useValue: start },
+      { provide: ReplayWorkflowRunService, useValue: unused },
+      { provide: GetWorkflowRunService, useValue: unused },
+      { provide: ListWorkflowRunsService, useValue: list },
+      { provide: GetWorkflowRunStatisticsService, useValue: statistics },
+      { provide: StreamRunEventsService, useValue: stream },
+      { provide: CancelWorkflowRunService, useValue: unused },
     ],
   });
 });

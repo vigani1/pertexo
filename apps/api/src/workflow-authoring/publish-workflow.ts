@@ -30,7 +30,7 @@ export type PublishWorkflowInput = WorkflowResourceInput &
     traceparent?: string;
   }>;
 
-export class PublishWorkflowUseCase {
+export class PublishWorkflowService {
   public constructor(
     private readonly persistence: AuthoringPersistence<'publishWorkflow'>,
     private readonly authorization: WorkspaceAuthorizationSource,

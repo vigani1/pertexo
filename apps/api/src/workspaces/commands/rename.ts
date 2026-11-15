@@ -13,7 +13,7 @@ import type { WorkspaceRenameRequest } from '@pertexo/contracts';
 
 type RenamePersistence = Pick<IdentityWorkspacePersistence, 'renameWorkspace'>;
 
-export class RenameWorkspaceUseCase {
+export class RenameWorkspaceService {
   public constructor(
     private readonly persistence: RenamePersistence,
     private readonly telemetry: IdentityWorkspaceTelemetry = NOOP_IDENTITY_WORKSPACE_TELEMETRY,

@@ -6,7 +6,7 @@ import {
 
 import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
-import { WorkflowTestSuitesUseCase } from './workflow-test-suites.service.js';
+import { WorkflowTestSuitesService } from './workflow-test-suites.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize-context-errors.js';
 import { draftContext, type DraftRequest } from '../draft-context.js';
@@ -14,7 +14,7 @@ import { draftContext, type DraftRequest } from '../draft-context.js';
 @UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller()
 export class WorkflowTestSuitesController {
-  constructor(private readonly suites: WorkflowTestSuitesUseCase) {}
+  constructor(private readonly suites: WorkflowTestSuitesService) {}
 
   @Route(routes.prepare)
   prepare(
