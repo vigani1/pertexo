@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { codeContainerLimits } from '@pertexo/node-sdk';
 
-import type { RunnerConfig } from '../runner-config.js';
+import type { RunnerConfig } from '../config/runner-config.js';
 
 /** A hardened manager starts only inside the container fences it relies on. */
 export async function assertRunnerIsolation(

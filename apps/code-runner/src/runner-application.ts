@@ -1,5 +1,5 @@
 import { assertRunnerIsolation } from './isolation/assert-runner-isolation.js';
-import type { RunnerConfig } from './runner-config.js';
+import type { RunnerConfig } from './config/runner-config.js';
 import { createTaskProcessPool } from './process/pool.js';
 import { listenForCodeTasks } from './transport/server.js';
 
