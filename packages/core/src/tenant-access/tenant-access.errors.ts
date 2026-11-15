@@ -163,3 +163,11 @@ export class InvitationAcceptanceConflictError extends Error {
     super(message, options);
   }
 }
+
+/** A user is created with the canonical form of their email, never another spelling. */
+export class UserEmailNotCanonicalError extends Error {
+  public override readonly name = 'UserEmailNotCanonicalError';
+  public constructor() {
+    super('Invalid user email');
+  }
+}

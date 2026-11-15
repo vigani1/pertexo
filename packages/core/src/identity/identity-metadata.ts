@@ -1,3 +1,7 @@
+import {
+  IdentityMetadataInspectionError,
+  IdentityMetadataValidationError,
+} from './identity-metadata.errors.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 
 const IDENTITY_METADATA_MAX_BYTES = 8_192;
@@ -14,10 +18,6 @@ interface MetadataFrame {
   readonly keys: readonly string[];
   readonly depth: number;
   index: number;
-}
-
-class IdentityMetadataValidationError extends Error {
-  public override readonly name = 'IdentityMetadataValidationError';
 }
 
 function metadataError(message: string): never {
@@ -102,7 +102,7 @@ function parsePersistedIdentityMetadata(
     } catch (inspectionError: unknown) {
       if (inspectionError === error) throw error;
     }
-    throw new Error('Identity metadata could not be inspected safely');
+    throw new IdentityMetadataInspectionError();
   }
 }
 

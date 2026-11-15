@@ -1,3 +1,4 @@
+import { CallbackPreviewRefusedError } from './callback.errors.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -31,8 +32,7 @@ export async function prepareCallbacks(
 ): Promise<readonly PreparedCallback[]> {
   await lockCapabilityExecution(client, input);
   await assertCapabilityExecution(client, input);
-  if (input.previewRunId !== undefined)
-    throw new Error('Previews cannot issue live callback URLs.');
+  if (input.previewRunId !== undefined) throw new CallbackPreviewRefusedError();
   const db = drizzle(client),
     n = nodeRuns,
     r = workflowRuns,
