@@ -38,7 +38,7 @@ const fields: readonly [string, z.ZodType, number, boolean][] = [
     512,
     false,
   ],
-  ['profile display name', userDisplayNameSchema, 128, false],
+  ['profile display name', userDisplayNameSchema, 256, false],
   ['connection name', connectionNameSchema, 128, false],
   ['API token name', apiTokenCreateRequestSchema.shape.name, 128, false],
   [

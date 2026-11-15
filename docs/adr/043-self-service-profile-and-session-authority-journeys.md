@@ -39,9 +39,13 @@ changes to it, behind whichever session authority is active.
   rate class. The actor is always the session's user: there is no user ID in
   the route or body, so this stays self-profile access, not user
   administration.
-- The contract validates the name: trimmed, 1–128 characters, no control
-  characters (`userDisplayNameSchema`). Longer names created before this
-  limit still display; changing them requires a shorter one.
+- The contract validates the name: trimmed, 1–256 characters, no control
+  characters (`userDisplayNameSchema`).
+  - **Changed 2026-11-15 (was 1–128):** sign-up, SCIM, social sign-in and
+    invitations already took 256 (`DISPLAY_NAME_MAX_CHARACTERS`, which the
+    `display_name varchar(256)` column fits), so someone who signed up with
+    a 200-character name couldn't save their profile without shortening it.
+    There is now one limit, 256, for every name a person shows.
 - `app.users.profile_revision` (positive, starting at 1) fences stale edits;
   `GET /v1/users/me` now returns it as `revision`. A stale revision is
   `412 user.profile_revision_conflict`.

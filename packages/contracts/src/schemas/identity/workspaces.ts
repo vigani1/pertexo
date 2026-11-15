@@ -14,7 +14,6 @@ import { z } from 'zod';
 import {
   DISPLAY_NAME_MAX_CHARACTERS,
   EMAIL_ADDRESS_LIMITS,
-  USER_DISPLAY_NAME_MAX_CHARACTERS,
 } from '@pertexo/workflow-model';
 import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 
@@ -98,7 +97,7 @@ export const userProfileResponseSchema = responseSchema(
 export const userDisplayNameSchema = storageTextSchema
   .trim()
   .min(1)
-  .max(USER_DISPLAY_NAME_MAX_CHARACTERS)
+  .max(DISPLAY_NAME_MAX_CHARACTERS)
   .regex(/^[^\p{Cc}]+$/u);
 export const userProfileUpdateRequestSchema = z
   .object({

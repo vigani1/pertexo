@@ -2,7 +2,7 @@ import {
   userDisplayNameSchema,
   type UserProfileResponse,
 } from '@pertexo/contracts';
-import { USER_DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
+import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 import { useId, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
@@ -12,15 +12,20 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
+import { formatCount } from '@/lib/format/count';
 import { useDisplayNameChange } from '../../../data/display-name.mutations';
+
+// The field takes a little past the limit, so spaces the name is trimmed of
+// don't cut a pasted name short.
+const TRIMMED_SPACE_CHARACTERS = 32;
 
 /** What is wrong with a name and how to fix it, from the contract's rules. */
 function nameProblem(value: string): string | undefined {
   if (userDisplayNameSchema.safeParse(value).success) return undefined;
   const name = value.trim();
   if (name.length === 0) return 'Enter the name teammates should see.';
-  if (name.length > USER_DISPLAY_NAME_MAX_CHARACTERS)
-    return `Use ${String(USER_DISPLAY_NAME_MAX_CHARACTERS)} characters or fewer.`;
+  if (name.length > DISPLAY_NAME_MAX_CHARACTERS)
+    return `Use ${formatCount(DISPLAY_NAME_MAX_CHARACTERS, 'character')} or fewer.`;
   return 'Remove line breaks and tabs from the name.';
 }
 
@@ -97,7 +102,7 @@ export function DisplayNameForm({
             ref={validation.register('name')}
             autoComplete="name"
             autoFocus
-            maxLength={USER_DISPLAY_NAME_MAX_CHARACTERS + 32}
+            maxLength={DISPLAY_NAME_MAX_CHARACTERS + TRIMMED_SPACE_CHARACTERS}
             value={name}
             disabled={locked}
             onChange={(event) => {
