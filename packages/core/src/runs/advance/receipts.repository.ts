@@ -17,6 +17,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import {
   CoordinatorDeliveryMismatchError,
+  DeliveryMismatch,
   CoordinatorRunStateCorruptError,
 } from '../execution-state.errors.js';
 import type {
@@ -28,8 +29,6 @@ import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 
 export const coordinatorConsumerName =
   DELIVERY_CONSUMER['advance-workflow-run'];
-
-export class DeliveryMismatch extends Error {}
 
 export async function validateAuthoritativeAdvanceDelivery(
   client: PoolClient,
