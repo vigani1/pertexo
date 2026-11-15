@@ -5,9 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  PENDING_ROOTS,
   ROOT_CONCEPTS,
-  validatePendingRoots,
   inspectPackageRoots,
   validatePackageRoot,
 } from './validate-package-roots.mjs';
@@ -40,15 +38,6 @@ test('refuses a listed concept that no longer exists', () => {
   );
 });
 
-test('lets a pending workspace keep its root until it is settled', () => {
-  const pending = PENDING_ROOTS[0];
-  assert.deepEqual(validatePackageRoot(pending, ['main.ts', 'loose.ts']), []);
-  assert.match(
-    validatePackageRoot(pending, ['main.ts']).join(),
-    /remove it from PENDING_ROOTS/u,
-  );
-});
-
 test('reads each workspace’s direct src files from disk', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'package-roots-'));
   try {
@@ -74,7 +63,7 @@ test('keeps the database’s own doors to the database', () => {
       'primitives.ts',
       'migrate.ts',
       'migration-history.ts',
-    ]).filter((finding) => !finding.includes('PENDING_ROOTS')),
+    ]),
     [],
   );
   assert.match(
@@ -83,13 +72,5 @@ test('keeps the database’s own doors to the database', () => {
       'platform.ts',
     ]).join(),
     /packages\/example\/src\/platform\.ts: a src root holds/u,
-  );
-});
-
-test('refuses a workspace added to the pending list', () => {
-  assert.deepEqual(validatePendingRoots(PENDING_ROOTS), []);
-  assert.match(
-    validatePendingRoots([...PENDING_ROOTS, 'packages/queue']).join(),
-    /packages\/queue: PENDING_ROOTS may only shrink/u,
   );
 });
