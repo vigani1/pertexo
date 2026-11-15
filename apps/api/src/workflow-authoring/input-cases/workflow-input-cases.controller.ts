@@ -5,7 +5,6 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../platform/http/route.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
@@ -14,6 +13,11 @@ import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js'
 import { WorkflowInputCasesService } from './workflow-input-cases.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { inputCaseFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 type Request = WorkflowAuthoringRequest & AbortableRequest;
 
@@ -25,11 +29,12 @@ export class WorkflowInputCasesController {
   @Route(routes.list)
   public async list(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.cases.list({
-        ...asker(request, params),
+        ...serviceCaller(caller),
         workflowId: params.workflowId,
         query,
         signal,
@@ -41,13 +46,14 @@ export class WorkflowInputCasesController {
   @Route(routes.get)
   public async get(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.get>,
     @Res({ passthrough: true })
     response: Readonly<{ header(name: string, value: string): unknown }>,
   ) {
     const result = await withRequestOperationSignal(request, (signal) =>
       this.cases.get({
-        ...asker(request, params),
+        ...serviceCaller(caller),
         workflowId: params.workflowId,
         caseId: params.caseId,
         signal,
@@ -60,11 +66,12 @@ export class WorkflowInputCasesController {
   @Route(routes.create)
   public async create(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.cases.create({
-        ...asker(request, params),
+        ...serviceCaller(caller),
         workflowId: params.workflowId,
         request: body,
         idempotencyKey,
@@ -76,6 +83,7 @@ export class WorkflowInputCasesController {
   @Route(routes.update)
   public async update(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.update>,
   ) {
     const representationTag = parseCaseIfMatch(
@@ -83,7 +91,7 @@ export class WorkflowInputCasesController {
     );
     return await withRequestOperationSignal(request, (signal) =>
       this.cases.update({
-        ...asker(request, params),
+        ...serviceCaller(caller),
         workflowId: params.workflowId,
         caseId: params.caseId,
         request: body,
@@ -97,6 +105,7 @@ export class WorkflowInputCasesController {
   @Route(routes.delete)
   public async delete(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, idempotencyKey }: RouteInput<typeof routes.delete>,
   ) {
     const representationTag = parseCaseIfMatch(
@@ -104,7 +113,7 @@ export class WorkflowInputCasesController {
     );
     return await withRequestOperationSignal(request, (signal) =>
       this.cases.delete({
-        ...asker(request, params),
+        ...serviceCaller(caller),
         workflowId: params.workflowId,
         caseId: params.caseId,
         representationTag,
@@ -113,16 +122,6 @@ export class WorkflowInputCasesController {
       }),
     );
   }
-}
-
-function asker(
-  request: WorkflowAuthoringRequest,
-  { workspaceId }: Readonly<{ workspaceId: string }>,
-) {
-  return {
-    ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-    routeWorkspaceId: workspaceId,
-  };
 }
 
 export function parseCaseIfMatch(value: unknown): string {

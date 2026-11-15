@@ -4,13 +4,16 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import { projectAuthenticatedWorkspaceContext } from '../request/authenticated-context.js';
 import { In, Route } from '../../platform/http/route.js';
 import { WorkspaceInvitationManagementService } from './management.js';
-import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  requestIdentifiers,
+  type WorkspaceCaller,
+} from '../request/caller.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller()
@@ -21,12 +24,11 @@ export class WorkspaceInvitationsController {
 
   @Route(routes.list)
   public async list(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
     return this.invitations.list({
-      actor: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
-        .actor,
+      actor: caller.actor,
       routeWorkspaceId: params.workspaceId,
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined ? {} : { after: query.after }),
@@ -36,10 +38,11 @@ export class WorkspaceInvitationsController {
   @Route(routes.create)
   public create(
     @Req() request: IdentityWorkspaceRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
     return this.invitations.create({
-      ...command(request, params.workspaceId, idempotencyKey),
+      ...command(caller, idempotencyKey),
       request: body,
     });
   }
@@ -47,10 +50,11 @@ export class WorkspaceInvitationsController {
   @Route(routes.resend)
   public resend(
     @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.resend>,
   ) {
     return this.invitations.resend({
-      ...command(request, params.workspaceId, idempotencyKey),
+      ...command(caller, idempotencyKey),
       invitationId: params.invitationId,
       request: body,
     });
@@ -59,10 +63,11 @@ export class WorkspaceInvitationsController {
   @Route(routes.revoke)
   public revoke(
     @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.revoke>,
   ) {
     return this.invitations.revoke({
-      ...command(request, params.workspaceId, idempotencyKey),
+      ...command(caller, idempotencyKey),
       invitationId: params.invitationId,
       request: body,
     });
@@ -70,21 +75,11 @@ export class WorkspaceInvitationsController {
 }
 
 /** Who asks, in which workspace, under which key. */
-function command(
-  request: IdentityWorkspaceRequest,
-  workspaceId: string,
-  idempotencyKey: string,
-) {
+function command(caller: WorkspaceCaller, idempotencyKey: string) {
   return {
-    actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,
-    routeWorkspaceId: workspaceId,
+    actor: caller.actor,
+    routeWorkspaceId: caller.workspaceId,
     idempotencyKey,
-    requestId: requestIdentifier(request),
-    ...optionalTrace(request),
+    ...requestIdentifiers(caller),
   };
-}
-
-function optionalTrace(request: IdentityWorkspaceRequest) {
-  const traceId = traceIdentifier(request);
-  return traceId === undefined ? {} : { traceId };
 }

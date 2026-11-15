@@ -9,6 +9,10 @@ import { In, Route } from '../../../platform/http/route.js';
 import type { WorkflowAuthoringRequest } from '../../workflow-authoring-request.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
 import { WorkflowFoldersService } from './workflow-folders.service.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
@@ -18,10 +22,10 @@ export class WorkflowFoldersController {
   @Route(routes.list)
   public list(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, query }: RouteInput<typeof routes.list>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.list>,
   ) {
-    const { workspaceId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.list({
         ...input,
         query: query,
@@ -32,10 +36,10 @@ export class WorkflowFoldersController {
   @Route(routes.sharingPrincipals)
   public sharingPrincipals(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, query }: RouteInput<typeof routes.sharingPrincipals>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.sharingPrincipals>,
   ) {
-    const { workspaceId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.sharingPrincipals({ ...input, query }),
     );
   }
@@ -43,10 +47,11 @@ export class WorkflowFoldersController {
   @Route(routes.readSharing)
   public readSharing(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.readSharing>,
   ) {
-    const { workspaceId, folderId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { folderId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.readSharing({ ...input, folderId }),
     );
   }
@@ -54,11 +59,12 @@ export class WorkflowFoldersController {
   @Route(routes.replaceSharing)
   public replaceSharing(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.replaceSharing>,
   ) {
-    const { workspaceId, folderId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { folderId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.replaceSharing({
         ...input,
         idempotencyKey,
@@ -71,10 +77,10 @@ export class WorkflowFoldersController {
   @Route(routes.reviewMove)
   public reviewMove(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, body }: RouteInput<typeof routes.reviewMove>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body }: RouteInput<typeof routes.reviewMove>,
   ) {
-    const { workspaceId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.reviewMove({ ...input, request: body }),
     );
   }
@@ -82,10 +88,10 @@ export class WorkflowFoldersController {
   @Route(routes.create)
   public create(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    const { workspaceId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.create({
         ...input,
         idempotencyKey,
@@ -97,10 +103,11 @@ export class WorkflowFoldersController {
   @Route(routes.rename)
   public rename(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.rename>,
   ) {
-    const { workspaceId, folderId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { folderId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.rename({
         ...input,
         idempotencyKey,
@@ -113,10 +120,11 @@ export class WorkflowFoldersController {
   @Route(routes.move)
   public move(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.move>,
   ) {
-    const { workspaceId, folderId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { folderId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.move({
         ...input,
         idempotencyKey,
@@ -129,10 +137,11 @@ export class WorkflowFoldersController {
   @Route(routes.delete)
   public delete(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.delete>,
   ) {
-    const { workspaceId, folderId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { folderId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.delete({
         ...input,
         idempotencyKey,
@@ -145,10 +154,11 @@ export class WorkflowFoldersController {
   @Route(routes.place)
   public place(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.place>,
   ) {
-    const { workspaceId, workflowId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { workflowId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.folders.place({
         ...input,
         idempotencyKey,

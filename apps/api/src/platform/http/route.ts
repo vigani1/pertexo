@@ -94,6 +94,11 @@ export const In = createParamDecorator(
 
 const parsedInputs = new WeakMap<object, RouteInputValues>();
 
+/** The route params a request was parsed with, once its route's interceptor ran. */
+export function routeParams(request: object): unknown {
+  return parsedInputs.get(request)?.params;
+}
+
 type RouteInputValues = Readonly<{
   params: unknown;
   query: unknown;

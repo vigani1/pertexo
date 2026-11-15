@@ -6,10 +6,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import type { GovernanceStore } from '@pertexo/core/governance';
-import {
-  CsrfProtectionGuard,
-  authenticatedSession,
-} from '../workspaces/index.js';
+import { CsrfProtectionGuard } from '../workspaces/index.js';
 import { In, Route } from '../platform/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
@@ -21,6 +18,11 @@ import { sendCsvDownload } from '../platform/http/csv/csv-response.js';
 import { GOVERNANCE_STORE } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  storeCaller,
+  type WorkspaceCaller,
+} from '../workspaces/request/caller.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 
@@ -36,31 +38,30 @@ export class GovernanceController {
   @Route(routes.audit)
   list(
     @Req() request: Request,
-    @In() { params, query }: RouteInput<typeof routes.audit>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.audit>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.governance.list({ ...scope(request, params), query, signal }),
+      this.governance.list({ ...storeCaller(caller), query, signal }),
     );
   }
 
   @Route(routes.settings)
-  settings(
-    @Req() request: Request,
-    @In() { params }: RouteInput<typeof routes.settings>,
-  ) {
+  settings(@Req() request: Request, @Caller() caller: WorkspaceCaller) {
     return withRequestOperationSignal(request, (signal) =>
-      this.governance.settings({ ...scope(request, params), signal }),
+      this.governance.settings({ ...storeCaller(caller), signal }),
     );
   }
 
   @Route(routes.configure)
   configure(
     @Req() request: Request,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.configure>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.configure>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.governance.configure({
-        ...scope(request, params),
+        ...storeCaller(caller),
         ...body,
         idempotencyKey,
         signal,
@@ -72,8 +73,8 @@ export class GovernanceController {
   @Route(routes.export)
   async exportCsv(
     @Req() request: Request & FastifyRequest,
+    @Caller() caller: WorkspaceCaller,
     @Res() reply: FastifyReply,
-    @In() { params }: RouteInput<typeof routes.export>,
   ) {
     const { query, csrfToken } = decodeCsvDownloadRequest(
       request.body,
@@ -81,7 +82,7 @@ export class GovernanceController {
       (value) => parseRequestInput(auditFilterSchema, value),
     );
     this.csrf.assertRequestAllowed(request, csrfToken);
-    const owner = scope(request, params);
+    const owner = storeCaller(caller);
     await this.exports.run(owner.workspaceId, () =>
       sendCsvDownload(
         (signal, consume) =>
@@ -91,11 +92,4 @@ export class GovernanceController {
       ),
     );
   }
-}
-
-function scope(
-  request: Request,
-  { workspaceId }: Readonly<{ workspaceId: string }>,
-) {
-  return { workspaceId, actorId: authenticatedSession(request).userId };
 }

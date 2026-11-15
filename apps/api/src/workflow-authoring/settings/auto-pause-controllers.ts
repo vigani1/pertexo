@@ -5,10 +5,14 @@ import {
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../platform/http/route.js';
 import { WorkflowAutoPauseService } from './auto-pause.js';
-import { asker } from './asker.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
@@ -17,11 +21,11 @@ export class WorkflowAutoPauseController {
 
   @Route(routes.autoPause)
   public async read(
-    @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.autoPause>,
   ) {
     return await this.controls.readWorkflow({
-      ...asker(request, params),
+      ...serviceCaller(caller),
       workflowId: params.workflowId,
     });
   }
@@ -29,11 +33,12 @@ export class WorkflowAutoPauseController {
   @Route(routes.updateAutoPause)
   public async update(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.updateAutoPause>,
   ) {
     return await this.controls.updateWorkflow({
-      ...asker(request, params),
+      ...serviceCaller(caller),
       request: body,
       idempotencyKey,
       workflowId: params.workflowId,
@@ -43,10 +48,11 @@ export class WorkflowAutoPauseController {
   @Route(routes.resume)
   public async resume(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.resume>,
   ) {
     return await this.controls.resume({
-      ...asker(request, params),
+      ...serviceCaller(caller),
       request: body,
       idempotencyKey,
       workflowId: params.workflowId,
@@ -60,25 +66,22 @@ export class WorkspaceAutoPauseController {
   public constructor(private readonly controls: WorkflowAutoPauseService) {}
 
   @Route(routes.workspaceAutoPause)
-  public async read(
-    @Req() request: WorkflowAuthoringRequest,
-    @In() { params }: RouteInput<typeof routes.workspaceAutoPause>,
-  ) {
-    return await this.controls.readWorkspace(asker(request, params));
+  public async read(@Caller() caller: WorkspaceCaller) {
+    return await this.controls.readWorkspace(serviceCaller(caller));
   }
 
   @Route(routes.updateWorkspaceAutoPause)
   public async update(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     {
-      params,
       body,
       idempotencyKey,
     }: RouteInput<typeof routes.updateWorkspaceAutoPause>,
   ) {
     return await this.controls.updateWorkspace({
-      ...asker(request, params),
+      ...serviceCaller(caller),
       request: body,
       idempotencyKey,
     });

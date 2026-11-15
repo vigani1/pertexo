@@ -4,7 +4,6 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../platform/http/route.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 
 import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
@@ -22,6 +21,11 @@ import type {
   WorkflowAuthoringRequest,
   WorkflowResponse,
 } from '../workflow-authoring-request.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowLifecycleController {
@@ -34,9 +38,10 @@ export class WorkflowLifecycleController {
   @Route(routes.archive)
   public archive(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.archive>,
   ) {
-    return this.lifecycleCommand('archive', request, {
+    return this.lifecycleCommand('archive', request, caller, {
       params,
       body,
       idempotencyKey,
@@ -46,9 +51,10 @@ export class WorkflowLifecycleController {
   @Route(routes.restore)
   public restore(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.restore>,
   ) {
-    return this.lifecycleCommand('restore', request, {
+    return this.lifecycleCommand('restore', request, caller, {
       params,
       body,
       idempotencyKey,
@@ -58,12 +64,12 @@ export class WorkflowLifecycleController {
   @Route(routes.rename)
   public rename(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.rename>,
   ) {
     const route = params;
     return this.renameWorkflow.execute({
-      ...projectAuthenticatedWorkspaceContext(request, route.workspaceId),
-      routeWorkspaceId: route.workspaceId,
+      ...serviceCaller(caller),
       workflowId: route.workflowId,
       request: body,
       idempotencyKey: idempotencyKey,
@@ -73,6 +79,7 @@ export class WorkflowLifecycleController {
   @Route(routes.duplicate)
   public async duplicate(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.duplicate>,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
@@ -82,14 +89,10 @@ export class WorkflowLifecycleController {
       input.source.kind === 'draft'
         ? parseStrongIfMatch(requestHeaderValue(request.headers, 'if-match'))
         : undefined;
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
+    const context = serviceCaller(caller);
     const result = await withRequestOperationSignal(request, (signal) =>
       this.duplicateWorkflow.execute({
         ...context,
-        routeWorkspaceId: route.workspaceId,
         workflowId: route.workflowId,
         request: input,
         idempotencyKey: idempotencyKey,
@@ -106,6 +109,7 @@ export class WorkflowLifecycleController {
   private lifecycleCommand(
     command: 'archive' | 'restore',
     request: WorkflowAuthoringRequest,
+    caller: WorkspaceCaller,
     {
       params,
       body,
@@ -116,14 +120,10 @@ export class WorkflowLifecycleController {
     >,
   ) {
     const route = params;
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
+    const context = serviceCaller(caller);
     return this.transitionLifecycle.execute({
       command,
       ...context,
-      routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       request: body,
       idempotencyKey: idempotencyKey,

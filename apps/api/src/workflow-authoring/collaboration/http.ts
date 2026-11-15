@@ -1,27 +1,28 @@
 import { withRequestOperationSignal } from '../../platform/http/index.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
+import {
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 export async function collaborationOperation<
   Route extends { workspaceId: string },
   T,
 >(
   request: WorkflowAuthoringRequest,
+  caller: WorkspaceCaller,
   route: Route,
   operation: (
-    scope: ReturnType<typeof projectAuthenticatedWorkspaceContext> & {
-      routeWorkspaceId: string;
+    scope: ReturnType<typeof serviceCaller> & {
       signal: AbortSignal;
     },
     route: Route,
   ) => Promise<T>,
 ) {
-  const workspaceId = route.workspaceId;
   return await withRequestOperationSignal(request, (signal) =>
     operation(
       {
-        ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-        routeWorkspaceId: workspaceId,
+        ...serviceCaller(caller),
         signal,
       },
       route,

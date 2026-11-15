@@ -9,6 +9,10 @@ import { In, Route } from '../../../platform/http/route.js';
 import type { WorkflowAuthoringRequest } from '../../workflow-authoring-request.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
 import { WorkflowOrganizationBatchesService } from './workflow-organization-batches.service.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
@@ -20,10 +24,10 @@ export class WorkflowOrganizationBatchesController {
   @Route(routes.bulk)
   public bulk(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.bulk>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.bulk>,
   ) {
-    const { workspaceId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.batches.bulk({
         ...input,
         request: body,
@@ -35,10 +39,10 @@ export class WorkflowOrganizationBatchesController {
   @Route(routes.cleanup)
   public cleanup(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.cleanup>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.cleanup>,
   ) {
-    const { workspaceId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.batches.cleanup({
         ...input,
         request: body,

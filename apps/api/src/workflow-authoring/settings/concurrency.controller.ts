@@ -7,10 +7,14 @@ import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { WorkflowConcurrencyService } from './concurrency.js';
-import { asker } from './asker.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 type Request = WorkflowAuthoringRequest & AbortableRequest;
 
@@ -22,11 +26,12 @@ export class WorkflowConcurrencyController {
   @Route(routes.concurrency)
   public async read(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.concurrency>,
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.read({
-        ...asker(request, params),
+        ...serviceCaller(caller),
         workflowId: params.workflowId,
         signal,
       }),
@@ -36,6 +41,7 @@ export class WorkflowConcurrencyController {
   @Route(routes.updateConcurrency)
   public async update(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In()
     {
       params,
@@ -45,7 +51,7 @@ export class WorkflowConcurrencyController {
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.update({
-        ...asker(request, params),
+        ...serviceCaller(caller),
         workflowId: params.workflowId,
         request: body,
         idempotencyKey,

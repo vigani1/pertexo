@@ -13,26 +13,26 @@ import {
   encodeOpaqueCursor,
 } from '../platform/http/opaque-cursor.js';
 
-/** HTTP's view of the store: the opaque usage cursor. */
-export class WorkspaceVariablesService {
-  constructor(private readonly store: WorkspaceVariablesStore) {}
-  async usage({
+/** A page of variable usage, with HTTP's opaque cursor in place of the store's. */
+export async function readUsagePage(
+  store: Pick<WorkspaceVariablesStore, 'usage'>,
+  {
     after,
     ...scope
-  }: Omit<VariableUsageInput, 'after'> & { after?: string | undefined }) {
-    const result = await this.store.usage({
-      ...scope,
-      ...(after === undefined ? {} : { after: decodeContinuation(after) }),
-    });
-    return {
-      items: result.items,
-      incomplete: result.incomplete,
-      nextCursor:
-        result.next === null
-          ? null
-          : encodeOpaqueCursor(workspaceVariableUsageCursorSchema, result.next),
-    };
-  }
+  }: Omit<VariableUsageInput, 'after'> & { after?: string | undefined },
+) {
+  const result = await store.usage({
+    ...scope,
+    ...(after === undefined ? {} : { after: decodeContinuation(after) }),
+  });
+  return {
+    items: result.items,
+    incomplete: result.incomplete,
+    nextCursor:
+      result.next === null
+        ? null
+        : encodeOpaqueCursor(workspaceVariableUsageCursorSchema, result.next),
+  };
 }
 
 function decodeContinuation(after: string) {

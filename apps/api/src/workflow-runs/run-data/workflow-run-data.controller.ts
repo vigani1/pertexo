@@ -1,11 +1,10 @@
-import { Controller, Req, UseInterceptors } from '@nestjs/common';
+import { Controller, UseInterceptors } from '@nestjs/common';
 import {
   workflowRunDataRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
 
 import { In, Route } from '../../platform/http/route.js';
-import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import {
   GetWorkflowNodeRunInputService,
   GetWorkflowNodeRunDiagnosticsService,
@@ -17,6 +16,11 @@ import {
 } from './run-data.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 /**
  * A run's input and each step's output (ADR 050), and each step across its
@@ -40,33 +44,33 @@ export class WorkflowRunDataController {
 
   @Route(routes.variables)
   public getVariables(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.variables>,
   ) {
     return this.getRunVariables.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
     });
   }
 
   @Route(routes.input)
   public getInput(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.input>,
   ) {
     return this.getRunInput.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
     });
   }
 
   @Route(routes.nodeOutput)
   public getOutput(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.nodeOutput>,
   ) {
     return this.getNodeRunOutput.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
       nodeRunId: params.nodeRunId,
     });
@@ -74,11 +78,11 @@ export class WorkflowRunDataController {
 
   @Route(routes.nodeInput)
   public getNodeInput(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.nodeInput>,
   ) {
     return this.getNodeRunInput.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
       nodeRunId: params.nodeRunId,
     });
@@ -86,11 +90,11 @@ export class WorkflowRunDataController {
 
   @Route(routes.diagnostics)
   public getDiagnostics(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.diagnostics>,
   ) {
     return this.getNodeRunDiagnostics.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
       nodeRunId: params.nodeRunId,
     });
@@ -98,22 +102,22 @@ export class WorkflowRunDataController {
 
   @Route(routes.stepHealth)
   public getWorkflowStepHealth(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.stepHealth>,
   ) {
     return this.getStepHealth.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       workflowId: params.workflowId,
     });
   }
 
   @Route(routes.stepRuns)
   public listWorkflowStepRuns(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.stepRuns>,
   ) {
     return this.listStepRuns.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       workflowId: params.workflowId,
       nodeId: params.nodeId,
       ...(query.limit === undefined ? {} : { limit: query.limit }),

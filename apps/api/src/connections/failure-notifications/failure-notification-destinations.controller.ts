@@ -11,11 +11,15 @@ import {
   throwApplicationError,
 } from '../../platform/http/application-error.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
-import { context } from '../http/connections.controller.js';
 import { FailureNotificationDestinationServices } from './destinations.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(connectionFailure))
 @Controller()
@@ -27,11 +31,11 @@ export class FailureNotificationDestinationsController {
 
   @Route(routes.create)
   public create(
-    @Req() request: ConnectionRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
     return this.services.create({
-      ...context(request, params),
+      ...serviceCaller(caller),
       idempotencyKey,
       body,
     });
@@ -39,19 +43,19 @@ export class FailureNotificationDestinationsController {
 
   @Route(routes.list)
   public list(
-    @Req() request: ConnectionRequest,
-    @In() { params, query }: RouteInput<typeof routes.list>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.list>,
   ) {
-    return this.services.list({ ...context(request, params), ...query });
+    return this.services.list({ ...serviceCaller(caller), ...query });
   }
 
   @Route(routes.get)
   public get(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.get>,
   ) {
     return this.services.get({
-      ...context(request, params),
+      ...serviceCaller(caller),
       destinationId: params.destinationId,
     });
   }
@@ -60,11 +64,12 @@ export class FailureNotificationDestinationsController {
   @Route(routes.test)
   public async test(
     @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.test>,
   ) {
-    const caller = context(request, params);
+    const scope = serviceCaller(caller);
     const destination = await this.services.get({
-      ...caller,
+      ...scope,
       destinationId: params.destinationId,
     });
     if (destination.currentVersion !== body.expectedVersion)
@@ -76,7 +81,7 @@ export class FailureNotificationDestinationsController {
       );
     return withRequestOperationSignal(request, (signal) =>
       this.testConnection.executeDestination(
-        { ...caller, idempotencyKey, signal },
+        { ...scope, idempotencyKey, signal },
         destination,
       ),
     );
@@ -84,12 +89,12 @@ export class FailureNotificationDestinationsController {
 
   @Route(routes.appendVersion)
   public append(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.appendVersion>,
   ) {
     return this.services.append({
-      ...context(request, params),
+      ...serviceCaller(caller),
       idempotencyKey,
       destinationId: params.destinationId,
       body,
@@ -98,12 +103,12 @@ export class FailureNotificationDestinationsController {
 
   @Route(routes.setStatus)
   public status(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.setStatus>,
   ) {
     return this.services.status({
-      ...context(request, params),
+      ...serviceCaller(caller),
       idempotencyKey,
       destinationId: params.destinationId,
       body,
@@ -112,23 +117,23 @@ export class FailureNotificationDestinationsController {
 
   @Route(routes.policy)
   public getPolicy(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.policy>,
   ) {
     return this.services.getPolicy({
-      ...context(request, params),
+      ...serviceCaller(caller),
       workflowId: params.workflowId,
     });
   }
 
   @Route(routes.setPolicy)
   public async setPolicy(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.setPolicy>,
   ) {
     await this.services.setPolicy({
-      ...context(request, params),
+      ...serviceCaller(caller),
       idempotencyKey,
       workflowId: params.workflowId,
       body,
@@ -137,11 +142,11 @@ export class FailureNotificationDestinationsController {
 
   @Route(routes.clearPolicy)
   public async clearPolicy(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, idempotencyKey }: RouteInput<typeof routes.clearPolicy>,
   ) {
     await this.services.clearPolicy({
-      ...context(request, params),
+      ...serviceCaller(caller),
       idempotencyKey,
       workflowId: params.workflowId,
     });

@@ -17,8 +17,7 @@ import { traceparent } from '../../platform/http/tracing-headers.js';
 import { In, Route } from '../../platform/http/route.js';
 
 import { authenticatedSession } from '../../workspaces/index.js';
-import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';
-import { caller, type WorkflowRunsRequest } from './request-context.js';
+import type { WorkflowRunsRequest } from './request-context.js';
 import { applicationError } from '../../platform/http/index.js';
 import { ApiDrainState } from '../../platform/health/drain-state.js';
 import {
@@ -41,6 +40,12 @@ import {
 } from '../workflow-runs.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  requestIdentifiers,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(runFailure))
 @Controller()
@@ -65,10 +70,11 @@ export class WorkflowRunsController {
   @Route(routes.start)
   public async startRun(
     @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.start>,
   ) {
     return this.startWorkflowRun.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       workflowId: params.workflowId,
       idempotencyKey,
       ...(body.expectedPublishedVersionId === undefined
@@ -76,7 +82,7 @@ export class WorkflowRunsController {
         : { expectedPublishedVersionId: body.expectedPublishedVersionId }),
       ...(body.input === undefined ? {} : { input: body.input }),
       ...(body.deadlineAt === undefined ? {} : { deadlineAt: body.deadlineAt }),
-      ...requestIdentifiers(request),
+      ...requestIdentifiers(caller),
       ...traceparent(request),
     });
   }
@@ -84,38 +90,39 @@ export class WorkflowRunsController {
   @Route(routes.replay)
   public async replayRun(
     @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.replay>,
   ) {
     return this.replayWorkflowRun.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
       workflowVersionId: body.workflowVersionId,
       input: body.input,
       ...(body.deadlineAt === undefined ? {} : { deadlineAt: body.deadlineAt }),
       idempotencyKey,
-      ...requestIdentifiers(request),
+      ...requestIdentifiers(caller),
       ...traceparent(request),
     });
   }
 
   @Route(routes.get)
   public async getRun(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.get>,
   ) {
     return this.getWorkflowRun.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
     });
   }
 
   @Route(routes.list)
   public async listRuns(
-    @Req() request: WorkflowRunsRequest,
-    @In() { params, query }: RouteInput<typeof routes.list>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.list>,
   ) {
     return this.listWorkflowRuns.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.runValueKey === undefined
         ? {}
@@ -144,11 +151,11 @@ export class WorkflowRunsController {
 
   @Route(routes.statistics)
   public async getRunStatistics(
-    @Req() request: WorkflowRunsRequest,
-    @In() { params, query }: RouteInput<typeof routes.statistics>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.statistics>,
   ) {
     return this.getWorkflowRunStatistics.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       ...(query.window === undefined ? {} : { window: query.window }),
       ...(query.breakdown === undefined ? {} : { breakdown: query.breakdown }),
     });
@@ -157,6 +164,7 @@ export class WorkflowRunsController {
   @Route(routes.events)
   public async streamRunEvents(
     @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, headers }: RouteInput<typeof routes.events>,
     @Res() reply: FastifyReply,
   ): Promise<void> {
@@ -170,7 +178,7 @@ export class WorkflowRunsController {
     try {
       const requestedLastEventId = Number(headers['last-event-id'] ?? 0);
       const frames = await this.streamEvents.execute({
-        ...caller(request, params),
+        ...serviceCaller(caller),
         runId: params.runId,
         lastEventId: requestedLastEventId,
         sessionExpiresAt: authenticatedSession(request).expiresAt,
@@ -204,13 +212,14 @@ export class WorkflowRunsController {
   @Route(routes.cancel)
   public async cancelRun(
     @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body }: RouteInput<typeof routes.cancel>,
   ) {
     return this.cancelWorkflowRun.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
       ...(body.reason === undefined ? {} : { reason: body.reason }),
-      ...requestIdentifiers(request),
+      ...requestIdentifiers(caller),
       ...traceparent(request),
     });
   }
@@ -227,11 +236,4 @@ function sessionReauthorization(
     return throwApplicationError(applicationError('auth.unauthenticated'));
   }
   return request.reauthorizeIdentitySession;
-}
-
-function requestIdentifiers(request: WorkflowRunsRequest): Readonly<{
-  requestId: string;
-  traceId?: string;
-}> {
-  return authenticatedRequestIdentifiers(request);
 }

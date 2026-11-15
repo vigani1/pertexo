@@ -10,6 +10,10 @@ import { WorkflowTestsService } from './workflow-tests.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize-context-errors.js';
 import { draftContext, type DraftRequest } from '../draft-context.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller()
@@ -19,31 +23,34 @@ export class WorkflowTestsController {
   @Route(routes.prepare)
   prepare(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.prepare>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.tests.prepare({ ...draftContext(request, params), signal }),
+      this.tests.prepare({ ...draftContext(caller, params), signal }),
     );
   }
 
   @Route(routes.list)
   list(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.list>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.tests.list({ ...draftContext(request, params), signal }),
+      this.tests.list({ ...draftContext(caller, params), signal }),
     );
   }
 
   @Route(routes.get)
   get(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.get>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.tests.get({
-        ...draftContext(request, params),
+        ...draftContext(caller, params),
         runId: params.runId,
         signal,
       }),
@@ -53,11 +60,12 @@ export class WorkflowTestsController {
   @Route(routes.start)
   start(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.start>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.tests.start({
-        ...draftContext(request, params),
+        ...draftContext(caller, params),
         request: body,
         idempotencyKey,
         signal,
@@ -68,11 +76,12 @@ export class WorkflowTestsController {
   @Route(routes.cancel)
   cancel(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.cancel>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.tests.cancel({
-        ...draftContext(request, params),
+        ...draftContext(caller, params),
         runId: params.runId,
         signal,
       }),

@@ -11,6 +11,7 @@ import {
 } from '../../../src/workspaces/index.js';
 import { routeInput } from '../../support/route-input.js';
 import type { workspaceRoutes as routes } from '@pertexo/contracts/server';
+import { workspaceCaller } from '../../../src/workspaces/request/caller.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const targetId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -114,7 +115,11 @@ describe('membership lifecycle commands (ADR 047)', () => {
     );
 
     await expect(
-      controller(store).transferOwnership(request(), body),
+      controller(store).transferOwnership(
+        request(),
+        workspaceCaller(request(), workspaceId),
+        body,
+      ),
     ).resolves.toMatchObject({ ownerUserId: targetId, replayed: false });
     expect(store.transferWorkspaceOwnership).toHaveBeenCalledWith({
       ...delivery,
@@ -126,16 +131,28 @@ describe('membership lifecycle commands (ADR 047)', () => {
     const stale = controller(
       store,
       new Date(now.getTime() - 5 * 60_000 - 1),
-    ).transferOwnership(request(), body);
+    ).transferOwnership(
+      request(),
+      workspaceCaller(request(), workspaceId),
+      body,
+    );
     await expect(stale).rejects.toBeInstanceOf(IdentityError);
     await expect(stale).rejects.toMatchObject({
       code: 'identity.session_not_fresh',
     });
     await expect(
-      controller(store, 'no evidence').transferOwnership(request(), body),
+      controller(store, 'no evidence').transferOwnership(
+        request(),
+        workspaceCaller(request(), workspaceId),
+        body,
+      ),
     ).rejects.toMatchObject({ code: 'identity.session_invalid' });
     await expect(
-      controller(store, now, targetId).transferOwnership(request(), body),
+      controller(store, now, targetId).transferOwnership(
+        request(),
+        workspaceCaller(request(), workspaceId),
+        body,
+      ),
     ).rejects.toMatchObject({ code: 'auth.unauthenticated' });
     expect(store.transferWorkspaceOwnership).toHaveBeenCalledOnce();
   });

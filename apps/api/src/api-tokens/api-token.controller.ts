@@ -20,11 +20,7 @@ import type {
   IdentityWorkspaceRequest,
   CookieResponse,
 } from '../workspaces/workspace-transport.js';
-import {
-  authenticatedSession,
-  requireSignInEvidence,
-} from '../workspaces/http/guards.js';
-import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
+import { requireSignInEvidence } from '../workspaces/http/guards.js';
 import {
   applicationError,
   throwApplicationError,
@@ -33,6 +29,11 @@ import { RateLimit } from '../platform/rate-limit/metadata.js';
 import { ApiTokenManagement } from './api-token.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  requestIdentifiers,
+  type WorkspaceCaller,
+} from '../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller()
@@ -45,12 +46,12 @@ export class ApiTokenController {
 
   @Route(routes.list)
   public list(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
     return this.management.list({
       workspaceId: params.workspaceId,
-      ownerUserId: authenticatedSession(request).userId,
+      ownerUserId: caller.actor.actorId,
       query,
     });
   }
@@ -58,11 +59,12 @@ export class ApiTokenController {
   @Route(routes.create)
   public async create(
     @Req() request: IdentityWorkspaceRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
     const evidence = await requireSignInEvidence(request, this.sessions);
     return this.management.create({
-      ...command(request, params.workspaceId, idempotencyKey),
+      ...command(caller, idempotencyKey),
       request: body,
       signedInAt: evidence.signedInAt,
     });
@@ -70,11 +72,11 @@ export class ApiTokenController {
 
   @Route(routes.revoke)
   public revoke(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, idempotencyKey }: RouteInput<typeof routes.revoke>,
   ) {
     return this.management.revoke({
-      ...command(request, params.workspaceId, idempotencyKey),
+      ...command(caller, idempotencyKey),
       tokenId: params.tokenId,
     });
   }
@@ -104,15 +106,11 @@ export class CurrentApiTokenController {
     });
   }
 }
-function command(
-  request: IdentityWorkspaceRequest,
-  workspaceId: string,
-  idempotencyKey: string,
-) {
+function command(caller: WorkspaceCaller, idempotencyKey: string) {
   return {
-    workspaceId,
-    ownerUserId: authenticatedSession(request).userId,
+    workspaceId: caller.workspaceId,
+    ownerUserId: caller.actor.actorId,
     idempotencyKey,
-    ...authenticatedRequestIdentifiers(request),
+    ...requestIdentifiers(caller),
   };
 }

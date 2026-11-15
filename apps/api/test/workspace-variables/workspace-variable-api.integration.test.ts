@@ -6,7 +6,7 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { resourceFailure } from '../../src/problems/context/normalize-context-errors.js';
-import { WorkspaceVariablesService } from '../../src/workspace-variables/workspace-variables.service.js';
+import { readUsagePage } from '../../src/workspace-variables/read-usage-page.js';
 import { assertIntegrationGateConfigured } from '../support/integration-gate.js';
 import { problemResult } from '../support/problem.js';
 
@@ -22,7 +22,6 @@ assertIntegrationGateConfigured({
 describe.runIf(requested)('workspace variables over the real store', () => {
   let admin: Client;
   let store: ReturnType<typeof createWorkspaceVariablesStore>;
-  let service: WorkspaceVariablesService;
 
   beforeAll(async () => {
     const adminDatabase = new URL(adminUrl ?? '');
@@ -32,7 +31,6 @@ describe.runIf(requested)('workspace variables over the real store', () => {
     store = createWorkspaceVariablesStore(
       parseDatabaseConfig({ connectionString: databaseUrl ?? '', max: 2 }),
     );
-    service = new WorkspaceVariablesService(store);
   });
   afterAll(async () => {
     await store.close();
@@ -111,7 +109,11 @@ describe.runIf(requested)('workspace variables over the real store', () => {
   }
 
   async function continuation(scope: Awaited<ReturnType<typeof workspace>>) {
-    const page = await service.usage({ ...scope, name: 'RATE', limit: 25 });
+    const page = await readUsagePage(store, {
+      ...scope,
+      name: 'RATE',
+      limit: 25,
+    });
     expect(page.items).toEqual([]);
     if (page.nextCursor === null) throw new Error('Expected a continuation');
     return page.nextCursor;
@@ -123,7 +125,7 @@ describe.runIf(requested)('workspace variables over the real store', () => {
   ) =>
     problemResult(
       Promise.resolve().then(() =>
-        service.usage({ ...scope, name: 'RATE', limit: 25, after }),
+        readUsagePage(store, { ...scope, name: 'RATE', limit: 25, after }),
       ),
       resourceFailure,
     );
@@ -157,7 +159,7 @@ describe.runIf(requested)('workspace variables over the real store', () => {
     const outsider = { ...scope, actorId: await user() };
     const actions: readonly (() => Promise<unknown>)[] = [
       () => store.read(outsider),
-      () => service.usage({ ...outsider, name: 'RATE', limit: 25 }),
+      () => readUsagePage(store, { ...outsider, name: 'RATE', limit: 25 }),
       () =>
         store.replace({
           ...outsider,
@@ -176,7 +178,7 @@ describe.runIf(requested)('workspace variables over the real store', () => {
     const scope = await workspace();
     const workflowId = await workflowOverOnePage(scope);
     const after = await continuation(scope);
-    const page = await service.usage({
+    const page = await readUsagePage(store, {
       ...scope,
       name: 'RATE',
       limit: 25,
@@ -214,7 +216,7 @@ describe.runIf(requested)('workspace variables over the real store', () => {
     it('resumes inside a workflow, above offset 0', async () => {
       const scope = await workspace();
       const workflowId = await workflowOverOnePage(scope);
-      const page = await service.usage({
+      const page = await readUsagePage(store, {
         ...scope,
         name: 'RATE',
         limit: 25,
@@ -234,7 +236,7 @@ describe.runIf(requested)('workspace variables over the real store', () => {
       ].sort();
       if (first === undefined || second === undefined)
         throw new Error('Workflows missing');
-      const page = await service.usage({
+      const page = await readUsagePage(store, {
         ...scope,
         name: 'RATE',
         limit: 25,
@@ -242,7 +244,7 @@ describe.runIf(requested)('workspace variables over the real store', () => {
       });
       expect(page.items).toEqual([]);
       if (page.nextCursor === null) throw new Error('Expected a continuation');
-      const next = await service.usage({
+      const next = await readUsagePage(store, {
         ...scope,
         name: 'RATE',
         limit: 25,

@@ -13,6 +13,7 @@ import { SESSION_AUTHORITY } from '../tokens.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize-context-errors.js';
+import { Caller, type WorkspaceCaller } from '../request/caller.js';
 
 /**
  * ADR 047 membership lifecycle: leave a workspace, suspend or reactivate a
@@ -30,35 +31,36 @@ export class WorkspaceMembershipController {
 
   @Route(routes.leave)
   public async leave(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.leave>,
   ) {
-    return this.lifecycle.leave(memberCommand(request, input));
+    return this.lifecycle.leave(memberCommand(caller, input));
   }
 
   @Route(routes.suspend)
   public async suspend(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.suspend>,
   ) {
-    return this.lifecycle.suspend(memberCommand(request, input));
+    return this.lifecycle.suspend(memberCommand(caller, input));
   }
 
   @Route(routes.reactivateMember)
   public async reactivate(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.reactivateMember>,
   ) {
-    return this.lifecycle.reactivate(memberCommand(request, input));
+    return this.lifecycle.reactivate(memberCommand(caller, input));
   }
 
   /** Owner only, from a sign-in in the last five minutes. */
   @Route(routes.transferOwnership)
   public async transferOwnership(
     @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.transferOwnership>,
   ) {
-    const command = memberCommand(request, input);
+    const command = memberCommand(caller, input);
     const evidence = await requireSignInEvidence(request, this.sessions);
     return this.lifecycle.transferOwnership({
       ...command,

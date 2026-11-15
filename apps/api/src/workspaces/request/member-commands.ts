@@ -1,6 +1,5 @@
 import type { WorkspaceMemberCommandInput } from '../members/role.js';
-import { projectAuthenticatedWorkspaceContext } from './authenticated-context.js';
-import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
+import type { WorkspaceCaller } from './caller.js';
 
 type MemberRouteInput<Request> = Readonly<{
   params: Readonly<{ workspaceId: string; userId?: string }>;
@@ -13,13 +12,9 @@ type MemberRouteInput<Request> = Readonly<{
  * member in the path, the actor is the target, as when leaving.
  */
 export function memberCommand<Request>(
-  request: IdentityWorkspaceRequest,
+  { actor }: WorkspaceCaller,
   { params, body, idempotencyKey }: MemberRouteInput<Request>,
 ): WorkspaceMemberCommandInput<Request> {
-  const { actor } = projectAuthenticatedWorkspaceContext(
-    request,
-    params.workspaceId,
-  );
   return {
     actor,
     routeWorkspaceId: params.workspaceId,

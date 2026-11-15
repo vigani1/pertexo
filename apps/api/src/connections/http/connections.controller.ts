@@ -4,7 +4,6 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import {
@@ -19,6 +18,11 @@ import { TestConnectionService } from '../testing/test-connection.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(connectionFailure))
 @Controller()
@@ -37,11 +41,11 @@ export class ConnectionsController {
 
   @Route(routes.list)
   public list(
-    @Req() request: ConnectionRequest,
-    @In() { params, query }: RouteInput<typeof routes.list>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.list>,
   ) {
     return this.listConnections.execute({
-      ...context(request, params),
+      ...serviceCaller(caller),
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined ? {} : { after: query.after }),
     });
@@ -49,11 +53,11 @@ export class ConnectionsController {
 
   @Route(routes.get)
   public read(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.get>,
   ) {
     return this.getConnection.execute({
-      ...context(request, params),
+      ...serviceCaller(caller),
       connectionId: params.connectionId,
     });
   }
@@ -61,11 +65,12 @@ export class ConnectionsController {
   @Route(routes.create)
   public create(
     @Req() request: ConnectionRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.createConnection.execute({
-        ...context(request, params),
+        ...serviceCaller(caller),
         request: body,
         idempotencyKey,
         signal,
@@ -76,12 +81,13 @@ export class ConnectionsController {
   @Route(routes.rotateSecret)
   public rotate(
     @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.rotateSecret>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.rotateSecret.execute({
-        ...context(request, params),
+        ...serviceCaller(caller),
         connectionId: params.connectionId,
         request: body,
         idempotencyKey,
@@ -92,11 +98,11 @@ export class ConnectionsController {
 
   @Route(routes.revoke)
   public revoke(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.revoke>,
   ) {
     return this.revokeConnection.execute({
-      ...context(request, params),
+      ...serviceCaller(caller),
       connectionId: params.connectionId,
     });
   }
@@ -105,11 +111,12 @@ export class ConnectionsController {
   @Route(routes.slackChannels)
   public slackChannels(
     @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.slackChannels>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.lookupSlackChannels.execute({
-        ...context(request, params),
+        ...serviceCaller(caller),
         connectionId: params.connectionId,
         channelIds: query.channelIds,
         signal,
@@ -120,11 +127,12 @@ export class ConnectionsController {
   @Route(routes.test)
   public test(
     @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.test>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.testConnection.execute({
-        ...context(request, params),
+        ...serviceCaller(caller),
         connectionId: params.connectionId,
         request: body,
         idempotencyKey,
@@ -132,15 +140,4 @@ export class ConnectionsController {
       }),
     );
   }
-}
-
-/** Who is asking, in which workspace: what every connection service starts from. */
-export function context(
-  request: ConnectionRequest,
-  { workspaceId }: Readonly<{ workspaceId: string }>,
-) {
-  return {
-    ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-    routeWorkspaceId: workspaceId,
-  };
 }

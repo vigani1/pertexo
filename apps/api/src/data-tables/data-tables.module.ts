@@ -2,7 +2,7 @@ import { Module, type DynamicModule } from '@nestjs/common';
 import type { DataTablesStore } from '@pertexo/core/data-tables';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { DataTablesController } from './data-tables.controller.js';
-import { DataTablesService } from './data-tables.service.js';
+import { DATA_TABLES_STORE } from './data-tables.tokens.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 @Module({})
 // Nest dynamic modules require a class container.
@@ -19,7 +19,7 @@ export class DataTablesModule {
       imports: [identityModule, admissionModule],
       controllers: [DataTablesController],
       providers: [
-        { provide: DataTablesService, useValue: new DataTablesService(store) },
+        { provide: DATA_TABLES_STORE, useValue: store },
         { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };

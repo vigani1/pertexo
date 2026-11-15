@@ -22,13 +22,16 @@ import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { RateLimit } from '../../platform/rate-limit/metadata.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
 import { In, Route } from '../../platform/http/route.js';
-import { context } from '../http/connections.controller.js';
-import type { ConnectionRequest } from '../connection-request.js';
 import {
   FinishOAuth2AuthorizationService,
   logOAuth2CallbackFailure,
 } from './finish-authorization.js';
 import { StartOAuth2AuthorizationService } from './start-authorization.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 type OAuth2Reply = Readonly<{
   header(name: string, value: string): unknown;
@@ -72,12 +75,12 @@ export class ConnectionOAuth2Controller {
 
   @Route(routes.startOAuth2)
   public async startAuthorization(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.startOAuth2>,
     @Res({ passthrough: true }) reply: OAuth2Reply,
   ) {
     const started = await this.start.execute({
-      ...context(request, params),
+      ...serviceCaller(caller),
       connectionId: params.connectionId,
     });
     if (started.setCookie !== undefined)

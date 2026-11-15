@@ -5,7 +5,6 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { In, Route } from '../platform/http/route.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
@@ -13,6 +12,11 @@ import { GetPreviewRunService } from './previews/read.js';
 import { TestWorkflowNodeService } from './node-testing.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../workspaces/request/caller.js';
 
 interface StatusResponse {
   status(code: number): unknown;
@@ -28,13 +32,10 @@ export class NodeTestingController {
 
   @Route(routes.preview)
   public async status(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.preview>,
   ) {
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      params.workspaceId,
-    );
+    const context = serviceCaller(caller);
     return this.getPreview.execute({
       actor: context.actor,
       routeWorkspaceId: params.workspaceId,
@@ -49,6 +50,7 @@ export class NodeTestingController {
   @Route(routes.test)
   public async test(
     @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body }: RouteInput<typeof routes.test>,
     @Res({ passthrough: true }) response: StatusResponse,
   ) {
@@ -57,8 +59,7 @@ export class NodeTestingController {
       ? requestIdempotencyKey(request.headers)
       : undefined;
     const result = await this.testNode.execute({
-      ...projectAuthenticatedWorkspaceContext(request, params.workspaceId),
-      routeWorkspaceId: params.workspaceId,
+      ...serviceCaller(caller),
       workflowId: params.workflowId,
       nodeId: params.nodeId,
       request: body,

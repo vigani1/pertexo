@@ -5,14 +5,19 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../platform/http/route.js';
-import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';
-import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
+import type { WorkflowRunsRequest } from '../http/request-context.js';
 import {
   GetRunRecoveryService,
   RecoverRunService,
 } from './run-recovery.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { runFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  requestIdentifiers,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(runFailure))
 @Controller()
@@ -24,11 +29,11 @@ export class RunRecoveryController {
 
   @Route(routes.recovery)
   public get(
-    @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.recovery>,
   ) {
     return this.preview.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
     });
   }
@@ -36,10 +41,11 @@ export class RunRecoveryController {
   @Route(routes.recover)
   public start(
     @Req() request: WorkflowRunsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.recover>,
   ) {
     return this.recover.execute({
-      ...caller(request, params),
+      ...serviceCaller(caller),
       runId: params.runId,
       workflowVersionId: body.workflowVersionId,
       nodeRunId: body.nodeRunId,
@@ -51,7 +57,7 @@ export class RunRecoveryController {
         ? {}
         : { acknowledgeUnknownOutcome: body.acknowledgeUnknownOutcome }),
       idempotencyKey,
-      ...authenticatedRequestIdentifiers(request),
+      ...requestIdentifiers(caller),
       ...traceparent(request),
     });
   }
