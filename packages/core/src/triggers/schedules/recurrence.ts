@@ -46,6 +46,12 @@ export type PersistedScheduleRecurrenceRow = Readonly<{
 // margin over those 180 possible raw slots, while ensuring a broken parser
 // cannot monopolize the worker's synchronous event loop.
 const MAX_CRON_CURSOR_STEPS = 256;
+/** The longest clock change a repeated local time can come from. */
+const OVERLAP_WINDOW_MILLIS = 3 * 60 * 60_000;
+/** How far back a skipped local time looks for the offset change. */
+const GAP_WINDOW_MILLIS = 24 * 60 * 60_000;
+/** Cron resolution works at minute precision. */
+const MINUTE_MILLIS = 60_000;
 
 function invalidSchedule(error?: unknown): never {
   throw new TypeError('Invalid schedule recurrence', { cause: error });
@@ -188,9 +194,9 @@ function resolveCronOccurrence(
   if (matchesLocalExpression(recurrence, occurrence)) {
     const localIdentity = localParts(occurrence, recurrence.timezone).join(':');
     for (
-      let cursor = occurrence.getTime() - 3 * 60 * 60_000;
+      let cursor = occurrence.getTime() - OVERLAP_WINDOW_MILLIS;
       cursor < occurrence.getTime();
-      cursor += 60_000
+      cursor += MINUTE_MILLIS
     ) {
       const candidate = new Date(cursor);
       if (
@@ -202,9 +208,13 @@ function resolveCronOccurrence(
   }
 
   const currentOffset = offsetAt(occurrence, recurrence.timezone);
-  let cursor = occurrence.getTime() - 24 * 60 * 60_000;
+  let cursor = occurrence.getTime() - GAP_WINDOW_MILLIS;
   let priorOffset = offsetAt(new Date(cursor), recurrence.timezone);
-  for (cursor += 60_000; cursor <= occurrence.getTime(); cursor += 60_000) {
+  for (
+    cursor += MINUTE_MILLIS;
+    cursor <= occurrence.getTime();
+    cursor += MINUTE_MILLIS
+  ) {
     const offset = offsetAt(new Date(cursor), recurrence.timezone);
     if (offset !== priorOffset && offset === currentOffset)
       return new Date(cursor);
@@ -306,7 +316,7 @@ export function resolveScheduleObservation(
     throw new TypeError('Schedule dates must be valid');
 
   if (recurrence.kind === 'interval') {
-    const duration = recurrence.intervalMinutes * 60_000;
+    const duration = recurrence.intervalMinutes * MINUTE_MILLIS;
     const elapsed = observedAt.getTime() - anchorAt.getTime();
     const dueCount = Math.floor(elapsed / duration);
     const greatestDueAt =

@@ -6,6 +6,9 @@ import { createHash } from 'node:crypto';
 import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { z } from 'zod';
 
+/** The widest node id a trigger row stores (`node_id varchar(128)`). */
+const NODE_ID_MAX_CHARACTERS = 128;
+
 function triggerKind(
   identity: string,
 ): WorkflowTriggerProjection['kind'] | null {
@@ -19,7 +22,7 @@ const graphSchema = z
     nodes: z.array(
       z
         .object({
-          id: z.string().min(1).max(128),
+          id: z.string().min(1).max(NODE_ID_MAX_CHARACTERS),
           definition: z.looseObject({
             key: z.string(),
             version: z.number().int(),

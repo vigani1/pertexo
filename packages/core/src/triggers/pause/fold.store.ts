@@ -9,6 +9,8 @@ import {
 } from '@pertexo/database/platform';
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
+/** The most outcomes one fold takes. */
+const FOLD_LIMIT_MAX = 1_000;
 export type WorkflowTriggerPauseFoldStore = ReturnType<
   typeof createWorkflowTriggerPauseFoldStore
 >;
@@ -30,9 +32,9 @@ export function createWorkflowTriggerPauseFoldStore(
     },
     /** Folds up to `limit` outcomes into streaks, pausing workflows that reach their threshold. */
     foldPending: (limit: number, signal?: AbortSignal) => {
-      if (!Number.isInteger(limit) || limit < 1 || limit > 1_000)
+      if (!Number.isInteger(limit) || limit < 1 || limit > FOLD_LIMIT_MAX)
         throw new RangeError(
-          'Trigger outcome fold limit must be between 1 and 1000',
+          `Trigger outcome fold limit must be between 1 and ${String(FOLD_LIMIT_MAX)}`,
         );
       return withPlatformTransaction(
         pool,

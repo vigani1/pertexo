@@ -1,3 +1,6 @@
+/** When a sender should try a delivery refused for a full workspace again. */
+const INTAKE_BUSY_RETRY_SECONDS = 5;
+
 export class WebhookTriggerNotFoundError extends Error {
   public override readonly name = 'WebhookTriggerNotFoundError';
 }
@@ -29,7 +32,7 @@ export class WebhookWorkflowPausedError extends Error {
 /** The workspace stayed full for this delivery's whole wait, so nothing started. */
 export class WebhookIntakeBusyError extends Error {
   public override readonly name = 'WebhookIntakeBusyError';
-  public readonly retryAfterSeconds = 5;
+  public readonly retryAfterSeconds = INTAKE_BUSY_RETRY_SECONDS;
 
   public constructor() {
     super('webhook.intake_busy');

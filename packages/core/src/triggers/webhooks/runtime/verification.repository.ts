@@ -21,6 +21,9 @@ import type {
   WebhookVerificationReference,
 } from './webhook-runtime.types.js';
 
+/** The window an endpoint's burst limit counts requests in. */
+const INGRESS_WINDOW_MILLIS = 60_000;
+
 export async function resolveWebhookVerification(
   pool: Pool,
   endpointKeyHash: string,
@@ -112,11 +115,17 @@ export async function consumeWebhookIngressLimit(
     if (counter === undefined) return 1;
     const remainingMillis =
       Date.parse(counter.bucket_started_at) +
-      60_000 -
+      INGRESS_WINDOW_MILLIS -
       Date.parse(counter.observed_at);
     const reset = counter.created || remainingMillis <= 0;
     if (!reset && counter.request_count >= burstLimit)
-      return Math.max(1, Math.min(60, Math.ceil(remainingMillis / 1_000)));
+      return Math.max(
+        1,
+        Math.min(
+          INGRESS_WINDOW_MILLIS / 1_000,
+          Math.ceil(remainingMillis / 1_000),
+        ),
+      );
     const window = reset ? counter.observed_at : counter.bucket_started_at;
     const changed = await db
       .execute<{ stored: boolean }>(

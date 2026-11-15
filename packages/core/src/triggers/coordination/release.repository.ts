@@ -35,6 +35,15 @@ import {
   lockEventCoordination,
 } from './keys.repository.js';
 
+/**
+ * When a held event is tried again: after a full workspace's retry hint, at
+ * most five seconds, or a minute after a failed release.
+ */
+const RELEASE_RETRY = Object.freeze({
+  capacityMaxSeconds: 5,
+  failedMillis: 60_000,
+});
+
 export async function releaseCoordinatedEvent(
   transaction: WorkspaceTransaction,
   id: string,
@@ -239,7 +248,12 @@ async function startPendingCoordinatedRun(
         reason: 'queue_full',
         dueAt: new Date(
           Math.min(
-            now.getTime() + Math.min(5, error.retryAfterSeconds) * 1_000,
+            now.getTime() +
+              Math.min(
+                RELEASE_RETRY.capacityMaxSeconds,
+                error.retryAfterSeconds,
+              ) *
+                1_000,
             event.deadline_at.getTime(),
             waitStartedAt.getTime() +
               EVENT_COORDINATION_LIMITS.capacityWaitMillis,
@@ -281,7 +295,10 @@ export async function restFailedCoordinatedEvent(
     .update(events)
     .set({
       dueAt: new Date(
-        Math.min(now.getTime() + 60_000, locked.event.deadline_at.getTime()),
+        Math.min(
+          now.getTime() + RELEASE_RETRY.failedMillis,
+          locked.event.deadline_at.getTime(),
+        ),
       ),
       reason: 'release_failed',
     })

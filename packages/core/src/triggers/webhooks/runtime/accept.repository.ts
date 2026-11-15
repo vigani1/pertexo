@@ -50,6 +50,10 @@ import {
   readTriggerConfig,
 } from './webhook-state.repository.js';
 import type { WorkspaceTurns } from './workspace-turns.js';
+import { HOUR_INTERVAL } from '../../../shared/sql-intervals.repository.js';
+
+/** How long a delivery's dedupe key refuses a replay. */
+const DELIVERY_REPLAY_HOURS = 24;
 
 export async function acceptVerifiedWebhookDelivery(
   pool: Pool,
@@ -227,7 +231,7 @@ async function acceptNewWebhookDelivery(
       dedupeKeyHash: replayIdentity.dedupeKeyHash,
       requestFingerprint,
       deliveryId,
-      expiresAt: sql`clock_timestamp()+interval '24 hours'`,
+      expiresAt: sql`clock_timestamp()+${DELIVERY_REPLAY_HOURS}*${HOUR_INTERVAL}`,
     });
   const projection = await executableProjection(
     transaction,
