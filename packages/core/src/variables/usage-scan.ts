@@ -1,5 +1,8 @@
 import { decodeStoredValue } from '../shared/stored-values.js';
-import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import {
+  parseWorkflowGraphDraft,
+  WORKSPACE_VARIABLE_LIMITS,
+} from '@pertexo/workflow-model';
 import {
   inspectWorkflowVariableSource,
   workflowVariableSources,
@@ -15,8 +18,6 @@ import { WorkspaceVariableUsageChangedError } from './workspace-variables.errors
 
 const MAX_SOURCES_PER_PAGE = 100;
 const MAX_SOURCE_BYTES_PER_PAGE = 65_536;
-// The usage response's bound on a workflow name (contracts' workflowName).
-const USAGE_WORKFLOW_NAME_CHARACTERS = 160;
 
 /** What this page has used so far, across its workflows. */
 export interface UsageSpending {
@@ -112,7 +113,10 @@ function usageItem(
       ordinal,
     ]),
     workflowId: workflow.id,
-    workflowName: workflow.name.slice(0, USAGE_WORKFLOW_NAME_CHARACTERS),
+    workflowName: workflow.name.slice(
+      0,
+      WORKSPACE_VARIABLE_LIMITS.usageWorkflowNameCharacters,
+    ),
     archived: workflow.lifecycleStatus === 'archived',
     stage,
     nodeId: reference.nodeId,
