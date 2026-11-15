@@ -291,12 +291,19 @@ export {
 // Values
 export { EMAIL_ADDRESS_LIMITS } from './values/email-address.js';
 export {
-  JSON_LITERAL_BYTES,
   measureBoundedJson,
+  snapshotBoundedJson,
+  type BoundedJsonPath,
   type BoundedJsonSize,
+  type BoundedJsonSnapshot,
+  type BoundedJsonSnapshotOptions,
+} from './values/json/bounded-json-size.js';
+export {
+  JSON_LITERAL_BYTES,
   type BoundedJsonSizeBounds,
   type BoundedJsonSizeRefusal,
-} from './values/json/bounded-json-size.js';
+  type BoundedJsonSnapshotRefusal,
+} from './values/json/bounded-json-walk.js';
 export { STORED_INTEGER_MAX } from './values/stored-integer.js';
 export { STORED_TIMESTAMP_FRACTION_DIGITS } from './values/stored-timestamp.js';
 export { UUID_PATTERN } from './values/identifiers.js';

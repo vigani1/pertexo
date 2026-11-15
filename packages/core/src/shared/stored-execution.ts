@@ -1,9 +1,12 @@
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
-  storedExecutionJsonStringBytes as jsonStringBytes,
 } from '@pertexo/node-sdk';
-import { UUID_PATTERN, utf8ByteLength } from '@pertexo/workflow-model';
+import {
+  snapshotBoundedJson,
+  UUID_PATTERN,
+  utf8ByteLength,
+} from '@pertexo/workflow-model';
 import { types as nodeTypes } from 'node:util';
 import type {
   StoredExecutionJsonValue,
@@ -51,175 +54,21 @@ function ownDataRecord(
   return fields;
 }
 
-type CloneFrame =
-  | Readonly<{
-      kind: 'value';
-      value: unknown;
-      containerDepth: number;
-      parent:
-        StoredExecutionJsonValue[] | Record<string, StoredExecutionJsonValue>;
-      key: string | number;
-    }>
-  | Readonly<{
-      kind: 'exit';
-      source: object;
-      result:
-        StoredExecutionJsonValue[] | Record<string, StoredExecutionJsonValue>;
-    }>;
-
-function assignValue(
-  parent: StoredExecutionJsonValue[] | Record<string, StoredExecutionJsonValue>,
-  key: string | number,
-  value: StoredExecutionJsonValue,
-): void {
-  Object.defineProperty(parent, key, {
-    configurable: true,
-    enumerable: true,
-    value,
-    writable: true,
-  });
-}
-
+// Stored inline values cost what the engine's guards charge them, and hold
+// only text jsonb can store; the copy has no prototypes, so a stored key never
+// meets an inherited member.
 function cloneInlineJson(value: unknown): StoredExecutionJsonValue {
-  const root: Record<string, StoredExecutionJsonValue> = Object.create(
-    null,
-  ) as Record<string, StoredExecutionJsonValue>;
-  const active = new Set<object>();
-  const pending: CloneFrame[] = [
-    { kind: 'value', value, containerDepth: 1, parent: root, key: 'value' },
-  ];
-  const budget = { members: 0 };
-  let bytes = 0;
-  const addBytes = (amount: number): void => {
-    bytes += amount;
-    if (bytes > STORED_EXECUTION_VALUE_LIMITS.inlineBytes) invalid();
-  };
-
-  while (pending.length !== 0) {
-    const frame = pending.pop();
-    if (frame === undefined) invalid();
-    if (frame.kind === 'exit') {
-      active.delete(frame.source);
-      Object.freeze(frame.result);
-      continue;
-    }
-
-    const item = frame.value;
-    if (item === null) {
-      addBytes(4);
-      assignValue(frame.parent, frame.key, item);
-      continue;
-    }
-    if (typeof item === 'boolean') {
-      addBytes(item ? 4 : 5);
-      assignValue(frame.parent, frame.key, item);
-      continue;
-    }
-    if (typeof item === 'string') {
-      addBytes(jsonStringBytes(item));
-      assignValue(frame.parent, frame.key, item);
-      continue;
-    }
-    if (typeof item === 'number') {
-      if (!Number.isFinite(item)) invalid();
-      const normalizedNumber = Object.is(item, -0) ? 0 : item;
-      addBytes(String(normalizedNumber).length);
-      assignValue(frame.parent, frame.key, normalizedNumber);
-      continue;
-    }
-    if (typeof item !== 'object' || nodeTypes.isProxy(item)) invalid();
-    if (frame.containerDepth > STORED_EXECUTION_VALUE_LIMITS.depth) invalid();
-    if (active.has(item)) invalid();
-
-    const { isArray, children } = readInlineChildren(item, {
-      budget,
-      addBytes,
-    });
-    const result:
-      StoredExecutionJsonValue[] | Record<string, StoredExecutionJsonValue> =
-      isArray
-        ? []
-        : (Object.create(null) as Record<string, StoredExecutionJsonValue>);
-    assignValue(frame.parent, frame.key, result);
-    active.add(item);
-    pending.push({ kind: 'exit', source: item, result });
-    for (let index = children.length - 1; index >= 0; index -= 1) {
-      const child = children[index];
-      if (child === undefined) invalid();
-      pending.push({
-        kind: 'value',
-        value: child.value,
-        containerDepth: frame.containerDepth + 1,
-        parent: result,
-        key: child.key,
-      });
-    }
-  }
-
-  const normalized = root.value;
-  if (normalized === undefined) invalid();
-  return normalized;
-}
-
-function readInlineChildren(
-  item: object,
-  {
-    budget,
-    addBytes,
-  }: Readonly<{
-    budget: { members: number };
-    addBytes: (amount: number) => void;
-  }>,
-) {
-  const isArray = Array.isArray(item);
-  const prototype = Object.getPrototypeOf(item) as unknown;
-  const invalidPrototype =
-    !isArray && prototype !== Object.prototype && prototype !== null;
-  if (invalidPrototype) invalid();
-  if (isArray && item.length > STORED_EXECUTION_VALUE_LIMITS.members) invalid();
-  const children: { key: string | number; value: unknown }[] = [];
-  let enumerableCount = 0;
-  for (const key in item) {
-    if (!Object.hasOwn(item, key)) invalid();
-    const descriptor = Object.getOwnPropertyDescriptor(item, key);
-    const invalidDescriptor =
-      descriptor === undefined ||
-      !descriptor.enumerable ||
-      !('value' in descriptor);
-    if (invalidDescriptor) invalid();
-    budget.members += 1;
-    if (budget.members > STORED_EXECUTION_VALUE_LIMITS.members) invalid();
-    if (isArray && key !== String(enumerableCount)) invalid();
-    if (!isArray) addBytes(jsonStringBytes(key) + 1);
-    children.push({
-      key: isArray ? enumerableCount : key,
-      value: descriptor.value,
-    });
-    enumerableCount += 1;
-  }
-  const ownNames = Object.getOwnPropertyNames(item);
-  assertInlineOwnProperties(item, { enumerableCount, ownNames });
-  addBytes(2 + Math.max(0, enumerableCount - 1));
-
-  return { isArray, children };
-}
-
-function assertInlineOwnProperties(
-  item: object,
-  {
-    enumerableCount,
-    ownNames,
-  }: Readonly<{ enumerableCount: number; ownNames: readonly string[] }>,
-): void {
-  const isArray = Array.isArray(item);
-  const invalidOwnProperties =
-    Object.getOwnPropertySymbols(item).length !== 0 ||
-    (isArray &&
-      (enumerableCount !== item.length ||
-        ownNames.length !== item.length + 1 ||
-        !ownNames.includes('length'))) ||
-    (!isArray && ownNames.length !== enumerableCount);
-  if (invalidOwnProperties) invalid();
+  const cloned = snapshotBoundedJson(
+    value,
+    {
+      bytes: STORED_EXECUTION_VALUE_LIMITS.inlineBytes,
+      depth: STORED_EXECUTION_VALUE_LIMITS.depth,
+      members: STORED_EXECUTION_VALUE_LIMITS.members,
+    },
+    { jsonbText: true, nullPrototype: true, refuseObject: nodeTypes.isProxy },
+  );
+  if (!cloned.ok) invalid();
+  return cloned.snapshot as StoredExecutionJsonValue;
 }
 
 /**
