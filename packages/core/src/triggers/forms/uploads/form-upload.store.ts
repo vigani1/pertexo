@@ -20,16 +20,16 @@ import {
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
 import { artifacts, formUploads } from '@pertexo/database/schema';
-import { discoverPublicForm } from '../../triggers/forms/discover.repository.js';
-import { FormChangedError } from '../../triggers/forms/form.errors.js';
-import { ArtifactUploadNotFoundError } from '../uploads/artifact-upload.errors.js';
+import { discoverPublicForm } from '../discover.repository.js';
+import { FormChangedError } from '../form.errors.js';
+import { ArtifactUploadNotFoundError } from '../../../artifacts/uploads/artifact-upload.errors.js';
 import {
   completeArtifactUpload,
   reserveArtifactUpload,
-} from '../uploads/reservation.repository.js';
-import { FormUploadLimitError } from './form-upload.errors.js';
-import { assertUnsentPublicRoom } from './unsent.repository.js';
-import { FORM_UPLOAD_PURPOSE } from '../artifact.js';
+} from '../../../artifacts/uploads/reservation.repository.js';
+import { FormUploadLimitError } from '../../../artifacts/form-uploads/form-upload.errors.js';
+import { assertUnsentPublicRoom } from '../../../artifacts/form-uploads/unsent.repository.js';
+import { FORM_UPLOAD_PURPOSE } from '../../../artifacts/artifact.js';
 import type {
   BeginFormUploadInput,
   DiscoverFormInput,
@@ -42,11 +42,11 @@ import {
   loadUploadTarget,
   uploadTargetScope,
   type LoadedUploadTarget,
-} from './targets.repository.js';
+} from './load-target.js';
 import {
   boundUploadsSql,
   formUploadSessionHash,
-} from './bindings.repository.js';
+} from '../../../artifacts/form-uploads/bindings.repository.js';
 
 // Unsent files go after a day, or an hour for a public link.
 const UNSENT_UPLOAD_SECONDS = Object.freeze({

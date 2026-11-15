@@ -1,6 +1,6 @@
-import type { PublicFormGrant } from '../../triggers/forms/form-admission.types.js';
-import type { ArtifactRecord } from '../artifact.js';
-import type { ArtifactMetadataIdentity } from '../metadata.js';
+import type { PublicFormGrant } from '../form-admission.types.js';
+import type { ArtifactRecord } from '../../../artifacts/artifact.js';
+import type { ArtifactMetadataIdentity } from '../../../artifacts/metadata.js';
 
 /** Where a responder uploads: a published form (by link or as a member) or an input request. */
 export type FormUploadTarget =

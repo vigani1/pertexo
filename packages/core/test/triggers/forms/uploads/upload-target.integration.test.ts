@@ -2,11 +2,16 @@ import { expect, it } from 'vitest';
 import { inputRequestConfigSchema } from '@pertexo/workflow-model';
 import { rolesForCapability } from '@pertexo/policy';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { lockWorkspaceAuthority } from '../../../src/shared/authority.repository.js';
-import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
-import { readTaskUploadTarget } from '../../../src/runs/pending-tasks/responses/pending-task-records.repository.js';
-import { loadUploadTarget } from '../../../src/artifacts/form-uploads/targets.repository.js';
-import { admin, pool, taskFixture, userId } from './pending-tasks.fixture.js';
+import { lockWorkspaceAuthority } from '../../../../src/shared/authority.repository.js';
+import { readFolderScope } from '../../../../src/shared/folder-access-facts.repository.js';
+import { readTaskUploadTarget } from '../../../../src/runs/pending-tasks/responses/pending-task-records.repository.js';
+import { loadUploadTarget } from '../../../../src/triggers/forms/uploads/load-target.js';
+import {
+  admin,
+  pool,
+  taskFixture,
+  userId,
+} from '../../../runs/pending-tasks/pending-tasks.fixture.js';
 
 it('reads bounded upload eligibility without retained task details and keeps its captured audience', async () => {
   const f = await taskFixture({ named: true });

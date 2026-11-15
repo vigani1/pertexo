@@ -1,11 +1,11 @@
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
 import { createArtifactStore } from '@pertexo/artifact-store/server';
+import { createArtifactUploadStore } from '@pertexo/core/artifacts';
 import {
-  createArtifactUploadStore,
   createFormUploadStore,
   type FormUploadStore,
-} from '@pertexo/core/artifacts';
+} from '@pertexo/core/triggers';
 import type {
   DatabaseConfig,
   DatabaseRuntime,
