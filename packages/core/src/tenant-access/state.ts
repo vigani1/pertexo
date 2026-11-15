@@ -11,6 +11,3 @@ export const WORKSPACE_STATUS = {
   purging: 'purging',
   deleted: 'deleted',
 } as const;
-
-/** A page when the caller doesn't name its size. */
-export const DEFAULT_PAGE_LIMIT = 50;

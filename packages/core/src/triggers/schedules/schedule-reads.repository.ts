@@ -1,3 +1,4 @@
+import { TRIGGER_HISTORY_PAGE_LIMIT } from '../../shared/page-limits.js';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import {
   scheduleCanFire,
@@ -39,7 +40,6 @@ import { readDatabaseClock } from '../../shared/database-clock.repository.js';
  * the metadata the scanner already records; fire times are projected by the
  * scheduler's own recurrence engine from database time. Nothing here writes.
  */
-const DEFAULT_PAGE_LIMIT = 25;
 const utcInstant = (column: SQLWrapper) =>
   sql<string>`to_char(${column} at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 
@@ -191,7 +191,7 @@ function projectPersistedSchedule(
 export function createScheduleTriggerReads(pool: Pool) {
   return Object.freeze({
     listOccurrences: (input: ListScheduleOccurrencesInput) => {
-      const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
+      const limit = input.limit ?? TRIGGER_HISTORY_PAGE_LIMIT;
       return withScheduleReader(pool, input, async (client) => {
         const trigger = await drizzle(client)
           .select({ one: sql`1` })

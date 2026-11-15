@@ -30,7 +30,7 @@ import type {
   WorkspaceMembersPage,
 } from '../tenant-access.types.js';
 import { withWorkspaceAccess } from '../../shared/workspace-access.js';
-import { DEFAULT_PAGE_LIMIT } from '../state.js';
+import { DEFAULT_PAGE_LIMIT } from '../../shared/page-limits.js';
 
 /** Spans the actor's workspaces, so no one workspace's authority can decide it. */
 async function listAccessibleWorkspaces(

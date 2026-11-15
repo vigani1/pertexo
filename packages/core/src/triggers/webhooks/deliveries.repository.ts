@@ -1,3 +1,4 @@
+import { TRIGGER_HISTORY_PAGE_LIMIT } from '../../shared/page-limits.js';
 import type { CoordinatedEvent } from '@pertexo/contracts';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { and, desc, eq, sql } from 'drizzle-orm';
@@ -31,7 +32,6 @@ import { HTTP_STATUS } from './delivery.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { withWorkflowAccess } from '../workflow-access.js';
 import { WebhookTriggerNotFoundError } from './webhook-trigger.errors.js';
-const DEFAULT_PAGE_LIMIT = 25;
 
 /**
  * Owners, admins and builders read trigger state, on a suspended workspace too. The
@@ -167,7 +167,7 @@ export function createWebhookDeliveryLog(pool: Pool) {
       input: ListWebhookDeliveriesInput,
     ): Promise<WebhookDeliveryPage> => {
       const { workspaceId, workflowId, triggerId } = input;
-      const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
+      const limit = input.limit ?? TRIGGER_HISTORY_PAGE_LIMIT;
       const after = input.after;
       return withWebhookReader(pool, input, async (client) => {
         // History follows the endpoint, so a trigger row of any version finds all of it.

@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE_LIMIT } from '../../shared/page-limits.js';
 import { readListSummaries } from '../workflows/reads/list-summary.repository.js';
 import { BROWSABLE_WORKSPACE_STATUSES, type Role } from '@pertexo/policy';
 import {
@@ -37,8 +38,6 @@ import { workflowActions } from '../../shared/resources/workflow-access.reposito
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type { WorkflowRecord } from '../workflows/representation/workflow-record.types.js';
 import { workflowProjection } from '../workflows/representation/workflow-representations.repository.js';
-
-const DEFAULT_PAGE_LIMIT = 50;
 
 type Scope = Readonly<{
   workspaceId: string;
