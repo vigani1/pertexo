@@ -1,6 +1,6 @@
 import { WEBHOOK_RESPONSE_WAIT_SECONDS } from '@pertexo/workflow-model';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
-import { EventCoordinationSetup } from '../event-coordination/setup';
+import { EventCoordinationSetup } from '../event-coordination-setup';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { SchemaField } from '../fields/schema';
 

@@ -15,15 +15,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Notice } from '@/components/ui/notice';
 import { Disclosure } from '@/components/ui/disclosure';
-import { ChoiceSelect } from '../fields/choice-select';
-import { MappingValueEditor } from '../input-mappings/value-editor';
-import { useInspectorDraftField } from '../use-draft-field';
-import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
-import type { NodeFormApi } from '../../../model/inspector/node-form';
+import { ChoiceSelect } from './fields/choice-select';
+import { MappingValueEditor } from './input-mappings/value-editor';
+import { useInspectorDraftField } from './use-draft-field';
+import type { GraphLevel, WorkflowNode } from '../../model/graph/scopes';
+import type { NodeFormApi } from '../../model/inspector/node-form';
 import {
   type InputMappingDraftRow,
   validateInputMappingRows,
-} from '../../../model/inspector/input-mappings/draft';
+} from '../../model/inspector/input-mappings/draft';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 export function EventCoordinationSetup({

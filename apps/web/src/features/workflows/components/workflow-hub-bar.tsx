@@ -7,7 +7,7 @@ import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
-import { WorkflowActivationState } from './header/activation-state';
+import { WorkflowActivationState } from './activation-state';
 import { WorkflowNameWithDialog } from './workflow-name-field';
 import { WorkflowDuplicateAction } from './duplicate/workflow-duplicate-action';
 import { WorkflowExportAction } from './portability/export-action';

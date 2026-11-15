@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { expressionExamples } from '../../../model/inspector/transforms/examples';
+import { expressionExamples } from '../../../model/inspector/transform-examples';
 import { Disclosure } from '@/components/ui/disclosure';
 
 export function ExpressionExamples({

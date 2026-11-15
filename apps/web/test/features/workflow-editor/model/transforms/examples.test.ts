@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterAll, describe, expect, it } from 'vitest';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
-import { expressionExamples } from '@/features/workflow-editor/model/inspector/transforms/examples';
+import { expressionExamples } from '@/features/workflow-editor/model/inspector/transform-examples';
 
 const evaluator = new JsonataEvaluator();
 afterAll(() => evaluator.shutdown());

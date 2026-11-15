@@ -1,1 +1,1 @@
-export { FirstRunGuide } from './components/first-run/first-run-guide';
+export { FirstRunGuide } from './components/first-run-guide';

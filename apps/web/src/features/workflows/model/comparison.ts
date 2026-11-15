@@ -4,7 +4,7 @@ import {
   type NoteChange,
   diffWorkflowGraphs as diffGraphs,
 } from '@/features/workflow-drafts/public';
-import { stepLabel } from '../shape';
+import { stepLabel } from './shape';
 import { canonicalJson } from '@pertexo/workflow-model';
 
 export type VersionStepChange = Readonly<{
