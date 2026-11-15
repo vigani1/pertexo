@@ -28,3 +28,7 @@ export class ArtifactUploadTooLargeError extends Error {
     this.name = 'ArtifactUploadTooLargeError';
   }
 }
+
+export class ArtifactStorageConfigurationError extends TypeError {
+  public override readonly name = 'ArtifactStorageConfigurationError';
+}

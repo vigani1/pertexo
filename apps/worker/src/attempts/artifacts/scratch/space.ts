@@ -16,6 +16,10 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  ScratchSpaceError,
+  ScratchReservationError,
+} from './scratch-space.errors.js';
 
 export const FILE_SCRATCH_ERROR_CODE = Object.freeze({
   full: 'execution.file_scratch_full',
@@ -80,7 +84,9 @@ export class ArtifactScratchSpace {
         !path.isAbsolute(directory) ||
         path.parse(directory).root === directory
       )
-        throw new Error('File scratch requires a dedicated absolute directory');
+        throw new ScratchSpaceError(
+          'File scratch requires a dedicated absolute directory',
+        );
       await mkdir(directory, { recursive: true, mode: 0o700 });
       const entry = await lstat(directory);
       const unsafeScratchDirectory =
@@ -89,12 +95,12 @@ export class ArtifactScratchSpace {
         (entry.mode & 0o777) !== 0o700 ||
         (process.getuid !== undefined && entry.uid !== process.getuid());
       if (unsafeScratchDirectory)
-        throw new Error(
+        throw new ScratchSpaceError(
           'File scratch directory must be private and owned by this worker',
         );
       const filesystem = await statfs(directory);
       if (filesystem.type === 0x01021994 || filesystem.type === 0x858458f6)
-        throw new Error(
+        throw new ScratchSpaceError(
           'File scratch requires disk storage, not a memory filesystem',
         );
       for (const name of await readdir(directory))
@@ -105,7 +111,7 @@ export class ArtifactScratchSpace {
           });
       return new ArtifactScratchSpace(directory, operations);
     } catch {
-      throw new Error(
+      throw new ScratchSpaceError(
         'File scratch requires a private disk-backed directory with removable abandoned spools',
       );
     }
@@ -119,7 +125,7 @@ export class ArtifactScratchSpace {
     if (this.cleanupFailed) throw unavailable('cleanup');
     const attempt = this.attempts.get(attemptId) ?? 0;
     if (!Number.isSafeInteger(bytes) || bytes < 1 || bytes > ATTEMPT_BYTES)
-      throw new TypeError('Invalid file scratch reservation');
+      throw new ScratchReservationError('Invalid file scratch reservation');
     if (attempt + bytes > ATTEMPT_BYTES || this.reserved + bytes > WORKER_BYTES)
       throw unavailable('full');
     this.attempts.set(attemptId, attempt + bytes);

@@ -1,10 +1,13 @@
 import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
+import { CapabilitiesClosedError } from './capability-composition.errors.js';
 
 export function assertCapabilityRuntimeOpen(lifecycle: {
   terminal: boolean;
 }): void {
   if (lifecycle.terminal)
-    throw new Error('Worker node runtime capabilities are closed');
+    throw new CapabilitiesClosedError(
+      'Worker node runtime capabilities are closed',
+    );
 }
 
 export function closeCapabilityResources(

@@ -2,6 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { codeContainerLimits } from '@pertexo/node-sdk';
 
 import type { RunnerConfig } from '../config/runner-config.js';
+import { RunnerIsolationError } from './runner-isolation.errors.js';
 
 /** A hardened manager starts only inside the container fences it relies on. */
 export async function assertRunnerIsolation(
@@ -42,14 +43,18 @@ function assertManagerEnvironment(config: RunnerConfig): void {
     process.getuid?.() !== 0 ||
     process.getgid?.() !== 10001
   )
-    throw new Error('Hardened Code runner requires its Linux manager identity');
+    throw new RunnerIsolationError(
+      'Hardened Code runner requires its Linux manager identity',
+    );
   for (const name of config.inheritedVariableNames)
     if (
       /DATABASE|REDIS|AUTH|CONNECTION|AWS|SMTP|SECRET|TOKEN|ARTIFACT/u.test(
         name,
       )
     )
-      throw new Error('Code runner refuses shared credential environment');
+      throw new RunnerIsolationError(
+        'Code runner refuses shared credential environment',
+      );
 }
 
 function assertManagerPrivileges(status: string): void {
@@ -59,7 +64,7 @@ function assertManagerPrivileges(status: string): void {
     capabilities === undefined ||
     BigInt('0x' + capabilities) !== 224n
   )
-    throw new Error(
+    throw new RunnerIsolationError(
       'Code runner requires no-new-privileges and only SETUID, SETGID, KILL',
     );
 }
@@ -72,12 +77,12 @@ async function assertNetworkIsolation(interfaces: string): Promise<void> {
     if (!line.includes(':')) continue;
     const name = line.split(':')[0]?.trim();
     if (name === undefined || !/^[a-zA-Z0-9_.-]+$/u.test(name))
-      throw new Error('Invalid network interface');
+      throw new RunnerIsolationError('Invalid network interface');
     const flags = Number(
       (await readFile(`/sys/class/net/${name}/flags`, 'utf8')).trim(),
     );
     if ((flags & 1) !== 0 && (flags & 8) === 0)
-      throw new Error('Code runner requires network_mode: none');
+      throw new RunnerIsolationError('Code runner requires network_mode: none');
   }
 }
 
@@ -95,7 +100,7 @@ function assertFilesystemIsolation(
     temp.uid !== 0 ||
     (temp.mode & 0o777) !== 0o700;
   if (unsafeFilesystemIsolation)
-    throw new Error(
+    throw new RunnerIsolationError(
       'Code runner requires a read-only root and private noexec tmpfs',
     );
 }
@@ -131,7 +136,7 @@ function assertContainerBounds(
     oomGroup.trim() !== '0' ||
     score.trim() !== '-1000';
   if (unsafeProcessLimits)
-    throw new Error(
+    throw new RunnerIsolationError(
       'Code runner requires derived container bounds and manager OOM protection',
     );
 }

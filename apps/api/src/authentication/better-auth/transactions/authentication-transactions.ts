@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { PoolClient } from 'pg';
+import { AuthenticationTransactionError } from './authentication-transaction.errors.js';
 
 type AuthenticationTransaction = Readonly<{
   client: PoolClient;
@@ -17,7 +18,9 @@ export class AuthenticationTransactions {
   require(): AuthenticationTransaction {
     const transaction = this.current();
     if (transaction === undefined)
-      throw new Error('Security changes require an authentication transaction');
+      throw new AuthenticationTransactionError(
+        'Security changes require an authentication transaction',
+      );
     return transaction;
   }
 

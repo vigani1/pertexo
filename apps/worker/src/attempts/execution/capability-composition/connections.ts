@@ -11,6 +11,7 @@ import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 import { createProviderConnectionRuntimeFactory } from '../../../providers/connections.js';
 
 import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
+import { CapabilityCompositionError } from './capability-composition.errors.js';
 
 export function prepareConnectionCapability(state: CapabilityAssembly): void {
   const providerRateLimiter =
@@ -21,7 +22,9 @@ export function prepareConnectionCapability(state: CapabilityAssembly): void {
           state.options.redisUrl,
         )));
   if (providerRateLimiter === undefined)
-    throw new Error('Worker provider rate limiter is incomplete');
+    throw new CapabilityCompositionError(
+      'Worker provider rate limiter is incomplete',
+    );
   const ownedDatabase =
     state.dependencies.connectionStore === undefined
       ? (state.resources.ownedConnectionStore =
@@ -32,7 +35,9 @@ export function prepareConnectionCapability(state: CapabilityAssembly): void {
       : undefined;
   const connectionStore = state.dependencies.connectionStore ?? ownedDatabase;
   if (connectionStore === undefined)
-    throw new Error('Worker connection capability is incomplete');
+    throw new CapabilityCompositionError(
+      'Worker connection capability is incomplete',
+    );
   const ownedEncryption =
     state.dependencies.connectionEncryption === undefined &&
     state.options.connectionEncryption !== undefined
@@ -42,7 +47,9 @@ export function prepareConnectionCapability(state: CapabilityAssembly): void {
       : undefined;
   const encryption = state.dependencies.connectionEncryption ?? ownedEncryption;
   if (encryption === undefined)
-    throw new Error('Worker connection capability is incomplete');
+    throw new CapabilityCompositionError(
+      'Worker connection capability is incomplete',
+    );
   // S17: an address policy is always passed, because the transport only refuses
   // plain http to a public address when one exists.
   const tokens =

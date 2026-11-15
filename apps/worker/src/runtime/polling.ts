@@ -1,4 +1,5 @@
 import { waitForSupervisorDelay } from './abortable-delay.js';
+import { RuntimeNotReadyError } from './runtime-readiness.errors.js';
 
 export interface PollingRuntime {
   start(): void;
@@ -83,14 +84,18 @@ export function createPollingRuntime(
     },
     checkReadiness: async () => {
       if (signal.aborted)
-        throw new Error(`${definition.name} runtime is closed`);
+        throw new RuntimeNotReadyError(`${definition.name} runtime is closed`);
       if (firstCycle === undefined)
-        throw new Error(`${definition.name} runtime has not started`);
+        throw new RuntimeNotReadyError(
+          `${definition.name} runtime has not started`,
+        );
       await firstCycle.promise;
       if (!storeChecked)
-        throw new Error(`${definition.name} store is not ready`);
+        throw new RuntimeNotReadyError(`${definition.name} store is not ready`);
       if (latestCycleFailed)
-        throw new Error(`${definition.name} latest cycle failed`);
+        throw new RuntimeNotReadyError(
+          `${definition.name} latest cycle failed`,
+        );
     },
     close: () => {
       closePromise ??= (async () => {

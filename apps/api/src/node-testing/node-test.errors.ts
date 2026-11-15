@@ -19,3 +19,7 @@ export class NodeTestInvalidError extends Error {
     super('Selected node is not valid for preview');
   }
 }
+
+export class PreviewIdentityUnavailableError extends Error {
+  public override readonly name = 'PreviewIdentityUnavailableError';
+}

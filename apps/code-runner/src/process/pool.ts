@@ -2,6 +2,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { RunnerConfig } from '../config/runner-config.js';
 import { resolveCodePackages } from './packages.js';
 import { startTaskSlot, type TaskSlot } from './slot.js';
+import { TaskReservationUsedError } from './task-process.errors.js';
 
 /** Only unused processes are pooled. Every reservation consumes one process. */
 export async function createTaskProcessPool(config: RunnerConfig) {
@@ -90,7 +91,9 @@ export async function createTaskProcessPool(config: RunnerConfig) {
       return {
         run: async (...args: Parameters<TaskSlot['run']>) => {
           if (used || released || closed)
-            throw new Error('Code reservations are single-use');
+            throw new TaskReservationUsedError(
+              'Code reservations are single-use',
+            );
           used = true;
           if (args[0].language === 'python') {
             await current.stop();

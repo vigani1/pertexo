@@ -37,6 +37,7 @@ import {
   encodeOrganizationPageCursor,
   encodeWorkflowOrganizationCursor,
 } from './cursors.js';
+import { OrganizationProjectionError } from './organization.errors.js';
 
 type QueryInput<Request = unknown> = WorkflowOrganizationInput &
   Readonly<{ query: Request }>;
@@ -138,7 +139,7 @@ export class WorkflowOrganizationReadsService {
       query.include !== 'organization' &&
       query.include !== 'templateOrigin,organization'
     )
-      throw new TypeError(
+      throw new OrganizationProjectionError(
         'Organization reader requires an organization projection',
       );
     const context = workflowOrganizationContext(input);

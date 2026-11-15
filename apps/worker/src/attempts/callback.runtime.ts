@@ -10,6 +10,7 @@ import {
   type NodeCallbackRuntime,
 } from '@pertexo/node-sdk/server';
 import type { NodeExecutionCapabilityContext } from './execution/capabilities.js';
+import { CallbackKeyMismatchError } from './callback.errors.js';
 export function createCallbackRuntime(
   store: CallbackStore,
   keys: CallbackTokenKeys,
@@ -53,7 +54,7 @@ export function createCallbackRuntime(
           callbacks.map((callback) => {
             const material = keys.material(callback, callback.keyVersion);
             if (callbackTokenHash(material.token) !== callback.tokenHash)
-              throw new Error(
+              throw new CallbackKeyMismatchError(
                 'Callback key material does not match stored credentials.',
               );
             sensitive.add(material.token);

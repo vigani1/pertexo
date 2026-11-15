@@ -6,6 +6,7 @@ import {
   workspaceInboxChannel,
   type RedisTelemetryObserver,
 } from '@pertexo/queue/server';
+import { InboxHintHubClosedError } from './inbox-hint.errors.js';
 
 /** What an open inbox learns: its workspace changed, or hints may be lost. */
 export type InboxHintSignal =
@@ -137,7 +138,8 @@ export class RedisInboxHintHub implements InboxHintSource {
   }
 
   public async subscribe(workspaceId: string): Promise<InboxHintSubscription> {
-    if (this.closed) throw new Error('Inbox hint hub is closed');
+    if (this.closed)
+      throw new InboxHintHubClosedError('Inbox hint hub is closed');
     const name = workspaceInboxChannel(workspaceId);
     let channel = this.channels.get(name);
     if (channel === undefined) {

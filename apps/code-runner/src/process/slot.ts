@@ -22,6 +22,11 @@ import {
   writeCodeFrame as writeFrame,
 } from '@pertexo/node-sdk/server';
 import { captureTaskLogs } from './logs.js';
+import {
+  TaskProcessStartError,
+  TaskProcessReusedError,
+  TaskCanceledError,
+} from './task-process.errors.js';
 
 export type TaskSlot = Readonly<{
   run(task: CodeTask, signal: AbortSignal): Promise<CodeResult>;
@@ -96,7 +101,9 @@ export async function startTaskSlot(
   });
   if (input === null || control === null) {
     await stop();
-    throw new Error('Code task process has no private protocol descriptor');
+    throw new TaskProcessStartError(
+      'Code task process has no private protocol descriptor',
+    );
   }
   control.on('error', () => {
     controller.abort();
@@ -117,12 +124,14 @@ export async function startTaskSlot(
       !('kind' in greeting) ||
       greeting.kind !== 'ready';
     if (invalidChildGreeting)
-      throw new Error('Code task process failed to start');
+      throw new TaskProcessStartError('Code task process failed to start');
     if (signal.aborted)
-      throw new Error('Code task process exited during startup');
+      throw new TaskProcessStartError(
+        'Code task process exited during startup',
+      );
   } catch (error: unknown) {
     await stop();
-    throw new Error(
+    throw new TaskProcessStartError(
       'Code task process could not initialize its module policy',
       { cause: new Error(stderr || String(error)) },
     );
@@ -254,7 +263,8 @@ function createTaskExecution({
   const { logs, fail } = diagnostics;
   let used = false;
   return async (task: CodeTask, canceled: AbortSignal): Promise<CodeResult> => {
-    if (used) throw new Error('Code task processes are single-use');
+    if (used)
+      throw new TaskProcessReusedError('Code task processes are single-use');
     used = true;
     const timeout = setTimeout(() => {
       fail('code.timeout');
@@ -304,7 +314,7 @@ function createTaskExecution({
     } catch {
       if (canceled.aborted || lifetime.aborted) {
         await stop();
-        throw new Error('Code task canceled', {
+        throw new TaskCanceledError('Code task canceled', {
           cause: canceled.reason ?? lifetime.reason,
         });
       }

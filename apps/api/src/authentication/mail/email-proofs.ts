@@ -10,6 +10,7 @@ import type {
   AuthenticationMail,
   PreparedAuthenticationProofMail,
 } from './authentication-mail.js';
+import { EmailChangeAddressError } from './email-proof.errors.js';
 
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
 type ProofUser = Readonly<{ id: string; email: string; name: string }>;
@@ -158,7 +159,9 @@ export class OwnedEmailProofs {
       (newEmail === undefined ||
         canonicalEmail(newEmail) === canonicalEmail(user.email))
     )
-      throw new TypeError('An email change needs a different address');
+      throw new EmailChangeAddressError(
+        'An email change needs a different address',
+      );
     const prepared = this.mail.prepareProof?.(mailInput);
     // A proof is issued only for the user's current address, while it still
     // needs this proof: unverified for a first verification, verified for a

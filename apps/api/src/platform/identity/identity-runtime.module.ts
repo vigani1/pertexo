@@ -44,6 +44,7 @@ import {
 } from '../../workspaces/index.js';
 import type { ApiIdentityConfig } from '../config/identity-config.js';
 import { composeBetterAuthRuntime } from './better-auth-composition.js';
+import { OrganizationKeyUnavailableError } from './identity-runtime.errors.js';
 
 export type ApiIdentityRuntime = Readonly<{
   dependencies: IdentityWorkspaceDependencies;
@@ -100,13 +101,15 @@ export async function createApiIdentityRuntime(
       (sealed, workspaceId, providerId) => {
         try {
           if (federationEnvelope === undefined)
-            throw new Error('Missing organization key');
+            throw new OrganizationKeyUnavailableError(
+              'Missing organization key',
+            );
           federationEnvelope.open(
             sealed,
             federationSecretContext(workspaceId, providerId),
           );
         } catch {
-          throw new Error(
+          throw new OrganizationKeyUnavailableError(
             'Organization sign-in secrets cannot be opened. Configure AUTH_FEDERATION_KEY, its version and required previous keys before starting the API.',
           );
         }

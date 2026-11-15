@@ -9,6 +9,7 @@ import type {
   SocialProviderName,
 } from '../social-provider.types.js';
 import type { PertexoBetterAuth } from './better-auth-options.js';
+import { SocialProviderUnavailableError } from './social-provider.errors.js';
 
 export function configuredSocialProviders(
   socialProviders: BetterAuthOptions['socialProviders'],
@@ -34,7 +35,8 @@ export function betterAuthSocialProviders(
     available: configuredSocialProviders(socialProviders),
     authorize: async (input) => {
       const provider = await configuredProvider(input.provider);
-      if (provider === undefined) throw new Error('Provider unavailable');
+      if (provider === undefined)
+        throw new SocialProviderUnavailableError('Provider unavailable');
       const url = await provider.createAuthorizationURL({
         state: input.state,
         codeVerifier: input.codeVerifier,

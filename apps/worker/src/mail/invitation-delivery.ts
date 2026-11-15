@@ -13,6 +13,7 @@ import type {
   SystemMailClient,
 } from '@pertexo/secrets/server';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue/server';
+import { InvitationDeliveryError } from './invitation-delivery.errors.js';
 export const workspaceInvitationDeliveryFactories = Object.freeze({
   store: createWorkspaceInvitationDeliveryStore,
   envelope: (keys: ApplicationKeyRing) =>
@@ -112,7 +113,7 @@ export function createWorkspaceInvitationDeliveryHandler(
           signal: context.signal,
         });
         if (!marked)
-          throw new Error(
+          throw new InvitationDeliveryError(
             'Workspace invitation delivery is no longer dispatchable',
           );
         dispatch.held = true;
@@ -191,7 +192,7 @@ async function settleResult(
   }
   // SMTP reaches this point only after definite nonacceptance; Resend can
   // repeat its provider-idempotent command after an uncertain response.
-  throw new Error(
+  throw new InvitationDeliveryError(
     `Workspace invitation delivery requires retry: ${systemMailFailureCode(result.failure)}. ${SYSTEM_MAIL_FAILURE_GUIDANCE[result.failure.category]}`,
   );
 }

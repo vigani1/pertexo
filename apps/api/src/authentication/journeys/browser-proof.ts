@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { JourneyCookieConfigurationError } from './journey.errors.js';
 
 /*
  * Primitives of a browser-bound identity journey. A journey binds
@@ -45,7 +46,9 @@ export function journeyBindingCookie(
   }>,
 ): string {
   if (input.sameSite === 'none' && !input.secure)
-    throw new Error('Cross-site journey cookies require HTTPS');
+    throw new JourneyCookieConfigurationError(
+      'Cross-site journey cookies require HTTPS',
+    );
   const sameSite = input.sameSite === 'none' ? 'None' : 'Lax';
   return `${input.name}=${input.value}; Path=${input.path}; HttpOnly; SameSite=${sameSite}; Max-Age=300${input.secure ? '; Secure' : ''}`;
 }

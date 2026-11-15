@@ -27,6 +27,7 @@ import {
   workflowOrganizationContext,
   type WorkflowOrganizationInput,
 } from '../authority.js';
+import { OrganizationItemIdentityError } from '../organization.errors.js';
 
 type Input<Request = unknown> = WorkflowOrganizationInput &
   Readonly<{ request: Request; idempotencyKey: string }>;
@@ -101,7 +102,9 @@ export class WorkflowOrganizationBatchesService {
         });
         input.signal?.throwIfAborted();
         if (result.workflowId !== workflowId)
-          throw new Error('Organization item identity is incompatible');
+          throw new OrganizationItemIdentityError(
+            'Organization item identity is incompatible',
+          );
         if (request.operation === 'move')
           workflowFolderPlacementResponseSchema.parse(result);
         else

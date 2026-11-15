@@ -42,6 +42,7 @@ import { prepareWebhookRequest } from './prepare.js';
 import { preflightVerification, resolveIngressReference } from './resolve.js';
 import { authenticateIngressRequest } from './authenticate.js';
 import { captureIngressTestEvent, admitIngressDelivery } from './accept.js';
+import { WebhookReferenceUnavailableError } from './webhook-ingress.errors.js';
 
 export { type WebhookIngressDependencies } from './webhook-ingress.types.js';
 export function registerWebhookIngress(
@@ -215,7 +216,9 @@ async function acceptWebhook(
     return;
   }
   if (productionReference === null)
-    throw new Error('Production webhook reference is unavailable');
+    throw new WebhookReferenceUnavailableError(
+      'Production webhook reference is unavailable',
+    );
   await admitIngressDelivery(request, reply, {
     options,
     prepared,

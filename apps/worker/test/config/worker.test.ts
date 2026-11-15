@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 import { ZodError } from 'zod';
 import path from 'node:path';
+import { WorkerEnvironmentValueError } from '../../src/config/worker-configuration.errors.js';
 
 describe('parseWorkerConfig', () => {
   it('preserves client and dispatcher pool settings with their own bounds', () => {
@@ -428,8 +429,12 @@ describe('parseWorkerConfig', () => {
       thrown = error;
     }
     expect(thrown).toBeInstanceOf(Error);
-    expect((thrown as Error).cause).toEqual(
-      new TypeError('Worker environment values must be scalar'),
+    const cause = (thrown as Error).cause;
+    expect(cause).toBeInstanceOf(TypeError);
+    expect(cause).toEqual(
+      new WorkerEnvironmentValueError(
+        'Worker environment values must be scalar',
+      ),
     );
   });
 

@@ -34,6 +34,7 @@ import type {
   connectionRotateSecretRequestSchema,
 } from '../connection-request.js';
 import type { ConnectionResponse } from '../connection-request.js';
+import { OAuth2ConnectionsUnavailableError } from './connection-management.errors.js';
 
 export type CreateConnectionCommand = ConnectionCommandInput &
   Readonly<{
@@ -68,7 +69,9 @@ function assertOAuth2Endpoints(
   oauth2: OAuth2EndpointPolicyHolder | undefined,
 ): void {
   if (oauth2 === undefined)
-    throw new Error('OAuth2 connections are not available on this install');
+    throw new OAuth2ConnectionsUnavailableError(
+      'OAuth2 connections are not available on this install',
+    );
   const refused = refusedEndpoint(credential.settings, oauth2.endpointPolicy);
   if (refused !== undefined) throw new OAuth2EndpointRefusedError(refused);
 }

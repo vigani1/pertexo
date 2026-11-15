@@ -3,6 +3,7 @@ import type { QueueConsumer } from '@pertexo/queue/server';
 import { waitForSupervisorDelay } from './abortable-delay.js';
 import { boundedBackgroundTask } from './background-task-deadline.js';
 import { reportDiagnostic } from './polling.js';
+import { RuntimeNotReadyError } from './runtime-readiness.errors.js';
 
 /** A resource the runtime owns; undefined when it was never acquired. */
 export type Owner = Readonly<{ close?(): unknown }> | undefined;
@@ -137,7 +138,7 @@ export function createScannerRuntime(
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Close can begin while the first scan awaits I/O.
       if (signal.aborted) throw closed();
       if (latestScanFailed)
-        throw new Error(`${definition.name} latest scan failed`);
+        throw new RuntimeNotReadyError(`${definition.name} latest scan failed`);
       await definition.checkReadiness?.();
     },
     close: (): Promise<void> => {

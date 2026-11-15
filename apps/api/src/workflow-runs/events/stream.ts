@@ -6,6 +6,7 @@ import {
   NO_STREAM_FAILURE,
   preserveFailureDuringStreamCleanup,
 } from './stream-cleanup.js';
+import { RunEventPageSizeError } from './run-events.errors.js';
 
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 500;
@@ -128,7 +129,7 @@ function signalWasAborted(signal: AbortSignal): boolean {
 function parsePageSize(value: number | undefined): number {
   const pageSize = value ?? DEFAULT_PAGE_SIZE;
   if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
-    throw new RangeError(
+    throw new RunEventPageSizeError(
       `SSE event page size must be an integer between 1 and ${String(MAX_PAGE_SIZE)}`,
     );
   }

@@ -1,3 +1,4 @@
+import { AttemptRuntimeClosedError } from '../handler-state.errors.js';
 export type OwnedNodeAttemptResource = Readonly<{
   close: () => Promise<unknown>;
   name: string;
@@ -7,7 +8,8 @@ export type OwnedNodeAttemptResource = Readonly<{
 export function assertNodeAttemptRuntimeOpen(lifecycle: {
   terminal: boolean;
 }): void {
-  if (lifecycle.terminal) throw new Error('Node-attempt runtime is closed');
+  if (lifecycle.terminal)
+    throw new AttemptRuntimeClosedError('Node-attempt runtime is closed');
 }
 
 export async function closeNodeAttemptResources(

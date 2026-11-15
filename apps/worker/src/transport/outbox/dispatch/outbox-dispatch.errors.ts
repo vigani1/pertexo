@@ -18,3 +18,21 @@ export class OutboxDispatcherClosedError extends Error {
     this.name = 'OutboxDispatcherClosedError';
   }
 }
+
+export class OutboxJobAllowlistError extends TypeError {
+  public override readonly name = 'OutboxJobAllowlistError';
+}
+
+export class OutboxDispatcherHooksError extends Error {
+  public override readonly name = 'OutboxDispatcherHooksError';
+  public constructor() {
+    super('Outbox dispatcher runtime hooks are already configured');
+  }
+}
+
+export class OutboxDispatcherDrainingError extends Error {
+  public override readonly name = 'OutboxDispatcherDrainingError';
+  public constructor() {
+    super('Outbox dispatcher is draining');
+  }
+}

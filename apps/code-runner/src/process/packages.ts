@@ -7,6 +7,7 @@ import {
   type CodeSettings,
 } from '@pertexo/node-sdk';
 import type { ModulePolicy } from '../execution/modules.js';
+import { CodePackageError } from './task-process.errors.js';
 
 type Manifest = Readonly<{
   name?: string;
@@ -42,13 +43,15 @@ export async function resolveCodePackages(
     const item = queue[index++];
     if (item === undefined) continue;
     if (isBuiltin(item.name))
-      throw new Error('Extra Code packages must be installed npm packages');
+      throw new CodePackageError(
+        'Extra Code packages must be installed npm packages',
+      );
     let entry: string;
     try {
       entry = await realpath(createRequire(item.from).resolve(item.name));
     } catch (error: unknown) {
       if (item.optional) continue;
-      throw new Error('An allowed Code package is not installed', {
+      throw new CodePackageError('An allowed Code package is not installed', {
         cause: error,
       });
     }
@@ -111,7 +114,7 @@ async function findPackageManifest(
         throw error;
     }
     if (root === parse(root).root)
-      throw new Error('An allowed Code package has no manifest');
+      throw new CodePackageError('An allowed Code package has no manifest');
     root = dirname(root);
   }
 
