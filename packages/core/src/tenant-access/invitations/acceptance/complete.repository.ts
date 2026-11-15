@@ -1,4 +1,4 @@
-import { readInvitationTime } from '../deadlines.js';
+import { readInvitationTime } from '../clock.repository.js';
 import { decideInvitationAcceptance } from './decide-invitation-acceptance.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

@@ -1,7 +1,5 @@
-import {
-  ACCEPTANCE_INTENT_TTL_MILLIS,
-  readInvitationTime,
-} from '../deadlines.js';
+import { ACCEPTANCE_INTENT_TTL_MILLIS } from '../deadlines.js';
+import { readInvitationTime } from '../clock.repository.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';

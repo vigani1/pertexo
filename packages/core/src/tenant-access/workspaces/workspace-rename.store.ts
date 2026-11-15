@@ -20,7 +20,10 @@ import { readLockedMembers } from '../members/commands.repository.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import { renameReceipt } from '../command-receipts.schemas.js';
 import { hasCapability } from '@pertexo/policy';
-import { workspaceRecord, workspaceSelection } from './projection.js';
+import {
+  workspaceRecord,
+  workspaceSelection,
+} from './projection.repository.js';
 
 function durableResult(result: WorkspaceRenameResult) {
   return {

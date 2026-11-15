@@ -4,7 +4,7 @@ import {
   workflowManualStartRejections,
 } from '@pertexo/database/schema';
 import { and, eq, inArray, lte, sql } from 'drizzle-orm';
-import { deletionRule } from '../../../shared/retention-deletion.js';
+import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 
 // A command's stored result answers retries until its key expires.
 export const commandReceipts = deletionRule('idempotency_records', {

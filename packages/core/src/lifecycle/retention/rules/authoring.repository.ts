@@ -25,7 +25,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { retainedTestRunSql, testRunSql } from '../../../runs/data-policy.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { deletionRule } from '../../../shared/retention-deletion.js';
+import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 
 const query = new QueryBuilder(),
   run = alias(workflowRuns, 'run');

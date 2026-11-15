@@ -4,7 +4,7 @@ import {
   workflowTriggerFailures as failures,
   workflowFailureStreaks as streaks,
 } from '@pertexo/database/schema';
-import { deletionRule } from '../../shared/retention-deletion.js';
+import { deletionRule } from '../../shared/retention-deletion.repository.js';
 
 // Fences only advance. A position with a full newer suffix is also redundant:
 // a future success either leaves that suffix, or supersedes this position too.

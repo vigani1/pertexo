@@ -1,6 +1,6 @@
 import { workflowPublicationRequests } from '@pertexo/database/schema';
 import { sql } from 'drizzle-orm';
-import { deletionRule } from '../../../shared/retention-deletion.js';
+import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 
 const reviewExpired = sql`coalesce(${workflowPublicationRequests.decidedAt},${workflowPublicationRequests.expiresAt})<=clock_timestamp()-interval '30 days'`;
 

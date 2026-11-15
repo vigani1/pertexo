@@ -1,6 +1,6 @@
 import { workflowTestSuites } from '@pertexo/database/schema';
 import { lte, sql } from 'drizzle-orm';
-import { deletionRule } from '../../../shared/retention-deletion.js';
+import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 
 const suiteExpired = lte(workflowTestSuites.expiresAt, sql`clock_timestamp()`);
 
