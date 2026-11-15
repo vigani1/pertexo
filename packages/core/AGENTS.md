@@ -48,13 +48,12 @@ user-facing copy beyond the safe messages of its errors.
   `runs/access.ts`; `runs/recovery/recover-run.ts` with
   `reused-nodes.repository.ts` and `acknowledgement.ts`). A not-found check
   the callers share is a `require…` beside its error
-  (`requireWorkflowRun` in `runs/workflow-run.errors.ts`). A repository
-  throws only storage integrity errors (below);
-  `validate-core-repository-throws.mjs` refuses any other. The files that
-  still throw domain errors are `REPOSITORY_THROW_BACKLOG`
-  (`infrastructure/checks/core-repository-throws.mjs`), with their counts:
-  the list only shrinks, and a file leaves it when its operation takes the
-  decisions.
+  (`requireWorkflowRun` in `runs/workflow-run.errors.ts`). A refusal the
+  statement itself detects comes back as a tagged result, never a throw (a
+  duplicate name, a key clash, a capacity trigger: `insertConnection`,
+  `insertRowValues`, `insertPendingUpload`). Every repository throws only
+  storage integrity errors (below); `validate-core-repository-throws.mjs`
+  refuses any other throw.
 - A query, lock or SQL fragment (`clock_timestamp()`, an increment, an
   interval): the `<subject>.repository.ts` beside the operation, or the
   flow's `.store.ts` when that file is its facade.

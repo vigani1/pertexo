@@ -40,44 +40,24 @@ test('looks only at core repositories', () => {
   assert.deepEqual(names(text, 'apps/api/src/x.repository.ts'), []);
 });
 
-test('the backlog only shrinks', () => {
-  const thrown = (count) =>
-    Array.from({ length: count }, (_, line) => ({
-      file: REPOSITORY,
-      line,
-      name: 'WorkflowNotFoundError',
-    }));
-  const backlog = { [REPOSITORY]: 2 };
-  assert.deepEqual(
-    repositoryThrowFindings(new Map([[REPOSITORY, thrown(2)]]), backlog),
-    [],
+test('every domain throw in a repository is a finding', () => {
+  const findings = repositoryThrowFindings(
+    new Map([
+      [
+        REPOSITORY,
+        [{ file: REPOSITORY, line: 7, name: 'WorkflowNotFoundError' }],
+      ],
+      ['packages/core/src/runs/clean.repository.ts', []],
+    ]),
   );
+  assert.equal(findings.length, 1);
   assert.match(
-    repositoryThrowFindings(new Map([[REPOSITORY, thrown(3)]]), backlog)[0],
-    /3 domain throw\(s\) in a repository, 2 allowed/u,
-  );
-  assert.match(
-    repositoryThrowFindings(new Map([[REPOSITORY, thrown(1)]]), backlog)[0],
-    /lower its entry/u,
-  );
-  assert.match(
-    repositoryThrowFindings(new Map([[REPOSITORY, []]]), backlog)[0],
-    /remove it/u,
-  );
-  assert.match(
-    repositoryThrowFindings(new Map(), backlog)[0],
-    /no longer a core repository/u,
-  );
-  assert.match(
-    repositoryThrowFindings(
-      new Map([['packages/core/src/a/new.repository.ts', thrown(1)]]),
-      backlog,
-    )[0],
-    /0 allowed/u,
+    findings[0],
+    /example\.repository\.ts:7: WorkflowNotFoundError/u,
   );
 });
 
-test("core's repositories match the backlog", async () => {
+test("core's repositories throw no domain errors", async () => {
   assert.deepEqual(
     repositoryThrowFindings(await collectRepositoryThrows()),
     [],

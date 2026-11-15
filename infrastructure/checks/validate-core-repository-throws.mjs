@@ -1,12 +1,8 @@
-import console from 'node:console';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
-import {
-  REPOSITORY_THROW_BACKLOG,
-  STORAGE_INTEGRITY_ERRORS,
-} from './core-repository-throws.mjs';
+import { STORAGE_INTEGRITY_ERRORS } from './core-repository-throws.mjs';
 import {
   listSourceFiles,
   readSource,
@@ -51,33 +47,16 @@ export function findDomainThrows(file, text) {
 
 /**
  * A repository returns a row, a boolean or nothing, and the operation decides
- * and throws (core's AGENTS.md). Files that still throw domain errors are
- * listed with their count in REPOSITORY_THROW_BACKLOG, which only shrinks: a
- * new file, a growing count and a count that fell without the list following
- * are all refused.
+ * and throws (core's AGENTS.md): every domain throw in a core repository is a
+ * finding.
  */
-export function repositoryThrowFindings(
-  throwsByFile,
-  backlog = REPOSITORY_THROW_BACKLOG,
-) {
-  const findings = [];
-  for (const [file, throws] of throwsByFile) {
-    const allowed = backlog[file] ?? 0;
-    if (throws.length > allowed)
-      findings.push(
-        `${file}: ${String(throws.length)} domain throw(s) in a repository, ${String(allowed)} allowed. Return the row, boolean or nothing and throw in the operation (${throws.map((t) => `${t.name} at line ${String(t.line)}`).join(', ')}).`,
-      );
-    else if (throws.length < allowed)
-      findings.push(
-        `${file}: REPOSITORY_THROW_BACKLOG allows ${String(allowed)} domain throw(s), and the file has ${String(throws.length)}; lower its entry${throws.length === 0 ? ' (remove it)' : ''}.`,
-      );
-  }
-  for (const file of Object.keys(backlog))
-    if (!throwsByFile.has(file))
-      findings.push(
-        `REPOSITORY_THROW_BACKLOG lists ${file}, which is no longer a core repository; remove it.`,
-      );
-  return findings;
+export function repositoryThrowFindings(throwsByFile) {
+  return [...throwsByFile.values()]
+    .flat()
+    .map(
+      (t) =>
+        `${t.file}:${String(t.line)}: ${t.name} thrown in a repository. Return the row, boolean or nothing and throw in the operation, or list a storage integrity error in STORAGE_INTEGRITY_ERRORS with its reason.`,
+    );
 }
 
 export async function collectRepositoryThrows(root = repositoryRoot) {
@@ -95,14 +74,8 @@ if (
   process.argv[1] !== undefined &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  const throwsByFile = await collectRepositoryThrows();
-  if (process.argv.includes('--backlog')) {
-    for (const [file, throws] of [...throwsByFile].sort())
-      if (throws.length > 0)
-        console.log(`  '${file}': ${String(throws.length)},`);
-  } else
-    report(
-      repositoryThrowFindings(throwsByFile),
-      'Core repositories throw only storage integrity errors, beyond the shrinking backlog.',
-    );
+  report(
+    repositoryThrowFindings(await collectRepositoryThrows()),
+    'Core repositories throw only storage integrity errors.',
+  );
 }
