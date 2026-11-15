@@ -1,3 +1,4 @@
+import { admitInSavepoint } from '../../admission-savepoint.repository.js';
 import {
   scheduleCanFire,
   scheduleStandingColumns,
@@ -32,7 +33,7 @@ import type { RecordedScheduleOccurrence } from '../schedule-occurrence.types.js
 import {
   CLAIM_CLEANUP_TIMEOUT_MILLIS,
   retireScheduleClaim,
-} from '../retirement.repository.js';
+} from '../retire.js';
 import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
@@ -148,23 +149,23 @@ async function persistClaimedOccurrence(
   let runId: string | null = null;
   let skipReason: 'concurrency_limit' | null = null;
   if (disposition === 'accepted') {
-    await transaction.db.execute(sql`savepoint schedule_run_admission`);
-    try {
-      runId = await admitScheduledRun(
-        transaction,
-        claim,
-        occurrence.scheduledAt,
-        checkpointFactory,
-      );
-    } catch (error) {
-      if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
-      await transaction.db.execute(
-        sql`rollback to savepoint schedule_run_admission`,
-      );
+    const admission = await admitInSavepoint(
+      transaction,
+      'schedule_run_admission',
+      () =>
+        admitScheduledRun(
+          transaction,
+          claim,
+          occurrence.scheduledAt,
+          checkpointFactory,
+        ),
+      (error) => error instanceof WorkflowAlreadyRunningError,
+    );
+    if (admission.admitted) runId = admission.value;
+    else {
       disposition = 'skipped';
       skipReason = 'concurrency_limit';
     }
-    await transaction.db.execute(sql`release savepoint schedule_run_admission`);
   }
   // Record the occurrence once, move the schedule on and release the lease.
   const schedule = await transaction.db

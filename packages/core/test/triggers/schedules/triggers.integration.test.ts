@@ -1,4 +1,4 @@
-import { retireScheduleClaim } from '../../../src/triggers/schedules/retirement.repository.js';
+import { retireScheduleClaim } from '../../../src/triggers/schedules/retire.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   schedule,

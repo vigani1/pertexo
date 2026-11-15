@@ -1,7 +1,7 @@
 import { publicFormIsAvailable } from './public-form-standing.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   workflowForms,
   workflows,
@@ -126,4 +126,27 @@ export async function readFormVersion(
     version: Object.freeze(row.version),
     ...readFormDefinition(row.graphJson),
   };
+}
+
+/** The graph a form was published in, as a replay after republication reads it. */
+export async function readFormVersionGraph(
+  db: Pick<NodePgDatabase, 'select'>,
+  input: Readonly<{
+    workspaceId: string;
+    workflowId: string;
+    versionId: string;
+  }>,
+): Promise<unknown> {
+  const [row] = await db
+    .select({ graphJson: workflowVersions.graphJson })
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, input.workspaceId),
+        eq(workflowVersions.workflowId, input.workflowId),
+        eq(workflowVersions.id, input.versionId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return row?.graphJson;
 }
