@@ -11,6 +11,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { canLeaveWorkspace } from '../../model/workspace-roles';
+import { ANY_ADMINISTRATOR } from '../../model/role-words';
 import { useLeaveWorkspaceCommand } from '../../data/mutations/lifecycle/use-leave-workspace-command';
 import { DangerAction } from './workspace-danger-zone';
 /**
@@ -101,7 +102,7 @@ export function WorkspaceLeave({
             'You lose access to its workflows, runs and connections straight away.',
             'You’re signed out everywhere, including here, and sign in again to reach your other workspaces.',
             'Runs you already started keep going, and invitations you sent stay pending.',
-            'To come back, an owner or admin has to invite you again.',
+            `To come back, an ${ANY_ADMINISTRATOR} has to invite you again.`,
           ]}
           error={command.error}
           tone="destructive"

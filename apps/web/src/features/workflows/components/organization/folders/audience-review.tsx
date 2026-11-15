@@ -3,6 +3,7 @@ import type { WorkflowMoveReview } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Notice } from '@/components/ui/notice';
+import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 /** Mounted per review, so an acknowledgement never carries into a different move. */
 export function AudienceMoveReview({
   report,
@@ -59,7 +60,7 @@ export function AudienceMoveReview({
           I reviewed the destination audience and accept this access change.
         </label>
       ) : (
-        <p>Only an owner or admin can approve this audience change.</p>
+        <p>{`Only an ${ANY_ADMINISTRATOR} can approve this audience change.`}</p>
       )}
       <div className="flex flex-wrap gap-2">
         <Button

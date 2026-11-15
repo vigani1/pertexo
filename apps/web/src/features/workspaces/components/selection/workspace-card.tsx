@@ -5,7 +5,7 @@ import { Status } from '@/components/ui/status';
 import { cn } from '@/lib/class-names';
 import { WorkspaceMark } from '../shell/workspace-mark';
 import { workspaceAvailability } from '../../model/workspace-availability';
-import { ROLE_NAMES } from '../../model/workspace-roles';
+import { ROLE_NAMES } from '../../model/role-words';
 
 /**
  * One workspace: its monogram in a thread ring, name, your role, its state

@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select';
 import { Notice } from '@/components/ui/notice';
 import { Textarea } from '@/components/ui/textarea';
+import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 const modeNames: Readonly<Record<WorkflowPromotionMode, string>> = {
   draft: 'Create drafts',
   publish: 'Publish',
@@ -72,8 +73,7 @@ export function PromotionActionFields({
             }}
           />
           <span className="text-xs text-muted-foreground">
-            An owner or admin in the target workspace must review the promoted
-            draft. You cannot approve your own request.
+            {`An ${ANY_ADMINISTRATOR} in the target workspace must review the promoted draft. You cannot approve your own request.`}
           </span>
         </label>
       ) : null}

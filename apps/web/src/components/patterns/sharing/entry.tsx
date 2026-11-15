@@ -54,11 +54,16 @@ export function SharingEntry({
 }
 
 /** Owners and admins can't be removed, so they're stated, not listed as choices. */
-export function SharingAdministratorsEntry() {
+export function SharingAdministratorsEntry({
+  administrators,
+}: Readonly<{
+  /** Who the administrative rules name, from the role policy. */
+  administrators: string;
+}>) {
   return (
     <SharingEntry
       kind="administrators"
-      label="Workspace owners and admins"
+      label={`Workspace ${administrators}`}
       detail="Always have access"
     />
   );

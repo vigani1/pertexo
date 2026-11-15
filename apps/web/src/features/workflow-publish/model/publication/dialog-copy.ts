@@ -1,3 +1,4 @@
+import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 export function publicationDialogCopy({
   mode,
   pending,
@@ -18,7 +19,7 @@ export function publicationDialogCopy({
     ? 'Requesting publication review…'
     : `Publishing ${versionLabel}…`;
   const description = review
-    ? 'A different owner or admin will review this exact saved draft. Saving another edit makes the request stale.'
+    ? `A different ${ANY_ADMINISTRATOR} will review this exact saved draft. Saving another edit makes the request stale.`
     : 'Publishing makes the saved draft the version that runs. The draft stays editable.';
   const retryLabel = review
     ? 'Retry original request'

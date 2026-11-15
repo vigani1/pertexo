@@ -125,7 +125,7 @@ function FolderAudience({
     <>
       <section aria-label="People with access" className="flex flex-col">
         <ul className="flex flex-col divide-y divide-border">
-          <SharingAdministratorsEntry />
+          <SharingAdministratorsEntry administrators={ADMINISTRATORS} />
           {snapshot.grants.map((grant) => {
             const identifier = grantId(grant);
             const label =
