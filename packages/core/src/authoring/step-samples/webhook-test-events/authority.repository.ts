@@ -2,8 +2,8 @@ import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/policy';
-import { lockWorkflowAuthoringAuthority } from '../../../authoring/workflows/authority.js';
-import { sampleDraft } from '../../../authoring/step-samples/step-sample-state.repository.js';
+import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
+import { sampleDraft } from '../step-sample-state.repository.js';
 import { WebhookTestEventError } from './webhook-test-event.errors.js';
 import type { TestEventScope } from './webhook-test-event.types.js';
 

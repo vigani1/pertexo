@@ -13,8 +13,8 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { WorkflowNotFoundError } from '../../../authoring/workflows/workflow-authoring.errors.js';
-import { withWorkflowAccess } from '../../workflow-access.js';
+import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
+import { withWorkflowAccess } from '../../../triggers/workflow-access.js';
 import { readTestEventDraft } from './authority.repository.js';
 import {
   captureTestEvent,

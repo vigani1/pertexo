@@ -3,7 +3,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type {
   WebhookTestEventStore,
   TestEventScope,
-} from '@pertexo/core/triggers';
+} from '@pertexo/core/authoring';
 
 import {
   SECRET_TOKEN_BYTES,

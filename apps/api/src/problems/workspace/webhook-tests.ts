@@ -1,5 +1,5 @@
 import { errorRegistration } from '../../platform/http/problems/error-registry.js';
-import { WebhookTestEventError } from '@pertexo/core/triggers';
+import { WebhookTestEventError } from '@pertexo/core/authoring';
 import { applicationError } from '../../platform/http/index.js';
 
 export const webhookTestsProblems = [

@@ -1,9 +1,11 @@
 import {
   createWebhookTriggerStore,
-  createWebhookTestEventStore,
-  type WebhookTestEventStore,
   type WebhookTriggerStore,
 } from '@pertexo/core/triggers';
+import {
+  createWebhookTestEventStore,
+  type WebhookTestEventStore,
+} from '@pertexo/core/authoring';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { createWebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import type { StructuredLogger } from '@pertexo/observability/server';

@@ -3,7 +3,7 @@ import type { WorkflowAuthoringStore } from '@pertexo/core/authoring';
 import type {
   WebhookTestEventStore,
   TestEventScope,
-} from '@pertexo/core/triggers';
+} from '@pertexo/core/authoring';
 import type { WebhookIngressDependencies } from '../../../src/webhooks/ingress/register.js';
 import type { HttpSessionCookies } from '../support/browser-session.fixture.js';
 

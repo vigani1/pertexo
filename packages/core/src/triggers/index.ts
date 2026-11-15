@@ -84,12 +84,4 @@ export {
 } from './coordination/event-scanner.store.js';
 export { EventCoordinationUnavailableError } from './coordination/event-coordination.errors.js';
 
-export {
-  createWebhookTestEventStore,
-  type WebhookTestEventStore,
-} from './webhooks/test-events/webhook-test-event.store.js';
-export { WebhookTestEventError } from './webhooks/test-events/webhook-test-event.errors.js';
-export type {
-  TestEventReference,
-  TestEventScope,
-} from './webhooks/test-events/webhook-test-event.types.js';
+export type {} from './workflow-access.js';
