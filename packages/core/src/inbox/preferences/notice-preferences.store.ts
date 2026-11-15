@@ -17,14 +17,14 @@ import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../../shared/workspace-access.js';
-import {
-  NoticeUnavailableError,
-  type ReadNoticeSubscriptionInput,
-  type ReplaceNoticeDefaultsInput,
-  type ReplaceNoticePreferencesInput,
-  type ReplaceNoticeSubscriptionInput,
-  type UnsubscribeNoticeMailInput,
-} from './notice-preferences.js';
+import type {
+  ReadNoticeSubscriptionInput,
+  ReplaceNoticeDefaultsInput,
+  ReplaceNoticePreferencesInput,
+  ReplaceNoticeSubscriptionInput,
+  UnsubscribeNoticeMailInput,
+} from './notice-preferences.types.js';
+import { NoticeUnavailableError } from './notice-preferences.errors.js';
 import {
   replacePreference,
   replaceSubscription,

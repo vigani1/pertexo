@@ -12,10 +12,8 @@ import type { PoolClient } from 'pg';
 
 import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
 import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
-import {
-  NoticeUnavailableError,
-  type ReadNoticeSubscriptionInput,
-} from './notice-preferences.js';
+import type { ReadNoticeSubscriptionInput } from './notice-preferences.types.js';
+import { NoticeUnavailableError } from './notice-preferences.errors.js';
 
 /** The workflow or connection exists and, for a workflow, this person can see it. */
 export async function requireSubject(
