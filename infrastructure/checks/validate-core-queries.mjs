@@ -196,36 +196,88 @@ const STORE = /\.store\.ts$/u;
 const CORE_ENTRY =
   /^packages\/core\/src\/(?:testing\.ts|[^/]+\/(?:index|testing)\.ts)$/u;
 const STORE_FACTORY =
-  /^export\s+(?:async\s+)?(?:function\s+|const\s+)create[A-Z]/mu;
-const RELATIVE_IMPORT = /from\s+'(\.{1,2}\/[^']+)\.js'/gu;
+  /^export\s+(?:async\s+)?(?:function\s+|const\s+)(create[A-Z]\w*)/gmu;
+const ALL_NAMES = '*';
 
 /**
  * A `.store.ts` may hold queries only as a flow's facade: it exports a
  * `create…` factory, and an area entry, a testing entry or another store
- * composes it. Anything else is a repository under another name.
+ * imports or re-exports that factory as a value. A type-only line does not
+ * compose it. Anything else is a repository under another name.
  */
 export function findStoreProblems(sources) {
-  const composed = new Set();
-  for (const [file, text] of sources) {
-    if (!CORE_ENTRY.test(file) && !STORE.test(file)) continue;
-    for (const [, specifier] of text.matchAll(RELATIVE_IMPORT))
-      composed.add(
-        path.posix.join(path.posix.dirname(file), `${specifier}.ts`),
-      );
-  }
+  const composed = composedNames(sources);
   const problems = [];
   for (const [file, text] of sources) {
     if (!file.startsWith(CORE_SOURCE) || !STORE.test(file)) continue;
-    if (!STORE_FACTORY.test(text))
+    const factories = [...text.matchAll(STORE_FACTORY)].map(([, name]) => name);
+    const used = composed.get(file);
+    if (factories.length === 0)
       problems.push(
         `${file}: a store exports the create… factory of a flow's facade; name a query file .repository.ts.`,
       );
-    else if (!composed.has(file))
+    else if (
+      used === undefined ||
+      !(used.has(ALL_NAMES) || factories.some((name) => used.has(name)))
+    )
       problems.push(
-        `${file}: no area entry, testing entry or other store composes this store; name a query file .repository.ts.`,
+        `${file}: no area entry, testing entry or other store imports its create… factory as a value; name a query file .repository.ts.`,
       );
   }
   return problems;
+}
+
+// For each file an entry or store imports from, the value names it takes
+// (`*` for `export * from`), leaving type-only imports and exports out.
+function composedNames(sources) {
+  const composed = new Map();
+  for (const [file, text] of sources) {
+    if (!CORE_ENTRY.test(file) && !STORE.test(file)) continue;
+    const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest);
+    for (const statement of source.statements) {
+      const target = relativeTarget(file, statement);
+      if (target === undefined) continue;
+      const names = composed.get(target) ?? new Set();
+      for (const name of valueNames(statement)) names.add(name);
+      composed.set(target, names);
+    }
+  }
+  return composed;
+}
+
+function relativeTarget(file, statement) {
+  if (
+    !(ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) ||
+    statement.moduleSpecifier === undefined ||
+    !ts.isStringLiteral(statement.moduleSpecifier)
+  )
+    return undefined;
+  const specifier = statement.moduleSpecifier.text;
+  if (!specifier.startsWith('.') || !specifier.endsWith('.js'))
+    return undefined;
+  return path.posix.join(
+    path.posix.dirname(file),
+    `${specifier.slice(0, -'.js'.length)}.ts`,
+  );
+}
+
+function valueNames(statement) {
+  if (ts.isImportDeclaration(statement)) {
+    const clause = statement.importClause;
+    if (clause === undefined || clause.isTypeOnly) return [];
+    const bindings = clause.namedBindings;
+    if (bindings === undefined) return [];
+    if (ts.isNamespaceImport(bindings)) return [ALL_NAMES];
+    return bindings.elements
+      .filter((element) => !element.isTypeOnly)
+      .map((element) => (element.propertyName ?? element.name).text);
+  }
+  if (statement.isTypeOnly) return [];
+  const clause = statement.exportClause;
+  if (clause === undefined || ts.isNamespaceExport(clause)) return [ALL_NAMES];
+  return clause.elements
+    .filter((element) => !element.isTypeOnly)
+    .map((element) => (element.propertyName ?? element.name).text);
 }
 
 export async function inspectCoreQueries(root = repositoryRoot) {
