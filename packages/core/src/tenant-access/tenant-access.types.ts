@@ -1,3 +1,4 @@
+import type { ReplacementSessionInput } from '../identity/federation/sessions/authentication-session.types.js';
 import type { ApplicationSealedSecret } from '@pertexo/secrets/server';
 import type { DISCOVERABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
@@ -220,14 +221,6 @@ export type ResolveInvitationAcceptanceInput = Readonly<{
     intentId: string;
     bindingDigest: string;
   }>;
-}>;
-/** The Better Auth session that replaces every session of a user. */
-export type ReplacementSessionInput = Readonly<{
-  id: string;
-  token: string;
-  expiresAt: Date;
-  userAgent?: string | null;
-  ipAddress?: string | null;
 }>;
 export type CompleteInvitationAcceptanceInput = Readonly<{
   workspaceId: string;

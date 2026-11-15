@@ -1,13 +1,13 @@
-import type { AuthenticationReplacement } from './authentication-replacement.types.js';
+import type { AuthenticationReplacement } from './authentication-session.types.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { authSessions } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { readEligibleAuthenticationSession } from '../../identity/federation/sessions/authority.repository.js';
-import type { SessionAuthenticationProof } from '../../identity/federation/sessions/policy.js';
+import { readEligibleAuthenticationSession } from './authority.repository.js';
+import type { SessionAuthenticationProof } from './policy.js';
 import type { PoolClient } from 'pg';
 
-import type { ReplacementSessionInput } from '../tenant-access.types.js';
+import type { ReplacementSessionInput } from './authentication-session.types.js';
 
 /**
  * Ends every Better Auth session of a user inside the caller's transaction,

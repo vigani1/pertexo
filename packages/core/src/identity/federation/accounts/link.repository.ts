@@ -6,7 +6,7 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { revokeUserSessions } from '../../../tenant-access/users/sessions.repository.js';
+import { revokeUserSessions } from '../sessions/user-sessions.repository.js';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
 import { hasSignInMethodCapacity } from './limits.repository.js';
 

@@ -5,7 +5,7 @@ import { appendAuditFacts } from '../../../src/governance/audit/facts.js';
 import type { AuditFact } from '../../../src/governance/audit/facts.js';
 import { updateMemberships } from '../../../src/tenant-access/members/records.repository.js';
 import type { MembershipChange } from '../../../src/tenant-access/members/membership.types.js';
-import { revokeSessionsForUsers } from '../../../src/tenant-access/users/sessions.repository.js';
+import { revokeSessionsForUsers } from '../../../src/identity/federation/sessions/user-sessions.repository.js';
 import { useIdentityCommandDatabase } from '../command.support.js';
 
 const database = useIdentityCommandDatabase('member_batch');
