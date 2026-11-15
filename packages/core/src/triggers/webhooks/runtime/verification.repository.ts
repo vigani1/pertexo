@@ -1,4 +1,3 @@
-import { withPlatformTransaction } from '@pertexo/database/platform';
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -11,18 +10,14 @@ import {
 } from '@pertexo/database/schema';
 
 import { sql } from 'drizzle-orm';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
-import { WebhookIngressRateLimitExceededError } from '../webhook-trigger.errors.js';
 import { endpointTakesDeliveries } from './endpoint-rules.js';
 import { readTriggerConfig } from './webhook-state.repository.js';
 import type {
   StoredWebhookTriggerSecret,
   WebhookVerificationReference,
 } from './webhook-runtime.types.js';
-
-/** The window an endpoint's burst limit counts requests in. */
-const INGRESS_WINDOW_MILLIS = 60_000;
 
 export async function resolveWebhookVerification(
   pool: Pool,
@@ -94,49 +89,39 @@ export async function resolveWebhookVerification(
   });
 }
 
-export async function consumeWebhookIngressLimit(
-  pool: Pool,
-  endpointKeyHashInput: string,
-  burstLimit: number,
-): Promise<void> {
-  const retryAfter = await withPlatformTransaction(pool, async (client) => {
-    const db = drizzle(client);
-    const result = await db
-      .execute<{
-        bucket_started_at: string;
-        request_count: number;
-        observed_at: string;
-        created: boolean;
-      }>(
-        sql`select * from app.lock_webhook_ingress_counter(${endpointKeyHashInput}::char(64))`,
-      )
-      .catch(rethrowQueryFailure);
-    const counter = result.rows[0];
-    if (counter === undefined) return 1;
-    const remainingMillis =
-      Date.parse(counter.bucket_started_at) +
-      INGRESS_WINDOW_MILLIS -
-      Date.parse(counter.observed_at);
-    const reset = counter.created || remainingMillis <= 0;
-    if (!reset && counter.request_count >= burstLimit)
-      return Math.max(
-        1,
-        Math.min(
-          INGRESS_WINDOW_MILLIS / 1_000,
-          Math.ceil(remainingMillis / 1_000),
-        ),
-      );
-    const window = reset ? counter.observed_at : counter.bucket_started_at;
-    const changed = await db
-      .execute<{ stored: boolean }>(
-        sql`select app.store_webhook_ingress_counter(
-      ${endpointKeyHashInput}::char(64),${counter.bucket_started_at}::timestamptz,${counter.request_count},${reset},${window}::timestamptz) stored`,
-      )
-      .catch(rethrowQueryFailure);
-    if (changed.rows[0]?.stored !== true)
-      throw new Error('Webhook ingress counter ownership changed');
-    return 0;
-  });
-  if (retryAfter > 0)
-    throw new WebhookIngressRateLimitExceededError(retryAfter);
+export type WebhookIngressCounter = Readonly<{
+  bucket_started_at: string;
+  request_count: number;
+  observed_at: string;
+  created: boolean;
+}>;
+
+/** Locks the endpoint's ingress counter, creating it if missing. */
+export async function lockWebhookIngressCounter(
+  client: PoolClient,
+  endpointKeyHash: string,
+): Promise<WebhookIngressCounter | undefined> {
+  const result = await drizzle(client)
+    .execute<WebhookIngressCounter>(
+      sql`select * from app.lock_webhook_ingress_counter(${endpointKeyHash}::char(64))`,
+    )
+    .catch(rethrowQueryFailure);
+  return result.rows[0];
+}
+
+/** False when the counter no longer matches the locked reading. */
+export async function storeWebhookIngressCounter(
+  client: PoolClient,
+  endpointKeyHash: string,
+  counter: WebhookIngressCounter,
+  next: Readonly<{ reset: boolean; window: string }>,
+): Promise<boolean> {
+  const { reset, window } = next;
+  const changed = await drizzle(client)
+    .execute<{ stored: boolean }>(
+      sql`select app.store_webhook_ingress_counter(
+      ${endpointKeyHash}::char(64),${counter.bucket_started_at}::timestamptz,${counter.request_count},${reset},${window}::timestamptz) stored`,
+    )
+    .catch(rethrowQueryFailure);
+  return changed.rows[0]?.stored === true;
 }

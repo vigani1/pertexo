@@ -40,8 +40,8 @@ export type ScheduleCommandIdentity = Readonly<{
   workflowId: string;
 }>;
 
-export type ScheduleCommandTarget = Awaited<
-  ReturnType<typeof readScheduleCommandTarget>
+export type ScheduleCommandTarget = NonNullable<
+  Awaited<ReturnType<typeof readScheduleCommandTarget>>
 >;
 
 export type ScheduleHealthTransition = Readonly<{

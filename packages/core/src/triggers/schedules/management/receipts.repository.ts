@@ -1,15 +1,9 @@
-import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { credentialCommandScope } from '@pertexo/database/platform';
-import {
-  claimCommand,
-  completeCommand,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 import { workflowTriggers, triggerSchedules } from '@pertexo/database/schema';
 
 import { ScheduleTriggerError } from '../schedule-trigger.errors.js';
@@ -17,13 +11,8 @@ import { ScheduleTriggerError } from '../schedule-trigger.errors.js';
 import type {
   ScheduleCommandIdentity,
   ScheduleHealthTransition,
-  ScheduleTriggerCommandResult,
   SetEnabledInput,
 } from './schedule-management.types.js';
-import {
-  parseStoredScheduleTrigger,
-  readSchedule,
-} from './schedule-state.repository.js';
 
 export function scheduleCommandIdentity(
   input: SetEnabledInput,
@@ -42,7 +31,7 @@ export function scheduleCommandIdentity(
   });
 }
 
-function scheduleCommand(
+export function scheduleCommand(
   input: SetEnabledInput,
   identity: ScheduleCommandIdentity,
 ) {
@@ -54,31 +43,6 @@ function scheduleCommand(
     requestHash: identity.requestHash,
     conflict: () => new ScheduleTriggerError('idempotency_conflict'),
   };
-}
-
-export async function claimScheduleCommand(
-  client: PoolClient,
-  input: SetEnabledInput,
-  identity: ScheduleCommandIdentity,
-): Promise<ScheduleTriggerCommandResult | null> {
-  const claimed = await claimCommand(client, {
-    ...scheduleCommand(input, identity),
-    resourceId: identity.triggerId,
-  });
-  if (claimed === null) return null;
-  try {
-    const stored = decodeStoredValue(() =>
-      z.looseObject({ trigger: z.unknown() }).parse(claimed),
-    );
-    return Object.freeze({
-      trigger: parseStoredScheduleTrigger(stored.trigger),
-      replayed: true,
-    });
-  } catch (error: unknown) {
-    if (error instanceof z.ZodError)
-      throw new ScheduleTriggerError('idempotency_conflict');
-    throw error;
-  }
 }
 
 export async function applyScheduleHealthTransition(
@@ -142,21 +106,4 @@ export async function recordScheduleCommandAudit(
     traceId: input.traceId ?? null,
     metadata: { workflowId: identity.workflowId },
   });
-}
-
-export async function completeScheduleCommand(
-  client: PoolClient,
-  input: SetEnabledInput,
-  identity: ScheduleCommandIdentity,
-): Promise<ScheduleTriggerCommandResult> {
-  const trigger = await readSchedule(
-    client,
-    input.workspaceId,
-    identity.workflowId,
-    identity.triggerId,
-  );
-  await completeCommand(client, scheduleCommand(input, identity), {
-    trigger,
-  });
-  return Object.freeze({ trigger, replayed: false });
 }

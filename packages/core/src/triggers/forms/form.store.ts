@@ -43,13 +43,14 @@ import type {
   SetFormAccessInput,
   SubmitFormInput,
 } from './form-admission.types.js';
-import { authorizeForm, readFormVersion } from './form-versions.repository.js';
-import { discoverPublicForm } from './discover.repository.js';
+import { readFormVersion } from './read-form-version.js';
+import { authorizeForm } from './authorize-form.js';
+import { discoverPublicForm } from './discover.js';
 import {
   readFormAccess,
   readSealedFormCapability,
-  changeFormAccess,
 } from './access.repository.js';
+import { changeFormAccess } from './change-access.js';
 import { submitForm } from './submit.js';
 export type FormStore = ReturnType<typeof createFormStore>;
 

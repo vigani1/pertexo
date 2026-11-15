@@ -14,10 +14,7 @@ import {
 
 import type { PoolClient } from 'pg';
 
-import {
-  WebhookTriggerIdempotencyConflictError,
-  WebhookTriggerNotFoundError,
-} from '../webhook-trigger.errors.js';
+import { WebhookTriggerIdempotencyConflictError } from '../webhook-trigger.errors.js';
 
 import type {
   Command,
@@ -69,18 +66,22 @@ export async function completeWebhookCommand(
   });
 }
 
+/** Stores the trigger's secret; undefined, with nothing stored, when the trigger is gone. */
 export async function insertSecret(
   client: PoolClient,
   input: Command,
   secret: SealedWebhookTriggerSecret,
-): Promise<{
-  id: string;
-  kmsKeyReference: string;
-  encryptedDataKey: string;
-  ciphertext: string;
-  nonce: string;
-  authTag: string;
-}> {
+): Promise<
+  | {
+      id: string;
+      kmsKeyReference: string;
+      encryptedDataKey: string;
+      ciphertext: string;
+      nonce: string;
+      authTag: string;
+    }
+  | undefined
+> {
   const db = drizzle(client);
   const [trigger] = await db
     .select({
@@ -95,7 +96,7 @@ export async function insertSecret(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (trigger === undefined) throw new WebhookTriggerNotFoundError();
+  if (trigger === undefined) return undefined;
   await db
     .insert(secrets)
     .values({

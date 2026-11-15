@@ -5,7 +5,8 @@ import {
   inputRequestConfigSchema,
   type FormField,
 } from '@pertexo/workflow-model';
-import { authorizeForm, readFormVersion } from '../form-versions.repository.js';
+import { readFormVersion } from '../read-form-version.js';
+import { authorizeForm } from '../authorize-form.js';
 import { FormUnavailableError } from '../form.errors.js';
 import { lockWorkspaceAuthority } from '../../../shared/workspace-authority.js';
 import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';

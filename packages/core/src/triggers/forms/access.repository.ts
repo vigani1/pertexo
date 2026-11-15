@@ -1,10 +1,5 @@
 import type { SealedConnectionSecret } from '@pertexo/secrets/server';
-import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
-import { appendAuditFact } from '../../governance/audit/facts.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowForms } from '@pertexo/database/schema';
@@ -12,7 +7,6 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { FormAccess } from '@pertexo/contracts';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { FormAccessConflictError } from './form.errors.js';
 import type { SetFormAccessInput } from './form-admission.types.js';
 export const capabilityHash = (value: string) =>
   createHash('sha256').update(value).digest('hex');
@@ -37,32 +31,12 @@ export async function readFormAccess(
     .catch(rethrowQueryFailure);
   return rows[0] ?? { access: 'members', publicId: null, revision: 0 };
 }
-export async function changeFormAccess(
+export async function upsertFormAccess(
   client: PoolClient,
   input: SetFormAccessInput,
   nodeId: string,
+  digest: string | null,
 ): Promise<FormAccess> {
-  const command = {
-    workspaceId: input.workspaceId,
-    operation: 'form.access',
-    scope: `${input.actorId}:${input.workflowId}`,
-    idempotencyKey: input.idempotencyKey,
-  };
-  const digest =
-    input.access === 'public' ? capabilityHash(input.capability) : null;
-  const replay = await claimCommand<FormAccess>(client, {
-    ...command,
-    request: {
-      access: input.access,
-      expectedRevision: input.expectedRevision,
-      capabilityHash: digest,
-    },
-    resourceId: input.workflowId,
-  });
-  if (replay !== null) return replay;
-  const current = await readFormAccess(client, input);
-  if (current.revision !== input.expectedRevision)
-    throw new FormAccessConflictError();
   const db = drizzle(client);
   const result = await db
     .insert(workflowForms)
@@ -93,17 +67,6 @@ export async function changeFormAccess(
     .catch(rethrowQueryFailure);
   const changed = result[0];
   if (changed === undefined) throw new Error('Form access write missing');
-  await appendAuditFact(client, {
-    workspaceId: input.workspaceId,
-    actorId: input.actorId,
-    action: 'form.access_changed',
-    targetType: 'workflow',
-    targetId: input.workflowId,
-    requestId: input.requestId ?? null,
-    traceId: input.traceId ?? null,
-    metadata: { access: changed.access, revision: changed.revision },
-  });
-  await completeCommand(client, command, changed);
   return changed;
 }
 

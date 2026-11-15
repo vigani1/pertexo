@@ -9,7 +9,10 @@ import { acquireDatabasePool } from '@pertexo/database/platform';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { triggerSchedules, workflowTriggers } from '@pertexo/database/schema';
 
-import { ScheduleTriggerError } from './schedule-trigger.errors.js';
+import {
+  ScheduleTriggerError,
+  requireSchedule,
+} from './schedule-trigger.errors.js';
 
 import { withTriggerManagement } from '../management.js';
 import { refreshWorkflowActivation } from '../reconciliation/health.repository.js';
@@ -20,11 +23,13 @@ import type {
 } from './management/schedule-management.types.js';
 import {
   applyScheduleHealthTransition,
-  claimScheduleCommand,
-  completeScheduleCommand,
   recordScheduleCommandAudit,
   scheduleCommandIdentity,
 } from './management/receipts.repository.js';
+import {
+  claimScheduleCommand,
+  completeScheduleCommand,
+} from './management/schedule-command.js';
 import {
   readScheduleCommandTarget,
   readSchedules,
@@ -33,7 +38,7 @@ import {
 import {
   createScheduleTriggerReads,
   withScheduleReader,
-} from './schedule-reads.repository.js';
+} from './schedule-reads.store.js';
 export type ScheduleTriggerStore = ReturnType<
   typeof createScheduleTriggerStore
 >;
@@ -82,10 +87,8 @@ export function createScheduleTriggerStore(
             workflowId: identity.workflowId,
             versionId: publication.versionId,
           });
-          const target = await readScheduleCommandTarget(
-            client,
-            input,
-            identity,
+          const target = requireSchedule(
+            await readScheduleCommandTarget(client, input, identity),
           );
           const transition = scheduleHealthTransition(input, target);
           await applyScheduleHealthTransition(

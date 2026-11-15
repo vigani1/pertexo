@@ -5,37 +5,14 @@ import {
   workflowTriggers,
   webhookTriggerEndpoints as endpoints,
 } from '@pertexo/database/schema';
-
-import { createHash } from 'node:crypto';
-
-import type { Pool } from 'pg';
-
-import { refreshWorkflowActivation } from '../../reconciliation/health.repository.js';
-
-import {
-  WebhookTriggerNotFoundError,
-  WebhookTriggerStateError,
-} from '../webhook-trigger.errors.js';
-
-import { withTriggerManagement } from '../../management.js';
-import {
-  authenticationChangeRotates,
-  provisionRefusal,
-} from './endpoint-rules.js';
+import type { PoolClient } from 'pg';
 import type {
   Command,
   ConfigureWebhookAuthenticationInput,
   ProvisionWebhookInput,
   RotateWebhookEndpointInput,
   RotateWebhookSecretInput,
-  WebhookCommandResult,
 } from './webhook-runtime.types.js';
-import {
-  claimWebhookCommand,
-  completeWebhookCommand,
-  insertSecret,
-} from './receipts.repository.js';
-import { oneHealth } from './webhook-state.repository.js';
 import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 /** How long a rotated-out secret still verifies, for senders mid-switch. */
@@ -55,232 +32,172 @@ function endpointOfTrigger(input: Command) {
   );
 }
 
-export function configureWebhookAuthentication(
-  pool: Pool,
+/** The active endpoint's authentication, locked, or undefined when there's none. */
+export async function lockEndpointAuthentication(
+  client: PoolClient,
+  input: Command,
+) {
+  const result = await drizzle(client)
+    .select({ authentication: endpoints.authentication })
+    .from(endpoints)
+    .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return result[0]?.authentication;
+}
+
+/** A new authentication mode gets a new endpoint key and secret, with no grace. */
+export async function replaceEndpointAuthentication(
+  client: PoolClient,
   input: ConfigureWebhookAuthenticationInput,
-): Promise<WebhookCommandResult & Readonly<{ rotated: boolean }>> {
-  return withTriggerManagement(
-    pool,
-    input,
-    () => new WebhookTriggerNotFoundError(),
-    async (client) => {
-      const operation = 'webhook.trigger.authentication.configure';
-      if (await claimWebhookCommand(client, input, operation))
-        return {
-          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-          replayed: true,
-          rotated: false,
-        };
-      const db = drizzle(client);
-      const result = await db
-        .select({ authentication: endpoints.authentication })
-        .from(endpoints)
-        .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
-        .for('update')
-        .catch(rethrowQueryFailure);
-      const current = result[0]?.authentication;
-      if (current === undefined) throw new WebhookTriggerNotFoundError();
-      const next = input.authentication;
-      const rotated = authenticationChangeRotates(current, next);
-      if (rotated) {
-        const secret = await insertSecret(client, input, input.secret);
-        await db
-          .update(endpoints)
-          .set({
-            authentication: next,
-            endpointKeyHash: input.endpointKeyHash,
-            currentSecretVersionId: secret.id,
-            previousSecretVersionId: null,
-            previousSecretValidUntil: null,
-            updatedAt: sql`clock_timestamp()`,
-          })
-          .where(endpointOfTrigger(input))
-          .catch(rethrowQueryFailure);
-      } else {
-        await db
-          .update(endpoints)
-          .set({ authentication: next, updatedAt: sql`clock_timestamp()` })
-          .where(endpointOfTrigger(input))
-          .catch(rethrowQueryFailure);
-      }
-      await completeWebhookCommand(client, input, operation);
-      return {
-        trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-        replayed: false,
-        rotated,
-      };
-    },
-  );
+  secretId: string,
+): Promise<void> {
+  await drizzle(client)
+    .update(endpoints)
+    .set({
+      authentication: input.authentication,
+      endpointKeyHash: input.endpointKeyHash,
+      currentSecretVersionId: secretId,
+      previousSecretVersionId: null,
+      previousSecretValidUntil: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(endpointOfTrigger(input))
+    .catch(rethrowQueryFailure);
 }
 
-export function provisionWebhook(
-  pool: Pool,
+export async function updateEndpointAuthentication(
+  client: PoolClient,
+  input: ConfigureWebhookAuthenticationInput,
+): Promise<void> {
+  await drizzle(client)
+    .update(endpoints)
+    .set({
+      authentication: input.authentication,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(endpointOfTrigger(input))
+    .catch(rethrowQueryFailure);
+}
+
+export async function lockWebhookTrigger(
+  client: PoolClient,
   input: ProvisionWebhookInput,
-): Promise<WebhookCommandResult> {
-  return withTriggerManagement(
-    pool,
-    input,
-    () => new WebhookTriggerNotFoundError(),
-    async (client) => {
-      const operation = 'webhook.trigger.provision';
-      if (await claimWebhookCommand(client, input, operation))
-        return {
-          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-          replayed: true,
-        };
-      const db = drizzle(client);
-      const trigger = await db
-        .select({
-          workflow_id: workflowTriggers.workflowId,
-          node_id: workflowTriggers.nodeId,
-          status: workflowTriggers.status,
-        })
-        .from(workflowTriggers)
-        .where(
-          and(
-            eq(workflowTriggers.workspaceId, input.workspaceId),
-            eq(workflowTriggers.id, input.triggerId),
-            eq(workflowTriggers.kind, 'webhook'),
-          ),
-        )
-        .for('update')
-        .catch(rethrowQueryFailure);
-      const row = trigger[0];
-      if (row === undefined) throw new WebhookTriggerNotFoundError();
-      const refusal = provisionRefusal(row.status);
-      if (refusal !== undefined) throw new WebhookTriggerStateError(refusal);
-      const secret = await insertSecret(client, input, input.secret);
-      await db
-        .insert(endpoints)
-        .values({
-          id: input.endpointId,
-          workspaceId: input.workspaceId,
-          workflowId: row.workflow_id,
-          nodeId: row.node_id,
-          endpointKeyHash: input.endpointKeyHash,
-          currentSecretVersionId: secret.id,
-        })
-        .catch(rethrowQueryFailure);
-      await db
-        .update(workflowTriggers)
-        .set({
-          status: 'active',
-          healthStatus: 'healthy',
-          reconciledAt: sql`clock_timestamp()`,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(workflowTriggers.workspaceId, input.workspaceId),
-            eq(workflowTriggers.id, input.triggerId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      await refreshWorkflowActivation(
-        client,
-        input.workspaceId,
-        row.workflow_id,
-      );
-      await completeWebhookCommand(client, input, operation);
-      return {
-        trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-        replayed: false,
-      };
-    },
-  );
+) {
+  const trigger = await drizzle(client)
+    .select({
+      workflow_id: workflowTriggers.workflowId,
+      node_id: workflowTriggers.nodeId,
+      status: workflowTriggers.status,
+    })
+    .from(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, input.workspaceId),
+        eq(workflowTriggers.id, input.triggerId),
+        eq(workflowTriggers.kind, 'webhook'),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return trigger[0];
 }
 
-export function rotateWebhookEndpoint(
-  pool: Pool,
+export async function insertEndpoint(
+  client: PoolClient,
+  input: ProvisionWebhookInput,
+  trigger: Readonly<{ workflow_id: string; node_id: string }>,
+  secretId: string,
+): Promise<void> {
+  await drizzle(client)
+    .insert(endpoints)
+    .values({
+      id: input.endpointId,
+      workspaceId: input.workspaceId,
+      workflowId: trigger.workflow_id,
+      nodeId: trigger.node_id,
+      endpointKeyHash: input.endpointKeyHash,
+      currentSecretVersionId: secretId,
+    })
+    .catch(rethrowQueryFailure);
+}
+
+export async function activateWebhookTrigger(
+  client: PoolClient,
+  input: ProvisionWebhookInput,
+): Promise<void> {
+  await drizzle(client)
+    .update(workflowTriggers)
+    .set({
+      status: 'active',
+      healthStatus: 'healthy',
+      reconciledAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, input.workspaceId),
+        eq(workflowTriggers.id, input.triggerId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+}
+
+/** False when there's no active endpoint to rotate. */
+export async function rotateEndpointKey(
+  client: PoolClient,
   input: RotateWebhookEndpointInput,
-): Promise<WebhookCommandResult> {
-  return withTriggerManagement(
-    pool,
-    input,
-    () => new WebhookTriggerNotFoundError(),
-    async (client) => {
-      const operation = 'webhook.trigger.endpoint.rotate';
-      if (await claimWebhookCommand(client, input, operation))
-        return {
-          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-          replayed: true,
-        };
-      const result = await drizzle(client)
-        .update(endpoints)
-        .set({
-          endpointKeyHash: input.endpointKeyHash,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
-        .returning({ id: endpoints.id })
-        .catch(rethrowQueryFailure);
-      if (result.length !== 1) throw new WebhookTriggerNotFoundError();
-      await completeWebhookCommand(client, input, operation);
-      return {
-        trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-        replayed: false,
-      };
-    },
-  );
+): Promise<boolean> {
+  const result = await drizzle(client)
+    .update(endpoints)
+    .set({
+      endpointKeyHash: input.endpointKeyHash,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(and(endpointOfTrigger(input), eq(endpoints.status, 'active')))
+    .returning({ id: endpoints.id })
+    .catch(rethrowQueryFailure);
+  return result.length === 1;
 }
 
-export function rotateWebhookSecret(
-  pool: Pool,
+/** The active endpoint under this key, locked for a secret rotation. */
+export async function lockEndpointSecret(
+  client: PoolClient,
   input: RotateWebhookSecretInput,
-): Promise<WebhookCommandResult> {
-  return withTriggerManagement(
-    pool,
-    input,
-    () => new WebhookTriggerNotFoundError(),
-    async (client) => {
-      const operation = 'webhook.trigger.secret.rotate';
-      const keyedCommand = {
-        ...input,
-        requestHash: createHash('sha256')
-          .update(`${input.requestHash}\0${input.endpointKeyHash}`)
-          .digest('hex'),
-      };
-      if (await claimWebhookCommand(client, keyedCommand, operation))
-        return {
-          trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-          replayed: true,
-        };
-      const db = drizzle(client);
-      const endpoint = await db
-        .select({
-          current_secret_version_id: endpoints.currentSecretVersionId,
-          authentication: endpoints.authentication,
-        })
-        .from(endpoints)
-        .where(
-          and(
-            endpointOfTrigger(input),
-            eq(endpoints.endpointKeyHash, input.endpointKeyHash),
-            eq(endpoints.status, 'active'),
-          ),
-        )
-        .for('update')
-        .catch(rethrowQueryFailure);
-      const row = endpoint[0];
-      if (row === undefined || row.authentication.mode === 'secret_url')
-        throw new WebhookTriggerNotFoundError();
-      const current = row.current_secret_version_id;
-      const secret = await insertSecret(client, input, input.secret);
-      await db
-        .update(endpoints)
-        .set({
-          currentSecretVersionId: secret.id,
-          previousSecretVersionId: current,
-          previousSecretValidUntil: sql`clock_timestamp()+${PREVIOUS_SECRET_GRACE_MINUTES}*${MINUTE_INTERVAL}`,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(endpointOfTrigger(input))
-        .catch(rethrowQueryFailure);
-      await completeWebhookCommand(client, keyedCommand, operation);
-      return {
-        trigger: await oneHealth(client, input.workspaceId, input.triggerId),
-        replayed: false,
-      };
-    },
-  );
+) {
+  const endpoint = await drizzle(client)
+    .select({
+      current_secret_version_id: endpoints.currentSecretVersionId,
+      authentication: endpoints.authentication,
+    })
+    .from(endpoints)
+    .where(
+      and(
+        endpointOfTrigger(input),
+        eq(endpoints.endpointKeyHash, input.endpointKeyHash),
+        eq(endpoints.status, 'active'),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return endpoint[0];
+}
+
+/** The old secret keeps verifying for a short grace while senders switch. */
+export async function rotateEndpointSecret(
+  client: PoolClient,
+  input: RotateWebhookSecretInput,
+  secretId: string,
+  previousSecretId: string,
+): Promise<void> {
+  await drizzle(client)
+    .update(endpoints)
+    .set({
+      currentSecretVersionId: secretId,
+      previousSecretVersionId: previousSecretId,
+      previousSecretValidUntil: sql`clock_timestamp()+${PREVIOUS_SECRET_GRACE_MINUTES}*${MINUTE_INTERVAL}`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(endpointOfTrigger(input))
+    .catch(rethrowQueryFailure);
 }

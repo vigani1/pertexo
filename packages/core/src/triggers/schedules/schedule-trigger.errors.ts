@@ -15,6 +15,11 @@ export class ScheduleTriggerError extends Error {
   }
 }
 
+export function requireSchedule<T>(schedule: T | undefined): T {
+  if (schedule === undefined) throw new ScheduleTriggerError('not_found');
+  return schedule;
+}
+
 export class ScheduleClaimLostError extends Error {
   public override readonly name = 'ScheduleClaimLostError';
 }
