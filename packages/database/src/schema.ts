@@ -103,9 +103,9 @@ import {
   connections,
   connectionSecretVersions,
   connectionEvents,
-  nodeAttemptConnectionDispatches,
   connectionHealthObservations,
 } from './schema/connections.js';
+import { nodeAttemptConnectionDispatches } from './schema/runs/connection-dispatches.js';
 import {
   connectionOAuth2Authorizations,
   connectionOAuth2Clients,
@@ -413,8 +413,8 @@ export {
   connections,
   connectionSecretVersions,
   connectionShares,
-  nodeAttemptConnectionDispatches,
 } from './schema/connections.js';
+export { nodeAttemptConnectionDispatches } from './schema/runs/connection-dispatches.js';
 export {
   dataTableWriteReceipts,
   workspaceDataTableQuotas,
