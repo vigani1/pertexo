@@ -9,7 +9,7 @@ import type { PoolClient } from 'pg';
 import {
   wakeWorkflowRun,
   deferWorkflowRun,
-} from '../../wakeups/advance.repository.js';
+} from '../../../outbox/run-advance.repository.js';
 import { wakeTaskAncestors } from '../responses/respond.repository.js';
 
 export type HumanWaitState = Readonly<{

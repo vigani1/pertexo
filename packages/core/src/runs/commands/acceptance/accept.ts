@@ -7,7 +7,7 @@ import { requireFormAdmission } from './forms.repository.js';
 import { lockExecutionArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../../../shared/stored-execution.js';
-import { enqueueAdvance } from '../../wakeups/advance.repository.js';
+import { enqueueAdvance } from '../../../outbox/run-advance.repository.js';
 import { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { prepareWorkflowRunAcceptanceInput } from './checkpoint.js';

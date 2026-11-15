@@ -34,7 +34,7 @@ import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.ty
 import { findLockedReplayVersion } from '../commands/execution-sources.repository.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import { WorkflowCallRefusedError } from './workflow-call.errors.js';
-import { wakeWorkflowRun } from '../wakeups/advance.repository.js';
+import { wakeWorkflowRun } from '../../outbox/run-advance.repository.js';
 
 /** All target prerequisites precede the parent and the counter stays last. */
 export async function acceptPendingCall(
