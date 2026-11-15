@@ -1,3 +1,4 @@
+import { readDatabaseClockText } from '../../../shared/database-clock.repository.js';
 import {
   ROLES,
   WORKFLOW_EDITOR_ROLES,
@@ -150,15 +151,8 @@ async function resumePausedWorkflow(
       if (current.triggerPauseState !== 'paused')
         return { settings: workflowSettingsOf(current, workspace) };
       // Outcomes that ended before the resume no longer count.
+      const resumedAt = await readDatabaseClockText(client);
       const db = drizzle(client);
-      const now = await db
-        .execute<{ resumed_at: string }>(
-          sql`select clock_timestamp() resumed_at`,
-        )
-        .catch(rethrowQueryFailure);
-      const clock = now.rows[0]?.resumed_at;
-      if (clock === undefined) throw new Error('Resume time is unavailable');
-      const resumedAt = clock;
       // The paused-state CHECK guarantees the retained pause start is present.
       await db
         .insert(workflowTriggerPausePeriods)

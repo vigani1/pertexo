@@ -14,11 +14,21 @@ export type DatabaseClockSource = PoolClient | Pick<NodePgDatabase, 'execute'>;
 export async function readDatabaseClock(
   source: DatabaseClockSource,
 ): Promise<Date> {
+  return new Date(await readDatabaseClockText(source));
+}
+
+/**
+ * The same reading as PostgreSQL writes it, with its microseconds, for a
+ * flow that stores it back into a timestamp column.
+ */
+export async function readDatabaseClockText(
+  source: DatabaseClockSource,
+): Promise<string> {
   const db = 'execute' in source ? source : drizzle(source);
   const clock = await db
     .execute<{ now: string }>(sql`select clock_timestamp() now`)
     .catch(rethrowQueryFailure);
   const now = clock.rows[0]?.now;
   if (now === undefined) throw new Error('Database clock is unavailable');
-  return new Date(now);
+  return now;
 }
