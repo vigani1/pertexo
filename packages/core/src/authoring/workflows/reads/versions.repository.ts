@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -15,8 +16,6 @@ import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 
 import type { ListWorkflowVersionsInput } from '../workflow-commands.types.js';
-
-const DEFAULT_PAGE_LIMIT = 50;
 
 export async function readVersion(
   client: PoolClient,

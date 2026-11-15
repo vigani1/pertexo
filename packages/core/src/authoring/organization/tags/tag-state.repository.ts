@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -9,8 +10,6 @@ import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors
 import { WorkflowTagConflictError } from '../workflow-organization.errors.js';
 
 import type { Page, PageInput } from './workflow-tag.types.js';
-
-const DEFAULT_PAGE_LIMIT = 50;
 
 export const tagProjection = {
   id: workflowTags.id,

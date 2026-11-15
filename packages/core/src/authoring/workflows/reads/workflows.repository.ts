@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import { readListSummaries } from './list-summary.repository.js';
 import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
 import { and, asc, desc, eq, exists, sql } from 'drizzle-orm';
@@ -19,8 +20,6 @@ import {
 import { workflowProjection } from '../representation/workflow-representations.repository.js';
 
 import type { ListWorkflowsInput } from '../workflow-commands.types.js';
-
-const DEFAULT_PAGE_LIMIT = 50;
 
 const folder = new QueryBuilder()
   .select({ id: workflowOrganizationState.folderId })

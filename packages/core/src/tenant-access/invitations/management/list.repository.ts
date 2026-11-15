@@ -10,7 +10,7 @@ import { expireWorkspaceInvitations } from '../expiration.repository.js';
 import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
 import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
 import { WorkspaceInvitationCommandConflictError } from '../../tenant-access.errors.js';
-import { DEFAULT_PAGE_LIMIT } from '../../state.js';
+import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import type {
   ListWorkspaceInvitationsInput,
   WorkspaceInvitationsPage,
