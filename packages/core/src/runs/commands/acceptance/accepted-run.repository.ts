@@ -11,7 +11,7 @@ import { and, eq, sql } from 'drizzle-orm';
 
 import { MILLISECOND_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 import { runInputRetentionSql } from '../../../shared/run-retention.repository.js';
-import { QUEUED_EVENT_SEQUENCE } from '../../queries/history/events.repository.js';
+import { QUEUED_EVENT_SEQUENCE } from '../../../shared/run-events.repository.js';
 import type {
   AcceptWorkflowRunInput,
   PreparedWorkflowRunAcceptance,

@@ -5,7 +5,7 @@ import { nodeAttempts, nodeRuns, workflowRuns } from '@pertexo/database/schema';
 import {
   appendLockedRunEvent,
   RUN_EVENT_TYPE,
-} from '../runs/queries/history/events.repository.js';
+} from '../shared/run-events.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { enqueue } from '../outbox/enqueue-delivery.repository.js';
 import { enqueueAdvance } from '../outbox/run-advance.repository.js';

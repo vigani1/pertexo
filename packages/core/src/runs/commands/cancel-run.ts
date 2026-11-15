@@ -2,7 +2,7 @@ import { appendAuditFacts } from '../../governance/audit/facts.js';
 import {
   appendLockedRunEvents,
   RUN_EVENT_TYPE,
-} from '../queries/history/events.repository.js';
+} from '../../shared/run-events.repository.js';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from './request-cancellation.js';

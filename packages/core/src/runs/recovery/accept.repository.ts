@@ -1,4 +1,4 @@
-import { QUEUED_EVENT_SEQUENCE } from '../queries/history/events.repository.js';
+import { QUEUED_EVENT_SEQUENCE } from '../../shared/run-events.repository.js';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { copyRecoveryRunValues } from '../values/rows.repository.js';
 import { sql } from 'drizzle-orm';

@@ -4,10 +4,8 @@ import type { PoolClient } from 'pg';
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { workflowRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  CoordinatorRunStateCorruptError,
-  ExecutionStateConflictError,
-} from '../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../execution-state.errors.js';
+import { ExecutionStateConflictError } from '../../shared/execution-state.errors.js';
 
 /** The caller holds the workspace/current entitlement fence, then run and capacity locks. */
 export async function assertRunStartDeadline(

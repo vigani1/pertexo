@@ -11,7 +11,7 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from '../../../../src/runs/commands/request-cancellation.js';
-import { ExecutionStateConflictError } from '../../../../src/runs/execution-state.errors.js';
+import { ExecutionStateConflictError } from '../../../../src/shared/execution-state.errors.js';
 import { createRunAdvanceStore } from '../../../../src/runs/advance/run-advance.store.js';
 import {
   actorId,
