@@ -83,7 +83,7 @@ CREATE FUNCTION app.arm_dispatcher_workflow_run_active_admission(p_workspace_id 
     AS $$
 BEGIN
   UPDATE app.workflow_run_active_admissions
-     SET recover_after=clock_timestamp()+interval '5 minutes'
+     SET recover_after=clock_timestamp()+app.workflow_run_slot_recovery_lease()
    WHERE workspace_id=p_workspace_id AND outbox_event_id=p_outbox_event_id;
   RETURN FOUND;
 END $$;
@@ -956,11 +956,11 @@ BEGIN
   IF v_admission.workflow_run_id IS NULL THEN
     INSERT INTO app.workflow_run_active_admissions
       (workspace_id,workflow_run_id,outbox_event_id,borrowed_call_id,workflow_concurrency_order_exempt,recover_after)
-    VALUES(p_workspace,p_child,p_outbox,p_call,true,clock_timestamp()+interval '5 minutes');
+    VALUES(p_workspace,p_child,p_outbox,p_call,true,clock_timestamp()+app.workflow_run_slot_recovery_lease());
   ELSE
     UPDATE app.workflow_run_active_admissions
       SET workflow_run_id=p_child,outbox_event_id=p_outbox,borrowed_call_id=p_call,
-        workflow_concurrency_order_exempt=true,recover_after=clock_timestamp()+interval '5 minutes'
+        workflow_concurrency_order_exempt=true,recover_after=clock_timestamp()+app.workflow_run_slot_recovery_lease()
       WHERE workspace_id=p_workspace AND workflow_run_id=v_call.parent_run_id;
   END IF;
   UPDATE app.workspace_execution_admission_counters counter
@@ -1304,7 +1304,7 @@ BEGIN
         AND new_event.payload->>'outboxEventId'=p_new_outbox_event_id::text
         AND new_event.published_at IS NULL AND new_event.failed_at IS NULL) THEN RETURN false;
   END IF;
-  UPDATE app.workflow_run_active_admissions SET outbox_event_id=p_new_outbox_event_id,recover_after=CASE WHEN borrowed_call_id IS NULL THEN NULL ELSE clock_timestamp()+interval '5 minutes' END
+  UPDATE app.workflow_run_active_admissions SET outbox_event_id=p_new_outbox_event_id,recover_after=CASE WHEN borrowed_call_id IS NULL THEN NULL ELSE clock_timestamp()+app.workflow_run_slot_recovery_lease() END
     WHERE workspace_id=p_workspace_id AND workflow_run_id=p_workflow_run_id
       AND outbox_event_id=p_old_outbox_event_id;
   RETURN FOUND;
@@ -1353,7 +1353,7 @@ BEGIN
       IF owner_status IN ('running','waiting') THEN
         -- A bounded recovery batch must progress past live borrowers.
         UPDATE app.workflow_run_active_admissions
-          SET recover_after=clock_timestamp()+interval '5 minutes'
+          SET recover_after=clock_timestamp()+app.workflow_run_slot_recovery_lease()
           WHERE workspace_id=admission.workspace_id AND workflow_run_id=admission.workflow_run_id;
         CONTINUE;
       END IF;
@@ -1370,7 +1370,7 @@ BEGIN
         VALUES(new_outbox_event_id,admission.workspace_id,'advance-workflow-run','workflow-run',return_parent,new_payload,
           encode(sha256(convert_to(canonical_payload,'UTF8')),'hex'),'publish.delivery_recovery');
       UPDATE app.workflow_run_active_admissions
-        SET recover_after=clock_timestamp()+interval '5 minutes',recovery_count=recovery_count+1
+        SET recover_after=clock_timestamp()+app.workflow_run_slot_recovery_lease(),recovery_count=recovery_count+1
         WHERE workspace_id=admission.workspace_id AND workflow_run_id=admission.workflow_run_id;
       recovered:=recovered+1;
       CONTINUE;
@@ -1401,7 +1401,7 @@ BEGIN
       );
       UPDATE app.workflow_run_active_admissions
          SET outbox_event_id=new_outbox_event_id,
-           recover_after=CASE WHEN borrowed_call_id IS NULL THEN NULL ELSE clock_timestamp()+interval '5 minutes' END,
+           recover_after=CASE WHEN borrowed_call_id IS NULL THEN NULL ELSE clock_timestamp()+app.workflow_run_slot_recovery_lease() END,
              recovery_count=recovery_count+1
        WHERE workflow_run_id=admission.workflow_run_id;
       recovered:=recovered+1;
@@ -1409,7 +1409,7 @@ BEGIN
       -- The dispatcher still owns this unpublished hint; retain the slot and
       -- move the poll behind other due return obligations.
       UPDATE app.workflow_run_active_admissions
-        SET recover_after=clock_timestamp()+interval '5 minutes'
+        SET recover_after=clock_timestamp()+app.workflow_run_slot_recovery_lease()
         WHERE workspace_id=admission.workspace_id AND workflow_run_id=admission.workflow_run_id;
     END IF;
   END LOOP;
@@ -1764,7 +1764,7 @@ BEGIN
   ELSE
     UPDATE app.workflow_run_active_admissions
       SET workflow_run_id=v_call.parent_run_id,outbox_event_id=p_parent_outbox,borrowed_call_id=v_incoming,
-        workflow_concurrency_order_exempt=true,recover_after=clock_timestamp()+interval '5 minutes'
+        workflow_concurrency_order_exempt=true,recover_after=clock_timestamp()+app.workflow_run_slot_recovery_lease()
       WHERE workspace_id=p_workspace AND workflow_run_id=v_owner AND borrowed_call_id=p_call;
   END IF;
   UPDATE app.workspace_execution_admission_counters counter
@@ -2178,6 +2178,18 @@ END $$;
 
 
 ALTER FUNCTION app.workflow_run_slot_counts(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) OWNER TO pertexo_owner;
+
+--
+-- Name: workflow_run_slot_recovery_lease(); Type: FUNCTION; Schema: app; Owner: pertexo_owner
+--
+
+CREATE FUNCTION app.workflow_run_slot_recovery_lease() RETURNS interval
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    SET search_path TO 'pg_catalog', 'app'
+    AS $$ SELECT interval '5 minutes' $$;
+
+
+ALTER FUNCTION app.workflow_run_slot_recovery_lease() OWNER TO pertexo_owner;
 
 --
 -- Name: workspace_inbox_recipient_eligible(uuid, uuid); Type: FUNCTION; Schema: app; Owner: pertexo_owner
@@ -13401,6 +13413,13 @@ REVOKE ALL ON FUNCTION app.workflow_run_reserved_slots(p_workspace uuid, p_workf
 REVOKE ALL ON FUNCTION app.workflow_run_slot_counts(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.workflow_run_slot_counts(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) TO pertexo_app;
 GRANT ALL ON FUNCTION app.workflow_run_slot_counts(p_workspace uuid, p_workflow uuid, p_excluded_run uuid) TO pertexo_maintenance;
+
+
+--
+-- Name: FUNCTION workflow_run_slot_recovery_lease(); Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+REVOKE ALL ON FUNCTION app.workflow_run_slot_recovery_lease() FROM PUBLIC;
 
 
 --

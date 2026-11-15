@@ -284,6 +284,11 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
     reason:
       'Read active, queued and borrowed-slot capacity counts under the shared locks.',
   },
+  'app.workflow_run_slot_recovery_lease()': {
+    category: 'capacity counters',
+    reason:
+      "Name the slot protocol's five-minute recovery lease once, for every reservation writer that arms it; no TypeScript reads or chooses it.",
+  },
   'app.workspace_inbox_recipient_eligible(uuid,uuid)': {
     category: 'workspace isolation',
     reason:

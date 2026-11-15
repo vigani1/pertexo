@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import type { DatabaseReadiness } from './database-platform.types.js';
 import { DatabaseNotReadyError } from './readiness.errors.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0004_widen_replay_safe_error_code.sql';
+export const EXPECTED_MIGRATION_HEAD = '0005_name_slot_recovery_lease.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

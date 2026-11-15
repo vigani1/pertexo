@@ -87,6 +87,15 @@ scans the table once to recheck the CHECK constraint that reads the column
 replay command, so this takes well under a second and the normal upgrade
 estimate applies.
 
+## Migration 0005: slot recovery lease
+
+`0005_name_slot_recovery_lease.sql` replaces SQL functions only. The run-slot
+protocol's five-minute recovery lease gets one definition,
+`app.workflow_run_slot_recovery_lease()`, which the five reservation functions
+read instead of writing the interval themselves; reservations expire exactly
+as before. It changes no table or data and runs in well under a second, so the
+normal upgrade estimate applies.
+
 ## Baseline transition: required release stop
 
 **Required stop: v0.2.0 — the final release containing migrations
