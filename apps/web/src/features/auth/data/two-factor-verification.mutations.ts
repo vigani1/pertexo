@@ -4,7 +4,7 @@ import { isApiError, isSessionExpired, type ApiError } from '@/lib/api/error';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 import { useFieldValues } from '@/components/ui/use-field-validation';
-import { verifyTwoFactor } from '../../data/two-factor.api';
+import { verifyTwoFactor } from './two-factor.api';
 
 /** The verification request stays with the flow so every close and mode control sees its busy state. */
 export function useTwoFactorVerification({

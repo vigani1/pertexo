@@ -8,7 +8,7 @@ import {
   AuthLensFooter,
 } from '../stage/auth-lens';
 import { TwoFactorCodeForm } from './code-form';
-import { useTwoFactorVerification } from './use-verify';
+import { useTwoFactorVerification } from '../../data/two-factor-verification.mutations';
 
 export function TwoFactorSignInLens({
   apiClient,
