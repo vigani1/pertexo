@@ -31,7 +31,7 @@ import {
   describeConnectionKind,
   PROVIDERS,
 } from '../../model/connection-providers';
-import { useConnectionTest } from '../connection-test/use-command';
+import { useConnectionTest } from '../../data/connection-test.mutations';
 import { ConnectionTestPanel } from '../connection-test/panel';
 import { ProviderTile } from '../provider-tile';
 import { ConnectionFacts } from './connection-facts';

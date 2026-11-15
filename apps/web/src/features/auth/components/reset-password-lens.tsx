@@ -5,7 +5,7 @@ import { confirmationProblem, newPasswordProblem } from '../forms/field-rules';
 import { PasswordField } from '../forms/password-field';
 import { isResetLinkInvalid, resetFailure } from '../model/auth-failure';
 import { resetPasswordWithToken } from '../data/native-auth-flows';
-import { useAuthRequest } from '../hooks/use-auth-request';
+import { useAuthRequest } from '../data/auth-request';
 import {
   AuthLens,
   AuthLensDescription,

@@ -11,8 +11,8 @@ import type {
   CredentialDraft,
   SavedCredential,
 } from '../../model/credential-draft';
-import type { useConnectionTest } from '../connection-test/use-command';
-import type { ConnectionTest } from '../connection-test/use-command';
+import type { useConnectionTest } from '../../data/connection-test.mutations';
+import type { ConnectionTest } from '../../data/connection-test.mutations';
 import { CredentialFields } from '../credential/fields';
 import { createHeaderRowId, type CredentialForm } from '../credential/use-form';
 import { OAuth2ConnectStep } from '../oauth2/connect';

@@ -6,7 +6,7 @@ import { workflowWorkspaceAccess } from '@/features/workflows/public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import { editorPresenceSource } from '../../model/state/presence';
 import { useEditorStoreApi } from '../../model/state/context';
-import { useEditorSessionVerification } from './use-editor-session-verification';
+import { useEditorSessionVerification } from '../../data/editor-session-verification';
 import { useEditorSavePipeline } from '../../data/editor-save-pipeline';
 import { useLeaveGuard } from '../use-leave-guard';
 

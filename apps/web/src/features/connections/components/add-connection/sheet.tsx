@@ -39,7 +39,7 @@ import {
   type SavedCredential,
 } from '../../model/credential-draft';
 import { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
-import { useConnectionTest } from '../connection-test/use-command';
+import { useConnectionTest } from '../../data/connection-test.mutations';
 import { useCredentialForm } from '../credential/use-form';
 import { StepIndicator, type AddStep } from './steps';
 import { StepBody } from './content';

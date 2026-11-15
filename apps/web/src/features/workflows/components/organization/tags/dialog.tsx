@@ -1,4 +1,4 @@
-import { useOrganizationReadLifetime } from '../../../hooks/organization/use-organization-read-lifetime';
+import { useOrganizationReadLifetime } from '../../../data/organization/organization-read-lifetime';
 import { isAdministrativeRole } from '@pertexo/policy';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';

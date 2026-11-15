@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { observeSessionChanges } from '@/features/auth/public';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import { workflowTemplateOriginKey } from '../../data/origin/workflow-template-origin.queries';
-import { workflowKeys } from '../../data/workflows.queries';
+import { workflowTemplateOriginKey } from './workflow-template-origin.queries';
+import { workflowKeys } from '../workflows.queries';
 
 /** One historical projection belongs to one identity/workspace/workflow lifetime.
  * Only denial of that read/root authority retires it; sibling feature and

@@ -1,4 +1,4 @@
-import { useCaseOwner } from '../../hooks/use-case-owner';
+import { useCaseOwner } from './case-owner';
 import {
   RETRY_WINDOW_ENDED,
   isUnconfirmedCommand,

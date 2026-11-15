@@ -9,7 +9,7 @@ import { workflowFoldersQueryOptions } from '../../../data/organization/workflow
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,
-} from '../../../hooks/organization/use-organization-read-lifetime';
+} from '../../../data/organization/organization-read-lifetime';
 
 /**
  * The folders above the list and the dialog for whichever folder action is

@@ -7,7 +7,7 @@ import {
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,
-} from '../../hooks/organization/use-organization-read-lifetime';
+} from '../../data/organization/organization-read-lifetime';
 
 /** Own the authorized vocabulary lifetime independently of whether its popup is open. */
 export function useWorkflowFilterVocabulary(
