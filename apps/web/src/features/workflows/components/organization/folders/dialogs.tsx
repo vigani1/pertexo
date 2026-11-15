@@ -1,3 +1,5 @@
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { useId, useState, type ReactNode } from 'react';
 import {
   workflowFolderNameInputSchema,
@@ -63,7 +65,7 @@ export function FolderNameDialog({
     if (value.trim() === '') {
       return 'Enter a folder name.';
     }
-    return 'Use a shorter name, up to 128 characters, on one line.';
+    return `Use a shorter name, up to ${formatCount(WORKFLOW_FOLDER_LIMITS.nameBytes, 'character')}, on one line.`;
   };
   const locked = command.pending;
   const submit = () => {

@@ -1,3 +1,4 @@
+import { DATA_TABLE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
 import { UnavailableDataTable } from '../components/unavailable';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { shownData } from '@/lib/api/error-copy';
@@ -189,7 +190,7 @@ function TableDetail({
           {table.keyColumn === null
             ? 'No unique key: rows can repeat.'
             : `Rows are unique by ${table.keyColumn}.`}{' '}
-          Each row fits 64 KB.
+          Each row fits {formatByteSize(DATA_TABLE_LIMITS.rowBytes)}.
         </p>
       </section>
       <DataTableRows

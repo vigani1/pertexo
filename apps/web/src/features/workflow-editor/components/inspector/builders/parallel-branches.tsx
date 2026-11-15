@@ -1,10 +1,12 @@
+import {
+  MINIMUM_PARALLEL_BRANCHES,
+  PARALLEL_BRANCH_PORTS,
+} from '@pertexo/workflow-model';
 import { MinusIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import {
   lastParallelBranch,
-  PARALLEL_BRANCH_IDS,
-  PARALLEL_MIN_BRANCHES,
   readParallelBranches,
   withParallelBranchCount,
 } from '../../../model/inspector/setup-builders';
@@ -66,7 +68,7 @@ export function ParallelBranches({
               : undefined
           }
           disabled={
-            !form.editable || count <= PARALLEL_MIN_BRANCHES || lastLinked
+            !form.editable || count <= MINIMUM_PARALLEL_BRANCHES || lastLinked
           }
           onClick={() => {
             setCount(count - 1);
@@ -79,19 +81,19 @@ export function ParallelBranches({
           size="icon"
           variant="outline"
           aria-label="More branches"
-          disabled={!form.editable || count >= PARALLEL_BRANCH_IDS.length}
+          disabled={!form.editable || count >= PARALLEL_BRANCH_PORTS.length}
           onClick={() => {
-            setCount(Math.max(PARALLEL_MIN_BRANCHES, count + 1));
+            setCount(Math.max(MINIMUM_PARALLEL_BRANCHES, count + 1));
           }}
         >
           <PlusIcon />
         </Button>
       </div>
       <FieldDescription>
-        {count < PARALLEL_MIN_BRANCHES
+        {count < MINIMUM_PARALLEL_BRANCHES
           ? 'A Parallel splits into at least two branches.'
           : `Each branch is an output, ${first ?? ''} to ${last ?? ''}. Link a step to each; they run side by side.`}
-        {lastLinked && count > PARALLEL_MIN_BRANCHES
+        {lastLinked && count > MINIMUM_PARALLEL_BRANCHES
           ? ` To drop ${last}, remove its link on the canvas first.`
           : ''}
       </FieldDescription>

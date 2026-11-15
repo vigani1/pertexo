@@ -5,6 +5,8 @@ import {
   workflowTestPreparationSchema,
   workflowTestStartRequestSchema,
 } from './workflow-tests.js';
+/** How many saved input cases one suite runs. */
+export const WORKFLOW_TEST_SUITE_MAX_CASES = 50;
 const caseIdentity = z
   .object({ id: z.uuid(), revision: z.number().int().positive() })
   .strict();
@@ -16,7 +18,7 @@ export const workflowTestSuiteCurrentSchema = z
     samples: workflowTestPreparationSchema.shape.samples,
     cases: z
       .array(caseIdentity.extend({ name: z.string().max(128) }).strict())
-      .max(50),
+      .max(WORKFLOW_TEST_SUITE_MAX_CASES),
   })
   .strict();
 export const workflowTestSuitePreparationSchema = responseSchema(
@@ -30,7 +32,10 @@ export const workflowTestSuiteStartRequestSchema =
   workflowTestStartRequestSchema
     .omit({ input: true })
     .extend({
-      expectedCases: z.array(caseIdentity).min(1).max(50),
+      expectedCases: z
+        .array(caseIdentity)
+        .min(1)
+        .max(WORKFLOW_TEST_SUITE_MAX_CASES),
       expectedVariableSetRevision: z.number().int().positive().nullable(),
       signature: z.string().regex(/^[0-9a-f]{64}$/u),
     })
@@ -65,11 +70,11 @@ export const workflowTestSuiteSummarySchema = responseSchema(
       createdAt: z.iso.datetime(),
       completedAt: z.iso.datetime().nullable(),
       expiresAt: z.iso.datetime(),
-      total: z.number().int().min(1).max(50),
-      passed: z.number().int().min(0).max(50),
-      failed: z.number().int().min(0).max(50),
-      errors: z.number().int().min(0).max(50),
-      skipped: z.number().int().min(0).max(50),
+      total: z.number().int().min(1).max(WORKFLOW_TEST_SUITE_MAX_CASES),
+      passed: z.number().int().min(0).max(WORKFLOW_TEST_SUITE_MAX_CASES),
+      failed: z.number().int().min(0).max(WORKFLOW_TEST_SUITE_MAX_CASES),
+      errors: z.number().int().min(0).max(WORKFLOW_TEST_SUITE_MAX_CASES),
+      skipped: z.number().int().min(0).max(WORKFLOW_TEST_SUITE_MAX_CASES),
     })
     .strict(),
 );
@@ -88,7 +93,11 @@ export const workflowTestSuiteDetailSchema = responseSchema(
         .array(
           z
             .object({
-              ordinal: z.number().int().min(0).max(49),
+              ordinal: z
+                .number()
+                .int()
+                .min(0)
+                .max(WORKFLOW_TEST_SUITE_MAX_CASES - 1),
               caseId: z.uuid(),
               caseRevision: z.number().int().positive(),
               name: z.string().max(128),
@@ -97,7 +106,7 @@ export const workflowTestSuiteDetailSchema = responseSchema(
             })
             .strict(),
         )
-        .max(50),
+        .max(WORKFLOW_TEST_SUITE_MAX_CASES),
     })
     .strict(),
 );
@@ -116,7 +125,13 @@ export const workflowTestSuiteParamsSchema = z
   .object({ workspaceId: z.uuid(), workflowId: z.uuid(), suiteId: z.uuid() })
   .strict();
 export const workflowTestSuiteCaseParamsSchema = workflowTestSuiteParamsSchema
-  .extend({ ordinal: z.coerce.number().int().min(0).max(49) })
+  .extend({
+    ordinal: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(WORKFLOW_TEST_SUITE_MAX_CASES - 1),
+  })
   .strict();
 export type WorkflowTestSuiteCurrent = z.output<
   typeof workflowTestSuiteCurrentSchema

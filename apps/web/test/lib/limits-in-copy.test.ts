@@ -30,8 +30,9 @@ const BARE_DURATION = new RegExp(
 // "Last 24 hours" names a time range people choose, not a limit.
 const TIME_RANGE = /^last\s/iu;
 
-// Time ranges people choose from (Home's and Usage's window buttons): a
-// choice of period, not a limit, so they keep their words.
+// Time ranges people choose from (Home's and Usage's window buttons) are a
+// choice of period, and "pick at least one day" asks for a weekday choice:
+// neither is a limit, so they keep their words.
 const NOT_LIMITS: readonly string[] = [
   'features/overview/components/home-loom.tsx: 1 hour',
   'features/overview/components/home-loom.tsx: 24 hours',
@@ -43,73 +44,31 @@ const NOT_LIMITS: readonly string[] = [
   'features/usage/pages/workspace-usage.tsx: 24 hours',
   'features/usage/pages/workspace-usage.tsx: 6 hours',
   'features/usage/pages/workspace-usage.tsx: 7 days',
+  'features/workflow-editor/model/inspector/schedule-draft.ts: at least one day',
 ];
 
 // Limits still written as literals when this check began (batch J6b). Each
 // needs its owner; the list may only shrink, so a fixed one fails until it's
-// removed, and a new one fails at once.
+// removed, and a new one fails at once. Those left are enforced only by the
+// API, worker or core (the fresh sign-in window, command retries, invitation
+// and deletion windows, trigger history, the connection test's wait and the
+// sign-up name), which have no browser-safe constant yet.
 const STILL_WRITTEN: readonly string[] = [
-  'features/api-tokens/forms/create-token.tsx: up to 128 characters',
   'features/api-tokens/model/token-copy.ts: within five minutes',
-  'features/artifacts/components/upload-file.tsx: 10 MB',
-  'features/artifacts/model/artifact-upload.ts: 10 MB',
-  'features/artifacts/model/artifact-upload.ts: 10 MB',
   'features/auth/components/account/link-provider-dialog.tsx: within five minutes',
   'features/auth/components/sign-up-lens.tsx: 256 characters',
   'features/connections/model/connection-health.ts: within 15 seconds',
-  'features/connections/model/connection-providers.ts: 128 characters',
-  'features/connections/model/credential-draft.ts: 4,096 UTF-8 bytes',
-  'features/connections/model/credential-draft.ts: 4,096 UTF-8 bytes',
-  'features/connections/model/smtp-draft.ts: at most 128 characters',
-  'features/data-tables/components/create.tsx: 1 KB',
-  'features/data-tables/components/import.tsx: 1 MB',
-  'features/data-tables/components/import.tsx: 1 MB',
-  'features/data-tables/components/import.tsx: 1 MB',
-  'features/data-tables/pages/tables.tsx: 64 KB',
-  'features/federation/components/directory/credential-dialog.tsx: up to 128 characters',
-  'features/federation/components/organization/create.tsx: up to 128 characters',
-  'features/federation/components/providers/provider-form.tsx: up to 128 characters',
-  'features/federation/components/providers/saml-form.tsx: up to 128 characters',
   'features/forms/components/form-history.tsx: for 90 days',
-  'features/workflow-editor/components/inspector/builders/files/sheet-tabs.tsx: up to 31 characters',
-  'features/workflow-editor/components/inspector/builders/switch-cases.tsx: 1,024 characters',
-  'features/workflow-editor/components/inspector/human-task/context-editor.tsx: 16 KB',
-  'features/workflow-editor/components/inspector/human-task/context-editor.tsx: 8 KB',
-  'features/workflow-editor/components/inspector/human-task/context-editor.tsx: 8 KB',
-  'features/workflow-editor/components/inspector/human-task/context-editor.tsx: up to 160 characters',
-  'features/workflow-editor/components/inspector/run-values/setup.tsx: 255 characters',
-  'features/workflow-editor/components/inspector/run-values/setup.tsx: 50 characters',
-  'features/workflow-editor/components/inspector/run-values/setup.tsx: up to 255 characters',
-  'features/workflow-editor/components/inspector/run-values/setup.tsx: up to 255 characters',
-  'features/workflow-editor/components/inspector/webhook/response-setup.tsx: 1 MB',
-  'features/workflow-editor/model/inspector/http-body.ts: 128 UTF-8 bytes',
-  'features/workflow-editor/model/inspector/http-body.ts: 255 UTF-8 bytes',
-  'features/workflow-editor/model/inspector/schedule-draft.ts: at least one day',
   'features/workflow-publish/components/run-submission/input-dialog.tsx: within 24 hours',
   'features/workflow-publish/data/mutations/use-workflow-run-submission.ts: within 24 hours',
-  'features/workflow-runs/components/run-filters/business-value.tsx: up to 255 characters',
   'features/workflow-runs/data/mutations/use-run-replay.ts: within 24 hours',
-  'features/workflow-runs/model/step-inspection/error-copy.ts: 1 MB',
-  'features/workflow-runs/model/step-inspection/error-copy.ts: 6 MB',
-  'features/workflow-runs/model/step-inspection/error-copy.ts: 64 KB',
-  'features/workflow-runs/model/step-inspection/error-copy.ts: At most 1,000 rows',
-  'features/workflow-runs/model/step-inspection/error-copy.ts: at most 10 files',
   'features/workflow-settings/components/triggers/schedules/occurrences.tsx: for 90 days',
   'features/workflow-settings/components/triggers/webhooks/deliveries.tsx: for 90 days',
-  'features/workflow-testing/components/test-suites/preparation.tsx: up to 50 cases',
-  'features/workflows/components/input-cases/expectations.tsx: 4 KB',
-  'features/workflows/components/organization/folders/dialogs.tsx: up to 128 characters',
-  'features/workflows/components/organization/tags/management.tsx: up to 32 characters',
-  'features/workflows/model/rename.ts: 128 characters',
-  'features/workspaces/components/creation/workspace-creation-form.tsx: up to 128 characters',
-  'features/workspaces/components/creation/workspace-creation-form.tsx: up to 64 characters',
   'features/workspaces/components/invitations/email-chips-field.tsx: for seven days',
   'features/workspaces/components/settings/workspace-danger-zone.tsx: for 30 days',
   'features/workspaces/components/settings/workspace-danger-zone.tsx: within 30 days',
   'features/workspaces/components/settings/workspace-danger-zone.tsx: within 30 days',
   'features/workspaces/components/settings/workspace-deletion-dialog.tsx: for 30 days',
-  'features/workspaces/components/settings/workspace-deletion-dialog.tsx: up to 512 characters',
-  'features/workspaces/components/settings/workspace-name-field.tsx: 128 characters',
   'features/workspaces/components/shell/workspace-banners.tsx: for 30 days',
   'features/workspaces/data/mutations/members/use-member-command.ts: within five minutes',
 ];

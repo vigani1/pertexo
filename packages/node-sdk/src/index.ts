@@ -51,6 +51,7 @@ export {
 
 export {
   FILE_INPUT_ERROR_CODE,
+  SHEET_NAME_MAX_LENGTH,
   fileInputDiagnosticSchema,
   type FileInputDiagnostic,
 } from './artifacts/diagnostic.js';
@@ -170,7 +171,10 @@ export {
 } from './values/stored-json.js';
 export { StoredExecutionValueInvalidError } from './values/stored-json.errors.js';
 
-export { signingKeyCredentialSchema } from './credentials/signing-key.js';
+export {
+  SIGNING_KEY_MAX_BYTES,
+  signingKeyCredentialSchema,
+} from './credentials/signing-key.js';
 
 export {
   FILE_PAGE_LIMITS,

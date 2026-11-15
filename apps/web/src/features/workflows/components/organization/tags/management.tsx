@@ -1,3 +1,5 @@
+import { WORKFLOW_ORGANIZATION_LIMITS } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { TagNameActions, TagNameField } from './name-fields';
 import {
   workflowTagKeyInputSchema,
@@ -269,7 +271,7 @@ function nameError(value: string) {
   if (value.trim() === '') {
     return 'Enter a tag.';
   }
-  return `Use up to 32 characters. ${TAG_HINT}`;
+  return `Use up to ${formatCount(WORKFLOW_ORGANIZATION_LIMITS.tagKeyBytes, 'character')}. ${TAG_HINT}`;
 }
 function TagChoices({
   tags,

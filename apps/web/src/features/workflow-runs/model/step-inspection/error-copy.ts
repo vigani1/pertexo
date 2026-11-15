@@ -1,9 +1,15 @@
+import { formatCount } from '@/lib/format/count';
 import {
+  ARTIFACT_INPUT_MAX_BYTES,
+  DATA_TABLE_LIMITS,
   formatByteSize,
   STORED_EXECUTION_VALUE_LIMITS,
 } from '@pertexo/node-sdk';
 import { SUMMARY_RESULT_FAILURE } from '@pertexo/nodes-core';
-import { SLACK_REJECTIONS } from '@pertexo/integrations';
+import {
+  EMAIL_SEND_NOTIFICATION_LIMITS,
+  SLACK_REJECTIONS,
+} from '@pertexo/integrations';
 import {
   HTTP_RESPONSE_FAILURES,
   PROVIDER_RETRY_FAILURE,
@@ -87,8 +93,7 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   },
   'execution.table_invalid_values': {
     sentence: 'The row values or query do not match the table schema.',
-    advice:
-      'Check required columns, cell types and filter values. Rows fit up to 64 KB.',
+    advice: `Check required columns, cell types and filter values. Rows fit up to ${formatByteSize(DATA_TABLE_LIMITS.rowBytes)}.`,
   },
   'execution.table_quota_exceeded': {
     sentence: 'The table\u2019s row or workspace storage limit was reached.',
@@ -111,8 +116,7 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   },
   'execution.table_unsafe_filter': {
     sentence: 'This table write needs a filter.',
-    advice:
-      'Choose at least one filter. At most 1,000 rows can be changed in one step.',
+    advice: `Choose at least one filter. At most ${formatCount(DATA_TABLE_LIMITS.batchRows, 'row')} can be changed in one step.`,
   },
   'execution.table_attempt_expired': {
     sentence: 'This table attempt is no longer current.',
@@ -131,18 +135,15 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   },
   'execution.file_input': {
     sentence: 'This step could not read the file.',
-    advice:
-      'Correct the file or reference, then start a new run. Files fit up to 1 MB; split larger files into smaller files for separate runs.',
+    advice: `Correct the file or reference, then start a new run. Files fit up to ${formatByteSize(ARTIFACT_INPUT_MAX_BYTES)}; split larger files into smaller files for separate runs.`,
   },
   'email.too_many_attachments': {
     sentence: 'This email had more files attached than it can carry.',
-    advice:
-      'Attach at most 10 files, or split them across several emails, then start a new run.',
+    advice: `Attach at most ${formatCount(EMAIL_SEND_NOTIFICATION_LIMITS.maxAttachments, 'file')}, or split them across several emails, then start a new run.`,
   },
   'email.attachments_too_large': {
     sentence: 'The attached files were too large to send together.',
-    advice:
-      'Keep the files within 6 MB in total, or split them across several emails, then start a new run.',
+    advice: `Keep the files within ${formatByteSize(EMAIL_SEND_NOTIFICATION_LIMITS.maxAttachmentBytes)} in total, or split them across several emails, then start a new run.`,
   },
   call_target_unavailable: {
     sentence: 'The child workflow could not accept this Call.',

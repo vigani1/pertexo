@@ -1,5 +1,9 @@
+import { formatByteSize } from '@pertexo/node-sdk';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { workflowTestStepChoices } from '@pertexo/workflow-model';
+import {
+  WORKFLOW_TEST_LIMITS,
+  workflowTestStepChoices,
+} from '@pertexo/workflow-model';
 import type { CaseExpectationDraft } from '../../model/input-cases/expectations';
 import { useQuery } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
@@ -69,7 +73,8 @@ export function CaseExpectations({
       <p className="text-xs text-muted-foreground">
         No value checks are required. Final output needs a declared workflow
         result; otherwise choose a step. A chosen step must run once; use a
-        downstream summary for loops. Expected values are JSON, up to 4 KB each.
+        downstream summary for loops. Expected values are JSON, up to{' '}
+        {formatByteSize(WORKFLOW_TEST_LIMITS.expectedValueBytes)} each.
       </p>
       <LabelledField id="case-outcome" label="Expected outcome">
         {(control) => (

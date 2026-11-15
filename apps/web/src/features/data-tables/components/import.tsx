@@ -1,3 +1,5 @@
+import { DATA_TABLE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
+import { formatCount } from '@/lib/format/count';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
@@ -17,6 +19,8 @@ import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { sendTableCommand, type TableScope } from '../data/tables.api';
 import { tableKeys } from '../data/tables.queries';
 import { TableCommandFeedback } from './command-feedback';
+
+const IMPORT_SIZE = formatByteSize(DATA_TABLE_LIMITS.csvImportBytes);
 export function ImportTableCsv({
   scope,
   table,
@@ -50,8 +54,9 @@ export function ImportTableCsv({
       <DialogContent>
         <DialogTitle>Import CSV</DialogTitle>
         <DialogDescription>
-          Up to 1 MB and 1,000 rows; split larger files. Every row must match{' '}
-          {table.name}. The whole import is saved together.
+          Up to {IMPORT_SIZE} and{' '}
+          {formatCount(DATA_TABLE_LIMITS.batchRows, 'row')}; split larger files.
+          Every row must match {table.name}. The whole import is saved together.
         </DialogDescription>
         <form
           className="mt-5 grid gap-4"
@@ -61,7 +66,9 @@ export function ImportTableCsv({
               new TextEncoder().encode(JSON.stringify({ csv })).length >
               1_048_000
             ) {
-              setError('The request is larger than 1 MB. Split the CSV file.');
+              setError(
+                `The request is larger than ${IMPORT_SIZE}. Split the CSV file.`,
+              );
               return;
             }
             void command.send({ csv });
@@ -74,8 +81,10 @@ export function ImportTableCsv({
             accept=".csv,text/csv"
             disabled={locked}
             onChoose={(file) => {
-              if (file.size > 1_048_576) {
-                setError('This file exceeds 1 MB. Split it before importing.');
+              if (file.size > DATA_TABLE_LIMITS.csvImportBytes) {
+                setError(
+                  `This file exceeds ${IMPORT_SIZE}. Split it before importing.`,
+                );
                 return;
               }
               setReading(true);

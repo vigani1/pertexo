@@ -1,3 +1,5 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import type { ConnectionResponse } from '@pertexo/contracts';
 
 export type ProviderKey = ConnectionResponse['providerKey'];
@@ -113,7 +115,8 @@ export function connectionNameError(name: string): string | undefined {
   const value = name.trim();
   if (value === '')
     return 'Name this connection so people can pick it in steps.';
-  if (value.length > 128) return 'Keep the name under 128 characters.';
+  if (value.length > RESOURCE_NAME_MAX_LENGTH)
+    return `Keep the name under ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}.`;
   return undefined;
 }
 

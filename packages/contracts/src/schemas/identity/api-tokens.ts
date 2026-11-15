@@ -14,6 +14,7 @@ export {
   apiTokenCredentialSchema,
 };
 import { z } from 'zod';
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 
 export const apiTokenScopeSchema = z.enum(API_TOKEN_SCOPES);
 export type ApiTokenScope = z.output<typeof apiTokenScopeSchema>;
@@ -31,7 +32,7 @@ export const apiTokenCreateRequestSchema = z
     name: storageTextSchema
       .trim()
       .min(1)
-      .max(128)
+      .max(RESOURCE_NAME_MAX_LENGTH)
       .regex(/^\P{Cc}+$/u),
     scopes: scopes.transform((values) => values.toSorted()),
     expiresInDays: z
@@ -45,7 +46,7 @@ export const apiTokenCreateRequestSchema = z
 const apiTokenMetadataFields = {
   id: z.uuid(),
   workspaceId: z.uuid(),
-  name: z.string().min(1).max(128),
+  name: z.string().min(1).max(RESOURCE_NAME_MAX_LENGTH),
   scopes,
   createdAt: z.iso.datetime(),
   expiresAt: z.iso.datetime(),
@@ -122,7 +123,7 @@ export const apiTokenInfoResponseSchema = responseSchema(
     .object({
       id: z.uuid(),
       workspaceId: z.uuid(),
-      name: z.string().min(1).max(128),
+      name: z.string().min(1).max(RESOURCE_NAME_MAX_LENGTH),
       scopes,
       expiresAt: z.iso.datetime(),
     })

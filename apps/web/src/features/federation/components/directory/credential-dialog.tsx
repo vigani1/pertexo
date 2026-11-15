@@ -1,3 +1,5 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { DialogFooter } from '@/components/ui/dialog';
 import { useId, useRef, useState } from 'react';
 import { directoryCredentialCreateSchema } from '@pertexo/contracts';
@@ -53,7 +55,7 @@ export function DirectoryCredentialDialog({
     if (!input.success) {
       setView({
         kind: 'form',
-        error: 'Enter a credential name, up to 128 characters.',
+        error: `Enter a credential name, up to ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}.`,
       });
       nameInput.current?.focus();
       return;

@@ -18,9 +18,10 @@ import { availableParallelism } from 'node:os';
 import jsonata from 'jsonata';
 import { normalizeJson, type JsonValue } from '../json/canonical.js';
 import { ExpressionContextInvalidError } from './expression.errors.js';
+import { EXPRESSION_BYTES_MAX } from '../expression-limits.js';
 
 export const EXPRESSION_POLICY = Object.freeze({
-  expressionBytes: 16_384,
+  expressionBytes: EXPRESSION_BYTES_MAX,
   astDepth: 64,
   astNodes: 2_048,
   inputBytes: 1_048_576,

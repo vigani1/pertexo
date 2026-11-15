@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { formatCount } from '../values/byte-size.js';
 
-const SIGNING_KEY_MAX_BYTES = 4_096;
+export const SIGNING_KEY_MAX_BYTES = 4_096;
 
 /** Exact UTF-8 bytes; whitespace is part of a signing key. */
 export const signingKeyCredentialSchema = z

@@ -1,4 +1,8 @@
-import { isRecord, SWITCH_CASE_PORTS } from '@pertexo/workflow-model';
+import {
+  isRecord,
+  PARALLEL_BRANCH_PORTS,
+  SWITCH_CASE_PORTS,
+} from '@pertexo/workflow-model';
 import type { FieldParseResult, NodeConfig } from './draft';
 import { CORE_VALIDATE_MAX_RULES } from '@pertexo/nodes-core';
 
@@ -8,13 +12,6 @@ import { CORE_VALIDATE_MAX_RULES } from '@pertexo/nodes-core';
 // step stays on "Edit as JSON" rather than losing anything.
 
 type ConfigValue = NodeConfig[string];
-
-function numbered(prefix: string, count: number): readonly string[] {
-  return Array.from(
-    { length: count },
-    (_, index) => `${prefix}-${String(index + 1).padStart(2, '0')}`,
-  );
-}
 
 /** The lowest ID in `ids` that `used` doesn't hold yet. */
 function nextFree(
@@ -129,13 +126,7 @@ export function parseSwitchNumber(text: string): FieldParseResult<number> {
     : { ok: true, value };
 }
 
-export const SWITCH_TEXT_MAX = 1_024;
-
 // -------------------------------------------------------------- Parallel
-
-/** Parallel's fixed branch ports (ADR 019). */
-export const PARALLEL_BRANCH_IDS = numbered('branch', 16);
-export const PARALLEL_MIN_BRANCHES = 2;
 
 /** The configured branch IDs, or undefined for a config this can't model. */
 export function readParallelBranches(
@@ -148,7 +139,10 @@ export function readParallelBranches(
   for (const entry of branches) {
     if (!isRecord(entry) || Object.keys(entry).length !== 1) return undefined;
     const { id } = entry;
-    if (typeof id !== 'string' || !PARALLEL_BRANCH_IDS.includes(id))
+    if (
+      typeof id !== 'string' ||
+      !PARALLEL_BRANCH_PORTS.some((port) => port === id)
+    )
       return undefined;
     ids.push(id);
   }
@@ -167,7 +161,7 @@ export function withParallelBranchCount(
 ): NodeConfig {
   let next = [...branches];
   while (next.length < count) {
-    const id = nextFree(PARALLEL_BRANCH_IDS, next);
+    const id = nextFree(PARALLEL_BRANCH_PORTS, next);
     if (id === undefined) break;
     next.push(id);
   }

@@ -1,3 +1,5 @@
+import { WORKSPACE_TEXT_LIMITS } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { useId, useState } from 'react';
 import { workspaceDeletionRequestSchema } from '@pertexo/contracts';
 import {
@@ -19,7 +21,7 @@ type DeletionField = 'confirmation' | 'reason';
 function reasonError(reason: string): string | undefined {
   return workspaceDeletionRequestSchema.safeParse({ reason }).success
     ? undefined
-    : 'Say why in a sentence (up to 512 characters). Other owners will see it.';
+    : `Say why in a sentence (up to ${formatCount(WORKSPACE_TEXT_LIMITS.deletionReasonCharacters, 'character')}). Other owners will see it.`;
 }
 /**
  * Deleting asks for the workspace's name, typed out, and a reason. It is

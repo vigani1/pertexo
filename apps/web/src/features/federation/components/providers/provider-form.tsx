@@ -1,3 +1,4 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
 import { OidcIdentityFields, OidcClaimFields } from './fields/oidc';
 import { useId, useState } from 'react';
 import {
@@ -207,7 +208,7 @@ function oidcFieldRules(provider: Provider | undefined) {
     name: (value: string) =>
       oidcProviderCreateSchema.shape.name.safeParse(value).success
         ? undefined
-        : 'Enter a name of up to 128 characters.',
+        : `Enter a name of up to ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')}.`,
     issuer: (value: string) =>
       oidcProviderCreateSchema.shape.issuer.safeParse(value).success
         ? undefined

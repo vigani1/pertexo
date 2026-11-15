@@ -178,5 +178,7 @@ export const EMAIL_SEND_NOTIFICATION_LIMITS = Object.freeze({
   maxTextBytes: MAX_TEXT_BYTES,
   maxAttachments: MAX_ATTACHMENTS,
   maxAttachmentEncodedBytes: MAX_ATTACHMENT_ENCODED_BYTES,
+  // Base64 writes 4 characters for every 3 bytes of the files themselves.
+  maxAttachmentBytes: (MAX_ATTACHMENT_ENCODED_BYTES / 4) * 3,
   maxAttachmentFilenameBytes: MAX_FILENAME_BYTES,
 });

@@ -1,3 +1,5 @@
+import { MULTIPART_FIELD_LIMITS } from '@pertexo/integrations';
+import { formatCount } from '@/lib/format/count';
 import {
   HTTP_REQUEST_LIMITS,
   httpMultipartConfigSchema,
@@ -285,9 +287,8 @@ export function workflowPlaceholderIssues(
 }
 
 const METADATA_ERRORS = {
-  name: 'Use a field name up to 128 UTF-8 bytes without control characters.',
-  filename:
-    'Use a filename up to 255 UTF-8 bytes, without paths or control characters.',
+  name: `Use a field name up to ${formatCount(MULTIPART_FIELD_LIMITS.nameBytes, 'UTF-8 byte')} without control characters.`,
+  filename: `Use a filename up to ${formatCount(MULTIPART_FIELD_LIMITS.filenameBytes, 'UTF-8 byte')}, without paths or control characters.`,
   contentType: 'Use a MIME type such as application/pdf, without line breaks.',
 };
 

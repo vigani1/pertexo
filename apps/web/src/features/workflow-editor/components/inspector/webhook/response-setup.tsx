@@ -1,3 +1,8 @@
+import {
+  formatByteSize,
+  WEBHOOK_RESPONSE_LIMITS,
+  WEBHOOK_RESPONSE_MAX_BYTES,
+} from '@pertexo/node-sdk';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { SchemaField } from '../fields/schema';
@@ -41,8 +46,11 @@ export function WebhookResponseSetup({
         />
       ) : null}
       <p className="text-sm text-muted-foreground">
-        Map the body on Inputs. Status is 200 unless you map statusCode
-        (200–599). Responses are up to 1 MB within the normal input limits.
+        Map the body on Inputs. Status is 200 unless you map statusCode (
+        {WEBHOOK_RESPONSE_LIMITS.firstStatus}–
+        {WEBHOOK_RESPONSE_LIMITS.lastStatus}
+        ). Responses are up to {formatByteSize(WEBHOOK_RESPONSE_MAX_BYTES)}{' '}
+        within the normal input limits.
       </p>
       <p className="text-xs text-subtle-foreground">
         Optional headers: content-language, retry-after, x-request-id and

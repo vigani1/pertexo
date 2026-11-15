@@ -3,6 +3,7 @@ import { storageTextSchema } from '@pertexo/workflow-model';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 export { FEDERATION_LIMITS };
 import { z } from 'zod';
+import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 import { SamlHttpsOriginRequiredError } from './federation.errors.js';
@@ -86,7 +87,7 @@ export const federationDomainNameSchema = z
     }
   });
 const revision = z.number().int().positive().max(STORED_INTEGER_MAX);
-const name = storageTextSchema.trim().min(1).max(128);
+const name = storageTextSchema.trim().min(1).max(RESOURCE_NAME_MAX_LENGTH);
 const issuer = z
   .url({ protocol: /^https$/u })
   .trim()

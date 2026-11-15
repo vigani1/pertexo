@@ -6,7 +6,7 @@ import {
 } from '@pertexo/node-sdk';
 
 export const HTTP_MULTIPART_MAX_PARTS = 64;
-const MULTIPART_FIELD_LIMITS = Object.freeze({
+export const MULTIPART_FIELD_LIMITS = Object.freeze({
   nameBytes: 128,
   filenameBytes: 255,
   // `a/b` is the shortest media type.

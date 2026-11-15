@@ -19,6 +19,7 @@ export * from './schemas/identity/invitation-acceptance.js';
 export * from './schemas/execution/node-testing.js';
 export * from './schemas/triggers/schedules.js';
 export * from './schemas/shared/transport-headers.js';
+export * from './schemas/shared/resource-name.js';
 export * from './schemas/triggers/webhooks.js';
 export {
   webhookAuthenticationSchema,
@@ -141,6 +142,7 @@ export {
   workflowTestSuiteListSchema,
   workflowTestSuiteDetailSchema,
   workflowTestSuiteCaseReportSchema,
+  WORKFLOW_TEST_SUITE_MAX_CASES,
   type WorkflowTestSuiteCurrent,
   type WorkflowTestSuitePreparation,
   type WorkflowTestSuiteStartRequest,

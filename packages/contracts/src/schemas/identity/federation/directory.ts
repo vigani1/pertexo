@@ -4,6 +4,7 @@ import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 export { DIRECTORY_LIMITS };
 import { FEDERATION_LIMITS } from './settings.js';
 import { z } from 'zod';
+import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
@@ -19,7 +20,7 @@ export const directoryCredentialSchema = z
   .strict();
 export const directoryCredentialCreateSchema = z
   .object({
-    name: storageTextSchema.trim().min(1).max(128),
+    name: storageTextSchema.trim().min(1).max(RESOURCE_NAME_MAX_LENGTH),
     expectedRevision: revision,
   })
   .strict();

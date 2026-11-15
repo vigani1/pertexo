@@ -1,5 +1,6 @@
 import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   HTTP_HEADER_LIMITS,
@@ -170,7 +171,7 @@ export const smtpCredentialSchema = z
     fromName: z
       .string()
       .min(1)
-      .max(128)
+      .max(RESOURCE_NAME_MAX_LENGTH)
       .regex(/^[^\r\n\0]+$/u)
       .optional(),
   })

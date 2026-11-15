@@ -62,7 +62,8 @@ encoding), `jsonata` and `zod`.
   (`graph/workflow-graph.schemas.ts`), `FORM_LIMITS` and `FORM_FILE_LIMITS`
   (`triggers/forms/`), `PENDING_TASK_LIMITS` (`flow/pending-tasks/pending-task-limits.ts`),
   `EVENT_COORDINATION_LIMITS`, `STEP_RETRY_LIMITS`, `WORKFLOW_TEST_LIMITS`,
-  `WORKFLOW_PORTABILITY_LIMITS`, `EXPRESSION_POLICY` and
+  `WORKFLOW_PORTABILITY_LIMITS`, `EXPRESSION_POLICY` (its size comes from the
+  browser-safe `EXPRESSION_BYTES_MAX`, `values/expression-limits.ts`) and
   `AUTHORING_VALIDATION_BUDGET`.
 - `STORED_INTEGER_MAX` (`values/stored-integer.ts`) is the one ceiling for
   values stored in PostgreSQL `integer` columns.

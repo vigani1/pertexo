@@ -1,3 +1,4 @@
+import { formatCount } from '@/lib/format/count';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   RUN_VALUE_LIMITS,
@@ -22,6 +23,8 @@ import {
 } from '../../../model/inspector/input-mappings/draft';
 import { useInspectorDraftField } from '../use-draft-field';
 import { RunValueRow } from './row';
+
+const VALUE_LENGTH = formatCount(RUN_VALUE_LIMITS.valueCharacters, 'character');
 type Props = Readonly<{
   node: WorkflowNode;
   graph: GraphLevel;
@@ -81,8 +84,7 @@ function RunValueFields({
           } catch {
             return {
               ok: false,
-              error:
-                'Each value must be text up to 255 characters. Empty text is allowed.',
+              error: `Each value must be text up to ${VALUE_LENGTH}. Empty text is allowed.`,
             };
           }
         }
@@ -107,8 +109,7 @@ function RunValueFields({
       } catch {
         return {
           ok: false,
-          error:
-            'Complete each expression and use text values up to 255 characters.',
+          error: `Complete each expression and use text values up to ${VALUE_LENGTH}.`,
         };
       }
     },
@@ -179,8 +180,8 @@ function RunValueFields({
         Add run value
       </Button>
       <p className="text-xs text-muted-foreground">
-        Keys: 50 characters. Text values: 255 characters. Mapped values are
-        checked when the step runs.
+        Keys: {formatCount(RUN_VALUE_LIMITS.keyCharacters, 'character')}. Text
+        values: {VALUE_LENGTH}. Mapped values are checked when the step runs.
       </p>
       {draft.error === undefined ? null : (
         <Notice tone="destructive">{draft.error}</Notice>
