@@ -5,9 +5,9 @@ import {
 import { ROLES } from '@pertexo/policy';
 import type { AuditEvent } from '@pertexo/contracts';
 import type {
-  PreviewDryRun,
+  PreviewAttemptLease,
   PreviewStatus,
-} from '../../previews/preview.types.js';
+} from '@pertexo/database/schema';
 
 // The audit's privacy boundary admits these facts only for preview actions.
 const previewOutcomes: Readonly<
@@ -19,7 +19,9 @@ const previewOutcomes: Readonly<
   timed_out: true,
   outcome_unknown: true,
 };
-const previewDryRunModes: Readonly<Record<PreviewDryRun, true>> = {
+const previewDryRunModes: Readonly<
+  Record<PreviewAttemptLease['dryRun'], true>
+> = {
   not_supported: true,
   provider_supported: true,
 };
