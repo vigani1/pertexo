@@ -8,6 +8,9 @@ import {
 } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
+/** Attempt records one recovery reads; more refuses the recovery. */
+export const RECOVERY_ATTEMPT_RECORDS_MAX = 1_000;
+
 export function readRecoveryCheckpoint(
   { db, workspaceId }: WorkspaceTransaction,
   runId: string,
@@ -80,7 +83,7 @@ export function readRecoveryAttempts(
       ),
     )
     .orderBy(nodeAttempts.nodeRunId, nodeAttempts.attemptNumber)
-    .limit(1001);
+    .limit(RECOVERY_ATTEMPT_RECORDS_MAX + 1);
   return mode === 'locked' ? query.for('share') : query;
 }
 export function recoveryOutputs(

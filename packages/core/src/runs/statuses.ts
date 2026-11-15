@@ -16,6 +16,16 @@ export const TERMINAL_RUN_STATUSES: ReadonlySet<string> = new Set([
   RUN_STATUS.outcomeUnknown,
 ]);
 
+const RUN_EVENT_PREFIX = 'run.';
+
+/** Whether a run event name records the run finishing (`run.succeeded`, …). */
+export function isTerminalRunEvent(name: string): boolean {
+  return (
+    name.startsWith(RUN_EVENT_PREFIX) &&
+    TERMINAL_RUN_STATUSES.has(name.slice(RUN_EVENT_PREFIX.length))
+  );
+}
+
 /** What makes a run or node attempt's outcome worth reporting as a failure. */
 export const UNSUCCESSFUL_STATUSES = [
   RUN_STATUS.failed,

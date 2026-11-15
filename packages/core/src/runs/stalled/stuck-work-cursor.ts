@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+/** An encoded stuck-work cursor's length; anything longer is not one we issued. */
+const CURSOR_MAX_CHARACTERS = 4096;
+
 const positionSchema = z
   .object({ time: z.iso.datetime(), id: z.uuid() })
   .strict();
@@ -20,7 +23,8 @@ export function decodeStuckWorkCursor(
 ): StuckWorkCursor | undefined {
   if (cursor === undefined) return undefined;
   try {
-    if (cursor.length > 4096) throw new Error('Oversized cursor');
+    if (cursor.length > CURSOR_MAX_CHARACTERS)
+      throw new Error('Oversized cursor');
     return cursorSchema.parse(
       JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')),
     );

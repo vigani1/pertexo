@@ -37,6 +37,9 @@ import {
   pendingTaskAudienceSql,
   pendingTaskBlockedSql,
 } from './eligibility.repository.js';
+
+/** Pending tasks one page lists. */
+const PENDING_TASK_PAGE_SIZE = 50;
 const node = nodeRuns,
   decider = alias(users, 'decider');
 type TaskReadAccess = Readonly<{ role: Role; resources: FolderScope }>;
@@ -165,7 +168,7 @@ export async function listTasks(
       ),
     )
     .orderBy(desc(task.id))
-    .limit(51)
+    .limit(PENDING_TASK_PAGE_SIZE + 1)
     .catch(rethrowQueryFailure);
   const counted = taskQuery(client, { actorId: input.actorId, role })
     .where(
@@ -182,7 +185,7 @@ export async function listTasks(
     .select({ count: sql<number>`count(*)::int` })
     .from(counted)
     .catch(rethrowQueryFailure);
-  const page = rows.slice(0, 50);
+  const page = rows.slice(0, PENDING_TASK_PAGE_SIZE);
   return {
     items: page.map((row) => {
       const {
@@ -198,7 +201,8 @@ export async function listTasks(
       }
       return summary;
     }),
-    nextCursor: rows.length > 50 ? (page.at(-1)?.id ?? null) : null,
+    nextCursor:
+      rows.length > PENDING_TASK_PAGE_SIZE ? (page.at(-1)?.id ?? null) : null,
     pendingCount: count?.count ?? 0,
   };
 }

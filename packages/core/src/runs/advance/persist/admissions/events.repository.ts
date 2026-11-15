@@ -13,6 +13,9 @@ import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 import type { ExecutionIdentityMap } from './execution-identity.types.js';
 
+/** Event rows one insert writes, bounding its parameters. */
+const EVENT_ROWS_PER_STATEMENT = 1_000;
+
 export async function loadEventExecutionIdentities(
   client: PoolClient,
   physical: ExecutionIdentityMap,
@@ -177,9 +180,12 @@ async function insertEvents(
   events: readonly PgInsertValue<typeof runEvents>[],
 ) {
   // A transition can emit several events per expanded node. Bound statements below PostgreSQL's bind-parameter limit.
-  const rowsPerStatement = 1_000;
-  for (let offset = 0; offset < events.length; offset += rowsPerStatement) {
-    const rows = events.slice(offset, offset + rowsPerStatement);
+  for (
+    let offset = 0;
+    offset < events.length;
+    offset += EVENT_ROWS_PER_STATEMENT
+  ) {
+    const rows = events.slice(offset, offset + EVENT_ROWS_PER_STATEMENT);
     const inserted = await drizzle(client)
       .insert(runEvents)
       .values(rows)

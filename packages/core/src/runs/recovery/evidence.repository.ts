@@ -8,6 +8,7 @@ import {
   readRecoveryAttempts,
   recoveryOutputs,
   recoverySize,
+  RECOVERY_ATTEMPT_RECORDS_MAX,
 } from './snapshot.repository.js';
 import { workflows, workflowVersions } from '@pertexo/database/schema';
 import { and, eq } from 'drizzle-orm';
@@ -40,8 +41,6 @@ import {
   readWorkflowRunFailedSteps,
   runInputInTransaction,
 } from '../queries/history/details.repository.js';
-
-const maximumAttemptRecords = 1_000;
 
 const refused = (reason: RecoveryRefused['reason']) =>
   ({ kind: 'refused', reason }) as const;
@@ -121,7 +120,7 @@ async function readRecoveryMetadata(
       parsed.map((node) => node.id),
       mode,
     );
-    if (attempts.length > maximumAttemptRecords)
+    if (attempts.length > RECOVERY_ATTEMPT_RECORDS_MAX)
       return { kind: 'refused', reason: 'reuse_bounds' };
     const attemptsByNode = new Map<
       string,

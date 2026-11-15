@@ -1,4 +1,4 @@
-import { TERMINAL_RUN_STATUSES } from '../statuses.js';
+import { isTerminalRunEvent, TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import { workflowCalls, nodeRuns } from '@pertexo/database/schema';
@@ -18,13 +18,7 @@ export async function persistCallCompletion(
     traceparent?: string;
   }>,
 ): Promise<void> {
-  if (
-    !input.plan.events.some(
-      ({ name }) =>
-        name.startsWith('run.') && TERMINAL_RUN_STATUSES.has(name.slice(4)),
-    )
-  )
-    return;
+  if (!input.plan.events.some(({ name }) => isTerminalRunEvent(name))) return;
   const failure = input.plan.events.find(
     ({ name }) => name === `run.${input.plan.checkpoint.runStatus}`,
   )?.reasonCode;

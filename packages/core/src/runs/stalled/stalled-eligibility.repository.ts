@@ -1,3 +1,4 @@
+import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import {
   and,
   eq,
@@ -26,7 +27,9 @@ type PublicationColumns = Readonly<{
   availableAt: AnyPgColumn;
 }>;
 
-export const UNPUBLISHED_RUN_JOB_GRACE = sql`interval '60 seconds'`;
+/** How long a run's advance job may wait unpublished before it reads as stalled. */
+const UNPUBLISHED_RUN_JOB_GRACE_SECONDS = 60;
+export const UNPUBLISHED_RUN_JOB_GRACE = sql`(${UNPUBLISHED_RUN_JOB_GRACE_SECONDS}*${SECOND_INTERVAL})`;
 export function stalledRunEligible(status: AnyPgColumn) {
   return inArray(status, ['running', 'waiting']);
 }

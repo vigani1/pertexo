@@ -1,3 +1,5 @@
+import { USAGE_TREND_RANKED_WORKFLOWS } from '@pertexo/workflow-model';
+import { DAY_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 import {
   and,
   asc,
@@ -25,7 +27,7 @@ export function readTrendBounds(
   { db, workspaceId }: ResourceTransaction,
   days: number,
 ) {
-  const from = sql`(date_trunc('day',transaction_timestamp() at time zone 'UTC')-make_interval(days=>${days}::integer-1)) at time zone 'UTC'`;
+  const from = sql`(date_trunc('day',transaction_timestamp() at time zone 'UTC')-(${days}::integer-1)*${DAY_INTERVAL}) at time zone 'UTC'`;
   return db
     .select({
       as_of: timestamp(sql`transaction_timestamp()`),
@@ -104,7 +106,7 @@ export function readTrendDays(
       .from(window)
       .groupBy(utcDay),
   );
-  const buckets = sql`generate_series(${bounds.from_at}::timestamptz at time zone 'UTC',(${bounds.as_of}::timestamptz at time zone 'UTC')::date,interval '1 day') as bucket(utc_day)`;
+  const buckets = sql`generate_series(${bounds.from_at}::timestamptz at time zone 'UTC',(${bounds.as_of}::timestamptz at time zone 'UTC')::date,${DAY_INTERVAL}) as bucket(utc_day)`;
   return db
     .with(window, daily)
     .select({
@@ -179,8 +181,11 @@ export function readTrendRankings(
     )
     .where(
       or(
-        lte(ranked.runs_rank, 10),
-        and(lte(ranked.failures_rank, 10), gt(ranked.failures, 0)),
+        lte(ranked.runs_rank, USAGE_TREND_RANKED_WORKFLOWS),
+        and(
+          lte(ranked.failures_rank, USAGE_TREND_RANKED_WORKFLOWS),
+          gt(ranked.failures, 0),
+        ),
       ),
     )
     .orderBy(asc(ranked.workflow_id))

@@ -1,3 +1,4 @@
+import { QUEUED_EVENT_SEQUENCE } from '../queries/history/events.repository.js';
 import type { InitialCheckpointFactory } from './initial-checkpoint.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
@@ -33,7 +34,7 @@ export function createInitialCheckpoint(
     checkpoint: createCheckpoint({
       workflowVersionId: projection.id,
       iterationBudget: WORKFLOW_GRAPH_LIMITS.maxTotalLoopIterations,
-      nextEventSequence: 2,
+      nextEventSequence: QUEUED_EVENT_SEQUENCE + 1,
     }),
     ...(callable === undefined
       ? {}

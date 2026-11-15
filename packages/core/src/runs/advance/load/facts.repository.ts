@@ -20,11 +20,11 @@ const maximumCanonicalPersistedFactBytes =
 
 // Keep each result bounded while avoiding a long-lived coordinator snapshot
 // spending hundreds of network round trips on the accepted observation window.
-const maximumPersistedFactRowsPerFetch = 1_000;
+const MAXIMUM_PERSISTED_FACT_ROWS_PER_FETCH = 1_000;
 
 // This is a materialization target, not a protocol limit. A single accepted
 // PostgreSQL JSON value may exceed it after numeric text expansion.
-const targetPersistedFactWirePageBytes = 4 * 1_024 * 1_024;
+const TARGET_PERSISTED_FACT_WIRE_PAGE_BYTES = 4 * 1024 * 1024;
 
 export async function persistedFactCapacity(
   client: PoolClient,
@@ -100,11 +100,11 @@ export async function readPersistedFacts(
   let canonicalBytes = 0;
   let nextSequence = input.firstSequence;
   const rowsPerFetch = Math.min(
-    maximumPersistedFactRowsPerFetch,
+    MAXIMUM_PERSISTED_FACT_ROWS_PER_FETCH,
     Math.max(
       1,
       Math.floor(
-        targetPersistedFactWirePageBytes /
+        TARGET_PERSISTED_FACT_WIRE_PAGE_BYTES /
           Math.max(1, input.maximumStorageBytes),
       ),
     ),

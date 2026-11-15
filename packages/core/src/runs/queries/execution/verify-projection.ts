@@ -18,8 +18,8 @@ const verifiedProjections = new Map<
   string,
   Readonly<{ value: Verified; bytes: number }>
 >();
-const maximumEntries = 64;
-const maximumBytes = 16 * 1024 * 1024;
+const VERIFIED_PROJECTION_CACHE_ENTRIES = 64;
+const VERIFIED_PROJECTION_CACHE_BYTES = 16 * 1024 * 1024;
 let retainedBytes = 0;
 
 /** Verifies once per immutable content/catalog identity, including fresh database reads. */
@@ -52,10 +52,10 @@ export function verifyPersistedWorkflowProjection(
       catalog: options.catalog,
     });
     const bytes = utf8ByteLength(content) + utf8ByteLength(catalog);
-    if (bytes <= maximumBytes) {
+    if (bytes <= VERIFIED_PROJECTION_CACHE_BYTES) {
       while (
-        verifiedProjections.size >= maximumEntries ||
-        retainedBytes + bytes > maximumBytes
+        verifiedProjections.size >= VERIFIED_PROJECTION_CACHE_ENTRIES ||
+        retainedBytes + bytes > VERIFIED_PROJECTION_CACHE_BYTES
       ) {
         const oldest = verifiedProjections.entries().next().value;
         if (oldest === undefined) break;

@@ -6,9 +6,12 @@ export class WorkspaceRunAdmissionDeniedError extends Error {
   }
 }
 
+/** When a caller over the run quota may try again. */
+const QUOTA_RETRY_AFTER_SECONDS = 5;
+
 export class WorkspaceRunQuotaExceededError extends Error {
   public override readonly name = 'WorkspaceRunQuotaExceededError';
-  public readonly retryAfterSeconds = 5;
+  public readonly retryAfterSeconds = QUOTA_RETRY_AFTER_SECONDS;
 
   public constructor() {
     super('workspace.quota_exceeded');

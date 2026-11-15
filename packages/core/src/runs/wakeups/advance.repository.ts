@@ -87,6 +87,9 @@ export function wakeWorkflowRun(
 }
 
 /** In a moment, for a run that can't move until capacity frees up. */
+/** How long a deferred run waits before its next advance. */
+const DEFERRED_RUN_DELAY_SECONDS = 5;
+
 export function deferWorkflowRun(
   client: PoolClient,
   workspaceId: string,
@@ -97,6 +100,6 @@ export function deferWorkflowRun(
     workspaceId,
     runId,
     traceparent,
-    delaySeconds: 5,
+    delaySeconds: DEFERRED_RUN_DELAY_SECONDS,
   });
 }

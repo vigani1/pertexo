@@ -1,3 +1,4 @@
+import { MILLISECOND_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
@@ -68,7 +69,7 @@ export async function resumeHumanWait(
   await db
     .update(c)
     .set({
-      deadlineAt: sql`least(${c.deadlineAt}+(clock_timestamp()-${r.humanWaitStartedAt}),${r.absoluteDeadlineAt},case when ${r.remainingExecutionMs} is null then null else clock_timestamp()+${r.remainingExecutionMs}*interval '1 millisecond' end,(${parentDeadline}))`,
+      deadlineAt: sql`least(${c.deadlineAt}+(clock_timestamp()-${r.humanWaitStartedAt}),${r.absoluteDeadlineAt},case when ${r.remainingExecutionMs} is null then null else clock_timestamp()+${r.remainingExecutionMs}*${MILLISECOND_INTERVAL} end,(${parentDeadline}))`,
     })
     .from(r)
     .where(
@@ -86,7 +87,7 @@ export async function resumeHumanWait(
     .update(r)
     .set({
       humanWaitStartedAt: null,
-      deadlineAt: sql`least(${r.absoluteDeadlineAt},case when ${r.remainingExecutionMs} is null then null else clock_timestamp()+${r.remainingExecutionMs}*interval '1 millisecond' end,(${parentDeadline}))`,
+      deadlineAt: sql`least(${r.absoluteDeadlineAt},case when ${r.remainingExecutionMs} is null then null else clock_timestamp()+${r.remainingExecutionMs}*${MILLISECOND_INTERVAL} end,(${parentDeadline}))`,
       deadlineWakeupAt: null,
       remainingExecutionMs: null,
       updatedAt: sql`clock_timestamp()`,

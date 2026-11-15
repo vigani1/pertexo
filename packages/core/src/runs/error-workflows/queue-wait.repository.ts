@@ -1,3 +1,4 @@
+import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import {
   runErrorWorkflowIntents,
   outboxEvents,
@@ -14,6 +15,9 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { ErrorWorkflowDeliveryMismatchError } from './error-workflow.errors.js';
 import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
 
+/** Queued error-workflow intents one release pass reads. */
+const QUEUE_RELEASE_BATCH = 100;
+
 /** The locked intent and claimed receipt make replacement delivery atomic. */
 export async function deferErrorWorkflowForQueue(
   client: PoolClient,
@@ -24,7 +28,7 @@ export async function deferErrorWorkflowForQueue(
   const [observation] = await db
     .update(runErrorWorkflowIntents)
     .set({
-      queueWaitExpiresAt: sql`coalesce(${runErrorWorkflowIntents.queueWaitExpiresAt},clock_timestamp()+make_interval(secs=>${ERROR_WORKFLOW_QUEUE_WAIT_SECONDS}))`,
+      queueWaitExpiresAt: sql`coalesce(${runErrorWorkflowIntents.queueWaitExpiresAt},clock_timestamp()+${ERROR_WORKFLOW_QUEUE_WAIT_SECONDS}::integer*${SECOND_INTERVAL})`,
     })
     .where(
       and(
@@ -121,7 +125,7 @@ export async function wakeErrorWorkflowsForCapacity(
         asc(runErrorWorkflowIntents.createdAt),
         asc(runErrorWorkflowIntents.sourceRunId),
       )
-      .limit(100),
+      .limit(QUEUE_RELEASE_BATCH),
   );
   await db
     .with(ready)

@@ -10,7 +10,10 @@ import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacit
 import { readPendingTaskFacts } from '../../pending-tasks/lifecycle/facts.repository.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { workflowControlOutputNodeIds } from '@pertexo/workflow-model';
+import {
+  STORED_INTEGER_MAX,
+  workflowControlOutputNodeIds,
+} from '@pertexo/workflow-model';
 
 import { projectExecutionSource } from '../../queries/execution/source.repository.js';
 import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
@@ -209,7 +212,7 @@ async function loadLockedRunState(
 
 // The loader owns these fields; the engine parses the full scheduler afterwards.
 const coordinatorCheckpointFieldsSchema = z.object({
-  nextEventSequence: z.number().int().positive().max(2_147_483_647),
+  nextEventSequence: z.number().int().positive().max(STORED_INTEGER_MAX),
   deadlineExpired: z.boolean().optional(),
   invocations: z.array(
     z.object({ invocationKey: z.string(), status: z.string() }),
