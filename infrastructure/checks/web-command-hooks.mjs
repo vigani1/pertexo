@@ -14,6 +14,7 @@ const COMMAND_BUILDERS = Object.freeze({
   '@/lib/api/commands/use-retained': ['useRetainedCommand'],
   '@/lib/api/commands/low-effect-mutation': ['useLowEffectMutation'],
   '@/lib/api/commands/use-create-command': ['useCreateCommand'],
+  '@/lib/api/commands/use-native-download': ['useNativeDownload'],
   '@/lib/resource-sharing/use-editor': ['useSharingEditor'],
 });
 const WEB_SOURCE = 'apps/web/src/';
