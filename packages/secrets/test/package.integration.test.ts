@@ -1,8 +1,5 @@
 import { testStackSetting } from '../../../infrastructure/testing/test-stack.mjs';
-import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -11,8 +8,7 @@ import {
   migrateDatabase,
 } from '@pertexo/database/testing';
 
-const execute = promisify(execFile);
-const packageDirectory = fileURLToPath(new URL('..', import.meta.url));
+import { inProcess } from './support/in-process.js';
 
 const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 const migrationUrl = testStackSetting('DATABASE_MIGRATION_URL');
@@ -30,20 +26,6 @@ const url = (base: string) => {
   return value.toString();
 };
 
-/** Runs in its own process, by package name, so only the built output can answer. */
-async function inProcess(script: string, environment = {}) {
-  const { stdout } = await execute(
-    process.execPath,
-    ['--input-type=module', '--eval', script],
-    {
-      cwd: packageDirectory,
-      env: { ...process.env, ...environment },
-      timeout: 20_000,
-    },
-  );
-  return JSON.parse(stdout) as unknown;
-}
-
 beforeAll(async () => {
   await fixture.create();
   await migrateDatabase({
@@ -59,75 +41,6 @@ afterAll(async () => {
 }, 30_000);
 
 describe('@pertexo/secrets/server as a built package', () => {
-  it('names the entry point it promises', async () => {
-    const names = await inProcess(`
-      const entry = await import('@pertexo/secrets/server');
-      console.log(JSON.stringify(Object.keys(entry).sort()));
-    `);
-
-    expect(names).toEqual([
-      'ApplicationKeyConfigurationError',
-      'ApplicationSecretKeyUnavailableError',
-      'AwsKmsEnvelopeKeyProvider',
-      'AwsKmsWebhookEnvelopeKeyProvider',
-      'CALLBACK_DEVELOPMENT_KEY',
-      'ConnectionEnvelopeEncryption',
-      'ConnectionSecretEncryptionError',
-      'NodeDnsResolver',
-      'NodeHttpTransport',
-      'SECURE_HTTP_ERROR_CODE',
-      'SECURITY_NOTICE_VALIDITY_MILLIS',
-      'SYSTEM_MAIL_DELIVERY_BUDGET',
-      'SYSTEM_MAIL_FAILURE_GUIDANCE',
-      'SecureHttpClient',
-      'SecureHttpError',
-      'StoredKeyVerificationError',
-      'SystemMailConfigurationError',
-      'WebhookTriggerEnvelopeEncryption',
-      'WebhookTriggerSecretEncryptionError',
-      'applicationKeyVersionSchema',
-      'applicationSealedSecretSchema',
-      'authenticationMailAssociatedData',
-      'callbackTokenHash',
-      'connectionSecretAssociatedData',
-      'createApplicationSecretEnvelope',
-      'createAwsConnectionEnvelopeEncryption',
-      'createAwsWebhookTriggerEnvelopeEncryption',
-      'createCallbackTokenKeys',
-      'createConnectionEnvelopeEncryption',
-      'createEncryptionKeyRepository',
-      'createNodeSecureHttpClient',
-      'createSmtpClient',
-      'createSystemMailDeliveryHandler',
-      'createSystemMailDeliveryStore',
-      'createSystemMailEnqueueStore',
-      'createWebhookTriggerEnvelopeEncryption',
-      'insertSystemMail',
-      'inspectSecureHttpError',
-      'isAllowedPrivateAddress',
-      'normalizeUrlHostname',
-      'parseAllowedPrivateNetworks',
-      'parseApplicationPreviousKeys',
-      'parseCallbackKeyConfig',
-      'parseConnectionEncryptionConfig',
-      'parseSystemMailConfig',
-      'redactText',
-      'systemMailFailureCode',
-      'systemMailFailureInstruction',
-      'validateApplicationKeyRing',
-      'verifyCallbackTokenKeys',
-      'verifyStoredEncryptionKeys',
-      'verifySystemMailKeys',
-      'webhookTriggerSecretAssociatedData',
-    ]);
-  });
-
-  it('has no root entry point', async () => {
-    await expect(
-      inProcess(`await import('@pertexo/secrets');`),
-    ).rejects.toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED|No "exports" main/u);
-  });
-
   it('lets a process queue and claim mail in a real database, then exit cleanly', async () => {
     const id = randomUUID();
     const outcome = await inProcess(
@@ -167,22 +80,5 @@ describe('@pertexo/secrets/server as a built package', () => {
     } finally {
       await admin.end();
     }
-  });
-
-  it('took its names out of the database platform entry point', async () => {
-    const names = (await inProcess(`
-      const entry = await import('@pertexo/database/platform');
-      console.log(JSON.stringify(Object.keys(entry)));
-    `)) as readonly string[];
-
-    for (const moved of [
-      'authenticationMailAssociatedData',
-      'createEncryptionKeyRepository',
-      'createSystemMailDeliveryStore',
-      'createSystemMailEnqueueStore',
-      'insertSystemMail',
-      'verifySystemMailKeys',
-    ])
-      expect(names).not.toContain(moved);
   });
 });
