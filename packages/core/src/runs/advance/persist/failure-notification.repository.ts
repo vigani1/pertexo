@@ -22,7 +22,7 @@ import {
   FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES,
   FailureNotificationContextSchema,
 } from '@pertexo/workflow-model';
-import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../coordinator-state.errors.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 const failureNotificationNamespace = '9fe280d8-40ca-4a20-930e-1bf77e48c817';

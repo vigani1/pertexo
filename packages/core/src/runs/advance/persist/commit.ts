@@ -11,7 +11,7 @@ import { persistFailureHandling } from './failure-handling.repository.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 
-import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../coordinator-state.errors.js';
 import type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,

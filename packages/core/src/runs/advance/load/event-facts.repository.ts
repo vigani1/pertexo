@@ -10,7 +10,7 @@ import {
 } from '../../../shared/stored-execution.js';
 import type { PoolClient } from 'pg';
 
-import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../coordinator-state.errors.js';
 import type { CoordinatorEventRow } from './attempts.repository.js';
 import {
   record,

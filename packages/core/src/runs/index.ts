@@ -36,7 +36,7 @@ export type {
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
-} from './execution-state.errors.js';
+} from './advance/coordinator-state.errors.js';
 export type {
   RunAdvanceDecision,
   RunAdvanceInput,

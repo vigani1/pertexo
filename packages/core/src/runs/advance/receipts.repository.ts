@@ -19,7 +19,7 @@ import {
   CoordinatorDeliveryMismatchError,
   DeliveryMismatch,
   CoordinatorRunStateCorruptError,
-} from '../execution-state.errors.js';
+} from './coordinator-state.errors.js';
 import type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,

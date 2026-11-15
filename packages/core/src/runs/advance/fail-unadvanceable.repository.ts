@@ -39,7 +39,7 @@ import {
   auditCoordinatorDeliveryMismatch,
   completeCoordinatorReceipt,
 } from './receipts.repository.js';
-import { DeliveryMismatch } from '../execution-state.errors.js';
+import { DeliveryMismatch } from './coordinator-state.errors.js';
 import { withCoordinatorWriteClient } from './coordinator-transaction.js';
 import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 

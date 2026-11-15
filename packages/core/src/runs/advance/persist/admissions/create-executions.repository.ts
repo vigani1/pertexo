@@ -9,7 +9,7 @@ import {
 import { serializeStoredExecutionJsonValue } from '../../../../shared/stored-execution.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../../../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../../coordinator-state.errors.js';
 
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import type { ExecutionIdentityMap } from './execution-identity.types.js';

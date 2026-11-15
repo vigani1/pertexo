@@ -25,7 +25,7 @@ import { bindCallbackTask } from '../callbacks/bind.repository.js';
 import { callbackScopeHash } from '../callbacks/scope-hash.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
-import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../../advance/coordinator-state.errors.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';
 

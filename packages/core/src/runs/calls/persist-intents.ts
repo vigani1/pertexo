@@ -6,7 +6,7 @@ import type {
   WorkflowTransitionPlan,
 } from '@pertexo/workflow-engine';
 import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
-import { CoordinatorRunStateCorruptError } from '../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../advance/coordinator-state.errors.js';
 import {
   insertCallIntent,
   markCallWaiting,

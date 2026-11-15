@@ -4,7 +4,7 @@ import { nodeRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { serializeStoredExecutionJsonValue } from '../../../shared/stored-execution.js';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../coordinator-state.errors.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 /** Source evidence and disposition share the checkpoint/admission transaction. */

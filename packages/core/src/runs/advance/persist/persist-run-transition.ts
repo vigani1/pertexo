@@ -6,7 +6,7 @@ import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/synchronize-human-wait.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/persist-intent.js';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../coordinator-state.errors.js';
 import type { CoordinatorCommitRow } from '../load/load-run.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { persistFailureNotificationIntent } from './failure-notification.repository.js';
