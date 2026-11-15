@@ -126,14 +126,9 @@ export function formFileType(
 
 export function assertFormFileSize(byteLength: number, maxBytes: number) {
   if (byteLength <= maxBytes) return;
-  const size = formatByteSize(byteLength);
-  const limit = formatByteSize(maxBytes);
   throw new FormFileRejectedError(
     'size',
-    // Rounded sizes can read the same; then say it is just over.
-    size === limit
-      ? `This file is just over the ${limit} limit.`
-      : `This file is ${size}; the limit is ${limit}.`,
+    `This file is over the ${formatByteSize(maxBytes)} limit.`,
   );
 }
 

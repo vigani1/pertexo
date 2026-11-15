@@ -209,13 +209,13 @@ describe('file type and size checks', () => {
     },
   );
 
-  it('names the size in plain words', () => {
+  it('names the limit in plain words, however far over the file is', () => {
     expect(() => {
       assertFormFileSize(12 * 1_048_576, 5 * 1_048_576);
-    }).toThrow('This file is 12 MB; the limit is 5 MB.');
+    }).toThrow('This file is over the 5 MB limit.');
     expect(() => {
       assertFormFileSize(1_048_577, 1_048_576);
-    }).toThrow('This file is just over the 1 MB limit.');
+    }).toThrow('This file is over the 1 MB limit.');
     expect(() => {
       assertFormFileSize(FORM_FILE_LIMITS.defaultMaxBytes, 5 * 1_048_576);
     }).not.toThrow();
