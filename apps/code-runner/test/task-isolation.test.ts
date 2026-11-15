@@ -8,7 +8,7 @@ import {
   vi,
 } from 'vitest';
 import { parseCodeSettings } from '@pertexo/node-sdk';
-import { assertRunnerIsolation } from '../src/runner-config.js';
+import { assertRunnerIsolation } from '../src/isolation/assert-runner-isolation.js';
 
 const host = vi.hoisted(() => ({
   files: new Map<string, string>(),
@@ -28,18 +28,13 @@ const config = {
   settings: parseCodeSettings({}),
   mode: 'hardened' as const,
   socketPath: '/tmp/runner.sock',
+  taskPath: '/usr/local/bin:/usr/bin:/bin',
+  inheritedVariableNames: ['PATH', 'HOME'],
 };
 beforeEach(() => {
   Object.defineProperty(process, 'platform', { value: 'linux' });
   vi.spyOn(process, 'getuid').mockReturnValue(0);
   vi.spyOn(process, 'getgid').mockReturnValue(10001);
-  for (const name of Object.keys(process.env))
-    if (
-      /DATABASE|REDIS|AUTH|CONNECTION|AWS|SMTP|SECRET|TOKEN|ARTIFACT/u.test(
-        name,
-      )
-    )
-      vi.stubEnv(name, undefined);
   host.temp = { uid: 0, mode: 0o700 };
   host.files = new Map([
     ['/proc/self/status', 'NoNewPrivs:\t1\nCapEff:\t00000000000000e0\n'],
@@ -59,7 +54,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.restoreAllMocks();
-  vi.unstubAllEnvs();
 });
 afterAll(() => {
   if (platform !== undefined)
@@ -115,11 +109,16 @@ describe('hardened runner startup isolation', () => {
     );
   });
   it('refuses shared credentials before inspecting kernel files', async () => {
-    vi.stubEnv('AUTH_SECRET', 'private-value');
     host.files.clear();
-    await expect(assertRunnerIsolation(config)).rejects.toThrow(
-      'shared credential environment',
-    );
+    await expect(
+      assertRunnerIsolation({
+        ...config,
+        inheritedVariableNames: [
+          ...config.inheritedVariableNames,
+          'AUTH_SECRET',
+        ],
+      }),
+    ).rejects.toThrow('shared credential environment');
   });
   it('refuses the wrong manager identity before reading kernel files', async () => {
     vi.spyOn(process, 'getgid').mockReturnValue(0);

@@ -20,6 +20,10 @@ import {
 } from './request-context.js';
 import { PrivateResponseCacheGuard } from './private-response-cache.guard.js';
 import { RouteTable } from './route-table.js';
+import {
+  ROUTE_ANSWER_CHECK,
+  type RouteAnswerCheck,
+} from './route-answer-check.js';
 
 const REQUEST_CONTEXT_STORE = Symbol('REQUEST_CONTEXT_STORE');
 
@@ -65,10 +69,13 @@ export class HttpPlatformModule implements NestModule {
   public static register(
     logger: HttpErrorLogger,
     applicationErrorMappers: readonly HttpApplicationErrorMapper[] = [],
+    answers: RouteAnswerCheck = 'strict',
   ): DynamicModule {
     return {
       module: HttpPlatformModule,
+      exports: [ROUTE_ANSWER_CHECK],
       providers: [
+        { provide: ROUTE_ANSWER_CHECK, useValue: answers },
         { provide: HTTP_ERROR_LOGGER, useValue: logger },
         {
           provide: HTTP_APPLICATION_ERROR_MAPPERS,

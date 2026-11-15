@@ -1,5 +1,10 @@
 import { parseAutomationArguments } from './commands/automation-arguments.js';
-import { parseAutomationHttpConfig } from './config/automation-http-config.js';
+import {
+  parseAutomationHttpConfig,
+  readAutomationEnvironment,
+  tokenWorkspaceId,
+  type AutomationEnvironment,
+} from './config/automation-http-config.js';
 import { createAutomationHttpClient } from './http/automation-http-client.js';
 import { executeAutomationCommand } from './commands/execute-automation-command.js';
 import {
@@ -31,7 +36,7 @@ Exit codes: 0 done, 1 other failure, 2 bad usage or settings, 3 token or permiss
 
 export async function runAutomationCli(
   args: string[],
-  environment = process.env,
+  environment: AutomationEnvironment = readAutomationEnvironment(),
 ): Promise<void> {
   const shutdown = new AbortController();
   const stop = () => {
@@ -42,7 +47,7 @@ export async function runAutomationCli(
   try {
     const command = parseAutomationArguments(
       args,
-      environment.PERTEXO_API_TOKEN?.split('.')[1],
+      tokenWorkspaceId(environment.PERTEXO_API_TOKEN),
     );
     if (command === 'help') {
       process.stdout.write(HELP);
@@ -53,7 +58,7 @@ export async function runAutomationCli(
       return;
     }
     const config = parseAutomationHttpConfig(environment);
-    if (config.credential.split('.')[1] !== command.workspaceId)
+    if (tokenWorkspaceId(config.credential) !== command.workspaceId)
       throw new AutomationCommandError(
         'cli.invalid_argument',
         'The workspace must match the configured personal token.',

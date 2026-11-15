@@ -207,7 +207,7 @@ function spawnTaskChild(
           {
             stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
             env: {
-              PATH: '/usr/local/bin:/usr/bin:/bin',
+              PATH: config.taskPath,
               UV_THREADPOOL_SIZE: '1',
               CODE_CHILD_BOOT: JSON.stringify(boot),
             },
@@ -216,7 +216,7 @@ function spawnTaskChild(
       : spawn(executable, args, {
           stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
           env: {
-            PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
+            PATH: config.taskPath,
             UV_THREADPOOL_SIZE: '1',
             CODE_CHILD_BOOT: JSON.stringify(boot),
           },

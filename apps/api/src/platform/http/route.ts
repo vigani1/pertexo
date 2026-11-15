@@ -6,6 +6,9 @@ import {
   Get,
   Header,
   HttpCode,
+  Inject,
+  Injectable,
+  Optional,
   Patch,
   Post,
   Put,
@@ -29,6 +32,10 @@ import { firstRequestHeader } from './request-headers.js';
 import { RateLimit } from '../rate-limit/metadata.js';
 import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
 import { WORKSPACE_AUTHORIZATION } from '../../workspaces/tokens.js';
+import {
+  ROUTE_ANSWER_CHECK,
+  type RouteAnswerCheck,
+} from './route-answer-check.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/workspace-transport.js';
 import {
   capabilityGuard,
@@ -151,7 +158,14 @@ class RouteResponseContractError extends Error {
 }
 
 /** Parses the declared input before the handler, and checks the answer after it. */
+@Injectable()
 class RouteContractInterceptor implements NestInterceptor {
+  public constructor(
+    @Optional()
+    @Inject(ROUTE_ANSWER_CHECK)
+    private readonly answerCheck: RouteAnswerCheck = 'strict',
+  ) {}
+
   public intercept(
     context: ExecutionContext,
     next: CallHandler,
@@ -166,7 +180,7 @@ class RouteContractInterceptor implements NestInterceptor {
       .handle()
       .pipe(
         map((value: unknown) =>
-          checkedAnswer(answers, reply.statusCode, value),
+          checkedAnswer(answers, reply.statusCode, value, this.answerCheck),
         ),
       );
   }
@@ -177,6 +191,7 @@ function checkedAnswer(
   answers: readonly AnyRoute['success'][],
   status: number,
   value: unknown,
+  check: RouteAnswerCheck,
 ): unknown {
   const answer = answers.find((candidate) => candidate.status === status);
   if (answer === undefined)
@@ -185,7 +200,7 @@ function checkedAnswer(
     );
   if (!('body' in answer)) return value;
   const schema =
-    process.env.NODE_ENV === 'production'
+    check === 'project'
       ? responseProjection(answer.body.schema)
       : answer.body.schema;
   const checked = schema.safeParse(value);

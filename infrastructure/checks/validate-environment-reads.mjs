@@ -4,30 +4,12 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 import {
-  entriesAddedSince,
   listSourceFiles,
   listWorkspaces,
   readSource,
   report,
   repositoryRoot,
 } from './workspace-sources.mjs';
-
-/** Files that read the environment outside a config module; this list may only shrink. */
-export const ENVIRONMENT_READS_PENDING = Object.freeze([
-  // NODE_ENV picks the cookie's Secure flag; it belongs in the API's config.
-  'apps/api/src/platform/http/route.ts',
-  // The CLI's entry hands its environment to the parser it runs.
-  'apps/cli/src/run-automation-cli.ts',
-  // The sandboxed child inherits only PATH; the runner's config should pass it.
-  'apps/code-runner/src/process/slot.ts',
-]);
-
-// The list as it stood when the check began; ENVIRONMENT_READS_PENDING stays within it.
-const ORIGINAL_ENVIRONMENT_READS_PENDING = Object.freeze([
-  'apps/api/src/platform/http/route.ts',
-  'apps/cli/src/run-automation-cli.ts',
-  'apps/code-runner/src/process/slot.ts',
-]);
 
 /** A config module: `config.ts`, `<subject>-config.ts`, or a file under an app's `config/`. */
 export function isConfigModule(file) {
@@ -97,26 +79,13 @@ function namesProcess(expression) {
   );
 }
 
-export function validateEnvironmentReads(
-  readers,
-  pending = ENVIRONMENT_READS_PENDING,
-) {
-  const findings = entriesAddedSince(
-    'ENVIRONMENT_READS_PENDING',
-    pending,
-    ORIGINAL_ENVIRONMENT_READS_PENDING,
-  );
-  for (const file of readers)
-    if (!isConfigModule(file) && !pending.includes(file))
-      findings.push(
+export function validateEnvironmentReads(readers) {
+  return readers
+    .filter((file) => !isConfigModule(file))
+    .map(
+      (file) =>
         `${file}: read process.env only in a config module and pass the typed value inward.`,
-      );
-  for (const file of pending)
-    if (!readers.includes(file))
-      findings.push(
-        `${file}: no longer reads process.env; remove it from ENVIRONMENT_READS_PENDING.`,
-      );
-  return findings;
+    );
 }
 
 export async function inspectEnvironmentReads(root = repositoryRoot) {
