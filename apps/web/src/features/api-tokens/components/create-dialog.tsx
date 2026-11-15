@@ -21,6 +21,8 @@ import {
 } from '../model/token-copy';
 import { CreateTokenForm } from '../forms/create-token';
 import { TokenSecretReceipt } from './secret-receipt';
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
+import { formatTimeSpan } from '@/lib/format/time';
 
 type CreationView =
   | { kind: 'form'; feedback?: ReturnType<typeof tokenCommandFeedback> }
@@ -108,8 +110,7 @@ export function CreateTokenDialog({
           <>
             <DialogTitle>Create API token</DialogTitle>
             <DialogDescription>
-              For your scripts in this workspace. Creation needs a sign-in from
-              the last five minutes.
+              {`For your scripts in this workspace. Creation needs a sign-in from the last ${formatTimeSpan(FRESH_SIGN_IN_WINDOW_MILLIS / 1_000)}.`}
             </DialogDescription>
             {view.feedback === undefined ? null : (
               <Notice

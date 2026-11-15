@@ -11,6 +11,7 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 type WorkspaceDeletionDialogProps = Readonly<{
   workspaceName: string;
   pending: boolean;
@@ -25,7 +26,8 @@ function reasonError(reason: string): string | undefined {
 }
 /**
  * Deleting asks for the workspace's name, typed out, and a reason. It is
- * recoverable for 30 days, and the dialog says so before anything is sent.
+ * recoverable for the workspace recovery window, and the dialog says so
+ * before anything is sent.
  */
 export function WorkspaceDeletionDialog({
   workspaceName,
@@ -72,7 +74,7 @@ export function WorkspaceDeletionDialog({
         locked: pending,
       }}
       title={`Delete ${workspaceName}?`}
-      description="Access and triggers stop now. You can restore it for 30 days after the request; after that it’s deleted for good."
+      description={`Access and triggers stop now. You can restore it for ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')} after the request; after that it’s deleted for good.`}
       trigger={
         <Button type="button" variant="destructive">
           Delete workspace

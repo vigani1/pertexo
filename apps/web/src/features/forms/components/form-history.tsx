@@ -9,6 +9,8 @@ import { formatDateTime } from '@/lib/format/time';
 import { Button } from '@/components/ui/button';
 import type { MemberFormScope } from '../data/forms.api';
 import { formEventsQueryOptions } from '../data/forms.queries';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 export function FormEventHistory({
   scope,
 }: Readonly<{ scope: MemberFormScope }>) {
@@ -46,7 +48,7 @@ export function FormEventHistory({
         }}
         copy={{
           title: 'Coordinated form events',
-          note: 'Kept for 90 days',
+          note: `Kept for ${formatCount(DATA_RETENTION_DAYS.triggerHistory, 'day')}`,
           subject: 'events',
           loadMoreLabel: 'Load older events',
           empty:

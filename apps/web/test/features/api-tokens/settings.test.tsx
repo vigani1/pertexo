@@ -288,7 +288,7 @@ describe('personal API token settings', () => {
     expect(
       await screen.findByRole('link', { name: 'Sign in again' }),
     ).toHaveAttribute('href', `/logout?returnTo=${encodeURIComponent(path)}`);
-    expect(screen.getByRole('alert')).toHaveTextContent('within five minutes');
+    expect(screen.getByRole('alert')).toHaveTextContent('within 5 minutes');
   });
   it('explains disabled issuance and still allows revocation with exact-key retry', async () => {
     const state = fixtures({ enabled: false, items: [token] });

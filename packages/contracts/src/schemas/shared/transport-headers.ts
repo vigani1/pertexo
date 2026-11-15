@@ -7,6 +7,8 @@ export const idempotencyKeySchema = z
   .min(1)
   .max(128)
   .regex(/^[\x21-\x2b\x2d-\x7e]+$/u);
+/** How long a key is honored: a retry with the same key inside it replays. */
+export { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 
 // JSON Schema patterns carry no flags, so letters match either case by hand.
 const caseless = (text: string) =>

@@ -65,39 +65,6 @@ const NOT_LIMITS: readonly string[] = [
   'features/usage/pages/workspace-usage.tsx: the last 7 days',
 ];
 
-// Limits still written as literals when this check began (batch J6b). Each
-// needs its owner; the list may only shrink, so a fixed one fails until it's
-// removed, and a new one fails at once. Those left are enforced only by the
-// API, worker or core (the fresh sign-in window, command retries, invitation
-// and deletion windows, trigger history, the connection test's wait and the
-// sign-up name), which have no browser-safe constant yet.
-const STILL_WRITTEN: readonly string[] = [
-  // Found when the check learned "in N minutes" and "the last N days":
-  // the fresh sign-in window and the two-factor lockout, both the API's.
-  'features/api-tokens/components/create-dialog.tsx: the last five minutes',
-  'features/auth/data/two-factor-verification.mutations.ts: in 15 minutes',
-  'features/workspaces/components/members/ownership-transfer-dialog.tsx: the last five minutes',
-  'features/api-tokens/model/token-copy.ts: within five minutes',
-  'features/auth/components/account/link-provider-dialog.tsx: within five minutes',
-  'features/auth/components/sign-up-lens.tsx: 256 characters',
-  'features/connections/model/connection-health.ts: within 15 seconds',
-  'features/forms/components/form-history.tsx: for 90 days',
-  'features/workflow-publish/components/run-submission/input-dialog.tsx: within 24 hours',
-  'features/workflow-publish/data/mutations/use-workflow-run-submission.ts: within 24 hours',
-  // Found when the check learned the "15-minute" form; core owns the wait.
-  'features/workflow-runs/components/error-workflow-status.tsx: 15-minute',
-  'features/workflow-runs/data/mutations/use-run-replay.ts: within 24 hours',
-  'features/workflow-settings/components/triggers/schedules/occurrences.tsx: for 90 days',
-  'features/workflow-settings/components/triggers/webhooks/deliveries.tsx: for 90 days',
-  'features/workspaces/components/invitations/email-chips-field.tsx: for seven days',
-  'features/workspaces/components/settings/workspace-danger-zone.tsx: for 30 days',
-  'features/workspaces/components/settings/workspace-danger-zone.tsx: within 30 days',
-  'features/workspaces/components/settings/workspace-danger-zone.tsx: within 30 days',
-  'features/workspaces/components/settings/workspace-deletion-dialog.tsx: for 30 days',
-  'features/workspaces/components/shell/workspace-banners.tsx: for 30 days',
-  'features/workspaces/data/mutations/members/use-member-command.ts: within five minutes',
-];
-
 function writtenLimits(root: string): string[] {
   return sources(root).flatMap((path) =>
     copyIn(path).flatMap((text) =>
@@ -114,5 +81,5 @@ function writtenLimits(root: string): string[] {
 
 it('states limits through their owners, not as written literals', () => {
   const found = writtenLimits(join(import.meta.dirname, '../../src')).sort();
-  expect(found).toEqual([...NOT_LIMITS, ...STILL_WRITTEN].sort());
+  expect(found).toEqual([...NOT_LIMITS].sort());
 });

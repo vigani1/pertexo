@@ -125,10 +125,6 @@ their owners and lets the server refuse.
 
 - Ten features expose no `public.ts` (only views, queries or routing), and
   three expose nothing: their pages are reached only from routes.
-- Twenty-one limits in the copy are still written by hand
-  (`test/lib/limits-in-copy.test.ts`, `STILL_WRITTEN`): only the API, worker or
-  core enforce them, with no browser-safe constant yet. The list may only
-  shrink.
 - The form routes (`routes/forms/routes.ts`, `routes/forms/member.tsx`) read
   `publicFormScope` and `memberFormScope` through `forms-queries.public.ts`:
   the route builds the form's API scope for its loader and page, which makes

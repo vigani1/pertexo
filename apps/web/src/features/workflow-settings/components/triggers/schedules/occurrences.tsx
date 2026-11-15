@@ -9,6 +9,8 @@ import { formatDateTime } from '@/lib/format/time';
 import { describeOccurrence } from '../../../model/triggers/occurrence-outcome';
 import { scheduleOccurrencesInfiniteQueryOptions } from '../../../data/workflow-settings.queries';
 import { RunLink } from '../run-link';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 function OccurrenceEntry({
   occurrence,
@@ -67,7 +69,7 @@ export function ScheduleOccurrences({
       )}
       copy={{
         title: 'Recent runs of this schedule',
-        note: 'Kept for 90 days',
+        note: `Kept for ${formatCount(DATA_RETENTION_DAYS.triggerHistory, 'day')}`,
         subject: 'run times',
         loadMoreLabel: 'Load older run times',
         empty:

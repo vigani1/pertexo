@@ -3,6 +3,8 @@ import { API_TOKEN_ACTIVE_LIMIT } from '@pertexo/workflow-model';
 import type { StatusTone } from '@/components/ui/status';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isUncertainOutcome } from '@/lib/api/error-copy';
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
+import { formatTimeSpan } from '@/lib/format/time';
 
 export const SCOPE_COPY: Readonly<
   Record<ApiTokenScope, { label: string; description: string }>
@@ -72,8 +74,7 @@ export function tokenCommandFeedback(cause: unknown, action: string) {
   if (isApiError(cause)) {
     if (cause.problem?.code === 'auth.session_not_fresh')
       return {
-        message:
-          'For your security, sign in again, then create within five minutes.',
+        message: `For your security, sign in again, then create within ${formatTimeSpan(FRESH_SIGN_IN_WINDOW_MILLIS / 1_000)}.`,
         freshSignIn: true,
       };
     if (cause.problem?.code === 'api_token.unavailable')

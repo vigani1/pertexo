@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
-import { formatDateTime } from '@/lib/format/time';
+import { formatDateTime, formatTimeSpan } from '@/lib/format/time';
+import { ERROR_WORKFLOW_QUEUE_WAIT_SECONDS } from '@pertexo/workflow-model';
 
 const refusals = {
   concurrency_limit:
@@ -11,7 +12,7 @@ const refusals = {
   invalid_target:
     'The selected version cannot run as an error workflow. Publish it with When a workflow fails.',
   workspace_unavailable: 'The workspace cannot accept new runs.',
-  queue_full: 'The error workflow’s 15-minute wait for queue capacity expired.',
+  queue_full: `The error workflow waited ${formatTimeSpan(ERROR_WORKFLOW_QUEUE_WAIT_SECONDS)} for queue capacity, and none came free.`,
 };
 function presentation(delivery: WorkflowRunErrorWorkflow) {
   if (delivery.status === 'refused')

@@ -9,6 +9,8 @@ import { formatByteLength } from '@/lib/format/bytes';
 import { describeDelivery } from '../../../model/triggers/delivery-outcome';
 import { webhookDeliveriesInfiniteQueryOptions } from '../../../data/workflow-settings.queries';
 import { RunLink } from '../run-link';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 function DeliveryEntry({
   delivery,
@@ -73,7 +75,7 @@ export function WebhookDeliveries({
       )}
       copy={{
         title: 'Recent deliveries',
-        note: 'Kept for 90 days',
+        note: `Kept for ${formatCount(DATA_RETENTION_DAYS.triggerHistory, 'day')}`,
         subject: 'deliveries',
         loadMoreLabel: 'Load older deliveries',
         empty: endpointReady

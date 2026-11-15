@@ -16,6 +16,7 @@ import {
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import { commandErrorMessage } from '@/lib/workflows/command-errors';
+import { formatCount } from '@/lib/format/count';
 
 type RunAttempt = Readonly<{
   intent: RunIntent;
@@ -263,7 +264,7 @@ function runSubmissionFailureMessage(
   { submitted }: Readonly<{ submitted: boolean }>,
 ) {
   if (submitted && isUnconfirmedCommand(error))
-    return 'We couldn’t confirm whether this run started. Retry the same input, deadline and version within 24 hours of the first attempt. Don’t start a replacement run before resolving it.';
+    return `We couldn’t confirm whether this run started. Retry the same input, deadline and version within ${formatCount(COMMAND_RETRY_WINDOW_HOURS, 'hour')} of the first attempt. Don’t start a replacement run before resolving it.`;
   return commandErrorMessage(error, 'starting this run');
 }
 

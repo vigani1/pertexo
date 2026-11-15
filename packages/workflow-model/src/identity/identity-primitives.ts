@@ -28,6 +28,12 @@ export const FRESH_SIGN_IN_WINDOW_MILLIS = 5 * 60_000;
 /** The longest name a person shows: at sign-up, in their profile and to their workspaces. */
 export const DISPLAY_NAME_MAX_CHARACTERS = 256;
 
+/**
+ * How long an account stays locked after too many wrong two-factor codes in
+ * a row. The API sets it on its two-factor sign-in, and the browser says it.
+ */
+export const TWO_FACTOR_LOCKOUT_SECONDS = 15 * 60;
+
 /** How long a workspace invitation's link works after it's sent. */
 export const WORKSPACE_INVITATION_VALIDITY_DAYS = 7;
 

@@ -19,6 +19,8 @@ import { type RunIntent, useRunInput } from '@/features/workflow-runs/public';
 import { DeadlineField } from '@/components/ui/deadline-field';
 import { runInputAvailability } from '../../model/run-input/availability';
 import { expectedRunVersion } from '../../model/run-input/version';
+import { COMMAND_RETRY_WINDOW_HOURS } from '@/lib/api/commands/command-retry';
+import { formatCount } from '@/lib/format/count';
 
 type RunInputDialogProps = Readonly<{
   caseScope?: Readonly<{
@@ -94,7 +96,7 @@ function RunInputDialogContent(props: RunInputDialogContentProps) {
       title="Run with input"
       description={
         model.retryAvailable
-          ? 'Retry sends the same input and deadline within 24 hours of the first attempt, and still requires the same version if you chose one. A new run is blocked until this one is settled.'
+          ? `Retry sends the same input and deadline within ${formatCount(COMMAND_RETRY_WINDOW_HOURS, 'hour')} of the first attempt, and still requires the same version if you chose one. A new run is blocked until this one is settled.`
           : 'This starts a real run of the published version. It can send messages and call other services.'
       }
       onSubmit={model.submit}

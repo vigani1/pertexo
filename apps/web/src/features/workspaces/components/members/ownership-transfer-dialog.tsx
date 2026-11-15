@@ -7,6 +7,8 @@ import {
 import { firstNameOf } from '../../model/workspace-roles';
 import { feedbackFor } from '../../data/mutations/members/use-member-command';
 import { MemberCommandDialog, type MemberCommandView } from './command-dialog';
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
+import { formatTimeSpan } from '@/lib/format/time';
 
 /**
  * Confirms handing the workspace to another member (ADR 047). Every
@@ -42,7 +44,7 @@ export function OwnershipTransferDialog(
           'You become an admin. You keep managing members and connections, but only the new owner can make you the owner again.',
           `You and ${firstName} are both signed out everywhere and sign in again.`,
           'A workspace has one owner, and the owner can’t leave until they hand it over.',
-          'For your security, this needs a sign-in from the last five minutes.',
+          `For your security, this needs a sign-in from the last ${formatTimeSpan(FRESH_SIGN_IN_WINDOW_MILLIS / 1_000)}.`,
         ],
         confirmLabel: 'Make owner',
         pendingLabel: 'Handing over…',
