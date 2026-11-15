@@ -54,10 +54,7 @@ import {
   WorkflowPortabilityReviewConflictError,
   WorkflowPortabilityValidationError,
 } from '../workflows/workflow-authoring.errors.js';
-import {
-  lockPortableSource,
-  reviewedSourceGraph,
-} from './source-authority.repository.js';
+import { lockPortableSource, reviewedSourceGraph } from './source-authority.js';
 
 import { inspectImport, portableFailure, selectedPolicy } from './admission.js';
 import { importResultSchema } from './import-receipt.schemas.js';

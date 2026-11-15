@@ -14,9 +14,9 @@ import { lockWorkspaceVariableNames } from '../../variables/head.repository.js';
 import { lockArtifactReferences } from '../../artifacts/references/lock-references.js';
 import { admitWorkflowAuthoring } from '../workflows/admit-graph.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
-import { validateApprovalAudience } from './pending-tasks.repository.js';
+import { validateApprovalAudience } from './validate-approval-audience.js';
 import { stepSettingsIssues } from './step-settings.js';
-import { validatePublicationCalls } from './calls.repository.js';
+import { validatePublicationCalls } from './validate-calls.js';
 import { connectionReferenceIssues } from './connections.repository.js';
 import type { CompiledPublication } from './workflow-publication.types.js';
 

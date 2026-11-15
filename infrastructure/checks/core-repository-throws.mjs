@@ -50,8 +50,6 @@ export const STORAGE_INTEGRITY_ERRORS = Object.freeze({
  * decisions and throws into the operation that calls it.
  */
 export const REPOSITORY_THROW_BACKLOG = Object.freeze({
-  'packages/core/src/authoring/portability/source-authority.repository.ts': 5,
-  'packages/core/src/authoring/portability/template-origin.repository.ts': 2,
   'packages/core/src/authoring/promotion/authority.repository.ts': 5,
   'packages/core/src/authoring/promotion/preparation/connections.repository.ts': 1,
   'packages/core/src/authoring/promotion/preparation/source.repository.ts': 3,
@@ -59,8 +57,6 @@ export const REPOSITORY_THROW_BACKLOG = Object.freeze({
   'packages/core/src/authoring/promotion/preparation/target/inspect-workflow.repository.ts': 2,
   'packages/core/src/authoring/promotion/receipt.repository.ts': 2,
   'packages/core/src/authoring/promotion/settings.repository.ts': 4,
-  'packages/core/src/authoring/publication/calls.repository.ts': 4,
-  'packages/core/src/authoring/publication/pending-tasks.repository.ts': 1,
   'packages/core/src/authoring/step-samples/source.repository.ts': 4,
   'packages/core/src/authoring/step-samples/step-sample-commands.repository.ts': 5,
   'packages/core/src/authoring/step-samples/step-sample-state.repository.ts': 4,

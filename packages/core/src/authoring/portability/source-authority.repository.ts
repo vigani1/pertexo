@@ -1,117 +1,33 @@
-import { decodeStoredValue } from '../../shared/stored-values.js';
-import type { Role } from '@pertexo/policy';
 import {
-  parseWorkflowGraphDraft,
   type PortableConnectionBinding,
-  type WorkflowGraph,
   type WorkflowPortableManifest,
   connectionFitsSlot,
 } from '@pertexo/workflow-model';
 import { and, asc, eq, inArray } from 'drizzle-orm';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
+
 import { alias } from 'drizzle-orm/pg-core';
+
 import type { PoolClient } from 'pg';
+
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+
 import {
   workflowDrafts,
   workflows,
   workflowVersions,
   connections,
 } from '@pertexo/database/schema';
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
+
 import {
   connectionScopeSql,
   readConnectionScope,
 } from '../../shared/resources/connection-scope.repository.js';
-import type { AuthoringCatalogs } from '../workflows/catalogs.js';
+
 import type { ExportWorkflowInput } from '../workflows/workflow-commands.types.js';
-import {
-  WorkflowNotFoundError,
-  WorkflowRevisionConflictError,
-} from '../workflows/workflow-authoring.errors.js';
-import {
-  draftProjection,
-  projectDraft,
-} from '../workflows/representation/workflow-representations.repository.js';
-import { draftRepresentationTag } from '../workflows/representation/tag.js';
 
-/** Lock workflow before its selected source; select catalog only after source. */
-export async function lockPortableSource(
-  client: PoolClient,
-  input: ExportWorkflowInput,
-  role: Role,
-) {
-  if (
-    !(await workflowAccessible(
-      client,
-      await readFolderScope(client, input, role),
-      { workspaceId: input.workspaceId, workflowId: input.workflowId },
-    ))
-  )
-    throw new WorkflowNotFoundError('Workflow source is not visible');
-  const db = drizzle(client);
-  const workflow = await db
-    .select({ id: workflows.id })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, input.workflowId),
-      ),
-    )
-    .for('share')
-    .catch(rethrowQueryFailure);
-  if (workflow.length !== 1)
-    throw new WorkflowNotFoundError('Workflow source is not visible');
-  if (input.source.kind === 'draft') {
-    const [row] = await db
-      .select(draftProjection)
-      .from(workflowDrafts)
-      .where(
-        and(
-          eq(workflowDrafts.workspaceId, input.workspaceId),
-          eq(workflowDrafts.workflowId, input.workflowId),
-        ),
-      )
-      .for('share')
-      .catch(rethrowQueryFailure);
-    if (row === undefined || row.graphJson === null)
-      throw new WorkflowNotFoundError('Workflow source is not visible');
-    return { kind: 'draft' as const, row };
-  }
-  // Immutable versions need only the workflow share lock to prevent purging.
-  const [row] = await db
-    .select({ graphJson: workflowVersions.graphJson })
-    .from(workflowVersions)
-    .where(
-      and(
-        eq(workflowVersions.workspaceId, input.workspaceId),
-        eq(workflowVersions.workflowId, input.workflowId),
-        eq(workflowVersions.id, input.source.versionId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  if (row === undefined || row.graphJson === null)
-    throw new WorkflowNotFoundError('Workflow source is not visible');
-  return { kind: 'version' as const, row };
-}
-
-export function reviewedSourceGraph(
-  input: ExportWorkflowInput,
-  source: Awaited<ReturnType<typeof lockPortableSource>>,
-  selection: AuthoringCatalogs,
-): WorkflowGraph {
-  if (source.kind === 'version')
-    return decodeStoredValue(() =>
-      parseWorkflowGraphDraft(source.row.graphJson),
-    );
-  const draft = projectDraft(source.row, selection.definitionCatalog);
-  const tag = draftRepresentationTag(input.workflowId, draft);
-  if (tag !== input.representationTag)
-    throw new WorkflowRevisionConflictError(draft.revision, tag);
-  return draft.graphJson;
-}
+import { draftProjection } from '../workflows/representation/workflow-representations.repository.js';
 
 /** Locks non-key health/status changes too; never fetch credential bytes. */
 export async function inspectPortableConnections(
@@ -184,4 +100,62 @@ export async function inspectPortableConnections(
       ];
     return [];
   });
+}
+
+export async function shareLockWorkflow(
+  client: PoolClient,
+  input: ExportWorkflowInput,
+): Promise<boolean> {
+  const db = drizzle(client);
+  const workflow = await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.workflowId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  return workflow.length === 1;
+}
+
+export async function shareLockDraft(
+  client: PoolClient,
+  input: ExportWorkflowInput,
+) {
+  const db = drizzle(client);
+  const [row] = await db
+    .select(draftProjection)
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, input.workspaceId),
+        eq(workflowDrafts.workflowId, input.workflowId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  return row;
+}
+
+export async function readVersionGraph(
+  client: PoolClient,
+  input: ExportWorkflowInput,
+  versionId: string,
+) {
+  const db = drizzle(client);
+  const [row] = await db
+    .select({ graphJson: workflowVersions.graphJson })
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, input.workspaceId),
+        eq(workflowVersions.workflowId, input.workflowId),
+        eq(workflowVersions.id, versionId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return row;
 }

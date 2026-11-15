@@ -7,7 +7,7 @@ import {
 } from '@pertexo/database/primitives';
 import { createWorkflowCollaborationStore } from '../collaboration/workflow-collaboration.store.js';
 import { createWorkflowPortabilityStore } from '../portability/workflow-portability.store.js';
-import { readWorkflowWithTemplateOrigin } from '../portability/template-origin.repository.js';
+import { readWorkflowWithTemplateOrigin } from '../portability/template-origin.js';
 import { createWorkflowPromotionStore } from '../promotion/workflow-promotion.store.js';
 import { publishWorkflow } from '../publication/publish.js';
 import { createPublicationReviewStore } from '../reviews/publication-review.store.js';

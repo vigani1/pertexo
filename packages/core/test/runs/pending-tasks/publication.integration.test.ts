@@ -5,7 +5,7 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { validateApprovalAudience } from '../../../src/authoring/publication/pending-tasks.repository.js';
+import { validateApprovalAudience } from '../../../src/authoring/publication/validate-approval-audience.js';
 import { admin, pool, taskFixture } from './pending-tasks.fixture.js';
 function audienceGraph(id: string, nested: boolean): WorkflowGraph {
   const approval = {
