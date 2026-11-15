@@ -11,6 +11,7 @@ import {
   stepRetrySettingsSchema,
   type StepRetrySettings,
 } from '../execution/step-retry.schemas.js';
+import { NODE_IDENTITY_KEY_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 import type { JsonValue } from '../values/json/canonical.js';
@@ -120,6 +121,11 @@ const identifierSchema = z
   .string()
   .min(1)
   .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength);
+// A node names its catalog definition by key; node-sdk owns the key's length.
+const definitionKeySchema = z
+  .string()
+  .min(1)
+  .max(NODE_IDENTITY_KEY_MAX_CHARACTERS);
 const positiveVersionSchema = z.number().int().positive();
 const jsonRecordSchema = z.record(z.string(), z.json());
 const valueSourceSchema = z.discriminatedUnion('kind', [
@@ -190,7 +196,7 @@ const workflowNodeSchema: z.ZodType<WorkflowNode> = z.lazy(() =>
     .object({
       id: identifierSchema,
       definition: z
-        .object({ key: identifierSchema, version: positiveVersionSchema })
+        .object({ key: definitionKeySchema, version: positiveVersionSchema })
         .strict(),
       position: z.object({ x: z.number(), y: z.number() }).strict(),
       configVersion: positiveVersionSchema,

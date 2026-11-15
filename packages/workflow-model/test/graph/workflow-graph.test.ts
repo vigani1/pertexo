@@ -1,4 +1,5 @@
 import { performance } from 'node:perf_hooks';
+import { NODE_IDENTITY_KEY_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { describe, expect, it } from 'vitest';
 import { workflowGraphSchema } from '../../src/graph/workflow-graph.schemas.js';
 import { EMPTY_WORKFLOW_GRAPH } from '../../src/graph/workflow-graph.schemas.js';
@@ -20,6 +21,20 @@ import {
   contractError,
 } from '../support/graph-contract.js';
 describe('workflow graph public contract', () => {
+  it('holds a node’s definition key to the catalog’s identity key length', () => {
+    const graphWith = (key: string) => ({
+      ...EMPTY_WORKFLOW_GRAPH,
+      nodes: [{ ...node('a'), definition: { key, version: 1 } }],
+    });
+    const longest = 'a'.repeat(NODE_IDENTITY_KEY_MAX_CHARACTERS);
+    expect(workflowGraphSchema.safeParse(graphWith(longest)).success).toBe(
+      true,
+    );
+    expect(
+      workflowGraphSchema.safeParse(graphWith(`${longest}a`)).success,
+    ).toBe(false);
+  });
+
   it('parses the empty graph and reports deterministic empty-catalog compatibility', () => {
     expect(parseWorkflowGraphDraft(EMPTY_WORKFLOW_GRAPH)).toEqual(
       EMPTY_WORKFLOW_GRAPH,

@@ -1,3 +1,4 @@
+import { NODE_IDENTITY_KEY_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import {
@@ -39,7 +40,6 @@ import {
 } from '../../errors/api-problem.js';
 
 const AUTHORING_BOUNDS = Object.freeze({
-  definitionKeyCharacters: 256,
   issuesItems: 1000,
 });
 /** A page of workflows, or of their versions, with the cursor to the next. */
@@ -124,10 +124,7 @@ export { workflowActivationStatusSchema, workflowLifecycleStatusSchema };
 const workflowCompatibilityIssueSchema = z
   .object({
     code: z.literal('unknown_definition'),
-    definitionKey: z
-      .string()
-      .min(1)
-      .max(AUTHORING_BOUNDS.definitionKeyCharacters),
+    definitionKey: z.string().min(1).max(NODE_IDENTITY_KEY_MAX_CHARACTERS),
     version: positiveVersionSchema,
   })
   .strict();

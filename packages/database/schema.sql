@@ -3333,7 +3333,7 @@ CREATE TABLE app.operator_run_replay_requests (
     request_fingerprint character(64) NOT NULL,
     status character varying(16) DEFAULT 'pending'::character varying NOT NULL,
     result_run_id uuid,
-    safe_error_code character varying(64),
+    safe_error_code character varying(128),
     created_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
     completed_at timestamp with time zone,
     CONSTRAINT operator_run_replay_completion_valid CHECK (((((status)::text = 'pending'::text) AND (result_run_id IS NULL) AND (safe_error_code IS NULL) AND (completed_at IS NULL)) OR (((status)::text = 'completed'::text) AND (result_run_id IS NOT NULL) AND (safe_error_code IS NULL) AND (completed_at IS NOT NULL)) OR (((status)::text = 'failed'::text) AND (result_run_id IS NULL) AND (safe_error_code IS NOT NULL) AND (completed_at IS NOT NULL)))),

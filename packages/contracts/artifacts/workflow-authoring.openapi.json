@@ -8749,7 +8749,7 @@
                         "definitionKey": {
                           "type": "string",
                           "minLength": 1,
-                          "maxLength": 256
+                          "maxLength": 64
                         },
                         "version": {
                           "type": "integer",
@@ -9743,7 +9743,7 @@
                     "definitionKey": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 256
+                      "maxLength": 64
                     },
                     "version": {
                       "type": "integer",
@@ -10758,7 +10758,7 @@
                     "definitionKey": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 256
+                      "maxLength": 64
                     },
                     "version": {
                       "type": "integer",
@@ -13406,7 +13406,7 @@
                     "definitionKey": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 256
+                      "maxLength": 64
                     },
                     "version": {
                       "type": "integer",
@@ -26999,7 +26999,7 @@
                 "definitionKey": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256
+                  "maxLength": 64
                 },
                 "version": {
                   "type": "integer",
