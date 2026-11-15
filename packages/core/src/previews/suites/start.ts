@@ -31,18 +31,14 @@ import {
 import { requireTestCapability } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
 import { testRunDurationMs } from '../workflows/rules.js';
-import {
-  loadTestSnapshot,
-  saveTestSnapshot,
-} from '../workflows/snapshot.repository.js';
+import { saveTestSnapshot } from '../workflows/snapshot.repository.js';
+import { loadTestSnapshot } from '../workflows/load-snapshot.js';
 import { admitSuiteCase } from './admit.js';
 import { insertSuiteCases, readSuiteCase } from './cases.repository.js';
 import { insertSuite } from './suite-state.repository.js';
 import type { WorkflowTestSuiteStartInput } from './workflow-test-suite.types.js';
-import {
-  readSuiteCasePayloads,
-  readSuiteCurrent,
-} from './current.repository.js';
+import { readSuiteCasePayloads } from './current.repository.js';
+import { readSuiteCurrent } from './read-current.js';
 import { assertPreparedSuite, SUITE_MAX_DURATION_MS } from './rules.js';
 
 export async function prepareTestSuite(

@@ -9,7 +9,7 @@ import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 
 import { PreviewAcceptanceCorruptError } from '../preview.errors.js';
 import { previewWorkflowVisible } from './acceptance/admission.repository.js';
-import { readExistingAcceptance } from './acceptance/replay.repository.js';
+import { readExistingAcceptance } from './acceptance/replay.js';
 
 import { readLivePreviewReplay } from './preview-runs.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';

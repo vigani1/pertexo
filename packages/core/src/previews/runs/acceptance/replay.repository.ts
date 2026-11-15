@@ -1,32 +1,14 @@
-import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { and, eq, gt } from 'drizzle-orm';
-
-import {
-  parseStoredExecutionValue,
-  serializeStoredExecutionValue,
-} from '../../../shared/stored-execution.js';
 import { idempotencyRecords, previewRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { PREVIEW_STATUS } from '../../preview-state.js';
+import type { AcceptPreviewRunInput } from './preview-acceptance.types.js';
 
-import {
-  PreviewAcceptanceCorruptError,
-  PreviewIdempotencyConflictError,
-  PriorPreviewInputUnavailableError,
-} from '../../preview.errors.js';
-import type {
-  AcceptedPreviewRun,
-  AcceptPreviewRunInput,
-} from './preview-acceptance.types.js';
-import { resultRefSchema } from './preview-result.schemas.js';
-
-export async function readExistingAcceptance(
+/** The command receipt under this key, joined to the preview it accepted. */
+export async function readAcceptanceReceipt(
   transaction: WorkspaceTransaction,
-  input: Pick<
-    AcceptPreviewRunInput,
-    'keyHash' | 'operation' | 'requestHash' | 'scope'
-  >,
-): Promise<AcceptedPreviewRun | null> {
+  input: Pick<AcceptPreviewRunInput, 'keyHash' | 'operation' | 'scope'>,
+) {
   const rows = await transaction.db
     .select({
       requestHash: idempotencyRecords.requestHash,
@@ -57,65 +39,16 @@ export async function readExistingAcceptance(
       ),
     )
     .limit(1);
-  const row = rows[0];
-  if (row === undefined) return null;
-  if (row.requestHash !== input.requestHash)
-    throw new PreviewIdempotencyConflictError();
-  const resultRef = resultRefSchema.safeParse(row.resultRef);
-  const status = row.previewStatus;
-  const { acceptedAt, expiresAt } = row;
-  const incompleteReceipt =
-    row.idempotencyStatus !== 'completed' ||
-    acceptedAt === null ||
-    expiresAt === null ||
-    !resultRef.success ||
-    status === null;
-  if (incompleteReceipt) throw new PreviewAcceptanceCorruptError();
-  const invalidPinnedReceipt =
-    'pinnedSampleId' in resultRef.data &&
-    (row.pinnedSampleId !== resultRef.data.pinnedSampleId ||
-      status !== PREVIEW_STATUS.succeeded ||
-      row.outputRef === null);
-  if (invalidPinnedReceipt) throw new PreviewAcceptanceCorruptError();
-  return Object.freeze({
-    acceptedAt,
-    completedAt: row.completedAt,
-    duplicate: true,
-    expiresAt,
-    outboxEventId:
-      'outboxEventId' in resultRef.data ? resultRef.data.outboxEventId : null,
-    previewAttemptId:
-      'previewAttemptId' in resultRef.data
-        ? resultRef.data.previewAttemptId
-        : null,
-    ...('pinnedSampleId' in resultRef.data
-      ? {
-          pinnedSampleId: resultRef.data.pinnedSampleId,
-          pinnedOutput: decodeStoredValue(() =>
-            parseStoredExecutionValue(row.outputRef),
-          ),
-        }
-      : {}),
-    previewRunId: row.resourceId,
-    status: status,
-  });
+  return rows[0];
 }
 
-export async function resolveInput(
+/** A live succeeded preview's stored output in the same workflow. */
+export async function readPriorPreviewOutput(
   transaction: WorkspaceTransaction,
   workflowId: string,
-  input: AcceptPreviewRunInput['input'],
+  previewRunId: string,
   now: Date,
-): Promise<Readonly<{ priorPreviewRunId: string | null; stored: string }>> {
-  if (input.kind === 'manual') {
-    return Object.freeze({
-      priorPreviewRunId: null,
-      stored: serializeStoredExecutionValue({
-        kind: 'inline',
-        value: input.value,
-      }),
-    });
-  }
+): Promise<unknown> {
   const rows = await transaction.db
     .select({ outputRef: previewRuns.outputRef })
     .from(previewRuns)
@@ -123,19 +56,11 @@ export async function resolveInput(
       and(
         eq(previewRuns.workspaceId, transaction.workspaceId),
         eq(previewRuns.workflowId, workflowId),
-        eq(previewRuns.id, input.previewRunId),
+        eq(previewRuns.id, previewRunId),
         eq(previewRuns.status, PREVIEW_STATUS.succeeded),
         gt(previewRuns.expiresAt, now),
       ),
     )
     .limit(1);
-  const outputRef = rows[0]?.outputRef;
-  if (outputRef === undefined || outputRef === null)
-    throw new PriorPreviewInputUnavailableError();
-  return Object.freeze({
-    priorPreviewRunId: input.previewRunId,
-    stored: serializeStoredExecutionValue(
-      decodeStoredValue(() => parseStoredExecutionValue(outputRef)),
-    ),
-  });
+  return rows[0]?.outputRef;
 }

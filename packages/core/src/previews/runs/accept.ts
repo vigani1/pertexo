@@ -9,7 +9,7 @@ import { serializeStoredExecutionValue } from '../../shared/stored-execution.js'
 import { requireTransactionConnectionBindings } from '../../shared/resources/require-connection-bindings.js';
 import { connectionScope } from '../../shared/resources/connection-scope.repository.js';
 
-import { resolvePreviewSample } from './samples.repository.js';
+import { resolvePreviewSample } from './resolve-sample.js';
 
 import type { Role } from '@pertexo/policy';
 import { lockActorArtifactReferences } from '../../artifacts/references/lock-references.js';
@@ -22,16 +22,13 @@ import { PreviewAcceptanceCorruptError } from '../preview.errors.js';
 import {
   assertAdmission,
   assertPreviewWorkflow,
-} from './acceptance/admission.repository.js';
+} from './acceptance/admission.js';
 import type {
   AcceptPreviewRunInput,
   AcceptedPreviewRun,
 } from './acceptance/preview-acceptance.types.js';
 import { assertPreviewDeadlines } from './acceptance/limits.js';
-import {
-  readExistingAcceptance,
-  resolveInput,
-} from './acceptance/replay.repository.js';
+import { readExistingAcceptance, resolveInput } from './acceptance/replay.js';
 import {
   claimPreviewIdempotency,
   completePreviewIdempotency,

@@ -1,14 +1,5 @@
 import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
-import { decodeStoredValue } from '../../shared/stored-values.js';
-import type {
-  WorkflowTestSuiteDetail,
-  WorkflowTestSuiteReport,
-  WorkflowTestSuiteSummary,
-} from '@pertexo/contracts';
-import {
-  workflowTestStepChoices,
-  workflowTestSuiteReportSchema,
-} from '@pertexo/workflow-model';
+import type { WorkflowTestSuiteSummary } from '@pertexo/contracts';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
@@ -20,7 +11,6 @@ import {
   workflowTestSuites,
   workflowTestSnapshots,
 } from '@pertexo/database/schema';
-import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
 import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/workflow-model';
 
 /** How many recent suites the history shows. */
@@ -141,7 +131,7 @@ async function listSuiteRows(client: PoolClient, input: WorkflowActor) {
     )
     .catch(rethrowQueryFailure);
 }
-function summary(
+export function summary(
   row: Awaited<ReturnType<typeof listSuiteRows>>[number],
 ): WorkflowTestSuiteSummary {
   return {
@@ -167,10 +157,10 @@ export async function listSuites(
 ): Promise<readonly WorkflowTestSuiteSummary[]> {
   return (await listSuiteRows(client, input)).map(summary);
 }
-export async function readSuite(
+export async function readSuiteRow(
   client: PoolClient,
   input: WorkflowActor & { suiteId: string },
-): Promise<WorkflowTestSuiteDetail> {
+) {
   const db = drizzle(client);
   const counts = suiteCounts(db, historyFields);
   const found = await db
@@ -186,8 +176,14 @@ export async function readSuite(
     .crossJoinLateral(counts)
     .where(and(visibleSuite(input), eq(suite.id, input.suiteId)))
     .catch(rethrowQueryFailure);
-  const row = found[0];
-  if (row === undefined) throw new WorkflowTestError('not_found');
+  return found[0];
+}
+
+export async function readSuiteCaseRows(
+  client: PoolClient,
+  input: WorkflowActor & { suiteId: string },
+) {
+  const db = drizzle(client);
   const cases = await db
     .select({
       ordinal: workflowTestSuiteCases.ordinal,
@@ -207,15 +203,13 @@ export async function readSuite(
     .orderBy(asc(workflowTestSuiteCases.ordinal))
     .limit(WORKFLOW_TEST_SUITE_MAX_CASES)
     .catch(rethrowQueryFailure);
-  return { ...summary(row), cases };
+  return cases;
 }
-export async function readCaseReport(
+
+export async function readCaseReportRow(
   client: PoolClient,
   input: WorkflowActor & { suiteId: string; ordinal: number },
-): Promise<{
-  report: WorkflowTestSuiteReport | null;
-  stepLabels: Readonly<Record<string, string>>;
-}> {
+) {
   const db = drizzle(client);
   const found = await db
     .select({
@@ -240,47 +234,23 @@ export async function readCaseReport(
       ),
     )
     .catch(rethrowQueryFailure);
-  const row = found[0];
-  if (row === undefined) throw new WorkflowTestError('not_found');
-  const storedReport = row.report;
-  const report =
-    storedReport === null
-      ? null
-      : decodeStoredValue(() =>
-          workflowTestSuiteReportSchema.parse(JSON.parse(storedReport)),
-        );
-  const nodeIds = [
-    ...new Set(
-      report?.assertions.flatMap(({ assertion }) =>
-        assertion.source.kind === 'step' ? [assertion.source.nodeId] : [],
-      ) ?? [],
-    ),
-  ];
-  const source =
-    nodeIds.length === 0
-      ? undefined
-      : (
-          await db
-            .select({ graph: workflowTestSnapshots.graphJson })
-            .from(workflowTestSnapshots)
-            .where(
-              and(
-                eq(workflowTestSnapshots.workspaceId, input.workspaceId),
-                eq(workflowTestSnapshots.id, row.snapshotId),
-              ),
-            )
-            .catch(rethrowQueryFailure)
-        )[0];
-  const labels =
-    source === undefined
-      ? []
-      : workflowTestStepChoices(source.graph).filter((node) =>
-          nodeIds.includes(node.nodeId),
-        );
-  return {
-    report,
-    stepLabels: Object.fromEntries(
-      labels.map((node) => [node.nodeId, node.label]),
-    ),
-  };
+  return found[0];
+}
+
+export async function readSnapshotGraph(
+  client: PoolClient,
+  workspaceId: string,
+  snapshotId: string,
+) {
+  const [source] = await drizzle(client)
+    .select({ graph: workflowTestSnapshots.graphJson })
+    .from(workflowTestSnapshots)
+    .where(
+      and(
+        eq(workflowTestSnapshots.workspaceId, workspaceId),
+        eq(workflowTestSnapshots.id, snapshotId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return source;
 }

@@ -20,7 +20,8 @@ import {
   sameTestSamples,
   testRunDurationMs,
 } from './rules.js';
-import { loadTestSnapshot, saveTestSnapshot } from './snapshot.repository.js';
+import { saveTestSnapshot } from './snapshot.repository.js';
+import { loadTestSnapshot } from './load-snapshot.js';
 
 export async function startWorkflowTest(
   client: PoolClient,
