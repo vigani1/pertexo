@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import type {
   WorkspaceNoticeKind,
   WorkspaceInboxFilter,
@@ -37,8 +38,8 @@ export function inboxSummaryQueryOptions(
   return queryOptions({
     queryKey: inboxKeys.summary(userId, workspaceId),
     queryFn: ({ signal }) => getInboxSummary(apiClient, workspaceId, signal),
-    staleTime: 15_000,
-    refetchInterval: 120_000,
+    staleTime: QUERY_FRESHNESS.recent,
+    refetchInterval: QUERY_POLLING.inbox,
   });
 }
 
@@ -66,6 +67,6 @@ export function inboxThreadsInfiniteQueryOptions({
       }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    staleTime: 15_000,
+    staleTime: QUERY_FRESHNESS.recent,
   });
 }

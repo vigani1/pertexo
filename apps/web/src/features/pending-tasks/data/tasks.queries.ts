@@ -1,3 +1,8 @@
+import {
+  QUERY_FRESHNESS,
+  QUERY_POLLING,
+  QUERY_RETENTION,
+} from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type {
   ApprovalAudienceInspectionRequest,
@@ -32,8 +37,8 @@ export function tasksQueryOptions(
       ),
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-    staleTime: 10_000,
-    refetchInterval: 30_000,
+    staleTime: QUERY_FRESHNESS.working,
+    refetchInterval: QUERY_POLLING.status,
   });
 }
 export function taskQueryOptions(scope: TaskScope, taskId: string) {
@@ -44,9 +49,11 @@ export function taskQueryOptions(scope: TaskScope, taskId: string) {
       taskId,
     ],
     queryFn: ({ signal }) => getTask(scope, taskId, signal),
-    staleTime: 5_000,
+    staleTime: QUERY_FRESHNESS.live,
     refetchInterval: (query) =>
-      query.state.data?.task.status === 'pending' ? 15_000 : false,
+      query.state.data?.task.status === 'pending'
+        ? QUERY_POLLING.pendingTask
+        : false,
   });
 }
 export function audienceQueryOptions(scope: TaskScope, q: string) {
@@ -60,7 +67,7 @@ export function audienceQueryOptions(scope: TaskScope, q: string) {
       listAudience(scope, q, pageParam, signal),
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
   });
 }
 
@@ -75,8 +82,8 @@ export function audienceInspectionQueryOptions(
       audience,
     ],
     queryFn: ({ signal }) => inspectAudience(scope, audience, signal),
-    staleTime: 10_000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.working,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }

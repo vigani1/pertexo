@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getAuthoringCatalog } from './catalog.api';
@@ -9,6 +10,6 @@ export function authoringCatalogQueryOptions(
   return queryOptions({
     queryKey: ['identity', userId, 'authoring-catalog'] as const,
     queryFn: ({ signal }) => getAuthoringCatalog(apiClient, signal),
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_FRESHNESS.catalog,
   });
 }

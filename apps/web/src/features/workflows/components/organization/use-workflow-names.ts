@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { useQueries } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/error';
@@ -28,7 +29,7 @@ export function useOrganizationWorkflowNames({
       ],
       enabled: !denied,
       retry: false,
-      staleTime: 0,
+      staleTime: QUERY_FRESHNESS.none,
       queryFn: async ({
         signal,
       }: {

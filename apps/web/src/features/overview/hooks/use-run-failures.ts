@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useQueries } from '@tanstack/react-query';
 import {
@@ -32,7 +33,7 @@ export function useRunFailures({
   const snapshots = useQueries({
     queries: uniqueRunIds.map((runId) => ({
       ...workflowRunQueryOptions(apiClient, userId, workspace.id, runId),
-      staleTime: 60_000,
+      staleTime: QUERY_FRESHNESS.settled,
     })),
   });
   // One read per version the loaded runs ran, so no two queries share a key.

@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import { readSettings, type FederationScope } from './federation-settings.api';
 const federationKeys = {
@@ -14,8 +15,8 @@ export function federationSettingsQueryOptions(scope: FederationScope) {
   return queryOptions({
     queryKey: federationKeys.scope(scope),
     queryFn: ({ signal }) => readSettings(scope, signal),
-    staleTime: 30000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.standard,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }

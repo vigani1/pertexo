@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { inboxKeys } from './inbox.queries';
@@ -13,7 +14,7 @@ export function notificationPreferencesQueryOptions(scope: WorkspaceApiScope) {
       'preferences',
     ],
     queryFn: ({ signal }) => readNotificationPreferences(scope, signal),
-    staleTime: 15_000,
+    staleTime: QUERY_FRESHNESS.recent,
   });
 }
 export function notificationSubscriptionQueryOptions(
@@ -29,6 +30,6 @@ export function notificationSubscriptionQueryOptions(
     ],
     queryFn: ({ signal }) =>
       readNotificationSubscription(scope, subject, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }

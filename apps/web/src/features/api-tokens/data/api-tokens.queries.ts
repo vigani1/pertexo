@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { infiniteQueryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getApiTokensPage } from './api-tokens.api';
@@ -18,6 +19,6 @@ export function apiTokensQueryOptions(
       getApiTokensPage(apiClient, workspaceId, pageParam, signal),
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-    staleTime: 10_000,
+    staleTime: QUERY_FRESHNESS.working,
   });
 }

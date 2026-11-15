@@ -1,3 +1,4 @@
+import { QUERY_POLLING } from '@/lib/api/query-timings';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { workflowRunQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
@@ -19,7 +20,7 @@ export function useTestHistory({
     refetchInterval: (query) =>
       (query.state.data?.items.some((item) => isActiveRunStatus(item.status)) ??
       false)
-        ? 2000
+        ? QUERY_POLLING.waiting
         : false,
   });
   const activeId = selectedRunId ?? history.data?.items[0]?.runId;

@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { isNotFound } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
@@ -77,7 +78,7 @@ export function slackChannelNamesQueryOptions({
         channelIds,
         signal,
       }),
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_FRESHNESS.catalog,
   });
 }
 
@@ -109,7 +110,7 @@ export function connectionsInfiniteQueryOptions(
     },
     initialPageParam: initialConnectionPageParam,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    refetchInterval: 30_000,
+    refetchInterval: QUERY_POLLING.status,
     refetchIntervalInBackground: false,
   });
 }
@@ -135,7 +136,7 @@ export function connectionDiscoveryQueryOptions(
         throw error;
       }
     },
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
   });
 }
 
@@ -166,7 +167,7 @@ export function editorConnectionsQueryOptions(
         throw error;
       }
     },
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
   });
 }
 
@@ -197,7 +198,7 @@ export function connectionDetailQueryOptions(
         throw error;
       }
     },
-    refetchInterval: 30_000,
+    refetchInterval: QUERY_POLLING.status,
     refetchIntervalInBackground: false,
   });
 }
@@ -230,7 +231,7 @@ export function connectionUsageQueryOptions(
     },
     initialPageParam: initialConnectionPageParam,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    refetchInterval: 30_000,
+    refetchInterval: QUERY_POLLING.status,
     refetchIntervalInBackground: false,
   });
 }

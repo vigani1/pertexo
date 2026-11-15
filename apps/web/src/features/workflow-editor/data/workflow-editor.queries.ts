@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
 import type { ApiClient } from '@/lib/api/client';
@@ -26,7 +27,7 @@ export function workflowDraftQueryOptions(
     queryKey: workflowDraftKeys.detail(userId, workspaceId, workflowId),
     queryFn: ({ signal }) =>
       getWorkflowDraft(apiClient, workspaceId, workflowId, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }
 
@@ -60,6 +61,6 @@ export function liveVersionQueryOptions({
         versionId,
         signal,
       }),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_FRESHNESS.immutable,
   });
 }

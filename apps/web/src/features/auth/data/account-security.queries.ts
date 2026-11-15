@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -20,7 +21,7 @@ export function accountSecurityQueryOptions(
   return queryOptions({
     queryKey: accountSecurityKeys.methods(userId),
     queryFn: ({ signal }) => getAccountSecurity(apiClient, signal),
-    staleTime: 15_000,
+    staleTime: QUERY_FRESHNESS.recent,
   });
 }
 
@@ -31,6 +32,6 @@ export function accountSecuritySessionsQueryOptions(
   return queryOptions({
     queryKey: accountSecurityKeys.sessions(userId),
     queryFn: ({ signal }) => listAccountSecuritySessions(apiClient, signal),
-    staleTime: 15_000,
+    staleTime: QUERY_FRESHNESS.recent,
   });
 }

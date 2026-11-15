@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { formatByteSize } from '@pertexo/node-sdk';
 import { QueryView } from '@/components/patterns/states/query-view';
 import {
@@ -44,7 +45,7 @@ export function CaseExpectations({
       scope.workspaceId,
       scope.workflowId,
     ),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
     enabled: value.assertions.length > 0,
   });
   const choices = [

@@ -1,4 +1,9 @@
 import {
+  QUERY_FRESHNESS,
+  QUERY_POLLING,
+  QUERY_RETENTION,
+} from '@/lib/api/query-timings';
+import {
   infiniteQueryOptions,
   queryOptions,
   type InfiniteData,
@@ -60,7 +65,7 @@ export function workflowSummaryQueryOptions(
     queryKey: workflowKeys.detail(userId, workspaceId, workflowId),
     queryFn: ({ signal }) =>
       getWorkflowSummary(apiClient, workspaceId, workflowId, signal),
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
     refetchInterval: (query) => {
       const workflow = query.state.data;
       const activationIsChanging =
@@ -68,7 +73,7 @@ export function workflowSummaryQueryOptions(
         (workflow.activationStatus === 'deactivating' ||
           (workflow.activationStatus === 'activating' &&
             !workflow.webhookSetupRequired));
-      return activationIsChanging ? 5000 : false;
+      return activationIsChanging ? QUERY_POLLING.settling : false;
     },
   });
 }
@@ -118,8 +123,8 @@ export function workflowShapeQueryOptions(
     queryKey: workflowKeys.shape(userId, workspaceId, workflowId),
     queryFn: ({ signal }) =>
       getWorkflowShapeGraph(apiClient, workspaceId, workflowId, signal),
-    staleTime: 5 * 60_000,
-    gcTime: 30 * 60_000,
+    staleTime: QUERY_FRESHNESS.catalog,
+    gcTime: QUERY_RETENTION.extended,
   });
 }
 
@@ -136,7 +141,7 @@ export function recentWorkflowsQueryOptions(
         order: 'updated_desc',
         signal,
       }),
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
     refetchOnWindowFocus: true,
   });
 }

@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getWorkflowAutoPause, getWorkspaceAutoPause } from './auto-pause.api';
@@ -27,8 +28,8 @@ export function workflowAutoPauseQueryOptions(
     queryKey: autoPauseKeys.workflow(userId, workspaceId, workflowId),
     queryFn: ({ signal }) =>
       getWorkflowAutoPause(apiClient, workspaceId, workflowId, signal),
-    staleTime: 0,
-    refetchInterval: 30_000,
+    staleTime: QUERY_FRESHNESS.none,
+    refetchInterval: QUERY_POLLING.status,
   });
 }
 
@@ -41,6 +42,6 @@ export function workspaceAutoPauseQueryOptions(
     queryKey: autoPauseKeys.workspace(userId, workspaceId),
     queryFn: ({ signal }) =>
       getWorkspaceAutoPause(apiClient, workspaceId, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }

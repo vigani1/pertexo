@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import { infiniteQueryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { listInputCases } from './workflow-input-cases.api';
@@ -34,8 +35,8 @@ export function inputCasesQueryOptions(
       page.nextCursor !== undefined && !pageParams.includes(page.nextCursor)
         ? page.nextCursor
         : undefined,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }

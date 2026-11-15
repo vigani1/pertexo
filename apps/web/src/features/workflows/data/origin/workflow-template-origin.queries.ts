@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 
 import { ApiError } from '@/lib/api/error';
@@ -51,7 +52,7 @@ export function workflowTemplateOriginQueryOptions(
         throw error;
       }
     },
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
     retry: false,
   });
 }

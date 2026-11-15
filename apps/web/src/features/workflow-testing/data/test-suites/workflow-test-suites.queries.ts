@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { WorkflowTestScope } from '../workflow-tests/workflow-tests.api';
 import {
@@ -20,7 +21,7 @@ export function suitesQueryOptions(scope: WorkflowTestScope) {
   return queryOptions({
     queryKey: [...suitesKey(scope), 'list'],
     queryFn: ({ signal }) => listSuites(scope, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
     retry: false,
   });
 }
@@ -28,7 +29,7 @@ export function suiteQueryOptions(scope: WorkflowTestScope, suiteId: string) {
   return queryOptions({
     queryKey: [...suitesKey(scope), suiteId],
     queryFn: ({ signal }) => getSuite(scope, suiteId, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
     retry: false,
   });
 }
@@ -40,7 +41,7 @@ export function suiteReportQueryOptions(
   return queryOptions({
     queryKey: [...suitesKey(scope), suiteId, 'case', ordinal],
     queryFn: ({ signal }) => getCaseReport(scope, suiteId, ordinal, signal),
-    staleTime: Infinity,
+    staleTime: QUERY_FRESHNESS.immutable,
     retry: false,
   });
 }

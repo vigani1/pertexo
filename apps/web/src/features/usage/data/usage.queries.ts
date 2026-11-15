@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import type { UsageTrendPeriod } from '@pertexo/contracts';
 import { queryOptions } from '@tanstack/react-query';
 import type { WorkflowRunStatisticsWindow } from '@pertexo/contracts';
@@ -31,8 +32,8 @@ export function usageCapacityQueryOptions(
         throw error;
       }
     },
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: QUERY_FRESHNESS.recent,
+    refetchInterval: QUERY_POLLING.status,
     refetchIntervalInBackground: false,
   });
 }
@@ -96,8 +97,8 @@ export function usageTrendsQueryOptions(
       }
     },
     // Daily totals barely move, and the read scans up to 90 days of runs.
-    staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    staleTime: QUERY_FRESHNESS.settled,
+    refetchInterval: QUERY_POLLING.trends,
     refetchIntervalInBackground: false,
   });
 }

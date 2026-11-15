@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import {
   infiniteQueryOptions,
   queryOptions,
@@ -37,7 +38,7 @@ export function threadsQuery(
       readThreads(scope, filter, pageParam, signal),
     getNextPageParam: (page) => page.nextCursor,
     refetchInterval: COLLABORATION_LIMITS.pollMs,
-    gcTime: 0,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
@@ -59,7 +60,7 @@ export function discussionQuery(
       readDiscussion({ scope, threadId, before: pageParam, anchor, signal }),
     getNextPageParam: (page) => page.nextCursor,
     refetchInterval: COLLABORATION_LIMITS.pollMs,
-    gcTime: 0,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
@@ -69,8 +70,8 @@ export function peopleQuery(scope: CollaborationScope, q: string) {
     initialPageParam: null as string | null,
     queryFn: ({ signal, pageParam }) => readPeople(scope, q, pageParam, signal),
     getNextPageParam: (page) => page.nextCursor,
-    staleTime: 10000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.working,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
@@ -79,12 +80,14 @@ export function presenceQuery(scope: CollaborationScope, tabId: string) {
     queryKey: [...collaborationKeys.scope(scope), 'presence', tabId],
     queryFn: ({ signal }) => readPresence(scope, tabId, signal),
     refetchInterval: COLLABORATION_LIMITS.pollMs,
-    staleTime: 5000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.live,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
 const STEP_COUNT_THREADS = 100;
+// Step discussion counts refresh at a third of the thread poll's rate.
+const STEP_COUNT_POLL_MS = COLLABORATION_LIMITS.pollMs * 3;
 const STEP_COUNT_PAGES = Math.ceil(
   STEP_COUNT_THREADS / COLLABORATION_LIMITS.page,
 );
@@ -113,7 +116,7 @@ export function stepDiscussionsQuery(scope: CollaborationScope) {
       }
       return counts;
     },
-    refetchInterval: COLLABORATION_LIMITS.pollMs * 3,
+    refetchInterval: STEP_COUNT_POLL_MS,
     staleTime: COLLABORATION_LIMITS.pollMs,
     retry: false,
   });

@@ -1,3 +1,4 @@
+import { QUERY_POLLING } from '@/lib/api/query-timings';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ApiClient } from '@/lib/api/client';
@@ -17,7 +18,7 @@ export function WorkspaceDeletionPage({
 }>) {
   const discovery = useQuery({
     ...accessibleWorkspacesQueryOptions(apiClient, userId),
-    refetchInterval: 5_000,
+    refetchInterval: QUERY_POLLING.settling,
   });
   const finished =
     discovery.isSuccess &&

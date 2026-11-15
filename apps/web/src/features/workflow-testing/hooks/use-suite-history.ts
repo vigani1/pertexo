@@ -1,3 +1,4 @@
+import { QUERY_POLLING } from '@/lib/api/query-timings';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { WorkflowTestScope } from '../data/workflow-tests/workflow-tests.api';
@@ -19,7 +20,7 @@ export function useSuiteHistory({
     refetchInterval: (query) =>
       (query.state.data?.items.some((item) => item.status === 'running') ??
       false)
-        ? 2000
+        ? QUERY_POLLING.waiting
         : false,
   });
   const activeId = selectedId ?? history.data?.items[0]?.suiteId;
@@ -27,7 +28,7 @@ export function useSuiteHistory({
     ...suiteQueryOptions(scope, activeId ?? ''),
     enabled: enabled && activeId !== undefined,
     refetchInterval: (query) =>
-      query.state.data?.status === 'running' ? 1000 : false,
+      query.state.data?.status === 'running' ? QUERY_POLLING.inFlight : false,
   });
   const latestRunId = detail.data?.cases.reduce<string | null>(
     (last, entry) => entry.runId ?? last,

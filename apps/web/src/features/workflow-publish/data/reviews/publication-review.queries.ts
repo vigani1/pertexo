@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import {
   readPublicationReview,
@@ -27,13 +28,13 @@ export function reviewOverviewOptions(
       revision,
     ],
     queryFn: ({ signal }) => readReviewOverview(scope, workflowId, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }
 export function publicationReviewOptions(scope: ReviewScope, reviewId: string) {
   return queryOptions({
     queryKey: [...publicationReviewKeys.scope(scope), 'request', reviewId],
     queryFn: ({ signal }) => readPublicationReview(scope, reviewId, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }

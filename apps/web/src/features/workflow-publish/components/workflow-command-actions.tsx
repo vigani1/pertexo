@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { PublicationControls } from './publication/publication-controls';
 import type { ReactNode } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -216,7 +217,7 @@ export function WorkflowCommandActions(props: WorkflowCommandActionsProps) {
                 model.workspace.id,
                 model.workflowId,
               ),
-              staleTime: 0,
+              staleTime: QUERY_FRESHNESS.none,
             });
             if (reviewed.publishedVersionId === null)
               throw new UserFacingError(

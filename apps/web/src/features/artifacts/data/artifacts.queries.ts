@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getArtifactMetadata } from './artifacts.api';
@@ -25,6 +26,6 @@ export function artifactMetadataQueryOptions(
     queryKey: artifactKeys.metadata(userId, workspaceId, artifactId),
     queryFn: ({ signal }) =>
       getArtifactMetadata(apiClient, workspaceId, artifactId, signal),
-    staleTime: 60_000,
+    staleTime: QUERY_FRESHNESS.settled,
   });
 }

@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
@@ -30,7 +31,8 @@ export function workflowRunQueryOptions(
     // lineage while it waits; ordinary event-driven runs need no polling.
     refetchInterval: (query) => {
       const snapshot = query.state.data;
-      if (snapshot?.errorWorkflow?.status === 'pending') return 2_000;
+      if (snapshot?.errorWorkflow?.status === 'pending')
+        return QUERY_POLLING.waiting;
       const needsCallUpdates =
         snapshot !== undefined &&
         isActiveRunStatus(snapshot.run.status) &&
@@ -38,9 +40,9 @@ export function workflowRunQueryOptions(
           (call) => call.status === 'pending' || call.status === 'accepted',
         ) ??
           false);
-      return needsCallUpdates ? 2_000 : false;
+      return needsCallUpdates ? QUERY_POLLING.waiting : false;
     },
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }
 
@@ -59,7 +61,7 @@ export function stepHealthQueryOptions(
     ],
     queryFn: ({ signal }) =>
       getWorkflowStepHealth(apiClient, workspaceId, workflowId, signal),
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
   });
 }
 
@@ -87,7 +89,7 @@ export function stepRunsQueryOptions(
         limit: step.limit,
         signal,
       }),
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
   });
 }
 
@@ -123,6 +125,6 @@ export function workflowRunVersionQueryOptions({
         versionId,
         signal,
       }),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_FRESHNESS.immutable,
   });
 }
