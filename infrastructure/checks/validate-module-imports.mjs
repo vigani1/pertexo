@@ -11,7 +11,10 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
-import { commandHookViolations } from './web-command-hooks.mjs';
+import {
+  commandHookViolations,
+  endpointImportViolations,
+} from './web-command-hooks.mjs';
 import {
   featureEntryViolations,
   isFeatureEntry,
@@ -295,6 +298,7 @@ export function validateModuleImports(sources) {
     errors.push(...validateContractDependencies(file, source));
     errors.push(...featureEntryViolations(file, source));
     errors.push(...commandHookViolations(file, source));
+    errors.push(...endpointImportViolations(file, source));
     errors.push(...validateInfrastructureBuiltPaths(file, source, sources));
     const dependencies = [];
     const workspace = file.split('/').slice(0, 2).join('/');
