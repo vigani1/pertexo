@@ -1,11 +1,7 @@
-import { readDatabaseClock } from '../../../shared/database-clock.repository.js';
-import { InvitationAcceptanceConflictError } from '../../tenant-access.errors.js';
-import { canonicalEmail } from '../../../identity/email-policy.js';
-import { INVITATION_PROOF_TTL_MILLIS } from './decide-invitation-acceptance.js';
 import { and, eq, getTableName, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.repository.js';
 import {
   rethrowQueryFailure,
@@ -53,85 +49,66 @@ export async function readInvitationAcceptance(
   });
 }
 
-export async function recordInvitationAcceptanceProof(
-  pool: Pool,
+type IntentKey = Readonly<{
+  workspaceId: string;
+  intentId: string;
+  bindingDigest: string;
+}>;
+
+/** The intent under its binding, with the invitation's recipient, locked. */
+export async function lockIntentForProof(
+  client: PoolClient,
+  { workspaceId, intentId, bindingDigest }: IntentKey,
+) {
+  const db = drizzle(client);
+  const locked = await db
+    .select({
+      accepted_user_id: intents.acceptedUserId,
+      recipient_email: invitations.recipientEmail,
+      expires_at: intents.expiresAt,
+      status: intents.status,
+    })
+    .from(intents)
+    .innerJoin(invitations, eq(invitations.id, intents.invitationId))
+    .where(
+      and(
+        eq(intents.workspaceId, workspaceId),
+        eq(intents.id, intentId),
+        eq(intents.bindingDigest, bindingDigest),
+      ),
+    )
+    .for('update', { of: alias(intents, getTableName(intents)) })
+    .catch(rethrowQueryFailure);
+  return locked[0];
+}
+
+export async function recordIntentVerification(
+  client: PoolClient,
+  { workspaceId, intentId, bindingDigest }: IntentKey,
   raw: RecordInvitationAcceptanceProofInput,
-): Promise<InvitationAcceptanceIntentRecord | null> {
-  const workspaceId = raw.workspaceId;
-  const intentId = raw.intentId;
+  matches: boolean,
+): Promise<void> {
   const userId = raw.userId;
-  const bindingDigest = raw.bindingDigest;
   const normalizedEmail = raw.verifiedEmail;
-  return withPlatformTransaction(pool, async (client) => {
-    const source = await readEligibleAuthenticationSession(
-      client,
-      raw.sessionId,
-    );
-    if (source?.userId !== userId) return null;
-    return withWorkspaceScope(client, { workspaceId }, async (client) => {
-      const db = drizzle(client);
-      const locked = await db
-        .select({
-          accepted_user_id: intents.acceptedUserId,
-          recipient_email: invitations.recipientEmail,
-          expires_at: intents.expiresAt,
-          status: intents.status,
-        })
-        .from(intents)
-        .innerJoin(invitations, eq(invitations.id, intents.invitationId))
-        .where(
-          and(
-            eq(intents.workspaceId, workspaceId),
-            eq(intents.id, intentId),
-            eq(intents.bindingDigest, bindingDigest),
-          ),
-        )
-        .for('update', { of: alias(intents, getTableName(intents)) })
-        .catch(rethrowQueryFailure);
-      const current = locked[0];
-      const now = await readDatabaseClock(client);
-      if (
-        current === undefined ||
-        current.expires_at.getTime() <= now.getTime()
-      )
-        return null;
-      if (current.status === 'completed')
-        return current.accepted_user_id === userId
-          ? selectIntent(client, eq(intents.id, intentId))
-          : null;
-      if (!(OPEN_INTENT_STATUSES as readonly string[]).includes(current.status))
-        return null;
-      if (
-        now.getTime() - raw.verifiedAt.getTime() >
-        INVITATION_PROOF_TTL_MILLIS
-      )
-        throw new InvitationAcceptanceConflictError(
-          'proof_expired',
-          'Sign in again before verifying the invitation',
-        );
-      const matches =
-        canonicalEmail(current.recipient_email) === normalizedEmail;
-      await db
-        .update(intents)
-        .set({
-          status: matches ? 'verified' : 'wrong_account',
-          verifiedUserId: userId,
-          verifiedEmail: normalizedEmail,
-          verifiedAt: raw.verifiedAt,
-          verifiedSessionId: raw.sessionId,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(intents.workspaceId, workspaceId),
-            eq(intents.id, intentId),
-            eq(intents.bindingDigest, bindingDigest),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      return selectIntent(client, eq(intents.id, intentId));
-    });
-  });
+  const db = drizzle(client);
+  await db
+    .update(intents)
+    .set({
+      status: matches ? 'verified' : 'wrong_account',
+      verifiedUserId: userId,
+      verifiedEmail: normalizedEmail,
+      verifiedAt: raw.verifiedAt,
+      verifiedSessionId: raw.sessionId,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(intents.workspaceId, workspaceId),
+        eq(intents.id, intentId),
+        eq(intents.bindingDigest, bindingDigest),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
 
 export async function abandonInvitationAcceptance(

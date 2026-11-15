@@ -7,11 +7,7 @@ import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';
 
-import {
-  IdempotencyRecordCorruptError,
-  IdempotencyRequestConflictError,
-} from '../../shared/command-receipt.errors.js';
-import { IDEMPOTENCY_STATUS } from '@pertexo/database/primitives';
+import { IdempotencyRecordCorruptError } from '../../shared/command-receipt.errors.js';
 
 import type {
   WorkspaceCreationResult as PublicWorkspaceCreationResult,
@@ -62,7 +58,9 @@ function durableWorkspaceResult(workspace: WorkspaceRecord) {
   };
 }
 
-function parseDurableWorkspaceResult(value: unknown): WorkspaceCreationResult {
+export function parseDurableWorkspaceResult(
+  value: unknown,
+): WorkspaceCreationResult {
   const result = durableWorkspaceResultSchema.safeParse(value);
   if (!result.success) throw new IdempotencyRecordCorruptError();
   const workspace = result.data.workspace;
@@ -81,19 +79,20 @@ function parseDurableWorkspaceResult(value: unknown): WorkspaceCreationResult {
   });
 }
 
-type CommandClaim =
-  | Readonly<{ claimed: true; id: string }>
-  | Readonly<{ claimed: false; result: WorkspaceCreationResult }>;
+type CreationKey = Readonly<{
+  actorUserId: string;
+  keyHash: string;
+  requestHash: string;
+}>;
 
-export async function claimWorkspaceCreationCommand(
+const operation = 'workspace.create';
+
+/** The new claim's ID, or undefined when this key already has a record. */
+export async function insertCreationClaim(
   client: PoolClient,
-  actorUserId: string,
-  keyHash: string,
-  requestHash: string,
-): Promise<CommandClaim> {
-  const operation = 'workspace.create';
-  const db = drizzle(client);
-  const inserted = await db
+  { actorUserId, keyHash, requestHash }: CreationKey,
+): Promise<string | undefined> {
+  const inserted = await drizzle(client)
     .insert(records)
     .values({
       id: generatePersistedId(),
@@ -108,10 +107,14 @@ export async function claimWorkspaceCreationCommand(
     })
     .returning({ id: records.id })
     .catch(rethrowQueryFailure);
-  const insertedId = inserted[0]?.id;
-  if (insertedId !== undefined) return { claimed: true, id: insertedId };
+  return inserted[0]?.id;
+}
 
-  const existing = await db
+export async function readCreationRecord(
+  client: PoolClient,
+  { actorUserId, keyHash }: CreationKey,
+) {
+  const existing = await drizzle(client)
     .select({
       requestHash: records.requestHash,
       resultRef: records.resultRef,
@@ -126,18 +129,7 @@ export async function claimWorkspaceCreationCommand(
       ),
     )
     .catch(rethrowQueryFailure);
-  const row = existing[0];
-  if (row === undefined) throw new IdempotencyRecordCorruptError();
-  if (row.requestHash !== requestHash) {
-    throw new IdempotencyRequestConflictError();
-  }
-  if (row.status !== IDEMPOTENCY_STATUS.completed) {
-    throw new IdempotencyRecordCorruptError();
-  }
-  return {
-    claimed: false,
-    result: parseDurableWorkspaceResult(row.resultRef),
-  };
+  return existing[0];
 }
 
 export async function completeWorkspaceCreationCommand(

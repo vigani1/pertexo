@@ -28,7 +28,7 @@ import { issueApiTokenCredential } from './credential.js';
 import { apiTokenMetadata, type ApiTokenRow } from './metadata.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import { tokenReceipt } from '../command-receipts.schemas.js';
-import { tokenOwnerAuthority } from './authority.repository.js';
+import { tokenOwnerAuthority } from './token-owner-authority.js';
 import { availableApiTokenScopes } from './policy.js';
 import { authenticateApiToken } from './authenticate.repository.js';
 import { ApiTokenPolicyError } from './api-token.errors.js';

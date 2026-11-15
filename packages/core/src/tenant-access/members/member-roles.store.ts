@@ -9,10 +9,8 @@ import type {
 import { WorkspaceMemberRoleCommandConflictError } from '../tenant-access.errors.js';
 import { roleReceipt } from '../command-receipts.schemas.js';
 import { revokeUserSessions } from '../../identity/federation/sessions/user-sessions.repository.js';
-import {
-  executeMemberCommand,
-  recordMemberCommandAudit,
-} from './commands.repository.js';
+import { recordMemberCommandAudit } from './commands.repository.js';
+import { executeMemberCommand } from './execute-member-command.js';
 import { isActiveMemberManager } from './manager.js';
 
 function conflict(

@@ -13,7 +13,7 @@ import {
   workspaces,
   workspaceInvitationBindingReplacementClaims as claims,
 } from '@pertexo/database/schema';
-import { decodeAcceptanceReceipt } from '../receipts.repository.js';
+import { decodeAcceptanceReceipt } from '../acceptance-receipt.js';
 
 // Past this many replacements a lineage counts as live, as a cycle does.
 const REPLACEMENT_CHAIN_MAX_DEPTH = 32;

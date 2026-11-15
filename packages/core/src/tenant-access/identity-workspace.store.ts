@@ -35,10 +35,8 @@ import { createIdentityWorkspaceRoleCommandStore } from './members/member-roles.
 import { throwIdentityDatabaseConflict } from './conflicts.js';
 import { createIdentityWorkspaceProfileStore } from './users/user-profile.store.js';
 import { createUserStore } from './users/user.store.js';
-import {
-  claimWorkspaceCreationCommand,
-  completeWorkspaceCreationCommand,
-} from './workspaces/creation-receipt.repository.js';
+import { completeWorkspaceCreationCommand } from './workspaces/creation-receipt.repository.js';
+import { claimWorkspaceCreationCommand } from './workspaces/claim-creation-command.js';
 import {
   workspaceRecord,
   workspaceSelection,

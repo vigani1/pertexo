@@ -7,32 +7,16 @@ import {
   workspaceInvitations,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { Role } from '@pertexo/policy';
 
 import type { PoolClient } from 'pg';
 
-import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
-import { WorkspaceInvitationCommandConflictError } from '../../tenant-access.errors.js';
-import { isActiveMemberManager } from '../../members/manager.js';
-
-/**
- * A command takes the workspace, then the actor's user and membership, for
- * update, as the member commands do, so no two wait on each other in a cycle. It
- * stays off withWorkspaceAccess: that helper's share lock on the user would come
- * first, and two commands by one person in two workspaces would each hold it and
- * wait for the other's update, dying with 40P01.
- */
-export async function lockAuthorizedActor(
+/** The actor's user and membership in the workspace, locked for update. */
+export async function lockActorMembership(
   client: PoolClient,
   workspaceId: string,
   actorUserId: string,
-): Promise<Role> {
+) {
   const db = drizzle(client);
-  if ((await lockWorkspaceRow(client, workspaceId)) !== 'active')
-    throw new WorkspaceInvitationCommandConflictError(
-      'actor_inactive',
-      'The workspace is not active',
-    );
   const person = alias(users, 'users');
   const membership = alias(workspaceMemberships, 'membership');
   const actor = await db
@@ -48,13 +32,7 @@ export async function lockAuthorizedActor(
     )
     .for('update', { of: [person, membership] })
     .catch(rethrowQueryFailure);
-  const row = actor[0];
-  if (!isActiveMemberManager(row))
-    throw new WorkspaceInvitationCommandConflictError(
-      'actor_inactive',
-      'The actor is no longer allowed to manage invitations',
-    );
-  return row.role;
+  return actor[0];
 }
 
 export const invitationSelection = {
