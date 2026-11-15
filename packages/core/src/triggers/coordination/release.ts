@@ -35,7 +35,7 @@ import {
 import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/run-admission.errors.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.types.js';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
-import { recordWorkflowTriggerSkip } from '../skips.repository.js';
+import { recordWorkflowTriggerSkip } from '../../runs/commands/acceptance/trigger-skips.repository.js';
 import { finishCoordinatedEvent } from './events.repository.js';
 import { chargeEventWindow, lockEventCoordination } from './keys.repository.js';
 import { readDatabaseClock } from '../../shared/database-clock.repository.js';

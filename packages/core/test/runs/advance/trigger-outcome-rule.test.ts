@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { streakOutcome } from '../../../src/triggers/pause/outcome-rule.js';
+import { streakOutcome } from '../../../src/runs/advance/persist/trigger-outcome-rule.js';
 
 const finished = (status: string, triggerType = 'webhook') => ({
   triggerType,
