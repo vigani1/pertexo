@@ -7,7 +7,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { triggerSchedules } from '@pertexo/database/schema';
 
 import { withPlatformTransaction } from '@pertexo/database/platform';
-import { releaseClaims } from '../retirement.repository.js';
+import { releaseClaims } from '../retire.js';
 import type { ScanDueInput, ScheduleClaim } from './schedule-scanning.types.js';
 import { claimSchema } from './schedule-claim.schemas.js';
 

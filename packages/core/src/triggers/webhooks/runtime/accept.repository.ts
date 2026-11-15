@@ -1,3 +1,4 @@
+import { admitInSavepoint } from '../../admission-savepoint.repository.js';
 import { lockWorkflowArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { lockWorkspaceRunAdmission } from '../../../shared/workspace-fence.repository.js';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/run-admission.errors.js';
@@ -245,20 +246,18 @@ async function acceptNewWebhookDelivery(
       deliveryId,
     });
   const initial = input.checkpointFactory(projection);
-  let accepted;
-  await transaction.db.execute(sql`savepoint webhook_run_admission`);
-  try {
-    accepted = await startWebhookRun(transaction, input, {
-      initial,
-      key: deliveryId,
-      runInput,
-    });
-  } catch (error) {
-    if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
-    await transaction.db.execute(
-      sql`rollback to savepoint webhook_run_admission`,
-    );
-    await transaction.db.execute(sql`release savepoint webhook_run_admission`);
+  const admission = await admitInSavepoint(
+    transaction,
+    'webhook_run_admission',
+    () =>
+      startWebhookRun(transaction, input, {
+        initial,
+        key: deliveryId,
+        runInput,
+      }),
+    (error) => error instanceof WorkflowAlreadyRunningError,
+  );
+  if (!admission.admitted) {
     await insertWebhookDelivery(transaction, verification, {
       id: deliveryId,
       outcome: 'skipped',
@@ -279,7 +278,7 @@ async function acceptNewWebhookDelivery(
       reason: 'concurrency_limit' as const,
     });
   }
-  await transaction.db.execute(sql`release savepoint webhook_run_admission`);
+  const accepted = admission.value;
   await insertWebhookDelivery(transaction, verification, {
     id: deliveryId,
     outcome: 'accepted',

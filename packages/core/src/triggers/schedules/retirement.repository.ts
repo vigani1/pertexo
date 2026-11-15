@@ -1,79 +1,35 @@
-import type { ClaimRetirement } from './scanning/schedule-scanning.types.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { Pool } from 'pg';
-
-import { withPlatformTransaction } from '@pertexo/database/platform';
-import { readDatabaseClock } from '../../shared/database-clock.repository.js';
+import type { PoolClient } from 'pg';
 
 /** A schedule claim the scanner holds: the trigger and its lease. */
-type RetirableClaim = Readonly<{ trigger_id: string; lease_token: string }>;
+export type RetirableClaim = Readonly<{
+  trigger_id: string;
+  lease_token: string;
+}>;
 
-/** How long releasing or retiring one claim may take. */
-export const CLAIM_CLEANUP_TIMEOUT_MILLIS = 5_000;
-/** A failed claim waits a minute; a deferred one at most five. */
-const RETIREMENT_RETRY_SECONDS = Object.freeze({ failed: 60, maximum: 300 });
-
-export async function retireScheduleClaim(
-  pool: Pool,
+/** Gives the claim back unchanged. */
+export async function releaseScheduleClaim(
+  client: PoolClient,
   claim: RetirableClaim,
-  retirement: ClaimRetirement,
-  signal: AbortSignal,
 ): Promise<void> {
-  await withPlatformTransaction(
-    pool,
-    async (client) => {
-      if (retirement.kind === 'release') {
-        await drizzle(client)
-          .execute(
-            sql`select app.release_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token})`,
-          )
-          .catch(rethrowQueryFailure);
-        return;
-      }
-      const retrySeconds =
-        retirement.kind === 'defer'
-          ? retirement.retryAfterSeconds
-          : RETIREMENT_RETRY_SECONDS.failed;
-      if (
-        !Number.isInteger(retrySeconds) ||
-        retrySeconds < 1 ||
-        retrySeconds > RETIREMENT_RETRY_SECONDS.maximum
-      )
-        throw new RangeError('Invalid schedule admission backoff');
-      const reason =
-        retirement.kind === 'defer'
-          ? 'schedule.admission_throttled'
-          : retirement.reason;
-      const health =
-        retirement.kind === 'fail' &&
-        retirement.reason !== 'schedule.scan_failed'
-          ? 'unhealthy'
-          : 'degraded';
-      const observed = await readDatabaseClock(client);
-      const retryAt = new Date(observed.getTime() + retrySeconds * 1_000);
-      await drizzle(client)
-        .execute(
-          sql`select app.store_trigger_schedule_retirement(${claim.trigger_id},${claim.lease_token},${health},${reason},${retryAt})`,
-        )
-        .catch(rethrowQueryFailure);
-    },
-    { signal },
-  );
+  await drizzle(client)
+    .execute(
+      sql`select app.release_trigger_schedule_claim(${claim.trigger_id},${claim.lease_token})`,
+    )
+    .catch(rethrowQueryFailure);
 }
 
-/**
- * Gives claims back when a scan can't go on. Cleanup is bounded and diagnostic
- * only: it cannot replace the failure that interrupted the batch.
- */
-export async function releaseClaims(
-  pool: Pool,
-  claims: readonly RetirableClaim[],
+/** Stores the claim's retirement: the schedule's health, why, and its next try. */
+export async function storeScheduleRetirement(
+  client: PoolClient,
+  claim: RetirableClaim,
+  retirement: Readonly<{ health: string; reason: string; retryAt: Date }>,
 ): Promise<void> {
-  const signal = AbortSignal.timeout(CLAIM_CLEANUP_TIMEOUT_MILLIS);
-  for (const claim of claims)
-    await retireScheduleClaim(pool, claim, { kind: 'release' }, signal).catch(
-      () => undefined,
-    );
+  await drizzle(client)
+    .execute(
+      sql`select app.store_trigger_schedule_retirement(${claim.trigger_id},${claim.lease_token},${retirement.health},${retirement.reason},${retirement.retryAt})`,
+    )
+    .catch(rethrowQueryFailure);
 }

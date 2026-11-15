@@ -100,3 +100,21 @@ export async function deleteExpiredReplay(
       ),
     );
 }
+
+/**
+ * Forgets a delivery's replay record: a refusal that asks the sender to try
+ * again makes that try a new attempt, not this answer read back.
+ */
+export async function forgetDeliveryReplay(
+  transaction: WorkspaceTransaction,
+  deliveryId: string,
+): Promise<void> {
+  await transaction.db
+    .delete(webhookTriggerReplayRecords)
+    .where(
+      and(
+        eq(webhookTriggerReplayRecords.workspaceId, transaction.workspaceId),
+        eq(webhookTriggerReplayRecords.deliveryId, deliveryId),
+      ),
+    );
+}

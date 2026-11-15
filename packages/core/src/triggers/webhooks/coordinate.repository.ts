@@ -1,7 +1,5 @@
-import { webhookTriggerReplayRecords as replays } from '@pertexo/database/schema';
 import { asksSenderToRetry } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type { PublishedWorkflow } from '../../runs/queries/execution/workflow-execution.types.js';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
@@ -11,7 +9,10 @@ import { coordinateEvent } from '../coordination/accept.repository.js';
 import type { PreparedEventCoordination } from '../coordination/event-coordination.types.js';
 import type { WebhookDeliveryOutcome } from './webhook-delivery.types.js';
 import { insertWebhookDelivery } from './deliveries.repository.js';
-import { recordReplayResult } from './replay.repository.js';
+import {
+  forgetDeliveryReplay,
+  recordReplayResult,
+} from './replay.repository.js';
 import { openWebhookResponse } from './responses/admission.repository.js';
 
 /** A delivery's run, whichever way it starts: the key is the delivery or event it answers. */
@@ -80,18 +81,8 @@ export async function coordinateVerifiedWebhook(
       startWebhookRun(tx, input, { initial, key: eventId, runInput }),
   );
   const runId = 'runId' in result ? result.runId : undefined;
-  if ('coordinated' in result && asksSenderToRetry(result)) {
-    // The refusal asks the sender to try again, so that try must be a new
-    // attempt and not this answer read back from the replay record.
-    await transaction.db
-      .delete(replays)
-      .where(
-        and(
-          eq(replays.workspaceId, transaction.workspaceId),
-          eq(replays.deliveryId, deliveryId),
-        ),
-      );
-  }
+  if ('coordinated' in result && asksSenderToRetry(result))
+    await forgetDeliveryReplay(transaction, deliveryId);
   await insertWebhookDelivery(transaction, verification, {
     id: deliveryId,
     outcome: coordinatedDeliveryOutcome(result),

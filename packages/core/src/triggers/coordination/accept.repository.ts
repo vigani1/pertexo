@@ -1,6 +1,4 @@
-import { triggerCoordinatedEvents as events } from '@pertexo/database/schema';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { and, eq, sql } from 'drizzle-orm';
 import {
   decideEventCoordination,
   EVENT_COORDINATION_LIMITS,
@@ -20,6 +18,12 @@ import type {
   StartCoordinatedRun,
 } from './event-coordination.types.js';
 import { readDatabaseClock } from '../../shared/database-clock.repository.js';
+import { admitInSavepoint } from '../admission-savepoint.repository.js';
+import {
+  lockOldestPendingEvent,
+  readPendingEventBudget,
+} from './pending.repository.js';
+import { pendingEventQuotaExceeded } from './pending-quota.js';
 
 /** Both ingress paths already hold the workspace admission lock and current publication fence. */
 export async function coordinateEvent(
@@ -39,25 +43,7 @@ export async function coordinateEvent(
   const now = await readDatabaseClock(transaction.db);
   const key = await loadEventWindow(transaction, input, now);
   if (key === undefined) return refuse('coordination_full');
-  const pending = (
-    await transaction.db
-      .select({
-        id: events.id,
-        input_bytes: events.inputBytes,
-        deadline_at: events.deadlineAt,
-      })
-      .from(events)
-      .where(
-        and(
-          eq(events.workspaceId, transaction.workspaceId),
-          eq(events.keyId, key.id),
-          eq(events.status, 'pending'),
-        ),
-      )
-      .orderBy(events.receivedAt, events.id)
-      .limit(1)
-      .for('update')
-  )[0];
+  const pending = await lockOldestPendingEvent(transaction, key.id);
   const policy = input.prepared.policy;
   const decision = decideEventCoordination({
     policy,
@@ -87,20 +73,7 @@ export async function coordinateEvent(
     return coordinatedReceipt(input.eventId, outcome, 'skipped', reason);
   }
   const bytes = utf8ByteLength(input.prepared.inputJson);
-  const budget = (
-    await transaction.db
-      .select({
-        count: sql<number>`count(*)::integer`,
-        bytes: sql<number>`coalesce(sum(${events.inputBytes}),0)::integer`,
-      })
-      .from(events)
-      .where(
-        and(
-          eq(events.workspaceId, transaction.workspaceId),
-          eq(events.status, 'pending'),
-        ),
-      )
-  )[0];
+  const budget = await readPendingEventBudget(transaction);
   const replaced = policy.mode === 'debounce' ? pending : undefined;
 
   if (pendingEventQuotaExceeded(budget, replaced, bytes))
@@ -140,27 +113,13 @@ async function startCoordinatedEvent(
   }>,
 ): Promise<CoordinateEventResult> {
   const policy = input.prepared.policy;
-  await transaction.db.execute(sql`savepoint coordinated_run_admission`);
-  try {
-    const accepted = await start(transaction, input.eventId);
-    await transaction.db.execute(
-      sql`release savepoint coordinated_run_admission`,
-    );
-    await chargeEventWindow(transaction, keyId, policy, decision.window);
-    await recordCoordinatedEvent(transaction, input, {
-      outcome: 'accepted',
-      status: 'started',
-      runId: accepted.runId,
-    });
-    return { runId: accepted.runId, replayed: accepted.duplicate };
-  } catch (error) {
-    if (!(error instanceof WorkflowAlreadyRunningError)) throw error;
-    await transaction.db.execute(
-      sql`rollback to savepoint coordinated_run_admission`,
-    );
-    await transaction.db.execute(
-      sql`release savepoint coordinated_run_admission`,
-    );
+  const admission = await admitInSavepoint(
+    transaction,
+    'coordinated_run_admission',
+    () => start(transaction, input.eventId),
+    (error) => error instanceof WorkflowAlreadyRunningError,
+  );
+  if (!admission.admitted) {
     await recordWorkflowTriggerSkip(
       transaction,
       input.workflowId,
@@ -173,16 +132,12 @@ async function startCoordinatedEvent(
     });
     return { skipped: true, reason: 'concurrency_limit' };
   }
-}
-function pendingEventQuotaExceeded(
-  budget: Readonly<{ count: number; bytes: number }> | undefined,
-  replaced: Readonly<{ input_bytes: number }> | undefined,
-  bytes: number,
-): boolean {
-  return (
-    (budget?.count ?? 0) + (replaced === undefined ? 1 : 0) >
-      EVENT_COORDINATION_LIMITS.pendingEvents ||
-    (budget?.bytes ?? 0) - (replaced?.input_bytes ?? 0) + bytes >
-      EVENT_COORDINATION_LIMITS.pendingBytes
-  );
+  const accepted = admission.value;
+  await chargeEventWindow(transaction, keyId, policy, decision.window);
+  await recordCoordinatedEvent(transaction, input, {
+    outcome: 'accepted',
+    status: 'started',
+    runId: accepted.runId,
+  });
+  return { runId: accepted.runId, replayed: accepted.duplicate };
 }

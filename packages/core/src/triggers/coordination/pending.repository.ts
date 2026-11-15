@@ -169,3 +169,97 @@ export function readPendingEndpoint(
     )
     .for('share', { of: [endpoint] });
 }
+
+/** Moves a held event's next try to `dueAt`. */
+export async function deferPendingEvent(
+  transaction: WorkspaceTransaction,
+  id: string,
+  dueAt: Date,
+): Promise<void> {
+  await transaction.db
+    .update(events)
+    .set({ dueAt })
+    .where(
+      and(eq(events.workspaceId, transaction.workspaceId), eq(events.id, id)),
+    );
+}
+
+/** A held event waits for workspace capacity, from when it first had to. */
+export async function waitPendingEventForCapacity(
+  transaction: WorkspaceTransaction,
+  id: string,
+  wait: Readonly<{ dueAt: Date; capacityWaitStartedAt: Date }>,
+): Promise<void> {
+  await transaction.db
+    .update(events)
+    .set({
+      reason: 'queue_full',
+      dueAt: wait.dueAt,
+      capacityWaitStartedAt: wait.capacityWaitStartedAt,
+    })
+    .where(
+      and(eq(events.workspaceId, transaction.workspaceId), eq(events.id, id)),
+    );
+}
+
+/** A failed release rests the still-pending event until `dueAt`. */
+export async function restPendingEvent(
+  transaction: WorkspaceTransaction,
+  id: string,
+  dueAt: Date,
+): Promise<void> {
+  await transaction.db
+    .update(events)
+    .set({ dueAt, reason: 'release_failed' })
+    .where(
+      and(
+        eq(events.workspaceId, transaction.workspaceId),
+        eq(events.id, id),
+        eq(events.status, 'pending'),
+      ),
+    );
+}
+
+/** The key's oldest pending event, locked; a new event replaces or joins it. */
+export async function lockOldestPendingEvent(
+  transaction: WorkspaceTransaction,
+  keyId: string,
+) {
+  const [pending] = await transaction.db
+    .select({
+      id: events.id,
+      input_bytes: events.inputBytes,
+      deadline_at: events.deadlineAt,
+    })
+    .from(events)
+    .where(
+      and(
+        eq(events.workspaceId, transaction.workspaceId),
+        eq(events.keyId, keyId),
+        eq(events.status, 'pending'),
+      ),
+    )
+    .orderBy(events.receivedAt, events.id)
+    .limit(1)
+    .for('update');
+  return pending;
+}
+
+/** How many events, and how many input bytes, the workspace holds pending. */
+export async function readPendingEventBudget(
+  transaction: WorkspaceTransaction,
+) {
+  const [budget] = await transaction.db
+    .select({
+      count: sql<number>`count(*)::integer`,
+      bytes: sql<number>`coalesce(sum(${events.inputBytes}),0)::integer`,
+    })
+    .from(events)
+    .where(
+      and(
+        eq(events.workspaceId, transaction.workspaceId),
+        eq(events.status, 'pending'),
+      ),
+    );
+  return budget;
+}
