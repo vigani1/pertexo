@@ -12,11 +12,19 @@ const COUNT = String.raw`(?:\d[\d,.]*|one|two|three|four|five|six|seven|eight|ni
 // Size units are capitals, so a class like `mt-1 mb-3` isn't a size. Binary
 // units (KiB, MiB) are sizes too.
 const WRITTEN_SIZE = /\b\d[\d,.]*\s?[KMGT]i?B\b/gu;
+const SPAN = String.raw`(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?)`;
 const WRITTEN_LIMIT = new RegExp(
   [
     // "4,096 UTF-8 bytes", not the 8 of "UTF-8".
     String.raw`(?<![\w-])\d[\d,]*\s(?:UTF-8\s)?(?:bytes|characters)\b`,
     String.raw`\b(?:up to|at most|at least|no more than|within|after|for|older than|longer than|valid for|expires? in|lasts?)\s${COUNT}\s(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|characters|entries|items|files|steps|cases|rows|people)\b`,
+    // "From 1 hour to 30 days": a range states both bounds.
+    String.raw`\bfrom\s${COUNT}\s${SPAN}\s(?:to|through|and)\s${COUNT}\s${SPAN}`,
+    // "Try again in 15 minutes", "the last 30 days", "7 days if you leave
+    // it": a wait, a window and a default are limits too.
+    String.raw`\bin\s${COUNT}\s${SPAN}`,
+    String.raw`\bthe\slast\s${COUNT}\s${SPAN}`,
+    String.raw`${COUNT}\s${SPAN}\s(?:if you leave it|by default|unless you)\b`,
     // "the 24-hour retry window": a span written as an adjective.
     String.raw`(?<![\w-])${COUNT}-(?:second|minute|hour|day|week|month|year)\b`,
     // "All 64 rules are in use": a full list says its limit.
@@ -47,6 +55,15 @@ const NOT_LIMITS: readonly string[] = [
   'features/usage/pages/workspace-usage.tsx: 6 hours',
   'features/usage/pages/workspace-usage.tsx: 7 days',
   'features/workflow-editor/model/inspector/schedule-draft.ts: at least one day',
+  // The same window choices, said in a sentence, and the deadline presets.
+  'components/ui/deadline-field.tsx: In 1 day',
+  'components/ui/deadline-field.tsx: In 1 hour',
+  'features/overview/components/home-loom.tsx: the last 24 hours',
+  'features/overview/components/home-loom.tsx: the last 6 hours',
+  'features/overview/components/home-loom.tsx: the last 7 days',
+  'features/usage/pages/workspace-usage.tsx: the last 24 hours',
+  'features/usage/pages/workspace-usage.tsx: the last 6 hours',
+  'features/usage/pages/workspace-usage.tsx: the last 7 days',
 ];
 
 // Limits still written as literals when this check began (batch J6b). Each
@@ -56,6 +73,11 @@ const NOT_LIMITS: readonly string[] = [
 // and deletion windows, trigger history, the connection test's wait and the
 // sign-up name), which have no browser-safe constant yet.
 const STILL_WRITTEN: readonly string[] = [
+  // Found when the check learned "in N minutes" and "the last N days":
+  // the fresh sign-in window and the two-factor lockout, both the API's.
+  'features/api-tokens/components/create-dialog.tsx: the last five minutes',
+  'features/auth/data/two-factor-verification.mutations.ts: in 15 minutes',
+  'features/workspaces/components/members/ownership-transfer-dialog.tsx: the last five minutes',
   'features/api-tokens/model/token-copy.ts: within five minutes',
   'features/auth/components/account/link-provider-dialog.tsx: within five minutes',
   'features/auth/components/sign-up-lens.tsx: 256 characters',

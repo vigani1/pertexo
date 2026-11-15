@@ -22,5 +22,12 @@ export const DATA_RETENTION_DAYS = Object.freeze({
 /** How long a command's idempotency key is honored: a retry with the same key inside it replays. */
 export const IDEMPOTENCY_KEY_RETENTION_HOURS = 24;
 
+/**
+ * How many UTC days of failures a workflow's inbox thread carries, today
+ * included. Core reads that many days of the retained run history; the
+ * thread contract and the browser's failure strip are bounded by it.
+ */
+export const INBOX_FAILURE_DAYS = 30;
+
 /** How long a webhook's test URL waits for its one request. */
 export const WEBHOOK_TEST_CAPTURE_SECONDS = 120;

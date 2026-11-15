@@ -155,7 +155,7 @@ export function TaskExpiry({
         form={form}
         configKey="expiresAfterSeconds"
         label="Expires after"
-        description="Counted from when the run reaches this step. From 1 hour to 30 days; 7 days if you leave it."
+        description={`Counted from when the run reaches this step. From ${formatTimeSpan(MINIMUM)} to ${formatTimeSpan(MAXIMUM)}; ${formatTimeSpan(PENDING_TASK_LIMITS.defaultExpirySeconds)} if you leave it.`}
         minimumSeconds={MINIMUM}
         maximumSeconds={MAXIMUM}
       />
