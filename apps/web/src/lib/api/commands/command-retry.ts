@@ -2,10 +2,11 @@ import { isApiError } from '../error';
 import { isUncertainOutcome } from '../error-copy';
 
 /** How long the server keeps a command's receipt for its idempotency key. */
-export const COMMAND_RETRY_WINDOW_MS = 86_400_000;
+export const COMMAND_RETRY_WINDOW_HOURS = 24;
+export const COMMAND_RETRY_WINDOW_MS =
+  COMMAND_RETRY_WINDOW_HOURS * 60 * 60 * 1_000;
 
-export const RETRY_WINDOW_ENDED =
-  'This request’s 24-hour retry window has ended. Check its result before starting again.';
+export const RETRY_WINDOW_ENDED = `This request’s ${String(COMMAND_RETRY_WINDOW_HOURS)}-hour retry window has ended. Check its result before starting again.`;
 
 /** An idempotent command's key and when it was first sent. */
 export type CommandKey = Readonly<{

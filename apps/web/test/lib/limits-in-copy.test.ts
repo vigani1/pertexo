@@ -17,6 +17,8 @@ const WRITTEN_LIMIT = new RegExp(
     // "4,096 UTF-8 bytes", not the 8 of "UTF-8".
     String.raw`(?<![\w-])\d[\d,]*\s(?:UTF-8\s)?(?:bytes|characters)\b`,
     String.raw`\b(?:up to|at most|at least|no more than|within|after|for|older than|longer than|valid for|expires? in|lasts?)\s${COUNT}\s(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|characters|entries|items|files|steps|cases|rows|people)\b`,
+    // "the 24-hour retry window": a span written as an adjective.
+    String.raw`(?<![\w-])${COUNT}-(?:second|minute|hour|day|week|month|year)\b`,
     // "All 64 rules are in use": a full list says its limit.
     String.raw`\ball\s${COUNT}\s\w+\s(?:are\s)?in use\b`,
   ].join('|'),
@@ -61,6 +63,8 @@ const STILL_WRITTEN: readonly string[] = [
   'features/forms/components/form-history.tsx: for 90 days',
   'features/workflow-publish/components/run-submission/input-dialog.tsx: within 24 hours',
   'features/workflow-publish/data/mutations/use-workflow-run-submission.ts: within 24 hours',
+  // Found when the check learned the "15-minute" form; core owns the wait.
+  'features/workflow-runs/components/error-workflow-status.tsx: 15-minute',
   'features/workflow-runs/data/mutations/use-run-replay.ts: within 24 hours',
   'features/workflow-settings/components/triggers/schedules/occurrences.tsx: for 90 days',
   'features/workflow-settings/components/triggers/webhooks/deliveries.tsx: for 90 days',
