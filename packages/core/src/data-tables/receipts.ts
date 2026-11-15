@@ -14,7 +14,11 @@ export const configuredTablesReceipt = readableTableReceipt(
       tableLimit: z.number().int().min(1).max(DATA_TABLE_LIMITS.maxTables),
       columnLimit: z.number().int().min(1).max(DATA_TABLE_LIMITS.maxColumns),
       rowLimit: z.number().int().min(1).max(DATA_TABLE_LIMITS.maxRows),
-      byteLimit: z.number().int().min(65_536).max(DATA_TABLE_LIMITS.maxBytes),
+      byteLimit: z
+        .number()
+        .int()
+        .min(DATA_TABLE_LIMITS.rowBytes)
+        .max(DATA_TABLE_LIMITS.maxBytes),
       tableCount: count,
       storedBytes: count,
     })

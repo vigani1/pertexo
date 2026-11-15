@@ -1,5 +1,7 @@
 import {
+  DATA_TABLE_LIMITS,
   DataTableError,
+  formatByteSize,
   dataTableValuesSchema,
   isDataTableResultBounded,
   validateDataTableQuery,
@@ -7,7 +9,7 @@ import {
   type DataTableResult,
   type DataTableRow,
 } from '@pertexo/node-sdk';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gt, lte, sql, type SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -77,7 +79,7 @@ export function boundedResult(
   if (!isDataTableResultBounded(result))
     throw new DataTableError(
       'result_too_large',
-      'The result exceeds 1 MB or the execution value bounds. Narrow the filter or lower the row limit.',
+      `The result exceeds ${formatByteSize(DATA_TABLE_LIMITS.resultBytes)} or the execution value bounds. Narrow the filter or lower the row limit.`,
     );
   return result;
 }
@@ -124,4 +126,64 @@ export async function findTableRows(client: PoolClient, input: FindRowsInput) {
     await requireTable(client, input.workspaceId, { id: input.tableId }),
     input.query,
   );
+}
+
+// An export reads at most this many rows, and this many value bytes, per checkout.
+const EXPORT_BATCH_ROWS = 256;
+const EXPORT_BATCH_BYTES = 4 * 1024 * 1024;
+
+/**
+ * The next export batch after `after`. The candidate set is bounded on the
+ * server; only the byte-bounded prefix crosses the wire. Even a maximum-size
+ * row fits this prefix.
+ */
+export function readExportBatch(
+  client: PoolClient,
+  {
+    workspaceId,
+    tableId,
+    where,
+    after,
+  }: Readonly<{
+    workspaceId: string;
+    tableId: string;
+    where: SQL | undefined;
+    after: string | null;
+  }>,
+) {
+  const db = drizzle(client);
+  const candidates = db.$with('candidates').as(
+    db
+      .select({ id: rows.id, valuesText: rows.values })
+      .from(rows)
+      .where(
+        and(
+          eq(rows.workspaceId, workspaceId),
+          eq(rows.tableId, tableId),
+          where,
+          after === null ? undefined : gt(rows.id, after),
+        ),
+      )
+      .orderBy(rows.id)
+      .limit(EXPORT_BATCH_ROWS),
+  );
+  const sized = db.$with('sized').as(
+    db
+      .select({
+        id: candidates.id,
+        valuesText: candidates.valuesText,
+        bytes:
+          sql<number>`sum(octet_length(${candidates.valuesText})) over (order by ${candidates.id})`.as(
+            'bytes',
+          ),
+      })
+      .from(candidates),
+  );
+  return db
+    .with(candidates, sized)
+    .select({ id: sized.id, valuesText: sized.valuesText })
+    .from(sized)
+    .where(lte(sized.bytes, EXPORT_BATCH_BYTES))
+    .orderBy(sized.id)
+    .catch(rethrowQueryFailure);
 }
