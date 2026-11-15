@@ -1,3 +1,4 @@
+import { readDatabaseClockText } from '../../shared/database-clock.repository.js';
 import { and, asc, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -24,11 +25,11 @@ import type { StuckRun, StuckWork } from './stalled-work.types.js';
 
 /** Bounded candidate pages, including empty pages whose history needs continuation. */
 export async function readStuckWork(
-  db: Pick<NodePgDatabase, 'select'>,
+  db: Pick<NodePgDatabase, 'select' | 'execute'>,
   cursor?: string,
 ): Promise<StuckWork> {
   const after = decodeStuckWorkCursor(cursor);
-  const asOf = after?.asOf ?? (await databaseCursorTime(db));
+  const asOf = after?.asOf ?? (await readDatabaseClockText(db));
   const leases = await readStuckCandidates(db, 'leases', asOf, after?.leases);
   const deliveries = await readStuckCandidates(
     db,
@@ -201,17 +202,4 @@ async function readDeliveryRuns(
       ),
     )
     .catch(rethrowQueryFailure);
-}
-
-async function databaseCursorTime(
-  db: Pick<NodePgDatabase, 'select'>,
-): Promise<string> {
-  const [clock] = await db
-    .select({
-      time: sql<string>`to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
-    })
-    .from(sql`(values (1)) as clock(one)`)
-    .catch(rethrowQueryFailure);
-  if (clock === undefined) throw new Error('Database clock returned no value');
-  return clock.time;
 }

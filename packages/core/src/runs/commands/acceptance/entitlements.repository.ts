@@ -32,11 +32,3 @@ export async function readCurrentEntitlement(
     .where(eq(current.workspaceId, transaction.workspaceId));
   return entitlement;
 }
-
-/** The database clock as epoch seconds with its microseconds. */
-export async function readAdmissionClock(transaction: WorkspaceTransaction) {
-  const observed = await transaction.db.execute<{ now: string }>(
-    sql`select extract(epoch from clock_timestamp())::text now`,
-  );
-  return observed.rows[0]?.now;
-}
