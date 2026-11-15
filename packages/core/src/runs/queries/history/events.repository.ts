@@ -4,7 +4,7 @@ import { retainedTestRunSql } from '../../../shared/run-retention.repository.js'
 import { and, eq, gt, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { ExecutionStateConflictError } from '../../../shared/execution-state.errors.js';
-import { RunEventGapError } from '../../execution-state.errors.js';
+import { RunEventGapError } from '../../advance/coordinator-state.errors.js';
 import type { RunEventType } from '../../../shared/run-events.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 

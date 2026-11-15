@@ -180,7 +180,7 @@ export type {
   RunEventPage,
 } from './runs/queries/history/events.repository.js';
 export type { RunEventType } from './shared/run-events.repository.js';
-export { RunEventGapError } from './runs/execution-state.errors.js';
+export { RunEventGapError } from './runs/advance/coordinator-state.errors.js';
 export { ExecutionStateConflictError } from './shared/execution-state.errors.js';
 export { requestWorkflowRunCancellation } from './runs/commands/request-cancellation.js';
 export { createPublishedWorkflowReader } from './runs/queries/execution/published.repository.js';
@@ -346,7 +346,7 @@ export type {
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
-} from './runs/execution-state.errors.js';
+} from './runs/advance/coordinator-state.errors.js';
 export type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,

@@ -1,5 +1,5 @@
 import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
-import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../coordinator-state.errors.js';
 import { and, asc, eq, exists, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';

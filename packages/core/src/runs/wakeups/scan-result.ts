@@ -1,4 +1,4 @@
-import { CoordinatorRunStateCorruptError } from '../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from '../advance/coordinator-state.errors.js';
 
 export function parseClaimedWakeups(
   rows: readonly Readonly<{ claimed: unknown }>[],

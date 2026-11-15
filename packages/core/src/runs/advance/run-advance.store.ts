@@ -1,6 +1,6 @@
 import { isStoredDataError } from '../../shared/stored-values.js';
 import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
-import { CoordinatorRunStateCorruptError } from '../execution-state.errors.js';
+import { CoordinatorRunStateCorruptError } from './coordinator-state.errors.js';
 import type { Pool } from 'pg';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -20,7 +20,7 @@ import {
   completeCoordinatorReceipt,
   validateAuthoritativeAdvanceDelivery,
 } from './receipts.repository.js';
-import { DeliveryMismatch } from '../execution-state.errors.js';
+import { DeliveryMismatch } from './coordinator-state.errors.js';
 import { loadRunForAdvance } from './load/load-run.js';
 import {
   assertCoordinatorNotAborted,

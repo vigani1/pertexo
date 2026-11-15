@@ -15,7 +15,7 @@ import {
   auditCoordinatorDeliveryMismatch,
   validateAuthoritativeAdvanceDelivery,
 } from '../advance/receipts.repository.js';
-import { DeliveryMismatch } from '../execution-state.errors.js';
+import { DeliveryMismatch } from '../advance/coordinator-state.errors.js';
 import { withCoordinatorWriteClient } from '../advance/coordinator-transaction.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.types.js';
 import { acceptPendingCall } from './accept-call.js';
