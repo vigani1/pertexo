@@ -17,5 +17,10 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "test"]
+  "exclude": ["dist", "test"],
+  "references": [
+    {
+      "path": "../workflow-model/tsconfig.json"
+    }
+  ]
 }

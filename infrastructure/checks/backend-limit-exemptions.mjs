@@ -16,8 +16,6 @@ export const NOT_LIMITS = Object.freeze({
     'S3 answers not-found with HTTP 404',
   'packages/core/src/shared/stored-execution.ts: *':
     'JSON text lengths: `true`, `null`, `false` and a container’s brackets',
-  'packages/queue/src/jobs/queue-job.schemas.ts: *':
-    'the W3C traceparent layout: field offsets and widths',
   'packages/rate-limit/src/limiters/distributed-rate-limiter.ts: 3':
     'the length of the Lua script’s refusal reply',
   'packages/rate-limit/src/limiters/distributed-rate-limiter.ts: 6':

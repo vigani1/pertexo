@@ -186,6 +186,7 @@ export {
   type NoticeSchedule,
 } from './execution/notice-schedule.js';
 export { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from './execution/observation-window.js';
+export { traceIdOf, traceparentSchema } from './execution/traceparent.js';
 export {
   RUN_FAILURE_CODES,
   runFailureCodeSchema,
