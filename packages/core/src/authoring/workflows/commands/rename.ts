@@ -1,8 +1,4 @@
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflows } from '@pertexo/database/schema';
 
 import type { PoolClient } from 'pg';
 
@@ -20,7 +16,8 @@ import {
   type WorkflowCommand,
 } from '../receipts.repository.js';
 import type { WorkflowRecord } from '../representation/workflow-record.types.js';
-import { workflowProjection } from '../representation/workflow-representations.repository.js';
+import { lockWorkflowRecord } from './locks.repository.js';
+import { renameAtRevision } from './workflow-revisions.repository.js';
 
 type RenameCommand = Readonly<{
   workspaceId: string;
@@ -49,18 +46,7 @@ async function lockActiveWorkflow(
   client: PoolClient,
   command: RenameCommand,
 ): Promise<WorkflowRecord> {
-  const [row] = await drizzle(client)
-    .select(workflowProjection)
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, command.workspaceId),
-        eq(workflows.id, command.workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
+  const row = await lockWorkflowRecord(client, command, { active: true });
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
   const current = Object.freeze(row);
@@ -74,23 +60,7 @@ async function applyRename(
   command: RenameCommand,
   current: WorkflowRecord,
 ): Promise<WorkflowRecord> {
-  const [row] = await drizzle(client)
-    .update(workflows)
-    .set({
-      name: command.name,
-      nameRevision: sql`${workflows.nameRevision}+1`,
-      updatedAt: sql`transaction_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workflows.workspaceId, command.workspaceId),
-        eq(workflows.id, command.workflowId),
-        eq(workflows.nameRevision, command.expectedNameRevision),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    )
-    .returning(workflowProjection)
-    .catch(rethrowQueryFailure);
+  const row = await renameAtRevision(client, command);
   if (row === undefined)
     throw new WorkflowNameRevisionConflictError(current.nameRevision);
   const renamed = Object.freeze(row);

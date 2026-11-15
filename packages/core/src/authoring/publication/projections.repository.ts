@@ -1,18 +1,12 @@
-import {
-  rethrowQueryFailure,
-  canonicalOutboxPayloadChecksum,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workflowIntegrationUsage as integrationUsage,
   workflows,
-  outboxEvents,
 } from '@pertexo/database/schema';
 import { revokeRemovedFormAccess } from '../../triggers/forms/publication.repository.js';
-
-import { generatePersistedId } from '@pertexo/database/platform';
 
 import { workflowIntegrationUsage } from '@pertexo/workflow-model/server';
 
@@ -22,8 +16,8 @@ import type { WorkflowVersionRecord } from '../workflows/representation/workflow
 
 import { persistPublicationCalls } from './calls.repository.js';
 import {
+  enqueueTriggerReconciliation,
   persistPublishedWorkflowTriggers,
-  reconcileWorkflowTriggersPayload,
 } from './trigger-reconciliation.repository.js';
 
 import type {
@@ -116,28 +110,12 @@ export async function finalizePublication(
       ),
     )
     .catch(rethrowQueryFailure);
-  const eventId = generatePersistedId();
-  const payload = reconcileWorkflowTriggersPayload({
+  await enqueueTriggerReconciliation(client, {
     workspaceId: input.workspaceId,
-    outboxEventId: eventId,
     workflowId,
     publishedVersionId: version.id,
-    ...(input.traceparent === undefined
-      ? {}
-      : { traceparent: input.traceparent }),
+    traceparent: input.traceparent,
   });
-  await db
-    .insert(outboxEvents)
-    .values({
-      id: eventId,
-      workspaceId: input.workspaceId,
-      jobName: 'reconcile-workflow-triggers',
-      aggregateType: 'workflow',
-      aggregateId: workflowId,
-      payload,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-    })
-    .catch(rethrowQueryFailure);
   await appendAuditFact(client, {
     workspaceId: input.workspaceId,
     actorId: input.actorId,

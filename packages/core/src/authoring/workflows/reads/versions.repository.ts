@@ -16,6 +16,8 @@ import { workflowAccessible } from '../../../shared/resources/workflow-access.re
 
 import type { ListWorkflowVersionsInput } from '../workflow-commands.types.js';
 
+const DEFAULT_PAGE_LIMIT = 50;
+
 export async function readVersion(
   client: PoolClient,
   scope: FolderScope,
@@ -63,7 +65,7 @@ export async function listVersions(
     .catch(rethrowQueryFailure);
   if (visible.length !== 1)
     throw new WorkflowNotFoundError('Workflow is not visible');
-  const limit = input.limit ?? 50;
+  const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
   const beforeVersionNumber = input.beforeVersionNumber ?? null;
   const result = await drizzle(client)
     .select(versionProjection)

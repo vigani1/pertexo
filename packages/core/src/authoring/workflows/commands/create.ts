@@ -1,20 +1,9 @@
 import { credentialCommandScope } from '@pertexo/database/platform';
-import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import {
-  workflowOrganizationState,
-  workflowDrafts,
-  workflows,
-} from '@pertexo/database/schema';
 import type { Role } from '@pertexo/policy';
 import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
@@ -30,11 +19,11 @@ import type {
 } from '../workflow-commands.types.js';
 import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
+import { projectDraft } from '../representation/workflow-representations.repository.js';
 import {
-  draftProjection,
-  projectDraft,
-  workflowProjection,
-} from '../representation/workflow-representations.repository.js';
+  insertNewWorkflow,
+  readWorkflowWithDraft,
+} from './new-workflow.repository.js';
 
 type CreatedReceipt = Readonly<{ workflowId: string }>;
 
@@ -95,38 +84,14 @@ export async function createWorkflow(
       graph,
       input.actorId,
     );
-    const db = drizzle(client);
-    await db
-      .insert(workflows)
-      .values({
-        id: workflowId,
-        workspaceId: input.workspaceId,
-        name,
-        lifecycleStatus: 'active',
-        activationStatus: 'inactive',
-        createdBy: input.actorId,
-      })
-      .catch(rethrowQueryFailure);
-    if (folderId !== null)
-      await db
-        .insert(workflowOrganizationState)
-        .values({
-          workspaceId: input.workspaceId,
-          workflowId,
-          folderId,
-          revision: 1,
-        })
-        .catch(rethrowQueryFailure);
-    await db
-      .insert(workflowDrafts)
-      .values({
-        workflowId,
-        workspaceId: input.workspaceId,
-        revision: 1,
-        graphJson: sql`${JSON.stringify(graph)}::json`,
-        updatedBy: input.actorId,
-      })
-      .catch(rethrowQueryFailure);
+    await insertNewWorkflow(client, {
+      workspaceId: input.workspaceId,
+      workflowId,
+      name,
+      actorId: input.actorId,
+      folderId,
+      graph,
+    });
     await appendAuditFact(client, {
       workspaceId: input.workspaceId,
       actorId: input.actorId,
@@ -139,23 +104,10 @@ export async function createWorkflow(
     });
     await completeCommand(client, command, { workflowId });
   }
-  const [row] = await drizzle(client)
-    .select({ workflow: workflowProjection, draft: draftProjection })
-    .from(workflows)
-    .innerJoin(
-      workflowDrafts,
-      and(
-        eq(workflowDrafts.workspaceId, workflows.workspaceId),
-        eq(workflowDrafts.workflowId, workflows.id),
-      ),
-    )
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, createdId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  const row = await readWorkflowWithDraft(client, {
+    workspaceId: input.workspaceId,
+    workflowId: createdId,
+  });
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
   return Object.freeze({

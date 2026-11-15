@@ -1,8 +1,4 @@
-import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import {
   EMPTY_WORKFLOW_GRAPH,
@@ -11,17 +7,8 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
-import {
-  workflowTemplateOrigins,
-  workflowOrganizationState,
-  workflowDrafts,
-  workflows,
-  workflowVersions,
-} from '@pertexo/database/schema';
 import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
 import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
 
@@ -43,7 +30,16 @@ import {
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import { projectDraft } from '../representation/workflow-representations.repository.js';
 import { draftRepresentationTag } from '../representation/tag.js';
-import { lockDraft } from './locks.repository.js';
+import {
+  lockDraft,
+  lockWorkflowLifecycleStatus,
+  shareLockWorkflow,
+} from './locks.repository.js';
+import {
+  inheritTemplateOrigin,
+  insertNewWorkflow,
+} from './new-workflow.repository.js';
+import { readVersionGraph } from './version-sources.repository.js';
 
 async function selectedGraph(
   client: PoolClient,
@@ -51,20 +47,14 @@ async function selectedGraph(
   catalog: WorkflowDefinitionCatalog,
 ): Promise<WorkflowGraph> {
   if (input.source.kind === 'version') {
-    const [row] = await drizzle(client)
-      .select({ graph_json: workflowVersions.graphJson })
-      .from(workflowVersions)
-      .where(
-        and(
-          eq(workflowVersions.workspaceId, input.workspaceId),
-          eq(workflowVersions.workflowId, input.workflowId),
-          eq(workflowVersions.id, input.source.versionId),
-        ),
-      )
-      .catch(rethrowQueryFailure);
-    if (row === undefined)
+    const graphJson = await readVersionGraph(client, {
+      workspaceId: input.workspaceId,
+      workflowId: input.workflowId,
+      versionId: input.source.versionId,
+    });
+    if (graphJson === undefined)
       throw new WorkflowNotFoundError('Workflow source is not visible');
-    return decodeStoredValue(() => parseWorkflowGraphDraft(row.graph_json));
+    return decodeStoredValue(() => parseWorkflowGraphDraft(graphJson));
   }
   const row = await lockDraft(client, input);
   if (row === undefined)
@@ -83,19 +73,8 @@ export async function duplicateWorkflow(
   scope: FolderScope,
 ) {
   // Workflow precedes draft, consistent with restore/publication/lifecycle.
-  const db = drizzle(client);
-  const [sourceRow] = await db
-    .select({ lifecycle_status: workflows.lifecycleStatus })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, input.workflowId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  if (sourceRow === undefined)
+  const sourceStatus = await lockWorkflowLifecycleStatus(client, input);
+  if (sourceStatus === undefined)
     throw new WorkflowNotFoundError('Workflow source is not visible');
   const destinationId = generatePersistedId();
   // The graph is not part of the request: a retry duplicates the same
@@ -125,22 +104,16 @@ export async function duplicateWorkflow(
       { workspaceId: input.workspaceId, workflowId: replay.workflowId },
       'workflow:read',
     );
-    const destination = await db
-      .select({ id: workflows.id })
-      .from(workflows)
-      .where(
-        and(
-          eq(workflows.workspaceId, input.workspaceId),
-          eq(workflows.id, replay.workflowId),
-        ),
-      )
-      .for('share')
-      .catch(rethrowQueryFailure);
-    if (destination.length !== 1)
+    if (
+      !(await shareLockWorkflow(client, {
+        workspaceId: input.workspaceId,
+        workflowId: replay.workflowId,
+      }))
+    )
       throw new WorkflowNotFoundError('Workflow destination is not visible');
     return Object.freeze(replay);
   }
-  if (sourceRow.lifecycle_status !== 'active')
+  if (sourceStatus !== 'active')
     throw new WorkflowNotFoundError('Workflow source is not visible');
   if (!scope.permits(input.folderId ?? null, 'workflow:create'))
     throw new WorkflowNotFoundError('Workflow destination is not visible');
@@ -202,58 +175,19 @@ async function persistDuplicate(
     graph,
   }: Readonly<{ destinationId: string; graph: WorkflowGraph }>,
 ) {
-  const db = drizzle(client);
-  await db
-    .insert(workflows)
-    .values({
-      id: destinationId,
-      workspaceId: input.workspaceId,
-      name: input.name,
-      lifecycleStatus: 'active',
-      activationStatus: 'inactive',
-      createdBy: input.actorId,
-    })
-    .catch(rethrowQueryFailure);
-  if (input.folderId != null)
-    await db
-      .insert(workflowOrganizationState)
-      .values({
-        workspaceId: input.workspaceId,
-        workflowId: destinationId,
-        folderId: input.folderId,
-        revision: 1,
-      })
-      .catch(rethrowQueryFailure);
-  await db
-    .insert(workflowDrafts)
-    .values({
-      workflowId: destinationId,
-      workspaceId: input.workspaceId,
-      revision: 1,
-      graphJson: sql`${JSON.stringify(graph)}::json`,
-      updatedBy: input.actorId,
-    })
-    .catch(rethrowQueryFailure);
-  const origin = db
-    .select({
-      workspaceId: workflowTemplateOrigins.workspaceId,
-      workflowId: sql<string>`${destinationId}::uuid`.as('workflow_id'),
-      origin:
-        sql`${workflowTemplateOrigins.origin}||'{"derivation":"inherited"}'::jsonb`.as(
-          'origin',
-        ),
-    })
-    .from(workflowTemplateOrigins)
-    .where(
-      and(
-        eq(workflowTemplateOrigins.workspaceId, input.workspaceId),
-        eq(workflowTemplateOrigins.workflowId, input.workflowId),
-      ),
-    );
-  await db
-    .insert(workflowTemplateOrigins)
-    .select(origin)
-    .catch(rethrowQueryFailure);
+  await insertNewWorkflow(client, {
+    workspaceId: input.workspaceId,
+    workflowId: destinationId,
+    name: input.name,
+    actorId: input.actorId,
+    folderId: input.folderId,
+    graph,
+  });
+  await inheritTemplateOrigin(client, {
+    workspaceId: input.workspaceId,
+    sourceWorkflowId: input.workflowId,
+    destinationId,
+  });
   await appendAuditFact(client, {
     workspaceId: input.workspaceId,
     actorId: input.actorId,

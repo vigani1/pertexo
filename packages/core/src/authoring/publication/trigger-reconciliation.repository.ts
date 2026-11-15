@@ -3,8 +3,11 @@ import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { workflowTriggers } from '@pertexo/database/schema';
+import {
+  canonicalOutboxPayloadChecksum,
+  rethrowQueryFailure,
+} from '@pertexo/database/primitives';
+import { outboxEvents, workflowTriggers } from '@pertexo/database/schema';
 import { workflowTriggerProjection } from '../../triggers/reconciliation/projection.js';
 import type { WorkflowVersionRecord } from '../workflows/representation/workflow-record.types.js';
 
@@ -26,6 +29,43 @@ export function reconcileWorkflowTriggersPayload(
       ? {}
       : { traceparent: input.traceparent }),
   });
+}
+
+/**
+ * Asks the worker to reconcile a workflow's triggers with its published
+ * version, after publication or a lifecycle change.
+ */
+export async function enqueueTriggerReconciliation(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    workflowId: string;
+    publishedVersionId: string;
+    traceparent: string | undefined;
+  }>,
+): Promise<void> {
+  const outboxEventId = generatePersistedId();
+  const payload = reconcileWorkflowTriggersPayload({
+    workspaceId: input.workspaceId,
+    outboxEventId,
+    workflowId: input.workflowId,
+    publishedVersionId: input.publishedVersionId,
+    ...(input.traceparent === undefined
+      ? {}
+      : { traceparent: input.traceparent }),
+  });
+  await drizzle(client)
+    .insert(outboxEvents)
+    .values({
+      id: outboxEventId,
+      workspaceId: input.workspaceId,
+      jobName: 'reconcile-workflow-triggers',
+      aggregateType: 'workflow',
+      aggregateId: input.workflowId,
+      payload,
+      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
+    })
+    .catch(rethrowQueryFailure);
 }
 
 /** Materializes the desired triggers for one published immutable version. */
