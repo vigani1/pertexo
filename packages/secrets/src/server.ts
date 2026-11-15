@@ -72,6 +72,7 @@ export type {
 } from './encryption/envelopes/webhook-envelope.js';
 
 export {
+  applicationSealedSecretSchema,
   createApplicationSecretEnvelope,
   type ApplicationSealedSecret,
   type ApplicationSecretEnvelope,

@@ -9,7 +9,6 @@ import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import type { z } from 'zod';
 import type { CommandIdentity } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
@@ -24,7 +23,7 @@ import type {
 
 import { requireReadableReceipt } from '../../../shared/receipts.js';
 import { invitationReceipt } from '../../command-receipts.schemas.js';
-import type { sealedToken } from '../input.js';
+import type { ApplicationSealedSecret } from '@pertexo/secrets/server';
 import {
   mapDurableInvitation,
   serializeInvitation,
@@ -88,7 +87,7 @@ export async function insertDelivery(
     invitationId: string;
     revision: number;
     deliveryAttemptId: string;
-    sealed: z.output<typeof sealedToken>;
+    sealed: ApplicationSealedSecret;
   }>,
 ): Promise<void> {
   const db = drizzle(client);

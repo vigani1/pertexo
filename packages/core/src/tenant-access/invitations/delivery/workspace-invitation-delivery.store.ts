@@ -18,7 +18,7 @@ import type {
   WorkspaceInvitationDeliveryClaim,
 } from './invitation-delivery.types.js';
 import { assertInvitationDeliveryIdentity } from './identity.repository.js';
-import { sealedToken } from '../input.js';
+import { applicationSealedSecretSchema } from '@pertexo/secrets/server';
 import { DELIVERY_CONSUMER } from '../../../outbox/delivery-consumers.js';
 
 import {
@@ -196,7 +196,7 @@ async function claimInvitationDelivery(
       role: row.role,
       expiresAt: row.expires_at,
       sealedToken: decodeStoredValue(() =>
-        sealedToken.parse({
+        applicationSealedSecretSchema.parse({
           ciphertext: row.ciphertext,
           nonce: row.nonce,
           tag: row.tag,

@@ -1,5 +1,4 @@
-import type { z } from 'zod';
-import type { sealedToken } from '../input.js';
+import type { ApplicationSealedSecret } from '@pertexo/secrets/server';
 
 export type WorkspaceInvitationDeliveryClaim =
   | Readonly<{ kind: 'terminal' }>
@@ -10,7 +9,7 @@ export type WorkspaceInvitationDeliveryClaim =
       workspaceName: string;
       role: string;
       expiresAt: Date;
-      sealedToken: z.output<typeof sealedToken>;
+      sealedToken: ApplicationSealedSecret;
     }>;
 
 type DeliveryAttempt = Readonly<{

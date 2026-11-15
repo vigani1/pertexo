@@ -1,3 +1,4 @@
+import type { ApplicationSealedSecret } from '@pertexo/secrets/server';
 import type { DISCOVERABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { DirectoryMembershipSource } from '@pertexo/contracts';
 import type { DelegatedRole, Role } from '@pertexo/policy';
@@ -142,12 +143,7 @@ export type WorkspaceInvitationRecord = Readonly<
     | 'updatedAt'
   > & { email: typeof workspaceInvitations.$inferSelect.recipientEmail }
 >;
-export type SealedInvitationToken = Readonly<{
-  ciphertext: string;
-  nonce: string;
-  tag: string;
-  keyVersion: string;
-}>;
+export type SealedInvitationToken = Readonly<ApplicationSealedSecret>;
 type WorkspaceInvitationCommandInput = Readonly<{
   workspaceId: string;
   actorUserId: string;
