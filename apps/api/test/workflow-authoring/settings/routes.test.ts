@@ -15,7 +15,7 @@ import { WorkflowErrorService } from '../../../src/workflow-authoring/settings/e
 import {
   WorkflowAutoPauseController,
   WorkspaceAutoPauseController,
-} from '../../../src/workflow-authoring/settings/auto-pause-controllers.js';
+} from '../../../src/workflow-authoring/settings/auto-pause.controller.js';
 import { WorkflowAutoPauseService } from '../../../src/workflow-authoring/settings/auto-pause.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';

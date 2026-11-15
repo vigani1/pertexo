@@ -48,7 +48,7 @@ import type { WorkflowAuthoringDependencies } from './ports.js';
 import {
   WorkflowAutoPauseController,
   WorkspaceAutoPauseController,
-} from './settings/auto-pause-controllers.js';
+} from './settings/auto-pause.controller.js';
 import { WorkflowAutoPauseService } from './settings/auto-pause.js';
 import { WorkflowConcurrencyController } from './settings/concurrency.controller.js';
 import { WorkflowConcurrencyService } from './settings/concurrency.js';

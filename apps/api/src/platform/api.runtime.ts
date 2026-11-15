@@ -1,5 +1,5 @@
 import type { StructuredLogger } from '@pertexo/observability/server';
-import { createApiCallbackRuntime } from './platform/webhooks/callback-runtime.module.js';
+import { createApiCallbackRuntime } from './webhooks/callback-runtime.module.js';
 import {
   createDatabaseRuntime,
   createWorkspaceDatabase,
@@ -7,28 +7,28 @@ import {
 } from '@pertexo/database/platform';
 import { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 
-import type { ApiConfig } from './platform/config/api-config.js';
-import { createApiConnectionRuntime } from './platform/connections/connections-runtime.module.js';
+import type { ApiConfig } from './config/api-config.js';
+import { createApiConnectionRuntime } from './connections/connections-runtime.module.js';
 import {
   createApiIdentityRuntime,
   type ApiIdentityRuntime,
-} from './platform/identity/identity-runtime.module.js';
-import { createApiWorkflowRuntime } from './platform/workflow/workflow-runtime.module.js';
-import { createApiWebhookRuntime } from './platform/webhooks/webhooks-runtime.module.js';
-import { createApiScheduleRuntime } from './platform/schedules/schedules-runtime.module.js';
-import { createApiNotificationRuntime } from './platform/notifications/notifications-runtime.module.js';
+} from './identity/identity-runtime.module.js';
+import { createApiWorkflowRuntime } from './workflow/workflow-runtime.module.js';
+import { createApiWebhookRuntime } from './webhooks/webhooks-runtime.module.js';
+import { createApiScheduleRuntime } from './schedules/schedules-runtime.module.js';
+import { createApiNotificationRuntime } from './notifications/notifications-runtime.module.js';
 
-import { createApiArtifactRuntime } from './platform/artifacts/artifacts-runtime.module.js';
+import { createApiArtifactRuntime } from './artifacts/artifacts-runtime.module.js';
 import type {
   ApiApplicationDependencies,
   ApiRuntimeSet,
-} from './platform/api-application.types.js';
+} from './api-application.types.js';
 
 type ApiRuntimeResources = {
   -readonly [Key in keyof ApiRuntimeSet]?: ApiRuntimeSet[Key] | undefined;
 };
 
-export { type ApiApplicationDependencies } from './platform/api-application.types.js';
+export { type ApiApplicationDependencies } from './api-application.types.js';
 export async function acquireApiRuntimes(
   config: ApiConfig,
   { logger }: Pick<ApiApplicationDependencies, 'logger'>,

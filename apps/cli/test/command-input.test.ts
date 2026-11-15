@@ -4,12 +4,12 @@ import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseAutomationArguments } from '../src/automation-arguments.js';
-import { parseAutomationHttpConfig } from '../src/automation-http-config.js';
+import { parseAutomationArguments } from '../src/commands/automation-arguments.js';
+import { parseAutomationHttpConfig } from '../src/config/automation-http-config.js';
 import {
   readCommandJson,
   MAX_COMMAND_BYTES,
-} from '../src/command-json-file.js';
+} from '../src/commands/command-json-file.js';
 
 const workspace = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const target = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

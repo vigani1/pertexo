@@ -12,7 +12,7 @@ import type { AutomationArguments } from './automation-arguments.js';
 import type {
   AutomationHttpClient,
   AutomationHttpResponse,
-} from './automation-http-client.js';
+} from '../http/automation-http-client.js';
 import { readCommandJson } from './command-json-file.js';
 import {
   AutomationCommandError,

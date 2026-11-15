@@ -2,9 +2,9 @@ import { syncBuiltinESMExports } from 'node:module';
 import { mock } from 'node:test';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 import { expect, it } from 'vitest';
-import { executeAutomationCommand } from '../src/execute-automation-command.js';
-import { parseAutomationArguments } from '../src/automation-arguments.js';
-import type { AutomationHttpClient } from '../src/automation-http-client.js';
+import { executeAutomationCommand } from '../src/commands/execute-automation-command.js';
+import { parseAutomationArguments } from '../src/commands/automation-arguments.js';
+import type { AutomationHttpClient } from '../src/http/automation-http-client.js';
 
 it('backs off pending run reads and completes as soon as a failed run is observed', async () => {
   const requests: { path: string; at: number }[] = [];

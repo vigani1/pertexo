@@ -1,11 +1,11 @@
-import { parseAutomationArguments } from './automation-arguments.js';
-import { parseAutomationHttpConfig } from './automation-http-config.js';
-import { createAutomationHttpClient } from './automation-http-client.js';
-import { executeAutomationCommand } from './execute-automation-command.js';
+import { parseAutomationArguments } from './commands/automation-arguments.js';
+import { parseAutomationHttpConfig } from './config/automation-http-config.js';
+import { createAutomationHttpClient } from './http/automation-http-client.js';
+import { executeAutomationCommand } from './commands/execute-automation-command.js';
 import {
   AutomationCommandError,
   exitCodeFor,
-} from './automation-command.errors.js';
+} from './commands/automation-command.errors.js';
 import { readFileSync } from 'node:fs';
 
 const HELP = `Pertexo CLI, over the HTTP API
