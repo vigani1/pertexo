@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createRetentionStore } from '../../../src/lifecycle/retention/retention.store.js';
-import { applyWorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/apply.repository.js';
+import { applyWorkspaceLifecycleChange } from '../../../src/lifecycle/deletion/apply.js';
 import {
   withTenantScopedClient,
   checkDatabaseReadiness,

@@ -1,9 +1,7 @@
 import { cancelUndispatchedWorkspacePreviews } from '../../previews/attempts/cancel-workspace-previews.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { appendAuditFact } from '../../governance/audit/facts.js';
 import type {
   WorkspaceLifecycleCommandType,
-  WorkspaceLifecycleOperation,
   WorkspaceLifecycleChange,
 } from './workspace-lifecycle.types.js';
 import { deleteWorkspaceOAuth2Grants } from '../../connections/oauth2/clients.repository.js';
@@ -27,10 +25,7 @@ import type { PoolClient } from 'pg';
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 
 import { requestActiveRunCancellations } from '../../runs/commands/cancel-run.js';
-import { IdempotencyRequestConflictError } from '../../shared/command-receipt.errors.js';
-import { WorkspaceLifecycleConflictError } from '../workspace-lifecycle.errors.js';
 import type { WorkspaceId } from '@pertexo/database/primitives';
-import { LIFECYCLE_TRANSITIONS } from './transitions.js';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 
 /** Invitation, then delivery attempt, then acceptance intent. */
@@ -93,7 +88,7 @@ async function cancelPendingInvitations(
 }
 
 /** Everything a workspace stops doing once deletion is requested. */
-async function applyDeletionSideEffects(
+export async function applyDeletionSideEffects(
   client: PoolClient,
   workspaceId: string,
   actorUserId: string,
@@ -195,91 +190,75 @@ async function applyDeletionSideEffects(
   );
 }
 
-/**
- * Requests deletion of a workspace, restores it or lifts its suspension, in a
- * transaction that already holds the workspace row and the owner's authority
- * (`changeWorkspaceLifecycle`). Deletion takes effect at once and the workspace
- * is purged after the recovery period; a repeated request with the same
- * idempotency key returns its first receipt.
- */
-export async function applyWorkspaceLifecycleChange(
+/** The workspace's status and whether its recovery window is still open. */
+export async function readWorkspaceStanding(
   client: PoolClient,
-  change: WorkspaceLifecycleChange,
-): Promise<WorkspaceLifecycleOperation> {
-  const db = drizzle(client);
-  const [current] = await db
+  workspaceId: string,
+) {
+  const [current] = await drizzle(client)
     .select({
       status: workspaces.status,
       restorable: sql<boolean>`coalesce(clock_timestamp()<${workspaces.purgeAfter},false)`,
     })
     .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .catch(rethrowQueryFailure);
+  return current;
+}
+
+export async function markDeletionRequested(
+  client: PoolClient,
+  change: WorkspaceLifecycleChange,
+): Promise<void> {
+  // One statement timestamp fixes the recovery window exactly.
+  await drizzle(client)
+    .update(workspaces)
+    .set({
+      status: 'pending_deletion',
+      deletionRequestedAt: sql`statement_timestamp()`,
+      deletionRequestedBy: change.actorUserId,
+      deletionReason: change.reason,
+      purgeAfter: sql`statement_timestamp()+make_interval(days=>${DATA_RETENTION_DAYS.workspaceRecovery})`,
+      updatedAt: sql`statement_timestamp()`,
+    })
     .where(eq(workspaces.id, change.workspaceId))
     .catch(rethrowQueryFailure);
-  if (current === undefined)
-    throw new WorkspaceLifecycleConflictError(
-      'invalid_state',
-      'Workspace lifecycle transition is not valid',
-    );
-  const prior = await readExistingOperation(client, change);
-  if (prior !== undefined) return prior;
+}
 
-  if (!LIFECYCLE_TRANSITIONS[change.commandType].appliesTo(current))
-    throw new WorkspaceLifecycleConflictError(
-      'invalid_state',
-      'Workspace lifecycle transition is not valid',
-    );
+export async function markDeletionRestored(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  await drizzle(client)
+    .update(workspaces)
+    .set({
+      status: 'suspended',
+      deletionRequestedAt: null,
+      deletionRequestedBy: null,
+      deletionReason: null,
+      purgeAfter: null,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(eq(workspaces.id, workspaceId))
+    .catch(rethrowQueryFailure);
+}
 
-  if (change.commandType === 'deletion_requested') {
-    // One statement timestamp fixes the recovery window exactly.
-    await db
-      .update(workspaces)
-      .set({
-        status: 'pending_deletion',
-        deletionRequestedAt: sql`statement_timestamp()`,
-        deletionRequestedBy: change.actorUserId,
-        deletionReason: change.reason,
-        purgeAfter: sql`statement_timestamp()+make_interval(days=>${DATA_RETENTION_DAYS.workspaceRecovery})`,
-        updatedAt: sql`statement_timestamp()`,
-      })
-      .where(eq(workspaces.id, change.workspaceId))
-      .catch(rethrowQueryFailure);
-    await applyDeletionSideEffects(
-      client,
-      change.workspaceId,
-      change.actorUserId,
-    );
-  } else if (change.commandType === 'deletion_restored') {
-    // A restore revives nothing by itself (ADR 013): the owner lifts the suspension.
-    await db
-      .update(workspaces)
-      .set({
-        status: 'suspended',
-        deletionRequestedAt: null,
-        deletionRequestedBy: null,
-        deletionReason: null,
-        purgeAfter: null,
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(eq(workspaces.id, change.workspaceId))
-      .catch(rethrowQueryFailure);
-  } else {
-    // Only the status moves: what deletion stopped stays off until re-enabled.
-    await db
-      .update(workspaces)
-      .set({ status: 'active', updatedAt: sql`clock_timestamp()` })
-      .where(eq(workspaces.id, change.workspaceId))
-      .catch(rethrowQueryFailure);
-  }
+export async function markWorkspaceActive(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  await drizzle(client)
+    .update(workspaces)
+    .set({ status: 'active', updatedAt: sql`clock_timestamp()` })
+    .where(eq(workspaces.id, workspaceId))
+    .catch(rethrowQueryFailure);
+}
 
-  await appendAuditFact(client, {
-    id: change.operationId,
-    workspaceId: change.workspaceId,
-    actorId: change.actorUserId,
-    action: LIFECYCLE_TRANSITIONS[change.commandType].auditAction,
-    targetType: 'workspace',
-    targetId: change.workspaceId,
-  });
-  const occurredAt = new Date();
+export async function insertLifecycleOperation(
+  client: PoolClient,
+  change: WorkspaceLifecycleChange,
+  occurredAt: Date,
+): Promise<void> {
   await drizzle(client, { schema: databaseSchema })
     .insert(workspaceLifecycleOperations)
     .values({
@@ -292,20 +271,14 @@ export async function applyWorkspaceLifecycleChange(
       requestHash: change.requestHash,
       occurredAt: occurredAt.toISOString(),
     });
-  return Object.freeze({
-    id: change.operationId,
-    workspaceId: change.workspaceId,
-    commandType: change.commandType,
-    submittedAt: occurredAt,
-  });
 }
 
-async function readExistingOperation(
+/** The earlier operation under this idempotency key, with what it was asked. */
+export async function readExistingOperation(
   client: PoolClient,
   change: WorkspaceLifecycleChange,
-): Promise<WorkspaceLifecycleOperation | undefined> {
-  const db = drizzle(client);
-  const [prior] = await db
+) {
+  const [prior] = await drizzle(client)
     .select({
       id: workspaceLifecycleOperations.id,
       workspaceId: workspaceLifecycleOperations.workspaceId,
@@ -329,16 +302,5 @@ async function readExistingOperation(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (prior !== undefined) {
-    const commandMismatch =
-      prior.commandType !== change.commandType ||
-      prior.actorUserId !== change.actorUserId ||
-      prior.reason !== change.reason ||
-      prior.requestHash !== change.requestHash;
-    if (commandMismatch) throw new IdempotencyRequestConflictError();
-    const { actorUserId, reason, requestHash, ...receipt } = prior;
-    return Object.freeze(receipt);
-  }
-
-  return undefined;
+  return prior;
 }
