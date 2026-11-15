@@ -1,5 +1,6 @@
 import {
   mergeConfigSchema,
+  PARALLEL_BRANCH_PORTS,
   parallelBranchPortSchema,
 } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -25,7 +26,9 @@ export const CORE_MERGE_INPUT_SCHEMA = z
       .refine((ledger) => Object.keys(ledger).length > 0, {
         message: 'Merge ledger must not be empty',
       }),
-    selectedBranchIds: z.array(parallelBranchPortSchema).max(16),
+    selectedBranchIds: z
+      .array(parallelBranchPortSchema)
+      .max(PARALLEL_BRANCH_PORTS.length),
   })
   .strict()
   .superRefine(({ ledger, selectedBranchIds }, context) => {
@@ -62,7 +65,9 @@ export const CORE_MERGE_INPUT_SCHEMA = z
 export const CORE_MERGE_OUTPUT_SCHEMA = z
   .object({
     branches: z.partialRecord(parallelBranchPortSchema, z.json()),
-    selectedBranchIds: z.array(parallelBranchPortSchema).max(16),
+    selectedBranchIds: z
+      .array(parallelBranchPortSchema)
+      .max(PARALLEL_BRANCH_PORTS.length),
   })
   .strict()
   .describe('Core merge node output');

@@ -1,5 +1,13 @@
 export const WEBHOOK_RESPONSE_MAX_BYTES = 1_048_576;
-const CUSTOM_RESPONSE_HEADER_CHARACTERS = 64;
+/** What a workflow may set on its webhook's answer. */
+export const WEBHOOK_RESPONSE_LIMITS = Object.freeze({
+  // Informational answers (1xx) are the server's, not a workflow's.
+  firstStatus: 200,
+  lastStatus: 599,
+  headers: 16,
+  customHeaderNameCharacters: 64,
+  headerValueCharacters: 1_024,
+});
 const WEBHOOK_RESPONSE_HEADER_NAMES = [
   'content-language',
   'retry-after',
@@ -34,7 +42,7 @@ export function isWebhookResponseHeaderAllowed(name: string): boolean {
   const lower = name.toLowerCase();
   const allowed =
     WEBHOOK_RESPONSE_HEADER_NAMES.some((value) => value === lower) ||
-    (lower.length <= CUSTOM_RESPONSE_HEADER_CHARACTERS &&
+    (lower.length <= WEBHOOK_RESPONSE_LIMITS.customHeaderNameCharacters &&
       /^x-[!#$%&'*+.^_`|~0-9a-z-]+$/u.test(lower) &&
       !RESERVED_RESPONSE_HEADERS.has(lower) &&
       !RESERVED_RESPONSE_PREFIXES.some((prefix) => lower.startsWith(prefix)));

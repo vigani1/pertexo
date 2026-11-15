@@ -1,5 +1,8 @@
 import {
   ARTIFACT_INPUT_CAPABILITY,
+  ARTIFACT_INPUT_MAX_BYTES,
+  FILE_PAGE_LIMITS,
+  formatByteSize,
   generateSchemaDocument,
   type NodeManifest,
 } from '@pertexo/node-sdk';
@@ -29,7 +32,7 @@ export const CORE_READ_FILE_MANIFEST: NodeManifest = Object.freeze({
   inputSchema: generateSchemaDocument(CORE_READ_FILE_INPUT_SCHEMA),
   outputSchema: generateSchemaDocument(CORE_READ_FILE_OUTPUT_SCHEMA, {
     runtimeOnlySemantics: [
-      'Inline reads accept up to 1 MiB; explicit Output pages accepts up to 10 MiB through verified disk scratch. Parse the selected format without MIME guessing: JSON and CSV as strict UTF-8 with one optional BOM, Excel as one .xlsx sheet.',
+      `Inline reads accept up to ${formatByteSize(ARTIFACT_INPUT_MAX_BYTES)}; explicit Output pages accepts up to ${formatByteSize(FILE_PAGE_LIMITS.fileBytes)} through verified disk scratch. Parse the selected format without MIME guessing: JSON and CSV as strict UTF-8 with one optional BOM, Excel as one .xlsx sheet.`,
       'Headers are unique, nonblank and untrimmed. CSV uses strict quoting and column counts. Excel reads a header row, cached formula values and ISO dates within entry, size, sheet and cell limits. Conversion defaults on; false keeps text.',
       'Inline mode returns the parsed value with ordinary collection/value limits. Output pages returns ordinary file references, itemCount and pageCount; it never loads all records into a mapped value.',
     ],

@@ -1,3 +1,4 @@
+import { formatCount } from '@pertexo/node-sdk';
 import { defineUtility } from './define-utility.js';
 import {
   textConfigSchema,
@@ -25,6 +26,7 @@ import {
   xmlOutputSchema,
 } from './xml/xml.schemas.js';
 import {
+  HTML_LIMITS,
   htmlConfigSchema,
   htmlInputSchema,
   htmlOutputSchema,
@@ -107,7 +109,7 @@ export const UTILITY_DEFINITIONS = Object.freeze([
     inputSchema: htmlInputSchema,
     outputSchema: htmlOutputSchema,
     semantics: [
-      'Inert HTML; text or attribute values in document order, with matchCount/truncated. Up to 48 levels and 8000 nodes/attributes; selectors up to 256 characters, 4 groups and 16 simple tokens.',
+      `Inert HTML; text or attribute values in document order, with matchCount/truncated. Up to ${String(HTML_LIMITS.depth)} levels and ${formatCount(HTML_LIMITS.nodes)} nodes/attributes; selectors up to ${String(HTML_LIMITS.selectorCharacters)} characters, ${String(HTML_LIMITS.selectorGroups)} groups and ${String(HTML_LIMITS.selectorTokens)} simple tokens.`,
       'At most one descendant and one flat structural pseudo-class per group; no general sibling, nested selectors, network or script execution.',
     ],
   }),

@@ -1,6 +1,7 @@
 import {
   boundedNodeJsonSchema,
   CODE_LIMITS,
+  CODE_SETTING_BOUNDS,
   inspectCodeSource,
   codeLanguageSchema,
 } from '@pertexo/node-sdk';
@@ -12,7 +13,12 @@ export const CORE_CODE_CONFIG_SCHEMA = z
       .string()
       .max(CODE_LIMITS.sourceBytes)
       .meta({ default: 'return input;' }),
-    timeoutSeconds: z.number().int().min(1).max(300).optional(),
+    timeoutSeconds: z
+      .number()
+      .int()
+      .min(1)
+      .max(CODE_SETTING_BOUNDS.maximumSeconds)
+      .optional(),
   })
   .strict()
   .superRefine((config, context) => {

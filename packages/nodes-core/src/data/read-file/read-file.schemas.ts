@@ -1,21 +1,26 @@
 import {
   boundedNodeJsonSchema,
+  FILE_PAGE_LIMITS,
   filePageBundleSchema,
+  formatByteSize,
   nodeArtifactReferenceSchema,
   sheetNameSchema,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
+import { SPREADSHEET_LIMITS } from './xlsx/limits.js';
 
 export const CORE_READ_FILE_CONFIG_SCHEMA = z
   .discriminatedUnion('format', [
     z
       .object({
         format: z.literal('json'),
-        outputMode: z.literal('pages').optional().meta({
-          title: 'Output pages',
-          description:
-            'Store up to 10 MB as small JSON-array files. Map pages to an outer For Each, then Read file each page as inline data.',
-        }),
+        outputMode: z
+          .literal('pages')
+          .optional()
+          .meta({
+            title: 'Output pages',
+            description: `Store up to ${formatByteSize(FILE_PAGE_LIMITS.fileBytes)} as small JSON-array files. Map pages to an outer For Each, then Read file each page as inline data.`,
+          }),
       })
       .strict(),
     z
@@ -45,11 +50,17 @@ export const CORE_READ_FILE_CONFIG_SCHEMA = z
           description:
             'The sheet to read, by name. Leave empty to read the first visible sheet.',
         }),
-        headerRow: z.number().int().min(1).max(1_048_576).default(1).meta({
-          title: 'Header row',
-          description:
-            'The row with the column names. Rows above it are skipped.',
-        }),
+        headerRow: z
+          .number()
+          .int()
+          .min(1)
+          .max(SPREADSHEET_LIMITS.rows)
+          .default(1)
+          .meta({
+            title: 'Header row',
+            description:
+              'The row with the column names. Rows above it are skipped.',
+          }),
         convertValues: z.boolean().default(true).meta({
           title: 'Convert numbers and booleans',
           description:

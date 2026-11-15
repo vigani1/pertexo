@@ -179,21 +179,37 @@ function textStart(head: Uint8Array): string | undefined {
   }
 }
 
+// Each format's magic number. WebP is a RIFF container, its form after the
+// four-byte size; HEIC is an ISO box, its type after the four-byte size and its
+// four-character brand after that.
+const MAGIC = Object.freeze({
+  zip: [0x50, 0x4b, 0x03, 0x04],
+  png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+  jpeg: [0xff, 0xd8, 0xff],
+  riffForm: 8,
+  boxType: 4,
+  boxBrand: { start: 8, end: 12 },
+});
+
 const SIGNATURES: Readonly<
   Record<FileSignature, (head: Uint8Array) => boolean>
 > = {
   pdf: (head) => startsWith(head, ascii('%PDF-')),
-  zip: (head) => startsWith(head, [0x50, 0x4b, 0x03, 0x04]),
-  png: (head) =>
-    startsWith(head, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  jpeg: (head) => startsWith(head, [0xff, 0xd8, 0xff]),
+  zip: (head) => startsWith(head, MAGIC.zip),
+  png: (head) => startsWith(head, MAGIC.png),
+  jpeg: (head) => startsWith(head, MAGIC.jpeg),
   gif: (head) =>
     startsWith(head, ascii('GIF87a')) || startsWith(head, ascii('GIF89a')),
   webp: (head) =>
-    startsWith(head, ascii('RIFF')) && startsWith(head, ascii('WEBP'), 8),
+    startsWith(head, ascii('RIFF')) &&
+    startsWith(head, ascii('WEBP'), MAGIC.riffForm),
   heic: (head) =>
-    startsWith(head, ascii('ftyp'), 4) &&
-    HEIC_BRANDS.has(String.fromCharCode(...head.subarray(8, 12))),
+    startsWith(head, ascii('ftyp'), MAGIC.boxType) &&
+    HEIC_BRANDS.has(
+      String.fromCharCode(
+        ...head.subarray(MAGIC.boxBrand.start, MAGIC.boxBrand.end),
+      ),
+    ),
   text: (head) => textStart(head) !== undefined,
   json: (head) => /^\uFEFF?\s*[[{"\-0-9tfn]/u.test(textStart(head) ?? ''),
   xml: (head) => /^\uFEFF?\s*</u.test(textStart(head) ?? ''),

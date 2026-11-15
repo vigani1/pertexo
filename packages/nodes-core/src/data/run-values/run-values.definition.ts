@@ -1,4 +1,8 @@
-import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
+import {
+  generateSchemaDocument,
+  type NodeManifest,
+  RUN_VALUE_LIMITS,
+} from '@pertexo/node-sdk';
 import { CORE_BOUNDED_JSON_POLICY } from '../../catalog/core-policies.js';
 import {
   CORE_RUN_VALUES_CONFIG_SCHEMA,
@@ -20,7 +24,7 @@ export const CORE_RUN_VALUES_MANIFEST: NodeManifest = Object.freeze({
   configSchema: generateSchemaDocument(CORE_RUN_VALUES_CONFIG_SCHEMA),
   inputSchema: generateSchemaDocument(CORE_RUN_VALUES_INPUT_SCHEMA, {
     runtimeOnlySemantics: [
-      'Save one to ten text key/value pairs. Keys use up to 50 ASCII characters; values use up to 255 characters. These values are visible with the run: use business data, never secrets.',
+      `Save one to ${String(RUN_VALUE_LIMITS.pairs)} text key/value pairs. Keys use up to ${String(RUN_VALUE_LIMITS.keyCharacters)} ASCII characters; values use up to ${String(RUN_VALUE_LIMITS.valueCharacters)} characters. These values are visible with the run: use business data, never secrets.`,
     ],
   }),
   outputSchema: generateSchemaDocument(CORE_RUN_VALUES_OUTPUT_SCHEMA),

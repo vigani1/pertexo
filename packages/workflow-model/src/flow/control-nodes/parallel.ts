@@ -19,7 +19,7 @@ export const PARALLEL_BRANCH_PORTS = Object.freeze([
   'branch-16',
 ] as const);
 // A parallel step that doesn't split is a plain sequence.
-const MINIMUM_PARALLEL_BRANCHES = 2;
+export const MINIMUM_PARALLEL_BRANCHES = 2;
 
 export const parallelBranchPortSchema = z.enum(PARALLEL_BRANCH_PORTS);
 export const parallelConfigSchema = z

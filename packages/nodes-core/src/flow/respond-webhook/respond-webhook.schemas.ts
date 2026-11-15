@@ -1,6 +1,7 @@
 import {
   isWebhookResponseHeaderAllowed,
   type SchemaJson,
+  WEBHOOK_RESPONSE_LIMITS,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
@@ -16,7 +17,12 @@ export const CORE_RESPOND_WEBHOOK_INPUT_SCHEMA = z
   .object({
     // The registry already snapshots bounded JSON; preserve body keys verbatim.
     body: z.unknown().nonoptional(),
-    statusCode: z.number().int().min(200).max(599).optional(),
+    statusCode: z
+      .number()
+      .int()
+      .min(WEBHOOK_RESPONSE_LIMITS.firstStatus)
+      .max(WEBHOOK_RESPONSE_LIMITS.lastStatus)
+      .optional(),
     headers: z
       .preprocess(
         (value, context) => {
@@ -37,19 +43,20 @@ export const CORE_RESPOND_WEBHOOK_INPUT_SCHEMA = z
             z
               .string()
               .min(1)
-              .max(64)
+              .max(WEBHOOK_RESPONSE_LIMITS.customHeaderNameCharacters)
               .refine(
                 isWebhookResponseHeaderAllowed,
                 'Use a safe named header or a non-reserved x- header.',
               ),
             z
               .string()
-              .max(1024)
+              .max(WEBHOOK_RESPONSE_LIMITS.headerValueCharacters)
               .regex(/^[\x20-\x7e]*$/u),
           )
           .refine(
-            (headers) => Object.keys(headers).length <= 16,
-            'Use at most 16 headers.',
+            (headers) =>
+              Object.keys(headers).length <= WEBHOOK_RESPONSE_LIMITS.headers,
+            `Use at most ${String(WEBHOOK_RESPONSE_LIMITS.headers)} headers.`,
           )
           .refine(
             (headers) =>
