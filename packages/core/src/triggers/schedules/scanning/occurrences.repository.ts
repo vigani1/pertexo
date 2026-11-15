@@ -1,26 +1,12 @@
 import type { ScheduleRunInput } from '../../../shared/trigger-run-input.schemas.js';
 import { admitInSavepoint } from '../../admission-savepoint.repository.js';
-import {
-  scheduleCanFire,
-  scheduleStandingColumns,
-} from '../schedule-standing.js';
+import { scheduleCanFire } from '../schedule-standing.js';
 import { scheduleFailureReason } from '../../trigger-failure.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
-import {
-  triggerSchedules as schedules,
-  triggerScheduleOccurrences as occurrences,
-  workflows,
-  workflowVersions,
-  workflowTriggers,
-  workspaces,
-} from '@pertexo/database/schema';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/run-admission.errors.js';
 import { recordWorkflowTriggerSkip } from '../../../runs/commands/acceptance/trigger-skips.repository.js';
 import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.types.js';
 import { createHash } from 'node:crypto';
-import { and, eq, sql } from 'drizzle-orm';
-
-import { generatePersistedId } from '@pertexo/database/platform';
 
 import { acceptWorkflowRun } from '../../../runs/commands/acceptance/accept.js';
 import { WorkspaceRunQuotaExceededError } from '../../../runs/commands/acceptance/run-admission.errors.js';
@@ -51,7 +37,14 @@ import type {
   ClaimedOccurrence,
   ScannerResources,
 } from './schedule-scanning.types.js';
-import { cancellationFailure } from './leases.repository.js';
+import { cancellationFailure } from './scan-failures.js';
+import {
+  advanceClaimedSchedule,
+  insertOccurrence,
+  lockLiveClaim,
+  readClaimedVersion,
+  readClaimStanding,
+} from './claims.repository.js';
 
 /**
  * Whether the claim still holds its lease and its trigger, workflow and
@@ -61,20 +54,8 @@ export async function isScheduleClaimEligible(
   transaction: WorkspaceTransaction,
   claim: Readonly<{ trigger_id: string; lease_token: string }>,
 ): Promise<boolean> {
-  const eligible = await transaction.db
-    .select(scheduleStandingColumns)
-    .from(schedules)
-    .innerJoin(workflowTriggers, eq(workflowTriggers.id, schedules.triggerId))
-    .innerJoin(workflows, eq(workflows.id, workflowTriggers.workflowId))
-    .innerJoin(workspaces, eq(workspaces.id, workflowTriggers.workspaceId))
-    .where(
-      and(
-        eq(schedules.triggerId, claim.trigger_id),
-        eq(schedules.leaseToken, claim.lease_token),
-        sql`${schedules.leaseExpiresAt}>clock_timestamp()`,
-      ),
-    );
-  return eligible[0] !== undefined && scheduleCanFire(eligible[0]);
+  const standing = await readClaimStanding(transaction, claim);
+  return standing !== undefined && scheduleCanFire(standing);
 }
 
 /**
@@ -89,23 +70,7 @@ async function admitScheduledRun(
 ): Promise<string> {
   if (!(await isScheduleClaimEligible(transaction, claim)))
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
-  const version = await transaction.db
-    .select({
-      id: workflowVersions.id,
-      workspaceId: workflowVersions.workspaceId,
-      workflowId: workflowVersions.workflowId,
-      versionNumber: workflowVersions.versionNumber,
-      checksum: workflowVersions.checksum,
-      executableJson: workflowVersions.executableJson,
-    })
-    .from(workflowVersions)
-    .where(
-      and(
-        eq(workflowVersions.workspaceId, claim.workspace_id),
-        eq(workflowVersions.id, claim.workflow_version_id),
-      ),
-    );
-  const published = version[0];
+  const published = await readClaimedVersion(transaction, claim);
   if (published === undefined)
     throw new ScheduleClaimLostError('Schedule is no longer eligible');
   const initial = checkpointFactory(published);
@@ -169,73 +134,19 @@ async function persistClaimedOccurrence(
     }
   }
   // Record the occurrence once, move the schedule on and release the lease.
-  const schedule = await transaction.db
-    .select({ one: sql`1` })
-    .from(schedules)
-    .where(
-      and(
-        eq(schedules.triggerId, claim.trigger_id),
-        eq(schedules.leaseToken, claim.lease_token),
-        sql`${schedules.leaseExpiresAt}>clock_timestamp()`,
-      ),
-    )
-    .for('update');
-  if (schedule.length !== 1)
-    throw new ScheduleClaimLostError('Schedule claim expired');
-  const recorded = await transaction.db
-    .insert(occurrences)
-    .values({
-      id: generatePersistedId(),
-      workspaceId: transaction.workspaceId,
-      triggerId: claim.trigger_id,
-      scheduledAt: occurrence.scheduledAt,
-      disposition,
-      workflowRunId: runId,
-      skipReason,
-    })
-    .onConflictDoNothing({
-      target: [occurrences.triggerId, occurrences.scheduledAt],
-    })
-    .returning({ id: occurrences.id });
-  if (skipReason !== null && recorded.length === 1)
+  const live = await lockLiveClaim(transaction, claim);
+  if (!live) throw new ScheduleClaimLostError('Schedule claim expired');
+  const recorded = await insertOccurrence(transaction, claim, {
+    occurrence,
+    disposition,
+    runId,
+    skipReason,
+  });
+  if (skipReason !== null && recorded)
     await recordWorkflowTriggerSkip(transaction, claim.workflow_id, 'schedule');
-  await transaction.db
-    .update(schedules)
-    .set({
-      lastFireAt: occurrence.scheduledAt,
-      nextFireAt: occurrence.nextAt,
-      leaseOwner: null,
-      leaseToken: null,
-      leaseAcquiredAt: null,
-      leaseExpiresAt: null,
-      admissionDeferredUntil: null,
-      healthStatus: 'healthy',
-      lastErrorCode: null,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(schedules.triggerId, claim.trigger_id),
-        eq(schedules.leaseToken, claim.lease_token),
-      ),
-    );
-  await transaction.db
-    .update(workflowTriggers)
-    .set({
-      healthStatus: 'healthy',
-      lastErrorCode: null,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workflowTriggers.id, claim.trigger_id),
-        eq(workflowTriggers.workspaceId, transaction.workspaceId),
-      ),
-    );
+  await advanceClaimedSchedule(transaction, claim, occurrence);
   return disposition;
 }
-
-/** The batch can't go on, and `cause` says why: the scan was cancelled, or a claim couldn't be retired. */
 
 /** Failing to retire a claim stops the batch, reporting what led here if anything did. */
 async function retireClaim(
