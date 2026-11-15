@@ -18,7 +18,8 @@ const SEALED_TEXT_LENGTH = Object.freeze({
   tag: 256,
 });
 
-const sealedSchema = z
+/** A sealed application secret as it is stored or carried. */
+export const applicationSealedSecretSchema = z
   .object({
     ciphertext: z.string().min(1).max(SEALED_TEXT_LENGTH.ciphertext),
     nonce: z.string().min(1).max(SEALED_TEXT_LENGTH.nonce),
@@ -27,7 +28,9 @@ const sealedSchema = z
   })
   .strict();
 
-export type ApplicationSealedSecret = z.output<typeof sealedSchema>;
+export type ApplicationSealedSecret = z.output<
+  typeof applicationSealedSecretSchema
+>;
 export type ApplicationSecretEnvelope = Readonly<{
   seal(plaintext: string, associatedData: string): ApplicationSealedSecret;
   open(sealed: unknown, associatedData: string): string;
@@ -64,7 +67,7 @@ export function createApplicationSecretEnvelope(
           cipher.update(input),
           cipher.final(),
         ]);
-        return sealedSchema.parse({
+        return applicationSealedSecretSchema.parse({
           ciphertext: ciphertext.toString('base64url'),
           nonce: nonce.toString('base64url'),
           tag: cipher.getAuthTag().toString('base64url'),
@@ -76,7 +79,7 @@ export function createApplicationSecretEnvelope(
       }
     },
     open: (raw, associatedData) => {
-      const sealed = sealedSchema.parse(raw);
+      const sealed = applicationSealedSecretSchema.parse(raw);
       assertBounded(associatedData, MAX_ASSOCIATED_DATA_BYTES);
       const key = keys.get(sealed.keyVersion);
       if (key === undefined)
