@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { acquireApiRuntimes } from '../../src/api-runtimes.js';
+import { acquireApiRuntimes } from '../../src/platform/api.runtime.js';
 import type { ApiConfig } from '../../src/platform/config/api-config.js';
 import type { ApiIdentityConfig } from '../../src/platform/config/identity-config.js';
 import { silentLogger } from '../support/silent-logger.js';

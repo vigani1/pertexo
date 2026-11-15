@@ -13,7 +13,7 @@ import {
   cleanupApiRuntimes,
   throwStartupFailure,
   type ApiApplicationDependencies,
-} from './api-runtimes.js';
+} from './platform/api.runtime.js';
 import type { ApiRuntimeSet } from './platform/api-application.types.js';
 import { AppModule } from './app.module.js';
 import { configuredSocialProviders } from './authentication/index.js';
@@ -33,7 +33,7 @@ import {
   registerBetterAuthHandler,
 } from './authentication/better-auth/better-auth-transport.js';
 
-export type { ApiApplicationDependencies } from './api-runtimes.js';
+export type { ApiApplicationDependencies } from './platform/api.runtime.js';
 
 const HTTP_RECEIVE_TIMEOUT_MS = 30_000;
 

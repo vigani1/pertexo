@@ -1,6 +1,6 @@
 import { ConnectionSharingController } from './sharing/connection-sharing.controller.js';
 import { ConnectionSharingServices } from './sharing/connection-sharing.service.js';
-import { UnconfiguredConnectionsController } from './http/unavailable.js';
+import { UnconfiguredConnectionsController } from './http/unavailable.controller.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
@@ -9,7 +9,7 @@ import { ConnectionsController } from './http/connections.controller.js';
 import { ConnectionOAuth2Controller } from './oauth2/connection-o-auth2.controller.js';
 import { FinishOAuth2AuthorizationService } from './oauth2/finish-authorization.js';
 import { StartOAuth2AuthorizationService } from './oauth2/start-authorization.js';
-import { ConnectionUsageController } from './http/usage.js';
+import { ConnectionUsageController } from './http/usage.controller.js';
 import { ListConnectionUsageService } from './management/connection-usage.js';
 import { FailureNotificationDestinationsController } from './failure-notifications/failure-notification-destinations.controller.js';
 import { FailureNotificationDestinationServices } from './failure-notifications/destinations.js';

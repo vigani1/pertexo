@@ -16,7 +16,7 @@ import { WEBHOOK_PREFLIGHT } from './tokens.js';
 import {
   UnconfiguredWebhooksController,
   UnconfiguredWebhookTestsController,
-} from './management/unavailable.js';
+} from './management/unavailable.controller.js';
 
 @Module({})
 // Nest dynamic modules require a class container.

@@ -452,7 +452,7 @@ test('keeps runtime entry points and named native/language modules', () => {
     'apps/worker/src/main.ts',
     'apps/worker/src/testing.ts',
     'apps/ops/src/identity/main.ts',
-    'apps/cli/src/automation-http-client.ts',
+    'apps/cli/src/http/automation-http-client.ts',
     'apps/code-runner/native/launch.c',
     'apps/code-runner/python/task.py',
     'infrastructure/single-server/release-operations.sh',

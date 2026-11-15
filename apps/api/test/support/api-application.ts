@@ -5,7 +5,7 @@ import {
   cleanupApiRuntimes,
   throwStartupFailure,
   type ApiApplicationDependencies,
-} from '../../src/api-runtimes.js';
+} from '../../src/platform/api.runtime.js';
 import { assembleApiApplication } from '../../src/app.js';
 import type { ApiRuntimeSet } from '../../src/platform/api-application.types.js';
 import { createApiArtifactRuntime } from '../../src/platform/artifacts/artifacts-runtime.module.js';

@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import type { AutomationHttpConfig } from './automation-http-config.js';
-import { AutomationCommandError } from './automation-command.errors.js';
-import { MAX_COMMAND_BYTES } from './command-json-file.js';
+import type { AutomationHttpConfig } from '../config/automation-http-config.js';
+import { AutomationCommandError } from '../commands/automation-command.errors.js';
+import { MAX_COMMAND_BYTES } from '../commands/command-json-file.js';
 
 const MAX_RESPONSE_BYTES = 16 * 1_024 * 1_024;
 const REQUEST_TIMEOUT_MS = 30_000;
