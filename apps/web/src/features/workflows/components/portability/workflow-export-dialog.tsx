@@ -29,7 +29,7 @@ import {
   readExportSource,
 } from '../../data/portability/workflow-export';
 import { downloadPortableWorkflow } from '../../model/portability';
-import { usePortabilityLifetime } from './use-portability-lifetime';
+import { usePortabilityLifetime } from '../../data/portability/portability-lifetime';
 import { PortableGraphReview } from './portable-graph-review';
 import { PortabilityAccessDeniedDialog } from './access-denied-dialog';
 

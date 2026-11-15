@@ -10,7 +10,7 @@ import { describeCommandError } from '@/lib/api/error-copy';
 import { workflowNameError } from '../../model/rename';
 import { readPortableWorkflowFile } from '../../model/portability';
 import { previewWorkflowImport } from './workflow-portability.api';
-import type { usePortabilityLifetime } from '../../components/portability/use-portability-lifetime';
+import type { usePortabilityLifetime } from './portability-lifetime';
 import type { useWorkflowImportCommand } from './mutations';
 import {
   setupValueError,
