@@ -8,17 +8,11 @@ import {
   dataTableValuesSchema,
   escapeCsvValue,
 } from '@pertexo/node-sdk';
-import { and, eq, gt, lte, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
 import type { ExportTableInput } from './data-table-commands.types.js';
 import { requireTable } from './table-lookups.repository.js';
-import { queryClause } from './rows/find.repository.js';
+import { queryClause, readExportBatch } from './rows/find.repository.js';
 
-const BATCH_ROWS = 256;
-const BATCH_BYTES = 4 * 1024 * 1024;
 type ExportRead = <T>(work: (client: PoolClient) => Promise<T>) => Promise<T>;
 
 export async function exportTable(read: ExportRead, input: ExportTableInput) {
@@ -68,43 +62,12 @@ function exportTableCsv(
             'conflict',
             'The table columns changed during export. Download it again.',
           );
-        // The candidate set is bounded on the server; only the byte-bounded prefix
-        // crosses the wire. Even a maximum-size row fits this prefix.
-        const db = drizzle(client);
-        const candidates = db.$with('candidates').as(
-          db
-            .select({ id: rows.id, valuesText: rows.values })
-            .from(rows)
-            .where(
-              and(
-                eq(rows.workspaceId, workspaceId),
-                eq(rows.tableId, table.id),
-                where,
-                after === null ? undefined : gt(rows.id, after),
-              ),
-            )
-            .orderBy(rows.id)
-            .limit(BATCH_ROWS),
-        );
-        const sized = db.$with('sized').as(
-          db
-            .select({
-              id: candidates.id,
-              valuesText: candidates.valuesText,
-              bytes:
-                sql<number>`sum(octet_length(${candidates.valuesText})) over (order by ${candidates.id})`.as(
-                  'bytes',
-                ),
-            })
-            .from(candidates),
-        );
-        return db
-          .with(candidates, sized)
-          .select({ id: sized.id, valuesText: sized.valuesText })
-          .from(sized)
-          .where(lte(sized.bytes, BATCH_BYTES))
-          .orderBy(sized.id)
-          .catch(rethrowQueryFailure);
+        return readExportBatch(client, {
+          workspaceId,
+          tableId: table.id,
+          where,
+          after,
+        });
       });
       if (batch.length === 0) return;
       for (const row of batch) {
