@@ -12,7 +12,7 @@ import {
   getWorkflowDraft,
   workflowDraftKeys,
 } from '@/features/workflow-editor/workflow-editor-queries.public';
-import { restoreWorkflowVersion } from '@/features/workflow-versions/public';
+import { restoreWorkflowVersion } from '@/features/workflow-versions/workflow-versions-queries.public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';

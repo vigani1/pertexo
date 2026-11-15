@@ -5,10 +5,7 @@ import { useFieldValues } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  changeAccountPassword,
-  setupAccountPassword,
-} from '../../data/account-security.api';
+import { saveAccountPassword } from '../../data/account-security.mutations';
 import { accountSecurityKeys } from '../../data/account-security.queries';
 import {
   confirmationProblem,
@@ -65,13 +62,11 @@ export function AccountPasswordSection({
     const { current, password } = values;
     setFailure(undefined);
     try {
-      if (hasPassword)
-        await changeAccountPassword(
-          apiClient,
-          { currentPassword: current, newPassword: password },
-          request.signal,
-        );
-      else await setupAccountPassword(apiClient, password, request.signal);
+      await saveAccountPassword(
+        apiClient,
+        { hasPassword, current, password },
+        request.signal,
+      );
       if (!request.isCurrent()) return;
       fields.reset();
       notifications.success({

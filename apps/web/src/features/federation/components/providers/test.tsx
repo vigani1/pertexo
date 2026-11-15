@@ -12,7 +12,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { startOrganizationProviderTest } from '../../data/sign-in.api';
+import { beginProviderTest } from '../../data/sign-in-journeys';
 import type { FederationScope } from '../../data/federation-settings.api';
 type Organization = NonNullable<FederationSettings['organization']>;
 export function TestProvider({
@@ -41,11 +41,11 @@ export function TestProvider({
     const attempt = requests.begin();
     setError(undefined);
     try {
-      const url = await startOrganizationProviderTest(
-        scope.apiClient,
-        { workspaceId: scope.workspaceId, providerId: provider.id, domainId },
+      const url = await beginProviderTest(
+        scope,
+        provider,
+        domainId,
         attempt.signal,
-        provider.kind,
       );
       if (attempt.isCurrent()) navigateToProvider(url);
     } catch (cause: unknown) {

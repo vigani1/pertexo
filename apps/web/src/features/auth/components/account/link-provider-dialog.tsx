@@ -16,7 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { isApiError, isSessionExpired } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { startAccountLink } from '../../data/account-security.api';
+import { beginAccountLink } from '../../data/account-security.mutations';
 import { currentPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
@@ -167,7 +167,7 @@ export function LinkProviderDialog({
     const request = requests.begin();
     setFailure(undefined);
     try {
-      const url = await startAccountLink(
+      const url = await beginAccountLink(
         apiClient,
         { provider: target, existingMethod },
         request.signal,

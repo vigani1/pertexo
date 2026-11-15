@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { DownloadIcon } from 'lucide-react';
 import type { AccessibleWorkspace, AuditFilter } from '@pertexo/contracts';
@@ -11,12 +10,12 @@ import {
 import { RecentLog } from '@/components/patterns/lists/recent-log';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { describeCommandError } from '@/lib/api/error-copy';
 import { GovernanceSettings } from '../components/governance-settings';
 import { AuditFilters } from '../components/audit-filters';
 import { AuditEntry } from '../components/audit-entry';
 import { auditQueryOptions } from '../data/audit.queries';
-import { exportAudit, type GovernanceScope } from '../data/audit.api';
+import type { GovernanceScope } from '../data/audit.api';
+import { useAuditExport } from '../data/audit-export';
 import { auditActionWords } from '../model/audit-ledger';
 import { whoCan } from '@/features/workspaces/public';
 
@@ -37,7 +36,8 @@ export function AuditPage({
     ...auditQueryOptions(scope, filters),
     enabled: allowed,
   });
-  const [downloadError, setDownloadError] = useState<string>();
+  const auditExport = useAuditExport(scope);
+  const downloadError = auditExport.error;
   if (!allowed)
     return (
       <div className="flex min-w-0 max-w-4xl flex-col gap-8">
@@ -69,14 +69,7 @@ export function AuditPage({
             size="sm"
             title="Up to 100,000 matching events as a file"
             onClick={() => {
-              setDownloadError(undefined);
-              try {
-                exportAudit(scope, filters);
-              } catch (error) {
-                setDownloadError(
-                  describeCommandError(error, 'starting the audit download'),
-                );
-              }
+              auditExport.start(filters);
             }}
           >
             <DownloadIcon aria-hidden="true" data-icon="inline-start" />

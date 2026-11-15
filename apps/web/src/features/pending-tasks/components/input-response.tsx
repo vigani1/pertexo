@@ -2,13 +2,16 @@ import { useState } from 'react';
 import type { PendingTaskDetail } from '@pertexo/contracts';
 import type { FormValues } from '@pertexo/workflow-model';
 import { FormResponse } from '@/features/forms/forms-views.public';
-import { newUploadSession } from '@/features/forms/public';
+import { newUploadSession } from '@/features/forms/forms-queries.public';
 import { ResponseFiles } from '@/features/artifacts/artifacts-views.public';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format/time';
-import { useTaskResponse } from '../data/task-response.mutations';
-import { taskUploadTarget, type TaskScope } from '../data/tasks.api';
+import {
+  useTaskResponse,
+  useTaskUploadTarget,
+} from '../data/task-response.mutations';
+import type { TaskScope } from '../data/tasks.api';
 import { blockedSentence } from '../model/task-presentation';
 export function InputResponse({
   task,
@@ -20,6 +23,7 @@ export function InputResponse({
   // One response session: the files attached here and the response share it.
   const [session] = useState(newUploadSession);
   const command = useTaskResponse(scope, task.id, session);
+  const uploads = useTaskUploadTarget(scope, task.id, session);
   return (
     <div className="flex flex-col gap-4">
       {task.output === null ? null : (
@@ -57,7 +61,7 @@ export function InputResponse({
           initialValues={task.prefill}
           pending={command.pending}
           disabled={!task.canRespond || command.uncertain}
-          uploads={taskUploadTarget(scope, task.id, session)}
+          uploads={uploads}
           onSubmit={(values) => command.send({ values })}
         />
       ) : null}

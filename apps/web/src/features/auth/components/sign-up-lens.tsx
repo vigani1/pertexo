@@ -7,7 +7,7 @@ import { emailProblem, newPasswordProblem } from '../forms/field-rules';
 import { PasswordField } from '../forms/password-field';
 import { signUpFailure } from '../model/auth-failure';
 import { returnToSearch } from '../model/return-path';
-import { signUpWithEmail } from '../data/native-auth.api';
+import { signUp } from '../data/native-auth-flows';
 import { useAuthRequest } from '../hooks/use-auth-request';
 import {
   AuthLens,
@@ -65,17 +65,7 @@ export function SignUpLens({
           onSubmit: () =>
             void request.submit(
               fields.validate,
-              (values, signal) =>
-                signUpWithEmail(
-                  apiClient,
-                  {
-                    displayName: values.name.trim(),
-                    email: values.email.trim(),
-                    password: values.password,
-                    returnTo,
-                  },
-                  signal,
-                ),
+              (values, signal) => signUp(apiClient, values, returnTo, signal),
               (values) => {
                 fields.reset({ ...values, password: '' });
                 onCreated(values.email.trim());

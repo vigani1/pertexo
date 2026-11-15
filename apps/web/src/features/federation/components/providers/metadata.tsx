@@ -1,3 +1,4 @@
+import { readSamlMetadataFile } from '../../data/saml-metadata';
 import { useState } from 'react';
 import { samlServiceProviderUrls } from '@pertexo/contracts';
 import { CopyButton } from '@/components/ui/copy-button';
@@ -5,10 +6,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { describeCommandError } from '@/lib/api/error-copy';
-import {
-  readSamlMetadata,
-  type FederationScope,
-} from '../../data/federation-settings.api';
+import type { FederationScope } from '../../data/federation-settings.api';
 import { downloadTextFile } from '@/lib/download-file';
 import { Disclosure } from '@/components/ui/disclosure';
 function MetadataValue({
@@ -47,14 +45,8 @@ export function SamlMetadata({
     const attempt = request.begin();
     setError(undefined);
     try {
-      const metadata = await readSamlMetadata(scope, attempt.signal);
-      // Only the bounded public metadata the authenticated API returned.
-      if (attempt.isCurrent())
-        downloadTextFile({
-          name: 'pertexo-saml.xml',
-          type: 'application/samlmetadata+xml',
-          text: metadata.xml,
-        });
+      const file = await readSamlMetadataFile(scope, attempt.signal);
+      if (attempt.isCurrent()) downloadTextFile(file);
     } catch (cause) {
       if (attempt.isCurrent())
         setError(describeCommandError(cause, 'downloading SAML metadata'));

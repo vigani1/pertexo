@@ -1,7 +1,7 @@
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { getAllConnections } from '@/features/connections/data/connections.api';
-import { getAllWorkflowVersions } from '@/features/workflow-versions/public';
+import { getAllWorkflowVersions } from '@/features/workflow-versions/workflow-versions-queries.public';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../support/mock-server';
 import { testFetch } from '../support/render-app';

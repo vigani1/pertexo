@@ -2,9 +2,9 @@ import { isAccessLost } from '@/lib/api/error-copy';
 import { useEffect, useRef, useState } from 'react';
 import {
   normalizeRunIntent,
-  startWorkflowRun,
   type RunIntent,
 } from '@/features/workflow-runs/public';
+import { startWorkflowRun } from '@/features/workflow-runs/workflow-runs-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-queries.public';
 import { ApiError, isApiError } from '@/lib/api/error';

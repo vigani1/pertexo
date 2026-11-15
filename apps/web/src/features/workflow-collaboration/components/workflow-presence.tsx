@@ -7,17 +7,13 @@ import {
 } from '@/components/ui/popover';
 import type { EditorPresenceSource } from '@/features/workflow-editor/public';
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { COLLABORATION_LIMITS } from '@pertexo/contracts';
+import { useQuery } from '@tanstack/react-query';
 import { Notice } from '@/components/ui/notice';
 import { formatInitials } from '@/lib/format/initials';
 import { cn } from '@/lib/class-names';
 import { Status } from '@/components/ui/status';
-import {
-  heartbeatPresence,
-  leavePresence,
-  type CollaborationScope,
-} from '../data/collaboration.api';
+import type { CollaborationScope } from '../data/collaboration.api';
+import { presenceTabId, usePresenceLease } from '../data/presence-lease';
 import { presenceQuery } from '../data/collaboration.queries';
 import {
   PresenceContext,
@@ -25,12 +21,6 @@ import {
 } from '../model/discussion-context';
 import { VIEWING_PRESENCE, type EditingPresence } from '../model/presence';
 import { pluralWord } from '@/lib/format/count';
-// One identity per page load, never carried over: sessionStorage would hand it to a
-// duplicated tab, hiding that real other tab's unsaved work, and the lease's sequence
-// restarts with the page. Route remounts retain the lease; pagehide ends it.
-const tabId = crypto.randomUUID();
-let sequence = 0;
-
 export function WorkflowPresenceProvider({
   scope,
   paused = false,
@@ -42,69 +32,27 @@ export function WorkflowPresenceProvider({
   children: ReactNode;
 }) {
   const state = useRef(VIEWING_PRESENCE);
-  const renew = useRef<(() => void) | undefined>(undefined);
-  const cache = useQueryClient();
   const { apiClient, userId, workspaceId, workflowId } = scope;
   const stableScope = useMemo(
     () => ({ apiClient, userId, workspaceId, workflowId }),
     [apiClient, userId, workspaceId, workflowId],
   );
-  const report = useCallback((next: EditingPresence) => {
-    if (
-      state.current.editing === next.editing &&
-      state.current.dirty === next.dirty &&
-      state.current.baseRevision === next.baseRevision
-    )
-      return;
-    state.current = next;
-    renew.current?.();
-  }, []);
-  useEffect(() => {
-    if (paused) return;
-    const controller = new AbortController();
-    const heartbeat = () => {
-      if (document.visibilityState !== 'visible') return;
-      void heartbeatPresence(
-        stableScope,
-        tabId,
-        { ...state.current, sequence: ++sequence },
-        controller.signal,
+  const renew = usePresenceLease(stableScope, state, paused);
+  const report = useCallback(
+    (next: EditingPresence) => {
+      if (
+        state.current.editing === next.editing &&
+        state.current.dirty === next.dirty &&
+        state.current.baseRevision === next.baseRevision
       )
-        .then(() => {
-          if (!controller.signal.aborted)
-            void cache.invalidateQueries({
-              queryKey: presenceQuery(stableScope, tabId).queryKey,
-            });
-        })
-        .catch(() => {
-          /* Advisory presence expires; draft saves retain their own authority. */
-        });
-    };
-    renew.current = heartbeat;
-    heartbeat();
-    const timer = window.setInterval(
-      heartbeat,
-      COLLABORATION_LIMITS.heartbeatMs,
-    );
-    const leave = () => {
-      void leavePresence(stableScope, tabId).catch(() => {
-        /* The lease expires by itself; this only ends it sooner. */
-      });
-    };
-    document.addEventListener('visibilitychange', heartbeat);
-    window.addEventListener('online', heartbeat);
-    window.addEventListener('pagehide', leave);
-    return () => {
-      renew.current = undefined;
-      controller.abort();
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', heartbeat);
-      window.removeEventListener('online', heartbeat);
-      window.removeEventListener('pagehide', leave);
-    };
-  }, [stableScope, cache, paused]);
+        return;
+      state.current = next;
+      renew.current?.();
+    },
+    [renew],
+  );
   const value = useMemo(
-    () => ({ scope: stableScope, tabId, report }),
+    () => ({ scope: stableScope, tabId: presenceTabId, report }),
     [stableScope, report],
   );
   return <PresenceContext value={value}>{children}</PresenceContext>;

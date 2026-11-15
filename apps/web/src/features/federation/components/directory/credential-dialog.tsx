@@ -21,7 +21,7 @@ import { Status } from '@/components/ui/status';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { createDirectoryCredential } from '../../data/directory.api';
+import { issueDirectoryCredential } from '../../data/directory.mutations';
 import type { FederationScope } from '../../data/federation-settings.api';
 
 type View =
@@ -64,10 +64,9 @@ export function DirectoryCredentialDialog({
     const attempt = request.begin();
     setView({ kind: 'form' });
     try {
-      const result = await createDirectoryCredential(
+      const result = await issueDirectoryCredential(
         scope,
         input.data,
-        crypto.randomUUID(),
         attempt.signal,
       );
       if (!attempt.isCurrent()) return;

@@ -6,12 +6,18 @@ import {
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import type { FormValues } from '@pertexo/workflow-model';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { FormUploadTarget } from '@/features/forms/forms-queries.public';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PendingTaskDecisionRequest } from '@pertexo/contracts';
 import { describeCommandError } from '@/lib/api/error-copy';
 import { isApiError } from '@/lib/api/error';
-import { decideTask, submitTask, type TaskScope } from './tasks.api';
+import {
+  decideTask,
+  submitTask,
+  taskUploadTarget,
+  type TaskScope,
+} from './tasks.api';
 import { taskKeys, taskQueryOptions } from './tasks.queries';
 type TaskResponse =
   PendingTaskDecisionRequest | Readonly<{ values: FormValues }>;
@@ -130,4 +136,16 @@ export function useTaskResponse(
       if (intent.current !== undefined) void send(intent.current.body);
     },
   };
+}
+
+/** Where an input request's files go, bound to its response session. */
+export function useTaskUploadTarget(
+  scope: TaskScope,
+  taskId: string,
+  session: string,
+): FormUploadTarget {
+  return useMemo(
+    () => taskUploadTarget(scope, taskId, session),
+    [scope, taskId, session],
+  );
 }

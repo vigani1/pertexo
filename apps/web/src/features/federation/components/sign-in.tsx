@@ -14,9 +14,9 @@ import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import {
-  discoverOrganizationSignIn,
-  startOrganizationSignIn,
-} from '../data/sign-in.api';
+  beginOrganizationSignIn,
+  discoverDomainSignIn,
+} from '../data/sign-in-journeys';
 export function OrganizationSignInForm({
   apiClient,
   returnTo,
@@ -52,7 +52,7 @@ export function OrganizationSignInForm({
     setFailure(undefined);
     try {
       const domain = federationDomainNameSchema.parse(values.domain),
-        discovery = await discoverOrganizationSignIn(
+        discovery = await discoverDomainSignIn(
           apiClient,
           domain,
           attempt.signal,
@@ -80,15 +80,10 @@ export function OrganizationSignInForm({
     const attempt = request.begin();
     setFailure(undefined);
     try {
-      const url = await startOrganizationSignIn(
+      const url = await beginOrganizationSignIn(
         apiClient,
-        {
-          providerId,
-          domain: found.domain,
-          ...(returnTo === undefined ? {} : { returnPath: returnTo }),
-        },
+        { providerId, domain: found.domain, protocol, returnTo },
         attempt.signal,
-        protocol,
       );
       if (attempt.isCurrent()) navigateToProvider(url);
     } catch {

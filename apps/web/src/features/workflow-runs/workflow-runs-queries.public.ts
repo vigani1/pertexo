@@ -18,3 +18,4 @@ export {
 } from './data/detail.queries';
 export { workflowRunKeys } from './data/query-cache';
 export { nodeRunOutputQueryOptions } from './data/stored-values.queries';
+export { startWorkflowRun } from './data/workflow-runs.api';

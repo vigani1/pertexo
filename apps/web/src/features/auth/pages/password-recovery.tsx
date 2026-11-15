@@ -7,7 +7,7 @@ import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
 import { AuthLensFooter } from '../components/stage/auth-lens';
 import { PasswordCapabilityGate } from '../components/stage/lens-states';
 import { recoveryFailure } from '../model/auth-failure';
-import { requestPasswordReset } from '../data/native-auth.api';
+import { sendPasswordReset } from '../data/native-auth-flows';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 
 const backToSignIn = (
@@ -36,7 +36,7 @@ export function PasswordRecoveryPage({
             <EmailRequestLens
               id="recovery"
               send={(email, signal) =>
-                requestPasswordReset(apiClient, email, signal)
+                sendPasswordReset(apiClient, email, signal)
               }
               describeFailure={recoveryFailure}
               onSent={(email) => {
@@ -56,9 +56,7 @@ export function PasswordRecoveryPage({
             <InboxLens
               title="Check your inbox"
               cooldown={cooldown}
-              resend={(signal) =>
-                requestPasswordReset(apiClient, sentTo, signal)
-              }
+              resend={(signal) => sendPasswordReset(apiClient, sentTo, signal)}
               resendLabel="Send again"
               footer={
                 <AuthLensFooter className="flex flex-wrap justify-center gap-x-4">

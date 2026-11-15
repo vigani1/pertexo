@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormField } from '@pertexo/workflow-model';
 import { isApiError } from '@/lib/api/error';
-import { digestFile, transferFile } from '@/features/artifacts/public';
-import type { FormUploadTarget } from './form-uploads.api';
+import { digestFile } from '@/features/artifacts/public';
+import { transferFile } from '@/features/artifacts/artifacts-queries.public';
+import { formUploadTarget, type FormUploadTarget } from './form-uploads.api';
+import type { FormScope } from './forms.api';
 import { chosenFileProblem, type FileField } from '../model/form-files';
 import {
   uploadFailure,
@@ -226,4 +228,16 @@ async function upload(
   show({ phase: 'verifying' });
   await target.finalize(uploadId, signal);
   return uploadId;
+}
+
+/** Where a published form's files go, bound to its response session. */
+export function useFormUploadTarget(
+  scope: FormScope,
+  versionId: string,
+  session: string,
+): FormUploadTarget {
+  return useMemo(
+    () => formUploadTarget(scope, versionId, session),
+    [scope, versionId, session],
+  );
 }

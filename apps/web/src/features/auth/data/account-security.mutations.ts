@@ -1,7 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
+import type { AccountSecurityLinkStartRequest } from '@pertexo/contracts';
 import {
+  changeAccountPassword,
   requestAccountEmailChange,
+  setupAccountPassword,
+  startAccountLink,
   revokeAccountSecuritySession,
   revokeOtherAccountSecuritySessions,
   unlinkAccountSecurityMethod,
@@ -55,4 +59,31 @@ export function useRequestAccountEmailChange(apiClient: ApiClient) {
     mutationFn: (newEmail: string) =>
       requestAccountEmailChange(apiClient, newEmail),
   });
+}
+
+/**
+ * Saves the account password: a change needs the current one, and an
+ * account that signs in only through a provider sets its first.
+ */
+export function saveAccountPassword(
+  apiClient: ApiClient,
+  input: Readonly<{ hasPassword: boolean; current: string; password: string }>,
+  signal: AbortSignal,
+) {
+  return input.hasPassword
+    ? changeAccountPassword(
+        apiClient,
+        { currentPassword: input.current, newPassword: input.password },
+        signal,
+      )
+    : setupAccountPassword(apiClient, input.password, signal);
+}
+
+/** Starts linking a sign-in method; the answer is the provider's address. */
+export function beginAccountLink(
+  apiClient: ApiClient,
+  input: AccountSecurityLinkStartRequest,
+  signal: AbortSignal,
+) {
+  return startAccountLink(apiClient, input, signal);
 }
