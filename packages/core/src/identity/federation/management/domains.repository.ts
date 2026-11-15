@@ -23,9 +23,13 @@ import type {
 } from './federation-management.types.js';
 import { requireResourceCapacity } from './organizations.repository.js';
 
+// A domain's verification challenge, and how long it can be answered.
+const CHALLENGE_BYTES = 32;
+const CHALLENGE_LIFETIME = sql.raw("interval '7 days'");
+
 const newDomainChallenge = () => ({
-  challenge: randomBytes(32).toString('base64url'),
-  challengeExpiresAt: sql`clock_timestamp()+interval '7 days'`,
+  challenge: randomBytes(CHALLENGE_BYTES).toString('base64url'),
+  challengeExpiresAt: sql`clock_timestamp()+${CHALLENGE_LIFETIME}`,
 });
 
 export async function requireOrganizationDomain(

@@ -18,6 +18,9 @@ import {
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { recordIdentitySecurityFact } from './facts.repository.js';
 
+// An account-link intent must be completed within this.
+const LINK_INTENT_LIFETIME = sql.raw("interval '5 minutes'");
+
 type ProviderName = 'google' | 'github' | 'microsoft' | 'apple';
 type ProviderIdentity = Readonly<{
   accountId: string;
@@ -64,7 +67,7 @@ export class AccountLinkingCommands {
       .insert(authMethodLinkAttempts)
       .values({
         ...input,
-        expiresAt: sql`clock_timestamp()+interval '5 minutes'`,
+        expiresAt: sql`clock_timestamp()+${LINK_INTENT_LIFETIME}`,
       });
   }
 

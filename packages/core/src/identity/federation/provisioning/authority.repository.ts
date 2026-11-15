@@ -19,6 +19,9 @@ import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
 import { DirectoryError } from './directory.errors.js';
 import type { DirectoryPrincipal } from './directory-provisioning.types.js';
 
+// A credential's last use is written at most this often.
+const LAST_USED_WRITE_INTERVAL = sql.raw("interval '1 minute'");
+
 /** Workspace locks precede organization and member locks in every identity writer. */
 export async function lockDirectoryOrganization(
   client: PoolClient,
@@ -176,7 +179,7 @@ export function withDirectoryTransaction<T>(
           eq(authProvisioningCredentials.id, principal.credentialId),
           or(
             isNull(authProvisioningCredentials.lastUsedAt),
-            sql`${authProvisioningCredentials.lastUsedAt}<clock_timestamp()-interval '1 minute'`,
+            sql`${authProvisioningCredentials.lastUsedAt}<clock_timestamp()-${LAST_USED_WRITE_INTERVAL}`,
           ),
         ),
       )

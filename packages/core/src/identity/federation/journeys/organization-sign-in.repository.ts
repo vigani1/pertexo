@@ -40,6 +40,9 @@ import type {
   FederationCompletion,
 } from './federation-journey.types.js';
 
+// An organization sign-in must come back from its provider within this.
+const JOURNEY_LIFETIME = sql.raw("interval '5 minutes'");
+
 /**
  * Sign-in has no member behind it, so all but the owner's provider test stay
  * off `withWorkspaceAccess`. `start` learns the workspace from the provider and
@@ -216,7 +219,7 @@ export class OrganizationSignInCommands {
           requestCreatedAt: sql<Date | null>`null::timestamptz`.as(
             'request_created_at',
           ),
-          expiresAt: sql<Date>`clock_timestamp()+interval '5 minutes'`.as(
+          expiresAt: sql<Date>`clock_timestamp()+${JOURNEY_LIFETIME}`.as(
             'expires_at',
           ),
           consumedAt: sql<Date | null>`null::timestamptz`.as('consumed_at'),

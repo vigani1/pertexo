@@ -1,36 +1,14 @@
-import { canonicalEmail } from './email-policy.js';
-import { eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
 
-import { users } from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { withPlatformTransaction } from '@pertexo/database/platform';
+import {
+  hasPendingInvitation,
+  hasVerifiedAccount,
+  lockFirstAccount,
+} from './sign-up.repository.js';
 
 /** `invitation` closes sign-up once the install has its first verified account. */
 export type SignUpMode = 'invitation' | 'open';
-
-async function hasVerifiedAccount(client: PoolClient): Promise<boolean> {
-  const [row] = await drizzle(client)
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.emailVerified, true))
-    .limit(1)
-    .catch(rethrowQueryFailure);
-  return row !== undefined;
-}
-
-async function hasPendingInvitation(
-  client: PoolClient,
-  email: string,
-): Promise<boolean> {
-  const result = await drizzle(client)
-    .execute<{ pending: boolean }>(
-      sql`select app.has_pending_invitation(${canonicalEmail(email)}) as pending`,
-    )
-    .catch(rethrowQueryFailure);
-  return result.rows[0]?.pending ?? false;
-}
 
 async function admits(
   client: PoolClient,
@@ -55,11 +33,7 @@ export async function admitNewAccount(
   email: string,
 ): Promise<boolean> {
   if (mode === 'open') return true;
-  await drizzle(client)
-    .execute(
-      sql`select pg_advisory_xact_lock(hashtextextended('install-first-account',0))`,
-    )
-    .catch(rethrowQueryFailure);
+  await lockFirstAccount(client);
   return admits(client, mode, email);
 }
 
