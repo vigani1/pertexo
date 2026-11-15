@@ -1,4 +1,5 @@
-import { isApiError, type ApiError } from '@/lib/api/error';
+import { NativeAuthenticationError } from './native-auth.errors';
+import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { verifiedSignInPath } from '../model/return-path';
 import type { SocialProvider } from '../model/social-provider';
@@ -8,31 +9,6 @@ import {
   nativeSignInResponseSchema,
   socialSignInStartedSchema,
 } from '@pertexo/contracts';
-
-export class NativeAuthenticationError extends Error {
-  public readonly status: number | undefined;
-  public readonly code: string | undefined;
-  public readonly kind: ApiError['kind'] | undefined;
-  /** Bounded Retry-After from a rate-limited response. */
-  public readonly retryAfterMs: number | undefined;
-
-  public constructor(
-    message: string,
-    options: Readonly<{
-      status?: number | undefined;
-      code?: string | undefined;
-      kind?: ApiError['kind'] | undefined;
-      retryAfterMs?: number | undefined;
-    }> = {},
-  ) {
-    super(message);
-    this.name = 'NativeAuthenticationError';
-    this.status = options.status;
-    this.code = options.code;
-    this.kind = options.kind;
-    this.retryAfterMs = options.retryAfterMs;
-  }
-}
 
 type RequestInput<Value> = Readonly<{
   decode: (value: unknown) => Value;

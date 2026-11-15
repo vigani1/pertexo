@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import type { DataTableQuery } from '@pertexo/node-sdk';
 import { DownloadIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
-import { describeCommandError } from '@/lib/api/error-copy';
-import { exportRows, type TableScope } from '../data/tables.api';
+import type { TableScope } from '../data/tables.api';
+import { useTableExport } from '../data/tables-export';
 
 export function ExportTableRows({
   scope,
@@ -16,14 +15,10 @@ export function ExportTableRows({
   table: DataTableDefinition;
   query: DataTableQuery;
 }>) {
-  const [error, setError] = useState<string>();
+  const exporter = useTableExport(scope, table.id);
+  const { error } = exporter;
   function download({ filtered }: Readonly<{ filtered: boolean }>) {
-    setError(undefined);
-    try {
-      exportRows(scope, table.id, { filters: filtered ? query.filters : [] });
-    } catch (cause) {
-      setError(describeCommandError(cause, 'starting this download'));
-    }
+    exporter.start({ filters: filtered ? query.filters : [] });
   }
   return (
     <>

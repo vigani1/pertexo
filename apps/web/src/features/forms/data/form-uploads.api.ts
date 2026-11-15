@@ -1,3 +1,4 @@
+import { UPLOAD_SESSION_HEADER } from './upload-session';
 import {
   formUploadResponseSchema,
   formUploadSchema,
@@ -25,16 +26,6 @@ export type FormUploadTarget = Readonly<{
   ): Promise<FormUploadResponse>;
   finalize(uploadId: string, signal: AbortSignal): Promise<FormUploadMetadata>;
 }>;
-
-export const UPLOAD_SESSION_HEADER = 'x-pertexo-form-session';
-
-export function newUploadSession(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return btoa(String.fromCharCode(...bytes))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/=+$/u, '');
-}
 
 /** One owner for the begin and finalize calls of any upload path. */
 export function uploadTarget({

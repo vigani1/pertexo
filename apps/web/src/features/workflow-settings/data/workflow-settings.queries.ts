@@ -1,7 +1,7 @@
 import { QUERY_POLLING } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { getAllWorkflowVersions } from '@/features/workflow-versions/public';
+import { getAllWorkflowVersions } from '@/features/workflow-versions/workflow-versions-queries.public';
 import {
   getFailureNotificationPolicy,
   getScheduleNextRuns,

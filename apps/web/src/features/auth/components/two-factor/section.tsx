@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { AccountSection } from '../account/section';
 import { accountSecurityKeys } from '../../data/account-security.queries';
-import { TwoFactorSetupDialog, type TwoFactorAction } from './setup-dialog';
+import { TwoFactorSetupDialog } from './setup-dialog';
+import type { TwoFactorAction } from '../../data/two-factor.mutations';
 import { pluralWord } from '@/lib/format/count';
 
 export function AccountTwoFactorSection({

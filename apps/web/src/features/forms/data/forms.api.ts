@@ -10,7 +10,7 @@ import {
   type FormAccessRequest,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { UPLOAD_SESSION_HEADER } from './form-uploads.api';
+import { UPLOAD_SESSION_HEADER } from './upload-session';
 export type MemberFormScope = Readonly<{
   apiClient: ApiClient;
   userId: string;

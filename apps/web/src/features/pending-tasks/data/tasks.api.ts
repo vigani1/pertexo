@@ -15,7 +15,7 @@ import {
   uploadTarget,
   UPLOAD_SESSION_HEADER,
   type FormUploadTarget,
-} from '@/features/forms/public';
+} from '@/features/forms/forms-queries.public';
 export type TaskScope = Readonly<{
   apiClient: ApiClient;
   userId: string;

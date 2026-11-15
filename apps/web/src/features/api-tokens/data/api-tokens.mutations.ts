@@ -1,8 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
-import type { ApiTokenListResponse } from '@pertexo/contracts';
+import type {
+  ApiTokenCreateRequest,
+  ApiTokenListResponse,
+} from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { revokeApiToken } from './api-tokens.api';
+import { createApiToken, revokeApiToken } from './api-tokens.api';
 import { apiTokenKeys } from './api-tokens.queries';
 
 export function useTokenRevocation({
@@ -42,5 +45,25 @@ export function useTokenRevocation({
       await queryClient.invalidateQueries({ queryKey });
     },
     onError: () => queryClient.invalidateQueries({ queryKey }),
+  });
+}
+
+/**
+ * Creates a token. Not a cached mutation: its one-time secret must never
+ * enter the query or mutation cache, so the dialog holds it alone. Each
+ * attempt is a new command; a replayed answer carries no secret.
+ */
+export function issueApiToken(
+  apiClient: ApiClient,
+  workspaceId: string,
+  body: ApiTokenCreateRequest,
+  signal: AbortSignal,
+) {
+  return createApiToken({
+    apiClient,
+    workspaceId,
+    body,
+    idempotencyKey: crypto.randomUUID(),
+    signal,
   });
 }

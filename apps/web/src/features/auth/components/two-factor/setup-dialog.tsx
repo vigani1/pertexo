@@ -17,10 +17,9 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { PasswordField } from '../../forms/password-field';
 import { currentPasswordProblem } from '../../forms/field-rules';
 import {
-  enableTwoFactor,
-  disableTwoFactor,
-  regenerateRecoveryCodes,
-} from '../../data/two-factor.api';
+  changeTwoFactor,
+  type TwoFactorAction,
+} from '../../data/two-factor.mutations';
 import { AccountCommandFailure } from '../account/section';
 import { TwoFactorCodeForm } from './code-form';
 import { useTwoFactorVerification } from './use-verify';
@@ -30,7 +29,6 @@ type Stage =
   | Readonly<{ kind: 'password' }>
   | Readonly<{ kind: 'verify'; uri: string; codes: readonly string[] }>
   | Readonly<{ kind: 'codes'; codes: readonly string[] }>;
-export type TwoFactorAction = 'enable' | 'disable' | 'regenerate';
 
 function EnrollmentKey({ uri }: Readonly<{ uri: string }>) {
   const { data, size } = useMemo(() => encode(uri), [uri]);
@@ -125,30 +123,18 @@ export function TwoFactorSetupDialog({
     const request = requests.begin();
     setFailure(undefined);
     try {
-      if (action === 'enable') {
-        const result = await enableTwoFactor(
-          apiClient,
-          values.password,
-          request.signal,
-        );
-        if (request.isCurrent())
-          setStage({
-            kind: 'verify',
-            uri: result.totpURI,
-            codes: result.backupCodes,
-          });
-      } else if (action === 'regenerate') {
-        const result = await regenerateRecoveryCodes(
-          apiClient,
-          values.password,
-          request.signal,
-        );
-        if (request.isCurrent())
-          setStage({ kind: 'codes', codes: result.backupCodes });
-      } else {
-        await disableTwoFactor(apiClient, values.password, request.signal);
-        if (request.isCurrent()) onComplete();
-      }
+      const outcome = await changeTwoFactor(
+        apiClient,
+        action,
+        values.password,
+        request.signal,
+      );
+      if (!request.isCurrent()) return;
+      if (outcome.kind === 'enabled')
+        setStage({ kind: 'verify', uri: outcome.uri, codes: outcome.codes });
+      else if (outcome.kind === 'regenerated')
+        setStage({ kind: 'codes', codes: outcome.codes });
+      else onComplete();
     } catch (error) {
       if (request.isCurrent()) setFailure(error);
     } finally {

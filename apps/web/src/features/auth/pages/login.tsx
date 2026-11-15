@@ -18,7 +18,7 @@ import { SignInLens } from '../components/sign-in/lens';
 import { LensLoading, LensUnavailable } from '../components/stage/lens-states';
 import { resendFailure } from '../model/auth-failure';
 import type { LoginNotice } from '../model/login-notice';
-import { resendVerificationEmail } from '../data/native-auth.api';
+import { resendVerification } from '../data/native-auth-flows';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 
 type LoginView =
@@ -79,11 +79,7 @@ export function LoginPage({
           title="Verify your email"
           cooldown={verificationCooldown}
           resend={(signal) =>
-            resendVerificationEmail(
-              apiClient,
-              { email: view.email, returnTo },
-              signal,
-            )
+            resendVerification(apiClient, view.email, returnTo, signal)
           }
           footer={backToSignIn('Use another email')}
         >
@@ -99,7 +95,7 @@ export function LoginPage({
         <EmailRequestLens
           id="verification-request"
           send={(email, signal) =>
-            resendVerificationEmail(apiClient, { email, returnTo }, signal)
+            resendVerification(apiClient, email, returnTo, signal)
           }
           describeFailure={resendFailure}
           onSent={(email) => {

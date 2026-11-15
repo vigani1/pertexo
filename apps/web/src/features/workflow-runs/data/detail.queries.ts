@@ -1,7 +1,7 @@
 import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { findWorkflowVersion } from '@/features/workflow-versions/public';
+import { findWorkflowVersion } from '@/features/workflow-versions/workflow-versions-queries.public';
 import { isActiveRunStatus } from '../model/presentation/run-status';
 import {
   getWorkflowRun,

@@ -4,7 +4,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { confirmationProblem, newPasswordProblem } from '../forms/field-rules';
 import { PasswordField } from '../forms/password-field';
 import { isResetLinkInvalid, resetFailure } from '../model/auth-failure';
-import { resetPassword } from '../data/native-auth.api';
+import { resetPasswordWithToken } from '../data/native-auth-flows';
 import { useAuthRequest } from '../hooks/use-auth-request';
 import {
   AuthLens,
@@ -61,9 +61,10 @@ export function ResetPasswordLens({
             void request.submit(
               fields.validate,
               (values, signal) =>
-                resetPassword(
+                resetPasswordWithToken(
                   apiClient,
-                  { token, password: values.password },
+                  token,
+                  values.password,
                   signal,
                 ),
               () => {

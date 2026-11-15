@@ -11,7 +11,7 @@ import {
   type FileUploadScope,
 } from '@/features/artifacts/artifacts-views.public';
 import type { FileReference } from '@/features/artifacts/public';
-import { findWorkflowVersion } from '@/features/workflow-versions/public';
+import { readRunVersion } from '../../data/run-version';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -51,13 +51,7 @@ export function FilePropertyUpload({
       ...(parsed as Readonly<Record<string, JsonValue>>),
       [property]: reference,
     };
-    const version = await findWorkflowVersion({
-      apiClient: scope.apiClient,
-      workspaceId: scope.workspaceId,
-      workflowId,
-      versionId,
-      signal,
-    });
+    const version = await readRunVersion(scope, workflowId, versionId, signal);
     if (signal.aborted)
       return 'The input changed. Open the file control again.';
     if (version.graph.callable !== undefined) {

@@ -9,13 +9,11 @@ import { formatByteLength } from '@/lib/format/bytes';
 import { formatClock } from '@/lib/format/time';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import {
-  getArtifactMetadata,
-  prepareArtifactDownload,
-} from '../data/artifacts.api';
+  prepareFileDownload,
+  type PreparedDownload,
+} from '../data/artifact-download';
 import { artifactMetadataQueryOptions } from '../data/artifacts.queries';
 import { describeFileKind, shortArtifactId } from '../model/artifact-labels';
-
-type PreparedDownload = Awaited<ReturnType<typeof prepareArtifactDownload>>;
 
 type ArtifactDownloadProps = Readonly<{
   apiClient: ApiClient;
@@ -68,25 +66,18 @@ function ArtifactDownloadScope({
     setError(undefined);
     setDownload(undefined);
     try {
-      const known =
-        metadata.data?.status === 'available'
-          ? metadata.data
-          : await getArtifactMetadata(
-              apiClient,
-              workspaceId,
-              artifactId,
-              request.signal,
-            );
-      if (known.status !== 'available') {
-        setError('This file is still being written. Try again in a moment.');
-        return;
-      }
-      const prepared = await prepareArtifactDownload(
+      const outcome = await prepareFileDownload({
         apiClient,
         workspaceId,
         artifactId,
-        request.signal,
-      );
+        known: metadata.data,
+        signal: request.signal,
+      });
+      if (outcome.kind === 'writing') {
+        setError('This file is still being written. Try again in a moment.');
+        return;
+      }
+      const prepared = outcome.download;
       if (!request.isCurrent()) return;
       setDownload(prepared);
       // Opening straight away keeps it to one click; if the browser blocks

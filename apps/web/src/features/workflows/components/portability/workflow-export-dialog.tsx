@@ -25,15 +25,15 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
-  exportWorkflow,
-  readWorkflowExportSource,
-} from '../../data/portability/workflow-portability.api';
+  exportReviewedWorkflow,
+  readExportSource,
+} from '../../data/portability/workflow-export';
 import { downloadPortableWorkflow } from '../../model/portability';
 import { usePortabilityLifetime } from './use-portability-lifetime';
 import { PortableGraphReview } from './portable-graph-review';
 import { PortabilityAccessDeniedDialog } from './access-denied-dialog';
 
-type ReviewedSource = Awaited<ReturnType<typeof readWorkflowExportSource>> & {
+type ReviewedSource = Awaited<ReturnType<typeof readExportSource>> & {
   digest: string;
 };
 
@@ -108,12 +108,12 @@ function WorkflowExportSession({
     setPending(true);
     setError(undefined);
     try {
-      const manifest = await exportWorkflow({
+      const manifest = await exportReviewedWorkflow({
         apiClient,
         workspaceId: workspace.id,
         workflowId: workflow.id,
-        body: { source, reviewedGraphDigest: review.digest },
-        etag: 'etag' in review ? review.etag : undefined,
+        source,
+        review,
         signal: request.signal,
       });
       // The session may have ended while the export was in flight.
@@ -240,14 +240,11 @@ function useExportSource({
       clear();
       setPending(true);
       request.signal.throwIfAborted();
-      const saved = await readWorkflowExportSource({
+      const saved = await readExportSource({
         apiClient,
         workspaceId: workspace.id,
         workflowId: workflow.id,
-        source:
-          versionId === undefined
-            ? { kind: 'draft' }
-            : { kind: 'version', versionId },
+        versionId,
         signal: request.signal,
       });
       return saved;

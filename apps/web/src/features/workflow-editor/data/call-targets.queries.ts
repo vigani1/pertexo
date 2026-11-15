@@ -7,7 +7,7 @@ import {
 import {
   findWorkflowVersion,
   getWorkflowVersionsPage,
-} from '@/features/workflow-versions/public';
+} from '@/features/workflow-versions/workflow-versions-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 
 export type CallTargetScope = Readonly<{

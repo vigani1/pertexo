@@ -11,7 +11,7 @@ import {
   strongEtagSchema,
   workflowDraftResponseSchema,
 } from '@pertexo/contracts';
-import { findWorkflowVersion } from '@/features/workflow-versions/public';
+import { findWorkflowVersion } from '@/features/workflow-versions/workflow-versions-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 
 function base(workspaceId: string): `/v1${string}` {

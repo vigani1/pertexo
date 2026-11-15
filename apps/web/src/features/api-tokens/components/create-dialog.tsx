@@ -15,7 +15,7 @@ import {
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { createApiToken } from '../data/api-tokens.api';
+import { issueApiToken } from '../data/api-tokens.mutations';
 import {
   tokenCommandFeedback,
   uncertainTokenOutcome,
@@ -50,13 +50,12 @@ export function CreateTokenDialog({
     const attempt = request.begin();
     setView({ kind: 'form' });
     try {
-      const result = await createApiToken({
+      const result = await issueApiToken(
         apiClient,
         workspaceId,
         body,
-        idempotencyKey: crypto.randomUUID(),
-        signal: attempt.signal,
-      });
+        attempt.signal,
+      );
       if (!attempt.isCurrent()) return;
       setView(
         result.replayed

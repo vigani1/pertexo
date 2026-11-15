@@ -12,7 +12,7 @@ import {
 } from '../components/stage/auth-lens';
 import { isInvitationReturn } from '../model/return-path';
 import { PasswordCapabilityGate } from '../components/stage/lens-states';
-import { resendVerificationEmail } from '../data/native-auth.api';
+import { resendVerification } from '../data/native-auth-flows';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 
 /** Said on its own page, because a link can still bring someone here. */
@@ -74,11 +74,7 @@ export function SignUpPage({
               title="Check your inbox"
               cooldown={cooldown}
               resend={(signal) =>
-                resendVerificationEmail(
-                  apiClient,
-                  { email: sentTo, returnTo },
-                  signal,
-                )
+                resendVerification(apiClient, sentTo, returnTo, signal)
               }
               footer={
                 <AuthLensFooter>

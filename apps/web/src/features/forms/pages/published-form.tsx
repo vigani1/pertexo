@@ -16,11 +16,8 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import { isApiError } from '@/lib/api/error';
 import { FormResponse } from '../components/form-response';
 import type { FormScope } from '../data/forms.api';
-import {
-  formUploadTarget,
-  newUploadSession,
-  type FormUploadTarget,
-} from '../data/form-uploads.api';
+import { newUploadSession } from '../data/upload-session';
+import { useFormUploadTarget } from '../data/form-uploads.mutations';
 import { formQueryOptions } from '../data/forms.queries';
 import { useFormSubmission } from '../data/forms.mutations';
 function formUnavailable(error: unknown) {
@@ -91,7 +88,8 @@ export function FormPage({
           key={schema.versionId}
           command={command}
           schema={schema}
-          uploads={formUploadTarget(scope, schema.versionId, session)}
+          scope={scope}
+          session={session}
           reload={reload}
           paused={paused}
         />
@@ -149,19 +147,22 @@ type SubmissionCommand = ReturnType<typeof useFormSubmission>;
 function PublishedForm({
   command,
   schema,
-  uploads,
+  scope,
+  session,
   reload,
   paused,
 }: Readonly<{
   paused: boolean;
   command: SubmissionCommand;
   schema: FormSchemaResponse;
-  uploads: FormUploadTarget;
+  scope: FormScope;
+  session: string;
   reload: () => Promise<void>;
 }>) {
   const changed =
     isApiError(command.cause) && command.cause.problem?.code === 'form.changed';
   const { versionId, form } = schema;
+  const uploads = useFormUploadTarget(scope, versionId, session);
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <header className="flex flex-col gap-3">

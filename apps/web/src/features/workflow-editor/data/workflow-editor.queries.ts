@@ -1,6 +1,6 @@
 import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
-import { findWorkflowVersion } from '@/features/workflow-versions/public';
+import { findWorkflowVersion } from '@/features/workflow-versions/workflow-versions-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { getWorkflowDraft } from './workflow-editor.api';
 
