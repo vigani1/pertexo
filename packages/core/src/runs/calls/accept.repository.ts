@@ -1,39 +1,33 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { and, eq, sql } from 'drizzle-orm';
-import {
-  workflows,
-  workflowCalls,
-  databaseSchema,
-} from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  parseWorkspaceId,
-} from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import {
+  bindAcceptedCall,
+  callAcceptanceTransaction,
+  discardCallCandidate,
+  keepCallCandidate,
+  lendCallSlot,
   lockCallParent,
+  lockCallTarget,
   lockPendingCall,
+  openCallCandidate,
+  parentSlotLent,
+  refusePendingCall,
   type PendingWorkflowCall,
 } from './admission.repository.js';
 import { createHash } from 'node:crypto';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import {
-  CallableInputInvalidError,
-  canonicalJson,
-} from '@pertexo/workflow-model';
+import { canonicalJson } from '@pertexo/workflow-model';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
 } from '../commands/acceptance/accept.js';
-import {
-  WorkspaceRunAdmissionDeniedError,
-  WorkspaceRunQuotaExceededError,
-} from '../commands/acceptance/run-admission.errors.js';
+import { WorkspaceRunAdmissionDeniedError } from '../commands/acceptance/run-admission.errors.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.types.js';
 import { findLockedReplayVersion } from '../commands/execution-sources.repository.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import { WorkflowCallRefusedError } from './workflow-call.errors.js';
+import { callAdmissionRefusal, callParentWaiting } from './acceptance-rules.js';
 import { wakeWorkflowRun } from '../../outbox/run-advance.repository.js';
 
 /** All target prerequisites precede the parent and the counter stays last. */
@@ -48,21 +42,11 @@ export async function acceptPendingCall(
   }>,
 ): Promise<void> {
   const { workspaceId, parentRunId, call } = input;
-  const transaction = {
-    db: drizzle(client, { schema: databaseSchema }),
-    workspaceId: parseWorkspaceId(workspaceId),
-  };
-  const [target] = await transaction.db
-    .select({ lifecycle_status: workflows.lifecycleStatus })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, workspaceId),
-        eq(workflows.id, call.target_workflow_id),
-      ),
-    )
-    .for('share')
-    .catch(rethrowQueryFailure);
+  const transaction = callAcceptanceTransaction(client, workspaceId);
+  const target = await lockCallTarget(client, {
+    workspaceId,
+    workflowId: call.target_workflow_id,
+  });
   const projection = await findLockedReplayVersion(
     transaction,
     call.target_workflow_id,
@@ -92,21 +76,8 @@ export async function acceptPendingCall(
     callId: call.id,
   });
   if (locked?.status !== 'pending') return;
-  const lent = await transaction.db
-    .select({ id: workflowCalls.id })
-    .from(workflowCalls)
-    .where(
-      and(
-        eq(workflowCalls.workspaceId, workspaceId),
-        eq(workflowCalls.parentRunId, parentRunId),
-        eq(workflowCalls.slotLent, true),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  if (lent.length > 0) return;
-  await transaction.db
-    .execute(sql`savepoint workflow_call_candidate`)
-    .catch(rethrowQueryFailure);
+  if (await parentSlotLent(client, { workspaceId, parentRunId })) return;
+  await openCallCandidate(client);
   try {
     const { prepared, initial, stored } = prepareCallInput(input, {
       projection,
@@ -123,77 +94,29 @@ export async function acceptPendingCall(
         variableSetRevision: row.variable_set_revision,
       },
     );
-    const c = workflowCalls;
-    const bound = await transaction.db
-      .update(c)
-      .set({
-        status: 'accepted',
-        childRunId: accepted.runId,
-        liveChildRunId: accepted.runId,
-      })
-      .where(
-        and(
-          eq(c.workspaceId, workspaceId),
-          eq(c.id, call.id),
-          eq(c.status, 'pending'),
-        ),
-      )
-      .catch(rethrowQueryFailure);
-    if (bound.rowCount !== 1)
+    const bound = await bindAcceptedCall(client, {
+      workspaceId,
+      callId: call.id,
+      childRunId: accepted.runId,
+    });
+    if (!bound)
       throw new Error('Call acceptance identity changed under its lock');
-    const transfer = await transaction.db
-      .execute<{ granted: boolean }>(
-        sql`select app.lend_workflow_run_slot(${workspaceId},${call.id},${accepted.runId},${accepted.outboxEventId}) granted`,
-      )
-      .catch(rethrowQueryFailure);
-    if (!(transfer.rows[0]?.granted ?? false))
+    const granted = await lendCallSlot(client, {
+      workspaceId,
+      callId: call.id,
+      childRunId: accepted.runId,
+      outboxEventId: accepted.outboxEventId,
+    });
+    if (!granted)
       throw new WorkflowCallRefusedError('call_target_capacity_exceeded');
-    await transaction.db
-      .execute(sql`release savepoint workflow_call_candidate`)
-      .catch(rethrowQueryFailure);
+    await keepCallCandidate(client);
   } catch (error) {
     const refusal = callAdmissionRefusal(error);
     if (refusal === undefined) throw error;
-    await transaction.db
-      .execute(sql`rollback to savepoint workflow_call_candidate`)
-      .catch(rethrowQueryFailure);
-    await transaction.db
-      .execute(sql`release savepoint workflow_call_candidate`)
-      .catch(rethrowQueryFailure);
-    const c = workflowCalls;
-    await transaction.db
-      .update(c)
-      .set({
-        status: 'refused',
-        safeErrorCode: refusal,
-        completedAt: sql`clock_timestamp()`,
-      })
-      .where(
-        and(
-          eq(c.workspaceId, workspaceId),
-          eq(c.id, call.id),
-          eq(c.status, 'pending'),
-        ),
-      )
-      .catch(rethrowQueryFailure);
+    await discardCallCandidate(client);
+    await refusePendingCall(client, { workspaceId, callId: call.id, refusal });
     await wakeWorkflowRun(client, workspaceId, parentRunId, input.traceparent);
   }
-}
-
-function callAdmissionRefusal(error: unknown): string | undefined {
-  if (error instanceof WorkflowCallRefusedError) {
-    return error.code;
-  }
-  if (error instanceof CallableInputInvalidError) {
-    return 'call_input_invalid';
-  }
-  if (error instanceof WorkspaceRunQuotaExceededError) {
-    return 'call_target_capacity_exceeded';
-  }
-  if (error instanceof WorkspaceRunAdmissionDeniedError) {
-    return 'call_target_unavailable';
-  }
-  return undefined;
 }
 
 async function lockWaitingCallParent(
@@ -206,14 +129,7 @@ async function lockWaitingCallParent(
     parentRunId,
     invocationKey: call.invocation_key,
   });
-  const parentUnavailable =
-    row === undefined ||
-    !['running', 'waiting'].includes(row.status) ||
-    row.cancel_requested_at !== null ||
-    (row.deadline_expired ?? false) ||
-    !row.has_wait ||
-    row.has_ordinary_work;
-  if (parentUnavailable) return;
+  if (row === undefined || !callParentWaiting(row)) return;
 
   return row;
 }
