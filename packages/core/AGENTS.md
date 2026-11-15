@@ -88,9 +88,7 @@ user-facing copy beyond the safe messages of its errors.
   scope themselves: workers and scanners (`withTenantScopedClient`),
   connection use and token refresh (`connections/transaction.ts`), and the
   operator (`operator/run-command.ts`).
-- `runs` still runs queries outside repositories and isn't in the
-  backend-limits check yet; it is listed in `PENDING_AREAS`
-  (`validate-core-queries.mjs`) until its pass.
+- `runs` isn't in the backend-limits check yet.
 - Generic throws that stay are storage integrity assertions: a write that
   returned no row, a locked row that disappeared, a stored pointer or receipt
   that is corrupt.

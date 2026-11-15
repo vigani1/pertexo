@@ -4,8 +4,6 @@ import {
   RUN_EVENT_TYPE,
 } from '../queries/history/events.repository.js';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
-import { workflowRuns } from '@pertexo/database/schema';
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from './request-cancellation.js';
 import { WorkflowRunNotFoundError } from '../workflow-run.errors.js';
@@ -13,13 +11,19 @@ import {
   enqueueAdvance,
   enqueueAdvances,
 } from '../wakeups/advance.repository.js';
-import { ACTIVE_RUN_STATUSES } from '../statuses.js';
+import {
+  lockUncanceledActiveRuns,
+  markRunsCancelRequested,
+} from './cancellation.repository.js';
 import {
   insertWorkflowRunAudit,
   readWorkflowRunRecord,
 } from './workflow-run-records.repository.js';
 import type { WorkflowRunRecord } from './workflow-run-records.repository.js';
 import type { CancelWorkflowRunInput } from './run-commands.types.js';
+
+/** Runs one cancel-all statement updates, bounding its parameters. */
+const CANCELLATION_BATCH_SIZE = 500;
 
 /**
  * Requests cancellation of every run in the workspace that has not finished
@@ -30,35 +34,15 @@ export async function requestActiveRunCancellations(
   input: Readonly<{ actorId: string; reason: string }>,
 ): Promise<number> {
   await lockWorkspaceRunAdmission(transaction.db, transaction.workspaceId);
-  const active = await transaction.db
-    .select({ id: workflowRuns.id })
-    .from(workflowRuns)
-    .where(
-      and(
-        eq(workflowRuns.workspaceId, transaction.workspaceId),
-        inArray(workflowRuns.status, ACTIVE_RUN_STATUSES),
-        isNull(workflowRuns.cancelRequestedAt),
-      ),
-    )
-    .orderBy(asc(workflowRuns.id))
-    .for('update');
+  const active = await lockUncanceledActiveRuns(transaction);
   // Bound SQL parameters and temporary rows without splitting the lifecycle commit.
-  for (let offset = 0; offset < active.length; offset += 500) {
-    const ids = active.slice(offset, offset + 500).map((row) => row.id);
-    await transaction.db
-      .update(workflowRuns)
-      .set({
-        cancelRequestedAt: sql`clock_timestamp()`,
-        cancelRequestedBy: input.actorId,
-        cancelReason: input.reason,
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(
-        and(
-          eq(workflowRuns.workspaceId, transaction.workspaceId),
-          inArray(workflowRuns.id, ids),
-        ),
-      );
+  for (
+    let offset = 0;
+    offset < active.length;
+    offset += CANCELLATION_BATCH_SIZE
+  ) {
+    const ids = active.slice(offset, offset + CANCELLATION_BATCH_SIZE);
+    await markRunsCancelRequested(transaction, ids, input);
     await appendLockedRunEvents(transaction, ids, {
       type: RUN_EVENT_TYPE.cancelRequested,
       payload: { actor: input.actorId, reason: input.reason },
