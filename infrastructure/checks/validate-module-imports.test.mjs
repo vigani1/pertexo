@@ -47,20 +47,23 @@ test('rejects side-effect and empty-named-import cycles', () => {
 test('type-only relationships do not create runtime cycles', () => {
   for (const a of [
     "import type { B } from './b.js';",
-    "import { type B } from './b.js';",
     "export type { B } from './b.js';",
-    "export { type B } from './b.js';",
   ])
     assert.deepEqual(validateModuleImports(source(a, "import './a.js';")), []);
 });
 
-test('mixed type and value imports still create runtime cycles', () => {
-  assert.match(
-    validateModuleImports(
-      source("import { type B, b } from './b.js';", "import './a.js';"),
-    ).join('\n'),
-    /runtime module cycle/u,
-  );
+test('inline type specifiers and mixed imports still load their module', () => {
+  // verbatimModuleSyntax keeps `import { type B }` as an empty import.
+  for (const a of [
+    "import { type B } from './b.js';",
+    "export { type B } from './b.js';",
+    "import { type B, b } from './b.js';",
+  ])
+    assert.match(
+      validateModuleImports(source(a, "import './a.js';")).join('\n'),
+      /runtime module cycle/u,
+      a,
+    );
 });
 
 test('deferred imports are not static initialization cycles', () => {

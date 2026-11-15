@@ -9,33 +9,9 @@ import {
   report,
   repositoryRoot,
 } from './workspace-sources.mjs';
+import { loadsModule } from './module-declarations.mjs';
 
 const coreSource = 'packages/core/src/';
-
-/** Whether an import or export declaration loads its module when the code runs. */
-function isRuntimeDeclaration(statement) {
-  if (ts.isImportDeclaration(statement)) {
-    const clause = statement.importClause;
-    if (clause === undefined) return true;
-    if (clause.isTypeOnly) return false;
-    const bindings = clause.namedBindings;
-    return !(
-      !clause.name &&
-      bindings &&
-      ts.isNamedImports(bindings) &&
-      bindings.elements.length > 0 &&
-      bindings.elements.every((element) => element.isTypeOnly)
-    );
-  }
-  if (statement.isTypeOnly) return false;
-  const clause = statement.exportClause;
-  return !(
-    clause &&
-    ts.isNamedExports(clause) &&
-    clause.elements.length > 0 &&
-    clause.elements.every((element) => element.isTypeOnly)
-  );
-}
 
 function areaOf(file) {
   if (!file.startsWith(coreSource)) return undefined;
@@ -43,34 +19,50 @@ function areaOf(file) {
   return parts.length > 1 ? parts[0] : undefined;
 }
 
-/** Every import from one core area's file into another area's, with its kind. */
+const CORE_ENTRY = '@pertexo/core/';
+
+/** A specifier as the core file it reaches: relative, or core's own `@pertexo/core/<area>` entry. */
+function reachedFile(file, specifier) {
+  if (specifier.startsWith(CORE_ENTRY))
+    return `${coreSource}${specifier.slice(CORE_ENTRY.length)}/index.ts`;
+  if (!specifier.startsWith('.')) return undefined;
+  return path.posix.normalize(
+    path.posix.join(path.posix.dirname(file), specifier),
+  );
+}
+
+/**
+ * Every import from one core area's file into another area's, with its kind:
+ * static imports and re-exports, and `import()` calls, which load at run time.
+ */
 export function findAreaImports(file, text) {
   const from = areaOf(file);
   if (from === undefined) return [];
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false);
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const imports = [];
-  for (const statement of source.statements) {
+  const record = (specifier, runtime) => {
+    const target = reachedFile(file, specifier);
+    const to = target === undefined ? undefined : areaOf(target);
+    if (to === undefined || to === from) return;
+    imports.push({ from, to, file, target, runtime });
+  };
+  const visit = (node) => {
     if (
-      !ts.isImportDeclaration(statement) &&
-      !ts.isExportDeclaration(statement)
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier !== undefined &&
+      ts.isStringLiteral(node.moduleSpecifier)
     )
-      continue;
-    const specifier = statement.moduleSpecifier;
-    if (specifier === undefined || !ts.isStringLiteral(specifier)) continue;
-    if (!specifier.text.startsWith('.')) continue;
-    const target = path.posix.normalize(
-      path.posix.join(path.posix.dirname(file), specifier.text),
-    );
-    const to = areaOf(target);
-    if (to === undefined || to === from) continue;
-    imports.push({
-      from,
-      to,
-      file,
-      target,
-      runtime: isRuntimeDeclaration(statement),
-    });
-  }
+      record(node.moduleSpecifier.text, loadsModule(node));
+    else if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0] !== undefined &&
+      ts.isStringLiteralLike(node.arguments[0])
+    )
+      record(node.arguments[0].text, true);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
   return imports;
 }
 
@@ -134,15 +126,19 @@ export function cycleEdges(edges) {
   return closing.sort();
 }
 
+/** Edges that close a cycle between areas, type-only imports included: areas depend one way. */
 export function areaCycleFindings(imports) {
-  const closing = cycleEdges(areaGraph(imports, { runtimeOnly: true }));
+  const closing = cycleEdges(areaGraph(imports, { runtimeOnly: false }));
   const findings = [];
   for (const edge of closing) {
     const files = imports
-      .filter((i) => i.runtime && `${i.from}->${i.to}` === edge)
-      .map((i) => `  ${i.file} -> ${i.target}`);
+      .filter((i) => `${i.from}->${i.to}` === edge)
+      .map(
+        (i) =>
+          `  ${i.runtime ? 'runtime' : 'type-only'} ${i.file} -> ${i.target}`,
+      );
     findings.push(
-      `Core area edge ${edge} closes a runtime cycle between areas:\n${files.join('\n')}`,
+      `Core area edge ${edge} closes a cycle between areas:\n${files.join('\n')}`,
     );
   }
   return findings;
@@ -202,6 +198,6 @@ if (
   else
     report(
       areaCycleFindings(imports),
-      'No runtime import cycle between core areas.',
+      'No import cycle between core areas, type-only imports included.',
     );
 }

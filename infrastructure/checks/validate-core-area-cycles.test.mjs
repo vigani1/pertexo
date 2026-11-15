@@ -23,9 +23,9 @@ test('refuses a runtime import that closes a cycle between two areas', () => {
       "import { y } from '../runs/a.js';",
     ),
   ];
-  const findings = areaCycleFindings(imports, {});
+  const findings = areaCycleFindings(imports);
   assert.equal(findings.length, 2);
-  assert.match(findings[0], /inbox->runs closes a runtime cycle/u);
+  assert.match(findings[0], /inbox->runs closes a cycle/u);
   assert.match(
     findings[0],
     /inbox\/b\.ts -> packages\/core\/src\/runs\/a\.js/u,
@@ -38,10 +38,37 @@ test('refuses a cycle that runs through three areas and re-exports', () => {
     ...findAreaImports(file('b', 'y.ts'), "import '../c/z.js';"),
     ...findAreaImports(file('c', 'z.ts'), "import * as a from '../a/x.js';"),
   ];
-  assert.equal(areaCycleFindings(imports, {}).length, 3);
+  assert.equal(areaCycleFindings(imports).length, 3);
 });
 
-test('lets a type-only cycle and a one-way dependency through', () => {
+test('refuses a type-only cycle, and loads a module through inline type specifiers', () => {
+  const imports = [
+    ...findAreaImports(
+      file('runs', 'a.ts'),
+      "import type { T } from '../inbox/b.js';",
+    ),
+    ...findAreaImports(
+      file('inbox', 'b.ts'),
+      "export type { Y } from '../runs/a.js';",
+    ),
+  ];
+  assert.deepEqual(
+    imports.map((i) => i.runtime),
+    [false, false],
+  );
+  assert.equal(areaCycleFindings(imports).length, 2);
+  for (const text of [
+    "import { type U, type V } from '../inbox/d.js';",
+    "export { type U } from '../inbox/d.js';",
+  ])
+    assert.deepEqual(
+      findAreaImports(file('runs', 'c.ts'), text).map((i) => i.runtime),
+      [true],
+      text,
+    );
+});
+
+test('lets a one-way dependency through', () => {
   const imports = [
     ...findAreaImports(
       file('runs', 'a.ts'),
@@ -49,18 +76,35 @@ test('lets a type-only cycle and a one-way dependency through', () => {
     ),
     ...findAreaImports(
       file('runs', 'c.ts'),
-      "import { type U, type V } from '../inbox/d.js';",
+      "import { y } from '../inbox/d.js';",
+    ),
+  ];
+  assert.deepEqual(areaCycleFindings(imports), []);
+  assert.deepEqual(
+    stronglyConnectedGroups(areaGraph(imports, { runtimeOnly: false })),
+    [],
+  );
+});
+
+test("sees import() calls and core's own @pertexo/core/<area> entries", () => {
+  const imports = [
+    ...findAreaImports(
+      file('runs', 'a.ts'),
+      "export const load = () => import('../inbox/b.js');",
     ),
     ...findAreaImports(
       file('inbox', 'b.ts'),
-      "import { y } from '../runs/a.js';",
+      "import { a } from '@pertexo/core/runs';",
     ),
   ];
-  assert.deepEqual(areaCycleFindings(imports, {}), []);
   assert.deepEqual(
-    stronglyConnectedGroups(areaGraph(imports, { runtimeOnly: false })),
-    [['inbox', 'runs']],
+    imports.map((i) => [i.from, i.to, i.runtime]),
+    [
+      ['runs', 'inbox', true],
+      ['inbox', 'runs', true],
+    ],
   );
+  assert.equal(areaCycleFindings(imports).length, 2);
 });
 
 test("ignores imports inside one area and from core's root files", () => {
@@ -76,6 +120,6 @@ test("ignores imports inside one area and from core's root files", () => {
   );
 });
 
-test("core's areas have no runtime cycle", async () => {
+test("core's areas have no import cycle", async () => {
   assert.deepEqual(areaCycleFindings(await collectAreaImports()), []);
 });
