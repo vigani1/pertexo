@@ -183,7 +183,9 @@ For a backfill that needs longer, use the runner's existing `statementTimeoutMs`
 After `deploy.sh` has stopped on the migration timeout, run this **Bash** command as the same
 operator, with the same `PERTEXO_BETA_ROOT` if you use a custom installation path. It selects
 the release recorded by the failed deployment and runs only its migration service, with a
-two-hour statement limit and the normal lock limit:
+two-hour statement limit and the normal lock limit. The command runs inside that release's
+image, which may be any release since v0.2.0: it loads the runner from the database's
+`/platform` entry, and from its own file in a v0.2.0 image, which has no such export:
 
 ```bash
 (
@@ -193,7 +195,11 @@ two-hour statement limit and the normal lock limit:
   select_release "$(cat "$BETA_STATE_DIR/migration-fence")"
   compose run --rm --no-deps migration node --input-type=module -e '
     import { parseMigrationConfig } from "./packages/database/dist/config.js";
-    import { migrateDatabase } from "./packages/database/dist/migrations.js";
+    const platform = await import("./packages/database/dist/platform/index.js");
+    // v0.2.0 images export the runner only from its own file.
+    const { migrateDatabase } = platform.migrateDatabase === undefined
+      ? await import("./packages/database/dist/migrations.js")
+      : platform;
     const applied = await migrateDatabase(parseMigrationConfig(), undefined, {
       statementTimeoutMs: 7_200_000,
     });

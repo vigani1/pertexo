@@ -29,3 +29,6 @@ export { createWorkspaceDatabase } from './workspace-database.js';
 export type { WorkspaceDatabase } from './workspace-database.js';
 
 export { withPlatformTransaction } from '../tenant-access/transactions.js';
+
+// The migration runner, at an entry whose built path doesn't move between releases.
+export { migrateDatabase } from '../migrations/migrate-database.js';
