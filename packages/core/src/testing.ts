@@ -170,20 +170,18 @@ export type {
   WorkflowRunAcceptanceReplayInput,
 } from './runs/commands/acceptance/run-acceptance.types.js';
 
+export { readRunEventsAfter } from './runs/queries/history/events.repository.js';
 export {
   appendRunEvent,
-  readRunEventsAfter,
   RUN_EVENT_TYPE,
-} from './runs/queries/history/events.repository.js';
+} from './shared/run-events.repository.js';
 export type {
   PersistedRunEvent,
   RunEventPage,
-  RunEventType,
 } from './runs/queries/history/events.repository.js';
-export {
-  ExecutionStateConflictError,
-  RunEventGapError,
-} from './runs/execution-state.errors.js';
+export type { RunEventType } from './shared/run-events.repository.js';
+export { RunEventGapError } from './runs/execution-state.errors.js';
+export { ExecutionStateConflictError } from './shared/execution-state.errors.js';
 export { requestWorkflowRunCancellation } from './runs/commands/request-cancellation.js';
 export { createPublishedWorkflowReader } from './runs/queries/execution/published.repository.js';
 export type {

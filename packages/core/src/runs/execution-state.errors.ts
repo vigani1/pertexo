@@ -1,6 +1,4 @@
-export class ExecutionStateConflictError extends Error {
-  public override readonly name: string = 'ExecutionStateConflictError';
-}
+import { ExecutionStateConflictError } from '../shared/execution-state.errors.js';
 
 export class RunEventGapError extends ExecutionStateConflictError {
   public override readonly name = 'RunEventGapError';

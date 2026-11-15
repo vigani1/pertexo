@@ -1,5 +1,5 @@
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { appendAttemptEvent } from '../../runs/queries/history/attempt-events.repository.js';
+import { appendAttemptEvent } from '../attempt-events.repository.js';
 import { lockClaimCandidate } from './candidates.repository.js';
 import { markNodeRunStarted, startAttemptLease } from './lease.repository.js';
 import type { Pool } from 'pg';
