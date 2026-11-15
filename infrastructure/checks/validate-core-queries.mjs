@@ -57,7 +57,8 @@ export function findCoreQueries(file, text) {
   if (!file.startsWith(CORE_SOURCE) || QUERY_ROLES.test(file)) return [];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const sqlNames = sqlTagNames(source);
-  const handles = handleNames(source);
+  const drizzleNames = drizzleOpeners(source);
+  const handles = handleNames(source, drizzleNames);
   const found = [];
   const refuse = (node, what) => {
     const { line } = source.getLineAndCharacterOfPosition(node.getStart());
@@ -69,7 +70,7 @@ export function findCoreQueries(file, text) {
     if (ts.isTaggedTemplateExpression(node) && isSqlTag(node.tag, sqlNames))
       refuse(node, 'sql fragment');
     else if (ts.isCallExpression(node)) {
-      const query = queryCall(node, sqlNames, handles);
+      const query = queryCall(node, sqlNames, handles, drizzleNames);
       if (query !== undefined) refuse(node, query);
     }
     ts.forEachChild(node, visit);
@@ -106,15 +107,18 @@ function sqlTagNames(source) {
 // or to any call that also receives a pool or client (`(c) => c.query(…)`);
 // a variable set from `drizzle(…)` or `.connect()`; and a destructured
 // `db`, `client`, `tx` or `pool` under a new name (`({ db: d })`).
+// Handle types, with the aliases core and database export for them; an
+// alias a file writes for itself is resolved from its body (`handleTypes`).
 const HANDLE_TYPE =
-  /\b(?:Pool|PoolClient|ClientBase|NodePgDatabase|WorkspaceTransaction|PlatformTransaction)\b/u;
+  /\b(?:Pool|PoolClient|ClientBase|NodePgDatabase|WorkspaceDrizzle|WorkspaceTransaction|PlatformTransaction|ResourceTransaction|DatabaseClockSource)\b/u;
 const HANDLE_HELPER = /^(?:with|in)[A-Z]\w*(?:Transaction|Client|Access)$/u;
 
-function handleNames(source) {
+function handleNames(source, drizzleNames) {
   const names = new Set();
+  const isHandleType = handleTypes(source);
   const visit = (node) => {
     if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
-      if (node.type !== undefined && HANDLE_TYPE.test(node.type.getText()))
+      if (node.type !== undefined && isHandleType(node.type.getText()))
         names.add(node.name.text);
       else if (node.type === undefined && isHelperCallback(node.parent))
         names.add(node.name.text);
@@ -123,7 +127,7 @@ function handleNames(source) {
       ts.isVariableDeclaration(node) &&
       ts.isIdentifier(node.name) &&
       node.initializer !== undefined &&
-      opensHandle(node.initializer)
+      opensHandle(node.initializer, drizzleNames)
     )
       names.add(node.name.text);
     if (
@@ -153,15 +157,64 @@ function isHelperCallback(fn) {
   );
 }
 
+// The file's own type aliases and interfaces whose body names a handle type,
+// so `type Executor = Pick<NodePgDatabase, 'execute'>` types a handle too.
+function handleTypes(source) {
+  const bodies = new Map();
+  for (const statement of source.statements)
+    if (ts.isTypeAliasDeclaration(statement))
+      bodies.set(statement.name.text, statement.type.getText());
+    else if (ts.isInterfaceDeclaration(statement))
+      bodies.set(statement.name.text, statement.getText());
+  const aliases = new Set();
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const [name, body] of bodies)
+      if (
+        !aliases.has(name) &&
+        (HANDLE_TYPE.test(body) ||
+          [...aliases].some((alias) =>
+            new RegExp(`\\b${alias}\\b`, 'u').test(body),
+          ))
+      ) {
+        aliases.add(name);
+        grew = true;
+      }
+  }
+  return (text) =>
+    HANDLE_TYPE.test(text) ||
+    [...aliases].some((alias) => new RegExp(`\\b${alias}\\b`, 'u').test(text));
+}
+
+// The local names drizzle's node-postgres opener has: `drizzle`, or the
+// name it is imported under (`import { drizzle as open }`).
+function drizzleOpeners(source) {
+  const names = new Set(['drizzle']);
+  for (const statement of source.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      !statement.moduleSpecifier.text.startsWith('drizzle-orm')
+    )
+      continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings === undefined || !ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements)
+      if ((element.propertyName ?? element.name).text === 'drizzle')
+        names.add(element.name.text);
+  }
+  return names;
+}
+
 // `drizzle(c)` or `pool.connect()`, awaited or not.
-function opensHandle(expression) {
+function opensHandle(expression, drizzleNames) {
   const call = ts.isAwaitExpression(expression)
     ? expression.expression
     : expression;
   if (!ts.isCallExpression(call)) return false;
   const callee = call.expression;
   return (
-    (ts.isIdentifier(callee) && callee.text === 'drizzle') ||
+    (ts.isIdentifier(callee) && drizzleNames.has(callee.text)) ||
     (ts.isPropertyAccessExpression(callee) && callee.name.text === 'connect')
   );
 }
@@ -184,24 +237,37 @@ function isSqlTag(tag, sqlNames) {
   );
 }
 
-function queryCall(call, sqlNames, handles) {
+function queryCall(call, sqlNames, handles, drizzleNames) {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) return undefined;
   const method = callee.name.text;
   if (isSqlReference(callee.expression, sqlNames) && SQL_HELPERS.has(method))
     return `sql.${method}() fragment`;
   if (!QUERY_METHODS.has(method)) return undefined;
-  const receiver = handleName(callee.expression);
+  const receiver = handleName(callee.expression, drizzleNames);
   return HANDLE_NAME.test(receiver) ||
     handles.has(receiver) ||
-    chainsIntoBuilder(call, method)
+    chainsIntoBuilder(call, method) ||
+    sendsSqlText(call, method)
     ? `.${method}() query`
     : undefined;
 }
 
+// pg's `.query('select …')` and `.execute(\`update …\`)`: SQL written as a
+// plain string is a query whatever its receiver is called.
+const SQL_TEXT =
+  /^\s*(?:select|insert|update|delete|with|lock|set|begin|commit|rollback|savepoint|release|call|do|values)\b/iu;
+function sendsSqlText(call, method) {
+  if (method !== 'query' && method !== 'execute') return false;
+  const [text] = call.arguments;
+  if (text === undefined) return false;
+  if (ts.isStringLiteralLike(text)) return SQL_TEXT.test(text.text);
+  return ts.isTemplateExpression(text) && SQL_TEXT.test(text.head.text);
+}
+
 // The last name in `a.b.c` or `this.db`, `db` for a `drizzle(…)` call;
 // '' for anything else.
-function handleName(expression) {
+function handleName(expression, drizzleNames = new Set(['drizzle'])) {
   let current = expression;
   while (
     ts.isParenthesizedExpression(current) ||
@@ -214,7 +280,7 @@ function handleName(expression) {
   if (
     ts.isCallExpression(current) &&
     ts.isIdentifier(current.expression) &&
-    current.expression.text === 'drizzle'
+    drizzleNames.has(current.expression.text)
   )
     return 'db';
   return '';
