@@ -12,10 +12,12 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { WorkflowTestSuiteCurrent } from '@pertexo/contracts';
-import { canonicalJson } from '@pertexo/workflow-model';
+import {
+  canonicalJson,
+  WORKFLOW_TEST_SUITE_MAX_CASES,
+} from '@pertexo/workflow-model';
 
 import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
-import { SUITE_MAX_CASES } from './rules.js';
 /** The same metadata signature prepares suites and labels publish freshness. */
 export async function readSuiteCurrent(
   client: PoolClient,
@@ -50,9 +52,10 @@ export async function readSuiteCurrent(
       ),
     )
     .orderBy(asc(workflowInputCases.createdAt), asc(workflowInputCases.id))
-    .limit(SUITE_MAX_CASES + 1)
+    // No more cases can be added, so reading one more proves a change.
+    .limit(WORKFLOW_TEST_SUITE_MAX_CASES + 1)
     .catch(rethrowQueryFailure);
-  if (cases.length > SUITE_MAX_CASES)
+  if (cases.length > WORKFLOW_TEST_SUITE_MAX_CASES)
     throw new WorkflowTestError('cases_changed');
   const pins = await db
     .select({
@@ -138,6 +141,6 @@ export function readSuiteCasePayloads(
       ),
     )
     .orderBy(asc(workflowInputCases.createdAt), asc(workflowInputCases.id))
-    .limit(SUITE_MAX_CASES)
+    .limit(WORKFLOW_TEST_SUITE_MAX_CASES)
     .catch(rethrowQueryFailure);
 }

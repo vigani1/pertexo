@@ -142,7 +142,6 @@ export {
   workflowTestSuiteListSchema,
   workflowTestSuiteDetailSchema,
   workflowTestSuiteCaseReportSchema,
-  WORKFLOW_TEST_SUITE_MAX_CASES,
   type WorkflowTestSuiteCurrent,
   type WorkflowTestSuitePreparation,
   type WorkflowTestSuiteStartRequest,

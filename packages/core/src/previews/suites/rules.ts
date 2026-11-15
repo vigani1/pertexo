@@ -11,8 +11,6 @@ import type {
   WorkflowTestSuiteStartInput,
 } from './workflow-test-suite.types.js';
 
-/** More cases can't be added than this, so reading one more proves a change. */
-export const SUITE_MAX_CASES = 50;
 /** One suite may hold every case at its longest, with room to spare. */
 export const SUITE_MAX_DURATION_MS = 5 * 60 * 60 * 1_000;
 
