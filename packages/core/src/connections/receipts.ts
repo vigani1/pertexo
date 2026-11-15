@@ -17,18 +17,29 @@ import {
 } from '@pertexo/workflow-model';
 import { ConnectionIdempotencyConflictError } from './connection.errors.js';
 
+// What a stored connection receipt may hold.
+const RECEIPT_CHARACTERS = Object.freeze({
+  providerKey: 64,
+  name: 128,
+  errorCode: 128,
+});
+
 const providerKeySchema = z
   .string()
   .min(1)
-  .max(64)
+  .max(RECEIPT_CHARACTERS.providerKey)
   .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u);
 
-const connectionNameSchema = z.string().trim().min(1).max(128);
+const connectionNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(RECEIPT_CHARACTERS.name);
 
 const errorCodeSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(RECEIPT_CHARACTERS.errorCode)
   .regex(/^[a-z][a-z0-9._:-]{0,127}$/u);
 
 /** One connection command under its idempotency key and request digest. */
