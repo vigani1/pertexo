@@ -36,7 +36,7 @@ export {
   createWorkflowTestSuiteStore,
   type WorkflowTestSuiteStore,
 } from './suites/workflow-test-suite.store.js';
-export { createWorkflowTestSuiteScanner } from './suites/scanner.js';
+export { createWorkflowTestSuiteScanner } from './suites/suite-scanner.store.js';
 export type { WorkflowTestSuiteScanner } from './suites/workflow-test-suite.types.js';
 export {
   PREVIEW_EXECUTION_TIMEOUT_MAX_MS,

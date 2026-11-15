@@ -9,7 +9,7 @@ import {
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { createWorkflowAuthoringFixtureDatabase as createWorkflowAuthoringStore } from '../../support/workflow-authoring-admission.fixture.js';
 import { createWorkflowInputCaseStore } from '../../../src/authoring/input-cases/workflow-input-case.store.js';
-import { createWorkflowTestSuiteScanner } from '../../../src/previews/suites/scanner.js';
+import { createWorkflowTestSuiteScanner } from '../../../src/previews/suites/suite-scanner.store.js';
 import { createWorkflowExecutionReader } from '../../../src/runs/queries/execution/source.repository.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { serializeStoredExecutionValue } from '../../../src/shared/stored-execution.js';
