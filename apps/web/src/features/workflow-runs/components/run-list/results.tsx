@@ -18,7 +18,7 @@ import {
   type RunSearch,
 } from '../../model/list/run-search';
 import type { RunHistoryQuery } from '../../hooks/use-run-history';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { RunLoom } from '../loom/view';
 import { RunList } from './view';
 import { NoMatchingRuns, RunListSkeleton, RunsUnavailable } from './states';
@@ -133,7 +133,7 @@ function RunsLoomView({
   search: RunSearch;
   workspaceId: string;
 }>) {
-  const nowMs = useNow({ intervalMs: 60_000, enabled: true });
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.relativeTime, enabled: true });
   let earliest = nowMs - HOUR_MS;
   for (const run of runs)
     earliest = Math.min(earliest, Date.parse(run.startedAt ?? run.createdAt));

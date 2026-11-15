@@ -52,7 +52,7 @@ export function taskQueryOptions(scope: TaskScope, taskId: string) {
     staleTime: QUERY_FRESHNESS.live,
     refetchInterval: (query) =>
       query.state.data?.task.status === 'pending'
-        ? QUERY_POLLING.pendingTask
+        ? QUERY_POLLING.recent
         : false,
   });
 }

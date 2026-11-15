@@ -8,7 +8,7 @@ import {
   shapeLoom,
   type LoomModel,
 } from '../../model/loom/model';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { LoomRunList } from './run-list';
 import { LoomThreadLinks } from './thread-links';
 import { LoomRenderer } from '../../model/loom/renderer';
@@ -41,7 +41,7 @@ export function RunLoom({
   /** Exact runs per workflow in the window, when the statistics read has them. */
   laneTotals?: ReadonlyMap<string, number> | undefined;
 }>) {
-  const nowMs = useNow({ intervalMs: 15_000, enabled: true });
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.chart, enabled: true });
   const model = useMemo(
     () =>
       shapeLoom(runs, {

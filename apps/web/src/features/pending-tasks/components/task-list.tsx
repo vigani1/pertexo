@@ -11,7 +11,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty';
 import { SkeletonRows } from '@/components/ui/skeleton';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { tasksQueryOptions } from '../data/tasks.queries';
 import type { TaskScope } from '../data/tasks.api';
 import { TaskRow } from './task-row';
@@ -55,7 +55,7 @@ export function TaskList({
 }>) {
   const query = useInfiniteQuery(tasksQueryOptions(scope, filters));
   // Expiry reads "expires in 12 minutes"; a minute's tick keeps it honest.
-  const nowMs = useNow({ intervalMs: 60_000 });
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.relativeTime });
   return (
     <QueryView
       query={query}

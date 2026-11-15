@@ -1,5 +1,5 @@
 import type { WebhookTestEventSnapshot } from '@pertexo/contracts';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 /** A listener opened after the idle clock last ticked starts from its own receipt time. */
 export function useListenerClock({
   listener,
@@ -16,7 +16,7 @@ export function useListenerClock({
       : Date.parse(snapshot?.expiresAt ?? listener.expiresAt);
   const now = Math.max(
     useNow({
-      intervalMs: 1000,
+      intervalMs: CLOCK_TICK.seconds,
       enabled: active && listener !== undefined,
       untilMs: expiresAt,
     }),

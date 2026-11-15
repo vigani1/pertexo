@@ -32,7 +32,7 @@ import { isActiveRunStatus } from '../model/presentation/run-status';
 import { upstreamSteps } from '../model/step-inspection/inputs';
 import { buildRunTimeline, type RunTimelineRow } from '../model/timeline/runs';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { useRunEvents } from '../data/run-events';
 import {
   workflowRunQueryOptions,
@@ -296,7 +296,7 @@ function useRunDetail({
     enabled: canViewWorkflow,
   });
   const active = isActiveRunStatus(run.status);
-  const nowMs = useNow({ intervalMs: 1_000, enabled: active });
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.seconds, enabled: active });
   const view = useMemo(
     () =>
       buildRunTimeline({

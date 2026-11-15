@@ -21,7 +21,7 @@ import {
 import { DecisionForm } from '../components/decision-form';
 import type { PendingTaskDetail } from '@pertexo/contracts';
 import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 export function TaskDetailPage({
   scope,
   taskId,
@@ -131,7 +131,7 @@ export function TaskDetailPage({
 function TaskStatusLine({ task }: Readonly<{ task: PendingTaskDetail }>) {
   // The countdown reads "in 2 days"; a minute's tick keeps it honest.
   const nowMs = useNow({
-    intervalMs: 60_000,
+    intervalMs: CLOCK_TICK.relativeTime,
     enabled: task.status === 'pending',
   });
   const timedOut = timedOutAfter(task);

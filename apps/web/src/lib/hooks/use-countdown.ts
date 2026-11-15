@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNow } from './use-now';
-
-const TICK_MS = 250;
+import { CLOCK_TICK, useNow } from './use-now';
 
 type Span = Readonly<{ startedAt: number; deadline: number }>;
 
@@ -22,7 +20,7 @@ export type Countdown = Readonly<{
 export function useCountdown(): Countdown {
   const [span, setSpan] = useState<Span>();
   const now = useNow({
-    intervalMs: TICK_MS,
+    intervalMs: CLOCK_TICK.countdown,
     enabled: span !== undefined,
     untilMs: span?.deadline,
   });

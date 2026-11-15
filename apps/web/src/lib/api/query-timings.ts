@@ -36,7 +36,7 @@ export const QUERY_RETENTION = Object.freeze({
   extended: 30 * MINUTE_MS,
 });
 
-/** `refetchInterval`: how often an open screen asks again. */
+/** `refetchInterval`: how often an open screen asks again, by what it shows. */
 export const QUERY_POLLING = Object.freeze({
   /** While a test case or a test suite runs. */
   inFlight: SECOND_MS,
@@ -44,16 +44,18 @@ export const QUERY_POLLING = Object.freeze({
   waiting: 2 * SECOND_MS,
   /** While an activation or a deletion settles. */
   settling: 5 * SECOND_MS,
-  /** While a pending task waits on a person. */
-  pendingTask: 15 * SECOND_MS,
-  /** Health, counts and statistics on an open screen. */
+  /** A list showing something that is still running. */
+  live: 10 * SECOND_MS,
+  /** Something people expect to change soon: a task waiting on a person, live counts. */
+  recent: 15 * SECOND_MS,
+  /** Health, counts and capacity on an open screen. */
   status: 30 * SECOND_MS,
-  /** Slower summaries, such as Home's Loom. */
-  dashboard: MINUTE_MS,
-  /** The inbox, beside its live stream. */
-  inbox: 2 * MINUTE_MS,
-  /** Usage trends, which move by the day. */
-  trends: 5 * MINUTE_MS,
+  /** Slower summaries drawn over a window, such as the Loom's statistics. */
+  summary: MINUTE_MS,
+  /** Data that also arrives through a live stream; polling only backs it up. */
+  streamFallback: 2 * MINUTE_MS,
+  /** Aggregates that move by the day, such as usage trends. */
+  daily: 5 * MINUTE_MS,
 });
 
 /** `retry`: how many times a failed read is asked again before it shows. */

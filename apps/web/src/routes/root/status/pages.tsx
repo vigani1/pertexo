@@ -31,7 +31,7 @@ import {
   retryAfterSeconds,
   supportReference,
 } from '@/lib/api/error-copy';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 
 function FullScreen({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -308,7 +308,7 @@ function RateLimited({
 }: Readonly<{ seconds: number; onRetry: () => void }>) {
   const [deadline] = useState(() => Date.now() + seconds * 1_000);
   const now = useNow({
-    intervalMs: 250,
+    intervalMs: CLOCK_TICK.countdown,
     enabled: seconds > 0,
     untilMs: deadline,
   });
