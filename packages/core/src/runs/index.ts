@@ -22,7 +22,7 @@ export {
 export type {
   WorkspaceUsageCapacityInput,
   WorkspaceUsageCapacityRecord,
-} from './queries/usage/capacity.repository.js';
+} from './queries/usage/capacity.js';
 export type {
   WorkflowRunData,
   WorkflowRunFailedStep,

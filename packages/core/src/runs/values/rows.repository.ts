@@ -4,13 +4,13 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { workflowRunValues, workflowRuns } from '@pertexo/database/schema';
 import { expiredRunSql } from '../../shared/run-records/run-retention.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { RunValuesLimitError } from './run-values.errors.js';
 
-export async function runValuesInTransaction(
+/** The live run's values by key, one past the cap so an overfull set shows. */
+export async function readRunValueRows(
   transaction: WorkspaceTransaction,
   runId: string,
-): Promise<RunValues> {
-  const rows = await transaction.db
+): Promise<readonly Readonly<{ key: string; value: string }>[]> {
+  return transaction.db
     .select({ key: workflowRunValues.key, value: workflowRunValues.value })
     .from(workflowRunValues)
     .innerJoin(
@@ -29,18 +29,13 @@ export async function runValuesInTransaction(
     )
     .orderBy(workflowRunValues.key)
     .limit(RUN_VALUE_LIMITS.pairs + 1);
-  if (rows.length > RUN_VALUE_LIMITS.pairs) throw new RunValuesLimitError();
-  return Object.freeze(
-    Object.fromEntries(rows.map(({ key, value }) => [key, value])),
-  );
 }
 
-export async function copyRecoveryRunValues(
+export async function insertRunValues(
   transaction: WorkspaceTransaction,
-  sourceRunId: string,
   runId: string,
+  values: RunValues,
 ): Promise<void> {
-  const values = await runValuesInTransaction(transaction, sourceRunId);
   const pairs = Object.entries(values);
   if (pairs.length === 0) return;
   await transaction.db.insert(workflowRunValues).values(

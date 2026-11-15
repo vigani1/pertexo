@@ -1,7 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { readCapacitySnapshot } from '../../../src/runs/queries/usage/capacity.repository.js';
+import { readCapacitySnapshot } from '../../../src/runs/queries/usage/capacity.js';
 
 import { apiUrl, maintenanceUrl } from '../../lifecycle/retention.support.js';
 import type { createFamily } from '../../lifecycle/calls/calls.fixture.js';

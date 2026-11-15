@@ -41,7 +41,7 @@ import {
 import {
   readWorkflowRun,
   type GetWorkflowRunInput,
-} from './queries/run.repository.js';
+} from './queries/read-run.js';
 import {
   readWorkflowNodeRunInput,
   readWorkflowNodeRunDiagnostics,
@@ -58,7 +58,7 @@ import {
 import {
   readWorkspaceUsageCapacity,
   type WorkspaceUsageCapacityInput,
-} from './queries/usage/capacity.repository.js';
+} from './queries/usage/capacity.js';
 import type {
   WorkflowRecoveryPreviewInput,
   RecoverPublishedWorkflowRunInput,
