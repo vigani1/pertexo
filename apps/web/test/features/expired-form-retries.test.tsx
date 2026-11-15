@@ -15,7 +15,7 @@ import {
 import { createApiClient } from '@/lib/api/client';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { NewWorkflowSheet } from '@/features/workflows/components/creation/new-workflow-sheet';
+import { NewWorkflowSheet } from '@/features/workflows/components/new-workflow-sheet';
 import { ReplaceCredentialForm } from '@/features/connections/components/detail/replace-credential-form';
 import { AddConnectionSheet } from '@/features/connections/components/add-connection/sheet';
 import { DestinationForm } from '@/features/failure-notifications/components/destination-form';

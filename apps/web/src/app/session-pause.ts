@@ -1,6 +1,6 @@
 import type { AnyRouter } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
-import { currentUserQueryOptions } from '@/features/auth/session/auth-session-queries.public';
+import { currentUserQueryOptions } from '@/features/auth/auth-session-queries.public';
 import type {
   SessionPause,
   SessionPauseReason,

@@ -1,7 +1,7 @@
 import {
   currentUserQueryKey,
   currentUserQueryOptions,
-} from '@/features/auth/session/auth-session-queries.public';
+} from '@/features/auth/auth-session-queries.public';
 import {
   createRouter,
   isRedirect,

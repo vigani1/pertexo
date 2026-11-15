@@ -1,4 +1,4 @@
-import { EventCoordinationSetup } from '../event-coordination/setup';
+import { EventCoordinationSetup } from '../event-coordination-setup';
 import { TaskContextEditor } from './context-editor';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import { FormDestination } from './destination';

@@ -1,7 +1,7 @@
 import { queryOptions, skipToken } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { collectPages } from '@/lib/api/pagination';
-import { getWorkflowsPage } from '../workflows.api';
+import { getWorkflowsPage } from './workflows.api';
 
 export function pinnedParentsQueryOptions(
   input: Readonly<{

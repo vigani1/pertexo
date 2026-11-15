@@ -22,8 +22,8 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { useCreateWorkflow } from '../../data/workflows.mutations';
-import { ExampleCards } from '../templates/example-cards';
+import { useCreateWorkflow } from '../data/workflows.mutations';
+import { ExampleCards } from './templates/example-cards';
 
 function createErrorMessage(error: unknown): string {
   if (isUnconfirmedCommand(error))

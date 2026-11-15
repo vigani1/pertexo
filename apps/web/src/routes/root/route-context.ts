@@ -6,7 +6,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   currentUserQueryOptions,
   isUnauthenticated,
-} from '@/features/auth/session/auth-session-queries.public';
+} from '@/features/auth/auth-session-queries.public';
 import {
   allowlistedReturnPath,
   returnToSearch,

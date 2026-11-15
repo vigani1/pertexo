@@ -6,8 +6,8 @@ import { GuideLink } from '@/components/patterns/guidance/guide-link';
 import { HELP_LINKS } from '@/lib/help/guides';
 import { shownData } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowSummaryQueryOptions } from '../../data/workflows.queries';
-import { firstRunGuideSteps } from '../../model/first-run-guide';
+import { workflowSummaryQueryOptions } from '../data/workflows.queries';
+import { firstRunGuideSteps } from '../model/first-run-guide';
 
 /**
  * The guided first run, above the canvas of the example it created: publish,
