@@ -2,7 +2,7 @@ import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
-import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/scanner.js';
+import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/schedule-scanner.store.js';
 import { triggerGraph } from '../webhooks/context.js';
 import {
   beforeAllFixture1,

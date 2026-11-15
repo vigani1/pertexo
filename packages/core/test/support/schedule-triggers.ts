@@ -18,7 +18,7 @@ import {
 import { createOperatorCommandStore } from '../../src/operator/operator-command.store.js';
 import { createOperatorRunReplayStore } from '../../src/operator/replay/operator-run-replay.store.js';
 import { createScheduleTriggerStore } from '../../src/triggers/schedules/schedule-trigger.store.js';
-import { createScheduleTriggerScanner } from '../../src/triggers/schedules/scanner.js';
+import { createScheduleTriggerScanner } from '../../src/triggers/schedules/schedule-scanner.store.js';
 import { createWorkflowTriggerReconciliationStore } from '../../src/triggers/reconciliation/workflow-trigger-reconciliation.store.js';
 
 export function createScheduleTriggerTestEnvironment(

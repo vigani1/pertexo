@@ -7,7 +7,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/scanner.js';
+import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/schedule-scanner.store.js';
 import {
   scopedConnectionUrl,
   waitForApplicationLock,

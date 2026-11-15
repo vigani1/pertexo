@@ -47,7 +47,7 @@ export type { WorkflowTriggerHealth } from './reconciliation/trigger-reconciliat
 export {
   createScheduleTriggerScanner,
   type ScheduleTriggerScanner,
-} from './schedules/scanner.js';
+} from './schedules/schedule-scanner.store.js';
 export type { ScanDueSchedulesResult } from './schedules/scanning/schedule-scanning.types.js';
 export {
   createWorkflowTriggerReconciliationStore,
