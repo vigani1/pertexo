@@ -5,7 +5,6 @@ import type { PoolClient } from 'pg';
 import { and, eq, inArray } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
-  DataTableError,
   DATA_TABLE_LIMITS,
   dataTableColumnsSchema,
   isDataTableKeyColumn,
@@ -62,12 +61,12 @@ export async function listTables(client: PoolClient, workspaceId: string) {
   };
 }
 
-export async function requireTable(
+export async function findTable(
   client: PoolClient,
   workspaceId: string,
   identity: { id: string } | { name: string },
-  { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
-): Promise<DataTableDefinition> {
+  lock: boolean,
+): Promise<DataTableDefinition | undefined> {
   let query = drizzle(client)
     .select(tableFields)
     .from(tables)
@@ -82,12 +81,7 @@ export async function requireTable(
     .$dynamic();
   if (lock) query = query.for('update');
   const [row] = await query.catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new DataTableError(
-      'not_found',
-      'This data table is unavailable. Select an existing workspace table.',
-    );
-  return decodeTableDefinition(row);
+  return row === undefined ? undefined : decodeTableDefinition(row);
 }
 
 export async function readQuotas(

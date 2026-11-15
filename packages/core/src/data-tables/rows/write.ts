@@ -10,8 +10,9 @@ import type {
   ImportRowsInput,
   WriteRowsInput,
 } from '../data-table-commands.types.js';
-import { readQuotas, requireTable } from '../table-lookups.repository.js';
-import { insertTableBatch, mutateRows } from './mutate.repository.js';
+import { readQuotas } from '../table-lookups.repository.js';
+import { requireTable } from '../require-table.js';
+import { insertTableBatch, mutateRows } from './mutate-rows.js';
 
 export function writeTableRows(client: PoolClient, input: WriteRowsInput) {
   // HTTP receipts retain identities/counts only; row payloads follow table access.

@@ -34,10 +34,11 @@ import type {
   DataTableDefinition,
   ExecuteTableCommandInput,
 } from './data-table-commands.types.js';
-import { readQuotas, requireTable } from './table-lookups.repository.js';
+import { readQuotas } from './table-lookups.repository.js';
+import { requireTable } from './require-table.js';
 import { translateWorkerFailure } from './data-table.errors.js';
-import { findRows } from './rows/find.repository.js';
-import { mutateRows } from './rows/mutate.repository.js';
+import { findRows } from './rows/find-rows.js';
+import { mutateRows } from './rows/mutate-rows.js';
 
 export type WorkerDataTablesStore = ReturnType<
   typeof createWorkerDataTablesStore

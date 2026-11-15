@@ -14,7 +14,7 @@ import {
 } from '@pertexo/workflow-model/server';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { lockWorkspaceVariableNames } from '../../../variables/head.repository.js';
-import { dataTableReferenceIssues } from '../../../data-tables/columns/references.repository.js';
+import { dataTableReferenceIssues } from '../../../data-tables/columns/table-references.js';
 import { PROMOTION_LIMITS, workflowNodes } from '@pertexo/workflow-model';
 
 export async function inspectPromotionRequirements(
