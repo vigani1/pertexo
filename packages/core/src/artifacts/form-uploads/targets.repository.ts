@@ -1,13 +1,10 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { createHash } from 'node:crypto';
-import { and, eq, isNull, type SQL } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/policy';
 import {
   inputRequestConfigSchema,
   type FormField,
 } from '@pertexo/workflow-model';
-import { formUploads } from '@pertexo/database/schema';
 import {
   authorizeForm,
   readFormVersion,
@@ -21,21 +18,10 @@ import {
   PendingTaskNotFoundError,
 } from '../../runs/pending-tasks/responses/pending-task.errors.js';
 import type { FormUploadTarget } from './form-upload.types.js';
+import type { FormUploadBinding } from './bindings.repository.js';
 
-/** The response an upload belongs to; a submission may only use matching uploads. */
-export type FormUploadBinding = Readonly<{
-  workspaceId: string;
-  workflowId: string;
-  workflowVersionId: string | null;
-  taskId: string | null;
-  capabilityHash: string | null;
-  uploadedBy: string | null;
-}>;
 export type LoadedUploadTarget = FormUploadBinding &
   Readonly<{ fields: readonly FormField[] }>;
-
-export const formUploadSessionHash = (session: string) =>
-  createHash('sha256').update(session).digest('hex');
 
 export function uploadTargetScope(target: FormUploadTarget) {
   return target.kind === 'public_form'
@@ -101,23 +87,4 @@ async function loadInputRequest(
     fields: decodeStoredValue(() => inputRequestConfigSchema.parse(row.config))
       .fields,
   };
-}
-
-const matches = (column: Parameters<typeof eq>[0], value: string | null) =>
-  value === null ? isNull(column) : eq(column, value);
-
-/** Rows begun by the same response: target, responder and session. */
-export function boundUploadsSql(
-  binding: FormUploadBinding,
-  session: string,
-): SQL | undefined {
-  return and(
-    eq(formUploads.workspaceId, binding.workspaceId),
-    eq(formUploads.workflowId, binding.workflowId),
-    matches(formUploads.workflowVersionId, binding.workflowVersionId),
-    matches(formUploads.taskId, binding.taskId),
-    matches(formUploads.capabilityHash, binding.capabilityHash),
-    matches(formUploads.uploadedBy, binding.uploadedBy),
-    eq(formUploads.sessionHash, formUploadSessionHash(session)),
-  );
 }

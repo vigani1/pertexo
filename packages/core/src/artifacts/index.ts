@@ -47,4 +47,5 @@ export type {} from './references/owners.repository.js';
 export type {} from './form-uploads/resolve.repository.js';
 export type {} from './form-uploads/unsent.repository.js';
 export type {} from './form-uploads/targets.repository.js';
+export type {} from './form-uploads/bindings.repository.js';
 export type {} from './uploads/reservation.repository.js';

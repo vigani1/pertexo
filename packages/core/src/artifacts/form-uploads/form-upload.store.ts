@@ -39,12 +39,14 @@ import type {
   ReadFormUploadInput,
 } from './form-upload.types.js';
 import {
-  boundUploadsSql,
-  formUploadSessionHash,
   loadUploadTarget,
   uploadTargetScope,
   type LoadedUploadTarget,
 } from './targets.repository.js';
+import {
+  boundUploadsSql,
+  formUploadSessionHash,
+} from './bindings.repository.js';
 
 // Unsent files go after a day, or an hour for a public link.
 const UNSENT_UPLOAD_SECONDS = Object.freeze({
