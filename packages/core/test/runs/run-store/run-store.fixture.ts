@@ -18,7 +18,7 @@ import { createFailureNotificationStore } from '../../../src/notifications/failu
 import {
   createDeadlineWakeupScanner,
   createDueNodeWakeupScanner,
-} from '../../../src/runs/wakeups/scanners.js';
+} from '../../../src/runs/wakeups/wakeup-scanner.store.js';
 import { createNodeAttemptRunStore } from '../../../src/attempts/node-attempt-run.store.js';
 import {
   NodeAttemptDeliveryMismatchError,

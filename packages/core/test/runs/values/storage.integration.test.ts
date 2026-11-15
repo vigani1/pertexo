@@ -10,7 +10,7 @@ import {
   withWorkspaceTransaction,
   withWorkspaceReadTransaction,
 } from '@pertexo/database/primitives';
-import { RUN_VALUES_RETENTION_RULE } from '../../../src/runs/values/retention.js';
+import { RUN_VALUES_RETENTION_RULE } from '../../../src/runs/values/retention.repository.js';
 import {
   store,
   actorId,

@@ -1,4 +1,4 @@
-import { entitlementPolicyStateAt } from '../../queries/entitlement-effect.js';
+import { entitlementPolicyStateAt } from '../../queries/entitlement-effect.repository.js';
 import { lockWorkspaceRunAdmission } from '../../../shared/workspace-fence.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import {

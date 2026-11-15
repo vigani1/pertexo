@@ -1,4 +1,4 @@
-import { RUN_DETAILS_RETENTION_SQL } from '../../data-policy.js';
+import { RUN_DETAILS_RETENTION_SQL } from '../../run-retention.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { workflowRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';

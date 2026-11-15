@@ -1,5 +1,5 @@
 import { BROWSABLE_WORKSPACE_STATUSES, hasCapability } from '@pertexo/policy';
-import { entitlementPolicyState } from '../entitlement-effect.js';
+import { entitlementPolicyState } from '../entitlement-effect.repository.js';
 import {
   DEFAULT_ARTIFACT_BYTE_LIMIT,
   workspaceArtifactCapacity,

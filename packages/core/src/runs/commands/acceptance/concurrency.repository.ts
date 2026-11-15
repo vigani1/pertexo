@@ -1,7 +1,7 @@
 import { WorkflowAlreadyRunningError } from './run-admission.errors.js';
 import { workflowConcurrencyPolicies } from '@pertexo/database/schema';
 import { and, eq, sql } from 'drizzle-orm';
-import { isTestRun } from '../../data-policy.js';
+import { isTestRun } from '../../run-retention.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 /** Serialize immediately before insertion, after claims and artifact-reference locks. */

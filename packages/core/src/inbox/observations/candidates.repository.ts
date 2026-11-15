@@ -1,4 +1,4 @@
-import { entitlementInEffect } from '../../runs/queries/entitlement-effect.js';
+import { entitlementInEffect } from '../../runs/queries/entitlement-effect.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   and,

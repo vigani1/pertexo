@@ -10,13 +10,13 @@ import {
   retainedTestRunSql,
   runRetentionIntervalSql,
   RUN_DETAILS_RETENTION_SQL,
-} from '../../data-policy.js';
+} from '../../run-retention.repository.js';
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { readVariableSetValues } from '../../../variables/values.repository.js';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import { sql, and, eq, desc, exists, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { workflowGraphStepSql } from '../execution/graph-step.js';
+import { workflowGraphStepSql } from '../execution/graph-step.repository.js';
 import type { Pool } from 'pg';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { UNSUCCESSFUL_STATUSES } from '../../statuses.js';

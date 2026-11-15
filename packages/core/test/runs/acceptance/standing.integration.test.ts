@@ -5,7 +5,7 @@ import { sql } from 'drizzle-orm';
 import {
   entitlementPolicyState,
   entitlementPolicyStateAt,
-} from '../../../src/runs/queries/entitlement-effect.js';
+} from '../../../src/runs/queries/entitlement-effect.repository.js';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,

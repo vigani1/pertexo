@@ -13,7 +13,7 @@ import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { and, asc, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { entitlementPolicyState } from '../../../runs/queries/entitlement-effect.js';
+import { entitlementPolicyState } from '../../../runs/queries/entitlement-effect.repository.js';
 import {
   workflowConcurrencyPolicies,
   workflows,
@@ -23,7 +23,7 @@ import {
   workspaceExecutionEntitlementVersions,
 } from '@pertexo/database/schema';
 
-import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
+import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/run-retention.repository.js';
 import type { AuthoringAccess } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import {

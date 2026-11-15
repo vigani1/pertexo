@@ -2,7 +2,10 @@ import type { RunStatus } from '@pertexo/workflow-engine';
 import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
 import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
 import { withRetainedRunRead } from '../../access.js';
-import { ordinaryRunSql, expiredRunSql } from '../../data-policy.js';
+import {
+  ordinaryRunSql,
+  expiredRunSql,
+} from '../../run-retention.repository.js';
 import { UNSUCCESSFUL_STATUSES } from '../../statuses.js';
 import {
   workflowRunValues,

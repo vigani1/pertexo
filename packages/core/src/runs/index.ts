@@ -48,8 +48,8 @@ export type { RunAdvanceStore } from './advance/run-advance.store.js';
 export {
   createDeadlineWakeupScanner,
   createDueNodeWakeupScanner,
-} from './wakeups/scanners.js';
-export type { WakeupScanner } from './wakeups/scanners.js';
+} from './wakeups/wakeup-scanner.store.js';
+export type { WakeupScanner } from './wakeups/wakeup-scanner.store.js';
 export { createPublishedWorkflowReader } from './queries/execution/published.repository.js';
 
 export { createRunFailureStore } from './advance/failure.store.js';
@@ -153,13 +153,13 @@ export type {} from './commands/acceptance/accept.js';
 export type {} from './commands/acceptance/replay.repository.js';
 export type {} from './commands/cancel-run.js';
 export type {} from './commands/request-cancellation.js';
-export type {} from './data-policy.js';
-export type {} from './pending-tasks/callbacks/retention.js';
+export type {} from './run-retention.repository.js';
+export type {} from './pending-tasks/callbacks/retention.repository.js';
 export type {} from './pending-tasks/responses/eligibility.repository.js';
 export type {} from './pending-tasks/responses/pending-task-records.repository.js';
-export type {} from './queries/entitlement-effect.js';
+export type {} from './queries/entitlement-effect.repository.js';
 export type {} from './stalled/overdue.repository.js';
-export type {} from './values/retention.js';
+export type {} from './values/retention.repository.js';
 
 export type {} from './stalled/stuck-work.repository.js';
 
