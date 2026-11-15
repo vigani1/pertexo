@@ -98,6 +98,7 @@ qualified(
             leaseDurationMillis: 30_000,
             leaseOwner: `recovery-${randomUUID()}`,
             retryDelayMillis: 1_000,
+            operationTimeoutMillis: 5_000,
             pollIntervalMillis: 250,
           },
         });

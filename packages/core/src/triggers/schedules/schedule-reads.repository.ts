@@ -1,3 +1,4 @@
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import {
   scheduleCanFire,
   scheduleStandingColumns,
@@ -87,7 +88,7 @@ async function readOccurrencePage(
       and(
         eq(occurrences.workspaceId, read.workspaceId),
         eq(occurrences.triggerId, read.triggerId),
-        sql`${occurrences.scheduledAt}>clock_timestamp()-interval '90 days'`,
+        sql`${occurrences.scheduledAt}>clock_timestamp()-make_interval(days=>${DATA_RETENTION_DAYS.triggerHistory})`,
         sql`(${after?.scheduledAt ?? null}::timestamptz is null or ${occurrences.scheduledAt}<${after?.scheduledAt ?? null}::timestamptz or
         (${occurrences.scheduledAt}=${after?.scheduledAt ?? null}::timestamptz and ${occurrences.id}>${after?.id ?? null}::uuid))`,
       ),

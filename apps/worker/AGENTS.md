@@ -60,8 +60,16 @@ environment only in `config/`.
 
 - Generic throws that stay are assertions: a preview supervisor asked to own
   a second invocation (`previews/supervisor.ts`), an unknown failure
-  destination (`notifications/failure-delivery.ts`), and wrapping a rejection
-  value that isn't an `Error` (`attempts/artifacts/node-artifact.runtime.ts`).
+  destination (`notifications/failure-delivery.ts`), and a scanner runtime
+  used after it closed (`runtime/scanner.ts`).
+- Wrapping a rejection value that isn't an `Error`, so a cause is kept:
+  `attempts/artifacts/node-artifact.runtime.ts`,
+  `attempts/artifacts/scratch/consume.ts` (cleanup and operation) and
+  `attempts/delivery/complete.ts` (a heartbeat failure).
+- Abort reasons, which say why a signal fired and reach no caller as a
+  domain error: readiness shutdown (`runtime/health/readiness-monitor.ts`),
+  a stopped preview heartbeat (`previews/supervisor.ts`) and a
+  failure-notification timeout (`notifications/failure-handler.ts`).
 
 ## What guards it
 

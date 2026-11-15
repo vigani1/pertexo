@@ -85,6 +85,8 @@ describeIntegration('Publication retry database clock', () => {
         leaseDurationMillis: 30_000,
         leaseOwner: 'persistent-outage',
         retryDelayMillis: 1_000,
+        pollIntervalMillis: 1_000,
+        operationTimeoutMillis: 5_000,
       },
     });
     try {

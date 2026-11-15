@@ -126,6 +126,7 @@ describe.runIf(fixture.enabled)(
               leaseDurationMillis: 1_000,
               leaseOwner: `error-capacity-${randomUUID()}`,
               retryDelayMillis: 100,
+              operationTimeoutMillis: 5_000,
               pollIntervalMillis: 25,
             },
           });

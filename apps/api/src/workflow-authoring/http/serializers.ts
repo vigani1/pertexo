@@ -99,20 +99,27 @@ export function serializeWorkflowValidation(
   validation: ReturnType<typeof validateWorkflowGraph>,
   currentPublication: WorkflowValidateResponse['currentPublication'],
 ): WorkflowValidationResult {
-  const parsed = workflowValidateResponseSchema.safeParse({
-    valid: validation.ok && draft.compatibility.compatible,
-    issues: validation.issues.map((issue) => ({
+  // An issue list beyond the contract's bounds can't be reported, so the
+  // validation is unavailable; the route's response check covers the rest.
+  const issues = workflowValidateResponseSchema.shape.issues.safeParse(
+    validation.issues.map((issue) => ({
       path: issue.path,
       code: issue.code,
       message: issue.message,
     })),
-    compatibility: draft.compatibility,
-    currentPublication,
-  });
-  if (!parsed.success)
+  );
+  if (!issues.success)
     throw new AuthoringValidationUnavailableError('report_limit');
   return Object.freeze({
-    body: parsed.data,
+    body: {
+      valid: validation.ok && draft.compatibility.compatible,
+      issues: issues.data,
+      compatibility: {
+        ...draft.compatibility,
+        issues: [...draft.compatibility.issues],
+      },
+      currentPublication,
+    },
     representationTag: workflowDraftRepresentationTag({
       workflowId: draft.workflowId,
       revision: draft.revision,

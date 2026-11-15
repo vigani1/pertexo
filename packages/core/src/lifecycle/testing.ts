@@ -1,5 +1,4 @@
 export { changeWorkspaceLifecycle } from './deletion/change.js';
-export { WORKSPACE_RECOVERY_DAYS } from './deletion/transitions.js';
 export { createRetentionStore } from './retention/retention.store.js';
 export { RETENTION_RULES } from './retention/rules.js';
 export { createRunArtifactRetentionCoordinator } from './artifacts/coordinator.js';

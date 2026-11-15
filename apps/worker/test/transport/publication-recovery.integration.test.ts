@@ -59,6 +59,7 @@ describeIntegration('publication recovery after real Redis refusals', () => {
         leaseOwner: 'redis-refusal-proof',
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 1_000,
+        pollIntervalMillis: 1_000,
       },
     });
     const pool = new Pool({ connectionString: dispatcherUrl, max: 1 });

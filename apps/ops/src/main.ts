@@ -136,16 +136,7 @@ function isMainModule(): boolean {
 
 if (isMainModule()) {
   void bootstrapOperatorCommand().catch(async (error: unknown) => {
-    const { classifyProcessError, describeProcessFailure } =
-      await import('@pertexo/observability/startup');
-    process.stderr.write(
-      `${JSON.stringify({
-        cause: describeProcessFailure(error),
-        errorType: classifyProcessError(error),
-        event: 'operator_command.process_failed',
-        level: 'fatal',
-      })}\n`,
-    );
-    process.exitCode = 1;
+    const { reportProcessFailure } = await import('./process-failure.js');
+    reportProcessFailure('operator_command.process_failed', error);
   });
 }

@@ -46,6 +46,11 @@ async function run(overrides: Readonly<Record<string, string | undefined>>) {
     'person@example.test',
   ])
     expect(stderr).not.toContain(value);
+  // The same fatal event the operator command writes.
+  expect(JSON.parse(stderr)).toMatchObject({
+    event: 'two_factor_recovery.process_failed',
+    level: 'fatal',
+  });
   return stderr;
 }
 it.each([

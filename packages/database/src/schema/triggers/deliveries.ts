@@ -3,7 +3,11 @@ import type {
   WebhookSignatureCheck,
   WebhookReplayCheck,
 } from '../stored-shapes.js';
-import { triggerCoordinatedEvents } from '../event-coordination/records.js';
+import {
+  triggerCoordinatedEvents,
+  triggerHistoryExpiry,
+  triggerHistoryWindow,
+} from '../event-coordination/records.js';
 import { workflowRuns } from '../runs/workflow-runs.js';
 import {
   type PgTableExtraConfigValue,
@@ -36,7 +40,7 @@ export const webhookTriggerDeliveries = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
-      .default(sql`clock_timestamp()+interval '90 days'`)
+      .default(triggerHistoryExpiry())
       .notNull(),
     outcome: varchar('outcome', { length: 32 })
       .$type<WebhookDeliveryOutcome>()
@@ -71,7 +75,7 @@ export const webhookTriggerDeliveries = appSchema.table(
     ),
     check(
       'webhook_trigger_deliveries_retention_valid',
-      sql`((expires_at >= (received_at + '89 days 23:59:59'::interval)) AND (expires_at <= (received_at + '90 days 00:00:01'::interval)))`,
+      triggerHistoryWindow('stored'),
     ),
     unique('webhook_trigger_deliveries_workspace_identity_unique').on(
       table.workspaceId,

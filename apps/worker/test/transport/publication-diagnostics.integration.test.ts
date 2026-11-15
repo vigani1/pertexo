@@ -61,6 +61,8 @@ describeIntegration('Permanent publication diagnostics', () => {
         leaseDurationMillis: 30_000,
         leaseOwner: 'diagnostic-proof',
         retryDelayMillis: 1_000,
+        pollIntervalMillis: 1_000,
+        operationTimeoutMillis: 5_000,
       },
     });
     const pool = new Pool({ connectionString: dispatcherUrl, max: 1 });

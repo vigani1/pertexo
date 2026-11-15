@@ -55,6 +55,7 @@ export function createTransportDispatchControls(
           leaseOwner: owner,
           operationTimeoutMillis: 5_000,
           retryDelayMillis: 100,
+          pollIntervalMillis: 1_000,
         },
       },
     );

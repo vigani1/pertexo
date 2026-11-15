@@ -95,6 +95,7 @@ export async function startScheduleQualification(
         leaseOwner: 'schedule-publication-dispatcher',
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 10,
+        pollIntervalMillis: 1_000,
       },
     }),
   );

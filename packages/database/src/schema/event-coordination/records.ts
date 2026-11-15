@@ -19,7 +19,31 @@ import { workspaces } from '../tenant-access/workspaces.js';
 import { workflows, workflowVersions } from '../authoring/workflows.js';
 import { workflowRuns } from '../runs/workflow-runs.js';
 import { webhookTriggerEndpoints } from '../triggers/endpoints.js';
-import type { EventCoordinationPolicy } from '@pertexo/workflow-model';
+import {
+  DATA_RETENTION_DAYS,
+  type EventCoordinationPolicy,
+} from '@pertexo/workflow-model';
+
+const TRIGGER_HISTORY_DAYS = String(DATA_RETENTION_DAYS.triggerHistory);
+const DAY_BEFORE_TRIGGER_HISTORY = String(
+  DATA_RETENTION_DAYS.triggerHistory - 1,
+);
+
+/** When a trigger's history row, stamped on arrival, expires. */
+export function triggerHistoryExpiry() {
+  return sql.raw(`clock_timestamp()+interval '${TRIGGER_HISTORY_DAYS} days'`);
+}
+
+/** The retention a stored expiry must keep, give or take a second. */
+export function triggerHistoryWindow(form: 'stored' | 'written') {
+  return form === 'written'
+    ? sql.raw(
+        `expires_at between received_at+interval '${DAY_BEFORE_TRIGGER_HISTORY} days 23:59:59' and received_at+interval '${TRIGGER_HISTORY_DAYS} days 00:00:01'`,
+      )
+    : sql.raw(
+        `((expires_at >= (received_at + '${DAY_BEFORE_TRIGGER_HISTORY} days 23:59:59'::interval)) AND (expires_at <= (received_at + '${TRIGGER_HISTORY_DAYS} days 00:00:01'::interval)))`,
+      );
+}
 
 export const triggerEventWindows = appSchema.table(
   'trigger_event_windows',
@@ -86,7 +110,7 @@ export const triggerCoordinatedEvents = appSchema.table(
       .default(sql`clock_timestamp()`)
       .notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
-      .default(sql`clock_timestamp()+interval '90 days'`)
+      .default(triggerHistoryExpiry())
       .notNull(),
     finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'date' }),
     keyId: uuid('key_id'),
@@ -145,7 +169,7 @@ export const triggerCoordinatedEvents = appSchema.table(
     ),
     check(
       'trigger_coordinated_events_retention',
-      sql`expires_at between received_at+interval '89 days 23:59:59' and received_at+interval '90 days 00:00:01'`,
+      triggerHistoryWindow('written'),
     ),
     index('trigger_coordinated_events_history').on(
       table.workspaceId,

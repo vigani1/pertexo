@@ -224,6 +224,7 @@ export async function runtime(
         leaseOwner: `call-${randomUUID()}`,
         operationTimeoutMillis: 2_000,
         retryDelayMillis: 25,
+        pollIntervalMillis: 1_000,
       },
     });
     owners.splice(0, 2, dispatcher);

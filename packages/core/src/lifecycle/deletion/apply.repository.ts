@@ -30,10 +30,8 @@ import { requestActiveRunCancellations } from '../../runs/commands/cancel-run.js
 import { IdempotencyRequestConflictError } from '../../shared/command-receipt.errors.js';
 import { WorkspaceLifecycleConflictError } from '../workspace-lifecycle.errors.js';
 import type { WorkspaceId } from '@pertexo/database/primitives';
-import {
-  LIFECYCLE_TRANSITIONS,
-  WORKSPACE_RECOVERY_DAYS,
-} from './transitions.js';
+import { LIFECYCLE_TRANSITIONS } from './transitions.js';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 
 /** Invitation, then delivery attempt, then acceptance intent. */
 async function cancelPendingInvitations(
@@ -240,7 +238,7 @@ export async function applyWorkspaceLifecycleChange(
         deletionRequestedAt: sql`statement_timestamp()`,
         deletionRequestedBy: change.actorUserId,
         deletionReason: change.reason,
-        purgeAfter: sql`statement_timestamp()+make_interval(days=>${WORKSPACE_RECOVERY_DAYS})`,
+        purgeAfter: sql`statement_timestamp()+make_interval(days=>${DATA_RETENTION_DAYS.workspaceRecovery})`,
         updatedAt: sql`statement_timestamp()`,
       })
       .where(eq(workspaces.id, change.workspaceId))

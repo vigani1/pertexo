@@ -1,3 +1,4 @@
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import {
   webhookTriggerReplayRecords,
   webhookTriggerDeliveries,
@@ -122,7 +123,7 @@ export const eventWindows = deletionRule('event_windows', {
 export const scheduleOccurrences = deletionRule('schedule_occurrences', {
   table: triggerScheduleOccurrences,
   keys: [triggerScheduleOccurrences.id],
-  condition: sql`${triggerScheduleOccurrences.scheduledAt}<=clock_timestamp()-interval '90 days'`,
+  condition: sql`${triggerScheduleOccurrences.scheduledAt}<=clock_timestamp()-make_interval(days=>${DATA_RETENTION_DAYS.triggerHistory})`,
   orderBy: [
     triggerScheduleOccurrences.scheduledAt,
     triggerScheduleOccurrences.id,

@@ -49,10 +49,7 @@ import {
   OutboxDispatcherHooksError,
   OutboxDispatcherDrainingError,
 } from './outbox-dispatch.errors.js';
-import {
-  admitJobAllowlist,
-  OUTBOX_DISPATCHER_DEFAULTS,
-} from './dispatcher-settings.js';
+import { admitJobAllowlist } from './dispatcher-settings.js';
 import type {
   OutboxDispatcherOptions,
   OutboxDispatcherRuntimeHooks,
@@ -63,7 +60,7 @@ const CYCLE_FAILURE_LOG_INTERVAL_MILLIS = 60_000;
 
 export class OutboxDispatcher {
   private readonly capacitySamples: OutboxCapacitySampler;
-  private readonly options: Required<OutboxDispatcherOptions>;
+  private readonly options: OutboxDispatcherOptions;
   private readonly enabledQueueNames: ReadonlySet<string>;
 
   private readonly publicationSettlements: OutboxPublicationSettlements;
@@ -102,7 +99,6 @@ export class OutboxDispatcher {
     this.logger = logger;
 
     this.options = Object.freeze({
-      ...OUTBOX_DISPATCHER_DEFAULTS,
       ...options,
       jobNames,
     });
