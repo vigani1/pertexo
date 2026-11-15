@@ -2,7 +2,7 @@ import type { ValueSource, WorkflowGraph } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import { WorkspaceVariableUsageChangedError } from '../../src/variables/workspace-variables.errors.js';
-import { scanVariableUsage } from '../../src/variables/usage-scan.js';
+import { scanVariableUsage } from '../../src/variables/scan-usage.js';
 
 const WORKFLOW = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const OTHER_WORKFLOW = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';

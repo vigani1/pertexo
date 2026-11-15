@@ -5,7 +5,7 @@ export {
 export {
   type ReplaceWorkspaceVariablesInput,
   type VariableUsageInput,
-} from './workspace-variables.js';
+} from './workspace-variables.types.js';
 export {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,

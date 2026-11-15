@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../shared/workflow-actor.js';
+import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
 import type { workflowStepSamples } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 import type { StepSampleSource } from '@pertexo/workflow-model';

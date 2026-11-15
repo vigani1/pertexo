@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../shared/workflow-actor.js';
+import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';

@@ -1,7 +1,7 @@
 import type {
   WorkflowActor,
   WorkflowRef,
-} from '../../../shared/workflow-actor.js';
+} from '../../../shared/workflow-actor.types.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';

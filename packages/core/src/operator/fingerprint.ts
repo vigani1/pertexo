@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { serializeBoundedPlainJson } from './serialize-command-json.js';
 
-import type { CommandRequest } from './operator-command.js';
+import type { CommandRequest } from './operator-command.types.js';
 
 export const REPLAY_INPUT_BYTES = 65_536;
 /** Request material is bounded by its largest field, a replay input, with room for the rest. */

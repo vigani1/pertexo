@@ -69,7 +69,7 @@ export {
 export type { OAuth2StoredTokens } from './oauth2/stored.js';
 
 export type { OAuth2TokenServiceDependencies } from './oauth2/refresh.js';
-export type { OAuth2AccessToken } from './oauth2/token-renewal.js';
+export type { OAuth2AccessToken } from './oauth2/token-renewal.types.js';
 export type { OAuth2GrantLossActor } from './oauth2/oauth2-grant.types.js';
 
 export type {

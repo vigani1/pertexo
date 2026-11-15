@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../shared/workflow-actor.js';
+import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

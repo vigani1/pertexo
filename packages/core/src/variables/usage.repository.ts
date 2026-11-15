@@ -14,8 +14,8 @@ import type { PoolClient } from 'pg';
 import type {
   VariableUsageInput,
   VariableUsagePage,
-} from './workspace-variables.js';
-import { walkVariableUsage } from './usage-walk.js';
+} from './workspace-variables.types.js';
+import { walkVariableUsage } from './walk-usage.js';
 
 // A step reads one workflow, and one more to learn whether another follows.
 const WORKFLOWS_PER_STEP_AND_NEXT = 2;

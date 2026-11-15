@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { operatorCommands } from '@pertexo/database/schema';
 
-import type { OperatorCommandRecord } from './operator-command.js';
+import type { OperatorCommandRecord } from './operator-command.types.js';
 
 const persistedDateSchema = z
   .union([z.date(), z.string()])

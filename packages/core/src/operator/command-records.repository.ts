@@ -3,7 +3,7 @@ import { operatorCommands } from '@pertexo/database/schema';
 import { eq, sql } from 'drizzle-orm';
 
 import type { OperatorDecision } from './handlers/decision.js';
-import type { CommandRequest } from './operator-command.js';
+import type { CommandRequest } from './operator-command.types.js';
 
 /** Seed of the advisory lock that serializes requests reusing one command id. */
 const COMMAND_LOCK_SEED = 7_166_118_813;

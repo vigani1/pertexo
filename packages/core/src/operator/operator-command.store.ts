@@ -27,7 +27,7 @@ import type {
   RecordUnknownOutcomeEvidenceInput,
   RedispatchFailedOutboxInput,
   ReplayOperatorRunInput,
-} from './operator-command.js';
+} from './operator-command.types.js';
 import { REPLAY_INPUT_BYTES } from './fingerprint.js';
 import {
   reconcileAttempt,

@@ -1,7 +1,7 @@
 import type { ValueSource } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
-import { walkVariableUsage } from '../../src/variables/usage-walk.js';
+import { walkVariableUsage } from '../../src/variables/walk-usage.js';
 
 const reads: ValueSource = { kind: 'workspace_variable', name: 'RATE' };
 const unrelated: ValueSource = {

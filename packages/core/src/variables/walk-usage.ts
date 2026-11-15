@@ -1,12 +1,12 @@
 import type {
   VariableUsageInput,
   VariableUsageScan,
-} from './workspace-variables.js';
+} from './workspace-variables.types.js';
 import {
   scanVariableUsage,
   type UsageSpending,
   type UsageWorkflow,
-} from './usage-scan.js';
+} from './scan-usage.js';
 
 /** A workflow with no expressions costs a query and a parse, but no source budget. */
 const MAX_WORKFLOWS_PER_PAGE = 25;
