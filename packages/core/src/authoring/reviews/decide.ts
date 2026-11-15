@@ -1,20 +1,10 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { rolesForCapability } from '@pertexo/policy';
 import { publicationReviewDecision } from '@pertexo/workflow-model';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import {
-  claimCommand,
-  completeCommand,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
-import {
-  workflowPublicationRequests,
-  workflowDrafts,
-} from '@pertexo/database/schema';
 import { publishWorkflowCandidate } from '../publication/publish.js';
 import { lockWorkflowAuthoringAuthority } from '../workflows/authority.js';
 import type {
@@ -27,6 +17,10 @@ import {
   readReviewDraft,
   readReviewRow,
 } from './read.repository.js';
+import {
+  lockReviewedDraftAndRequest,
+  recordReviewDecision,
+} from './requests.repository.js';
 
 export async function decidePublicationReview(
   client: PoolClient,
@@ -54,29 +48,11 @@ export async function decidePublicationReview(
     return projectReview(await readReviewRow(client, input));
   }
   const initial = await readReviewRow(client, input);
-  const db = drizzle(client);
-  await db
-    .select({ workflowId: workflowDrafts.workflowId })
-    .from(workflowDrafts)
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, input.workspaceId),
-        eq(workflowDrafts.workflowId, initial.workflowId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  await db
-    .select({ id: workflowPublicationRequests.id })
-    .from(workflowPublicationRequests)
-    .where(
-      and(
-        eq(workflowPublicationRequests.workspaceId, input.workspaceId),
-        eq(workflowPublicationRequests.id, input.reviewId),
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
+  await lockReviewedDraftAndRequest(client, {
+    workspaceId: input.workspaceId,
+    reviewId: input.reviewId,
+    workflowId: initial.workflowId,
+  });
   const row = await readReviewRow(client, input);
   const decision = publicationReviewDecision({
     requestedBy: row.requestedBy,
@@ -109,23 +85,13 @@ export async function decidePublicationReview(
           dependencies.catalogs,
         )
       : null;
-  await db
-    .update(workflowPublicationRequests)
-    .set({
-      status: decision.status,
-      decidedBy: input.actorId,
-      decidedAt: sql`clock_timestamp()`,
-      comment: input.comment ?? null,
-      publishedVersionId: published?.version.id ?? null,
-      reused: published?.reused ?? null,
-    })
-    .where(
-      and(
-        eq(workflowPublicationRequests.workspaceId, input.workspaceId),
-        eq(workflowPublicationRequests.id, input.reviewId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  await recordReviewDecision(client, input, {
+    status: decision.status,
+    decidedBy: input.actorId,
+    comment: input.comment ?? null,
+    publishedVersionId: published?.version.id ?? null,
+    reused: published?.reused ?? null,
+  });
   await appendAuditFact(client, {
     workspaceId: input.workspaceId,
     actorId: input.actorId,

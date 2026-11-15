@@ -1,15 +1,5 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { and, eq, inArray, ne, or, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  workflowPublicationRequests,
-  workspaces,
-} from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
 import { requireConnectionBindings } from '../../shared/resources/connection-bindings.repository.js';
 import type { PoolClient } from 'pg';
@@ -27,13 +17,15 @@ import {
   projectReview,
 } from './read.repository.js';
 import {
-  reviewSource,
-  review,
-  reviewStateSql,
-} from './eligibility.repository.js';
+  countPendingReviews,
+  hasPendingRequest,
+  insertReviewRequest,
+  markSupersededRequestsStale,
+  requiresPublishApproval,
+} from './requests.repository.js';
 
-/** How long a request waits for a decision. */
-const REVIEW_LIFETIME = sql`interval '7 days'`;
+/** Pending requests a workspace holds at once. */
+const PENDING_REVIEWS_MAX = 100;
 
 export async function requestPublicationReview(
   client: PoolClient,
@@ -57,13 +49,7 @@ export async function requestPublicationReview(
     );
     return readReviewSummary(client, dependencies, { ...input, reviewId });
   }
-  const db = drizzle(client);
-  const [workspace] = await db
-    .select({ requirePublishApproval: workspaces.requirePublishApproval })
-    .from(workspaces)
-    .where(eq(workspaces.id, input.workspaceId))
-    .catch(rethrowQueryFailure);
-  if (!(workspace?.requirePublishApproval ?? false))
+  if (!(await requiresPublishApproval(client, input.workspaceId)))
     throw new PublicationReviewError(
       'disabled',
       'Publication approval is off. Publish the draft directly.',
@@ -73,75 +59,33 @@ export async function requestPublicationReview(
     expectedTag: input.representationTag,
   });
   await requireConnectionBindings(client, input, draft.graphJson);
-  const stale = reviewSource(db, { id: review.id }).where(
-    and(
-      eq(review.workspaceId, input.workspaceId),
-      eq(review.workflowId, input.workflowId),
-      ne(reviewStateSql, 'pending'),
-    ),
-  );
-  await db
-    .update(workflowPublicationRequests)
-    .set({ status: 'stale' })
-    .where(
-      and(
-        eq(workflowPublicationRequests.workspaceId, input.workspaceId),
-        eq(workflowPublicationRequests.workflowId, input.workflowId),
-        eq(workflowPublicationRequests.status, 'pending'),
-        or(
-          ne(
-            workflowPublicationRequests.representationTag,
-            input.representationTag,
-          ),
-          inArray(workflowPublicationRequests.id, stale),
-        ),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  const pending = await reviewSource(db, { id: review.id })
-    .where(
-      and(
-        eq(review.workspaceId, input.workspaceId),
-        eq(reviewStateSql, 'pending'),
-      ),
-    )
-    .limit(100)
-    .catch(rethrowQueryFailure);
-  if (pending.length >= 100)
+  await markSupersededRequestsStale(client, input, input.representationTag);
+  if (
+    (await countPendingReviews(
+      client,
+      input.workspaceId,
+      PENDING_REVIEWS_MAX,
+    )) >= PENDING_REVIEWS_MAX
+  )
     throw new PublicationReviewError(
       'limit',
-      'This workspace has 100 pending publication requests. Decide an existing request first.',
+      `This workspace has ${String(PENDING_REVIEWS_MAX)} pending publication requests. Decide an existing request first.`,
     );
-  const existing = await db
-    .select({ id: workflowPublicationRequests.id })
-    .from(workflowPublicationRequests)
-    .where(
-      and(
-        eq(workflowPublicationRequests.workspaceId, input.workspaceId),
-        eq(workflowPublicationRequests.workflowId, input.workflowId),
-        eq(workflowPublicationRequests.status, 'pending'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  if (existing.length !== 0)
+  if (await hasPendingRequest(client, input))
     throw new PublicationReviewError(
       'decided',
       'This draft already has a pending publication request. Open its review.',
     );
   const reviewId = generatePersistedId();
-  await db
-    .insert(workflowPublicationRequests)
-    .values({
-      workspaceId: input.workspaceId,
-      id: reviewId,
-      workflowId: input.workflowId,
-      requestedBy: input.actorId,
-      draftRevision: draft.revision,
-      representationTag: input.representationTag,
-      note: input.note,
-      expiresAt: sql`clock_timestamp()+${REVIEW_LIFETIME}`,
-    })
-    .catch(rethrowQueryFailure);
+  await insertReviewRequest(client, {
+    workspaceId: input.workspaceId,
+    reviewId,
+    workflowId: input.workflowId,
+    requestedBy: input.actorId,
+    draftRevision: draft.revision,
+    representationTag: input.representationTag,
+    note: input.note,
+  });
   await appendAuditFact(client, {
     workspaceId: input.workspaceId,
     actorId: input.actorId,
