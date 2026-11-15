@@ -3,7 +3,7 @@ import { after, before, test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { createTaskProcessPool } from '../dist/process/pool.js';
-import { HARDENED_TASK_PATH } from '../dist/runner-config.js';
+import { HARDENED_TASK_PATH } from '../dist/config/runner-config.js';
 
 let pool;
 before(async () => {

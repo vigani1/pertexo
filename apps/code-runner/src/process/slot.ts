@@ -14,7 +14,7 @@ import {
   type CodeResult,
   type CodeErrorCode,
 } from '@pertexo/node-sdk';
-import type { RunnerConfig } from '../runner-config.js';
+import type { RunnerConfig } from '../config/runner-config.js';
 import type { ModulePolicy } from '../execution/modules.js';
 import type { ChildBoot } from './child-boot.types.js';
 import {
