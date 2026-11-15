@@ -3,11 +3,16 @@ import { and, eq, exists, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import {
+  databaseSchema,
   workflowCalls,
   workflowRuns,
+  workflows,
   runCheckpoints,
 } from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import {
+  parseWorkspaceId,
+  rethrowQueryFailure,
+} from '@pertexo/database/primitives';
 const c = workflowCalls;
 const pendingSelection = {
   id: c.id,
@@ -113,5 +118,134 @@ export function lockCallParent(
       ),
     )
     .for('no key update', { of: run })
+    .catch(rethrowQueryFailure);
+}
+
+/** A call's acceptance runs on the parent's client as a workspace transaction. */
+export function callAcceptanceTransaction(
+  client: PoolClient,
+  workspaceId: string,
+) {
+  return {
+    db: drizzle(client, { schema: databaseSchema }),
+    workspaceId: parseWorkspaceId(workspaceId),
+  };
+}
+
+export async function lockCallTarget(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; workflowId: string }>,
+) {
+  const [target] = await drizzle(client)
+    .select({ lifecycle_status: workflows.lifecycleStatus })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.workflowId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  return target;
+}
+
+/** Whether another call of this parent already holds the parent's lent slot. */
+export async function parentSlotLent(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; parentRunId: string }>,
+) {
+  const lent = await drizzle(client)
+    .select({ id: c.id })
+    .from(c)
+    .where(
+      and(
+        eq(c.workspaceId, input.workspaceId),
+        eq(c.parentRunId, input.parentRunId),
+        eq(c.slotLent, true),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return lent.length > 0;
+}
+
+export async function openCallCandidate(client: PoolClient) {
+  await drizzle(client)
+    .execute(sql`savepoint workflow_call_candidate`)
+    .catch(rethrowQueryFailure);
+}
+
+export async function keepCallCandidate(client: PoolClient) {
+  await drizzle(client)
+    .execute(sql`release savepoint workflow_call_candidate`)
+    .catch(rethrowQueryFailure);
+}
+
+export async function discardCallCandidate(client: PoolClient) {
+  await drizzle(client)
+    .execute(sql`rollback to savepoint workflow_call_candidate`)
+    .catch(rethrowQueryFailure);
+  await keepCallCandidate(client);
+}
+
+/** Binds the accepted child to its pending call; false when the call moved on. */
+export async function bindAcceptedCall(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; callId: string; childRunId: string }>,
+) {
+  const bound = await drizzle(client)
+    .update(c)
+    .set({
+      status: 'accepted',
+      childRunId: input.childRunId,
+      liveChildRunId: input.childRunId,
+    })
+    .where(
+      and(
+        eq(c.workspaceId, input.workspaceId),
+        eq(c.id, input.callId),
+        eq(c.status, 'pending'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return bound.rowCount === 1;
+}
+
+/** Lends the parent's slot to its child; false when no slot can be lent. */
+export async function lendCallSlot(
+  client: PoolClient,
+  input: Readonly<{
+    workspaceId: string;
+    callId: string;
+    childRunId: string;
+    outboxEventId: string;
+  }>,
+) {
+  const transfer = await drizzle(client)
+    .execute<{ granted: boolean }>(
+      sql`select app.lend_workflow_run_slot(${input.workspaceId},${input.callId},${input.childRunId},${input.outboxEventId}) granted`,
+    )
+    .catch(rethrowQueryFailure);
+  return transfer.rows[0]?.granted ?? false;
+}
+
+export async function refusePendingCall(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; callId: string; refusal: string }>,
+) {
+  await drizzle(client)
+    .update(c)
+    .set({
+      status: 'refused',
+      safeErrorCode: input.refusal,
+      completedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(c.workspaceId, input.workspaceId),
+        eq(c.id, input.callId),
+        eq(c.status, 'pending'),
+      ),
+    )
     .catch(rethrowQueryFailure);
 }
