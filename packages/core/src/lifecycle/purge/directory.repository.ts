@@ -10,7 +10,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { detachDirectoryMemberships } from '../../identity/federation/provisioning/management/detach.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { scopeToWorkspace } from '../retention/transaction.js';
+import { scopeToWorkspace } from '../retention/transaction-settings.repository.js';
 
 /** How many due workspaces one claim tries before reporting nothing to do. */
 const PURGE_CLAIM_CANDIDATES = 10;

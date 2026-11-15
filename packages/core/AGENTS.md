@@ -44,8 +44,9 @@ user-facing copy beyond the safe messages of its errors.
   problem.
 - A limit: a named constant at the top of the file that enforces it, or the
   browser-safe owner's (`workflow-model`, `node-sdk`, `policy`) when the
-  browser or another package shows it. SQL interval units come from
-  `shared/sql-intervals.repository.ts`.
+  browser or another package shows it. A duration in SQL is a count times a
+  unit from `shared/sql-intervals.repository.ts` (`${DAYS}*${DAY_INTERVAL}`),
+  never a literal `interval '30 days'`.
 
 ## Defaults and config
 
@@ -78,7 +79,7 @@ user-facing copy beyond the safe messages of its errors.
   scope themselves: workers and scanners (`withTenantScopedClient`),
   connection use and token refresh (`connections/transaction.ts`), and the
   operator (`operator/run-command.ts`).
-- `authoring`, `lifecycle`, `previews` and `runs` still run queries outside
+- `authoring`, `previews` and `runs` still run queries outside
   repositories and aren't in the backend-limits check yet; they are listed in
   `PENDING_AREAS` (`validate-core-queries.mjs`) until their pass.
 - Generic throws that stay are storage integrity assertions: a write that

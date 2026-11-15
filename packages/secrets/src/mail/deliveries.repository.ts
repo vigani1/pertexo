@@ -24,10 +24,19 @@ import type {
   SystemMailSettlement,
 } from './system-mail.types.js';
 
-// Twelve attempts within 24 hours, before link expiry, under a 60-second lease. The
-// table's system_mail_attempts_bounded check holds the same twelve.
-const MAX_ATTEMPTS = 12;
-const DELIVERY_WINDOW = sql.raw("interval '24 hours'");
+/**
+ * How hard one system mail is tried: twelve attempts within a day of being
+ * queued, before link expiry, under a 60-second lease. The table's
+ * system_mail_attempts_bounded check holds the same twelve, and retention
+ * gives up on mail past either bound.
+ */
+export const SYSTEM_MAIL_DELIVERY_BUDGET = Object.freeze({
+  maxAttempts: 12,
+  windowHours: 24,
+});
+const MAX_ATTEMPTS = SYSTEM_MAIL_DELIVERY_BUDGET.maxAttempts;
+const HOUR_INTERVAL = sql.raw("interval '1 hour'");
+const DELIVERY_WINDOW = sql`${SYSTEM_MAIL_DELIVERY_BUDGET.windowHours}*${HOUR_INTERVAL}`;
 const LEASE = sql.raw("interval '60 seconds'");
 // What the provider_reference and failure_code columns hold.
 const PROVIDER_REFERENCE_LENGTH = 512;

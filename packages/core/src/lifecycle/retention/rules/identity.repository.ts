@@ -13,8 +13,26 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { deletionRule } from '../../../shared/retention-deletion.repository.js';
+import { SYSTEM_MAIL_DELIVERY_BUDGET } from '@pertexo/secrets/server';
+import {
+  DAY_INTERVAL,
+  HOUR_INTERVAL,
+} from '../../../shared/sql-intervals.repository.js';
 
-const expiredProvisioning = sql`${authProvisioningCredentials.revokedAt}<=clock_timestamp()-interval '30 days'`;
+/** How long each identity record is kept once it has expired or ended. */
+const IDENTITY_RETENTION_DAYS = Object.freeze({
+  provisioningCredentials: 30,
+  // Kept 30 days after they end, for sign-in history.
+  sessions: 30,
+  methodLinkAttempts: 30,
+  federationAttempts: 1,
+  signInAttempts: 1,
+  emailProofs: 30,
+  securityFacts: 365,
+  authenticationMail: 30,
+});
+
+const expiredProvisioning = sql`${authProvisioningCredentials.revokedAt}<=clock_timestamp()-${IDENTITY_RETENTION_DAYS.provisioningCredentials}*${DAY_INTERVAL}`;
 export const provisioningCredentials = deletionRule(
   'provisioning_credentials',
   {
@@ -25,8 +43,7 @@ export const provisioningCredentials = deletionRule(
     recheck: expiredProvisioning,
   },
 );
-const expiredSessions = sql`${authSessions.expiresAt}<=clock_timestamp()-interval '30 days'`;
-// Sessions are kept 30 days after they end, for sign-in history.
+const expiredSessions = sql`${authSessions.expiresAt}<=clock_timestamp()-${IDENTITY_RETENTION_DAYS.sessions}*${DAY_INTERVAL}`;
 export const sessions = deletionRule('auth_sessions', {
   table: authSessions,
   keys: [authSessions.id],
@@ -37,31 +54,31 @@ export const sessions = deletionRule('auth_sessions', {
 export const methodLinkAttempts = deletionRule('auth_method_link_attempts', {
   table: authMethodLinkAttempts,
   keys: [authMethodLinkAttempts.id],
-  condition: sql`${authMethodLinkAttempts.expiresAt}<=clock_timestamp()-interval '30 days'`,
+  condition: sql`${authMethodLinkAttempts.expiresAt}<=clock_timestamp()-${IDENTITY_RETENTION_DAYS.methodLinkAttempts}*${DAY_INTERVAL}`,
   orderBy: [authMethodLinkAttempts.expiresAt, authMethodLinkAttempts.id],
 });
 export const federationAttempts = deletionRule('auth_federation_attempts', {
   table: authFederationAttempts,
   keys: [authFederationAttempts.id],
-  condition: sql`${authFederationAttempts.expiresAt}<=clock_timestamp()-interval '1 day'`,
+  condition: sql`${authFederationAttempts.expiresAt}<=clock_timestamp()-${IDENTITY_RETENTION_DAYS.federationAttempts}*${DAY_INTERVAL}`,
   orderBy: [authFederationAttempts.expiresAt, authFederationAttempts.id],
 });
 export const signInAttempts = deletionRule('auth_sign_in_attempts', {
   table: authSignInAttempts,
   keys: [authSignInAttempts.id],
-  condition: sql`${authSignInAttempts.expiresAt}<=clock_timestamp()-interval '1 day'`,
+  condition: sql`${authSignInAttempts.expiresAt}<=clock_timestamp()-${IDENTITY_RETENTION_DAYS.signInAttempts}*${DAY_INTERVAL}`,
   orderBy: [authSignInAttempts.expiresAt, authSignInAttempts.id],
 });
 export const emailProofs = deletionRule('auth_email_proofs', {
   table: authEmailProofs,
   keys: [authEmailProofs.id],
-  condition: sql`${authEmailProofs.expiresAt}<=clock_timestamp()-interval '30 days'`,
+  condition: sql`${authEmailProofs.expiresAt}<=clock_timestamp()-${IDENTITY_RETENTION_DAYS.emailProofs}*${DAY_INTERVAL}`,
   orderBy: [authEmailProofs.expiresAt, authEmailProofs.id],
 });
 export const identityFacts = deletionRule('identity_security_audit_facts', {
   table: identitySecurityAuditFacts,
   keys: [identitySecurityAuditFacts.id],
-  condition: sql`${identitySecurityAuditFacts.occurredAt}<=clock_timestamp()-interval '365 days'`,
+  condition: sql`${identitySecurityAuditFacts.occurredAt}<=clock_timestamp()-${IDENTITY_RETENTION_DAYS.securityFacts}*${DAY_INTERVAL}`,
   orderBy: [
     identitySecurityAuditFacts.occurredAt,
     identitySecurityAuditFacts.id,
@@ -77,12 +94,12 @@ export const authenticationMail = deletionRule('authentication_mail', {
       'reconciliation_required',
       'expired',
     ]),
-    sql`${systemMailDeliveries.completedAt}<=clock_timestamp()-interval '30 days'`,
+    sql`${systemMailDeliveries.completedAt}<=clock_timestamp()-${IDENTITY_RETENTION_DAYS.authenticationMail}*${DAY_INTERVAL}`,
   ),
   orderBy: [systemMailDeliveries.completedAt, systemMailDeliveries.id],
 });
 
-// Mail that was not sent within a day, or after 12 attempts, is given up:
+// Mail past its delivery budget (secrets' window or attempts) is given up:
 // its sealed payload is dropped and an operator reconciles it.
 // These durable maintenance rule identities predate the system-mail table name.
 export const unsentAuthenticationMail = {
@@ -102,8 +119,11 @@ export const unsentAuthenticationMail = {
             ]),
             or(
               lte(systemMailDeliveries.expiresAt, sql`clock_timestamp()`),
-              sql`${systemMailDeliveries.createdAt}+interval '24 hours'<=clock_timestamp()`,
-              gte(systemMailDeliveries.attemptCount, 12),
+              sql`${systemMailDeliveries.createdAt}+${SYSTEM_MAIL_DELIVERY_BUDGET.windowHours}*${HOUR_INTERVAL}<=clock_timestamp()`,
+              gte(
+                systemMailDeliveries.attemptCount,
+                SYSTEM_MAIL_DELIVERY_BUDGET.maxAttempts,
+              ),
             ),
             or(
               isNull(systemMailDeliveries.leaseExpiresAt),
