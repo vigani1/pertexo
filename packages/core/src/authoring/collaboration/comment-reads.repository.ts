@@ -20,19 +20,9 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import type {
-  WorkflowComment,
-  WorkflowCommentDetail,
-  WorkflowCommentList,
-  WorkspacePeoplePage,
-} from '@pertexo/contracts';
-import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
-import { readWorkspacePeople } from '../../tenant-access/members/discovery.repository.js';
-import { projectCommentThread } from './comment-threads.repository.js';
-import type { EnterCollaboration } from './authority.repository.js';
+import type { WorkflowComment } from '@pertexo/contracts';
 import type {
   ListCommentsInput,
-  ReadPeopleInput,
   ReadThreadInput,
 } from './workflow-collaboration.types.js';
 const preview = new QueryBuilder()
@@ -57,7 +47,7 @@ const commentProjection = {
 type StoredComment = typeof workflowComments.$inferSelect & {
   authorName: string;
 };
-async function projectComments(
+export async function projectComments(
   client: PoolClient,
   workspaceId: string,
   rows: readonly StoredComment[],
@@ -102,101 +92,6 @@ async function projectComments(
     mentions: byComment.get(row.id) ?? [],
   }));
 }
-export function collaborationReads(enter: EnterCollaboration) {
-  return {
-    list: (input: ListCommentsInput): Promise<WorkflowCommentList> =>
-      enter(input, { browsing: true }, async (client) => {
-        const found = await drizzle(client)
-          .select(threadProjection)
-          .from(workflowCommentThreads)
-          .where(
-            and(
-              eq(workflowCommentThreads.workspaceId, input.workspaceId),
-              eq(workflowCommentThreads.workflowId, input.workflowId),
-              input.after === undefined
-                ? undefined
-                : lt(workflowCommentThreads.id, input.after),
-              input.status === 'all'
-                ? undefined
-                : eq(workflowCommentThreads.status, input.status),
-              threadScope(input),
-            ),
-          )
-          .orderBy(desc(workflowCommentThreads.id))
-          .limit(input.limit + 1)
-          .catch(rethrowQueryFailure);
-        const rows = found.slice(0, input.limit);
-        return {
-          items: rows.map(projectCommentThread),
-          nextCursor:
-            found.length > input.limit ? (rows.at(-1)?.id ?? null) : null,
-        };
-      }),
-    read: (input: ReadThreadInput): Promise<WorkflowCommentDetail> =>
-      enter(input, { browsing: true }, async (client) => {
-        const db = drizzle(client);
-        const [thread] = await db
-          .select(threadProjection)
-          .from(workflowCommentThreads)
-          .where(
-            and(
-              eq(workflowCommentThreads.workspaceId, input.workspaceId),
-              eq(workflowCommentThreads.workflowId, input.workflowId),
-              eq(workflowCommentThreads.id, input.threadId),
-            ),
-          )
-          .catch(rethrowQueryFailure);
-        if (thread === undefined)
-          throw new WorkflowNotFoundError('Discussion is not visible');
-        if (input.anchor !== undefined) {
-          const anchor = await db
-            .select({ id: workflowComments.id })
-            .from(workflowComments)
-            .where(
-              and(
-                eq(workflowComments.workspaceId, input.workspaceId),
-                eq(workflowComments.threadId, input.threadId),
-                eq(workflowComments.id, input.anchor),
-              ),
-            )
-            .catch(rethrowQueryFailure);
-          if (anchor.length !== 1)
-            throw new WorkflowNotFoundError('Comment is not visible');
-        }
-        const found = await db
-          .select(commentProjection)
-          .from(workflowComments)
-          .leftJoin(users, eq(users.id, workflowComments.authorId))
-          .where(
-            and(
-              eq(workflowComments.workspaceId, input.workspaceId),
-              eq(workflowComments.threadId, input.threadId),
-              input.before === undefined
-                ? undefined
-                : lt(workflowComments.id, input.before),
-              input.anchor === undefined
-                ? undefined
-                : lte(workflowComments.id, input.anchor),
-            ),
-          )
-          .orderBy(desc(workflowComments.id))
-          .limit(input.limit + 1)
-          .catch(rethrowQueryFailure);
-        const rows = found.slice(0, input.limit);
-        return {
-          thread: projectCommentThread(thread),
-          comments: await projectComments(client, input.workspaceId, rows),
-          nextCursor:
-            found.length > input.limit ? (rows.at(-1)?.id ?? null) : null,
-        };
-      }),
-    people: (input: ReadPeopleInput): Promise<WorkspacePeoplePage> =>
-      enter(input, { browsing: true }, async (client) => {
-        return readWorkspacePeople(client, input);
-      }),
-  };
-}
-
 function threadScope(input: ListCommentsInput) {
   switch (input.scope) {
     case 'all':
@@ -206,4 +101,98 @@ function threadScope(input: ListCommentsInput) {
     case 'step':
       return eq(workflowCommentThreads.stepId, sql`${input.stepId}::varchar`);
   }
+}
+
+/** One page of the workflow's threads, one past the limit to tell if more follow. */
+export async function listThreadRows(
+  client: PoolClient,
+  input: ListCommentsInput,
+) {
+  const found = await drizzle(client)
+    .select(threadProjection)
+    .from(workflowCommentThreads)
+    .where(
+      and(
+        eq(workflowCommentThreads.workspaceId, input.workspaceId),
+        eq(workflowCommentThreads.workflowId, input.workflowId),
+        input.after === undefined
+          ? undefined
+          : lt(workflowCommentThreads.id, input.after),
+        input.status === 'all'
+          ? undefined
+          : eq(workflowCommentThreads.status, input.status),
+        threadScope(input),
+      ),
+    )
+    .orderBy(desc(workflowCommentThreads.id))
+    .limit(input.limit + 1)
+    .catch(rethrowQueryFailure);
+  return found;
+}
+
+export async function readThreadRow(
+  client: PoolClient,
+  input: ReadThreadInput,
+) {
+  const db = drizzle(client);
+  const [thread] = await db
+    .select(threadProjection)
+    .from(workflowCommentThreads)
+    .where(
+      and(
+        eq(workflowCommentThreads.workspaceId, input.workspaceId),
+        eq(workflowCommentThreads.workflowId, input.workflowId),
+        eq(workflowCommentThreads.id, input.threadId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return thread;
+}
+
+/** Whether the anchor comment belongs to the thread. */
+export async function commentInThread(
+  client: PoolClient,
+  input: ReadThreadInput & Readonly<{ anchor: string }>,
+) {
+  const db = drizzle(client);
+  const anchor = await db
+    .select({ id: workflowComments.id })
+    .from(workflowComments)
+    .where(
+      and(
+        eq(workflowComments.workspaceId, input.workspaceId),
+        eq(workflowComments.threadId, input.threadId),
+        eq(workflowComments.id, input.anchor),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return anchor.length === 1;
+}
+
+/** One page of the thread's comments, newest first, one past the limit. */
+export async function readThreadCommentRows(
+  client: PoolClient,
+  input: ReadThreadInput,
+) {
+  const db = drizzle(client);
+  const found = await db
+    .select(commentProjection)
+    .from(workflowComments)
+    .leftJoin(users, eq(users.id, workflowComments.authorId))
+    .where(
+      and(
+        eq(workflowComments.workspaceId, input.workspaceId),
+        eq(workflowComments.threadId, input.threadId),
+        input.before === undefined
+          ? undefined
+          : lt(workflowComments.id, input.before),
+        input.anchor === undefined
+          ? undefined
+          : lte(workflowComments.id, input.anchor),
+      ),
+    )
+    .orderBy(desc(workflowComments.id))
+    .limit(input.limit + 1)
+    .catch(rethrowQueryFailure);
+  return found;
 }

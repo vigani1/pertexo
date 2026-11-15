@@ -1,12 +1,9 @@
-import { and, eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflows } from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { AuthoringAccess } from '../workflows/access.js';
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type { CollaborationScope } from './workflow-collaboration.types.js';
+import { lockCollaborationWorkflow } from './collaboration-workflow.repository.js';
 
 export type CollaborationEntry = Readonly<{
   lock?: 'share' | 'update';
@@ -30,18 +27,7 @@ export function createCollaborationEntry(access: AuthoringAccess) {
         ...(browsing ? { statuses: BROWSABLE_WORKSPACE_STATUSES } : {}),
       },
       async (client) => {
-        const row = await drizzle(client)
-          .select({ id: workflows.id })
-          .from(workflows)
-          .where(
-            and(
-              eq(workflows.workspaceId, input.workspaceId),
-              eq(workflows.id, input.workflowId),
-            ),
-          )
-          .for(lock)
-          .catch(rethrowQueryFailure);
-        if (row.length !== 1)
+        if (!(await lockCollaborationWorkflow(client, input, lock)))
           throw new WorkflowNotFoundError('Workflow is not visible');
         return work(client);
       },
