@@ -12,6 +12,7 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import {
+  commandEffectViolations,
   commandHookViolations,
   endpointImportViolations,
 } from './web-command-hooks.mjs';
@@ -299,6 +300,7 @@ export function validateModuleImports(sources) {
     errors.push(...featureEntryViolations(file, source));
     errors.push(...commandHookViolations(file, source));
     errors.push(...endpointImportViolations(file, source));
+    errors.push(...commandEffectViolations(file, source));
     errors.push(...validateInfrastructureBuiltPaths(file, source, sources));
     const dependencies = [];
     const workspace = file.split('/').slice(0, 2).join('/');

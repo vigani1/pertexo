@@ -9,6 +9,8 @@ import ts from 'typescript';
 // pages, hooks, forms and models call those, never an endpoint or a builder.
 const COMMAND_BUILDERS = Object.freeze({
   '@tanstack/react-query': ['useMutation'],
+  '@/lib/api/commands/use-latest-command': ['useLatestCommand'],
+  '@/lib/hooks/use-latest-request': ['useLatestRequest'],
   '@/lib/api/commands/use-retained': ['useRetainedCommand'],
   '@/lib/api/commands/low-effect-mutation': ['useLowEffectMutation'],
   '@/lib/api/commands/use-create-command': ['useCreateCommand'],
@@ -20,6 +22,7 @@ const WEB_SOURCE = 'apps/web/src/';
 const COMMAND_OWNERS = [
   /^apps\/web\/src\/features\/[^/]+\/data\//u,
   /^apps\/web\/src\/lib\/api\/commands\//u,
+  /^apps\/web\/src\/lib\/hooks\/use-latest-request\.ts$/u,
   /^apps\/web\/src\/lib\/resource-sharing\//u,
 ];
 
@@ -137,4 +140,75 @@ function dynamicEndpointImports(file, source) {
   };
   visit(source);
   return findings;
+}
+
+// What changes the server-snapshot cache. Only the code that owns a read or
+// a command changes it: a feature's data/, the shared transport and
+// builders, and the app shell, which owns the whole cache's life across
+// sign-in and sign-out (app/, routes/root/route-context.ts).
+const CACHE_EFFECTS = new Set([
+  'invalidateQueries',
+  'removeQueries',
+  'cancelQueries',
+  'setQueryData',
+  'setQueriesData',
+  'refetchQueries',
+  'resetQueries',
+  'getQueryCache',
+  'getMutationCache',
+]);
+const CACHE_OWNERS = [
+  /^apps\/web\/src\/features\/[^/]+\/data\//u,
+  /^apps\/web\/src\/lib\/api\//u,
+  /^apps\/web\/src\/lib\/resource-sharing\//u,
+  /^apps\/web\/src\/app\//u,
+  /^apps\/web\/src\/routes\/root\/route-context\.ts$/u,
+];
+// Minting an idempotency key belongs with the command that sends it.
+const KEY_OWNERS = [
+  /^apps\/web\/src\/features\/[^/]+\/data\//u,
+  /^apps\/web\/src\/lib\/api\//u,
+];
+
+/** Findings for one web source file that changes the cache or mints a command key outside data/. */
+export function commandEffectViolations(file, source) {
+  if (!file.startsWith(WEB_SOURCE)) return [];
+  const cacheOwned = CACHE_OWNERS.some((owner) => owner.test(file));
+  const keyOwned = KEY_OWNERS.some((owner) => owner.test(file));
+  if (cacheOwned && keyOwned) return [];
+  const findings = [];
+  const visit = (node) => {
+    if (
+      !cacheOwned &&
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      CACHE_EFFECTS.has(node.expression.name.text)
+    )
+      findings.push(
+        `${file}: ${node.expression.name.text} changes the query cache; put the effect in the feature's data/ hook that owns the read or command`,
+      );
+    if (!keyOwned && isKeyMint(node))
+      findings.push(
+        `${file}: mints an idempotency key; let the data/ command hook (or useCommandAttempt's getOrCreateKeyed) hold it`,
+      );
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return findings;
+}
+
+function isKeyMint(node) {
+  if (
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 'newCommandKey'
+  )
+    return true;
+  return (
+    ts.isPropertyAssignment(node) &&
+    ts.isIdentifier(node.name) &&
+    node.name.text === 'idempotencyKey' &&
+    ts.isCallExpression(node.initializer) &&
+    node.initializer.expression.getText() === 'crypto.randomUUID'
+  );
 }

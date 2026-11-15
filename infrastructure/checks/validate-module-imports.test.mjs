@@ -1327,3 +1327,47 @@ test('the web data guard sees namespace and dynamic imports, and only the sharin
     /lib\/reports\/report\.queries\.ts: \.\/report\.api calls the server/u,
   );
 });
+
+test('web cache effects, command keys and latest-request slots stay in data', () => {
+  const findings = validateModuleImports({
+    'apps/web/src/lib/hooks/use-latest-request.ts':
+      'export const useLatestRequest = () => undefined;',
+    'apps/web/src/features/tables/components/remove.tsx': [
+      "import { useLatestRequest } from '@/lib/hooks/use-latest-request';",
+      'export function remove(cache, newCommandKey) {',
+      '  void cache.invalidateQueries({ queryKey: [] });',
+      '  cache.getQueryCache().find({ queryKey: [] });',
+      '  const command = { ...newCommandKey() };',
+      '  return { command, idempotencyKey: crypto.randomUUID(), slot: useLatestRequest };',
+      '}',
+    ].join('\n'),
+  }).join('\n');
+  assert.match(
+    findings,
+    /remove\.tsx: invalidateQueries changes the query cache/u,
+  );
+  assert.match(findings, /remove\.tsx: getQueryCache changes the query cache/u);
+  assert.equal(
+    findings.match(/remove\.tsx: mints an idempotency key/gu)?.length,
+    2,
+  );
+  assert.match(
+    findings,
+    /remove\.tsx: useLatestRequest builds a server command/u,
+  );
+  assert.deepEqual(
+    validateModuleImports({
+      'apps/web/src/features/tables/data/tables.mutations.ts': [
+        'export function remove(cache, newCommandKey) {',
+        '  void cache.invalidateQueries({ queryKey: [] });',
+        '  return { ...newCommandKey(), idempotencyKey: crypto.randomUUID() };',
+        '}',
+      ].join('\n'),
+      'apps/web/src/app/session-sync.ts':
+        'export const forget = (cache) => cache.getMutationCache();',
+      'apps/web/src/features/editor/model/ids.ts':
+        'export const nodeId = () => ({ id: crypto.randomUUID() });',
+    }),
+    [],
+  );
+});
