@@ -1,3 +1,4 @@
+import { HOUR_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import type { WebhookReplayIdentity } from './webhook-delivery.types.js';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -117,4 +118,42 @@ export async function forgetDeliveryReplay(
         eq(webhookTriggerReplayRecords.deliveryId, deliveryId),
       ),
     );
+}
+
+/** How long a delivery's dedupe key refuses a replay. */
+const DELIVERY_REPLAY_HOURS = 24;
+
+/** Whether the sender's key still names an unexpired delivery. */
+export async function replayActive(
+  transaction: WorkspaceTransaction,
+  identity: WebhookReplayIdentity,
+) {
+  const replay = await transaction.db
+    .select({ one: sql`1` })
+    .from(webhookTriggerReplayRecords)
+    .where(
+      and(
+        eq(webhookTriggerReplayRecords.workspaceId, transaction.workspaceId),
+        eq(webhookTriggerReplayRecords.endpointId, identity.endpointId),
+        eq(webhookTriggerReplayRecords.dedupeKeyHash, identity.dedupeKeyHash),
+        sql`${webhookTriggerReplayRecords.expiresAt}>clock_timestamp()`,
+      ),
+    );
+  return replay.length > 0;
+}
+
+/** Records the delivery under the sender's key, refusing a replay for a day. */
+export async function insertDeliveryReplay(
+  transaction: WorkspaceTransaction,
+  identity: WebhookReplayIdentity,
+  input: Readonly<{ requestFingerprint: string; deliveryId: string }>,
+) {
+  await transaction.db.insert(webhookTriggerReplayRecords).values({
+    workspaceId: transaction.workspaceId,
+    endpointId: identity.endpointId,
+    dedupeKeyHash: identity.dedupeKeyHash,
+    requestFingerprint: input.requestFingerprint,
+    deliveryId: input.deliveryId,
+    expiresAt: sql`clock_timestamp()+${DELIVERY_REPLAY_HOURS}*${HOUR_INTERVAL}`,
+  });
 }

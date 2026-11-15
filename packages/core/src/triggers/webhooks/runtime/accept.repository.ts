@@ -2,7 +2,6 @@ import { admitInSavepoint } from '../../admission-savepoint.repository.js';
 import { lockWorkflowArtifactReferences } from '../../../artifacts/references/locks.repository.js';
 import { lockWorkspaceRunAdmission } from '../../../shared/workspace-fence.repository.js';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/run-admission.errors.js';
-import { webhookTriggerReplayRecords as replays } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { lockEventCoordination } from '../../coordination/keys.repository.js';
 import type { createEventCoordinationPreparation } from '../../coordination/prepare.js';
@@ -14,7 +13,6 @@ import {
   webhookReplayWait,
 } from '../responses/admission.repository.js';
 
-import { and, eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -28,9 +26,11 @@ import {
 } from '../replay-receipt.js';
 import {
   deleteExpiredReplay,
+  insertDeliveryReplay,
   lockEndpointDedupeKey,
   readLockedReplay,
   recordReplayResult,
+  replayActive,
 } from '../replay.repository.js';
 
 import {
@@ -48,10 +48,6 @@ import {
   readTriggerConfig,
 } from './webhook-state.repository.js';
 import type { WorkspaceTurns } from './workspace-turns.js';
-import { HOUR_INTERVAL } from '../../../shared/sql-intervals.repository.js';
-
-/** How long a delivery's dedupe key refuses a replay. */
-const DELIVERY_REPLAY_HOURS = 24;
 
 export async function acceptVerifiedWebhookDelivery(
   pool: Pool,
@@ -81,18 +77,8 @@ export async function acceptVerifiedWebhookDelivery(
       verification.workspaceId,
       async (transaction) => {
         if (checkReplay && replayIdentity !== undefined) {
-          const replay = await transaction.db
-            .select({ one: sql`1` })
-            .from(replays)
-            .where(
-              and(
-                eq(replays.workspaceId, transaction.workspaceId),
-                eq(replays.endpointId, replayIdentity.endpointId),
-                eq(replays.dedupeKeyHash, replayIdentity.dedupeKeyHash),
-                sql`${replays.expiresAt}>clock_timestamp()`,
-              ),
-            );
-          if (replay.length > 0) return { replay: true as const };
+          if (await replayActive(transaction, replayIdentity))
+            return { replay: true as const };
         }
         const config = await readTriggerConfig(
           transaction,
@@ -223,13 +209,9 @@ async function acceptNewWebhookDelivery(
   const verification = input.verification;
   const deliveryId = generatePersistedId();
   if (replayIdentity !== undefined)
-    await transaction.db.insert(replays).values({
-      workspaceId: transaction.workspaceId,
-      endpointId: verification.endpointId,
-      dedupeKeyHash: replayIdentity.dedupeKeyHash,
+    await insertDeliveryReplay(transaction, replayIdentity, {
       requestFingerprint,
       deliveryId,
-      expiresAt: sql`clock_timestamp()+${DELIVERY_REPLAY_HOURS}*${HOUR_INTERVAL}`,
     });
   const projection = await executableProjection(
     transaction,
