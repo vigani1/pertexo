@@ -1,6 +1,9 @@
 import { createHash, createHmac } from 'node:crypto';
 import { JourneyCookieConfigurationError } from './journey.errors.js';
-import { randomSecretToken } from '../../identity/secret-token.js';
+import {
+  randomSecretToken,
+  SECRET_TOKEN_CHARACTERS,
+} from '../../identity/secret-token.js';
 
 /*
  * Primitives of a browser-bound identity journey. A journey binds
@@ -13,8 +16,13 @@ export function newJourneyToken(): string {
   return randomSecretToken();
 }
 
+const JOURNEY_TOKEN = new RegExp(
+  `^[A-Za-z0-9_-]{${String(SECRET_TOKEN_CHARACTERS)}}$`,
+  'u',
+);
+
 export function isJourneyToken(value: string): boolean {
-  return /^[A-Za-z0-9_-]{43}$/u.test(value);
+  return JOURNEY_TOKEN.test(value);
 }
 
 /** Journey tokens are stored and compared only as SHA-256 digests. */

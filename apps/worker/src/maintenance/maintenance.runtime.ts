@@ -22,9 +22,10 @@ import {
 } from '@pertexo/queue/server';
 
 import { previewReconciliationFactories } from '../previews/reconciliation.js';
-import type {
-  FailureNotificationDeliveryCapability,
-  FailureNotificationHandler,
+import {
+  FAILURE_NOTIFICATION_DELIVERY,
+  type FailureNotificationDeliveryCapability,
+  type FailureNotificationHandler,
 } from '../notifications/failure-handler.js';
 import { failureNotificationFactories } from '../notifications/failure-composition.js';
 import {
@@ -88,13 +89,6 @@ type MaintenanceOptions = Readonly<{
   deliveryOwners?: readonly Owner[];
 }>;
 
-// Each provider call gets 30 seconds; a failed one retries twice, 30 seconds
-// apart.
-const FAILURE_NOTIFICATION_DELIVERY = Object.freeze({
-  timeoutMillis: 30_000,
-  maxAttempts: 3,
-  retryDelaySeconds: 30,
-});
 const FAILURE_NOTIFICATION_RECOVERY_BATCH = 25;
 
 export async function createMaintenanceRuntime(

@@ -110,12 +110,12 @@ export class WorkflowOrganizationBatchesService {
             ...result,
             status: 'updated',
           });
-        outcome = workflowOrganizationBulkItemOutcomeSchema.parse({
+        outcome = {
           workflowId,
           status: 'updated',
           organizationRevision: result.organizationRevision,
           replayed: result.replayed,
-        });
+        };
       } catch (error: unknown) {
         input.signal?.throwIfAborted();
         outcome = await this.failure(input, request, {

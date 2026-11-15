@@ -183,6 +183,7 @@ qualified('workspace table steps through the real worker', () => {
           leaseDurationMillis: 30_000,
           leaseOwner: `tables-${randomUUID()}`,
           retryDelayMillis: 250,
+          operationTimeoutMillis: 5_000,
           pollIntervalMillis: 100,
         },
       });

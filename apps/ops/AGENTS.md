@@ -33,7 +33,11 @@ process, settings from the environment, a JSON result. The commands call
 ## Exceptions
 
 - `execute-operator-command.ts`: a command that completes without a result
-  is an assertion, so it stays a generic `Error`.
+  is an assertion, so it stays a generic `Error`; so does a cleanup that
+  outlives its timeout, which is gathered with the command's own failure
+  into one `AggregateError`.
+- `main.ts`: the interrupt that stops a command is an abort reason, not an
+  error a caller handles.
 
 ## What guards it
 

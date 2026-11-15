@@ -109,6 +109,7 @@ qualified('business values through the real worker', () => {
           leaseDurationMillis: 30_000,
           leaseOwner: `values-${randomUUID()}`,
           retryDelayMillis: 250,
+          operationTimeoutMillis: 5_000,
           pollIntervalMillis: 100,
         },
       });

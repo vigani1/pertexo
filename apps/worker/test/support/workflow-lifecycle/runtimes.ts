@@ -98,6 +98,7 @@ export function createLifecycleRuntimes(
         leaseOwner,
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 10,
+        pollIntervalMillis: 1_000,
       },
     });
     transferResource(dispatcherDatabase);

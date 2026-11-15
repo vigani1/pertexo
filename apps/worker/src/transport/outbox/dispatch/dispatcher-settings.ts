@@ -2,12 +2,6 @@ import type { JobName } from '@pertexo/queue/server';
 
 import { OutboxJobAllowlistError } from './outbox-dispatch.errors.js';
 
-/** The dispatcher's timing when its options leave it out. */
-export const OUTBOX_DISPATCHER_DEFAULTS = Object.freeze({
-  operationTimeoutMillis: 5_000,
-  pollIntervalMillis: 1_000,
-});
-
 /** The most job names one dispatcher may publish. */
 const OUTBOX_JOB_ALLOWLIST_LIMIT = 64;
 

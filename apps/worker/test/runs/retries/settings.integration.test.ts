@@ -138,6 +138,7 @@ function graph(
               leaseDurationMillis: 30_000,
               leaseOwner: `retries-${randomUUID()}`,
               retryDelayMillis: 1_000,
+              operationTimeoutMillis: 5_000,
               pollIntervalMillis: 50,
             },
           });

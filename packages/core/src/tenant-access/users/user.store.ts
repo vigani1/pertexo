@@ -1,3 +1,7 @@
+import {
+  DISPLAY_NAME_MAX_CHARACTERS,
+  EMAIL_ADDRESS_LIMITS,
+} from '@pertexo/workflow-model';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -11,13 +15,13 @@ import type { CreateUserInput, UserRecord } from '../tenant-access.types.js';
 import { throwIdentityDatabaseConflict } from '../conflicts.js';
 import { userRecord, userSelection } from './projection.js';
 
-const EMAIL_MIN_LENGTH = 3;
-const EMAIL_MAX_LENGTH = 320;
-const STORED_DISPLAY_NAME_MAX_LENGTH = 256;
-
 const userIdentityFieldsSchema = z.object({
-  email: z.string().trim().min(EMAIL_MIN_LENGTH).max(EMAIL_MAX_LENGTH),
-  displayName: z.string().trim().min(1).max(STORED_DISPLAY_NAME_MAX_LENGTH),
+  email: z
+    .string()
+    .trim()
+    .min(EMAIL_ADDRESS_LIMITS.minimumCharacters)
+    .max(EMAIL_ADDRESS_LIMITS.storedAddressCharacters),
+  displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_CHARACTERS),
 });
 
 function parseUserIdentityFields(

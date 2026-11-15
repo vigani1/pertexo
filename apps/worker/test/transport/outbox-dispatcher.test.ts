@@ -45,6 +45,8 @@ describe('outbox dispatcher', () => {
             leaseDurationMillis: 30_000,
             leaseOwner: 'worker-a',
             retryDelayMillis: 1_000,
+            pollIntervalMillis: 1_000,
+            operationTimeoutMillis: 5_000,
           },
         }),
     ).toThrow('Outbox job allowlist must be unique');
@@ -67,6 +69,7 @@ describe('outbox dispatcher', () => {
           leaseOwner: 'worker-a',
           pollIntervalMillis: 10,
           retryDelayMillis: 1_000,
+          operationTimeoutMillis: 5_000,
         },
       },
     );

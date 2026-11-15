@@ -95,6 +95,7 @@ export async function startRoutingWorkers(scenario: RoutingBase) {
       leaseDurationMillis: 30_000,
       leaseOwner: `routing-${randomUUID()}`,
       retryDelayMillis: 1_000,
+      operationTimeoutMillis: 5_000,
       pollIntervalMillis: 250,
     },
   });

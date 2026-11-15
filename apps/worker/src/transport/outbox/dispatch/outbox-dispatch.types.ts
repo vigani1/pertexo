@@ -9,9 +9,9 @@ export type OutboxDispatcherOptions = Readonly<{
   jobNames: readonly JobName[];
   leaseDurationMillis: number;
   leaseOwner: string;
-  operationTimeoutMillis?: number;
+  operationTimeoutMillis: number;
   /** Maximum interval while idle; publication shortens subsequent polling. */
-  pollIntervalMillis?: number;
+  pollIntervalMillis: number;
   retryDelayMillis: number;
 }>;
 

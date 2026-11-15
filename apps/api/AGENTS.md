@@ -68,8 +68,8 @@ environment only in `platform/config/`.
   `HttpStatus` wherever the API sends one (`validate-http-statuses.mjs`);
   a comparison with a received number writes the number, since lint refuses
   comparing an enum with a number; a token's random bytes are
-  `SECRET_TOKEN_BYTES` (`identity/secret-token.ts`); a provider callback's
-  parameters are
+  `SECRET_TOKEN_BYTES` and its length `SECRET_TOKEN_CHARACTERS`
+  (`identity/secret-token.ts`); a provider callback's parameters are
   `CALLBACK_LIMITS` (`authentication/journeys/callback-limits.ts`);
   passwords, display names and the fresh sign-in window come from
   `workflow-model`; a newly entered email address (sign-up, email change,

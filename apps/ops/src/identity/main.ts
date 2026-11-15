@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { createTwoFactorRecoveryStore } from '@pertexo/core/identity';
 import { parseTwoFactorRecoveryConfig } from './two-factor-recovery-config.js';
 import { disableTwoFactor } from './disable-two-factor.js';
+import { reportProcessFailure } from '../process-failure.js';
+
+const DATABASE_FAILURE =
+  'Database access failed. Check DATABASE_URL is reachable and the application role has access, then retry the recovery command.';
 
 export async function runTwoFactorRecovery(): Promise<void> {
   const config = parseTwoFactorRecoveryConfig();
@@ -24,11 +28,14 @@ if (
   fileURLToPath(import.meta.url) === process.argv[1]
 ) {
   void runTwoFactorRecovery().catch((error: unknown) => {
-    const detail =
+    // A driver's error may carry the account's address, so only a refused
+    // setting is described; anything else is the database.
+    reportProcessFailure(
+      'two_factor_recovery.process_failed',
+      error,
       error instanceof StartupSettingError
         ? describeProcessFailure(error)
-        : 'Database access failed. Check DATABASE_URL is reachable and the application role has access, then retry the recovery command.';
-    process.stderr.write(`Two-factor recovery failed: ${detail}\n`);
-    process.exitCode = 1;
+        : DATABASE_FAILURE,
+    );
   });
 }

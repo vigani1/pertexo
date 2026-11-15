@@ -84,6 +84,8 @@ export const ROOT_CONCEPTS = Object.freeze({
     'execute-operator-command.ts':
       'runs one operator command; the production-image check loads its built file',
     'operator-config.ts': 'the operator settings',
+    'process-failure.ts':
+      'how both entries report the failure that ends their process',
   },
   'apps/code-runner': {
     'runner-application.ts':

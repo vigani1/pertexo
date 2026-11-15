@@ -141,6 +141,7 @@ export async function assertScheduleQuotaRecovery(
         leaseOwner: 'schedule-recovery-dispatcher',
         operationTimeoutMillis: 5_000,
         retryDelayMillis: 10,
+        pollIntervalMillis: 1_000,
       },
     }),
   );
