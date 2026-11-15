@@ -118,8 +118,6 @@ export const REPOSITORY_THROW_BACKLOG = Object.freeze({
   'packages/core/src/identity/federation/provisioning/resources/users.repository.ts': 2,
   'packages/core/src/identity/federation/provisioning/sign-in.repository.ts': 3,
   'packages/core/src/identity/federation/social/sign-in.repository.ts': 1,
-  'packages/core/src/notifications/destinations/manage.repository.ts': 3,
-  'packages/core/src/notifications/destinations/notification-destinations.repository.ts': 2,
   'packages/core/src/previews/runs/acceptance/admission.repository.ts': 4,
   'packages/core/src/previews/runs/acceptance/replay.repository.ts': 2,
   'packages/core/src/previews/runs/samples.repository.ts': 3,

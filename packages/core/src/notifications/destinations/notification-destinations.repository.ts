@@ -9,8 +9,6 @@ import {
 } from '@pertexo/database/schema';
 import type { FailureNotificationDestinationRecord } from './notification-destination.types.js';
 
-import { FailureNotificationDestinationError } from './notification-destination.errors.js';
-
 /** The FK and strict JSON check correlate the canonical kind with its config. */
 export const destinationConfigSql = sql<FailureNotificationDestinationConfig>`${version.config} || jsonb_build_object('kind',${version.kind})`;
 export function destinationRecords(db: Pick<NodePgDatabase, 'select'>) {
@@ -40,37 +38,35 @@ export function destinationRecords(db: Pick<NodePgDatabase, 'select'>) {
     );
 }
 
-export async function readFailureNotificationDestination(
+/** Locks the destination row; false when it isn't visible. */
+export async function lockDestination(
   client: PoolClient,
   workspaceId: string,
   destinationId: string,
-  { lock = false }: Readonly<{ lock?: boolean | undefined }> = {},
-): Promise<FailureNotificationDestinationRecord> {
-  const db = drizzle(client);
-  const predicate = and(
+): Promise<boolean> {
+  const locked = await drizzle(client)
+    .select({ id: destination.id })
+    .from(destination)
+    .where(destinationKey(workspaceId, destinationId))
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return locked.length === 1;
+}
+
+export async function readDestinationRecord(
+  client: PoolClient,
+  workspaceId: string,
+  destinationId: string,
+): Promise<FailureNotificationDestinationRecord | undefined> {
+  const [row] = await destinationRecords(drizzle(client))
+    .where(destinationKey(workspaceId, destinationId))
+    .catch(rethrowQueryFailure);
+  return row === undefined ? undefined : Object.freeze(row);
+}
+
+function destinationKey(workspaceId: string, destinationId: string) {
+  return and(
     eq(destination.workspaceId, workspaceId),
     eq(destination.id, destinationId),
   );
-  if (lock) {
-    const locked = await db
-      .select({ id: destination.id })
-      .from(destination)
-      .where(predicate)
-      .for('update')
-      .catch(rethrowQueryFailure);
-    if (locked.length !== 1)
-      throw new FailureNotificationDestinationError(
-        'not_found',
-        'Destination is not visible',
-      );
-  }
-  const [row] = await destinationRecords(db)
-    .where(predicate)
-    .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new FailureNotificationDestinationError(
-      'not_found',
-      'Destination is not visible',
-    );
-  return Object.freeze(row);
 }

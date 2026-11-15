@@ -17,7 +17,7 @@ import type {
   SetWorkflowPolicyInput,
   WorkflowPolicyInput,
 } from '../destinations/notification-destination.types.js';
-import { readFailureNotificationDestination } from '../destinations/notification-destinations.repository.js';
+import { readFailureNotificationDestination } from '../destinations/read-destination.js';
 import {
   deleteWorkflowPolicy,
   readWorkflowPolicyChoice,

@@ -36,10 +36,10 @@ import { FailureNotificationDestinationError } from './notification-destination.
 import {
   appendDestinationVersion,
   createDestination,
-  listDestinations,
   setDestinationStatus,
-} from './manage.repository.js';
-import { readFailureNotificationDestination } from './notification-destinations.repository.js';
+} from './manage.js';
+import { listDestinations } from './manage.repository.js';
+import { readFailureNotificationDestination } from './read-destination.js';
 
 export type NotificationDestinationStore = ReturnType<
   typeof createNotificationDestinationStore
