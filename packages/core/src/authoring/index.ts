@@ -143,3 +143,13 @@ export type {} from './reviews/eligibility.repository.js';
 export type {} from './step-samples/step-sample-state.repository.js';
 export type {} from './workflows/authority.js';
 export type {} from './workflows/catalogs.js';
+
+export {
+  createWebhookTestEventStore,
+  type WebhookTestEventStore,
+} from './step-samples/webhook-test-events/webhook-test-event.store.js';
+export { WebhookTestEventError } from './step-samples/webhook-test-events/webhook-test-event.errors.js';
+export type {
+  TestEventReference,
+  TestEventScope,
+} from './step-samples/webhook-test-events/webhook-test-event.types.js';

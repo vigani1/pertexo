@@ -1,7 +1,5 @@
-import {
-  createWebhookTestEventStore,
-  createWebhookTriggerStore,
-} from '@pertexo/core/triggers';
+import { createWebhookTriggerStore } from '@pertexo/core/triggers';
+import { createWebhookTestEventStore } from '@pertexo/core/authoring';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
 import {
   WebhookTriggerEnvelopeEncryption,
