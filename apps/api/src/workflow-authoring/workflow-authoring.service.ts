@@ -27,7 +27,6 @@ import {
   serializeWorkflowSummary,
   serializeWorkflowValidation,
   serializeWorkflowVersions,
-  type WorkflowDraftResult,
   type WorkflowValidationResult,
 } from './http/serializers.js';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -195,7 +194,7 @@ export class GetWorkflowDraftService {
 
   public execute(
     input: WorkflowResourceInput & Readonly<{ includeGraphDigest?: boolean }>,
-  ): Promise<WorkflowDraftResult> {
+  ) {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.draftGet,
       async () => {
@@ -222,7 +221,7 @@ export class SaveWorkflowDraftService {
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
-  public execute(input: SaveWorkflowDraftInput): Promise<WorkflowDraftResult> {
+  public execute(input: SaveWorkflowDraftInput) {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.draftSave,
       async () => {

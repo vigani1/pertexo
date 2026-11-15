@@ -158,7 +158,7 @@ describe('workspace usage capacity use case', () => {
     expect(authorization.findAccess).toHaveBeenCalledTimes(1);
   });
 
-  it('refuses cancellation and invalid public snapshots before response', async () => {
+  it('refuses a canceled request before reading capacity', async () => {
     const store = persistence();
     const abort = new AbortController();
     abort.abort();
@@ -170,15 +170,5 @@ describe('workspace usage capacity use case', () => {
       }),
     ).rejects.toMatchObject({ name: 'AbortError' });
     expect(store.usageCapacity).not.toHaveBeenCalled();
-    store.usageCapacity.mockResolvedValue({
-      ...usageCapacitySnapshot(),
-      artifacts: { ...usageCapacitySnapshot().artifacts, chargedBytes: '-1' },
-    });
-    await expect(
-      new GetUsageCapacityService(store, access()).execute({
-        actor,
-        routeWorkspaceId: workspaceId,
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
   });
 });

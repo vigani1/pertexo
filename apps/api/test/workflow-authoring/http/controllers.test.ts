@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { WorkflowAuthoringController } from '../../../src/workflow-authoring/http/workflow-authoring.controller.js';
 import { WorkflowLifecycleController } from '../../../src/workflow-authoring/http/lifecycle.controller.js';
 import { WorkflowVersionsController } from '../../../src/workflow-authoring/http/versions.controller.js';
@@ -149,6 +149,27 @@ describe('workflow authoring HTTP contract', () => {
       });
     },
   );
+  it('answers a duplicate without fields the route does not declare, and fails on a malformed one', async () => {
+    const send = () =>
+      harness.send('POST', `${one}/duplicate`, {
+        body: {
+          name: 'Copy',
+          source: { kind: 'version', versionId: version().id },
+        },
+        headers: key,
+      });
+    vi.mocked(store.duplicateWorkflow).mockResolvedValueOnce({
+      workflowId,
+      graph: {},
+    } as never);
+    const stripped = await send();
+    expect(stripped.statusCode).toBe(201);
+    expect(stripped.json()).toEqual({ workflowId });
+    vi.mocked(store.duplicateWorkflow).mockResolvedValueOnce({
+      workflowId: 'invalid',
+    });
+    expect((await send()).statusCode).toBe(500);
+  });
   it('renames and duplicates without returning a graph from duplication', async () => {
     const rename = await harness.send('POST', `${one}/rename`, {
       body: { name: 'Invoices', expectedNameRevision: 1 },

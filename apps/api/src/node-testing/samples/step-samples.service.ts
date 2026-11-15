@@ -1,8 +1,3 @@
-import {
-  stepSampleListResponseSchema,
-  stepSampleResponseSchema,
-  stepSampleCommandResponseSchema,
-} from '@pertexo/contracts';
 import type {
   WorkflowStepSampleStore,
   SampleMetadata,
@@ -16,6 +11,7 @@ import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import type { NodeTestServiceInput } from '../node-testing.service.js';
 import type {
   StepSampleDeleteRequest,
+  StepSampleListResponse,
   StepSampleWriteRequest,
 } from '@pertexo/contracts';
 
@@ -32,14 +28,14 @@ export class StepSamplesService {
     private readonly store: WorkflowStepSampleStore,
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
-  async list(input: ReadInput) {
+  async list(input: ReadInput): Promise<StepSampleListResponse> {
     await this.authorize(input, { write: false });
     const result = await this.store.list(this.scope(input));
-    return stepSampleListResponseSchema.parse({
+    return {
       ...result,
       items: result.items.map(metadata),
       limits: STORED_EXECUTION_VALUE_LIMITS,
-    });
+    };
   }
   async get(input: NodeInput) {
     await this.authorize(input, { write: false });
@@ -47,24 +43,23 @@ export class StepSamplesService {
       ...this.scope(input),
       nodeId: input.nodeId,
     });
-    return stepSampleResponseSchema.parse({
+    return {
       sample: result.sample === null ? null : metadata(result.sample),
       output: result.output?.kind === 'inline' ? result.output.value : null,
       draftRevision: result.draftRevision,
       limits: STORED_EXECUTION_VALUE_LIMITS,
-    });
+    };
   }
   async put(input: CommandInput<StepSampleWriteRequest>) {
     await this.authorize(input, { write: true });
-    return stepSampleCommandResponseSchema.parse(
-      await this.store.put({ ...this.command(input), ...input.request }),
-    );
+    return await this.store.put({ ...this.command(input), ...input.request });
   }
   async remove(input: CommandInput<StepSampleDeleteRequest>) {
     await this.authorize(input, { write: true });
-    return stepSampleCommandResponseSchema.parse(
-      await this.store.remove({ ...this.command(input), ...input.request }),
-    );
+    return await this.store.remove({
+      ...this.command(input),
+      ...input.request,
+    });
   }
   private scope(input: ReadInput) {
     return {
@@ -106,7 +101,9 @@ export class StepSamplesService {
     });
   }
 }
-function metadata(sample: SampleMetadata) {
+function metadata(
+  sample: SampleMetadata,
+): StepSampleListResponse['items'][number] {
   return {
     ...sample,
     createdAt: sample.createdAt.toISOString(),

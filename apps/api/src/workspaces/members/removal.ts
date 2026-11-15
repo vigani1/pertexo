@@ -10,10 +10,7 @@ import {
 } from '../telemetry.js';
 import type { workspaceMemberRemovalRequestSchema } from '@pertexo/contracts';
 import type { z } from 'zod';
-import {
-  workspaceMemberRemovalResponseSchema,
-  type WorkspaceMemberRemovalResponse,
-} from '../workspace-transport.js';
+import type { WorkspaceMemberRemovalResponse } from '../workspace-transport.js';
 
 type WorkspaceMemberRemovalPersistence = Pick<
   IdentityWorkspacePersistence,
@@ -39,7 +36,7 @@ export class RemoveWorkspaceMemberService {
           ...memberCommandFields(input),
           expectedRoleRevision: input.request.expectedRoleRevision,
         });
-        return workspaceMemberRemovalResponseSchema.parse(result);
+        return result;
       },
     );
   }

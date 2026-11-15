@@ -6,6 +6,7 @@ export {
   EMPTY_DEFINITION_CATALOG,
   workflowCompatibilityReport,
   workflowDefinitionCatalogFingerprint,
+  type WorkflowCompatibilityReport,
   type WorkflowDefinitionCatalog,
 } from './graph/definition-catalog.js';
 export { workflowDraftRepresentationTag } from './graph/draft-representation.js';

@@ -6,9 +6,7 @@ import { verifyCuratedTemplateManifest } from '@pertexo/templates';
 import {
   workflowExportRequestSchema,
   workflowImportPreviewRequestSchema,
-  workflowImportPreviewResponseSchema,
   workflowImportRequestSchema,
-  workflowImportResponseSchema,
 } from '@pertexo/contracts';
 import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import {
@@ -122,21 +120,16 @@ export class PreviewWorkflowImportService extends PortabilityAuthority {
       const command = parse(workflowImportPreviewRequestSchema, input.request);
       await this.authorize(input, 'workflow:create', command.bindings.length);
       const { templateOrigin, ...portableCommand } = command;
-      return workflowImportPreviewResponseSchema.parse(
-        await this.persistence.previewWorkflowImport({
-          ...this.context(input),
-          ...portableCommand,
-          ...(templateOrigin === undefined
-            ? {}
-            : {
-                templateOrigin,
-                templateIssues: templateIssues(
-                  command.manifest,
-                  templateOrigin,
-                ),
-              }),
-        }),
-      );
+      return await this.persistence.previewWorkflowImport({
+        ...this.context(input),
+        ...portableCommand,
+        ...(templateOrigin === undefined
+          ? {}
+          : {
+              templateOrigin,
+              templateIssues: templateIssues(command.manifest, templateOrigin),
+            }),
+      });
     });
   }
 }
@@ -146,23 +139,18 @@ export class ImportWorkflowService extends PortabilityAuthority {
       const command = parse(workflowImportRequestSchema, input.request);
       await this.authorize(input, 'workflow:create', command.bindings.length);
       const { templateOrigin, ...portableCommand } = command;
-      return workflowImportResponseSchema.parse(
-        await this.persistence.importWorkflow({
-          ...this.context(input),
-          ...portableCommand,
-          ...(templateOrigin === undefined
-            ? {}
-            : {
-                templateOrigin,
-                templateIssues: templateIssues(
-                  command.manifest,
-                  templateOrigin,
-                ),
-              }),
-          idempotencyKey: input.idempotencyKey,
-          ...commandCredential(input.actor),
-        }),
-      );
+      return await this.persistence.importWorkflow({
+        ...this.context(input),
+        ...portableCommand,
+        ...(templateOrigin === undefined
+          ? {}
+          : {
+              templateOrigin,
+              templateIssues: templateIssues(command.manifest, templateOrigin),
+            }),
+        idempotencyKey: input.idempotencyKey,
+        ...commandCredential(input.actor),
+      });
     });
   }
 }

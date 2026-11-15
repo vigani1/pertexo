@@ -5,14 +5,10 @@ import type {
 } from '@pertexo/core/authoring';
 
 import {
-  workflowCreateResponseSchema,
-  workflowDraftResponseSchema,
   workflowListResponseSchema,
   workflowSummaryResponseSchema,
-  workflowPublishResponseSchema,
   workflowValidateResponseSchema,
   workflowVersionResponseSchema,
-  workflowVersionsResponseSchema,
   type WorkflowPublishResponse,
   type WorkflowSummary,
   type WorkflowValidateResponse,
@@ -28,15 +24,9 @@ import { AuthoringValidationUnavailableError } from '@pertexo/workflow-model/ser
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 type DraftRepresentation = Parameters<typeof workflowDraftRepresentationTag>[0];
 
-export type WorkflowDraftResult = Readonly<{
-  body: ReturnType<typeof workflowDraftResponseSchema.parse>;
-  representationTag: string;
-}>;
-
-export type WorkflowCreateResult = Readonly<{
-  body: ReturnType<typeof workflowCreateResponseSchema.parse>;
-  representationTag: string;
-}>;
+export type WorkflowCreateResult = Awaited<
+  ReturnType<typeof serializeWorkflowCreate>
+>;
 export type WorkflowValidationResult = Readonly<{
   body: WorkflowValidateResponse;
   representationTag: string;
@@ -67,13 +57,13 @@ export async function serializeWorkflowCreate(
     workflow: WorkflowRecord;
     draft: WorkflowDraftRecord;
   }>,
-): Promise<WorkflowCreateResult> {
+) {
   const draft = await serializeWorkflowDraft(input.draft);
   return Object.freeze({
-    body: workflowCreateResponseSchema.parse({
+    body: {
       workflow: workflowSummary(input.workflow),
       draft: draft.body,
-    }),
+    },
     representationTag: draft.representationTag,
   });
 }
@@ -81,7 +71,7 @@ export async function serializeWorkflowCreate(
 export async function serializeWorkflowDraft(
   draft: WorkflowDraftRecord,
   includeGraphDigest = false,
-): Promise<WorkflowDraftResult> {
+) {
   const graph = parseWorkflowGraphDraft(draft.graphJson);
   const representation: DraftRepresentation = {
     workflowId: draft.workflowId,
@@ -90,7 +80,7 @@ export async function serializeWorkflowDraft(
     compatibilityFingerprint: draft.compatibility.fingerprint,
   };
   return Object.freeze({
-    body: workflowDraftResponseSchema.parse({
+    body: {
       workflowId: draft.workflowId,
       revision: draft.revision,
       graph,
@@ -99,7 +89,7 @@ export async function serializeWorkflowDraft(
         : {}),
       compatibility: draft.compatibility,
       updatedAt: draft.updatedAt.toISOString(),
-    }),
+    },
     representationTag: workflowDraftRepresentationTag(representation),
   });
 }
@@ -136,10 +126,10 @@ export async function serializeWorkflowPublication(
   version: WorkflowVersionRecord,
   { reused }: Readonly<{ reused: boolean }>,
 ): Promise<WorkflowPublishResponse> {
-  return workflowPublishResponseSchema.parse({
+  return {
     version: await workflowVersion(version),
     reused,
-  });
+  };
 }
 
 export async function serializeWorkflowVersions(
@@ -147,12 +137,12 @@ export async function serializeWorkflowVersions(
   nextCursor: string | null,
   includeGraphDigest = false,
 ): Promise<WorkflowVersionsResponse> {
-  return workflowVersionsResponseSchema.parse({
+  return {
     items: await Promise.all(
       items.map((version) => workflowVersion(version, includeGraphDigest)),
     ),
     nextCursor,
-  });
+  };
 }
 
 export function workflowSummary(

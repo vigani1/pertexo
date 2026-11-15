@@ -1,8 +1,5 @@
 import type { workflowDuplicateRequestSchema } from '@pertexo/contracts';
-import {
-  workflowDuplicateResponseSchema,
-  type WorkflowDuplicateResponse,
-} from '@pertexo/contracts';
+import type { WorkflowDuplicateResponse } from '@pertexo/contracts';
 import type { z } from 'zod';
 import {
   authorizeWorkspaceOperation,
@@ -73,22 +70,20 @@ export class DuplicateWorkflowService {
           source.kind === 'draft'
             ? parseStrongIfMatch(input.representationTag)
             : undefined;
-        return workflowDuplicateResponseSchema.parse(
-          await this.persistence.duplicateWorkflow({
-            workspaceId: input.routeWorkspaceId,
-            workflowId: input.workflowId,
-            actorId: input.actor.actorId,
-            name,
-            source,
-            idempotencyKey: input.idempotencyKey,
-            requestId: input.actor.requestId,
-            ...(representationTag === undefined ? {} : { representationTag }),
-            ...(input.actor.traceId === undefined
-              ? {}
-              : { traceId: input.actor.traceId }),
-            ...(input.signal === undefined ? {} : { signal: input.signal }),
-          }),
-        );
+        return await this.persistence.duplicateWorkflow({
+          workspaceId: input.routeWorkspaceId,
+          workflowId: input.workflowId,
+          actorId: input.actor.actorId,
+          name,
+          source,
+          idempotencyKey: input.idempotencyKey,
+          requestId: input.actor.requestId,
+          ...(representationTag === undefined ? {} : { representationTag }),
+          ...(input.actor.traceId === undefined
+            ? {}
+            : { traceId: input.actor.traceId }),
+          ...(input.signal === undefined ? {} : { signal: input.signal }),
+        });
       },
     );
   }

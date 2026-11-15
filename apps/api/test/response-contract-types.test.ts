@@ -1,7 +1,4 @@
 import type {
-  nodeTestExecuteAcceptedResponseSchema,
-  nodeValidationResponseSchema,
-  previewRunResponseSchema,
   workflowValidateResponseSchema,
   workflowVersionsResponseSchema,
 } from '@pertexo/contracts';
@@ -12,8 +9,6 @@ import type {
   ListWorkflowVersionsService,
   ValidateWorkflowDraftService,
 } from '../src/workflow-authoring/workflow-authoring.service.js';
-import type { GetPreviewRunService } from '../src/node-testing/previews/read.js';
-import type { TestWorkflowNodeService } from '../src/node-testing/node-testing.service.js';
 import type {
   AuthenticatedRequestSession,
   IdentityWorkspaceRequest,
@@ -80,20 +75,6 @@ describe('validated response contract types', () => {
       ReturnType<ListWorkflowVersionsService['execute']>
     >().toEqualTypeOf<
       Promise<z.output<typeof workflowVersionsResponseSchema>>
-    >();
-  });
-
-  it('preserves the node-test response union and preview output', () => {
-    expectTypeOf<
-      ReturnType<TestWorkflowNodeService['execute']>
-    >().toEqualTypeOf<
-      Promise<
-        | z.output<typeof nodeValidationResponseSchema>
-        | z.output<typeof nodeTestExecuteAcceptedResponseSchema>
-      >
-    >();
-    expectTypeOf<ReturnType<GetPreviewRunService['execute']>>().toEqualTypeOf<
-      Promise<z.output<typeof previewRunResponseSchema>>
     >();
   });
 });

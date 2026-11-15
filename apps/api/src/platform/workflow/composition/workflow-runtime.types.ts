@@ -1,5 +1,5 @@
 import type { NodeTestingRuntime } from './node-testing.runtime.js';
-import type { PendingTaskOperations } from '../../../pending-tasks/pending-task.service.js';
+import type { PendingTaskOperations } from '../../../pending-tasks/pending-task-operations.types.js';
 import type { GovernanceStore } from '@pertexo/core/governance';
 
 import type { DataTablesStore } from '@pertexo/core/data-tables';

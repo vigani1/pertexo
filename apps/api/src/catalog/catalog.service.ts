@@ -1,11 +1,6 @@
 import { DEFAULT_CODE_SETTINGS, type CodeSettings } from '@pertexo/node-sdk';
 import { compareOrdinal } from '@pertexo/workflow-model';
-import {
-  integrationListResponseSchema,
-  nodeDefinitionListResponseSchema,
-  type IntegrationListResponse,
-  type NodeDefinitionListResponse,
-} from '@pertexo/contracts';
+import type { IntegrationListResponse } from '@pertexo/contracts';
 import {
   platformBrowserNodeDefinitionCatalog,
   type PlatformNodeDefinitionBrowserCatalog,
@@ -22,11 +17,11 @@ export class ListNodeDefinitionsService {
     this.catalog = catalog;
   }
 
-  public execute(): NodeDefinitionListResponse {
-    return nodeDefinitionListResponseSchema.parse({
+  public execute() {
+    return {
       items: this.catalog.definitions,
       codeSettings: this.codeSettings,
-    });
+    };
   }
 }
 
@@ -68,11 +63,15 @@ export class ListIntegrationsService {
         operationKey,
         nodeDefinitions: definitions
           .sort(compareDefinition)
-          .map(({ definition }) => definition),
+          // A copy, so no caller can change the catalog everyone reads.
+          .map(({ definition }) => ({
+            key: definition.key,
+            version: definition.version,
+          })),
       }));
-    return integrationListResponseSchema.parse({
+    return {
       items,
-    });
+    };
   }
 }
 

@@ -16,13 +16,10 @@ import type {
   workspaceOwnershipTransferRequestSchema,
 } from '@pertexo/contracts';
 import type { z } from 'zod';
-import {
-  workspaceLeaveResponseSchema,
-  workspaceMemberStatusResponseSchema,
-  workspaceOwnershipTransferResponseSchema,
-  type WorkspaceLeaveResponse,
-  type WorkspaceMemberStatusResponse,
-  type WorkspaceOwnershipTransferResponse,
+import type {
+  WorkspaceLeaveResponse,
+  WorkspaceMemberStatusResponse,
+  WorkspaceOwnershipTransferResponse,
 } from '../workspace-transport.js';
 
 type MembershipLifecyclePersistence = Pick<
@@ -65,7 +62,7 @@ export class WorkspaceMembershipLifecycleService {
             : { requestId: fields.requestId }),
           ...(fields.traceId === undefined ? {} : { traceId: fields.traceId }),
         });
-        return workspaceLeaveResponseSchema.parse(result);
+        return result;
       },
     );
   }
@@ -105,7 +102,7 @@ export class WorkspaceMembershipLifecycleService {
           expectedRoleRevision: request.expectedRoleRevision,
           expectedOwnerRoleRevision: request.expectedOwnerRoleRevision,
         });
-        return workspaceOwnershipTransferResponseSchema.parse(result);
+        return result;
       },
     );
   }
@@ -120,7 +117,7 @@ export class WorkspaceMembershipLifecycleService {
         ...memberCommandFields(input),
         expectedRoleRevision: input.request.expectedRoleRevision,
       });
-      return workspaceMemberStatusResponseSchema.parse(result);
+      return result;
     });
   }
 }

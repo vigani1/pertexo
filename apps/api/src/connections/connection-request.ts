@@ -10,7 +10,6 @@ export {
   signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
-  slackChannelLookupResponseSchema,
   resendApiKeyCredentialSchema,
   smtpCredentialSchema,
   type ConnectionResponse,

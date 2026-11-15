@@ -1,14 +1,9 @@
-import {
-  workspaceInboxListResponseSchema,
-  workspaceInboxReadAllResponseSchema,
-  workspaceInboxReadResponseSchema,
-  workspaceInboxSummaryResponseSchema,
-  type WorkspaceInboxFilter,
-  type WorkspaceNoticeKind,
-  type WorkspaceInboxListResponse,
-  type WorkspaceInboxReadAllResponse,
-  type WorkspaceInboxReadResponse,
-  type WorkspaceInboxSummaryResponse,
+import type {
+  WorkspaceInboxFilter,
+  WorkspaceNoticeKind,
+  WorkspaceInboxReadAllResponse,
+  WorkspaceInboxReadResponse,
+  WorkspaceInboxSummaryResponse,
 } from '@pertexo/contracts';
 import type { WorkspaceInboxStore } from '@pertexo/core/inbox';
 
@@ -42,7 +37,7 @@ export class WorkspaceInboxService {
         after?: string;
         signal?: AbortSignal;
       }>,
-  ): Promise<WorkspaceInboxListResponse> {
+  ) {
     const filter = input.filter ?? 'all';
     const context = {
       workspaceId: input.workspaceId,
@@ -64,22 +59,20 @@ export class WorkspaceInboxService {
         : { after: decodeWorkspaceInboxCursor(input.after, context) }),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     });
-    return workspaceInboxListResponseSchema.parse({
+    return {
       items: page.items,
       nextCursor:
         page.next === null
           ? null
           : encodeWorkspaceInboxCursor(context, page.next),
       revision: page.revision,
-    });
+    };
   }
 
   public async summary(
     input: Reader & Readonly<{ signal?: AbortSignal }>,
   ): Promise<WorkspaceInboxSummaryResponse> {
-    return workspaceInboxSummaryResponseSchema.parse(
-      await this.store.readSummary(input),
-    );
+    return await this.store.readSummary(input);
   }
 
   public async markRead(
@@ -87,17 +80,15 @@ export class WorkspaceInboxService {
   ): Promise<WorkspaceInboxReadResponse> {
     const read = await this.store.markThreadRead(input);
     if (read === undefined) throw new WorkspaceInboxThreadNotFoundError();
-    return workspaceInboxReadResponseSchema.parse({
+    return {
       threadId: input.threadId,
       ...read,
-    });
+    };
   }
 
   public async markAllRead(
     input: Reader & Readonly<{ revision: string }>,
   ): Promise<WorkspaceInboxReadAllResponse> {
-    return workspaceInboxReadAllResponseSchema.parse(
-      await this.store.markAllRead(input),
-    );
+    return await this.store.markAllRead(input);
   }
 }

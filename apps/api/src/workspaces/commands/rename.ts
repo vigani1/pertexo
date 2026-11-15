@@ -5,10 +5,7 @@ import {
   NOOP_IDENTITY_WORKSPACE_TELEMETRY,
   type IdentityWorkspaceTelemetry,
 } from '../telemetry.js';
-import {
-  workspaceRenameResponseSchema,
-  type WorkspaceRenameResponse,
-} from '../workspace-transport.js';
+import type { WorkspaceRenameResponse } from '../workspace-transport.js';
 import type { WorkspaceRenameRequest } from '@pertexo/contracts';
 
 type RenamePersistence = Pick<IdentityWorkspacePersistence, 'renameWorkspace'>;
@@ -44,7 +41,7 @@ export class RenameWorkspaceService {
             : { requestId: input.requestId }),
           ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
         });
-        return workspaceRenameResponseSchema.parse({
+        return {
           workspace: {
             id: result.workspace.id,
             name: result.workspace.name,
@@ -56,7 +53,7 @@ export class RenameWorkspaceService {
           },
           changed: result.changed,
           replayed: result.replayed,
-        });
+        };
       },
     );
   }

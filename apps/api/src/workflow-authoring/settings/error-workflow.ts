@@ -3,11 +3,6 @@ import type {
   workflowErrorTargetsQuerySchema,
   workflowErrorSettingsRequestSchema,
 } from '@pertexo/contracts';
-import {
-  workflowErrorSettingsSchema,
-  workflowErrorTargetsPageSchema,
-  workflowErrorSettingsResponseSchema,
-} from '@pertexo/contracts';
 import type { WorkflowErrorStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
@@ -33,20 +28,16 @@ export class WorkflowErrorService {
   ) {
     await this.authorize(input, 'workflow:update');
     const { request } = input;
-    return workflowErrorTargetsPageSchema.parse(
-      await this.persistence.listTargets({
-        ...this.context(input),
-        ...(request.after === undefined ? {} : { after: request.after }),
-      }),
-    );
+    return await this.persistence.listTargets({
+      ...this.context(input),
+      ...(request.after === undefined ? {} : { after: request.after }),
+    });
   }
   public async read(input: ReadInput) {
     input.signal?.throwIfAborted();
     await this.authorize(input, 'workflow:read');
     input.signal?.throwIfAborted();
-    return workflowErrorSettingsSchema.parse(
-      await this.persistence.readSettings(this.context(input)),
-    );
+    return await this.persistence.readSettings(this.context(input));
   }
   public async update(
     input: CommandInput<z.output<typeof workflowErrorSettingsRequestSchema>>,
@@ -55,17 +46,15 @@ export class WorkflowErrorService {
     await this.authorize(input, 'workflow:update');
     input.signal?.throwIfAborted();
     const { request } = input;
-    return workflowErrorSettingsResponseSchema.parse(
-      await this.persistence.updateSettings({
-        ...this.context(input),
-        ...request,
-        idempotencyKey: input.idempotencyKey,
-        requestId: input.actor.requestId,
-        ...(input.actor.traceId === undefined
-          ? {}
-          : { traceId: input.actor.traceId }),
-      }),
-    );
+    return await this.persistence.updateSettings({
+      ...this.context(input),
+      ...request,
+      idempotencyKey: input.idempotencyKey,
+      requestId: input.actor.requestId,
+      ...(input.actor.traceId === undefined
+        ? {}
+        : { traceId: input.actor.traceId }),
+    });
   }
   private context(input: ReadInput) {
     return {

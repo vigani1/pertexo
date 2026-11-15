@@ -136,18 +136,4 @@ describe('workflow run statistics use case', () => {
       ).rejects.toBeInstanceOf(AuthorizationError);
     expect(store.statistics).not.toHaveBeenCalled();
   });
-
-  it('refuses a snapshot that breaks the public contract', async () => {
-    const store = persistence({
-      ...snapshot(),
-      window: { ...snapshot().window, byStatus: { ...byStatus, failed: -1 } },
-    });
-
-    await expect(
-      new GetWorkflowRunStatisticsService(store, access()).execute({
-        actor,
-        routeWorkspaceId: workspaceId,
-      }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-  });
 });

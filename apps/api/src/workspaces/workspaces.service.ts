@@ -10,16 +10,11 @@ import {
   AuthorizationError,
   type WorkspaceStatus,
 } from '../authorization/index.js';
-import {
-  accessibleWorkspacesResponseSchema,
-  workspaceLifecycleChangeResponseSchema,
-  workspaceResponseSchema,
-  workspaceMembersResponseSchema,
-  type AccessibleWorkspacesResponse,
-  type UserProfileResponse,
-  type WorkspaceMembersResponse,
-  type WorkspaceLifecycleChangeResponse,
-  type WorkspaceResponse,
+import type {
+  UserProfileResponse,
+  WorkspaceMembersResponse,
+  WorkspaceLifecycleChangeResponse,
+  WorkspaceResponse,
 } from './workspace-transport.js';
 import {
   decodeWorkspaceMemberCursor,
@@ -91,7 +86,7 @@ export class ListAccessibleWorkspacesService {
   public execute(
     userId: string,
     input: Readonly<{ limit?: number; after?: string }> = {},
-  ): Promise<AccessibleWorkspacesResponse> {
+  ) {
     return this.telemetry.measure(
       IDENTITY_WORKSPACE_OPERATION.accessibleWorkspacesList,
       async () => {
@@ -99,7 +94,7 @@ export class ListAccessibleWorkspacesService {
           userId,
           input,
         );
-        return accessibleWorkspacesResponseSchema.parse({
+        return {
           items: page.items.map((workspace) => ({
             id: workspace.id,
             name: workspace.name,
@@ -112,7 +107,7 @@ export class ListAccessibleWorkspacesService {
             updatedAt: workspace.updatedAt.toISOString(),
           })),
           nextCursor: page.nextCursor ?? null,
-        });
+        };
       },
     );
   }
@@ -162,7 +157,7 @@ export class ListWorkspaceMembersService {
             ...(after === undefined ? {} : { after }),
           },
         );
-        return workspaceMembersResponseSchema.parse({
+        return {
           items: page.items.map((member) => ({
             userId: member.userId,
             email: member.email,
@@ -180,7 +175,7 @@ export class ListWorkspaceMembersService {
             page.nextCursor === undefined
               ? null
               : encodeWorkspaceMemberCursor(page.nextCursor),
-        });
+        };
       },
     );
   }
@@ -221,7 +216,7 @@ export class CreateWorkspaceService {
           ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
           metadata: parseIdentityMetadata(input.metadata),
         });
-        return workspaceResponseSchema.parse(toWorkspaceResponse(workspace));
+        return toWorkspaceResponse(workspace);
       },
     );
   }
@@ -346,11 +341,11 @@ export class WorkspaceLifecycleService {
 function toWorkspaceLifecycleChangeResponse(
   operation: WorkspaceLifecycleOperationRecord,
 ): WorkspaceLifecycleChangeResponse {
-  return workspaceLifecycleChangeResponseSchema.parse({
+  return {
     workspaceId: operation.workspaceId,
     change: operation.commandType,
     occurredAt: operation.submittedAt.toISOString(),
-  });
+  };
 }
 
 function toWorkspaceResponse(

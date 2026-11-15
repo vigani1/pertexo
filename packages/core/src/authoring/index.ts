@@ -125,6 +125,7 @@ export type {
   SampleMetadata,
   SampleRead,
   SampleResult,
+  SampleState,
 } from './step-samples/step-sample.types.js';
 
 export { PublicationReviewError } from './reviews/publication-review.errors.js';

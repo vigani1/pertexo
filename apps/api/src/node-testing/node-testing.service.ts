@@ -1,10 +1,5 @@
 import type { WorkspaceVariablesStore } from '@pertexo/core/variables';
-import {
-  nodeValidationResponseSchema,
-  type NodeTestRequest,
-  type NodeTestExecuteAcceptedResponse,
-  type NodeValidationResponse,
-} from '@pertexo/contracts';
+import type { NodeTestRequest } from '@pertexo/contracts';
 import {
   WorkflowNotFoundError,
   WorkflowStepSampleError,
@@ -74,9 +69,7 @@ export class TestWorkflowNodeService {
     private readonly variables?: Pick<WorkspaceVariablesStore, 'read'>,
   ) {}
 
-  public async execute(
-    input: NodeTestServiceInput,
-  ): Promise<NodeValidationResponse | NodeTestExecuteAcceptedResponse> {
+  public async execute(input: NodeTestServiceInput) {
     const request = input.request;
     await this.authorize(input, 'workflow:update');
     const executionIdentity =
@@ -126,14 +119,14 @@ export class TestWorkflowNodeService {
       await this.authorize(input, 'connection:use');
 
     if (request.mode === 'validate')
-      return nodeValidationResponseSchema.parse({
-        mode: 'validate',
+      return {
+        mode: 'validate' as const,
         valid: prepared.issues.length === 0,
         revision: draft.revision,
         nodeId: input.nodeId,
         issues: prepared.issues,
         disclosure: prepared.disclosure,
-      });
+      };
 
     if (executionIdentity === undefined)
       throw new PreviewIdentityUnavailableError(
@@ -155,7 +148,7 @@ export class TestWorkflowNodeService {
   private async replay(
     input: NodeTestServiceInput,
     executionIdentity: ReturnType<typeof previewExecutionIdentity>,
-  ): Promise<NodeTestExecuteAcceptedResponse | undefined> {
+  ) {
     const replay = await this.persistence.resolvePreviewReplay({
       workspaceId: input.routeWorkspaceId,
       actorUserId: input.actor.actorId,
@@ -214,7 +207,7 @@ export class TestWorkflowNodeService {
       pinnedSampleId: string | undefined;
       prepared: PreparedNodePreview;
     }>,
-  ): Promise<NodeTestExecuteAcceptedResponse> {
+  ) {
     const acceptedAt = this.now();
     const { keyHash, requestHash } = executionIdentity;
     const accepted = await this.persistence.acceptPreview({

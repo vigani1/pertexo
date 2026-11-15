@@ -5,12 +5,6 @@ import type {
   workflowResumeRequestSchema,
   workspaceAutoPauseSettingsRequestSchema,
 } from '@pertexo/contracts';
-import {
-  workflowAutoPauseSettingsSchema,
-  workflowAutoPauseCommandResponseSchema,
-  workspaceAutoPauseSettingsSchema,
-  workspaceAutoPauseCommandResponseSchema,
-} from '@pertexo/contracts';
 import type { WorkflowAutoPauseStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
@@ -33,13 +27,11 @@ export class WorkflowAutoPauseService {
 
   public async readWorkflow(input: WorkflowReadInput) {
     await this.authorize(input, 'workflow:read');
-    return workflowAutoPauseSettingsSchema.parse(
-      await this.persistence.readWorkflowSettings({
-        workspaceId: input.routeWorkspaceId,
-        workflowId: input.workflowId,
-        actorId: input.actor.actorId,
-      }),
-    );
+    return await this.persistence.readWorkflowSettings({
+      workspaceId: input.routeWorkspaceId,
+      workflowId: input.workflowId,
+      actorId: input.actor.actorId,
+    });
   }
 
   public async updateWorkflow(
@@ -50,13 +42,11 @@ export class WorkflowAutoPauseService {
   ) {
     await this.authorize(input, 'workflow:update');
     const { request } = input;
-    return workflowAutoPauseCommandResponseSchema.parse(
-      await this.persistence.updateWorkflowSettings({
-        ...this.commandContext(input),
-        ...request,
-        workflowId: input.workflowId,
-      }),
-    );
+    return await this.persistence.updateWorkflowSettings({
+      ...this.commandContext(input),
+      ...request,
+      workflowId: input.workflowId,
+    });
   }
 
   public async resume(
@@ -65,23 +55,19 @@ export class WorkflowAutoPauseService {
   ) {
     await this.authorize(input, 'workflow:publish');
     const { request } = input;
-    return workflowAutoPauseCommandResponseSchema.parse(
-      await this.persistence.resumeWorkflow({
-        ...this.commandContext(input),
-        ...request,
-        workflowId: input.workflowId,
-      }),
-    );
+    return await this.persistence.resumeWorkflow({
+      ...this.commandContext(input),
+      ...request,
+      workflowId: input.workflowId,
+    });
   }
 
   public async readWorkspace(input: WorkflowApplicationInput) {
     await this.authorize(input, 'workspace:read');
-    return workspaceAutoPauseSettingsSchema.parse(
-      await this.persistence.readWorkspaceSettings({
-        workspaceId: input.routeWorkspaceId,
-        actorId: input.actor.actorId,
-      }),
-    );
+    return await this.persistence.readWorkspaceSettings({
+      workspaceId: input.routeWorkspaceId,
+      actorId: input.actor.actorId,
+    });
   }
 
   public async updateWorkspace(
@@ -91,12 +77,10 @@ export class WorkflowAutoPauseService {
   ) {
     await this.authorize(input, 'workspace:manage');
     const { request } = input;
-    return workspaceAutoPauseCommandResponseSchema.parse(
-      await this.persistence.updateWorkspaceSettings({
-        ...this.commandContext(input),
-        ...request,
-      }),
-    );
+    return await this.persistence.updateWorkspaceSettings({
+      ...this.commandContext(input),
+      ...request,
+    });
   }
 
   private authorize(

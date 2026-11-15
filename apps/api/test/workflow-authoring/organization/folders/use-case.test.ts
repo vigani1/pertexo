@@ -1,7 +1,6 @@
 import { foldersRoutes } from '@pertexo/contracts/server';
 import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
 import {
   WorkflowFolderConflictError,
   type WorkflowFolderStore,
@@ -202,26 +201,6 @@ describe('folder use-case boundary', () => {
         },
       );
 
-      it('rejects incomplete results and strips private persisted metadata', async () => {
-        for (const result of [
-          {},
-          { ...operation.result, actorId, body: { name: 'private' } },
-          { ...operation.result, pauseRevision: '42' },
-        ]) {
-          const f = setup();
-          f.store[operation.port].mockResolvedValueOnce(result);
-          if (Object.keys(result).length === 0)
-            await expect(f.invoke(operation)).rejects.toBeInstanceOf(
-              z.ZodError,
-            );
-          else
-            await expect(f.invoke(operation)).resolves.toEqual(
-              operation.result,
-            );
-          expect(f.store[operation.port]).toHaveBeenCalledOnce();
-        }
-      });
-
       it('fences route mismatch, missing membership and an unavailable workspace', async () => {
         for (const condition of ['route', 'member', 'workspace'] as const) {
           const f = setup();
@@ -307,17 +286,5 @@ describe('folder use-case boundary', () => {
       idempotencyKey: base.idempotencyKey,
     });
     expect(f.store.moveFolder).not.toHaveBeenCalled();
-  });
-
-  it('rejects malformed nested folder metadata rather than constructing new replay metadata', async () => {
-    for (const method of [operations[1], operations[2], operations[3]]) {
-      const f = setup();
-      f.store[method.port].mockResolvedValueOnce({
-        folder: { ...folder, depth: 2, parentId: null },
-        replayed: true,
-      });
-      await expect(f.invoke(method)).rejects.toBeInstanceOf(z.ZodError);
-      expect(f.store[method.port]).toHaveBeenCalledOnce();
-    }
   });
 });

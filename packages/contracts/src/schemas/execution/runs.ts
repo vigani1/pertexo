@@ -332,15 +332,6 @@ export type WorkflowRunFailedStep = z.output<
   typeof workflowRunFailedStepSchema
 >;
 export type WorkflowRunData = z.output<typeof workflowRunDataSchema>;
-export type WorkflowRunInputResponse = z.output<
-  typeof workflowRunInputResponseSchema
->;
-export type WorkflowNodeRunOutputResponse = z.output<
-  typeof workflowNodeRunOutputResponseSchema
->;
-export type WorkflowNodeRunInputResponse = z.output<
-  typeof workflowNodeRunInputResponseSchema
->;
 export type WorkflowRunListResponse = z.output<
   typeof workflowRunListResponseSchema
 >;

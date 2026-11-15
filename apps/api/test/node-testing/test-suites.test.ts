@@ -85,13 +85,4 @@ describe('draft suite boundary', () => {
     expect(f.store.report).not.toHaveBeenCalled();
     expect(f.store.cancel).not.toHaveBeenCalled();
   });
-  it('rejects a malformed stored report rather than returning an unbounded private payload', async () => {
-    const f = fixture();
-    f.store.report.mockResolvedValue({
-      report: { unbounded: 'x'.repeat(100000) },
-    });
-    await expect(
-      f.service.report({ ...input, suiteId, ordinal: 0 }),
-    ).rejects.toMatchObject({ name: 'ZodError' });
-  });
 });

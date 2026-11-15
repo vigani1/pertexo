@@ -1,8 +1,3 @@
-import {
-  previewRunResponseSchema,
-  type PreviewRunResponse,
-} from '@pertexo/contracts';
-
 import { WorkflowNotFoundError } from '@pertexo/core/authoring';
 
 import { authorizeWorkspaceOperation } from '../../authorization/index.js';
@@ -29,7 +24,7 @@ export class GetPreviewRunService {
       authorizedWorkspace?: AuthorizedWorkspaceContext;
       previewRunId: string;
     }>,
-  ): Promise<PreviewRunResponse> {
+  ) {
     await authorizeWorkspaceOperation({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,
@@ -48,7 +43,7 @@ export class GetPreviewRunService {
     });
     if (preview === null)
       throw new WorkflowNotFoundError('Preview is not visible');
-    return previewRunResponseSchema.parse({
+    return {
       preview: {
         ...previewIdentityResponse(preview),
         output: previewOutputResponse(preview.output),
@@ -59,6 +54,6 @@ export class GetPreviewRunService {
         startedAt: preview.startedAt?.toISOString() ?? null,
         completedAt: preview.completedAt?.toISOString() ?? null,
       },
-    });
+    };
   }
 }

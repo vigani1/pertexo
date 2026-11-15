@@ -8,9 +8,6 @@ import type {
 import {
   createWorkflowInputCaseTag,
   parseWorkflowInputCaseTag,
-  workflowInputCaseCommandResponseSchema,
-  workflowInputCaseListResponseSchema,
-  workflowInputCaseResponseSchema,
 } from '@pertexo/contracts';
 import type {
   WorkflowInputCaseStore,
@@ -53,12 +50,12 @@ export class WorkflowInputCasesService {
         ? {}
         : { cursor: decodeInputCaseCursor(query.after, context) }),
     });
-    return workflowInputCaseListResponseSchema.parse({
+    return {
       items: result.items.map(metadata),
       ...(result.nextCursor === undefined
         ? {}
         : { nextCursor: encodeInputCaseCursor(context, result.nextCursor) }),
-    });
+    };
   }
   public async get(input: CaseInput) {
     await this.authorize(input, 'workflow:read');
@@ -66,24 +63,22 @@ export class WorkflowInputCasesService {
       ...this.context(input),
       caseId: input.caseId,
     });
-    return workflowInputCaseResponseSchema.parse({
+    return {
       case: {
         ...metadata(result.case),
         input: result.case.input,
         expectations: result.case.expectations,
       },
-    });
+    };
   }
   public async create(input: CommandInput) {
     await this.authorize(input, 'workflow:update');
     const { expectations, ...request } = input.request;
-    return workflowInputCaseCommandResponseSchema.parse(
-      await this.persistence.createCase({
-        ...this.commandContext(input),
-        ...request,
-        ...(expectations === undefined ? {} : { expectations }),
-      }),
-    );
+    return await this.persistence.createCase({
+      ...this.commandContext(input),
+      ...request,
+      ...(expectations === undefined ? {} : { expectations }),
+    });
   }
   public async update(
     input: CaseCommandInput &
@@ -97,15 +92,13 @@ export class WorkflowInputCasesService {
       input.caseId,
     );
     const { expectations, ...request } = input.request;
-    return workflowInputCaseCommandResponseSchema.parse(
-      await this.persistence.updateCase({
-        ...this.commandContext(input),
-        caseId: input.caseId,
-        expectedRevision,
-        ...request,
-        ...(expectations === undefined ? {} : { expectations }),
-      }),
-    );
+    return await this.persistence.updateCase({
+      ...this.commandContext(input),
+      caseId: input.caseId,
+      expectedRevision,
+      ...request,
+      ...(expectations === undefined ? {} : { expectations }),
+    });
   }
   public async delete(input: CaseCommandInput) {
     await this.authorize(input, 'workflow:update');
@@ -113,13 +106,11 @@ export class WorkflowInputCasesService {
       input.representationTag,
       input.caseId,
     );
-    return workflowInputCaseCommandResponseSchema.parse(
-      await this.persistence.deleteCase({
-        ...this.commandContext(input),
-        caseId: input.caseId,
-        expectedRevision,
-      }),
-    );
+    return await this.persistence.deleteCase({
+      ...this.commandContext(input),
+      caseId: input.caseId,
+      expectedRevision,
+    });
   }
   private context(input: ReadInput) {
     input.signal?.throwIfAborted();

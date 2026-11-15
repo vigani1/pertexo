@@ -1,4 +1,4 @@
-import { Controller, Req, UseInterceptors } from '@nestjs/common';
+import { Controller, Inject, Req, UseInterceptors } from '@nestjs/common';
 import {
   pendingTaskRoutes as routes,
   type RouteInput,
@@ -7,7 +7,8 @@ import { In, Route } from '../platform/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { PendingTaskService } from './pending-task.service.js';
+import type { PendingTaskOperations } from './pending-task-operations.types.js';
+import { PENDING_TASKS } from './pending-tasks.tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize-context-errors.js';
 import {
@@ -22,7 +23,9 @@ type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
 @UseInterceptors(domainErrors(resourceFailure))
 @Controller()
 export class PendingTasksController {
-  constructor(private readonly tasks: PendingTaskService) {}
+  constructor(
+    @Inject(PENDING_TASKS) private readonly tasks: PendingTaskOperations,
+  ) {}
 
   @Route(routes.list)
   list(
@@ -67,9 +70,13 @@ export class PendingTasksController {
     @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.read>,
   ) {
-    return withRequestOperationSignal(request, (signal) =>
-      this.tasks.read({ ...storeCaller(caller), ...params, signal }),
-    );
+    return withRequestOperationSignal(request, async (signal) => ({
+      task: await this.tasks.read({
+        ...storeCaller(caller),
+        ...params,
+        signal,
+      }),
+    }));
   }
 
   @Route(routes.decide)
