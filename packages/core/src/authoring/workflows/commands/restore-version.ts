@@ -10,7 +10,7 @@ import { recoverWorkflowDraft } from './duplicate.js';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
-import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
+import { lockArtifactReferences } from '../../../artifacts/references/lock-references.js';
 import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
 import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
 import { pruneStepSamples } from '../../step-samples/step-sample-state.repository.js';

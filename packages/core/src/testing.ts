@@ -70,16 +70,16 @@ export {
   ArtifactLifecycleConflictError,
   ArtifactMetadataNotFoundError,
 } from './artifacts/artifact.errors.js';
+export { artifactStorageKey } from './artifacts/artifact-lifecycle.repository.js';
 export {
-  artifactStorageKey,
   createPendingArtifact,
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
-} from './artifacts/artifact-lifecycle.repository.js';
+} from './artifacts/artifact-lifecycle.js';
 export {
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from './artifacts/capacity.repository.js';
+} from './artifacts/capacity.js';
 export { ARTIFACT_UPLOAD_PURPOSE } from './artifacts/artifact.js';
 export { ARTIFACT_UPLOAD_PENDING_MS } from './artifacts/uploads/artifact-upload.js';
 export {
@@ -103,7 +103,7 @@ export type {
 export type {
   ArtifactCapacityObservation,
   ExecutionStorageObservation,
-} from './artifacts/capacity.repository.js';
+} from './artifacts/capacity.js';
 export type {
   ArtifactRecord,
   ArtifactStatus,

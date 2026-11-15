@@ -2,7 +2,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
-import { lockActorArtifactReferences } from '../artifacts/references/locks.repository.js';
+import { lockActorArtifactReferences } from '../artifacts/references/lock-references.js';
 import {
   requireRunAccess,
   requireWorkflowAccess,

@@ -9,7 +9,7 @@ import {
 import {
   lockArtifactReferences,
   requireNodeArtifactReference,
-} from '../../src/artifacts/references/locks.repository.js';
+} from '../../src/artifacts/references/lock-references.js';
 import { ArtifactMetadataNotFoundError } from '../../src/artifacts/artifact.errors.js';
 import {
   withTenantScopedClient,

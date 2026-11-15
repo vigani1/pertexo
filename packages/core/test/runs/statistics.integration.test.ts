@@ -35,7 +35,7 @@ import { WorkspaceAccessDeniedError } from '../../src/shared/workspace-access.er
 import {
   readArtifactCapacity,
   readExecutionStorageCapacity,
-} from '../../src/artifacts/capacity.repository.js';
+} from '../../src/artifacts/capacity.js';
 
 beforeAll(beforeAllFixture1);
 beforeEach(beforeEachFixture2);

@@ -15,7 +15,7 @@ import {
 } from '@pertexo/workflow-model';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
+import { lockArtifactReferences } from '../../artifacts/references/lock-references.js';
 import { lockInputCaseQuota } from '../../authoring/input-cases/metadata.repository.js';
 
 import type { WorkflowTestOptions } from '../workflows/workflow-test.types.js';

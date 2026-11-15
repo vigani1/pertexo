@@ -1,21 +1,17 @@
 import { and, eq, inArray, isNotNull, isNull, sql, sum } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { FORM_FILE_LIMITS } from '@pertexo/workflow-model';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { artifacts, formUploads } from '@pertexo/database/schema';
-import { FormUploadLimitError } from './form-upload.errors.js';
 
 /**
- * Anyone with a public link can upload without ever sending the form, so those
- * files get their own small allowance instead of the whole workspace quota.
- * Begins wait on one workspace lock, so concurrent responders can't overshoot.
+ * The bytes of public-link uploads not yet sent with a form, read after the
+ * workspace's unsent-upload lock so concurrent begins see each other.
  */
-export async function assertUnsentPublicRoom(
+export async function lockUnsentPublicBytes(
   client: PoolClient,
   workspaceId: string,
-  byteLength: number,
-): Promise<void> {
+): Promise<number> {
   const db = drizzle(client);
   await db
     .execute(
@@ -42,8 +38,7 @@ export async function assertUnsentPublicRoom(
       ),
     )
     .catch(rethrowQueryFailure);
-  if ((held?.bytes ?? 0) + byteLength > FORM_FILE_LIMITS.unsentPublicBytes)
-    throw new FormUploadLimitError('unsent_public');
+  return held?.bytes ?? 0;
 }
 
 /** A sent form's files stop counting as unsent; its run keeps them. */

@@ -21,8 +21,8 @@ import {
 import {
   createPendingArtifact,
   finalizeArtifactUpload,
-} from '../../src/artifacts/artifact-lifecycle.repository.js';
-import { readArtifactCapacity } from '../../src/artifacts/capacity.repository.js';
+} from '../../src/artifacts/artifact-lifecycle.js';
+import { readArtifactCapacity } from '../../src/artifacts/capacity.js';
 import { artifacts } from '@pertexo/database/schema';
 
 beforeAll(beforeAllFixture1);

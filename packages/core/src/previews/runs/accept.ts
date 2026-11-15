@@ -12,7 +12,7 @@ import { connectionScope } from '../../shared/resources/connection-scope.reposit
 import { resolvePreviewSample } from './samples.repository.js';
 
 import type { Role } from '@pertexo/policy';
-import { lockActorArtifactReferences } from '../../artifacts/references/locks.repository.js';
+import { lockActorArtifactReferences } from '../../artifacts/references/lock-references.js';
 import { captureWorkspaceVariableRevision } from '../../variables/head.repository.js';
 
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';

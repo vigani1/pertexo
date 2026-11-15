@@ -11,7 +11,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.repository.js';
 import { requireWorkflowCallTargets } from '../../shared/resources/workflow-call-bindings.repository.js';
 import { lockWorkspaceVariableNames } from '../../variables/head.repository.js';
-import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
+import { lockArtifactReferences } from '../../artifacts/references/lock-references.js';
 import { admitWorkflowAuthoring } from '../workflows/admit-graph.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 import { validateApprovalAudience } from './pending-tasks.repository.js';

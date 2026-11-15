@@ -1,54 +1,22 @@
-import { decodeStoredReceipt } from '../../shared/receipts.js';
 import {
   postgresFailure,
   rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
 } from '@pertexo/database/primitives';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { z } from 'zod';
 import { artifacts } from '@pertexo/database/schema';
 import { artifactStorageKey } from '../artifact-lifecycle.repository.js';
-import { generatePersistedId } from '@pertexo/database/platform';
 import type { ArtifactRecord, ArtifactUploadPurpose } from '../artifact.js';
 import type { ArtifactMetadataIdentity } from '../metadata.js';
-import { artifactMetadataMatches } from '../metadata.js';
-import {
-  ArtifactQuotaExceededError,
-  ArtifactUploadConflictError,
-  ArtifactUploadIdempotencyConflictError,
-  ArtifactUploadNotFoundError,
-} from './artifact-upload.errors.js';
-import {
-  ARTIFACT_UPLOAD_PENDING_MS,
-  type ArtifactUploadResult,
-} from './artifact-upload.js';
+import { ARTIFACT_UPLOAD_PENDING_MS } from './artifact-upload.js';
 
-export type ArtifactUploadReservation = Readonly<{
-  workspaceId: string;
-  purpose: ArtifactUploadPurpose;
-  /** Idempotency scope of the uploader, such as an actor or response session. */
-  scope: string;
-  idempotencyKey: string;
-  requestHash: string;
-  metadata: ArtifactMetadataIdentity;
-}>;
-
-const storedUploadSchema = z.object({ artifactId: z.uuid() }).strict();
-
-function isCapacityExceeded(error: unknown): boolean {
-  const { code, detail } = postgresFailure(error);
-  return code === 'P0001' && detail === 'artifact_capacity_exceeded';
-}
-
-export async function loadArtifact(
+export async function readArtifact(
   client: PoolClient,
   workspaceId: string,
   artifactId: string,
   statuses: readonly ArtifactRecord['status'][],
-): Promise<ArtifactRecord> {
+): Promise<ArtifactRecord | undefined> {
   const [row] = await drizzle(client)
     .select()
     .from(artifacts)
@@ -60,51 +28,32 @@ export async function loadArtifact(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (row === undefined) throw new ArtifactUploadNotFoundError();
-  return Object.freeze(row);
+  return row;
 }
 
-/**
- * Reserves a pending upload once per idempotency key: the capacity trigger
- * charges its bytes before any signed transfer exists.
- */
-export async function reserveArtifactUpload(
+/** The capacity trigger refuses the insert when its bytes don't fit. */
+export async function insertPendingUpload(
   client: PoolClient,
-  input: ArtifactUploadReservation,
-): Promise<ArtifactUploadResult> {
-  const artifactId = generatePersistedId();
-  const command = {
-    workspaceId: input.workspaceId,
-    operation: 'artifact.upload',
-    scope: input.scope,
-    idempotencyKey: input.idempotencyKey,
-    requestHash: input.requestHash,
-    conflict: () => new ArtifactUploadIdempotencyConflictError(),
-  };
-  const stored = await claimCommand(client, {
-    ...command,
-    resourceId: artifactId,
-  });
-  if (stored !== null) {
-    const artifact = await loadArtifact(
-      client,
-      input.workspaceId,
-      decodeStoredReceipt(storedUploadSchema, stored).artifactId,
-      ['pending', 'available'],
-    );
-    return Object.freeze({ artifact, replayed: true });
-  }
-  let artifact: ArtifactRecord;
+  input: Readonly<{
+    artifactId: string;
+    workspaceId: string;
+    purpose: ArtifactUploadPurpose;
+    metadata: ArtifactMetadataIdentity;
+  }>,
+): Promise<
+  | Readonly<{ kind: 'inserted'; artifact: ArtifactRecord }>
+  | Readonly<{ kind: 'capacity_exceeded' }>
+> {
   try {
     const [row] = await drizzle(client)
       .insert(artifacts)
       .values({
-        id: artifactId,
+        id: input.artifactId,
         workspaceId: input.workspaceId,
         purpose: input.purpose,
         storageKey: artifactStorageKey(
           input.workspaceId.toLowerCase(),
-          artifactId,
+          input.artifactId,
         ),
         mediaType: input.metadata.mediaType,
         byteLength: input.metadata.byteLength,
@@ -116,49 +65,34 @@ export async function reserveArtifactUpload(
       .catch(rethrowQueryFailure);
     if (row === undefined)
       throw new Error('Artifact upload insert returned no row');
-    artifact = Object.freeze(row);
+    return { kind: 'inserted', artifact: Object.freeze(row) };
   } catch (error: unknown) {
-    if (isCapacityExceeded(error)) throw new ArtifactQuotaExceededError();
+    if (isCapacityExceeded(error)) return { kind: 'capacity_exceeded' };
     throw error;
   }
-  await completeCommand(client, command, { artifactId: artifact.id });
-  return Object.freeze({ artifact, replayed: false });
 }
 
-/**
- * Makes a verified pending upload available until `retainForSeconds` pass unless
- * something references it. Expired or deleting uploads never come back.
- */
-export async function completeArtifactUpload(
+type UploadKey = Readonly<{ workspaceId: string; artifactId: string }>;
+
+export async function lockUpload(
   client: PoolClient,
-  input: Readonly<{
-    workspaceId: string;
-    artifactId: string;
-    purpose: ArtifactUploadPurpose;
-    expectedMetadata: ArtifactMetadataIdentity;
-    retainForSeconds: number;
-  }>,
-): Promise<ArtifactRecord> {
-  const db = drizzle(client);
-  const predicate = and(
-    eq(artifacts.workspaceId, input.workspaceId),
-    eq(artifacts.id, input.artifactId),
-  );
-  const [row] = await db
+  input: UploadKey & Readonly<{ purpose: ArtifactUploadPurpose }>,
+): Promise<ArtifactRecord | undefined> {
+  const [row] = await drizzle(client)
     .select()
     .from(artifacts)
-    .where(and(predicate, eq(artifacts.purpose, input.purpose)))
+    .where(and(uploadKey(input), eq(artifacts.purpose, input.purpose)))
     .for('update')
     .catch(rethrowQueryFailure);
-  if (row === undefined) throw new ArtifactUploadNotFoundError();
-  if (!artifactMetadataMatches(row, input.expectedMetadata))
-    throw new ArtifactUploadConflictError(
-      'Artifact upload metadata does not match the declared object',
-    );
-  if (row.status === 'available') return Object.freeze(row);
-  if (row.status !== 'pending')
-    throw new ArtifactUploadConflictError('Artifact upload is not pending');
-  const [finalized] = await db
+  return row;
+}
+
+/** Undefined when the pending upload has expired. */
+export async function markUploadAvailable(
+  client: PoolClient,
+  input: UploadKey & Readonly<{ retainForSeconds: number }>,
+): Promise<ArtifactRecord | undefined> {
+  const [finalized] = await drizzle(client)
     .update(artifacts)
     .set({
       status: 'available',
@@ -168,14 +102,24 @@ export async function completeArtifactUpload(
     })
     .where(
       and(
-        predicate,
+        uploadKey(input),
         eq(artifacts.status, 'pending'),
         sql`${artifacts.expiresAt}>clock_timestamp()`,
       ),
     )
     .returning()
     .catch(rethrowQueryFailure);
-  if (finalized === undefined)
-    throw new ArtifactUploadConflictError('Artifact upload has expired');
-  return Object.freeze(finalized);
+  return finalized;
+}
+
+function uploadKey(input: UploadKey) {
+  return and(
+    eq(artifacts.workspaceId, input.workspaceId),
+    eq(artifacts.id, input.artifactId),
+  );
+}
+
+function isCapacityExceeded(error: unknown): boolean {
+  const { code, detail } = postgresFailure(error);
+  return code === 'P0001' && detail === 'artifact_capacity_exceeded';
 }

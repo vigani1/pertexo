@@ -9,15 +9,8 @@ import {
   ARTIFACT_STATUS,
   type ArtifactRecord,
   type CreatePendingArtifactInput,
-  type CreatePendingPreviewArtifactInput,
-  type FinalizeArtifactInput,
 } from './artifact.js';
-import {
-  ArtifactFinalizeConflictError,
-  ArtifactLifecycleConflictError,
-  ArtifactMetadataNotFoundError,
-} from './artifact.errors.js';
-import { artifactMetadataMatches } from './metadata.js';
+
 export function artifactStorageKey(
   workspaceId: string,
   artifactId: string,
@@ -25,42 +18,22 @@ export function artifactStorageKey(
   return `workspaces/${workspaceId}/artifacts/${artifactId}`;
 }
 
-async function lockArtifact(
+export async function lockArtifact(
   transaction: WorkspaceTransaction,
   artifactId: string,
-): Promise<ArtifactRecord> {
+): Promise<ArtifactRecord | undefined> {
   const [artifact] = await transaction.db
     .select()
     .from(artifacts)
     .where(eq(artifacts.id, artifactId))
     .for('update');
-  if (artifact === undefined) throw new ArtifactMetadataNotFoundError();
   return artifact;
 }
 
-function exactMetadataMatches(
-  artifact: ArtifactRecord,
-  validated: FinalizeArtifactInput,
-): boolean {
-  return (
-    artifact.workspaceId === validated.workspaceId &&
-    artifact.id === validated.artifactId &&
-    artifactMetadataMatches(artifact, validated) &&
-    artifact.storageKey === validated.storageKey
-  );
-}
-
-export async function createPendingArtifact(
+export async function insertPendingArtifact(
   transaction: WorkspaceTransaction,
   parsed: CreatePendingArtifactInput,
 ): Promise<ArtifactRecord> {
-  if (
-    parsed.storageKey !==
-    artifactStorageKey(transaction.workspaceId, parsed.artifactId)
-  ) {
-    throw new ArtifactFinalizeConflictError();
-  }
-
   const rows = await transaction.db
     .insert(artifacts)
     .values({
@@ -82,72 +55,54 @@ export async function createPendingArtifact(
   return artifact;
 }
 
-/**
- * Creates preview artifact metadata and its immutable owner link in the same
- * tenant transaction, within the owning preview's immutable retention deadline.
- */
-export async function createPendingPreviewArtifact(
+/** The owning preview's retention deadline, or undefined when it's gone. */
+export async function readPreviewOwnerExpiry(
   transaction: WorkspaceTransaction,
-  input: CreatePendingPreviewArtifactInput,
-): Promise<ArtifactRecord> {
+  previewRunId: string,
+): Promise<Date | undefined> {
   const [owner] = await transaction.db
     .select({ expiresAt: previewRuns.expiresAt })
     .from(previewRuns)
     .where(
       and(
         eq(previewRuns.workspaceId, transaction.workspaceId),
-        eq(previewRuns.id, input.previewRunId),
+        eq(previewRuns.id, previewRunId),
       ),
     );
-  if (owner === undefined)
-    throw new ArtifactLifecycleConflictError(
-      'Preview artifact owner is unavailable',
-    );
-  if (input.expiresAt.getTime() > owner.expiresAt.getTime())
-    throw new ArtifactLifecycleConflictError(
-      'Preview artifact retention exceeds its owner',
-    );
-  const artifact = await createPendingArtifact(transaction, input);
+  return owner?.expiresAt;
+}
+
+export async function insertPreviewArtifactLink(
+  transaction: WorkspaceTransaction,
+  artifactId: string,
+  previewRunId: string,
+): Promise<void> {
   await transaction.db.insert(artifactLinks).values({
-    artifactId: artifact.id,
-    ownerId: input.previewRunId,
+    artifactId,
+    ownerId: previewRunId,
     ownerKind: 'preview_run',
     workspaceId: transaction.workspaceId,
   });
-  return artifact;
 }
 
-export async function finalizeArtifactUpload(
+/** Whether the artifact's expiry has passed; null or missing reads as expired. */
+export async function readArtifactExpired(
   transaction: WorkspaceTransaction,
-  input: FinalizeArtifactInput,
-): Promise<ArtifactRecord> {
-  if (
-    input.workspaceId !== transaction.workspaceId ||
-    input.storageKey !== artifactStorageKey(input.workspaceId, input.artifactId)
-  ) {
-    throw new ArtifactFinalizeConflictError();
-  }
-
-  const artifact = await lockArtifact(transaction, input.artifactId);
-  if (!exactMetadataMatches(artifact, input)) {
-    throw new ArtifactFinalizeConflictError();
-  }
-  if (artifact.status === ARTIFACT_STATUS.available) return artifact;
-  if (artifact.status !== ARTIFACT_STATUS.pending) {
-    throw new ArtifactLifecycleConflictError(
-      `Artifact cannot be finalized from ${artifact.status}`,
-    );
-  }
+  artifactId: string,
+): Promise<boolean> {
   const [expiry] = await transaction.db
     .select({
       expired: sql<boolean | null>`${artifacts.expiresAt}<=clock_timestamp()`,
     })
     .from(artifacts)
-    .where(eq(artifacts.id, artifact.id));
-  if (expiry?.expired !== false) {
-    throw new ArtifactLifecycleConflictError('Pending artifact has expired');
-  }
+    .where(eq(artifacts.id, artifactId));
+  return expiry?.expired !== false;
+}
 
+export async function markPendingArtifactAvailable(
+  transaction: WorkspaceTransaction,
+  artifactId: string,
+): Promise<ArtifactRecord | undefined> {
   const rows = await transaction.db
     .update(artifacts)
     .set({
@@ -157,14 +112,10 @@ export async function finalizeArtifactUpload(
     })
     .where(
       and(
-        eq(artifacts.id, input.artifactId),
+        eq(artifacts.id, artifactId),
         eq(artifacts.status, ARTIFACT_STATUS.pending),
       ),
     )
     .returning();
-  const finalized = rows[0];
-  if (finalized === undefined) {
-    throw new ArtifactLifecycleConflictError('Artifact finalize lost its lock');
-  }
-  return finalized;
+  return rows[0];
 }

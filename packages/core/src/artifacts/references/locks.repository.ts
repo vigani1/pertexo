@@ -1,9 +1,4 @@
-import { isArtifactDescriptor } from './descriptor-shape.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  visibleArtifactIds,
-  visibleTransactionArtifactIds,
-} from './access.repository.js';
 import type { PoolClient } from 'pg';
 import {
   and,
@@ -22,18 +17,13 @@ import {
   artifactLinks,
   previewRuns,
 } from '@pertexo/database/schema';
-import {
-  nodeArtifactReferenceSchema,
-  type NodeArtifactReference,
-} from '@pertexo/node-sdk';
-import { isRecord } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { artifactMetadataMatches } from '../metadata.js';
-import { ARTIFACT_UPLOAD_PURPOSE } from '../artifact.js';
 import { artifactReferenceOwnersSql } from './owners.repository.js';
-import { ArtifactMetadataNotFoundError } from '../artifact.errors.js';
 
-type ArtifactRow = Awaited<ReturnType<typeof referenceRows>>[number];
+export type ArtifactReferenceRow = Awaited<
+  ReturnType<typeof referenceRows>
+>[number];
+
 function referenceRows(db: Pick<NodePgDatabase, 'select'>) {
   return db
     .select({
@@ -53,66 +43,18 @@ function referenceRows(db: Pick<NodePgDatabase, 'select'>) {
       ),
     );
 }
-/** JSON is already bounded and validated by its owning persistence boundary. */
-export function collectArtifactReferences(
-  value: unknown,
-): readonly NodeArtifactReference[] {
-  const found: NodeArtifactReference[] = [];
-  const pending: unknown[] = [value];
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (Array.isArray(current)) {
-      const children: readonly unknown[] = current;
-      pending.push(...children);
-    } else if (isRecord(current)) {
-      if (isArtifactDescriptor(current)) {
-        const { kind: _kind, ...descriptor } = current;
-        found.push(nodeArtifactReferenceSchema.parse(descriptor));
-      } else pending.push(...Object.values(current));
-    }
-  }
-  return found;
-}
 
-function assertRows(
-  references: readonly NodeArtifactReference[],
-  rows: readonly ArtifactRow[],
-  previewRunId?: string,
-): void {
-  const byId = new Map(rows.map((row) => [row.id, row]));
-  for (const reference of references) {
-    const row = byId.get(reference.artifactId.toLowerCase());
-    const invalidArtifactAuthority =
-      row === undefined ||
-      (row.previewRunId !== null && previewRunId === undefined) ||
-      !artifactMetadataMatches(
-        {
-          byteLength: row.byteLength,
-          mediaType: row.mediaType,
-          sha256: row.sha256,
-        },
-        reference,
-      );
-    if (invalidArtifactAuthority) throw new ArtifactMetadataNotFoundError();
-  }
-}
-
-export async function lockArtifactReferences(
+/** Share-locks the available artifacts among sorted `ids`. */
+export async function lockAvailableReferenceRows(
   client: PoolClient,
   workspaceId: string,
-  value: unknown,
-  actorId: string,
-): Promise<void> {
-  const references = collectArtifactReferences(value);
-  if (references.length === 0) return;
-  const ids = [
-    ...new Set(references.map((ref) => ref.artifactId.toLowerCase())),
-  ].sort();
-  const result = await referenceRows(drizzle(client))
+  ids: readonly string[],
+): Promise<readonly ArtifactReferenceRow[]> {
+  return referenceRows(drizzle(client))
     .where(
       and(
         eq(artifacts.workspaceId, workspaceId),
-        inArray(artifacts.id, ids),
+        inArray(artifacts.id, [...ids]),
         eq(artifacts.status, 'available'),
         isNull(artifacts.deletedAt),
       ),
@@ -120,51 +62,22 @@ export async function lockArtifactReferences(
     .orderBy(artifacts.id)
     .for('share', { of: alias(artifacts, getTableName(artifacts)) })
     .catch(rethrowQueryFailure);
-  const visible = await visibleArtifactIds(
-    client,
-    { workspaceId, actorId },
-    result
-      .filter((row) => row.purpose !== ARTIFACT_UPLOAD_PURPOSE)
-      .map((row) => row.id),
-  );
-  assertRows(
-    references,
-    result.filter(
-      (row) => row.purpose === ARTIFACT_UPLOAD_PURPOSE || visible.has(row.id),
-    ),
-  );
 }
 
-export async function requireNodeArtifactReference(
+/**
+ * Share-locks the available artifacts among sorted `ids` that an execution may
+ * read: unowned ones, and preview outputs still live that `previewRunId` in the
+ * same workflow consumes.
+ */
+export async function lockExecutionReferenceRows(
   transaction: WorkspaceTransaction,
-  reference: NodeArtifactReference,
+  ids: readonly string[],
   previewRunId?: string,
-): Promise<void> {
-  await lockExecutionReferences(transaction, [reference], previewRunId);
-}
-
-export async function lockExecutionArtifactReferences(
-  transaction: WorkspaceTransaction,
-  value: unknown,
-  previewRunId?: string,
-): Promise<void> {
-  const references = collectArtifactReferences(value);
-  if (references.length === 0) return;
-  await lockExecutionReferences(transaction, references, previewRunId);
-}
-
-async function lockExecutionReferences(
-  transaction: WorkspaceTransaction,
-  references: readonly NodeArtifactReference[],
-  previewRunId?: string,
-): Promise<void> {
-  const ids = [
-    ...new Set(references.map((ref) => ref.artifactId.toLowerCase())),
-  ].sort();
+): Promise<readonly ArtifactReferenceRow[]> {
   const db = transaction.db;
   const producer = alias(previewRuns, 'producer');
   const consumer = alias(previewRuns, 'consumer');
-  const result = await referenceRows(db)
+  return referenceRows(db)
     .leftJoin(
       producer,
       and(
@@ -175,7 +88,7 @@ async function lockExecutionReferences(
     .where(
       and(
         eq(artifacts.workspaceId, transaction.workspaceId),
-        inArray(artifacts.id, ids),
+        inArray(artifacts.id, [...ids]),
         eq(artifacts.status, 'available'),
         isNull(artifacts.deletedAt),
         or(
@@ -204,50 +117,19 @@ async function lockExecutionReferences(
     )
     .orderBy(artifacts.id)
     .for('share', { of: alias(artifacts, getTableName(artifacts)) });
-  assertRows(references, result, previewRunId);
 }
 
-/** Authored inputs need source access; accepted immutable execution keeps its binding. */
-export async function lockActorArtifactReferences(
-  transaction: WorkspaceTransaction,
-  actorId: string,
-  value: unknown,
-  previewRunId?: string,
-): Promise<void> {
-  const references = collectArtifactReferences(value);
-  if (references.length === 0) return;
-  const ids = [
-    ...new Set(
-      references.map((reference) => reference.artifactId.toLowerCase()),
-    ),
-  ];
-  const visible = await visibleTransactionArtifactIds(
-    transaction,
-    { workspaceId: transaction.workspaceId, actorId },
-    ids,
-  );
-  if (visible.size !== ids.length) throw new ArtifactMetadataNotFoundError();
-  await lockExecutionArtifactReferences(transaction, value, previewRunId);
-}
-
-/** An ingress token authorizes its workflow, not files owned by other workflows. */
-export async function lockWorkflowArtifactReferences(
+/** Share-locks the available artifacts among sorted `ids` that the workflow owns. */
+export async function lockWorkflowReferenceRows(
   db: Pick<NodePgDatabase, 'select'>,
   scope: Readonly<{ workspaceId: string; workflowId: string }>,
-  value: unknown,
-): Promise<void> {
-  const references = collectArtifactReferences(value);
-  if (references.length === 0) return;
-  const ids = [
-    ...new Set(
-      references.map((reference) => reference.artifactId.toLowerCase()),
-    ),
-  ].sort();
-  const rows = await referenceRows(db)
+  ids: readonly string[],
+): Promise<readonly ArtifactReferenceRow[]> {
+  return referenceRows(db)
     .where(
       and(
         eq(artifacts.workspaceId, scope.workspaceId),
-        inArray(artifacts.id, ids),
+        inArray(artifacts.id, [...ids]),
         eq(artifacts.status, 'available'),
         isNull(artifacts.deletedAt),
         artifactReferenceOwnersSql(
@@ -260,5 +142,4 @@ export async function lockWorkflowArtifactReferences(
     .orderBy(artifacts.id)
     .for('share', { of: alias(artifacts, getTableName(artifacts)) })
     .catch(rethrowQueryFailure);
-  assertRows(references, rows);
 }
