@@ -18,26 +18,19 @@ import { workflowAccessible } from '../../shared/resources/workflow-access.repos
 import type { PoolClient } from 'pg';
 import type { PublicationReview } from '@pertexo/contracts';
 import {
-  projectDraft,
-  projectVersion,
   draftProjection,
   versionProjection,
 } from '../workflows/representation/workflow-representations.repository.js';
-import {
-  WorkflowNotFoundError,
-  WorkflowRevisionConflictError,
-} from '../workflows/workflow-authoring.errors.js';
-import { draftRepresentationTag } from '../workflows/representation/tag.js';
-import type {
-  ReviewDependencies,
-  ReviewScope,
-} from './publication-review.types.js';
+import type { ReviewScope } from './publication-review.types.js';
 import { review, reviewDetails } from './eligibility.repository.js';
-type ReviewRow = Awaited<ReturnType<typeof reviewDetails>>[number]['record'];
-export async function readReviewRow(
+
+export type ReviewRow = Awaited<
+  ReturnType<typeof reviewDetails>
+>[number]['record'];
+export async function findReviewRow(
   client: PoolClient,
   input: ReviewScope & { reviewId: string },
-): Promise<ReviewRow> {
+): Promise<ReviewRow | undefined> {
   const [selected] = await reviewDetails(drizzle(client), input.actorId)
     .where(
       and(
@@ -47,8 +40,7 @@ export async function readReviewRow(
     )
     .catch(rethrowQueryFailure);
   const row = selected?.record;
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Publication request is not visible');
+  if (row === undefined) return undefined;
   if (row.state === 'pending') {
     const requester = {
       workspaceId: input.workspaceId,
@@ -97,18 +89,11 @@ export function projectReview(row: ReviewRow): PublicationReview {
     canDecide: row.canDecide,
   };
 }
-export async function readReviewDraft(
+
+export async function lockReviewDraftRow(
   client: PoolClient,
-  dependencies: ReviewDependencies,
-  {
-    input,
-    expectedTag,
-    lock = 'update',
-  }: Readonly<{
-    input: ReviewScope & { workflowId: string };
-    expectedTag?: string | undefined;
-    lock?: ('share' | 'update') | undefined;
-  }>,
+  input: ReviewScope & { workflowId: string },
+  lock: 'share' | 'update',
 ) {
   const [row] = await drizzle(client)
     .select(draftProjection)
@@ -121,57 +106,15 @@ export async function readReviewDraft(
     )
     .for(lock)
     .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Workflow draft is not visible');
-  const draft = projectDraft(row, dependencies.catalogs.definitionCatalog);
-  const tag = draftRepresentationTag(input.workflowId, draft);
-  if (expectedTag !== undefined && tag !== expectedTag)
-    throw new WorkflowRevisionConflictError(draft.revision, tag);
-  return { draft, tag };
+  return row;
 }
-async function readReviewedCandidate(
+
+/** The workflow's published version, if it has one. */
+export async function readLiveVersion(
   client: PoolClient,
-  dependencies: ReviewDependencies,
-  input: ReviewScope & { reviewId: string },
+  workspaceId: string,
+  workflowId: string,
 ) {
-  const row = await readReviewRow(client, input);
-  let graph = null;
-  if (row.state === 'pending') {
-    const candidate = await readReviewDraft(client, dependencies, {
-      input: { ...input, workflowId: row.workflowId },
-      expectedTag: undefined,
-      lock: 'share',
-    });
-    if (candidate.tag === row.representationTag)
-      graph = candidate.draft.graphJson;
-    else {
-      row.state = 'stale';
-      row.canDecide = false;
-    }
-  }
-  return { row, graph };
-}
-export async function readReviewSummary(
-  client: PoolClient,
-  dependencies: ReviewDependencies,
-  input: ReviewScope & { reviewId: string },
-) {
-  return projectReview(
-    (await readReviewedCandidate(client, dependencies, input)).row,
-  );
-}
-export async function readReviewDetail(
-  client: PoolClient,
-  dependencies: ReviewDependencies,
-  input: ReviewScope & { reviewId: string },
-) {
-  const { row, graph } = await readReviewedCandidate(
-    client,
-    dependencies,
-    input,
-  );
-  if (graph === null)
-    return { request: projectReview(row), graph: null, liveGraph: null };
   const [live] = await drizzle(client)
     .select(versionProjection)
     .from(workflowVersions)
@@ -183,15 +126,8 @@ export async function readReviewDetail(
       ),
     )
     .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, row.workflowId),
-      ),
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
     )
     .catch(rethrowQueryFailure);
-  return {
-    request: projectReview(row),
-    graph,
-    liveGraph: live === undefined ? null : projectVersion(live).graphJson,
-  };
+  return live;
 }

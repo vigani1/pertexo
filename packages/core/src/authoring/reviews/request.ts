@@ -10,12 +10,8 @@ import type {
   RequestReviewInput,
   ReviewDependencies,
 } from './publication-review.types.js';
-import {
-  readReviewDraft,
-  readReviewSummary,
-  readReviewRow,
-  projectReview,
-} from './read.repository.js';
+import { projectReview } from './read.repository.js';
+import { readReviewDraft, readReviewSummary, readReviewRow } from './read.js';
 import {
   countPendingReviews,
   hasPendingRequest,

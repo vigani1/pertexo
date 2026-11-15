@@ -11,10 +11,8 @@ import type {
   CommandInput,
   Transact,
 } from './auto-pause-settings.types.js';
-import {
-  lockWorkspace,
-  type WorkspaceRow,
-} from './auto-pause-state.repository.js';
+import type { WorkspaceRow } from './auto-pause-state.repository.js';
+import { lockWorkspace } from './lock-settings.js';
 /**
  * One settings command: the actor's role, then an exact retry's first
  * result, then the change and its audit event when anything changed.

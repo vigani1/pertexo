@@ -1,20 +1,15 @@
-import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflows, workflowVersions } from '@pertexo/database/schema';
-import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
-
 import {
   projectVersion,
   versionProjection,
 } from '../representation/workflow-representations.repository.js';
-
 import type { PoolClient } from 'pg';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
-
 import type { ListWorkflowVersionsInput } from '../workflow-commands.types.js';
 
 export async function readVersion(
@@ -39,33 +34,31 @@ export async function readVersion(
   return row === undefined ? null : projectVersion(row);
 }
 
-export async function listVersions(
+export async function workflowExists(
   client: PoolClient,
-  scope: FolderScope,
-  input: ListWorkflowVersionsInput,
-) {
-  if (
-    !(await workflowAccessible(client, scope, {
-      workspaceId: input.workspaceId,
-      workflowId: input.workflowId,
-    }))
-  )
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const workflowId = input.workflowId;
+  workspaceId: string,
+  workflowId: string,
+): Promise<boolean> {
   const visible = await drizzle(client)
     .select({ id: workflows.id })
     .from(workflows)
     .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, workflowId),
-      ),
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
     )
     .catch(rethrowQueryFailure);
-  if (visible.length !== 1)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
-  const beforeVersionNumber = input.beforeVersionNumber ?? null;
+  return visible.length === 1;
+}
+
+/** Newest first before the cursor, one past `limit` so a next page shows. */
+export async function readVersionPage(
+  client: PoolClient,
+  input: ListWorkflowVersionsInput,
+  {
+    limit,
+    beforeVersionNumber,
+  }: Readonly<{ limit: number; beforeVersionNumber: number | null }>,
+) {
+  const workflowId = input.workflowId;
   const result = await drizzle(client)
     .select(versionProjection)
     .from(workflowVersions)
@@ -84,17 +77,5 @@ export async function listVersions(
     .orderBy(desc(workflowVersions.versionNumber))
     .limit(limit + 1)
     .catch(rethrowQueryFailure);
-  const hasMore = result.length > limit;
-  const items = Object.freeze(result.slice(0, limit).map(projectVersion));
-  const last = items.at(-1);
-  return Object.freeze({
-    items,
-    ...(hasMore && last !== undefined
-      ? {
-          nextCursor: Object.freeze({
-            beforeVersionNumber: last.versionNumber,
-          }),
-        }
-      : {}),
-  });
+  return result;
 }

@@ -29,7 +29,7 @@ import type {
   ReviewOverviewInput,
   ReviewScope,
 } from './publication-review.types.js';
-import { readReviewDetail, readReviewSummary } from './read.repository.js';
+import { readReviewDetail, readReviewSummary } from './read.js';
 import { requestPublicationReview } from './request.js';
 import { decidePublicationReview } from './decide.js';
 

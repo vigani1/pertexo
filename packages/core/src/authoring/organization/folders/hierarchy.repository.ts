@@ -5,13 +5,9 @@ import { alias } from 'drizzle-orm/pg-core';
 import { workflowFolders } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-
-import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
-
-import { WorkflowFolderConflictError } from '../workflow-organization.errors.js';
-
 import type { WorkflowFolderRecord } from './workflow-folder.types.js';
 import { nameKey } from './folder-receipts.schemas.js';
+import { folderDepth } from './hierarchy.js';
 
 export const folderProjection = {
   id: workflowFolders.id,
@@ -25,11 +21,11 @@ export type FolderRow = Pick<
   keyof typeof folderProjection
 >;
 
-export async function readFolder(
+export async function findFolder(
   client: PoolClient,
   workspaceId: string,
   folderId: string,
-): Promise<FolderRow> {
+): Promise<FolderRow | undefined> {
   const [row] = await drizzle(client)
     .select(folderProjection)
     .from(workflowFolders)
@@ -40,18 +36,17 @@ export async function readFolder(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Folder is not visible');
+  if (row === undefined) return undefined;
   return row;
 }
 
 /** How many folders deep a folder sits; a top-level folder is 1. */
-export async function folderDepth(
+/** The folder's depth, or undefined when its ancestry is broken or deeper than allowed. */
+export async function readFolderDepth(
   client: PoolClient,
   workspaceId: string,
-  folderId: string | null,
-): Promise<number> {
-  if (folderId === null) return 0;
+  folderId: string,
+): Promise<number | undefined> {
   const folder = alias(workflowFolders, 'folder');
   const result = await drizzle(client)
     .execute<{ depth: number | null; rooted: boolean | null }>(
@@ -75,11 +70,10 @@ export async function folderDepth(
     depth === undefined ||
     depth === null ||
     depth > WORKFLOW_FOLDER_LIMITS.depth;
-  if (invalidAncestry) throw new WorkflowFolderConflictError('hierarchy');
-  return depth;
+  return invalidAncestry ? undefined : depth;
 }
 
-export async function requireFreeName(
+export async function folderNameIsFree(
   client: PoolClient,
   workspaceId: string,
   {
@@ -91,7 +85,7 @@ export async function requireFreeName(
     folderName: string;
     folderId: string | null;
   }>,
-): Promise<void> {
+): Promise<boolean> {
   const taken = await drizzle(client)
     .select({ id: workflowFolders.id })
     .from(workflowFolders)
@@ -104,12 +98,8 @@ export async function requireFreeName(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (taken.length !== 0) throw new WorkflowFolderConflictError('name');
-}
-
-export function requireRevision(row: FolderRow, expected: number): void {
-  if (row.revision !== expected)
-    throw new WorkflowFolderConflictError('revision');
+  if (taken.length !== 0) return false;
+  return true;
 }
 
 export async function folderRecord(

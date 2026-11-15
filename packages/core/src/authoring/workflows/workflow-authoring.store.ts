@@ -35,7 +35,8 @@ import type {
   TransitionWorkflowLifecycleInput,
 } from './workflow-commands.types.js';
 import { readDraft, validateDraft } from './reads/drafts.repository.js';
-import { listVersions, readVersion } from './reads/versions.repository.js';
+import { readVersion } from './reads/versions.repository.js';
+import { listVersions } from './reads/list-versions.js';
 import { listWorkflows, readWorkflow } from './reads/workflows.repository.js';
 import type { WorkflowAuthoringStoreOptions } from './authoring-dependencies.types.js';
 

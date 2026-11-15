@@ -8,8 +8,6 @@ import { workflows, workspaces } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
-
-import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import type { WorkflowAutoPauseSettings } from './auto-pause-settings.types.js';
 
 export const workspaceProjection = {
@@ -30,14 +28,18 @@ export const workflowProjection = {
   triggerPauseFailures: workflows.triggerPauseFailures,
   triggerPauseLastRunId: workflows.triggerPauseLastRunId,
 };
-export type WorkspaceRow = Awaited<ReturnType<typeof lockWorkspace>>;
-export type WorkflowRow = Awaited<ReturnType<typeof lockWorkflow>>;
+export type WorkspaceRow = NonNullable<
+  Awaited<ReturnType<typeof lockWorkspaceSettings>>
+>;
+export type WorkflowRow = NonNullable<
+  Awaited<ReturnType<typeof lockWorkflowSettings>>
+>;
 
 /**
  * Workspace default edits exclude outcome folds and workflow controls, which
  * take the same key shared.
  */
-export async function lockWorkspace(
+export async function lockWorkspaceSettings(
   client: PoolClient,
   workspaceId: string,
   {
@@ -58,12 +60,11 @@ export async function lockWorkspace(
     )
     .for(exclusive ? 'no key update' : 'share')
     .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Auto pause settings are not visible');
+  if (row === undefined) return undefined;
   return row;
 }
 
-export async function lockWorkflow(
+export async function lockWorkflowSettings(
   client: PoolClient,
   workspaceId: string,
   workflowId: string,
@@ -78,8 +79,7 @@ export async function lockWorkflow(
     )
     .for('no key update')
     .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Auto pause settings are not visible');
+  if (row === undefined) return undefined;
   return row;
 }
 

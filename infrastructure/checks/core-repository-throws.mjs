@@ -50,15 +50,11 @@ export const STORAGE_INTEGRITY_ERRORS = Object.freeze({
  * decisions and throws into the operation that calls it.
  */
 export const REPOSITORY_THROW_BACKLOG = Object.freeze({
-  'packages/core/src/authoring/input-cases/commands/mutations.repository.ts': 1,
-  'packages/core/src/authoring/input-cases/read.repository.ts': 1,
   'packages/core/src/authoring/organization/folders/commands/mutations.repository.ts': 4,
-  'packages/core/src/authoring/organization/folders/hierarchy.repository.ts': 4,
   'packages/core/src/authoring/organization/sharing/audience.repository.ts': 5,
   'packages/core/src/authoring/organization/sharing/grants.repository.ts': 3,
   'packages/core/src/authoring/organization/tags/commands/mutations.repository.ts': 2,
   'packages/core/src/authoring/organization/tags/list.repository.ts': 1,
-  'packages/core/src/authoring/organization/tags/tag-state.repository.ts': 3,
   'packages/core/src/authoring/portability/source-authority.repository.ts': 5,
   'packages/core/src/authoring/portability/template-origin.repository.ts': 2,
   'packages/core/src/authoring/promotion/authority.repository.ts': 5,
@@ -70,13 +66,9 @@ export const REPOSITORY_THROW_BACKLOG = Object.freeze({
   'packages/core/src/authoring/promotion/settings.repository.ts': 4,
   'packages/core/src/authoring/publication/calls.repository.ts': 4,
   'packages/core/src/authoring/publication/pending-tasks.repository.ts': 1,
-  'packages/core/src/authoring/reviews/read.repository.ts': 3,
-  'packages/core/src/authoring/settings/auto-pause/auto-pause-state.repository.ts': 2,
   'packages/core/src/authoring/step-samples/source.repository.ts': 4,
   'packages/core/src/authoring/step-samples/step-sample-commands.repository.ts': 5,
   'packages/core/src/authoring/step-samples/step-sample-state.repository.ts': 4,
   'packages/core/src/authoring/step-samples/webhook-test-events/authority.repository.ts': 2,
   'packages/core/src/authoring/step-samples/webhook-test-events/ingress.repository.ts': 3,
-  'packages/core/src/authoring/workflows/commands/locks.repository.ts': 1,
-  'packages/core/src/authoring/workflows/reads/versions.repository.ts': 2,
 });

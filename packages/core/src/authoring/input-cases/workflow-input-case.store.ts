@@ -13,13 +13,12 @@ import type {
   ListInputCasesInput,
   UpdateInputCaseInput,
 } from './workflow-input-case.types.js';
-
 import {
   createInputCase,
   deleteInputCase,
   updateInputCase,
-} from './commands/mutations.repository.js';
-import { getInputCase, listInputCases } from './read.repository.js';
+} from './commands/change-cases.js';
+import { getInputCase, listInputCases } from './read-cases.js';
 
 export type WorkflowInputCaseStore = ReturnType<
   typeof createWorkflowInputCaseStore
