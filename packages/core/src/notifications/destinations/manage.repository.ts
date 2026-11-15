@@ -1,5 +1,3 @@
-import { readSystemMailRecipient } from '../delivery/system-mail-recipient.repository.js';
-import { FailureNotificationDestinationError } from './notification-destination.errors.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   connections,
@@ -11,30 +9,11 @@ import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import {
-  notificationSideEffectClass,
-  eligibleNotificationConnection,
-} from './notification-policy.js';
-import {
-  audit,
-  claimNotificationCommand,
-  completeNotificationCommand,
-} from './command.js';
 import type {
-  AppendDestinationVersionInput,
-  CreateDestinationInput,
   DestinationConfig,
   FailureNotificationDestinationRecord,
-  SetDestinationStatusInput,
 } from './notification-destination.types.js';
-import {
-  destinationRecords,
-  readFailureNotificationDestination,
-} from './notification-destinations.repository.js';
-import {
-  decodeFailureNotificationDestinationReplay,
-  serializeFailureNotificationDestinationRecord,
-} from './replay.js';
+import { destinationRecords } from './notification-destinations.repository.js';
 
 export async function listDestinations(
   client: PoolClient,
@@ -54,204 +33,70 @@ export async function listDestinations(
   return Object.freeze(result.map((row) => Object.freeze(row)));
 }
 
-export async function createDestination(
+export async function insertDestination(
   client: PoolClient,
-  input: CreateDestinationInput,
-): Promise<FailureNotificationDestinationRecord> {
-  const destinationId = input.destinationId;
-  const config = input.config;
-  const operation = 'failure.notification.destination.create';
-  const scope = input.actorId;
-  const replay = await claimNotificationCommand(client, input, {
-    operation,
-    scope,
-    resourceId: destinationId,
-  });
-  if (replay.kind === 'replay')
-    return decodeFailureNotificationDestinationReplay(replay.result);
-  const authType = await assertConnection(client, input.workspaceId, config);
+  input: Readonly<{
+    destinationId: string;
+    workspaceId: string;
+    kind: DestinationConfig['kind'];
+    actorId: string;
+  }>,
+): Promise<void> {
   await drizzle(client)
     .insert(destination)
     .values({
-      id: destinationId,
+      id: input.destinationId,
       workspaceId: input.workspaceId,
-      kind: config.kind,
+      kind: input.kind,
       status: 'enabled',
       currentConfigVersion: 1,
       createdBy: input.actorId,
     })
     .catch(rethrowQueryFailure);
-  await insertVersion(client, {
-    workspaceId: input.workspaceId,
-    destinationId,
-    version: 1,
-    sideEffectClass: notificationSideEffectClass(config.kind, authType),
-    config,
-    actorId: input.actorId,
-  });
-  await audit(client, input, {
-    action: 'failure_notification_destination.created',
-    target: {
-      id: destinationId,
-      type: 'failure_notification_destination',
-    },
-    metadata: { kind: config.kind, version: 1 },
-  });
-  const created = await readFailureNotificationDestination(
-    client,
-    input.workspaceId,
-    destinationId,
-  );
-  await completeNotificationCommand(client, input, {
-    operation,
-    scope,
-    result: serializeFailureNotificationDestinationRecord(created),
-  });
-  return created;
 }
 
-export async function appendDestinationVersion(
+export async function setCurrentDestinationVersion(
   client: PoolClient,
-  input: AppendDestinationVersionInput,
-): Promise<FailureNotificationDestinationRecord> {
-  const destinationId = input.destinationId;
-  const operation = 'failure.notification.destination.version.append';
-  const scope = `${input.actorId}:${destinationId}`;
-  const replay = await claimNotificationCommand(client, input, {
-    operation,
-    scope,
-    resourceId: destinationId,
-  });
-  if (replay.kind === 'replay')
-    return decodeFailureNotificationDestinationReplay(replay.result);
-  const current = await readFailureNotificationDestination(
-    client,
-    input.workspaceId,
-    destinationId,
-    { lock: true },
-  );
-  const config = input.config;
-  if (
-    current.currentVersion !== input.expectedVersion ||
-    current.kind !== config.kind
-  )
-    throw new FailureNotificationDestinationError(
-      'conflict',
-      'Destination version conflict',
-    );
-  const authType = await assertConnection(client, input.workspaceId, config);
-  const next = current.currentVersion + 1;
-  await insertVersion(client, {
-    workspaceId: input.workspaceId,
-    destinationId: current.id,
-    version: next,
-    sideEffectClass: notificationSideEffectClass(config.kind, authType),
-    config,
-    actorId: input.actorId,
-  });
+  workspaceId: string,
+  destinationId: string,
+  next: number,
+): Promise<void> {
   await drizzle(client)
     .update(destination)
     .set({ currentConfigVersion: next, updatedAt: sql`clock_timestamp()` })
     .where(
       and(
-        eq(destination.workspaceId, input.workspaceId),
-        eq(destination.id, current.id),
+        eq(destination.workspaceId, workspaceId),
+        eq(destination.id, destinationId),
       ),
     )
     .catch(rethrowQueryFailure);
-  await audit(client, input, {
-    action: 'failure_notification_destination.version_appended',
-    target: { id: current.id, type: 'failure_notification_destination' },
-    metadata: { version: next },
-  });
-  const appended = await readFailureNotificationDestination(
-    client,
-    input.workspaceId,
-    current.id,
-  );
-  await completeNotificationCommand(client, input, {
-    operation,
-    scope,
-    result: serializeFailureNotificationDestinationRecord(appended),
-  });
-  return appended;
 }
 
-export async function setDestinationStatus(
-  client: PoolClient,
-  input: SetDestinationStatusInput,
-): Promise<FailureNotificationDestinationRecord> {
-  const destinationId = input.destinationId;
-  const operation = 'failure.notification.destination.status';
-  const scope = `${input.actorId}:${destinationId}`;
-  const replay = await claimNotificationCommand(client, input, {
-    operation,
-    scope,
-    resourceId: destinationId,
-  });
-  if (replay.kind === 'replay')
-    return decodeFailureNotificationDestinationReplay(replay.result);
-  const current = await readFailureNotificationDestination(
-    client,
-    input.workspaceId,
-    destinationId,
-    { lock: true },
-  );
-  if (current.status === input.status) {
-    await completeNotificationCommand(client, input, {
-      operation,
-      scope,
-      result: serializeFailureNotificationDestinationRecord(current),
-    });
-    return current;
-  }
-  await drizzle(client)
-    .update(destination)
-    .set({ status: input.status, updatedAt: sql`clock_timestamp()` })
-    .where(
-      and(
-        eq(destination.workspaceId, input.workspaceId),
-        eq(destination.id, current.id),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  await audit(client, input, {
-    action: `failure_notification_destination.${input.status}`,
-    target: { id: current.id, type: 'failure_notification_destination' },
-    metadata: {},
-  });
-  const updated = await readFailureNotificationDestination(
-    client,
-    input.workspaceId,
-    current.id,
-  );
-  await completeNotificationCommand(client, input, {
-    operation,
-    scope,
-    result: serializeFailureNotificationDestinationRecord(updated),
-  });
-  return updated;
-}
-
-async function assertConnection(
+export async function updateDestinationStatus(
   client: PoolClient,
   workspaceId: string,
-  config: DestinationConfig,
-): Promise<string> {
-  if (config.kind === 'system_mail') {
-    if (
-      (await readSystemMailRecipient(
-        drizzle(client),
-        workspaceId,
-        config.memberId,
-      )) === undefined
+  destinationId: string,
+  status: FailureNotificationDestinationRecord['status'],
+): Promise<void> {
+  await drizzle(client)
+    .update(destination)
+    .set({ status, updatedAt: sql`clock_timestamp()` })
+    .where(
+      and(
+        eq(destination.workspaceId, workspaceId),
+        eq(destination.id, destinationId),
+      ),
     )
-      throw new FailureNotificationDestinationError(
-        'recipient_unavailable',
-        'Recipient is not a current workspace member',
-      );
-    return 'system_mail';
-  }
+    .catch(rethrowQueryFailure);
+}
+
+/** Share-locks the active connection of the destination's provider, if any. */
+export async function lockNotificationConnection(
+  client: PoolClient,
+  workspaceId: string,
+  config: Exclude<DestinationConfig, { kind: 'system_mail' }>,
+) {
   const result = await drizzle(client)
     .select({
       auth_type: connections.authType,
@@ -269,15 +114,10 @@ async function assertConnection(
     )
     .for('share')
     .catch(rethrowQueryFailure);
-  if (!eligibleNotificationConnection(config.kind, result[0]))
-    throw new FailureNotificationDestinationError(
-      'not_found',
-      'Connection is not visible',
-    );
-  return result[0].auth_type;
+  return result[0];
 }
 
-async function insertVersion(
+export async function insertVersion(
   client: PoolClient,
   input: Readonly<{
     workspaceId: string;
