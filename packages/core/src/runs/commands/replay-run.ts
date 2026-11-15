@@ -10,12 +10,13 @@ import type { PublishedWorkflow } from '../queries/execution/workflow-execution.
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
 import {
+  requireWorkflowRun,
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
 } from '../workflow-run.errors.js';
 import {
   acceptWorkflowRunWithAudit,
-  requireWorkflowRunRecord,
+  readWorkflowRunRecord,
 } from './workflow-run-records.repository.js';
 import type { ReplayPublishedWorkflowRunInput } from './run-commands.types.js';
 import type { WorkflowRunRecord } from './workflow-run-records.repository.js';
@@ -32,7 +33,9 @@ export async function replayWorkflowRunInTransaction(
   };
   const replay = await readWorkflowRunAcceptanceReplay(transaction, identity);
   if (replay !== null) {
-    const run = await requireWorkflowRunRecord(transaction, replay.runId);
+    const run = requireWorkflowRun(
+      await readWorkflowRunRecord(transaction, replay.runId),
+    );
     return Object.freeze({ run, replayed: true });
   }
 

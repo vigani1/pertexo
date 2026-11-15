@@ -1,10 +1,9 @@
 import type { WorkflowRunAcceptanceReplayInput } from './run-acceptance.types.js';
-import { and, eq } from 'drizzle-orm';
-import { idempotencyRecords, workflowRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { resultRefSchema } from './acceptance-receipt.schemas.js';
 import { IDEMPOTENCY_STATUS } from '@pertexo/database/primitives';
 import type { AcceptedWorkflowRun } from './run-acceptance.types.js';
+import { readAcceptanceReceipt } from './acceptance-receipts.repository.js';
 import {
   IdempotencyRequestConflictError,
   IdempotencyRecordCorruptError,
@@ -19,33 +18,7 @@ export async function readExistingAcceptance(
   input: WorkflowRunAcceptanceReplayInput,
   replayValidation: ReplayValidation,
 ): Promise<AcceptedWorkflowRun | null> {
-  const rows = await transaction.db
-    .select({
-      requestHash: idempotencyRecords.requestHash,
-      resourceId: idempotencyRecords.resourceId,
-      resultRef: idempotencyRecords.resultRef,
-      idempotencyStatus: idempotencyRecords.status,
-      acceptedAt: workflowRuns.createdAt,
-      runStatus: workflowRuns.status,
-    })
-    .from(idempotencyRecords)
-    .leftJoin(
-      workflowRuns,
-      and(
-        eq(workflowRuns.workspaceId, idempotencyRecords.workspaceId),
-        eq(workflowRuns.id, idempotencyRecords.resourceId),
-      ),
-    )
-    .where(
-      and(
-        eq(idempotencyRecords.workspaceId, transaction.workspaceId),
-        eq(idempotencyRecords.operation, input.operation),
-        eq(idempotencyRecords.scope, input.scope),
-        eq(idempotencyRecords.keyHash, input.keyHash),
-      ),
-    )
-    .limit(1);
-  const row = rows[0];
+  const row = await readAcceptanceReceipt(transaction, input);
 
   if (row === undefined) {
     return null;

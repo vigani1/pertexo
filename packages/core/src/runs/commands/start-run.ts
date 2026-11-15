@@ -9,6 +9,7 @@ import {
 import { findPublishedWorkflow } from '../queries/execution/published.repository.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
+import { IdempotencyRequestConflictError } from '../../shared/command-receipt.errors.js';
 import {
   WorkflowRunNotExecutableError,
   WorkflowRunNotFoundError,
@@ -39,8 +40,12 @@ export async function startInTransaction(
     if (run === undefined) throw new WorkflowRunNotFoundError();
     return Object.freeze({ run, replayed: true });
   }
-  const rejection = await readManualStartRejection(transaction, input);
-  if (rejection !== null) return rejection;
+  const stored = await readManualStartRejection(transaction, input);
+  if (stored !== undefined) {
+    if (stored.requestHash !== input.requestHash)
+      throw new IdempotencyRequestConflictError();
+    return stored.rejection;
+  }
 
   const projection = await lockPublishedExecution(
     transaction,

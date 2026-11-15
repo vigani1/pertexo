@@ -1,6 +1,4 @@
 import { decodeStoredValue } from '../../../shared/stored-values.js';
-import { workflowVersions, workflowRuns } from '@pertexo/database/schema';
-import { and, eq, or, isNull, gt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   requiresFormAdmissionCheck,
@@ -10,6 +8,10 @@ import {
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type { StoredExecutionValue } from '@pertexo/database/schema';
 import { RunRequiresFormError } from './run-admission.errors.js';
+import {
+  readFormReplaySource,
+  readVersionNodeDefinitions,
+} from './form-admission.repository.js';
 
 /** A replay may repeat a captured submission, never invent its server-owned actor or time. */
 export async function requireFormAdmission(
@@ -23,43 +25,19 @@ export async function requireFormAdmission(
   value: StoredExecutionValue | undefined,
 ): Promise<void> {
   if (!requiresFormAdmissionCheck(input.triggerType)) return;
-  const definitions = await transaction.db
-    .select({ definition: sql<unknown>`node->'definition'` })
-    .from(workflowVersions)
-    .crossJoinLateral(
-      sql`json_array_elements(${workflowVersions.graphJson}->'nodes') node`,
-    )
-    .where(
-      and(
-        eq(workflowVersions.workspaceId, transaction.workspaceId),
-        eq(workflowVersions.workflowId, input.workflowId),
-        eq(workflowVersions.id, input.workflowVersionId),
-      ),
-    );
+  const definitions = await readVersionNodeDefinitions(transaction, input);
   const entries = decodeStoredValue(() =>
     z
       .array(z.object({ key: z.string(), version: z.number().int() }).strict())
-      .parse(definitions.map((row) => row.definition)),
+      .parse(definitions),
   );
   const requirement = formAdmissionRequirement(entries, input.triggerType);
   if (requirement === 'allow') return;
   if (requirement === 'refuse') throw new RunRequiresFormError();
-  const [original] = await transaction.db
-    .select({
-      workflow_version_id: workflowRuns.workflowVersionId,
-      input_ref: workflowRuns.inputRef,
-    })
-    .from(workflowRuns)
-    .where(
-      and(
-        eq(workflowRuns.workspaceId, transaction.workspaceId),
-        eq(workflowRuns.id, sql`${input.replaySourceRunId ?? null}::uuid`),
-        or(
-          isNull(workflowRuns.inputRefExpiresAt),
-          gt(workflowRuns.inputRefExpiresAt, sql`clock_timestamp()`),
-        ),
-      ),
-    );
+  const original = await readFormReplaySource(
+    transaction,
+    input.replaySourceRunId,
+  );
   const matches = capturedFormReplayMatches(
     original === undefined
       ? undefined

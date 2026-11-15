@@ -1,3 +1,4 @@
+import { requireWorkflowRun } from '../workflow-run.errors.js';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { copyRecoveryRunValues } from '../values/rows.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
@@ -16,7 +17,7 @@ import {
 import { readWorkflowRunAcceptanceReplay } from '../commands/acceptance/replay.repository.js';
 import {
   insertWorkflowRunAudit,
-  requireWorkflowRunRecord,
+  readWorkflowRunRecord,
 } from '../commands/workflow-run-records.repository.js';
 import { lockRunAcceptanceCommand } from '../commands/acceptance/lock.repository.js';
 import type { RecoverPublishedWorkflowRunInput } from '../commands/run-commands.types.js';
@@ -43,7 +44,9 @@ export async function recoverWorkflowRunInTransaction(
   });
   if (replay !== null)
     return {
-      run: await requireWorkflowRunRecord(transaction, replay.runId),
+      run: requireWorkflowRun(
+        await readWorkflowRunRecord(transaction, replay.runId),
+      ),
       replayed: true,
     };
   const { metadata, prepared, preview, identity, seed } =
@@ -91,7 +94,9 @@ export async function recoverWorkflowRunInTransaction(
   );
   if (accepted.duplicate)
     return {
-      run: await requireWorkflowRunRecord(transaction, accepted.runId),
+      run: requireWorkflowRun(
+        await readWorkflowRunRecord(transaction, accepted.runId),
+      ),
       replayed: true,
     };
   if (seed.copies.length > 0) {
@@ -117,7 +122,9 @@ export async function recoverWorkflowRunInTransaction(
     },
   });
   return {
-    run: await requireWorkflowRunRecord(transaction, accepted.runId),
+    run: requireWorkflowRun(
+      await readWorkflowRunRecord(transaction, accepted.runId),
+    ),
     replayed: false,
   };
 }

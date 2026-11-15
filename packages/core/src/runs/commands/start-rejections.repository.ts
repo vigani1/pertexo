@@ -1,7 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { workflowManualStartRejections } from '@pertexo/database/schema';
-import { IdempotencyRequestConflictError } from '../../shared/command-receipt.errors.js';
 
 export type ManualStartIdentity = Readonly<{
   workflowId: string;
@@ -15,11 +14,16 @@ export type ManualStartRejection = Readonly<{
   observedPublishedVersionId: string;
 }>;
 
-/** Caller has already resolved successful acceptance under the same command lock. */
+/**
+ * The rejection stored for this start command, with the request it answered.
+ * The caller has already resolved successful acceptance under the same command lock.
+ */
 export async function readManualStartRejection(
   transaction: WorkspaceTransaction,
   identity: ManualStartIdentity,
-): Promise<ManualStartRejection | null> {
+): Promise<
+  Readonly<{ requestHash: string; rejection: ManualStartRejection }> | undefined
+> {
   const [row] = await transaction.db
     .select({
       requestHash: workflowManualStartRejections.requestHash,
@@ -34,14 +38,15 @@ export async function readManualStartRejection(
         eq(workflowManualStartRejections.keyHash, identity.idempotencyKeyHash),
       ),
     );
-  if (row === undefined) return null;
-  if (row.requestHash !== identity.requestHash)
-    throw new IdempotencyRequestConflictError();
-  return Object.freeze({
-    kind: 'published_version_conflict',
-    expectedPublishedVersionId: row.expectedVersionId,
-    observedPublishedVersionId: row.observedVersionId,
-  });
+  if (row === undefined) return undefined;
+  return {
+    requestHash: row.requestHash,
+    rejection: Object.freeze({
+      kind: 'published_version_conflict',
+      expectedPublishedVersionId: row.expectedVersionId,
+      observedPublishedVersionId: row.observedVersionId,
+    }),
+  };
 }
 
 export async function recordManualStartRejection(
