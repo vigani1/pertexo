@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/candidate';
-import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
+import { diffWorkflowGraphs } from '@/features/workflows/public';
 
 const step = (id: string, key: string, label: string, x = 0) => ({
   id,

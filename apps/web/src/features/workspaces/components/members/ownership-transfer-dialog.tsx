@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import {
   allowlistedReturnPath,
   returnToSearch,
-} from '@/features/auth/return-path.public';
+} from '@/features/auth/auth-routing.public';
 import { firstNameOf } from '../../model/workspace-roles';
 import { feedbackFor } from '../../data/mutations/members/use-member-command';
 import { MemberCommandDialog, type MemberCommandView } from './command-dialog';

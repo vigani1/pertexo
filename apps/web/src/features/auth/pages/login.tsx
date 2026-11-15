@@ -1,10 +1,11 @@
 import { QueryView } from '@/components/patterns/states/query-view';
 import { TwoFactorSignInLens } from '../components/two-factor/sign-in-lens';
-import { OrganizationSignInForm } from '@/features/federation/sign-in.public';
+import { OrganizationSignInForm } from '@/features/federation/federation-views.public';
 import {
   AuthLens,
   AuthLensTitle,
   AuthLensDescription,
+  AuthLensFooter,
 } from '../components/stage/auth-lens';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -14,7 +15,6 @@ import { authenticationCapabilitiesQueryOptions } from '../data/auth.queries';
 import { EmailRequestLens } from '../components/inbox/email-request-lens';
 import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
 import { SignInLens } from '../components/sign-in/lens';
-import { AuthLensFooter } from '../components/stage/auth-lens';
 import { LensLoading, LensUnavailable } from '../components/stage/lens-states';
 import { resendFailure } from '../model/auth-failure';
 import type { LoginNotice } from '../model/login-notice';

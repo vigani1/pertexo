@@ -11,7 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { PatternGlyph } from '@/features/workflows/shape.public';
+import { PatternGlyph } from '@/features/workflows/workflows-views.public';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { stepCountLabel, versionSteps } from '../../model/versions/steps';
 import { CopyField } from '../copy-field';

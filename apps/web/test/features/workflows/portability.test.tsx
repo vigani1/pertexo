@@ -1,4 +1,4 @@
-import { WorkflowExportDialog } from '@/features/workflows/creation/portability.public';
+import { WorkflowExportDialog } from '@/features/workflows/workflows-views.public';
 
 import { ApiError } from '@/lib/api/error';
 

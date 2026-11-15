@@ -1,4 +1,4 @@
-import { UploadFile } from '@/features/artifacts/public';
+import { UploadFile } from '@/features/artifacts/artifacts-views.public';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import type { WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';

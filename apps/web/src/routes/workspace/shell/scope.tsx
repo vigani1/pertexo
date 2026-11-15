@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Outlet } from '@tanstack/react-router';
-import { WorkspaceDeletionPage } from '@/features/workspaces/deletion.public';
+import { WorkspaceDeletionPage } from '@/features/workspaces/pages/workspace-deletion';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import { useWorkspaceScope } from './use-workspace-scope';
 

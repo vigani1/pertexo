@@ -2,7 +2,7 @@ import { getRequestUrl } from '../../support/request';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
-import { WorkflowPromotionPage } from '@/features/workflow-promotions/public';
+import { WorkflowPromotionPage } from '@/features/workflow-promotions/pages/workflow-promotion';
 import { promotionSettingsQuery } from '@/features/workflow-promotions/data/promotions.queries';
 import { createApiClient } from '@/lib/api/client';
 import { renderInRouter } from '../../support/render-in-router';

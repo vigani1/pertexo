@@ -1,12 +1,12 @@
 import { Link } from '@tanstack/react-router';
-import { promotionSearch } from '@/features/workflow-promotions/workflow-promotions-search.public';
+import { promotionSearch } from '@/features/workflow-promotions/workflow-promotions-routing.public';
 import { XIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { PROMOTION_LIMITS } from '@pertexo/contracts';
-import type {
-  AccessibleWorkspace,
-  WorkflowOrganizationProjectionResponse,
-  WorkflowListResponse,
+import {
+  PROMOTION_LIMITS,
+  type AccessibleWorkspace,
+  type WorkflowOrganizationProjectionResponse,
+  type WorkflowListResponse,
 } from '@pertexo/contracts';
 import type {
   InfiniteData,

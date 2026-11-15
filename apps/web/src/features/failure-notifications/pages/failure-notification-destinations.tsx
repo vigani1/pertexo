@@ -1,4 +1,4 @@
-import { holdsCapability } from '@/features/workspaces/availability.public';
+import { holdsCapability } from '@/features/workspaces/workspaces-routing.public';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type {
   AccessibleWorkspace,
@@ -32,7 +32,7 @@ import { failureNotificationDestinationsQueryOptions } from '../data/failure-not
 import type { FailureNotificationDestinationList } from '../data/failure-notifications.api';
 import { destinationChannels } from '../model/channel-names';
 import { useSlackChannelNames } from '../hooks/use-slack-channel-names';
-import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { roleLimitSentence } from '@/features/workspaces/public';
 import { pluralWord } from '@/lib/format/count';
 
 type Lens = Readonly<{

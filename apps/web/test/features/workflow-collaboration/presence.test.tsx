@@ -6,7 +6,7 @@ import {
   WorkflowPresenceSummary,
   WorkflowPresenceWarning,
   WorkflowEditingPresence,
-} from '@/features/workflow-collaboration/presence.public';
+} from '@/features/workflow-collaboration/workflow-collaboration-views.public';
 import { createEditorStore } from '@/features/workflow-editor/model/state/workflow-editor.store';
 import { editorPresenceSource } from '@/features/workflow-editor/model/state/presence';
 import { createApiClient } from '@/lib/api/client';

@@ -2,7 +2,7 @@ import type { FailureNotificationDestinationResponse } from '@pertexo/contracts'
 import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
-import type { ChannelNames } from '@/features/failure-notifications/channel-names.public';
+import type { ChannelNames } from '@/features/failure-notifications/public';
 import {
   channelNameNote,
   describeDestination,

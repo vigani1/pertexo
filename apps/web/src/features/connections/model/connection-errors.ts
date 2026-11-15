@@ -2,7 +2,7 @@ import type { ApiProblemCode } from '@pertexo/contracts';
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError, isForbidden } from '@/lib/api/error-copy';
-import { refusalWhoCan } from '@/features/workspaces/roles.public';
+import { refusalWhoCan } from '@/features/workspaces/public';
 
 type ConnectionCommand = 'create' | 'rotate' | 'revoke' | 'test' | 'connect';
 

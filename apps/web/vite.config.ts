@@ -5,6 +5,10 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { createLogger, defineConfig } from 'vite';
 
+// A web feature's entry files: public.ts and its -views, -queries and
+// -routing interfaces.
+const FEATURE_ENTRY =
+  /[\\/]apps[\\/]web[\\/]src[\\/]features[\\/][^\\/]+[\\/](?:[^\\/]+\.)?public\.ts$/u;
 const apiProxyTarget =
   process.env.PERTEXO_API_PROXY_TARGET ?? 'http://127.0.0.1:3000';
 const parsedApiProxyTarget = new URL(apiProxyTarget);
@@ -93,6 +97,15 @@ export default defineConfig({
     outDir: process.env.PERTEXO_WEB_OUT_DIR ?? 'dist',
     target: 'es2022',
     rolldownOptions: {
+      // A feature entry only re-exports (validate-module-imports enforces it),
+      // so a route that imports one name from it loads only that name's
+      // modules, not every page and component the entry also offers.
+      treeshake: {
+        moduleSideEffects: [
+          { test: FEATURE_ENTRY, sideEffects: false },
+          { test: /./u, sideEffects: true },
+        ],
+      },
       output: {
         codeSplitting: {
           groups: [

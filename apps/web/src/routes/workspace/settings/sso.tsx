@@ -1,5 +1,5 @@
 import { useSearch } from '@tanstack/react-router';
-import { FederationSettingsPage } from '@/features/federation/public';
+import { FederationSettingsPage } from '@/features/federation/pages/federation-settings';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function FederationSettingsRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

@@ -1,8 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useReadRetry } from '@/lib/hooks/use-read-retry';
 import { failureNotificationDestinationKeys } from '../data/failure-notifications.queries';
-import { isDestinationConflict } from '../model/failure-notification-errors';
-import { destinationCommandError } from '../model/failure-notification-errors';
+import {
+  isDestinationConflict,
+  destinationCommandError,
+} from '../model/failure-notification-errors';
 import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import {
   isUnconfirmedCommand,
@@ -14,7 +16,7 @@ import { isApiError } from '@/lib/api/error';
 import {
   describeTestOutcome,
   type TestPhase,
-} from '@/features/connections/provider.public';
+} from '@/features/connections/public';
 import {
   useTestFailureNotificationDestinationMutation,
   type DestinationMutationScope,

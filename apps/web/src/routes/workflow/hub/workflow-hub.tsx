@@ -1,5 +1,5 @@
-import { WorkflowReadBoundary } from '@/features/workflows/hub.public';
-import { WorkflowPresenceProvider } from '@/features/workflow-collaboration/presence.public';
+import { WorkflowReadBoundary } from '@/features/workflows/workflows-views.public';
+import { WorkflowPresenceProvider } from '@/features/workflow-collaboration/workflow-collaboration-views.public';
 import {
   Link,
   Outlet,

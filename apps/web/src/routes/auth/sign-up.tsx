@@ -1,6 +1,6 @@
 import { useRouteContext, useSearch } from '@tanstack/react-router';
-import { allowlistedReturnPath } from '@/features/auth/return-path.public';
-import { SignUpPage } from '@/features/auth/sign-up.public';
+import { allowlistedReturnPath } from '@/features/auth/auth-routing.public';
+import { SignUpPage } from '@/features/auth/pages/sign-up';
 
 export function SignUpRoute() {
   const { apiClient } = useRouteContext({ from: '/_stage/sign-up' });

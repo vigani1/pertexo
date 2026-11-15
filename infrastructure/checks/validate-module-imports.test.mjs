@@ -169,12 +169,125 @@ test('web cross-feature imports use deliberate public interfaces', () => {
     }).join('\n'),
     /cross-feature imports must use @\/features\/publish\/public/u,
   );
-  assert.deepEqual(
+  assert.match(
     validateModuleImports({
       'apps/web/src/features/editor/editor.tsx':
         "import { publish } from '@/features/publish/commands.public'; export const editor = publish;",
       'apps/web/src/features/publish/commands.public.ts':
+        "export { publish } from './model/publish';",
+      'apps/web/src/features/publish/model/publish.ts':
         'export const publish = true;',
+    }).join('\n'),
+    /cross-feature imports must use @\/features\/publish\/public/u,
+  );
+  const publish = {
+    'apps/web/src/features/publish/public.ts':
+      "export { publish } from './model/publish';",
+    'apps/web/src/features/publish/publish-views.public.ts':
+      "export { Panel } from './components/panel';",
+    'apps/web/src/features/publish/publish-queries.public.ts':
+      "export { publishQuery } from './data/publish.queries';",
+    'apps/web/src/features/publish/publish-routing.public.ts':
+      "export { parsePublishSearch } from './model/search';",
+    'apps/web/src/features/publish/model/publish.ts':
+      'export const publish = true;',
+    'apps/web/src/features/publish/model/search.ts':
+      'export const parsePublishSearch = () => ({});',
+    'apps/web/src/features/publish/components/panel.tsx':
+      'export const Panel = () => null;',
+    'apps/web/src/features/publish/data/publish.queries.ts':
+      'export const publishQuery = {};',
+    'apps/web/src/features/publish/pages/review.tsx':
+      'export const ReviewPage = () => null;',
+  };
+  assert.deepEqual(
+    validateModuleImports({
+      ...publish,
+      'apps/web/src/features/editor/editor.tsx': [
+        "import { publish } from '@/features/publish/public';",
+        "import { Panel } from '@/features/publish/publish-views.public';",
+        "import { publishQuery } from '@/features/publish/publish-queries.public';",
+        "import { parsePublishSearch } from '@/features/publish/publish-routing.public';",
+        'export const editor = [publish, Panel, publishQuery, parsePublishSearch];',
+      ].join('\n'),
+      'apps/web/src/routes/review.tsx':
+        "export { ReviewPage } from '@/features/publish/pages/review';",
+    }),
+    [],
+  );
+  assert.match(
+    validateModuleImports({
+      ...publish,
+      'apps/web/src/features/editor/editor.tsx':
+        "export { ReviewPage } from '@/features/publish/pages/review';",
+    }).join('\n'),
+    /editor\.tsx: cross-feature imports must use/u,
+  );
+});
+
+test('web feature entries sit at the feature root, re-export only, and keep to their kind', () => {
+  const findings = validateModuleImports({
+    'apps/web/src/features/publish/public.ts': [
+      "export { Panel } from './components/panel';",
+      'export const inline = 1;',
+    ].join('\n'),
+    'apps/web/src/features/publish/publish-views.public.ts':
+      "export { rule } from './model/rule';",
+    'apps/web/src/features/publish/publish-queries.public.ts':
+      "export { rule } from './model/rule';",
+    'apps/web/src/features/publish/session/pause.public.ts':
+      "export { rule } from '../model/rule';",
+    'apps/web/src/features/publish/components/panel.tsx':
+      'export const Panel = () => null;',
+    'apps/web/src/features/publish/model/rule.ts': 'export const rule = 1;',
+  }).join('\n');
+  assert.match(
+    findings,
+    /public\.ts: \.\/components\/panel does not belong in a public entry/u,
+  );
+  assert.match(findings, /public\.ts: an entry only re-exports/u);
+  assert.match(
+    findings,
+    /views\.public\.ts: \.\/model\/rule does not belong in a views entry/u,
+  );
+  assert.match(
+    findings,
+    /queries\.public\.ts: \.\/model\/rule does not belong in a queries entry/u,
+  );
+  assert.match(
+    findings,
+    /session\/pause\.public\.ts: a feature's entries are public\.ts/u,
+  );
+});
+
+test('the always-loaded web shell reaches features only through routing and loader entries', () => {
+  const feature = {
+    'apps/web/src/features/auth/public.ts':
+      "export { rule } from './model/rule';",
+    'apps/web/src/features/auth/auth-routing.public.ts':
+      "export { rule } from './model/rule';",
+    'apps/web/src/features/auth/model/rule.ts': 'export const rule = 1;',
+  };
+  assert.match(
+    validateModuleImports({
+      ...feature,
+      'apps/web/src/main.tsx':
+        "import { tree } from './routes/tree';\nvoid tree;",
+      'apps/web/src/routes/tree.ts':
+        "import { rule } from '@/features/auth/public';\nexport const tree = rule;",
+    }).join('\n'),
+    /routes\/tree\.ts: the always-loaded shell reaches apps\/web\/src\/features\/auth\/public\.ts/u,
+  );
+  assert.deepEqual(
+    validateModuleImports({
+      ...feature,
+      'apps/web/src/main.tsx': [
+        "import { tree } from './routes/tree';",
+        "const later = () => import('@/features/auth/public');",
+        'void [tree, later];',
+      ].join('\n'),
+      'apps/web/src/routes/tree.ts':
+        "import { rule } from '@/features/auth/auth-routing.public';\nexport const tree = rule;",
     }),
     [],
   );

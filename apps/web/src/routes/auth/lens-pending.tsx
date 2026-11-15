@@ -1,5 +1,5 @@
 import { useRouterState } from '@tanstack/react-router';
-import { LensLoading } from '@/features/auth/stage.public';
+import { LensLoading } from '@/features/auth/auth-routing.public';
 
 const PENDING: Readonly<
   Record<string, readonly [title: string, label: string]>

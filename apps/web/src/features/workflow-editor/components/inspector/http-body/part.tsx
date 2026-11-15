@@ -2,7 +2,10 @@ import { ArrowDownIcon, ArrowUpIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LabelledField } from '@/components/ui/field';
-import { UploadFile, type FileUploadScope } from '@/features/artifacts/public';
+import {
+  UploadFile,
+  type FileUploadScope,
+} from '@/features/artifacts/artifacts-views.public';
 import type {
   FormPartDraft,
   PartErrors,

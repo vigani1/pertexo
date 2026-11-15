@@ -5,7 +5,7 @@ import { FormDestination } from './destination';
 import {
   FormAccessControl,
   FormEventHistory,
-} from '@/features/forms/sharing.public';
+} from '@/features/forms/forms-views.public';
 import type { MemberFormScope } from '@/features/forms/forms-queries.public';
 import {
   approvalConfigSchema,

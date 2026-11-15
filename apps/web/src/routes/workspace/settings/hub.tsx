@@ -1,5 +1,5 @@
 import { Outlet } from '@tanstack/react-router';
-import { SettingsRail } from '@/features/workspaces/public';
+import { SettingsRail } from '@/features/workspaces/workspaces-views.public';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 
 /** Every Settings page beside one rail that stays put while you move between them. */

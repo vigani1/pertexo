@@ -1,13 +1,15 @@
-import { describeStepError } from '@/features/workflow-runs/failure.public';
+import {
+  describeStepError,
+  describeNodeStatus,
+} from '@/features/workflow-runs/public';
 import { useMemo } from 'react';
 import { QueryView } from '@/components/patterns/states/query-view';
-import { ArtifactDownload } from '@/features/artifacts/public';
+import { ArtifactDownload } from '@/features/artifacts/artifacts-views.public';
 import type { WorkflowRunData } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Disclosure } from '@/components/ui/disclosure';
 import { Status } from '@/components/ui/status';
 import { JsonTree } from '@/components/patterns/code/json-tree';
-import { describeNodeStatus } from '@/features/workflow-runs/labels.public';
 import { nodeRunOutputQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
 import { workflowTestStepLabels } from '../../model/workflow-test';
 import { PinRecordedOutputButton } from '../samples/controls';

@@ -1,5 +1,5 @@
 import { Outlet } from '@tanstack/react-router';
-import { AuthStage } from '@/features/auth/stage.public';
+import { AuthStage } from '@/features/auth/auth-routing.public';
 
 /**
  * The stage the sign-in family shares. Moving between sign in, sign up and

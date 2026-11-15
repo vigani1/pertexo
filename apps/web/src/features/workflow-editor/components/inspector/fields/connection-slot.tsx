@@ -3,19 +3,17 @@ import { PlusIcon } from 'lucide-react';
 import { use, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { describeConnectionRequirement } from '@/features/catalog/presentation.public';
-import {
-  AddConnectionSheet,
-  providerForCredential,
-} from '@/features/connections/add.public';
+import { describeConnectionRequirement } from '@/features/catalog/public';
+import { AddConnectionSheet } from '@/features/connections/connections-views.public';
+import { providerForCredential } from '@/features/connections/public';
 import {
   fitsRequirement,
   isUsableConnection,
-} from '@/features/connections/connections-queries.public';
+} from '@/features/connections/public';
 import { AddConnectionContext } from '../../../model/add-connection-context';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { ChoiceSelect } from './choice-select';
-import { whoCan } from '@/features/workspaces/roles.public';
+import { whoCan } from '@/features/workspaces/public';
 import { sentenceStart } from '@/lib/format/sentence';
 
 /**

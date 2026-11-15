@@ -4,8 +4,10 @@ import { shownData } from '@/lib/api/error-copy';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { workflowRunIdentifierSchema } from '@pertexo/contracts';
+import {
+  type AccessibleWorkspace,
+  workflowRunIdentifierSchema,
+} from '@pertexo/contracts';
 import { HELP_LINKS } from '@/lib/help/guides';
 import {
   BookOpenIcon,
@@ -38,7 +40,7 @@ import { AppearanceChoice } from '@/components/patterns/appearance/choice';
 import {
   WORKSPACE_PLACES,
   canOpenPlace,
-} from '@/features/workspaces/places.public';
+} from '@/features/workspaces/workspaces-views.public';
 import { useWorkspaceScope } from './use-workspace-scope';
 
 export function WorkspaceCommandPalette({

@@ -2,18 +2,18 @@ import {
   WorkflowPresenceSummary,
   WorkflowPresenceWarning,
   WorkflowEditingPresence,
-} from '@/features/workflow-collaboration/presence.public';
-import { useStepDiscussions } from '@/features/workflow-collaboration/discussions.public';
+} from '@/features/workflow-collaboration/workflow-collaboration-views.public';
+import { useStepDiscussions } from '@/features/workflow-collaboration/public';
 import {
   Link,
   useLoaderData,
   useNavigate,
   useSearch,
 } from '@tanstack/react-router';
-import { FirstRunGuide } from '@/features/workflows/first-run.public';
+import { FirstRunGuide } from '@/features/workflows/workflows-views.public';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { WorkflowEditorPage } from '@/features/workflow-editor/public';
-import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
+import { WorkflowEditorPage } from '@/features/workflow-editor/pages/workflow-editor';
+import { WorkflowPausedBanner } from '@/features/workflow-settings/workflow-settings-views.public';
 import { ResourceNotFound } from '../root/status/pages';
 import { useWorkflowHubScope } from './hub/scope';
 

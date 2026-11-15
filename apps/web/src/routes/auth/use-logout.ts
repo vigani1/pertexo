@@ -4,10 +4,7 @@ import {
   useRouteContext,
   useRouter,
 } from '@tanstack/react-router';
-import {
-  endBrowserSession,
-  logoutErrorMessage,
-} from '@/features/auth/session/actions.public';
+import { endBrowserSession, logoutErrorMessage } from '@/features/auth/public';
 import type { ApiClient } from '@/lib/api/client';
 
 export function useLogout(

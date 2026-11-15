@@ -11,13 +11,10 @@ import {
 import type { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
-import {
-  needsReconnecting,
-  PROVIDERS,
-} from '@/features/connections/provider.public';
+import { needsReconnecting, PROVIDERS } from '@/features/connections/public';
 import { connectionsInfiniteQueryOptions } from '@/features/connections/connections-queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/failure-notifications-queries.public';
-import { countWorkflowStates } from '@/features/workflows/counts.public';
+import { countWorkflowStates } from '@/features/workflows/public';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { ROLE_NAMES, WORKSPACE_ROLES } from '../../model/workspace-roles';

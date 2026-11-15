@@ -1,4 +1,4 @@
-import { assertSessionIdentity } from '@/features/auth/session/identity.public';
+import { assertSessionIdentity } from '@/features/auth/public';
 import {
   getWorkflowFolders,
   getWorkflowOrganizationPage,

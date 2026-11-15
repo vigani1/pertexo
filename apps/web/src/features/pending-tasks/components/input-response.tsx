@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { PendingTaskDetail } from '@pertexo/contracts';
 import type { FormValues } from '@pertexo/workflow-model';
-import { FormResponse, newUploadSession } from '@/features/forms/fields.public';
-import { ResponseFiles } from '@/features/artifacts/public';
+import { FormResponse } from '@/features/forms/forms-views.public';
+import { newUploadSession } from '@/features/forms/public';
+import { ResponseFiles } from '@/features/artifacts/artifacts-views.public';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format/time';

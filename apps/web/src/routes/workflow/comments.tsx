@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { workflowNodes } from '@pertexo/workflow-model';
-import { WorkflowCommentsPage } from '@/features/workflow-collaboration/public';
+import { WorkflowCommentsPage } from '@/features/workflow-collaboration/pages/workflow-comments';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/workflow-editor-queries.public';
-import { describeStep } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
 import { useWorkflowHubScope } from './hub/scope';
 import { WorkflowHubTabFrame } from './hub/frame';
 export function WorkflowCommentsRoute() {

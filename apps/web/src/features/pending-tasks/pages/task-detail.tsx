@@ -20,7 +20,7 @@ import {
 } from '../model/task-presentation';
 import { DecisionForm } from '../components/decision-form';
 import type { PendingTaskDetail } from '@pertexo/contracts';
-import { TimedOutGlyph } from '@/features/catalog/presentation.public';
+import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
 import { useNow } from '@/lib/hooks/use-now';
 export function TaskDetailPage({
   scope,

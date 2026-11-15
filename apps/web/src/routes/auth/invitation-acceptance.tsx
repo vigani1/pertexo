@@ -4,7 +4,7 @@ import {
   useRouteContext,
 } from '@tanstack/react-router';
 import { useCallback } from 'react';
-import { InvitationAcceptancePage } from '@/features/workspace-invitations/public';
+import { InvitationAcceptancePage } from '@/features/workspace-invitations/pages/invitation-acceptance';
 
 export function InvitationAcceptanceRoute() {
   const { apiClient } = useRouteContext({ from: '/invitations/accept' });

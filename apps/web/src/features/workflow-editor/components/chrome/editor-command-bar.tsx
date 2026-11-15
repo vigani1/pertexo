@@ -3,8 +3,10 @@ import { BracesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { WorkflowHubBar } from '@/features/workflows/hub.public';
-import { PatternGlyph } from '@/features/workflows/shape.public';
+import {
+  WorkflowHubBar,
+  PatternGlyph,
+} from '@/features/workflows/workflows-views.public';
 
 import { useEditorStore, useEditorSession } from '../../model/state/context';
 import { HistoryMenuItems, HistoryControls } from './history-controls';

@@ -1,5 +1,5 @@
 import { NotificationsProvider } from '@/components/ui/toast';
-import { NodeTestPanel } from '@/features/workflow-testing/inspector.public';
+import { NodeTestPanel } from '@/features/workflow-testing/workflow-testing-views.public';
 import type { ApiClient, ApiJsonRequest } from '@/lib/api/client';
 import { stepSampleResponseSchema } from '@pertexo/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

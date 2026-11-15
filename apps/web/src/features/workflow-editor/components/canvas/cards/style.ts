@@ -2,7 +2,7 @@ import {
   describeStep,
   familyWord,
   type StepPresentation,
-} from '@/features/catalog/presentation.public';
+} from '@/features/catalog/public';
 import { cn } from '@/lib/class-names';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { formatCount } from '@/lib/format/count';

@@ -9,5 +9,4 @@ export {
   type StepChangeAspect,
   type NoteChange,
 } from './model/graph-diff';
-
 export { noteTextStart } from './model/note-text';

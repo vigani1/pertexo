@@ -1,18 +1,16 @@
 import { RETRY_WINDOW_ENDED } from '@/lib/api/commands/command-retry';
-import { DialogFooter } from '@/components/ui/dialog';
-import { useState } from 'react';
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import {
-  TestThread,
-  type TestPhase,
-} from '@/features/connections/provider.public';
-import { Button } from '@/components/ui/button';
-import {
+  DialogFooter,
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { useState } from 'react';
+import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
+import { TestThread } from '@/features/connections/connections-views.public';
+import type { TestPhase } from '@/features/connections/public';
+import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
 import { useDestinationTest } from '../hooks/use-destination-test';

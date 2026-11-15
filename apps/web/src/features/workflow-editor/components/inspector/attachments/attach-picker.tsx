@@ -9,7 +9,8 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { describeStep, StepTile } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
 import type { ValueSource } from '@pertexo/workflow-model';
 import { findDefinition } from '../../../model/graph/adapter';
 import { stepTitle } from '../../../model/graph/step-title';

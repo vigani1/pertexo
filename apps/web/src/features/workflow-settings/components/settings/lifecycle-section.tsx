@@ -4,13 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ArchiveIcon, ArchiveRestoreIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
-import { describeWorkflowState } from '@/features/workflows/hub.public';
 import {
+  describeWorkflowState,
   LIFECYCLE_CONSEQUENCES,
-  WorkflowLifecycleDialog,
   lifecycleIntentFor,
   type LifecycleIntent,
-} from '@/features/workflows/lifecycle.public';
+} from '@/features/workflows/public';
+import { WorkflowLifecycleDialog } from '@/features/workflows/workflows-views.public';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowSettingsKeys } from '../../data/workflow-settings.queries';
 import {
@@ -19,7 +19,7 @@ import {
 } from '@/components/patterns/states/query-view';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { settingsReadFailure } from '../settings-read-failure';
-import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { roleLimitSentence } from '@/features/workspaces/public';
 import { shownData } from '@/lib/api/error-copy';
 
 /** Where the workflow is now, what archiving or restoring does, and the button. */

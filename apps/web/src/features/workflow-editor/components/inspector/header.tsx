@@ -23,11 +23,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  describeStep,
-  familyWord,
-  StepTile,
-} from '@/features/catalog/presentation.public';
+import { describeStep, familyWord } from '@/features/catalog/public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
 import { useInspectorDraftField } from './use-draft-field';
 import type { NodeFormApi } from '../../model/inspector/node-form';
 

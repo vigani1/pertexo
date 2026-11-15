@@ -1,1 +1,1 @@
-export { DataTablesPage } from './pages/tables';
+export { tablesQuery } from './data/tables.queries';

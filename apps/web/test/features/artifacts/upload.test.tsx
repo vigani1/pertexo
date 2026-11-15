@@ -1,5 +1,5 @@
 import { describeUpload } from '@/features/artifacts/model/artifact-upload';
-import { UploadFile } from '@/features/artifacts/public';
+import { UploadFile } from '@/features/artifacts/artifacts-views.public';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createHash, webcrypto } from 'node:crypto';

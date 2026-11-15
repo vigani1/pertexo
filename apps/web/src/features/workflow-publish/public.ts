@@ -1,5 +1,3 @@
-export { WorkflowCommandActions } from './components/workflow-command-actions';
-export { IssuesLens } from './components/validation/issues-lens';
 export { workflowIssuesView } from './model/validation/issues-state';
 export type { WorkflowIssuesView } from './model/validation/issues-state';
 export type { WorkflowValidationTarget } from './model/validation/target';

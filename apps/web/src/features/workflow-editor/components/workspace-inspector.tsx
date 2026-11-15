@@ -1,14 +1,14 @@
 import {
   WorkflowStepTestResult,
-  type WorkflowTests,
-} from '@/features/workflow-testing/public';
+  PinRecordedOutputButton,
+  type NodeTestHandle,
+} from '@/features/workflow-testing/workflow-testing-views.public';
+import type { WorkflowTests } from '@/features/workflow-testing/public';
 import { useEditorSession } from '../model/state/context';
 
 import type { Ref } from 'react';
 
-import { PinRecordedOutputButton } from '@/features/workflow-testing/public';
-import type { NodeTestHandle } from '@/features/workflow-testing/inspector.public';
-import { StepHistoryPanel } from '@/features/workflow-runs/step-history.public';
+import { StepHistoryPanel } from '@/features/workflow-runs/workflow-runs-views.public';
 
 import type { useLastTest } from '../hooks/use-last-test';
 import type { useStepAdding, useSelectionCommands } from './workspace-canvas';

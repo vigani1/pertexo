@@ -3,10 +3,7 @@ import type {
   NodeDefinitionCatalogItem,
   PreviewRunSummary,
 } from '@pertexo/contracts';
-import {
-  describeRecurrence,
-  portName,
-} from '@/features/catalog/presentation.public';
+import { describeRecurrence, portName } from '@/features/catalog/public';
 import { describeAmount } from './field-units';
 import type { GraphLevel, WorkflowNode } from './graph/scopes';
 import { formatCount } from '@/lib/format/count';

@@ -8,7 +8,7 @@ import {
   workflowSummarySchema,
 } from '@pertexo/contracts';
 import { SharingPrincipalPicker } from '@/components/patterns/sharing/principal-picker';
-import { ROLE_NAMES } from '@/features/workspaces/roles.public';
+import { ROLE_NAMES } from '@/features/workspaces/public';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../support/mock-server';
 import { renderInRouter } from '../support/render-in-router';

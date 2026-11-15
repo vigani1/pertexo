@@ -1,6 +1,9 @@
-import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
+import { isWorkspaceBrowsable } from '@/features/workspaces/workspaces-routing.public';
 import { useState } from 'react';
-import { WorkflowExportDialog } from '@/features/workflows/creation/portability.public';
+import {
+  WorkflowExportDialog,
+  WorkflowDuplicateDialog,
+} from '@/features/workflows/workflows-views.public';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -9,10 +12,7 @@ import type {
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import {
-  WorkflowDuplicateDialog,
-  canDuplicateWorkflow,
-} from '@/features/workflows/creation/duplicate.public';
+import { canDuplicateWorkflow } from '@/features/workflows/public';
 import { GitCompareArrowsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';

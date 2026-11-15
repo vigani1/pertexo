@@ -12,12 +12,12 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import {
   InboxArrivals,
   type InboxArrivalAnchor,
-} from '@/features/inbox/arrival.public';
-import { useInboxLive } from '@/features/inbox/live.public';
+} from '@/features/inbox/inbox-views.public';
+import { useInboxLive } from '@/features/inbox/public';
 import { inboxSummaryQueryOptions } from '@/features/inbox/inbox-queries.public';
 import { liveRunCountQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
-import { rememberLastWorkspace } from '@/features/workspaces/last.public';
-import { WorkspaceShell } from '@/features/workspaces/public';
+import { rememberLastWorkspace } from '@/features/workspaces/workspaces-routing.public';
+import { WorkspaceShell } from '@/features/workspaces/pages/workspace-shell';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import { useShellCrumbs, type Crumb } from '../../root/breadcrumbs';
 import { CommandPaletteContext } from './command-palette-context';

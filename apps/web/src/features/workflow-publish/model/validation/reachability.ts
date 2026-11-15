@@ -1,6 +1,6 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { isWorkflowTriggerKey } from '@pertexo/workflow-model';
-import { describeStep } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
 import type { WorkflowIssue } from './issues';
 
 /** Follow execution links, including failure paths and reachable loop bodies. */

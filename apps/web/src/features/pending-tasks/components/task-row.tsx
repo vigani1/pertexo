@@ -8,7 +8,7 @@ import {
   formatElapsedTime,
   formatRelativeTime,
 } from '@/lib/format/time';
-import { TimedOutGlyph } from '@/features/catalog/presentation.public';
+import { TimedOutGlyph } from '@/features/catalog/catalog-views.public';
 import { cn } from '@/lib/class-names';
 import type { TaskScope } from '../data/tasks.api';
 import {

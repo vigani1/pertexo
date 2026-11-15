@@ -1,5 +1,5 @@
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
-import { refusalWhoCan } from '@/features/workspaces/roles.public';
+import { refusalWhoCan } from '@/features/workspaces/public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 

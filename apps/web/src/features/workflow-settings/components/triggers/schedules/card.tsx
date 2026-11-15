@@ -1,14 +1,15 @@
 import { useId, type ReactNode } from 'react';
 import type { ScheduleTriggerHealthResponse } from '@pertexo/contracts';
-import { StepTile, describeStep } from '@/features/catalog/presentation.public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
+import {
+  describeStep,
+  describeMisfirePolicy,
+  describeRecurrence,
+} from '@/features/catalog/public';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { Switch } from '@/components/ui/switch';
-import {
-  describeMisfirePolicy,
-  describeRecurrence,
-} from '@/features/catalog/presentation.public';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { describeScheduleHold } from '../../../model/triggers/occurrence-outcome';
 import { describeTriggerState } from '../../../model/triggers/trigger-state';

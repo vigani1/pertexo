@@ -1,1 +1,3 @@
-export { WorkflowCommentsPage } from './pages/workflow-comments';
+// Build shows where people are discussing steps, on the steps themselves.
+export { useStepDiscussions } from './hooks/use-step-discussions';
+export type { EditingPresence } from './model/presence';

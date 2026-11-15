@@ -2,7 +2,7 @@ import {
   subscribeSessionChanges,
   notifySessionObservers,
   type SessionChangeEvent,
-} from '@/features/auth/session/sync.public';
+} from '@/features/auth/auth-routing.public';
 import { isSessionExpired } from '@/lib/api/error';
 import type { QueryClient } from '@tanstack/react-query';
 import type { createAppRouter } from './router';

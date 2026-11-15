@@ -1,20 +1,22 @@
 import { workspacePage, warmWorkspacePage } from './workspace-page';
-import { parseTaskSearch } from '@/features/pending-tasks/pending-tasks-search.public';
+import { parseTaskSearch } from '@/features/pending-tasks/pending-tasks-routing.public';
 import { createRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import {
   type AccessibleWorkspace,
   workflowRunIdentifierSchema,
 } from '@pertexo/contracts';
-import { parseConnectionsSearch } from '@/features/connections/connections-search.public';
-import { parseInboxSearch } from '@/features/inbox/inbox-search.public';
+import { parseConnectionsSearch } from '@/features/connections/connections-routing.public';
+import { parseInboxSearch } from '@/features/inbox/inbox-routing.public';
 import {
   filtersFromSearch,
   sanitizeRunSearch,
-} from '@/features/workflow-runs/workflow-runs-search.public';
-import { parseWorkflowListSearch } from '@/features/workflows/list-search.public';
-import { isWorkspaceOpenable } from '@/features/workspaces/availability.public';
-import { parseTeamSearch } from '@/features/workspaces/workspaces-search.public';
+} from '@/features/workflow-runs/workflow-runs-routing.public';
+import { parseWorkflowListSearch } from '@/features/workflows/workflows-routing.public';
+import {
+  isWorkspaceOpenable,
+  parseTeamSearch,
+} from '@/features/workspaces/workspaces-routing.public';
 import { pageTitle } from '../root/page-title';
 import {
   findWorkspace,

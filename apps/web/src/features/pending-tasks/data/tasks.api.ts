@@ -15,7 +15,7 @@ import {
   uploadTarget,
   UPLOAD_SESSION_HEADER,
   type FormUploadTarget,
-} from '@/features/forms/fields.public';
+} from '@/features/forms/public';
 export type TaskScope = Readonly<{
   apiClient: ApiClient;
   userId: string;

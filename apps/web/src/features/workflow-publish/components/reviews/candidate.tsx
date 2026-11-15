@@ -1,8 +1,8 @@
-import { describeStep } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
 import { useId } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { graphSteps } from '@/features/workflow-drafts/public';
-import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
+import { diffWorkflowGraphs } from '@/features/workflows/public';
 import { LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Disclosure } from '@/components/ui/disclosure';

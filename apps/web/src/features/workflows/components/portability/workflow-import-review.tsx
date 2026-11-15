@@ -1,4 +1,9 @@
-import { connectionFitsSlot } from '@pertexo/workflow-model';
+import {
+  connectionFitsSlot,
+  type PortableConnectionBinding,
+  type PortableConnectionSlot,
+  type WorkflowPortableManifest,
+} from '@pertexo/workflow-model';
 import { connectionSlotKey, portableSteps } from '../../model/portability';
 import { cn } from '@/lib/class-names';
 import { useQuery } from '@tanstack/react-query';
@@ -6,11 +11,6 @@ import type {
   AccessibleWorkspace,
   WorkflowImportPreviewResponse,
 } from '@pertexo/contracts';
-import type {
-  PortableConnectionBinding,
-  PortableConnectionSlot,
-  WorkflowPortableManifest,
-} from '@pertexo/workflow-model';
 import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
@@ -27,8 +27,8 @@ import {
   describeConnectionRequirement,
   describeStep,
   familyWord,
-  StepTile,
-} from '@/features/catalog/presentation.public';
+} from '@/features/catalog/public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
 import { PortableGraphReview } from './portable-graph-review';
 import { Disclosure } from '@/components/ui/disclosure';
 

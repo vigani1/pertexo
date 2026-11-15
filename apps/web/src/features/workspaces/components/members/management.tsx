@@ -1,4 +1,4 @@
-import { reportSessionChange } from '@/features/auth/session/sync.public';
+import { reportSessionChange } from '@/features/auth/auth-routing.public';
 import { MembershipThread } from '../membership-thread';
 import type {
   AccessibleWorkspace,

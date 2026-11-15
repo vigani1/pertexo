@@ -1,10 +1,7 @@
 import type { ReactNode } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { Link, useMatches } from '@tanstack/react-router';
-import {
-  shortRunId,
-  workflowLabel,
-} from '@/features/workflow-runs/labels.public';
+import { shortRunId, workflowLabel } from '@/features/workflow-runs/public';
 import type { ApiClient } from '@/lib/api/client';
 import { RequestName, TableName } from './crumb-names';
 

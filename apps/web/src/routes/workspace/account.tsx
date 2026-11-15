@@ -1,6 +1,6 @@
 import { useRouter } from '@tanstack/react-router';
-import { AccountSecurityPage } from '@/features/auth/account-security.public';
-import { AccountWorkspacesSection } from '@/features/workspaces/account.public';
+import { AccountSecurityPage } from '@/features/auth/pages/account-security';
+import { AccountWorkspacesSection } from '@/features/workspaces/workspaces-views.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function WorkspaceAccountRoute() {

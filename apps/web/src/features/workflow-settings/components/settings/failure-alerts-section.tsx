@@ -1,5 +1,10 @@
-import { useAlertMembers } from '@/features/failure-notifications/alert-members.public';
-import { holdsCapability } from '@/features/workspaces/availability.public';
+import {
+  useAlertMembers,
+  destinationChannels,
+  useSlackChannelNames,
+  type ChannelNames,
+} from '@/features/failure-notifications/public';
+import { holdsCapability } from '@/features/workspaces/workspaces-routing.public';
 import { useState } from 'react';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
@@ -18,11 +23,6 @@ import {
 import { useNotifications } from '@/components/ui/use-notifications';
 import { connectionDiscoveryQueryOptions } from '@/features/connections/connections-queries.public';
 import {
-  destinationChannels,
-  useSlackChannelNames,
-  type ChannelNames,
-} from '@/features/failure-notifications/channel-names.public';
-import {
   failureNotificationDestinationsQueryOptions,
   type FailureNotificationDestinationList,
 } from '@/features/failure-notifications/failure-notifications-queries.public';
@@ -34,7 +34,7 @@ import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
 import { CurrentAlertDestination } from './current-alert-destination';
-import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { roleLimitSentence } from '@/features/workspaces/public';
 import { shownData } from '@/lib/api/error-copy';
 
 const NO_NAMES: ReadonlyMap<string, string> = new Map();

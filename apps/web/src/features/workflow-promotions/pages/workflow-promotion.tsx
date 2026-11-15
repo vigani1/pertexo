@@ -1,7 +1,7 @@
 import {
   isWorkspaceBrowsable,
   holdsCapability,
-} from '@/features/workspaces/availability.public';
+} from '@/features/workspaces/workspaces-routing.public';
 import { usePromotionApply } from '../data/promotions.mutations';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { PromotionActionFields } from '../components/promotion-action-fields';

@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { stepSamplesQueryOptions } from '@/features/workflow-testing/test-data.public';
+import { stepSamplesQueryOptions } from '@/features/workflow-testing/public';
 import type { ComponentProps, RefObject } from 'react';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
-import { WorkflowTestDialog } from '@/features/workflow-testing/public';
+import { WorkflowTestDialog } from '@/features/workflow-testing/workflow-testing-views.public';
 import { QuickAddLens } from './add-step/quick-lens';
 import { SelectionToolbar } from './canvas/selection-toolbar';
 import { StartPicker } from './canvas/start-picker';

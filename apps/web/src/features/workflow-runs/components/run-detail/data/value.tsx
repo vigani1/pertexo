@@ -1,4 +1,11 @@
-import { DialogFooter } from '@/components/ui/dialog';
+import {
+  DialogFooter,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   InlineFailedRead,
   QueryView,
@@ -10,19 +17,12 @@ import { useState } from 'react';
 import { JsonTree } from '@/components/patterns/code/json-tree';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import {
   ArtifactDownload,
   FilePages,
   ResponseFiles,
-} from '@/features/artifacts/public';
+} from '@/features/artifacts/artifacts-views.public';
 import { SentAttachments } from './sent-attachments';
 import type { ApiClient } from '@/lib/api/client';
 import {

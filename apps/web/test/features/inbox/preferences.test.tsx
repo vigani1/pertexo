@@ -6,8 +6,8 @@ import { HttpResponse, http } from 'msw';
 import { expect, it } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { createApiClient } from '@/lib/api/client';
-import { NotificationPreferencesPage } from '@/features/inbox/settings.public';
-import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
+import { NotificationPreferencesPage } from '@/features/inbox/pages/notice-preferences';
+import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
 import { mockServer } from '../../support/mock-server';
 import { testFetch, renderLoadedApp } from '../../support/render-app';
 const workspaceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

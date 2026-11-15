@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { SearchIcon } from 'lucide-react';
 import { VariableUsageDialog } from '../components/variable-usage';
 import { useQuery } from '@tanstack/react-query';
-import type { AccessibleWorkspace } from '@pertexo/contracts';
+import type {
+  AccessibleWorkspace,
+  WorkspaceVariablesResponse,
+} from '@pertexo/contracts';
 import { WORKSPACE_VARIABLE_LIMITS } from '@pertexo/workflow-model';
 import { PageHeader, PageHeaderTitle } from '@/components/patterns/page-header';
 import { SettingsSection } from '@/components/patterns/settings/section';
@@ -16,8 +19,7 @@ import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { VariablesEditor } from '../components/variables-editor';
 import { variableMatches, variableRows } from '../model/variable-draft';
 import { Disclosure } from '@/components/ui/disclosure';
-import type { WorkspaceVariablesResponse } from '@pertexo/contracts';
-import { whoCan } from '@/features/workspaces/roles.public';
+import { whoCan } from '@/features/workspaces/public';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 
 function VariableFilter({

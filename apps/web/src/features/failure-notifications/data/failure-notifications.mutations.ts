@@ -1,4 +1,4 @@
-import { useConnectionResultScope } from '@/features/connections/commands.public';
+import { useConnectionResultScope } from '@/features/connections/public';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import {

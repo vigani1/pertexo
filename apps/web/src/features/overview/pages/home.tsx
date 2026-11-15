@@ -26,7 +26,7 @@ import { HomeHeader } from '../components/home-header';
 import { HomeLoom } from '../components/home-loom';
 import { RecentlyChanged } from '../components/recently-changed';
 import { isNewWorkspace, type FirstThreadFacts } from '../model/first-thread';
-import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { roleLimitSentence } from '@/features/workspaces/public';
 import { shownData } from '@/lib/api/error-copy';
 import { useFirstRunOffer } from '../hooks/use-first-run-offer';
 

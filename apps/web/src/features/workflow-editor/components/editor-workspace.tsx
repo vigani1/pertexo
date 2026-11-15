@@ -1,6 +1,8 @@
-import { WorkflowTestHistory } from '@/features/workflow-testing/public';
+import {
+  WorkflowTestHistory,
+  type NodeTestHandle,
+} from '@/features/workflow-testing/workflow-testing-views.public';
 import { useRef, type ReactNode } from 'react';
-import type { NodeTestHandle } from '@/features/workflow-testing/inspector.public';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
@@ -12,9 +14,8 @@ import { WorkspaceSurface, WorkspaceOverlay } from './workspace-surfaces';
 import { WorkspaceInspector } from './workspace-inspector';
 import { useEditorWorkflowTests } from '../hooks/publication/use-editor-workflow-tests';
 
-import { useCanvasOverlays } from './workspace-canvas';
+import { useCanvasOverlays, useCanvasEditing } from './workspace-canvas';
 import { useWorkspaceChrome } from '../hooks/use-workspace-chrome';
-import { useCanvasEditing } from './workspace-canvas';
 
 export type EditorChrome = Readonly<{
   workflowTestAction: ReactNode;

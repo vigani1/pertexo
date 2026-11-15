@@ -1,4 +1,4 @@
-import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
+import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { ErrorWorkflowSection } from '../components/settings/error-workflow-section';
 import type {

@@ -1,4 +1,7 @@
-import { UploadFile, type FileUploadScope } from '@/features/artifacts/public';
+import {
+  UploadFile,
+  type FileUploadScope,
+} from '@/features/artifacts/artifacts-views.public';
 import type { WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import { FILE_LIMIT_COPY } from '../../../model/inspector/file-limit-copy';

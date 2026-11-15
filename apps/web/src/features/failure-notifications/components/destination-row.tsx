@@ -7,7 +7,7 @@ import type {
 import { PencilIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
-import { ProviderTile } from '@/features/connections/provider.public';
+import { ProviderTile } from '@/features/connections/connections-views.public';
 import { formatRelativeTime } from '@/lib/format/time';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
 import type { ChannelNames } from '../model/channel-names';

@@ -1,7 +1,7 @@
 import type { WorkflowSummary } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { statusToneText } from '@/components/ui/status-tone';
-import { describeWorkflowState } from '@/features/workflows/hub.public';
+import { describeWorkflowState } from '@/features/workflows/public';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
 import { liveVersionQueryOptions } from '../../data/workflow-editor.queries';

@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
-import { HomePage } from '@/features/overview/public';
+import { HomePage } from '@/features/overview/pages/home';
 import { useOpenCommandPalette } from '../shell/command-palette-context';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 

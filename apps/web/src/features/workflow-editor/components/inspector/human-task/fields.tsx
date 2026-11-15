@@ -3,7 +3,7 @@ import {
   formFieldsSchema,
   type FormField,
 } from '@pertexo/workflow-model';
-import { FormFieldsEditor } from '@/features/forms/fields.public';
+import { FormFieldsEditor } from '@/features/forms/forms-views.public';
 import { Notice } from '@/components/ui/notice';
 import { useInspectorDraftField } from '../use-draft-field';
 import type { NodeFormApi } from '../../../model/inspector/node-form';

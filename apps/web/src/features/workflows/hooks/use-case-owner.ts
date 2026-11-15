@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
-import { observeSessionChanges } from '@/features/auth/session/sync.public';
+import { observeSessionChanges } from '@/features/auth/auth-routing.public';
 import { inputCasesKey } from '../data/input-cases/workflow-input-cases.queries';
 
 /** The opened case payload belongs to this read lifetime, not to a retained write. */

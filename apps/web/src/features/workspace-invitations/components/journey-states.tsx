@@ -5,9 +5,9 @@ import { StatusGlyph } from '@/components/ui/status';
 import {
   AuthLensDescription,
   AuthLensTitle,
-} from '@/features/auth/stage.public';
+} from '@/features/auth/auth-routing.public';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { currentUserQueryOptions } from '@/features/auth/auth-session-queries.public';
+import { currentUserQueryOptions } from '@/features/auth/auth-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { DEAD_END_COPY, type DeadEndState } from '../model/journey-copy';
 import { InvitationHeading } from './invitation-heading';

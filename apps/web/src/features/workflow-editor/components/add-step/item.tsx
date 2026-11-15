@@ -1,9 +1,7 @@
 import { PlugIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import {
-  requiredConnections,
-  StepTile,
-} from '@/features/catalog/presentation.public';
+import { requiredConnections } from '@/features/catalog/public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
 import { STEP_DRAG_TYPE, type StepChoice } from '../../model/step-catalog';
 
 /** The shape every add-step row shares: a tile, its words and a trailing mark. */

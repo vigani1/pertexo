@@ -1,5 +1,11 @@
-import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
-import { DialogFooter } from '@/components/ui/dialog';
+import { isWorkspaceBrowsable } from '@/features/workspaces/workspaces-routing.public';
+import {
+  DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   useCallback,
   useEffect,
@@ -7,16 +13,13 @@ import {
   useState,
   type ComponentProps,
 } from 'react';
-import type { WorkflowExportRequest } from '@pertexo/contracts';
-import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
+import type {
+  WorkflowExportRequest,
+  AccessibleWorkspace,
+  WorkflowSummary,
+} from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { describeCommandError } from '@/lib/api/error-copy';

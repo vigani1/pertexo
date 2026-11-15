@@ -2,8 +2,12 @@ import { useScratchForm } from '../use-draft-field';
 import { useState, type ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
-import type { FileUploadScope } from '@/features/artifacts/public';
-import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
+import type { FileUploadScope } from '@/features/artifacts/artifacts-views.public';
+import {
+  type GraphLevel,
+  type WorkflowNode,
+  findStep,
+} from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import {
   bodyValue,
@@ -15,7 +19,6 @@ import {
   type HttpBodyValue,
 } from '../../../model/inspector/http-body';
 import { useEditorStoreApi } from '../../../model/state/context';
-import { findStep } from '../../../model/graph/scopes';
 import { useHttpBodyDraft } from './use-draft';
 import { MultipartParts } from './parts';
 import { focusFormPart } from './focus';

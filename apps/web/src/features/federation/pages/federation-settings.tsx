@@ -14,7 +14,7 @@ import { federationSettingsQueryOptions } from '../data/federation-settings.quer
 import type { FederationScope } from '../data/federation-settings.api';
 import { CreateOrganization } from '../components/organization/create';
 import { OrganizationPanel } from '../components/organization/panel';
-import { whoCan } from '@/features/workspaces/roles.public';
+import { whoCan } from '@/features/workspaces/public';
 export function FederationSettingsPage({
   scope,
   workspace,

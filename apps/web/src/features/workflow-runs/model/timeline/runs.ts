@@ -6,7 +6,7 @@ import type {
   WorkflowRunSummary,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { describeStep } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
 import {
   describeNodeStatus,
   type NodeStatus,
@@ -18,9 +18,7 @@ import {
   type StepStoryEntry,
   type RunTimelineSegment,
 } from './step-replay';
-import type { RunTimelineTick } from './geometry';
-import { runBounds } from './geometry';
-import { timelineTicks } from './geometry';
+import { type RunTimelineTick, runBounds, timelineTicks } from './geometry';
 
 export type { RunTimelineSegment };
 

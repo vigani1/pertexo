@@ -5,7 +5,7 @@ import { reviewTableBindings } from '../../../model/inspector/table-bindings';
 import type { DataTableBindings } from '@pertexo/node-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { tablesQuery } from '@/features/data-tables/picker.public';
+import { tablesQuery } from '@/features/data-tables/public';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { FieldLabel as Label } from '@/components/ui/field';
 import { QueryView } from '@/components/patterns/states/query-view';

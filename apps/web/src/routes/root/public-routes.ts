@@ -4,9 +4,9 @@ import { lazyRoute } from '@/components/patterns/app-update/lazy';
 import {
   allowlistedReturnPath,
   returnToSearch,
-} from '@/features/auth/return-path.public';
-import { SigningOut } from '@/features/auth/sign-out.public';
-import { landingWorkspace } from '@/features/workspaces/last.public';
+  SigningOut,
+} from '@/features/auth/auth-routing.public';
+import { landingWorkspace } from '@/features/workspaces/workspaces-routing.public';
 import { pageTitle } from './page-title';
 import {
   findCurrentUser,

@@ -2,7 +2,7 @@ import { workflowTemplateOriginKey } from '@/features/workflows/data/origin/work
 
 import { workflowKeys } from '@/features/workflows/data/workflows.queries';
 
-import { useInputCases } from '@/features/workflows/input-cases.public';
+import { useInputCases } from '@/features/workflows/public';
 
 import { createApiClient } from '@/lib/api/client';
 

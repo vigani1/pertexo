@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useRemovalFocus } from '@/lib/hooks/use-removal-focus';
-import { UploadFile } from '@/features/artifacts/public';
-import { describeStep, StepTile } from '@/features/catalog/presentation.public';
+import { UploadFile } from '@/features/artifacts/artifacts-views.public';
+import { describeStep } from '@/features/catalog/public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import {
