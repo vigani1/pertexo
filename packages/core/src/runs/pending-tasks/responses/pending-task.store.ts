@@ -14,6 +14,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
 import { respondToTask } from './respond.repository.js';
+import { requireVisibleTask } from './pending-task.errors.js';
 import { inspectAudience } from './inspect-audience.repository.js';
 import {
   listTasks,
@@ -60,10 +61,12 @@ export function createPendingTaskStore(
     read: (input: PendingTaskRead) =>
       withWorkspaceAccess(pool, input, READ_TASKS, async (client, role) =>
         projectTask(
-          await readTaskRow(client, input, {
-            role,
-            resources: await readFolderScope(client, input, role),
-          }),
+          requireVisibleTask(
+            await readTaskRow(client, input, {
+              role,
+              resources: await readFolderScope(client, input, role),
+            }),
+          ),
         ),
       ),
     decide: (input: PendingTaskDecision) =>

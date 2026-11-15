@@ -28,7 +28,6 @@ import {
   taskExpiryChoice,
 } from '@pertexo/workflow-model';
 import type { Role } from '@pertexo/policy';
-import { PendingTaskNotFoundError } from './pending-task.errors.js';
 import type { PendingTaskScope } from './pending-task-response.types.js';
 
 import {
@@ -124,15 +123,13 @@ export async function readTaskRow(
     resources,
     locking = false,
   }: TaskReadAccess & Readonly<{ locking?: boolean | undefined }>,
-): Promise<TaskRow> {
+): Promise<TaskRow | undefined> {
   const query = taskQuery(client, { actorId: input.actorId, role }).where(
     visibleTaskSql(input, resources),
   );
   const [row] = await (
     locking ? query.for('update', { of: task }) : query
   ).catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new PendingTaskNotFoundError('Task is not visible.');
   return row;
 }
 export async function listTasks(
@@ -294,8 +291,6 @@ export async function readTaskUploadTarget(
   )
     .where(visibleTaskSql(input, access.resources))
     .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new PendingTaskNotFoundError('Task is not visible.');
   return row;
 }
 

@@ -10,7 +10,7 @@ import {
   wakeWorkflowRun,
   deferWorkflowRun,
 } from '../../../outbox/run-advance.repository.js';
-import { wakeTaskAncestors } from '../responses/respond.repository.js';
+import { wakeTaskAncestors } from '../responses/task-responses.repository.js';
 
 export type HumanWaitState = Readonly<{
   human_wait_started_at: Date | null;
