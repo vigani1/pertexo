@@ -11,7 +11,7 @@ import {
   nodeAttempts,
   pendingRunTasks,
 } from '@pertexo/database/schema';
-import { EXECUTION_SOURCE_SQL } from '../../queries/execution/source.repository.js';
+import { EXECUTION_SOURCE_SQL } from '../../../shared/execution-source.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
 export async function lockRunForSettlement(
