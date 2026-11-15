@@ -9,7 +9,7 @@ import {
   threadBarScale,
 } from '../../model/list/runs';
 import { isActiveRunStatus } from '../../model/presentation/run-status';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';
 import { admissionBlockerWords } from '../../model/presentation/admission';
 import { RunRow } from './row';
@@ -33,7 +33,7 @@ export function RunList({
   variant: RunListVariant;
 }>) {
   const ticking = runs.some((run) => isActiveRunStatus(run.status));
-  const nowMs = useNow({ intervalMs: 1_000, enabled: ticking });
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.seconds, enabled: ticking });
   const durations = new Map(
     runs.map((run) => [run.id, runDurationMs(run, nowMs)] as const),
   );

@@ -7,7 +7,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { StatusGlyph } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
 import { formatElapsedTime } from '@/lib/format/time';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';
 import {
   ARRIVAL_GAP_PX,
@@ -95,7 +95,7 @@ export function InboxArrivalCard({
   onOpenRun: (thread: WorkspaceInboxFailureThread) => void;
   onOpenInbox: () => void;
 }>) {
-  const nowMs = useNow({ intervalMs: 30_000 });
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.relativeTime });
   const { close } = Toast.useToastManager();
   const data = toast.data;
   const swipe = useArrivalSwipe(

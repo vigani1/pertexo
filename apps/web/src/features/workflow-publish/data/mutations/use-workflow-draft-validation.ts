@@ -3,7 +3,7 @@ import { useCallback, useRef, useState, type RefObject } from 'react';
 import { retryAfterSeconds } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError, UserFacingError } from '@/lib/api/error';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { validateWorkflow } from '../workflow-publish.api';
 import { commandErrorMessage } from '@/lib/workflows/command-errors';
 
@@ -53,7 +53,7 @@ export function useWorkflowDraftValidation({
   // even before React renders or after this callback crosses an await.
   const validationDeadline = useRef(0);
   const now = useNow({
-    intervalMs: 250,
+    intervalMs: CLOCK_TICK.countdown,
     enabled: validationBlockedUntil !== undefined,
     untilMs: validationBlockedUntil,
   });

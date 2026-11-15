@@ -1,4 +1,3 @@
-import { QUERY_POLLING } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getAllWorkflowVersions } from '@/features/workflow-versions/workflow-versions-queries.public';
@@ -79,8 +78,23 @@ export const workflowSettingsKeys = {
 
 const initialPageParam: string | null = null;
 const MAX_TIMER_MS = 2_147_483_647;
-// Ask a moment after the first run time, once the scheduler has had it.
+// Ask a moment after the first run time, once the scheduler has had it, but
+// no more than twice a minute while a due run waits for the scheduler.
 const SCHEDULE_PASS_MARGIN_MS = 1_000;
+const SCHEDULE_RECHECK_FLOOR_MS = 30_000;
+
+/** When to read a schedule's next runs again, or false with none due. */
+function nextScheduleRead(
+  firstScheduledAt: string | undefined,
+): number | false {
+  if (firstScheduledAt === undefined) return false;
+  const untilPassed =
+    Date.parse(firstScheduledAt) - Date.now() + SCHEDULE_PASS_MARGIN_MS;
+  return Math.min(
+    Math.max(untilPassed, SCHEDULE_RECHECK_FLOOR_MS),
+    MAX_TIMER_MS,
+  );
+}
 
 /** A webhook's retained delivery log, one page of ten at a time. */
 export function webhookDeliveriesInfiniteQueryOptions({
@@ -148,18 +162,8 @@ export function scheduleNextRunsQueryOptions({
         triggerId,
         signal,
       }),
-    // Ask again once the first run time has passed, but no more than twice
-    // a minute while a due run waits for the scheduler.
-    refetchInterval: (query) => {
-      const first = query.state.data?.items[0]?.scheduledAt;
-      if (first === undefined) return false;
-      const untilPassed =
-        Date.parse(first) - Date.now() + SCHEDULE_PASS_MARGIN_MS;
-      return Math.min(
-        Math.max(untilPassed, QUERY_POLLING.status),
-        MAX_TIMER_MS,
-      );
-    },
+    refetchInterval: (query) =>
+      nextScheduleRead(query.state.data?.items[0]?.scheduledAt),
   });
 }
 

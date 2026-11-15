@@ -39,7 +39,7 @@ export function inboxSummaryQueryOptions(
     queryKey: inboxKeys.summary(userId, workspaceId),
     queryFn: ({ signal }) => getInboxSummary(apiClient, workspaceId, signal),
     staleTime: QUERY_FRESHNESS.recent,
-    refetchInterval: QUERY_POLLING.inbox,
+    refetchInterval: QUERY_POLLING.streamFallback,
   });
 }
 

@@ -1,11 +1,10 @@
+import { QUERY_POLLING } from '@/lib/api/query-timings';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import type { RunHistoryFilters } from '../model/list/run-search';
 import { workflowRunsInfiniteQueryOptions } from '../data/history.queries';
-
-const LIVE_REFRESH_MS = 10_000;
 
 /**
  * The paged run list for a filter set. With `live` on it refreshes every
@@ -34,7 +33,7 @@ export function useRunHistory({
       filters,
     ),
     enabled: canRead,
-    refetchInterval: live ? LIVE_REFRESH_MS : false,
+    refetchInterval: live ? QUERY_POLLING.live : false,
   });
   const runs = useMemo(
     () => query.data?.pages.flatMap((page) => page.items) ?? [],

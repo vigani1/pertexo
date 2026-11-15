@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react';
 
+/** How often a clock on screen ticks, by what it shows. */
+export const CLOCK_TICK = Object.freeze({
+  /** A seconds countdown that must reach zero on time. */
+  countdown: 250,
+  /** Elapsed or remaining seconds. */
+  seconds: 1_000,
+  /** A chart whose "now" edge moves, such as the Loom. */
+  chart: 15_000,
+  /** Relative times in minutes: "2 min ago", "in 5 minutes". */
+  relativeTime: 30_000,
+});
+
 /**
  * The wall-clock time, refreshed every `intervalMs` while `enabled` and until
  * `untilMs` has passed. The clock pauses while the tab is hidden and catches

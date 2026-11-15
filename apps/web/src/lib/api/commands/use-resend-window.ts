@@ -1,4 +1,4 @@
-import { useNow } from '../../hooks/use-now';
+import { CLOCK_TICK, useNow } from '../../hooks/use-now';
 import { COMMAND_RETRY_WINDOW_MS, type CommandKey } from './command-retry';
 
 /**
@@ -11,7 +11,7 @@ export function useResendExpired(
   const until =
     held === undefined ? undefined : held.createdAt + COMMAND_RETRY_WINDOW_MS;
   const now = useNow({
-    intervalMs: 1000,
+    intervalMs: CLOCK_TICK.seconds,
     enabled: until !== undefined,
     untilMs: until,
   });

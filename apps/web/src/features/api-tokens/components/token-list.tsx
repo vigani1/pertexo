@@ -3,7 +3,7 @@ import { KeyRoundIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { statusToneText } from '@/components/ui/status-tone';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';
 import { SCOPE_COPY, TOKEN_STATUS } from '../model/token-copy';
 
@@ -19,7 +19,7 @@ export function TokenList({
   tokens: readonly ApiTokenMetadata[];
   onRevoke?: (token: ApiTokenMetadata) => void;
 }>) {
-  const nowMs = useNow({ intervalMs: 60_000 });
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.relativeTime });
   return (
     <ul aria-label="Your API tokens" className="grid gap-3">
       {tokens.map((token) => {

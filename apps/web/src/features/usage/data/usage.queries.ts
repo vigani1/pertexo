@@ -98,7 +98,7 @@ export function usageTrendsQueryOptions(
     },
     // Daily totals barely move, and the read scans up to 90 days of runs.
     staleTime: QUERY_FRESHNESS.settled,
-    refetchInterval: QUERY_POLLING.trends,
+    refetchInterval: QUERY_POLLING.daily,
     refetchIntervalInBackground: false,
   });
 }

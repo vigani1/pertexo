@@ -35,7 +35,7 @@ import { Skeleton, SkeletonThread } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ApiClient } from '@/lib/api/client';
 import { isForbidden, isNotFound } from '@/lib/api/error-copy';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { roleLimitSentence } from '@/features/workspaces/public';
 import { NoticeThreadRow } from '../components/threads/notice-row';
 import {
@@ -278,7 +278,7 @@ function InboxThreadResults({
   markAllFailed: boolean;
 }>) {
   const markRead = useMarkThreadReadMutation(scope);
-  const nowMs = useNow({ intervalMs: 60_000 });
+  const nowMs = useNow({ intervalMs: CLOCK_TICK.relativeTime });
   return (
     <>
       {markRead.isError || markAllFailed ? (

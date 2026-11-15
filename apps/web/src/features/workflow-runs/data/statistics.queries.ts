@@ -18,8 +18,6 @@ import { workflowRunKeys } from './query-cache';
 /** One bounded page per status for lists; counts come from statistics. */
 const STATUS_PAGE_SIZE = 100;
 
-const STATISTICS_REFRESH_MS = 15_000;
-
 /** Home's attention list reads the runs that went wrong in this many hours. */
 export const ATTENTION_WINDOW_HOURS = 24;
 const ATTENTION_WINDOW_MS = ATTENTION_WINDOW_HOURS * 60 * 60 * 1_000;
@@ -107,8 +105,8 @@ export function runStatisticsQueryOptions(
         { window: '24h' },
         signal,
       ),
-    staleTime: STATISTICS_REFRESH_MS,
-    refetchInterval: STATISTICS_REFRESH_MS,
+    staleTime: QUERY_FRESHNESS.recent,
+    refetchInterval: QUERY_POLLING.recent,
   });
 }
 
@@ -178,7 +176,7 @@ export function attentionRunsQueryOptions(
       return { asOf, failed, timedOut, outcomeUnknown };
     },
     staleTime: QUERY_FRESHNESS.standard,
-    refetchInterval: QUERY_POLLING.dashboard,
+    refetchInterval: QUERY_POLLING.summary,
   });
 }
 

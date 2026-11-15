@@ -5,7 +5,7 @@ import {
   formatRelativeTime,
   localUtcOffset,
 } from '@/lib/format/time';
-import { useNow } from '@/lib/hooks/use-now';
+import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { cn } from '@/lib/class-names';
 import { Button } from './button';
 import { Calendar } from './calendar';
@@ -194,7 +194,10 @@ function DeadlineHint({ value }: Readonly<{ value: string }>) {
   const parsed = value === '' ? undefined : new Date(value);
   const at =
     parsed === undefined || Number.isNaN(parsed.getTime()) ? undefined : parsed;
-  const now = useNow({ intervalMs: 30_000, enabled: at !== undefined });
+  const now = useNow({
+    intervalMs: CLOCK_TICK.relativeTime,
+    enabled: at !== undefined,
+  });
   const offset = `In your time zone (${localUtcOffset()}).`;
   if (at === undefined)
     return (

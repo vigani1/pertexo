@@ -72,9 +72,24 @@ const INPUT_RECORDING_READS = 5;
 const INPUT_RECORDING_FIRST_WAIT_MS = 1_000;
 const INPUT_RECORDING_BACKOFF = 2;
 
-/** The wait before the next read of a recording, after `reads` reads. */
-function inputRecordingWait(reads: number): number {
-  return INPUT_RECORDING_FIRST_WAIT_MS * INPUT_RECORDING_BACKOFF ** (reads - 1);
+/**
+ * When to read a running step's recorded input again, or false to stop. A
+ * failed refetch keeps the last empty answer, so it stops there and the
+ * visible retry action, not a successful-read counter, owns recovery.
+ */
+function nextRecordingRead(
+  input: Readonly<{
+    running: boolean;
+    failed: boolean;
+    empty: boolean;
+    reads: number;
+  }>,
+): number | false {
+  if (input.failed || !input.running || !input.empty) return false;
+  if (input.reads >= INPUT_RECORDING_READS) return false;
+  return (
+    INPUT_RECORDING_FIRST_WAIT_MS * INPUT_RECORDING_BACKOFF ** (input.reads - 1)
+  );
 }
 
 /**
@@ -118,17 +133,13 @@ export function nodeRunInputQueryOptions({
         signal,
       }),
     staleTime: QUERY_FRESHNESS.immutable,
-    refetchInterval: (query) => {
-      // A failed refetch retains the last empty response. Stop here so the
-      // visible retry action, not a successful-read counter, owns recovery.
-      if (query.state.status === 'error') return false;
-      const reads = query.state.dataUpdateCount;
-      return step.status === 'running' &&
-        query.state.data?.kind === 'none' &&
-        reads < INPUT_RECORDING_READS
-        ? inputRecordingWait(reads)
-        : false;
-    },
+    refetchInterval: (query) =>
+      nextRecordingRead({
+        running: step.status === 'running',
+        failed: query.state.status === 'error',
+        empty: query.state.data?.kind === 'none',
+        reads: query.state.dataUpdateCount,
+      }),
   });
 }
 
