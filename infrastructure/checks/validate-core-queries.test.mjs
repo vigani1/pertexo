@@ -40,6 +40,18 @@ test('refuses the shapes a handle takes without a handle name', () => {
     assert.equal(find(text).length, 1, text);
 });
 
+test('refuses handles that take another name', () => {
+  for (const text of [
+    'const h = drizzle(c); await h.execute(x);',
+    'const reader = await pool.connect(); await reader.query(text);',
+    'const run = async ({ db: d }) => d.execute(x);',
+    'withScheduleReader(pool, async (c) => c.query(text));',
+    "import * as orm from 'drizzle-orm'; const at = orm.sql`now()`;",
+    "import * as orm from 'drizzle-orm'; const raw = orm.sql.raw('x');",
+  ])
+    assert.equal(find(text).length, 1, text);
+});
+
 test('refuses a builder chain whatever its receiver is called', () => {
   assert.equal(find('await writer.update(t).set({ a: 1 });').length, 1);
   assert.equal(find('await rows.delete(t).where(c);').length, 1);
@@ -73,6 +85,10 @@ test('leaves Map, Set and other non-database calls alone', () => {
     'withRetry(() => cache.delete(key));',
     "import { sql as q } from 'other'; const at = q`a`;",
     'async function f(c: Counter) { c.update(1); }',
+    'const h = makeIndex(c); h.query(text);',
+    'const run = ({ cache: d }) => d.delete(key);',
+    'withCache(index, (c) => c.query(text));',
+    "import * as other from 'other'; const at = other.sql`a`;",
   ])
     assert.deepEqual(find(text), [], text);
 });

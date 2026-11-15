@@ -57,7 +57,7 @@ export function findCoreQueries(file, text) {
   if (!file.startsWith(CORE_SOURCE) || QUERY_ROLES.test(file)) return [];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const sqlNames = sqlTagNames(source);
-  const handles = handleParameters(source);
+  const handles = handleNames(source);
   const found = [];
   const refuse = (node, what) => {
     const { line } = source.getLineAndCharacterOfPosition(node.getStart());
@@ -78,8 +78,9 @@ export function findCoreQueries(file, text) {
   return found;
 }
 
-// The local names `sql` has in this file: itself, and any alias it is
-// imported under from drizzle-orm (`import { sql as q }`).
+// The local names `sql` has in this file: itself, any alias it is imported
+// under from drizzle-orm (`import { sql as q }`), and `ns.sql` for a
+// namespace import (`import * as ns`), kept as `ns.sql`.
 function sqlTagNames(source) {
   const names = new Set(['sql']);
   for (const statement of source.statements) {
@@ -90,6 +91,8 @@ function sqlTagNames(source) {
     )
       continue;
     const bindings = statement.importClause?.namedBindings;
+    if (bindings !== undefined && ts.isNamespaceImport(bindings))
+      names.add(`${bindings.name.text}.sql`);
     if (bindings === undefined || !ts.isNamedImports(bindings)) continue;
     for (const element of bindings.elements)
       if ((element.propertyName ?? element.name).text === 'sql')
@@ -98,13 +101,16 @@ function sqlTagNames(source) {
   return names;
 }
 
-// A parameter typed as a database handle, and an untyped parameter of a
-// callback handed to a transaction or client helper (`(c) => c.query(…)`).
+// What holds a handle under another name: a parameter typed as one; an
+// untyped parameter of a callback handed to a transaction or client helper,
+// or to any call that also receives a pool or client (`(c) => c.query(…)`);
+// a variable set from `drizzle(…)` or `.connect()`; and a destructured
+// `db`, `client`, `tx` or `pool` under a new name (`({ db: d })`).
 const HANDLE_TYPE =
   /\b(?:Pool|PoolClient|ClientBase|NodePgDatabase|WorkspaceTransaction|PlatformTransaction)\b/u;
 const HANDLE_HELPER = /^(?:with|in)[A-Z]\w*(?:Transaction|Client|Access)$/u;
 
-function handleParameters(source) {
+function handleNames(source) {
   const names = new Set();
   const visit = (node) => {
     if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
@@ -113,6 +119,21 @@ function handleParameters(source) {
       else if (node.type === undefined && isHelperCallback(node.parent))
         names.add(node.name.text);
     }
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer !== undefined &&
+      opensHandle(node.initializer)
+    )
+      names.add(node.name.text);
+    if (
+      ts.isBindingElement(node) &&
+      ts.isIdentifier(node.name) &&
+      node.propertyName !== undefined &&
+      ts.isIdentifier(node.propertyName) &&
+      HANDLE_NAME.test(node.propertyName.text)
+    )
+      names.add(node.name.text);
     ts.forEachChild(node, visit);
   };
   visit(source);
@@ -125,16 +146,41 @@ function isHelperCallback(fn) {
   return (
     ts.isCallExpression(call) &&
     call.arguments.includes(fn) &&
-    HANDLE_HELPER.test(handleName(call.expression))
+    (HANDLE_HELPER.test(handleName(call.expression)) ||
+      call.arguments.some(
+        (argument) => argument !== fn && HANDLE_NAME.test(handleName(argument)),
+      ))
+  );
+}
+
+// `drizzle(c)` or `pool.connect()`, awaited or not.
+function opensHandle(expression) {
+  const call = ts.isAwaitExpression(expression)
+    ? expression.expression
+    : expression;
+  if (!ts.isCallExpression(call)) return false;
+  const callee = call.expression;
+  return (
+    (ts.isIdentifier(callee) && callee.text === 'drizzle') ||
+    (ts.isPropertyAccessExpression(callee) && callee.name.text === 'connect')
+  );
+}
+
+// `sql`, an alias of it, or `ns.sql` from a namespace import.
+function isSqlReference(expression, sqlNames) {
+  if (ts.isIdentifier(expression)) return sqlNames.has(expression.text);
+  return (
+    ts.isPropertyAccessExpression(expression) &&
+    ts.isIdentifier(expression.expression) &&
+    sqlNames.has(`${expression.expression.text}.${expression.name.text}`)
   );
 }
 
 function isSqlTag(tag, sqlNames) {
-  if (ts.isIdentifier(tag)) return sqlNames.has(tag.text);
   return (
-    ts.isPropertyAccessExpression(tag) &&
-    ts.isIdentifier(tag.expression) &&
-    sqlNames.has(tag.expression.text)
+    isSqlReference(tag, sqlNames) ||
+    (ts.isPropertyAccessExpression(tag) &&
+      isSqlReference(tag.expression, sqlNames))
   );
 }
 
@@ -142,11 +188,7 @@ function queryCall(call, sqlNames, handles) {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) return undefined;
   const method = callee.name.text;
-  if (
-    ts.isIdentifier(callee.expression) &&
-    sqlNames.has(callee.expression.text) &&
-    SQL_HELPERS.has(method)
-  )
+  if (isSqlReference(callee.expression, sqlNames) && SQL_HELPERS.has(method))
     return `sql.${method}() fragment`;
   if (!QUERY_METHODS.has(method)) return undefined;
   const receiver = handleName(callee.expression);
