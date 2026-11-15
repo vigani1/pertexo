@@ -9,7 +9,8 @@ import type {
   CaseTransaction,
 } from '../workflow-input-case.types.js';
 import { resultSchema } from '../input-case-storage.js';
-import { workflow, lockInputCaseQuota } from '../metadata.repository.js';
+import { lockInputCaseQuota } from '../metadata.repository.js';
+import { requireCaseWorkflow } from '../case-guards.js';
 
 export async function mutate(
   transact: CaseTransaction,
@@ -45,7 +46,7 @@ export async function mutate(
           ...decodeStoredValue(() => resultSchema.parse(stored)),
           replayed: true,
         });
-      await workflow(client, input, { write: true });
+      await requireCaseWorkflow(client, input, { write: true });
       await lockInputCaseQuota(client, input.workspaceId);
       const result = await work(client);
       await appendAuditFact(client, {

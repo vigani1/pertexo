@@ -20,7 +20,8 @@ import type {
   InputCasePage,
   ListInputCasesInput,
 } from './workflow-input-case.types.js';
-import { metadataProjection, workflow } from './metadata.repository.js';
+import { metadataProjection } from './metadata.repository.js';
+import { requireCaseWorkflow } from './case-guards.js';
 
 export function listInputCases(
   transact: CaseTransaction,
@@ -30,7 +31,7 @@ export function listInputCases(
     write: false,
     work: async (client) => {
       const limit = input.limit;
-      await workflow(client, input, { write: false });
+      await requireCaseWorkflow(client, input, { write: false });
       const rows = await drizzle(client)
         .select(metadataProjection)
         .from(workflowInputCases)
@@ -66,7 +67,7 @@ export function getInputCase(
   return transact(input, {
     write: false,
     work: async (client) => {
-      await workflow(client, input, { write: false });
+      await requireCaseWorkflow(client, input, { write: false });
       const [row] = await drizzle(client)
         .select({
           metadata: metadataProjection,

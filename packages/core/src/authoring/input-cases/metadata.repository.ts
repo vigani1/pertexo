@@ -1,4 +1,3 @@
-import { WORKFLOW_INPUT_CASE_LIMITS } from '@pertexo/workflow-model';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -9,15 +8,10 @@ import {
   workflows,
 } from '@pertexo/database/schema';
 
-import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type {
   Scope,
   WorkflowInputCaseMetadata,
 } from './workflow-input-case.types.js';
-import {
-  WorkflowInputCaseLimitError,
-  WorkflowInputCaseRevisionConflictError,
-} from './workflow-input-case.errors.js';
 
 export const metadataProjection = {
   id: workflowInputCases.id,
@@ -31,11 +25,8 @@ export const metadataProjection = {
   updatedAt: workflowInputCases.updatedAt,
 };
 
-export async function workflow(
-  client: PoolClient,
-  input: Scope,
-  { write }: Readonly<{ write: boolean }>,
-): Promise<void> {
+/** The workflow's lifecycle, shared while its cases change or are read. */
+export async function shareCaseWorkflow(client: PoolClient, input: Scope) {
   const row = await drizzle(client)
     .select({ lifecycleStatus: workflows.lifecycleStatus })
     .from(workflows)
@@ -47,18 +38,11 @@ export async function workflow(
     )
     .for('share')
     .catch(rethrowQueryFailure);
-  const workflowUnavailable =
-    row.length !== 1 || (write && row[0]?.lifecycleStatus !== 'active');
-  if (workflowUnavailable)
-    throw new WorkflowNotFoundError('Workflow is not visible');
+  return row.length === 1 ? row[0] : undefined;
 }
 
-export async function quota(
-  client: PoolClient,
-  input: Scope,
-  bytes: number,
-  { create }: Readonly<{ create: boolean }>,
-): Promise<void> {
+/** The workflow's and workspace's live cases and the workspace's retained case bytes. */
+export async function readCaseQuota(client: PoolClient, input: Scope) {
   const db = drizzle(client);
   const retained = db
     .select({
@@ -80,19 +64,14 @@ export async function quota(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (!row) throw new Error('Case quota authority unavailable');
-  if (create && row.workflowCount >= WORKFLOW_INPUT_CASE_LIMITS.perWorkflow)
-    throw new WorkflowInputCaseLimitError('workflow_count');
-  if (create && row.workspaceCount >= WORKFLOW_INPUT_CASE_LIMITS.perWorkspace)
-    throw new WorkflowInputCaseLimitError('workspace_count');
-  if (row.retainedBytes + bytes > WORKFLOW_INPUT_CASE_LIMITS.retainedBytes)
-    throw new WorkflowInputCaseLimitError('retained_bytes');
+  return row;
 }
 
-export async function lockedCase(
+/** The live case, locked for its change. */
+export async function lockCase(
   client: PoolClient,
-  input: Scope & { caseId: string; expectedRevision: number },
-): Promise<WorkflowInputCaseMetadata> {
+  input: Scope & { caseId: string },
+): Promise<WorkflowInputCaseMetadata | undefined> {
   const [row] = await drizzle(client)
     .select(metadataProjection)
     .from(workflowInputCases)
@@ -106,11 +85,7 @@ export async function lockedCase(
     )
     .for('update')
     .catch(rethrowQueryFailure);
-  if (!row) throw new WorkflowNotFoundError('Run-input case is not visible');
-  const item = Object.freeze(row);
-  if (item.revision !== input.expectedRevision)
-    throw new WorkflowInputCaseRevisionConflictError(item.revision);
-  return item;
+  return row === undefined ? undefined : Object.freeze(row);
 }
 
 /** Cases and a suite's frozen manifest share one quota/mutation fence. */

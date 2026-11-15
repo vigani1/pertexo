@@ -22,7 +22,7 @@ import type {
   WorkflowInputCaseResult,
 } from '../workflow-input-case.types.js';
 import { payload } from '../input-case-storage.js';
-import { lockedCase, quota } from '../metadata.repository.js';
+import { requireCaseQuota, requireLockedCase } from '../case-guards.js';
 import { mutate } from './receipt.repository.js';
 
 export async function createInputCase(
@@ -61,7 +61,7 @@ export async function createInputCase(
         .catch(rethrowQueryFailure);
       if (!version)
         throw new WorkflowNotFoundError('Workflow version is not visible');
-      await quota(
+      await requireCaseQuota(
         client,
         input,
         json.bytes + (expectations === null ? 0 : utf8ByteLength(expectations)),
@@ -121,7 +121,7 @@ export async function updateInputCase(
         : { expectations: input.expectations }),
     },
     work: async (client) => {
-      const item = await lockedCase(client, input);
+      const item = await requireLockedCase(client, input);
       const db = drizzle(client);
       const [previous] = await db
         .select({ expectations: workflowInputCasePayloads.expectations })
@@ -140,7 +140,7 @@ export async function updateInputCase(
           : canonicalJson(input.expectations);
       const bytes =
         json.bytes + (expectations === null ? 0 : utf8ByteLength(expectations));
-      await quota(client, input, bytes, { create: false });
+      await requireCaseQuota(client, input, bytes, { create: false });
       await lockArtifactReferences(
         client,
         input.workspaceId,
@@ -183,7 +183,7 @@ export async function deleteInputCase(
     caseId: input.caseId,
     intent: { caseId: input.caseId, expectedRevision: input.expectedRevision },
     work: async (client) => {
-      const item = await lockedCase(client, input);
+      const item = await requireLockedCase(client, input);
       const revision = item.revision + 1;
       await drizzle(client)
         .update(workflowInputCases)
