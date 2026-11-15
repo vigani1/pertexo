@@ -25,6 +25,22 @@ test('refuses queries an operation runs on a client, transaction or pool', () =>
     assert.equal(find(text).length, 1, text);
 });
 
+test('refuses the shapes a handle takes without a handle name', () => {
+  for (const text of [
+    'await drizzle(client).execute(STATEMENT).catch(rethrowQueryFailure);',
+    'await drizzle(client).insert(t).select(origin).catch(x);',
+    'await writer.insert(t).select(origin);',
+    'withTenantScopedClient(pool, s, (c) => c.query(text));',
+    'withPlatformTransaction(pool, async function (c) { await c.execute(x); });',
+    'async function f(maintenance: Pool) { await maintenance.query(text); }',
+    'async function f(c: PoolClient) { await c.execute(statement); }',
+    'async function f(t: WorkspaceTransaction) { await t.db.execute(s); }',
+    "import { sql as q } from 'drizzle-orm'; const at = q`now()`;",
+    "import { sql as q } from 'drizzle-orm'; const raw = q.raw('select 1');",
+  ])
+    assert.equal(find(text).length, 1, text);
+});
+
 test('refuses a builder chain whatever its receiver is called', () => {
   assert.equal(find('await writer.update(t).set({ a: 1 });').length, 1);
   assert.equal(find('await rows.delete(t).where(c);').length, 1);
@@ -54,6 +70,10 @@ test('leaves Map, Set and other non-database calls alone', () => {
     'const x = sqlish`a`;',
     "const label = 'select * from t';",
     'list.insert(0, item);',
+    'items.map((c) => c.delete);',
+    'withRetry(() => cache.delete(key));',
+    "import { sql as q } from 'other'; const at = q`a`;",
+    'async function f(c: Counter) { c.update(1); }',
   ])
     assert.deepEqual(find(text), [], text);
 });

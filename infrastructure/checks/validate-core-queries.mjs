@@ -87,6 +87,8 @@ export function coreArea(file) {
 export function findCoreQueries(file, text) {
   if (!file.startsWith(CORE_SOURCE) || QUERY_ROLES.test(file)) return [];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const sqlNames = sqlTagNames(source);
+  const handles = handleParameters(source);
   const found = [];
   const refuse = (node, what) => {
     const { line } = source.getLineAndCharacterOfPosition(node.getStart());
@@ -95,10 +97,10 @@ export function findCoreQueries(file, text) {
     );
   };
   const visit = (node) => {
-    if (ts.isTaggedTemplateExpression(node) && isSqlTag(node.tag))
+    if (ts.isTaggedTemplateExpression(node) && isSqlTag(node.tag, sqlNames))
       refuse(node, 'sql fragment');
     else if (ts.isCallExpression(node)) {
-      const query = queryCall(node);
+      const query = queryCall(node, sqlNames, handles);
       if (query !== undefined) refuse(node, query);
     }
     ts.forEachChild(node, visit);
@@ -107,33 +109,87 @@ export function findCoreQueries(file, text) {
   return found;
 }
 
-function isSqlTag(tag) {
-  if (ts.isIdentifier(tag)) return tag.text === 'sql';
+// The local names `sql` has in this file: itself, and any alias it is
+// imported under from drizzle-orm (`import { sql as q }`).
+function sqlTagNames(source) {
+  const names = new Set(['sql']);
+  for (const statement of source.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      !statement.moduleSpecifier.text.startsWith('drizzle-orm')
+    )
+      continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings === undefined || !ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements)
+      if ((element.propertyName ?? element.name).text === 'sql')
+        names.add(element.name.text);
+  }
+  return names;
+}
+
+// A parameter typed as a database handle, and an untyped parameter of a
+// callback handed to a transaction or client helper (`(c) => c.query(…)`).
+const HANDLE_TYPE =
+  /\b(?:Pool|PoolClient|ClientBase|NodePgDatabase|WorkspaceTransaction|PlatformTransaction)\b/u;
+const HANDLE_HELPER = /^(?:with|in)[A-Z]\w*(?:Transaction|Client|Access)$/u;
+
+function handleParameters(source) {
+  const names = new Set();
+  const visit = (node) => {
+    if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
+      if (node.type !== undefined && HANDLE_TYPE.test(node.type.getText()))
+        names.add(node.name.text);
+      else if (node.type === undefined && isHelperCallback(node.parent))
+        names.add(node.name.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return names;
+}
+
+function isHelperCallback(fn) {
+  if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return false;
+  const call = fn.parent;
   return (
-    ts.isPropertyAccessExpression(tag) &&
-    ts.isIdentifier(tag.expression) &&
-    tag.expression.text === 'sql'
+    ts.isCallExpression(call) &&
+    call.arguments.includes(fn) &&
+    HANDLE_HELPER.test(handleName(call.expression))
   );
 }
 
-function queryCall(call) {
+function isSqlTag(tag, sqlNames) {
+  if (ts.isIdentifier(tag)) return sqlNames.has(tag.text);
+  return (
+    ts.isPropertyAccessExpression(tag) &&
+    ts.isIdentifier(tag.expression) &&
+    sqlNames.has(tag.expression.text)
+  );
+}
+
+function queryCall(call, sqlNames, handles) {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) return undefined;
   const method = callee.name.text;
   if (
     ts.isIdentifier(callee.expression) &&
-    callee.expression.text === 'sql' &&
+    sqlNames.has(callee.expression.text) &&
     SQL_HELPERS.has(method)
   )
     return `sql.${method}() fragment`;
   if (!QUERY_METHODS.has(method)) return undefined;
-  return HANDLE_NAME.test(handleName(callee.expression)) ||
-    chainsIntoBuilder(call)
+  const receiver = handleName(callee.expression);
+  return HANDLE_NAME.test(receiver) ||
+    handles.has(receiver) ||
+    chainsIntoBuilder(call, method)
     ? `.${method}() query`
     : undefined;
 }
 
-// The last name in `a.b.c` or `this.db`; '' for anything else.
+// The last name in `a.b.c` or `this.db`, `db` for a `drizzle(…)` call;
+// '' for anything else.
 function handleName(expression) {
   let current = expression;
   while (
@@ -144,17 +200,27 @@ function handleName(expression) {
     current = current.expression;
   if (ts.isIdentifier(current)) return current.text;
   if (ts.isPropertyAccessExpression(current)) return current.name.text;
+  if (
+    ts.isCallExpression(current) &&
+    ts.isIdentifier(current.expression) &&
+    current.expression.text === 'drizzle'
+  )
+    return 'db';
   return '';
 }
 
-function chainsIntoBuilder(call) {
+// `insert(t).select(origin)` is insert-from-select: `select` is a builder
+// step only after an insert.
+function chainsIntoBuilder(call, method) {
   const parent = call.parent;
-  return (
-    ts.isPropertyAccessExpression(parent) &&
-    parent.expression === call &&
-    BUILDER_STEPS.has(parent.name.text) &&
-    ts.isCallExpression(parent.parent)
-  );
+  if (
+    !ts.isPropertyAccessExpression(parent) ||
+    parent.expression !== call ||
+    !ts.isCallExpression(parent.parent)
+  )
+    return false;
+  const step = parent.name.text;
+  return BUILDER_STEPS.has(step) || (method === 'insert' && step === 'select');
 }
 
 /** Findings for files in an area that is still pending. */
