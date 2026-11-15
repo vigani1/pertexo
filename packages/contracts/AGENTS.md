@@ -64,7 +64,7 @@ its types, never its runtime schemas (a lint rule enforces it).
   registry of problem codes, read whole (see `eslint.config.mjs`).
 - Generic throws that stay: `routes/define.ts` and `openapi/public.ts`
   (route and document assembly at module load, programmer errors);
-  `schemas/execution/runs.ts` (a timestamp its schema already admitted);
+  `schemas/execution/run-created-at.ts` (a timestamp its schema already admitted);
   `schemas/identity/federation/settings.ts` and
   `schemas/workflows/input-cases.ts` (bare throws caught in the same
   function and turned into schema issues).
