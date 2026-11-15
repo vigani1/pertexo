@@ -18,9 +18,11 @@ import { withPlatformTransaction } from '@pertexo/database/platform';
 import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
 import { DirectoryError } from './directory.errors.js';
 import type { DirectoryPrincipal } from './directory-provisioning.types.js';
+import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 // A credential's last use is written at most this often.
-const LAST_USED_WRITE_INTERVAL = sql.raw("interval '1 minute'");
+const LAST_USED_WRITE_MINUTES = 1;
+const LAST_USED_WRITE_INTERVAL = sql`${LAST_USED_WRITE_MINUTES}*${MINUTE_INTERVAL}`;
 
 /** Workspace locks precede organization and member locks in every identity writer. */
 export async function lockDirectoryOrganization(

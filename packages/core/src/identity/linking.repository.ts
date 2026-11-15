@@ -17,9 +17,11 @@ import {
 } from '@pertexo/database/schema';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { recordIdentitySecurityFact } from './facts.repository.js';
+import { MINUTE_INTERVAL } from '../shared/sql-intervals.repository.js';
 
 // An account-link intent must be completed within this.
-const LINK_INTENT_LIFETIME = sql.raw("interval '5 minutes'");
+const LINK_INTENT_LIFETIME_MINUTES = 5;
+const LINK_INTENT_LIFETIME = sql`${LINK_INTENT_LIFETIME_MINUTES}*${MINUTE_INTERVAL}`;
 
 type ProviderName = 'google' | 'github' | 'microsoft' | 'apple';
 type ProviderIdentity = Readonly<{

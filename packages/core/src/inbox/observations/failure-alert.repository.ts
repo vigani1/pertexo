@@ -17,13 +17,16 @@ import {
   failureAlertAttention,
   UNDELIVERED_ALERT_STATUSES,
 } from './failure-alert-state.js';
+import { HOUR_INTERVAL } from '../../shared/sql-intervals.repository.js';
 
 /**
  * How long a failed alert keeps a destination in the Inbox with nothing newer to go
  * on. A week: long enough to be seen after a weekend, short enough that a one-off
  * doesn't sit there once the destination has simply had nothing to send.
  */
-export const RECENT_ALERT_FAILURE_SQL = sql.raw("interval '168 hours'");
+/** How far back a failure counts as recent for an alert. */
+const RECENT_ALERT_FAILURE_HOURS = 168;
+export const RECENT_ALERT_FAILURE_SQL = sql`${RECENT_ALERT_FAILURE_HOURS}*${HOUR_INTERVAL}`;
 
 type Subject = Readonly<{ workspaceId: string; subjectId: string }>;
 
