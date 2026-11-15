@@ -90,7 +90,6 @@ const STILL_WRITTEN: readonly string[] = [
   'features/workflow-runs/components/run-filters/business-value.tsx: up to 255 characters',
   'features/workflow-runs/data/mutations/use-run-replay.ts: within 24 hours',
   'features/workflow-runs/model/step-inspection/error-copy.ts: 1 MB',
-  'features/workflow-runs/model/step-inspection/error-copy.ts: 256 KiB',
   'features/workflow-runs/model/step-inspection/error-copy.ts: 6 MB',
   'features/workflow-runs/model/step-inspection/error-copy.ts: 64 KB',
   'features/workflow-runs/model/step-inspection/error-copy.ts: At most 1,000 rows',
