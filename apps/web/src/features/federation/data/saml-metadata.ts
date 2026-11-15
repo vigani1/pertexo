@@ -1,3 +1,4 @@
+import { useLatestCommand } from '@/lib/api/commands/use-latest-command';
 import {
   readSamlMetadata,
   type FederationScope,
@@ -7,7 +8,7 @@ import {
  * The service-provider metadata an identity provider imports, as the file
  * it is saved as. Only the bounded public metadata the API returned.
  */
-export async function readSamlMetadataFile(
+async function readSamlMetadataFile(
   scope: FederationScope,
   signal: AbortSignal,
 ) {
@@ -17,4 +18,11 @@ export async function readSamlMetadataFile(
     type: 'application/samlmetadata+xml',
     text: metadata.xml,
   };
+}
+
+/** Reads the metadata file to save. */
+export function useSamlMetadataFile(scope: FederationScope) {
+  return useLatestCommand((_: null, signal: AbortSignal) =>
+    readSamlMetadataFile(scope, signal),
+  );
 }

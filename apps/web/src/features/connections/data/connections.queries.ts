@@ -26,12 +26,11 @@ export const connectionKeys = {
       'detail',
       connectionId,
     ] as const,
+  /** Every connection's usage read, as one prefix. */
+  usages: (userId: string, workspaceId: string) =>
+    [...connectionKeys.scope(userId, workspaceId), 'usage'] as const,
   usage: (userId: string, workspaceId: string, connectionId: string) =>
-    [
-      ...connectionKeys.scope(userId, workspaceId),
-      'usage',
-      connectionId,
-    ] as const,
+    [...connectionKeys.usages(userId, workspaceId), connectionId] as const,
   slackChannels: (
     userId: string,
     workspaceId: string,

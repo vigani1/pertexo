@@ -3,7 +3,6 @@ import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import {
   isUnconfirmedCommand,
-  newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import { canAddAlert } from '../model/destination-copy';
@@ -338,9 +337,8 @@ function useDestinationForm({
     );
     const signature = JSON.stringify({ config, expectedVersion });
     if (attempt.current()?.signature !== signature) attempt.clear();
-    const command = await attempt.getOrCreate(() => ({
+    const command = await attempt.getOrCreateKeyed(() => ({
       signature,
-      ...newCommandKey(),
     }));
     if (command === undefined) return;
     const key = command.idempotencyKey;

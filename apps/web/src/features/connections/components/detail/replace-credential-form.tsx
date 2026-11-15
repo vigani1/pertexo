@@ -9,7 +9,6 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import {
   isUnconfirmedCommand,
-  newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import { connectionCommandError } from '../../model/connection-errors';
@@ -71,12 +70,11 @@ export function ReplaceCredentialForm({
     }
     const signature = JSON.stringify(value);
     if (attempt.current()?.signature !== signature) attempt.clear();
-    const command = await attempt.getOrCreate(() => ({
+    const command = await attempt.getOrCreateKeyed(() => ({
       signature,
       connectionId: connection.id,
       expectedSecretVersionId: expectedVersion,
       credential: value,
-      ...newCommandKey(),
     }));
     if (command === undefined) return;
     try {

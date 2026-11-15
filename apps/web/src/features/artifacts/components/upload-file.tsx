@@ -15,8 +15,10 @@ import { FileDrop } from '@/components/ui/file-drop';
 import { Notice } from '@/components/ui/notice';
 import { Status, type StatusTone } from '@/components/ui/status';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { useUpload } from '../data/artifact-upload.mutations';
+import {
+  useUpload,
+  useUploadedFileUse,
+} from '../data/artifact-upload.mutations';
 import type { FileReference, UploadPhase } from '../model/artifact-upload';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
@@ -100,7 +102,7 @@ function UploadSession({
   onClose,
 }: Pick<Props, 'scope' | 'description' | 'children' | 'onUse' | 'useLabel'> &
   Readonly<{ onClose: () => void }>) {
-  const attachment = useLatestRequest();
+  const attachment = useUploadedFileUse(onUse);
   const upload = useUpload(scope.apiClient, scope.workspaceId);
   const [attachmentError, setAttachmentError] = useState<string>();
   const phase = phases[upload.state.phase];
@@ -177,24 +179,15 @@ function UploadSession({
           onClick={() => {
             if (upload.state.reference === undefined) return;
             const reference = upload.state.reference;
-            const request = attachment.begin();
-            void Promise.resolve()
-              .then(() => {
-                if (!request.isCurrent()) return undefined;
-                return onUse(reference, request.signal);
-              })
-              .then((error) => {
-                if (!request.isCurrent()) return;
-                setAttachmentError(error);
-                if (error === undefined) close();
-              })
-              .catch(() => {
-                if (request.isCurrent())
-                  setAttachmentError(
-                    'The workflow input could not be checked. Try again; the file is already uploaded.',
-                  );
-              })
-              .finally(request.finish);
+            void attachment.run(reference).then((outcome) => {
+              if (outcome.kind === 'done') {
+                setAttachmentError(outcome.value);
+                if (outcome.value === undefined) close();
+              } else if (outcome.kind === 'failed')
+                setAttachmentError(
+                  'The workflow input could not be checked. Try again; the file is already uploaded.',
+                );
+            });
           }}
         >
           {useLabel}

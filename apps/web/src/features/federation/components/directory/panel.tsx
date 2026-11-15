@@ -1,4 +1,5 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFederationSettingsRefresh } from '../../data/federation-command.mutations';
+import { useQuery } from '@tanstack/react-query';
 import { QueryView } from '@/components/patterns/states/query-view';
 import type {
   AccessibleWorkspace,
@@ -7,7 +8,6 @@ import type {
 } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
 import { directoryQueryOptions } from '../../data/directory.queries';
-import { federationSettingsQueryOptions } from '../../data/federation-settings.queries';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { DirectoryCredentials } from './credentials';
 import { DirectoryMappingsEditor } from './mappings';
@@ -24,7 +24,7 @@ export function DirectoryPanel({
   workspace: AccessibleWorkspace;
 }>) {
   const query = useQuery(directoryQueryOptions(scope)),
-    cache = useQueryClient();
+    refreshSettings = useFederationSettingsRefresh(scope);
   const editableFor = (settings: DirectorySettings) =>
     settings.canManage && workspace.status === 'active' && !query.isError;
   return (
@@ -47,11 +47,7 @@ export function DirectoryPanel({
             scope={scope}
             settings={settings}
             editable={editableFor(settings)}
-            onRefresh={() =>
-              void cache.invalidateQueries({
-                queryKey: federationSettingsQueryOptions(scope).queryKey,
-              })
-            }
+            onRefresh={refreshSettings}
           />
           <DirectoryMappingsEditor
             scope={scope}

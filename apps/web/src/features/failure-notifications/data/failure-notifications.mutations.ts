@@ -1,5 +1,13 @@
 import { useConnectionResultScope } from '@/features/connections/public';
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
+import {
+  isUnconfirmedCommand,
+  newCommandKey,
+  type CommandKey,
+} from '@/lib/api/commands/command-retry';
+import { useResendExpired } from '@/lib/api/commands/use-resend-window';
 import type { ApiClient } from '@/lib/api/client';
 import {
   appendFailureNotificationDestinationVersion,
@@ -74,7 +82,7 @@ export function useAppendFailureNotificationDestinationVersionMutation(
   });
 }
 
-export function useSetFailureNotificationDestinationStatusMutation(
+function useSetFailureNotificationDestinationStatusMutation(
   scope: DestinationMutationScope,
 ) {
   const invalidate = useDestinationMutationInvalidation(scope);
@@ -115,4 +123,47 @@ export function useTestFailureNotificationDestinationMutation(
       ),
     retry: false,
   });
+}
+
+type DestinationStatus = FailureNotificationDestinationResponse['status'];
+type StatusCommand = Readonly<{ status: DestinationStatus }> & CommandKey;
+
+/**
+ * Turns a destination's alerts on or off. An unconfirmed change keeps its
+ * key so trying again can't flip twice; a new change gets a new key.
+ */
+export function useDestinationStatusChange(
+  scope: DestinationMutationScope,
+  destinationId: string,
+  onChanged: (destination: FailureNotificationDestinationResponse) => void,
+) {
+  const mutation = useSetFailureNotificationDestinationStatusMutation(scope);
+  // The unconfirmed command a retry resends.
+  const [held, setHeld] = useState<StatusCommand>();
+  const expired = useResendExpired(held);
+  async function send(command: StatusCommand) {
+    setHeld(undefined);
+    try {
+      onChanged(await mutation.mutateAsync({ destinationId, ...command }));
+    } catch (error) {
+      // The switch shows the failure and offers the exact retry.
+      if (isUnconfirmedCommand(error)) setHeld(command);
+    }
+  }
+  return {
+    pending: mutation.isPending,
+    /** The status asked for while saving. */
+    requested: mutation.isPending ? mutation.variables.status : undefined,
+    /** What was last asked for, to name the failure. */
+    lastRequested: mutation.variables?.status,
+    failure: mutation.isError ? mutation.error : undefined,
+    uncertain: held !== undefined && !expired,
+    expired,
+    change(status: DestinationStatus) {
+      void send({ status, ...newCommandKey() });
+    },
+    retry() {
+      if (held !== undefined) void send(held);
+    },
+  };
 }

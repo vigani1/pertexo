@@ -3,7 +3,6 @@ import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attem
 
 import {
   isUnconfirmedCommand,
-  newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import { useId, useState } from 'react';
@@ -277,10 +276,9 @@ function useAddConnectionForm({
     const request = toCreateRequest(name.trim(), credential.draft);
     const signature = JSON.stringify(request);
     if (attempt.current()?.signature !== signature) attempt.clear();
-    const command = await attempt.getOrCreate(() => ({
+    const command = await attempt.getOrCreateKeyed(() => ({
       signature,
       request,
-      ...newCommandKey(),
     }));
     if (command === undefined) return;
     let connection: ConnectionResponse;

@@ -9,7 +9,6 @@ import type {
 import { useNotifications } from '@/components/ui/use-notifications';
 import {
   isUnconfirmedCommand,
-  newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import { connectionCommandError } from '../model/connection-errors';
@@ -77,10 +76,9 @@ export function useConnectionTest(
     request: ConnectionTestRequest,
   ) {
     if (mutation.isPending) return;
-    const command = await attempt.getOrCreate(() => ({
+    const command = await attempt.getOrCreateKeyed(() => ({
       connectionId: connection.id,
       request,
-      ...newCommandKey(),
     }));
     if (command === undefined) return;
     setTargetName(connection.name);

@@ -1,3 +1,4 @@
+import { useLatestCommand } from '@/lib/api/commands/use-latest-command';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { isApiError } from '@/lib/api/error';
@@ -45,10 +46,12 @@ export function useDirectoryCommand(
  * Issues a directory credential. Each attempt is a new command: its secret
  * is shown once, so a replayed answer carries none and says so.
  */
-export function issueDirectoryCredential(
-  scope: FederationScope,
-  input: Readonly<{ name: string; expectedRevision: number }>,
-  signal: AbortSignal,
-) {
-  return createDirectoryCredential(scope, input, crypto.randomUUID(), signal);
+export function useDirectoryCredentialIssue(scope: FederationScope) {
+  return useLatestCommand(
+    (
+      input: Readonly<{ name: string; expectedRevision: number }>,
+      signal: AbortSignal,
+    ) => createDirectoryCredential(scope, input, crypto.randomUUID(), signal),
+    { exclusive: true },
+  );
 }

@@ -10,12 +10,11 @@ import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
 import {
-  beginOrganizationSignIn,
-  discoverDomainSignIn,
+  useDomainDiscovery,
+  useOrganizationSignInStart,
 } from '../data/sign-in-journeys';
 export function OrganizationSignInForm({
   apiClient,
@@ -27,7 +26,9 @@ export function OrganizationSignInForm({
   navigateToProvider: (url: string) => void;
 }>) {
   const id = useId(),
-    request = useLatestRequest();
+    discovery = useDomainDiscovery(apiClient),
+    starting = useOrganizationSignInStart(apiClient),
+    request = { pending: discovery.pending || starting.pending };
   const [failure, setFailure] = useState<string>(),
     [found, setFound] =
       useState<Readonly<{ domain: string; discovery: FederationDiscovery }>>();
@@ -48,52 +49,36 @@ export function OrganizationSignInForm({
     if (request.pending) return;
     const values = fields.validate();
     if (values === undefined) return;
-    const attempt = request.begin();
     setFailure(undefined);
-    try {
-      const domain = federationDomainNameSchema.parse(values.domain),
-        discovery = await discoverDomainSignIn(
-          apiClient,
-          domain,
-          attempt.signal,
-        );
-      if (attempt.isCurrent()) {
-        setFound({ domain, discovery });
-        if (discovery.providers.length === 0)
-          setFailure(
-            'Organization sign-in is not configured for this domain. Check the domain or contact your workspace owner.',
-          );
-      }
-    } catch (cause: unknown) {
-      if (attempt.isCurrent())
+    const domain = federationDomainNameSchema.parse(values.domain);
+    const outcome = await discovery.run(domain);
+    if (outcome.kind === 'done') {
+      setFound({ domain, discovery: outcome.value });
+      if (outcome.value.providers.length === 0)
         setFailure(
-          isApiError(cause) && cause.status === 429
-            ? 'Too many attempts. Wait a moment and try again.'
-            : 'Organization sign-in could not be checked. Try again in a moment.',
+          'Organization sign-in is not configured for this domain. Check the domain or contact your workspace owner.',
         );
-    } finally {
-      attempt.finish();
-    }
+    } else if (outcome.kind === 'failed')
+      setFailure(
+        isApiError(outcome.cause) && outcome.cause.status === 429
+          ? 'Too many attempts. Wait a moment and try again.'
+          : 'Organization sign-in could not be checked. Try again in a moment.',
+      );
   }
   async function start(providerId: string, protocol: FederationProtocol) {
     if (found === undefined || request.pending) return;
-    const attempt = request.begin();
     setFailure(undefined);
-    try {
-      const url = await beginOrganizationSignIn(
-        apiClient,
-        { providerId, domain: found.domain, protocol, returnTo },
-        attempt.signal,
+    const outcome = await starting.run({
+      providerId,
+      domain: found.domain,
+      protocol,
+      returnTo,
+    });
+    if (outcome.kind === 'done') navigateToProvider(outcome.value);
+    else if (outcome.kind === 'failed')
+      setFailure(
+        'Organization sign-in could not start. Try again, or contact your workspace owner.',
       );
-      if (attempt.isCurrent()) navigateToProvider(url);
-    } catch {
-      if (attempt.isCurrent()) {
-        setFailure(
-          'Organization sign-in could not start. Try again, or contact your workspace owner.',
-        );
-        attempt.finish();
-      }
-    }
   }
   return (
     <div className="mt-6 space-y-4">

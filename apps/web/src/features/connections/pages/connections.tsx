@@ -1,3 +1,4 @@
+import { useConnectionReadScope } from '../data/connection-read-scope';
 import {
   isWorkspaceBrowsable,
   roleLimitSentence,
@@ -14,9 +15,9 @@ import type {
   UserProfileResponse,
   ConnectionResponse,
 } from '@pertexo/contracts';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
-import { useEffect, type ComponentProps } from 'react';
+import type { ComponentProps } from 'react';
 import {
   PageHeader,
   PageHeaderActions,
@@ -39,10 +40,7 @@ import { AddConnectionSheet } from '../components/add-connection/sheet';
 import { ConnectionCollection } from '../components/connection-collection';
 import { ConnectionDetailSheet } from '../components/detail/sheet';
 import { ProviderSockets } from '../components/provider-sockets';
-import {
-  connectionKeys,
-  connectionsInfiniteQueryOptions,
-} from '../data/connections.queries';
+import { connectionsInfiniteQueryOptions } from '../data/connections.queries';
 import { isReadAccessLost } from '@/lib/api/read-denial';
 import type { ConnectionsSearch } from '../model/connections-search';
 import { sentenceStart } from '@/lib/format/sentence';
@@ -180,21 +178,12 @@ function ConnectionsSession({
   const canTest = workspace.capabilities.includes('connection:use');
   const canManage = workspace.capabilities.includes('connection:manage');
   const canReadUsage = workspace.capabilities.includes('workflow:read');
-  const cache = useQueryClient();
-  useEffect(() => {
-    const queryKey = connectionKeys.scope(user.id, workspace.id);
-    if (!canBrowse) {
-      void cache.cancelQueries({ queryKey }).then(() => {
-        cache.removeQueries({ queryKey });
-      });
-    } else if (!canReadUsage) {
-      const predicate = (query: { queryKey: readonly unknown[] }) =>
-        query.queryKey.at(-2) === 'usage';
-      void cache.cancelQueries({ queryKey, predicate }).then(() => {
-        cache.removeQueries({ queryKey, predicate });
-      });
-    }
-  }, [cache, canBrowse, canReadUsage, user.id, workspace.id]);
+  useConnectionReadScope({
+    userId: user.id,
+    workspaceId: workspace.id,
+    canBrowse,
+    canReadUsage,
+  });
   const connections = useInfiniteQuery({
     ...connectionsInfiniteQueryOptions(apiClient, user.id, workspace.id),
     enabled: canBrowse,

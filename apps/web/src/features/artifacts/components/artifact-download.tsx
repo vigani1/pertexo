@@ -7,9 +7,8 @@ import { describeReadError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import { formatByteLength } from '@/lib/format/bytes';
 import { formatClock } from '@/lib/format/time';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import {
-  prepareFileDownload,
+  useFileDownload,
   type PreparedDownload,
 } from '../data/artifact-download';
 import { artifactMetadataQueryOptions } from '../data/artifacts.queries';
@@ -55,40 +54,28 @@ function ArtifactDownloadScope({
     ),
     enabled: userId !== undefined,
   });
-  const [error, setError] = useState<string>();
+  const [written, setWritten] = useState(true);
   const [download, setDownload] = useState<PreparedDownload>();
-  const requests = useLatestRequest();
-  const { pending } = requests;
+  const preparation = useFileDownload(apiClient, workspaceId, artifactId);
+  const { pending } = preparation;
+  const error = downloadError(preparation.failure, written);
 
   async function prepare() {
     if (pending) return;
-    const request = requests.begin();
-    setError(undefined);
+    setWritten(true);
     setDownload(undefined);
-    try {
-      const outcome = await prepareFileDownload({
-        apiClient,
-        workspaceId,
-        artifactId,
-        known: metadata.data,
-        signal: request.signal,
-      });
-      if (outcome.kind === 'writing') {
-        setError('This file is still being written. Try again in a moment.');
-        return;
-      }
-      const prepared = outcome.download;
-      if (!request.isCurrent()) return;
-      setDownload(prepared);
-      // Opening straight away keeps it to one click; if the browser blocks
-      // the tab, the link below still works.
-      const opened = window.open(prepared.url, '_blank');
-      if (opened) opened.opener = null;
-    } catch (cause) {
-      if (request.isCurrent()) setError(describeReadError(cause, 'The file'));
-    } finally {
-      request.finish();
+    const outcome = await preparation.run(metadata.data);
+    if (outcome.kind !== 'done') return;
+    if (outcome.value.kind === 'writing') {
+      setWritten(false);
+      return;
     }
+    const prepared = outcome.value.download;
+    setDownload(prepared);
+    // Opening straight away keeps it to one click; if the browser blocks
+    // the tab, the link below still works.
+    const opened = window.open(prepared.url, '_blank');
+    if (opened) opened.opener = null;
   }
 
   const details = metadata.data;
@@ -155,4 +142,12 @@ function describeDetails(
       ? details.mediaType
       : describeFileKind(details.mediaType);
   return `${kind} · ${formatByteLength(details.byteLength)}`;
+}
+
+function downloadError(failure: unknown, written: boolean): string | undefined {
+  if (!written)
+    return 'This file is still being written. Try again in a moment.';
+  return failure === undefined
+    ? undefined
+    : describeReadError(failure, 'The file');
 }

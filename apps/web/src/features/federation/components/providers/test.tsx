@@ -10,9 +10,8 @@ import {
 } from '@/components/ui/select';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { beginProviderTest } from '../../data/sign-in-journeys';
+import { useProviderTest } from '../../data/sign-in-journeys';
 import type { FederationScope } from '../../data/federation-settings.api';
 type Organization = NonNullable<FederationSettings['organization']>;
 export function TestProvider({
@@ -29,7 +28,7 @@ export function TestProvider({
   navigateToProvider: (url: string) => void;
 }>) {
   const id = useId(),
-    requests = useLatestRequest();
+    requests = useProviderTest(scope);
   const [chosen, setChosen] = useState<string | null>(null),
     [error, setError] = useState<string>();
   const verified = organization.domains.filter(
@@ -38,22 +37,13 @@ export function TestProvider({
     domainId = chosen ?? verified[0]?.id;
   async function test() {
     if (requests.pending || domainId === undefined) return;
-    const attempt = requests.begin();
     setError(undefined);
-    try {
-      const url = await beginProviderTest(
-        scope,
-        provider,
-        domainId,
-        attempt.signal,
+    const outcome = await requests.run({ provider, domainId });
+    if (outcome.kind === 'done') navigateToProvider(outcome.value);
+    else if (outcome.kind === 'failed')
+      setError(
+        describeCommandError(outcome.cause, 'starting the provider test'),
       );
-      if (attempt.isCurrent()) navigateToProvider(url);
-    } catch (cause: unknown) {
-      if (attempt.isCurrent()) {
-        setError(describeCommandError(cause, 'starting the provider test'));
-        attempt.finish();
-      }
-    }
   }
   return (
     <div className="max-w-xl space-y-3">

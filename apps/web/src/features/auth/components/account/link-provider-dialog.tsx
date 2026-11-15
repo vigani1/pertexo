@@ -16,11 +16,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { isApiError, isSessionExpired } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { beginAccountLink } from '../../data/account-security.mutations';
+import { useAccountLinkStart } from '../../data/account-security.mutations';
 import { currentPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { SocialProviderGrid } from '../social/provider-grid';
 import {
   isSocialProvider,
@@ -142,12 +141,15 @@ export function LinkProviderDialog({
     },
     { password: '' },
   );
-  const requests = useLatestRequest();
-  const { pending } = requests;
-  const [failure, setFailure] = useState<string>();
+  const link = useAccountLinkStart(apiClient);
+  const { pending } = link;
+  const failure =
+    link.failure === undefined || target === undefined
+      ? undefined
+      : linkFailure(link.failure, providerName(target));
 
   function close() {
-    requests.abort();
+    link.abort();
     fields.reset();
     onClose();
   }
@@ -164,23 +166,10 @@ export function LinkProviderDialog({
             kind: 'social',
             provider: authenticationProviderSchema.parse(source.provider),
           };
-    const request = requests.begin();
-    setFailure(undefined);
-    try {
-      const url = await beginAccountLink(
-        apiClient,
-        { provider: target, existingMethod },
-        request.signal,
-      );
-      if (!request.isCurrent()) return;
-      fields.reset();
-      navigateToProvider(url);
-    } catch (error) {
-      if (request.isCurrent())
-        setFailure(linkFailure(error, providerName(target)));
-    } finally {
-      request.finish();
-    }
+    const outcome = await link.run({ provider: target, existingMethod });
+    if (outcome.kind !== 'done') return;
+    fields.reset();
+    navigateToProvider(outcome.value);
   }
 
   return (
@@ -219,7 +208,7 @@ export function LinkProviderDialog({
                 onChange={(next) => {
                   setSourceId(next);
                   fields.reset();
-                  setFailure(undefined);
+                  link.clearFailure();
                 }}
               />
             ) : null}

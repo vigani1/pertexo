@@ -1,12 +1,10 @@
 import type { AccountSecurityResponse } from '@pertexo/contracts';
-import { useQueryClient } from '@tanstack/react-query';
-import { useState, type SyntheticEvent } from 'react';
+import type { SyntheticEvent } from 'react';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { saveAccountPassword } from '../../data/account-security.mutations';
-import { accountSecurityKeys } from '../../data/account-security.queries';
+import { useAccountPasswordSave } from '../../data/account-security.mutations';
 import {
   confirmationProblem,
   DEFAULT_MINIMUM_PASSWORD_LENGTH,
@@ -15,7 +13,6 @@ import {
 } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { AccountCommandFailure, AccountSection } from './section';
 
 // The account endpoints accept new passwords of at least 12 characters.
@@ -47,40 +44,23 @@ export function AccountPasswordSection({
     },
     { current: '', password: '', confirmation: '' },
   );
-  const requests = useLatestRequest();
-  const queryClient = useQueryClient();
+  const save = useAccountPasswordSave(apiClient, userId);
   const notifications = useNotifications();
-  const { pending } = requests;
-  const [failure, setFailure] = useState<unknown>();
+  const { pending, failure } = save;
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending) return;
     const values = fields.validate();
     if (values === undefined) return;
-    const request = requests.begin();
     const { current, password } = values;
-    setFailure(undefined);
-    try {
-      await saveAccountPassword(
-        apiClient,
-        { hasPassword, current, password },
-        request.signal,
-      );
-      if (!request.isCurrent()) return;
-      fields.reset();
-      notifications.success({
-        title: hasPassword ? 'Password changed' : 'Password added',
-        description: 'Your other devices were signed out.',
-      });
-      await queryClient.invalidateQueries({
-        queryKey: accountSecurityKeys.scope(userId),
-      });
-    } catch (error) {
-      if (request.isCurrent()) setFailure(error);
-    } finally {
-      request.finish();
-    }
+    const outcome = await save.run({ hasPassword, current, password });
+    if (outcome.kind !== 'done') return;
+    fields.reset();
+    notifications.success({
+      title: hasPassword ? 'Password changed' : 'Password added',
+      description: 'Your other devices were signed out.',
+    });
   }
 
   return (

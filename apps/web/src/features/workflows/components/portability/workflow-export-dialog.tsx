@@ -6,13 +6,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ComponentProps,
-} from 'react';
+import type { ComponentProps } from 'react';
 import type {
   WorkflowExportRequest,
   AccessibleWorkspace,
@@ -22,20 +16,13 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
-import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
 import {
-  exportReviewedWorkflow,
-  readExportSource,
+  useWorkflowExportSession,
+  type ReviewedSource,
 } from '../../data/portability/workflow-export';
-import { downloadPortableWorkflow } from '../../model/portability';
-import { usePortabilityLifetime } from '../../data/portability/portability-lifetime';
 import { PortableGraphReview } from './portable-graph-review';
 import { PortabilityAccessDeniedDialog } from './access-denied-dialog';
-
-type ReviewedSource = Awaited<ReturnType<typeof readExportSource>> & {
-  digest: string;
-};
 
 type WorkflowExportDialogProps = Readonly<{
   apiClient: ApiClient;
@@ -80,7 +67,7 @@ function WorkflowExportSession({
   onClose,
   finalFocus,
 }: WorkflowExportDialogProps) {
-  const model = useExportSource({
+  const model = useWorkflowExportSession({
     apiClient,
     userId,
     workspace,
@@ -88,53 +75,9 @@ function WorkflowExportSession({
     source,
   });
   const { review, acknowledgedDigest, pending, error, denied } = model.state;
-  const { activeRequestRef, begin, accessFailure } = model.requests;
-  const {
-    setPending,
-    setError,
-    setAcknowledgedDigest,
-    setReview,
-    setReadAttempt,
-  } = model.controls;
-  async function download() {
-    const exportConfirmationBlocked =
-      review === undefined ||
-      acknowledgedDigest !== review.digest ||
-      activeRequestRef.current !== undefined ||
-      denied;
-    if (exportConfirmationBlocked) return;
-    const request = begin();
-    activeRequestRef.current = request;
-    setPending(true);
-    setError(undefined);
-    try {
-      const manifest = await exportReviewedWorkflow({
-        apiClient,
-        workspaceId: workspace.id,
-        workflowId: workflow.id,
-        source,
-        review,
-        signal: request.signal,
-      });
-      // The session may have ended while the export was in flight.
-      if (!request.current()) return;
-      downloadPortableWorkflow(manifest);
-      onClose();
-    } catch (failure) {
-      if (request.current() && !accessFailure(failure)) {
-        setAcknowledgedDigest(undefined);
-        setReview(undefined);
-        setError(
-          'The export was not downloaded. Read and review the saved source again before trying another export.',
-        );
-      }
-    } finally {
-      request.done();
-      if (activeRequestRef.current === request) {
-        activeRequestRef.current = undefined;
-        if (request.current()) setPending(false);
-      }
-    }
+  const { setAcknowledgedDigest, readAgain } = model.controls;
+  function download() {
+    void model.exportReviewed(onClose);
   }
   return (
     <Dialog
@@ -171,13 +114,7 @@ function WorkflowExportSession({
             Cancel
           </Button>
           {!denied && review === undefined && !pending ? (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPending(true);
-                setReadAttempt((attempt) => attempt + 1);
-              }}
-            >
+            <Button variant="outline" onClick={readAgain}>
               Read saved source
             </Button>
           ) : null}
@@ -192,7 +129,7 @@ function WorkflowExportSession({
               review === undefined ||
               acknowledgedDigest !== review.digest
             }
-            onClick={() => void download()}
+            onClick={download}
           >
             Download workflow JSON
           </ProgressButton>
@@ -202,98 +139,6 @@ function WorkflowExportSession({
   );
 }
 
-function useExportSource({
-  apiClient,
-  userId,
-  workspace,
-  workflow,
-  source,
-}: Pick<
-  WorkflowExportDialogProps,
-  'apiClient' | 'userId' | 'workspace' | 'workflow' | 'source'
->) {
-  const [review, setReview] = useState<ReviewedSource>();
-  const [acknowledgedDigest, setAcknowledgedDigest] = useState<string>();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string>();
-  const [readAttempt, setReadAttempt] = useState(0);
-  const activeRequestRef = useRef<
-    ReturnType<ReturnType<typeof usePortabilityLifetime>['begin']> | undefined
-  >(undefined);
-  const clear = useCallback(() => {
-    setReview(undefined);
-    setAcknowledgedDigest(undefined);
-    setError(undefined);
-    setPending(false);
-  }, []);
-  const { denied, begin, accessFailure } = usePortabilityLifetime(
-    userId,
-    workspace.id,
-    { clear },
-  );
-  const versionId = source.kind === 'version' ? source.versionId : undefined;
-  useEffect(() => {
-    if (denied) return;
-    const request = begin();
-    activeRequestRef.current = request;
-    async function readSource(): Promise<ReviewedSource> {
-      clear();
-      setPending(true);
-      request.signal.throwIfAborted();
-      const saved = await readExportSource({
-        apiClient,
-        workspaceId: workspace.id,
-        workflowId: workflow.id,
-        versionId,
-        signal: request.signal,
-      });
-      return saved;
-    }
-    void readSource()
-      .then(
-        (saved) => {
-          if (request.current()) setReview(saved);
-        },
-        (failure: unknown) => {
-          if (request.current() && !accessFailure(failure, 'read'))
-            setError(describeCommandError(failure, 'reading the saved source'));
-        },
-      )
-      .finally(() => {
-        request.done();
-        if (activeRequestRef.current === request) {
-          activeRequestRef.current = undefined;
-          if (request.current()) setPending(false);
-        }
-      });
-    return () => {
-      request.cancel();
-      activeRequestRef.current?.cancel();
-      activeRequestRef.current = undefined;
-    };
-  }, [
-    apiClient,
-    workspace.id,
-    workflow.id,
-    versionId,
-    denied,
-    begin,
-    accessFailure,
-    clear,
-    readAttempt,
-  ]);
-  return {
-    state: { review, acknowledgedDigest, pending, error, denied },
-    requests: { activeRequestRef, begin, accessFailure },
-    controls: {
-      setPending,
-      setError,
-      setAcknowledgedDigest,
-      setReview,
-      setReadAttempt,
-    },
-  };
-}
 function ExportSourceReview({
   review,
   acknowledgedDigest,

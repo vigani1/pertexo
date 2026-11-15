@@ -3,7 +3,6 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { encode } from 'uqr';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import {
@@ -17,7 +16,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { PasswordField } from '../../forms/password-field';
 import { currentPasswordProblem } from '../../forms/field-rules';
 import {
-  changeTwoFactor,
+  useTwoFactorChange,
   type TwoFactorAction,
 } from '../../data/two-factor.mutations';
 import { AccountCommandFailure } from '../account/section';
@@ -99,8 +98,8 @@ export function TwoFactorSetupDialog({
   onComplete,
 }: TwoFactorSetupProps) {
   const [stage, setStage] = useState<Stage>({ kind: 'password' });
-  const [failure, setFailure] = useState<unknown>();
-  const requests = useLatestRequest();
+  const change = useTwoFactorChange(apiClient, action);
+  const { failure } = change;
   const verification = useTwoFactorVerification({
     apiClient,
     method: 'totp',
@@ -110,7 +109,7 @@ export function TwoFactorSetupDialog({
         setStage({ kind: 'codes', codes: stage.codes });
     },
   });
-  const busy = requests.pending || verification.pending || closing;
+  const busy = change.pending || verification.pending || closing;
   const fields = useFieldValues(
     { password: currentPasswordProblem },
     { password: '' },
@@ -120,27 +119,16 @@ export function TwoFactorSetupDialog({
     if (busy) return;
     const values = fields.validate();
     if (values === undefined) return;
-    const request = requests.begin();
-    setFailure(undefined);
-    try {
-      const outcome = await changeTwoFactor(
-        apiClient,
-        action,
-        values.password,
-        request.signal,
-      );
-      if (!request.isCurrent()) return;
-      if (outcome.kind === 'enabled')
-        setStage({ kind: 'verify', uri: outcome.uri, codes: outcome.codes });
-      else if (outcome.kind === 'regenerated')
-        setStage({ kind: 'codes', codes: outcome.codes });
-      else onComplete();
-    } catch (error) {
-      if (request.isCurrent()) setFailure(error);
-    } finally {
-      if (request.isCurrent()) fields.reset();
-      request.finish();
-    }
+    const outcome = await change.run(values.password);
+    if (outcome.kind === 'superseded') return;
+    fields.reset();
+    if (outcome.kind === 'failed') return;
+    const result = outcome.value;
+    if (result.kind === 'enabled')
+      setStage({ kind: 'verify', uri: result.uri, codes: result.codes });
+    else if (result.kind === 'regenerated')
+      setStage({ kind: 'codes', codes: result.codes });
+    else onComplete();
   }
   return (
     <Dialog

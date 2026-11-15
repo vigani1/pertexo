@@ -1,5 +1,6 @@
+import { useTokenListRefresh } from '../data/api-tokens.mutations';
 import { useState } from 'react';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import type { AccessibleWorkspace, ApiTokenMetadata } from '@pertexo/contracts';
 import {
   PageHeader,
@@ -12,10 +13,7 @@ import { Disclosure } from '@/components/ui/disclosure';
 import { LoadingOrb } from '@/components/ui/loading-orb';
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  apiTokenKeys,
-  apiTokensQueryOptions,
-} from '../data/api-tokens.queries';
+import { apiTokensQueryOptions } from '../data/api-tokens.queries';
 import { CreateTokenDialog } from '../components/create-dialog';
 import { RevokeTokenDialog } from '../components/revoke-dialog';
 import { TokenResults } from '../components/token-results';
@@ -29,7 +27,7 @@ export function ApiTokensPage({
   userId: string;
   workspace: AccessibleWorkspace;
 }>) {
-  const queryClient = useQueryClient();
+  const refreshList = useTokenListRefresh(userId, workspace.id);
   const query = useInfiniteQuery(
     apiTokensQueryOptions(apiClient, userId, workspace.id),
   );
@@ -41,11 +39,7 @@ export function ApiTokensPage({
     first.enabled &&
     first.availableScopes.length > 0 &&
     workspace.status === 'active';
-  const refresh = () => {
-    void queryClient.invalidateQueries({
-      queryKey: apiTokenKeys.list(userId, workspace.id),
-    });
-  };
+  const refresh = refreshList;
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <PageHeader>
