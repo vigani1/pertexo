@@ -1,7 +1,5 @@
-import {
-  isWorkspaceBrowsable,
-  holdsCapability,
-} from '@/features/workspaces/workspaces-routing.public';
+import { holdsCapability } from '@/features/workspaces/workspaces-routing.public';
+import { isWorkspaceBrowsable } from '@/features/workspaces/public';
 import {
   usePromotionApply,
   usePromotionReview,

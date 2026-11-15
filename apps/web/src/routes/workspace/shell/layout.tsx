@@ -16,7 +16,7 @@ import {
 import { useInboxLive } from '@/features/inbox/public';
 import { inboxSummaryQueryOptions } from '@/features/inbox/inbox-queries.public';
 import { liveRunCountQueryOptions } from '@/features/workflow-runs/workflow-runs-queries.public';
-import { rememberLastWorkspace } from '@/features/workspaces/workspaces-routing.public';
+import { rememberLastWorkspace } from '@/features/workspaces/public';
 import { WorkspaceShell } from '@/features/workspaces/pages/workspace-shell';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import { useShellCrumbs, type Crumb } from '../../root/breadcrumbs';

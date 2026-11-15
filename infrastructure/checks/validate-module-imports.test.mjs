@@ -1248,11 +1248,82 @@ test('web endpoint modules are imported only by data, loader entries and lib dat
         "export { exportRows } from './data/tables.api';",
       'apps/web/src/features/tables/components/export.tsx':
         "import type { TableScope } from '../data/tables.api';\nimport { start } from '../data/tables-export';\nexport const run = (scope: TableScope) => [scope, start];",
-      'apps/web/src/lib/sharing/principals.api.ts':
+      'apps/web/src/lib/resource-sharing/principals.api.ts':
         'export const readPrincipals = () => undefined;',
-      'apps/web/src/lib/sharing/principals.queries.ts':
+      'apps/web/src/lib/resource-sharing/principals.queries.ts':
         "import { readPrincipals } from './principals.api';\nexport const principals = readPrincipals;",
     }),
     [],
+  );
+});
+
+test('a routing entry holds only what the shell imports, and never a page', () => {
+  const feature = {
+    'apps/web/src/features/auth/auth-routing.public.ts': [
+      "export { rule } from './model/rule';",
+      "export { spare } from './model/rule';",
+    ].join('\n'),
+    'apps/web/src/features/auth/auth-queries.public.ts':
+      "export { readUser } from './data/user';",
+    'apps/web/src/features/auth/data/user.ts':
+      "import { SignInPage } from '../pages/sign-in';\nexport const readUser = SignInPage;",
+    'apps/web/src/features/auth/pages/sign-in.tsx':
+      'export const SignInPage = () => null;',
+    'apps/web/src/features/auth/model/rule.ts':
+      'export const rule = 1;\nexport const spare = 2;',
+    'apps/web/src/main.tsx':
+      "import { tree } from './routes/tree';\nvoid tree;",
+    'apps/web/src/routes/tree.ts': [
+      "import { rule } from '@/features/auth/auth-routing.public';",
+      "import { readUser } from '@/features/auth/auth-queries.public';",
+      'export const tree = [rule, readUser];',
+    ].join('\n'),
+  };
+  const findings = validateModuleImports(feature).join('\n');
+  assert.match(
+    findings,
+    /auth-routing\.public\.ts: the always-loaded shell doesn't import spare/u,
+  );
+  assert.doesNotMatch(findings, /doesn't import rule/u);
+  assert.match(
+    findings,
+    /auth-queries\.public\.ts: the always-loaded shell reaches the page apps\/web\/src\/features\/auth\/pages\/sign-in\.tsx through it/u,
+  );
+  assert.match(
+    validateModuleImports({
+      'apps/web/src/features/auth/auth-routing.public.ts':
+        "export { SignOutPage } from './pages/sign-out';",
+      'apps/web/src/features/auth/pages/sign-out.tsx':
+        'export const SignOutPage = () => null;',
+    }).join('\n'),
+    /\.\/pages\/sign-out does not belong in a routing entry/u,
+  );
+});
+
+test('the web data guard sees namespace and dynamic imports, and only the sharing editor in lib', () => {
+  const findings = validateModuleImports({
+    'apps/web/src/features/tables/data/tables.api.ts':
+      'export const exportRows = () => undefined;',
+    'apps/web/src/features/tables/components/export.tsx': [
+      "import * as RQ from '@tanstack/react-query';",
+      "export const later = () => import('../data/tables.api');",
+      'export const run = RQ;',
+    ].join('\n'),
+    'apps/web/src/lib/reports/report.api.ts':
+      'export const readReport = () => undefined;',
+    'apps/web/src/lib/reports/report.queries.ts':
+      "import { readReport } from './report.api';\nexport const report = readReport;",
+  }).join('\n');
+  assert.match(
+    findings,
+    /export\.tsx: a namespace import of @tanstack\/react-query reaches its command builders/u,
+  );
+  assert.match(
+    findings,
+    /export\.tsx: import\('\.\.\/data\/tables\.api'\) calls the server/u,
+  );
+  assert.match(
+    findings,
+    /lib\/reports\/report\.queries\.ts: \.\/report\.api calls the server/u,
   );
 });

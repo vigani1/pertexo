@@ -1,4 +1,4 @@
-import { isWorkspaceBrowsable } from '@/features/workspaces/workspaces-routing.public';
+import { isWorkspaceBrowsable } from '@/features/workspaces/public';
 import { useState } from 'react';
 import {
   WorkflowExportDialog,

@@ -1,1 +1,1 @@
-export { parsePromotionSearch, promotionSearch } from './model/search';
+export { parsePromotionSearch } from './model/search';

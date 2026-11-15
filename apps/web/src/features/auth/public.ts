@@ -6,3 +6,7 @@ export {
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
 } from './data/session-identity';
+export {
+  observeSessionChanges,
+  reportSessionChange,
+} from './model/session/sync';

@@ -1,8 +1,6 @@
 import { expect, it } from 'vitest';
-import {
-  parsePromotionSearch,
-  promotionSearch,
-} from '@/features/workflow-promotions/workflow-promotions-routing.public';
+import { parsePromotionSearch } from '@/features/workflow-promotions/workflow-promotions-routing.public';
+import { promotionSearch } from '@/features/workflow-promotions/public';
 const workflowId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   versionId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 it('retains exact version selections and drops malformed, repeated and unrelated URL state', () => {

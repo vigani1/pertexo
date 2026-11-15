@@ -467,7 +467,7 @@ export function validateModuleImports(sources) {
   };
   for (const file of graph.keys()) visit(file, []);
   errors.push(...startupCoreViolations(graph, coreImporters));
-  errors.push(...shellEntryViolations(graph));
+  errors.push(...shellEntryViolations(graph, sources));
   return errors;
 }
 
