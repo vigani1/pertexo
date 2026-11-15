@@ -16,3 +16,26 @@ export function publishedTriggerKinds(
     ? undefined
     : workflowTriggerKinds(published.graph);
 }
+
+/**
+ * The published version starts nothing: no webhook, schedule, form or
+ * failure trigger. Unknown counts never claim that, so only someone whose
+ * reads loaded can be told to add a first trigger.
+ */
+export function hasNoPublishedTriggers({
+  editable,
+  webhookCount,
+  scheduleCount,
+  form,
+  onFailure,
+}: Readonly<{
+  editable: boolean;
+  webhookCount: number | undefined;
+  scheduleCount: number | undefined;
+  form: boolean;
+  onFailure: boolean;
+}>): boolean {
+  return (
+    editable && webhookCount === 0 && scheduleCount === 0 && !form && !onFailure
+  );
+}

@@ -1,7 +1,4 @@
-import type {
-  NodeDefinitionCatalogItem,
-  WorkflowGraphContract,
-} from '@pertexo/contracts';
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   WebhookTestListener,
   NodeTestPanel,
@@ -9,10 +6,6 @@ import {
 } from '@/features/workflow-testing/workflow-testing-views.public';
 import { useNavigate } from '@tanstack/react-router';
 
-import {
-  stepSampleIdentity,
-  WORKFLOW_FAILURE_PORT,
-} from '@pertexo/workflow-model';
 import { FailureSetup } from '../failure-routing/setup';
 import { type ReactNode, useMemo, useState, type Ref } from 'react';
 import type { Connection } from '@xyflow/react';
@@ -28,9 +21,15 @@ import {
   useEditorStoreApi,
   useEditorSession,
 } from '../../model/state/context';
-import { stepTitle } from '../../model/graph/step-title';
 import { linkWorkflowNodes } from '../../model/graph/workflow-graph-commands';
-import { findStep, levelOf } from '../../model/graph/scopes';
+import { findStep } from '../../model/graph/scopes';
+import {
+  listensForTestRequests,
+  previewUnavailable,
+  priorTestFor,
+  sampleBinding,
+  type PassedTest,
+} from '../../model/inspector/step-testing';
 import { inlineOutputBytes } from '../../model/step-card';
 import type { useEditorActions } from '../../hooks/use-editor-actions';
 import { InspectorPanel } from './panel';
@@ -44,8 +43,6 @@ import {
   type RecordedTest,
   type StepTestOutputs,
 } from '../../hooks/use-last-test';
-
-type PassedTest = Readonly<{ previewId: string; nodeId: string }>;
 
 /**
  * The inspector lens wired to the editor: step commands go through the
@@ -189,8 +186,7 @@ export function EditorInspector({
           scope={{ apiClient, userId, workspaceId, workflowId }}
         >
           {renderWorkflowTest?.(nodeId)}
-          {editable &&
-          findStep(graph, nodeId)?.definition.key === 'core.webhook' ? (
+          {editable && listensForTestRequests(findStep(graph, nodeId)) ? (
             <WebhookTestListener
               scope={{ apiClient, userId, workspaceId, workflowId }}
               nodeId={nodeId}
@@ -224,44 +220,6 @@ export function EditorInspector({
       </AddConnectionContext>
     </SchedulePreviewScope>
   );
-}
-
-/** A passed test of a step wired straight into this one can feed its test. */
-function priorTestFor(
-  graph: WorkflowGraphContract,
-  passed: PassedTest | undefined,
-  nodeId: string,
-): Readonly<{ id: string; stepName: string }> | undefined {
-  if (passed === undefined) return undefined;
-  const wired = levelOf(graph, nodeId)?.edges.some(
-    (edge) =>
-      edge.source.nodeId === passed.nodeId &&
-      edge.target.nodeId === nodeId &&
-      edge.source.port !== WORKFLOW_FAILURE_PORT,
-  );
-  const source = findStep(graph, passed.nodeId);
-  return (wired ?? false) && source !== undefined
-    ? { id: passed.previewId, stepName: stepTitle(source) }
-    : undefined;
-}
-
-function sampleBinding(node: ReturnType<typeof findStep>): string | undefined {
-  return node === undefined ? undefined : stepSampleIdentity(node);
-}
-function previewUnavailable(
-  node: ReturnType<typeof findStep>,
-): string | undefined {
-  if (node?.definition.key === 'core.approval')
-    return 'Run the workflow to create an approval, then decide it in Approvals. A real preview cannot pause for a human decision.';
-  if (node?.definition.key === 'core.call')
-    return 'Run this workflow to test the Call with its child. A real single-step preview cannot return a child result.';
-  if (
-    Object.values(node?.inputMappings ?? {}).some(
-      (source) => source.kind === 'node_failure',
-    )
-  )
-    return 'This handler reads an actual failure. Run the workflow to verify its failure path; a real single-step preview cannot supply that evidence.';
-  return undefined;
 }
 
 function inspectorActions({

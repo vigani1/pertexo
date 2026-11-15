@@ -43,6 +43,7 @@ import {
   useMarkThreadReadMutation,
   type InboxScope,
 } from '../data/inbox.mutations';
+import { markAllReadCut } from '../model/mark-all-read';
 import {
   inboxSummaryQueryOptions,
   inboxThreadsInfiniteQueryOptions,
@@ -226,19 +227,17 @@ export function InboxPage({
       />
     );
 
-  // Mark-all reads what this list showed; later failures stay unread.
-  const cut = threads.data?.pages[0]?.revision;
-  const unreadCount = summary.data?.unreadCount;
+  const cut = markAllReadCut({
+    workspaceStatus: workspace.status,
+    listedRevision: threads.data?.pages[0]?.revision,
+    unreadCount: summary.data?.unreadCount,
+  });
 
   return (
     <div className="flex flex-col gap-8">
       <InboxHeader
         filter={filter}
-        canMarkAll={
-          workspace.status === 'active' &&
-          cut !== undefined &&
-          (unreadCount ?? 0) > 0
-        }
+        canMarkAll={cut !== undefined}
         marking={markAll.isPending}
         views={views}
         kindFilter={
