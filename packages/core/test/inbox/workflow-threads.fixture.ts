@@ -1,6 +1,6 @@
 import { testStackSetting } from '../../../../infrastructure/testing/test-stack.mjs';
 import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
-import { recordInboxFailureDay } from '../../src/inbox/failure-days.repository.js';
+import { recordInboxFailureDay } from '../../src/runs/advance/persist/inbox-failure-day.repository.js';
 import { createTestUser } from '../support/user.js';
 import type { Role } from '@pertexo/policy';
 import { randomUUID } from 'node:crypto';
@@ -15,7 +15,7 @@ import {
 } from '@pertexo/database/testing';
 import { createIdentityWorkspaceStore } from '../../src/tenant-access/identity-workspace.store.js';
 import { createWorkspaceInboxFoldStore } from '../../src/inbox/folding/workspace-inbox-fold.store.js';
-import { persistWorkspaceInboxEvent } from '../../src/inbox/folding/events.repository.js';
+import { persistWorkspaceInboxEvent } from '../../src/runs/advance/persist/inbox-event.repository.js';
 import { createWorkspaceInboxStore } from '../../src/inbox/threads/workspace-inbox.store.js';
 
 type Kind = 'failed' | 'timed_out' | 'outcome_unknown';

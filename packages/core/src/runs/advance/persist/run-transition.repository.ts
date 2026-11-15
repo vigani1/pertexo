@@ -1,5 +1,5 @@
-import { recordInboxFailureDay } from '../../../inbox/failure-days.repository.js';
-import { WORKSPACE_INBOX_FAILURE_KINDS } from '../../../inbox/threads/workspace-inbox-thread.js';
+import { recordInboxFailureDay } from './inbox-failure-day.repository.js';
+import { WORKSPACE_INBOX_FAILURE_KINDS } from '../../statuses.js';
 import { assertRunStartDeadline } from '../queued-run-admission.repository.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { isTerminalRunEvent, TERMINAL_RUN_STATUSES } from '../../statuses.js';
@@ -24,7 +24,7 @@ import { canonicalTimestamp } from '../load/fact-admission.js';
 import { scheduleRunInputSchema } from '../../../triggers/schedules/schedule-run-input.schemas.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { persistFailureNotificationIntent } from './failure-notification.repository.js';
-import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
+import { persistWorkspaceInboxEvent } from './inbox-event.repository.js';
 import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcomes.repository.js';
 import { persistCallCompletion } from '../../calls/persist.repository.js';
 import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';

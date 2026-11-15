@@ -2,7 +2,7 @@ import { testStackSetting } from '../../../../../infrastructure/testing/test-sta
 import { expect, it } from 'vitest';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { databaseSchema } from '@pertexo/database/schema';
-import { recordInboxFailureDay } from '../../../src/inbox/failure-days.repository.js';
+import { recordInboxFailureDay } from '../../../src/runs/advance/persist/inbox-failure-day.repository.js';
 import { readFailureDays } from '../../../src/inbox/threads/failure-days.repository.js';
 import { purgeRunLeaves } from '../../../src/lifecycle/purge/links.repository.js';
 import {

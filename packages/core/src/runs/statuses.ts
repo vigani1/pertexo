@@ -32,3 +32,12 @@ export const UNSUCCESSFUL_STATUSES = [
   RUN_STATUS.timedOut,
   RUN_STATUS.outcomeUnknown,
 ] as const;
+
+/** The terminal run statuses that raise a workspace inbox notice (ADR 055). */
+export const WORKSPACE_INBOX_FAILURE_KINDS = [
+  'failed',
+  'timed_out',
+  'outcome_unknown',
+] as const;
+export type WorkspaceInboxFailureKind =
+  (typeof WORKSPACE_INBOX_FAILURE_KINDS)[number];
