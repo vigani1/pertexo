@@ -7,10 +7,11 @@ import {
   DataTableError,
   dataTableValuesSchema,
   escapeCsvValue,
+  validateDataTableQuery,
 } from '@pertexo/node-sdk';
 import type { PoolClient } from 'pg';
 import type { ExportTableInput } from './data-table-commands.types.js';
-import { requireTable } from './table-lookups.repository.js';
+import { requireTable } from './require-table.js';
 import { queryClause, readExportBatch } from './rows/find.repository.js';
 
 type ExportRead = <T>(work: (client: PoolClient) => Promise<T>) => Promise<T>;
@@ -42,7 +43,9 @@ function exportTableCsv(
   }>,
 ): AsyncGenerator<string> {
   // Reject stale filters before the consumer starts a download.
-  const where = queryClause(table, { ...query, limit: 1, offset: 0 });
+  const exportQuery = { ...query, limit: 1, offset: 0 };
+  validateDataTableQuery(table.columns, exportQuery);
+  const where = queryClause(table, exportQuery);
   const columns = JSON.stringify(table.columns);
   return encodeRows();
 

@@ -1,6 +1,6 @@
 import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { requireRunTableReferences } from '../../../data-tables/columns/references.repository.js';
+import { requireRunTableReferences } from '../../../data-tables/columns/table-references.js';
 import { requireWorkflowConcurrency } from './require-concurrency.js';
 import { variableRevisionForAcceptance } from './choose-variable-revision.js';
 import { requireFormAdmission } from './require-form-admission.js';

@@ -1,25 +1,10 @@
-import {
-  DATA_TABLE_LIMITS,
-  DataTableError,
-  formatByteSize,
-  dataTableValuesSchema,
-  isDataTableResultBounded,
-  validateDataTableQuery,
-  type DataTableQuery,
-  type DataTableResult,
-  type DataTableRow,
-} from '@pertexo/node-sdk';
+import type { DataTableQuery } from '@pertexo/node-sdk';
 import { and, eq, gt, lte, sql, type SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { decodeStoredValue } from '../../shared/stored-values.js';
 import { workspaceDataTableRows as rows } from '@pertexo/database/schema';
-import type {
-  DataTableDefinition,
-  FindRowsInput,
-} from '../data-table-commands.types.js';
-import { requireTable } from '../table-lookups.repository.js';
+import type { DataTableDefinition } from '../data-table-commands.types.js';
 
 export type StoredRow = Pick<
   typeof rows.$inferSelect,
@@ -31,24 +16,8 @@ export const rowFields = {
   values: rows.values,
 };
 
-/** Text values retain their stored format; output follows the table's column order. */
-function projectRow(table: DataTableDefinition, row: StoredRow): DataTableRow {
-  const stored = decodeStoredValue(() =>
-    dataTableValuesSchema.parse(JSON.parse(row.values)),
-  );
-  return {
-    id: row.id,
-    revision: row.revision,
-    values: Object.fromEntries(
-      table.columns
-        .filter(({ name }) => Object.hasOwn(stored, name))
-        .map(({ name }) => [name, stored[name] ?? null]),
-    ),
-  };
-}
-
+/** The query's filters as SQL; the caller has validated them against the columns. */
 export function queryClause(table: DataTableDefinition, query: DataTableQuery) {
-  validateDataTableQuery(table.columns, query);
   return and(
     ...query.filters.map((filter) => {
       const cell = sql`(${rows.values}::jsonb -> ${filter.column}::text)`;
@@ -70,19 +39,6 @@ export function queryClause(table: DataTableDefinition, query: DataTableQuery) {
   );
 }
 
-export function boundedResult(
-  rows: readonly DataTableRow[],
-  affected: number,
-  { hasMore = false }: Readonly<{ hasMore?: boolean | undefined }> = {},
-): DataTableResult {
-  const result = { rows: [...rows], affected, hasMore };
-  if (!isDataTableResultBounded(result))
-    throw new DataTableError(
-      'result_too_large',
-      `The result exceeds ${formatByteSize(DATA_TABLE_LIMITS.resultBytes)} or the execution value bounds. Narrow the filter or lower the row limit.`,
-    );
-  return result;
-}
 function rowOrderClause(query: DataTableQuery) {
   if (query.sort === undefined) return [rows.id];
   const direction = query.sort.direction === 'desc' ? sql`desc` : sql`asc`;
@@ -92,13 +48,14 @@ function rowOrderClause(query: DataTableQuery) {
   ];
 }
 
-export async function findRows(
+/** One page of rows in query order, one past the limit so a next page shows. */
+export function readRowPage(
   client: PoolClient,
   workspaceId: string,
   table: DataTableDefinition,
   query: DataTableQuery,
-): Promise<DataTableResult> {
-  const found = await drizzle(client)
+): Promise<StoredRow[]> {
+  return drizzle(client)
     .select(rowFields)
     .from(rows)
     .where(
@@ -112,20 +69,6 @@ export async function findRows(
     .limit(query.limit + 1)
     .offset(query.offset)
     .catch(rethrowQueryFailure);
-  return boundedResult(
-    found.slice(0, query.limit).map((row) => projectRow(table, row)),
-    Math.min(found.length, query.limit),
-    { hasMore: found.length > query.limit },
-  );
-}
-
-export async function findTableRows(client: PoolClient, input: FindRowsInput) {
-  return findRows(
-    client,
-    input.workspaceId,
-    await requireTable(client, input.workspaceId, { id: input.tableId }),
-    input.query,
-  );
 }
 
 // An export reads at most this many rows, and this many value bytes, per checkout.

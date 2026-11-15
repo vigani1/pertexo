@@ -24,16 +24,12 @@ import type {
   RemoveTableInput,
   WriteRowsInput,
 } from './data-table-commands.types.js';
-import { editSchema } from './columns/edit.repository.js';
+import { editSchema } from './columns/edit-schema.js';
 import { exportTable } from './export-csv.js';
 import { listTables } from './table-lookups.repository.js';
-import {
-  configureTables,
-  createTable,
-  removeTable,
-} from './definitions.repository.js';
+import { configureTables, createTable, removeTable } from './table-commands.js';
 import { translateTableConstraint } from './data-table.errors.js';
-import { findTableRows } from './rows/find.repository.js';
+import { findTableRows } from './rows/find-rows.js';
 import { importTableRows, writeTableRows } from './rows/write.js';
 
 export type DataTablesStore = ReturnType<typeof createDataTablesStore>;
