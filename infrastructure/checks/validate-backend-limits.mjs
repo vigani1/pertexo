@@ -55,6 +55,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/core/src/governance',
   'packages/core/src/identity',
   'packages/core/src/inbox',
+  'packages/core/src/lifecycle',
   'packages/core/src/notifications',
   'packages/core/src/operator',
   'packages/core/src/outbox',

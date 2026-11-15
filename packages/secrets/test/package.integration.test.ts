@@ -77,6 +77,7 @@ describe('@pertexo/secrets/server as a built package', () => {
       'NodeHttpTransport',
       'SECURE_HTTP_ERROR_CODE',
       'SECURITY_NOTICE_VALIDITY_MILLIS',
+      'SYSTEM_MAIL_DELIVERY_BUDGET',
       'SYSTEM_MAIL_FAILURE_GUIDANCE',
       'SecureHttpClient',
       'SecureHttpError',

@@ -4,6 +4,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
+/** One page of stored input payloads: at most this many, and this many bytes. */
+const INPUT_PAYLOAD_PAGE = Object.freeze({ rows: 100, bytes: 1_048_576 });
+
 export async function purgeInputPayloads(
   client: PoolClient,
   workspaceId: string,
@@ -26,7 +29,7 @@ export async function purgeInputPayloads(
         asc(workflowInputCasePayloads.caseId),
         asc(workflowInputCasePayloads.revision),
       )
-      .limit(Math.min(pageSize, 100)),
+      .limit(Math.min(pageSize, INPUT_PAYLOAD_PAGE.rows)),
   );
   return (
     await db
@@ -43,7 +46,7 @@ export async function purgeInputPayloads(
                 and(
                   eq(page.caseId, workflowInputCasePayloads.caseId),
                   eq(page.revision, workflowInputCasePayloads.revision),
-                  lte(page.bytes, 1_048_576),
+                  lte(page.bytes, INPUT_PAYLOAD_PAGE.bytes),
                 ),
               ),
           ),

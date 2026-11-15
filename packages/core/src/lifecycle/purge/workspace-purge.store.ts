@@ -1,8 +1,4 @@
 import { withArtifactErasure } from '../artifacts/backup-deletion-lock.repository.js';
-import { and, asc, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { workspaceMemberships, workspaces } from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { z } from 'zod';
 import { claimPurgeWorkspace } from './directory.repository.js';
 
@@ -15,9 +11,17 @@ import type {
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import {
   inRetentionTransaction,
-  scopeToWorkspace,
   withDeadline,
 } from '../retention/transaction.js';
+import { scopeToWorkspace } from '../retention/transaction-settings.repository.js';
+import {
+  deleteWorkspaceMemberships,
+  hasWorkspaceRows,
+  leaveWorkspaceTombstone,
+  listWorkspaceTables,
+  lockPurgingWorkspace,
+  markWorkspacePurging,
+} from './workspace-state.repository.js';
 import type {
   WorkspacePurgeObjectStore,
   WorkspacePurgeProcessResult,
@@ -26,42 +30,7 @@ import {
   optionsSchema,
   type WorkspacePurgeOptions,
 } from './workspace-purge-options.schemas.js';
-import { PURGE_PRESERVED_TABLES, PURGE_STEPS } from './steps.js';
-
-/** Fails if a workspace table still holds the purged workspace's rows. */
-async function assertNothingLeft(
-  client: PoolClient,
-  workspaceId: string,
-): Promise<void> {
-  const db = drizzle(client);
-  const tables = await db
-    .selectDistinct({ name: sql<string>`table_class.relname`.as('name') })
-    .from(sql`pg_catalog.pg_attribute attribute`)
-    .innerJoin(
-      sql`pg_catalog.pg_class table_class`,
-      sql`table_class.oid=attribute.attrelid`,
-    )
-    .innerJoin(
-      sql`pg_catalog.pg_namespace namespace`,
-      sql`namespace.oid=table_class.relnamespace`,
-    )
-    .where(
-      sql`namespace.nspname='app' and table_class.relkind='r' and attribute.attname='workspace_id' and not attribute.attisdropped and not table_class.relname=any(${sql.param(PURGE_PRESERVED_TABLES)}::text[])`,
-    )
-    .orderBy(asc(sql`table_class.relname`))
-    .catch(rethrowQueryFailure);
-  for (const { name } of tables) {
-    // Discover every live relation so an unlisted table can never pass completion.
-    const left = await db
-      .select({ one: sql`1` })
-      .from(sql`${sql.identifier('app')}.${sql.identifier(name)}`)
-      .where(sql`${sql.identifier('workspace_id')}=${workspaceId}::uuid`)
-      .limit(1)
-      .catch(rethrowQueryFailure);
-    if (left.length !== 0)
-      throw new Error(`Workspace purge left rows in ${name}`);
-  }
-}
+import { PURGE_STEPS } from './steps.js';
 
 export type WorkspacePurgeCoordinator = ReturnType<
   typeof createWorkspacePurgeCoordinator
@@ -124,11 +93,7 @@ async function purgeRows(
     if (candidate === undefined) return { status: 'idle' as const };
     const workspace = candidate;
     if (workspace.status === 'pending_deletion') {
-      await drizzle(client)
-        .update(workspaces)
-        .set({ status: 'purging', updatedAt: sql`clock_timestamp()` })
-        .where(eq(workspaces.id, workspace.id))
-        .catch(rethrowQueryFailure);
+      await markWorkspacePurging(client, workspace.id);
       return { status: 'started' as const, workspaceId: workspace.id };
     }
     await scopeToWorkspace(client, workspace.id);
@@ -150,36 +115,24 @@ async function finishPurge(
   signal: AbortSignal | undefined,
 ): Promise<WorkspacePurgeProcessResult> {
   return inRetentionTransaction(pool, options, signal, async (client) => {
-    const locked = await drizzle(client)
-      .select({ id: workspaces.id })
-      .from(workspaces)
-      .where(
-        and(eq(workspaces.id, workspaceId), eq(workspaces.status, 'purging')),
-      )
-      .for('update', { skipLocked: true })
-      .catch(rethrowQueryFailure);
     // Another worker owns it, or has finished it.
-    if (locked.length !== 1) return { status: 'idle' as const };
+    if (!(await lockPurgingWorkspace(client, workspaceId)))
+      return { status: 'idle' as const };
     await scopeToWorkspace(client, workspaceId);
-    // Discovery must survive object erasure and disappear with the tombstone.
-    await drizzle(client)
-      .delete(workspaceMemberships)
-      .where(eq(workspaceMemberships.workspaceId, workspaceId))
-      .catch(rethrowQueryFailure);
+    await deleteWorkspaceMemberships(client, workspaceId);
     await assertNothingLeft(client, workspaceId);
-    await drizzle(client)
-      .update(workspaces)
-      .set({
-        status: 'deleted',
-        name: 'Deleted workspace',
-        slug: sql`'deleted-'||${workspaces.id}::text`,
-        createdBy: null,
-        deletionRequestedBy: null,
-        deletionReason: 'purged',
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(eq(workspaces.id, workspaceId))
-      .catch(rethrowQueryFailure);
+    await leaveWorkspaceTombstone(client, workspaceId);
     return { status: 'completed' as const, workspaceId };
   });
+}
+
+/** Fails if a workspace table still holds the purged workspace's rows. */
+async function assertNothingLeft(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<void> {
+  // Discover every live relation so an unlisted table can never pass completion.
+  for (const name of await listWorkspaceTables(client))
+    if (await hasWorkspaceRows(client, name, workspaceId))
+      throw new Error(`Workspace purge left rows in ${name}`);
 }

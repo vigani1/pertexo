@@ -1,8 +1,11 @@
 import { workflowPublicationRequests } from '@pertexo/database/schema';
 import { sql } from 'drizzle-orm';
 import { deletionRule } from '../../../shared/retention-deletion.repository.js';
+import { DAY_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
-const reviewExpired = sql`coalesce(${workflowPublicationRequests.decidedAt},${workflowPublicationRequests.expiresAt})<=clock_timestamp()-interval '30 days'`;
+/** How long a decided or expired publication review is kept. */
+const DECIDED_REVIEW_RETENTION_DAYS = 30;
+const reviewExpired = sql`coalesce(${workflowPublicationRequests.decidedAt},${workflowPublicationRequests.expiresAt})<=clock_timestamp()-${DECIDED_REVIEW_RETENTION_DAYS}*${DAY_INTERVAL}`;
 
 export const publicationRequests = deletionRule('publication_requests', {
   table: workflowPublicationRequests,

@@ -3,13 +3,17 @@ import { and, asc, eq, exists, lte, ne, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { DAY_INTERVAL } from '../../../shared/sql-intervals.repository.js';
+
+/** How long a revoked or superseded token's metadata is kept. */
+const API_TOKEN_RETENTION_DAYS = 30;
 
 /** Membership revisions never return to an older grant, so its metadata can expire. */
 export const API_TOKEN_RETENTION_RULE = {
   name: 'api_tokens',
   async run(client: PoolClient, pageSize: number): Promise<number> {
     const db = drizzle(client),
-      cutoff = sql`clock_timestamp()-interval '30 days'`;
+      cutoff = sql`clock_timestamp()-${API_TOKEN_RETENTION_DAYS}*${DAY_INTERVAL}`;
     const page = db.$with('page').as(
       db
         .select({ id: apiTokens.id })

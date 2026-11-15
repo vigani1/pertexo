@@ -10,6 +10,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { deletionRule } from '../../../shared/retention-deletion.repository.js';
+import { DAY_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 export const auditHistory = {
   name: 'audit_events',
@@ -22,8 +23,8 @@ export const auditHistory = {
         .innerJoin(workspaces, eq(workspaces.id, auditEvents.workspaceId))
         .where(
           and(
-            sql`${auditEvents.occurredAt}<=statement_timestamp()-${AUDIT_RETENTION_MIN_DAYS}*interval '1 day'`,
-            sql`${auditEvents.occurredAt}<=statement_timestamp()-${workspaces.auditRetentionDays}*interval '1 day'`,
+            sql`${auditEvents.occurredAt}<=statement_timestamp()-${AUDIT_RETENTION_MIN_DAYS}*${DAY_INTERVAL}`,
+            sql`${auditEvents.occurredAt}<=statement_timestamp()-${workspaces.auditRetentionDays}*${DAY_INTERVAL}`,
           ),
         )
         .orderBy(asc(auditEvents.occurredAt), asc(auditEvents.id))
@@ -51,8 +52,8 @@ export const connectionHistory = deletionRule('connection_events', {
   table: connectionEvents,
   keys: [connectionEvents.id],
   condition: and(
-    sql`${connectionEvents.createdAt}<=statement_timestamp()-${AUDIT_RETENTION_MIN_DAYS}*interval '1 day'`,
-    sql`${connectionEvents.createdAt}<=statement_timestamp()-(select ${workspaces.auditRetentionDays} from ${workspaces} where ${workspaces.id}=${connectionEvents.workspaceId})*interval '1 day'`,
+    sql`${connectionEvents.createdAt}<=statement_timestamp()-${AUDIT_RETENTION_MIN_DAYS}*${DAY_INTERVAL}`,
+    sql`${connectionEvents.createdAt}<=statement_timestamp()-(select ${workspaces.auditRetentionDays} from ${workspaces} where ${workspaces.id}=${connectionEvents.workspaceId})*${DAY_INTERVAL}`,
   ),
   orderBy: [connectionEvents.createdAt, connectionEvents.id],
 });

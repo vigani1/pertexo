@@ -203,7 +203,7 @@ export async function purgeConnections(
       })
       .from(connections)
       .where(eq(connections.workspaceId, workspaceId))
-      .limit(Math.max(1, Math.floor(pageSize / 2))),
+      .limit(parentPageSize(pageSize)),
   );
   const versions = db.$with('versions').as(
     db
@@ -305,7 +305,7 @@ export async function purgeDestinations(
       })
       .from(failureNotificationDestinations)
       .where(eq(failureNotificationDestinations.workspaceId, workspaceId))
-      .limit(Math.max(1, Math.floor(pageSize / 2))),
+      .limit(parentPageSize(pageSize)),
   );
   const versions = db.$with('versions').as(
     db
@@ -358,4 +358,12 @@ export async function purgeDestinations(
       .returning({ one: sql`1` })
       .catch(rethrowQueryFailure)
   ).length;
+}
+
+// Each parent goes with at least its current version, so a page takes half as
+// many parents as rows.
+const ROWS_PER_PARENT = 2;
+
+function parentPageSize(pageSize: number): number {
+  return Math.max(1, Math.floor(pageSize / ROWS_PER_PARENT));
 }

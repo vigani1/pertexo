@@ -17,6 +17,10 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+import { DAY_INTERVAL } from '../../../shared/sql-intervals.repository.js';
+
+/** How long a settled invitation keeps its recipient before it is minimized. */
+const SETTLED_INVITATION_DAYS = 90;
 
 // An unanswered invitation expires: its sealed tokens are dropped and
 // pending deliveries and acceptances stop.
@@ -195,7 +199,7 @@ export const invitationRecipients = {
               'expired',
             ]),
             sql`${workspaceInvitations.recipientEmail} not like 'minimized+%@invalid.pertexo'`,
-            sql`coalesce(${workspaceInvitations.acceptedAt},${workspaceInvitations.revokedAt},${workspaceInvitations.updatedAt})<=clock_timestamp()-interval '90 days'`,
+            sql`coalesce(${workspaceInvitations.acceptedAt},${workspaceInvitations.revokedAt},${workspaceInvitations.updatedAt})<=clock_timestamp()-${SETTLED_INVITATION_DAYS}*${DAY_INTERVAL}`,
           ),
         )
         .orderBy(
