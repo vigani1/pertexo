@@ -1,3 +1,5 @@
+import { postgresFailure } from '@pertexo/database/primitives';
+
 export class WorkspaceRunAdmissionDeniedError extends Error {
   public override readonly name = 'WorkspaceRunAdmissionDeniedError';
 
@@ -36,4 +38,12 @@ export class RunVariableSnapshotUnavailableError extends Error {
 
 export class RunRequiresFormError extends Error {
   override readonly name = 'RunRequiresFormError';
+}
+
+/** Run admission's SQLSTATEs as its errors; anything else is rethrown unchanged. */
+export function throwWorkflowRunAdmissionError(error: unknown): never {
+  const { code } = postgresFailure(error);
+  if (code === 'PTA02') throw new WorkspaceRunQuotaExceededError();
+  if (code === 'PTA01') throw new WorkspaceRunAdmissionDeniedError();
+  throw error;
 }

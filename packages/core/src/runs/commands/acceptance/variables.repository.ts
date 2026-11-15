@@ -1,9 +1,8 @@
-import { RUN_DETAILS_RETENTION_SQL } from '../../../shared/run-retention.repository.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { workflowRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { captureWorkspaceVariableRevision } from '../../../variables/head.repository.js';
 import { RunVariableSnapshotUnavailableError } from './run-admission.errors.js';
+import { shareReplayVariableRevision } from './variable-sources.repository.js';
+
 /** Replay precedes inheritance; neither may silently fall back to mutable workspace values. */
 export async function variableRevisionForAcceptance(
   transaction: WorkspaceTransaction,
@@ -11,20 +10,7 @@ export async function variableRevisionForAcceptance(
   inherited?: number | null,
 ): Promise<number | null> {
   if (sourceRunId !== undefined) {
-    const [source] = await transaction.db
-      .select({
-        revision: workflowRuns.variableSetRevision,
-        retained: sql<boolean>`(${workflowRuns.detailsPurgedAt} IS NULL AND (${workflowRuns.completedAt} IS NULL OR ${workflowRuns.completedAt}>clock_timestamp()-${RUN_DETAILS_RETENTION_SQL}))`,
-      })
-      .from(workflowRuns)
-      .where(
-        and(
-          eq(workflowRuns.workspaceId, transaction.workspaceId),
-          eq(workflowRuns.id, sourceRunId),
-        ),
-      )
-      .limit(1)
-      .for('share');
+    const source = await shareReplayVariableRevision(transaction, sourceRunId);
     if (!source?.retained) throw new RunVariableSnapshotUnavailableError();
     return source.revision;
   }

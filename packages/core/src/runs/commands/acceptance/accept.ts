@@ -19,10 +19,8 @@ import type {
 } from './run-acceptance.types.js';
 import { IdempotencyRecordCorruptError } from '../../../shared/command-receipt.errors.js';
 import { readExistingAcceptance } from './replay.repository.js';
-import {
-  throwWorkflowRunAdmissionError,
-  assertWorkspaceAcceptsNewRuns,
-} from './admission.repository.js';
+import { assertWorkspaceAcceptsNewRuns } from './admission.repository.js';
+import { throwWorkflowRunAdmissionError } from './run-admission.errors.js';
 import {
   claimAcceptance,
   completeAcceptance,

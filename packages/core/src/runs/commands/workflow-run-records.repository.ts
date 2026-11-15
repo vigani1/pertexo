@@ -21,7 +21,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { acceptWorkflowRun } from './acceptance/accept.js';
 import type { AcceptWorkflowRunInput } from './acceptance/run-acceptance.types.js';
-import { WorkflowRunNotFoundError } from '../workflow-run.errors.js';
+import { requireWorkflowRun } from '../workflow-run.errors.js';
 
 export type WorkflowRunRecord = Readonly<WorkflowRunRow>;
 
@@ -91,15 +91,6 @@ export async function readWorkflowRunReadRecord(
   });
 }
 
-export async function requireWorkflowRunRecord(
-  transaction: WorkspaceTransaction,
-  runId: string,
-): Promise<WorkflowRunRecord> {
-  const run = await readWorkflowRunRecord(transaction, runId);
-  if (run === undefined) throw new WorkflowRunNotFoundError();
-  return run;
-}
-
 export async function acceptWorkflowRunWithAudit(
   transaction: WorkspaceTransaction,
   input: Readonly<{
@@ -115,7 +106,9 @@ export async function acceptWorkflowRunWithAudit(
     ...input.acceptance,
     startedBy: input.actorId,
   });
-  const run = await requireWorkflowRunRecord(transaction, accepted.runId);
+  const run = requireWorkflowRun(
+    await readWorkflowRunRecord(transaction, accepted.runId),
+  );
   if (!accepted.duplicate) {
     await insertWorkflowRunAudit(transaction, {
       action: input.auditAction,

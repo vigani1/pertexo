@@ -2,10 +2,10 @@ import { DrizzleQueryError } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import {
+  throwWorkflowRunAdmissionError,
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from '../../../src/runs/commands/acceptance/run-admission.errors.js';
-import { throwWorkflowRunAdmissionError } from '../../../src/runs/commands/acceptance/admission.repository.js';
 
 function databaseError(code: string, cause?: unknown): Error {
   return Object.assign(new Error(`database ${code}`, { cause }), { code });
