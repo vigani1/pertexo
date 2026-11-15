@@ -28,6 +28,8 @@ import { appSchema } from '../namespace.js';
 const WIDTHS = Object.freeze({
   draftFingerprint: SHA256_HEX_CHARACTERS,
   nodeId: 256,
+  // Both keys are held to NODE_IDENTITY_KEY_MAX_CHARACTERS (64) before they are
+  // stored; the columns stay wider, since narrowing needs a migration and gains nothing.
   definitionKey: 128,
   executorKey: 128,
   idempotencyKeyHash: SHA256_HEX_CHARACTERS,

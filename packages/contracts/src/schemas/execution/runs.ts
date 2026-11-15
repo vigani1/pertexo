@@ -12,6 +12,7 @@ import {
   runFailureCodeSchema,
 } from '@pertexo/workflow-model';
 import {
+  NODE_IDENTITY_KEY_MAX_CHARACTERS,
   codeDiagnosticsSchema,
   runValueKeySchema,
   runValueTextSchema,
@@ -39,7 +40,7 @@ const RUN_BOUNDS = Object.freeze({
   reasonsItems: 3,
   nodeIdCharacters: 256,
   labelCharacters: 200,
-  definitionKeyCharacters: 256,
+  definitionKeyCharacters: NODE_IDENTITY_KEY_MAX_CHARACTERS,
   safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   invocationKeyCharacters: 1024,
   handlerInvocationKeyCharacters:

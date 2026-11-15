@@ -76,6 +76,17 @@ times out or fails first), the next run granted behind it starts straight away
 instead of after a 5-second retry. It changes no table or data and runs in well
 under a second, so the normal upgrade estimate applies.
 
+## Migration 0004: replay error code width
+
+`0004_widen_replay_safe_error_code.sql` widens
+`operator_run_replay_requests.safe_error_code` from 64 to 128 characters, the
+width every other safe error code has. Widening a `varchar` rewrites no rows,
+but PostgreSQL holds an `ACCESS EXCLUSIVE` lock on the table while it runs and
+scans the table once to recheck the CHECK constraint that reads the column
+(`operator_run_replay_completion_valid`). The table holds one row per operator
+replay command, so this takes well under a second and the normal upgrade
+estimate applies.
+
 ## Baseline transition: required release stop
 
 **Required stop: v0.2.0 — the final release containing migrations

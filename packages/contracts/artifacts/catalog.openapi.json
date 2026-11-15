@@ -380,7 +380,7 @@
                     "key": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 256,
+                      "maxLength": 64,
                       "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$"
                     },
                     "version": {
@@ -591,13 +591,13 @@
                     "providerKey": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 256,
+                      "maxLength": 64,
                       "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$"
                     },
                     "operationKey": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 256,
+                      "maxLength": 64,
                       "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$"
                     }
                   },
@@ -735,13 +735,13 @@
                 "providerKey": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256,
+                  "maxLength": 64,
                   "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$"
                 },
                 "operationKey": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256,
+                  "maxLength": 64,
                   "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$"
                 },
                 "nodeDefinitions": {
@@ -754,7 +754,7 @@
                       "key": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 256,
+                        "maxLength": 64,
                         "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$"
                       },
                       "version": {

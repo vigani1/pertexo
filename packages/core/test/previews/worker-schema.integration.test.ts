@@ -1,3 +1,7 @@
+import {
+  definitionIdentitySchema,
+  NODE_IDENTITY_KEY_MAX_CHARACTERS,
+} from '@pertexo/node-sdk';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -49,5 +53,28 @@ describe('preview worker schema contract', () => {
       code: '23514',
       constraint: 'preview_runs_integration_identity_consistent',
     });
+  });
+
+  it('stores a preview whose definition and executor keys are as long as validation allows', async () => {
+    const key = `${'a'.repeat(NODE_IDENTITY_KEY_MAX_CHARACTERS - 1)}b`;
+    // A key a preview stores has passed the catalog's identity schema, which
+    // definitions and executors share.
+    const { key: validated } = definitionIdentitySchema.parse({
+      key,
+      version: 1,
+    });
+    const accepted = await acceptFixture({
+      definitionKey: validated,
+      executorKey: validated,
+    });
+    const stored = await scopedQuery<{
+      definition_key: string;
+      executor_key: string;
+    }>(
+      `select definition_key, executor_key from app.preview_runs
+        where workspace_id=$1 and id=$2`,
+      [workspaceId, accepted.previewRunId],
+    );
+    expect(stored.rows).toEqual([{ definition_key: key, executor_key: key }]);
   });
 });

@@ -135,9 +135,14 @@ export const TERMINATES_RUN_CAPABILITY = 'terminates_run' as const;
 
 const identityKey = /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u;
 export const NODE_IDENTITY_KEY_PATTERN = identityKey.source;
+/**
+ * The longest definition, executor or policy key. Manifests are held to it
+ * here, and a graph's node references by `workflow-model`'s graph schema.
+ */
+export const NODE_IDENTITY_KEY_MAX_CHARACTERS = 64;
 const identitySchema = z
   .object({
-    key: z.string().regex(identityKey),
+    key: z.string().max(NODE_IDENTITY_KEY_MAX_CHARACTERS).regex(identityKey),
     version: z.number().int().positive(),
   })
   .strict();

@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { NodeCatalogIntegrityError } from '../../../src/definitions/catalog.errors.js';
 
 import {
+  NODE_IDENTITY_KEY_MAX_CHARACTERS,
   createNodeCatalog,
+  definitionIdentitySchema,
+  executorIdentitySchema,
   generateSchemaDocument,
   nodeManifestSchema,
   parseNodeCatalog,
@@ -26,6 +29,16 @@ import {
 } from './registry.fixture.js';
 
 describe('node-sdk catalog contracts', () => {
+  it('holds definition and executor keys to the identity key length', () => {
+    const longest = 'a'.repeat(NODE_IDENTITY_KEY_MAX_CHARACTERS);
+    for (const schema of [definitionIdentitySchema, executorIdentitySchema]) {
+      expect(schema.safeParse({ key: longest, version: 1 }).success).toBe(true);
+      expect(schema.safeParse({ key: `${longest}a`, version: 1 }).success).toBe(
+        false,
+      );
+    }
+  });
+
   it('rejects a catalog definition or executor that is not implemented', () => {
     const selected = catalog();
     const registration = {
