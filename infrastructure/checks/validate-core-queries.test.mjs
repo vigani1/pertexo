@@ -126,3 +126,32 @@ test('a store is a facade: it exports a factory and something composes it', () =
   );
   assert.equal(findStoreProblems([[store, facade]]).length, 1);
 });
+
+test('refuses a store an entry lists only by type, or by another name', () => {
+  const store = 'packages/core/src/variables/workspace-variables.store.ts';
+  const facade = 'export function createWorkspaceVariablesStore(pool) {}';
+  for (const line of [
+    "export type { WorkspaceVariablesStore } from './workspace-variables.store.js';",
+    "import type { WorkspaceVariablesStore } from './workspace-variables.store.js';",
+    "export { type createWorkspaceVariablesStore } from './workspace-variables.store.js';",
+    "export { readRows } from './workspace-variables.store.js';",
+  ])
+    assert.equal(
+      findStoreProblems([
+        ['packages/core/src/variables/index.ts', line],
+        [store, facade],
+      ]).length,
+      1,
+      line,
+    );
+  assert.deepEqual(
+    findStoreProblems([
+      [
+        'packages/core/src/variables/index.ts',
+        "export { createWorkspaceVariablesStore as createVariables } from './workspace-variables.store.js';",
+      ],
+      [store, facade],
+    ]),
+    [],
+  );
+});
