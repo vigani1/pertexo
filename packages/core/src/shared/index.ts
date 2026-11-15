@@ -21,6 +21,7 @@ export type {} from './retention-deletion.repository.js';
 export type {} from './run-retention.repository.js';
 export type {} from './execution-source.repository.js';
 export type {} from './run-events.repository.js';
+export type {} from './trigger-run-input.schemas.js';
 export type {} from './execution-state.errors.js';
 export type {} from './workflow-actor.types.js';
 export type {} from './sql-intervals.repository.js';

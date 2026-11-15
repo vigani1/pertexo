@@ -1,3 +1,4 @@
+import type { ScheduleRunInput } from '../../../shared/trigger-run-input.schemas.js';
 import { admitInSavepoint } from '../../admission-savepoint.repository.js';
 import {
   scheduleCanFire,
@@ -127,7 +128,7 @@ async function admitScheduledRun(
       triggerId: claim.trigger_id,
       nodeId: claim.node_id,
       scheduledAt: scheduledAt.toISOString(),
-    },
+    } satisfies ScheduleRunInput,
   });
   return result.runId;
 }
