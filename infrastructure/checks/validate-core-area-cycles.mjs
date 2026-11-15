@@ -10,6 +10,7 @@ import {
   repositoryRoot,
 } from './workspace-sources.mjs';
 import { loadsModule } from './module-declarations.mjs';
+import { coreAreaDependencyAllowed, isCoreArea } from './core-area-order.mjs';
 
 const coreSource = 'packages/core/src/';
 
@@ -144,6 +145,32 @@ export function areaCycleFindings(imports) {
   return findings;
 }
 
+/**
+ * Imports against CORE_AREA_LAYERS, of any kind: up or across the order, a
+ * cut edge, or an area the table doesn't name. The relative runtime ones
+ * validate-module-imports.mjs refuses too; this adds type-only imports,
+ * `import()` calls and core's own entries.
+ */
+export function areaOrderFindings(imports) {
+  const findings = new Set();
+  for (const i of imports)
+    for (const area of [i.from, i.to])
+      if (!isCoreArea(area))
+        findings.add(
+          `Core area ${area} is not in CORE_AREA_LAYERS (core-area-order.mjs); give it a layer.`,
+        );
+  for (const i of imports)
+    if (
+      isCoreArea(i.from) &&
+      isCoreArea(i.to) &&
+      !coreAreaDependencyAllowed(i.from, i.to)
+    )
+      findings.add(
+        `${i.file} -> ${i.target}: ${i.from} may not import ${i.to}; areas import only the layers below theirs in CORE_AREA_LAYERS.`,
+      );
+  return [...findings];
+}
+
 export async function collectAreaImports(root = repositoryRoot) {
   const imports = [];
   for (const file of await listSourceFiles('packages/core', root))
@@ -197,7 +224,7 @@ if (
   if (process.argv.includes('--map')) console.log(describeAreaGraph(imports));
   else
     report(
-      areaCycleFindings(imports),
-      'No import cycle between core areas, type-only imports included.',
+      [...areaCycleFindings(imports), ...areaOrderFindings(imports)],
+      'Core areas import only the layers below theirs, with no cycle, type-only imports included.',
     );
 }

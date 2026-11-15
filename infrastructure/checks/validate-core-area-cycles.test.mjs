@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   areaCycleFindings,
+  areaOrderFindings,
   collectAreaImports,
   findAreaImports,
   stronglyConnectedGroups,
@@ -122,4 +123,45 @@ test("ignores imports inside one area and from core's root files", () => {
 
 test("core's areas have no import cycle", async () => {
   assert.deepEqual(areaCycleFindings(await collectAreaImports()), []);
+});
+
+test('refuses a type-only import up the area order and an area with no layer', () => {
+  const up = findAreaImports(
+    file('shared', 'a.ts'),
+    "import type { T } from '../runs/b.js';",
+  );
+  assert.match(areaOrderFindings(up).join('\n'), /shared may not import runs/u);
+  const unknown = findAreaImports(
+    file('newarea', 'a.ts'),
+    "import { x } from '../shared/b.js';",
+  );
+  assert.match(
+    areaOrderFindings(unknown).join('\n'),
+    /newarea is not in CORE_AREA_LAYERS/u,
+  );
+  assert.deepEqual(
+    areaOrderFindings(
+      findAreaImports(
+        file('runs', 'a.ts'),
+        "import { x } from '../shared/b.js';",
+      ),
+    ),
+    [],
+  );
+});
+
+test("core's real imports follow the area order", async () => {
+  assert.deepEqual(areaOrderFindings(await collectAreaImports()), []);
+});
+
+test("core's AGENTS.md lists the areas from the bottom in the table's order", async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { CORE_AREA_LAYERS } = await import('./core-area-order.mjs');
+  const doc = await readFile(
+    new URL('../../packages/core/AGENTS.md', import.meta.url),
+    'utf8',
+  );
+  const sentence = /From the bottom:([\s\S]*?)\.\s/u.exec(doc)?.[1] ?? '';
+  const named = [...sentence.matchAll(/`([a-z-]+)`/gu)].map(([, area]) => area);
+  assert.deepEqual(named, CORE_AREA_LAYERS.flat());
 });
