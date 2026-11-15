@@ -9,9 +9,8 @@ import {
   recoveryOutputs,
   recoverySize,
   RECOVERY_ATTEMPT_RECORDS_MAX,
+  readRecoveryVersion,
 } from './snapshot.repository.js';
-import { workflows, workflowVersions } from '@pertexo/database/schema';
-import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   WORKFLOW_GRAPH_LIMITS,
@@ -204,33 +203,7 @@ async function readVersion(
   workflowId: string,
   versionId: string,
 ) {
-  const [row] = await transaction.db
-    .select({
-      status: workflows.lifecycleStatus,
-      workflow: {
-        checksum: workflowVersions.checksum,
-        executableJson: workflowVersions.executableJson,
-        id: workflowVersions.id,
-        versionNumber: workflowVersions.versionNumber,
-        workflowId: workflowVersions.workflowId,
-        workspaceId: workflowVersions.workspaceId,
-      },
-    })
-    .from(workflowVersions)
-    .innerJoin(
-      workflows,
-      and(
-        eq(workflows.workspaceId, workflowVersions.workspaceId),
-        eq(workflows.id, workflowVersions.workflowId),
-      ),
-    )
-    .where(
-      and(
-        eq(workflowVersions.workspaceId, transaction.workspaceId),
-        eq(workflowVersions.workflowId, workflowId),
-        eq(workflowVersions.id, versionId),
-      ),
-    );
+  const row = await readRecoveryVersion(transaction, workflowId, versionId);
   if (row === undefined) throw new WorkflowRunNotFoundError();
   if (row.status !== 'active') throw new WorkflowRunNotExecutableError();
   return Object.freeze(row.workflow);
