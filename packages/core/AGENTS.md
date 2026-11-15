@@ -43,12 +43,18 @@ user-facing copy beyond the safe messages of its errors.
   repositories by what they write, not one per command
   (`authoring/workflows/commands/new-workflow.repository.ts`,
   `draft-revisions.repository.ts`, `workflow-revisions.repository.ts`).
-- The goal: a repository function returns a row, a boolean or `undefined`,
-  and the operation decides and throws (`runs/run-access.repository.ts`
-  beside `runs/access.ts`). Many repositories don't do this yet, most of them
-  in `runs`, `authoring` and `triggers`, where they still make decisions and
-  throw domain errors. Batch L4e moves those decisions into their operations;
-  new code follows the goal.
+- A repository function returns a row, a boolean or `undefined`, and the
+  operation decides and throws (`runs/run-access.repository.ts` beside
+  `runs/access.ts`; `runs/recovery/recover-run.ts` with
+  `reused-nodes.repository.ts` and `acknowledgement.ts`). A not-found check
+  the callers share is a `require…` beside its error
+  (`requireWorkflowRun` in `runs/workflow-run.errors.ts`). A repository
+  throws only storage integrity errors (below);
+  `validate-core-repository-throws.mjs` refuses any other. The files that
+  still throw domain errors are `REPOSITORY_THROW_BACKLOG`
+  (`infrastructure/checks/core-repository-throws.mjs`), with their counts:
+  the list only shrinks, and a file leaves it when its operation takes the
+  decisions.
 - A query, lock or SQL fragment (`clock_timestamp()`, an increment, an
   interval): the `<subject>.repository.ts` beside the operation, or the
   flow's `.store.ts` when that file is its facade.
@@ -134,9 +140,12 @@ user-facing copy beyond the safe messages of its errors.
   scope themselves: workers and scanners (`withTenantScopedClient`),
   connection use and token refresh (`connections/transaction.ts`), and the
   operator (`operator/run-command.ts`).
-- Generic throws that stay are storage integrity assertions: a write that
-  returned no row, a locked row that disappeared, a stored pointer or receipt
-  that is corrupt.
+- Storage integrity assertions stay where the row is read: a write that
+  returned no row, a locked row that disappeared or changed under its lock
+  or fence, a stored pointer or receipt that is corrupt. They are a generic
+  `Error` or one of `STORAGE_INTEGRITY_ERRORS`
+  (`infrastructure/checks/core-repository-throws.mjs`), each with its
+  reason.
 - `connections/testing.ts`, `lifecycle/testing.ts` and
   `tenant-access/testing.ts` collect an area's test flows for `src/testing.ts`.
 - `shared/stored-execution.ts` writes JSON text lengths, listed as not limits.
@@ -148,5 +157,6 @@ user-facing copy beyond the safe messages of its errors.
 - `pnpm --filter @pertexo/core test:integration` needs PostgreSQL and Redis
   from a test stack (`DATABASE_*_URL`, `REDIS_URL`): every flow against real
   row security, locks and receipts.
-- `pnpm check`: the query, backend-limits, workspace-status-list, module
-  import, package structure and naming checks.
+- `pnpm check`: the query, repository-throw, area-order, backend-limits,
+  workspace-status-list, module import, package structure and naming
+  checks.
