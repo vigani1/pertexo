@@ -1218,3 +1218,41 @@ test('web server-command hooks are built only in a feature data folder', () => {
     [],
   );
 });
+
+test('web endpoint modules are imported only by data, loader entries and lib data modules', () => {
+  const api = {
+    'apps/web/src/features/tables/data/tables.api.ts':
+      'export const exportRows = () => undefined;\nexport type TableScope = { id: string };',
+  };
+  const planted = validateModuleImports({
+    ...api,
+    'apps/web/src/features/tables/components/export.tsx':
+      "import { exportRows } from '../data/tables.api';\nexport const run = exportRows;",
+    'apps/web/src/features/tables/public.ts':
+      "export { exportRows } from './data/tables.api';",
+  }).join('\n');
+  assert.match(
+    planted,
+    /components\/export\.tsx: \.\.\/data\/tables\.api calls the server/u,
+  );
+  assert.match(
+    planted,
+    /tables\/public\.ts: \.\/data\/tables\.api calls the server/u,
+  );
+  assert.deepEqual(
+    validateModuleImports({
+      ...api,
+      'apps/web/src/features/tables/data/tables-export.ts':
+        "import { exportRows } from './tables.api';\nexport const start = exportRows;",
+      'apps/web/src/features/tables/tables-queries.public.ts':
+        "export { exportRows } from './data/tables.api';",
+      'apps/web/src/features/tables/components/export.tsx':
+        "import type { TableScope } from '../data/tables.api';\nimport { start } from '../data/tables-export';\nexport const run = (scope: TableScope) => [scope, start];",
+      'apps/web/src/lib/sharing/principals.api.ts':
+        'export const readPrincipals = () => undefined;',
+      'apps/web/src/lib/sharing/principals.queries.ts':
+        "import { readPrincipals } from './principals.api';\nexport const principals = readPrincipals;",
+    }),
+    [],
+  );
+});

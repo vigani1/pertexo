@@ -2,10 +2,11 @@ import path from 'node:path';
 
 import ts from 'typescript';
 
-// The hooks that build a server command. A web feature defines its command
-// hooks in its data/ folder (data/<subject>.mutations.ts or data/mutations/),
-// next to the endpoint calls and the cache effects they own; components and
-// pages call those hooks, never these builders.
+// Only a web feature's data/ folder talks to the server. It holds the
+// endpoint modules (`*.api.ts`), the command hooks built on the helpers
+// below (data/<subject>.mutations.ts or data/mutations/), and the named
+// streams, downloads and journeys the rest of the feature calls. Components,
+// pages, hooks, forms and models call those, never an endpoint or a builder.
 const COMMAND_BUILDERS = Object.freeze({
   '@tanstack/react-query': ['useMutation'],
   '@/lib/api/commands/use-retained': ['useRetainedCommand'],
@@ -57,4 +58,55 @@ function aliasOf(file, specifier) {
   return target.startsWith(WEB_SOURCE)
     ? `@/${target.slice(WEB_SOURCE.length).replace(/\.tsx?$/u, '')}`
     : specifier;
+}
+
+// Who may import an endpoint module: the feature's data/ folder, its loader
+// entry (`<feature>-queries.public.ts`, which re-exports for other features'
+// data/), the shared transport, and a shared lib area's own data modules.
+const ENDPOINT_IMPORTERS = [
+  /^apps\/web\/src\/features\/[^/]+\/data\//u,
+  /^apps\/web\/src\/features\/([^/]+)\/\1-queries\.public\.ts$/u,
+  /^apps\/web\/src\/lib\/api\//u,
+  /^apps\/web\/src\/lib\/[^/]+\/[^/]+\.(?:api|queries|mutations)\.ts$/u,
+];
+const ENDPOINT_MODULE = /\.api(?:\.[jt]s)?$/u;
+
+/** Findings for one web source file that imports an endpoint module outside data/. */
+export function endpointImportViolations(file, source) {
+  if (!file.startsWith(WEB_SOURCE)) return [];
+  if (ENDPOINT_IMPORTERS.some((importer) => importer.test(file))) return [];
+  const findings = [];
+  for (const statement of source.statements) {
+    if (
+      !(
+        ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)
+      ) ||
+      statement.moduleSpecifier === undefined ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      !ENDPOINT_MODULE.test(statement.moduleSpecifier.text)
+    )
+      continue;
+    if (carriesValues(statement))
+      findings.push(
+        `${file}: ${statement.moduleSpecifier.text} calls the server; call a named function or hook from the feature's data/ folder, or read another feature through its -queries.public entry`,
+      );
+  }
+  return findings;
+}
+
+// Whether a declaration brings a value (not only types) across.
+function carriesValues(statement) {
+  if (ts.isImportDeclaration(statement)) {
+    const clause = statement.importClause;
+    if (clause === undefined) return true;
+    if (clause.isTypeOnly) return false;
+    if (clause.name !== undefined) return true;
+    const bindings = clause.namedBindings;
+    if (bindings === undefined || ts.isNamespaceImport(bindings)) return true;
+    return bindings.elements.some((element) => !element.isTypeOnly);
+  }
+  if (statement.isTypeOnly) return false;
+  const clause = statement.exportClause;
+  if (clause === undefined || !ts.isNamedExports(clause)) return true;
+  return clause.elements.some((element) => !element.isTypeOnly);
 }
