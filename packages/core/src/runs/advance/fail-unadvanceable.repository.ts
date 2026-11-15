@@ -31,7 +31,7 @@ import {
 } from '@pertexo/database/schema';
 import type { CoordinatorAdvanceDelivery } from './run-advance.types.js';
 import { lockRunForSettlement } from './load/locks.repository.js';
-import { persistCoordinatorRunTransition } from './persist/run-transition.repository.js';
+import { persistCoordinatorRunTransition } from './persist/persist-run-transition.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
   claimCoordinatorReceipt,

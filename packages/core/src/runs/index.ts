@@ -150,7 +150,7 @@ export { recoveryPreparation } from './recovery/prepare.js';
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './admission-locks.repository.js';
 export type {} from './commands/acceptance/accept.js';
-export type {} from './commands/acceptance/replay.repository.js';
+export type {} from './commands/acceptance/read-replay.js';
 export type {} from './commands/cancel-run.js';
 export type {} from './commands/request-cancellation.js';
 export type {} from './pending-tasks/callbacks/retention.repository.js';

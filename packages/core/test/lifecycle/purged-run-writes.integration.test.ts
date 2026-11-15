@@ -16,7 +16,7 @@ import { failUnadvanceableRun } from '../../src/runs/advance/fail-unadvanceable.
 import { requestWorkflowRunCancellation } from '../../src/runs/commands/request-cancellation.js';
 import { createNodeAttemptRunStore } from '../../src/attempts/node-attempt-run.store.js';
 import { settleExpiredAttempt } from '../../src/attempts/attempt-reconciliation.repository.js';
-import { readRecoveryEvidence } from '../../src/runs/recovery/evidence.repository.js';
+import { readRecoveryEvidence } from '../../src/runs/recovery/read-evidence.js';
 import {
   actorId,
   asAdmin,

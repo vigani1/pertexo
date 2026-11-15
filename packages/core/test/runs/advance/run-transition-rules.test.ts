@@ -6,7 +6,7 @@ import {
   transitionHasHumanWait,
   transitionMoments,
 } from '../../../src/runs/advance/persist/run-transition.js';
-import type { CoordinatorCommitRow } from '../../../src/runs/advance/load/coordinator-state.repository.js';
+import type { CoordinatorCommitRow } from '../../../src/runs/advance/load/load-run.js';
 
 const plan = (
   overrides: Readonly<{

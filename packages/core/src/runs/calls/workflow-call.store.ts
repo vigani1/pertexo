@@ -18,7 +18,7 @@ import {
 import { DeliveryMismatch } from '../execution-state.errors.js';
 import { withCoordinatorWriteClient } from '../advance/coordinator-transaction.js';
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.types.js';
-import { acceptPendingCall } from './accept.repository.js';
+import { acceptPendingCall } from './accept-call.js';
 import { applyIncomingCallCancellation } from './controls.repository.js';
 import {
   wakeWorkflowRun,

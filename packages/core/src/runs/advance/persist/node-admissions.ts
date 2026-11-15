@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 
-import type { PendingCoordinatorFailure } from '../load/coordinator-state.repository.js';
+import type { PendingCoordinatorFailure } from '../load/load-run.js';
 
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 

@@ -21,8 +21,8 @@ import type {
 import {
   recoverWorkflowRunInTransaction,
   allocateRecoveryIdentity,
-} from './recovery/accept.repository.js';
-import { readRecoveryEvidence } from './recovery/evidence.repository.js';
+} from './recovery/recover-run.js';
+import { readRecoveryEvidence } from './recovery/read-evidence.js';
 import {
   WorkflowRunNotFoundError,
   WorkflowPublishedVersionConflictError,

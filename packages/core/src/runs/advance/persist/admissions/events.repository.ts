@@ -7,7 +7,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { serializeStoredExecutionJsonValue } from '../../../../shared/stored-execution.js';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../../execution-state.errors.js';
-import type { PendingCoordinatorFailure } from '../../load/coordinator-state.repository.js';
+import type { PendingCoordinatorFailure } from '../../load/load-run.js';
 import { terminalStatus } from '../../load/event-facts.repository.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 

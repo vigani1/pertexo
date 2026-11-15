@@ -8,13 +8,13 @@ import {
   missingRecoveryAcknowledgement,
   recoveryEffectsAcknowledged,
 } from './acknowledgement.js';
-import { readRecoveryEvidence } from './evidence.repository.js';
+import { readRecoveryEvidence } from './read-evidence.js';
 import { WorkflowRecoveryUnavailableError } from './workflow-recovery.errors.js';
 import {
   acceptWorkflowRun,
   prepareWorkflowRunAcceptance,
 } from '../commands/acceptance/accept.js';
-import { readWorkflowRunAcceptanceReplay } from '../commands/acceptance/replay.repository.js';
+import { readWorkflowRunAcceptanceReplay } from '../commands/acceptance/read-replay.js';
 import {
   insertWorkflowRunAudit,
   readWorkflowRunRecord,

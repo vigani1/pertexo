@@ -2,7 +2,7 @@ import {
   assertRunStartNotCanceled,
   startsRunExecution,
 } from '../queued-run-admission.repository.js';
-import { persistCallIntents } from '../../calls/intents.repository.js';
+import { persistCallIntents } from '../../calls/persist-intents.js';
 import {
   persistTaskIntents,
   persistConsumedTasks,
@@ -24,7 +24,7 @@ import {
   completeCoordinatorReceipt,
   deferCoordinatorForActiveCapacity,
 } from '../receipts.repository.js';
-import { persistCoordinatorRunTransition } from './run-transition.repository.js';
+import { persistCoordinatorRunTransition } from './persist-run-transition.js';
 import {
   persistDueReadyTransitions,
   persistLoopBarrierTransitions,
@@ -33,7 +33,7 @@ import {
 import type {
   CoordinatorCommitRow,
   PendingCoordinatorFailure,
-} from '../load/coordinator-state.repository.js';
+} from '../load/load-run.js';
 
 /** Saves the engine's transition for a run locked by `loadRunForAdvance`. */
 export async function saveRunTransition(
