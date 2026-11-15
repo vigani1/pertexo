@@ -10,13 +10,13 @@ import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-que
 import { ApiError, isApiError } from '@/lib/api/error';
 import {
   canResend,
-  COMMAND_RETRY_WINDOW_HOURS,
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
 import { commandErrorMessage } from '@/lib/workflows/command-errors';
 import { formatCount } from '@/lib/format/count';
+import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/contracts';
 
 type RunAttempt = Readonly<{
   intent: RunIntent;
@@ -103,7 +103,7 @@ export function useWorkflowRunSubmission({
     if (isSessionPaused()) return false;
     if (!canResend(attempt.current)) {
       setError(
-        `The ${String(COMMAND_RETRY_WINDOW_HOURS)}-hour recovery window has ended. Check run history before deciding whether to start another run; retrying can no longer guarantee the original result.`,
+        `The ${String(IDEMPOTENCY_KEY_RETENTION_HOURS)}-hour recovery window has ended. Check run history before deciding whether to start another run; retrying can no longer guarantee the original result.`,
       );
       return false;
     }
@@ -264,7 +264,7 @@ function runSubmissionFailureMessage(
   { submitted }: Readonly<{ submitted: boolean }>,
 ) {
   if (submitted && isUnconfirmedCommand(error))
-    return `We couldn’t confirm whether this run started. Retry the same input, deadline and version within ${formatCount(COMMAND_RETRY_WINDOW_HOURS, 'hour')} of the first attempt. Don’t start a replacement run before resolving it.`;
+    return `We couldn’t confirm whether this run started. Retry the same input, deadline and version within ${formatCount(IDEMPOTENCY_KEY_RETENTION_HOURS, 'hour')} of the first attempt. Don’t start a replacement run before resolving it.`;
   return commandErrorMessage(error, 'starting this run');
 }
 
