@@ -7,7 +7,7 @@ import {
   completeCommand,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
-import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.repository.js';
+import { removeDirectoryFolderGrants } from '../../../../memberships/resource-grants.repository.js';
 import type { Pool } from 'pg';
 import {
   generatePersistedId,

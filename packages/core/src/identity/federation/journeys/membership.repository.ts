@@ -11,7 +11,7 @@ import {
 } from '@pertexo/database/primitives';
 
 import type { PoolClient } from 'pg';
-import { createMemberships } from '../../../tenant-access/members/records.repository.js';
+import { createMemberships } from '../../../memberships/records.repository.js';
 /** Existing manual grants stay manual; suspension and removal cannot be resurrected by JIT. */
 export async function grantJustInTimeMemberships(
   client: PoolClient,

@@ -12,18 +12,6 @@ import {
 
 const coreSource = 'packages/core/src/';
 
-/**
- * Runtime edges between core areas that may still close a cycle, each with the
- * reason it stays. The list only shrinks: an entry whose edge no longer closes
- * a cycle is refused too, so a broken cycle can't quietly come back.
- */
-export const KEPT_AREA_CYCLE_EDGES = Object.freeze({
-  'identity->tenant-access':
-    "Directory provisioning and sign-in journeys write memberships and remove folder grants through tenant-access's membership records, which append audit facts and so can't move below governance.",
-  'tenant-access->identity':
-    "Invitation acceptance and membership changes check and replace sessions through identity's session authority, and canonicalize emails with its policy. Breaking the pair needs a lower membership-and-session layer, a design change left for the owner.",
-});
-
 /** Whether an import or export declaration loads its module when the code runs. */
 function isRuntimeDeclaration(statement) {
   if (ts.isImportDeclaration(statement)) {
@@ -146,11 +134,10 @@ export function cycleEdges(edges) {
   return closing.sort();
 }
 
-export function areaCycleFindings(imports, kept = KEPT_AREA_CYCLE_EDGES) {
+export function areaCycleFindings(imports) {
   const closing = cycleEdges(areaGraph(imports, { runtimeOnly: true }));
   const findings = [];
   for (const edge of closing) {
-    if (Object.hasOwn(kept, edge)) continue;
     const files = imports
       .filter((i) => i.runtime && `${i.from}->${i.to}` === edge)
       .map((i) => `  ${i.file} -> ${i.target}`);
@@ -158,11 +145,6 @@ export function areaCycleFindings(imports, kept = KEPT_AREA_CYCLE_EDGES) {
       `Core area edge ${edge} closes a runtime cycle between areas:\n${files.join('\n')}`,
     );
   }
-  for (const edge of Object.keys(kept))
-    if (!closing.includes(edge))
-      findings.push(
-        `KEPT_AREA_CYCLE_EDGES lists ${edge}, which no longer closes a cycle; remove it.`,
-      );
   return findings;
 }
 

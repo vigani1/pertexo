@@ -28,7 +28,7 @@ import type {
 import { createIdentityWorkspaceInvitationAcceptanceStore } from './invitations/acceptance/identity-workspace-invitation-acceptance.store.js';
 import { createIdentityWorkspaceInvitationStore } from './invitations/identity-workspace-invitation.store.js';
 import { createIdentityWorkspaceMembershipLifecycleStore } from './members/membership-lifecycle.store.js';
-import { createMemberships } from './members/records.repository.js';
+import { createMemberships } from '../memberships/records.repository.js';
 import { createIdentityWorkspaceMemberRemovalStore } from './members/member-removal.store.js';
 import { createIdentityWorkspaceMemberStore } from './members/workspace-members.store.js';
 import { createIdentityWorkspaceRoleCommandStore } from './members/member-roles.store.js';

@@ -76,18 +76,6 @@ test("ignores imports inside one area and from core's root files", () => {
   );
 });
 
-test('keeps an allowlisted cycle and refuses an entry that no longer closes one', () => {
-  const cycle = [
-    ...findAreaImports(file('a', 'x.ts'), "import { v } from '../b/y.js';"),
-    ...findAreaImports(file('b', 'y.ts'), "import { w } from '../a/x.js';"),
-  ];
-  const kept = { 'a->b': 'reason', 'b->a': 'reason' };
-  assert.deepEqual(areaCycleFindings(cycle, kept), []);
-  const findings = areaCycleFindings(cycle.slice(0, 1), kept);
-  assert.equal(findings.length, 2);
-  assert.match(findings[0], /lists a->b, which no longer closes a cycle/u);
-});
-
-test("core's areas have no runtime cycle beyond the kept list", async () => {
+test("core's areas have no runtime cycle", async () => {
   assert.deepEqual(areaCycleFindings(await collectAreaImports()), []);
 });

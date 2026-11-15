@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
 import { NoticeConflictError } from '../../src/inbox/preferences/notice-preferences.errors.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
-import { updateMembership } from '../../src/tenant-access/members/records.repository.js';
+import { updateMembership } from '../../src/memberships/records.repository.js';
 import { apiUrl } from '../support/workflow-authoring.js';
 import {
   preferences,

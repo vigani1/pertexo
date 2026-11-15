@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 import { canTransferRecoveryOwnership } from '../../identity/federation/sessions/recovery.repository.js';
-import { updateMembership } from './records.repository.js';
+import { updateMembership } from '../../memberships/records.repository.js';
 
 import {
   canLeaveWorkspace,

@@ -81,8 +81,5 @@ export { DirectoryManagedMembershipError } from './tenant-access.errors.js';
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './tenant-access.errors.js';
-export type {} from './members/membership.types.js';
 export type {} from './members/discovery.repository.js';
-export type {} from './members/records.repository.js';
 export type {} from './resources/principals.repository.js';
-export type {} from './resources/revocation.repository.js';

@@ -11,7 +11,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { directoryGroupRecords } from './directory-resources.repository.js';
 import { directoryGroups } from './tables.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { removeDirectoryFolderGrants } from '../../../../tenant-access/resources/revocation.repository.js';
+import { removeDirectoryFolderGrants } from '../../../../memberships/resource-grants.repository.js';
 import type { Pool, PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { withDirectoryTransaction } from '../authority.repository.js';

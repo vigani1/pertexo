@@ -17,10 +17,10 @@ user-facing copy beyond the safe messages of its errors.
 - Entries: one per area, `@pertexo/core/<area>` (`src/<area>/index.ts`, which
   only re-exports), and `@pertexo/core/testing` (`src/testing.ts`) for flows
   that exist only for tests. There is no root and no `/server`.
-- Eighteen areas: `artifacts`, `attempts`, `authoring`, `connections`,
+- Nineteen areas: `artifacts`, `attempts`, `authoring`, `connections`,
   `data-tables`, `governance`, `identity`, `inbox`, `lifecycle`,
-  `notifications`, `operator`, `outbox`, `previews`, `runs`, `shared`,
-  `tenant-access`, `triggers`, `variables`.
+  `memberships`, `notifications`, `operator`, `outbox`, `previews`, `runs`,
+  `shared`, `tenant-access`, `triggers`, `variables`.
 - An area's root holds its entry, its facade (`<subject>.store.ts`), its
   error family (`<subject>.errors.ts`), its inputs and results
   (`<subject>.types.ts`), and the few files every sub-area shares. `variables`
@@ -110,8 +110,11 @@ user-facing copy beyond the safe messages of its errors.
 - Areas depend one way. From the bottom: `shared`; `governance` and `outbox`;
   `variables` and `connections`; `notifications`; `artifacts`; `attempts`;
   `data-tables`; `runs`; `triggers`; `authoring`; `inbox`, `previews`; then
-  `lifecycle` and `operator` on top. `identity` and `tenant-access`, the one
-  kept pair, sit above `outbox` and below `authoring` and `lifecycle`. When a lower area needs a higher one's fact, the
+  `lifecycle` and `operator` on top. `memberships` (membership records and
+  a removed member's resource grants) sits on `governance`; `identity` on
+  it, then `tenant-access` on `identity`, all below `authoring` and
+  `lifecycle`. Session authority stays in `identity`, which `tenant-access`
+  calls. When a lower area needs a higher one's fact, the
   writer moves down to the producer (the run transition writes the inbox's
   intake), or the shared piece moves to `shared/` (`run-events.repository.ts`,
   `execution-source.repository.ts`). `validate-core-area-cycles.mjs` refuses

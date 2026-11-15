@@ -17,11 +17,11 @@ import type { PoolClient } from 'pg';
 import {
   createMemberships,
   updateMemberships,
-} from '../../../tenant-access/members/records.repository.js';
+} from '../../../memberships/records.repository.js';
 import type {
   MembershipChange,
   MembershipAddition,
-} from '../../../tenant-access/members/membership.types.js';
+} from '../../../memberships/membership.types.js';
 
 import { revokeSessionsForUsers } from '../sessions/user-sessions.repository.js';
 import type { DirectoryOrganization } from './directory-provisioning.types.js';
