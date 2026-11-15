@@ -1,12 +1,12 @@
 import { QUERY_POLLING } from '@/lib/api/query-timings';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { WorkflowTestScope } from '../data/workflow-tests/workflow-tests.api';
-import { workflowTestsKey } from '../data/workflow-tests/workflow-tests.queries';
+import type { WorkflowTestScope } from '../workflow-tests/workflow-tests.api';
+import { workflowTestsKey } from '../workflow-tests/workflow-tests.queries';
 import {
   suitesQueryOptions,
   suiteQueryOptions,
-} from '../data/test-suites/workflow-test-suites.queries';
+} from './workflow-test-suites.queries';
 
 export function useSuiteHistory({
   scope,

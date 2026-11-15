@@ -6,7 +6,7 @@ import type { WorkflowListSearch } from '../../model/list-view';
 import {
   isOrganizationReadDenied,
   useOrganizationReadLifetime,
-} from './use-organization-read-lifetime';
+} from '../../data/organization/organization-read-lifetime';
 
 /** A separate strict cache and cursor identity; no previous-filter rows. */
 export function useOrganizationList(

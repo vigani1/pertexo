@@ -5,7 +5,7 @@ import { HttpResponse, http } from 'msw';
 import { afterEach, expect, it, vi } from 'vitest';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { ConnectionTestPanel } from '@/features/connections/components/connection-test/panel';
-import { useConnectionTest } from '@/features/connections/components/connection-test/use-command';
+import { useConnectionTest } from '@/features/connections/data/connection-test.mutations';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';

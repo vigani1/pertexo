@@ -1,4 +1,4 @@
-import { useSuiteHistory } from '../../hooks/use-suite-history';
+import { useSuiteHistory } from './suite-history';
 import { commandIsLive } from '../../model/test-ownership';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

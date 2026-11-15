@@ -15,7 +15,7 @@ import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import {
   useVariableUsageCheck,
   type UsageCheckPhase,
-} from '../hooks/use-usage-check';
+} from '../data/usage-check';
 import { pluralWord } from '@/lib/format/count';
 type UsageRow = WorkspaceVariableUsageResponse['items'][number];
 

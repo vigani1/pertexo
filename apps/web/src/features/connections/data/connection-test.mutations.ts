@@ -12,13 +12,13 @@ import {
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import { connectionCommandError } from '../../model/connection-errors';
+import { connectionCommandError } from '../model/connection-errors';
 import {
   useTestConnectionMutation,
   type ConnectionMutationScope,
   type TestConnectionCommand,
-} from '../../data/connections.mutations';
-import type { TestPhase } from '../../model/connection-health';
+} from './connections.mutations';
+import type { TestPhase } from '../model/connection-health';
 
 export type ConnectionTest = Readonly<{
   phase: TestPhase;

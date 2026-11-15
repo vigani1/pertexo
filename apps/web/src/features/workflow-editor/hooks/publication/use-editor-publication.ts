@@ -18,7 +18,7 @@ import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import { workflowConnectionIssues } from '../../model/connection-issues';
 import { workflowPlaceholderIssues } from '../../model/inspector/http-body';
 import { useIssuesView } from './use-issues-view';
-import type { useEditorSessionVerification } from '../ownership/use-editor-session-verification';
+import type { useEditorSessionVerification } from '../../data/editor-session-verification';
 import type { useEditorSavePipeline } from '../../data/editor-save-pipeline';
 
 type PublicationInput = Readonly<{

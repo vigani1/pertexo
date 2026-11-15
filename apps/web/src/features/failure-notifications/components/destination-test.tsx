@@ -13,7 +13,7 @@ import type { TestPhase } from '@/features/connections/public';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
 import type { DestinationMutationScope } from '../data/failure-notifications.mutations';
-import { useDestinationTest } from '../hooks/use-destination-test';
+import { useDestinationTest } from '../data/destination-test.mutations';
 
 export function DestinationTest({
   scope,

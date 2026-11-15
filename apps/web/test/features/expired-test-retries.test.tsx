@@ -5,8 +5,8 @@ import type { PropsWithChildren } from 'react';
 import { createApiClient } from '@/lib/api/client';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { useNodeTest } from '@/features/workflow-testing/data/node-preview.mutations';
-import { useConnectionTest } from '@/features/connections/components/connection-test/use-command';
-import { useDestinationTest } from '@/features/failure-notifications/hooks/use-destination-test';
+import { useConnectionTest } from '@/features/connections/data/connection-test.mutations';
+import { useDestinationTest } from '@/features/failure-notifications/data/destination-test.mutations';
 import {
   connection,
   destination,

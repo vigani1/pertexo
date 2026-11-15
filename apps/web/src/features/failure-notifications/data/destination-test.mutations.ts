@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useReadRetry } from '@/lib/hooks/use-read-retry';
-import { failureNotificationDestinationKeys } from '../data/failure-notifications.queries';
+import { failureNotificationDestinationKeys } from './failure-notifications.queries';
 import {
   isDestinationConflict,
   destinationCommandError,
@@ -20,7 +20,7 @@ import {
 import {
   useTestFailureNotificationDestinationMutation,
   type DestinationMutationScope,
-} from '../data/failure-notifications.mutations';
+} from './failure-notifications.mutations';
 
 type Command = Readonly<{
   destinationId: string;

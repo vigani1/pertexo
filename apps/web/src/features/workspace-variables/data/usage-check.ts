@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { isApiError } from '@/lib/api/error';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-import { variableUsageQueryOptions } from '../data/variables.queries';
+import { variableUsageQueryOptions } from './variables.queries';
 
 /**
  * Walks a name's references to the end, because "not used" means nothing before
