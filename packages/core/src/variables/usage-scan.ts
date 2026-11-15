@@ -15,6 +15,8 @@ import {
 
 const MAX_SOURCES_PER_PAGE = 100;
 const MAX_SOURCE_BYTES_PER_PAGE = 65_536;
+// The usage response's bound on a workflow name (contracts' workflowName).
+const USAGE_WORKFLOW_NAME_CHARACTERS = 160;
 
 /** What this page has used so far, across its workflows. */
 export interface UsageSpending {
@@ -110,7 +112,7 @@ function usageItem(
       ordinal,
     ]),
     workflowId: workflow.id,
-    workflowName: workflow.name.slice(0, 160),
+    workflowName: workflow.name.slice(0, USAGE_WORKFLOW_NAME_CHARACTERS),
     archived: workflow.lifecycleStatus === 'archived',
     stage,
     nodeId: reference.nodeId,

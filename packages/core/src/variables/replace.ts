@@ -2,23 +2,13 @@ import { credentialCommandScope } from '@pertexo/database/platform';
 import type { WorkspaceVariablesCommandResponse } from '@pertexo/contracts';
 import { z } from 'zod';
 import { requireReadableReceipt } from '../shared/receipts.js';
-import {
-  claimCommand,
-  completeCommand,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../governance/audit/facts.js';
 import { lockVariableSet } from './head.repository.js';
-import {
-  workspaceVariables,
-  workspaceVariableSetRevisions,
-} from '@pertexo/database/schema';
 import {
   EMPTY_VARIABLE_SNAPSHOT,
   WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
-import { eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
 import {
@@ -26,6 +16,7 @@ import {
   type ReplaceWorkspaceVariablesInput,
 } from './workspace-variables.js';
 import { planWorkspaceVariableReplacement } from './replacement.js';
+import { saveVariableSet } from './set.repository.js';
 
 const acceptedReplacement = z
   .object({ revision: z.number().int().nonnegative(), changed: z.boolean() })
@@ -78,41 +69,6 @@ export async function replaceWorkspaceVariables(
   const accepted = { revision, changed };
   await completeCommand(client, command, accepted);
   return { ...accepted, replayed: false };
-}
-
-/** With no head to lock yet, two first saves meet at the revision's primary key. */
-async function saveVariableSet(
-  client: PoolClient,
-  input: ReplaceWorkspaceVariablesInput,
-  set: Readonly<{
-    revision: number;
-    descriptions: Readonly<Record<string, string>>;
-  }>,
-): Promise<void> {
-  const db = drizzle(client);
-  const inserted = await db
-    .insert(workspaceVariableSetRevisions)
-    .values({
-      workspaceId: input.workspaceId,
-      revision: set.revision,
-      values: input.values,
-      descriptions: set.descriptions,
-    })
-    .onConflictDoNothing()
-    .returning({ revision: workspaceVariableSetRevisions.revision })
-    .catch(rethrowQueryFailure);
-  if (inserted.length !== 1) throw new WorkspaceVariablesConflictError();
-  const saved = await db
-    .insert(workspaceVariables)
-    .values({ workspaceId: input.workspaceId, revision: set.revision })
-    .onConflictDoUpdate({
-      target: workspaceVariables.workspaceId,
-      set: { revision: set.revision, updatedAt: sql`clock_timestamp()` },
-      setWhere: eq(workspaceVariables.revision, input.expectedRevision),
-    })
-    .returning({ revision: workspaceVariables.revision })
-    .catch(rethrowQueryFailure);
-  if (saved.length !== 1) throw new WorkspaceVariablesConflictError();
 }
 
 /** Names only, never values, and within the audit metadata budget. */

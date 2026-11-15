@@ -17,6 +17,9 @@ import type {
 } from './workspace-variables.js';
 import { walkVariableUsage } from './usage-walk.js';
 
+// A step reads one workflow, and one more to learn whether another follows.
+const WORKFLOWS_PER_STEP_AND_NEXT = 2;
+
 type FolderScope = Awaited<ReturnType<typeof readFolderScope>>;
 type UsageCursor = VariableUsageInput['after'];
 
@@ -52,7 +55,7 @@ async function readUsageWorkflow(
         ),
       )
       .orderBy(workflows.id)
-      .limit(2),
+      .limit(WORKFLOWS_PER_STEP_AND_NEXT),
   );
   const [workflow] = await db
     .with(candidates)

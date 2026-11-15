@@ -6,9 +6,14 @@ import {
   workspaceVariableSetRevisions,
 } from '@pertexo/database/schema';
 import { EMPTY_VARIABLE_SNAPSHOT } from '@pertexo/workflow-model';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
+
+import {
+  WorkspaceVariablesConflictError,
+  type ReplaceWorkspaceVariablesInput,
+} from './workspace-variables.js';
 
 /** Settings read one committed head/set view; a missing head is an untouched workspace. */
 export async function readWorkspaceVariables(
@@ -37,4 +42,39 @@ export async function readWorkspaceVariables(
   return row === undefined
     ? { ...EMPTY_VARIABLE_SNAPSHOT, descriptions: {} }
     : { revision: row.revision, ...decodeStoredVariableSet(row) };
+}
+
+/** With no head to lock yet, two first saves meet at the revision's primary key. */
+export async function saveVariableSet(
+  client: PoolClient,
+  input: ReplaceWorkspaceVariablesInput,
+  set: Readonly<{
+    revision: number;
+    descriptions: Readonly<Record<string, string>>;
+  }>,
+): Promise<void> {
+  const db = drizzle(client);
+  const inserted = await db
+    .insert(workspaceVariableSetRevisions)
+    .values({
+      workspaceId: input.workspaceId,
+      revision: set.revision,
+      values: input.values,
+      descriptions: set.descriptions,
+    })
+    .onConflictDoNothing()
+    .returning({ revision: workspaceVariableSetRevisions.revision })
+    .catch(rethrowQueryFailure);
+  if (inserted.length !== 1) throw new WorkspaceVariablesConflictError();
+  const saved = await db
+    .insert(workspaceVariables)
+    .values({ workspaceId: input.workspaceId, revision: set.revision })
+    .onConflictDoUpdate({
+      target: workspaceVariables.workspaceId,
+      set: { revision: set.revision, updatedAt: sql`clock_timestamp()` },
+      setWhere: eq(workspaceVariables.revision, input.expectedRevision),
+    })
+    .returning({ revision: workspaceVariables.revision })
+    .catch(rethrowQueryFailure);
+  if (saved.length !== 1) throw new WorkspaceVariablesConflictError();
 }
