@@ -4,7 +4,7 @@ import { nodeRuns, pendingRunTasks } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import type { PendingTaskOutcome } from '@pertexo/workflow-engine';
-import { wakeTaskAncestors } from '../responses/respond.repository.js';
+import { wakeTaskAncestors } from '../responses/task-responses.repository.js';
 import { expireDueTasks } from './expire.repository.js';
 
 /** Expiry is resolved first; the existing due-node scanner supplies wakeups. */

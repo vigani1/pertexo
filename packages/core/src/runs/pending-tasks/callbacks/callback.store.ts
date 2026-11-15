@@ -21,7 +21,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';
-import { wakeTaskAncestors } from '../responses/respond.repository.js';
+import { wakeTaskAncestors } from '../responses/task-responses.repository.js';
 import { prepareCallbacks } from './prepare.repository.js';
 import { CallbackResponseError } from './callback.errors.js';
 import type {

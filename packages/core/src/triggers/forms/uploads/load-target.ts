@@ -13,6 +13,7 @@ import { readTaskUploadTarget } from '../../../runs/pending-tasks/responses/pend
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
+  requireVisibleTask,
 } from '../../../runs/pending-tasks/responses/pending-task.errors.js';
 import type { FormUploadTarget } from './form-upload.types.js';
 import type { FormUploadBinding } from '../../../artifacts/form-uploads/bindings.repository.js';
@@ -66,10 +67,12 @@ async function loadInputRequest(
     target.actorId,
     rolesForCapability('run:read'),
   );
-  const row = await readTaskUploadTarget(client, target, {
-    role,
-    resources: await readFolderScope(client, target, role),
-  });
+  const row = requireVisibleTask(
+    await readTaskUploadTarget(client, target, {
+      role,
+      resources: await readFolderScope(client, target, role),
+    }),
+  );
   if (row.kind !== 'input_request')
     throw new PendingTaskNotFoundError('Task is not visible.');
   if (row.blocked_reason !== null)
