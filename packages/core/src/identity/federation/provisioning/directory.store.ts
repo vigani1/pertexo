@@ -37,7 +37,7 @@ import {
 import {
   listDirectoryUsers,
   listDirectoryGroups,
-} from './resources/directory-resources.repository.js';
+} from './resources/list-resources.js';
 import {
   readDirectoryAdoption,
   readDirectoryManagement,

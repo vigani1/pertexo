@@ -7,7 +7,7 @@ import { createDirectoryGroup } from '../../../../src/identity/federation/provis
 import {
   listDirectoryUsers,
   listDirectoryGroups,
-} from '../../../../src/identity/federation/provisioning/resources/directory-resources.repository.js';
+} from '../../../../src/identity/federation/provisioning/resources/list-resources.js';
 import type { DirectoryQuery } from '../../../../src/identity/federation/provisioning/directory-provisioning.types.js';
 import { withDirectoryRead } from '../../../../src/identity/federation/provisioning/authority.repository.js';
 

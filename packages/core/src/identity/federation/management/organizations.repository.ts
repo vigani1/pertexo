@@ -21,12 +21,12 @@ import {
   organizationForWorkspace,
   recordFederationAudit,
 } from './authority.repository.js';
+import { advanceOrganization } from './commands.repository.js';
 import {
-  advanceOrganization,
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
-} from './commands.repository.js';
+} from './federation-authority.js';
 import type {
   CreateOrganizationInput,
   LinkWorkspaceInput,

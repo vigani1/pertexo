@@ -14,12 +14,12 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import { FederationConflictError } from './federation-management.errors.js';
 import type { ProviderRow } from './identity-organizations.repository.js';
 import { recordFederationAudit } from './authority.repository.js';
+import { advanceOrganization } from './commands.repository.js';
 import {
-  advanceOrganization,
   assertOrganizationRevision,
   requireControlOrganization,
   runFederationCommand,
-} from './commands.repository.js';
+} from './federation-authority.js';
 import type {
   CreateProviderInput,
   RemoveProviderInput,
