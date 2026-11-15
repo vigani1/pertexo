@@ -39,19 +39,37 @@ user-facing copy beyond the safe messages of its errors.
   `completion/apply-completion.ts`) that reads as the happy path and calls
   repositories for every query. A flow that is one statement may be just its
   repository, with no operation file around it (outbox's batch claim,
-  `dispatcher/claim.repository.ts`).
+  `dispatcher/claim.repository.ts`). Several commands on one table share
+  repositories by what they write, not one per command
+  (`authoring/workflows/commands/new-workflow.repository.ts`,
+  `draft-revisions.repository.ts`, `workflow-revisions.repository.ts`).
+- A repository function returns a row, a boolean or `undefined`; the
+  operation decides and throws (`runs/run-access.repository.ts` beside
+  `runs/access.ts`).
 - A query, lock or SQL fragment (`clock_timestamp()`, an increment, an
   interval): the `<subject>.repository.ts` beside the operation, or the
   flow's `.store.ts` when that file is its facade.
 - A decision: a pure function in a concept file (`variables/replacement.ts`,
-  `connections/health/rules.ts`), with no I/O.
+  `connections/health/rules.ts`), with no I/O. Retry, timing and health
+  choices count: `triggers/coordination/release-timing.ts`,
+  `triggers/schedules/retirement-plan.ts`.
+- A SQL fragment several areas read stays in its owning area's repository
+  (`runs/run-retention.repository.ts` for run retention windows), and a
+  statement two areas write the same way gets one function beside the lock
+  it follows (`enterRunAdmissionProtocol` in
+  `shared/workspace-fence.repository.ts`). A run admitted in a savepoint goes
+  through `admitInSavepoint` (`triggers/admission-savepoint.repository.ts`).
 - An error: the area's or sub-area's `.errors.ts`; the API maps it to a
   problem.
 - A limit: a named constant at the top of the file that enforces it, or the
   browser-safe owner's (`workflow-model`, `node-sdk`, `policy`) when the
-  browser or another package shows it. A duration in SQL is a count times a
-  unit from `shared/sql-intervals.repository.ts` (`${DAYS}*${DAY_INTERVAL}`),
-  never a literal `interval '30 days'`.
+  browser or another package shows it (`WORKFLOW_ORGANIZATION_LIMITS`,
+  `WORKFLOW_INPUT_CASE_LIMITS`, `USAGE_TREND_PERIOD_DAYS`). A message reads
+  the number from that owner, never writes it as a word. Two caps that must
+  agree are one constant (the suite case cap is the per-workflow input-case
+  cap). A duration in SQL is a count times a unit from
+  `shared/sql-intervals.repository.ts` (`${DAYS}*${DAY_INTERVAL}`), never a
+  literal `interval '30 days'` or `make_interval(…)`.
 
 ## Defaults and config
 
@@ -72,11 +90,14 @@ user-facing copy beyond the safe messages of its errors.
   A query moved into a repository stays on the same client, in the same
   order, inside the same transaction.
 - Queries live only in `.repository.ts` and `.store.ts` files
-  (`validate-core-queries.mjs`). A `.store.ts` is a flow's facade: it exports
-  a `create…` factory, and an area entry, a testing entry or another store
-  composes it; the check refuses any other.
+  (`validate-core-queries.mjs`), in every area. A `.store.ts` is a flow's
+  facade: it exports a `create…` factory, and an area entry, a testing entry
+  or another store imports that factory as a value; the check refuses any
+  other.
 - The database's time is read once, by `readDatabaseClock`
-  (`shared/database-clock.repository.ts`), after a flow's lock waits.
+  (`shared/database-clock.repository.ts`), after a flow's lock waits; a flow
+  that writes the reading back into a timestamp column takes
+  `readDatabaseClockText`, which keeps its microseconds.
 - An area imports the files another area's `index.ts` names directly, never
   through that `index.ts` (ADR 091).
 - A sealed application secret is checked with `applicationSealedSecretSchema`
