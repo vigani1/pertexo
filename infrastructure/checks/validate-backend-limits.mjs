@@ -50,6 +50,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'apps/api',
   'packages/core/src/artifacts',
   'packages/core/src/attempts',
+  'packages/core/src/authoring',
   'packages/core/src/connections',
   'packages/core/src/data-tables',
   'packages/core/src/governance',

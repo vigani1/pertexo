@@ -1,3 +1,4 @@
+import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   rethrowQueryFailure,
@@ -158,7 +159,8 @@ async function assertSampleQuota(
     usage.bytes - (current?.retainedBytes ?? 0) + retainedBytes >
       SAMPLE_RETAINED_BYTES ||
     (current === undefined &&
-      (usage.workflowCount >= 200 || usage.workspaceCount >= 1000));
+      (usage.workflowCount >= STEP_SAMPLES_PER_WORKFLOW ||
+        usage.workspaceCount >= STEP_SAMPLES_PER_WORKSPACE));
   if (sampleQuotaExceeded) throw new WorkflowStepSampleError('limit_reached');
 }
 
@@ -198,7 +200,7 @@ async function persistCapturedSample(
     sourceNodeRunId: captured.nodeRunId,
     sourcePreviewId: captured.previewId,
     createdBy: input.actorId,
-    expiresAt: sql<Date>`clock_timestamp()+make_interval(secs=>${SAMPLE_RETENTION_SECONDS})`,
+    expiresAt: sql<Date>`clock_timestamp()+${SAMPLE_RETENTION_SECONDS}::integer*${SECOND_INTERVAL}`,
   };
   const updates = {
     id: values.id,
@@ -229,3 +231,7 @@ async function persistCapturedSample(
 const SAMPLE_RETENTION_SECONDS = DATA_RETENTION_DAYS.stepSamples * 86_400;
 
 const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;
+
+/** Saved samples: one per step, so at most this many steps per workflow and per workspace. */
+const STEP_SAMPLES_PER_WORKFLOW = 200;
+const STEP_SAMPLES_PER_WORKSPACE = 1000;

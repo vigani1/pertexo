@@ -2,6 +2,7 @@ import type { PoolClient } from 'pg';
 import {
   EMPTY_WORKFLOW_GRAPH,
   inspectWorkflowPortableManifest,
+  PORTABLE_MANIFEST_FIELD_LIMITS,
   type PortableIssue,
   WORKFLOW_PORTABILITY_LIMITS,
   WorkflowPortabilityError,
@@ -77,7 +78,7 @@ export async function inspectImport(
     ...inspected.issues,
     ...admission.issues.map(({ code, path }) => ({
       code,
-      path: path.slice(0, 2048),
+      path: path.slice(0, PORTABLE_MANIFEST_FIELD_LIMITS.issuePathLength),
       message: 'The graph is not valid under the serving authoring policy.',
     })),
   ];

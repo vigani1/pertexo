@@ -28,6 +28,10 @@ import type {
 import { lockCommentThread } from './comment-threads.repository.js';
 import { syncCommentMentions } from './mentions.repository.js';
 import { runCommentCommand } from './receipt.js';
+
+/** A former step's label as a thread keeps it, in UTF-16 units. */
+const STEP_LABEL_MAX_UNITS = 256;
+const ELLIPSIS = '…';
 async function insertComment(
   client: PoolClient,
   input: CollaborationCommand & {
@@ -110,15 +114,16 @@ const commandResult = (
 });
 /** Former-step metadata stays bounded without splitting a displayed grapheme. */
 function stepSnapshotLabel(value: string): string {
-  if (value.length <= 256) return value;
+  if (value.length <= STEP_LABEL_MAX_UNITS) return value;
   let label = '';
   for (const { segment } of new Intl.Segmenter('und', {
     granularity: 'grapheme',
   }).segment(value)) {
-    if (label.length + segment.length > 255) break;
+    if (label.length + segment.length > STEP_LABEL_MAX_UNITS - ELLIPSIS.length)
+      break;
     label += segment;
   }
-  return label + '…';
+  return label + ELLIPSIS;
 }
 export function collaborationCommands(enter: EnterCollaboration) {
   return {

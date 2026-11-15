@@ -294,6 +294,7 @@ export {
   type BoundedJsonSizeRefusal,
 } from './values/json/bounded-json-size.js';
 export { STORED_INTEGER_MAX } from './values/stored-integer.js';
+export { STORED_TIMESTAMP_FRACTION_DIGITS } from './values/stored-timestamp.js';
 export { UUID_PATTERN } from './values/identifiers.js';
 export {
   CANONICAL_JSON_MAX_DEPTH,
@@ -365,7 +366,10 @@ export {
   type WorkflowPortableManifest,
 } from './authoring/portability/portable-manifest.js';
 export { PortableJsonError } from './authoring/portability/portability.errors.js';
-export { WORKFLOW_PORTABILITY_LIMITS } from './authoring/portability/portability-limits.js';
+export {
+  PORTABLE_MANIFEST_FIELD_LIMITS,
+  WORKFLOW_PORTABILITY_LIMITS,
+} from './authoring/portability/portability-limits.js';
 export {
   inspectWorkflowPortableManifest,
   projectWorkflowPortableManifest,
@@ -387,6 +391,7 @@ export {
   workflowTestSuiteReportSchema,
   type SuiteCaseReport,
 } from './authoring/test-suites/report.js';
+export { WORKFLOW_INPUT_CASE_LIMITS } from './authoring/test-suites/input-case-limits.js';
 export { workflowTestStepChoices } from './authoring/test-suites/steps.js';
 export {
   workflowTestExpectationsSchema,

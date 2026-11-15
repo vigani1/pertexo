@@ -1,3 +1,4 @@
+import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import { and, asc, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -150,7 +151,7 @@ async function heartbeatPresence(client: PoolClient, input: HeartbeatInput) {
       dirty: input.dirty,
       baseRevision: input.baseRevision,
       lastSeenAt: sql`clock_timestamp()`,
-      expiresAt: sql`clock_timestamp()+${COLLABORATION_LIMITS.leaseSeconds}*interval '1 second'`,
+      expiresAt: sql`clock_timestamp()+${COLLABORATION_LIMITS.leaseSeconds}*${SECOND_INTERVAL}`,
     })
     .onConflictDoUpdate({
       target: [lease.workspaceId, lease.workflowId, lease.userId, lease.tabId],
