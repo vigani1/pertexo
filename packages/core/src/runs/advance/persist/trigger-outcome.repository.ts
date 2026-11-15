@@ -10,7 +10,7 @@ import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
-import { streakOutcome } from './outcome-rule.js';
+import { streakOutcome } from './trigger-outcome-rule.js';
 
 /**
  * Records the terminal outcome of an externally triggered run for the

@@ -10,7 +10,7 @@ import type { PreparedFormEvent } from './form-admission.types.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/run-admission.errors.js';
-import { recordWorkflowTriggerSkip } from '../skips.repository.js';
+import { recordWorkflowTriggerSkip } from '../../runs/commands/acceptance/trigger-skips.repository.js';
 import { readFormDefinition } from './read-form-definition.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';

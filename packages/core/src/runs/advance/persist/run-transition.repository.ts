@@ -25,7 +25,7 @@ import { scheduleRunInputSchema } from '../../../shared/trigger-run-input.schema
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { persistFailureNotificationIntent } from './failure-notification.repository.js';
 import { persistWorkspaceInboxEvent } from './inbox-event.repository.js';
-import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcomes.repository.js';
+import { persistWorkflowTriggerOutcome } from './trigger-outcome.repository.js';
 import { persistCallCompletion } from '../../calls/persist.repository.js';
 import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';
 
