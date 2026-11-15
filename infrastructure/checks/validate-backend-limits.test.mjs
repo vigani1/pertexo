@@ -89,6 +89,32 @@ test('scans the reworked packages from disk', async () => {
   }
 });
 
+test('scans a checked core area and leaves the areas still pending', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'backend-limits-'));
+  const checked = 'packages/core/src/variables';
+  try {
+    for (const area of ['variables', 'runs']) {
+      await mkdir(path.join(root, 'packages/core/src', area), {
+        recursive: true,
+      });
+      await writeFile(
+        path.join(root, 'packages/core/src', area, 'retry.ts'),
+        'export const wait = () => sleep(1_500);',
+      );
+    }
+    assert.ok(LIMITS_CHECKED.includes(checked));
+    const findings = await inspectBackendLimits(root);
+    assert.ok(findings.some((finding) => finding.startsWith(`${checked}/`)));
+    assert.ok(
+      !findings.some((finding) =>
+        finding.startsWith('packages/core/src/runs/'),
+      ),
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('finds a limit written into text', () => {
   assert.deepEqual(find("const hint = 'use 100 to 30000 milliseconds';"), [
     '"30000 milliseconds"',

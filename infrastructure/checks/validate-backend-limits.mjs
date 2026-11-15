@@ -24,7 +24,11 @@ const ORIGINAL_LIMITS_CHECKED = Object.freeze([
   'packages/secrets',
 ]);
 
-/** Backend workspaces reworked so far; each new one joins once its limits are named. */
+/**
+ * Backend workspaces reworked so far; each new one joins once its limits are
+ * named. A core area joins on its own (`packages/core/src/<area>`) until all
+ * of core has had its pass.
+ */
 export const LIMITS_CHECKED = Object.freeze([
   'packages/policy',
   'packages/rate-limit',
@@ -44,6 +48,19 @@ export const LIMITS_CHECKED = Object.freeze([
   'apps/code-runner',
   'apps/worker',
   'apps/api',
+  'packages/core/src/artifacts',
+  'packages/core/src/attempts',
+  'packages/core/src/connections',
+  'packages/core/src/data-tables',
+  'packages/core/src/governance',
+  'packages/core/src/identity',
+  'packages/core/src/inbox',
+  'packages/core/src/notifications',
+  'packages/core/src/operator',
+  'packages/core/src/outbox',
+  'packages/core/src/shared',
+  'packages/core/src/tenant-access',
+  'packages/core/src/variables',
 ]);
 
 // Unit factors: 1_000 ms in a second, 60 seconds in a minute, 1_024 bytes in a KB.
@@ -257,11 +274,20 @@ export function validateLimitsChecked(checked = LIMITS_CHECKED) {
   );
 }
 
+// A workspace, or one area inside it (`packages/core/src/<area>`).
+async function listCheckedFiles(entry, root) {
+  const workspace = entry.split('/').slice(0, 2).join('/');
+  const files = await listSourceFiles(workspace, root);
+  return entry === workspace
+    ? files
+    : files.filter((file) => file.startsWith(`${entry}/`));
+}
+
 export async function inspectBackendLimits(root = repositoryRoot) {
   const written = [];
   const units = [];
-  for (const workspace of LIMITS_CHECKED)
-    for (const file of await listSourceFiles(workspace, root)) {
+  for (const entry of LIMITS_CHECKED)
+    for (const file of await listCheckedFiles(entry, root)) {
       const text = await readSource(file, root);
       written.push([file, findWrittenLimits(file, text)]);
       units.push(...findHandWrittenByteUnits(file, text));
