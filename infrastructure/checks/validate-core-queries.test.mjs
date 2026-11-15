@@ -52,6 +52,21 @@ test('refuses handles that take another name', () => {
     assert.equal(find(text).length, 1, text);
 });
 
+test('refuses a handle typed through an alias, an aliased opener and SQL text', () => {
+  for (const text of [
+    "import type { NodePgDatabase } from 'drizzle-orm/node-postgres'; type Executor = Pick<NodePgDatabase, 'execute'>; async function f(source: Executor) { await source.execute(STATEMENT); }",
+    'type Reader = Readonly<{ db: WorkspaceDrizzle }>; type Scoped = Reader; async function f(r: Scoped) { await r.execute(x); }',
+    'async function f(source: DatabaseClockSource) { await source.execute(x); }',
+    'async function f(scope: ResourceTransaction) { await scope.execute(x); }',
+    "import { drizzle as open } from 'drizzle-orm/node-postgres'; const h = open(c); await h.execute(x);",
+    "import { drizzle as open } from 'drizzle-orm/node-postgres'; await open(c).execute(x);",
+    "await anything.query('select 1');",
+    'await reader.query(`update t set a=${value}`);',
+    "await reader.execute('with x as (select 1) select * from x');",
+  ])
+    assert.equal(find(text).length, 1, text);
+});
+
 test('refuses a builder chain whatever its receiver is called', () => {
   assert.equal(find('await writer.update(t).set({ a: 1 });').length, 1);
   assert.equal(find('await rows.delete(t).where(c);').length, 1);
@@ -89,6 +104,10 @@ test('leaves Map, Set and other non-database calls alone', () => {
     'const run = ({ cache: d }) => d.delete(key);',
     'withCache(index, (c) => c.query(text));',
     "import * as other from 'other'; const at = other.sql`a`;",
+    'type Options = Readonly<{ name: string }>; async function f(o: Options) { await o.execute(x); }',
+    "import { open } from 'other'; const h = open(c); await h.execute(x);",
+    "params.query('page');",
+    'search.execute(`find ${term}`);',
   ])
     assert.deepEqual(find(text), [], text);
 });
