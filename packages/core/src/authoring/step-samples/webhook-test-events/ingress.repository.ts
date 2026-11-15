@@ -23,7 +23,7 @@ import {
 } from './webhook-test-listeners.repository.js';
 import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
-const LISTENER_ATTEMPT_LIMIT = 60;
+const LISTENER_ATTEMPTS_MAX = 60;
 /** How long a received test event stays readable. */
 const TEST_EVENT_LIFETIME_MINUTES = 10;
 
@@ -120,7 +120,7 @@ export async function consumeTestEventLimit(
           and(
             eq(listeners.workspaceId, reference.workspaceId),
             eq(listeners.id, reference.endpointId),
-            sql`${listeners.attempts}<${LISTENER_ATTEMPT_LIMIT}`,
+            sql`${listeners.attempts}<${LISTENER_ATTEMPTS_MAX}`,
             sql`${listeners.expiresAt}>clock_timestamp()`,
             isNull(listeners.outputRef),
           ),
@@ -140,7 +140,7 @@ export async function consumeTestEventLimit(
             and(
               eq(listeners.workspaceId, reference.workspaceId),
               eq(listeners.id, reference.endpointId),
-              sql`${listeners.attempts}>=${LISTENER_ATTEMPT_LIMIT}`,
+              sql`${listeners.attempts}>=${LISTENER_ATTEMPTS_MAX}`,
               sql`${listeners.expiresAt}>clock_timestamp()`,
               isNull(listeners.outputRef),
             ),
@@ -148,7 +148,7 @@ export async function consumeTestEventLimit(
           .catch(rethrowQueryFailure),
     );
     if (limited.length === 1)
-      throw new WebhookIngressRateLimitExceededError(LISTENER_ATTEMPT_LIMIT);
+      throw new WebhookIngressRateLimitExceededError(LISTENER_ATTEMPTS_MAX);
     throw new WebhookTestEventError('unavailable');
   }
 }

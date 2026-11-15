@@ -11,7 +11,7 @@ import {
 } from './events.repository.js';
 import { projectAuditEvent } from './page.js';
 
-const MAX_EXPORTED_EVENTS = 100_000;
+const EXPORTED_EVENTS_MAX = 100_000;
 const BATCH_ROWS = 256;
 /** A generous size per event, which sets how long the export may take. */
 const BUDGETED_BYTES_PER_EVENT = 8192;
@@ -47,9 +47,9 @@ async function measure(
     client,
     workspaceId,
     query,
-    MAX_EXPORTED_EVENTS + 1,
+    EXPORTED_EVENTS_MAX + 1,
   );
-  if (events > MAX_EXPORTED_EVENTS)
+  if (events > EXPORTED_EVENTS_MAX)
     throw new GovernanceError(
       'invalid',
       'This export exceeds 100,000 events. Choose a narrower date range.',
@@ -88,7 +88,7 @@ async function* csv(
     for (const row of batch) {
       signal?.throwIfAborted();
       rows += 1;
-      if (rows > MAX_EXPORTED_EVENTS)
+      if (rows > EXPORTED_EVENTS_MAX)
         throw new GovernanceError(
           'invalid',
           'The audit log changed beyond the export bound. Choose a narrower date range.',

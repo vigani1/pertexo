@@ -16,8 +16,8 @@ import type {
 } from './workspace-variables.types.js';
 import { WorkspaceVariableUsageChangedError } from './workspace-variables.errors.js';
 
-const MAX_SOURCES_PER_PAGE = 100;
-const MAX_SOURCE_BYTES_PER_PAGE = 65_536;
+const SOURCES_PER_PAGE_MAX = 100;
+const SOURCE_BYTES_PER_PAGE_MAX = 65_536;
 
 /** What this page has used so far, across its workflows. */
 export interface UsageSpending {
@@ -127,8 +127,8 @@ function usageItem(
 /** A page's first source always runs, whatever it costs. */
 function pageIsFull(spent: UsageSpending, costBytes: number): boolean {
   return (
-    spent.sources >= MAX_SOURCES_PER_PAGE ||
-    (spent.sources > 0 && spent.bytes + costBytes > MAX_SOURCE_BYTES_PER_PAGE)
+    spent.sources >= SOURCES_PER_PAGE_MAX ||
+    (spent.sources > 0 && spent.bytes + costBytes > SOURCE_BYTES_PER_PAGE_MAX)
   );
 }
 

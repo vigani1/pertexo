@@ -45,7 +45,7 @@ export type PersistedScheduleRecurrenceRow = Readonly<{
 // Resolution examines a three-hour overlap window at minute precision. Keep a
 // margin over those 180 possible raw slots, while ensuring a broken parser
 // cannot monopolize the worker's synchronous event loop.
-const MAX_CRON_CURSOR_STEPS = 256;
+const CRON_CURSOR_STEPS_MAX = 256;
 /** The longest clock change a repeated local time can come from. */
 const OVERLAP_WINDOW_MILLIS = 3 * 60 * 60_000;
 /** How far back a skipped local time looks for the offset change. */
@@ -246,7 +246,7 @@ function nextCronOccurrence(
 ): Date {
   const cursor = cronParser(recurrence, after);
   let previousRawTime = after.getTime();
-  for (let steps = 0; steps < MAX_CRON_CURSOR_STEPS; steps += 1) {
+  for (let steps = 0; steps < CRON_CURSOR_STEPS_MAX; steps += 1) {
     const raw = readCronCursorDate(
       cursor.next().toDate(),
       previousRawTime,
@@ -277,7 +277,7 @@ function greatestCronOccurrence(
   // instant. Search only the adjusted window: resolution never moves forward,
   // so no raw instant at/before the best identity can improve that identity.
   for (let steps = 1; raw.getTime() > greatest.getTime(); steps += 1) {
-    if (steps >= MAX_CRON_CURSOR_STEPS)
+    if (steps >= CRON_CURSOR_STEPS_MAX)
       throw new TypeError('Cron parser cursor traversal exceeded its bound');
     const nextRaw = readCronCursorDate(
       cursor.prev().toDate(),
@@ -340,7 +340,7 @@ export function resolveScheduleObservation(
 }
 
 /** The most fire times one projection returns (ADR 048). */
-export const MAX_SCHEDULE_PROJECTION = 10;
+export const SCHEDULE_PROJECTION_MAX = 10;
 
 /**
  * The next `count` instants a schedule fires after `observedAt`. Each one is

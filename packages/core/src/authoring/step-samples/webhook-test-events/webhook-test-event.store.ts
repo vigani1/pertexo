@@ -32,7 +32,7 @@ import type {
 } from './webhook-test-event.types.js';
 import { WEBHOOK_TEST_CAPTURE_SECONDS } from '@pertexo/workflow-model';
 
-const WORKSPACE_LISTENER_LIMIT = 10;
+const WORKSPACE_LISTENERS_MAX = 10;
 
 export type WebhookTestEventStore = ReturnType<
   typeof createWebhookTestEventStore
@@ -108,7 +108,7 @@ function startTestEventListener(
       .from(listeners)
       .where(eq(listeners.workspaceId, input.workspaceId))
       .catch(rethrowQueryFailure);
-    if (Number(quota[0]?.count) >= WORKSPACE_LISTENER_LIMIT)
+    if (Number(quota[0]?.count) >= WORKSPACE_LISTENERS_MAX)
       throw new WebhookTestEventError('limit_reached');
     const s = input.secret;
     const result = await db

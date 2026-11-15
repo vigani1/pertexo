@@ -9,7 +9,7 @@ import {
 } from './scan-usage.js';
 
 /** A workflow with no expressions costs a query and a parse, but no source budget. */
-const MAX_WORKFLOWS_PER_PAGE = 25;
+const WORKFLOWS_PER_PAGE_MAX = 25;
 
 type UsageCursor = NonNullable<VariableUsageInput['after']>;
 
@@ -45,7 +45,7 @@ export async function walkVariableUsage(
     const { next } = scan;
     const passedWorkflow =
       next?.workflowId === workflow.id && next.offset === 0;
-    if (next === null || !passedWorkflow || read === MAX_WORKFLOWS_PER_PAGE)
+    if (next === null || !passedWorkflow || read === WORKFLOWS_PER_PAGE_MAX)
       return { items, incomplete, next };
     after = next;
   }

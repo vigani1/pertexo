@@ -38,13 +38,13 @@ const repairableDeliveryJob = sql`${outboxEvents.jobName} in ${REPAIRABLE_DELIVE
 
 /** A queue under real load delivers well inside this; past it, the job is presumed lost. */
 const DELIVERY_CONFIRMATION_SECONDS = 60;
-const MAXIMUM_DELIVERY_CONFIRMATION_SECONDS = 3_600;
+const DELIVERY_CONFIRMATION_MAX_SECONDS = 3_600;
 
 /**
  * Doubles with each redelivery: a backlog that is merely slow is asked again less
  * and less often, and a job that can't be confirmed costs a retry an hour at most.
  */
-const deliveryDueTime = sql`clock_timestamp()+make_interval(secs=>least(${MAXIMUM_DELIVERY_CONFIRMATION_SECONDS},${DELIVERY_CONFIRMATION_SECONDS}*power(2,least(${outboxEvents.redeliveries},12))))`;
+const deliveryDueTime = sql`clock_timestamp()+make_interval(secs=>least(${DELIVERY_CONFIRMATION_MAX_SECONDS},${DELIVERY_CONFIRMATION_SECONDS}*power(2,least(${outboxEvents.redeliveries},12))))`;
 
 async function markPublished(
   pool: Pool,

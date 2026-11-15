@@ -7,7 +7,7 @@ import { DELIVERY_CONSUMER } from './delivery-consumers.js';
 import { REPAIRABLE_DELIVERY_JOB_NAMES } from './delivery-consumers.js';
 
 /** About a day of redeliveries, once the delay reaches its ceiling. */
-const MAXIMUM_REDELIVERIES = 30;
+const REDELIVERIES_MAX = 30;
 
 const receiptExists = sql`exists(
   select 1 from ${inboxReceipts} r
@@ -15,7 +15,7 @@ const receiptExists = sql`exists(
      and r.message_id = e.id
 )`;
 
-/** A job asked for again, or given up on after {@link MAXIMUM_REDELIVERIES}. */
+/** A job asked for again, or given up on after {@link REDELIVERIES_MAX}. */
 export type OverdueDelivery = Readonly<{
   workspaceId: string;
   outboxEventId: string;
@@ -40,7 +40,7 @@ export async function settleOverdueDeliveries(
       sql`
       with due as materialized (
         select e.id, ${receiptExists} as confirmed,
-               e.redeliveries >= ${MAXIMUM_REDELIVERIES} as exhausted
+               e.redeliveries >= ${REDELIVERIES_MAX} as exhausted
           from ${outboxEvents} e
          where e.delivery_due_at <= clock_timestamp() and e.failed_at is null
          order by e.delivery_due_at, e.id

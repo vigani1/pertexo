@@ -18,10 +18,10 @@ import {
 } from './refresh.js';
 
 const RENEW_WITHIN_MILLIS = 60_000;
-const WAIT_LIMIT_MILLIS = 20_000;
+const WAIT_MAX_MILLIS = 20_000;
 const WAIT_STEP_MILLIS = 250;
 const MINIMUM_REJECTED_AGE_SECONDS = 60;
-const MAXIMUM_PASSES = 8;
+const TOKEN_READ_PASSES_MAX = 8;
 
 export type { OAuth2TokenScope } from './refresh.js';
 
@@ -197,8 +197,8 @@ export function createOAuth2TokenService(
 
   return Object.freeze({
     accessToken: async (scope, signal) => {
-      const deadline = performance.now() + WAIT_LIMIT_MILLIS;
-      for (let attempt = 0; attempt < MAXIMUM_PASSES; attempt += 1) {
+      const deadline = performance.now() + WAIT_MAX_MILLIS;
+      for (let attempt = 0; attempt < TOKEN_READ_PASSES_MAX; attempt += 1) {
         const grant = await store.openOAuth2Grant({
           workspaceId: scope.workspaceId,
           connectionId: scope.connectionId,

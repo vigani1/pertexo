@@ -10,7 +10,7 @@ import {
 
 const STATEMENT_TIMEOUT_MILLIS = 5_000;
 /** The most outcomes one fold takes. */
-const FOLD_LIMIT_MAX = 1_000;
+const FOLD_OUTCOMES_MAX = 1_000;
 export type WorkflowTriggerPauseFoldStore = ReturnType<
   typeof createWorkflowTriggerPauseFoldStore
 >;
@@ -32,9 +32,9 @@ export function createWorkflowTriggerPauseFoldStore(
     },
     /** Folds up to `limit` outcomes into streaks, pausing workflows that reach their threshold. */
     foldPending: (limit: number, signal?: AbortSignal) => {
-      if (!Number.isInteger(limit) || limit < 1 || limit > FOLD_LIMIT_MAX)
+      if (!Number.isInteger(limit) || limit < 1 || limit > FOLD_OUTCOMES_MAX)
         throw new RangeError(
-          `Trigger outcome fold limit must be between 1 and ${String(FOLD_LIMIT_MAX)}`,
+          `Trigger outcome fold limit must be between 1 and ${String(FOLD_OUTCOMES_MAX)}`,
         );
       return withPlatformTransaction(
         pool,

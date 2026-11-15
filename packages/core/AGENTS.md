@@ -65,7 +65,10 @@ user-facing copy beyond the safe messages of its errors.
   through `admitInSavepoint` (`triggers/admission-savepoint.repository.ts`).
 - An error: the area's or sub-area's `.errors.ts`; the API maps it to a
   problem.
-- A limit: a named constant at the top of the file that enforces it, or the
+- A limit: a named constant at the top of the file that enforces it, named
+  subject first, then `MAX`, then any unit (`PENDING_REVIEWS_MAX`,
+  `RUN_EVENT_PAYLOAD_MAX_BYTES`); a list's page size is its `…_PAGE_LIMIT`
+  (`shared/page-limits.ts`). Or it is the
   browser-safe owner's (`workflow-model`, `node-sdk`, `policy`) when the
   browser or another package shows it (`WORKFLOW_ORGANIZATION_LIMITS`,
   `WORKFLOW_INPUT_CASE_LIMITS`, `USAGE_TREND_PERIOD_DAYS`). A message reads

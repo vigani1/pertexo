@@ -14,7 +14,7 @@ type Binding = Readonly<{
   intentId: string;
   bindingDigest: string;
 }>;
-const MAXIMUM_LINEAGE_DEPTH = 32;
+const LINEAGE_DEPTH_MAX = 32;
 const QUERY_PAGE_SIZE = 1_000;
 
 const prior = (claim: Claim): Binding => ({
@@ -53,7 +53,7 @@ async function readLineages(
   let frontier = roots.map(prior);
   for (
     let depth = 0;
-    depth <= MAXIMUM_LINEAGE_DEPTH && frontier.length > 0;
+    depth <= LINEAGE_DEPTH_MAX && frontier.length > 0;
     depth++
   ) {
     const wanted = frontier.filter((binding) => {
@@ -87,7 +87,7 @@ function lineage(root: Claim, rows: ReadonlyMap<string, Claim>) {
   let current: Claim | undefined = rows.get(key(prior(root)));
   while (current !== undefined) {
     const identity = key(prior(current));
-    if (visited.has(identity) || chain.length === MAXIMUM_LINEAGE_DEPTH)
+    if (visited.has(identity) || chain.length === LINEAGE_DEPTH_MAX)
       return { chain, unsafe: true };
     visited.add(identity);
     chain.push(current);

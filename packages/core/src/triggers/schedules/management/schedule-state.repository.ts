@@ -25,7 +25,7 @@ import type {
 } from './schedule-management.types.js';
 import { scheduleTriggerSchema } from './schedule-command.schemas.js';
 
-const SCHEDULE_LIST_LIMIT = 1000;
+const LISTED_SCHEDULES_MAX = 1000;
 
 function scheduleQuery(client: PoolClient) {
   return drizzle(client)
@@ -112,7 +112,7 @@ export async function readSchedules(
       ),
     )
     .orderBy(workflowTriggers.nodeId, workflowTriggers.id)
-    .limit(SCHEDULE_LIST_LIMIT)
+    .limit(LISTED_SCHEDULES_MAX)
     .catch(rethrowQueryFailure);
   return Object.freeze(rows.map(scheduleRecord));
 }
