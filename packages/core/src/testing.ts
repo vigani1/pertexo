@@ -274,7 +274,7 @@ export {
   type ReconcileOperatorAttemptInput,
   type RecordUnknownOutcomeEvidenceInput,
   type RedispatchFailedOutboxInput,
-} from './operator/operator-command.js';
+} from './operator/operator-command.types.js';
 export * from './tenant-access/testing.js';
 export { createWorkflowTriggerReconciliationStore } from './triggers/reconciliation/workflow-trigger-reconciliation.store.js';
 export {

@@ -1,7 +1,7 @@
 import type {
   WorkflowActor,
   WorkflowRef,
-} from '../../shared/workflow-actor.js';
+} from '../../shared/workflow-actor.types.js';
 import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
 import type {
   FolderScope,

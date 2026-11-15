@@ -4,7 +4,7 @@ import type {
   OAuth2GrantRecord as OAuth2Grant,
   OAuth2TokenRecord as OAuth2Token,
 } from './oauth2-grant.types.js';
-import type { OAuth2AccessToken } from './token-renewal.js';
+import type { OAuth2AccessToken } from './token-renewal.types.js';
 import {
   loseOAuth2Grant,
   openOAuth2Grant,

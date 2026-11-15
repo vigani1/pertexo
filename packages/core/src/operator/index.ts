@@ -15,7 +15,7 @@ export type {
   RecordUnknownOutcomeEvidenceInput,
   RedispatchFailedOutboxInput,
   ReplayOperatorRunInput,
-} from './operator-command.js';
+} from './operator-command.types.js';
 export { OperatorCommandConflictError } from './operator-command.errors.js';
 export {
   createOperatorRunReplayStore,

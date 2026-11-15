@@ -9,7 +9,7 @@ import type { Pool } from 'pg';
 import type {
   CommandRequest,
   GenericOperatorCommandResult,
-} from './operator-command.js';
+} from './operator-command.types.js';
 import { OperatorCommandConflictError } from './operator-command.errors.js';
 import { requestFingerprint } from './fingerprint.js';
 import {

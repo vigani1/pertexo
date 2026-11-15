@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../../shared/workflow-actor.js';
+import type { WorkflowActor } from '../../../shared/workflow-actor.types.js';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { z } from 'zod';
 import {

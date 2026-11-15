@@ -38,7 +38,7 @@ import type {
 import type {
   GenericOperatorCommandResult,
   OperatorCommandRecord,
-} from '../../src/operator/operator-command.js';
+} from '../../src/operator/operator-command.types.js';
 import type {
   PreviewAttemptLease,
   PreviewStatus,

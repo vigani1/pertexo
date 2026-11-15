@@ -18,7 +18,7 @@ export type {} from './stored-execution.js';
 export type {} from './workspace-fence.repository.js';
 export type {} from './command-receipt.errors.js';
 export type {} from './retention-deletion.repository.js';
-export type {} from './workflow-actor.js';
+export type {} from './workflow-actor.types.js';
 export type {} from './sql-intervals.repository.js';
 export type {} from './transaction-timeouts.schemas.js';
 

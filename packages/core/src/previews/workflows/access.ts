@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../shared/workflow-actor.js';
+import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
 import type { Pool, PoolClient } from 'pg';
 import {
   ACTIVE_WORKSPACE_STATUSES,

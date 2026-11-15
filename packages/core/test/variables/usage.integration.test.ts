@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
-import type { VariableUsagePage } from '../../src/variables/workspace-variables.js';
+import type { VariableUsagePage } from '../../src/variables/workspace-variables.types.js';
 
 import { admin } from '../lifecycle/calls/calls.fixture.js';
 import { userId } from '../lifecycle/retention.support.js';

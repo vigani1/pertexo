@@ -1,4 +1,4 @@
-import type { WorkflowRef } from '../../shared/workflow-actor.js';
+import type { WorkflowRef } from '../../shared/workflow-actor.types.js';
 import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

@@ -10,7 +10,7 @@ import type {
   VariableUsageInput,
   VariableUsagePage,
   VariableUsageScan,
-} from './workspace-variables.js';
+} from './workspace-variables.types.js';
 import { WorkspaceVariableUsageChangedError } from './workspace-variables.errors.js';
 
 const MAX_SOURCES_PER_PAGE = 100;

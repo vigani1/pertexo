@@ -18,7 +18,7 @@ import type {
   OAuth2TokenFailure,
   OAuth2TokenAnswer,
   OAuth2RenewalProtocol,
-} from './token-renewal.js';
+} from './token-renewal.types.js';
 import {
   decodeStoredClientSecret,
   decodeStoredTokens,

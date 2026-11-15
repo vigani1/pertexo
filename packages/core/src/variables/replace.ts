@@ -11,7 +11,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
-import type { ReplaceWorkspaceVariablesInput } from './workspace-variables.js';
+import type { ReplaceWorkspaceVariablesInput } from './workspace-variables.types.js';
 import { WorkspaceVariablesConflictError } from './workspace-variables.errors.js';
 import { planWorkspaceVariableReplacement } from './replacement.js';
 import { saveVariableSet } from './set.repository.js';

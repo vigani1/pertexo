@@ -1,5 +1,5 @@
 import { readListSummaries } from './list-summary.repository.js';
-import type { WorkflowRef } from '../../../shared/workflow-actor.js';
+import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
 import { and, asc, desc, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
