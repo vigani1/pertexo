@@ -1,3 +1,4 @@
+import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
@@ -88,7 +89,11 @@ describe.runIf(betterAuthIntegrationEnabled)(
         payload: { displayName: 'Ada Lovelace', expectedRevision: 1 },
       });
       expect(missingCsrf.statusCode).toBe(403);
-      for (const displayName of ['   ', 'x'.repeat(129), 'Ada\nLovelace']) {
+      for (const displayName of [
+        '   ',
+        'x'.repeat(DISPLAY_NAME_MAX_CHARACTERS + 1),
+        'Ada\nLovelace',
+      ]) {
         const invalid = await api.send('PATCH', url, {
           browser,
           headers: key,

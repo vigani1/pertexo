@@ -1,3 +1,4 @@
+import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 import {
   afterAll,
   beforeAll,
@@ -213,7 +214,7 @@ describe('workspace routes', () => {
       idempotencyKey: 'profile-command-1',
     });
   });
-  it.each(['', 'x'.repeat(129), 'Tab\tName'])(
+  it.each(['', 'x'.repeat(DISPLAY_NAME_MAX_CHARACTERS + 1), 'Tab\tName'])(
     'refuses an invalid display name %j through HTTP',
     async (displayName) => {
       const reply = await harness.send('PATCH', '/v1/users/me', {
