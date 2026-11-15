@@ -49,10 +49,4 @@ export const STORAGE_INTEGRITY_ERRORS = Object.freeze({
  * only shrinks (validate-core-repository-throws.mjs). Each moves its
  * decisions and throws into the operation that calls it.
  */
-export const REPOSITORY_THROW_BACKLOG = Object.freeze({
-  'packages/core/src/authoring/step-samples/source.repository.ts': 4,
-  'packages/core/src/authoring/step-samples/step-sample-commands.repository.ts': 5,
-  'packages/core/src/authoring/step-samples/step-sample-state.repository.ts': 4,
-  'packages/core/src/authoring/step-samples/webhook-test-events/authority.repository.ts': 2,
-  'packages/core/src/authoring/step-samples/webhook-test-events/ingress.repository.ts': 3,
-});
+export const REPOSITORY_THROW_BACKLOG = Object.freeze({});

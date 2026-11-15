@@ -1,3 +1,4 @@
+import type { PoolClient, Pool } from 'pg';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -5,25 +6,11 @@ import {
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { webhookTestEvents as listeners } from '@pertexo/database/schema';
-import type { Pool } from 'pg';
-
-import { WorkflowStepSampleError } from '../step-sample.errors.js';
-import { inlineSampleOutput } from '../step-sample-state.repository.js';
-import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
-import { WebhookIngressRateLimitExceededError } from '../../../triggers/webhooks/webhook-trigger.errors.js';
-import { testEventDraftForCreator } from './authority.repository.js';
-import type {
-  TestEventReference,
-  TestEventScope,
-} from './webhook-test-event.types.js';
-import { WebhookTestEventError } from './webhook-test-event.errors.js';
-import {
-  listenerSelection,
-  lockListener,
-} from './webhook-test-listeners.repository.js';
+import type { TestEventReference } from './webhook-test-event.types.js';
+import { listenerSelection } from './webhook-test-listeners.repository.js';
 import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
-const LISTENER_ATTEMPTS_MAX = 60;
+export const LISTENER_ATTEMPTS_MAX = 60;
 /** How long a received test event stays readable. */
 const TEST_EVENT_LIFETIME_MINUTES = 10;
 
@@ -31,84 +18,42 @@ const TEST_EVENT_LIFETIME_MINUTES = 10;
  * What the test address does for an HTTP sender. No member is acting, so these stay off
  * the authority helper; the listener works while its creator could still edit the workflow.
  */
-type Row = NonNullable<Awaited<ReturnType<typeof lockListener>>>;
-const scopeOf = (r: Row): TestEventScope => ({
-  workspaceId: r.workspaceId,
-  workflowId: r.workflowId,
-  nodeId: r.nodeId,
-  actorId: r.createdBy,
-});
 
-export async function resolveTestEventListener(
-  pool: Pool,
-  hash: string,
-): Promise<TestEventReference | null> {
+/** The workspace and listener a test address hash belongs to, if any. */
+export async function resolveListenerHash(pool: Pool, hash: string) {
   const resolution = await drizzle(pool)
     .execute<{ workspace_id: string; id: string }>(
       sql`select * from app.resolve_webhook_test_event(${hash}::char(64))`,
     )
     .catch(rethrowQueryFailure);
-  const resolved = resolution.rows[0];
-  if (resolved === undefined) return null;
-  try {
-    return await withTenantScopedClient(
-      pool,
-      { workspaceId: resolved.workspace_id },
-      async (client) => {
-        const result = await drizzle(client)
-          .select(listenerSelection)
-          .from(listeners)
-          .where(
-            and(
-              eq(listeners.workspaceId, resolved.workspace_id),
-              eq(listeners.id, resolved.id),
-              eq(listeners.endpointKeyHash, hash),
-              isNull(listeners.outputRef),
-            ),
-          )
-          .catch(rethrowQueryFailure);
-        const row = result[0];
-        if (row === undefined || row.expired) return null;
-        const draft = await testEventDraftForCreator(client, scopeOf(row));
-        if (draft.binding !== row.binding) return null;
-        return {
-          endpointId: row.id,
-          endpointKeyHash: hash,
-          workspaceId: row.workspaceId,
-          triggerId: row.id,
-          workflowId: row.workflowId,
-          nodeId: row.nodeId,
-          databaseTime: row.databaseTime,
-          authentication: row.authentication,
-          ...(draft.config.runInput === undefined
-            ? {}
-            : { runInputMode: draft.config.runInput }),
-          currentSecret: {
-            id: row.id,
-            triggerId: row.id,
-            kmsKeyReference: row.kmsKeyReference,
-            encryptedDataKey: row.encryptedDataKey,
-            ciphertext: row.ciphertext,
-            nonce: row.nonce,
-            authTag: row.authTag,
-          },
-        };
-      },
-    );
-  } catch (error) {
-    if (
-      error instanceof WorkflowNotFoundError ||
-      error instanceof WebhookTestEventError
-    )
-      return null;
-    throw error;
-  }
+  return resolution.rows[0];
 }
 
-export async function consumeTestEventLimit(
+export async function readPendingListener(
+  client: PoolClient,
+  resolved: Readonly<{ workspace_id: string; id: string }>,
+  hash: string,
+) {
+  const result = await drizzle(client)
+    .select(listenerSelection)
+    .from(listeners)
+    .where(
+      and(
+        eq(listeners.workspaceId, resolved.workspace_id),
+        eq(listeners.id, resolved.id),
+        eq(listeners.endpointKeyHash, hash),
+        isNull(listeners.outputRef),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return result[0];
+}
+
+/** Counts one delivery attempt against a live, unanswered listener; false when none is left. */
+export async function takeListenerAttempt(
   pool: Pool,
   reference: TestEventReference,
-): Promise<void> {
+): Promise<boolean> {
   const allowed = await withTenantScopedClient(
     pool,
     { workspaceId: reference.workspaceId },
@@ -128,97 +73,70 @@ export async function consumeTestEventLimit(
         .returning({ id: listeners.id })
         .catch(rethrowQueryFailure),
   );
-  if (allowed.length !== 1) {
-    const limited = await withTenantScopedClient(
-      pool,
-      { workspaceId: reference.workspaceId },
-      (client) =>
-        drizzle(client)
-          .select({ one: sql`1` })
-          .from(listeners)
-          .where(
-            and(
-              eq(listeners.workspaceId, reference.workspaceId),
-              eq(listeners.id, reference.endpointId),
-              sql`${listeners.attempts}>=${LISTENER_ATTEMPTS_MAX}`,
-              sql`${listeners.expiresAt}>clock_timestamp()`,
-              isNull(listeners.outputRef),
-            ),
-          )
-          .catch(rethrowQueryFailure),
-    );
-    if (limited.length === 1)
-      throw new WebhookIngressRateLimitExceededError(LISTENER_ATTEMPTS_MAX);
-    throw new WebhookTestEventError('unavailable');
-  }
+  return allowed.length === 1;
 }
 
-export async function captureTestEvent(
+/** Whether a live, unanswered listener has used every attempt. */
+export async function listenerAttemptsSpent(
   pool: Pool,
   reference: TestEventReference,
-  runInput: unknown,
 ): Promise<boolean> {
-  return withTenantScopedClient(
+  const limited = await withTenantScopedClient(
     pool,
     { workspaceId: reference.workspaceId },
-    async (client) => {
-      // Read authority before the row lock, matching management's lock order.
-      const result = await drizzle(client)
-        .select(listenerSelection)
+    (client) =>
+      drizzle(client)
+        .select({ one: sql`1` })
         .from(listeners)
         .where(
           and(
             eq(listeners.workspaceId, reference.workspaceId),
             eq(listeners.id, reference.endpointId),
+            sql`${listeners.attempts}>=${LISTENER_ATTEMPTS_MAX}`,
+            sql`${listeners.expiresAt}>clock_timestamp()`,
+            isNull(listeners.outputRef),
           ),
         )
-        .catch(rethrowQueryFailure);
-      const candidate = result[0];
-      if (candidate === undefined) return false;
-      let draft;
-      try {
-        draft = await testEventDraftForCreator(client, scopeOf(candidate));
-      } catch (error) {
-        if (
-          error instanceof WorkflowNotFoundError ||
-          error instanceof WebhookTestEventError
-        )
-          return false;
-        throw error;
-      }
-      const row = await lockListener(client, scopeOf(candidate), candidate.id);
-      const listenerUnavailable =
-        row === undefined ||
-        row.expired ||
-        row.outputRef !== null ||
-        row.binding !== draft.binding;
-      if (listenerUnavailable) return false;
-      let output;
-      try {
-        output = inlineSampleOutput({
-          kind: 'inline',
-          value: runInput,
-        });
-      } catch (error) {
-        if (error instanceof WorkflowStepSampleError)
-          throw new WebhookTestEventError('value_invalid');
-        throw error;
-      }
-      await drizzle(client)
-        .update(listeners)
-        .set({
-          outputRef: output,
-          receivedAt: sql`clock_timestamp()`,
-          expiresAt: sql`clock_timestamp()+${TEST_EVENT_LIFETIME_MINUTES}*${MINUTE_INTERVAL}`,
-        })
-        .where(
-          and(
-            eq(listeners.workspaceId, reference.workspaceId),
-            eq(listeners.id, reference.endpointId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      return true;
-    },
+        .catch(rethrowQueryFailure),
   );
+  return limited.length === 1;
+}
+
+/** The listener, read before its row lock, matching management's lock order. */
+export async function readListener(
+  client: PoolClient,
+  reference: TestEventReference,
+) {
+  const result = await drizzle(client)
+    .select(listenerSelection)
+    .from(listeners)
+    .where(
+      and(
+        eq(listeners.workspaceId, reference.workspaceId),
+        eq(listeners.id, reference.endpointId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return result[0];
+}
+
+export async function storeTestEvent(
+  client: PoolClient,
+  reference: TestEventReference,
+  output: string,
+): Promise<void> {
+  await drizzle(client)
+    .update(listeners)
+    .set({
+      outputRef: output,
+      receivedAt: sql`clock_timestamp()`,
+      expiresAt: sql`clock_timestamp()+${TEST_EVENT_LIFETIME_MINUTES}*${MINUTE_INTERVAL}`,
+    })
+    .where(
+      and(
+        eq(listeners.workspaceId, reference.workspaceId),
+        eq(listeners.id, reference.endpointId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }

@@ -1,154 +1,73 @@
 import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
-import { decodeStoredValue } from '../../shared/stored-values.js';
-import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
-import { appendAuditFact } from '../../governance/audit/facts.js';
+
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
+
 import { and, eq, sql } from 'drizzle-orm';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
+
 import { workflowStepSamples } from '@pertexo/database/schema';
+
 import type { PoolClient } from 'pg';
-import {
-  DATA_RETENTION_DAYS,
-  utf8ByteLength,
-  STEP_SAMPLE_LIMITS,
-} from '@pertexo/workflow-model';
-import { z } from 'zod';
-import { generatePersistedId } from '@pertexo/database/platform';
-import {
-  sampleProjection,
-  sampleDraft,
-} from './step-sample-state.repository.js';
-import { captureSampleSource } from './source.repository.js';
-import { WorkflowStepSampleError } from './step-sample.errors.js';
-import type {
-  SampleCommand,
-  SampleResult,
-  SampleRow,
-  SampleSource,
-  SampleTransaction,
-} from './step-sample.types.js';
 
-const resultSchema = z
-  .object({ sampleId: z.uuid(), removed: z.boolean() })
-  .strict();
-export async function mutateStepSample(
-  transact: SampleTransaction,
-  input: SampleCommand,
-  source: SampleSource | 'remove',
-): Promise<SampleResult> {
-  return transact(input, {
-    write: true,
-    work: async (client) => {
-      const sampleId = generatePersistedId();
-      const command = {
-        workspaceId: input.workspaceId,
-        operation:
-          source === 'remove'
-            ? 'workflow.sample.remove'
-            : 'workflow.sample.put',
-        scope: `${input.actorId}:${input.workflowId}`,
-        idempotencyKey: input.idempotencyKey,
-      };
-      const stored = await claimCommand(client, {
-        ...command,
-        resourceId: sampleId,
-        request: {
-          nodeId: input.nodeId,
-          expectedDraftRevision: input.expectedDraftRevision,
-          expectedSampleId: input.expectedSampleId,
-          source,
-        },
-      });
-      if (stored !== null)
-        return {
-          ...decodeStoredValue(() => resultSchema.parse(stored)),
-          replayed: true,
-        };
-      const draft = await sampleDraft(client, input, { write: true });
-      if (draft.revision !== input.expectedDraftRevision)
-        throw new WorkflowStepSampleError('draft_changed');
-      const binding = draft.bindings.get(input.nodeId);
-      if (binding === undefined)
-        throw new WorkflowStepSampleError('step_unavailable');
-      const db = drizzle(client);
-      await db
-        .execute(
-          sql`select pg_advisory_xact_lock(hashtextextended(${`workflow-step-sample-quota:${input.workspaceId}`},0))`,
-        )
-        .catch(rethrowQueryFailure);
-      const [current] = await db
-        .select(sampleProjection)
-        .from(workflowStepSamples)
-        .where(
-          and(
-            eq(workflowStepSamples.workspaceId, input.workspaceId),
-            eq(workflowStepSamples.workflowId, input.workflowId),
-            eq(workflowStepSamples.nodeId, input.nodeId),
-          ),
-        )
-        .for('update')
-        .catch(rethrowQueryFailure);
-      if ((current?.id ?? null) !== input.expectedSampleId)
-        throw new WorkflowStepSampleError('changed');
-      let receiptSampleId = sampleId;
-      if (source === 'remove') {
-        if (current === undefined) throw new WorkflowStepSampleError('changed');
-        receiptSampleId = current.id;
-        await db
-          .delete(workflowStepSamples)
-          .where(
-            and(
-              eq(workflowStepSamples.workspaceId, input.workspaceId),
-              eq(workflowStepSamples.id, current.id),
-            ),
-          )
-          .catch(rethrowQueryFailure);
-      } else {
-        await persistCapturedSample(client, input, {
-          source,
-          current,
-          binding,
-          sampleId,
-        });
-      }
-      const receipt = {
-        sampleId: receiptSampleId,
-        removed: source === 'remove',
-      };
-      await appendAuditFact(client, {
-        workspaceId: input.workspaceId,
-        actorId: input.actorId,
-        action:
-          source === 'remove'
-            ? 'workflow.sample.removed'
-            : 'workflow.sample.saved',
-        targetType: 'workflow_step_sample',
-        targetId: receipt.sampleId,
-        requestId: input.requestId ?? null,
-        traceId: input.traceId ?? null,
-        metadata: {
-          workflowId: input.workflowId,
-          nodeId: input.nodeId,
-          sourceKind: source === 'remove' ? 'remove' : source.kind,
-        },
-      });
-      await completeCommand(client, command, receipt);
-      return { ...receipt, replayed: false };
-    },
-  });
-}
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 
-async function assertSampleQuota(
+import { sampleProjection } from './step-sample-state.repository.js';
+
+import type { CapturedSample } from './capture-source.js';
+
+import type { SampleCommand } from './step-sample.types.js';
+
+const SAMPLE_RETENTION_SECONDS = DATA_RETENTION_DAYS.stepSamples * 86_400;
+
+/** Serializes sample writes in the workspace, then locks the step's current sample. */
+export async function lockCurrentSample(
   client: PoolClient,
   input: SampleCommand,
-  {
-    current,
-    retainedBytes,
-  }: Readonly<{ current: SampleRow | undefined; retainedBytes: number }>,
+) {
+  const db = drizzle(client);
+  await db
+    .execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`workflow-step-sample-quota:${input.workspaceId}`},0))`,
+    )
+    .catch(rethrowQueryFailure);
+  const [current] = await db
+    .select(sampleProjection)
+    .from(workflowStepSamples)
+    .where(
+      and(
+        eq(workflowStepSamples.workspaceId, input.workspaceId),
+        eq(workflowStepSamples.workflowId, input.workflowId),
+        eq(workflowStepSamples.nodeId, input.nodeId),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return current;
+}
+
+export async function deleteSample(
+  client: PoolClient,
+  workspaceId: string,
+  sampleId: string,
 ): Promise<void> {
+  const db = drizzle(client);
+  await db
+    .delete(workflowStepSamples)
+    .where(
+      and(
+        eq(workflowStepSamples.workspaceId, workspaceId),
+        eq(workflowStepSamples.id, sampleId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+}
+
+/** The workspace's retained sample bytes and counts. */
+export async function readSampleUsage(
+  client: PoolClient,
+  input: SampleCommand,
+) {
   const [usage] = await drizzle(client)
     .select({
       bytes: sql<number>`coalesce(sum(${workflowStepSamples.retainedBytes}),0)::float8`,
@@ -158,39 +77,25 @@ async function assertSampleQuota(
     .from(workflowStepSamples)
     .where(eq(workflowStepSamples.workspaceId, input.workspaceId))
     .catch(rethrowQueryFailure);
-  if (usage === undefined) throw new Error('Sample quota is unavailable');
-  const sampleQuotaExceeded =
-    usage.bytes - (current?.retainedBytes ?? 0) + retainedBytes >
-      SAMPLE_RETAINED_BYTES ||
-    (current === undefined &&
-      (usage.workflowCount >= STEP_SAMPLE_LIMITS.perWorkflow ||
-        usage.workspaceCount >= STEP_SAMPLE_LIMITS.perWorkspace));
-  if (sampleQuotaExceeded) throw new WorkflowStepSampleError('limit_reached');
+  return usage;
 }
 
-async function persistCapturedSample(
+/** Stores the captured sample, replacing the step's earlier one. */
+export async function saveSample(
   client: PoolClient,
   input: SampleCommand,
   {
-    source,
-    current,
-    binding,
     sampleId,
+    binding,
+    captured,
+    retainedBytes,
   }: Readonly<{
-    source: SampleSource;
-    current: SampleRow | undefined;
-    binding: string;
     sampleId: string;
+    binding: string;
+    captured: CapturedSample;
+    retainedBytes: number;
   }>,
 ): Promise<void> {
-  const captured = await captureSampleSource(client, input, {
-    source,
-    current,
-    binding,
-  });
-  const retainedBytes =
-    utf8ByteLength(binding) + utf8ByteLength(captured.output);
-  await assertSampleQuota(client, input, { current, retainedBytes });
   const values = {
     id: sampleId,
     workspaceId: input.workspaceId,
@@ -231,7 +136,3 @@ async function persistCapturedSample(
     })
     .catch(rethrowQueryFailure);
 }
-
-const SAMPLE_RETENTION_SECONDS = DATA_RETENTION_DAYS.stepSamples * 86_400;
-
-const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;

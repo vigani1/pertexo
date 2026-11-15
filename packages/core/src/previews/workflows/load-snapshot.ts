@@ -7,7 +7,7 @@ import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import { readDatabaseClock } from '../../shared/database-clock.repository.js';
-import { sampleDraft } from '../../authoring/step-samples/step-sample-state.repository.js';
+import { sampleDraft } from '../../authoring/step-samples/step-sample-state.js';
 import type { WorkflowTestOptions } from './workflow-test.types.js';
 import { WorkflowTestError } from './workflow-test.errors.js';
 import { lockWorkflowSamples } from './snapshot.repository.js';
