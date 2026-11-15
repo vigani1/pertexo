@@ -3,12 +3,52 @@ import {
   promotionFailureMessage,
   requiresPromotionReview,
 } from '../model/promotion-failures';
-import { useQueryClient } from '@tanstack/react-query';
-import type { WorkflowPromotionApply } from '@pertexo/contracts';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type {
+  WorkflowPromotionApply,
+  WorkflowPromotionPreviewRequest,
+  WorkflowPromotionTarget,
+} from '@pertexo/contracts';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { isApiError } from '@/lib/api/error';
-import { applyPromotion, type PromotionScope } from './promotions.api';
+import {
+  applyPromotion,
+  previewPromotion,
+  setPromotionTarget,
+  type PromotionScope,
+} from './promotions.api';
 import { promotionKeys, promotionSettingsQuery } from './promotions.queries';
+
+/** Points promotion at a workspace; promotion reads refetch after `onAccepted`. */
+export function usePromotionTargetSave(
+  scope: PromotionScope,
+  onAccepted: (result: Awaited<ReturnType<typeof setPromotionTarget>>) => void,
+) {
+  const cache = useQueryClient();
+  return useRetainedCommand(
+    (body: WorkflowPromotionTarget, key: string) =>
+      setPromotionTarget(scope, body, key),
+    async (result) => {
+      onAccepted(result);
+      await cache.invalidateQueries({ queryKey: promotionKeys.scope(scope) });
+    },
+    { action: 'saving the promotion target' },
+  );
+}
+
+export type PromotionReviewInput = Readonly<{
+  body: WorkflowPromotionPreviewRequest;
+  linkRevision: number;
+}>;
+
+/** A dry run of the promotion; its link revision rides along to judge it current. */
+export function usePromotionReview(scope: PromotionScope) {
+  return useMutation({
+    mutationFn: ({ body }: PromotionReviewInput) =>
+      previewPromotion(scope, body),
+    retry: false,
+  });
+}
 
 export function usePromotionApply(
   scope: PromotionScope,

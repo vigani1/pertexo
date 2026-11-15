@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import type { DataTableRow, DataTableColumn } from '@pertexo/node-sdk';
 import { Button } from '@/components/ui/button';
@@ -22,13 +21,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import {
-  sendTableCommand,
-  type TableScope,
-  type TableCommand,
-} from '../data/tables.api';
-import { tableKeys } from '../data/tables.queries';
+import { useTableCommand } from '../data/tables.mutations';
+import type { TableScope, TableCommand } from '../data/tables.api';
 import {
   editTableValues,
   readTableValues,
@@ -49,20 +43,15 @@ export function TableRowEditor({
   schemaChanged?: boolean;
   onClose: () => void;
 }>) {
-  const cache = useQueryClient();
   const [draft, setDraft] = useState(() =>
     editTableValues(table.columns, row?.values),
   );
   const [error, setError] = useState<string>();
   const validation = useFieldValidation<string>();
-  const command = useRetainedCommand(
-    (body: TableCommand, key: string) => sendTableCommand(scope, body, key),
-    async () => {
-      await cache.invalidateQueries({ queryKey: tableKeys.scope(scope) });
-      onClose();
-    },
-    { action: 'saving this row' },
-  );
+  const command = useTableCommand(scope, (body: TableCommand) => body, {
+    action: 'saving this row',
+    onDone: onClose,
+  });
   const locked = command.pending || command.uncertain;
   return (
     <Dialog

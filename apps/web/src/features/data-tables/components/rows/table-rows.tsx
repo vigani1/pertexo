@@ -1,16 +1,12 @@
 import { QueryView } from '@/components/patterns/states/query-view';
 import { readAccessLost, shownData } from '@/lib/api/error-copy';
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import type { DataTableQuery, DataTableRow } from '@pertexo/node-sdk';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import {
-  sendTableCommand,
-  type TableScope,
-  type TableCommand,
-} from '../../data/tables.api';
-import { tableRowsQuery, tableKeys } from '../../data/tables.queries';
+import { useTableCommand } from '../../data/tables.mutations';
+import type { TableScope, TableCommand } from '../../data/tables.api';
+import { tableRowsQuery } from '../../data/tables.queries';
 import { TableRowEditor } from '../row-editor';
 import { ImportTableCsv } from '../import';
 import { TableCommandFeedback } from '../command-feedback';
@@ -29,7 +25,6 @@ export function DataTableRows({
   table: DataTableDefinition;
   editable: boolean;
 }>) {
-  const cache = useQueryClient();
   const [query, setQuery] = useState<DataTableQuery>({
     filters: [],
     limit: 50,
@@ -38,13 +33,9 @@ export function DataTableRows({
   const [editing, setEditing] = useState<RowEdit>();
   const [importing, setImporting] = useState(false);
   const rows = useQuery(tableRowsQuery(scope, table.id, query));
-  const command = useRetainedCommand(
-    (body: TableCommand, key: string) => sendTableCommand(scope, body, key),
-    async () => {
-      await cache.invalidateQueries({ queryKey: tableKeys.scope(scope) });
-    },
-    { action: 'deleting this row' },
-  );
+  const command = useTableCommand(scope, (body: TableCommand) => body, {
+    action: 'deleting this row',
+  });
   function deleteRow(row: DataTableRow) {
     void command.send({
       kind: 'write',

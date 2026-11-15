@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
   WorkflowOrganizationProjectionResponse,
@@ -7,8 +6,7 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { WorkflowRowMenu } from '../list/workflow-row-menu';
 import type { WorkflowRowActions } from '../list/workflow-row-actions';
 import type { ApiClient } from '@/lib/api/client';
-import { setWorkflowFavorite } from '../../data/organization/workflow-organization.api';
-import { workflowOrganizationKeys } from '../../data/organization/workflow-organization.queries';
+import { useWorkflowFavorite } from '../../data/organization/workflow-organization.mutations';
 
 /** The mutation survives the popup closing so its result has one feedback owner. */
 export function WorkflowOrganizationRowMenu({
@@ -30,18 +28,11 @@ export function WorkflowOrganizationRowMenu({
   actions: WorkflowRowActions;
   onOrganize?: () => void;
 }>) {
-  const queryClient = useQueryClient();
-  const favorite = useMutation({
-    mutationFn: ({ favorite }: Readonly<{ favorite: boolean }>) =>
-      setWorkflowFavorite(apiClient, {
-        workspaceId: workspace.id,
-        workflowId: workflow.workflow.id,
-        favorite,
-      }),
-    onSettled: () =>
-      queryClient.invalidateQueries({
-        queryKey: workflowOrganizationKeys.scope(userId, workspace.id),
-      }),
+  const favorite = useWorkflowFavorite({
+    apiClient,
+    userId,
+    workspaceId: workspace.id,
+    workflowId: workflow.workflow.id,
   });
   const isFavorite = favorite.isPending
     ? favorite.variables.favorite

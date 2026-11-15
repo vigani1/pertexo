@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   dataTableLimitsSchema,
   type DataTablesResponse,
@@ -15,9 +14,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { sendTableCommand, type TableScope } from '../data/tables.api';
-import { tableKeys } from '../data/tables.queries';
+import { useTableCommand } from '../data/tables.mutations';
+import type { TableScope } from '../data/tables.api';
 import { TableCommandFeedback } from './command-feedback';
 import { ADMINISTRATORS } from '@/features/workspaces/public';
 import { sentenceStart } from '@/lib/format/sentence';
@@ -30,7 +28,6 @@ export function DataTableLimits({
   quotas: DataTablesResponse['quotas'];
   onClose: () => void;
 }>) {
-  const cache = useQueryClient();
   const [draft, setDraft] = useState(() => ({
     tableLimit: String(quotas.tableLimit),
     columnLimit: String(quotas.columnLimit),
@@ -38,14 +35,13 @@ export function DataTableLimits({
     megabytes: String(quotas.byteLimit / 1_048_576),
   }));
   const [error, setError] = useState<string>();
-  const command = useRetainedCommand(
-    (body: ReturnType<typeof dataTableLimitsSchema.parse>, key: string) =>
-      sendTableCommand(scope, { kind: 'limits', body }, key),
-    async () => {
-      await cache.invalidateQueries({ queryKey: tableKeys.scope(scope) });
-      onClose();
-    },
-    { action: 'changing table limits' },
+  const command = useTableCommand(
+    scope,
+    (body: ReturnType<typeof dataTableLimitsSchema.parse>) => ({
+      kind: 'limits',
+      body,
+    }),
+    { action: 'changing table limits', onDone: onClose },
   );
   const locked = command.pending || command.uncertain;
   const fields = [

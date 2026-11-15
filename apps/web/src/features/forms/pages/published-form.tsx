@@ -6,7 +6,6 @@ import { Link } from '@tanstack/react-router';
 import type {
   FormSchemaResponse,
   FormSubmissionResponse,
-  FormSubmissionRequest,
 } from '@pertexo/contracts';
 import { FinishedThread } from '@/components/patterns/states/thread-illustrations';
 import { Status } from '@/components/ui/status';
@@ -16,14 +15,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { isApiError } from '@/lib/api/error';
 import { FormResponse } from '../components/form-response';
-import { sendForm, type FormScope } from '../data/forms.api';
+import type { FormScope } from '../data/forms.api';
 import {
   formUploadTarget,
   newUploadSession,
   type FormUploadTarget,
 } from '../data/form-uploads.api';
 import { formQueryOptions } from '../data/forms.queries';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
+import { useFormSubmission } from '../data/forms.mutations';
 function formUnavailable(error: unknown) {
   if (!isApiError(error) || error.problem?.code !== 'form.unavailable')
     return undefined;
@@ -46,23 +45,16 @@ export function FormPage({
   const query = useQuery(formQueryOptions(scope));
   // One response session per page: its uploads and its submission share it.
   const [session] = useState(newUploadSession);
-  const command = useRetainedCommand(
-    (body: FormSubmissionRequest, key: string) =>
-      sendForm(scope, body, key, session),
-    undefined,
-    {
-      failureMessage: (cause) => {
-        if (!isApiError(cause)) return undefined;
-        if (cause.problem?.code === 'form.changed')
-          return 'This form changed. Reload the latest form before sending your response.';
-        if (cause.problem?.code === 'form.unavailable')
-          return 'This form is no longer available. Ask its owner for the current link.';
-        if (cause.problem?.code === 'form.invalid')
-          return 'Check the highlighted response fields before sending again.';
-        return undefined;
-      },
-    },
-  );
+  const command = useFormSubmission(scope, session, (cause) => {
+    if (!isApiError(cause)) return undefined;
+    if (cause.problem?.code === 'form.changed')
+      return 'This form changed. Reload the latest form before sending your response.';
+    if (cause.problem?.code === 'form.unavailable')
+      return 'This form is no longer available. Ask its owner for the current link.';
+    if (cause.problem?.code === 'form.invalid')
+      return 'Check the highlighted response fields before sending again.';
+    return undefined;
+  });
   async function reload() {
     const loaded = await query.refetch();
     if (loaded.isSuccess) command.reset();
@@ -153,9 +145,7 @@ function SubmissionReceipt({
     </section>
   );
 }
-type SubmissionCommand = ReturnType<
-  typeof useRetainedCommand<FormSubmissionRequest, FormSubmissionResponse>
->;
+type SubmissionCommand = ReturnType<typeof useFormSubmission>;
 function PublishedForm({
   command,
   schema,

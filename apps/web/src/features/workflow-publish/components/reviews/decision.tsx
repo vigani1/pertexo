@@ -1,9 +1,4 @@
-import { isApiError } from '@/lib/api/error';
-import { commandErrorMessage } from '@/lib/workflows/command-errors';
-import { inboxKeys } from '@/features/inbox/inbox-queries.public';
-import { invalidatePublishedWorkflow } from '../../data/workflow-publish.queries';
 import { useId } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type {
   PublicationReview,
   PublicationReviewDecision,
@@ -14,20 +9,15 @@ import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import {
-  decidePublicationReview,
-  type ReviewScope,
-} from '../../data/reviews/publication-review.api';
-import { publicationReviewKeys } from '../../data/reviews/publication-review.queries';
+import { usePublicationReviewDecision } from '../../data/mutations/use-publication-review-decision';
+import type { ReviewScope } from '../../data/reviews/publication-review.api';
 import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/contracts';
 import { formatCount } from '@/lib/format/count';
 export function ReviewDecision({
   scope,
   request,
 }: Readonly<{ scope: ReviewScope; request: PublicationReview }>) {
-  const id = useId(),
-    cache = useQueryClient();
+  const id = useId();
   const fields = useFieldValues(
     {
       comment: (value: string) =>
@@ -37,40 +27,8 @@ export function ReviewDecision({
     },
     { comment: '' },
   );
-  const command = useRetainedCommand(
-    async (body: PublicationReviewDecision, key: string) => {
-      try {
-        return await decidePublicationReview(scope, request.id, body, key);
-      } catch (cause) {
-        if (
-          isApiError(cause) &&
-          (cause.problem?.code === 'workflow.publication_review_conflict' ||
-            cause.problem?.code === 'workflow.invalid')
-        )
-          await cache.invalidateQueries({
-            queryKey: publicationReviewKeys.scope(scope),
-          });
-        throw cause;
-      }
-    },
-    async () => {
-      await cache.invalidateQueries({
-        queryKey: publicationReviewKeys.scope(scope),
-      });
-      await invalidatePublishedWorkflow(cache, scope, request.workflowId);
-      await cache.invalidateQueries({
-        queryKey: inboxKeys.scope(scope.userId, scope.workspaceId),
-      });
-    },
-    {
-      action: 'deciding publication',
-      failureMessage: (cause) =>
-        isApiError(cause) &&
-        cause.problem?.code === 'workflow.publication_review_conflict'
-          ? cause.problem.detail
-          : commandErrorMessage(cause, 'deciding publication'),
-    },
-  );
+  const command = usePublicationReviewDecision(scope, request);
+
   const locked = !request.canDecide || command.pending || command.uncertain;
   const decide = (decision: PublicationReviewDecision['decision']) => {
     const parsed = fields.validate();

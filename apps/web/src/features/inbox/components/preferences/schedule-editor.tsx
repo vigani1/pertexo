@@ -1,5 +1,5 @@
+import { notificationPreferencesQueryOptions } from '../../data/notice-preferences.queries';
 import {
-  acceptedNotificationSchedule,
   notificationEmailUnavailable,
   type ScheduleTarget as Target,
 } from '../../model/email-schedule';
@@ -7,12 +7,10 @@ import { useId, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   noticePreferencesRequestSchema,
-  noticeDefaultsRequestSchema,
   type NoticePreferencesResponse,
-  type NoticePreferencesRequest,
 } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
+import { useNotificationScheduleSave } from '../../data/notice-preferences.mutations';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,12 +22,6 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import {
-  replaceNotificationDefaults,
-  replaceNotificationPreferences,
-} from '../../data/notice-preferences.api';
-import { notificationPreferencesQueryOptions } from '../../data/notice-preferences.queries';
-import { inboxKeys } from '../../data/inbox.queries';
 import { NotificationSaveFeedback } from './feedback';
 function initial(snapshot: NoticePreferencesResponse, target: Target) {
   const value = target === 'personal' ? snapshot : snapshot.defaults;
@@ -55,30 +47,11 @@ export function NotificationScheduleEditor({
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState(false);
   const [reloading, setReloading] = useState(false);
-  const command = useRetainedCommand(
-    (body: NoticePreferencesRequest, key: string) =>
-      target === 'personal'
-        ? replaceNotificationPreferences(scope, body, key)
-        : replaceNotificationDefaults(
-            scope,
-            noticeDefaultsRequestSchema.parse(body),
-            key,
-          ),
-    async (result, body) => {
-      cache.setQueryData(
-        notificationPreferencesQueryOptions(scope).queryKey,
-        (current) =>
-          acceptedNotificationSchedule(current, { target, body, result }),
-      );
-      setDraft((current) => ({ ...current, baseRevision: result.revision }));
-      setSaved(true);
-      setError(undefined);
-      await cache.invalidateQueries({
-        queryKey: inboxKeys.scope(scope.userId, scope.workspaceId),
-      });
-    },
-    { action: 'saving notification choices' },
-  );
+  const command = useNotificationScheduleSave(scope, target, (result) => {
+    setDraft((current) => ({ ...current, baseRevision: result.revision }));
+    setSaved(true);
+    setError(undefined);
+  });
   const locked = command.pending || command.uncertain || reloading;
   const serverRevision =
     target === 'personal' ? snapshot.revision : snapshot.defaults.revision;

@@ -2,7 +2,10 @@ import {
   isWorkspaceBrowsable,
   holdsCapability,
 } from '@/features/workspaces/workspaces-routing.public';
-import { usePromotionApply } from '../data/promotions.mutations';
+import {
+  usePromotionApply,
+  usePromotionReview,
+} from '../data/promotions.mutations';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { PromotionActionFields } from '../components/promotion-action-fields';
 import { PromotionCommandFeedback } from '../components/command-feedback';
@@ -12,7 +15,7 @@ import {
   promotionCanApply,
 } from '../model/promotion-review';
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
   WorkflowPromotionMode,
@@ -25,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 
 import { ProgressButton } from '@/components/ui/progress-button';
-import { previewPromotion, type PromotionScope } from '../data/promotions.api';
+import type { PromotionScope } from '../data/promotions.api';
 import { promotionSettingsQuery } from '../data/promotions.queries';
 import { promotionSelections } from '../model/search';
 import { PromotionTarget } from '../components/promotion-target';
@@ -58,10 +61,7 @@ export function WorkflowPromotionPage({
   const [mode, setMode] = useState<WorkflowPromotionMode>('draft');
   const [note, setNote] = useState('');
   const [acknowledged, setAcknowledged] = useState<readonly string[]>([]);
-  const review = useMutation({
-    mutationFn: ({ body }: ReviewInput) => previewPromotion(scope, body),
-    retry: false,
-  });
+  const review = usePromotionReview(scope);
   const command = usePromotionApply(scope, () => {
     review.reset();
     setAcknowledged([]);
@@ -271,11 +271,6 @@ function LinkedPromotionTarget({
     </>
   );
 }
-
-type ReviewInput = Readonly<{
-  body: WorkflowPromotionPreviewRequest;
-  linkRevision: number;
-}>;
 
 function canReadPromotion(workspace: AccessibleWorkspace): boolean {
   return (

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type {
   DataTableDefinition,
   DataTableSchemaEdit,
@@ -13,9 +12,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { sendTableCommand, type TableScope } from '../../data/tables.api';
-import { tableKeys } from '../../data/tables.queries';
+import { useTableCommand } from '../../data/tables.mutations';
+import type { TableScope } from '../../data/tables.api';
 import { TableCommandFeedback } from '../command-feedback';
 
 import {
@@ -45,15 +43,10 @@ export function EditTableColumns({
       base.columns.find((column) => column.name === base.keyColumn)?.id ?? '',
   }));
   const [error, setError] = useState<string>();
-  const cache = useQueryClient();
-  const command = useRetainedCommand(
-    (body: DataTableSchemaEdit, key: string) =>
-      sendTableCommand(scope, { kind: 'schema', tableId: base.id, body }, key),
-    async () => {
-      await cache.invalidateQueries({ queryKey: tableKeys.scope(scope) });
-      onClose();
-    },
-    { action: 'changing table columns' },
+  const command = useTableCommand(
+    scope,
+    (body: DataTableSchemaEdit) => ({ kind: 'schema', tableId: base.id, body }),
+    { action: 'changing table columns', onDone: onClose },
   );
   const locked = command.pending || command.uncertain;
   function choose(next: ColumnEditIntent) {
