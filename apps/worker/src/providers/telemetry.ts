@@ -13,6 +13,9 @@ import type {
 } from '@pertexo/integrations';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
+// HTTP statuses come in classes of a hundred: 2xx is 200 to 299.
+const STATUS_CLASS_WIDTH = 100;
+
 export type ProviderTelemetryOptions = Readonly<{
   meter?: Meter;
   tracer?: Tracer;
@@ -124,7 +127,7 @@ export function createHttpProviderTelemetry(
         response_storage: 'body' in output ? output.body.kind : 'inline',
         ...('pageCount' in output ? { pages_fetched: output.pageCount } : {}),
         // Steps that return error responses succeed with 3xx to 5xx too.
-        status_class: `${String(Math.floor(output.status / 100))}xx`,
+        status_class: `${String(Math.floor(output.status / STATUS_CLASS_WIDTH))}xx`,
       }),
     },
     options,

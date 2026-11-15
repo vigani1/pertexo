@@ -4,6 +4,10 @@ import {
   type MappingRefusal,
 } from '@pertexo/workflow-engine/server';
 
+// How much of a field name, variable name or path a diagnostic quotes.
+const DIAGNOSTIC_NAME_CHARACTERS = 64;
+const DIAGNOSTIC_PATH_CHARACTERS = 128;
+
 /** Render only the engine's safe facts at the run/preview product boundary. */
 export function describeMappingFailure(error: unknown): string | undefined {
   if (
@@ -12,16 +16,16 @@ export function describeMappingFailure(error: unknown): string | undefined {
   )
     return undefined;
   const reason = error.diagnostic;
-  const field = identifier(reason.mappingKey, 64);
+  const field = identifier(reason.mappingKey, DIAGNOSTIC_NAME_CHARACTERS);
   switch (reason.kind) {
     case 'nonfinite_result':
       return `Expression for field ${field} returned a nonfinite number. Reduce the numeric result or check for division by zero.`;
     case 'variable_missing':
       return reason.variable.kind === 'named'
-        ? `Input ${field} uses missing workspace variable ${identifier(reason.variable.name, 64)}. Add it in Settings → Variables or update this mapping.`
+        ? `Input ${field} uses missing workspace variable ${identifier(reason.variable.name, DIAGNOSTIC_NAME_CHARACTERS)}. Add it in Settings → Variables or update this mapping.`
         : `Expression for field ${field} has no variable value. Check the captured workspace variables or provide a fallback.`;
     case 'invalid_path':
-      return `Input ${field} (${SOURCE_LABELS[reason.sourceKind]}) uses unsupported path ${identifier(reason.path, 128)}. Use a path such as $.customer.email or $[0].`;
+      return `Input ${field} (${SOURCE_LABELS[reason.sourceKind]}) uses unsupported path ${identifier(reason.path, DIAGNOSTIC_PATH_CHARACTERS)}. Use a path such as $.customer.email or $[0].`;
     case 'expression_timeout':
       return `Expression for field ${field} exceeded the ${String(reason.maximumMs)} ms evaluation limit. Simplify the calculation or use less data; Pertexo retries while attempts remain.`;
     case 'pool_capacity':

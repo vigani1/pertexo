@@ -1,3 +1,9 @@
+/** How long startup's key checks (callback, encryption) may take. */
+export const STARTUP_VERIFICATION_TIMEOUT_MILLIS = 2 * 60_000;
+
+/** How long a stopping runtime waits for its background work by default. */
+export const BACKGROUND_TASK_SHUTDOWN_TIMEOUT_MILLIS = 5_000;
+
 class BackgroundTaskShutdownTimeoutError extends Error {
   public override readonly name = 'BackgroundTaskShutdownTimeoutError';
 

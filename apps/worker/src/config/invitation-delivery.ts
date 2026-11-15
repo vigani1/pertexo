@@ -2,7 +2,12 @@ import {
   StartupSettingError,
   parseStartupSettings,
 } from '@pertexo/observability/startup';
-import { readMailPreviousKeys, parseMailTransport } from './mail-settings.js';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
+import {
+  MAIL_SETTING_BOUNDS,
+  readMailPreviousKeys,
+  parseMailTransport,
+} from './mail-settings.js';
 import { z } from 'zod';
 
 import {
@@ -45,14 +50,16 @@ export function parseInvitationDeliveryConfig(
     return undefined;
   const parsed = parseStartupSettings(
     z.object({
-      INVITATION_EMAIL_FROM: z.email().max(320),
+      INVITATION_EMAIL_FROM: z
+        .email()
+        .max(EMAIL_ADDRESS_LIMITS.accountCharacters),
       PUBLIC_WEB_ORIGIN: z.url(),
       INVITATION_EMAIL_TIMEOUT_MILLIS: z.coerce
         .number()
         .int()
-        .min(100)
-        .max(30_000)
-        .default(5_000),
+        .min(MAIL_SETTING_BOUNDS.sendTimeoutMillis.minimum)
+        .max(MAIL_SETTING_BOUNDS.sendTimeoutMillis.maximum)
+        .default(MAIL_SETTING_BOUNDS.sendTimeoutMillis.default),
       INVITATION_TOKEN_KEY: z.string().min(1),
       INVITATION_TOKEN_KEY_VERSION: applicationKeyVersionSchema,
       INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),

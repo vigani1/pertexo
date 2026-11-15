@@ -10,6 +10,16 @@ import {
 } from '@pertexo/node-sdk';
 import { readCodeFrame, writeCodeFrame } from '@pertexo/node-sdk/server';
 
+/** How the worker reaches the Code runner: waiting for it, its greeting, and a task's result. */
+const RUNNER_CONNECTION = Object.freeze({
+  waitMillis: 5_000,
+  retryDelayMillis: 50,
+  greetingBytes: 16 * 1_024,
+  greetingTimeoutMillis: 2_000,
+  // The runner's own time limit ends the task first; this is only its margin.
+  resultGraceSeconds: 2,
+});
+
 export type WorkerCodeRunnerConfig = Readonly<{
   settings: CodeSettings;
   socketPath: string;
@@ -48,7 +58,7 @@ export function createCodeRunnerClient(config: WorkerCodeRunnerConfig) {
           'Lower this step’s time limit to the administrator’s maximum before running.',
         );
       const signal = AbortSignal.any([caller, closing.signal]);
-      const waitDeadline = Date.now() + 5000;
+      const waitDeadline = Date.now() + RUNNER_CONNECTION.waitMillis;
       for (;;) {
         signal.throwIfAborted();
         const socket = connect(config.socketPath);
@@ -67,11 +77,11 @@ export function createCodeRunnerClient(config: WorkerCodeRunnerConfig) {
           const greeting = codeGreetingSchema.parse(
             await readCodeFrame(
               socket,
-              16 * 1024,
+              RUNNER_CONNECTION.greetingBytes,
               AbortSignal.any([
                 signal,
                 disconnected.signal,
-                AbortSignal.timeout(2000),
+                AbortSignal.timeout(RUNNER_CONNECTION.greetingTimeoutMillis),
               ]),
             ),
           );
@@ -125,7 +135,11 @@ export function createCodeRunnerClient(config: WorkerCodeRunnerConfig) {
                 AbortSignal.any([
                   signal,
                   disconnected.signal,
-                  AbortSignal.timeout((task.timeoutSeconds + 2) * 1000),
+                  AbortSignal.timeout(
+                    (task.timeoutSeconds +
+                      RUNNER_CONNECTION.resultGraceSeconds) *
+                      1_000,
+                  ),
                 ]),
               ),
             );
@@ -141,7 +155,7 @@ export function createCodeRunnerClient(config: WorkerCodeRunnerConfig) {
           socket.destroy();
           connections.delete(socket);
         }
-        await delay(50, undefined, { signal });
+        await delay(RUNNER_CONNECTION.retryDelayMillis, undefined, { signal });
       }
     },
   };

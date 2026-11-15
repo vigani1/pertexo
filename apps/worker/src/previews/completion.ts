@@ -1,6 +1,7 @@
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import type { PreviewTerminalOutcome } from '@pertexo/core/previews';
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk/server';
 
 type PreviewFailure = Exclude<
   PreviewTerminalOutcome,
@@ -18,7 +19,11 @@ export function parsePreviewFailure(outcome: PreviewFailure): PreviewFailure {
     ...(outcome.errorSummary === undefined
       ? {}
       : {
-          errorSummary: z.string().min(1).max(2048).parse(outcome.errorSummary),
+          errorSummary: z
+            .string()
+            .min(1)
+            .max(NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters)
+            .parse(outcome.errorSummary),
         }),
   };
 }

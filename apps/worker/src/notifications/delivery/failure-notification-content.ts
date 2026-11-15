@@ -1,5 +1,11 @@
 import type { FailureNotificationContext } from '@pertexo/workflow-model';
 
+/** A failure notice's bounds: the workflow name it quotes and its whole text. */
+const FAILURE_NOTICE_LIMITS = Object.freeze({
+  workflowNameCharacters: 200,
+  textCharacters: 4_000,
+});
+
 export function render(
   context: FailureNotificationContext,
   presentation: Readonly<{
@@ -10,7 +16,7 @@ export function render(
 ): Readonly<{ subject: string; text: string }> {
   const name = presentation.workflowName
     .replaceAll(/\p{Cc}/gu, ' ')
-    .slice(0, 200);
+    .slice(0, FAILURE_NOTICE_LIMITS.workflowNameCharacters);
   const failure = context.primaryFailure;
   const description = failureDescription(context);
   const subject = `${name}: run ${description.outcome}`;
@@ -34,7 +40,7 @@ export function render(
     subject,
     text: (presentation.kind === 'slack' ? slackText(text) : text).slice(
       0,
-      4000,
+      FAILURE_NOTICE_LIMITS.textCharacters,
     ),
   });
 }

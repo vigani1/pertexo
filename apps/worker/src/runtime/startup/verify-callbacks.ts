@@ -5,6 +5,7 @@ import {
   type CallbackTokenKeys,
 } from '@pertexo/secrets/server';
 import type { WorkerConfig } from '../../config/worker.js';
+import { STARTUP_VERIFICATION_TIMEOUT_MILLIS } from '../background-task-deadline.js';
 export async function verifyWorkerCallbacks(
   config: Pick<WorkerConfig, 'database' | 'callbacks'>,
   createStore: typeof createCallbackStore = createCallbackStore,
@@ -16,7 +17,7 @@ export async function verifyWorkerCallbacks(
       config.callbacks === undefined
         ? undefined
         : createCallbackTokenKeys(config.callbacks);
-    const signal = AbortSignal.timeout(120_000);
+    const signal = AbortSignal.timeout(STARTUP_VERIFICATION_TIMEOUT_MILLIS);
     await verifyCallbackTokenKeys(keys, store.keysInUse(signal), signal);
   } catch (error) {
     keys?.close();

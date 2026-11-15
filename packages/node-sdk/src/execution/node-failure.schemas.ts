@@ -25,7 +25,7 @@ export type NodeExecutorErrorKind = (typeof NODE_EXECUTOR_ERROR_KINDS)[number];
 export const MAXIMUM_SERVICE_RESPONSE_URL_CHARACTERS = 512;
 /** The longest response excerpt a failure keeps. */
 export const MAXIMUM_RESPONSE_EXCERPT_CHARACTERS = 1_500;
-const NODE_FAILURE_FIELD_LIMITS = Object.freeze({
+export const NODE_FAILURE_FIELD_LIMITS = Object.freeze({
   methodCharacters: 16,
   safeErrorCodeCharacters: 128,
   errorSummaryCharacters: 2_048,

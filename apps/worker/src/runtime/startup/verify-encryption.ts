@@ -4,6 +4,7 @@ import {
 } from '@pertexo/secrets/server';
 import { verifyStoredEncryptionKeys } from '@pertexo/secrets/server';
 import type { WorkerConfig } from '../../config/worker.js';
+import { STARTUP_VERIFICATION_TIMEOUT_MILLIS } from '../background-task-deadline.js';
 
 export async function verifyWorkerEncryption(
   config: WorkerConfig,
@@ -23,7 +24,7 @@ export async function verifyWorkerEncryption(
   if (config.connectionEncryption === undefined) return;
   const repository = createRepository(config.retention.maintenanceDatabase);
   try {
-    const signal = AbortSignal.timeout(120_000);
+    const signal = AbortSignal.timeout(STARTUP_VERIFICATION_TIMEOUT_MILLIS);
     await verifyStoredEncryptionKeys(
       config.connectionEncryption,
       repository.read(signal),

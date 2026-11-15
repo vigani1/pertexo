@@ -1,4 +1,8 @@
-import { ArtifactTransfer, FILE_TRANSFER_ERROR_CODE } from './progress.js';
+import {
+  ArtifactTransfer,
+  FILE_TRANSFER_ERROR_CODE,
+  SCRATCH_CHUNK_BYTES,
+} from './progress.js';
 import {
   consumeArtifactChunks,
   ArtifactSourceCleanupError,
@@ -20,6 +24,11 @@ import {
   ScratchSpaceError,
   ScratchReservationError,
 } from './scratch-space.errors.js';
+
+// tmpfs and ramfs keep files in memory, which scratch must not fill.
+const MEMORY_FILESYSTEM_TYPES = new Set([0x01021994, 0x858458f6]);
+const PRIVATE_FILE_MODE = 0o600;
+const PRIVATE_DIRECTORY_MODE = 0o700;
 
 export const FILE_SCRATCH_ERROR_CODE = Object.freeze({
   full: 'execution.file_scratch_full',
@@ -58,7 +67,7 @@ export type ArtifactSpoolOperations = Readonly<{
   removeDirectory(path: string): Promise<void>;
 }>;
 const filesystemOperations: ArtifactSpoolOperations = {
-  openFile: (filename) => open(filename, 'wx', 0o600),
+  openFile: (filename) => open(filename, 'wx', PRIVATE_FILE_MODE),
   removeDirectory: (directory) =>
     rm(directory, { recursive: true, force: true }),
 };
@@ -87,19 +96,19 @@ export class ArtifactScratchSpace {
         throw new ScratchSpaceError(
           'File scratch requires a dedicated absolute directory',
         );
-      await mkdir(directory, { recursive: true, mode: 0o700 });
+      await mkdir(directory, { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
       const entry = await lstat(directory);
       const unsafeScratchDirectory =
         !entry.isDirectory() ||
         entry.isSymbolicLink() ||
-        (entry.mode & 0o777) !== 0o700 ||
+        (entry.mode & 0o777) !== PRIVATE_DIRECTORY_MODE ||
         (process.getuid !== undefined && entry.uid !== process.getuid());
       if (unsafeScratchDirectory)
         throw new ScratchSpaceError(
           'File scratch directory must be private and owned by this worker',
         );
       const filesystem = await statfs(directory);
-      if (filesystem.type === 0x01021994 || filesystem.type === 0x858458f6)
+      if (MEMORY_FILESYSTEM_TYPES.has(filesystem.type))
         throw new ScratchSpaceError(
           'File scratch requires disk storage, not a memory filesystem',
         );
@@ -244,7 +253,10 @@ export class ArtifactScratchSpace {
             digest.update(chunk);
             let offset = 0;
             while (offset < chunk.byteLength) {
-              const amount = Math.min(65_536, chunk.byteLength - offset);
+              const amount = Math.min(
+                SCRATCH_CHUNK_BYTES,
+                chunk.byteLength - offset,
+              );
               const result = await outputFile.write(chunk, offset, amount);
               if (result.bytesWritten <= 0) throw unavailable('io');
               transfer.advance();
@@ -267,7 +279,9 @@ export class ArtifactScratchSpace {
         sha256: digest.digest('hex'),
         open: (): ReadStream => {
           if (releasing !== undefined) throw unavailable('io');
-          const stream = createReadStream(filename, { highWaterMark: 65_536 });
+          const stream = createReadStream(filename, {
+            highWaterMark: SCRATCH_CHUNK_BYTES,
+          });
           streams.add(stream);
           // Prevent unobserved errors during cancellation; consumers still see
           // the error through their iterator or pipeline.

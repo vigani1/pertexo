@@ -2,7 +2,12 @@ import {
   StartupSettingError,
   parseStartupSettings,
 } from '@pertexo/observability/startup';
-import { readMailPreviousKeys, parseMailTransport } from './mail-settings.js';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
+import {
+  MAIL_SETTING_BOUNDS,
+  readMailPreviousKeys,
+  parseMailTransport,
+} from './mail-settings.js';
 import { z } from 'zod';
 
 import {
@@ -35,15 +40,15 @@ const systemMailSchema = z.object({
   AUTH_MAIL_EMAIL_TIMEOUT_MILLIS: z.coerce
     .number()
     .int()
-    .min(100)
-    .max(30_000)
-    .default(5_000),
+    .min(MAIL_SETTING_BOUNDS.sendTimeoutMillis.minimum)
+    .max(MAIL_SETTING_BOUNDS.sendTimeoutMillis.maximum)
+    .default(MAIL_SETTING_BOUNDS.sendTimeoutMillis.default),
   AUTH_MAIL_POLL_MILLIS: z.coerce
     .number()
     .int()
-    .min(100)
-    .max(60_000)
-    .default(1_000),
+    .min(MAIL_SETTING_BOUNDS.pollMillis.minimum)
+    .max(MAIL_SETTING_BOUNDS.pollMillis.maximum)
+    .default(MAIL_SETTING_BOUNDS.pollMillis.default),
   WORKER_INSTANCE_ID: z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/u),
 });
 
@@ -82,7 +87,11 @@ export function parseSystemMailDeliveryConfig(
       ? undefined
       : {
           fromEmail: parseStartupSettings(
-            z.object({ AUTH_MAIL_FROM: z.email().max(320) }),
+            z.object({
+              AUTH_MAIL_FROM: z
+                .email()
+                .max(EMAIL_ADDRESS_LIMITS.accountCharacters),
+            }),
             environment,
             { AUTH_MAIL_FROM: 'email_required' },
           ).AUTH_MAIL_FROM,

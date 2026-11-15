@@ -8,6 +8,12 @@ import type { StructuredLogger } from '@pertexo/observability/server';
 
 import type { WorkerDrainState } from '../shutdown/drain-state.js';
 
+/** How often the event loop's delay is sampled. */
+const EVENT_LOOP_SAMPLE_MILLIS = 20;
+// Health reads the 99th percentile delay.
+const EVENT_LOOP_DELAY_PERCENTILE = 99;
+const NANOSECONDS_PER_MILLISECOND = 1_000_000;
+
 export type WorkerResourceSafetyConfig = Readonly<{
   maximumEventLoopDelayMillis: number;
   maximumRssBytes: number;
@@ -28,7 +34,9 @@ type WorkerResourceMonitorDependencies = Readonly<{
 export class WorkerResourceMonitor
   implements OnApplicationBootstrap, BeforeApplicationShutdown
 {
-  private readonly eventLoopDelay = monitorEventLoopDelay({ resolution: 20 });
+  private readonly eventLoopDelay = monitorEventLoopDelay({
+    resolution: EVENT_LOOP_SAMPLE_MILLIS,
+  });
   private readonly sampleResourceUsage: () => WorkerResourceSample;
   private readonly signal: () => void;
   private consecutiveUnhealthySamples = 0;
@@ -47,7 +55,9 @@ export class WorkerResourceMonitor
     this.sampleResourceUsage =
       dependencies.sample ??
       (() => ({
-        eventLoopDelayP99Millis: this.eventLoopDelay.percentile(99) / 1_000_000,
+        eventLoopDelayP99Millis:
+          this.eventLoopDelay.percentile(EVENT_LOOP_DELAY_PERCENTILE) /
+          NANOSECONDS_PER_MILLISECOND,
         rssBytes: process.memoryUsage.rss(),
       }));
     this.signal =

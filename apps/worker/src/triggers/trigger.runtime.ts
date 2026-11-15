@@ -33,6 +33,7 @@ import {
   createScannerRuntime,
   type ScannerRuntime,
 } from '../runtime/scanner.js';
+import { BACKGROUND_TASK_SHUTDOWN_TIMEOUT_MILLIS } from '../runtime/background-task-deadline.js';
 
 export type TriggerRuntime = ScannerRuntime;
 
@@ -81,7 +82,8 @@ export async function createTriggerRuntime(
 ): Promise<TriggerRuntime> {
   const factories = { ...productionFactories, ...overrides };
   const backgroundTaskShutdownTimeoutMillis =
-    options.backgroundTaskShutdownTimeoutMillis ?? 5_000;
+    options.backgroundTaskShutdownTimeoutMillis ??
+    BACKGROUND_TASK_SHUTDOWN_TIMEOUT_MILLIS;
   const checkpointFactory = factories.checkpoints();
   // Telemetry owns no closeable resources. Construct it before acquiring the
   // database and queue owners so constructor failure cannot strand them.

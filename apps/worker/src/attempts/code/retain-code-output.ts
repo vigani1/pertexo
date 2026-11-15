@@ -1,4 +1,4 @@
-import type { CodeResult } from '@pertexo/node-sdk';
+import { formatByteSize, type CodeResult } from '@pertexo/node-sdk';
 import { prepareStoredExecutionValue } from '@pertexo/core/runs';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
@@ -19,7 +19,7 @@ export function retainCodeOutput(result: CodeResult): CodeResult {
       diagnostics: {
         ...result.diagnostics,
         error: {
-          message: `Code output must fit the retained ${String(STORED_EXECUTION_VALUE_LIMITS.inlineBytes / 1024)} KB JSON limit and contain valid Unicode without NUL. Return less data or clean the text.`,
+          message: `Code output must fit the retained ${formatByteSize(STORED_EXECUTION_VALUE_LIMITS.inlineBytes)} JSON limit and contain valid Unicode without NUL. Return less data or clean the text.`,
         },
       },
     };
