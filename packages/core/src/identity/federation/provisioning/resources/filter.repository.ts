@@ -5,6 +5,9 @@ import SCIMMY from 'scimmy';
 import type { AttrExp, Compare, Filter } from 'scim2-parse-filter';
 import { DirectoryError } from '../directory.errors.js';
 
+// `name.givenName` and its siblings filter on one part of a user's name.
+const NAME_PART_PREFIX = 'name.';
+
 export type DirectoryKind = 'User' | 'Group';
 type Field = Readonly<{ sql: SQL; type: string; caseExact: boolean }>;
 type Collection = 'emails' | 'members' | 'groups';
@@ -93,8 +96,8 @@ function userFieldSql(normalized: string): SQL | undefined {
     case 'name':
       return sql`${directoryUsers.profile}->'name'`;
     default:
-      if (normalized.startsWith('name.')) {
-        const key = nameColumns[normalized.slice(5)];
+      if (normalized.startsWith(NAME_PART_PREFIX)) {
+        const key = nameColumns[normalized.slice(NAME_PART_PREFIX.length)];
         return key === undefined
           ? undefined
           : sql`${directoryUsers.profile}->'name'->>${key}`;

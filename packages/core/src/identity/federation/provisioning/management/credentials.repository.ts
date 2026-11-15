@@ -26,6 +26,8 @@ import type {
   RevokeCredentialInput,
 } from '../directory-provisioning.types.js';
 
+const PROVISIONING_SECRET_BYTES = 32;
+
 export async function createDirectoryCredential(
   pool: Pool,
   input: CreateCredentialInput,
@@ -47,7 +49,7 @@ export async function createDirectoryCredential(
       if ((countRow?.count ?? 0) >= DIRECTORY_LIMITS.credentials)
         throw new DirectoryError('limit');
       const id = generatePersistedId(),
-        secret = randomBytes(32).toString('base64url');
+        secret = randomBytes(PROVISIONING_SECRET_BYTES).toString('base64url');
       const [row] = await drizzle(client)
         .insert(authProvisioningCredentials)
         .values({

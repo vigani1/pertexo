@@ -15,6 +15,8 @@ import {
   users,
 } from '@pertexo/database/schema';
 
+const PASSWORD_RESET_LIFETIME = "interval '1 hour'";
+
 /** The caller holds the user lock, so sibling resets cannot outlive this change. */
 export async function invalidatePasswordResetProofs(
   client: PoolClient,
@@ -68,7 +70,7 @@ export async function issuePasswordResetProof(
     const {
       rows: [clock],
     } = await client.query<{ expiresAt: Date }>(
-      `select clock_timestamp() + interval '1 hour' as "expiresAt"`,
+      `select clock_timestamp() + ${PASSWORD_RESET_LIFETIME} as "expiresAt"`,
     );
     if (clock === undefined) throw new Error('Database time unavailable');
     const recipient = { email: user.email, displayName: user.displayName };

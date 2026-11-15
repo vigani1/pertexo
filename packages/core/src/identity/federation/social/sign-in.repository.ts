@@ -16,6 +16,9 @@ import type {
   SocialSignInResult,
 } from './social-sign-in.types.js';
 
+// A social sign-in must come back from its provider within this.
+const SOCIAL_SIGN_IN_LIFETIME = sql.raw("interval '5 minutes'");
+
 /** A provider proves identity before this owner acquires a transaction. Nobody is signed in yet, so it stays off `withWorkspaceAccess`. */
 export class SocialSignInCommands {
   public constructor(
@@ -39,7 +42,7 @@ export class SocialSignInCommands {
       .insert(authSignInAttempts)
       .values({
         ...input,
-        expiresAt: sql`clock_timestamp()+interval '5 minutes'`,
+        expiresAt: sql`clock_timestamp()+${SOCIAL_SIGN_IN_LIFETIME}`,
       })
       .catch(rethrowQueryFailure);
   }
