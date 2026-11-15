@@ -26,7 +26,7 @@ export function createPasswordResetPlugin(
         {
           method: 'POST',
           body: z.object({
-            email: z.email().max(EMAIL_ADDRESS_LIMITS.characters),
+            email: z.email().max(EMAIL_ADDRESS_LIMITS.storedAddressCharacters),
             redirectTo: z.string().optional(),
           }),
           use: [

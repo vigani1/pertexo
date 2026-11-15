@@ -29,7 +29,7 @@ export const FailureNotificationDestinationConfigSchema = z.discriminatedUnion(
         connectionId: z.uuid(),
         toEmail: z
           .email()
-          .max(EMAIL_ADDRESS_LIMITS.characters)
+          .max(EMAIL_ADDRESS_LIMITS.newAddressCharacters)
           .overwrite((value) => {
             const at = value.lastIndexOf('@');
             return `${value.slice(0, at)}@${value.slice(at + 1).toLowerCase()}`;

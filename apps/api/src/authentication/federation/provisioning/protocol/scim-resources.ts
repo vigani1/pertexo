@@ -23,7 +23,7 @@ const SCIM_FIELD_LIMITS = Object.freeze({
 });
 
 const email = z.object({
-  value: z.email().max(EMAIL_ADDRESS_LIMITS.characters),
+  value: z.email().max(EMAIL_ADDRESS_LIMITS.storedAddressCharacters),
   type: z.string().max(SCIM_FIELD_LIMITS.typeCharacters).optional(),
   primary: z.boolean().default(false),
 });
@@ -42,7 +42,11 @@ const name = z.object({
     .optional(),
 });
 const userSchema = z.object({
-  userName: z.string().trim().min(1).max(EMAIL_ADDRESS_LIMITS.characters),
+  userName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(EMAIL_ADDRESS_LIMITS.storedAddressCharacters),
   externalId: z
     .string()
     .min(1)

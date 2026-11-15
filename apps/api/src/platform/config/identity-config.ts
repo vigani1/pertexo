@@ -31,7 +31,10 @@ export const identityEnvironmentShape = {
     .optional(),
   AUTH_MAIL_MODE: z.enum(['local', 'durable']).default('local'),
   AUTH_SIGN_UP_MODE: z.enum(['invitation', 'open']).default('invitation'),
-  AUTH_MAIL_FROM: z.email().max(EMAIL_ADDRESS_LIMITS.characters).optional(),
+  AUTH_MAIL_FROM: z
+    .email()
+    .max(EMAIL_ADDRESS_LIMITS.newAddressCharacters)
+    .optional(),
   AUTH_FEDERATION_KEY: z.string().optional(),
   AUTH_FEDERATION_KEY_VERSION: z.string().optional(),
   AUTH_FEDERATION_PREVIOUS_KEYS: z.string().optional(),

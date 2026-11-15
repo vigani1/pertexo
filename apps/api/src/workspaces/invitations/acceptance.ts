@@ -164,7 +164,7 @@ export class InvitationAcceptanceService {
       sessionId: evidence.sessionId,
       verifiedEmail: z
         .email()
-        .max(EMAIL_ADDRESS_LIMITS.characters)
+        .max(EMAIL_ADDRESS_LIMITS.storedAddressCharacters)
         .parse(canonicalEmail(evidence.email)),
       verifiedAt: evidence.signedInAt,
     });

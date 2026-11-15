@@ -43,7 +43,7 @@ const domainLabel = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
 export const providerEmailMailboxSchema = z
   .string()
   .min(EMAIL_ADDRESS_LIMITS.minimumCharacters)
-  .max(EMAIL_ADDRESS_LIMITS.characters)
+  .max(EMAIL_ADDRESS_LIMITS.newAddressCharacters)
   .refine((value) => /^[\x21-\x7e]+$/u.test(value))
   .refine((value) => {
     if (

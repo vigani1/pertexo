@@ -31,8 +31,8 @@ function addressOf(length: number): string {
   return `${local}@${middle}${domain}`;
 }
 
-const longest = addressOf(EMAIL_ADDRESS_LIMITS.characters);
-const tooLong = addressOf(EMAIL_ADDRESS_LIMITS.characters + 1);
+const longest = addressOf(EMAIL_ADDRESS_LIMITS.newAddressCharacters);
+const tooLong = addressOf(EMAIL_ADDRESS_LIMITS.newAddressCharacters + 1);
 
 function application() {
   const auth = betterAuth({
