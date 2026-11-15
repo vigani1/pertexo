@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
+import { TRIGGER_NODE_ID_MAX_CHARACTERS } from '../../reconciliation/projection.js';
+
 /** What a stored schedule row can hold: its columns' widths and interval check. */
 const STORED_SCHEDULE = Object.freeze({
-  nodeIdCharacters: 256,
   errorCodeCharacters: 128,
   cronExpressionCharacters: 256,
   timezoneCharacters: 128,
@@ -14,7 +15,7 @@ export const scheduleTriggerSchema = z
     id: z.uuid(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
-    nodeId: z.string().min(1).max(STORED_SCHEDULE.nodeIdCharacters),
+    nodeId: z.string().min(1).max(TRIGGER_NODE_ID_MAX_CHARACTERS),
     kind: z.literal('schedule'),
     status: z.enum([
       'desired',
