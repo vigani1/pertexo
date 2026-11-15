@@ -24,7 +24,7 @@ import {
 } from './execution/execution.fixture.js';
 import { and, count, eq } from 'drizzle-orm';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
-import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/preview-retention.store.js';
+import { createPreviewRetentionStore } from '../../src/lifecycle/previews/preview-retention.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   PreviewIdempotencyConflictError,
@@ -118,7 +118,7 @@ describe('durable preview acceptance', () => {
       max: 1,
     });
     const retention = createRetentionStore(maintenanceConfig);
-    const previews = createPreviewRetentionCoordinator(maintenanceConfig, {
+    const previews = createPreviewRetentionStore(maintenanceConfig, {
       delete: () => Promise.resolve(),
       head: () => Promise.resolve(null),
     });

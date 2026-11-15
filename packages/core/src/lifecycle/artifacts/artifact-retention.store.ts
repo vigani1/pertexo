@@ -1,7 +1,7 @@
 import type { RunArtifactRetentionProcessResult } from './artifact-retention.types.js';
 import {
   optionsSchema,
-  type RunArtifactRetentionCoordinatorOptions,
+  type RunArtifactRetentionStoreOptions,
 } from './artifact-retention-options.schemas.js';
 import { eraseArtifact, type RetentionArtifactStore } from './erase.js';
 import type { PoolClient } from 'pg';
@@ -21,8 +21,8 @@ import {
   markArtifactDeleting,
 } from './expired-artifacts.repository.js';
 
-export type RunArtifactRetentionCoordinator = ReturnType<
-  typeof createRunArtifactRetentionCoordinator
+export type RunArtifactRetentionStore = ReturnType<
+  typeof createRunArtifactRetentionStore
 >;
 
 /**
@@ -31,10 +31,10 @@ export type RunArtifactRetentionCoordinator = ReturnType<
  * once the store no longer has them. No member is acting, so this stays off
  * `withWorkspaceAccess`: it runs on the maintenance role.
  */
-export function createRunArtifactRetentionCoordinator(
+export function createRunArtifactRetentionStore(
   config: DatabaseConfig,
   artifacts: RetentionArtifactStore,
-  inputOptions: RunArtifactRetentionCoordinatorOptions = {},
+  inputOptions: RunArtifactRetentionStoreOptions = {},
   runtime?: DatabaseRuntime,
 ) {
   const options = optionsSchema.parse(inputOptions);

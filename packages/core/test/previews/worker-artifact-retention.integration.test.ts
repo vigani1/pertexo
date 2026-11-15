@@ -11,7 +11,7 @@ import { ArtifactLifecycleConflictError } from '../../src/artifacts/artifact.err
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
 import { PREVIEW_STATUS } from '../../src/previews/preview-state.js';
-import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/preview-retention.store.js';
+import { createPreviewRetentionStore } from '../../src/lifecycle/previews/preview-retention.store.js';
 import { databaseSchema } from '@pertexo/database/schema';
 import {
   parseWorkspaceId,
@@ -189,7 +189,7 @@ describe('preview artifact retention lifecycle', () => {
       'application_name',
       coordinatorApplicationName,
     );
-    const coordinator = createPreviewRetentionCoordinator(
+    const coordinator = createPreviewRetentionStore(
       parseDatabaseConfig({
         connectionString: coordinatorUrl.toString(),
         max: 2,

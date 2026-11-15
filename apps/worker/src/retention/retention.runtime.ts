@@ -1,8 +1,8 @@
 import type {
-  PreviewRetentionCoordinator,
+  PreviewRetentionStore,
   RetentionStore,
-  RunArtifactRetentionCoordinator,
-  WorkspacePurgeCoordinator,
+  RunArtifactRetentionStore,
+  WorkspacePurgeStore,
 } from '@pertexo/core/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability/server';
 
@@ -19,9 +19,9 @@ export const RETENTION_RUNTIME = Symbol('RETENTION_RUNTIME');
 
 export type RetentionRuntimeResources = Readonly<{
   database: RetentionStore;
-  preview: PreviewRetentionCoordinator;
-  runArtifacts: RunArtifactRetentionCoordinator;
-  workspacePurge: WorkspacePurgeCoordinator;
+  preview: PreviewRetentionStore;
+  runArtifacts: RunArtifactRetentionStore;
+  workspacePurge: WorkspacePurgeStore;
   /** Closes resources the coordinators share, such as the database pool. */
   release(): Promise<void>;
 }>;

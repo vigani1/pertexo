@@ -10,7 +10,7 @@ import {
 import {
   claimPreviewDelivery,
   completePreviewAttempt,
-  createPreviewRetentionCoordinator,
+  createPreviewRetentionStore,
   PREVIEW_STATUS,
   withTenantScopedClient,
 } from '@pertexo/core/testing';
@@ -50,8 +50,7 @@ describeIntegration('preview artifact retention transport', () => {
         | Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>>
         | undefined;
       let verifier: ReturnType<typeof createArtifactStore> | undefined;
-      let cleanup:
-        ReturnType<typeof createPreviewRetentionCoordinator> | undefined;
+      let cleanup: ReturnType<typeof createPreviewRetentionStore> | undefined;
       let reference: NodeArtifactReference | undefined;
       await runWithCleanup(
         async () => {
@@ -126,7 +125,7 @@ describeIntegration('preview artifact retention transport', () => {
             },
             workerId,
           });
-          const retentionCleanup = createPreviewRetentionCoordinator(
+          const retentionCleanup = createPreviewRetentionStore(
             parseDatabaseConfig({
               connectionString: databaseUrl(maintenanceUrl),
             }),

@@ -32,7 +32,7 @@ import {
 } from '@pertexo/database/primitives';
 import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { readErrorWorkflow } from '../../../src/runs/error-workflows/read.repository.js';
-import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/workspace-purge.store.js';
+import { createWorkspacePurgeStore } from '../../../src/lifecycle/purge/workspace-purge.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { waitForApplicationLock } from '../../support/postgres/lock-coordination.js';
 import { createErrorWorkflowStore } from '../../../src/runs/error-workflows/error-workflow.store.js';
@@ -376,7 +376,7 @@ it('purges the policy and captured target intent through ordinary workspace dele
     "update app.workspaces set status='purging',deletion_requested_at=clock_timestamp()-interval '2 days',deletion_requested_by=created_by,deletion_reason='Owned qualification',purge_after=clock_timestamp()-interval '1 day' where id=$1",
     [f.workspaceId],
   );
-  const purge = createWorkspacePurgeCoordinator(
+  const purge = createWorkspacePurgeStore(
     parseDatabaseConfig({ connectionString: maintenanceUrl, max: 1 }),
     {
       purgeWorkspacePage: () =>

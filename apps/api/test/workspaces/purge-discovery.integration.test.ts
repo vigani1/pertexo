@@ -6,7 +6,7 @@ import {
   createArtifactStore,
   parseArtifactStoreConfig,
 } from '@pertexo/artifact-store/server';
-import { createWorkspacePurgeCoordinator } from '@pertexo/core/lifecycle';
+import { createWorkspacePurgeStore } from '@pertexo/core/lifecycle';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   betterAuthIntegrationEnabled,
@@ -61,7 +61,7 @@ describe.runIf(
     const body = Buffer.from('Object must disappear before deletion finishes');
     const reachedObjects = Promise.withResolvers<undefined>();
     const resume = Promise.withResolvers<undefined>();
-    const purge = createWorkspacePurgeCoordinator(
+    const purge = createWorkspacePurgeStore(
       parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
       {
         async purgeWorkspacePage(input) {

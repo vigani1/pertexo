@@ -1,4 +1,4 @@
-import { createRunArtifactRetentionCoordinator } from '@pertexo/core/lifecycle';
+import { createRunArtifactRetentionStore } from '@pertexo/core/lifecycle';
 import {
   describeIntegration,
   sha256Hex,
@@ -59,7 +59,7 @@ describeIntegration('artifact direct upload', () => {
     let store: ReturnType<typeof createArtifactStore> | undefined;
     let database: ReturnType<typeof createWorkspaceDatabase> | undefined;
     let retention:
-      ReturnType<typeof createRunArtifactRetentionCoordinator> | undefined;
+      ReturnType<typeof createRunArtifactRetentionStore> | undefined;
     let corruptObjectWritten = false;
     let availableObjectWritten = false;
     let expiredObjectWritten = false;
@@ -175,7 +175,7 @@ describeIntegration('artifact direct upload', () => {
         await expiredUploadResponse.arrayBuffer();
         expiredObjectWritten = expiredUploadResponse.ok;
         expect(expiredUploadResponse.ok).toBe(true);
-        retention = createRunArtifactRetentionCoordinator(
+        retention = createRunArtifactRetentionStore(
           databaseEnvironment.maintenanceConfig,
           store,
         );

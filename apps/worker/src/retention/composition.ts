@@ -1,10 +1,10 @@
 import { createArtifactStore } from '@pertexo/artifact-store/server';
 import { createDatabaseRuntime } from '@pertexo/database/platform';
 import {
-  createPreviewRetentionCoordinator,
+  createPreviewRetentionStore,
   createRetentionStore,
-  createRunArtifactRetentionCoordinator,
-  createWorkspacePurgeCoordinator,
+  createRunArtifactRetentionStore,
+  createWorkspacePurgeStore,
 } from '@pertexo/core/lifecycle';
 import type { StructuredLogger } from '@pertexo/observability/server';
 
@@ -43,7 +43,7 @@ export function configuredRetentionRuntime(
     return createRetentionRuntime(
       {
         database: createRetentionStore(database, {}, databaseRuntime),
-        preview: createPreviewRetentionCoordinator(
+        preview: createPreviewRetentionStore(
           database,
           artifacts,
           {
@@ -55,13 +55,13 @@ export function configuredRetentionRuntime(
           },
           databaseRuntime,
         ),
-        runArtifacts: createRunArtifactRetentionCoordinator(
+        runArtifacts: createRunArtifactRetentionStore(
           database,
           artifacts,
           {},
           databaseRuntime,
         ),
-        workspacePurge: createWorkspacePurgeCoordinator(
+        workspacePurge: createWorkspacePurgeStore(
           database,
           artifacts,
           {},

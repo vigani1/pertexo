@@ -4,7 +4,7 @@ import type { mutationHeaders as HeadersForMutation } from './transfer-fixture/h
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createRunArtifactRetentionCoordinator } from '@pertexo/core/lifecycle';
+import { createRunArtifactRetentionStore } from '@pertexo/core/lifecycle';
 import {
   createDisposableDatabaseFixture,
   migrateDatabase,
@@ -69,7 +69,7 @@ describe.skipIf(process.env.API_ARTIFACT_INTEGRATION !== 'true')(
       const maintenanceUrl = process.env.DATABASE_MAINTENANCE_URL;
       if (maintenanceUrl === undefined)
         throw new Error('Maintenance URL is required');
-      const coordinator = createRunArtifactRetentionCoordinator(
+      const coordinator = createRunArtifactRetentionStore(
         parseDatabaseConfig({
           connectionString: maintenanceUrl,
           max: 2,

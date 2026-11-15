@@ -10,7 +10,7 @@ import {
   maintenanceUrl,
   apiUrl,
   parseDatabaseConfig,
-  createRunArtifactRetentionCoordinator,
+  createRunArtifactRetentionStore,
 } from '../lifecycle/retention.support.js';
 
 export function gate() {
@@ -106,7 +106,7 @@ export async function fixture(
     delete: vi.fn().mockResolvedValue(undefined),
     head: vi.fn().mockResolvedValue(null),
   };
-  const coordinator = createRunArtifactRetentionCoordinator(
+  const coordinator = createRunArtifactRetentionStore(
     parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
     store,
   );

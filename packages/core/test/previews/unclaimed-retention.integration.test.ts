@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/preview-retention.store.js';
+import { createPreviewRetentionStore } from '../../src/lifecycle/previews/preview-retention.store.js';
 import { settleOverdueDeliveries } from '../../src/outbox/overdue-deliveries.repository.js';
 import { claimPreviewDelivery } from '../../src/previews/attempts/claim.js';
 import { isStoredDataError } from '../../src/shared/stored-values.js';
@@ -32,7 +32,7 @@ async function waitUntil(date: Date) {
 }
 
 function coordinator() {
-  return createPreviewRetentionCoordinator(
+  return createPreviewRetentionStore(
     parseDatabaseConfig({
       connectionString: databaseUrl(maintenanceBaseUrl),
       max: 2,
