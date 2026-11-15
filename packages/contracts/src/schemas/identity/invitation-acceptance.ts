@@ -3,7 +3,7 @@ import {
   delegatedWorkspaceRoleSchema,
   workspaceRoleSchema,
 } from './membership.js';
-import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { workspaceIdentifierSchema } from './workspaces.js';
 
 /** What an invitation link and its acceptance journey carry. */

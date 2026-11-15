@@ -11,7 +11,7 @@ export const DATABASE_POOL_ROLES = Object.freeze([
 
 export type DatabasePoolRole = (typeof DATABASE_POOL_ROLES)[number];
 
-const databaseDeadlineBudget: Readonly<
+const DATABASE_DEADLINE_BUDGET: Readonly<
   Record<
     DatabasePoolRole,
     Readonly<{
@@ -73,7 +73,7 @@ export function withDatabaseDeadlineBudget(
   config: PoolConfig,
   role: DatabasePoolRole,
 ): PoolConfig {
-  const budget = databaseDeadlineBudget[role];
+  const budget = DATABASE_DEADLINE_BUDGET[role];
   return {
     ...config,
     idle_in_transaction_session_timeout: positiveTimeout(

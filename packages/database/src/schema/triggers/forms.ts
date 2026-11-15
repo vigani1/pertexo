@@ -1,3 +1,5 @@
+import { FORM_FILE_LIMITS, FORM_LIMITS } from '@pertexo/workflow-model';
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import type { FormAccess } from '@pertexo/contracts';
 import { sql } from 'drizzle-orm';
 import {
@@ -17,20 +19,29 @@ import { appSchema } from '../namespace.js';
 import { workflows } from '../authoring/workflows.js';
 import { artifacts } from '../artifacts/artifacts.js';
 
+const WIDTHS = Object.freeze({
+  nodeId: 128,
+  members: 16,
+  capabilityHash: SHA256_HEX_CHARACTERS,
+  fieldId: FORM_LIMITS.fieldIdCharacters,
+  filename: FORM_FILE_LIMITS.filenameCharacters,
+  sessionHash: SHA256_HEX_CHARACTERS,
+});
+
 export const workflowForms = appSchema.table(
   'workflow_forms',
   {
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     publicId: uuid('public_id').notNull(),
-    nodeId: varchar('node_id', { length: 128 }).notNull(),
-    access: varchar({ length: 16 })
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
+    access: varchar({ length: WIDTHS.members })
       .$type<FormAccess['access']>()
       .notNull()
       .default('members'),
     sealedCapability:
       jsonb('sealed_capability').$type<Record<string, string>>(),
-    capabilityHash: char('capability_hash', { length: 64 }),
+    capabilityHash: char('capability_hash', { length: WIDTHS.capabilityHash }),
     revision: integer().notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
@@ -70,10 +81,10 @@ export const formUploads = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id'),
     taskId: uuid('task_id'),
-    fieldId: varchar('field_id', { length: 64 }).notNull(),
-    filename: varchar('filename', { length: 255 }).notNull(),
-    sessionHash: char('session_hash', { length: 64 }).notNull(),
-    capabilityHash: char('capability_hash', { length: 64 }),
+    fieldId: varchar('field_id', { length: WIDTHS.fieldId }).notNull(),
+    filename: varchar('filename', { length: WIDTHS.filename }).notNull(),
+    sessionHash: char('session_hash', { length: WIDTHS.sessionHash }).notNull(),
+    capabilityHash: char('capability_hash', { length: WIDTHS.capabilityHash }),
     uploadedBy: uuid('uploaded_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()

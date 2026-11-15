@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -13,16 +14,27 @@ import { appSchema } from '../namespace.js';
 import { users } from '../identity/users.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 
+const WIDTHS = Object.freeze({
+  idempotencyKeyHash: SHA256_HEX_CHARACTERS,
+  commandType: 32,
+  reason: 512,
+  requestHash: SHA256_HEX_CHARACTERS,
+});
+
 export const workspaceLifecycleOperations = appSchema.table(
   'workspace_lifecycle_operations',
   {
     id: uuid().primaryKey().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
-    idempotencyKeyHash: char('idempotency_key_hash', { length: 64 }).notNull(),
-    commandType: varchar('command_type', { length: 32 }).notNull(),
+    idempotencyKeyHash: char('idempotency_key_hash', {
+      length: WIDTHS.idempotencyKeyHash,
+    }).notNull(),
+    commandType: varchar('command_type', {
+      length: WIDTHS.commandType,
+    }).notNull(),
     actorUserId: uuid('actor_user_id').notNull(),
-    reason: varchar({ length: 512 }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
+    reason: varchar({ length: WIDTHS.reason }).notNull(),
+    requestHash: char('request_hash', { length: WIDTHS.requestHash }).notNull(),
     occurredAt: timestamp('occurred_at', {
       withTimezone: true,
       mode: 'string',

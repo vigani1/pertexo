@@ -14,13 +14,17 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 import { workflowRuns } from './workflow-runs.js';
 
+const WIDTHS = Object.freeze({
+  type: 64,
+});
+
 export const runEvents = appSchema.table(
   'run_events',
   {
     workspaceId: uuid('workspace_id').notNull(),
     workflowRunId: uuid('workflow_run_id').notNull(),
     sequence: integer('sequence').notNull(),
-    type: varchar('type', { length: 64 }).notNull(),
+    type: varchar('type', { length: WIDTHS.type }).notNull(),
     payload: jsonb('payload').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../../../column-widths.js';
 import { sql } from 'drizzle-orm';
 import {
   char,
@@ -12,13 +13,19 @@ import {
 import { appSchema } from '../../../namespace.js';
 import { users } from '../../users.js';
 import { authOrganizations } from '../organizations.js';
+
+const WIDTHS = Object.freeze({
+  secretDigest: SHA256_HEX_CHARACTERS,
+});
 export const authProvisioningCredentials = appSchema.table(
   'auth_provisioning_credentials',
   {
     id: uuid().primaryKey(),
     organizationId: uuid('organization_id').notNull(),
     name: text().notNull(),
-    secretDigest: char('secret_digest', { length: 64 }).notNull(),
+    secretDigest: char('secret_digest', {
+      length: WIDTHS.secretDigest,
+    }).notNull(),
     createdBy: uuid('created_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()

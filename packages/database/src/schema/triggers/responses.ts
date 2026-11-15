@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -13,6 +14,11 @@ import type { NodeWebhookResponse } from '@pertexo/node-sdk';
 import { appSchema } from '../namespace.js';
 import { workflowRuns } from '../runs/workflow-runs.js';
 
+const WIDTHS = Object.freeze({
+  contentType: 64,
+  invocationKey: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+});
+
 export const webhookRunResponses = appSchema.table(
   'webhook_run_responses',
   {
@@ -20,13 +26,13 @@ export const webhookRunResponses = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     waitSeconds: integer('wait_seconds').notNull(),
     statusCode: integer('status_code'),
-    contentType: varchar('content_type', { length: 64 }).$type<
+    contentType: varchar('content_type', { length: WIDTHS.contentType }).$type<
       NodeWebhookResponse['contentType']
     >(),
     headers: jsonb('headers').$type<NodeWebhookResponse['headers']>(),
     body: text('body'),
     nodeRunId: uuid('node_run_id'),
-    invocationKey: varchar('invocation_key', { length: 256 }),
+    invocationKey: varchar('invocation_key', { length: WIDTHS.invocationKey }),
     respondedAt: timestamp('responded_at', {
       withTimezone: true,
       mode: 'date',

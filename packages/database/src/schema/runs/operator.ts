@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import type {
   GenericOperatorCommandResult,
   OperatorCommandRecord,
@@ -23,20 +24,32 @@ import { nodeAttempts } from './node-executions.js';
 import { workflowRuns } from './workflow-runs.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 
+const WIDTHS = Object.freeze({
+  commandType: 64,
+  requestFingerprint: SHA256_HEX_CHARACTERS,
+  status: 16,
+  outcome: 32,
+  pending: 16,
+  safeErrorCode: 64,
+  evidenceKind: 64,
+});
+
 export const operatorCommands = appSchema.table(
   'operator_commands',
   {
     id: uuid().primaryKey().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
-    commandType: varchar('command_type', { length: 64 })
+    commandType: varchar('command_type', { length: WIDTHS.commandType })
       .$type<OperatorCommandRecord['commandType']>()
       .notNull(),
     dryRun: boolean('dry_run').notNull(),
-    requestFingerprint: char('request_fingerprint', { length: 64 }).notNull(),
-    status: varchar({ length: 16 })
+    requestFingerprint: char('request_fingerprint', {
+      length: WIDTHS.requestFingerprint,
+    }).notNull(),
+    status: varchar({ length: WIDTHS.status })
       .$type<GenericOperatorCommandResult['status']>()
       .notNull(),
-    outcome: varchar({ length: 32 }).notNull(),
+    outcome: varchar({ length: WIDTHS.outcome }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
       .notNull(),
@@ -89,13 +102,15 @@ export const operatorRunReplayRequests = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
     runInput: json('run_input').notNull(),
-    requestFingerprint: char('request_fingerprint', { length: 64 }).notNull(),
-    status: varchar({ length: 16 })
+    requestFingerprint: char('request_fingerprint', {
+      length: WIDTHS.requestFingerprint,
+    }).notNull(),
+    status: varchar({ length: WIDTHS.pending })
       .$type<GenericOperatorCommandResult['status']>()
       .default('pending')
       .notNull(),
     resultRunId: uuid('result_run_id'),
-    safeErrorCode: varchar('safe_error_code', { length: 64 }),
+    safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
       .notNull(),
@@ -151,7 +166,9 @@ export const operatorUnknownOutcomeEvidence = appSchema.table(
     commandId: uuid('command_id').primaryKey().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     attemptId: uuid('attempt_id').notNull(),
-    evidenceKind: varchar('evidence_kind', { length: 64 }).notNull(),
+    evidenceKind: varchar('evidence_kind', {
+      length: WIDTHS.evidenceKind,
+    }).notNull(),
     evidenceRef: jsonb('evidence_ref').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)

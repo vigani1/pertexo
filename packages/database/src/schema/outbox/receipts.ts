@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import {
   type PgTableExtraConfigValue,
   char,
@@ -11,13 +12,22 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  consumerName: 128,
+  payloadChecksum: SHA256_HEX_CHARACTERS,
+});
+
 export const inboxReceipts = appSchema.table(
   'inbox_receipts',
   {
-    consumerName: varchar('consumer_name', { length: 128 }).notNull(),
+    consumerName: varchar('consumer_name', {
+      length: WIDTHS.consumerName,
+    }).notNull(),
     messageId: uuid('message_id').notNull(),
     workspaceId: uuid('workspace_id').notNull(),
-    payloadChecksum: char('payload_checksum', { length: 64 }).notNull(),
+    payloadChecksum: char('payload_checksum', {
+      length: WIDTHS.payloadChecksum,
+    }).notNull(),
     receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

@@ -11,13 +11,17 @@ import {
 } from 'drizzle-orm/pg-core';
 import { workflows } from './workflows.js';
 
+const WIDTHS = Object.freeze({
+  overflow: 8,
+});
+
 export const workflowConcurrencyPolicies = appSchema.table(
   'workflow_concurrency_policies',
   {
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     activeRunLimit: integer('active_run_limit'),
-    overflow: varchar('overflow', { length: 8 })
+    overflow: varchar('overflow', { length: WIDTHS.overflow })
       .$type<'queue' | 'skip'>()
       .notNull()
       .default('queue'),

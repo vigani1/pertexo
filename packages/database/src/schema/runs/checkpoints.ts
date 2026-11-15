@@ -13,6 +13,10 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 import { workflowRuns } from './workflow-runs.js';
 
+const WIDTHS = Object.freeze({
+  resumeLeaseOwner: 128,
+});
+
 export const runCheckpoints = appSchema.table(
   'run_checkpoints',
   {
@@ -22,7 +26,9 @@ export const runCheckpoints = appSchema.table(
     revision: integer('revision').notNull(),
     schedulerState: jsonb('scheduler_state').notNull(),
     resumeAt: timestamp('resume_at', { withTimezone: true, mode: 'date' }),
-    resumeLeaseOwner: varchar('resume_lease_owner', { length: 128 }),
+    resumeLeaseOwner: varchar('resume_lease_owner', {
+      length: WIDTHS.resumeLeaseOwner,
+    }),
     resumeLeaseToken: uuid('resume_lease_token'),
     resumeLeaseExpiresAt: timestamp('resume_lease_expires_at', {
       withTimezone: true,

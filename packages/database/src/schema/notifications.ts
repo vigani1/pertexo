@@ -22,13 +22,21 @@ import { workflows } from './authoring/workflows.js';
 import { users } from './identity/users.js';
 import { workspaces } from './tenant-access/workspaces.js';
 
+const WIDTHS = Object.freeze({
+  kind: 16,
+  enabled: 16,
+  sideEffectClass: 32,
+});
+
 export const failureNotificationDestinations = appSchema.table(
   'failure_notification_destinations',
   {
     id: uuid().primaryKey().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
-    kind: varchar({ length: 16 }).$type<DestinationConfig['kind']>().notNull(),
-    status: varchar({ length: 16 })
+    kind: varchar({ length: WIDTHS.kind })
+      .$type<DestinationConfig['kind']>()
+      .notNull(),
+    status: varchar({ length: WIDTHS.enabled })
       .$type<'enabled' | 'disabled'>()
       .default('enabled')
       .notNull(),
@@ -100,8 +108,12 @@ export const failureNotificationDestinationVersions = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     destinationId: uuid('destination_id').notNull(),
     version: integer().notNull(),
-    kind: varchar({ length: 16 }).$type<DestinationConfig['kind']>().notNull(),
-    sideEffectClass: varchar('side_effect_class', { length: 32 })
+    kind: varchar({ length: WIDTHS.kind })
+      .$type<DestinationConfig['kind']>()
+      .notNull(),
+    sideEffectClass: varchar('side_effect_class', {
+      length: WIDTHS.sideEffectClass,
+    })
       .$type<'idempotent_with_key' | 'unsafe'>()
       .notNull(),
     config: jsonb().$type<StoredDestinationConfig>().notNull(),

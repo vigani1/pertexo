@@ -24,13 +24,20 @@ import { connections } from '../connections.js';
 import { pendingRunTasks } from '../runs/pending-task.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 
+const WIDTHS = Object.freeze({
+  noticeKind: 32,
+  sourceRevision: 128,
+  capacityLimit: 16,
+  latestKind: 32,
+});
+
 /** One thread per failing workflow, shared by the workspace's readers. */
 export const workspaceInboxThreads = appSchema.table(
   'workspace_inbox_threads',
   {
     workspaceId: uuid('workspace_id').notNull(),
     id: uuid('id').notNull(),
-    noticeKind: varchar('notice_kind', { length: 32 })
+    noticeKind: varchar('notice_kind', { length: WIDTHS.noticeKind })
       .$type<WorkspaceNoticeKind>()
       .notNull(),
     subjectId: uuid('subject_id').notNull(),
@@ -39,9 +46,11 @@ export const workspaceInboxThreads = appSchema.table(
     publicationRequestId: uuid('publication_request_id'),
     commentMentionId: uuid('comment_mention_id'),
     active: boolean('active').notNull().default(true),
-    sourceRevision: varchar('source_revision', { length: 128 }),
+    sourceRevision: varchar('source_revision', {
+      length: WIDTHS.sourceRevision,
+    }),
     capacityLimit: varchar('capacity_limit', {
-      length: 16,
+      length: WIDTHS.capacityLimit,
     }).$type<WorkspaceCapacityLimit>(),
     workflowId: uuid('workflow_id'),
     revision: bigint('revision', { mode: 'bigint' }).notNull(),
@@ -55,7 +64,7 @@ export const workspaceInboxThreads = appSchema.table(
       mode: 'string',
     }).notNull(),
     latestRunId: uuid('latest_run_id'),
-    latestKind: varchar('latest_kind', { length: 32 }),
+    latestKind: varchar('latest_kind', { length: WIDTHS.latestKind }),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
       .notNull(),

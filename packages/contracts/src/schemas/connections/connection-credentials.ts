@@ -1,6 +1,6 @@
 import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   HTTP_HEADER_LIMITS,

@@ -8,6 +8,7 @@ import { formatByteSize } from '@pertexo/node-sdk';
 
 export const FORM_LIMITS = Object.freeze({
   fields: 20,
+  fieldIdCharacters: 64,
   thankYouCharacters: 1_000,
   schemaBytes: 10_240,
   options: 50,
@@ -19,8 +20,13 @@ export const FORM_LIMITS = Object.freeze({
   titleCharacters: 160,
   instructionsCharacters: 2_000,
 });
+// A letter or digit, then up to the rest of the id's characters.
+const FIELD_ID = new RegExp(
+  `^[A-Za-z0-9][A-Za-z0-9_-]{0,${String(FORM_LIMITS.fieldIdCharacters - 1)}}$`,
+  'u',
+);
 const field = z.object({
-  id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u),
+  id: z.string().regex(FIELD_ID),
   name: z
     .string()
     .regex(/^[A-Za-z][A-Za-z0-9_]{0,63}$/u)

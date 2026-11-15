@@ -1,10 +1,11 @@
+import { CRON_EXPRESSION_MAX_CHARACTERS } from '@pertexo/workflow-model';
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { TIME_ZONE_NAME_CHARACTERS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
 const SCHEDULES_BOUNDS = Object.freeze({
-  expressionCharacters: 256,
+  expressionCharacters: CRON_EXPRESSION_MAX_CHARACTERS,
   timezoneCharacters: TIME_ZONE_NAME_CHARACTERS,
   intervalMinutesMaximum: 43200,
   nodeIdCharacters: 256,

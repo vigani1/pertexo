@@ -1,3 +1,8 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
+import {
+  CRON_EXPRESSION_MAX_CHARACTERS,
+  TIME_ZONE_NAME_CHARACTERS,
+} from '@pertexo/workflow-model';
 import type { RecordedScheduleOccurrence } from '../stored-shapes.js';
 import type { ScheduleTriggerRecord } from '../stored-shapes.js';
 import { workflowTriggers } from '../authoring/workflows.js';
@@ -16,21 +21,41 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  recurrenceKind: 16,
+  cronExpression: CRON_EXPRESSION_MAX_CHARACTERS,
+  timezone: TIME_ZONE_NAME_CHARACTERS,
+  misfirePolicy: 32,
+  configFingerprint: 79,
+  status: 16,
+  healthStatus: 32,
+  lastErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  leaseOwner: 128,
+  disposition: 16,
+  skipReason: 32,
+});
+
 export const triggerSchedules = appSchema.table(
   'trigger_schedules',
   {
     triggerId: uuid('trigger_id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    recurrenceKind: varchar('recurrence_kind', { length: 16 })
+    recurrenceKind: varchar('recurrence_kind', {
+      length: WIDTHS.recurrenceKind,
+    })
       .$type<'cron' | 'interval'>()
       .notNull(),
-    cronExpression: varchar('cron_expression', { length: 256 }),
-    timezone: varchar('timezone', { length: 128 }),
+    cronExpression: varchar('cron_expression', {
+      length: WIDTHS.cronExpression,
+    }),
+    timezone: varchar('timezone', { length: WIDTHS.timezone }),
     intervalMinutes: integer('interval_minutes'),
-    misfirePolicy: varchar('misfire_policy', { length: 32 })
+    misfirePolicy: varchar('misfire_policy', { length: WIDTHS.misfirePolicy })
       .$type<ScheduleTriggerRecord['misfirePolicy']>()
       .notNull(),
-    configFingerprint: varchar('config_fingerprint', { length: 79 }).notNull(),
+    configFingerprint: varchar('config_fingerprint', {
+      length: WIDTHS.configFingerprint,
+    }).notNull(),
     anchorAt: timestamp('anchor_at', {
       withTimezone: true,
       mode: 'date',
@@ -40,17 +65,17 @@ export const triggerSchedules = appSchema.table(
       mode: 'date',
     }).notNull(),
     lastFireAt: timestamp('last_fire_at', { withTimezone: true, mode: 'date' }),
-    status: varchar('status', { length: 16 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<'enabled' | 'disabled'>()
       .notNull()
       .default(sql`'enabled'::character varying`),
     retiredAt: timestamp('retired_at', { withTimezone: true, mode: 'date' }),
-    healthStatus: varchar('health_status', { length: 32 })
+    healthStatus: varchar('health_status', { length: WIDTHS.healthStatus })
       .$type<ScheduleTriggerRecord['healthStatus']>()
       .notNull()
       .default(sql`'healthy'::character varying`),
-    lastErrorCode: varchar('last_error_code', { length: 128 }),
-    leaseOwner: varchar('lease_owner', { length: 128 }),
+    lastErrorCode: varchar('last_error_code', { length: WIDTHS.lastErrorCode }),
+    leaseOwner: varchar('lease_owner', { length: WIDTHS.leaseOwner }),
     leaseToken: uuid('lease_token'),
     leaseAcquiredAt: timestamp('lease_acquired_at', {
       withTimezone: true,
@@ -131,11 +156,11 @@ export const triggerScheduleOccurrences = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }).notNull(),
-    disposition: varchar('disposition', { length: 16 })
+    disposition: varchar('disposition', { length: WIDTHS.disposition })
       .$type<RecordedScheduleOccurrence>()
       .notNull(),
     skipReason: varchar('skip_reason', {
-      length: 32,
+      length: WIDTHS.skipReason,
     }).$type<'concurrency_limit'>(),
     workflowRunId: uuid('workflow_run_id'),
     createdAt: timestamp('created_at', {

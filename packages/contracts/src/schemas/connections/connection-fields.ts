@@ -1,7 +1,7 @@
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 
 const CONNECTION_FIELDS_BOUNDS = Object.freeze({
   lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,

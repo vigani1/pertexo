@@ -1,5 +1,9 @@
 import { Client, type PoolClient } from 'pg';
 
+const POSTGRES_DEFAULT_PORT = 5_432;
+// How long a cancel request's socket may stay open before it is closed.
+const CANCEL_SOCKET_MILLIS = 1_000;
+
 interface PoolClientWithStream {
   readonly host?: string;
   readonly port?: number;
@@ -47,14 +51,14 @@ function requestWireCancellation(client: PoolClientWithStream): void {
     });
     if (client.host?.startsWith('/'))
       connection.connect(`${client.host}/.s.PGSQL.${String(client.port)}`);
-    else connection.connect(client.port ?? 5_432, client.host);
+    else connection.connect(client.port ?? POSTGRES_DEFAULT_PORT, client.host);
   } catch {
     void canceler.end().catch(() => undefined);
     return;
   }
   const cleanup = setTimeout(() => {
     connection.stream.destroy();
-  }, 1_000);
+  }, CANCEL_SOCKET_MILLIS);
   cleanup.unref();
 }
 

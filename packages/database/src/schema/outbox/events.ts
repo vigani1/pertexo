@@ -1,3 +1,5 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import {
   type PgTableExtraConfigValue,
@@ -13,22 +15,34 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  jobName: 128,
+  aggregateType: 64,
+  payloadChecksum: SHA256_HEX_CHARACTERS,
+  leaseOwner: 128,
+  lastErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+});
+
 export const outboxEvents = appSchema.table(
   'outbox_events',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    jobName: varchar('job_name', { length: 128 }).notNull(),
-    aggregateType: varchar('aggregate_type', { length: 64 }).notNull(),
+    jobName: varchar('job_name', { length: WIDTHS.jobName }).notNull(),
+    aggregateType: varchar('aggregate_type', {
+      length: WIDTHS.aggregateType,
+    }).notNull(),
     aggregateId: uuid('aggregate_id').notNull(),
     payload: jsonb('payload')
       .$type<JsonValue | Readonly<Record<string, unknown>>>()
       .notNull(),
-    payloadChecksum: char('payload_checksum', { length: 64 }).notNull(),
+    payloadChecksum: char('payload_checksum', {
+      length: WIDTHS.payloadChecksum,
+    }).notNull(),
     availableAt: timestamp('available_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
-    leaseOwner: varchar('lease_owner', { length: 128 }),
+    leaseOwner: varchar('lease_owner', { length: WIDTHS.leaseOwner }),
     leaseToken: uuid('lease_token'),
     leaseExpiresAt: timestamp('lease_expires_at', {
       withTimezone: true,
@@ -40,7 +54,7 @@ export const outboxEvents = appSchema.table(
       mode: 'date',
     }),
     failedAt: timestamp('failed_at', { withTimezone: true, mode: 'date' }),
-    lastErrorCode: varchar('last_error_code', { length: 128 }),
+    lastErrorCode: varchar('last_error_code', { length: WIDTHS.lastErrorCode }),
     /** When a published job must have been confirmed; see stalled work. */
     deliveryDueAt: timestamp('delivery_due_at', {
       withTimezone: true,

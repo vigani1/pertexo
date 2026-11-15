@@ -1,3 +1,4 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import {
   type PgTableExtraConfigValue,
   foreignKey,
@@ -9,13 +10,17 @@ import {
 import { appSchema } from '../namespace.js';
 import { workflowVersions } from './workflows.js';
 
+const WIDTHS = Object.freeze({
+  nodeId: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+});
+
 /** A retained publication pins its exact same-workspace child versions. */
 export const workflowVersionDependencies = appSchema.table(
   'workflow_version_dependencies',
   {
     workspaceId: uuid('workspace_id').notNull(),
     parentVersionId: uuid('parent_version_id').notNull(),
-    nodeId: varchar('node_id', { length: 64 }).notNull(),
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
     targetWorkflowId: uuid('target_workflow_id').notNull(),
     targetVersionId: uuid('target_version_id').notNull(),
   },

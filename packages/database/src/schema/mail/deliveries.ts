@@ -1,3 +1,4 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import {
   type PgTableExtraConfigValue,
   bigint,
@@ -13,6 +14,17 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  purpose: 32,
+  queued: 32,
+  leaseOwner: 128,
+  payloadNonce: 128,
+  payloadTag: 256,
+  payloadKeyVersion: 64,
+  providerReference: 512,
+  failureCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+});
+
 export type SystemMailPurpose =
   | 'workflow_failure_alert'
   | 'workspace_notice'
@@ -26,8 +38,10 @@ export const systemMailDeliveries = appSchema.table(
   'system_mail_deliveries',
   {
     id: uuid().primaryKey().notNull(),
-    purpose: varchar({ length: 32 }).$type<SystemMailPurpose>().notNull(),
-    status: varchar({ length: 32 }).default('queued').notNull(),
+    purpose: varchar({ length: WIDTHS.purpose })
+      .$type<SystemMailPurpose>()
+      .notNull(),
+    status: varchar({ length: WIDTHS.queued }).default('queued').notNull(),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,
       mode: 'string',
@@ -42,7 +56,7 @@ export const systemMailDeliveries = appSchema.table(
     hadUncertainAttempt: boolean('had_uncertain_attempt')
       .default(false)
       .notNull(),
-    leaseOwner: varchar('lease_owner', { length: 128 }),
+    leaseOwner: varchar('lease_owner', { length: WIDTHS.leaseOwner }),
     leaseToken: uuid('lease_token'),
     leaseGeneration: bigint('lease_generation', { mode: 'number' })
       .default(0)
@@ -52,11 +66,15 @@ export const systemMailDeliveries = appSchema.table(
       mode: 'string',
     }),
     payloadCiphertext: text('payload_ciphertext'),
-    payloadNonce: varchar('payload_nonce', { length: 128 }),
-    payloadTag: varchar('payload_tag', { length: 256 }),
-    payloadKeyVersion: varchar('payload_key_version', { length: 64 }),
-    providerReference: varchar('provider_reference', { length: 512 }),
-    failureCode: varchar('failure_code', { length: 128 }),
+    payloadNonce: varchar('payload_nonce', { length: WIDTHS.payloadNonce }),
+    payloadTag: varchar('payload_tag', { length: WIDTHS.payloadTag }),
+    payloadKeyVersion: varchar('payload_key_version', {
+      length: WIDTHS.payloadKeyVersion,
+    }),
+    providerReference: varchar('provider_reference', {
+      length: WIDTHS.providerReference,
+    }),
+    failureCode: varchar('failure_code', { length: WIDTHS.failureCode }),
     completedAt: timestamp('completed_at', {
       withTimezone: true,
       mode: 'string',

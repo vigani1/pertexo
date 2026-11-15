@@ -15,6 +15,10 @@ import type { WorkflowTestCompilation } from '@pertexo/workflow-engine';
 import { appSchema } from '../namespace.js';
 import { workflows } from '../authoring/workflows.js';
 
+const WIDTHS = Object.freeze({
+  checksum: 77,
+});
+
 /** Preserve the existing value encoding instead of expanding numbers inside JSONB. */
 export type FrozenWorkflowTestPins = Readonly<
   Record<string, Readonly<{ sampleId: string; outputRef: string }>>
@@ -28,7 +32,7 @@ export const workflowTestSnapshots = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     draftRevision: integer('draft_revision').notNull(),
     graphJson: json('graph_json').$type<WorkflowGraph>().notNull(),
-    checksum: varchar('checksum', { length: 77 }).notNull(),
+    checksum: varchar('checksum', { length: WIDTHS.checksum }).notNull(),
     executableJson: json('executable_json').notNull(),
     dispositions: jsonb('dispositions')
       .$type<WorkflowTestCompilation['dispositions']>()

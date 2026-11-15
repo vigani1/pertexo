@@ -1,3 +1,5 @@
+import { PENDING_TASK_LIMITS } from '@pertexo/workflow-model';
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
@@ -17,6 +19,20 @@ import { users } from '../identity/users.js';
 import { nodeRuns } from './node-executions.js';
 import { workflowRuns } from './workflow-runs.js';
 
+// A task's longest expiry, in the whole days its CHECK constraint writes.
+const MAXIMUM_EXPIRY_DAYS = sql.raw(
+  String(PENDING_TASK_LIMITS.maximumExpirySeconds / (24 * 60 * 60)),
+);
+
+const WIDTHS = Object.freeze({
+  callbackNodeId: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+  callbackScopeHash: SHA256_HEX_CHARACTERS,
+  callbackTokenHash: SHA256_HEX_CHARACTERS,
+  callbackKeyVersion: 64,
+  kind: 32,
+  pending: 16,
+});
+
 export const pendingRunTasks = appSchema.table(
   'pending_run_tasks',
   {
@@ -25,21 +41,29 @@ export const pendingRunTasks = appSchema.table(
     runId: uuid('run_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
     nodeRunId: uuid('node_run_id'),
-    callbackNodeId: varchar('callback_node_id', { length: 64 }),
+    callbackNodeId: varchar('callback_node_id', {
+      length: WIDTHS.callbackNodeId,
+    }),
     callbackScope: jsonb('callback_scope'),
-    callbackScopeHash: char('callback_scope_hash', { length: 64 }),
-    callbackTokenHash: char('callback_token_hash', { length: 64 }),
-    callbackKeyVersion: varchar('callback_key_version', { length: 64 }),
+    callbackScopeHash: char('callback_scope_hash', {
+      length: WIDTHS.callbackScopeHash,
+    }),
+    callbackTokenHash: char('callback_token_hash', {
+      length: WIDTHS.callbackTokenHash,
+    }),
+    callbackKeyVersion: varchar('callback_key_version', {
+      length: WIDTHS.callbackKeyVersion,
+    }),
     openedAt: timestamp('opened_at', { withTimezone: true, mode: 'date' }),
     invocationKey: varchar('invocation_key', {
       length: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
     }).notNull(),
-    kind: varchar({ length: 32 }).notNull(),
+    kind: varchar({ length: WIDTHS.kind }).notNull(),
     config: jsonb().notNull(),
     context: jsonb()
       .notNull()
       .default(sql`'{}'::jsonb`),
-    status: varchar({ length: 16 }).notNull().default('pending'),
+    status: varchar({ length: WIDTHS.pending }).notNull().default('pending'),
     outputRef: json('output_ref'),
     decidedBy: uuid('decided_by'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -83,7 +107,7 @@ export const pendingRunTasks = appSchema.table(
     ),
     check(
       'pending_run_tasks_expiry_valid',
-      sql`((kind<>'callback' AND expires_at > created_at AND expires_at <= created_at + interval '30 days') OR (kind='callback' AND ((opened_at IS NULL AND expires_at IS NULL) OR (opened_at IS NOT NULL AND expires_at>opened_at AND expires_at<=opened_at+interval '30 days')))) IS TRUE`,
+      sql`((kind<>'callback' AND expires_at > created_at AND expires_at <= created_at + interval '${MAXIMUM_EXPIRY_DAYS} days') OR (kind='callback' AND ((opened_at IS NULL AND expires_at IS NULL) OR (opened_at IS NOT NULL AND expires_at>opened_at AND expires_at<=opened_at+interval '${MAXIMUM_EXPIRY_DAYS} days')))) IS TRUE`,
     ),
     check(
       'pending_run_tasks_state_valid',

@@ -1,5 +1,5 @@
 import { responseSchema } from '../shared/response-schema.js';
-import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import {
   WORKFLOW_PAGE_LIMITS,
   workflowCursorSchema,

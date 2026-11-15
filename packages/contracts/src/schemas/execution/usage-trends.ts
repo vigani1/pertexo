@@ -3,7 +3,7 @@ import {
   USAGE_TREND_RANKED_WORKFLOWS,
 } from '@pertexo/workflow-model';
 import { storedTimestampSchema } from '../shared/stored-timestamp.js';
-import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { workflowRunStatisticsResponseSchema } from './run-statistics.js';

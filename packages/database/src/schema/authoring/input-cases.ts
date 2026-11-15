@@ -1,3 +1,4 @@
+import { WORKFLOW_INPUT_CASE_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -15,6 +16,11 @@ import {
 import { appSchema } from '../namespace.js';
 import { workflows, workflowVersions } from './workflows.js';
 
+const WIDTHS = Object.freeze({
+  versionChecksum: 77,
+  name: WORKFLOW_INPUT_CASE_LIMITS.nameCharacters,
+});
+
 export const workflowInputCases = appSchema.table(
   'workflow_input_cases',
   {
@@ -22,8 +28,10 @@ export const workflowInputCases = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     workflowVersionId: uuid('workflow_version_id').notNull(),
-    versionChecksum: varchar('version_checksum', { length: 77 }).notNull(),
-    name: varchar('name', { length: 128 }).notNull(),
+    versionChecksum: varchar('version_checksum', {
+      length: WIDTHS.versionChecksum,
+    }).notNull(),
+    name: varchar('name', { length: WIDTHS.name }).notNull(),
     revision: integer('revision').default(1).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`date_trunc('milliseconds',clock_timestamp())`)

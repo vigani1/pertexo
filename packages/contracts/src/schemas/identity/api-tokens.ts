@@ -14,7 +14,7 @@ export {
   apiTokenCredentialSchema,
 };
 import { z } from 'zod';
-import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 
 const API_TOKENS_BOUNDS = Object.freeze({
   apiTokenListPageItems: 50,

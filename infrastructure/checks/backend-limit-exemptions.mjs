@@ -4,6 +4,10 @@
  * protocol code stays a literal where it is read.
  */
 export const NOT_LIMITS = Object.freeze({
+  'packages/database/src/testing/postgres/commit-ack-proxy.ts: *':
+    'the PostgreSQL wire protocol: frame header widths, the startup code and the default port',
+  'packages/database/src/schema/triggers/deliveries.ts: 202':
+    'HTTP 202 Accepted, the answer a webhook delivery records by default',
   "packages/contracts/src/schemas/execution/run-statistics.ts: '1h'":
     'a statistics window’s name on the wire; core decides its length',
   "packages/contracts/src/schemas/execution/run-statistics.ts: '6h'":

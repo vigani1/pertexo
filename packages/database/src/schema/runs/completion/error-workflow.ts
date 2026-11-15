@@ -14,6 +14,11 @@ import { appSchema } from '../../namespace.js';
 import { workflowRuns } from '../workflow-runs.js';
 import { workflowVersions } from '../../authoring/workflows.js';
 
+const WIDTHS = Object.freeze({
+  pending: 16,
+  refusalCode: 64,
+});
+
 export const runErrorWorkflowIntents = appSchema.table(
   'run_error_workflow_intents',
   {
@@ -23,12 +28,12 @@ export const runErrorWorkflowIntents = appSchema.table(
     targetVersionId: uuid('target_version_id'),
     context: jsonb().notNull(),
     outboxEventId: uuid('outbox_event_id'),
-    status: varchar({ length: 16 })
+    status: varchar({ length: WIDTHS.pending })
       .$type<WorkflowRunErrorWorkflow['status']>()
       .notNull()
       .default('pending'),
     acceptedRunId: uuid('accepted_run_id'),
-    refusalCode: varchar('refusal_code', { length: 64 }).$type<
+    refusalCode: varchar('refusal_code', { length: WIDTHS.refusalCode }).$type<
       NonNullable<WorkflowRunErrorWorkflow['refusalCode']>
     >(),
     queueWaitExpiresAt: timestamp('queue_wait_expires_at', {

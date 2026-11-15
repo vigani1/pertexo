@@ -13,12 +13,16 @@ import { appSchema } from '../namespace.js';
 import { previewRuns } from '../previews/runs.js';
 import { artifacts } from './artifacts.js';
 
+const WIDTHS = Object.freeze({
+  ownerKind: 32,
+});
+
 export const artifactLinks = appSchema.table(
   'artifact_links',
   {
     workspaceId: uuid('workspace_id').notNull(),
     artifactId: uuid('artifact_id').notNull(),
-    ownerKind: varchar('owner_kind', { length: 32 }).notNull(),
+    ownerKind: varchar('owner_kind', { length: WIDTHS.ownerKind }).notNull(),
     ownerId: uuid('owner_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)

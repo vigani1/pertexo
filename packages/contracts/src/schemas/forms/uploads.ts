@@ -1,14 +1,14 @@
+import { FORM_FILE_LIMITS, FORM_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { FORM_FILE_LIMITS } from '@pertexo/workflow-model';
 import { artifactUploadResponseSchema } from '../execution/artifact-transfer.js';
 
 const UPLOADS_BOUNDS = Object.freeze({
-  fieldIdCharacters: 64,
+  fieldIdCharacters: FORM_LIMITS.fieldIdCharacters,
   filenameCharacters: 1024,
   mediaTypeMinimumCharacters: 3,
-  mediaTypeCharacters: 255,
+  mediaTypeCharacters: FORM_FILE_LIMITS.mediaTypeCharacters,
 });
 
 /** A responder's random token for one response; only its digest is stored. */

@@ -1,4 +1,5 @@
-import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
+import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/workflow-model';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import {
   storageTextSchema,
@@ -13,8 +14,7 @@ const PUBLICATION_REVIEW_BOUNDS = Object.freeze({
   deciderNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
 });
 
-/** The longest note or decision comment on a publication review. */
-export const PUBLICATION_REVIEW_TEXT_MAX_LENGTH = 1000;
+export { PUBLICATION_REVIEW_TEXT_MAX_LENGTH };
 
 export const publicationReviewRequestSchema = z
   .object({

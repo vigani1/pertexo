@@ -9,13 +9,20 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  factType: 64,
+  consumerName: 128,
+});
+
 export const transportSecurityAuditFacts = appSchema.table(
   'transport_security_audit_facts',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    factType: varchar('fact_type', { length: 64 }).notNull(),
-    consumerName: varchar('consumer_name', { length: 128 }).notNull(),
+    factType: varchar('fact_type', { length: WIDTHS.factType }).notNull(),
+    consumerName: varchar('consumer_name', {
+      length: WIDTHS.consumerName,
+    }).notNull(),
     messageId: uuid('message_id').notNull(),
     occurredAt: timestamp('occurred_at', {
       withTimezone: true,

@@ -1,3 +1,4 @@
+import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -15,6 +16,13 @@ import { appSchema } from '../namespace.js';
 import { users } from '../identity/users.js';
 import { workflows, workflowVersions } from './workflows.js';
 
+const WIDTHS = Object.freeze({
+  representationTag: 64,
+  note: PUBLICATION_REVIEW_TEXT_MAX_LENGTH,
+  status: 16,
+  comment: PUBLICATION_REVIEW_TEXT_MAX_LENGTH,
+});
+
 export const workflowPublicationRequests = appSchema.table(
   'workflow_publication_requests',
   {
@@ -23,9 +31,13 @@ export const workflowPublicationRequests = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     requestedBy: uuid('requested_by').notNull(),
     draftRevision: integer('draft_revision').notNull(),
-    representationTag: varchar('representation_tag', { length: 64 }).notNull(),
-    note: varchar('note', { length: 1000 }).notNull(),
-    status: varchar('status', { length: 16 }).notNull().default('pending'),
+    representationTag: varchar('representation_tag', {
+      length: WIDTHS.representationTag,
+    }).notNull(),
+    note: varchar('note', { length: WIDTHS.note }).notNull(),
+    status: varchar('status', { length: WIDTHS.status })
+      .notNull()
+      .default('pending'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .default(sql`clock_timestamp()`),
@@ -35,7 +47,7 @@ export const workflowPublicationRequests = appSchema.table(
     }).notNull(),
     decidedBy: uuid('decided_by'),
     decidedAt: timestamp('decided_at', { withTimezone: true, mode: 'date' }),
-    comment: varchar('comment', { length: 1000 }),
+    comment: varchar('comment', { length: WIDTHS.comment }),
     publishedVersionId: uuid('published_version_id'),
     reused: boolean('reused'),
   },

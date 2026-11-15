@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import type {
   WebhookDeliveryOutcome,
   WebhookSignatureCheck,
@@ -27,6 +28,15 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 import { webhookTriggerEndpoints } from './endpoints.js';
 
+const WIDTHS = Object.freeze({
+  skipReason: 32,
+  outcome: 32,
+  signatureCheck: 16,
+  replayCheck: 16,
+  dedupeKeyHash: SHA256_HEX_CHARACTERS,
+  requestFingerprint: SHA256_HEX_CHARACTERS,
+});
+
 export const webhookTriggerDeliveries = appSchema.table(
   'webhook_trigger_deliveries',
   {
@@ -34,7 +44,7 @@ export const webhookTriggerDeliveries = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     endpointId: uuid('endpoint_id').notNull(),
     workflowRunId: uuid('workflow_run_id'),
-    skipReason: varchar('skip_reason', { length: 32 }),
+    skipReason: varchar('skip_reason', { length: WIDTHS.skipReason }),
     coordinationEventId: uuid('coordination_event_id'),
     receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
@@ -42,16 +52,18 @@ export const webhookTriggerDeliveries = appSchema.table(
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
       .default(triggerHistoryExpiry())
       .notNull(),
-    outcome: varchar('outcome', { length: 32 })
+    outcome: varchar('outcome', { length: WIDTHS.outcome })
       .$type<WebhookDeliveryOutcome>()
       .default('accepted')
       .notNull(),
     httpStatus: smallint('http_status').default(202).notNull(),
-    signatureCheck: varchar('signature_check', { length: 16 })
+    signatureCheck: varchar('signature_check', {
+      length: WIDTHS.signatureCheck,
+    })
       .$type<WebhookSignatureCheck>()
       .default('verified')
       .notNull(),
-    replayCheck: varchar('replay_check', { length: 16 })
+    replayCheck: varchar('replay_check', { length: WIDTHS.replayCheck })
       .$type<WebhookReplayCheck>()
       .default('new')
       .notNull(),
@@ -153,13 +165,15 @@ export const webhookTriggerReplayRecords = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     endpointId: uuid('endpoint_id').notNull(),
-    dedupeKeyHash: char('dedupe_key_hash', { length: 64 }).notNull(),
+    dedupeKeyHash: char('dedupe_key_hash', {
+      length: WIDTHS.dedupeKeyHash,
+    }).notNull(),
     requestFingerprint: char('request_fingerprint', {
-      length: 64,
+      length: WIDTHS.requestFingerprint,
     }).notNull(),
     deliveryId: uuid('delivery_id').notNull(),
     workflowRunId: uuid('workflow_run_id'),
-    skipReason: varchar('skip_reason', { length: 32 }),
+    skipReason: varchar('skip_reason', { length: WIDTHS.skipReason }),
     coordinationEventId: uuid('coordination_event_id'),
     expiresAt: timestamp('expires_at', {
       withTimezone: true,

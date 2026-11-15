@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import type { ArtifactStatus } from '../stored-shapes.js';
 import {
   type PgTableExtraConfigValue,
@@ -14,17 +15,25 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  purpose: 64,
+  storageKey: 512,
+  mediaType: 255,
+  sha256: SHA256_HEX_CHARACTERS,
+  status: 32,
+});
+
 export const artifacts = appSchema.table(
   'artifacts',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    purpose: varchar('purpose', { length: 64 }).notNull(),
-    storageKey: varchar('storage_key', { length: 512 }).notNull(),
-    mediaType: varchar('media_type', { length: 255 }).notNull(),
+    purpose: varchar('purpose', { length: WIDTHS.purpose }).notNull(),
+    storageKey: varchar('storage_key', { length: WIDTHS.storageKey }).notNull(),
+    mediaType: varchar('media_type', { length: WIDTHS.mediaType }).notNull(),
     byteLength: bigint('byte_length', { mode: 'number' }).notNull(),
-    sha256: char('sha256', { length: 64 }).notNull(),
-    status: varchar('status', { length: 32 })
+    sha256: char('sha256', { length: WIDTHS.sha256 }).notNull(),
+    status: varchar('status', { length: WIDTHS.status })
       .$type<ArtifactStatus>()
       .notNull()
       .default(sql`'pending'::character varying`),
