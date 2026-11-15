@@ -3,6 +3,8 @@ import {
   BoundedJsonInvalidError,
 } from '@pertexo/database/primitives';
 
+const OPERATOR_JSON_LIMITS = Object.freeze({ depth: 64, members: 10_000 });
+
 /** Immutable, descriptor-safe operator input serialization with explicit bounds. */
 export function serializeBoundedPlainJson(
   payload: unknown,
@@ -16,8 +18,8 @@ export function serializeBoundedPlainJson(
       maximumDatabaseBytes: undefined,
       label,
       constraints: {
-        maximumDepth: 64,
-        maximumMembers: 10_000,
+        maximumDepth: OPERATOR_JSON_LIMITS.depth,
+        maximumMembers: OPERATOR_JSON_LIMITS.members,
         plainObjectsOnly: true,
         rejectSymbols: true,
       },

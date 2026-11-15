@@ -4,8 +4,6 @@ import {
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../governance/audit/facts.js';
-import { operatorCommands } from '@pertexo/database/schema';
-import { eq, sql } from 'drizzle-orm';
 import type { Pool } from 'pg';
 
 import type {
@@ -14,9 +12,12 @@ import type {
 } from './operator-command.js';
 import { OperatorCommandConflictError } from './operator-command.errors.js';
 import { requestFingerprint } from './fingerprint.js';
-
-/** Seed of the advisory lock that serializes requests reusing one command id. */
-const COMMAND_LOCK_SEED = 7_166_118_813;
+import {
+  insertCommandOutcome,
+  lockCommandId,
+  readCommandOutcome,
+  setLockTimeout,
+} from './command-records.repository.js';
 
 export type OperatorTransactionContext = Readonly<{
   pool: Pool;
@@ -38,9 +39,7 @@ export function withOperatorTransaction<T>(
     pool,
     workspaceId,
     async (transaction) => {
-      await transaction.db.execute(
-        sql`select set_config('lock_timeout', ${String(options.lockTimeoutMs)}, true)`,
-      );
+      await setLockTimeout(transaction, options.lockTimeoutMs);
       return work(transaction);
     },
     {
@@ -65,18 +64,8 @@ export async function runOperatorCommand(
     request.workspaceId,
     request.signal,
     async (transaction): Promise<GenericOperatorCommandResult | 'conflict'> => {
-      await transaction.db.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended(${request.commandId}, ${COMMAND_LOCK_SEED}))`,
-      );
-      const [existing] = await transaction.db
-        .select({
-          outcome: operatorCommands.outcome,
-          requestFingerprint: operatorCommands.requestFingerprint,
-          result: operatorCommands.result,
-          status: operatorCommands.status,
-        })
-        .from(operatorCommands)
-        .where(eq(operatorCommands.id, request.commandId));
+      await lockCommandId(transaction, request.commandId);
+      const existing = await readCommandOutcome(transaction, request.commandId);
       if (existing !== undefined) {
         const same = existing.requestFingerprint === fingerprint;
         await appendOperatorAudit(transaction, request, {
@@ -96,16 +85,10 @@ export async function runOperatorCommand(
 
       const decision = await request.decide(transaction, fingerprint);
       const status = (decision.pending ?? false) ? 'pending' : 'completed';
-      await transaction.db.insert(operatorCommands).values({
-        id: request.commandId,
-        workspaceId: transaction.workspaceId,
-        commandType: request.commandType,
-        dryRun: request.dryRun,
-        requestFingerprint: fingerprint,
+      await insertCommandOutcome(transaction, request, {
+        fingerprint,
         status,
-        outcome: decision.outcome,
-        result: decision.result,
-        completedAt: status === 'pending' ? null : sql`clock_timestamp()`,
+        decision,
       });
       await appendOperatorAudit(transaction, request, {
         ...decision.auditMetadata,
