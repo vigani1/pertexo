@@ -24,8 +24,10 @@ user-facing copy beyond the safe messages of its errors.
 - An area's root holds its entry, its facade (`<subject>.store.ts`), its
   error family (`<subject>.errors.ts`), its inputs and results
   (`<subject>.types.ts`), and the few files every sub-area shares. `variables`
-  is the small model: a store, its types and errors, one operation
-  (`replace.ts`), one decision (`replacement.ts`) and a repository per table.
+  is the small model: its store (`workspace-variables.store.ts`), types and
+  errors; its operations `replace.ts`, `scan-usage.ts` and `walk-usage.ts`;
+  one decision (`replacement.ts`), one stored-value decoder
+  (`stored-variable-set.ts`) and a repository per table.
 - A sub-area is one flow or one stored subject (`attempts/leases/`,
   `inbox/mail/`, `identity/federation/sessions/`). It holds the same kinds of
   file: operations, the repositories they call, pure decisions, and its own
@@ -33,8 +35,11 @@ user-facing copy beyond the safe messages of its errors.
 
 ## Where new code goes
 
-- An operation: a verb-named file (`leases/claim.ts`, `settings/configure.ts`)
-  that reads as the happy path and calls repositories for every query.
+- An operation: a verb-named file (`leases/claim.ts`, `settings/configure.ts`,
+  `completion/apply-completion.ts`) that reads as the happy path and calls
+  repositories for every query. A flow that is one statement may be just its
+  repository, with no operation file around it (outbox's batch claim,
+  `dispatcher/claim.repository.ts`).
 - A query, lock or SQL fragment (`clock_timestamp()`, an increment, an
   interval): the `<subject>.repository.ts` beside the operation, or the
   flow's `.store.ts` when that file is its facade.
@@ -67,7 +72,11 @@ user-facing copy beyond the safe messages of its errors.
   A query moved into a repository stays on the same client, in the same
   order, inside the same transaction.
 - Queries live only in `.repository.ts` and `.store.ts` files
-  (`validate-core-queries.mjs`).
+  (`validate-core-queries.mjs`). A `.store.ts` is a flow's facade: it exports
+  a `create…` factory, and an area entry, a testing entry or another store
+  composes it; the check refuses any other.
+- The database's time is read once, by `readDatabaseClock`
+  (`shared/database-clock.repository.ts`), after a flow's lock waits.
 - An area imports the files another area's `index.ts` names directly, never
   through that `index.ts` (ADR 091).
 - A sealed application secret is checked with `applicationSealedSecretSchema`

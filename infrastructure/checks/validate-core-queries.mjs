@@ -1,3 +1,4 @@
+import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
@@ -234,14 +235,54 @@ export function validatePendingAreas(pending = PENDING_AREAS) {
   return entriesAddedSince('PENDING_AREAS', pending, ORIGINAL_PENDING_AREAS);
 }
 
+const STORE = /\.store\.ts$/u;
+const CORE_ENTRY =
+  /^packages\/core\/src\/(?:testing\.ts|[^/]+\/(?:index|testing)\.ts)$/u;
+const STORE_FACTORY =
+  /^export\s+(?:async\s+)?(?:function\s+|const\s+)create[A-Z]/mu;
+const RELATIVE_IMPORT = /from\s+'(\.{1,2}\/[^']+)\.js'/gu;
+
+/**
+ * A `.store.ts` may hold queries only as a flow's facade: it exports a
+ * `create…` factory, and an area entry, a testing entry or another store
+ * composes it. Anything else is a repository under another name.
+ */
+export function findStoreProblems(sources) {
+  const composed = new Set();
+  for (const [file, text] of sources) {
+    if (!CORE_ENTRY.test(file) && !STORE.test(file)) continue;
+    for (const [, specifier] of text.matchAll(RELATIVE_IMPORT))
+      composed.add(
+        path.posix.join(path.posix.dirname(file), `${specifier}.ts`),
+      );
+  }
+  const problems = [];
+  for (const [file, text] of sources) {
+    if (!file.startsWith(CORE_SOURCE) || !STORE.test(file)) continue;
+    if (!STORE_FACTORY.test(text))
+      problems.push(
+        `${file}: a store exports the create… factory of a flow's facade; name a query file .repository.ts.`,
+      );
+    else if (!composed.has(file))
+      problems.push(
+        `${file}: no area entry, testing entry or other store composes this store; name a query file .repository.ts.`,
+      );
+  }
+  return problems;
+}
+
 export async function inspectCoreQueries(root = repositoryRoot) {
   const findings = [...validatePendingAreas()];
   const pendingWithoutQueries = new Set(PENDING_AREAS);
+  const sources = [];
   for (const file of await listSourceFiles('packages/core', root)) {
-    const queries = findCoreQueries(file, await readSource(file, root));
+    const text = await readSource(file, root);
+    sources.push([file, text]);
+    const queries = findCoreQueries(file, text);
     if (!isPending(file)) findings.push(...queries);
     else if (queries.length > 0) pendingWithoutQueries.delete(coreArea(file));
   }
+  findings.push(...findStoreProblems(sources));
   for (const area of pendingWithoutQueries)
     findings.push(
       `packages/core/src/${area}: has no queries outside its repositories; remove it from PENDING_AREAS.`,
