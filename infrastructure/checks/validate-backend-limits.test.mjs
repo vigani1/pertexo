@@ -188,4 +188,16 @@ test('leaves an HTTP status where HTTP code writes one, and nothing else', () =>
     ),
     ['400', '599'],
   );
+  assert.deepEqual(
+    find(
+      'const a = { status: z.number().int().min(200).max(599) }; if (status >= 200 && status <= 299) f();',
+    ),
+    [],
+  );
+  assert.deepEqual(
+    find(
+      'const a = { status: z.string().max(500) }; if (statusCode < 512) f();',
+    ),
+    ['500', '512'],
+  );
 });
