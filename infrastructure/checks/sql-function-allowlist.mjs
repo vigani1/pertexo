@@ -292,6 +292,6 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   'app.workspace_inbox_recipient_eligible(uuid,uuid)': {
     category: 'workspace isolation',
     reason:
-      "Row-security predicate for personal inbox reads: the caller is the recipient, an active member and user, in a workspace whose status is one of policy's BROWSABLE_WORKSPACE_STATUSES (written out here, as row security needs).",
+      "Row-security predicate for personal inbox reads: the caller is the recipient, an active member and user, in a workspace whose status is one of policy's BROWSABLE_WORKSPACE_STATUSES (written out here, as row security needs; database's inbox-recipient-statuses test holds the two equal).",
   },
 });
