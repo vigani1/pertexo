@@ -1,12 +1,7 @@
-import {
-  withTenantScopedClient,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
-import { attemptControl, runAbortReason } from '../control.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
+import { attemptControl } from '../control.js';
 import type { Pool } from 'pg';
+import { extendAttemptLease } from './lease.repository.js';
 import { NodeAttemptReconciliationRequiredError } from '../node-attempt.errors.js';
 import type { HeartbeatInput, NodeAttemptHeartbeat } from '../node-attempt.js';
 
@@ -18,48 +13,7 @@ export async function heartbeatNodeAttempt(
     pool,
     { workspaceId: input.lease.workspaceId },
     async (client) => {
-      const lease = input.lease;
-      const result = await drizzle(client)
-        .update(nodeAttempts)
-        .set({
-          leaseExpiresAt: sql`clock_timestamp()+make_interval(secs=>${input.leaseDurationSeconds})`,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .from(nodeRuns)
-        .innerJoin(
-          workflowRuns,
-          and(
-            eq(workflowRuns.workspaceId, nodeRuns.workspaceId),
-            eq(workflowRuns.id, nodeRuns.workflowRunId),
-          ),
-        )
-        .where(
-          and(
-            eq(nodeAttempts.workspaceId, lease.workspaceId),
-            eq(nodeAttempts.id, lease.attemptId),
-            eq(nodeAttempts.nodeRunId, lease.nodeRunId),
-            eq(nodeAttempts.attemptNumber, lease.attemptNumber),
-            eq(nodeAttempts.status, 'running'),
-            eq(nodeAttempts.leaseOwner, lease.workerId),
-            eq(nodeAttempts.fenceToken, lease.fenceToken),
-            sql`${nodeAttempts.leaseExpiresAt}>clock_timestamp()`,
-            eq(nodeRuns.workspaceId, nodeAttempts.workspaceId),
-            eq(nodeRuns.id, nodeAttempts.nodeRunId),
-            eq(nodeRuns.workflowRunId, lease.runId),
-            eq(nodeRuns.nodeId, lease.nodeId),
-            eq(nodeRuns.invocationKey, lease.invocationKey),
-            eq(nodeRuns.currentAttemptId, nodeAttempts.id),
-            eq(workflowRuns.workflowVersionId, lease.workflowVersionId),
-          ),
-        )
-        .returning({
-          leaseExpiresAt: sql<Date>`${nodeAttempts.leaseExpiresAt}`.mapWith(
-            nodeAttempts.leaseExpiresAt,
-          ),
-          abortReason: runAbortReason,
-        })
-        .catch(rethrowQueryFailure);
-      const row = result[0];
+      const row = await extendAttemptLease(client, input);
       if (row === undefined) throw new NodeAttemptReconciliationRequiredError();
       return Object.freeze({
         leaseExpiresAt: row.leaseExpiresAt,

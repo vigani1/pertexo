@@ -1,6 +1,9 @@
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
+// The most branch or iteration parts a stored attempt scope may hold.
+const STORED_SCOPE_PARTS_MAX = 1_000;
+
 export const identitySchema = z.string().regex(UUID_PATTERN);
 
 const nodeIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u);
@@ -21,8 +24,14 @@ const iterationScopePartSchema = z
 
 export const branchContextSchema = z
   .object({
-    branchPath: z.array(branchScopePartSchema).max(1_000).optional(),
-    iterationPath: z.array(iterationScopePartSchema).max(1_000).optional(),
+    branchPath: z
+      .array(branchScopePartSchema)
+      .max(STORED_SCOPE_PARTS_MAX)
+      .optional(),
+    iterationPath: z
+      .array(iterationScopePartSchema)
+      .max(STORED_SCOPE_PARTS_MAX)
+      .optional(),
   })
   .strict()
   .superRefine(({ branchPath }, context) => {

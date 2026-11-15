@@ -15,7 +15,7 @@ import type {
   NodeAttemptLease,
 } from '../node-attempt.js';
 import { nodeAttemptConsumerName } from './receipts.repository.js';
-import { runAbortReason } from '../control.js';
+import { runAbortReason } from '../control.repository.js';
 
 export async function lockCompletionReceipt(
   client: PoolClient,

@@ -1,13 +1,8 @@
-import {
-  withTenantScopedClient,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { serializeStoredExecutionValue } from '../../shared/stored-execution.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
 import type { Pool } from 'pg';
 import type { RecordInputInput } from '../node-attempt.js';
+import { writeLeasedAttemptInput } from './leased-inputs.repository.js';
 
 /**
  * Writes an attempt's resolved input onto its node run while the caller still
@@ -36,42 +31,9 @@ export async function recordNodeAttemptInput(
       pool,
       { workspaceId: lease.workspaceId },
       async (client) => {
-        const result = await drizzle(client)
-          .update(nodeRuns)
-          .set({
-            inputRef: sql`${stored}::json`,
-            updatedAt: sql`clock_timestamp()`,
-          })
-          .from(nodeAttempts)
-          .innerJoin(
-            workflowRuns,
-            and(
-              eq(workflowRuns.workspaceId, nodeAttempts.workspaceId),
-              eq(workflowRuns.id, lease.runId),
-            ),
-          )
-          .where(
-            and(
-              eq(nodeRuns.workspaceId, lease.workspaceId),
-              eq(nodeRuns.id, lease.nodeRunId),
-              eq(nodeRuns.currentAttemptId, lease.attemptId),
-              eq(nodeRuns.workflowRunId, lease.runId),
-              eq(nodeRuns.nodeId, lease.nodeId),
-              eq(nodeRuns.invocationKey, lease.invocationKey),
-              eq(nodeAttempts.workspaceId, nodeRuns.workspaceId),
-              eq(nodeAttempts.id, lease.attemptId),
-              eq(nodeAttempts.nodeRunId, nodeRuns.id),
-              eq(nodeAttempts.attemptNumber, lease.attemptNumber),
-              eq(nodeAttempts.status, 'running'),
-              eq(nodeAttempts.leaseOwner, lease.workerId),
-              eq(nodeAttempts.fenceToken, lease.fenceToken),
-              sql`${nodeAttempts.leaseExpiresAt}>clock_timestamp()`,
-              eq(workflowRuns.workflowVersionId, lease.workflowVersionId),
-            ),
-          )
-          .returning({ id: nodeRuns.id })
-          .catch(rethrowQueryFailure);
-        return { recorded: result.length === 1 };
+        return {
+          recorded: await writeLeasedAttemptInput(client, lease, stored),
+        };
       },
       { signal: signal },
     );

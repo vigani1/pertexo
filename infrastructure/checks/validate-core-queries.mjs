@@ -39,7 +39,6 @@ const ORIGINAL_PENDING_AREAS = Object.freeze([
 
 /** Core areas whose queries haven't moved yet; this list may only shrink. */
 export const PENDING_AREAS = Object.freeze([
-  'attempts',
   'authoring',
   'lifecycle',
   'previews',

@@ -1,17 +1,13 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import {
-  withTenantScopedReadClient,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
+import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import {
   parseStoredExecutionValue,
   storedExecutionValuesEqual,
 } from '../../shared/stored-execution.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';
 import {
   readLeasedInputs,
+  readResumeOutput,
+  readSourceFailureRows,
   readUpstreamOutputs,
 } from './leased-inputs.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -105,19 +101,9 @@ export async function loadNodeAttemptInputs(
       }
       let resumeOutput: unknown;
       if (input.lease.admissionKind === 'wait_resume') {
-        const resumed = await drizzle(client)
-          .select({ outputRef: nodeRuns.outputRef })
-          .from(nodeRuns)
-          .where(
-            and(
-              eq(nodeRuns.workspaceId, input.lease.workspaceId),
-              eq(nodeRuns.id, input.lease.nodeRunId),
-              eq(nodeRuns.currentAttemptId, input.lease.attemptId),
-            ),
-          )
-          .catch(rethrowQueryFailure);
+        const resumed = await readResumeOutput(client, input.lease);
         const stored = decodeStoredValue(() =>
-          parseStoredExecutionValue(resumed[0]?.outputRef),
+          parseStoredExecutionValue(resumed?.outputRef),
         );
         if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
         resumeOutput = stored.value;
@@ -158,49 +144,10 @@ async function readSourceFailure(
 ): Promise<NodeAttemptStoredInputs['sourceFailure']> {
   let sourceFailure: NodeAttemptStoredInputs['sourceFailure'];
   if (input.sourceFailure !== undefined) {
-    const sourceNode = alias(nodeRuns, 'source');
-    const handler = alias(nodeRuns, 'handler');
-    const source = await drizzle(client)
-      .select({
-        failureRef: sourceNode.failureRef,
-        currentAttemptNumber: sourceNode.currentAttemptNumber,
-      })
-      .from(sourceNode)
-      .innerJoin(
-        handler,
-        and(
-          eq(handler.workspaceId, sourceNode.workspaceId),
-          eq(handler.workflowRunId, sourceNode.workflowRunId),
-          eq(handler.invocationKey, sourceNode.failureHandlerEntryKey),
-        ),
-      )
-      .innerJoin(
-        nodeAttempts,
-        and(
-          eq(nodeAttempts.workspaceId, handler.workspaceId),
-          eq(nodeAttempts.nodeRunId, handler.id),
-        ),
-      )
-      .where(
-        and(
-          eq(sourceNode.workspaceId, input.lease.workspaceId),
-          eq(sourceNode.workflowRunId, input.lease.runId),
-          eq(sourceNode.nodeId, input.sourceFailure.nodeId),
-          eq(sourceNode.invocationKey, input.sourceFailure.invocationKey),
-          eq(sourceNode.status, 'failed'),
-          eq(sourceNode.failureHandling, 'pending'),
-          eq(handler.id, input.lease.nodeRunId),
-          eq(handler.currentAttemptId, input.lease.attemptId),
-          eq(handler.currentAttemptNumber, input.lease.attemptNumber),
-          eq(nodeAttempts.id, input.lease.attemptId),
-          eq(nodeAttempts.attemptNumber, input.lease.attemptNumber),
-          eq(nodeAttempts.status, 'running'),
-          eq(nodeAttempts.leaseOwner, input.lease.workerId),
-          eq(nodeAttempts.fenceToken, input.lease.fenceToken),
-          sql`${nodeAttempts.leaseExpiresAt}>clock_timestamp()`,
-        ),
-      )
-      .catch(rethrowQueryFailure);
+    const source = await readSourceFailureRows(client, {
+      lease: input.lease,
+      sourceFailure: input.sourceFailure,
+    });
     const selectedSource = source[0];
     if (source.length !== 1 || selectedSource === undefined)
       throw new NodeAttemptStateCorruptError();
