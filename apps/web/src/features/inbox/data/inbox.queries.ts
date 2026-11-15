@@ -6,25 +6,7 @@ import type {
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getInboxSummary, getInboxThreads } from './inbox.api';
-
-export const inboxKeys = {
-  scope: (userId: string, workspaceId: string) =>
-    ['identity', userId, 'workspace', workspaceId, 'inbox'] as const,
-  summary: (userId: string, workspaceId: string) =>
-    [...inboxKeys.scope(userId, workspaceId), 'summary'] as const,
-  threads: (
-    userId: string,
-    workspaceId: string,
-    filter: WorkspaceInboxFilter,
-    noticeKind?: WorkspaceNoticeKind,
-  ) =>
-    [
-      ...inboxKeys.scope(userId, workspaceId),
-      'threads',
-      filter,
-      noticeKind ?? 'all',
-    ] as const,
-};
+import { inboxKeys } from './inbox-keys';
 
 /**
  * The unread count the spine shows. Live hints refresh it; the interval only
