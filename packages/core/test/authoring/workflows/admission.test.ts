@@ -14,7 +14,7 @@ import {
   budget,
   valid,
 } from './admission.fixture.js';
-import { admitWorkflowAuthoring } from '../../../src/authoring/workflows/admission.repository.js';
+import { admitWorkflowAuthoring } from '../../../src/authoring/workflows/admit-graph.js';
 import { authoringIdleBudgetIsSafe } from '../../../src/authoring/workflows/idle-budget.js';
 
 describe('effective authoring idle budget', () => {

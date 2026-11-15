@@ -1,7 +1,7 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
-import { writePromotedDraft } from './persist-candidate.js';
+import { writePromotedDraft } from './write-promoted-draft.js';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 import {
   promotionReceiptSchema,

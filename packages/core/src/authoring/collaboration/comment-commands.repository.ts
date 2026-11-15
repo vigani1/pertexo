@@ -27,7 +27,7 @@ import type {
 } from './workflow-collaboration.types.js';
 import { lockCommentThread } from './comment-threads.repository.js';
 import { syncCommentMentions } from './mentions.repository.js';
-import { runCommentCommand } from './receipt.js';
+import { runCommentCommand } from './run-comment-command.js';
 
 /** A former step's label as a thread keeps it, in UTF-16 units. */
 const STEP_LABEL_MAX_UNITS = 256;
