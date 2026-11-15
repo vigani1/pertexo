@@ -47,7 +47,7 @@ import type {
   PreviewWorkflowImportInput,
 } from '../workflows/workflow-commands.types.js';
 
-import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
+import { admitWorkflowAuthoring } from '../workflows/admit-graph.js';
 import {
   WorkflowNotFoundError,
   WorkflowPortabilityCompatibilityConflictError,

@@ -10,7 +10,7 @@ import {
 
 import { collectArtifactReferences } from '../../../../artifacts/references/locks.repository.js';
 
-import { admitWorkflowAuthoring } from '../../../workflows/admission.repository.js';
+import { admitWorkflowAuthoring } from '../../../workflows/admit-graph.js';
 import { lockWorkspaceVariableNames } from '../../../../variables/head.repository.js';
 import { requirePlaceableDefinitionAdditions } from '../../../workflows/placement.js';
 import type { PromotionContext } from '../../workflow-promotion.types.js';

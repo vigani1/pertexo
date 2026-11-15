@@ -15,7 +15,7 @@ import {
   WorkflowPortabilityUnavailableError,
   WorkflowPortabilityValidationError,
 } from '../workflows/workflow-authoring.errors.js';
-import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
+import { admitWorkflowAuthoring } from '../workflows/admit-graph.js';
 import { inspectPortableConnections } from './source-authority.repository.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 

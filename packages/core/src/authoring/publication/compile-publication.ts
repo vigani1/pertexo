@@ -12,7 +12,7 @@ import { dataTableReferenceIssues } from '../../data-tables/columns/references.r
 import { requireWorkflowCallTargets } from '../../shared/resources/workflow-call-bindings.repository.js';
 import { lockWorkspaceVariableNames } from '../../variables/head.repository.js';
 import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
-import { admitWorkflowAuthoring } from '../workflows/admission.repository.js';
+import { admitWorkflowAuthoring } from '../workflows/admit-graph.js';
 import type { AuthoringCatalogs } from '../workflows/catalogs.js';
 import { validateApprovalAudience } from './pending-tasks.repository.js';
 import { stepSettingsIssues } from './step-settings.js';
