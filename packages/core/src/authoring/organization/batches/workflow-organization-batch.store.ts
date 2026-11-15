@@ -17,7 +17,7 @@ import {
   checkOrganizationReplay,
   organizeWorkflow,
   type OrganizationChange,
-} from '../placement.repository.js';
+} from '../organize-workflow.js';
 import {
   createOrganizationSession,
   type OrganizationRequestScope,

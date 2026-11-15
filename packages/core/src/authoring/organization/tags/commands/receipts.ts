@@ -7,7 +7,7 @@ import {
   checkOrganizationReplay,
   organizeWorkflow,
   type OrganizationChange,
-} from '../../placement.repository.js';
+} from '../../organize-workflow.js';
 import type { createOrganizationSession } from '../../session.js';
 import type {
   AssignmentCommand,

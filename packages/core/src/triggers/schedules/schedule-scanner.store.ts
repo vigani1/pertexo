@@ -10,10 +10,10 @@ import type {
   ScanDueSchedulesResult,
   ScannerResources,
 } from './scanning/schedule-scanning.types.js';
-import { claimDueSchedules } from './scanning/leases.repository.js';
+import { claimDueSchedules } from './scanning/claim-due.js';
 import { cancellationFailure } from './scanning/scan-failures.js';
 import { closeScheduleScannerLeases } from './scanning/scanner.runtime.js';
-import { processScheduleClaim } from './scanning/occurrences.repository.js';
+import { processScheduleClaim } from './scanning/process-claim.js';
 import { ScanInterruptedError } from './schedule-trigger.errors.js';
 import { releaseClaims } from './retire.js';
 /**

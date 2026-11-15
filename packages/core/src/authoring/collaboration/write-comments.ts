@@ -12,7 +12,7 @@ import {
 } from './workflow-collaboration.errors.js';
 import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
 import type { CollaborationScope } from './workflow-collaboration.types.js';
-import type { EnterCollaboration } from './authority.repository.js';
+import type { EnterCollaboration } from './enter-collaboration.js';
 import type {
   CollaborationCommand,
   CreateCommentInput,

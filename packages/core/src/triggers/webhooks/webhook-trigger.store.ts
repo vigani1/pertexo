@@ -28,7 +28,7 @@ import type {
   RotateWebhookSecretInput,
 } from './runtime/webhook-runtime.types.js';
 
-import { acceptVerifiedWebhookDelivery } from './runtime/accept.repository.js';
+import { acceptVerifiedWebhookDelivery } from './runtime/accept-delivery.js';
 import { createWorkspaceTurns } from './runtime/workspace-turns.js';
 import {
   configureWebhookAuthentication,
