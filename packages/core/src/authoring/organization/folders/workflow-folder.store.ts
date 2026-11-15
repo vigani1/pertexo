@@ -1,9 +1,6 @@
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { readSharingPrincipals } from '../../../tenant-access/resources/principals.repository.js';
-import {
-  readFolderSharing,
-  replaceFolderSharing,
-} from '../sharing/grants.repository.js';
+import { readFolderSharing, replaceFolderSharing } from '../sharing/grants.js';
 
 import type {
   DatabaseConfig,
@@ -31,7 +28,7 @@ import {
   deleteFolder,
   moveFolder,
   renameFolder,
-} from './commands/mutations.repository.js';
+} from './commands/folder-commands.js';
 import { placeWorkflow, reviewFolderMove } from './commands/place-workflow.js';
 import { listFolders } from './list.repository.js';
 

@@ -1,8 +1,11 @@
 import { generatePersistedId } from '@pertexo/database/platform';
-import { folderGrantDigest } from './audience-digests.js';
+
 import { z } from 'zod';
+
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
+
 import {
   workflowFolders,
   workflowFolderGrants,
@@ -11,24 +14,17 @@ import {
   authDirectoryGroups,
   authOrganizationWorkspaces,
 } from '@pertexo/database/schema';
+
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+
 import type { PoolClient } from 'pg';
+
 import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
-import type {
-  FolderSharing,
-  FolderSharingRequest,
-  FolderPrincipal,
-} from '@pertexo/contracts';
-import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
-import {
-  FolderSharingCorruptError,
-  WorkflowFolderConflictError,
-} from '../workflow-organization.errors.js';
-import type { OrganizationActor } from '../session.js';
-import { runOrganizationCommand } from '../run-command.js';
+
+import type { FolderSharingRequest, FolderPrincipal } from '@pertexo/contracts';
 
 /** The command output retained for exact retries. */
-const sharingReceipt = z
+export const sharingReceipt = z
   .object({
     folderId: z.uuid(),
     revision: z.number().int().positive(),
@@ -58,11 +54,11 @@ const sharingReceipt = z
   })
   .strict();
 
-export async function readFolderSharing(
+export async function readFolderAccess(
   client: PoolClient,
-  scope: OrganizationActor,
+  workspaceId: string,
   folderId: string,
-): Promise<FolderSharing> {
+) {
   const db = drizzle(client);
   const [folder] = await db
     .select({
@@ -72,13 +68,21 @@ export async function readFolderSharing(
     .from(workflowFolders)
     .where(
       and(
-        eq(workflowFolders.workspaceId, scope.workspaceId),
+        eq(workflowFolders.workspaceId, workspaceId),
         eq(workflowFolders.id, folderId),
       ),
     )
     .catch(rethrowQueryFailure);
-  if (folder === undefined)
-    throw new WorkflowNotFoundError('Folder is not visible');
+  return folder;
+}
+
+/** The folder's grants with labels, one past the cap so an overfull set shows. */
+export async function readFolderGrantRows(
+  client: PoolClient,
+  workspaceId: string,
+  folderId: string,
+) {
+  const db = drizzle(client);
   const p = workflowFolderGrants;
   const rows = await db
     .select({
@@ -105,160 +109,116 @@ export async function readFolderSharing(
         eq(authDirectoryGroups.id, p.groupId),
       ),
     )
-    .where(and(eq(p.workspaceId, scope.workspaceId), eq(p.folderId, folderId)))
+    .where(and(eq(p.workspaceId, workspaceId), eq(p.folderId, folderId)))
     .orderBy(asc(p.id))
     .limit(FOLDER_GRANT_LIMIT + 1)
     .catch(rethrowQueryFailure);
-  const grants = rows.map(({ principal }) => principal);
-  if (grants.length > FOLDER_GRANT_LIMIT) throw new FolderSharingCorruptError();
-  return {
-    folderId,
-    revision: folder.revision,
-    mode: folder.mode,
-    grants,
-    labels: Object.fromEntries(
-      rows.map(({ principal, label }) => [
-        principal.kind === 'member' ? principal.userId : principal.groupId,
-        label,
-      ]),
-    ),
-  };
+  return rows;
 }
 
-export async function replaceFolderSharing(
+export async function countActiveMembers(
   client: PoolClient,
-  scope: OrganizationActor,
-  input: {
-    folderId: string;
-    request: FolderSharingRequest;
-    idempotencyKey: string;
-  },
-): Promise<FolderSharing & { replayed: boolean }> {
-  const request = input.request;
-  const outcome = await runOrganizationCommand(client, scope, {
-    receipt: sharingReceipt,
-    operation: 'folder.sharing',
-    target: input.folderId,
-    idempotencyKey: input.idempotencyKey,
-    request,
-    replay: async () => {
-      await readFolderSharing(client, scope, input.folderId);
-    },
-    apply: async () => {
-      const current = await readFolderSharing(client, scope, input.folderId);
-      if (current.revision !== request.expectedFolderRevision)
-        throw new WorkflowFolderConflictError('revision');
-      const users = request.grants.flatMap((grant) =>
-        grant.kind === 'member' ? [grant.userId] : [],
-      );
-      const groups = request.grants.filter((grant) => grant.kind === 'group');
-      const db = drizzle(client);
-      const members = await db
-        .select({ userId: workspaceMemberships.userId })
-        .from(workspaceMemberships)
-        .innerJoin(
-          people,
-          and(
-            eq(people.id, workspaceMemberships.userId),
-            eq(people.status, 'active'),
-          ),
-        )
-        .where(
-          and(
-            eq(workspaceMemberships.workspaceId, scope.workspaceId),
-            inArray(workspaceMemberships.userId, users),
-            eq(workspaceMemberships.status, 'active'),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      const linked = await db
-        .select({
-          organizationId: authDirectoryGroups.organizationId,
-          id: authDirectoryGroups.id,
-        })
-        .from(authDirectoryGroups)
-        .innerJoin(
-          authOrganizationWorkspaces,
-          and(
-            eq(
-              authOrganizationWorkspaces.organizationId,
-              authDirectoryGroups.organizationId,
-            ),
-            eq(authOrganizationWorkspaces.workspaceId, scope.workspaceId),
-          ),
-        )
-        .where(
-          inArray(
-            authDirectoryGroups.id,
-            groups.map((grant) => grant.groupId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      if (
-        members.length !== users.length ||
-        groups.some(
-          (grant) =>
-            !linked.some(
-              (row) =>
-                row.organizationId === grant.organizationId &&
-                row.id === grant.groupId,
-            ),
-        )
+  workspaceId: string,
+  users: readonly string[],
+): Promise<number> {
+  const db = drizzle(client);
+  const members = await db
+    .select({ userId: workspaceMemberships.userId })
+    .from(workspaceMemberships)
+    .innerJoin(
+      people,
+      and(
+        eq(people.id, workspaceMemberships.userId),
+        eq(people.status, 'active'),
+      ),
+    )
+    .where(
+      and(
+        eq(workspaceMemberships.workspaceId, workspaceId),
+        inArray(workspaceMemberships.userId, [...users]),
+        eq(workspaceMemberships.status, 'active'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return members.length;
+}
+
+/** The requested groups whose organization links this workspace. */
+export async function readLinkedGroups(
+  client: PoolClient,
+  workspaceId: string,
+  groups: readonly Readonly<{ groupId: string }>[],
+) {
+  const db = drizzle(client);
+  const linked = await db
+    .select({
+      organizationId: authDirectoryGroups.organizationId,
+      id: authDirectoryGroups.id,
+    })
+    .from(authDirectoryGroups)
+    .innerJoin(
+      authOrganizationWorkspaces,
+      and(
+        eq(
+          authOrganizationWorkspaces.organizationId,
+          authDirectoryGroups.organizationId,
+        ),
+        eq(authOrganizationWorkspaces.workspaceId, workspaceId),
+      ),
+    )
+    .where(
+      inArray(
+        authDirectoryGroups.id,
+        groups.map((grant) => grant.groupId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return linked;
+}
+
+/** Replaces the folder's grants and access mode, moving its revision. */
+export async function replaceFolderGrants(
+  client: PoolClient,
+  workspaceId: string,
+  folderId: string,
+  request: FolderSharingRequest,
+): Promise<void> {
+  const db = drizzle(client);
+  await db
+    .delete(workflowFolderGrants)
+    .where(
+      and(
+        eq(workflowFolderGrants.workspaceId, workspaceId),
+        eq(workflowFolderGrants.folderId, folderId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (request.grants.length > 0)
+    await db
+      .insert(workflowFolderGrants)
+      .values(
+        request.grants.map((grant) => ({
+          id: generatePersistedId(),
+          workspaceId: workspaceId,
+          folderId: folderId,
+          userId: grant.kind === 'member' ? grant.userId : null,
+          organizationId: grant.kind === 'group' ? grant.organizationId : null,
+          groupId: grant.kind === 'group' ? grant.groupId : null,
+          access: grant.access,
+        })),
       )
-        throw new WorkflowNotFoundError('A sharing principal is unavailable');
-      await db
-        .delete(workflowFolderGrants)
-        .where(
-          and(
-            eq(workflowFolderGrants.workspaceId, scope.workspaceId),
-            eq(workflowFolderGrants.folderId, input.folderId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      if (request.grants.length > 0)
-        await db
-          .insert(workflowFolderGrants)
-          .values(
-            request.grants.map((grant) => ({
-              id: generatePersistedId(),
-              workspaceId: scope.workspaceId,
-              folderId: input.folderId,
-              userId: grant.kind === 'member' ? grant.userId : null,
-              organizationId:
-                grant.kind === 'group' ? grant.organizationId : null,
-              groupId: grant.kind === 'group' ? grant.groupId : null,
-              access: grant.access,
-            })),
-          )
-          .catch(rethrowQueryFailure);
-      await db
-        .update(workflowFolders)
-        .set({
-          accessMode: request.mode,
-          revision: sql`${workflowFolders.revision}+1`,
-        })
-        .where(
-          and(
-            eq(workflowFolders.workspaceId, scope.workspaceId),
-            eq(workflowFolders.id, input.folderId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      return {
-        result: await readFolderSharing(client, scope, input.folderId),
-        audit: {
-          action: 'workflow.folder_sharing_changed',
-          targetId: input.folderId,
-          metadata: {
-            mode: request.mode,
-            principals: request.grants.length,
-            previousGrants: folderGrantDigest(current.grants),
-            grants: folderGrantDigest(request.grants),
-            revision: current.revision + 1,
-          },
-        },
-      };
-    },
-  });
-  return { ...outcome.result, replayed: outcome.replayed };
+      .catch(rethrowQueryFailure);
+  await db
+    .update(workflowFolders)
+    .set({
+      accessMode: request.mode,
+      revision: sql`${workflowFolders.revision}+1`,
+    })
+    .where(
+      and(
+        eq(workflowFolders.workspaceId, workspaceId),
+        eq(workflowFolders.id, folderId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
