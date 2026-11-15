@@ -129,7 +129,7 @@ import { purgeDirectoryMemberships } from './directory.repository.js';
 import { reapInvitationReplacementClaims } from '../retention/rules/invitation-claims.repository.js';
 
 import type { PurgeStep } from './workspace-purge.types.js';
-import { deleteRows } from './delete-rows.js';
+import { deleteRows } from './delete-rows.repository.js';
 
 /**
  * Tables a purge keeps after scrubbing what identifies people or requests:

@@ -1,7 +1,7 @@
 export {
   createPreviewRetentionCoordinator,
   type PreviewRetentionCoordinator,
-} from './previews/coordinator.js';
+} from './previews/preview-retention.store.js';
 export type { PreviewRetentionProcessResult } from './previews/preview-retention.types.js';
 export {
   createRetentionStore,
@@ -14,12 +14,12 @@ export type {
 export {
   createRunArtifactRetentionCoordinator,
   type RunArtifactRetentionCoordinator,
-} from './artifacts/coordinator.js';
+} from './artifacts/artifact-retention.store.js';
 export type { RunArtifactRetentionProcessResult } from './artifacts/artifact-retention.types.js';
 export {
   createWorkspacePurgeCoordinator,
   type WorkspacePurgeCoordinator,
-} from './purge/coordinator.js';
+} from './purge/workspace-purge.store.js';
 export type { WorkspacePurgeProcessResult } from './purge/workspace-purge.types.js';
 
 // Workspace commands reach these directly (ADR 091).

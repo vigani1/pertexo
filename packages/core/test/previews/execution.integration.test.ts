@@ -24,7 +24,7 @@ import {
 } from './execution/execution.fixture.js';
 import { and, count, eq } from 'drizzle-orm';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
-import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/coordinator.js';
+import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/preview-retention.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
   PreviewIdempotencyConflictError,

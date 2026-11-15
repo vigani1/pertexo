@@ -32,7 +32,7 @@ import {
 } from '@pertexo/database/primitives';
 import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { readErrorWorkflow } from '../../../src/runs/error-workflows/read.repository.js';
-import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/coordinator.js';
+import { createWorkspacePurgeCoordinator } from '../../../src/lifecycle/purge/workspace-purge.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { waitForApplicationLock } from '../../support/postgres/lock-coordination.js';
 import { createErrorWorkflowStore } from '../../../src/runs/error-workflows/error-workflow.store.js';

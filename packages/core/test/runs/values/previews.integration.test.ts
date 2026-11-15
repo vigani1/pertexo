@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createRunValuesStore } from '../../../src/runs/values/run-values.store.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { completePreviewAttempt } from '../../../src/previews/attempts/complete.js';
-import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/coordinator.js';
+import { createPreviewRetentionCoordinator } from '../../../src/lifecycle/previews/preview-retention.store.js';
 import {
   acceptFixture,
   claimFixture,
