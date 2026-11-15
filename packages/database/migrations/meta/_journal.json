@@ -36,6 +36,13 @@
       "when": 1794762684364,
       "tag": "0004_widen_replay_safe_error_code",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794776946017,
+      "tag": "0005_name_slot_recovery_lease",
+      "breakpoints": true
     }
   ]
 }
