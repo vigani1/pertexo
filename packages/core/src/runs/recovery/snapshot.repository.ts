@@ -5,6 +5,8 @@ import {
   nodeAttempts,
   runCheckpoints,
   workflowRuns,
+  workflows,
+  workflowVersions,
 } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
@@ -142,4 +144,40 @@ export function recoverySize(
       bytes: sql<string>`coalesce((${inputSize}),0)+coalesce(sum(coalesce(octet_length(${outputs.node_output}::text),0)+coalesce(octet_length(${outputs.attempt_output}::text),0)),0)`,
     })
     .from(outputs);
+}
+
+/** The run's version and its workflow's lifecycle, so the caller can refuse an archived one. */
+export async function readRecoveryVersion(
+  transaction: WorkspaceTransaction,
+  workflowId: string,
+  versionId: string,
+) {
+  const [row] = await transaction.db
+    .select({
+      status: workflows.lifecycleStatus,
+      workflow: {
+        checksum: workflowVersions.checksum,
+        executableJson: workflowVersions.executableJson,
+        id: workflowVersions.id,
+        versionNumber: workflowVersions.versionNumber,
+        workflowId: workflowVersions.workflowId,
+        workspaceId: workflowVersions.workspaceId,
+      },
+    })
+    .from(workflowVersions)
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, workflowVersions.workspaceId),
+        eq(workflows.id, workflowVersions.workflowId),
+      ),
+    )
+    .where(
+      and(
+        eq(workflowVersions.workspaceId, transaction.workspaceId),
+        eq(workflowVersions.workflowId, workflowId),
+        eq(workflowVersions.id, versionId),
+      ),
+    );
+  return row;
 }

@@ -1,11 +1,12 @@
-import { QUEUED_EVENT_SEQUENCE } from '../../shared/run-events.repository.js';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { copyRecoveryRunValues } from '../values/rows.repository.js';
-import { sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
-import { nodeRuns, runEvents } from '@pertexo/database/schema';
+import { insertReusedNodeRuns } from './reused-nodes.repository.js';
+import {
+  missingRecoveryAcknowledgement,
+  recoveryEffectsAcknowledged,
+} from './acknowledgement.js';
 import { readRecoveryEvidence } from './evidence.repository.js';
 import { WorkflowRecoveryUnavailableError } from './workflow-recovery.errors.js';
 import {
@@ -81,10 +82,10 @@ export async function recoverWorkflowRunInTransaction(
         targetNodeId: preview.nodeId,
         reusedCount: preview.reusedCount,
         effectRisk: preview.effectRisk,
-        effectsAcknowledged:
-          preview.effectRisk === 'unknown_outcome'
-            ? (input.acknowledgeUnknownOutcome ?? false)
-            : (input.acknowledgePossibleEffects ?? false),
+        effectsAcknowledged: recoveryEffectsAcknowledged(
+          preview.effectRisk,
+          input,
+        ),
       },
     },
   );
@@ -95,43 +96,7 @@ export async function recoverWorkflowRunInTransaction(
     };
   if (seed.copies.length > 0) {
     await copyRecoveryRunValues(transaction, input.sourceRunId, accepted.runId);
-    await transaction.db.insert(nodeRuns).values(
-      seed.copies.map((copy) => ({
-        id: copy.id,
-        workspaceId: transaction.workspaceId,
-        workflowRunId: accepted.runId,
-        nodeId: copy.nodeId,
-        invocationKey: copy.invocationKey,
-        status: 'succeeded' as const,
-        sideEffectClass: copy.sideEffectClass,
-        ...(copy.providerIdempotencyKey === undefined
-          ? {}
-          : { providerIdempotencyKey: copy.providerIdempotencyKey }),
-        branchContext:
-          copy.branchPath === undefined ? {} : { branchPath: copy.branchPath },
-        outputRef: sql`${prepareStoredExecutionValue({ kind: 'inline', value: copy.value }).json}::json`,
-        reusedSourceRunId: copy.sourceRunId,
-        reusedSourceNodeRunId: copy.sourceNodeRunId,
-        reusedSourceCompletedAt: new Date(copy.sourceCompletedAt),
-      })),
-    );
-    await transaction.db.insert(runEvents).values(
-      seed.copies.map((copy, index) => ({
-        workspaceId: transaction.workspaceId,
-        workflowRunId: accepted.runId,
-        sequence: QUEUED_EVENT_SEQUENCE + 1 + index,
-        type: 'node.reused',
-        payload: {
-          nodeId: copy.nodeId,
-          nodeRunId: copy.id,
-          outputRef: { kind: 'reused', nodeRunId: copy.id },
-          invocationKey: copy.invocationKey,
-          sourceRunId: copy.sourceRunId,
-          sourceNodeRunId: copy.sourceNodeRunId,
-          sourceCompletedAt: copy.sourceCompletedAt,
-        },
-      })),
-    );
+    await insertReusedNodeRuns(transaction, accepted.runId, seed.copies);
   }
   await insertWorkflowRunAudit(transaction, {
     action: 'workflow.run.recovered',
@@ -175,20 +140,9 @@ async function prepareRecoveryEvidence(
   const preview = prepared.preview;
   if (preview.nodeRunId !== input.nodeRunId)
     throw new WorkflowRecoveryUnavailableError('evidence_unavailable');
-  if (
-    preview.effectRisk === 'possible_effects' &&
-    !(input.acknowledgePossibleEffects ?? false)
-  )
-    throw new WorkflowRecoveryUnavailableError(
-      'effects_acknowledgement_required',
-    );
-  if (
-    preview.effectRisk === 'unknown_outcome' &&
-    !(input.acknowledgeUnknownOutcome ?? false)
-  )
-    throw new WorkflowRecoveryUnavailableError(
-      'unknown_outcome_acknowledgement_required',
-    );
+  const missing = missingRecoveryAcknowledgement(preview.effectRisk, input);
+  if (missing !== undefined)
+    throw new WorkflowRecoveryUnavailableError(missing);
   const identity = allocateRecoveryIdentity(candidate.nodeRunIds);
   const seed = prepared.seed(identity);
   if (seed.kind === 'refused')
