@@ -15,7 +15,7 @@ import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   releaseCoordinatedEvent,
   restFailedCoordinatedEvent,
-} from './release.repository.js';
+} from './release.js';
 
 /** How long marking a failed release as resting may take. */
 const REST_FAILED_EVENT_TIMEOUT_MILLIS = 5_000;

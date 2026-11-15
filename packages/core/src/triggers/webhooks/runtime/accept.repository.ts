@@ -7,10 +7,7 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { lockEventCoordination } from '../../coordination/keys.repository.js';
 import type { createEventCoordinationPreparation } from '../../coordination/prepare.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
-import {
-  coordinateVerifiedWebhook,
-  startWebhookRun,
-} from '../coordinate.repository.js';
+import { coordinateVerifiedWebhook, startWebhookRun } from '../coordinate.js';
 
 import {
   openWebhookResponse,
