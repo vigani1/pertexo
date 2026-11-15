@@ -2,8 +2,8 @@ import * as smtp from './smtp.js';
 import { ProviderHttpError } from '@pertexo/integrations/server';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { randomUUID } from 'node:crypto';
-import { CONNECTION_AUTH_TYPE } from '@pertexo/core/connections';
-import type { ConnectionTestOutcome } from '@pertexo/core/connections';
+import { CONNECTION_AUTH_TYPE } from '@pertexo/workflow-model';
+import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
   SECURE_HTTP_ERROR_CODE,

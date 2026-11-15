@@ -1,6 +1,8 @@
-import { connectionFitsSlot } from '@pertexo/workflow-model';
 import {
   CONNECTION_AUTH_TYPE,
+  connectionFitsSlot,
+} from '@pertexo/workflow-model';
+import {
   ConnectionOAuth2NotConnectedError,
   ConnectionOAuth2RevokedError,
   ConnectionUnavailableError,

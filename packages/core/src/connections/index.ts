@@ -1,4 +1,3 @@
-export { CONNECTION_AUTH_TYPE } from '@pertexo/workflow-model';
 export {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
@@ -34,7 +33,6 @@ export type {
   ReadConnectionInput,
   ResolvedConnectionSecretRecord,
 } from './connection.types.js';
-export type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 export type {
   ConnectionUsageCursor,
   ConnectionUsagePage,

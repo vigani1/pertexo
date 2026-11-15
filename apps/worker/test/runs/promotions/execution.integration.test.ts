@@ -2,10 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fixture, node, edge, runtime } from '../calls/calls.fixture.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
-import {
-  createConnectionStore,
-  CONNECTION_AUTH_TYPE,
-} from '@pertexo/core/connections';
+import { createConnectionStore } from '@pertexo/core/connections';
 import { createDataTablesStore } from '@pertexo/core/data-tables';
 import { createWorkspaceVariablesStore } from '@pertexo/core/variables';
 import {
@@ -28,6 +25,7 @@ import {
   WorkflowAuthoringValidator,
 } from '@pertexo/workflow-model/server';
 import {
+  CONNECTION_AUTH_TYPE,
   EMPTY_WORKFLOW_GRAPH,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
