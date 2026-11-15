@@ -101,6 +101,15 @@ user-facing copy beyond the safe messages of its errors.
   `readDatabaseClockText`, which keeps its microseconds.
 - An area imports the files another area's `index.ts` names directly, never
   through that `index.ts` (ADR 091).
+- Areas depend one way. From the bottom: `shared`; `governance` and `outbox`;
+  `variables` and `connections`; `notifications`; `artifacts`; `attempts`;
+  `data-tables`; `runs`; `triggers`; `authoring`; `inbox`, `previews`; then
+  `lifecycle` and `operator` on top. `identity` and `tenant-access`, the one
+  kept pair, sit above `outbox` and below `authoring` and `lifecycle`. When a lower area needs a higher one's fact, the
+  writer moves down to the producer (the run transition writes the inbox's
+  intake), or the shared piece moves to `shared/` (`run-events.repository.ts`,
+  `execution-source.repository.ts`). `validate-core-area-cycles.mjs` refuses
+  a new runtime cycle; type-only imports follow the same order.
 - A sealed application secret is checked with `applicationSealedSecretSchema`
   from `secrets`, never a local copy.
 
