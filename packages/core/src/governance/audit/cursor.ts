@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { GovernanceError } from '../governance.js';
+import { GovernanceError } from '../governance.errors.js';
 
 const cursorSchema = z
   .object({ time: z.iso.datetime(), id: z.uuid() })

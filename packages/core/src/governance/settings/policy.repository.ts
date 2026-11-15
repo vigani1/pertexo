@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaces } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { GovernanceError } from '../governance.js';
+import { GovernanceError } from '../governance.errors.js';
 
 export async function readGovernanceSettings(
   client: PoolClient,
