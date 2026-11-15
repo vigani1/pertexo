@@ -17,6 +17,12 @@ export const NOT_LIMITS = Object.freeze({
   'packages/rate-limit/src/limiters/distributed-rate-limiter.ts: 6':
     'the length of the Lua script’s admission reply',
   'packages/templates/src/catalog.ts: 2': 'template versions',
+  'packages/nodes-core/src/data/tables/data-tables.definition.ts: 2':
+    'executor ABI versions',
+  'packages/nodes-core/src/data/date/date.schemas.ts: "24 hours"':
+    'the length of a day in the Days unit’s label',
+  'packages/nodes-core/src/data/date/date.schemas.ts: "168 hours"':
+    'the length of a week in the Weeks unit’s label',
   'packages/templates/src/catalog.ts: "five minutes"':
     'reviewed copy; catalog.test.ts ties it to each manifest’s run duration',
   'packages/templates/src/catalog.ts: "one-second"':

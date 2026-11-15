@@ -51,7 +51,7 @@ const BIT_OPERATORS = new Set([
   ts.SyntaxKind.CaretToken,
 ]);
 const DURATION_STRING = /^\d+(?:ms|s|m|h|d)$/u;
-const UNITS = String.raw`(?:milliseconds?|ms|seconds?|minutes?|hours?|days?|bytes?|characters?|KB|MB|GB)`;
+const UNITS = String.raw`(?:milliseconds?|ms|seconds?|minutes?|hours?|days?|bytes?|characters?|KB|KiB|MB|MiB|GB|GiB)`;
 // A limit written into text: "30000 milliseconds", "32-byte", "five minutes".
 // An encoding's name ("UTF-8 bytes", "UTF-16 units") is not a limit.
 const LIMIT_IN_TEXT = new RegExp(
@@ -60,25 +60,34 @@ const LIMIT_IN_TEXT = new RegExp(
 );
 const CONSTANT_NAME = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/u;
 
-/** Literal limits in one file: numbers and duration strings outside a named constant. */
+/**
+ * Literal limits in one file: numbers and duration strings outside a named
+ * constant's value, and limits written into text anywhere.
+ */
 export function findWrittenLimits(file, text) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const found = [];
-  const visit = (node) => {
-    if (isNamedConstant(node) || ts.isTypeNode(node)) return;
-    if (ts.isNumericLiteral(node) && isLimit(node))
+  const visit = (node, named) => {
+    if (ts.isTypeNode(node)) return;
+    if (!named && ts.isNumericLiteral(node) && isLimit(node))
       found.push(literalText(node));
     else if (
+      !named &&
       (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
       DURATION_STRING.test(node.text)
     )
       found.push(`'${node.text}'`);
-    else if (isTextNode(node))
+    // Text inside a constant's table copies a limit; only a constant whose
+    // value is the text itself (`sql.raw("interval '60 seconds'")`) names it.
+    else if (isTextNode(node) && !(named && isWholeConstantValue(node)))
       for (const [match] of node.text.matchAll(LIMIT_IN_TEXT))
         found.push(`"${match}"`);
-    ts.forEachChild(node, visit);
+    const constant = named || isNamedConstant(node);
+    ts.forEachChild(node, (child) =>
+      visit(child, constant && namesChild(node, child)),
+    );
   };
-  visit(source);
+  visit(source, false);
   return found;
 }
 
@@ -126,6 +135,48 @@ function isNamedConstant(node) {
     (node.parent.flags & ts.NodeFlags.Const) !== 0 &&
     ts.isVariableStatement(node.parent.parent) &&
     ts.isSourceFile(node.parent.parent.parent)
+  );
+}
+
+/**
+ * Whether a constant's child still belongs to the value it names. A schema's
+ * bounds (`z.string().max(64)`, `textSchema.max(255)`) and a function's body
+ * are code inside the constant, so they write their own literals; tables built
+ * with `Object.freeze`, `new Map`, `sql.raw` or a helper stay named.
+ */
+function namesChild(parent, child) {
+  if (ts.isFunctionLike(parent)) return false;
+  return !(
+    ts.isCallExpression(parent) &&
+    child !== parent.expression &&
+    isSchemaChain(parent.expression)
+  );
+}
+
+// The text is the constant's value, at most wrapped in calls: not one of its
+// table's entries.
+function isWholeConstantValue(node) {
+  let current = node;
+  while (
+    ts.isCallExpression(current.parent) ||
+    ts.isParenthesizedExpression(current.parent) ||
+    ts.isAsExpression(current.parent)
+  )
+    current = current.parent;
+  return isNamedConstant(current.parent);
+}
+
+const SCHEMA_ROOT = /^(?:z|\w+Schema)$/u;
+
+// `z.number().int().max`: a method reached through calls from `z` or a schema.
+function isSchemaChain(callee) {
+  let current = callee;
+  while (ts.isPropertyAccessExpression(current) || ts.isCallExpression(current))
+    current = current.expression;
+  return (
+    current !== callee &&
+    ts.isIdentifier(current) &&
+    SCHEMA_ROOT.test(current.text)
   );
 }
 

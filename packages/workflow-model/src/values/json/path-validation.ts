@@ -2,7 +2,10 @@ import { utf8ByteLength } from '../text.js';
 import { z } from 'zod';
 import { parseJsonPath } from './path.js';
 
-const COLLECTION_PATH_LIMITS = Object.freeze({ bytes: 512, segments: 64 });
+export const COLLECTION_PATH_LIMITS = Object.freeze({
+  bytes: 512,
+  segments: 64,
+});
 
 export const collectionPathSchema = z
   .string()

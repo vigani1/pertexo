@@ -4,13 +4,16 @@ import {
   collectionCountSchema,
   COLLECTION_MAX_ITEMS,
 } from '../collection.schemas.js';
+
+const DEFAULT_TAKE_COUNT = 100;
+
 export const CORE_TAKE_CONFIG_SCHEMA = z
   .object({
     count: z.number().int().min(0).max(COLLECTION_MAX_ITEMS).meta({
       title: 'Items to keep',
       description:
         'Keep the first N items. Zero keeps none; a larger count keeps all available items.',
-      default: 100,
+      default: DEFAULT_TAKE_COUNT,
     }),
   })
   .strict();

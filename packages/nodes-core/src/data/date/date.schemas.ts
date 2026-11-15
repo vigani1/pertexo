@@ -3,6 +3,9 @@ import { labelledChoice } from '@pertexo/node-sdk';
 import { ianaTimeZoneSchema } from '@pertexo/workflow-model';
 
 const timeZoneSchema = ianaTimeZoneSchema.meta({ default: 'UTC' });
+// Room for any date text the step reads or writes; an ISO timestamp with an
+// offset is 29 characters.
+const DATE_TEXT_CHARACTERS = 64;
 
 export const CORE_DATE_CONFIG_SCHEMA = z
   .discriminatedUnion('operation', [
@@ -65,7 +68,7 @@ export const CORE_DATE_CONFIG_SCHEMA = z
   });
 export const CORE_DATE_INPUT_SCHEMA = z
   .object({
-    value: z.union([z.string().max(64), z.number()]),
+    value: z.union([z.string().max(DATE_TEXT_CHARACTERS), z.number()]),
     amount: z.number().int().optional().meta({
       description:
         'Signed integer for Add duration; negative subtracts. Other operations ignore amount.',
@@ -73,7 +76,9 @@ export const CORE_DATE_INPUT_SCHEMA = z
   })
   .strict();
 export const CORE_DATE_OUTPUT_SCHEMA = z
-  .object({ value: z.union([z.string().max(64), z.number().int()]) })
+  .object({
+    value: z.union([z.string().max(DATE_TEXT_CHARACTERS), z.number().int()]),
+  })
   .strict();
 export type CoreDateConfig = z.output<typeof CORE_DATE_CONFIG_SCHEMA>;
 export type CoreDateInput = z.output<typeof CORE_DATE_INPUT_SCHEMA>;

@@ -3,7 +3,10 @@ import {
   workflowTriggers,
   webhookRunResponses as responses,
 } from '@pertexo/database/schema';
-import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
+import {
+  CORE_WEBHOOK_CONFIG_SCHEMA,
+  WEBHOOK_RESPONSE_WAIT_SECONDS,
+} from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
@@ -28,7 +31,8 @@ export async function openWebhookResponse(
     CORE_WEBHOOK_CONFIG_SCHEMA.parse(row.desired_config),
   );
   if (config.responseMode !== 'workflow') return undefined;
-  const seconds = config.responseWaitSeconds ?? 10;
+  const seconds =
+    config.responseWaitSeconds ?? WEBHOOK_RESPONSE_WAIT_SECONDS.default;
   await transaction.db.insert(responses).values({
     workspaceId: transaction.workspaceId,
     runId,

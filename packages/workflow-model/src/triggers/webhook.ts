@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { eventCoordinationPolicySchema } from './event-coordination/event-coordination.schemas.js';
 
+/** How long a webhook caller may wait for a Respond to webhook step. */
+export const WEBHOOK_RESPONSE_WAIT_SECONDS = Object.freeze({
+  default: 10,
+  maximum: 30,
+});
+
 // Endpoint keys and signing secrets belong to materialized trigger state.
 export const CORE_WEBHOOK_CONFIG_SCHEMA = z
   .object({
@@ -21,10 +27,10 @@ export const CORE_WEBHOOK_CONFIG_SCHEMA = z
       .number()
       .int()
       .min(1)
-      .max(30)
+      .max(WEBHOOK_RESPONSE_WAIT_SECONDS.maximum)
       .optional()
       .describe(
-        'Seconds to wait, 10 by default. On timeout the caller gets 202 and the run continues.',
+        `Seconds to wait, ${String(WEBHOOK_RESPONSE_WAIT_SECONDS.default)} by default. On timeout the caller gets 202 and the run continues.`,
       ),
   })
   .strict();

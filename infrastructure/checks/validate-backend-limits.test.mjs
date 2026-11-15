@@ -109,6 +109,42 @@ test('finds a limit written into text', () => {
   );
 });
 
+test('checks a schema, a function and copy written inside a constant', () => {
+  assert.deepEqual(
+    find(
+      [
+        'export const CONFIG_SCHEMA = z.object({ seconds: z.number().max(300) });',
+        'const ROW = z.object({ row: rowSchema.min(1).max(1_048_576) });',
+        'const CHECKS = Object.freeze({ png: (head) => head[0] === 0x89 });',
+        "const MANIFEST = Object.freeze({ text: 'Inline reads accept up to 1 MiB' });",
+      ].join('\n'),
+    ),
+    ['300', '1048576', '137', '"1 MiB"'],
+  );
+});
+
+test('leaves a constant whose value is a table or a wrapped literal', () => {
+  assert.deepEqual(
+    find(
+      [
+        'const LEASE = sql.raw("interval \'60 seconds\'");',
+        'const EPOCH = Date.UTC(1899, 11, 30);',
+        'const TYPES = new Map([[14, "date"], [18, "time"]]);',
+        'const DEFAULTS = freezeDefaults({ timeoutMs: 60_000, schema: z.number().max(MAX) });',
+      ].join('\n'),
+    ),
+    [],
+  );
+});
+
+test('finds binary byte units written into text', () => {
+  assert.deepEqual(find("const hint = 'up to 10 MiB, 64 KiB pages, 1 GiB';"), [
+    '"10 MiB"',
+    '"64 KiB"',
+    '"1 GiB"',
+  ]);
+});
+
 test('names a limit only at module level, not in a function body', () => {
   assert.deepEqual(
     find('export function wait() { const DELAY_MS = 2_500; return DELAY_MS; }'),

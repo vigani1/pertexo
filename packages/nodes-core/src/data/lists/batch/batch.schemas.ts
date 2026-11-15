@@ -4,12 +4,15 @@ import {
   collectionCountSchema,
   COLLECTION_MAX_ITEMS,
 } from '../collection.schemas.js';
+
+const DEFAULT_BATCH_SIZE = 100;
+
 export const CORE_BATCH_CONFIG_SCHEMA = z
   .object({
     size: z.number().int().min(1).max(COLLECTION_MAX_ITEMS).meta({
       title: 'Items per batch',
       description: 'Positive integer. Each batch keeps original order.',
-      default: 100,
+      default: DEFAULT_BATCH_SIZE,
     }),
   })
   .strict();

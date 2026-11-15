@@ -98,6 +98,7 @@ export {
   type MergeConfig,
 } from './flow/control-nodes/merge.js';
 export {
+  MINIMUM_PARALLEL_BRANCHES,
   PARALLEL_BRANCH_PORTS,
   parallelBranchPortSchema,
   parallelConfigSchema,
@@ -272,7 +273,10 @@ export {
   webhookAuthenticationSchema,
   type WebhookAuthentication,
 } from './triggers/webhook-authentication.js';
-export { CORE_WEBHOOK_CONFIG_SCHEMA } from './triggers/webhook.js';
+export {
+  CORE_WEBHOOK_CONFIG_SCHEMA,
+  WEBHOOK_RESPONSE_WAIT_SECONDS,
+} from './triggers/webhook.js';
 
 // Values
 export { EMAIL_ADDRESS_LIMITS } from './values/email-address.js';
@@ -295,7 +299,10 @@ export {
   type JsonValue,
 } from './values/json/canonical.js';
 export { isRecord } from './values/json/object.js';
-export { collectionPathSchema } from './values/json/path-validation.js';
+export {
+  COLLECTION_PATH_LIMITS,
+  collectionPathSchema,
+} from './values/json/path-validation.js';
 export { parseJsonPath, resolveJsonPath } from './values/json/path.js';
 export { isStorageText, storageTextSchema } from './values/json/text.js';
 export { supportsExpressionMappings } from './values/mapping/mapping-support.js';
