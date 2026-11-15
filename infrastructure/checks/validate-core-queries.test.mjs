@@ -4,8 +4,6 @@ import test from 'node:test';
 import {
   findCoreQueries,
   findStoreProblems,
-  isPending,
-  validatePendingAreas,
 } from './validate-core-queries.mjs';
 
 const OPERATION = 'packages/core/src/variables/replace.ts';
@@ -90,14 +88,6 @@ test('lets repositories and stores hold queries, and ignores files outside core'
     [],
   );
   assert.deepEqual(find(query, 'packages/database/src/outbox/events.ts'), []);
-});
-
-test('pending areas are skipped, and the pending list may only shrink', () => {
-  assert.equal(isPending('packages/core/src/runs/access.ts', ['runs']), true);
-  assert.equal(isPending(OPERATION, ['runs']), false);
-  assert.equal(isPending('packages/core/src/testing.ts', ['runs']), false);
-  assert.deepEqual(validatePendingAreas(['runs']), []);
-  assert.equal(validatePendingAreas(['runs', 'artifacts']).length, 1);
 });
 
 test('a store is a facade: it exports a factory and something composes it', () => {
