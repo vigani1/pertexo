@@ -22,7 +22,10 @@ import {
   type WorkspaceStatusList,
 } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
-import { WorkflowNotFoundError } from './workflow-authoring.errors.js';
+import {
+  AuthoringStoreClosedError,
+  WorkflowNotFoundError,
+} from './workflow-authoring.errors.js';
 
 /** Someone without access learns nothing: a denial reads as a missing workflow. */
 export function readAsNotVisible(error: unknown): never {
@@ -52,7 +55,7 @@ export function createAuthoringAccess(pool: Pool) {
   const pending = new Set<Promise<unknown>>();
   let closed = false;
   async function tracked<T>(start: () => Promise<T>): Promise<T> {
-    if (closed) throw new Error('This authoring store is closed');
+    if (closed) throw new AuthoringStoreClosedError();
     const operation = start();
     pending.add(operation);
     try {

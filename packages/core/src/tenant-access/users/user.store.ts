@@ -1,3 +1,4 @@
+import { UserEmailNotCanonicalError } from '../tenant-access.errors.js';
 import {
   DISPLAY_NAME_MAX_CHARACTERS,
   EMAIL_ADDRESS_LIMITS,
@@ -36,7 +37,7 @@ async function createUser(
 ): Promise<UserRecord> {
   const id = input.id ?? generatePersistedId();
   const fields = parseUserIdentityFields(input);
-  if (fields.email !== input.email) throw new Error('Invalid user email');
+  if (fields.email !== input.email) throw new UserEmailNotCanonicalError();
   try {
     const result = await drizzle(pool)
       .insert(users)
