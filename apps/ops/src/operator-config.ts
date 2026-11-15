@@ -89,18 +89,15 @@ const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
     OPERATOR_COMMAND_TYPE: z.literal('run.replay'),
     OPERATOR_DRY_RUN: dryRunSchema,
     OPERATOR_RUN_INPUT: z.string().transform((value, context) => {
-      try {
-        const parsed = z.json().parse(JSON.parse(value));
-        if (Buffer.byteLength(JSON.stringify(parsed), 'utf8') > 65_536)
-          throw new Error('Input is too large');
-        return parsed;
-      } catch {
+      const parsed = parseRunInput(value);
+      if (parsed === undefined) {
         context.addIssue({
           code: 'custom',
           message: 'Invalid run input JSON',
         });
         return z.NEVER;
       }
+      return parsed;
     }),
     OPERATOR_RUN_ID: z.uuid(),
     OPERATOR_WORKFLOW_VERSION_ID: z.uuid(),
@@ -280,4 +277,21 @@ export function parseOperatorCommandConfig(
     }),
     timeoutMs: parsed.OPERATOR_TIMEOUT_MS,
   });
+}
+
+/** The largest replay input an operator may pass, in UTF-8 bytes. */
+const OPERATOR_RUN_INPUT_MAX_BYTES = 65_536;
+
+/** JSON within the size bound, or undefined when it is neither. */
+function parseRunInput(value: string) {
+  let parsed: z.infer<ReturnType<typeof z.json>>;
+  try {
+    parsed = z.json().parse(JSON.parse(value));
+  } catch {
+    return undefined;
+  }
+  return Buffer.byteLength(JSON.stringify(parsed), 'utf8') >
+    OPERATOR_RUN_INPUT_MAX_BYTES
+    ? undefined
+    : parsed;
 }

@@ -15,6 +15,7 @@ import {
   type BetterAuthRuntime,
 } from '../../authentication/index.js';
 import type { ApiIdentityConfig } from '../config/identity-config.js';
+import { IdentityRuntimeConfigurationError } from './identity-runtime.errors.js';
 
 type BetterAuthConfig = ApiIdentityConfig['betterAuth'];
 
@@ -85,7 +86,9 @@ function selectAuthenticationMail(
     );
   const durable = input.betterAuth.durableMail;
   if (durable === undefined)
-    throw new TypeError('Durable authentication mail is not configured');
+    throw new IdentityRuntimeConfigurationError(
+      'Durable authentication mail is not configured',
+    );
   return new DurableAuthenticationMail(
     input.acquire(
       createSystemMailEnqueueStore(input.databaseConfig, input.runtime),

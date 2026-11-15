@@ -9,3 +9,7 @@ export class NodeAttemptHandlerStateError extends Error {
     super(`Node attempt delivery cannot execute: ${code}`, options);
   }
 }
+
+export class AttemptRuntimeClosedError extends Error {
+  public override readonly name = 'AttemptRuntimeClosedError';
+}

@@ -15,6 +15,7 @@ import {
   ArtifactApiConflictError,
   ArtifactApiNotFoundError,
   ArtifactUploadDeadlineError,
+  ArtifactStorageConfigurationError,
 } from './artifact-api.errors.js';
 import {
   assertUploadSize,
@@ -53,7 +54,7 @@ export class ArtifactService {
       !Number.isSafeInteger(options.maxObjectBytes) ||
       options.maxObjectBytes <= 0
     )
-      throw new TypeError(
+      throw new ArtifactStorageConfigurationError(
         'artifact maxObjectBytes must be a positive safe integer',
       );
     this.now = options.now ?? (() => new Date());

@@ -14,6 +14,10 @@ import {
   readCodeFrame as readFrame,
   writeCodeFrame as writeFrame,
 } from '@pertexo/node-sdk/server';
+import {
+  CodeSocketOwnershipError,
+  CodeTaskRefusedError,
+} from './code-socket.errors.js';
 
 export async function listenForCodeTasks(
   config: RunnerConfig,
@@ -26,7 +30,9 @@ export async function listenForCodeTasks(
   });
   const owner = await lstat(directory);
   if (!owner.isDirectory() || owner.uid !== process.getuid?.())
-    throw new Error('Code socket directory must belong to its manager');
+    throw new CodeSocketOwnershipError(
+      'Code socket directory must belong to its manager',
+    );
   if (config.mode === 'hardened') await chown(directory, 0, 10001);
   await chmod(directory, config.mode === 'hardened' ? 0o770 : 0o700);
   await removeStaleSocket(config.socketPath);
@@ -64,7 +70,9 @@ export async function listenForCodeTasks(
           await readFrame(socket, CODE_LIMITS.taskBytes, admission),
         );
         if (task.timeoutSeconds > config.settings.maximumSeconds)
-          throw new Error('Code task exceeds instance time limit');
+          throw new CodeTaskRefusedError(
+            'Code task exceeds instance time limit',
+          );
         const result = await slot.run(task, canceled.signal);
         if (!canceled.signal.aborted) await writeFrame(socket, result);
         socket.end(() => {

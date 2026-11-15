@@ -44,7 +44,15 @@ import {
   transportErrorClass,
   toQueueJob,
 } from './delivery.js';
-import { OutboxDispatcherClosedError } from './outbox-dispatch.errors.js';
+import {
+  OutboxDispatcherClosedError,
+  OutboxDispatcherHooksError,
+  OutboxDispatcherDrainingError,
+} from './outbox-dispatch.errors.js';
+import {
+  admitJobAllowlist,
+  OUTBOX_DISPATCHER_DEFAULTS,
+} from './dispatcher-settings.js';
 import type {
   OutboxDispatcherOptions,
   OutboxDispatcherRuntimeHooks,
@@ -88,20 +96,15 @@ export class OutboxDispatcher {
       logger?: StructuredLogger | undefined;
     }>,
   ) {
-    const jobNames = [...options.jobNames];
-    if (jobNames.length > 64 || new Set(jobNames).size !== jobNames.length)
-      throw new TypeError(
-        'Outbox job allowlist must be unique and contain at most 64 entries',
-      );
+    const jobNames = admitJobAllowlist(options.jobNames);
     this.drainState = drainState;
     this.metrics = metrics;
     this.logger = logger;
 
     this.options = Object.freeze({
-      operationTimeoutMillis: 5_000,
-      pollIntervalMillis: 1_000,
+      ...OUTBOX_DISPATCHER_DEFAULTS,
       ...options,
-      jobNames: Object.freeze(jobNames),
+      jobNames,
     });
     this.capacitySamples = new OutboxCapacitySampler(
       this.options.operationTimeoutMillis,
@@ -130,9 +133,8 @@ export class OutboxDispatcher {
 
   public configureRuntimeHooks(hooks: OutboxDispatcherRuntimeHooks): void {
     this.assertOpen();
-    if (this.lifecycle !== 'idle' || this.capacitySamples.configured) {
-      throw new Error('Outbox dispatcher runtime hooks are already configured');
-    }
+    if (this.lifecycle !== 'idle' || this.capacitySamples.configured)
+      throw new OutboxDispatcherHooksError();
     this.capacitySamples.configure(Object.freeze(hooks));
   }
 
@@ -183,18 +185,12 @@ export class OutboxDispatcher {
   }
 
   public async checkReadiness(): Promise<void> {
-    this.assertOpen();
-    if (!this.drainState.canAcceptWork()) {
-      throw new Error('Outbox dispatcher is draining');
-    }
+    this.assertAcceptingWork();
     await Promise.all([
       this.database.checkReadiness(),
       this.producer.waitUntilReady(),
     ]);
-    this.assertOpen();
-    if (!this.drainState.canAcceptWork()) {
-      throw new Error('Outbox dispatcher is draining');
-    }
+    this.assertAcceptingWork();
   }
 
   public close(): Promise<void> {
@@ -390,6 +386,12 @@ export class OutboxDispatcher {
 
   private assertOpen(): void {
     if (this.lifecycle === 'closed') throw new OutboxDispatcherClosedError();
+  }
+
+  private assertAcceptingWork(): void {
+    this.assertOpen();
+    if (!this.drainState.canAcceptWork())
+      throw new OutboxDispatcherDrainingError();
   }
 
   private isRunning(): boolean {

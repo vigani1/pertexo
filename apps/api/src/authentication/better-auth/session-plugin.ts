@@ -31,6 +31,7 @@ import {
   isTwoFactorVerificationPath,
   authenticationChangedError,
 } from './two-factor.js';
+import { AuthenticationTransactionError } from './transactions/authentication-transaction.errors.js';
 
 type BeforeHooks = NonNullable<
   NonNullable<BetterAuthPlugin['hooks']>['before']
@@ -158,7 +159,7 @@ export function createTrustedSessionPlugin(
                 securityNotices.mail.sendSecurityNotice(notice),
               );
             else
-              throw new Error(
+              throw new AuthenticationTransactionError(
                 'Security changes require an authentication transaction',
               );
           }),

@@ -21,6 +21,7 @@ import {
   type ConnectionResponse,
   type ConnectionTestResponse,
 } from '../connection-request.js';
+import { ConnectionResponseError } from './connection-management.errors.js';
 
 export type ConnectionCommandInput = Readonly<{
   actor: ActorContext;
@@ -68,7 +69,9 @@ function oauth2Fields(
 ) {
   if (record.oauth2 === undefined) return {};
   if (redirectUri === undefined)
-    throw new Error('OAuth2 connection answered with no redirect URI');
+    throw new ConnectionResponseError(
+      'OAuth2 connection answered with no redirect URI',
+    );
   const { settings, grant } = record.oauth2;
   return {
     oauth2: { settings, redirectUri },
@@ -95,7 +98,7 @@ function validResponse<Schema extends z.ZodType>(
 ): z.output<Schema> {
   const parsed = schema.safeParse(response);
   if (parsed.success) return parsed.data;
-  throw new Error('A connection response failed its schema', {
+  throw new ConnectionResponseError('A connection response failed its schema', {
     cause: parsed.error,
   });
 }

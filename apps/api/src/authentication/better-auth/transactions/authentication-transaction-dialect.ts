@@ -7,6 +7,7 @@ import {
 } from 'kysely';
 import type { Pool, PoolClient } from 'pg';
 import type { AuthenticationTransactions } from './authentication-transactions.js';
+import { AuthenticationTransactionError } from './authentication-transaction.errors.js';
 
 /** Kysely compiles normal PostgreSQL; the caller owns this connection's lifetime. */
 export class AuthenticationTransactionDialect extends PostgresDialect {
@@ -32,7 +33,9 @@ export class AuthenticationTransactionDialect extends PostgresDialect {
   }
 }
 function rejectNestedTransaction(): Promise<void> {
-  throw new Error('Authentication transaction is owned by the request');
+  throw new AuthenticationTransactionError(
+    'Authentication transaction is owned by the request',
+  );
 }
 class TransactionConnection implements DatabaseConnection {
   readonly #client: PoolClient;
@@ -50,6 +53,8 @@ class TransactionConnection implements DatabaseConnection {
     };
   }
   streamQuery<R>(): AsyncIterableIterator<QueryResult<R>> {
-    throw new Error('Authentication queries do not stream');
+    throw new AuthenticationTransactionError(
+      'Authentication queries do not stream',
+    );
   }
 }

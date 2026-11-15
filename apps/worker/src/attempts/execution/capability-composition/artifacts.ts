@@ -20,6 +20,7 @@ import {
 } from '../../artifacts/node-artifact.runtime.js';
 import type { CapabilityAssembly } from './node-runtime-capabilities.types.js';
 import { assertCapabilityRuntimeOpen } from './lifecycle.js';
+import { CapabilityCompositionError } from './capability-composition.errors.js';
 
 function artifactPersistence(
   database: WorkspaceDatabase,
@@ -111,7 +112,9 @@ export async function prepareArtifactCapability(
           state.options.artifactStore,
         )));
   if (store === undefined)
-    throw new Error('Worker artifact capability is incomplete');
+    throw new CapabilityCompositionError(
+      'Worker artifact capability is incomplete',
+    );
   const reachability = store;
   const checkReachable = reachability.checkReadiness;
   if (checkReachable !== undefined)
@@ -119,7 +122,7 @@ export async function prepareArtifactCapability(
   const directory =
     state.dependencies.spoolDirectory ?? state.options.artifactScratchDirectory;
   if (directory === undefined)
-    throw new Error(
+    throw new CapabilityCompositionError(
       'Configure ARTIFACT_SCRATCH_DIRECTORY as a private disk-backed directory for this worker.',
     );
   const scratch = await ArtifactScratchSpace.create(

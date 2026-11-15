@@ -5,6 +5,7 @@ import {
   type WorkspaceStatus,
 } from '../../authorization/index.js';
 import type { WorkflowRunApplicationInput } from '../ports.js';
+import { RunEventStreamUnauthorizedError } from './run-events.errors.js';
 
 type SseAuthorizationLifetimeInput = Pick<
   WorkflowRunApplicationInput,
@@ -101,7 +102,9 @@ export function createStreamAuthorizationLifetime(
       !Number.isFinite(session.expiresAt.getTime()) ||
       session.expiresAt.getTime() <= Date.now();
     if (invalidRefreshedSession) {
-      throw new Error('SSE session is no longer authorized');
+      throw new RunEventStreamUnauthorizedError(
+        'SSE session is no longer authorized',
+      );
     }
     await authorizeWorkspaceOperation({
       actor: input.actor,

@@ -20,6 +20,7 @@ import { z } from 'zod';
 
 import type { SocialProviderGateway } from '../social-provider.types.js';
 import { requireDoubleSubmitCsrf } from '../better-auth/csrf.js';
+import { TwoFactorUnavailableError } from './account-security.errors.js';
 
 type EndpointContext = Parameters<typeof setSessionCookie>[0];
 
@@ -66,7 +67,9 @@ function createGetPertexoAccountSecurityEndpoint(
       if (enabled) {
         const plugin = context.context.getPlugin('two-factor');
         if (plugin === null)
-          throw new Error('Two-factor plugin is not configured');
+          throw new TwoFactorUnavailableError(
+            'Two-factor plugin is not configured',
+          );
         recoveryCodesRemaining = (
           await plugin.endpoints.viewBackupCodes({
             body: { userId: context.context.session.user.id },

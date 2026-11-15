@@ -30,7 +30,10 @@ import type {
   AuthorizedWorkspaceContext,
 } from '../authorization/index.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
-import { NodeTestInvalidError } from './node-test.errors.js';
+import {
+  NodeTestInvalidError,
+  PreviewIdentityUnavailableError,
+} from './node-test.errors.js';
 import type { NodeTestingPersistence } from './ports.js';
 import {
   prepareNodeValidation,
@@ -133,7 +136,9 @@ export class TestWorkflowNodeService {
       });
 
     if (executionIdentity === undefined)
-      throw new Error('Preview execution identity is unavailable');
+      throw new PreviewIdentityUnavailableError(
+        'Preview execution identity is unavailable',
+      );
     if (prepared.issues.length > 0)
       throw new NodeTestInvalidError(prepared.issues);
 

@@ -4,6 +4,7 @@ import { FederationProofError, refuseAs } from './failure.js';
 import { organizationIdentity, type OrganizationIdentity } from './identity.js';
 import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type { SecureHttpClient } from '@pertexo/secrets/server';
+import { OidcProtocolError } from './oidc.errors.js';
 
 export type OidcProviderMaterial = Readonly<{
   id: string;
@@ -60,7 +61,9 @@ export function createOidcProofGateway(
     ];
     const authentication = clientAuthentication(methods, secret);
     if (authentication === undefined)
-      throw new Error('OIDC client authentication method is unsupported');
+      throw new OidcProtocolError(
+        'OIDC client authentication method is unsupported',
+      );
     const algorithms = metadata.id_token_signing_alg_values_supported ?? [
       'RS256',
     ];
@@ -73,7 +76,7 @@ export function createOidcProofGateway(
       'EdDSA',
     ].find((value) => algorithms.includes(value));
     if (algorithm === undefined)
-      throw new Error('OIDC signing algorithm is unsupported');
+      throw new OidcProtocolError('OIDC signing algorithm is unsupported');
     const config = new oidc.Configuration(
       metadata,
       provider.configuration.clientId,
@@ -105,7 +108,9 @@ export function createOidcProofGateway(
         url.username !== '' ||
         url.password !== ''
       )
-        throw new Error('OIDC authorization endpoint is unavailable');
+        throw new OidcProtocolError(
+          'OIDC authorization endpoint is unavailable',
+        );
       return url.toString();
     },
     verify: async (provider, proof, callbackUrl) => {
@@ -178,13 +183,13 @@ function providerFetch(
       new URL(request.url).protocol !== 'https:' ||
       !['GET', 'POST'].includes(request.method)
     )
-      throw new Error('OIDC endpoint transport is unavailable');
+      throw new OidcProtocolError('OIDC endpoint transport is unavailable');
     const body =
       request.body === null
         ? undefined
         : new Uint8Array(await request.arrayBuffer());
     if (body !== undefined && body.byteLength > 65536)
-      throw new Error('OIDC request is too large');
+      throw new OidcProtocolError('OIDC request is too large');
     const response = await http.execute({
       url: request.url,
       method: request.method === 'POST' ? 'POST' : 'GET',

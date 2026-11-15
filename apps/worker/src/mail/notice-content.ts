@@ -2,6 +2,7 @@ import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
 import { sealNoticeUnsubscribe } from '@pertexo/core/inbox';
 import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type { NoticeMailItem, NoticeMailToSeal } from '@pertexo/core/inbox';
+import { NoticeMailTooLargeError } from './notice-mail.errors.js';
 const labels = {
   workflow_failure: 'Workflow failed',
   workflow_auto_paused: 'Workflow auto-paused',
@@ -61,7 +62,9 @@ export function sealNoticeMail(
     serialized = JSON.stringify(message);
     if (Buffer.byteLength(serialized, 'utf8') <= 12_288) break;
     if (count === 0)
-      throw new RangeError('Notification mail exceeds its bounded envelope');
+      throw new NoticeMailTooLargeError(
+        'Notification mail exceeds its bounded envelope',
+      );
   }
   return envelope.seal(
     serialized,

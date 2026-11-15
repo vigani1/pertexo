@@ -3,6 +3,7 @@ import {
   codeRunnerSocketPath,
   type CodeSettings,
 } from '@pertexo/node-sdk';
+import { RunnerConfigurationError } from './runner-configuration.errors.js';
 
 /** The search path a hardened task process gets; process mode inherits the host's. */
 export const HARDENED_TASK_PATH = '/usr/local/bin:/usr/bin:/bin';
@@ -27,7 +28,9 @@ export function parseRunnerConfig(
     (mode !== 'hardened' && mode !== 'process') ||
     (deployed && mode !== 'hardened');
   if (invalidRunnerMode)
-    throw new Error('Deployed Code runners require hardened mode');
+    throw new RunnerConfigurationError(
+      'Deployed Code runners require hardened mode',
+    );
   const socketPath = codeRunnerSocketPath({
     configured: environment.CODE_RUNNER_SOCKET,
     hardened: mode === 'hardened',

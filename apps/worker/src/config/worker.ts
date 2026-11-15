@@ -36,6 +36,10 @@ import {
   type InvitationDeliveryConfig,
 } from './invitation-delivery.js';
 import { workerConfigSchema } from './worker-environment.schemas.js';
+import {
+  WorkerEnvironmentValueError,
+  WorkerConfigurationError,
+} from './worker-configuration.errors.js';
 
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
@@ -66,7 +70,9 @@ function stringEnvironment(
         return [name, value];
       if (typeof value === 'number' || typeof value === 'boolean')
         return [name, String(value)];
-      throw new TypeError('Worker environment values must be scalar');
+      throw new WorkerEnvironmentValueError(
+        'Worker environment values must be scalar',
+      );
     }),
   );
 }
@@ -87,7 +93,9 @@ export function parseWorkerConfig(
   const result = workerConfigSchema.safeParse(environment);
 
   if (!result.success) {
-    throw new Error('Invalid worker configuration', { cause: result.error });
+    throw new WorkerConfigurationError('Invalid worker configuration', {
+      cause: result.error,
+    });
   }
   try {
     const raw = stringEnvironment(environment);
@@ -171,7 +179,9 @@ export function parseWorkerConfig(
       outboxDispatcher: Object.freeze(result.data.outboxDispatcher),
     });
   } catch (error: unknown) {
-    throw new Error('Invalid worker configuration', { cause: error });
+    throw new WorkerConfigurationError('Invalid worker configuration', {
+      cause: error,
+    });
   }
 }
 

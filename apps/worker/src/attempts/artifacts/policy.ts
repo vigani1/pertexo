@@ -3,6 +3,10 @@ import {
   nodeArtifactReferenceSchema,
   FILE_PAGE_LIMITS,
 } from '@pertexo/node-sdk';
+import {
+  ArtifactByteLimitError,
+  ArtifactRetentionExpiredError,
+} from './artifact-policy.errors.js';
 
 export function assertArtifactByteLimit(maxBytes: number): void {
   if (
@@ -10,7 +14,7 @@ export function assertArtifactByteLimit(maxBytes: number): void {
     maxBytes < 1 ||
     maxBytes > FILE_PAGE_LIMITS.fileBytes
   )
-    throw new TypeError('Node artifact byte limit is invalid');
+    throw new ArtifactByteLimitError('Node artifact byte limit is invalid');
 }
 
 export function artifactExpiry(
@@ -25,7 +29,9 @@ export function artifactExpiry(
       ? retentionDeadline
       : defaultExpiry;
   if (expiresAt.getTime() <= createdAt.getTime())
-    throw new RangeError('Artifact retention deadline has expired');
+    throw new ArtifactRetentionExpiredError(
+      'Artifact retention deadline has expired',
+    );
   return expiresAt;
 }
 
