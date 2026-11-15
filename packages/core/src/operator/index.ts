@@ -2,21 +2,21 @@ export {
   createOperatorCommandStore,
   type OperatorCommandStore,
 } from './operator-command.store.js';
-export {
-  OperatorCommandConflictError,
-  type GenericOperatorCommandResult,
-  type GetOperatorCommandInput,
-  type OperatorCommandOutcome,
-  type OperatorCommandRecord,
-  type OperatorCommandResult,
-  type OperatorCommandStoreOptions,
-  type OperatorRunCommandInput,
-  type OperatorWorkflowCommandInput,
-  type ReconcileOperatorAttemptInput,
-  type RecordUnknownOutcomeEvidenceInput,
-  type RedispatchFailedOutboxInput,
-  type ReplayOperatorRunInput,
+export type {
+  GenericOperatorCommandResult,
+  GetOperatorCommandInput,
+  OperatorCommandOutcome,
+  OperatorCommandRecord,
+  OperatorCommandResult,
+  OperatorCommandStoreOptions,
+  OperatorRunCommandInput,
+  OperatorWorkflowCommandInput,
+  ReconcileOperatorAttemptInput,
+  RecordUnknownOutcomeEvidenceInput,
+  RedispatchFailedOutboxInput,
+  ReplayOperatorRunInput,
 } from './operator-command.js';
+export { OperatorCommandConflictError } from './operator-command.errors.js';
 export {
   createOperatorRunReplayStore,
   type OperatorRunReplayStore,
@@ -24,4 +24,4 @@ export {
 export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from './replay/operator-replay.js';
+} from './operator-command.errors.js';

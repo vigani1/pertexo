@@ -1,3 +1,10 @@
+export class OperatorCommandConflictError extends Error {
+  public constructor() {
+    super('Operator command replay conflicts with the existing request');
+    this.name = 'OperatorCommandConflictError';
+  }
+}
+
 export class OperatorRunReplayMismatchError extends Error {
   public constructor() {
     super('Run replay delivery does not match its durable request');
@@ -11,16 +18,3 @@ export class OperatorRunReplayNotExecutableError extends Error {
     this.name = 'OperatorRunReplayNotExecutableError';
   }
 }
-
-export type ReplayDeliveryInput = Readonly<{
-  commandId: string;
-  delivery: Readonly<{ outboxEventId: string; payloadChecksum: string }>;
-  workspaceId: string;
-  signal?: AbortSignal | undefined;
-}>;
-
-export type FailReplayInput = Readonly<{
-  commandId: string;
-  safeErrorCode: string;
-  workspaceId: string;
-}>;

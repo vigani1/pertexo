@@ -22,12 +22,14 @@ import { consumeInboxMessage } from '../../outbox/consume-message.js';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
 import { findPublishedWorkflow } from '../../runs/queries/execution/published.repository.js';
+import type {
+  FailReplayInput,
+  ReplayDeliveryInput,
+} from './operator-replay.types.js';
 import {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-  type FailReplayInput,
-  type ReplayDeliveryInput,
-} from './operator-replay.js';
+} from '../operator-command.errors.js';
 
 const payloadSchema = z
   .object({

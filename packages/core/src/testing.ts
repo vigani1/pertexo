@@ -258,9 +258,9 @@ export {
 export {
   OperatorRunReplayMismatchError,
   OperatorRunReplayNotExecutableError,
-} from './operator/replay/operator-replay.js';
+} from './operator/operator-command.errors.js';
 export { createOperatorCommandStore } from './operator/operator-command.store.js';
-export { OperatorCommandConflictError } from './operator/operator-command.js';
+export { OperatorCommandConflictError } from './operator/operator-command.errors.js';
 export {
   type GetOperatorCommandInput,
   type GenericOperatorCommandResult,

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
 
-import { OperatorCommandConflictError } from '../../src/operator/operator-command.js';
+import { OperatorCommandConflictError } from '../../src/operator/operator-command.errors.js';
 import {
   actorRef,
   auditFor,
