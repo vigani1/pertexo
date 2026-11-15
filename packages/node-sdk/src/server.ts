@@ -106,3 +106,10 @@ export {
 export { FILE_PAGES_ERROR_CODE } from './artifacts/pages/file-pages.errors.js';
 
 export { CALLBACK_ERROR_CODE } from './callbacks/callback.errors.js';
+
+export {
+  withProviderCredential,
+  type ConnectionWithSecret,
+  type ProviderCredentialRefusal,
+  type ResolvedProviderConnection,
+} from './execution/connection-secret.js';

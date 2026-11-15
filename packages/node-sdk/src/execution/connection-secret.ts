@@ -1,20 +1,29 @@
-import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import type { z } from 'zod';
+import type { NodeExecutionRuntime } from './node-execution.types.js';
 
 export type ResolvedProviderConnection = Awaited<
   ReturnType<NonNullable<NodeExecutionRuntime['connections']>['resolve']>
 >;
 
+/** What any resolved connection that carries a secret has: its identity and the secret. */
+export type ConnectionWithSecret = Readonly<{
+  connectionId: string;
+  providerKey: string;
+  authType: string;
+  secret: Uint8Array;
+}>;
+
 /** Why a resolved connection can't be used: not the one asked for, or an unreadable secret. */
 export type ProviderCredentialRefusal = 'configuration' | 'authentication';
 
 /**
- * Opens a resolved connection's secret for one piece of work. Every provider
- * step reads its credential here, so the secret is always zeroed afterwards,
- * whether the work succeeds, fails or the credential is refused.
+ * Opens a resolved connection's secret for one piece of work. Every step
+ * reads a connection secret here (a check refuses reading one anywhere
+ * else), so the secret is always zeroed afterwards, whether the work
+ * succeeds, fails or the credential is refused.
  */
 export async function withProviderCredential<Schema extends z.ZodType, T>(
-  resolved: ResolvedProviderConnection,
+  resolved: ConnectionWithSecret,
   expected: Readonly<{
     connectionId: string;
     providerKey: string;

@@ -34,7 +34,7 @@ import {
 import {
   withProviderCredential,
   type ResolvedProviderConnection,
-} from '../../providers/provider-credential.js';
+} from '@pertexo/node-sdk/server';
 import {
   registerProviderExecutor,
   type ExecutorTelemetry,

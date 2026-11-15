@@ -4,7 +4,7 @@ import {
   withProviderCredential,
   type ProviderCredentialRefusal,
   type ResolvedProviderConnection,
-} from '../../src/providers/provider-credential.js';
+} from '../../src/execution/connection-secret.js';
 
 const schema = z.object({ token: z.string() }).strict();
 const expected = {

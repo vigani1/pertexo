@@ -4,7 +4,7 @@ const SIGNATURE_PREFIX = 'v1=';
 
 export function verifyWebhookSignature(
   input: Readonly<{
-    secret: Uint8Array;
+    signingKey: Uint8Array;
     timestamp: string;
     signature: string;
     rawBody: Uint8Array;
@@ -15,7 +15,7 @@ export function verifyWebhookSignature(
     !/^\d{1,16}$/u.test(input.timestamp)
   )
     return false;
-  const expected = createHmac('sha256', input.secret)
+  const expected = createHmac('sha256', input.signingKey)
     .update(input.timestamp, 'ascii')
     .update('.')
     .update(input.rawBody)

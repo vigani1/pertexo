@@ -273,7 +273,6 @@ export async function consumeResponseBody(
 
 export async function releaseHttpMaterial(
   body: Uint8Array | NodeVerifiedByteSource | undefined,
-  secret: Uint8Array | undefined,
   {
     repeatable,
     possiblyDispatched,
@@ -288,8 +287,6 @@ export async function releaseHttpMaterial(
         { possiblyDispatched: true },
       );
     throw error;
-  } finally {
-    secret?.fill(0);
   }
 }
 

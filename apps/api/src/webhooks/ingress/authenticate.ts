@@ -46,7 +46,7 @@ async function verifyWebhookSecrets(
       'headerSecret' in request
         ? verifyWebhookHeaderSecret(secret, request.headerSecret)
         : verifyWebhookSignature({
-            secret,
+            signingKey: secret,
             timestamp: request.timestamp,
             signature: request.signature,
             rawBody: request.body,

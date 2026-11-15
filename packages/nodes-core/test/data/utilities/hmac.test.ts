@@ -163,4 +163,25 @@ describe('encrypted HMAC', () => {
     });
     expect(bytes.every((value) => value === 0)).toBe(true);
   });
+  it('zeroes the key after it signs', async () => {
+    const { execute, bytes } = fixture();
+    await execute();
+    expect(bytes.every((value) => value === 0)).toBe(true);
+  });
+  it('refuses a key that is not readable JSON and zeroes it', async () => {
+    const { execute, resolve, bytes } = fixture();
+    const unreadable = new TextEncoder().encode('not json');
+    resolve.mockResolvedValue({
+      connectionId: '11111111-1111-4111-8111-111111111111',
+      providerKey: 'signing',
+      authType: 'hmac_key',
+      secretVersionId: 'version',
+      secret: unreadable,
+    });
+    await expect(execute()).rejects.toMatchObject({
+      safeErrorCode: 'utility.hmac_connection',
+    });
+    expect(unreadable.every((value) => value === 0)).toBe(true);
+    expect(bytes.some((value) => value !== 0)).toBe(true);
+  });
 });
