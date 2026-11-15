@@ -1,15 +1,6 @@
 import { z } from 'zod';
 import { decodeStoredReceipt } from '../../shared/receipts.js';
 import { FailureNotificationDestinationError } from '../destinations/notification-destination.errors.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { alias } from 'drizzle-orm/pg-core';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  workflows,
-  failureNotificationDestinations as destination,
-  workflowFailureNotificationPolicies as policy,
-} from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
 import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
@@ -27,6 +18,12 @@ import type {
   WorkflowPolicyInput,
 } from '../destinations/notification-destination.types.js';
 import { readFailureNotificationDestination } from '../destinations/notification-destinations.repository.js';
+import {
+  deleteWorkflowPolicy,
+  readWorkflowPolicyChoice,
+  saveWorkflowPolicy,
+  shareLockWorkflow,
+} from './workflow-policies.repository.js';
 
 /**
  * The workflow's failure-notification policy (ADR 025): at most one
@@ -69,46 +66,8 @@ export async function setWorkflowPolicy(
     input.workspaceId,
     input.destinationId,
   );
-  const db = drizzle(client);
-  const excluded = alias(policy, 'excluded');
-  const result = await db
-    .insert(policy)
-    .select(
-      db
-        .select({
-          workspaceId: workflows.workspaceId,
-          workflowId: workflows.id,
-          destinationId: destination.id,
-          updatedBy: sql<string>`${input.actorId}::uuid`.as('updated_by'),
-          updatedAt: sql`clock_timestamp()`.as('updated_at'),
-        })
-        .from(workflows)
-        .innerJoin(
-          destination,
-          and(
-            eq(destination.workspaceId, workflows.workspaceId),
-            eq(destination.id, input.destinationId),
-          ),
-        )
-        .where(
-          and(
-            eq(workflows.workspaceId, input.workspaceId),
-            eq(workflows.id, workflowId),
-            eq(destination.status, 'enabled'),
-          ),
-        ),
-    )
-    .onConflictDoUpdate({
-      target: policy.workflowId,
-      set: {
-        destinationId: sql`${excluded.destinationId}`,
-        updatedBy: sql`${excluded.updatedBy}`,
-        updatedAt: sql`clock_timestamp()`,
-      },
-    })
-    .returning({ id: policy.workflowId })
-    .catch(rethrowQueryFailure);
-  if (result.length !== 1)
+  const saved = await saveWorkflowPolicy(client, input);
+  if (!saved)
     throw new FailureNotificationDestinationError(
       'not_found',
       'Workflow or destination is not visible',
@@ -131,21 +90,10 @@ export async function clearWorkflowPolicy(
   role: Role,
 ): Promise<void> {
   const workflowId = input.workflowId;
-  const db = drizzle(client);
-  const existing = await db
-    .select({ id: workflows.id })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, workflowId),
-      ),
-    )
-    .for('share')
-    .catch(rethrowQueryFailure);
+  const exists = await shareLockWorkflow(client, input.workspaceId, workflowId);
   // A deleted workflow has no remaining authority to resurrect; only its null receipt may replay.
   if (
-    existing.length === 1 &&
+    exists &&
     !(await workflowAccessible(
       client,
       await readFolderScope(client, input, role),
@@ -171,22 +119,17 @@ export async function clearWorkflowPolicy(
     decodeStoredReceipt(z.null(), replay.result);
     return;
   }
-  if (existing.length !== 1)
+  if (!exists)
     throw new FailureNotificationDestinationError(
       'not_found',
       'Workflow is not visible',
     );
-  const result = await db
-    .delete(policy)
-    .where(
-      and(
-        eq(policy.workspaceId, input.workspaceId),
-        eq(policy.workflowId, workflowId),
-      ),
-    )
-    .returning({ id: policy.workflowId })
-    .catch(rethrowQueryFailure);
-  if (result.length === 1)
+  const cleared = await deleteWorkflowPolicy(
+    client,
+    input.workspaceId,
+    workflowId,
+  );
+  if (cleared)
     await audit(client, input, {
       action: 'workflow.failure_notification_policy_cleared',
       target: { id: workflowId, type: 'workflow' },
@@ -225,23 +168,11 @@ export async function readWorkflowPolicy(
       'not_found',
       'Workflow is not visible',
     );
-  const [row] = await drizzle(client)
-    .select({ destinationId: policy.destinationId })
-    .from(workflows)
-    .leftJoin(
-      policy,
-      and(
-        eq(policy.workspaceId, workflows.workspaceId),
-        eq(policy.workflowId, workflows.id),
-      ),
-    )
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, workflowId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  const row = await readWorkflowPolicyChoice(
+    client,
+    input.workspaceId,
+    workflowId,
+  );
   if (row === undefined)
     throw new FailureNotificationDestinationError(
       'not_found',

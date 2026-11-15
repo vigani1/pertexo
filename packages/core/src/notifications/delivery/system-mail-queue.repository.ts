@@ -14,6 +14,9 @@ import { destinationConfigSql } from '../destinations/notification-destinations.
 import { readSystemMailRecipient } from './system-mail-recipient.repository.js';
 import { auditFailureNotification } from './evidence.repository.js';
 
+// A failure alert that hasn't gone out within a day is no longer worth sending.
+const FAILURE_ALERT_MAIL_LIFETIME_MILLIS = 24 * 60 * 60_000;
+
 /** Queue and intent ownership commit together; the queue owns all provider retries. */
 export async function queueSystemMail(
   client: PoolClient,
@@ -102,7 +105,9 @@ export async function queueSystemMail(
     });
     return true;
   }
-  const expiresAt = new Date(destination.now.getTime() + 24 * 3_600_000);
+  const expiresAt = new Date(
+    destination.now.getTime() + FAILURE_ALERT_MAIL_LIFETIME_MILLIS,
+  );
   await insertSystemMail(client, {
     id: input.intentId,
     purpose: 'workflow_failure_alert',

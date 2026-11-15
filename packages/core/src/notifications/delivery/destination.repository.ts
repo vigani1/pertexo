@@ -26,6 +26,8 @@ import type {
 import { auditFailureNotification } from './evidence.repository.js';
 import { FailureNotificationStateError } from '../failure-notification.errors.js';
 
+const DESTINATION_READ_TIMEOUT_MILLIS = 30_000;
+
 export function loadDestination(
   pool: Pool,
   input: LoadDestinationInput,
@@ -115,7 +117,10 @@ export function loadDestination(
             toEmail: config.toEmail,
           });
     },
-    { signal: input.signal, statementTimeoutMillis: 30_000 },
+    {
+      signal: input.signal,
+      statementTimeoutMillis: DESTINATION_READ_TIMEOUT_MILLIS,
+    },
   );
 }
 
