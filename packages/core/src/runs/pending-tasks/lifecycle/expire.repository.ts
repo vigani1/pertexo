@@ -1,33 +1,21 @@
-import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { PoolClient } from 'pg';
-import {
-  approvalConfigSchema,
-  inputRequestConfigSchema,
-  taskContextSchema,
-  taskExpiryChoice,
-  timedOutTaskOutput,
-} from '@pertexo/workflow-model';
 import { workflowRuns, pendingRunTasks } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { ACTIVE_RUN_STATUSES } from '../../statuses.js';
 import { serializeStoredExecutionValue } from '../../../shared/stored-execution.js';
 
-/**
- * Database time decides expiry. A task whose step continues on Timed out
- * records its timed-out output in the same transaction, so later steps read
- * it like any answer. Returns how many tasks expired.
- */
-export async function expireDueTasks(
+const task = pendingRunTasks,
+  run = workflowRuns;
+
+/** Database time decides expiry: expires the run's due pending tasks and returns them. */
+export function expireDueTaskRows(
   client: PoolClient,
   workspaceId: string,
   runId: string,
-): Promise<number> {
-  const db = drizzle(client),
-    task = pendingRunTasks,
-    run = workflowRuns;
-  const expired = await db
+) {
+  return drizzle(client)
     .update(task)
     .set({ status: 'expired', completedAt: sql`clock_timestamp()` })
     .from(run)
@@ -52,31 +40,20 @@ export async function expireDueTasks(
       expires_at: sql<Date>`${task.expiresAt}`.mapWith(task.expiresAt),
     })
     .catch(rethrowQueryFailure);
-  for (const row of expired) {
-    const setup = timeoutSetup(row);
-    if (setup === undefined || taskExpiryChoice(setup) !== 'continue') continue;
-    const output = timedOutTaskOutput({
-      openedAt: row.created_at,
-      expiredAt: row.expires_at,
-      audience: setup.audience,
-      context: decodeStoredValue(() => taskContextSchema.parse(row.context)),
-    });
-    await db
-      .update(task)
-      .set({
-        outputRef: sql`${serializeStoredExecutionValue({ kind: 'inline', value: output })}::json`,
-      })
-      .where(and(eq(task.workspaceId, workspaceId), eq(task.id, row.id)))
-      .catch(rethrowQueryFailure);
-  }
-  return expired.length;
 }
 
-/** Callbacks have no Timed out path; they always fail their Wait on expiry. */
-function timeoutSetup(row: Readonly<{ kind: string; config: unknown }>) {
-  if (row.kind === 'approval')
-    return decodeStoredValue(() => approvalConfigSchema.parse(row.config));
-  if (row.kind === 'input_request')
-    return decodeStoredValue(() => inputRequestConfigSchema.parse(row.config));
-  return undefined;
+/** Records a timed-out task's output so later steps read it like any answer. */
+export async function storeTimedOutOutput(
+  client: PoolClient,
+  input: Readonly<{ workspaceId: string; taskId: string; output: unknown }>,
+) {
+  await drizzle(client)
+    .update(task)
+    .set({
+      outputRef: sql`${serializeStoredExecutionValue({ kind: 'inline', value: input.output })}::json`,
+    })
+    .where(
+      and(eq(task.workspaceId, input.workspaceId), eq(task.id, input.taskId)),
+    )
+    .catch(rethrowQueryFailure);
 }

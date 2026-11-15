@@ -4,11 +4,9 @@ import { nodeRuns, pendingRunTasks } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import type { PendingTaskOutcome } from '@pertexo/workflow-engine';
-import { wakeTaskAncestors } from '../responses/task-responses.repository.js';
-import { expireDueTasks } from './expire.repository.js';
 
-/** Expiry is resolved first; the existing due-node scanner supplies wakeups. */
-export async function readPendingTaskFacts(
+/** The run's settled tasks its coordinator has not consumed yet. */
+export async function readUnconsumedTaskOutcomes(
   client: PoolClient,
   workspaceId: string,
   runId: string,
@@ -16,8 +14,6 @@ export async function readPendingTaskFacts(
   const db = drizzle(client),
     task = pendingRunTasks,
     node = nodeRuns;
-  const expired = await expireDueTasks(client, workspaceId, runId);
-  if (expired > 0) await wakeTaskAncestors(client, workspaceId, runId);
   // The filter excludes pending/prepared callbacks; completed outcomes follow the task state CHECK.
   const rows = await db
     .select({
