@@ -12,7 +12,7 @@ import { appendAuditFacts } from '../../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
 import { updateMemberships } from '../../../../tenant-access/members/records.repository.js';
 import type { MembershipChange } from '../../../../tenant-access/members/membership.types.js';
-import { revokeSessionsForUsers } from '../../../../tenant-access/users/sessions.repository.js';
+import { revokeSessionsForUsers } from '../../sessions/user-sessions.repository.js';
 
 /** Detaching a source must remove its grant first; otherwise it silently becomes manual. */
 export async function detachDirectoryMemberships(

@@ -19,7 +19,7 @@ import {
   WorkspaceMembershipCommandConflictError,
   type WorkspaceMembershipCommandConflictReason,
 } from '../tenant-access.errors.js';
-import { revokeUserSessions } from '../users/sessions.repository.js';
+import { revokeUserSessions } from '../../identity/federation/sessions/user-sessions.repository.js';
 import {
   executeMemberCommand,
   recordMemberCommandAudit,

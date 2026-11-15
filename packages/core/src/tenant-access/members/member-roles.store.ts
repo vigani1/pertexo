@@ -8,7 +8,7 @@ import type {
 } from '../tenant-access.types.js';
 import { WorkspaceMemberRoleCommandConflictError } from '../tenant-access.errors.js';
 import { roleReceipt } from '../command-receipts.schemas.js';
-import { revokeUserSessions } from '../users/sessions.repository.js';
+import { revokeUserSessions } from '../../identity/federation/sessions/user-sessions.repository.js';
 import {
   executeMemberCommand,
   recordMemberCommandAudit,

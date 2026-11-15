@@ -7,8 +7,8 @@ import { hasSignInMethodCapacity } from './federation/accounts/limits.repository
 import {
   prepareSessionChange,
   applySessionChange,
-} from '../tenant-access/users/sessions.repository.js';
-import type { AuthenticationReplacement } from '../tenant-access/users/authentication-replacement.types.js';
+} from './federation/sessions/user-sessions.repository.js';
+import type { AuthenticationReplacement } from './federation/sessions/authentication-session.types.js';
 import { isProtectedRecoveryOwner } from './federation/sessions/recovery.repository.js';
 import { randomUUID } from 'node:crypto';
 

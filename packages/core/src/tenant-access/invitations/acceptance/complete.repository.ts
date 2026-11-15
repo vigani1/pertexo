@@ -34,7 +34,7 @@ import {
   updateMembership,
 } from '../../members/records.repository.js';
 import { withPlatformTransaction } from '@pertexo/database/platform';
-import { replaceUserSessions } from '../../users/sessions.repository.js';
+import { replaceUserSessions } from '../../../identity/federation/sessions/user-sessions.repository.js';
 import { selectIntent } from './state.repository.js';
 
 export async function completeAcceptance(
