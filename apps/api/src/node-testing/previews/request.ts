@@ -13,11 +13,12 @@ import { z } from 'zod';
 import { NodeTestRequestError } from '../node-test.errors.js';
 
 import type { NodeTestServiceInput } from '../node-testing.service.js';
+import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 
 const executableNodeSchema = z
   .record(z.string(), z.json())
   .refine(
-    (node) => utf8ByteLength(JSON.stringify(node)) <= 1_048_576,
+    (node) => utf8ByteLength(JSON.stringify(node)) <= NODE_JSON_LIMITS.bytes,
     'executable node must be a bounded JSON object',
   );
 

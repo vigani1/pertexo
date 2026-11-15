@@ -6,6 +6,13 @@ import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type { SecureHttpClient } from '@pertexo/secrets/server';
 import { OidcProtocolError } from './oidc.errors.js';
 
+/** An OIDC provider call's bounds: its time, and what it may send and answer. */
+const OIDC_TRANSPORT = Object.freeze({
+  timeoutSeconds: 10,
+  requestBytes: 64 * 1_024,
+  responseBytes: 256 * 1_024,
+});
+
 export type OidcProviderMaterial = Readonly<{
   id: string;
   controlWorkspaceId: string;
@@ -53,7 +60,7 @@ export function createOidcProofGateway(
       provider.configuration.clientId,
       undefined,
       undefined,
-      { [oidc.customFetch]: fetch, timeout: 10 },
+      { [oidc.customFetch]: fetch, timeout: OIDC_TRANSPORT.timeoutSeconds },
     );
     const metadata = discovered.serverMetadata();
     const methods = metadata.token_endpoint_auth_methods_supported ?? [
@@ -84,7 +91,7 @@ export function createOidcProofGateway(
       authentication,
     );
     config[oidc.customFetch] = fetch;
-    config.timeout = 10;
+    config.timeout = OIDC_TRANSPORT.timeoutSeconds;
     // The code-flow SDK otherwise relies on TLS for token authenticity.
     oidc.enableNonRepudiationChecks(config);
     return config;
@@ -188,16 +195,16 @@ function providerFetch(
       request.body === null
         ? undefined
         : new Uint8Array(await request.arrayBuffer());
-    if (body !== undefined && body.byteLength > 65536)
+    if (body !== undefined && body.byteLength > OIDC_TRANSPORT.requestBytes)
       throw new OidcProtocolError('OIDC request is too large');
     const response = await http.execute({
       url: request.url,
       method: request.method === 'POST' ? 'POST' : 'GET',
       headers: Object.fromEntries(request.headers),
       ...(body === undefined ? {} : { body }),
-      timeoutMillis: 10000,
+      timeoutMillis: OIDC_TRANSPORT.timeoutSeconds * 1_000,
       maxRedirects: 0,
-      maxResponseBytes: 262144,
+      maxResponseBytes: OIDC_TRANSPORT.responseBytes,
       sensitiveValues: [secret],
       signal: request.signal,
       beforeDispatch: () => Promise.resolve(),

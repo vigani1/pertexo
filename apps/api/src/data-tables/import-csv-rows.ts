@@ -2,6 +2,7 @@ import { parse } from 'csv-parse/sync';
 import {
   DataTableError,
   DATA_TABLE_LIMITS,
+  formatByteSize,
   dataTableCsvValue,
   type DataTableValues,
 } from '@pertexo/node-sdk';
@@ -10,6 +11,11 @@ import type {
   DataTableDefinition,
   ImportRowsInput,
 } from '@pertexo/core/data-tables';
+
+// Line 1 is the header, so the first row is line 2.
+const CSV_FIRST_DATA_LINE = 2;
+/** How many unknown columns a refusal names. */
+const UNKNOWN_COLUMNS_NAMED = 5;
 /** Imports a CSV file's rows, checked against the table the store locks. */
 export async function importCsvRows(
   store: Pick<DataTablesStore, 'importRows'>,
@@ -32,15 +38,16 @@ export async function importCsvRows(
 }
 
 function parseCsv(csv: string, table: DataTableDefinition) {
-  if (Buffer.byteLength(csv) > 1_048_576)
+  if (Buffer.byteLength(csv) > DATA_TABLE_LIMITS.csvImportBytes)
     throw new DataTableError(
       'invalid_values',
-      'CSV imports must fit 1 MB. Split the file.',
+      `CSV imports must fit ${formatByteSize(DATA_TABLE_LIMITS.csvImportBytes)}. Split the file.`,
     );
   let records: string[][];
   try {
     records = parse(csv, {
-      to: DATA_TABLE_LIMITS.batchRows + 2,
+      // The header, the batch, and one more row to see that it's too long.
+      to: DATA_TABLE_LIMITS.batchRows + CSV_FIRST_DATA_LINE,
       bom: true,
       skip_empty_lines: true,
       max_record_size: DATA_TABLE_LIMITS.rowBytes,
@@ -73,7 +80,7 @@ function parseCsv(csv: string, table: DataTableDefinition) {
       if (error instanceof DataTableError)
         throw new DataTableError(
           error.code,
-          `CSV row ${String(index + 2)}: ${error.message}`,
+          `CSV row ${String(index + CSV_FIRST_DATA_LINE)}: ${error.message}`,
         );
       throw error;
     }
@@ -103,7 +110,7 @@ function checkCsvHeader(
   );
   if (unknown.length > 0)
     fail(
-      `The CSV has ${unknown.length === 1 ? 'a column' : 'columns'} this table doesn’t: ${unknown.slice(0, 5).join(', ')}. Rename or remove ${unknown.length === 1 ? 'it' : 'them'}.`,
+      `The CSV has ${unknown.length === 1 ? 'a column' : 'columns'} this table doesn’t: ${unknown.slice(0, UNKNOWN_COLUMNS_NAMED).join(', ')}. Rename or remove ${unknown.length === 1 ? 'it' : 'them'}.`,
     );
   const missing = table.columns
     .filter((column) => column.required && !header.includes(column.name))

@@ -1,4 +1,5 @@
 import { hasHttpStatus } from '../../platform/http/problems/status.js';
+import { HttpStatus } from '@nestjs/common';
 
 import { singleHeader } from '../requests/headers.js';
 import { WEBHOOK_BODY_MAX_BYTES as MAX_BODY } from '@pertexo/contracts';
@@ -61,14 +62,14 @@ export function registerWebhookIngress(
     scope.setErrorHandler(async (error, request, reply) => {
       const requestId =
         parseRequestId(request.headers['x-request-id']) ?? randomUUID();
-      if (hasHttpStatus(error, 413)) {
+      if (hasHttpStatus(error, HttpStatus.PAYLOAD_TOO_LARGE)) {
         record(() => {
           telemetry.delivery('invalid_request');
         });
         await problem(reply, 'webhook.payload_too_large', requestId);
         return;
       }
-      if (hasHttpStatus(error, 415)) {
+      if (hasHttpStatus(error, HttpStatus.UNSUPPORTED_MEDIA_TYPE)) {
         record(() => {
           telemetry.delivery('invalid_request');
         });
@@ -305,5 +306,5 @@ async function preflightWebhook(
     .header('access-control-allow-methods', 'GET, POST');
   if (headers.length > 0)
     reply.header('access-control-allow-headers', headers.join(', '));
-  await reply.code(204).send();
+  await reply.code(HttpStatus.NO_CONTENT).send();
 }

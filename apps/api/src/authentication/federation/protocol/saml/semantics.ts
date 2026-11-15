@@ -20,6 +20,9 @@ import {
   requireModernSignature,
 } from './xml.js';
 
+// A signed response and its signed assertion: two signatures, no more.
+const EXPECTED_SIGNATURES = 2;
+
 const timestamp = z.iso.datetime({ offset: true });
 const skew = SAML_LIMITS.clockSkewMillis,
   maximumAge = SAML_LIMITS.assertionAgeMillis;
@@ -88,7 +91,7 @@ export function verifyResponseSemantics(
     document.getElementsByTagNameNS(
       'http://www.w3.org/2000/09/xmldsig#',
       'Signature',
-    ).length !== 2
+    ).length !== EXPECTED_SIGNATURES
   )
     return invalidSaml('saml_signature_count');
   requireModernSignature(response);

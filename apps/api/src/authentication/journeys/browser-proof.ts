@@ -1,5 +1,6 @@
-import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { JourneyCookieConfigurationError } from './journey.errors.js';
+import { randomSecretToken } from '../../identity/secret-token.js';
 
 /*
  * Primitives of a browser-bound identity journey. A journey binds
@@ -9,7 +10,7 @@ import { JourneyCookieConfigurationError } from './journey.errors.js';
 
 /** 256 bits of URL-safe random proof material. */
 export function newJourneyToken(): string {
-  return randomBytes(32).toString('base64url');
+  return randomSecretToken();
 }
 
 export function isJourneyToken(value: string): boolean {

@@ -6,6 +6,9 @@ import {
   type CallbackTokenKeys,
 } from '@pertexo/secrets/server';
 import type { ApiConfig } from '../config/api-config.js';
+
+/** How long startup's callback-key check may take. */
+const CALLBACK_KEY_CHECK_TIMEOUT_MILLIS = 2 * 60 * 1_000;
 export type ApiCallbackRuntime = Readonly<{
   store: CallbackStore;
   keys: CallbackTokenKeys | undefined;
@@ -27,7 +30,7 @@ export async function createApiCallbackRuntime(
       config.callbacks === undefined
         ? undefined
         : createCallbackTokenKeys(config.callbacks);
-    const signal = AbortSignal.timeout(120_000);
+    const signal = AbortSignal.timeout(CALLBACK_KEY_CHECK_TIMEOUT_MILLIS);
     await verifyCallbackTokenKeys(keys, store.keysInUse(signal), signal);
     return { store, keys, close };
   } catch (error) {

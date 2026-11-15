@@ -17,12 +17,12 @@ import {
   ArtifactApiUnavailableError,
 } from '../../artifacts/artifact-api.errors.js';
 import { applicationError } from '../../platform/http/index.js';
+import { FILE_PAGE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
 
 export const artifactProblems = [
   errorRegistration(ArtifactUploadTooLargeError, () => {
     return applicationError('artifact.too_large', {
-      safeDetail:
-        'The file exceeds 10 MB or the configured lower storage limit. Split it into smaller files and upload them separately.',
+      safeDetail: `The file exceeds ${formatByteSize(FILE_PAGE_LIMITS.fileBytes)} or the configured lower storage limit. Split it into smaller files and upload them separately.`,
     });
   }),
   errorRegistration(ArtifactApiNotFoundError, () => {

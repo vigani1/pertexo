@@ -5,13 +5,14 @@ import {
   opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
+  CURSOR_TIMESTAMP_PRECISION,
 } from '../platform/http/opaque-cursor.js';
 
 const cursorPayloadSchema = opaqueCursor('workspace-inbox', {
   workspaceId: z.uuid(),
   filter: z.enum(['all', 'unread']),
   noticeKind: z.string().optional(),
-  latestOccurredAt: z.iso.datetime({ precision: 6 }),
+  latestOccurredAt: z.iso.datetime({ precision: CURSOR_TIMESTAMP_PRECISION }),
   threadId: z.uuid(),
 });
 

@@ -25,6 +25,10 @@ import {
 import { journey } from './acceptance/view.js';
 import { parseToken, parseBinding } from './acceptance/proof.js';
 import { parseRequestInput } from '../../platform/http/request-input.js';
+import { SECRET_TOKEN_BYTES } from '../../identity/secret-token.js';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
+
+const UUID_BYTES = 16;
 
 const DEFAULT_SESSION_TTL_MILLIS = 8 * 60 * 60_000;
 
@@ -80,11 +84,11 @@ export class InvitationAcceptanceService {
         : deterministicUuid(`${recoverySeed}:intent`, this.crypto);
     const bindingSecret =
       recoverySeed === undefined
-        ? encodeBase64Url(this.crypto.randomBytes(32))
+        ? encodeBase64Url(this.crypto.randomBytes(SECRET_TOKEN_BYTES))
         : encodeBase64Url(this.crypto.sha256(`${recoverySeed}:binding`));
     const csrfToken =
       recoverySeed === undefined
-        ? encodeBase64Url(this.crypto.randomBytes(32))
+        ? encodeBase64Url(this.crypto.randomBytes(SECRET_TOKEN_BYTES))
         : encodeBase64Url(this.crypto.sha256(`${recoverySeed}:csrf`));
     const binding = `wb1.${parsed.workspaceId}.${intentId}.${bindingSecret}.${csrfToken}`;
     const intent = await this.persistence.resolveInvitationAcceptance({
@@ -158,7 +162,10 @@ export class InvitationAcceptanceService {
       bindingDigest: digestSha256Hex(selected.bindingSecret, this.crypto),
       userId: evidence.userId,
       sessionId: evidence.sessionId,
-      verifiedEmail: z.email().max(320).parse(canonicalEmail(evidence.email)),
+      verifiedEmail: z
+        .email()
+        .max(EMAIL_ADDRESS_LIMITS.accountCharacters)
+        .parse(canonicalEmail(evidence.email)),
       verifiedAt: evidence.signedInAt,
     });
     if (recorded === null)
@@ -201,7 +208,9 @@ export class InvitationAcceptanceService {
         'unavailable',
         'Invitation acceptance is unavailable',
       );
-    const rawToken = encodeBase64Url(this.crypto.randomBytes(32));
+    const rawToken = encodeBase64Url(
+      this.crypto.randomBytes(SECRET_TOKEN_BYTES),
+    );
     const expiresAt = new Date(
       this.clock.now().getTime() +
         (this.config.session?.ttlMillis ?? DEFAULT_SESSION_TTL_MILLIS),
@@ -296,9 +305,9 @@ export class InvitationAcceptanceService {
 }
 
 function deterministicUuid(value: string, crypto: IdentityCrypto): string {
-  const bytes = Uint8Array.from(crypto.sha256(value).slice(0, 16));
+  const bytes = Uint8Array.from(crypto.sha256(value).slice(0, UUID_BYTES));
   bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
   bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
   const hex = Buffer.from(bytes).toString('hex');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  return hex.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/u, '$1-$2-$3-$4-$5');
 }

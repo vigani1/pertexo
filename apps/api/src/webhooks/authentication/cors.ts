@@ -1,6 +1,9 @@
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import type { FastifyReply } from 'fastify';
 
+/** The longest Access-Control-Request-Headers a preflight may send. */
+const REQUESTED_HEADERS_MAX_CHARACTERS = 1_024;
+
 export function webhookOriginAllowed(
   policy: WebhookAuthentication,
   origin: string,
@@ -29,7 +32,7 @@ export function webhookPreflightHeaders(
     ...(policy.mode === 'header_secret' ? [policy.headerName] : []),
   ];
   if (requested === undefined) return [];
-  if (requested.length > 1024) return undefined;
+  if (requested.length > REQUESTED_HEADERS_MAX_CHARACTERS) return undefined;
   const names = requested.split(',').map((name) => name.trim().toLowerCase());
   return names.every((name) => allowed.includes(name)) &&
     new Set(names).size === names.length

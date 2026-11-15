@@ -29,6 +29,7 @@ import type {
   WorkspaceInvitationCommandResponse,
   WorkspaceInvitationsResponse,
 } from '../workspace-transport.js';
+import { SECRET_TOKEN_BYTES } from '../../identity/secret-token.js';
 
 type InvitationPersistence = Pick<
   IdentityWorkspacePersistence,
@@ -168,7 +169,7 @@ export class WorkspaceInvitationManagementService {
   }
 
   private issueToken(workspaceId: string, invitationId: string) {
-    const secret = encodeBase64Url(this.crypto.randomBytes(32));
+    const secret = encodeBase64Url(this.crypto.randomBytes(SECRET_TOKEN_BYTES));
     return Object.freeze({
       secret,
       value: `wi1.${workspaceId}.${invitationId}.${secret}`,

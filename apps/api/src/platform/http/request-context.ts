@@ -6,6 +6,9 @@ import { z } from 'zod';
 
 import { firstRequestHeader } from './request-headers.js';
 
+/** The longest actor or credential id a request's log context records. */
+const CONTEXT_ID_MAX_CHARACTERS = 200;
+
 const requestIdPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const actorKindSchema = z.enum([
   'user',
@@ -15,9 +18,9 @@ const actorKindSchema = z.enum([
 ]);
 const actorContextSchema = z
   .object({
-    actorId: z.string().min(1).max(200),
+    actorId: z.string().min(1).max(CONTEXT_ID_MAX_CHARACTERS),
     kind: actorKindSchema,
-    credentialId: z.string().min(1).max(200).optional(),
+    credentialId: z.string().min(1).max(CONTEXT_ID_MAX_CHARACTERS).optional(),
   })
   .strict();
 const workspaceIdSchema = z.uuid();

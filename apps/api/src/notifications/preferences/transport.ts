@@ -2,7 +2,8 @@ import { UnsupportedMediaTypeException } from '@nestjs/common';
 import type { FastifyAdapter } from '@nestjs/platform-fastify';
 
 const path = '/v1/notifications/unsubscribe/one-click';
-const maximumBytes = 8192;
+/** The largest one-click unsubscribe form a mail client may post. */
+const UNSUBSCRIBE_FORM_MAX_BYTES = 8_192;
 const formType = 'application/x-www-form-urlencoded';
 const multipartType = 'multipart/form-data';
 
@@ -19,7 +20,7 @@ export function registerNoticeUnsubscribeTransport(
   adapter.useBodyParser(
     multipartType,
     false,
-    { bodyLimit: maximumBytes },
+    { bodyLimit: UNSUBSCRIBE_FORM_MAX_BYTES },
     (request, body, done) => {
       if (request.method !== 'POST' || request.routeOptions.url !== path) {
         done(new UnsupportedMediaTypeException());
@@ -46,7 +47,7 @@ export function registerNoticeUnsubscribeTransport(
   });
   instance.addHook('onRoute', (route) => {
     if (route.method === 'POST' && route.url === path)
-      route.bodyLimit = maximumBytes;
+      route.bodyLimit = UNSUBSCRIBE_FORM_MAX_BYTES;
   });
   instance.addHook('onSend', (request, reply, payload, done) => {
     if (request.routeOptions.url === path) {

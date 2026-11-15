@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomSecretToken } from '../../../identity/secret-token.js';
 
 export function tokenFreeAuthenticationBody(
   body: Uint8Array,
@@ -42,7 +42,7 @@ export function serializeCsrfCookie(
   }>,
 ): string {
   return [
-    `pertexo_csrf=${randomBytes(32).toString('base64url')}`,
+    `pertexo_csrf=${randomSecretToken()}`,
     'Path=/',
     options.secure ? 'Secure' : undefined,
     `SameSite=${options.sameSite[0]?.toUpperCase() ?? ''}${options.sameSite.slice(1)}`,

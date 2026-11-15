@@ -8,6 +8,9 @@ import {
 } from './stream-cleanup.js';
 import { RunEventPageSizeError } from './run-events.errors.js';
 
+/** The longest run-event type name a stream accepts. */
+const EVENT_TYPE_MAX_CHARACTERS = 128;
+
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 500;
 const MAX_SSE_DATA_BYTES = 256 * 1_024;
@@ -23,7 +26,7 @@ const streamIdentitySchema = z
 const eventTypeSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(EVENT_TYPE_MAX_CHARACTERS)
   .regex(/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/);
 
 const persistedRunEventSchema = z

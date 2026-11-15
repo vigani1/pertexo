@@ -11,6 +11,14 @@ import { isRequestInputError } from '../../request-input.js';
 
 import type { ProblemIssue, NormalizedProblem } from './http-problem.types.js';
 
+/** How many issues a problem lists, and how much of each it quotes. */
+const ISSUE_TEXT_LIMITS = Object.freeze({
+  issues: 100,
+  pathCharacters: 1_024,
+  codeCharacters: 128,
+  messageCharacters: 500,
+});
+
 export function text(
   value: unknown,
   maximumLength: number,
@@ -32,15 +40,17 @@ function pointer(path: readonly PropertyKey[]): string {
         `${current}/${String(segment).replaceAll('~', '~0').replaceAll('/', '~1')}`,
       '',
     )
-    .slice(0, 1_024);
+    .slice(0, ISSUE_TEXT_LIMITS.pathCharacters);
 }
 
 export function zodIssues(error: ZodError): readonly ProblemIssue[] {
   return Object.freeze(
-    error.issues.slice(0, 100).map((issue) => ({
+    error.issues.slice(0, ISSUE_TEXT_LIMITS.issues).map((issue) => ({
       path: pointer(issue.path),
       code: issue.code,
-      message: text(issue.message, 500) ?? 'Invalid value',
+      message:
+        text(issue.message, ISSUE_TEXT_LIMITS.messageCharacters) ??
+        'Invalid value',
     })),
   );
 }
@@ -65,9 +75,9 @@ export function nestIssues(
   }
 
   const issues = message
-    .slice(0, 100)
+    .slice(0, ISSUE_TEXT_LIMITS.issues)
     .map((item): ProblemIssue | undefined => {
-      const safeMessage = text(item, 500);
+      const safeMessage = text(item, ISSUE_TEXT_LIMITS.messageCharacters);
       return safeMessage === undefined
         ? undefined
         : { path: '', code: 'validation', message: safeMessage };
@@ -108,12 +118,21 @@ function safeApplicationIssues(
 ): readonly ProblemIssue[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const issues = value
-    .slice(0, 100)
+    .slice(0, ISSUE_TEXT_LIMITS.issues)
     .map((issue: unknown): ProblemIssue | undefined => {
       if (typeof issue !== 'object' || issue === null) return undefined;
-      const path = 'path' in issue ? text(issue.path, 1_024) : undefined;
-      const code = 'code' in issue ? text(issue.code, 128) : undefined;
-      const message = 'message' in issue ? text(issue.message, 500) : undefined;
+      const path =
+        'path' in issue
+          ? text(issue.path, ISSUE_TEXT_LIMITS.pathCharacters)
+          : undefined;
+      const code =
+        'code' in issue
+          ? text(issue.code, ISSUE_TEXT_LIMITS.codeCharacters)
+          : undefined;
+      const message =
+        'message' in issue
+          ? text(issue.message, ISSUE_TEXT_LIMITS.messageCharacters)
+          : undefined;
       return path === undefined || code === undefined || message === undefined
         ? undefined
         : { path, code, message };

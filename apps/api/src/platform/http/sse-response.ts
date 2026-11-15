@@ -1,11 +1,12 @@
 import type { FastifyReply } from 'fastify';
+import { HttpStatus } from '@nestjs/common';
 
 /**
  * Hands the raw response to a server-sent event stream: private, never
  * cached or buffered by a proxy, and flushed so the client sees it open.
  */
 export function prepareSseResponse(reply: FastifyReply): void {
-  reply.raw.statusCode = 200;
+  reply.raw.statusCode = HttpStatus.OK;
   reply.raw.setHeader('Content-Type', 'text/event-stream');
   reply.raw.setHeader('Connection', 'keep-alive');
   reply.raw.setHeader(

@@ -8,6 +8,9 @@ import type {
   GraphValidationIssue,
 } from '@pertexo/workflow-model';
 
+/** How many setup issues one Code step reports. */
+const CODE_SETUP_ISSUES = 20;
+
 /** Instance policy and shared source validation; no code is evaluated. */
 export function codeStepPublicationIssues(
   graph: WorkflowGraph,
@@ -36,7 +39,7 @@ export function codeStepPublicationIssues(
         });
       const parsed = CORE_CODE_CONFIG_SCHEMA.safeParse(node.config);
       if (!parsed.success)
-        for (const error of parsed.error.issues.slice(0, 20))
+        for (const error of parsed.error.issues.slice(0, CODE_SETUP_ISSUES))
           issues.push({
             code: 'invalid_graph',
             path:

@@ -16,6 +16,12 @@ export const FEDERATION_LIMITS = Object.freeze({
 
 export const ACCOUNT_SIGN_IN_METHOD_LIMIT = 16;
 
+/** A password's length: long enough to resist guessing, short enough to hash cheaply. */
+export const PASSWORD_LIMITS = Object.freeze({
+  minimumCharacters: 12,
+  maximumCharacters: 128,
+});
+
 /** How recent a sign-in must be for a sensitive account or workspace command. */
 export const FRESH_SIGN_IN_WINDOW_MILLIS = 5 * 60_000;
 

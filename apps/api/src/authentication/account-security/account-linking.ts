@@ -1,4 +1,5 @@
 import { browserCsrfRefusal } from '../../identity/csrf.js';
+import { HttpStatus } from '@nestjs/common';
 import { recordAuthenticationFailure } from '../journeys/failures.js';
 import { randomUUID } from 'node:crypto';
 
@@ -22,6 +23,7 @@ import {
   newJourneyToken,
   readCookie,
 } from '../journeys/browser-proof.js';
+import { CALLBACK_LIMITS } from '../journeys/callback-limits.js';
 
 type BrowserSession = Readonly<{
   userId: string;
@@ -74,7 +76,9 @@ export class AccountLinking {
         'internal_failure',
         'failed',
       );
-      return callback ? this.landing('failed') : problem(503);
+      return callback
+        ? this.landing('failed')
+        : problem(HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 
@@ -82,25 +86,27 @@ export class AccountLinking {
     const csrfRefusal = browserCsrfRefusal(request.headers);
     if (csrfRefusal !== undefined) return problem(csrfRefusal);
     const session = await this.input.authenticate(request);
-    if (session === undefined) return problem(401);
+    if (session === undefined) return problem(HttpStatus.UNAUTHORIZED);
     // Better Auth's own code, which the bridge names auth.email_not_verified.
-    if (!session.emailVerified) return problem(403, 'EMAIL_NOT_VERIFIED');
+    if (!session.emailVerified)
+      return problem(HttpStatus.FORBIDDEN, 'EMAIL_NOT_VERIFIED');
     const body = accountSecurityLinkStartRequestSchema.safeParse(
       await request.json().catch(() => null),
     );
-    if (!body.success) return problem(400);
+    if (!body.success) return problem(HttpStatus.BAD_REQUEST);
     const { provider, existingMethod } = body.data;
-    if (!this.input.providers.available.includes(provider)) return problem(404);
+    if (!this.input.providers.available.includes(provider))
+      return problem(HttpStatus.NOT_FOUND);
     const sourceProvider =
       existingMethod.kind === 'password'
         ? 'credential'
         : existingMethod.provider;
-    if (sourceProvider === provider) return problem(400);
+    if (sourceProvider === provider) return problem(HttpStatus.BAD_REQUEST);
     if (
       sourceProvider !== 'credential' &&
       !this.input.providers.available.includes(sourceProvider)
     )
-      return problem(404);
+      return problem(HttpStatus.NOT_FOUND);
     // Each refusal keeps its own code, so the dialog can say which proof
     // failed: a wrong password reads as Change password's does, and a
     // source method gone since the dialog opened as changed sign-in settings.
@@ -111,13 +117,13 @@ export class AccountLinking {
           existingMethod.password,
         ))
       )
-        return problem(400, 'INVALID_PASSWORD');
+        return problem(HttpStatus.BAD_REQUEST, 'INVALID_PASSWORD');
     } else {
       if (!(await this.commands.hasMethod(session.userId, sourceProvider)))
-        return problem(409, 'AUTHENTICATION_CHANGED');
+        return problem(HttpStatus.CONFLICT, 'AUTHENTICATION_CHANGED');
     }
     if (await this.commands.hasMethod(session.userId, provider))
-      return problem(409);
+      return problem(HttpStatus.CONFLICT);
 
     const attemptId = randomUUID();
     const binding = newJourneyToken();
@@ -139,7 +145,8 @@ export class AccountLinking {
       );
       return undefined;
     });
-    if (authorizationUrl === undefined) return problem(503);
+    if (authorizationUrl === undefined)
+      return problem(HttpStatus.SERVICE_UNAVAILABLE);
     await this.commands.start({
       id: attemptId,
       userId: session.userId,
@@ -169,7 +176,7 @@ export class AccountLinking {
     const invalidCallbackProof =
       !isJourneyToken(state) ||
       code.length === 0 ||
-      code.length > 4096 ||
+      code.length > CALLBACK_LIMITS.codeCharacters ||
       binding === undefined ||
       providerRejectedLinkCallback(url);
     if (invalidCallbackProof) return this.refused(request, 'callback_invalid');
@@ -283,7 +290,7 @@ export class AccountLinking {
       nextState,
     });
     return accepted
-      ? Response.redirect(nextUrl, 302)
+      ? Response.redirect(nextUrl, HttpStatus.FOUND)
       : this.refused(request, 'proof_refused');
   }
 
@@ -371,6 +378,7 @@ function providerRejectedLinkCallback(url: URL): boolean {
     ['state', 'code', 'iss'].some(
       (name) => url.searchParams.getAll(name).length > 1,
     ) ||
-    (url.searchParams.get('iss')?.length ?? 0) > 2048;
+    (url.searchParams.get('iss')?.length ?? 0) >
+      CALLBACK_LIMITS.issuerCharacters;
   return rejected;
 }

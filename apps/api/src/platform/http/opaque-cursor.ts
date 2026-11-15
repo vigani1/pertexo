@@ -7,6 +7,9 @@ const MAX_CURSOR_LENGTH = 1_024;
  * reads. A cursor never authorizes anything; each reader checks that the
  * cursor belongs to its query.
  */
+/** Cursors carry PostgreSQL timestamps to the microsecond. */
+export const CURSOR_TIMESTAMP_PRECISION = 6;
+
 export function encodeOpaqueCursor<T>(
   schema: z.ZodType<T>,
   payload: unknown,

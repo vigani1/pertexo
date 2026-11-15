@@ -24,6 +24,9 @@ import {
 } from '@pertexo/workflow-model/server';
 import { platformPortableDefinitionPolicy } from '@pertexo/node-catalog/server';
 
+/** How many issues a compatibility report lists. */
+const COMPATIBILITY_ISSUES = 100;
+
 /** The definitions authoring accepts, with each integration's connection slots. */
 function projectDefinitionCatalog(catalog: typeof PLATFORM_NODE_CATALOG) {
   return Object.freeze({
@@ -114,7 +117,10 @@ export function createCoreAuthoringOptions(
         : {
             ...result,
             ok: false as const,
-            issues: [...result.issues, ...issues].slice(0, 100),
+            issues: [...result.issues, ...issues].slice(
+              0,
+              COMPATIBILITY_ISSUES,
+            ),
           };
     },
     executableCompiler: (

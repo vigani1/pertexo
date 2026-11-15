@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   type ArgumentsHost,
   type ExceptionFilter,
+  HttpStatus,
 } from '@nestjs/common';
 import { OAUTH2_CALLBACK_PATH } from '@pertexo/contracts';
 import {
@@ -59,7 +60,7 @@ class OAuth2CallbackFailureFilter implements ExceptionFilter {
           }>;
         }>
       >()
-      .code(303)
+      .code(HttpStatus.SEE_OTHER)
       .header('location', this.finish.interrupted().location)
       .send();
   }
@@ -92,7 +93,7 @@ export class ConnectionOAuth2Controller {
   @Get(OAUTH2_CALLBACK_PATH.slice(1))
   @RateLimit('identity_callback')
   @UseFilters(OAuth2CallbackFailureFilter)
-  @HttpCode(303)
+  @HttpCode(HttpStatus.SEE_OTHER)
   public async finishAuthorization(
     @Req() request: Readonly<{ headers: Readonly<Record<string, unknown>> }>,
     @Query() query: unknown,

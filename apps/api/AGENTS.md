@@ -59,6 +59,14 @@ environment only in `platform/config/`.
   `instance-limits.ts`), parsed once at startup and passed inward.
   `api-config.ts` and `api-configuration.errors.ts` are host-mounted
   internals (`MOUNTED_INTERNALS`); keep their built paths.
+- Limits are named where they bound something, and the limits check covers
+  the app. Shared ones have one owner: HTTP statuses are Nest's
+  `HttpStatus`; a token's random bytes are `SECRET_TOKEN_BYTES`
+  (`identity/secret-token.ts`); a provider callback's parameters are
+  `CALLBACK_LIMITS` (`authentication/journeys/callback-limits.ts`);
+  passwords, display names, the fresh sign-in window and account emails
+  come from `workflow-model`; raw headers are read through
+  `platform/http/raw-headers.ts`.
 - How routes check their answers: `platform/http/route-answer-check.ts`
   (production projects to the declared shape; other environments check
   strictly), set by `app.module.ts` from the config.
@@ -66,7 +74,10 @@ environment only in `platform/config/`.
 ## Rules
 
 - The route helper checks every answer against the route's declared
-  success body.
+  success body, so a service returns what it built and never parses it
+  against that schema again. A parse stays only when it is a rule of its
+  own (an over-limit validation report, a batch item whose malformed result
+  makes only that item unknown).
 - Errors are specific classes in each subject's `.errors.ts`; the problem
   filter turns them into safe messages once.
 

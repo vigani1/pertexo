@@ -184,7 +184,7 @@ describe('membership lifecycle commands (ADR 047)', () => {
       ),
     ).toMatchObject({
       code: 'auth.session_not_fresh',
-      safeDetail: 'Sign in again, then retry within five minutes.',
+      safeDetail: 'Sign in again, then retry within 5 minutes.',
     });
   });
 });

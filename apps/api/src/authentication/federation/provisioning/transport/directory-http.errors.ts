@@ -1,6 +1,9 @@
 import { recordAuthenticationFailure } from '../../../journeys/failures.js';
+import { HttpStatus } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import { DirectoryError } from '@pertexo/core/identity';
+import { formatByteSize } from '@pertexo/node-sdk';
+import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 
 export function sendDirectoryError(
   reply: FastifyReply,
@@ -33,48 +36,58 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
       readonly [number, string, string?]
     > = {
       unauthorized: [
-        401,
+        HttpStatus.UNAUTHORIZED,
         'A current provisioning bearer credential is required.',
       ],
-      forbidden: [403, 'This directory operation is not allowed.'],
-      not_found: [404, 'Directory resource not found.'],
+      forbidden: [
+        HttpStatus.FORBIDDEN,
+        'This directory operation is not allowed.',
+      ],
+      not_found: [HttpStatus.NOT_FOUND, 'Directory resource not found.'],
       stale: [
-        412,
+        HttpStatus.PRECONDITION_FAILED,
         'The directory resource changed. Reload it before retrying.',
         'invalidVers',
       ],
       limit: [
-        413,
+        HttpStatus.PAYLOAD_TOO_LARGE,
         'The directory request or result exceeds its limit. Send fewer operations, members or attributes.',
         'tooMany',
       ],
       invalid_value: [
-        400,
+        HttpStatus.BAD_REQUEST,
         'Use the supported core attributes and valid bounded values.',
         'invalidValue',
       ],
       invalid_filter: [
-        400,
+        HttpStatus.BAD_REQUEST,
         'Use a supported, bounded SCIM filter.',
         'invalidFilter',
       ],
       invalid_path: [
-        400,
+        HttpStatus.BAD_REQUEST,
         'Use a supported SCIM attribute path.',
         'invalidPath',
       ],
-      no_target: [400, 'No value matches the PATCH path.', 'noTarget'],
+      no_target: [
+        HttpStatus.BAD_REQUEST,
+        'No value matches the PATCH path.',
+        'noTarget',
+      ],
       mutability: [
-        400,
+        HttpStatus.BAD_REQUEST,
         'Server-managed attributes cannot be changed.',
         'mutability',
       ],
       uniqueness: [
-        409,
+        HttpStatus.CONFLICT,
         'The directory identifier is already in use.',
         'uniqueness',
       ],
-      owner_protected: [403, 'The recovery owner cannot be directory-managed.'],
+      owner_protected: [
+        HttpStatus.FORBIDDEN,
+        'The recovery owner cannot be directory-managed.',
+      ],
     };
     const [status, detail, type] = failures[error.reason];
     if (status === 401) reply.header('www-authenticate', 'Bearer');
@@ -95,8 +108,8 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
       );
       sendDirectoryError(
         reply,
-        413,
-        'Provisioning requests must fit within 1 MB.',
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        `Provisioning requests must fit within ${formatByteSize(DIRECTORY_LIMITS.requestBytes)}.`,
         'tooMany',
       );
       return;
@@ -109,7 +122,7 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
       );
       sendDirectoryError(
         reply,
-        415,
+        HttpStatus.UNSUPPORTED_MEDIA_TYPE,
         'Use application/scim+json or application/json.',
       );
       return;
@@ -127,7 +140,7 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
     );
     sendDirectoryError(
       reply,
-      400,
+      HttpStatus.BAD_REQUEST,
       'The request must contain valid SCIM JSON.',
       'invalidSyntax',
     );
@@ -139,5 +152,9 @@ export function directoryFailure(reply: FastifyReply, error: unknown): void {
     'internal_failure',
     'failed',
   );
-  sendDirectoryError(reply, 500, 'Provisioning is temporarily unavailable.');
+  sendDirectoryError(
+    reply,
+    HttpStatus.INTERNAL_SERVER_ERROR,
+    'Provisioning is temporarily unavailable.',
+  );
 }

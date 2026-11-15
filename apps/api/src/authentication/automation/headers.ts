@@ -3,17 +3,16 @@ import {
   type ParsedApiTokenCredential,
 } from '@pertexo/core/tenant-access';
 import type { RequestHeaders } from '../../platform/http/request-headers.js';
+import { rawHeaderValues } from '../../platform/http/raw-headers.js';
+
+const BEARER_PREFIX = 'Bearer ';
 
 export type AuthorizationHeaderSource = Readonly<{
   raw?: Readonly<{ rawHeaders?: readonly string[] }>;
 }>;
 
 function originalAuthorizationValues(rawHeaders: readonly string[]): string[] {
-  const values: string[] = [];
-  for (let index = 0; index < rawHeaders.length; index += 2)
-    if (rawHeaders[index]?.toLowerCase() === 'authorization')
-      values.push(rawHeaders[index + 1] ?? '');
-  return values;
+  return rawHeaderValues(rawHeaders, 'authorization');
 }
 
 export function hasAuthorizationHeader(
@@ -47,6 +46,7 @@ export function bearerCredential(
   let value: string | undefined;
   if (typeof raw === 'string') value = raw;
   else if (raw?.length === 1) value = raw[0];
-  if (value === undefined || !/^Bearer /iu.test(value)) return undefined;
-  return parseApiTokenCredential(value.slice(7));
+  if (value === undefined || !new RegExp(`^${BEARER_PREFIX}`, 'iu').test(value))
+    return undefined;
+  return parseApiTokenCredential(value.slice(BEARER_PREFIX.length));
 }

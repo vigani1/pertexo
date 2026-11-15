@@ -5,6 +5,11 @@ import { DOMParser } from '@xmldom/xmldom';
 
 import { FederationProofError } from '../failure.js';
 
+// Enveloped signature plus exclusive canonicalization, with room for one more.
+const MAXIMUM_TRANSFORMS = 3;
+// Base64 encodes in groups of four characters.
+const BASE64_QUANTUM = 4;
+
 export const SAML = 'urn:oasis:names:tc:SAML:2.0';
 export const SAML_ASSERTION = `${SAML}:assertion`;
 export const SAML_PROTOCOL = `${SAML}:protocol`;
@@ -158,7 +163,8 @@ export function requireModernSignature(parent: Element) {
     DSIG,
     'Transform',
   );
-  if (transforms.length === 0 || transforms.length > 3) return invalidSaml();
+  if (transforms.length === 0 || transforms.length > MAXIMUM_TRANSFORMS)
+    return invalidSaml();
   for (const transform of transforms) {
     const algorithm = requiredAttribute(transform, 'Algorithm');
     if (
@@ -173,7 +179,7 @@ export function decodeResponse(value: string): string {
   const invalidEncodedResponse =
     value.length === 0 ||
     value.length > SAML_LIMITS.encodedCharacters ||
-    value.length % 4 !== 0 ||
+    value.length % BASE64_QUANTUM !== 0 ||
     !/^[A-Za-z0-9+/]+={0,2}$/u.test(value);
   if (invalidEncodedResponse) return invalidSaml();
   const buffer = Buffer.from(value, 'base64');

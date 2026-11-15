@@ -23,6 +23,9 @@ import {
 } from '../connection-request.js';
 import { ConnectionResponseError } from './connection-management.errors.js';
 
+/** How long a connection command may take when its caller sets no deadline. */
+const CONNECTION_COMMAND_TIMEOUT_MILLIS = 30_000;
+
 export type ConnectionCommandInput = Readonly<{
   actor: ActorContext;
   routeWorkspaceId: string;
@@ -33,7 +36,7 @@ export type ConnectionCommandInput = Readonly<{
 }>;
 
 export const encryptionSignal = (input: ConnectionCommandInput): AbortSignal =>
-  input.signal ?? AbortSignal.timeout(30_000);
+  input.signal ?? AbortSignal.timeout(CONNECTION_COMMAND_TIMEOUT_MILLIS);
 
 export const encodeCredential = (
   credential: Readonly<{ type: string; clientSecret?: string }>,

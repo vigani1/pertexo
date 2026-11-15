@@ -18,6 +18,10 @@ import {
   unexpectedProblem,
   applicationProblemIssues,
 } from './problem-values.js';
+import { SAFE_DETAIL_MAX_CHARACTERS } from '../../application-error.js';
+
+/** The longest Retry-After a problem advertises. */
+const MAXIMUM_RETRY_AFTER_SECONDS = 5 * 60;
 
 export function fromApplicationError(
   error: ApplicationError,
@@ -25,7 +29,7 @@ export function fromApplicationError(
   const entry = APPLICATION_ERROR_CATALOG[error.code];
   const detail =
     entry.exposeDetail && error.safeDetail !== undefined
-      ? text(error.safeDetail, 2_000)
+      ? text(error.safeDetail, SAFE_DETAIL_MAX_CHARACTERS)
       : undefined;
   const issues = applicationProblemIssues(error);
   const base = {
@@ -74,7 +78,7 @@ function retryableApplicationProblem(
   return typeof retryAfterSeconds === 'number' &&
     Number.isSafeInteger(retryAfterSeconds) &&
     retryAfterSeconds >= 1 &&
-    retryAfterSeconds <= 300
+    retryAfterSeconds <= MAXIMUM_RETRY_AFTER_SECONDS
     ? { ...base, retryAfterSeconds }
     : base;
 }

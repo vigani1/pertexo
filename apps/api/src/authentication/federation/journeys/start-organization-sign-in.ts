@@ -1,4 +1,5 @@
 import type { OrganizationSignInCommands } from '@pertexo/core/identity';
+import { HttpStatus } from '@nestjs/common';
 import { WorkspaceAccessDeniedError } from '@pertexo/core/tenant-access';
 import { FederationConflictError } from '@pertexo/core/identity';
 import {
@@ -35,12 +36,12 @@ export async function prepareOrganizationStart(
     try {
       requireDoubleSubmitCsrf(request.headers);
     } catch {
-      return failure(403);
+      return failure(HttpStatus.FORBIDDEN);
     }
     const parsed = federationTestStartSchema.safeParse(raw);
-    if (!parsed.success) return failure(400);
+    if (!parsed.success) return failure(HttpStatus.BAD_REQUEST);
     owner = await input.authenticate(request);
-    if (owner === undefined) return failure(401);
+    if (owner === undefined) return failure(HttpStatus.UNAUTHORIZED);
     try {
       material = await input.commands.testProvider({
         ...parsed.data,
@@ -51,13 +52,13 @@ export async function prepareOrganizationStart(
         cause instanceof FederationConflictError ||
         cause instanceof WorkspaceAccessDeniedError
       )
-        return failure(403);
+        return failure(HttpStatus.FORBIDDEN);
       throw cause;
     }
     returnPath = `/w/${parsed.data.workspaceId}/settings/sso`;
   } else {
     const parsed = federationSignInStartSchema.safeParse(raw);
-    if (!parsed.success) return failure(400);
+    if (!parsed.success) return failure(HttpStatus.BAD_REQUEST);
     material = await input.commands.provider(
       parsed.data.providerId,
       parsed.data.domain,

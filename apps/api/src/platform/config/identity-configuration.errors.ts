@@ -1,4 +1,5 @@
 import { ApiConfigurationError } from './api-configuration.errors.js';
+import { IDENTITY_SETTING_LIMITS } from './identity-setting-limits.js';
 
 const remedies = {
   invalid_configuration:
@@ -6,7 +7,7 @@ const remedies = {
   incomplete_pair: 'supply both settings or remove both.',
   required_secret:
     // session-setting-exempt: an operator-facing configuration message, not SQL
-    'set BETTER_AUTH_SECRET to a private secret of at least 32 characters.',
+    `set BETTER_AUTH_SECRET to a private secret of at least ${String(IDENTITY_SETTING_LIMITS.secretMinimumCharacters)} characters.`,
   invitation_pair:
     'configure both invitation key settings together; keep them configured when deployed.',
   // session-setting-exempt: an operator-facing configuration message, not SQL

@@ -1,5 +1,11 @@
 import { traceparent } from '../../platform/http/tracing-headers.js';
-import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Req,
+  Res,
+  UseInterceptors,
+  HttpStatus,
+} from '@nestjs/common';
 import {
   authoringRoutes as routes,
   type RouteInput,
@@ -156,7 +162,7 @@ export class WorkflowAuthoringController {
       singleRequestHeader(request.headers, 'if-none-match') ===
       result.representationTag
     ) {
-      response.status(304);
+      response.status(HttpStatus.NOT_MODIFIED);
       return undefined;
     }
     return result.body;

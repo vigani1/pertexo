@@ -1,9 +1,16 @@
 import { PassThrough, Readable } from 'node:stream';
 import { finished, pipeline } from 'node:stream/promises';
-import { EXPORT_MAX_MILLIS, exportBudgetMillis } from './csv-limits.js';
+import {
+  EXPORT_IDLE_MILLIS,
+  EXPORT_MAX_MILLIS,
+  exportBudgetMillis,
+} from './csv-limits.js';
 import { watchExportProgress } from './csv-progress.js';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { withRequestOperationSignal } from '../request-operation-signal.js';
+
+/** How many bytes an export streams at a time. */
+const EXPORT_CHUNK_BYTES = 64 * 1_024;
 
 export type CsvDownload = Readonly<{
   filename: string;
@@ -42,13 +49,17 @@ export async function sendCsvDownload(
           }, exportBudgetMillis(metadata));
           deadline.unref();
           stopWatching = watchExportProgress(reply.raw, () => {
-            disconnected.abort(new Error('CSV export stalled for 60 seconds'));
+            disconnected.abort(
+              new Error(
+                `CSV export stalled for ${String(EXPORT_IDLE_MILLIS / 1_000)} seconds`,
+              ),
+            );
             abortResponse();
           });
           completion = finished(reply.raw, { signal, cleanup: true });
           // Observe early socket errors while the producer is still running.
           void completion.catch(() => undefined);
-          output = new PassThrough({ highWaterMark: 64 * 1024 });
+          output = new PassThrough({ highWaterMark: EXPORT_CHUNK_BYTES });
           output.once('error', abortResponse);
           reply.header('Content-Type', 'text/csv; charset=utf-8');
           reply.header(
@@ -61,7 +72,7 @@ export async function sendCsvDownload(
           await pipeline(
             Readable.from(csv, {
               objectMode: false,
-              highWaterMark: 64 * 1024,
+              highWaterMark: EXPORT_CHUNK_BYTES,
             }),
             output,
             { signal, end: false },

@@ -22,6 +22,9 @@ import type {
   FederationProviderUpdate,
   SamlConfiguration,
 } from '@pertexo/contracts';
+
+/** How long one DNS lookup for domain verification may take. */
+const DOMAIN_LOOKUP_TIMEOUT_MILLIS = 3_000;
 type Scope = Readonly<{
   workspaceId: string;
   actorId: string;
@@ -157,7 +160,10 @@ export class FederationManagementService {
     const replay = await this.store.verificationResult(input);
     if (replay !== null) return replay;
     const proof = await this.store.domainChallenge(input);
-    const resolver = new Resolver({ timeout: 3000, tries: 1 });
+    const resolver = new Resolver({
+      timeout: DOMAIN_LOOKUP_TIMEOUT_MILLIS,
+      tries: 1,
+    });
     const abort = () => {
       resolver.cancel();
     };

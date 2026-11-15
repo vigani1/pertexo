@@ -12,7 +12,10 @@ import {
   type CallbackKeyConfig,
 } from '@pertexo/secrets/server';
 import { parseCodeSettings, type CodeSettings } from '@pertexo/node-sdk';
-import { DEFAULT_INSTANCE_LIMITS } from './instance-limits.js';
+import {
+  DEFAULT_INSTANCE_LIMITS,
+  INSTANCE_LIMIT_MAXIMUMS,
+} from './instance-limits.js';
 import type { InstanceCapacity } from '@pertexo/database/platform';
 import { isIP } from 'node:net';
 import {
@@ -37,6 +40,14 @@ import {
   type ApiIdentityConfig,
 } from './identity-config.js';
 
+const CIDR_PARTS = 2;
+// node:net's isIP answers 4 or 6.
+const IPV4 = 4;
+const IPV4_BITS = 32;
+const IPV6_BITS = 128;
+/** The API's listening port: any TCP port, 3000 when unset. */
+const PORT_LIMITS = Object.freeze({ maximum: 65_535, default: 3_000 });
+
 const API_NODE_ENVIRONMENTS = [
   'development',
   'test',
@@ -46,14 +57,15 @@ const API_NODE_ENVIRONMENTS = [
 
 function isProxyNetwork(value: string): boolean {
   const parts = value.split('/');
-  if (parts.length > 2) return false;
+  // An address, optionally followed by one /prefix.
+  if (parts.length > CIDR_PARTS) return false;
   const version = isIP(parts[0] ?? '');
   if (version === 0) return false;
   const prefix = parts[1];
   if (prefix === undefined) return true;
   if (!/^\d{1,3}$/u.test(prefix)) return false;
   const bits = Number(prefix);
-  return bits >= 0 && bits <= (version === 4 ? 32 : 128);
+  return bits >= 0 && bits <= (version === IPV4 ? IPV4_BITS : IPV6_BITS);
 }
 
 const trustedProxyCidrsSchema = z
@@ -72,19 +84,19 @@ const instanceLimit = (fallback: number, maximum: number) =>
 const instanceLimitsSchema = z.object({
   WORKSPACE_ACTIVE_RUN_LIMIT: instanceLimit(
     DEFAULT_INSTANCE_LIMITS.activeRunLimit,
-    10_000,
+    INSTANCE_LIMIT_MAXIMUMS.activeRunLimit,
   ),
   WORKSPACE_QUEUED_RUN_LIMIT: instanceLimit(
     DEFAULT_INSTANCE_LIMITS.queuedRunLimit,
-    100_000,
+    INSTANCE_LIMIT_MAXIMUMS.queuedRunLimit,
   ),
   WORKSPACE_FILE_LIMIT: instanceLimit(
     DEFAULT_INSTANCE_LIMITS.artifactCountLimit,
-    10_000_000,
+    INSTANCE_LIMIT_MAXIMUMS.artifactCountLimit,
   ),
   WEBHOOK_ENDPOINT_BURST_LIMIT: instanceLimit(
     DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
-    1_000_000,
+    INSTANCE_LIMIT_MAXIMUMS.webhookEndpointBurstLimit,
   ),
 });
 
@@ -118,7 +130,12 @@ const apiEnvironmentSchema = databaseClientEnvironmentSchema.extend({
     .default('info'),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
   ...identityEnvironmentShape,
-  PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  PORT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(PORT_LIMITS.maximum)
+    .default(PORT_LIMITS.default),
   REDIS_URL: z
     .url()
     .refine((value) => {

@@ -2,6 +2,14 @@ import { context, trace, metrics, type Meter } from '@opentelemetry/api';
 import { API_PROBLEM_CODES } from '@pertexo/contracts';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
+// HTTP statuses come in classes of a hundred: 2xx is 200 to 299.
+const STATUS_CLASS_WIDTH = 100;
+/** The longest route template a metric labels; longer ones read as unmatched. */
+const ROUTE_LABEL_MAX_CHARACTERS = 256;
+/** The largest problem body read for its code. */
+const PROBLEM_PAYLOAD_MAX_CHARACTERS = 16 * 1_024;
+const NANOSECONDS_PER_SECOND = 1_000_000_000;
+
 export const API_METRIC_NAME = Object.freeze({
   availabilityRequests: 'pertexo.api.availability_request.count',
   requestDuration: 'pertexo.api.request.duration',
@@ -54,20 +62,26 @@ const correctnessFailures = new Set<string>([
 ]);
 
 function statusClass(statusCode: number): string {
-  return `${String(Math.floor(statusCode / 100))}xx`;
+  return `${String(Math.floor(statusCode / STATUS_CLASS_WIDTH))}xx`;
 }
 
 export function routeTemplate(
   request: Readonly<{ routeOptions?: Readonly<{ url?: unknown }> }>,
 ): string {
   const route = request.routeOptions?.url;
-  return typeof route === 'string' && route.length > 0 && route.length <= 256
+  return typeof route === 'string' &&
+    route.length > 0 &&
+    route.length <= ROUTE_LABEL_MAX_CHARACTERS
     ? route
     : 'unmatched';
 }
 
 function parseProblemCode(payload: unknown): string {
-  if (typeof payload !== 'string' || payload.length > 16_384) return 'none';
+  if (
+    typeof payload !== 'string' ||
+    payload.length > PROBLEM_PAYLOAD_MAX_CHARACTERS
+  )
+    return 'none';
   try {
     const parsed: unknown = JSON.parse(payload);
     if (typeof parsed !== 'object' || parsed === null || !('code' in parsed))
@@ -156,7 +170,10 @@ export function registerApiMetrics(
       requests.add(1, attributes);
       const start = startedAt.get(request);
       if (start !== undefined) {
-        duration.record(Number(now() - start) / 1_000_000_000, attributes);
+        duration.record(
+          Number(now() - start) / NANOSECONDS_PER_SECOND,
+          attributes,
+        );
       }
       if (eligible(route)) {
         const problem = responseProblemCodes.get(request) ?? 'none';

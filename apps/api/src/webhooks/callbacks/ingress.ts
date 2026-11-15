@@ -1,4 +1,5 @@
 import { ArtifactMetadataNotFoundError } from '@pertexo/core/artifacts';
+import { HttpStatus } from '@nestjs/common';
 import { toProblem } from '../../problems/api-problem-registry.js';
 import { hasHttpStatus } from '../../platform/http/problems/status.js';
 import { randomUUID } from 'node:crypto';
@@ -54,7 +55,7 @@ export function registerCallbackIngress(
         parseRequestId(request.headers['x-request-id']) ?? randomUUID();
       if (
         error instanceof StoredExecutionValueInvalidError ||
-        hasHttpStatus(error, 413)
+        hasHttpStatus(error, HttpStatus.PAYLOAD_TOO_LARGE)
       ) {
         await problem(reply, 'webhook.payload_too_large', requestId);
       } else if (error instanceof ArtifactMetadataNotFoundError) {
@@ -188,7 +189,7 @@ async function receive(
       redactText(canonical, [material.token, material.secret]),
     signal,
   });
-  await reply.code(202).send({ accepted: true });
+  await reply.code(HttpStatus.ACCEPTED).send({ accepted: true });
 }
 
 async function acceptCallbackPreflight(
@@ -227,7 +228,7 @@ async function acceptCallbackPreflight(
     .header('access-control-allow-methods', 'POST');
   if (headers.length > 0)
     reply.header('access-control-allow-headers', headers.join(', '));
-  await reply.code(204).send();
+  await reply.code(HttpStatus.NO_CONTENT).send();
   return;
 }
 

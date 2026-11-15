@@ -1,4 +1,5 @@
 import { withPlatformTransaction } from '@pertexo/database/platform';
+import { HttpStatus } from '@nestjs/common';
 import { TWO_FACTOR_ERROR_CODES } from 'better-auth/plugins/two-factor';
 import { isRecord } from '@pertexo/workflow-model';
 import type { Pool, PoolClient } from 'pg';
@@ -25,9 +26,15 @@ export function needsSecurityTransaction(request: Request): boolean {
 // These refusals happen before code consumption/session creation. Their writes
 // are the SDK's lockout budget, which must survive an incorrect-code response.
 const lockoutRefusals = new Map<string, number>([
-  [TWO_FACTOR_ERROR_CODES.INVALID_BACKUP_CODE.code, 401],
-  [TWO_FACTOR_ERROR_CODES.TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE.code, 400],
-  [TWO_FACTOR_ERROR_CODES.ACCOUNT_TEMPORARILY_LOCKED.code, 429],
+  [TWO_FACTOR_ERROR_CODES.INVALID_BACKUP_CODE.code, HttpStatus.UNAUTHORIZED],
+  [
+    TWO_FACTOR_ERROR_CODES.TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE.code,
+    HttpStatus.BAD_REQUEST,
+  ],
+  [
+    TWO_FACTOR_ERROR_CODES.ACCOUNT_TEMPORARILY_LOCKED.code,
+    HttpStatus.TOO_MANY_REQUESTS,
+  ],
 ]);
 
 async function isLockoutRefusal(response: Response): Promise<boolean> {

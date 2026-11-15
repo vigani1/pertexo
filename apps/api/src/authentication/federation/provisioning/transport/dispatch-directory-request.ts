@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { HttpStatus } from '@nestjs/common';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import {
   DirectoryError,
@@ -24,6 +25,7 @@ import {
   projectDirectoryDocument,
 } from '../protocol/scim-query.js';
 import type { DirectoryResourceType } from '../protocol/scim-protocol.js';
+import { SCIM_INTEGER_LIMITS } from '../protocol/scim-query.js';
 
 function sendDirectoryDocument(reply: FastifyReply, document: unknown): void {
   const body = JSON.stringify(document);
@@ -47,7 +49,7 @@ function expectedRevision(
   if (
     match?.[1] !== id ||
     !Number.isSafeInteger(revision) ||
-    revision > 2147483647
+    revision > SCIM_INTEGER_LIMITS.maximum
   )
     throw new DirectoryError('stale');
   return revision;
@@ -108,7 +110,7 @@ export async function dispatchDirectoryRequest(
   if (request.method === 'DELETE' && id !== undefined) {
     if (kind === 'User') await store.deleteUser(principal, id, revision);
     else await store.deleteGroup(principal, id, revision);
-    reply.code(204).send();
+    reply.code(HttpStatus.NO_CONTENT).send();
     return;
   }
   const resource = await resolveDirectoryResource(request, {
@@ -127,7 +129,7 @@ export async function dispatchDirectoryRequest(
   reply
     .header('etag', document.meta.version)
     .header('location', document.meta.location);
-  if (request.method === 'POST') reply.code(201);
+  if (request.method === 'POST') reply.code(HttpStatus.CREATED);
   sendDirectoryDocument(reply, projectDirectoryDocument(document, projection));
 }
 

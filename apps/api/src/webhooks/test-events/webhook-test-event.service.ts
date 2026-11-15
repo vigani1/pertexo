@@ -7,6 +7,11 @@ import type {
 
 import type { WebhookAuthentication } from '@pertexo/contracts';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
+import {
+  randomSecretToken,
+  SECRET_TOKEN_BYTES,
+} from '../../identity/secret-token.js';
+import { WEBHOOK_COMMAND_TIMEOUT_MILLIS } from '../command-deadline.js';
 
 export class WebhookTestEventService {
   constructor(
@@ -20,14 +25,14 @@ export class WebhookTestEventService {
     },
   ) {
     const id = generatePersistedId();
-    const key = randomBytes(32).toString('base64url');
-    const secret = randomBytes(32);
+    const key = randomSecretToken();
+    const secret = randomBytes(SECRET_TOKEN_BYTES);
     const signingSecret = secret.toString('base64url');
     try {
       const sealed = await this.encryption.seal(
         secret,
         { workspaceId: input.workspaceId, triggerId: id, secretVersionId: id },
-        input.signal ?? AbortSignal.timeout(30_000),
+        input.signal ?? AbortSignal.timeout(WEBHOOK_COMMAND_TIMEOUT_MILLIS),
       );
       const result = await this.store.start({
         ...input,

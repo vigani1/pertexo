@@ -4,9 +4,8 @@ import { parseRequestInput } from './request-input.js';
 
 const traceparentSchema = z
   .string()
-  .regex(/^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/u)
-  .refine((value) => value.slice(3, 35) !== '0'.repeat(32))
-  .refine((value) => value.slice(36, 52) !== '0'.repeat(16));
+  // Version 00; an all-zero trace or span id is invalid.
+  .regex(/^00-(?!0{32})[\da-f]{32}-(?!0{16})[\da-f]{16}-[\da-f]{2}$/u);
 
 export function traceparent(
   request: Readonly<{ headers?: RequestHeaders }>,

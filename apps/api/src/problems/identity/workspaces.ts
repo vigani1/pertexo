@@ -27,6 +27,7 @@ import {
 } from '../../platform/http/index.js';
 import { InvalidAuthenticatedWorkspaceContextError } from '../../workspaces/request/authenticated-context.errors.js';
 import { IdentityError } from '../../identity/identity.errors.js';
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
 
 export const identityProblems = [
   errorRegistration(InvalidWorkspaceInvitationCursorError, () =>
@@ -237,7 +238,7 @@ function identityProblem(error: IdentityError): ApplicationError {
     return applicationError('auth.unauthenticated');
   if (error.code === 'identity.session_not_fresh')
     return applicationError('auth.session_not_fresh', {
-      safeDetail: 'Sign in again, then retry within five minutes.',
+      safeDetail: `Sign in again, then retry within ${String(FRESH_SIGN_IN_WINDOW_MILLIS / 60 / 1_000)} minutes.`,
     });
   if (error.code === 'identity.csrf_failed') {
     return applicationError('auth.forbidden', {
