@@ -178,7 +178,7 @@ test('a public responder attaches files, sees refusals in place and sends only f
   ]);
   const photoFiles = page.getByRole('list', { name: 'Photos files' });
   await expect(
-    photoFiles.getByText('This file is over the 1 MB limit.', {
+    photoFiles.getByText('This file is 2 MB; the limit is 1 MB.', {
       exact: false,
     }),
   ).toBeVisible();
