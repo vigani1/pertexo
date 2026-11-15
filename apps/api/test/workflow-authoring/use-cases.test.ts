@@ -486,30 +486,28 @@ describe('workflow authoring application seams', () => {
       order: 'updated_desc',
     });
     await new CreateWorkflowService(store, access).execute({
-      actor,
+      actor: { ...actor, requestId: 'request-create', traceId: 'trace-create' },
       routeWorkspaceId: workspaceId,
       request: { name: 'Operations' },
       idempotencyKey: 'create-optional-context',
-      requestId: 'request-create',
-      traceId: 'trace-create',
     });
     await new SaveWorkflowDraftService(store, access).execute({
-      actor,
+      actor: { ...actor, requestId: 'request-save', traceId: 'trace-save' },
       routeWorkspaceId: workspaceId,
       workflowId,
       representationTag,
       graph,
-      requestId: 'request-save',
-      traceId: 'trace-save',
     });
     await new PublishWorkflowService(store, access).execute({
-      actor,
+      actor: {
+        ...actor,
+        requestId: 'request-publish',
+        traceId: 'trace-publish',
+      },
       routeWorkspaceId: workspaceId,
       workflowId,
       representationTag,
       idempotencyKey: 'publish-optional-context',
-      requestId: 'request-publish',
-      traceId: 'trace-publish',
       traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
     });
     await new ListWorkflowVersionsService(store, access).execute({
@@ -660,9 +658,12 @@ describe('workflow authoring application seams', () => {
     const signal = new AbortController().signal;
     const withSignal = await service.execute({
       ...base,
+      actor: {
+        ...actor,
+        requestId: 'diagnostic-request',
+        traceId: 'diagnostic-trace',
+      },
       signal,
-      requestId: 'diagnostic-request',
-      traceId: 'diagnostic-trace',
       traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
     });
     expect(publishWorkflow).toHaveBeenLastCalledWith(

@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import type {
   workflowCommentBodySchema,
   workflowCommentCreateSchema,
@@ -19,6 +20,7 @@ import {
   type WorkspaceStatus,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 type Scope = WorkflowApplicationInput & {
   workflowId: string;
   signal?: AbortSignal;
@@ -145,7 +147,7 @@ export class WorkflowCollaborationService {
   }
   private async scope(
     input: Scope,
-    allowedWorkspaceStatuses: readonly WorkspaceStatus[] = ['active'],
+    allowedWorkspaceStatuses: readonly WorkspaceStatus[] = ACTIVE_WORKSPACE_STATUSES,
   ) {
     await authorizeWorkspaceOperation({
       actor: input.actor,
@@ -163,10 +165,7 @@ export class WorkflowCollaborationService {
       workspaceId: input.routeWorkspaceId,
       workflowId: input.workflowId,
       actorId: input.actor.actorId,
-      requestId: input.actor.requestId,
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
+      ...requestIdentifiers(input.actor),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     };
   }

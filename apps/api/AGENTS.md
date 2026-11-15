@@ -41,6 +41,10 @@ environment only in `platform/config/`.
   and hands core `storeCaller(caller)` (a core store),
   `serviceCaller(caller)` (an API service) and `requestIdentifiers(caller)`
   (commands). It never projects the request itself.
+- A service builds a core command's context from its input with the same
+  file's `storeContext(input)` (workspace, actor and command token),
+  `commandContext(input)` (that and the request's identifiers) or
+  `requestIdentifiers(input.actor)`, never field by field.
 - A controller reaches core through one door: the area's core store,
   injected by token, or the area's service when routes need coordination
   the store doesn't do (config, secrets, several ports). A service exposes

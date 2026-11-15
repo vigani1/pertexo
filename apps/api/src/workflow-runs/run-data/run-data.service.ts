@@ -14,6 +14,7 @@ import type {
   WorkflowRunPersistence,
 } from '../ports.js';
 import { WorkflowRunNotFoundError } from '../workflow-runs.service.js';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 /** How many recent runs of one step a list shows by default. */
 const DEFAULT_STEP_RUNS = 20;
@@ -36,7 +37,7 @@ async function authorizeRunData(
     capability,
     access,
     disclosure: 'not_found',
-    allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+    allowedWorkspaceStatuses: UNPURGED_WORKSPACE_STATUSES,
     ...(input.authorizedWorkspace === undefined
       ? {}
       : { authorizedWorkspace: input.authorizedWorkspace }),

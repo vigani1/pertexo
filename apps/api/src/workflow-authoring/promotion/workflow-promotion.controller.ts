@@ -109,11 +109,6 @@ export class WorkflowPromotionController {
   }
 }
 
-/** Promotion keys records by the lower-case workspace ID, whatever the path's case. */
 function context(caller: WorkspaceCaller, request: WorkflowAuthoringRequest) {
-  return {
-    ...serviceCaller(caller),
-    routeWorkspaceId: caller.workspaceId.toLowerCase(),
-    ...traceparent(request),
-  };
+  return { ...serviceCaller(caller), ...traceparent(request) };
 }

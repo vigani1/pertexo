@@ -10,6 +10,7 @@ import type {
   WorkflowRunPersistence,
   WorkflowRunStatisticsWindow,
 } from './ports.js';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 const DEFAULT_STATISTICS_WINDOW = '24h';
 
@@ -41,7 +42,7 @@ export class GetWorkflowRunStatisticsService {
       capability: 'run:read',
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+      allowedWorkspaceStatuses: UNPURGED_WORKSPACE_STATUSES,
       ...(input.authorizedWorkspace === undefined
         ? {}
         : { authorizedWorkspace: input.authorizedWorkspace }),

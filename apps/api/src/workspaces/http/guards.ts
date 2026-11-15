@@ -36,6 +36,7 @@ import type { SignInEvidence } from '../../identity/index.js';
 
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import { SESSION_AUTHORITY, WORKSPACE_AUTHORIZATION } from '../tokens.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export const SESSION_COOKIE_NAME = 'pertexo_session';
 export const CSRF_COOKIE_NAME = 'pertexo_csrf';
@@ -139,7 +140,7 @@ class WorkspaceCapabilityGuard implements CanActivate {
     {
       contexts,
       disclosure = 'not_found',
-      allowedWorkspaceStatuses = ['active'],
+      allowedWorkspaceStatuses = ACTIVE_WORKSPACE_STATUSES,
     }: Readonly<{
       contexts: RequestContextStore;
       disclosure?: ('forbidden' | 'not_found') | undefined;
@@ -231,14 +232,20 @@ export const WorkspaceMemberReadGuard = capabilityGuard(
 export const WorkspaceMembershipGuard = capabilityGuard(
   WORKSPACE_AUTHORIZATION,
   'workspace:read',
-  { disclosure: 'forbidden', allowedWorkspaceStatuses: ['active'] },
+  {
+    disclosure: 'forbidden',
+    allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
+  },
 );
 
 /** Coarse route guard; persistence rechecks current roles and the transition. */
 export const WorkspaceMemberManageGuard = capabilityGuard(
   WORKSPACE_AUTHORIZATION,
   'member:manage',
-  { disclosure: 'forbidden', allowedWorkspaceStatuses: ['active'] },
+  {
+    disclosure: 'forbidden',
+    allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
+  },
 );
 
 function requestFrom(

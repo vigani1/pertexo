@@ -1,4 +1,4 @@
-import { commandCredential } from '../../authorization/credentials.js';
+import { storeContext } from '../../workspaces/request/caller.js';
 import {
   AuthorizationError,
   authorizeWorkspaceOperation,
@@ -6,6 +6,7 @@ import {
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type WorkflowOrganizationInput = WorkflowApplicationInput &
   Readonly<{ signal?: AbortSignal }>;
@@ -33,7 +34,7 @@ export async function authorizeWorkflowOrganization(
     disclosure: 'not_found',
     allowedWorkspaceStatuses: reading
       ? BROWSABLE_WORKSPACE_STATUSES
-      : ['active'],
+      : ACTIVE_WORKSPACE_STATUSES,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     ...(fresh || input.authorizedWorkspace === undefined
       ? {}
@@ -50,9 +51,7 @@ export async function authorizeWorkflowOrganization(
 
 export function workflowOrganizationContext(input: WorkflowOrganizationInput) {
   return {
-    workspaceId: input.routeWorkspaceId,
-    actorId: input.actor.actorId,
-    ...commandCredential(input.actor),
+    ...storeContext(input),
     ...(input.signal === undefined ? {} : { signal: input.signal }),
   };
 }

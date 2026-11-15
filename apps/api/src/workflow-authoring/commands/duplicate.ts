@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import type { workflowDuplicateRequestSchema } from '@pertexo/contracts';
 import type { WorkflowDuplicateResponse } from '@pertexo/contracts';
 import type { z } from 'zod';
@@ -15,6 +16,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type DuplicateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
@@ -47,7 +49,7 @@ export class DuplicateWorkflowService {
           routeWorkspaceId: input.routeWorkspaceId,
           access: this.authorization,
           disclosure: 'not_found' as const,
-          allowedWorkspaceStatuses: ['active'] as const,
+          allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
           ...(input.signal === undefined ? {} : { signal: input.signal }),
         };
         // Source read and destination create are distinct capability proofs.
@@ -77,11 +79,8 @@ export class DuplicateWorkflowService {
           name,
           source,
           idempotencyKey: input.idempotencyKey,
-          requestId: input.actor.requestId,
+          ...requestIdentifiers(input.actor),
           ...(representationTag === undefined ? {} : { representationTag }),
-          ...(input.actor.traceId === undefined
-            ? {}
-            : { traceId: input.actor.traceId }),
           ...(input.signal === undefined ? {} : { signal: input.signal }),
         });
       },

@@ -6,6 +6,7 @@ import {
 } from '../../authorization/index.js';
 import type { WorkflowRunApplicationInput } from '../ports.js';
 import { RunEventStreamUnauthorizedError } from './run-events.errors.js';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 type SseAuthorizationLifetimeInput = Pick<
   WorkflowRunApplicationInput,
@@ -112,11 +113,8 @@ export function createStreamAuthorizationLifetime(
       capability: input.capability ?? 'run:read',
       access: authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: input.allowedWorkspaceStatuses ?? [
-        'active',
-        'suspended',
-        'pending_deletion',
-      ],
+      allowedWorkspaceStatuses:
+        input.allowedWorkspaceStatuses ?? UNPURGED_WORKSPACE_STATUSES,
       signal,
     });
     signal.throwIfAborted();

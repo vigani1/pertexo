@@ -1,4 +1,4 @@
-import { commandCredential } from '../../authorization/credentials.js';
+import { commandContext } from '../../workspaces/request/caller.js';
 import type { z } from 'zod';
 import type {
   workflowAutoPauseSettingsRequestSchema,
@@ -12,6 +12,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 type WorkflowReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string }>;
@@ -101,7 +102,7 @@ export class WorkflowAutoPauseService {
       allowedWorkspaceStatuses:
         capability === 'workflow:read' || capability === 'workspace:read'
           ? BROWSABLE_WORKSPACE_STATUSES
-          : ['active'],
+          : ACTIVE_WORKSPACE_STATUSES,
       ...(input.authorizedWorkspace === undefined
         ? {}
         : { authorizedWorkspace: input.authorizedWorkspace }),
@@ -109,15 +110,6 @@ export class WorkflowAutoPauseService {
   }
 
   private commandContext(input: CommandInput<unknown>) {
-    return {
-      workspaceId: input.routeWorkspaceId,
-      actorId: input.actor.actorId,
-      ...commandCredential(input.actor),
-      idempotencyKey: input.idempotencyKey,
-      requestId: input.actor.requestId,
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
-    };
+    return { ...commandContext(input), idempotencyKey: input.idempotencyKey };
   }
 }

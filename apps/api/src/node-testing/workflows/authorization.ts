@@ -3,6 +3,7 @@ import {
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import type { NodeTestServiceInput } from '../node-testing.service.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 export type WorkflowTestServiceInput = Pick<
   NodeTestServiceInput,
   'actor' | 'routeWorkspaceId' | 'authorizedWorkspace' | 'workflowId'
@@ -28,7 +29,7 @@ export async function authorizeWorkflowTesting(
       : { authorizedWorkspace: input.authorizedWorkspace }),
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     capabilities: ['workflow:update', 'run:read', 'run:start'],
-    allowedWorkspaceStatuses: ['active'],
+    allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
     disclosure: 'not_found',
   });
 }

@@ -9,6 +9,7 @@ import type {
   WorkflowRunPersistence,
 } from '../ports.js';
 import { sha256 } from '../http/request-hashes.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type RecoveryPreviewInput = WorkflowRunApplicationInput &
   Readonly<{ runId: string }>;
@@ -28,7 +29,7 @@ async function authorize(
   await authorizeWorkspaceOperation({
     ...input,
     capability: 'run:replay',
-    allowedWorkspaceStatuses: ['active'],
+    allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
     disclosure: 'not_found',
     access: authorization,
   });

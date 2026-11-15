@@ -1,4 +1,7 @@
-import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
+import {
+  UNPURGED_WORKSPACE_STATUSES,
+  ACTIVE_WORKSPACE_STATUSES,
+} from '@pertexo/policy';
 import {
   normalizeWorkflowRunCreatedAt,
   type WorkflowRunCancelResponse,
@@ -59,7 +62,12 @@ export class StartWorkflowRunService {
   public async execute(
     input: StartWorkflowRunInput,
   ): Promise<WorkflowRunStartResponse> {
-    await authorize(input, 'run:start', this.authorization, ['active']);
+    await authorize(
+      input,
+      'run:start',
+      this.authorization,
+      ACTIVE_WORKSPACE_STATUSES,
+    );
     const deadlineAt =
       input.deadlineAt === undefined ? undefined : new Date(input.deadlineAt);
     const result = await this.persistence.start({
@@ -92,7 +100,12 @@ export class ReplayWorkflowRunService {
   public async execute(
     input: ReplayWorkflowRunInput,
   ): Promise<WorkflowRunStartResponse> {
-    await authorize(input, 'run:replay', this.authorization, ['active']);
+    await authorize(
+      input,
+      'run:replay',
+      this.authorization,
+      ACTIVE_WORKSPACE_STATUSES,
+    );
     const deadlineAt =
       input.deadlineAt === undefined ? undefined : new Date(input.deadlineAt);
     const result = await this.persistence.replay({
@@ -122,7 +135,7 @@ export class GetWorkflowRunService {
       input,
       'run:read',
       this.authorization,
-      ['active', 'suspended', 'pending_deletion'],
+      UNPURGED_WORKSPACE_STATUSES,
     );
     const result = await this.persistence.get({
       actorId: input.actor.actorId,
@@ -150,7 +163,7 @@ export class ListWorkflowRunsService {
       input,
       'run:read',
       this.authorization,
-      ['active', 'suspended', 'pending_deletion'],
+      UNPURGED_WORKSPACE_STATUSES,
     );
     const context = normalizedCursorContext(input);
     const includeWorkflowName =

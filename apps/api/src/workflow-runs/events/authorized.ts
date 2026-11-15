@@ -19,6 +19,7 @@ import {
 
 import type { StreamRunEventsInput } from '../access/workflow-run-inputs.types.js';
 import { WorkflowRunNotFoundError, authorize } from '../access/authorize.js';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 /** Maximum time an open stream may rely on a previously verified access fact. */
 const SSE_REAUTHORIZATION_INTERVAL_MS = 5_000;
@@ -36,11 +37,12 @@ export class StreamRunEventsService {
   public async execute(
     input: StreamRunEventsInput,
   ): Promise<AsyncIterable<WorkflowRunEventFrame>> {
-    await authorize(input, 'run:read', this.authorization, [
-      'active',
-      'suspended',
-      'pending_deletion',
-    ]);
+    await authorize(
+      input,
+      'run:read',
+      this.authorization,
+      UNPURGED_WORKSPACE_STATUSES,
+    );
     const run = await this.persistence.get({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,

@@ -16,7 +16,7 @@ import {
   tagResult,
   workspaceId,
 } from './organization-http.fixture.js';
-import { workspaceCaller } from '../../../src/workspaces/request/caller.js';
+import { workspaceCallerFor } from '../../workspaces/request/caller.fixture.js';
 
 function deniedRouteStatus(name: string) {
   return name === 'replaceTags' ? 404 : 403;
@@ -268,7 +268,7 @@ describe('organization controller registered HTTP seam (fake session and persist
     await expect(
       new WorkflowOrganizationController(f.commands, f.reads).createTag(
         request,
-        workspaceCaller(request, workspaceId),
+        workspaceCallerFor(request, workspaceId),
         {
           params: { workspaceId },
           body: { key: 'release' },

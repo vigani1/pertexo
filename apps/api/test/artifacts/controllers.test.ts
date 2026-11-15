@@ -5,7 +5,7 @@ import {
   type ArtifactServiceDependencies,
 } from '../../src/artifacts/index.js';
 import { ArtifactsController } from '../../src/artifacts/artifacts.controller.js';
-import { workspaceCaller } from '../../src/workspaces/request/caller.js';
+import { workspaceCallerFor } from '../workspaces/request/caller.fixture.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const guardActorId = '99999999-9999-4999-8999-999999999999';
@@ -125,7 +125,10 @@ describe('artifacts controller public seam', () => {
     fixture.beginUpload.mockResolvedValue(uploadResponse);
     await fixture.instance.beginUpload(
       request({}, { traceId: 'session-trace' }),
-      workspaceCaller(request({}, { traceId: 'session-trace' }), workspaceId),
+      workspaceCallerFor(
+        request({}, { traceId: 'session-trace' }),
+        workspaceId,
+      ),
       input({ workspaceId }, uploadBody, 'session-context'),
     );
     expect(fixture.beginUpload).toHaveBeenLastCalledWith(
@@ -158,7 +161,7 @@ describe('artifacts controller public seam', () => {
     };
     await fixture.instance.beginUpload(
       { ...base, authorizedWorkspace },
-      workspaceCaller({ ...base, authorizedWorkspace }, workspaceId),
+      workspaceCallerFor({ ...base, authorizedWorkspace }, workspaceId),
       input({ workspaceId }, uploadBody, 'guard-context'),
     );
     expect(fixture.beginUpload).toHaveBeenLastCalledWith(
@@ -176,7 +179,7 @@ describe('artifacts controller public seam', () => {
     await expect(
       fixture.instance.finalizeUpload(
         request(),
-        workspaceCaller(request(), workspaceId),
+        workspaceCallerFor(request(), workspaceId),
         input({ workspaceId, artifactId }, {}),
       ),
     ).resolves.toBe(metadataResponse);
@@ -195,7 +198,7 @@ describe('artifacts controller public seam', () => {
 
     await expect(
       fixture.instance.getMetadata(
-        workspaceCaller(request(), workspaceId),
+        workspaceCallerFor(request(), workspaceId),
         input({ workspaceId, artifactId }),
       ),
     ).resolves.toBe(metadataResponse);
@@ -213,7 +216,7 @@ describe('artifacts controller public seam', () => {
     await expect(
       fixture.instance.beginDownload(
         request(),
-        workspaceCaller(request(), workspaceId),
+        workspaceCallerFor(request(), workspaceId),
         input({ workspaceId, artifactId }),
       ),
     ).resolves.toBe(downloadResponse);

@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import { authorizeAuthoringOperation } from '../commands/authorization.js';
 import type { z } from 'zod';
 import type {
@@ -127,10 +128,7 @@ export class WorkflowInputCasesService {
     return {
       ...this.context(input),
       idempotencyKey: input.idempotencyKey,
-      requestId: input.actor.requestId,
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
+      ...requestIdentifiers(input.actor),
     };
   }
   private async authorize(

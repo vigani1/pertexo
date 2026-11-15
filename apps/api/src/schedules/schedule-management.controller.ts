@@ -1,20 +1,21 @@
-import { commandCredential } from '../authorization/credentials.js';
-import { Controller, Req, UseInterceptors } from '@nestjs/common';
+import { Controller, UseInterceptors } from '@nestjs/common';
 import { SCHEDULE_FIRE_TIME_DEFAULT_COUNT } from '@pertexo/contracts';
 import {
   scheduleRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import { requestIdentifier, traceIdentifier } from '../workspaces/index.js';
 import { In, Route } from '../platform/http/route.js';
-import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { ScheduleManagementService } from './schedule-management.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../problems/context/normalize-context-errors.js';
-import { Caller, type WorkspaceCaller } from '../workspaces/request/caller.js';
+import {
+  Caller,
+  requestIdentifiers,
+  storeCaller,
+  type WorkspaceCaller,
+} from '../workspaces/request/caller.js';
 
-type Request = IdentityWorkspaceRequest;
 type TriggerCommand = RouteInput<typeof routes.enable>;
 
 @UseInterceptors(domainErrors(authoringFailure))
@@ -73,38 +74,31 @@ export class ScheduleManagementController {
 
   @Route(routes.enable)
   public enable(
-    @Req() request: Request,
     @Caller() caller: WorkspaceCaller,
     @In() input: TriggerCommand,
   ) {
-    return this.setEnabled(request, caller, input, true);
+    return this.setEnabled(caller, input, true);
   }
 
   @Route(routes.disable)
   public disable(
-    @Req() request: Request,
     @Caller() caller: WorkspaceCaller,
     @In() input: TriggerCommand,
   ) {
-    return this.setEnabled(request, caller, input, false);
+    return this.setEnabled(caller, input, false);
   }
 
   private setEnabled(
-    request: Request,
     caller: WorkspaceCaller,
     { params, idempotencyKey }: TriggerCommand,
     enabled: boolean,
   ) {
-    const { actor } = caller;
-    const traceId = traceIdentifier(request);
     return this.service.setEnabled(
       {
         ...params,
-        actorId: actor.actorId,
-        ...commandCredential(actor),
+        ...storeCaller(caller),
         idempotencyKey,
-        requestId: requestIdentifier(request),
-        ...(traceId === undefined ? {} : { traceId }),
+        ...requestIdentifiers(caller),
       },
       { enabled },
     );

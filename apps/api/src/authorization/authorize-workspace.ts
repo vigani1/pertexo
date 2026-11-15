@@ -10,7 +10,7 @@ import type {
   WorkspaceAccess,
   WorkspaceStatus,
 } from './workspace-authorization.js';
-import { hasCapability } from '@pertexo/policy';
+import { hasCapability, ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type AuthorizationErrorCode =
   | 'auth.unauthenticated'
@@ -129,7 +129,8 @@ export async function authorizeWorkspace(
   if (record.membershipStatus !== 'active') {
     throw denied(disclosure, 'workspace membership is not active');
   }
-  const allowedWorkspaceStatuses = input.allowedWorkspaceStatuses ?? ['active'];
+  const allowedWorkspaceStatuses =
+    input.allowedWorkspaceStatuses ?? ACTIVE_WORKSPACE_STATUSES;
   if (!allowedWorkspaceStatuses.includes(record.workspaceStatus)) {
     throw denied(disclosure, 'workspace lifecycle does not allow this action');
   }
@@ -183,7 +184,8 @@ export function assertAuthorizedWorkspaceContext(
     );
   }
   input.signal?.throwIfAborted();
-  const allowedWorkspaceStatuses = input.allowedWorkspaceStatuses ?? ['active'];
+  const allowedWorkspaceStatuses =
+    input.allowedWorkspaceStatuses ?? ACTIVE_WORKSPACE_STATUSES;
   if (!allowedWorkspaceStatuses.includes(proof.workspaceStatus)) {
     throw denied(
       input.disclosure ?? 'forbidden',
