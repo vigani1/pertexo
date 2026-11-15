@@ -3,7 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../../../state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../../../execution-state.errors.js';
 import type { PendingCoordinatorFailure } from '../../load/coordinator-state.repository.js';
 
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';

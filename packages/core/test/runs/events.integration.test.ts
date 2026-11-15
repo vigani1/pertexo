@@ -10,7 +10,7 @@ import {
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
 import { acceptWorkflowRun } from '../../src/runs/commands/acceptance/accept.js';
-import { ExecutionStateConflictError } from '../../src/runs/state-errors.js';
+import { ExecutionStateConflictError } from '../../src/runs/execution-state.errors.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,

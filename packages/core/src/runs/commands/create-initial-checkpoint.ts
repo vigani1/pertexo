@@ -1,5 +1,5 @@
 import { QUEUED_EVENT_SEQUENCE } from '../queries/history/events.repository.js';
-import type { InitialCheckpointFactory } from './initial-checkpoint.js';
+import type { InitialCheckpointFactory } from './initial-checkpoint.types.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';

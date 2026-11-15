@@ -31,7 +31,7 @@ import {
   WorkspaceRunQuotaExceededError,
 } from '../commands/acceptance/run-admission.errors.js';
 import { findPublishedWorkflow } from '../queries/execution/published.repository.js';
-import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.types.js';
 import {
   ErrorWorkflowDeliveryMismatchError,
   ErrorWorkflowVersionUnavailableError,

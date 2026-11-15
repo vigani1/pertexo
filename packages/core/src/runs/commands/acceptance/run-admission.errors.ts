@@ -24,3 +24,16 @@ export class WorkflowAlreadyRunningError extends Error {
     super('This workflow is already running. Try again shortly.');
   }
 }
+
+export class RunVariableSnapshotUnavailableError extends Error {
+  override readonly name = 'RunVariableSnapshotUnavailableError';
+  constructor() {
+    super(
+      'The source run’s workspace variables have expired. Start a new run to use current values.',
+    );
+  }
+}
+
+export class RunRequiresFormError extends Error {
+  override readonly name = 'RunRequiresFormError';
+}

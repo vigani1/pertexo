@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from './initial-checkpoint.js';
+import type { InitialCheckpointFactory } from './initial-checkpoint.types.js';
 import type { WorkflowRecoveryPreparation } from '../recovery/workflow-recovery.types.js';
 
 export type StartPublishedWorkflowRunInput = Readonly<{

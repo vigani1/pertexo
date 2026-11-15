@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from '../../../src/runs/commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../../src/runs/commands/initial-checkpoint.types.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';

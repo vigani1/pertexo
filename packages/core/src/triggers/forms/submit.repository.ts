@@ -24,7 +24,7 @@ import {
 } from '@pertexo/workflow-model';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
 import { readWorkflowRunAcceptanceReplay } from '../../runs/commands/acceptance/replay.repository.js';
-import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.types.js';
 import { FormChangedError, FormUnavailableError } from './form.errors.js';
 import type { SubmitFormInput } from './form-admission.types.js';
 import { markFormUploadsSubmitted } from '../../artifacts/form-uploads/unsent.repository.js';

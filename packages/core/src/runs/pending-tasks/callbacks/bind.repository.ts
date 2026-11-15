@@ -5,7 +5,7 @@ import { nodeRuns, pendingRunTasks } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import type { PendingTaskIntent } from '@pertexo/workflow-engine';
-import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
 import { callbackScopeHash } from './scope-hash.js';
 
 export async function bindCallbackTask(

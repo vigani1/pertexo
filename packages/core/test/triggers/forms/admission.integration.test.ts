@@ -16,7 +16,7 @@ import {
 } from '../../../src/triggers/forms/form.errors.js';
 import { admin } from '../../lifecycle/calls/calls.fixture.js';
 import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
-import { RunRequiresFormError } from '../../../src/runs/commands/acceptance/forms.repository.js';
+import { RunRequiresFormError } from '../../../src/runs/commands/acceptance/run-admission.errors.js';
 import { Client, Pool } from 'pg';
 import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { parseDatabaseConfig } from '@pertexo/database/platform';

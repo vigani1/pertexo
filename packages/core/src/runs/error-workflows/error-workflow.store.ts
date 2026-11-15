@@ -12,7 +12,7 @@ import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.types.js';
 import { ErrorWorkflowDeliveryMismatchError } from './error-workflow.errors.js';
 import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
 import { acceptErrorWorkflow } from './accept.repository.js';

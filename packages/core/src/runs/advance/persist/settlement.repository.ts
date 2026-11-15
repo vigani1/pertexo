@@ -6,7 +6,7 @@ import type { PoolClient } from 'pg';
 
 import type { WorkflowCheckpoint } from '@pertexo/workflow-engine';
 
-import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 /** Terminal physical nodes retain no logical control or scheduled wakeup. */

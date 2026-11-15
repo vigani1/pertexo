@@ -13,7 +13,7 @@ import {
   migrateDatabase,
   dropDisconnectedDatabase,
 } from '@pertexo/database/testing';
-import { CoordinatorRunStateCorruptError } from '../../../src/runs/state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../../../src/runs/execution-state.errors.js';
 import { createFailureNotificationStore } from '../../../src/notifications/failure-notification.store.js';
 import {
   createDeadlineWakeupScanner,

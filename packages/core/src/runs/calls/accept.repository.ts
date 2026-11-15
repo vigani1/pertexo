@@ -30,7 +30,7 @@ import {
   WorkspaceRunAdmissionDeniedError,
   WorkspaceRunQuotaExceededError,
 } from '../commands/acceptance/run-admission.errors.js';
-import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.types.js';
 import { findLockedReplayVersion } from '../commands/execution-sources.repository.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
 import { WorkflowCallRefusedError } from './workflow-call.errors.js';

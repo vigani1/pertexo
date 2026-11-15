@@ -183,7 +183,7 @@ export type {
 export {
   ExecutionStateConflictError,
   RunEventGapError,
-} from './runs/state-errors.js';
+} from './runs/execution-state.errors.js';
 export { requestWorkflowRunCancellation } from './runs/commands/request-cancellation.js';
 export { createPublishedWorkflowReader } from './runs/queries/execution/published.repository.js';
 export type {
@@ -238,7 +238,7 @@ export {
   WorkflowRunNotFoundError,
   WorkflowRunReadCapacityError,
 } from './runs/workflow-run.errors.js';
-export type { InitialCheckpointFactory } from './runs/commands/initial-checkpoint.js';
+export type { InitialCheckpointFactory } from './runs/commands/initial-checkpoint.types.js';
 export type {
   CancelWorkflowRunInput,
   StartPublishedWorkflowRunInput,
@@ -348,7 +348,7 @@ export type {
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
-} from './runs/state-errors.js';
+} from './runs/execution-state.errors.js';
 export type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,

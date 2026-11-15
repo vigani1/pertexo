@@ -4,7 +4,7 @@ import type { EventCoordinationReceipt } from '@pertexo/workflow-model';
 
 import type { WebhookAuthentication } from '@pertexo/contracts';
 
-import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.types.js';
 import type { z } from 'zod';
 
 import type { WorkflowTriggerHealth } from '../../reconciliation/trigger-reconciliation.types.js';
