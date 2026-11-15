@@ -15,7 +15,7 @@ import type {
   ConnectionRecord,
   ListConnectionsInput,
   ReadConnectionInput,
-} from '../connection.js';
+} from '../connection.types.js';
 import { withOAuth2Facts } from '../oauth2/clients.repository.js';
 import { connectionFields } from '../connections.repository.js';
 

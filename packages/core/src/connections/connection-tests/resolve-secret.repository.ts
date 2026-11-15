@@ -12,12 +12,12 @@ import {
 import type {
   ResolveConnectionTestSecretInput,
   ResolvedConnectionSecretRecord,
-} from '../connection.js';
+} from '../connection.types.js';
+import { CONNECTION_EVENT_TYPE } from '@pertexo/workflow-model';
 import {
-  CONNECTION_EVENT_TYPE,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { appendConnectionEvent } from '../events.repository.js';
 import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';
 import { connectionSecrets } from '../runtime/credentials.repository.js';

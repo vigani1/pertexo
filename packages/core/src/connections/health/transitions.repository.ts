@@ -5,12 +5,12 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { connections } from '@pertexo/database/schema';
+import type { ConnectionRecord } from '../connection.types.js';
 import {
   CONNECTION_EVENT_TYPE,
-  type ConnectionRecord,
   type ConnectionStatus,
   type ConnectionTestOutcome,
-} from '../connection.js';
+} from '@pertexo/workflow-model';
 import { appendConnectionEvent } from '../events.repository.js';
 import { connectionFields } from '../connections.repository.js';
 import { isStaleTestObservation } from './rules.js';

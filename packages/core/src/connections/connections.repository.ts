@@ -14,10 +14,8 @@ import {
   type ConnectionCapability,
 } from '../shared/resources/connection-scope.repository.js';
 import type { ResourceActor } from '../shared/folder-access.types.js';
-import {
-  ConnectionNotFoundError,
-  type ConnectionRecord,
-} from './connection.js';
+import type { ConnectionRecord } from './connection.types.js';
+import { ConnectionNotFoundError } from './connection.errors.js';
 
 export const connectionFields = {
   id: connections.id,

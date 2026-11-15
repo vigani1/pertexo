@@ -1,7 +1,7 @@
 import type {
   ConnectionRecord,
   SealedConnectionSecretRecord,
-} from '../connection.js';
+} from '../connection.types.js';
 
 /** A token row as read, with the database's clock: expiry is judged in TypeScript. */
 export type OAuth2TokenRecord = Readonly<{

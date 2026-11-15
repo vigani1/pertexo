@@ -11,7 +11,7 @@ import type { Role } from '@pertexo/policy';
 import type { FolderScope } from '../../shared/folder-access.types.js';
 import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
 import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
-import { ConnectionNotFoundError } from '../connection.js';
+import { ConnectionNotFoundError } from '../connection.errors.js';
 import { requireVisibleConnection } from '../connections.repository.js';
 import type {
   ConnectionUsagePage,

@@ -26,7 +26,7 @@ import {
   ConnectionNotFoundError,
   ConnectionSharingCorruptError,
   ConnectionSharingRevisionConflictError,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { connectionCommand, connectionCommandScope } from '../receipts.js';
 
 async function readSharing(

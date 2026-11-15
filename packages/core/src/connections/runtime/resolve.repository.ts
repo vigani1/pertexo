@@ -9,14 +9,16 @@ import type {
   AssertConnectionSecretCurrentInput,
   ResolveConnectionSecretInput,
   ResolvedConnectionSecretRecord,
-} from '../connection.js';
+} from '../connection.types.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
+} from '@pertexo/workflow-model';
+import {
   ConnectionOAuth2NotConnectedError,
   ConnectionOAuth2RevokedError,
   ConnectionUnavailableError,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { selectConnection } from '../connections.repository.js';
 import { withConnectionTransaction } from '../transaction.js';
 import { connectionSecrets } from './credentials.repository.js';

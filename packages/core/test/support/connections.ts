@@ -5,16 +5,16 @@ import { Pool } from 'pg';
 import type { DatabaseError, PoolClient } from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 
+import type { CreateConnectionInput } from '../../src/connections/connection.types.js';
+import { CONNECTION_AUTH_TYPE } from '@pertexo/workflow-model';
 import {
-  CONNECTION_AUTH_TYPE,
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-  type CreateConnectionInput,
-} from '../../src/connections/connection.js';
+} from '../../src/connections/connection.errors.js';
 import {
   createConnectionStore,
   type ConnectionLookupStore,

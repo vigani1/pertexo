@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { ConnectionTestOutcome } from '../connection.js';
+import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 
 /** A claim that hasn't moved in this long lost its request, so a retry may take it over. */
 export const CONNECTION_TEST_CLAIM_STALE_SECONDS = 120;

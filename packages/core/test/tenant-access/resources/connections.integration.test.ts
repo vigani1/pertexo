@@ -5,7 +5,10 @@ import {
 import { createWorkflowAuthoringFixtureDatabase } from '../../support/workflow-authoring-admission.fixture.js';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
+import {
+  CONNECTION_AUTH_TYPE,
+  InvalidWorkflowGraphError,
+} from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import {
   actorId,
@@ -19,10 +22,9 @@ import {
 } from '../../support/workflow-authoring.js';
 import { createConnectionStore } from '../../../src/connections/connection.store.js';
 import {
-  CONNECTION_AUTH_TYPE,
   ConnectionNotFoundError,
   ConnectionSharingRevisionConflictError,
-} from '../../../src/connections/connection.js';
+} from '../../../src/connections/connection.errors.js';
 
 const builder = randomUUID(),
   viewer = randomUUID(),

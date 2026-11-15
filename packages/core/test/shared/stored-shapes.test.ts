@@ -28,7 +28,7 @@ import type { ArtifactStatus } from '../../src/artifacts/artifact.js';
 import type {
   ConnectionAuthType,
   ConnectionStatus,
-} from '../../src/connections/connection.js';
+} from '@pertexo/workflow-model';
 import type { DirectoryUserProfile } from '../../src/identity/federation/provisioning/directory-provisioning.types.js';
 import type { FailureNotificationClaimResult } from '../../src/notifications/failure-notification.types.js';
 import type {
