@@ -26,6 +26,9 @@ import {
   isRenewable,
   type OAuth2StoredTokens,
 } from './stored.js';
+
+// A grant with no refresh token is retried after this long, in case it is reconnected.
+const MISSING_REFRESH_TOKEN_RETRY_SECONDS = 15;
 const COMMIT_ATTEMPTS = 3;
 const COMMIT_DELAY_MILLIS = 1_000;
 /** Sealing must not hold a refresh that has already been answered for long. */
@@ -315,7 +318,10 @@ export async function refreshOAuth2Grant(
       }),
     );
   if (stored.refreshToken === undefined)
-    return actOnAnswer(refreshing, { kind: 'invalid', retryAfterSeconds: 15 });
+    return actOnAnswer(refreshing, {
+      kind: 'invalid',
+      retryAfterSeconds: MISSING_REFRESH_TOKEN_RETRY_SECONDS,
+    });
   return actOnAnswer(
     refreshing,
     await dependencies.requestToken(settings, clientSecret, {

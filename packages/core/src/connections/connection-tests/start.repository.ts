@@ -1,4 +1,5 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
+import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -64,7 +65,7 @@ export async function startConnectionTest(
       requestHash: records.requestHash,
       status: records.status,
       resultRef: records.resultRef,
-      stale: sql<boolean>`${records.updatedAt}<transaction_timestamp()-${CONNECTION_TEST_CLAIM_STALE_SECONDS}*interval '1 second'`,
+      stale: sql<boolean>`${records.updatedAt}<transaction_timestamp()-${CONNECTION_TEST_CLAIM_STALE_SECONDS}*${SECOND_INTERVAL}`,
     })
     .from(records)
     .where(identity)
