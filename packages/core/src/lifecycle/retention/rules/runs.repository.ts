@@ -29,7 +29,7 @@ import {
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { expiredRunSql } from '../../../shared/run-retention.repository.js';
+import { expiredRunSql } from '../../../shared/run-records/run-retention.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { callHasNoPendingWork } from './calls.repository.js';
 

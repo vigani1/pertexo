@@ -23,7 +23,7 @@ import {
   workspaceExecutionEntitlementVersions,
 } from '@pertexo/database/schema';
 
-import { RUN_SUMMARY_RETENTION_SQL } from '../../../shared/run-retention.repository.js';
+import { RUN_SUMMARY_RETENTION_SQL } from '../../../shared/run-records/run-retention.repository.js';
 import type { AuthoringAccess } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import {

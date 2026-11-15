@@ -10,13 +10,13 @@ import {
   createWorkspaceDatabase,
 } from '@pertexo/database/platform';
 import { acceptWorkflowRun } from '../../src/runs/commands/acceptance/accept.js';
-import { ExecutionStateConflictError } from '../../src/shared/execution-state.errors.js';
+import { ExecutionStateConflictError } from '../../src/shared/run-records/execution-state.errors.js';
 import {
   migrateDatabase,
   createDisposableDatabaseFixture,
 } from '@pertexo/database/testing';
 import { readRunEventsAfter } from '../../src/runs/queries/history/events.repository.js';
-import { appendRunEvent } from '../../src/shared/run-events.repository.js';
+import { appendRunEvent } from '../../src/shared/run-records/run-events.repository.js';
 
 const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 const migrationBaseUrl = testStackSetting('DATABASE_MIGRATION_URL');

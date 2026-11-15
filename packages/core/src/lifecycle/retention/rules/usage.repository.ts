@@ -1,6 +1,6 @@
 import { usageEvents } from '@pertexo/database/schema';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { RUN_SUMMARY_RETENTION_SQL } from '../../../shared/run-retention.repository.js';
+import { RUN_SUMMARY_RETENTION_SQL } from '../../../shared/run-records/run-retention.repository.js';
 import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 
 const skipsExpired = and(

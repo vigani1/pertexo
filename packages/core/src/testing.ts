@@ -174,14 +174,14 @@ export { readRunEventsAfter } from './runs/queries/history/events.repository.js'
 export {
   appendRunEvent,
   RUN_EVENT_TYPE,
-} from './shared/run-events.repository.js';
+} from './shared/run-records/run-events.repository.js';
 export type {
   PersistedRunEvent,
   RunEventPage,
 } from './runs/queries/history/events.repository.js';
-export type { RunEventType } from './shared/run-events.repository.js';
+export type { RunEventType } from './shared/run-records/run-events.repository.js';
 export { RunEventGapError } from './runs/advance/coordinator-state.errors.js';
-export { ExecutionStateConflictError } from './shared/execution-state.errors.js';
+export { ExecutionStateConflictError } from './shared/run-records/execution-state.errors.js';
 export { requestWorkflowRunCancellation } from './runs/commands/request-cancellation.js';
 export { createPublishedWorkflowReader } from './runs/queries/execution/published.repository.js';
 export type {

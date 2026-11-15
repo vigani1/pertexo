@@ -1,4 +1,4 @@
-import { ExecutionStateConflictError } from '../../shared/execution-state.errors.js';
+import { ExecutionStateConflictError } from '../../shared/run-records/execution-state.errors.js';
 
 export class RunEventGapError extends ExecutionStateConflictError {
   public override readonly name = 'RunEventGapError';

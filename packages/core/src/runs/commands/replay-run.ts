@@ -1,5 +1,5 @@
 import { acceptWorkflowRunWithAudit } from './accept-with-audit.js';
-import { isTestRun } from '../../shared/run-retention.repository.js';
+import { isTestRun } from '../../shared/run-records/run-retention.repository.js';
 import {
   findLockedReplayVersion,
   lockReplaySourceRow,

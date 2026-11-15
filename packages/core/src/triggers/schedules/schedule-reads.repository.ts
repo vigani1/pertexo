@@ -27,7 +27,7 @@ import type {
 
 import type { Pool, PoolClient } from 'pg';
 
-import { withWorkflowAccess } from '../workflow-access.js';
+import { withWorkflowAccess } from '../../shared/workflow-access.js';
 import { ScheduleTriggerError } from './schedule-trigger.errors.js';
 import {
   readPersistedScheduleRecurrence,

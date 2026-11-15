@@ -2,12 +2,12 @@ import {
   lockRunCancellation,
   markRunCancelRequested,
 } from './cancellation.repository.js';
-import { ExecutionStateConflictError } from '../../shared/execution-state.errors.js';
+import { ExecutionStateConflictError } from '../../shared/run-records/execution-state.errors.js';
 import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import {
   appendLockedRunEvent,
   RUN_EVENT_TYPE,
-} from '../../shared/run-events.repository.js';
+} from '../../shared/run-records/run-events.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 interface Cancellation {

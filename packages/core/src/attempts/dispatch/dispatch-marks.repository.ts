@@ -11,7 +11,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { EXECUTION_SOURCE_SQL } from '../../shared/execution-source.repository.js';
+import { EXECUTION_SOURCE_SQL } from '../../shared/run-records/execution-source.repository.js';
 import { runAbortReason } from '../control.repository.js';
 import type { MarkDispatchedInput } from '../node-attempt.js';
 

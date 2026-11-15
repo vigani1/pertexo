@@ -14,7 +14,7 @@ import {
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
-import { withWorkflowAccess } from '../../../triggers/workflow-access.js';
+import { withWorkflowAccess } from '../../../shared/workflow-access.js';
 import { readTestEventDraft } from './authority.repository.js';
 import {
   captureTestEvent,

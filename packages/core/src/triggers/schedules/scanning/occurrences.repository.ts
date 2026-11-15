@@ -1,4 +1,4 @@
-import type { ScheduleRunInput } from '../../../shared/trigger-run-input.schemas.js';
+import type { ScheduleRunInput } from '../../../shared/run-records/schedule-run-input.schemas.js';
 import { admitInSavepoint } from '../../admission-savepoint.repository.js';
 import { scheduleCanFire } from '../schedule-standing.js';
 import { scheduleFailureReason } from '../../trigger-failure.js';

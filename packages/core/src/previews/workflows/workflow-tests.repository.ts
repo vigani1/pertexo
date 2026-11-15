@@ -8,7 +8,7 @@ import {
   testRunSql,
   retainedTestRunSql,
   runRetentionIntervalSql,
-} from '../../shared/run-retention.repository.js';
+} from '../../shared/run-records/run-retention.repository.js';
 import type { PoolClient } from 'pg';
 
 import { WorkflowTestError } from './workflow-test.errors.js';

@@ -92,5 +92,3 @@ export type {
   FormUpload,
   FormUploadTarget,
 } from './forms/uploads/form-upload.types.js';
-
-export type {} from './workflow-access.js';
