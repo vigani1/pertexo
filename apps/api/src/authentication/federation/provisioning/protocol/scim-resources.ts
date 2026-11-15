@@ -10,32 +10,60 @@ import {
   type DirectoryGroupValues,
 } from '@pertexo/core/identity';
 import { canonicalDocument, requireSupportedInput } from './scim-protocol.js';
-import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
+import {
+  DISPLAY_NAME_MAX_CHARACTERS,
+  EMAIL_ADDRESS_LIMITS,
+} from '@pertexo/workflow-model';
+
+/** SCIM fields' lengths beyond names and emails. */
+const SCIM_FIELD_LIMITS = Object.freeze({
+  typeCharacters: 64,
+  honorificCharacters: 128,
+  longTextCharacters: 512,
+});
 
 const email = z.object({
-  value: z.email().max(320),
-  type: z.string().max(64).optional(),
+  value: z.email().max(EMAIL_ADDRESS_LIMITS.accountCharacters),
+  type: z.string().max(SCIM_FIELD_LIMITS.typeCharacters).optional(),
   primary: z.boolean().default(false),
 });
 const name = z.object({
-  formatted: z.string().max(512).optional(),
-  familyName: z.string().max(256).optional(),
-  givenName: z.string().max(256).optional(),
-  middleName: z.string().max(256).optional(),
-  honorificPrefix: z.string().max(128).optional(),
-  honorificSuffix: z.string().max(128).optional(),
+  formatted: z.string().max(SCIM_FIELD_LIMITS.longTextCharacters).optional(),
+  familyName: z.string().max(DISPLAY_NAME_MAX_CHARACTERS).optional(),
+  givenName: z.string().max(DISPLAY_NAME_MAX_CHARACTERS).optional(),
+  middleName: z.string().max(DISPLAY_NAME_MAX_CHARACTERS).optional(),
+  honorificPrefix: z
+    .string()
+    .max(SCIM_FIELD_LIMITS.honorificCharacters)
+    .optional(),
+  honorificSuffix: z
+    .string()
+    .max(SCIM_FIELD_LIMITS.honorificCharacters)
+    .optional(),
 });
 const userSchema = z.object({
-  userName: z.string().trim().min(1).max(320),
-  externalId: z.string().min(1).max(512).optional(),
+  userName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(EMAIL_ADDRESS_LIMITS.accountCharacters),
+  externalId: z
+    .string()
+    .min(1)
+    .max(SCIM_FIELD_LIMITS.longTextCharacters)
+    .optional(),
   active: z.boolean().default(true),
-  displayName: z.string().max(512).optional(),
+  displayName: z.string().max(SCIM_FIELD_LIMITS.longTextCharacters).optional(),
   name: name.optional(),
   emails: z.array(email).min(1).max(DIRECTORY_LIMITS.emailsPerUser),
 });
 const groupSchema = z.object({
   displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_CHARACTERS),
-  externalId: z.string().min(1).max(512).optional(),
+  externalId: z
+    .string()
+    .min(1)
+    .max(SCIM_FIELD_LIMITS.longTextCharacters)
+    .optional(),
   members: z
     .array(z.object({ value: z.uuid(), type: z.literal('User').optional() }))
     .max(DIRECTORY_LIMITS.membersPerGroup)

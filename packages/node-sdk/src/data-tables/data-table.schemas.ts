@@ -33,6 +33,7 @@ export const DATA_TABLE_LIMITS = Object.freeze({
   batchRows: 1_000,
   resultBytes: 1_048_576,
   keyBytes: 1024,
+  csvImportBytes: 1_048_576,
   queryFilters: 10,
   defaultQueryRows: 100,
   // Table and column names; the two patterns below spell the same length.

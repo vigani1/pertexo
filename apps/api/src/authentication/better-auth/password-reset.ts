@@ -6,6 +6,10 @@ import type { BetterAuthPlugin } from 'better-auth';
 import type { Pool } from 'pg';
 import { z } from 'zod';
 import type { AuthenticationMail } from '../mail/authentication-mail.js';
+import { randomSecretToken } from '../../identity/secret-token.js';
+
+/** A reset link's token: 192 random bits, short enough for a mailed URL. */
+const RESET_TOKEN_BYTES = 24;
 
 /** Replace native issuance so lookup, proof and mail share the user lock. */
 export function createPasswordResetPlugin(
@@ -33,11 +37,9 @@ export function createPasswordResetPlugin(
         },
         async (context) => {
           // Comparable bounded work for all addresses, including absent credentials.
-          await context.context.password.hash(
-            randomBytes(32).toString('base64url'),
-          );
+          await context.context.password.hash(randomSecretToken());
           try {
-            const token = randomBytes(24).toString('base64url');
+            const token = randomBytes(RESET_TOKEN_BYTES).toString('base64url');
             const callback = encodeURIComponent(context.body.redirectTo ?? '');
             const url = `${context.context.baseURL}/reset-password/${token}?callbackURL=${callback}`;
             const issued = await issuePasswordResetProof(pool, {

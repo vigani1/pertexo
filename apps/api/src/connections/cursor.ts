@@ -5,12 +5,13 @@ import {
   decodeOpaqueCursor,
   encodeOpaqueCursor,
   opaqueCursor,
+  CURSOR_TIMESTAMP_PRECISION,
 } from '../platform/http/opaque-cursor.js';
 
 const connectionCursorPayloadSchema = opaqueCursor('connections', {
   status: connectionStatusSchema,
   createdAt: z.iso
-    .datetime({ precision: 6 })
+    .datetime({ precision: CURSOR_TIMESTAMP_PRECISION })
     .refine((value) => !value.startsWith('0000-'), {
       message: 'PostgreSQL timestamps do not support year zero',
     }),

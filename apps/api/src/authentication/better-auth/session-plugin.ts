@@ -34,6 +34,12 @@ import {
 import { AuthenticationTransactionError } from './transactions/authentication-transaction.errors.js';
 import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
 
+/** The session token a revoke request may name. */
+const SESSION_TOKEN_LIMITS = Object.freeze({
+  minimumCharacters: 16,
+  maximumCharacters: 512,
+});
+
 type BeforeHooks = NonNullable<
   NonNullable<BetterAuthPlugin['hooks']>['before']
 >;
@@ -283,7 +289,14 @@ function internalSessionEndpoints(pool: Pool) {
       '/internal/session/deliver',
       {
         method: 'POST',
-        body: z.object({ token: z.string().min(16).max(512) }).strict(),
+        body: z
+          .object({
+            token: z
+              .string()
+              .min(SESSION_TOKEN_LIMITS.minimumCharacters)
+              .max(SESSION_TOKEN_LIMITS.maximumCharacters),
+          })
+          .strict(),
       },
       async (context) => {
         rejectBrowserRequest(context.request);

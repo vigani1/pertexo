@@ -7,6 +7,13 @@ import {
   parseDurableAuthenticationMail,
   parseFederationEncryption,
 } from './identity-credentials.js';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
+import { IDENTITY_SETTING_LIMITS } from './identity-setting-limits.js';
+
+/** A session lasts a day unless the operator sets otherwise. */
+const DEFAULT_SESSION_TTL_MILLIS = 24 * 60 * 60 * 1_000;
+// Sessions last whole seconds.
+const SESSION_TTL_STEP_MILLIS = 1_000;
 
 /** Environment variables owned by browser identity and authentication. */
 export const identityEnvironmentShape = {
@@ -17,25 +24,74 @@ export const identityEnvironmentShape = {
   INVITATION_TOKEN_KEY: z.string().optional(),
   INVITATION_TOKEN_KEY_VERSION: z.string().optional(),
   INVITATION_TOKEN_PREVIOUS_KEYS: z.string().optional(),
-  BETTER_AUTH_SECRET: z.string().min(32).max(512).optional(),
+  BETTER_AUTH_SECRET: z
+    .string()
+    .min(IDENTITY_SETTING_LIMITS.secretMinimumCharacters)
+    .max(IDENTITY_SETTING_LIMITS.secretMaximumCharacters)
+    .optional(),
   AUTH_MAIL_MODE: z.enum(['local', 'durable']).default('local'),
   AUTH_SIGN_UP_MODE: z.enum(['invitation', 'open']).default('invitation'),
-  AUTH_MAIL_FROM: z.email().max(320).optional(),
+  AUTH_MAIL_FROM: z
+    .email()
+    .max(EMAIL_ADDRESS_LIMITS.accountCharacters)
+    .optional(),
   AUTH_FEDERATION_KEY: z.string().optional(),
   AUTH_FEDERATION_KEY_VERSION: z.string().optional(),
   AUTH_FEDERATION_PREVIOUS_KEYS: z.string().optional(),
   AUTH_MAIL_KEY: z.string().optional(),
   AUTH_MAIL_KEY_VERSION: z.string().optional(),
   AUTH_MAIL_PREVIOUS_KEYS: z.string().optional(),
-  AUTH_GOOGLE_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
-  AUTH_GOOGLE_CLIENT_SECRET: z.string().min(1).max(1024).optional(),
-  AUTH_GITHUB_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
-  AUTH_GITHUB_CLIENT_SECRET: z.string().min(1).max(1024).optional(),
-  AUTH_MICROSOFT_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
-  AUTH_MICROSOFT_CLIENT_SECRET: z.string().min(1).max(1024).optional(),
-  AUTH_MICROSOFT_TENANT_ID: z.string().trim().min(1).max(512).optional(),
-  AUTH_APPLE_CLIENT_ID: z.string().trim().min(1).max(512).optional(),
-  AUTH_APPLE_CLIENT_SECRET: z.string().min(1).max(4096).optional(),
+  AUTH_GOOGLE_CLIENT_ID: z
+    .string()
+    .trim()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.clientIdCharacters)
+    .optional(),
+  AUTH_GOOGLE_CLIENT_SECRET: z
+    .string()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.clientSecretCharacters)
+    .optional(),
+  AUTH_GITHUB_CLIENT_ID: z
+    .string()
+    .trim()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.clientIdCharacters)
+    .optional(),
+  AUTH_GITHUB_CLIENT_SECRET: z
+    .string()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.clientSecretCharacters)
+    .optional(),
+  AUTH_MICROSOFT_CLIENT_ID: z
+    .string()
+    .trim()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.clientIdCharacters)
+    .optional(),
+  AUTH_MICROSOFT_CLIENT_SECRET: z
+    .string()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.clientSecretCharacters)
+    .optional(),
+  AUTH_MICROSOFT_TENANT_ID: z
+    .string()
+    .trim()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.clientIdCharacters)
+    .optional(),
+  AUTH_APPLE_CLIENT_ID: z
+    .string()
+    .trim()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.clientIdCharacters)
+    .optional(),
+  // Apple's client secret is a signed JWT, so it runs longer.
+  AUTH_APPLE_CLIENT_SECRET: z
+    .string()
+    .min(1)
+    .max(IDENTITY_SETTING_LIMITS.appleClientSecretCharacters)
+    .optional(),
   PUBLIC_WEB_ORIGIN: z.url().optional(),
   SESSION_COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   SESSION_COOKIE_SECURE: z
@@ -45,9 +101,9 @@ export const identityEnvironmentShape = {
   SESSION_TTL_MILLIS: z.coerce
     .number()
     .int()
-    .min(1_000)
-    .multipleOf(1_000)
-    .default(24 * 60 * 60_000),
+    .min(SESSION_TTL_STEP_MILLIS)
+    .multipleOf(SESSION_TTL_STEP_MILLIS)
+    .default(DEFAULT_SESSION_TTL_MILLIS),
 } satisfies z.ZodRawShape;
 
 export type IdentityEnvironment = z.output<

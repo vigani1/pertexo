@@ -10,6 +10,7 @@ import {
   Res,
   UseGuards,
   UseInterceptors,
+  HttpStatus,
 } from '@nestjs/common';
 
 import { DoubleSubmitCsrfPolicy } from '../../identity/index.js';
@@ -47,6 +48,9 @@ import type {
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { workspaceFailure } from '../../problems/context/normalize-context-errors.js';
 
+/** How long an invitation's acceptance cookie lasts: enough to sign in and come back. */
+const ACCEPTANCE_COOKIE_SECONDS = 15 * 60;
+
 const INVITATION_BINDING_COOKIE_NAME = 'pertexo_invitation_intent';
 const INVITATION_CSRF_HEADER = 'x-invitation-csrf-token';
 
@@ -67,7 +71,7 @@ export class InvitationAcceptanceController {
   ) {}
 
   @Post('resolve')
-  @HttpCode(201)
+  @HttpCode(HttpStatus.CREATED)
   @RateLimit('identity_start')
   public async resolve(
     @Req() request: IdentityWorkspaceRequest,
@@ -103,7 +107,7 @@ export class InvitationAcceptanceController {
 
   /** Verifies the invited account from a fresh sign-in (ADR 043). */
   @Post('session')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @RateLimit('identity_start')
   @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
   public async verifySession(
@@ -122,7 +126,7 @@ export class InvitationAcceptanceController {
   }
 
   @Post('complete')
-  @HttpCode(200)
+  @HttpCode(HttpStatus.OK)
   @RateLimit('ordinary_mutation')
   @UseGuards(SessionAuthenticationGuard, CsrfProtectionGuard)
   public async complete(
@@ -166,7 +170,7 @@ export class InvitationAcceptanceController {
   }
 
   @Delete()
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @RateLimit('identity_start')
   public async abandon(
     @Req() request: IdentityWorkspaceRequest,
@@ -228,7 +232,7 @@ function serializeBindingCookie(
     'HttpOnly',
     policy.secure ? 'Secure' : undefined,
     `SameSite=${capitalize(policy.sameSite)}`,
-    `Max-Age=${String(15 * 60)}`,
+    `Max-Age=${String(ACCEPTANCE_COOKIE_SECONDS)}`,
   ]
     .filter((part): part is string => part !== undefined)
     .join('; ');

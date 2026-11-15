@@ -27,6 +27,9 @@ import {
   subscribeWithBounds,
 } from './redis-subscribe.js';
 
+/** The longest a run-event subscription may take to start. */
+const MAXIMUM_SUBSCRIBE_TIMEOUT_MILLIS = 60 * 1_000;
+
 const DEFAULT_BUFFER_CAPACITY = 1_024;
 const DEFAULT_SUBSCRIBE_TIMEOUT_MS = 5_000;
 const MAX_BUFFER_CAPACITY = 4_096;
@@ -41,7 +44,12 @@ const optionsSchema = z
       .max(MAX_BUFFER_CAPACITY)
       .optional(),
     redisUrl: z.string().trim().min(1),
-    subscribeTimeoutMs: z.number().int().positive().max(60_000).optional(),
+    subscribeTimeoutMs: z
+      .number()
+      .int()
+      .positive()
+      .max(MAXIMUM_SUBSCRIBE_TIMEOUT_MILLIS)
+      .optional(),
   })
   .strict();
 

@@ -1,5 +1,11 @@
 import { traceparent } from '../platform/http/tracing-headers.js';
-import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Req,
+  Res,
+  UseInterceptors,
+  HttpStatus,
+} from '@nestjs/common';
 import {
   nodeTestingRoutes as routes,
   type RouteInput,
@@ -66,7 +72,7 @@ export class NodeTestingController {
       ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
       ...traceparent(request),
     });
-    if (executing) response.status(202);
+    if (executing) response.status(HttpStatus.ACCEPTED);
     return result;
   }
 }

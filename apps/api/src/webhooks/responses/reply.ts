@@ -1,4 +1,5 @@
 import type { StructuredLogger } from '@pertexo/observability/server';
+import { HttpStatus } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { API_RESPONSE_SECURITY_HEADERS } from '../../platform/http/response-security.js';
@@ -54,7 +55,7 @@ export async function replyToAcceptedWebhook(
       if (snapshot?.state === 'failed') {
         await reply
           .header('cache-control', 'no-store')
-          .code(500)
+          .code(HttpStatus.INTERNAL_SERVER_ERROR)
           .send({ code: 'webhook.workflow_failed' });
         return;
       }
@@ -74,5 +75,6 @@ export async function replyToAcceptedWebhook(
         });
     }
   }
-  if (!request.raw.socket.destroyed) await reply.code(202).send(receipt);
+  if (!request.raw.socket.destroyed)
+    await reply.code(HttpStatus.ACCEPTED).send(receipt);
 }

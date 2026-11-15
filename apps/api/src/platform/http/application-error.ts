@@ -1,6 +1,9 @@
 import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
 import type { ApiProblemCode } from '@pertexo/contracts';
 
+/** The longest safe detail a problem may carry to its caller. */
+export const SAFE_DETAIL_MAX_CHARACTERS = 2_000;
+
 export const APPLICATION_ERROR_CATALOG = API_PROBLEM_MANIFEST;
 export type ApplicationErrorCode = ApiProblemCode;
 export type ApplicationErrorCatalogEntry =
@@ -24,7 +27,10 @@ export function applicationError(
   options: ApplicationErrorOptions = {},
 ): ApplicationError {
   const safeDetail = options.safeDetail;
-  if (safeDetail !== undefined && safeDetail.length > 2_000) {
+  if (
+    safeDetail !== undefined &&
+    safeDetail.length > SAFE_DETAIL_MAX_CHARACTERS
+  ) {
     throw new RangeError('safe application error detail is too long');
   }
 

@@ -17,6 +17,8 @@ import {
   type WorkspaceCaller,
 } from '../../workspaces/request/caller.js';
 
+const DEFAULT_TRENDS_PERIOD = '30d';
+
 @UseInterceptors(domainErrors(runFailure))
 @Controller()
 export class UsageTrendsController {
@@ -31,7 +33,7 @@ export class UsageTrendsController {
     return withRequestOperationSignal(request, (signal) =>
       this.trends.execute({
         ...serviceCaller(caller),
-        period: query.period ?? '30d',
+        period: query.period ?? DEFAULT_TRENDS_PERIOD,
         signal,
       }),
     );

@@ -3,6 +3,9 @@ import { SAML, ValidateInResponseTo } from '@node-saml/node-saml';
 import { SAML_LIMITS, type SamlConfiguration } from '@pertexo/contracts';
 import { invalidSaml } from './xml.js';
 
+/** The weakest RSA key a SAML provider may sign with. */
+const MINIMUM_RSA_MODULUS_BITS = 2_048;
+
 export type SamlProviderMaterial = Readonly<{
   id: string;
   issuer: string;
@@ -32,7 +35,8 @@ export function validateSamlCertificates(
         key = certificate.publicKey;
       if (
         key.asymmetricKeyType !== 'rsa' ||
-        (key.asymmetricKeyDetails?.modulusLength ?? 0) < 2048
+        (key.asymmetricKeyDetails?.modulusLength ?? 0) <
+          MINIMUM_RSA_MODULUS_BITS
       )
         return invalidSaml('saml_certificate');
       return certificate;

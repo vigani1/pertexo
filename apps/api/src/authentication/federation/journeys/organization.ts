@@ -2,6 +2,7 @@ import {
   recordAuthenticationFailure,
   type AuthenticationFailureReason,
 } from '../../journeys/failures.js';
+import { HttpStatus } from '@nestjs/common';
 import type { OrganizationIdentity } from '../protocol/identity.js';
 import { federationFailureReason } from '../protocol/failure.js';
 import { randomUUID } from 'node:crypto';
@@ -74,7 +75,7 @@ export class OrganizationSignIn {
         !parsed.success ||
         [...url.searchParams.keys()].length !== 1
       )
-        return failure(400);
+        return failure(HttpStatus.BAD_REQUEST);
       if (
         !federationProtocolSchema.options.some((protocol) =>
           this.available(protocol),
@@ -100,15 +101,15 @@ export class OrganizationSignIn {
       if (url.pathname === `${prefix}/start`)
         return request.method === 'POST'
           ? this.start(request, { testing: false, protocol: protocol })
-          : failure(404);
+          : failure(HttpStatus.NOT_FOUND);
       if (url.pathname === `${prefix}/test`)
         return request.method === 'POST'
           ? this.start(request, { testing: true, protocol: protocol })
-          : failure(404);
+          : failure(HttpStatus.NOT_FOUND);
       if (url.pathname === `${prefix}/callback`)
         return request.method === (protocol === 'oidc' ? 'GET' : 'POST')
           ? this.callback(request, protocol)
-          : failure(404);
+          : failure(HttpStatus.NOT_FOUND);
     }
     return undefined;
   }
@@ -132,7 +133,8 @@ export class OrganizationSignIn {
       protocol,
     }: Readonly<{ testing: boolean; protocol: FederationProtocol }>,
   ): Promise<Response> {
-    if (!this.available(protocol)) return failure(503);
+    if (!this.available(protocol))
+      return failure(HttpStatus.SERVICE_UNAVAILABLE);
     const raw: unknown = await request.json().catch(() => null);
     let failedAt: AuthenticationFailureReason = 'storage_unavailable';
     const unavailable = () => {
@@ -142,7 +144,7 @@ export class OrganizationSignIn {
         failedAt,
         'failed',
       );
-      return failure(503);
+      return failure(HttpStatus.SERVICE_UNAVAILABLE);
     };
     try {
       const prepared = await prepareOrganizationStart(request, raw, {
@@ -152,7 +154,8 @@ export class OrganizationSignIn {
       });
       if (prepared instanceof Response) return prepared;
       const { material, owner, returnPath } = prepared;
-      if (material?.provider.kind !== protocol) return failure(404);
+      if (material?.provider.kind !== protocol)
+        return failure(HttpStatus.NOT_FOUND);
       const id = randomUUID(),
         state = newJourneyToken(),
         browser = newJourneyToken();

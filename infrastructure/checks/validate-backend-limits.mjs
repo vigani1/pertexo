@@ -42,6 +42,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'apps/ops',
   'apps/code-runner',
   'apps/worker',
+  'apps/api',
 ]);
 
 // Unit factors: 1_000 ms in a second, 60 seconds in a minute, 1_024 bytes in a KB.
@@ -229,13 +230,13 @@ const ORDERINGS = new Set([
 const STATUS_CLASS_WIDTH = 100;
 const LAST_IN_CLASS = STATUS_CLASS_WIDTH - 1;
 const STATUS_BOUNDS = new Set(['min', 'max']);
-const STATUS_NAME = /^(?:status|statusCode)$/u;
+const STATUS_NAME = /^(?:status|statusCode|httpStatus)$/u;
 const FIRST_HTTP_STATUS = 100;
 const LAST_HTTP_STATUS = 599;
 
 /**
  * An HTTP status where HTTP code writes one: tested for equality against
- * something named `status` or `statusCode` (or ordered against a class
+ * something named `status`, `statusCode` or `httpStatus` (or ordered against a class
  * boundary such as 400 or 299), the value of such a property, a key of a route's
  * `responses`, or a status property's number schema. Naming 200 or 404 there
  * only adds noise; any other three-digit number is still a limit.

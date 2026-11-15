@@ -1,4 +1,5 @@
 import { webhookRunInput } from '@pertexo/nodes-core';
+import { HttpStatus } from '@nestjs/common';
 import { asksSenderToRetry } from '@pertexo/workflow-model';
 
 import { replyToAcceptedWebhook } from '../responses/reply.js';
@@ -69,7 +70,7 @@ export async function captureIngressTestEvent(
     ) {
       await reply
         .header('cache-control', 'no-store')
-        .code(202)
+        .code(HttpStatus.ACCEPTED)
         .send({ captured: true });
     } else await authenticationFailed(reply, requestId, telemetry);
   } catch (error) {
@@ -154,14 +155,14 @@ export async function admitIngressDelivery(
       record(() => {
         telemetry.delivery('accepted');
       });
-      await reply.code(202).send(result);
+      await reply.code(HttpStatus.ACCEPTED).send(result);
       return;
     }
     if ('skipped' in result) {
       record(() => {
         telemetry.delivery('skipped');
       });
-      await reply.code(202).send(result);
+      await reply.code(HttpStatus.ACCEPTED).send(result);
       return;
     }
     record(() => {

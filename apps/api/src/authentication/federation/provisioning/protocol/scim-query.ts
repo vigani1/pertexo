@@ -8,16 +8,37 @@ import {
 } from './scim-protocol.js';
 import { parseDirectoryFilter } from './scim-filter.js';
 
-const integer = z.coerce.number().int().min(-2147483647).max(2147483647);
+/** SCIM integers are 32-bit signed. */
+export const SCIM_INTEGER_LIMITS = Object.freeze({
+  minimum: -(2 ** 31 - 1),
+  maximum: 2 ** 31 - 1,
+});
+/** A list query's text parameters. */
+const SCIM_QUERY_LIMITS = Object.freeze({
+  sortByCharacters: 256,
+  attributeListCharacters: 2_048,
+});
+
+const integer = z.coerce
+  .number()
+  .int()
+  .min(SCIM_INTEGER_LIMITS.minimum)
+  .max(SCIM_INTEGER_LIMITS.maximum);
 const querySchema = z
   .object({
     filter: z.string().max(DIRECTORY_LIMITS.filterCharacters).optional(),
     startIndex: integer.default(1),
     count: integer.default(DIRECTORY_LIMITS.page),
-    sortBy: z.string().max(256).optional(),
+    sortBy: z.string().max(SCIM_QUERY_LIMITS.sortByCharacters).optional(),
     sortOrder: z.enum(['ascending', 'descending']).default('ascending'),
-    attributes: z.string().max(2048).optional(),
-    excludedAttributes: z.string().max(2048).optional(),
+    attributes: z
+      .string()
+      .max(SCIM_QUERY_LIMITS.attributeListCharacters)
+      .optional(),
+    excludedAttributes: z
+      .string()
+      .max(SCIM_QUERY_LIMITS.attributeListCharacters)
+      .optional(),
   })
   .strict();
 export type DirectoryProjection = Readonly<{

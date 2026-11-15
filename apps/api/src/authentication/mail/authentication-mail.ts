@@ -12,6 +12,9 @@ import type {
 } from '@pertexo/secrets/server';
 import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 
+/** How long a mailed sign-in link (verification, password reset) may still be sent. */
+const LINK_MAIL_VALIDITY_MILLIS = 60 * 60 * 1_000;
+
 export type PreparedAuthenticationProofMail = Readonly<{
   id: string;
   purpose: 'verification' | 'email_change_confirmation' | 'password_reset';
@@ -200,7 +203,7 @@ export class DurableAuthenticationMail implements AuthenticationMail {
         'Verify your email to finish creating your Pertexo account.',
         input.url,
       ),
-      validityMillis: 60 * 60_000,
+      validityMillis: LINK_MAIL_VALIDITY_MILLIS,
     });
   }
 
@@ -212,7 +215,7 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     return this.store.enqueue(
       this.preparePasswordReset({
         ...input,
-        expiresAt: new Date(this.now().getTime() + 60 * 60_000),
+        expiresAt: new Date(this.now().getTime() + LINK_MAIL_VALIDITY_MILLIS),
       }),
     );
   }
@@ -248,7 +251,7 @@ export class DurableAuthenticationMail implements AuthenticationMail {
         `Confirm changing your Pertexo email to ${input.newEmail}.`,
         input.url,
       ),
-      validityMillis: 60 * 60_000,
+      validityMillis: LINK_MAIL_VALIDITY_MILLIS,
     });
   }
 

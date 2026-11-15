@@ -3,9 +3,16 @@ import { canonicalEmail } from '@pertexo/core/identity';
 import { z } from 'zod';
 
 import { FederationProofError } from './failure.js';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
-const subject = z.string().min(1).max(255);
-const email = z.string().transform(canonicalEmail).pipe(z.email().max(320));
+/** The longest subject identifier a federated provider may assert. */
+const FEDERATED_SUBJECT_MAX_CHARACTERS = 255;
+
+const subject = z.string().min(1).max(FEDERATED_SUBJECT_MAX_CHARACTERS);
+const email = z
+  .string()
+  .transform(canonicalEmail)
+  .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.accountCharacters));
 export type OrganizationIdentity = Readonly<{
   subject: string;
   email: string;

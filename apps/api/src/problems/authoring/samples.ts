@@ -1,5 +1,10 @@
 import type { WorkflowStepSampleError } from '@pertexo/core/authoring';
 import { applicationError } from '../../platform/http/index.js';
+import {
+  formatByteSize,
+  formatCount,
+  STORED_EXECUTION_VALUE_LIMITS,
+} from '@pertexo/node-sdk';
 
 const messages: Readonly<Record<WorkflowStepSampleError['reason'], string>> = {
   changed: 'The pinned sample changed. Refresh it before trying again.',
@@ -13,8 +18,7 @@ const messages: Readonly<Record<WorkflowStepSampleError['reason'], string>> = {
     'That sample source is unavailable, expired, or its setup changed. Capture a new request or choose a current successful step output.',
   file_output:
     'Pin JSON output only. Use Read file to turn a file into JSON first; file references cannot be pinned.',
-  value_invalid:
-    'Sample JSON exceeds the normal run-data limits or contains an invalid value. Keep it within 256 KB, depth 64 and 10,000 members.',
+  value_invalid: `Sample JSON exceeds the normal run-data limits or contains an invalid value. Keep it within ${formatByteSize(STORED_EXECUTION_VALUE_LIMITS.inlineBytes)}, depth ${String(STORED_EXECUTION_VALUE_LIMITS.depth)} and ${formatCount(STORED_EXECUTION_VALUE_LIMITS.members)} members.`,
   limit_reached:
     'Pinned sample storage is full. Remove older samples before pinning more data.',
   step_unavailable:

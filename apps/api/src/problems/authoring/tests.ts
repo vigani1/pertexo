@@ -3,7 +3,6 @@ import {
   NodeTestRequestError,
   NodeTestInvalidError,
 } from '../../node-testing/node-test.errors.js';
-import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 
 import { WorkflowStepSampleError } from '@pertexo/core/authoring';
 
@@ -15,6 +14,12 @@ import {
   WorkflowTestError,
 } from '@pertexo/core/previews';
 import { applicationError } from '../../platform/http/index.js';
+import {
+  formatByteSize,
+  formatCount,
+  STORED_EXECUTION_VALUE_LIMITS,
+  StoredExecutionValueInvalidError,
+} from '@pertexo/node-sdk';
 
 export const nodeTestProblems = [
   errorRegistration(PreviewAdmissionDeniedError, (error) => {
@@ -35,8 +40,7 @@ export const nodeTestProblems = [
   ),
   errorRegistration(StoredExecutionValueInvalidError, () => {
     return applicationError('workflow.invalid', {
-      safeDetail:
-        'Keep test input within 256 KB, depth 64 and 10,000 values. Split larger input before testing.',
+      safeDetail: `Keep test input within ${formatByteSize(STORED_EXECUTION_VALUE_LIMITS.inlineBytes)}, depth ${String(STORED_EXECUTION_VALUE_LIMITS.depth)} and ${formatCount(STORED_EXECUTION_VALUE_LIMITS.members)} values. Split larger input before testing.`,
     });
   }),
 

@@ -6,7 +6,11 @@ import {
   opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
+  CURSOR_TIMESTAMP_PRECISION,
 } from '../platform/http/opaque-cursor.js';
+
+/** The longest workflow-name prefix a run-history cursor carries. */
+const WORKFLOW_NAME_PREFIX_MAX_CHARACTERS = 128;
 
 const filterSchema = z
   .object({
@@ -15,7 +19,12 @@ const filterSchema = z
       .string()
       .regex(/^[a-f0-9]{64}$/u)
       .optional(),
-    workflowNamePrefix: z.string().min(1).max(128).nullable().optional(),
+    workflowNamePrefix: z
+      .string()
+      .min(1)
+      .max(WORKFLOW_NAME_PREFIX_MAX_CHARACTERS)
+      .nullable()
+      .optional(),
     status: workflowRunStatusSchema.nullable(),
     createdAtFrom: z.iso.datetime({ offset: true }).nullable(),
     createdAtBefore: z.iso.datetime({ offset: true }).nullable(),
@@ -26,7 +35,7 @@ const cursorPayloadSchema = opaqueCursor('workflow-runs', {
   workspaceId: z.uuid(),
   order: z.literal('created_at_desc_id_desc'),
   filters: filterSchema,
-  createdAt: z.iso.datetime({ precision: 6 }),
+  createdAt: z.iso.datetime({ precision: CURSOR_TIMESTAMP_PRECISION }),
   id: z.uuid(),
 });
 

@@ -1,5 +1,9 @@
 import { SAML_LIMITS, type FederationProtocol } from '@pertexo/contracts';
 import { isJourneyToken } from '../../journeys/browser-proof.js';
+import { CALLBACK_LIMITS } from '../../journeys/callback-limits.js';
+
+// A SAML callback posts exactly RelayState and SAMLResponse.
+const SAML_CALLBACK_FIELDS = 2;
 export type OrganizationCallback = Readonly<{
   state: string;
   samlResponse?: string;
@@ -22,7 +26,7 @@ function readOidcCallback(url: URL): OrganizationCallback | undefined {
     !isJourneyToken(state) ||
     code === null ||
     code.length === 0 ||
-    code.length > 4096 ||
+    code.length > CALLBACK_LIMITS.codeCharacters ||
     url.searchParams.has('error') ||
     ['state', 'code', 'iss'].some(
       (name) => url.searchParams.getAll(name).length > 1,
@@ -47,7 +51,7 @@ async function readSamlCallback(
     state = fields.get('RelayState'),
     response = fields.get('SAMLResponse');
   const invalidSamlCallback =
-    fields.size !== 2 ||
+    fields.size !== SAML_CALLBACK_FIELDS ||
     fields.getAll('RelayState').length !== 1 ||
     fields.getAll('SAMLResponse').length !== 1 ||
     state === null ||

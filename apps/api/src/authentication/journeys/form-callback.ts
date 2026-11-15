@@ -1,3 +1,4 @@
+import { CALLBACK_LIMITS } from './callback-limits.js';
 const formCallbacks = new Map<string, 'landing' | 'proof'>([
   ['/v1/auth/federation/social/callback/apple', 'landing'],
   ['/v1/auth/account-security/methods/link/callback/apple', 'landing'],
@@ -32,13 +33,13 @@ export async function landProviderFormCallback(
   )
     return new Response(null, { status: 400 });
   const body = await request.text();
-  if (Buffer.byteLength(body) > 32_768)
+  if (Buffer.byteLength(body) > CALLBACK_LIMITS.formBytes)
     return new Response(null, { status: 400 });
   const fields = new URLSearchParams(body);
   for (const [name, maximum] of [
-    ['state', 43],
-    ['code', 4096],
-    ['iss', 2048],
+    ['state', CALLBACK_LIMITS.stateCharacters],
+    ['code', CALLBACK_LIMITS.codeCharacters],
+    ['iss', CALLBACK_LIMITS.issuerCharacters],
   ] as const) {
     const values = fields.getAll(name);
     if (values.length > 1 || (values[0]?.length ?? 0) > maximum)

@@ -4,11 +4,12 @@ import {
   opaqueCursor,
   decodeOpaqueCursor,
   encodeOpaqueCursor,
+  CURSOR_TIMESTAMP_PRECISION,
 } from '../platform/http/opaque-cursor.js';
 
 const memberCursorPayloadSchema = opaqueCursor('workspace_members', {
   createdAt: z.iso
-    .datetime({ precision: 6 })
+    .datetime({ precision: CURSOR_TIMESTAMP_PRECISION })
     .refine((value) => !value.startsWith('0000-'), {
       message: 'PostgreSQL timestamps do not support year zero',
     }),
@@ -16,7 +17,7 @@ const memberCursorPayloadSchema = opaqueCursor('workspace_members', {
 });
 const invitationCursorPayloadSchema = opaqueCursor('workspace_invitations', {
   createdAt: z.iso
-    .datetime({ precision: 6 })
+    .datetime({ precision: CURSOR_TIMESTAMP_PRECISION })
     .refine((value) => !value.startsWith('0000-')),
   invitationId: z.uuid(),
 });

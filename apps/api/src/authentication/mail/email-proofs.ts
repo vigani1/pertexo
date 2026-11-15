@@ -1,5 +1,6 @@
 import { canonicalEmail } from '@pertexo/core/identity';
-import { createHash, randomBytes } from 'node:crypto';
+import { HttpStatus } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 
 import { authenticationReturnPathSchema } from '@pertexo/contracts';
 import { EmailProofCommands, type SignUpMode } from '@pertexo/core/identity';
@@ -11,6 +12,10 @@ import type {
   PreparedAuthenticationProofMail,
 } from './authentication-mail.js';
 import { EmailChangeAddressError } from './email-proof.errors.js';
+import { randomSecretToken } from '../../identity/secret-token.js';
+
+// A proof ends before its mail stops being sent, so a delivered link still works.
+const EMAIL_PROOF_LIFETIME_MILLIS = 55 * 60 * 1_000;
 
 type ProofPurpose = 'initial_verification' | 'change_old' | 'change_new';
 type ProofUser = Readonly<{ id: string; email: string; name: string }>;
@@ -70,7 +75,7 @@ export class OwnedEmailProofs {
         landing.searchParams.set('error', 'verification_invalid');
         break;
     }
-    return Response.redirect(landing, 302);
+    return Response.redirect(landing, HttpStatus.FOUND);
   }
 
   /**
@@ -142,8 +147,8 @@ export class OwnedEmailProofs {
     newEmail?: string,
     returnTo?: string,
   ): Promise<void> {
-    const token = randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + 55 * 60_000);
+    const token = randomSecretToken();
+    const expiresAt = new Date(Date.now() + EMAIL_PROOF_LIFETIME_MILLIS);
     const url = this.url(token, returnTo);
     const mailInput = {
       purpose:
@@ -201,8 +206,8 @@ export class OwnedEmailProofs {
     let nextUrl: string | undefined;
     if (proof.purpose === 'change_old') {
       if (proof.newEmail === null) return 'invalid';
-      nextToken = randomBytes(32).toString('base64url');
-      nextExpiresAt = new Date(Date.now() + 55 * 60_000);
+      nextToken = randomSecretToken();
+      nextExpiresAt = new Date(Date.now() + EMAIL_PROOF_LIFETIME_MILLIS);
       nextUrl = this.url(nextToken);
       nextMail = this.mail.prepareProof?.({
         purpose: 'verification',

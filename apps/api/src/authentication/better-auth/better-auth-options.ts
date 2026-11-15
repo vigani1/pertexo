@@ -22,6 +22,13 @@ import {
   authenticationChangedError,
 } from './two-factor.js';
 import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
+import { PASSWORD_LIMITS } from '@pertexo/workflow-model';
+
+// A session is refreshed after a quarter of its lifetime, and at least hourly.
+const SESSION_REFRESH = Object.freeze({
+  lifetimeFraction: 4,
+  maximumSeconds: 60 * 60,
+});
 
 type PertexoBetterAuthInput = Readonly<{
   pool: Pool;
@@ -208,7 +215,10 @@ function sessionPolicy(sessionTtlSeconds: number) {
       userId: 'user_id',
     },
     expiresIn: sessionTtlSeconds,
-    updateAge: Math.min(60 * 60, Math.floor(sessionTtlSeconds / 4)),
+    updateAge: Math.min(
+      SESSION_REFRESH.maximumSeconds,
+      Math.floor(sessionTtlSeconds / SESSION_REFRESH.lifetimeFraction),
+    ),
     freshAge: FRESH_SIGN_IN_WINDOW_MILLIS / 1_000,
     cookieCache: { enabled: false },
   } satisfies BetterAuthOptions['session'];
@@ -218,8 +228,8 @@ function sessionPolicy(sessionTtlSeconds: number) {
 function credentialPolicy() {
   return {
     enabled: true,
-    minPasswordLength: 12,
-    maxPasswordLength: 128,
+    minPasswordLength: PASSWORD_LIMITS.minimumCharacters,
+    maxPasswordLength: PASSWORD_LIMITS.maximumCharacters,
     requireEmailVerification: true,
     autoSignIn: false,
     revokeSessionsOnPasswordReset: true,

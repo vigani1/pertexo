@@ -32,6 +32,10 @@ import {
   registerAuthenticationCapabilities,
   registerBetterAuthHandler,
 } from './authentication/better-auth/better-auth-transport.js';
+import { PASSWORD_LIMITS } from '@pertexo/workflow-model';
+
+/** How often Node checks open connections against the receive deadline. */
+const CONNECTION_CHECK_INTERVAL_MILLIS = 1_000;
 
 export type { ApiApplicationDependencies } from './platform/api.runtime.js';
 
@@ -66,7 +70,7 @@ export async function assembleApiApplication(
     // Node's header deadline must agree with the body deadline at construction.
     http: {
       headersTimeout: HTTP_RECEIVE_TIMEOUT_MS,
-      connectionsCheckingInterval: 1_000,
+      connectionsCheckingInterval: CONNECTION_CHECK_INTERVAL_MILLIS,
     },
     routerOptions: { ignoreTrailingSlash: true },
     trustProxy:
@@ -121,7 +125,7 @@ export async function assembleApiApplication(
       {
         password: {
           enabled: identityRuntime !== undefined,
-          minimumLength: 12,
+          minimumLength: PASSWORD_LIMITS.minimumCharacters,
           verificationRequired: true,
         },
         socialProviders: configuredSocialProviders(

@@ -1,4 +1,4 @@
-import { randomUUID, randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   isAuthenticationSessionAllowed,
   readAccountProviderNames,
@@ -21,6 +21,15 @@ import { z } from 'zod';
 import type { SocialProviderGateway } from '../social-provider.types.js';
 import { requireDoubleSubmitCsrf } from '../better-auth/csrf.js';
 import { TwoFactorUnavailableError } from './account-security.errors.js';
+import { randomSecretToken } from '../../identity/secret-token.js';
+import { PASSWORD_LIMITS } from '@pertexo/workflow-model';
+
+const newPasswordSchema = z
+  .string()
+  .min(PASSWORD_LIMITS.minimumCharacters)
+  .max(PASSWORD_LIMITS.maximumCharacters);
+/** The longest password-reset token a request may carry. */
+const RESET_TOKEN_MAX_CHARACTERS = 512;
 
 type EndpointContext = Parameters<typeof setSessionCookie>[0];
 
@@ -112,8 +121,11 @@ function createChangePertexoPasswordEndpoint(pool: Pool) {
       use: [sensitiveSessionMiddleware],
       body: z
         .object({
-          currentPassword: z.string().min(1).max(128),
-          newPassword: z.string().min(12).max(128),
+          currentPassword: z
+            .string()
+            .min(1)
+            .max(PASSWORD_LIMITS.maximumCharacters),
+          newPassword: newPasswordSchema,
         })
         .strict(),
     },
@@ -154,7 +166,7 @@ function createSetPertexoPasswordEndpoint(pool: Pool) {
       method: 'POST',
       requireHeaders: true,
       use: [freshSessionMiddleware],
-      body: z.object({ newPassword: z.string().min(12).max(128) }).strict(),
+      body: z.object({ newPassword: newPasswordSchema }).strict(),
     },
     async (context) => {
       requireDoubleSubmitCsrf(context.headers);
@@ -197,8 +209,8 @@ function createResetPertexoPasswordEndpoint(pool: Pool) {
       method: 'POST',
       body: z
         .object({
-          token: z.string().min(1).max(512),
-          newPassword: z.string().min(12).max(128),
+          token: z.string().min(1).max(RESET_TOKEN_MAX_CHARACTERS),
+          newPassword: newPasswordSchema,
         })
         .strict(),
     },
@@ -272,7 +284,7 @@ function createUnlinkPertexoAccountEndpoint(
 function prepareReplacement(context: EndpointContext, sourceSessionId: string) {
   return {
     id: randomUUID(),
-    token: randomBytes(32).toString('base64url'),
+    token: randomSecretToken(),
     expiresAt: new Date(
       Date.now() + context.context.sessionConfig.expiresIn * 1000,
     ),

@@ -2,6 +2,9 @@ import { BadRequestException } from '@nestjs/common';
 import type { FastifyAdapter } from '@nestjs/platform-fastify';
 import { parsePortableJson } from '@pertexo/workflow-model';
 
+// Fastify's own default when the server sets no body limit.
+const FASTIFY_DEFAULT_BODY_BYTES = 1_024 * 1_024;
+
 const importPath = /^\/v1\/workspaces\/[^/]+\/workflows\/import(?:\/preview)?$/;
 const portablePath =
   /^\/v1\/workspaces\/[^/]+\/workflows\/(?:import(?:\/preview)?|[^/]+\/export)$/;
@@ -22,7 +25,9 @@ export function registerWorkflowPortabilityJsonParser(
   adapter.useBodyParser(
     'application/json',
     false,
-    { bodyLimit: instance.initialConfig.bodyLimit ?? 1_048_576 },
+    {
+      bodyLimit: instance.initialConfig.bodyLimit ?? FASTIFY_DEFAULT_BODY_BYTES,
+    },
     (request, body, done) => {
       // A client that always sends the header and has nothing to say: the route
       // decides what no body means, as it does when there's no header. Fastify's

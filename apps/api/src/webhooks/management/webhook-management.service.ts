@@ -19,6 +19,8 @@ import {
   decodeWebhookDeliveryCursor,
   encodeWebhookDeliveryCursor,
 } from './cursor.js';
+import { SECRET_TOKEN_BYTES } from '../../identity/secret-token.js';
+import { WEBHOOK_COMMAND_TIMEOUT_MILLIS } from '../command-deadline.js';
 
 export type WebhookCommandInput = Readonly<{
   workspaceId: string;
@@ -56,7 +58,8 @@ export class WebhookManagementService {
     private readonly encryption: WebhookTriggerEnvelopeEncryption,
     options: WebhookManagementServiceOptions = {},
   ) {
-    this.generateMaterial = options.generateMaterial ?? (() => randomBytes(32));
+    this.generateMaterial =
+      options.generateMaterial ?? (() => randomBytes(SECRET_TOKEN_BYTES));
     this.generateId = options.generateId ?? generatePersistedId;
   }
 
@@ -248,7 +251,7 @@ type Operation =
   'provision' | 'rotateEndpoint' | 'rotateSecret' | 'configureAuthentication';
 
 function commandSignal(input: WebhookCommandInput): AbortSignal {
-  return input.signal ?? AbortSignal.timeout(30_000);
+  return input.signal ?? AbortSignal.timeout(WEBHOOK_COMMAND_TIMEOUT_MILLIS);
 }
 
 function commandBase(

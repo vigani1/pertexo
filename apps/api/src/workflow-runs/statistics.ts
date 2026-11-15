@@ -11,6 +11,8 @@ import type {
   WorkflowRunStatisticsWindow,
 } from './ports.js';
 
+const DEFAULT_STATISTICS_WINDOW = '24h';
+
 export type GetWorkflowRunStatisticsInput = WorkflowRunApplicationInput &
   Readonly<{
     window?: WorkflowRunStatisticsWindow;
@@ -47,7 +49,7 @@ export class GetWorkflowRunStatisticsService {
     const statistics = await this.persistence.statistics({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
-      window: input.window ?? '24h',
+      window: input.window ?? DEFAULT_STATISTICS_WINDOW,
       includeWorkflows: input.breakdown === 'workflow',
       includeWorkflowName: this.capabilityPolicy(access.role, 'workflow:read'),
     });

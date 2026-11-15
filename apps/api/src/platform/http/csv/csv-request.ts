@@ -3,6 +3,9 @@ import {
   throwApplicationError,
 } from '../application-error.js';
 
+// A download form posts exactly payload and csrfToken.
+const DOWNLOAD_FORM_FIELDS = 2;
+
 export function decodeCsvDownloadRequest<T>(
   body: unknown,
   contentType: string | undefined,
@@ -20,7 +23,7 @@ export function decodeCsvDownloadRequest<T>(
     return throwApplicationError(applicationError('request.invalid'));
   const form = new URLSearchParams(body.toString());
   if (
-    form.size !== 2 ||
+    form.size !== DOWNLOAD_FORM_FIELDS ||
     form.getAll('payload').length !== 1 ||
     form.getAll('csrfToken').length !== 1
   )

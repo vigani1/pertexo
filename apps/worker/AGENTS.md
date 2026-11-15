@@ -42,6 +42,12 @@ environment only in `config/`.
 - Settings: `config/worker.ts`, parsed once at startup and passed inward.
   `config/worker.ts` and `mail/system-mail-client.ts` are host-mounted
   internals (`MOUNTED_INTERNALS`); keep their built paths.
+- Numeric settings' bounds and defaults: `WORKER_SETTING_BOUNDS`
+  (`config/worker-environment.schemas.ts`); mail send and poll bounds:
+  `MAIL_SETTING_BOUNDS` (`config/mail-settings.ts`); runtime shutdown and
+  startup-check timeouts: `runtime/background-task-deadline.ts`. Every
+  other limit sits beside what it bounds, and the limits check covers the
+  app.
 - Queue attempts, backoff and concurrency come from `@pertexo/queue`'s
   `QUEUE_CLASS_DEFAULTS`; step retries from `workflow-engine`.
 

@@ -37,6 +37,9 @@ import type {
 } from './access/workflow-run-inputs.types.js';
 import { WorkflowRunNotFoundError, authorize } from './access/authorize.js';
 
+/** How many runs a history page shows by default. */
+const DEFAULT_RUN_PAGE_SIZE = 50;
+
 export {
   type StartWorkflowRunInput,
   type ReplayWorkflowRunInput,
@@ -159,7 +162,7 @@ export class ListWorkflowRunsService {
     const page = await this.persistence.list({
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
-      limit: input.limit ?? 50,
+      limit: input.limit ?? DEFAULT_RUN_PAGE_SIZE,
       includeWorkflowName,
       ...(context.runValueKey === undefined
         ? {}

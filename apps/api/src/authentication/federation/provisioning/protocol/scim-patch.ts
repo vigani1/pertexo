@@ -16,13 +16,16 @@ import {
 } from './scim-protocol.js';
 import { parseDirectoryFilter } from './scim-filter.js';
 
+/** The longest attribute path a PATCH operation may name. */
+const SCIM_PATCH_PATH_MAX_CHARACTERS = 1_024;
+
 const operationSchema = z
   .object({
     op: z
       .string()
       .toLowerCase()
       .pipe(z.enum(['add', 'replace', 'remove'])),
-    path: z.string().min(1).max(1024).optional(),
+    path: z.string().min(1).max(SCIM_PATCH_PATH_MAX_CHARACTERS).optional(),
     value: z.unknown().optional(),
   })
   .strict();

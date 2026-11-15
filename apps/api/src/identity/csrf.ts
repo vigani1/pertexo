@@ -1,4 +1,5 @@
 import { csrfTokenSchema } from '@pertexo/contracts';
+import { HttpStatus } from '@nestjs/common';
 
 import {
   constantTimeStringEqual,
@@ -7,6 +8,7 @@ import {
 } from './crypto.js';
 import { IdentityError } from './identity.errors.js';
 import type { IdentityCrypto } from './crypto.js';
+import { SECRET_TOKEN_BYTES } from './secret-token.js';
 
 const mutationMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -21,7 +23,7 @@ export class DoubleSubmitCsrfPolicy {
   constructor(private readonly crypto: IdentityCrypto = nodeIdentityCrypto) {}
 
   issueToken(): string {
-    return encodeBase64Url(this.crypto.randomBytes(32));
+    return encodeBase64Url(this.crypto.randomBytes(SECRET_TOKEN_BYTES));
   }
 
   assertMutationAllowed(input: CsrfMutationInput): void {
@@ -70,7 +72,7 @@ export function browserCsrfRefusal(
   } catch (error: unknown) {
     return error instanceof IdentityError &&
       error.code === 'identity.csrf_malformed'
-      ? 400
-      : 403;
+      ? HttpStatus.BAD_REQUEST
+      : HttpStatus.FORBIDDEN;
   }
 }

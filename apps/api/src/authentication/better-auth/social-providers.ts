@@ -11,6 +11,13 @@ import type {
 import type { PertexoBetterAuth } from './better-auth-options.js';
 import { SocialProviderUnavailableError } from './social-provider.errors.js';
 import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
+
+/** What a social provider's tokens may carry. */
+const PROVIDER_TOKEN_LIMITS = Object.freeze({
+  idTokenCharacters: 16 * 1_024,
+  subjectCharacters: 512,
+});
 
 export function configuredSocialProviders(
   socialProviders: BetterAuthOptions['socialProviders'],
@@ -68,7 +75,7 @@ export function betterAuthSocialProviders(
       const invalidIdentityToken =
         provider.idToken !== undefined &&
         (tokens.idToken === undefined ||
-          tokens.idToken.length > 16_384 ||
+          tokens.idToken.length > PROVIDER_TOKEN_LIMITS.idTokenCharacters ||
           !(await verifyProviderIdToken(
             provider,
             tokens.idToken,
@@ -87,7 +94,7 @@ export function betterAuthSocialProviders(
       const email = z
         .string()
         .transform(canonicalEmail)
-        .pipe(z.email().max(320))
+        .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.accountCharacters))
         .nullable()
         .safeParse(profile.user.email ?? null);
       if (!email.success) return undefined;
@@ -112,7 +119,7 @@ function accountSubject(subject: unknown): string | undefined {
   const invalidProviderSubject =
     (typeof subject !== 'string' && typeof subject !== 'number') ||
     String(subject).trim().length === 0 ||
-    String(subject).length > 512 ||
+    String(subject).length > PROVIDER_TOKEN_LIMITS.subjectCharacters ||
     (typeof subject === 'number' && !Number.isSafeInteger(subject));
   if (invalidProviderSubject) return undefined;
   return String(subject);

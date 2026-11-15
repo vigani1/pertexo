@@ -7,6 +7,10 @@ import {
   type Span,
 } from '@opentelemetry/api';
 
+// W3C traceparent writes trace flags as two hex digits.
+const HEX = 16;
+const TRACE_FLAGS_DIGITS = 2;
+
 const TRACEPARENT = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/u;
 
 export type WebhookDeliveryOutcome =
@@ -62,7 +66,9 @@ function createConfiguredWebhookIngressTelemetry(): WebhookIngressTelemetry {
     traceparent: () => {
       const spanContext = trace.getActiveSpan()?.spanContext();
       if (spanContext === undefined) return undefined;
-      return `00-${spanContext.traceId}-${spanContext.spanId}-${spanContext.traceFlags.toString(16).padStart(2, '0')}`;
+      return `00-${spanContext.traceId}-${spanContext.spanId}-${spanContext.traceFlags
+        .toString(HEX)
+        .padStart(TRACE_FLAGS_DIGITS, '0')}`;
     },
     trace: <T>(traceparent: string | undefined, work: () => Promise<T>) => {
       const match = traceparent?.match(TRACEPARENT);
@@ -72,7 +78,7 @@ function createConfiguredWebhookIngressTelemetry(): WebhookIngressTelemetry {
           : {
               traceId: match[1] ?? '',
               spanId: match[2] ?? '',
-              traceFlags: Number.parseInt(match[3] ?? '00', 16),
+              traceFlags: Number.parseInt(match[3] ?? '00', HEX),
               isRemote: true,
             };
       const parent =

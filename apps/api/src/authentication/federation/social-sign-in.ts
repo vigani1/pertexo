@@ -2,6 +2,7 @@ import {
   recordAuthenticationFailure,
   type AuthenticationFailureReason,
 } from '../journeys/failures.js';
+import { HttpStatus } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { SocialSignInCommands, type SignUpMode } from '@pertexo/core/identity';
 import {
@@ -23,6 +24,7 @@ import {
   newJourneyToken,
   readCookie,
 } from '../journeys/browser-proof.js';
+import { CALLBACK_LIMITS } from '../journeys/callback-limits.js';
 
 const CALLBACK_PATH = '/v1/auth/federation/social/callback/';
 
@@ -51,21 +53,25 @@ export class SocialSignIn {
   public async handle(request: Request): Promise<Response | undefined> {
     const url = new URL(request.url);
     if (url.pathname === '/v1/auth/sign-in/social')
-      return request.method === 'POST' ? this.start(request) : failure(404);
+      return request.method === 'POST'
+        ? this.start(request)
+        : failure(HttpStatus.NOT_FOUND);
     if (!url.pathname.startsWith(CALLBACK_PATH)) return undefined;
     const provider = authenticationProviderSchema.safeParse(
       url.pathname.slice(CALLBACK_PATH.length),
     );
-    if (request.method !== 'GET' || !provider.success) return failure(404);
+    if (request.method !== 'GET' || !provider.success)
+      return failure(HttpStatus.NOT_FOUND);
     return this.callback(request, provider.data);
   }
 
   private async start(request: Request): Promise<Response> {
     const raw: unknown = await request.json().catch(() => null);
     const parsed = socialSignInStartSchema.safeParse(raw);
-    if (!parsed.success) return failure(400);
+    if (!parsed.success) return failure(HttpStatus.BAD_REQUEST);
     const { provider } = parsed.data;
-    if (!this.input.providers.available.includes(provider)) return failure(404);
+    if (!this.input.providers.available.includes(provider))
+      return failure(HttpStatus.NOT_FOUND);
     const returnPath = authenticationReturnPathSchema.safeParse(
       parsed.data.callbackURL,
     );
@@ -109,7 +115,7 @@ export class SocialSignIn {
         failedAt,
         'failed',
       );
-      return failure(503);
+      return failure(HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
 
@@ -128,7 +134,7 @@ export class SocialSignIn {
       !isJourneyToken(browser) ||
       code === null ||
       code.length === 0 ||
-      code.length > 4096 ||
+      code.length > CALLBACK_LIMITS.codeCharacters ||
       query.has('error') ||
       ['state', 'code', 'iss'].some((name) => query.getAll(name).length > 1);
     if (invalidSocialCallback) return this.failed(request, 'callback_invalid');
@@ -146,7 +152,7 @@ export class SocialSignIn {
         return this.failed(request, 'attempt_unavailable');
       returnPath = attempt.returnPath;
       const issuer = query.get('iss');
-      if (issuer !== null && issuer.length > 2048)
+      if (issuer !== null && issuer.length > CALLBACK_LIMITS.issuerCharacters)
         return this.failed(request, 'callback_invalid', returnPath);
       failedAt = 'provider_unavailable';
       const identity = await this.input.providers.verify({

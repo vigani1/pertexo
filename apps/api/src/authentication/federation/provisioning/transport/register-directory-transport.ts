@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { HttpStatus } from '@nestjs/common';
 import { z } from 'zod';
 import type {
   FastifyInstance,
@@ -28,9 +29,12 @@ import {
   sendDirectoryError,
 } from './directory-http.errors.js';
 
+/** The longest resource path a provisioning request may name. */
+const DIRECTORY_PATH_MAX_CHARACTERS = 2_048;
+
 const parameters = z.object({
   organizationId: z.uuid(),
-  '*': z.string().max(2048),
+  '*': z.string().max(DIRECTORY_PATH_MAX_CHARACTERS),
 });
 const policy = new AbuseRateLimitPolicy();
 export function registerDirectoryTransport(
@@ -80,7 +84,7 @@ export function registerDirectoryTransport(
       );
       sendDirectoryError(
         reply,
-        429,
+        HttpStatus.TOO_MANY_REQUESTS,
         'Too many provisioning requests. Retry after the indicated delay.',
       );
       return false;
@@ -131,7 +135,7 @@ export function registerDirectoryTransport(
           ) {
             sendDirectoryError(
               reply,
-              415,
+              HttpStatus.UNSUPPORTED_MEDIA_TYPE,
               'Use application/scim+json or application/json.',
             );
             return;

@@ -15,6 +15,9 @@ import type {
 } from '../ports.js';
 import { WorkflowRunNotFoundError } from '../workflow-runs.service.js';
 
+/** How many recent runs of one step a list shows by default. */
+const DEFAULT_STEP_RUNS = 20;
+
 export type GetWorkflowRunInputInput = WorkflowRunApplicationInput &
   Readonly<{ runId: string }>;
 
@@ -159,7 +162,7 @@ export class ListWorkflowStepRunsService {
       workspaceId: input.routeWorkspaceId,
       workflowId: input.workflowId,
       nodeId: input.nodeId,
-      limit: input.limit ?? 20,
+      limit: input.limit ?? DEFAULT_STEP_RUNS,
     });
     if (items === undefined) throw new WorkflowRunNotFoundError();
     return {

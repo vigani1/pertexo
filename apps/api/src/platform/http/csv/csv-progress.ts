@@ -1,5 +1,8 @@
 import { EXPORT_IDLE_MILLIS } from './csv-limits.js';
 
+/** How often an export's progress is checked. */
+const PROGRESS_CHECK_MILLIS = 1_000;
+
 /** Observe socket writes, not source production or PassThrough buffering. */
 export function watchExportProgress(
   response: Readonly<{ socket: Readonly<{ bytesWritten: number }> | null }>,
@@ -16,7 +19,7 @@ export function watchExportProgress(
       clearInterval(timer);
       stalled();
     }
-  }, 1000);
+  }, PROGRESS_CHECK_MILLIS);
   timer.unref();
   return () => {
     clearInterval(timer);

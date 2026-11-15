@@ -45,6 +45,9 @@ import {
 } from './problems/normalization/problem-values.js';
 import { fromApplicationError } from './problems/normalization/application-problem.js';
 
+/** How much of a failed request's URL the log keeps. */
+const LOGGED_URL_MAX_CHARACTERS = 2_048;
+
 export {
   type HttpErrorLogEntry,
   type HttpErrorLogger,
@@ -168,7 +171,7 @@ function normalizeFailClosed(
 }
 
 function instanceFrom(request: HttpRequestLike): string | undefined {
-  const url = text(request.url, 2_048);
+  const url = text(request.url, LOGGED_URL_MAX_CHARACTERS);
   if (url === undefined) {
     return undefined;
   }
