@@ -6,19 +6,19 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
-import { emailProblem, requiredPasswordProblem } from '../../forms/field-rules';
-import { AuthForm } from '../../forms/submission';
-import { PasswordField } from '../../forms/password-field';
-import type { LoginNotice } from '../../model/login-notice';
-import { isInvitationReturn, returnToSearch } from '../../model/return-path';
-import { useSignIn } from './use-submit';
-import { OrDivider, SocialProviderGrid } from '../social/provider-grid';
+import { emailProblem, requiredPasswordProblem } from '../forms/field-rules';
+import { AuthForm } from '../forms/submission';
+import { PasswordField } from '../forms/password-field';
+import type { LoginNotice } from '../model/login-notice';
+import { isInvitationReturn, returnToSearch } from '../model/return-path';
+import { useSignIn } from '../data/sign-in.mutations';
+import { OrDivider, SocialProviderGrid } from './social/provider-grid';
 import {
   AuthLens,
   AuthLensDescription,
   AuthLensFooter,
   AuthLensTitle,
-} from '../stage/auth-lens';
+} from './stage/auth-lens';
 import { Notice } from '@/components/ui/notice';
 
 const fieldRules = { email: emailProblem, password: requiredPasswordProblem };

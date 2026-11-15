@@ -22,7 +22,7 @@ import {
 } from '../../data/two-factor.mutations';
 import { AccountCommandFailure } from '../account/section';
 import { TwoFactorCodeForm } from './code-form';
-import { useTwoFactorVerification } from './use-verify';
+import { useTwoFactorVerification } from '../../data/two-factor-verification.mutations';
 import { RecoveryCodes } from './recovery-codes';
 
 type Stage =

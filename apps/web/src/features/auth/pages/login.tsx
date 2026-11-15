@@ -14,7 +14,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { authenticationCapabilitiesQueryOptions } from '../data/auth.queries';
 import { EmailRequestLens } from '../components/inbox/email-request-lens';
 import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
-import { SignInLens } from '../components/sign-in/lens';
+import { SignInLens } from '../components/sign-in-lens';
 import { LensLoading, LensUnavailable } from '../components/stage/lens-states';
 import { resendFailure } from '../model/auth-failure';
 import type { LoginNotice } from '../model/login-notice';
