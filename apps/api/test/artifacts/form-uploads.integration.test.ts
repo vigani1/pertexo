@@ -241,7 +241,7 @@ integrationDescribe('form uploads over HTTP and object storage', () => {
     });
     expectProblem(tooLarge, 413, 'form.file_too_large');
     expect(tooLarge.json()).toMatchObject({
-      detail: 'This file is 2 MB; the limit is 1 MB.',
+      detail: 'This file is over the 1 MB limit.',
     });
     expect(fixture.readStorageCalls().beginDirectUpload).toBe(before);
   });

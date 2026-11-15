@@ -78,7 +78,7 @@ async function respond(responder: Page, shop: string, url: string) {
   // Too large: refused in place before anything is uploaded.
   await zone.setInputFiles(csv('everything.csv', Buffer.alloc(1_572_864, 65)));
   await expect(
-    files.getByText('This file is 1.5 MB; the limit is 1 MB.', {
+    files.getByText('This file is over the 1 MB limit.', {
       exact: false,
     }),
   ).toBeVisible();
