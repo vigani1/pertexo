@@ -22,12 +22,13 @@ import type {
 } from '../tenant-access.types.js';
 import { UserProfileCommandConflictError } from '../tenant-access.errors.js';
 import { userRecord, userSelection } from './projection.js';
+import { USER_DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 
 const displayNameSchema = z
   .string()
   .trim()
   .min(1)
-  .max(128)
+  .max(USER_DISPLAY_NAME_MAX_CHARACTERS)
   .regex(/^[^\p{Cc}]+$/u);
 /** The receipt keeps the applied name, not a copy of the whole profile. */
 const durableResult = z

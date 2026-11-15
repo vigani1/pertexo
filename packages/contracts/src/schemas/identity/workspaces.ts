@@ -14,6 +14,7 @@ import { z } from 'zod';
 import {
   DISPLAY_NAME_MAX_CHARACTERS,
   EMAIL_ADDRESS_LIMITS,
+  USER_DISPLAY_NAME_MAX_CHARACTERS,
 } from '@pertexo/workflow-model';
 import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 
@@ -93,12 +94,11 @@ export const userProfileResponseSchema = responseSchema(
     })
     .strict(),
 );
-/** ADR 043: the name teammates see; printable text, 1–128 characters. */
-export const USER_DISPLAY_NAME_MAX_LENGTH = 128;
+/** ADR 043: the name teammates see; printable text. */
 export const userDisplayNameSchema = storageTextSchema
   .trim()
   .min(1)
-  .max(USER_DISPLAY_NAME_MAX_LENGTH)
+  .max(USER_DISPLAY_NAME_MAX_CHARACTERS)
   .regex(/^[^\p{Cc}]+$/u);
 export const userProfileUpdateRequestSchema = z
   .object({

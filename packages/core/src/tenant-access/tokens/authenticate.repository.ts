@@ -18,6 +18,9 @@ import {
 import { apiTokenStatus } from './metadata.js';
 import type { VerifiedApiToken } from './api-token.types.js';
 
+// A token's last use is written at most this often.
+const LAST_USED_WRITE_INTERVAL = sql.raw("interval '1 minute'");
+
 /** Off the helper: no member is behind this yet. The token is what names one. */
 export function authenticateApiToken(
   pool: Pool,
@@ -75,7 +78,7 @@ export function authenticateApiToken(
             isNull(apiTokens.revokedAt),
             or(
               isNull(apiTokens.lastUsedAt),
-              sql`${apiTokens.lastUsedAt}<=${row.observedAt}::timestamptz-interval '1 minute'`,
+              sql`${apiTokens.lastUsedAt}<=${row.observedAt}::timestamptz-${LAST_USED_WRITE_INTERVAL}`,
             ),
           ),
         )

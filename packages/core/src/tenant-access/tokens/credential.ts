@@ -1,6 +1,8 @@
 import { apiTokenCredentialSchema } from '@pertexo/workflow-model';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
+const API_TOKEN_SECRET_BYTES = 32;
+
 export type ParsedApiTokenCredential = Readonly<{
   workspaceId: string;
   tokenId: string;
@@ -31,7 +33,7 @@ export function issueApiTokenCredential(
   workspaceId: string,
   tokenId: string,
 ): Readonly<{ secret: string; digest: string }> {
-  const secret = `ptx_1.${workspaceId}.${tokenId}.${randomBytes(32).toString('base64url')}`;
+  const secret = `ptx_1.${workspaceId}.${tokenId}.${randomBytes(API_TOKEN_SECRET_BYTES).toString('base64url')}`;
   return Object.freeze({ secret, digest: digest(secret) });
 }
 export function matchesApiTokenDigest(

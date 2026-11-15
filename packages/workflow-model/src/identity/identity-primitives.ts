@@ -28,6 +28,9 @@ export const FRESH_SIGN_IN_WINDOW_MILLIS = 5 * 60_000;
 /** The longest name a person shows: at sign-up, in their profile and to their workspaces. */
 export const DISPLAY_NAME_MAX_CHARACTERS = 256;
 
+/** ADR 043: the name teammates see on a user's profile. */
+export const USER_DISPLAY_NAME_MAX_CHARACTERS = 128;
+
 /**
  * How long an account stays locked after too many wrong two-factor codes in
  * a row. The API sets it on its two-factor sign-in, and the browser says it.
