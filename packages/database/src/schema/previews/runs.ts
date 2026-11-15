@@ -1,5 +1,10 @@
+import { TRACEPARENT_CHARACTERS } from '@pertexo/workflow-model';
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import type { PreviewAttemptLease, PreviewStatus } from '../stored-shapes.js';
-import { NODE_IDENTITY_KEY_PATTERN } from '@pertexo/node-sdk';
+import {
+  NODE_IDENTITY_KEY_PATTERN,
+  NODE_FAILURE_FIELD_LIMITS,
+} from '@pertexo/node-sdk';
 import { workspaceVariableSetRevisions } from '../variables.js';
 import { users } from '../identity/users.js';
 import { workflows } from '../authoring/workflows.js';
@@ -20,6 +25,24 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
+const WIDTHS = Object.freeze({
+  draftFingerprint: SHA256_HEX_CHARACTERS,
+  nodeId: 256,
+  definitionKey: 128,
+  executorKey: 128,
+  idempotencyKeyHash: SHA256_HEX_CHARACTERS,
+  requestHash: SHA256_HEX_CHARACTERS,
+  requestId: 128,
+  traceId: 128,
+  providerKey: 64,
+  operationKey: 128,
+  sideEffectClass: 32,
+  dryRun: 32,
+  status: 32,
+  safeErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  traceparent: TRACEPARENT_CHARACTERS,
+});
+
 export const previewRuns = appSchema.table(
   'preview_runs',
   {
@@ -27,43 +50,51 @@ export const previewRuns = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
     draftRevision: integer('draft_revision').notNull(),
-    draftFingerprint: char('draft_fingerprint', { length: 64 }).notNull(),
-    nodeId: varchar('node_id', { length: 256 }).notNull(),
-    definitionKey: varchar('definition_key', { length: 128 }).notNull(),
+    draftFingerprint: char('draft_fingerprint', {
+      length: WIDTHS.draftFingerprint,
+    }).notNull(),
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
+    definitionKey: varchar('definition_key', {
+      length: WIDTHS.definitionKey,
+    }).notNull(),
     definitionVersion: integer('definition_version').notNull(),
-    executorKey: varchar('executor_key', { length: 128 }).notNull(),
+    executorKey: varchar('executor_key', {
+      length: WIDTHS.executorKey,
+    }).notNull(),
     executorVersion: integer('executor_version').notNull(),
     actorUserId: uuid('actor_user_id').notNull(),
     idempotencyKeyHash: char('idempotency_key_hash', {
-      length: 64,
+      length: WIDTHS.idempotencyKeyHash,
     }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
-    requestId: varchar('request_id', { length: 128 }),
-    traceId: varchar('trace_id', { length: 128 }),
-    providerKey: varchar('provider_key', { length: 64 }),
-    operationKey: varchar('operation_key', { length: 128 }),
+    requestHash: char('request_hash', { length: WIDTHS.requestHash }).notNull(),
+    requestId: varchar('request_id', { length: WIDTHS.requestId }),
+    traceId: varchar('trace_id', { length: WIDTHS.traceId }),
+    providerKey: varchar('provider_key', { length: WIDTHS.providerKey }),
+    operationKey: varchar('operation_key', { length: WIDTHS.operationKey }),
     executableNodeJson: json('executable_node_json').notNull(),
     variableSetRevision: integer('variable_set_revision'),
     inputRef: json('input_ref').notNull(),
     priorPreviewRunId: uuid('prior_preview_run_id'),
-    sideEffectClass: varchar('side_effect_class', { length: 32 })
+    sideEffectClass: varchar('side_effect_class', {
+      length: WIDTHS.sideEffectClass,
+    })
       .$type<PreviewAttemptLease['sideEffectClass']>()
       .notNull(),
     mayContactProvider: boolean('may_contact_provider').notNull(),
     mayCauseExternalSideEffect: boolean(
       'may_cause_external_side_effect',
     ).notNull(),
-    dryRun: varchar('dry_run', { length: 32 })
+    dryRun: varchar('dry_run', { length: WIDTHS.dryRun })
       .$type<PreviewAttemptLease['dryRun']>()
       .notNull(),
-    status: varchar('status', { length: 32 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<PreviewStatus>()
       .default('queued')
       .notNull(),
     outputRef: json('output_ref'),
     pinnedSampleId: uuid('pinned_sample_id'),
-    safeErrorCode: varchar('safe_error_code', { length: 128 }),
-    traceparent: varchar('traceparent', { length: 55 }),
+    safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
+    traceparent: varchar('traceparent', { length: WIDTHS.traceparent }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
       .notNull(),

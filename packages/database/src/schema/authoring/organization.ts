@@ -16,13 +16,17 @@ import type { FolderFact } from '../stored-shapes.js';
 import { workflows } from './workflows.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 
+const WIDTHS = Object.freeze({
+  accessMode: 16,
+});
+
 export const workflowFolders = appSchema.table(
   'workflow_folders',
   {
     workspaceId: uuid('workspace_id').notNull(),
     id: uuid().notNull(),
     parentId: uuid('parent_id'),
-    accessMode: varchar('access_mode', { length: 16 })
+    accessMode: varchar('access_mode', { length: WIDTHS.accessMode })
       .$type<FolderFact['accessMode']>()
       .notNull()
       .default('workspace'),

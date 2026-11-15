@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../../column-widths.js';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -12,6 +13,12 @@ import {
 import { appSchema } from '../../namespace.js';
 import { workflows } from '../workflows.js';
 
+const WIDTHS = Object.freeze({
+  sourceChecksum: 82,
+  graphDigest: SHA256_HEX_CHARACTERS,
+  targetName: 128,
+});
+
 export const workflowPromotionOrigins = appSchema.table(
   'workflow_promotion_origins',
   {
@@ -20,9 +27,13 @@ export const workflowPromotionOrigins = appSchema.table(
     sourceWorkspaceId: uuid('source_workspace_id').notNull(),
     sourceWorkflowId: uuid('source_workflow_id').notNull(),
     sourceVersionId: uuid('source_version_id').notNull(),
-    sourceChecksum: varchar('source_checksum', { length: 82 }).notNull(),
-    graphDigest: varchar('graph_digest', { length: 64 }).notNull(),
-    targetName: varchar('target_name', { length: 128 }).notNull(),
+    sourceChecksum: varchar('source_checksum', {
+      length: WIDTHS.sourceChecksum,
+    }).notNull(),
+    graphDigest: varchar('graph_digest', {
+      length: WIDTHS.graphDigest,
+    }).notNull(),
+    targetName: varchar('target_name', { length: WIDTHS.targetName }).notNull(),
     draftRevision: integer('draft_revision').notNull(),
     publishedVersionId: uuid('published_version_id'),
     promotionId: uuid('promotion_id').notNull(),

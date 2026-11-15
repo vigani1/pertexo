@@ -1,3 +1,7 @@
+import {
+  RESOURCE_NAME_MAX_LENGTH,
+  WORKSPACE_TEXT_LIMITS,
+} from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -15,20 +19,35 @@ import {
 import { appSchema } from '../namespace.js';
 import { users } from '../identity/users.js';
 
+/** A new workspace’s audit retention and auto-pause threshold. */
+const WORKSPACE_DEFAULTS = Object.freeze({
+  auditRetentionDays: 365,
+  autoPauseThreshold: 10,
+});
+
+const WIDTHS = Object.freeze({
+  name: RESOURCE_NAME_MAX_LENGTH,
+  slug: WORKSPACE_TEXT_LIMITS.slugCharacters,
+  status: 32,
+  deletionReason: WORKSPACE_TEXT_LIMITS.deletionReasonCharacters,
+});
+
 export const workspaces = appSchema.table(
   'workspaces',
   {
     id: uuid('id').primaryKey(),
-    name: varchar('name', { length: 128 }).notNull(),
-    slug: varchar('slug', { length: 64 }).notNull(),
-    status: varchar('status', { length: 32 })
+    name: varchar('name', { length: WIDTHS.name }).notNull(),
+    slug: varchar('slug', { length: WIDTHS.slug }).notNull(),
+    status: varchar('status', { length: WIDTHS.status })
       .$type<
         'active' | 'suspended' | 'pending_deletion' | 'purging' | 'deleted'
       >()
       .notNull()
       .default(sql`'active'::character varying`),
     revision: integer('revision').notNull().default(1),
-    auditRetentionDays: smallint('audit_retention_days').notNull().default(365),
+    auditRetentionDays: smallint('audit_retention_days')
+      .notNull()
+      .default(WORKSPACE_DEFAULTS.auditRetentionDays),
     governanceRevision: integer('governance_revision').notNull().default(1),
     requirePublishApproval: boolean('require_publish_approval')
       .notNull()
@@ -39,10 +58,14 @@ export const workspaces = appSchema.table(
       mode: 'date',
     }),
     deletionRequestedBy: uuid('deletion_requested_by'),
-    deletionReason: varchar('deletion_reason', { length: 512 }),
+    deletionReason: varchar('deletion_reason', {
+      length: WIDTHS.deletionReason,
+    }),
     purgeAfter: timestamp('purge_after', { withTimezone: true, mode: 'date' }),
     /** ADR 056: failures in a row that pause a workflow's triggers. */
-    autoPauseThreshold: smallint('auto_pause_threshold').default(10).notNull(),
+    autoPauseThreshold: smallint('auto_pause_threshold')
+      .default(WORKSPACE_DEFAULTS.autoPauseThreshold)
+      .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),

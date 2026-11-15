@@ -16,14 +16,19 @@ import { appSchema } from '../namespace.js';
 import { users } from '../identity/users.js';
 import { workspaces } from './workspaces.js';
 
+const WIDTHS = Object.freeze({
+  role: 32,
+  status: 32,
+});
+
 export const workspaceMemberships = appSchema.table(
   'workspace_memberships',
   {
     workspaceId: uuid('workspace_id').notNull(),
     userId: uuid('user_id').notNull(),
-    role: varchar('role', { length: 32 }).$type<Role>().notNull(),
+    role: varchar('role', { length: WIDTHS.role }).$type<Role>().notNull(),
     roleRevision: integer('role_revision').notNull().default(1),
-    status: varchar('status', { length: 32 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<'active' | 'suspended' | 'removed'>()
       .notNull()
       .default(sql`'active'::character varying`),

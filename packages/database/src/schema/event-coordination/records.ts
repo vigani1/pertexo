@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import {
   char,
   check,
@@ -23,6 +24,18 @@ import {
   DATA_RETENTION_DAYS,
   type EventCoordinationPolicy,
 } from '@pertexo/workflow-model';
+
+const WIDTHS = Object.freeze({
+  nodeId: 128,
+  policyHash: SHA256_HEX_CHARACTERS,
+  keyHash: SHA256_HEX_CHARACTERS,
+  source: 16,
+  mode: 16,
+  initialOutcome: 16,
+  status: 16,
+  initialStatus: 16,
+  reason: 32,
+});
 
 const TRIGGER_HISTORY_DAYS = String(DATA_RETENTION_DAYS.triggerHistory);
 const DAY_BEFORE_TRIGGER_HISTORY = String(
@@ -51,9 +64,9 @@ export const triggerEventWindows = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
-    nodeId: varchar('node_id', { length: 128 }).notNull(),
-    policyHash: char('policy_hash', { length: 64 }).notNull(),
-    keyHash: char('key_hash', { length: 64 }).notNull(),
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
+    policyHash: char('policy_hash', { length: WIDTHS.policyHash }).notNull(),
+    keyHash: char('key_hash', { length: WIDTHS.keyHash }).notNull(),
     windowStartedAt: timestamp('window_started_at', {
       withTimezone: true,
       mode: 'date',
@@ -97,13 +110,17 @@ export const triggerCoordinatedEvents = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
-    nodeId: varchar('node_id', { length: 128 }).notNull(),
-    source: varchar('source', { length: 16 }).notNull(),
-    mode: varchar('mode', { length: 16 }).notNull(),
-    initialOutcome: varchar('initial_outcome', { length: 16 }).notNull(),
-    status: varchar('status', { length: 16 }).notNull(),
-    initialStatus: varchar('initial_status', { length: 16 }).notNull(),
-    reason: varchar('reason', { length: 32 }),
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
+    source: varchar('source', { length: WIDTHS.source }).notNull(),
+    mode: varchar('mode', { length: WIDTHS.mode }).notNull(),
+    initialOutcome: varchar('initial_outcome', {
+      length: WIDTHS.initialOutcome,
+    }).notNull(),
+    status: varchar('status', { length: WIDTHS.status }).notNull(),
+    initialStatus: varchar('initial_status', {
+      length: WIDTHS.initialStatus,
+    }).notNull(),
+    reason: varchar('reason', { length: WIDTHS.reason }),
     runId: uuid('run_id'),
     versionNumber: integer('version_number').notNull(),
     receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' })

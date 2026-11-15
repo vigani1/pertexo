@@ -1,3 +1,5 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { sql } from 'drizzle-orm';
 import {
   char,
@@ -16,24 +18,36 @@ import type { WebhookAuthentication } from '@pertexo/contracts';
 import { appSchema } from '../namespace.js';
 import { workflows } from '../authoring/workflows.js';
 
+const WIDTHS = Object.freeze({
+  nodeId: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+  endpointKeyHash: SHA256_HEX_CHARACTERS,
+  kmsKeyReference: 2048,
+  nonce: 64,
+  authTag: 64,
+});
+
 export const webhookTestEvents = appSchema.table(
   'webhook_test_events',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
-    nodeId: varchar('node_id', { length: 64 }).notNull(),
+    nodeId: varchar('node_id', { length: WIDTHS.nodeId }).notNull(),
     createdBy: uuid('created_by').notNull(),
-    endpointKeyHash: char('endpoint_key_hash', { length: 64 }).notNull(),
+    endpointKeyHash: char('endpoint_key_hash', {
+      length: WIDTHS.endpointKeyHash,
+    }).notNull(),
     binding: text('binding').notNull(),
     authentication: jsonb('authentication')
       .$type<WebhookAuthentication>()
       .notNull(),
-    kmsKeyReference: varchar('kms_key_reference', { length: 2048 }).notNull(),
+    kmsKeyReference: varchar('kms_key_reference', {
+      length: WIDTHS.kmsKeyReference,
+    }).notNull(),
     encryptedDataKey: text('encrypted_data_key').notNull(),
     ciphertext: text('ciphertext').notNull(),
-    nonce: varchar('nonce', { length: 64 }).notNull(),
-    authTag: varchar('auth_tag', { length: 64 }).notNull(),
+    nonce: varchar('nonce', { length: WIDTHS.nonce }).notNull(),
+    authTag: varchar('auth_tag', { length: WIDTHS.authTag }).notNull(),
     attempts: integer('attempts').notNull().default(0),
     outputRef: text('output_ref'),
     receivedAt: timestamp('received_at', { withTimezone: true, mode: 'date' }),

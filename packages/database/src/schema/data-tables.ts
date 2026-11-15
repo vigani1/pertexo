@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from './column-widths.js';
 import { DATA_TABLE_LIMITS, type DataTableColumn } from '@pertexo/node-sdk';
 import { sql } from 'drizzle-orm';
 import {
@@ -18,6 +19,12 @@ import { appSchema } from './namespace.js';
 import { workspaces } from './tenant-access/workspaces.js';
 import { workflowRuns } from './runs/workflow-runs.js';
 import { previewRuns } from './previews/runs.js';
+
+const WIDTHS = Object.freeze({
+  name: 64,
+  keyColumn: 64,
+  requestHash: SHA256_HEX_CHARACTERS,
+});
 
 export const workspaceDataTableQuotas = appSchema.table(
   'workspace_data_table_quotas',
@@ -50,10 +57,10 @@ export const workspaceDataTables = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     id: uuid().primaryKey(),
-    name: varchar({ length: 64 }).notNull(),
+    name: varchar({ length: WIDTHS.name }).notNull(),
     columns: jsonb('columns_json').$type<DataTableColumn[]>().notNull(),
     hasRemovedColumns: boolean('has_removed_columns').notNull().default(false),
-    keyColumn: varchar('key_column', { length: 64 }),
+    keyColumn: varchar('key_column', { length: WIDTHS.keyColumn }),
     rowCount: integer('row_count').notNull().default(0),
     storedBytes: integer('stored_bytes').notNull().default(0),
     revision: integer().notNull().default(1),
@@ -109,7 +116,9 @@ export const dataTableWriteReceipts = appSchema.table(
     invocationId: uuid('invocation_id').notNull(),
     runId: uuid('run_id'),
     previewRunId: uuid('preview_run_id'),
-    requestHash: varchar('request_hash', { length: 64 }).notNull(),
+    requestHash: varchar('request_hash', {
+      length: WIDTHS.requestHash,
+    }).notNull(),
     result: text('result_json').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()

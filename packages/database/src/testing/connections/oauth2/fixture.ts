@@ -23,12 +23,17 @@ export type StoredConnection = Readonly<{
   ownerId: string;
 }>;
 
+// A sealed value's nonce and tag as base64url text: 12 and 16 bytes.
+const SEALED_TEXT_CHARACTERS = Object.freeze({ nonce: 16, tag: 22 });
+const DIGEST_BYTES = 32;
+const SEEDED_AUTHORIZATION_SECONDS = 600;
+
 const sealedColumns = (marker: string) => ({
   kms: marker,
   key: Buffer.from(`key-${marker}`).toString('base64url'),
   ciphertext: Buffer.from(`ct-${marker}`).toString('base64url'),
-  nonce: 'A'.repeat(16),
-  tag: 'A'.repeat(22),
+  nonce: 'A'.repeat(SEALED_TEXT_CHARACTERS.nonce),
+  tag: 'A'.repeat(SEALED_TEXT_CHARACTERS.tag),
 });
 
 /** A user and workspace, stored as a database superuser would see them. */
@@ -136,12 +141,12 @@ export async function seedOAuth2Connection(
     tokenKeyReference,
   });
   await admin.query(
-    "insert into app.connection_oauth2_authorizations(workspace_id,connection_id,state_digest,binding_digest,started_by,secret_version_id,expires_at) values($1,$2,$3,$4,$5,$6,clock_timestamp()+interval '600 seconds')",
+    `insert into app.connection_oauth2_authorizations(workspace_id,connection_id,state_digest,binding_digest,started_by,secret_version_id,expires_at) values($1,$2,$3,$4,$5,$6,clock_timestamp()+interval '${String(SEEDED_AUTHORIZATION_SECONDS)} seconds')`,
     [
       workspaceId,
       connectionId,
-      randomBytes(32),
-      randomBytes(32),
+      randomBytes(DIGEST_BYTES),
+      randomBytes(DIGEST_BYTES),
       ownerId,
       secretVersionId,
     ],

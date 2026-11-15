@@ -13,17 +13,24 @@ import { appSchema } from '../namespace.js';
 import { users } from '../identity/users.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 
+const WIDTHS = Object.freeze({
+  action: 128,
+  targetType: 64,
+  requestId: 128,
+  traceId: 128,
+});
+
 export const auditEvents = appSchema.table(
   'audit_events',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     actorUserId: uuid('actor_user_id'),
-    action: varchar('action', { length: 128 }).notNull(),
-    targetType: varchar('target_type', { length: 64 }).notNull(),
+    action: varchar('action', { length: WIDTHS.action }).notNull(),
+    targetType: varchar('target_type', { length: WIDTHS.targetType }).notNull(),
     targetId: uuid('target_id'),
-    requestId: varchar('request_id', { length: 128 }),
-    traceId: varchar('trace_id', { length: 128 }),
+    requestId: varchar('request_id', { length: WIDTHS.requestId }),
+    traceId: varchar('trace_id', { length: WIDTHS.traceId }),
     metadata: jsonb('metadata')
       .$type<Record<string, unknown>>()
       .notNull()

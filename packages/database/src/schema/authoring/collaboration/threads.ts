@@ -12,15 +12,21 @@ import {
 import { appSchema } from '../../namespace.js';
 import { users } from '../../identity/users.js';
 import { workflows } from '../workflows.js';
+
+const WIDTHS = Object.freeze({
+  stepId: 128,
+  stepLabel: 256,
+  status: 16,
+});
 export const workflowCommentThreads = appSchema.table(
   'workflow_comment_threads',
   {
     workspaceId: uuid('workspace_id').notNull(),
     id: uuid('id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
-    stepId: varchar('step_id', { length: 128 }),
-    stepLabel: varchar('step_label', { length: 256 }),
-    status: varchar('status', { length: 16 })
+    stepId: varchar('step_id', { length: WIDTHS.stepId }),
+    stepLabel: varchar('step_label', { length: WIDTHS.stepLabel }),
+    status: varchar('status', { length: WIDTHS.status })
       .$type<'open' | 'resolved'>()
       .notNull()
       .default('open'),

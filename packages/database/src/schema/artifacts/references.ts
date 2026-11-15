@@ -11,6 +11,11 @@ import {
 import { appSchema } from '../namespace.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 
+const WIDTHS = Object.freeze({
+  ownerFamily: 40,
+  ownerSlot: 32,
+});
+
 /** Storage locations, not visibility or retention policy. JSON remains authoritative. */
 export const ARTIFACT_OWNER_SOURCES = [
   {
@@ -105,10 +110,12 @@ export const artifactOwnerReferences = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     artifactId: uuid('artifact_id').notNull(),
-    ownerFamily: varchar('owner_family', { length: 40 }).notNull(),
+    ownerFamily: varchar('owner_family', {
+      length: WIDTHS.ownerFamily,
+    }).notNull(),
     ownerId: uuid('owner_id').notNull(),
     ownerSubId: integer('owner_sub_id').notNull(),
-    ownerSlot: varchar('owner_slot', { length: 32 }).notNull(),
+    ownerSlot: varchar('owner_slot', { length: WIDTHS.ownerSlot }).notNull(),
   },
   (table) => [
     primaryKey({

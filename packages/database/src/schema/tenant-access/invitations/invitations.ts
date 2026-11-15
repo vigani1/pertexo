@@ -1,3 +1,5 @@
+import { SHA256_HEX_CHARACTERS } from '../../column-widths.js';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 import type { DelegatedRole } from '@pertexo/policy';
 import { sql } from 'drizzle-orm';
 import {
@@ -16,21 +18,38 @@ import { appSchema } from '../../namespace.js';
 import { users } from '../../identity/users.js';
 import { workspaces } from '../workspaces.js';
 
+const WIDTHS = Object.freeze({
+  recipientEmail: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+  normalizedEmail: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+  role: 32,
+  status: 32,
+  tokenDigest: SHA256_HEX_CHARACTERS,
+  deliveryStatus: 32,
+});
+
 export const workspaceInvitations = appSchema.table(
   'workspace_invitations',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    recipientEmail: varchar('recipient_email', { length: 320 }).notNull(),
-    normalizedEmail: varchar('normalized_email', { length: 320 }).notNull(),
-    role: varchar('role', { length: 32 }).$type<DelegatedRole>().notNull(),
-    status: varchar('status', { length: 32 })
+    recipientEmail: varchar('recipient_email', {
+      length: WIDTHS.recipientEmail,
+    }).notNull(),
+    normalizedEmail: varchar('normalized_email', {
+      length: WIDTHS.normalizedEmail,
+    }).notNull(),
+    role: varchar('role', { length: WIDTHS.role })
+      .$type<DelegatedRole>()
+      .notNull(),
+    status: varchar('status', { length: WIDTHS.status })
       .$type<'pending' | 'accepted' | 'revoked' | 'expired'>()
       .notNull()
       .default('pending'),
     revision: integer('revision').notNull().default(1),
-    tokenDigest: char('token_digest', { length: 64 }).notNull(),
-    deliveryStatus: varchar('delivery_status', { length: 32 })
+    tokenDigest: char('token_digest', { length: WIDTHS.tokenDigest }).notNull(),
+    deliveryStatus: varchar('delivery_status', {
+      length: WIDTHS.deliveryStatus,
+    })
       .$type<'queued' | 'submitted' | 'failed' | 'canceled' | 'unknown'>()
       .notNull()
       .default('queued'),

@@ -190,7 +190,11 @@ export {
   type NoticeSchedule,
 } from './execution/notice-schedule.js';
 export { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from './execution/observation-window.js';
-export { traceIdOf, traceparentSchema } from './execution/traceparent.js';
+export {
+  TRACEPARENT_CHARACTERS,
+  traceIdOf,
+  traceparentSchema,
+} from './execution/traceparent.js';
 export {
   RUN_FAILURE_CODES,
   runFailureCodeSchema,
@@ -278,7 +282,10 @@ export {
   type FormValues,
 } from './triggers/forms/values.js';
 export { FormValuesInvalidError } from './triggers/forms/forms.errors.js';
-export { cronHasUnsupportedOperators } from './triggers/schedule-cron.js';
+export {
+  CRON_EXPRESSION_MAX_CHARACTERS,
+  cronHasUnsupportedOperators,
+} from './triggers/schedule-cron.js';
 export {
   webhookAuthenticationSchema,
   type WebhookAuthentication,
@@ -290,6 +297,7 @@ export {
 
 // Values
 export { EMAIL_ADDRESS_LIMITS } from './values/email-address.js';
+export { RESOURCE_NAME_MAX_LENGTH } from './values/resource-name.js';
 export {
   measureBoundedJson,
   snapshotBoundedJson,
@@ -306,7 +314,10 @@ export {
 } from './values/json/bounded-json-walk.js';
 export { STORED_INTEGER_MAX } from './values/stored-integer.js';
 export { STORED_TIMESTAMP_FRACTION_DIGITS } from './values/stored-timestamp.js';
-export { UUID_PATTERN } from './values/identifiers.js';
+export {
+  IDEMPOTENCY_KEY_MAX_CHARACTERS,
+  UUID_PATTERN,
+} from './values/identifiers.js';
 export {
   CANONICAL_JSON_MAX_DEPTH,
   canonicalJson,
@@ -390,7 +401,10 @@ export {
   type WorkflowPortabilityCatalog,
 } from './authoring/portability/projection.js';
 export { WorkflowPortabilityError } from './authoring/portability/portability.errors.js';
-export { publicationReviewDecision } from './authoring/publication-review-decision.js';
+export {
+  PUBLICATION_REVIEW_TEXT_MAX_LENGTH,
+  publicationReviewDecision,
+} from './authoring/publication-review-decision.js';
 export {
   stepSampleIdentity,
   stepSampleBindings,
@@ -458,4 +472,5 @@ export {
   AUDIT_RETENTION_MAX_DAYS,
   AUDIT_RETENTION_MIN_DAYS,
 } from './workspaces/governance.js';
+export { WORKSPACE_TEXT_LIMITS } from './workspaces/workspace-text.js';
 export { requiresPublicationReviewer } from './workspaces/governance.js';

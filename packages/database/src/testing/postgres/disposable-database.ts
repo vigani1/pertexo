@@ -21,10 +21,13 @@ function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
+// PostgreSQL cuts identifiers longer than this (NAMEDATALEN - 1).
+const POSTGRES_IDENTIFIER_BYTES = 63;
+
 function assertDisposableDatabaseName(value: string): void {
   if (
     !/^pertexo_test_[a-z0-9_]+$/u.test(value) ||
-    Buffer.byteLength(value, 'utf8') > 63
+    Buffer.byteLength(value, 'utf8') > POSTGRES_IDENTIFIER_BYTES
   )
     throw new Error('Disposable database name is outside the test namespace');
 }

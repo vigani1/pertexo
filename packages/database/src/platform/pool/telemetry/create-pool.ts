@@ -21,14 +21,24 @@ export {
   type DatabasePoolOptions,
   type DatabasePoolDiagnostics,
 } from './metrics.js';
+/** How often a pool samples lock waits, and the most often it may. */
+const LOCK_WAIT_SAMPLE_INTERVAL = Object.freeze({
+  defaultMs: 5_000,
+  minimumMs: 100,
+});
+
 export function createDatabasePool(
   config: PoolConfig,
   options: DatabasePoolOptions = {},
 ): Pool {
-  const intervalMs = options.lockWaitSampleIntervalMs ?? 5_000;
-  if (!Number.isSafeInteger(intervalMs) || intervalMs < 100)
+  const intervalMs =
+    options.lockWaitSampleIntervalMs ?? LOCK_WAIT_SAMPLE_INTERVAL.defaultMs;
+  if (
+    !Number.isSafeInteger(intervalMs) ||
+    intervalMs < LOCK_WAIT_SAMPLE_INTERVAL.minimumMs
+  )
     throw new RangeError(
-      'lockWaitSampleIntervalMs must be a safe integer of at least 100',
+      `lockWaitSampleIntervalMs must be a safe integer of at least ${String(LOCK_WAIT_SAMPLE_INTERVAL.minimumMs)}`,
     );
   const meter =
     options.meter ?? metrics.getMeter('@pertexo/database.postgres', '0.0.0');

@@ -5,6 +5,9 @@ import { z } from 'zod';
 const TRACEPARENT =
   /^00-(?<traceId>(?!0{32})[\da-f]{32})-(?!0{16})[\da-f]{16}-[\da-f]{2}$/u;
 
+/** A version 00 traceparent's length: `00`, the two ids, the flags and three dashes. */
+export const TRACEPARENT_CHARACTERS = 55;
+
 /** The trace id a valid traceparent carries, or undefined for any other text. */
 export function traceIdOf(traceparent: string): string | undefined {
   return TRACEPARENT.exec(traceparent)?.groups?.traceId;

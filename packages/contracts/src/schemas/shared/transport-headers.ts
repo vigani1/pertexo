@@ -1,9 +1,10 @@
+import { IDEMPOTENCY_KEY_MAX_CHARACTERS } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 const TRANSPORT_HEADERS_BOUNDS = Object.freeze({
   csrfTokenMinimumCharacters: 16,
   csrfTokenCharacters: 256,
-  idempotencyKeyCharacters: 128,
+  idempotencyKeyCharacters: IDEMPOTENCY_KEY_MAX_CHARACTERS,
 });
 
 export const csrfTokenSchema = z

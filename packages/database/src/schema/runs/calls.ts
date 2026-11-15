@@ -1,3 +1,5 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowCallOutcome } from '@pertexo/workflow-engine';
 import { sql } from 'drizzle-orm';
@@ -19,6 +21,13 @@ import { appSchema } from '../namespace.js';
 import { workflowVersions } from '../authoring/workflows.js';
 import { workflowRuns } from './workflow-runs.js';
 
+const WIDTHS = Object.freeze({
+  targetChecksum: 77,
+  inputChecksum: SHA256_HEX_CHARACTERS,
+  status: 32,
+  safeErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+});
+
 /** Parent-owned identity survives child detail and summary retirement. */
 export const workflowCalls = appSchema.table(
   'workflow_calls',
@@ -31,17 +40,21 @@ export const workflowCalls = appSchema.table(
     }).notNull(),
     targetWorkflowId: uuid('target_workflow_id').notNull(),
     targetVersionId: uuid('target_version_id').notNull(),
-    targetChecksum: varchar('target_checksum', { length: 77 }).notNull(),
+    targetChecksum: varchar('target_checksum', {
+      length: WIDTHS.targetChecksum,
+    }).notNull(),
     inputRef: json('input_ref'),
-    inputChecksum: char('input_checksum', { length: 64 }).notNull(),
+    inputChecksum: char('input_checksum', {
+      length: WIDTHS.inputChecksum,
+    }).notNull(),
     deadlineAt: timestamp('deadline_at', { withTimezone: true, mode: 'date' }),
-    status: varchar('status', { length: 32 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<WorkflowCallOutcome['status'] | 'pending' | 'accepted'>()
       .notNull(),
     childRunId: uuid('child_run_id'),
     liveChildRunId: uuid('live_child_run_id'),
     resultRef: json('result_ref'),
-    safeErrorCode: varchar('safe_error_code', { length: 128 }),
+    safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     slotLent: boolean('slot_lent').default(false).notNull(),
     consumedAt: timestamp('consumed_at', { withTimezone: true, mode: 'date' }),
     detailsPurgedAt: timestamp('details_purged_at', {

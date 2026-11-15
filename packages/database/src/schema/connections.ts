@@ -1,3 +1,5 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -22,20 +24,43 @@ import { workspaces } from './tenant-access/workspaces.js';
 import { appSchema } from './namespace.js';
 import { nodeAttemptConnectionDispatches } from './runs/connection-dispatches.js';
 
+const WIDTHS = Object.freeze({
+  providerKey: 64,
+  name: RESOURCE_NAME_MAX_LENGTH,
+  authType: 64,
+  status: 32,
+  accessMode: 16,
+  lastErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  lastHealthTransitionSource: 16,
+  kmsKeyReference: 2048,
+  nonce: 64,
+  authTag: 64,
+  eventType: 64,
+  actorKind: 32,
+  actorId: 128,
+  requestId: 128,
+  traceId: 128,
+  workerId: 128,
+  kind: 32,
+  reasonCode: 128,
+});
+
 export const connections = appSchema.table(
   'connections',
   {
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
-    providerKey: varchar('provider_key', { length: 64 }).notNull(),
-    name: varchar('name', { length: 128 }).notNull(),
-    authType: varchar('auth_type', { length: 64 })
+    providerKey: varchar('provider_key', {
+      length: WIDTHS.providerKey,
+    }).notNull(),
+    name: varchar('name', { length: WIDTHS.name }).notNull(),
+    authType: varchar('auth_type', { length: WIDTHS.authType })
       .$type<ConnectionAuthType>()
       .notNull(),
-    status: varchar('status', { length: 32 })
+    status: varchar('status', { length: WIDTHS.status })
       .$type<ConnectionStatus>()
       .notNull(),
-    accessMode: varchar('access_mode', { length: 16 })
+    accessMode: varchar('access_mode', { length: WIDTHS.accessMode })
       .$type<'workspace' | 'restricted'>()
       .notNull()
       .default('workspace'),
@@ -51,7 +76,7 @@ export const connections = appSchema.table(
       withTimezone: true,
       mode: 'date',
     }),
-    lastErrorCode: varchar('last_error_code', { length: 128 }),
+    lastErrorCode: varchar('last_error_code', { length: WIDTHS.lastErrorCode }),
     healthRevision: bigint('health_revision', { mode: 'bigint' })
       .notNull()
       .default(sql`1`),
@@ -64,7 +89,7 @@ export const connections = appSchema.table(
       mode: 'date',
     }),
     lastHealthTransitionSource: varchar('last_health_transition_source', {
-      length: 16,
+      length: WIDTHS.lastHealthTransitionSource,
     }).$type<'run' | 'test' | 'rotation' | 'revoke'>(),
     createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
@@ -146,11 +171,13 @@ export const connectionSecretVersions = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     connectionId: uuid('connection_id').notNull(),
-    kmsKeyReference: varchar('kms_key_reference', { length: 2048 }).notNull(),
+    kmsKeyReference: varchar('kms_key_reference', {
+      length: WIDTHS.kmsKeyReference,
+    }).notNull(),
     encryptedDataKey: text('encrypted_data_key').notNull(),
     ciphertext: text('ciphertext').notNull(),
-    nonce: varchar('nonce', { length: 64 }).notNull(),
-    authTag: varchar('auth_tag', { length: 64 }).notNull(),
+    nonce: varchar('nonce', { length: WIDTHS.nonce }).notNull(),
+    authTag: varchar('auth_tag', { length: WIDTHS.authTag }).notNull(),
     createdBy: uuid('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
@@ -204,11 +231,11 @@ export const connectionEvents = appSchema.table(
     id: uuid('id').primaryKey(),
     workspaceId: uuid('workspace_id').notNull(),
     connectionId: uuid('connection_id').notNull(),
-    eventType: varchar('event_type', { length: 64 }).notNull(),
-    actorKind: varchar('actor_kind', { length: 32 }).notNull(),
-    actorId: varchar('actor_id', { length: 128 }).notNull(),
-    requestId: varchar('request_id', { length: 128 }),
-    traceId: varchar('trace_id', { length: 128 }),
+    eventType: varchar('event_type', { length: WIDTHS.eventType }).notNull(),
+    actorKind: varchar('actor_kind', { length: WIDTHS.actorKind }).notNull(),
+    actorId: varchar('actor_id', { length: WIDTHS.actorId }).notNull(),
+    requestId: varchar('request_id', { length: WIDTHS.requestId }),
+    traceId: varchar('trace_id', { length: WIDTHS.traceId }),
     metadata: jsonb('metadata')
       .notNull()
       .default(sql`'{}'::jsonb`),
@@ -268,8 +295,8 @@ export const connectionHealthObservations = appSchema.table(
     id: uuid().primaryKey().notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     attemptId: uuid('attempt_id').notNull(),
-    kind: varchar({ length: 32 }).notNull(),
-    reasonCode: varchar('reason_code', { length: 128 }),
+    kind: varchar({ length: WIDTHS.kind }).notNull(),
+    reasonCode: varchar('reason_code', { length: WIDTHS.reasonCode }),
     outboxEventId: uuid('outbox_event_id').notNull(),
     observedAt: timestamp('observed_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)

@@ -1,4 +1,7 @@
 /** Publication requires a different reviewer and one still-pending candidate. */
+/** The longest note or decision comment on a publication review. */
+export const PUBLICATION_REVIEW_TEXT_MAX_LENGTH = 1000;
+
 export function publicationReviewDecision(
   input: Readonly<{
     requestedBy: string;

@@ -4,7 +4,7 @@ import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
 export { DIRECTORY_LIMITS };
 import { FEDERATION_LIMITS } from './settings.js';
 import { z } from 'zod';
-import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 

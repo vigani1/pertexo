@@ -46,6 +46,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'apps/api',
   'packages/core',
   'packages/contracts',
+  'packages/database',
 ]);
 
 // Unit factors: 1_000 ms in a second, 60 seconds in a minute, 1_024 bytes in a KB.

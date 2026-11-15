@@ -15,36 +15,47 @@ function postgresRole(defaultRole: string) {
 
 /** PostgreSQL's largest timeout setting (milliseconds), its integer ceiling. */
 export const MAX_POSTGRES_TIMEOUT_MILLIS = 2_147_483_647;
+
+/** A pool's defaults when the environment sets nothing, and how large it may grow. */
+const POOL_DEFAULTS = Object.freeze({
+  connectionTimeoutMillis: 5_000,
+  idleTimeoutMillis: 30_000,
+  // Maintenance and operator pools stay small.
+  conservativeMax: 2,
+  conservativeMaxCeiling: 10,
+  max: 10,
+  maxCeiling: 100,
+});
 const connectionTimeoutMillis = z
   .number()
   .int()
   .positive()
   .max(MAX_POSTGRES_TIMEOUT_MILLIS)
-  .default(5_000);
+  .default(POOL_DEFAULTS.connectionTimeoutMillis);
 const idleTimeoutMillis = z
   .number()
   .int()
   .positive()
   .max(MAX_POSTGRES_TIMEOUT_MILLIS)
-  .default(30_000);
+  .default(POOL_DEFAULTS.idleTimeoutMillis);
 const environmentConnectionTimeoutMillis = z.coerce
   .number()
   .int()
   .positive()
   .max(MAX_POSTGRES_TIMEOUT_MILLIS)
-  .default(5_000);
+  .default(POOL_DEFAULTS.connectionTimeoutMillis);
 const environmentIdleTimeoutMillis = z.coerce
   .number()
   .int()
   .positive()
   .max(MAX_POSTGRES_TIMEOUT_MILLIS)
-  .default(30_000);
+  .default(POOL_DEFAULTS.idleTimeoutMillis);
 const conservativePoolMax = z.coerce
   .number()
   .int()
   .positive()
-  .max(10)
-  .default(2);
+  .max(POOL_DEFAULTS.conservativeMaxCeiling)
+  .default(POOL_DEFAULTS.conservativeMax);
 const runtimeEnvironmentFields = Object.freeze({
   DATABASE_CONNECTION_TIMEOUT_MILLIS: environmentConnectionTimeoutMillis,
   DATABASE_IDLE_TIMEOUT_MILLIS: environmentIdleTimeoutMillis,
@@ -55,7 +66,12 @@ const databaseConfigSchema = z.object({
   connectionString: postgresUrl('must be a postgresql:// URL'),
   connectionTimeoutMillis,
   idleTimeoutMillis,
-  max: z.number().int().positive().max(100).default(10),
+  max: z
+    .number()
+    .int()
+    .positive()
+    .max(POOL_DEFAULTS.maxCeiling)
+    .default(POOL_DEFAULTS.max),
   ownerRole: postgresRole('pertexo_owner'),
 });
 

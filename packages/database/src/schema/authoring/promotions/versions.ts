@@ -11,6 +11,10 @@ import {
 import { appSchema } from '../../namespace.js';
 import { workflowVersions } from '../workflows.js';
 
+const WIDTHS = Object.freeze({
+  sourceChecksum: 82,
+});
+
 export const workflowVersionPromotions = appSchema.table(
   'workflow_version_promotions',
   {
@@ -20,7 +24,9 @@ export const workflowVersionPromotions = appSchema.table(
     sourceWorkspaceId: uuid('source_workspace_id').notNull(),
     sourceWorkflowId: uuid('source_workflow_id').notNull(),
     sourceVersionId: uuid('source_version_id').notNull(),
-    sourceChecksum: varchar('source_checksum', { length: 82 }).notNull(),
+    sourceChecksum: varchar('source_checksum', {
+      length: WIDTHS.sourceChecksum,
+    }).notNull(),
     promotionId: uuid('promotion_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()

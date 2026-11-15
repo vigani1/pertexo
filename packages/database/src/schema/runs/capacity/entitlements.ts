@@ -14,6 +14,15 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../../namespace.js';
 import { workspaces } from '../../tenant-access/workspaces.js';
 
+/** How many open pending tasks a workspace may hold when its entitlement sets none. */
+const ENTITLEMENT_DEFAULTS = Object.freeze({
+  pendingTaskLimit: 10_000,
+});
+
+const WIDTHS = Object.freeze({
+  active: 16,
+});
+
 // One row: an instance has one set of limits, which the API writes at startup.
 export const instanceCapacity = appSchema.table(
   'instance_capacity',
@@ -22,7 +31,9 @@ export const instanceCapacity = appSchema.table(
     activeRunLimit: integer('active_run_limit').notNull(),
     queuedRunLimit: integer('queued_run_limit').notNull(),
     artifactCountLimit: integer('artifact_count_limit').notNull(),
-    pendingTaskLimit: integer('pending_task_limit').default(10_000).notNull(),
+    pendingTaskLimit: integer('pending_task_limit')
+      .default(ENTITLEMENT_DEFAULTS.pendingTaskLimit)
+      .notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' })
       .default(sql`clock_timestamp()`)
       .notNull(),
@@ -66,7 +77,7 @@ export const workspaceExecutionEntitlementVersions = appSchema.table(
   {
     workspaceId: uuid('workspace_id').notNull(),
     version: integer().notNull(),
-    status: varchar({ length: 16 }).default('active').notNull(),
+    status: varchar({ length: WIDTHS.active }).default('active').notNull(),
     activeRunLimit: integer('active_run_limit').notNull(),
     queuedRunLimit: integer('queued_run_limit').notNull(),
     effectiveAt: timestamp('effective_at', {

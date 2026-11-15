@@ -1,3 +1,4 @@
+import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -15,14 +16,20 @@ import { workflows } from '../authoring/workflows.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 
+const WIDTHS = Object.freeze({
+  scope: 128,
+  keyHash: SHA256_HEX_CHARACTERS,
+  requestHash: SHA256_HEX_CHARACTERS,
+});
+
 export const workflowManualStartRejections = appSchema.table(
   'workflow_manual_start_rejections',
   {
     workspaceId: uuid('workspace_id').notNull(),
     workflowId: uuid('workflow_id').notNull(),
-    scope: varchar('scope', { length: 128 }).notNull(),
-    keyHash: char('key_hash', { length: 64 }).notNull(),
-    requestHash: char('request_hash', { length: 64 }).notNull(),
+    scope: varchar('scope', { length: WIDTHS.scope }).notNull(),
+    keyHash: char('key_hash', { length: WIDTHS.keyHash }).notNull(),
+    requestHash: char('request_hash', { length: WIDTHS.requestHash }).notNull(),
     expectedVersionId: uuid('expected_version_id').notNull(),
     observedVersionId: uuid('observed_version_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })

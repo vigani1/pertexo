@@ -6,7 +6,7 @@ import {
   federationProtocolSchema,
 } from './settings.js';
 
-import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { SECRET_TOKEN_CHARACTERS } from '../../shared/secret-token.js';
 
 /** What a provider's sign-in callback may carry: a form post's size and each parameter's length. */

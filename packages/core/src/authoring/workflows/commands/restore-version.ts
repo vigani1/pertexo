@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';
-import { canonicalJson } from '@pertexo/workflow-model';
+import {
+  canonicalJson,
+  RESOURCE_NAME_MAX_LENGTH,
+} from '@pertexo/workflow-model';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { recoverWorkflowDraft } from './duplicate.js';
-import { WORKFLOW_NAME_MAX_CHARACTERS } from '../receipts.repository.js';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
@@ -219,7 +221,7 @@ async function preserveUnpublishedDraft(
   const suffix = ` (unpublished draft, ${workflow.date})`;
   const name =
     workflow.name
-      .slice(0, WORKFLOW_NAME_MAX_CHARACTERS - suffix.length)
+      .slice(0, RESOURCE_NAME_MAX_LENGTH - suffix.length)
       .replace(/[\uD800-\uDBFF]$/u, '') + suffix;
   return recoverWorkflowDraft(
     client,

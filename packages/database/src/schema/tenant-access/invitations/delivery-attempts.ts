@@ -1,3 +1,4 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -15,6 +16,16 @@ import { appSchema } from '../../namespace.js';
 import { workspaces } from '../workspaces.js';
 import { workspaceInvitations } from './invitations.js';
 
+const WIDTHS = Object.freeze({
+  status: 32,
+  tokenNonce: 128,
+  tokenTag: 256,
+  tokenKeyVersion: 64,
+  workspaceName: 256,
+  providerReference: 512,
+  failureCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+});
+
 export const workspaceInvitationDeliveryAttempts = appSchema.table(
   'workspace_invitation_delivery_attempts',
   {
@@ -22,14 +33,22 @@ export const workspaceInvitationDeliveryAttempts = appSchema.table(
     workspaceId: uuid('workspace_id').notNull(),
     invitationId: uuid('invitation_id').notNull(),
     invitationRevision: integer('invitation_revision').notNull(),
-    status: varchar('status', { length: 32 }).notNull().default('queued'),
+    status: varchar('status', { length: WIDTHS.status })
+      .notNull()
+      .default('queued'),
     tokenCiphertext: text('token_ciphertext'),
-    tokenNonce: varchar('token_nonce', { length: 128 }),
-    tokenTag: varchar('token_tag', { length: 256 }),
-    tokenKeyVersion: varchar('token_key_version', { length: 64 }),
-    workspaceName: varchar('workspace_name', { length: 256 }).notNull(),
-    providerReference: varchar('provider_reference', { length: 512 }),
-    failureCode: varchar('failure_code', { length: 128 }),
+    tokenNonce: varchar('token_nonce', { length: WIDTHS.tokenNonce }),
+    tokenTag: varchar('token_tag', { length: WIDTHS.tokenTag }),
+    tokenKeyVersion: varchar('token_key_version', {
+      length: WIDTHS.tokenKeyVersion,
+    }),
+    workspaceName: varchar('workspace_name', {
+      length: WIDTHS.workspaceName,
+    }).notNull(),
+    providerReference: varchar('provider_reference', {
+      length: WIDTHS.providerReference,
+    }),
+    failureCode: varchar('failure_code', { length: WIDTHS.failureCode }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .default(sql`clock_timestamp()`)
       .notNull(),
