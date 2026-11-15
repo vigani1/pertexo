@@ -13,7 +13,10 @@ import {
   connectionOAuth2Clients as clients,
   connectionOAuth2Tokens as tokens,
 } from '@pertexo/database/schema';
-import { CONNECTION_AUTH_TYPE, CONNECTION_STATUS } from '../connection.js';
+import {
+  CONNECTION_AUTH_TYPE,
+  CONNECTION_STATUS,
+} from '@pertexo/workflow-model';
 import { sealedFields } from '../connections.repository.js';
 import type {
   BlockOAuth2RefreshInput,
@@ -27,7 +30,7 @@ import type {
   RejectOAuth2TokenInput,
 } from './oauth2-grant.types.js';
 import { commitRefresh, loseGrant } from './grant-changes.repository.js';
-import { versionIs } from './token-columns.js';
+import { versionIs } from './token-columns.repository.js';
 
 export type OAuth2TokenStore = ReturnType<typeof oauth2TokenFlows>;
 

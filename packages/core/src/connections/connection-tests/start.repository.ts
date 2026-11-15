@@ -10,13 +10,13 @@ import { idempotencyRecords as records } from '@pertexo/database/schema';
 import type {
   StartConnectionTestInput,
   StartConnectionTestResult,
-} from '../connection.js';
+} from '../connection.types.js';
+import { CONNECTION_STATUS } from '@pertexo/workflow-model';
 import {
-  CONNECTION_STATUS,
   ConnectionIdempotencyConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { parseConnectionTestResult } from '../receipts.js';
 import { selectConnection } from '../connections.repository.js';
 import {

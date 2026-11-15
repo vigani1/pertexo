@@ -1,4 +1,4 @@
-import type { RequestMetadata } from '../connection.js';
+import type { RequestMetadata } from '../connection.types.js';
 
 export type ResolveConnectionLookupSecretInput = RequestMetadata &
   Readonly<{

@@ -1,5 +1,5 @@
+export { CONNECTION_AUTH_TYPE } from '@pertexo/workflow-model';
 export {
-  CONNECTION_AUTH_TYPE,
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,
@@ -10,7 +10,7 @@ export {
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from './connection.js';
+} from './connection.errors.js';
 export {
   createConnectionStore,
   createWorkerConnectionResolutionStore,
@@ -29,12 +29,12 @@ export type { OAuth2TokenStore } from './oauth2/tokens.repository.js';
 export type {
   ConnectionPage,
   ConnectionRecord,
-  ConnectionTestOutcome,
   ConnectionTestResult,
   ListConnectionsInput,
   ReadConnectionInput,
   ResolvedConnectionSecretRecord,
-} from './connection.js';
+} from './connection.types.js';
+export type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 export type {
   ConnectionUsageCursor,
   ConnectionUsagePage,

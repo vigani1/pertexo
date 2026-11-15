@@ -13,12 +13,12 @@ import {
 import type {
   CompleteConnectionTestInput,
   ConnectionTestResult,
-} from '../connection.js';
+} from '../connection.types.js';
+import { CONNECTION_EVENT_TYPE } from '@pertexo/workflow-model';
 import {
-  CONNECTION_EVENT_TYPE,
   ConnectionNotFoundError,
   ConnectionTestInProgressError,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { appendConnectionEvent } from '../events.repository.js';
 import { applyCurrentConnectionTestHealth } from '../health/transitions.repository.js';
 import { withOneOAuth2Fact } from '../oauth2/clients.repository.js';

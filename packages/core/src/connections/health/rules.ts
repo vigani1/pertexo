@@ -1,10 +1,10 @@
+import type { ConnectionRecord } from '../connection.types.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
   type ConnectionAuthType,
-  type ConnectionRecord,
   type ConnectionStatus,
-} from '../connection.js';
+} from '@pertexo/workflow-model';
 
 /** A client alone isn't connected: consent gives it its first token. */
 export function healthOfNewSecret(

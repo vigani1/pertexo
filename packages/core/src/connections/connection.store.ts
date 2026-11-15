@@ -54,8 +54,8 @@ import type {
   RevokeConnectionInput,
   RotateConnectionSecretInput,
   StartConnectionTestInput,
-} from './connection.js';
-import { ConnectionNotFoundError } from './connection.js';
+} from './connection.types.js';
+import { ConnectionNotFoundError } from './connection.errors.js';
 import type { ListConnectionUsageInput } from './discovery/connection-usage.types.js';
 import {
   listConnections,

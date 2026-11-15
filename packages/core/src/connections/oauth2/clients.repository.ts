@@ -9,11 +9,11 @@ import {
   connectionOAuth2Clients,
   connectionOAuth2Tokens,
 } from '@pertexo/database/schema';
+import type { ConnectionRecord } from '../connection.types.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
-  type ConnectionRecord,
-} from '../connection.js';
+} from '@pertexo/workflow-model';
 
 /** A connection's client for one secret version: inserted beside that version. */
 export async function insertOAuth2Client(

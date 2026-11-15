@@ -7,13 +7,15 @@ import {
 
 import { z } from 'zod';
 
+import type {
+  ConnectionRecord,
+  ConnectionTestResult,
+} from './connection.types.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_STATUS,
-  ConnectionIdempotencyConflictError,
-  type ConnectionRecord,
-  type ConnectionTestResult,
-} from './connection.js';
+} from '@pertexo/workflow-model';
+import { ConnectionIdempotencyConflictError } from './connection.errors.js';
 
 const providerKeySchema = z
   .string()

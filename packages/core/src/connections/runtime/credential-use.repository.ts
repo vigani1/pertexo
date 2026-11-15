@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { workspaces, connections } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 
-import { CONNECTION_EVENT_TYPE } from '../connection.js';
+import { CONNECTION_EVENT_TYPE } from '@pertexo/workflow-model';
 import { appendConnectionEvent } from '../events.repository.js';
 
 /**

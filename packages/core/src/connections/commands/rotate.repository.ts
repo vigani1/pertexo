@@ -10,15 +10,17 @@ import type {
   ConnectionRecord,
   FindConnectionRotateReplayInput,
   RotateConnectionSecretInput,
-} from '../connection.js';
+} from '../connection.types.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
+} from '@pertexo/workflow-model';
+import {
   ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
   ConnectionUnavailableError,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { recordMemberAction } from '../events.repository.js';
 import { healthOfNewSecret } from '../health/rules.js';
 import { rotateConnectionHealth } from '../health/transitions.repository.js';

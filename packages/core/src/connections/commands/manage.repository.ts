@@ -16,14 +16,16 @@ import type {
   CreateConnectionInput,
   FindConnectionCreateReplayInput,
   RevokeConnectionInput,
-} from '../connection.js';
+} from '../connection.types.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
+} from '@pertexo/workflow-model';
+import {
   ConnectionConflictError,
   ConnectionNotFoundError,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { recordMemberAction } from '../events.repository.js';
 import { healthOfNewSecret } from '../health/rules.js';
 import { revokeConnectionHealth } from '../health/transitions.repository.js';

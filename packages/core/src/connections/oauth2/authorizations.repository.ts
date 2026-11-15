@@ -17,15 +17,17 @@ import {
 } from '@pertexo/database/schema';
 import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
+import type { ConnectionRecord } from '../connection.types.js';
 import {
   CONNECTION_AUTH_TYPE,
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
+} from '@pertexo/workflow-model';
+import {
   ConnectionNotFoundError,
   ConnectionNotOAuth2Error,
   ConnectionUnavailableError,
-  type ConnectionRecord,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { recordMemberAction } from '../events.repository.js';
 import {
   connectionFields,
@@ -43,7 +45,7 @@ import type {
   ReadOAuth2ClientInput,
   StartOAuth2AuthorizationInput,
 } from './oauth2-grant.types.js';
-import { expiryOf, sealedColumns } from './token-columns.js';
+import { expiryOf, sealedColumns } from './token-columns.repository.js';
 
 /** Only a connection that can still be connected may start consent. */
 function requireConnectable(

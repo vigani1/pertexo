@@ -5,13 +5,15 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { connectionSecretVersions } from '@pertexo/database/schema';
 
-import type { ResolvedConnectionSecretRecord } from '../connection.js';
+import type { ResolvedConnectionSecretRecord } from '../connection.types.js';
 import {
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
+} from '@pertexo/workflow-model';
+import {
   ConnectionNotFoundError,
   ConnectionUnavailableError,
-} from '../connection.js';
+} from '../connection.errors.js';
 import { recordMemberAction } from '../events.repository.js';
 import { sealedFields, selectConnection } from '../connections.repository.js';
 import type { ResolveConnectionLookupSecretInput } from './connection-resolution.types.js';

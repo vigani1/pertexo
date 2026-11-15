@@ -5,7 +5,7 @@ import type { Pool } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { idempotencyRecords as records } from '@pertexo/database/schema';
 
-import type { AbandonConnectionTestInput } from '../connection.js';
+import type { AbandonConnectionTestInput } from '../connection.types.js';
 import { withConnectionTransaction } from '../transaction.js';
 import { connectionTestClaimRow } from './claim.repository.js';
 

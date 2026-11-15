@@ -14,7 +14,7 @@ import {
   randomUUID,
   workspaceA,
 } from '../support/connections.js';
-import { ConnectionSharingRevisionConflictError } from '../../src/connections/connection.js';
+import { ConnectionSharingRevisionConflictError } from '../../src/connections/connection.errors.js';
 import {
   asDatabaseOwner,
   connections,

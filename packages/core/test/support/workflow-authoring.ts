@@ -10,7 +10,7 @@ import {
   parseDatabaseConfig,
   IdempotencyConflictError,
 } from '@pertexo/database/platform';
-import { CONNECTION_AUTH_TYPE } from '../../src/connections/connection.js';
+import { CONNECTION_AUTH_TYPE } from '@pertexo/workflow-model';
 import { createConnectionStore } from '../../src/connections/connection.store.js';
 
 import { checkDatabaseReadiness } from '@pertexo/database/primitives';

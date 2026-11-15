@@ -1,5 +1,5 @@
 import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
-import type { ConnectionTestOutcome } from '../../../../src/connections/connection.js';
+import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '../../../../src/outbox/dispatcher/outbox-dispatcher.store.js';
 import type { PoolClient } from 'pg';

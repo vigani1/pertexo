@@ -2,13 +2,15 @@ export {
   CONNECTION_AUTH_TYPE,
   CONNECTION_EVENT_TYPE,
   CONNECTION_STATUS,
+} from '@pertexo/workflow-model';
+export {
   ConnectionConflictError,
   ConnectionIdempotencyConflictError,
   ConnectionNotFoundError,
   ConnectionSecretVersionConflictError,
   ConnectionTestInProgressError,
   ConnectionUnavailableError,
-} from './connection.js';
+} from './connection.errors.js';
 export {
   createConnectionStore,
   createWorkerConnectionResolutionStore,
@@ -21,11 +23,8 @@ export {
   type WorkerConnectionResolutionStore,
 } from './connection.store.js';
 export type {
-  ConnectionAuthType,
   ConnectionRecord,
   ConnectionPage,
-  ConnectionStatus,
-  ConnectionTestOutcome,
   ConnectionTestResult,
   StartConnectionTestInput,
   StartConnectionTestResult,
@@ -44,4 +43,9 @@ export type {
   RevokeConnectionInput,
   RotateConnectionSecretInput,
   SealedConnectionSecretRecord,
-} from './connection.js';
+} from './connection.types.js';
+export type {
+  ConnectionAuthType,
+  ConnectionStatus,
+  ConnectionTestOutcome,
+} from '@pertexo/workflow-model';
