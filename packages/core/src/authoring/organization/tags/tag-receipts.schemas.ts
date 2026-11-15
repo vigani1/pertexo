@@ -1,3 +1,4 @@
+import { WORKFLOW_ORGANIZATION_LIMITS } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
@@ -7,7 +8,7 @@ const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const canonicalKey = z
   .string()
   .min(1)
-  .max(32)
+  .max(WORKFLOW_ORGANIZATION_LIMITS.tagKeyBytes)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$(?![\s\S])/u);
 
 const tag = z.object({ id: uuid, key: canonicalKey, revision }).strict();
@@ -26,16 +27,14 @@ export const deleteResult = z
       .number()
       .int()
       .min(0)
-      .max(TAG_DELETE_WORKFLOW_LIMIT),
+      .max(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems),
   })
   .strict();
 
 const tagIds = z
   .array(uuid)
-  .max(16)
+  .max(WORKFLOW_ORGANIZATION_LIMITS.tagsPerWorkflow)
   .refine((ids) => new Set(ids).size === ids.length)
   .overwrite((ids) => [...ids].sort());
 
 export const replaceResult = assignment.extend({ tagIds }).strict();
-
-import { TAG_DELETE_WORKFLOW_LIMIT } from '../limits.js';

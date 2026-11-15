@@ -38,6 +38,8 @@ import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js
 import type { WorkflowRecord } from '../workflows/representation/workflow-record.types.js';
 import { workflowProjection } from '../workflows/representation/workflow-representations.repository.js';
 
+const DEFAULT_PAGE_LIMIT = 50;
+
 type Scope = Readonly<{
   workspaceId: string;
   actorId: string;
@@ -345,7 +347,7 @@ function listOrganizedWorkflows(
   pool: Pool,
   input: ListOrganizedWorkflowsInput,
 ): Promise<OrganizedPage> {
-  const limit = input.limit ?? 50;
+  const limit = input.limit ?? DEFAULT_PAGE_LIMIT;
   const order = input.order ?? 'created_asc';
   return transact(pool, input, (client, scope) =>
     select(client, scope, { ...input, limit, order }),

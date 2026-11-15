@@ -4,14 +4,9 @@ import { strictlyAscendingIdentifiers } from './organization-order.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { trimSpaces } from '../shared/trim-outer-spaces.js';
 
-/** ADR064 bounds are product contracts, never caller-configurable quotas. */
-export const WORKFLOW_ORGANIZATION_LIMITS = Object.freeze({
-  tagKeyBytes: 32,
-  tagsPerWorkflow: 16,
-  tagsPerWorkspace: 256,
-  cleanupItems: 50,
-  nameQueryBytes: 128,
-});
+import { WORKFLOW_ORGANIZATION_LIMITS } from '@pertexo/workflow-model';
+
+export { WORKFLOW_ORGANIZATION_LIMITS };
 
 /** U+0020 trim and ASCII-only case mapping; no Unicode fold/transliteration. */
 export function normalizeWorkflowTagKey(value: string): string {

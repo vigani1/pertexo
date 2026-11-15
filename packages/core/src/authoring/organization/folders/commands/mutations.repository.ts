@@ -1,3 +1,4 @@
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -8,9 +9,6 @@ import {
   workflowOrganizationState,
 } from '@pertexo/database/schema';
 import { requireMoveAudienceReview } from '../../sharing/audience.repository.js';
-
-import { FOLDER_DEPTH_LIMIT } from '../../limits.js';
-import { FOLDER_LIMIT } from '../../../../shared/folder-policy.js';
 
 import { runOrganizationCommand } from '../../run-command.js';
 import { WorkflowFolderConflictError } from '../../workflow-organization.errors.js';
@@ -60,11 +58,11 @@ export async function createFolder(
         .from(workflowFolders)
         .where(eq(workflowFolders.workspaceId, workspaceId))
         .catch(rethrowQueryFailure);
-      if ((count?.count ?? 0) >= FOLDER_LIMIT)
+      if ((count?.count ?? 0) >= WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace)
         throw new WorkflowFolderConflictError('limit');
       if (
         (await folderDepth(client, workspaceId, request.parentId)) + 1 >
-        FOLDER_DEPTH_LIMIT
+        WORKFLOW_FOLDER_LIMITS.depth
       )
         throw new WorkflowFolderConflictError('hierarchy');
       const [row] = await db
@@ -172,7 +170,7 @@ export async function moveFolder(
           select ${folder.id},descendants.height+1 from descendants
           join ${workflowFolders} ${sql.identifier('folder')}
             on ${folder.workspaceId}=${workspaceId} and ${folder.parentId}=descendants.id
-          where descendants.height<=${FOLDER_DEPTH_LIMIT}
+          where descendants.height<=${WORKFLOW_FOLDER_LIMITS.depth}
         ) select max(height)::int height,coalesce(bool_or(id=${request.parentId}::uuid),false) cycle from descendants
       `,
         )
@@ -181,7 +179,7 @@ export async function moveFolder(
       if (
         cycle ||
         height + (await folderDepth(client, workspaceId, request.parentId)) >
-          FOLDER_DEPTH_LIMIT
+          WORKFLOW_FOLDER_LIMITS.depth
       )
         throw new WorkflowFolderConflictError('hierarchy');
       const [moved] = await drizzle(client)

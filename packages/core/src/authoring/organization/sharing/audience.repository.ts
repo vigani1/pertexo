@@ -1,3 +1,4 @@
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/workflow-model';
 import { folderAudienceFingerprint } from './audience-digests.js';
 import type { PoolClient } from 'pg';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -24,7 +25,6 @@ import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import { WorkflowFolderConflictError } from '../workflow-organization.errors.js';
 import type { OrganizationActor } from '../session.js';
-import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 
 /** Review restriction identities, rather than guessing whether two groups' future members coincide. */
 export async function reviewMoveAudience(
@@ -34,7 +34,7 @@ export async function reviewMoveAudience(
 ): Promise<WorkflowMoveReview> {
   const scope = await readFolderScope(client, actor, actor.role);
   const folders = await readMoveFolders(client, actor.workspaceId);
-  if (folders.length > FOLDER_LIMIT)
+  if (folders.length > WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace)
     throw new Error('Folder hierarchy exceeds its bound');
   if (!scope.permits(request.destinationFolderId, 'workflow:create'))
     throw new WorkflowNotFoundError('Folder is not visible');
@@ -79,7 +79,7 @@ function readMoveFolders(client: PoolClient, workspaceId: string) {
     .from(workflowFolders)
     .where(eq(workflowFolders.workspaceId, workspaceId))
     .orderBy(asc(workflowFolders.id))
-    .limit(FOLDER_LIMIT + 1)
+    .limit(WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace + 1)
     .catch(rethrowQueryFailure);
 }
 

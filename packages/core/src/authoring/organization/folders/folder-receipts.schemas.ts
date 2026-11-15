@@ -1,24 +1,25 @@
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { FOLDER_DEPTH_LIMIT } from '../limits.js';
 
 const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
+// C0 controls and DEL, which a stored folder name never holds.
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/u;
+
 const canonicalName = z
   .string()
   .min(1)
-  .max(128)
+  .max(WORKFLOW_FOLDER_LIMITS.nameBytes)
   .refine(
     (value) =>
       value === value.replace(/^ +| +$(?![\s\S])/gu, '') &&
       utf8ByteLength(value) >= 1 &&
-      utf8ByteLength(value) <= 128 &&
-      !Array.from(value).some(
-        (character) =>
-          character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
-      ),
+      utf8ByteLength(value) <= WORKFLOW_FOLDER_LIMITS.nameBytes &&
+      !CONTROL_CHARACTER.test(value),
   );
 
 const folder = z
@@ -27,7 +28,7 @@ const folder = z
     name: canonicalName,
     parentId: uuid.nullable(),
     revision,
-    depth: z.number().int().min(1).max(FOLDER_DEPTH_LIMIT),
+    depth: z.number().int().min(1).max(WORKFLOW_FOLDER_LIMITS.depth),
     accessMode: z.enum(['workspace', 'restricted']),
   })
   .strict()
