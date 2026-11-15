@@ -9,7 +9,6 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 import { serializeStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { PREVIEW_STATUS } from '../../preview-state.js';
-import { PreviewAcceptanceCorruptError } from '../../preview.errors.js';
 import type { resolvePreviewSample } from '../samples.repository.js';
 import type { AcceptPreviewRunInput } from './preview-acceptance.types.js';
 import type { resolveInput } from './replay.repository.js';
@@ -145,10 +144,7 @@ export async function insertAcceptedPreviewRun(
       acceptedAt: previewRuns.createdAt,
       completedAt: previewRuns.completedAt,
     });
-  const insertedRun = insertedRuns[0];
-  if (insertedRun === undefined) throw new PreviewAcceptanceCorruptError();
-
-  return insertedRun;
+  return insertedRuns[0];
 }
 
 /** The single queued attempt an executed preview starts with. */
