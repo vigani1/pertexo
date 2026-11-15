@@ -6,7 +6,12 @@ import {
   type TrendDay,
   type TrendRanking,
 } from './trends.repository.js';
-import { RUN_STATUSES } from '@pertexo/workflow-model';
+import {
+  RUN_STATUSES,
+  USAGE_TREND_PERIOD_DAYS,
+  USAGE_TREND_RANKED_WORKFLOWS,
+} from '@pertexo/workflow-model';
+import { USAGE_READ_STATEMENT_TIMEOUT_MILLIS } from './capacity.repository.js';
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
 import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
@@ -37,7 +42,7 @@ export function readUsageTrends(
     pool,
     input,
     async (transaction) => {
-      const length = input.period === '30d' ? 30 : 90;
+      const length = USAGE_TREND_PERIOD_DAYS[input.period];
       const [bounds] = await readTrendBounds(transaction, length);
       if (bounds === undefined) throw new WorkspaceAccessDeniedError();
       const daily = await readTrendDays(transaction, bounds);
@@ -86,15 +91,19 @@ export function readUsageTrends(
         },
         days,
         busiest: rankings
-          .filter((row) => row.runs_rank <= 10)
+          .filter((row) => row.runs_rank <= USAGE_TREND_RANKED_WORKFLOWS)
           .sort((a, b) => a.runs_rank - b.runs_rank)
           .map(project),
         mostFailures: rankings
-          .filter((row) => row.failures > 0 && row.failures_rank <= 10)
+          .filter(
+            (row) =>
+              row.failures > 0 &&
+              row.failures_rank <= USAGE_TREND_RANKED_WORKFLOWS,
+          )
           .sort((a, b) => a.failures_rank - b.failures_rank)
           .map(project),
       };
     },
-    2_000,
+    USAGE_READ_STATEMENT_TIMEOUT_MILLIS,
   );
 }

@@ -163,6 +163,10 @@ export {
 // Execution
 export { isSafeExecutorErrorCode } from './execution/attempt-failure.js';
 export {
+  USAGE_TREND_PERIOD_DAYS,
+  USAGE_TREND_RANKED_WORKFLOWS,
+} from './execution/usage-trends.js';
+export {
   DATA_RETENTION_DAYS,
   IDEMPOTENCY_KEY_RETENTION_HOURS,
   INBOX_FAILURE_DAYS,

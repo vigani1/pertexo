@@ -11,6 +11,12 @@ import {
 import { serializeStoredExecutionJsonValue } from '../../../shared/stored-execution.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
+/** A run event's payload, checked before it is stored. */
+const RUN_EVENT_PAYLOAD_MAX_BYTES = 4096;
+
+/** A run's first event, `run.queued`; every later event follows it. */
+export const QUEUED_EVENT_SEQUENCE = 1;
+
 export const RUN_EVENT_TYPE = {
   queued: 'run.queued',
   started: 'run.started',
@@ -177,9 +183,9 @@ function serializeRunEventPayload(payload: unknown): string {
   } catch {
     throw new ExecutionStateConflictError('execution.event_payload_invalid');
   }
-  if (utf8ByteLength(serializedPayload) > 4096)
+  if (utf8ByteLength(serializedPayload) > RUN_EVENT_PAYLOAD_MAX_BYTES)
     throw new ExecutionStateConflictError(
-      'JSON value must not exceed 4096 UTF-8 bytes',
+      `JSON value must not exceed ${String(RUN_EVENT_PAYLOAD_MAX_BYTES)} UTF-8 bytes`,
     );
 
   return serializedPayload;

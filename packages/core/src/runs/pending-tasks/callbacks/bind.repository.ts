@@ -1,3 +1,4 @@
+import { SECOND_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { nodeRuns, pendingRunTasks } from '@pertexo/database/schema';
@@ -49,7 +50,7 @@ export async function bindCallbackTask(
       nodeRunId: owner.id,
       invocationKey: intent.invocationKey,
       openedAt: sql`observed.time`,
-      expiresAt: sql`observed.time+make_interval(secs=>${intent.config.timeoutSeconds})`,
+      expiresAt: sql`observed.time+${intent.config.timeoutSeconds}::double precision*${SECOND_INTERVAL}`,
       status: sql`case when ${closed} then 'canceled' when ${task.status}='prepared' then 'pending' else ${task.status} end`,
       outputRef: sql`case when ${closed} then null else ${task.outputRef} end`,
       completedAt: sql`case when ${closed} then coalesce(${task.completedAt},observed.time) else ${task.completedAt} end`,

@@ -1,3 +1,4 @@
+import { QUEUED_EVENT_SEQUENCE } from '../queries/history/events.repository.js';
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
 import { copyRecoveryRunValues } from '../values/rows.repository.js';
 import { sql } from 'drizzle-orm';
@@ -118,7 +119,7 @@ export async function recoverWorkflowRunInTransaction(
       seed.copies.map((copy, index) => ({
         workspaceId: transaction.workspaceId,
         workflowRunId: accepted.runId,
-        sequence: index + 2,
+        sequence: QUEUED_EVENT_SEQUENCE + 1 + index,
         type: 'node.reused',
         payload: {
           nodeId: copy.nodeId,

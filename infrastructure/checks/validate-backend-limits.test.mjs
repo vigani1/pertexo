@@ -89,9 +89,8 @@ test('scans the reworked packages from disk', async () => {
   }
 });
 
-test('scans a checked core area and leaves the areas still pending', async () => {
+test('scans every core area', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'backend-limits-'));
-  const checked = 'packages/core/src/variables';
   try {
     for (const area of ['variables', 'runs']) {
       await mkdir(path.join(root, 'packages/core/src', area), {
@@ -102,14 +101,14 @@ test('scans a checked core area and leaves the areas still pending', async () =>
         'export const wait = () => sleep(1_500);',
       );
     }
-    assert.ok(LIMITS_CHECKED.includes(checked));
+    assert.ok(LIMITS_CHECKED.includes('packages/core'));
     const findings = await inspectBackendLimits(root);
-    assert.ok(findings.some((finding) => finding.startsWith(`${checked}/`)));
-    assert.ok(
-      !findings.some((finding) =>
-        finding.startsWith('packages/core/src/runs/'),
-      ),
-    );
+    for (const area of ['variables', 'runs'])
+      assert.ok(
+        findings.some((finding) =>
+          finding.startsWith(`packages/core/src/${area}/retry.ts: 1500`),
+        ),
+      );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

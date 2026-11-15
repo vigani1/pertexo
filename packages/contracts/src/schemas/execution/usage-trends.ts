@@ -1,3 +1,4 @@
+import { USAGE_TREND_RANKED_WORKFLOWS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { workflowRunStatisticsResponseSchema } from './run-statistics.js';
@@ -47,8 +48,8 @@ export const usageTrendsResponseSchema = responseSchema(
             .strict(),
         )
         .max(90),
-      busiest: z.array(ranked).max(10),
-      mostFailures: z.array(ranked).max(10),
+      busiest: z.array(ranked).max(USAGE_TREND_RANKED_WORKFLOWS),
+      mostFailures: z.array(ranked).max(USAGE_TREND_RANKED_WORKFLOWS),
     })
     .strict(),
 );

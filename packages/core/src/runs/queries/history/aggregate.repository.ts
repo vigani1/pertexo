@@ -1,3 +1,4 @@
+import { HOUR_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
@@ -10,7 +11,7 @@ function runWindow(transaction: ResourceTransaction, hours: number) {
     ordinaryRunSql('workflow_runs'),
     eq(workflowRuns.workspaceId, transaction.workspaceId),
     workflowScopeSql(transaction.resources, sql`${workflowRuns.workflowId}`),
-    sql`${workflowRuns.createdAt}>=transaction_timestamp()-make_interval(hours=>${hours}::integer)`,
+    sql`${workflowRuns.createdAt}>=transaction_timestamp()-${hours}::integer*${HOUR_INTERVAL}`,
     sql`${workflowRuns.createdAt}<transaction_timestamp()`,
   );
 }
@@ -22,7 +23,7 @@ export async function readStatisticsCounts(
   const [current] = await db
     .select({
       as_of: sql<string>`to_char(transaction_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
-      created_at_from: sql<string>`to_char((transaction_timestamp()-make_interval(hours=>${hours}::integer)) at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+      created_at_from: sql<string>`to_char((transaction_timestamp()-${hours}::integer*${HOUR_INTERVAL}) at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
       queued: sql<number>`count(*) filter(where ${workflowRuns.status}='queued')::integer`,
       running: sql<number>`count(*) filter(where ${workflowRuns.status}='running')::integer`,
       waiting: sql<number>`count(*) filter(where ${workflowRuns.status}='waiting')::integer`,
@@ -61,7 +62,7 @@ export async function readStatisticsCounts(
           'trigger.skipped',
           'trigger.coordinated',
         ]),
-        sql`${usageEvents.occurredAt}>=transaction_timestamp()-make_interval(hours=>${hours}::integer)`,
+        sql`${usageEvents.occurredAt}>=transaction_timestamp()-${hours}::integer*${HOUR_INTERVAL}`,
         sql`${usageEvents.occurredAt}<transaction_timestamp()`,
       ),
     );

@@ -2,7 +2,7 @@ import { recordInboxFailureDay } from '../../../inbox/failure-days.repository.js
 import { WORKSPACE_INBOX_FAILURE_KINDS } from '../../../inbox/threads/workspace-inbox-thread.js';
 import { assertRunStartDeadline } from '../queued-run-admission.repository.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
-import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
+import { isTerminalRunEvent, TERMINAL_RUN_STATUSES } from '../../statuses.js';
 import { releaseSlotDuringTimedWait } from '../timed-wait-slot.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
@@ -123,9 +123,8 @@ export async function persistCoordinatorRunTransition(
   const startedAt = plan.events.find(
     ({ name }) => name === 'run.started',
   )?.occurredAt;
-  const completedAt = plan.events.find(
-    ({ name }) =>
-      name.startsWith('run.') && TERMINAL_RUN_STATUSES.has(name.slice(4)),
+  const completedAt = plan.events.find(({ name }) =>
+    isTerminalRunEvent(name),
   )?.occurredAt;
   await persistFailureDay(client, input, completedAt);
   const runFailure = plan.events.find(

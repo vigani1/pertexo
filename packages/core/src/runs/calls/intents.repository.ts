@@ -1,3 +1,4 @@
+import { MILLISECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, sql } from 'drizzle-orm';
@@ -171,7 +172,7 @@ function insertCallIntent(
       inputRef: sql`${prepared.json}::json`.as('input_ref'),
       inputChecksum: sql<string>`${prepared.checksum}`.as('input_checksum'),
       deadlineAt:
-        sql<Date | null>`least(${r.deadlineAt},clock_timestamp()+(${v.executableJson}#>>'{graph,settings,maxRunDurationMs}')::integer*interval '1 millisecond')`.as(
+        sql<Date | null>`least(${r.deadlineAt},clock_timestamp()+(${v.executableJson}#>>'{graph,settings,maxRunDurationMs}')::integer*${MILLISECOND_INTERVAL})`.as(
           'deadline_at',
         ),
       status: sql<string>`${refusal === undefined ? 'pending' : 'refused'}`.as(

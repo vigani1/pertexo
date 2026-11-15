@@ -26,14 +26,16 @@ export type WorkflowParentCallReadRecord = Readonly<
   >
 >;
 
+/** The run's child calls at most, and the one call that started it. */
+const CALL_ROWS = WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 1;
+
 /** Both directions use the same authorized run snapshot and workspace fence. */
 export async function readWorkflowCalls(
   transaction: ResourceTransaction,
   runId: string,
 ) {
   const result = await callRows(transaction, runId);
-  if (result.length > WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 1)
-    throw new WorkflowRunReadCapacityError();
+  if (result.length > CALL_ROWS) throw new WorkflowRunReadCapacityError();
   const calls: WorkflowCallReadRecord[] = [];
   let parentCall: WorkflowParentCallReadRecord | undefined;
   for (const row of result) {
@@ -120,5 +122,5 @@ function callRows(transaction: ResourceTransaction, runId: string) {
       ),
     )
     .orderBy(c.invocationKey)
-    .limit(WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 2);
+    .limit(CALL_ROWS + 1);
 }

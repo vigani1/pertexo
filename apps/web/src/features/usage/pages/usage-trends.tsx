@@ -1,5 +1,9 @@
 import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import {
+  USAGE_TREND_PERIOD_DAYS,
+  USAGE_TREND_RANKED_WORKFLOWS,
+} from '@pertexo/workflow-model';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
@@ -43,7 +47,7 @@ export function UsageTrendsPage({
         <div>
           <PageHeaderTitle>Trends</PageHeaderTitle>
           <p className="mt-3 text-sm text-muted-foreground">
-            Runs over {period === '30d' ? '30' : '90'} UTC days, including
+            Runs over {USAGE_TREND_PERIOD_DAYS[period]} UTC days, including
             today. Today is partial; test runs are excluded.
           </p>
           <Link
@@ -119,7 +123,7 @@ export function UsageTrendsPage({
               </SettingsSection>
               <SettingsSection
                 title="Most runs"
-                description="The ten busiest workflows in this period."
+                description={`The ${String(USAGE_TREND_RANKED_WORKFLOWS)} busiest workflows in this period.`}
               >
                 <WorkflowRankings
                   items={data.busiest}

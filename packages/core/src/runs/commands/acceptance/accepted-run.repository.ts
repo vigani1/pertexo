@@ -11,6 +11,7 @@ import { and, eq, sql } from 'drizzle-orm';
 
 import { MILLISECOND_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 import { runInputRetentionSql } from '../../run-retention.repository.js';
+import { QUEUED_EVENT_SEQUENCE } from '../../queries/history/events.repository.js';
 import type {
   AcceptWorkflowRunInput,
   PreparedWorkflowRunAcceptance,
@@ -201,7 +202,7 @@ export async function insertRunStart(
   await transaction.db.insert(runEvents).values({
     workspaceId: transaction.workspaceId,
     workflowRunId: runId,
-    sequence: 1,
+    sequence: QUEUED_EVENT_SEQUENCE,
     type: 'run.queued',
     payload: {},
   });

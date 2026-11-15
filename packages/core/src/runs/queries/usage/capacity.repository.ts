@@ -16,6 +16,9 @@ import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../../../shared/workspace-access.js';
+
+/** A usage read's statement budget: capacity and trends scan bounded ranges. */
+export const USAGE_READ_STATEMENT_TIMEOUT_MILLIS = 2_000;
 type PolicyState =
   'active' | 'suspended' | 'not_yet_effective' | 'expired' | 'unavailable';
 
@@ -56,7 +59,7 @@ export function readWorkspaceUsageCapacity(
       mode: 'read',
       capability: 'run:read',
       statuses: BROWSABLE_WORKSPACE_STATUSES,
-      statementTimeoutMillis: 2_000,
+      statementTimeoutMillis: USAGE_READ_STATEMENT_TIMEOUT_MILLIS,
     },
     async (client, role) => {
       // Both today's roles hold both; the rule stays visible if they ever differ.

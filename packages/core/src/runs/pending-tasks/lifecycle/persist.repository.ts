@@ -1,3 +1,4 @@
+import { SECOND_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 import { TERMINAL_RUN_STATUSES } from '../../statuses.js';
 import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -284,7 +285,7 @@ async function insertDeclaredTask(
       decidedBy: sql`null`.as('decided_by'),
       createdAt: sql<Date>`observed.time`.as('created_at'),
       expiresAt:
-        sql<Date>`observed.time+make_interval(secs=>${intent.config.expiresAfterSeconds})`.as(
+        sql<Date>`observed.time+${intent.config.expiresAfterSeconds}::double precision*${SECOND_INTERVAL}`.as(
           'expires_at',
         ),
       completedAt:
