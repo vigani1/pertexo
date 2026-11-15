@@ -28,7 +28,7 @@ import {
 import { FederationConflictError } from '../management/federation-management.errors.js';
 import type { FederationScope } from '../management/federation-management.types.js';
 import { readEligibleAuthenticationSession } from '../sessions/authority.repository.js';
-import { SignInProofRejectedError } from '../accounts/rejection.js';
+import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';
 import {
   readFederationProvider,
   findFederationAttempt,

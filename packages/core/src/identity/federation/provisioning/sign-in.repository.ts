@@ -23,7 +23,7 @@ import {
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { SignInProofRejectedError } from '../accounts/rejection.js';
+import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';
 import type { DirectoryUserRow } from './resources/directory-resources.repository.js';
 import type { DirectoryOrganization } from './directory-provisioning.types.js';
 import { projectDirectoryMemberships } from './projection.repository.js';

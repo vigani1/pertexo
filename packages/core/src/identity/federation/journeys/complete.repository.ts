@@ -21,7 +21,7 @@ import type { PoolClient } from 'pg';
 import { lockWorkspaceAuthority } from '../../../shared/authority.repository.js';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
 import { resolveVerifiedSignInUser } from '../accounts/resolve.repository.js';
-import { SignInProofRejectedError } from '../accounts/rejection.js';
+import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';
 import {
   canCreateAuthenticationSession,
   readEligibleAuthenticationSession,
