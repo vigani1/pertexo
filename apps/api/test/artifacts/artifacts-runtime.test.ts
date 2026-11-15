@@ -19,6 +19,9 @@ vi.mock('@pertexo/artifact-store/server', async (original) => ({
 vi.mock('@pertexo/core/artifacts', async (original) => ({
   ...(await original<object>()),
   createArtifactUploadStore: outside.database,
+}));
+vi.mock('@pertexo/core/triggers', async (original) => ({
+  ...(await original<object>()),
   createFormUploadStore: outside.formUploads,
 }));
 

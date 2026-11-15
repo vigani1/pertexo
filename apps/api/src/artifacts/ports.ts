@@ -1,11 +1,11 @@
 import type { ArtifactStore } from './store-port.js';
 import type {
   ArtifactUploadStore as PersistedArtifactUploadStore,
-  FormUploadStore as PersistedFormUploadStore,
   ArtifactUploadIdentity,
   ArtifactUploadResult,
   FinalizeArtifactUploadInput,
 } from '@pertexo/core/artifacts';
+import type { FormUploadStore as PersistedFormUploadStore } from '@pertexo/core/triggers';
 import type {
   ActorContext,
   AuthorizedWorkspaceContext,

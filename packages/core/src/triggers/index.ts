@@ -84,4 +84,13 @@ export {
 } from './coordination/event-scanner.store.js';
 export { EventCoordinationUnavailableError } from './coordination/event-coordination.errors.js';
 
+export {
+  createFormUploadStore,
+  type FormUploadStore,
+} from './forms/uploads/form-upload.store.js';
+export type {
+  FormUpload,
+  FormUploadTarget,
+} from './forms/uploads/form-upload.types.js';
+
 export type {} from './workflow-access.js';

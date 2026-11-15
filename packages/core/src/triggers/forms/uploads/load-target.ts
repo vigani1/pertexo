@@ -1,24 +1,21 @@
-import { decodeStoredValue } from '../../shared/stored-values.js';
+import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/policy';
 import {
   inputRequestConfigSchema,
   type FormField,
 } from '@pertexo/workflow-model';
-import {
-  authorizeForm,
-  readFormVersion,
-} from '../../triggers/forms/form-versions.repository.js';
-import { FormUnavailableError } from '../../triggers/forms/form.errors.js';
-import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { readTaskUploadTarget } from '../../runs/pending-tasks/responses/pending-task-records.repository.js';
+import { authorizeForm, readFormVersion } from '../form-versions.repository.js';
+import { FormUnavailableError } from '../form.errors.js';
+import { lockWorkspaceAuthority } from '../../../shared/authority.repository.js';
+import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { readTaskUploadTarget } from '../../../runs/pending-tasks/responses/pending-task-records.repository.js';
 import {
   PendingTaskDecisionError,
   PendingTaskNotFoundError,
-} from '../../runs/pending-tasks/responses/pending-task.errors.js';
+} from '../../../runs/pending-tasks/responses/pending-task.errors.js';
 import type { FormUploadTarget } from './form-upload.types.js';
-import type { FormUploadBinding } from './bindings.repository.js';
+import type { FormUploadBinding } from '../../../artifacts/form-uploads/bindings.repository.js';
 
 export type LoadedUploadTarget = FormUploadBinding &
   Readonly<{ fields: readonly FormField[] }>;
