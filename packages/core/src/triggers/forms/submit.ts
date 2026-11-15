@@ -5,7 +5,7 @@ import {
   parseWorkspaceId,
 } from '@pertexo/database/primitives';
 import type { FormSubmissionResponse } from '@pertexo/contracts';
-import { coordinateEvent } from '../coordination/accept.repository.js';
+import { coordinateEvent } from '../coordination/coordinate.js';
 import type { PreparedFormEvent } from './form-admission.types.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 

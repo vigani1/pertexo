@@ -3,7 +3,7 @@ import {
   findCommandResult,
   withTenantScopedReadClient,
 } from '@pertexo/database/primitives';
-import { formSubmissionIdentity } from './submit.repository.js';
+import { formSubmissionIdentity } from './submit.js';
 import type { Pool } from 'pg';
 import {
   formFileUploads,

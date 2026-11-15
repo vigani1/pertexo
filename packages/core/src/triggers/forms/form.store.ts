@@ -50,7 +50,7 @@ import {
   readSealedFormCapability,
   changeFormAccess,
 } from './access.repository.js';
-import { submitForm } from './submit.repository.js';
+import { submitForm } from './submit.js';
 export type FormStore = ReturnType<typeof createFormStore>;
 
 export function createFormStore(

@@ -5,7 +5,7 @@ import type { PublishedWorkflow } from '../../runs/queries/execution/workflow-ex
 import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.types.js';
 import type { AcceptVerifiedWebhookDeliveryInput } from './runtime/webhook-runtime.types.js';
-import { coordinateEvent } from '../coordination/accept.repository.js';
+import { coordinateEvent } from '../coordination/coordinate.js';
 import type { PreparedEventCoordination } from '../coordination/event-coordination.types.js';
 import type { WebhookDeliveryOutcome } from './webhook-delivery.types.js';
 import { insertWebhookDelivery } from './deliveries.repository.js';
