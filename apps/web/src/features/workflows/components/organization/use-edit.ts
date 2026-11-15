@@ -1,5 +1,5 @@
 import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
-import { useAudienceMove } from '../../hooks/use-audience-move';
+import { useAudienceMove } from '../../data/organization/audience-move.mutations';
 import { useEffect, useRef, useState } from 'react';
 import {
   useInfiniteQuery,

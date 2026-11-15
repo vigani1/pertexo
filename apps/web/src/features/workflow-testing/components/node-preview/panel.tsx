@@ -21,9 +21,9 @@ import { cn } from '@/lib/class-names';
 import {
   describePreviewStatus,
   canOfferStepTest,
-} from '../../model/preview-observation';
+} from '../../data/preview-observation';
 import { describeValidationIssue } from '@/lib/workflows/validation-message';
-import { useNodeTest } from './use-test';
+import { useNodeTest } from '../../data/node-preview.mutations';
 import { pluralWord } from '@/lib/format/count';
 
 export type NodeTestHandle = Readonly<{ runTest: () => void }>;

@@ -17,4 +17,7 @@ export {
   workflowTriggerKinds,
   type TriggerKind,
 } from './model/shape';
-export { startsInOneClick, useStartExample } from './hooks/use-start-example';
+export {
+  startsInOneClick,
+  useStartExample,
+} from './data/portability/start-example.mutations';

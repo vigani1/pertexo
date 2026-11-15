@@ -7,7 +7,7 @@ import {
   chooseImportFile,
   checkImportPreview,
   type ImportPhaseContext,
-} from './workflow-import-phases';
+} from '../data/portability/import-phases';
 import {
   useCallback,
   useEffect,

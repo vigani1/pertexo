@@ -24,7 +24,7 @@ import {
   type FormDraftValue,
 } from '../model/form-values';
 import type { FormUploadTarget } from '../data/form-uploads.api';
-import { useFormUploads } from '../hooks/use-form-uploads';
+import { useFormUploads } from '../data/form-uploads.mutations';
 
 export function FormResponse({
   fields,

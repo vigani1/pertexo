@@ -3,7 +3,7 @@ import type { OAuth2ConnectionResponse } from '@pertexo/contracts';
 import { ExternalLinkIcon } from 'lucide-react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
-import type { useOAuth2Consent } from '../../hooks/use-oauth2-consent';
+import type { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { connectSentence } from '../../model/oauth2-copy';
 
 type Consent = ReturnType<typeof useOAuth2Consent>;

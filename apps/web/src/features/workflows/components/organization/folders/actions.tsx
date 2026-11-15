@@ -6,7 +6,7 @@ import type { AccessibleWorkspace, WorkflowFolder } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useWorkflowOrganizationCommand } from '../../../data/organization/workflow-organization-command.mutations';
-import { useAudienceMove } from '../../../hooks/use-audience-move';
+import { useAudienceMove } from '../../../data/organization/audience-move.mutations';
 import type { FolderAction } from './shelf';
 import {
   FolderDeleteDialog,

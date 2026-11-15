@@ -22,7 +22,7 @@ import {
   type WorkflowListSearchUpdate,
 } from '../model/list-view';
 import { useListShortcuts } from '../hooks/use-list-shortcuts';
-import { useRunWorkflow } from '../hooks/use-run-workflow';
+import { useRunWorkflow } from '../data/run-workflow.mutations';
 import { useExampleChooser } from '../hooks/use-example-chooser';
 import { WorkflowOrganizationFilters } from '../components/organization/filters';
 import type { LifecycleTarget } from '../components/list/commands/dialogs';

@@ -4,12 +4,12 @@ import {
 } from '@pertexo/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getConnection } from '../data/connections.api';
+import { getConnection } from './connections.api';
 import {
   useConnectionResultScope,
   type ConnectionMutationScope,
-} from '../data/connections.mutations';
-import { startOAuth2Authorization } from '../data/oauth2.api';
+} from './connections.mutations';
+import { startOAuth2Authorization } from './oauth2.api';
 import { connectionCommandError } from '../model/connection-errors';
 import { landingMessage, OAUTH2_CHANNEL } from '../model/oauth2-copy';
 

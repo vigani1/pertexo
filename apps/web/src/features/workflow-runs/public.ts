@@ -21,4 +21,4 @@ export {
   describeNodeStatus,
   isActiveRunStatus,
 } from './model/presentation/run-status';
-export { useRunEvents } from './hooks/use-run-events';
+export { useRunEvents } from './data/run-events';

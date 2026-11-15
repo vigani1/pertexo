@@ -1,8 +1,8 @@
 export { loginNoticeFrom } from './model/login-notice';
-export { endBrowserSession } from './model/session/actions';
+export { endBrowserSession } from './data/session-end';
 export { logoutErrorMessage } from './model/session/session.errors';
 export {
   assertSessionIdentity,
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
-} from './model/session/identity';
+} from './data/session-identity';

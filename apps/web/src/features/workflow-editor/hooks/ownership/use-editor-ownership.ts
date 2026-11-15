@@ -7,7 +7,7 @@ import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-quer
 import { editorPresenceSource } from '../../model/state/presence';
 import { useEditorStoreApi } from '../../model/state/context';
 import { useEditorSessionVerification } from './use-editor-session-verification';
-import { useEditorSavePipeline } from '../persistence/use-editor-save-pipeline';
+import { useEditorSavePipeline } from '../../data/editor-save-pipeline';
 import { useLeaveGuard } from '../use-leave-guard';
 
 export function useEditorOwnership({

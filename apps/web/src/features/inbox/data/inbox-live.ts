@@ -9,8 +9,8 @@ import {
 import { workspaceInboxStreamEventSchema } from '@pertexo/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { openInboxEvents } from '../data/inbox.api';
-import { inboxKeys } from '../data/inbox.queries';
+import { openInboxEvents } from './inbox.api';
+import { inboxKeys } from './inbox.queries';
 
 export type InboxLiveStatus = 'connecting' | 'live' | 'reconnecting' | 'paused';
 

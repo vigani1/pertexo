@@ -5,8 +5,8 @@ import type {
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { reviewWorkflowMove } from '../data/organization/sharing.api';
-import type { WorkflowOrganizationInput } from '../model/organization/requests';
+import { reviewWorkflowMove } from './sharing.api';
+import type { WorkflowOrganizationInput } from '../../model/organization/requests';
 function requestFor(
   attempt: WorkflowOrganizationInput,
 ): WorkflowMoveReviewRequest | undefined {
