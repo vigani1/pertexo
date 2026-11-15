@@ -14,23 +14,13 @@ import {
   rethrowQueryFailure,
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
-import type { Pool, PoolClient } from 'pg';
-import type { FederationSettings } from '@pertexo/contracts';
-import { FederationConflictError } from './federation-management.errors.js';
-import { recordFederationAudit } from './authority.repository.js';
-import { advanceOrganization } from './commands.repository.js';
-import {
-  assertOrganizationRevision,
-  requireControlOrganization,
-  runFederationCommand,
-} from './federation-authority.js';
-import type { ConfigureEnforcementInput } from './federation-management.types.js';
-import { requireOrganizationDomain } from './domains.repository.js';
+import type { PoolClient } from 'pg';
 
-async function requireRecoveryCredential(
+/** The control workspace's active owner, if it has one. */
+export async function readControlOwner(
   client: PoolClient,
   controlWorkspaceId: string,
-): Promise<string> {
+): Promise<Readonly<{ user_id: string }> | undefined> {
   const owner = await withWorkspaceScope(
     client,
     { workspaceId: controlWorkspaceId },
@@ -49,42 +39,43 @@ async function requireRecoveryCredential(
           .catch(rethrowQueryFailure)
       )[0],
   );
-  const credential =
-    owner === undefined
-      ? []
-      : await drizzle(client)
-          .select({ id: users.id })
-          .from(users)
-          .innerJoin(
-            authAccounts,
-            and(
-              eq(authAccounts.userId, users.id),
-              eq(authAccounts.providerId, 'credential'),
-            ),
-          )
-          .where(
-            and(
-              eq(users.id, owner.user_id),
-              eq(users.status, 'active'),
-              eq(users.emailVerified, true),
-              isNotNull(authAccounts.password),
-              sql`length(${authAccounts.password})>0`,
-            ),
-          )
-          .catch(rethrowQueryFailure);
-  if (owner === undefined || credential.length !== 1)
-    throw new FederationConflictError(
-      'recovery_required',
-      'The control workspace owner needs a verified account with a working password before SSO can be required.',
-    );
-  return owner.user_id;
+  return owner;
 }
-/** A policy must retain a successfully tested enabled provider for every required domain. */
-export async function assertRequiredDomainsReady(
+
+/** Whether the owner is active and verified with a working password. */
+export async function ownerHasRecoveryCredential(
+  client: PoolClient,
+  ownerUserId: string,
+): Promise<boolean> {
+  const credential = await drizzle(client)
+    .select({ id: users.id })
+    .from(users)
+    .innerJoin(
+      authAccounts,
+      and(
+        eq(authAccounts.userId, users.id),
+        eq(authAccounts.providerId, 'credential'),
+      ),
+    )
+    .where(
+      and(
+        eq(users.id, ownerUserId),
+        eq(users.status, 'active'),
+        eq(users.emailVerified, true),
+        isNotNull(authAccounts.password),
+        sql`length(${authAccounts.password})>0`,
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return credential.length === 1;
+}
+
+/** Whether some required domain has no tested enabled provider left (optionally without one provider). */
+export async function hasUntestedRequiredDomain(
   client: PoolClient,
   organizationId: string,
   excludingProviderId?: string,
-): Promise<void> {
+): Promise<boolean> {
   const db = drizzle(client);
   const checked = db
     .select({ one: sql`1` })
@@ -119,95 +110,58 @@ export async function assertRequiredDomainsReady(
     )
     .limit(1)
     .catch(rethrowQueryFailure);
-  if (missing.length !== 0)
-    throw new FederationConflictError(
-      'provider_untested',
-      'Turn off required SSO or test another enabled provider before changing this provider.',
-    );
+  return missing.length !== 0;
 }
-export function configureDomainEnforcement(
-  pool: Pool,
-  input: ConfigureEnforcementInput,
-): Promise<FederationSettings> {
-  return runFederationCommand(pool, input, {
-    operation: 'identity.domain.enforcement',
-    request: {
-      domainId: input.domainId,
-      required: input.required,
-      expectedRevision: input.expectedRevision,
-    },
-    change: async (client) => {
-      const organization = await requireControlOrganization(client, input);
-      assertOrganizationRevision(organization, input.expectedRevision);
-      const domain = await requireOrganizationDomain(
-        client,
-        organization.id,
-        input.domainId,
-      );
-      if (input.required) {
-        if (domain.verified_at === null)
-          throw new FederationConflictError(
-            'dns_unverified',
-            'Verify the domain DNS record before requiring SSO.',
-          );
-        await requireRecoveryCredential(
-          client,
-          organization.control_workspace_id,
-        );
-        const ready = await drizzle(client)
-          .select({ one: sql`1` })
-          .from(authProviderChecks)
-          .innerJoin(
-            authProviders,
-            and(
-              eq(authProviders.id, authProviderChecks.providerId),
-              eq(
-                authProviders.organizationId,
-                authProviderChecks.organizationId,
-              ),
-            ),
-          )
-          .where(
-            and(
-              eq(authProviderChecks.domainId, domain.id),
-              eq(authProviderChecks.organizationId, organization.id),
-              eq(authProviders.enabled, true),
-              eq(authProviderChecks.providerRevision, authProviders.revision),
-            ),
-          )
-          .limit(1)
-          .catch(rethrowQueryFailure);
-        if (ready.length !== 1)
-          throw new FederationConflictError(
-            'provider_untested',
-            'Complete a test sign-in with an enabled provider for this domain first.',
-          );
-      }
-      if (domain.require_sso !== input.required) {
-        await drizzle(client)
-          .update(authDomains)
-          .set({
-            requireSso: input.required,
-            revision: sql`${authDomains.revision}+1`,
-          })
-          .where(eq(authDomains.id, domain.id))
-          .catch(rethrowQueryFailure);
-        const affected = drizzle(client)
-          .select({ id: users.id })
-          .from(users)
-          .where(sql`${canonicalEmailDomainSql(users.email)}=${domain.domain}`);
-        await drizzle(client)
-          .delete(authSessions)
-          .where(inArray(authSessions.userId, affected))
-          .catch(rethrowQueryFailure);
-        await recordFederationAudit(client, input, {
-          action: 'identity.domain_enforcement_changed',
-          targetId: organization.id,
-          metadata: { domainId: domain.id, required: input.required },
-        });
-        return advanceOrganization(client, organization);
-      }
-      return organization;
-    },
-  });
+
+/** Whether an enabled provider passed a test for this domain at its current revision. */
+export async function domainHasTestedProvider(
+  client: PoolClient,
+  organizationId: string,
+  domainId: string,
+): Promise<boolean> {
+  const ready = await drizzle(client)
+    .select({ one: sql`1` })
+    .from(authProviderChecks)
+    .innerJoin(
+      authProviders,
+      and(
+        eq(authProviders.id, authProviderChecks.providerId),
+        eq(authProviders.organizationId, authProviderChecks.organizationId),
+      ),
+    )
+    .where(
+      and(
+        eq(authProviderChecks.domainId, domainId),
+        eq(authProviderChecks.organizationId, organizationId),
+        eq(authProviders.enabled, true),
+        eq(authProviderChecks.providerRevision, authProviders.revision),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  return ready.length === 1;
+}
+
+/** Sets the requirement and signs out everyone whose email is on the domain. */
+export async function setDomainRequirement(
+  client: PoolClient,
+  domain: Readonly<{ id: string; domain: string }>,
+  required: boolean,
+): Promise<void> {
+  await drizzle(client)
+    .update(authDomains)
+    .set({
+      requireSso: required,
+      revision: sql`${authDomains.revision}+1`,
+    })
+    .where(eq(authDomains.id, domain.id))
+    .catch(rethrowQueryFailure);
+  const affected = drizzle(client)
+    .select({ id: users.id })
+    .from(users)
+    .where(sql`${canonicalEmailDomainSql(users.email)}=${domain.domain}`);
+  await drizzle(client)
+    .delete(authSessions)
+    .where(inArray(authSessions.userId, affected))
+    .catch(rethrowQueryFailure);
 }

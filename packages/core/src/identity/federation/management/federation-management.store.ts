@@ -35,23 +35,18 @@ import {
   removeDomain,
   renewDomainChallenge,
   verifyDomain,
-} from './domains.repository.js';
-import { configureDomainEnforcement } from './enforcement.repository.js';
+} from './domains.js';
+import { configureDomainEnforcement } from './enforcement.js';
 import {
   createOrganization,
   linkOrganizationWorkspace,
-} from './organizations.repository.js';
-import {
-  createProvider,
-  removeProvider,
-  updateProvider,
-} from './providers.repository.js';
+} from './organizations.js';
+import { createProvider, removeProvider, updateProvider } from './providers.js';
 import {
   checkFederationStoredSecrets,
-  readDomainChallenge,
-  readDomainVerificationResult,
   readFederationSettings,
 } from './reads.repository.js';
+import { readDomainChallenge, readDomainVerificationResult } from './reads.js';
 
 export type FederationManagementStore = ReturnType<
   typeof createFederationManagementStore

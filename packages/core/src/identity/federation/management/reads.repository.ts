@@ -3,24 +3,24 @@ import {
   authOrganizations,
   authProviders,
 } from '@pertexo/database/schema';
+
 import { and, asc, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
+
 import {
-  findCommandResult,
   setOrganizationContext,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
 import type { FederationSettings } from '@pertexo/contracts';
+
 import type { Role } from '@pertexo/policy';
+
 import type { Pool, PoolClient } from 'pg';
 
 import { organizationForWorkspace } from './authority.repository.js';
-import type {
-  DomainChallengeInput,
-  FederationCommand,
-  FederationScope,
-} from './federation-management.types.js';
-import { FederationConflictError } from './federation-management.errors.js';
+
+import type { FederationScope } from './federation-management.types.js';
 import { projectOrganization } from './settings.repository.js';
 
 const STORED_SECRET_PAGE = 100;
@@ -48,61 +48,6 @@ export async function readFederationSettings(
         ? null
         : await projectOrganization(client, organization),
   };
-}
-
-async function requireDomainControl(client: PoolClient, workspaceId: string) {
-  const organization = await organizationForWorkspace(client, workspaceId);
-  if (organization?.control_workspace_id !== workspaceId)
-    throw new FederationConflictError(
-      'owner_required',
-      'Manage domains from the control workspace.',
-    );
-  return organization;
-}
-
-export async function readDomainChallenge(
-  client: PoolClient,
-  input: DomainChallengeInput,
-) {
-  const organization = await requireDomainControl(client, input.workspaceId);
-  const [row] = await drizzle(client)
-    .select({
-      domain: authDomains.domain,
-      challenge: authDomains.challenge,
-    })
-    .from(authDomains)
-    .where(
-      and(
-        eq(authDomains.id, input.domainId),
-        eq(authDomains.organizationId, organization.id),
-        isNull(authDomains.verifiedAt),
-        gt(authDomains.challengeExpiresAt, sql`clock_timestamp()`),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  if (row?.challenge === null || row === undefined)
-    throw new FederationConflictError(
-      'dns_unverified',
-      'The DNS challenge is unavailable or expired.',
-    );
-  return { domain: row.domain, challenge: row.challenge };
-}
-
-export async function readDomainVerificationResult(
-  client: PoolClient,
-  input: FederationCommand & DomainChallengeInput,
-) {
-  await requireDomainControl(client, input.workspaceId);
-  return findCommandResult<FederationSettings>(client, {
-    workspaceId: input.workspaceId,
-    scope: input.actorId,
-    operation: 'identity.domain.verify',
-    idempotencyKey: input.idempotencyKey,
-    request: {
-      domainId: input.domainId,
-      expectedRevision: input.expectedRevision,
-    },
-  });
 }
 
 /** Startup's check that every stored secret still opens: no member is acting. */
@@ -142,4 +87,28 @@ function storedProviderSecrets(pool: Pool, after: string | null) {
     .orderBy(asc(authProviders.id))
     .limit(STORED_SECRET_PAGE)
     .catch(rethrowQueryFailure);
+}
+
+/** The domain's unexpired, unanswered challenge, if the organization owns it. */
+export async function readOpenChallenge(
+  client: PoolClient,
+  domainId: string,
+  organizationId: string,
+) {
+  const [row] = await drizzle(client)
+    .select({
+      domain: authDomains.domain,
+      challenge: authDomains.challenge,
+    })
+    .from(authDomains)
+    .where(
+      and(
+        eq(authDomains.id, domainId),
+        eq(authDomains.organizationId, organizationId),
+        isNull(authDomains.verifiedAt),
+        gt(authDomains.challengeExpiresAt, sql`clock_timestamp()`),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return row;
 }
