@@ -26,6 +26,11 @@ import {
 import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
 import type { AuthoringAccess } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
+import {
+  WorkflowConcurrencyRevisionConflictError,
+  WorkflowConcurrencyLimitUnavailableError,
+  WorkflowConcurrencyLimitExceededError,
+} from './workflow-concurrency.errors.js';
 
 /** The command output retained for exact retries. */
 const concurrencyReceipt = z
@@ -58,24 +63,6 @@ export type UpdateWorkflowConcurrencyInput = WorkflowConcurrencyScope &
     requestId?: string;
     traceId?: string;
   }>;
-export class WorkflowConcurrencyRevisionConflictError extends Error {
-  public override readonly name = 'WorkflowConcurrencyRevisionConflictError';
-  public constructor(public readonly currentRevision: number) {
-    super('Workflow concurrency revision does not match');
-  }
-}
-export class WorkflowConcurrencyLimitUnavailableError extends Error {
-  public override readonly name = 'WorkflowConcurrencyLimitUnavailableError';
-  public constructor() {
-    super('Active workspace entitlement required');
-  }
-}
-export class WorkflowConcurrencyLimitExceededError extends Error {
-  public override readonly name = 'WorkflowConcurrencyLimitExceededError';
-  public constructor(public readonly maximum: number) {
-    super('Workflow concurrency limit exceeds workspace capacity');
-  }
-}
 /** The workspace's current execution entitlement, as the settings show it. */
 async function readEntitlement(client: PoolClient, workspaceId: string) {
   const current = workspaceExecutionEntitlements,
