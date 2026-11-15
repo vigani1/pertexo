@@ -11,7 +11,6 @@ import {
 import { workflowPortableManifestSchema } from '@pertexo/workflow-model';
 import {
   authorizeWorkspaceCapabilities,
-  commandCredential,
   type WorkspaceAuthorizationSource,
 } from '../../authorization/index.js';
 import {
@@ -23,6 +22,7 @@ import type {
   WorkflowAuthoringDependencies,
 } from '../ports.js';
 import { parseStrongIfMatch } from '../http/preconditions.js';
+import { commandContext } from '../../workspaces/request/caller.js';
 import {
   NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   type WorkflowAuthoringTelemetry,
@@ -80,12 +80,7 @@ class PortabilityAuthority {
   }
   protected context(input: Input) {
     return {
-      workspaceId: input.routeWorkspaceId,
-      actorId: input.actor.actorId,
-      requestId: input.actor.requestId,
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
+      ...commandContext(input),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     };
   }
@@ -149,7 +144,6 @@ export class ImportWorkflowService extends PortabilityAuthority {
               templateIssues: templateIssues(command.manifest, templateOrigin),
             }),
         idempotencyKey: input.idempotencyKey,
-        ...commandCredential(input.actor),
       });
     });
   }

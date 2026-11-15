@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../workspaces/request/caller.js';
 import { credentialAllowsCapability } from '../authorization/credentials.js';
 import { WorkflowRevisionConflictError } from '@pertexo/core/authoring';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
@@ -65,8 +66,6 @@ export type SaveWorkflowDraftInput = WorkflowResourceInput &
   Readonly<{
     representationTag: string;
     graph: unknown;
-    requestId?: string;
-    traceId?: string;
   }>;
 
 export type ListWorkflowVersionsInput = WorkflowResourceInput &
@@ -243,10 +242,7 @@ export class SaveWorkflowDraftService {
           representationTag: input.representationTag,
           expectedRevision: current.revision,
           graphJson: graph,
-          ...(input.requestId === undefined
-            ? {}
-            : { requestId: input.requestId }),
-          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
+          ...requestIdentifiers(input.actor),
         });
         return serializeWorkflowDraft(saved);
       },

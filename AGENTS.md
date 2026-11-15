@@ -105,7 +105,7 @@ The one named way for each shared job:
 - Workspace status lists are the named constants in `policy` (`ACTIVE_`,
   `BROWSABLE_`, `UNPURGED_`, `ALL_WORKSPACE_STATUSES`), and a flow names its list
   once, at that helper. Replace a literal only with a constant holding the same
-  values.
+  values; `validate-workspace-status-lists.mjs` refuses a list written out.
 - From the one-shot move on, a core area imports the files another area's
   `index.ts` names, directly, never through that `index.ts`, so no barrel edges
   appear. Until

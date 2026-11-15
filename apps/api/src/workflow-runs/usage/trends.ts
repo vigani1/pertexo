@@ -8,6 +8,7 @@ import type {
   WorkflowRunApplicationInput,
   WorkflowRunPersistence,
 } from '../ports.js';
+import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export class GetUsageTrendsService {
   constructor(
@@ -24,7 +25,7 @@ export class GetUsageTrendsService {
       capability: 'run:read',
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active', 'suspended', 'pending_deletion'],
+      allowedWorkspaceStatuses: UNPURGED_WORKSPACE_STATUSES,
       ...(input.authorizedWorkspace === undefined
         ? {}
         : { authorizedWorkspace: input.authorizedWorkspace }),

@@ -1,8 +1,6 @@
 import type { z } from 'zod';
-import {
-  commandCredential,
-  type WorkspaceAuthorizationSource,
-} from '../../authorization/index.js';
+import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
+import { commandContext } from '../../workspaces/request/caller.js';
 import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 
 import type { WorkflowApplicationInput } from '../ports.js';
@@ -24,8 +22,6 @@ export type CreateWorkflowInput = WorkflowApplicationInput &
   Readonly<{
     request: z.output<typeof workflowCreateRequestSchema>;
     idempotencyKey: string;
-    requestId?: string;
-    traceId?: string;
   }>;
 
 export class CreateWorkflowService {
@@ -42,19 +38,13 @@ export class CreateWorkflowService {
         await authorize(input, 'workflow:create', this.authorization);
         const request = input.request;
         const created = await this.persistence.createWorkflow({
-          workspaceId: input.routeWorkspaceId,
-          actorId: input.actor.actorId,
+          ...commandContext(input),
           name: request.name,
           ...(request.folderId === undefined
             ? {}
             : { folderId: request.folderId }),
           emptyGraph: EMPTY_WORKFLOW_GRAPH,
           idempotencyKey: input.idempotencyKey,
-          ...commandCredential(input.actor),
-          ...(input.requestId === undefined
-            ? {}
-            : { requestId: input.requestId }),
-          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
         });
         return serializeWorkflowCreate(created);
       },

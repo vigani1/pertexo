@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import type { z } from 'zod';
 import type {
   workflowErrorTargetsQuerySchema,
@@ -10,6 +11,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 type ReadInput = WorkflowApplicationInput &
   Readonly<{ workflowId: string; signal?: AbortSignal }>;
@@ -50,10 +52,7 @@ export class WorkflowErrorService {
       ...this.context(input),
       ...request,
       idempotencyKey: input.idempotencyKey,
-      requestId: input.actor.requestId,
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
+      ...requestIdentifiers(input.actor),
     });
   }
   private context(input: ReadInput) {
@@ -77,7 +76,7 @@ export class WorkflowErrorService {
       allowedWorkspaceStatuses:
         capability === 'workflow:read'
           ? BROWSABLE_WORKSPACE_STATUSES
-          : ['active'],
+          : ACTIVE_WORKSPACE_STATUSES,
       ...(input.signal === undefined ? {} : { signal: input.signal }),
       ...(input.authorizedWorkspace === undefined
         ? {}

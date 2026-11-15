@@ -11,7 +11,7 @@ import {
 } from '../../../src/workspaces/index.js';
 import { routeInput } from '../../support/route-input.js';
 import type { workspaceRoutes as routes } from '@pertexo/contracts/server';
-import { workspaceCaller } from '../../../src/workspaces/request/caller.js';
+import { workspaceCallerFor } from '../../workspaces/request/caller.fixture.js';
 
 const actorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const targetId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
@@ -117,7 +117,7 @@ describe('membership lifecycle commands (ADR 047)', () => {
     await expect(
       controller(store).transferOwnership(
         request(),
-        workspaceCaller(request(), workspaceId),
+        workspaceCallerFor(request(), workspaceId),
         body,
       ),
     ).resolves.toMatchObject({ ownerUserId: targetId, replayed: false });
@@ -133,7 +133,7 @@ describe('membership lifecycle commands (ADR 047)', () => {
       new Date(now.getTime() - 5 * 60_000 - 1),
     ).transferOwnership(
       request(),
-      workspaceCaller(request(), workspaceId),
+      workspaceCallerFor(request(), workspaceId),
       body,
     );
     await expect(stale).rejects.toBeInstanceOf(IdentityError);
@@ -143,14 +143,14 @@ describe('membership lifecycle commands (ADR 047)', () => {
     await expect(
       controller(store, 'no evidence').transferOwnership(
         request(),
-        workspaceCaller(request(), workspaceId),
+        workspaceCallerFor(request(), workspaceId),
         body,
       ),
     ).rejects.toMatchObject({ code: 'identity.session_invalid' });
     await expect(
       controller(store, now, targetId).transferOwnership(
         request(),
-        workspaceCaller(request(), workspaceId),
+        workspaceCallerFor(request(), workspaceId),
         body,
       ),
     ).rejects.toMatchObject({ code: 'auth.unauthenticated' });

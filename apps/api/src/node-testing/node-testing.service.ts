@@ -41,6 +41,7 @@ import {
   previewExecutionIdentity,
   normalizedExecutableNode,
 } from './previews/request.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type NodeTestServiceInput = Readonly<{
   actor: ActorContext;
@@ -313,7 +314,7 @@ export class TestWorkflowNodeService {
       capability,
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
       ...(capability === 'workflow:update' &&
       input.authorizedWorkspace !== undefined
         ? { authorizedWorkspace: input.authorizedWorkspace }

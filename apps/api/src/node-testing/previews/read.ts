@@ -10,6 +10,7 @@ import type { NodeTestingPersistence } from '../ports.js';
 
 import type { WorkspaceAuthorizationSource } from '../../workspaces/ports.js';
 import { previewOutputResponse, previewIdentityResponse } from './response.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export class GetPreviewRunService {
   public constructor(
@@ -31,7 +32,7 @@ export class GetPreviewRunService {
       capability: 'workflow:update',
       access: this.authorization,
       disclosure: 'not_found',
-      allowedWorkspaceStatuses: ['active'],
+      allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
       ...(input.authorizedWorkspace === undefined
         ? {}
         : { authorizedWorkspace: input.authorizedWorkspace }),

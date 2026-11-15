@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import { authorizeAuthoringOperation } from '../commands/authorization.js';
 import type { z } from 'zod';
 import type {
@@ -85,13 +86,10 @@ export class PublicationReviewService {
     return {
       workspaceId: input.routeWorkspaceId,
       actorId: input.actor.actorId,
-      requestId: input.actor.requestId,
+      ...requestIdentifiers(input.actor),
       ...(input.traceparent === undefined
         ? {}
         : { traceparent: input.traceparent }),
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     };
   }

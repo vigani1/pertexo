@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import { authorizeAuthoringOperation } from '../commands/authorization.js';
 import type { z } from 'zod';
 import type { workflowConcurrencySettingsRequestSchema } from '@pertexo/contracts';
@@ -43,10 +44,7 @@ export class WorkflowConcurrencyService {
       ...this.context(input),
       ...request,
       idempotencyKey: input.idempotencyKey,
-      requestId: input.actor.requestId,
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
+      ...requestIdentifiers(input.actor),
     });
   }
   private context(input: ReadInput) {

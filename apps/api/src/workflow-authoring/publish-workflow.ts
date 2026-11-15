@@ -1,10 +1,8 @@
 import { createHash } from 'node:crypto';
 import { canonicalJson } from '@pertexo/workflow-model';
 
-import {
-  commandCredential,
-  type WorkspaceAuthorizationSource,
-} from '../authorization/index.js';
+import type { WorkspaceAuthorizationSource } from '../authorization/index.js';
+import { commandContext } from '../workspaces/request/caller.js';
 
 import {
   WORKFLOW_AUTHORING_OPERATION,
@@ -25,8 +23,6 @@ export type PublishWorkflowInput = WorkflowResourceInput &
   Readonly<{
     representationTag: string;
     idempotencyKey: string;
-    requestId?: string;
-    traceId?: string;
     traceparent?: string;
   }>;
 
@@ -48,18 +44,12 @@ export class PublishWorkflowService {
         // draft read. Persistence must resolve an exact idempotent replay
         // before looking up the current draft or evaluating the tag.
         const result = await this.persistence.publishWorkflow({
-          workspaceId: input.routeWorkspaceId,
+          ...commandContext(input),
           workflowId: input.workflowId,
-          actorId: input.actor.actorId,
           representationTag: input.representationTag,
           requestHash: publishRequestHash(input),
           idempotencyKey: input.idempotencyKey,
-          ...commandCredential(input.actor),
           ...(input.signal === undefined ? {} : { signal: input.signal }),
-          ...(input.requestId === undefined
-            ? {}
-            : { requestId: input.requestId }),
-          ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
           ...(input.traceparent === undefined
             ? {}
             : { traceparent: input.traceparent }),

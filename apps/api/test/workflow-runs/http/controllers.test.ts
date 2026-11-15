@@ -15,7 +15,7 @@ import {
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 import type { workflowRunRoutes as routes } from '@pertexo/contracts/server';
 import { routeInput } from '../../support/route-input.js';
-import { workspaceCaller } from '../../../src/workspaces/request/caller.js';
+import { workspaceCallerFor } from '../../workspaces/request/caller.fixture.js';
 
 const events = (lastEventId?: string) =>
   routeInput<typeof routes.events>({
@@ -27,14 +27,14 @@ describe('workflow runs controller', () => {
   it('forwards a statistics window and breakdown only when asked for', async () => {
     const fixture = controller();
     await fixture.instance.getRunStatistics(
-      workspaceCaller(request(), workspaceId),
+      workspaceCallerFor(request(), workspaceId),
       routeInput<typeof routes.statistics>({
         params: { workspaceId },
         query: { window: '7d', breakdown: 'workflow' },
       }),
     );
     await fixture.instance.getRunStatistics(
-      workspaceCaller(request(), workspaceId),
+      workspaceCallerFor(request(), workspaceId),
       routeInput<typeof routes.statistics>({
         params: { workspaceId },
         query: {},
@@ -57,7 +57,7 @@ describe('workflow runs controller', () => {
     const fixture = controller();
     await fixture.instance.startRun(
       request({ 'idempotency-key': 'session-context' }),
-      workspaceCaller(
+      workspaceCallerFor(
         request({ 'idempotency-key': 'session-context' }),
         workspaceId,
       ),
@@ -97,7 +97,7 @@ describe('workflow runs controller', () => {
         ...request({ 'idempotency-key': 'guard-context' }),
         authorizedWorkspace,
       },
-      workspaceCaller(
+      workspaceCallerFor(
         {
           ...request({ 'idempotency-key': 'guard-context' }),
           authorizedWorkspace,
@@ -144,7 +144,7 @@ describe('workflow runs controller', () => {
         authorizedWorkspace,
         reauthorizeIdentitySession,
       },
-      workspaceCaller(
+      workspaceCallerFor(
         {
           ...request(),
           authorizedWorkspace,
@@ -175,7 +175,7 @@ describe('workflow runs controller', () => {
         'idempotency-key': 'run-start-42',
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      workspaceCaller(
+      workspaceCallerFor(
         request({
           'idempotency-key': 'run-start-42',
           traceparent:
@@ -210,7 +210,7 @@ describe('workflow runs controller', () => {
         'x-csrf-token': 'csrf-token-42',
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      workspaceCaller(
+      workspaceCallerFor(
         request({
           'idempotency-key': 'run-replay-42',
           'x-csrf-token': 'csrf-token-42',
@@ -249,7 +249,7 @@ describe('workflow runs controller', () => {
     const reply = sseReply();
     await fixture.instance.streamRunEvents(
       request({ 'last-event-id': '1' }),
-      workspaceCaller(request({ 'last-event-id': '1' }), workspaceId),
+      workspaceCallerFor(request({ 'last-event-id': '1' }), workspaceId),
       events('1'),
       reply as never,
     );
@@ -292,7 +292,7 @@ describe('workflow runs controller', () => {
     const reply = sseReply();
     await instance.streamRunEvents(
       request(),
-      workspaceCaller(request(), workspaceId),
+      workspaceCallerFor(request(), workspaceId),
       events(),
       reply as never,
     );
@@ -342,7 +342,7 @@ describe('workflow runs controller', () => {
 
     await instance.streamRunEvents(
       request(),
-      workspaceCaller(request(), workspaceId),
+      workspaceCallerFor(request(), workspaceId),
       events(),
       reply as never,
     );
@@ -380,7 +380,7 @@ describe('workflow runs controller', () => {
     try {
       streaming = instance.streamRunEvents(
         request(),
-        workspaceCaller(request(), workspaceId),
+        workspaceCallerFor(request(), workspaceId),
         events(),
         reply as never,
       );
@@ -431,7 +431,7 @@ describe('workflow runs controller', () => {
     await expect(
       instance.streamRunEvents(
         selectedRequest,
-        workspaceCaller(selectedRequest, workspaceId),
+        workspaceCallerFor(selectedRequest, workspaceId),
         events(),
         reply as never,
       ),
@@ -464,7 +464,7 @@ describe('workflow runs controller', () => {
     await expect(
       instance.streamRunEvents(
         selectedRequest,
-        workspaceCaller(selectedRequest, workspaceId),
+        workspaceCallerFor(selectedRequest, workspaceId),
         events(),
         reply as never,
       ),
@@ -483,7 +483,7 @@ describe('workflow runs controller', () => {
       request({
         traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
       }),
-      workspaceCaller(
+      workspaceCallerFor(
         request({
           traceparent:
             '00-11111111111111111111111111111111-2222222222222222-01',

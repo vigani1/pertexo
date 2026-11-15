@@ -28,20 +28,13 @@ export const Caller = createParamDecorator(
     const request = context
       .switchToHttp()
       .getRequest<IdentityWorkspaceRequest & object>();
-    return workspaceCaller(request, workspaceIdOf(routeParams(request)));
+    const workspaceId = workspaceIdOf(routeParams(request));
+    return Object.freeze({
+      workspaceId,
+      ...projectAuthenticatedWorkspaceContext(request, workspaceId),
+    });
   },
 );
-
-/** The caller of a route in `workspaceId`; `@Caller()` is the usual way in. */
-export function workspaceCaller(
-  request: IdentityWorkspaceRequest,
-  workspaceId: string,
-): WorkspaceCaller {
-  return Object.freeze({
-    workspaceId,
-    ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-  });
-}
 
 /** What an API service takes: the actor, the route's workspace and the guard's proof. */
 export function serviceCaller({ workspaceId, ...context }: WorkspaceCaller) {
@@ -49,16 +42,38 @@ export function serviceCaller({ workspaceId, ...context }: WorkspaceCaller) {
 }
 
 /** What a core store takes: the workspace, the actor and the token a command runs under. */
-export function storeCaller({ workspaceId, actor }: WorkspaceCaller) {
-  return { workspaceId, actorId: actor.actorId, ...commandCredential(actor) };
+export function storeCaller(caller: WorkspaceCaller) {
+  return storeContext(serviceCaller(caller));
 }
 
 /** The request's identifiers, which core records on commands. */
 export function requestIdentifiers({
   requestId,
   traceId,
-}: WorkspaceCaller): Readonly<{ requestId: string; traceId?: string }> {
+}: Readonly<{ requestId: string; traceId?: string | undefined }>): Readonly<{
+  requestId: string;
+  traceId?: string;
+}> {
   return traceId === undefined ? { requestId } : { requestId, traceId };
+}
+
+/** What a service hands a core store, from the caller `serviceCaller` gave it. */
+export function storeContext({
+  routeWorkspaceId,
+  actor,
+}: Readonly<{ routeWorkspaceId: string; actor: ActorContext }>) {
+  return {
+    workspaceId: routeWorkspaceId,
+    actorId: actor.actorId,
+    ...commandCredential(actor),
+  };
+}
+
+/** A core command's context from a service: the store's context and the request's identifiers. */
+export function commandContext(
+  input: Readonly<{ routeWorkspaceId: string; actor: ActorContext }>,
+) {
+  return { ...storeContext(input), ...requestIdentifiers(input.actor) };
 }
 
 function workspaceIdOf(params: unknown): string {

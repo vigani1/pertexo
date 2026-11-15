@@ -6,6 +6,7 @@ import {
   type AuthorizedWorkspaceContext,
   type WorkspaceAuthorizationSource,
 } from '../authorization/index.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type ConnectionAuthorizationInput = Readonly<{
   actor: ActorContext;
@@ -30,7 +31,7 @@ export async function authorizeConnectionOperation(
     allowedWorkspaceStatuses:
       capability === 'connection:read'
         ? BROWSABLE_WORKSPACE_STATUSES
-        : ['active'],
+        : ACTIVE_WORKSPACE_STATUSES,
     ...(input.authorizedWorkspace === undefined
       ? {}
       : { authorizedWorkspace: input.authorizedWorkspace }),
@@ -50,6 +51,6 @@ export async function reauthorizeConnectionSecretAccess(
     capability: 'connection:use',
     access,
     disclosure: 'not_found',
-    allowedWorkspaceStatuses: ['active'],
+    allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
   });
 }

@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import type { z } from 'zod';
 import type {
   workflowPromotionTargetSchema,
@@ -14,6 +15,7 @@ import {
   type WorkspaceStatus,
 } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 type Scope = WorkflowApplicationInput & {
   signal?: AbortSignal;
@@ -73,10 +75,7 @@ export class WorkflowPromotionService {
     return {
       workspaceId: input.routeWorkspaceId,
       actorId: input.actor.actorId,
-      requestId: input.actor.requestId,
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
+      ...requestIdentifiers(input.actor),
       ...(input.traceparent === undefined
         ? {}
         : { traceparent: input.traceparent }),
@@ -93,7 +92,7 @@ export class WorkflowPromotionService {
   private authorize(
     input: Scope,
     capability: 'workflow:update' | 'workflow:publish' | 'workspace:manage',
-    allowedWorkspaceStatuses: readonly WorkspaceStatus[] = ['active'],
+    allowedWorkspaceStatuses: readonly WorkspaceStatus[] = ACTIVE_WORKSPACE_STATUSES,
   ) {
     return authorizeWorkspaceOperation({
       actor: input.actor,

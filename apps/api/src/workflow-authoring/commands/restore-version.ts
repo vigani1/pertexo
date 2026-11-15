@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import type { workflowVersionRestoreRequestSchema } from '@pertexo/contracts';
 import type { z } from 'zod';
 import {
@@ -14,6 +15,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type RestoreWorkflowVersionInput = WorkflowApplicationInput &
   Readonly<{
@@ -45,7 +47,7 @@ export class RestoreWorkflowVersionService {
           capability: 'workflow:update',
           access: this.authorization,
           disclosure: 'not_found',
-          allowedWorkspaceStatuses: ['active'],
+          allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
           ...(input.authorizedWorkspace === undefined
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
@@ -59,10 +61,7 @@ export class RestoreWorkflowVersionService {
           ...(input.idempotencyKey === undefined
             ? {}
             : { idempotencyKey: input.idempotencyKey }),
-          requestId: input.actor.requestId,
-          ...(input.actor.traceId === undefined
-            ? {}
-            : { traceId: input.actor.traceId }),
+          ...requestIdentifiers(input.actor),
         });
         const draft = await serializeWorkflowDraft(restored);
         return {

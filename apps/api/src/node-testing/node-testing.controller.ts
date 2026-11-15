@@ -41,13 +41,8 @@ export class NodeTestingController {
     @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.preview>,
   ) {
-    const context = serviceCaller(caller);
     return this.getPreview.execute({
-      actor: context.actor,
-      routeWorkspaceId: params.workspaceId,
-      ...(context.authorizedWorkspace === undefined
-        ? {}
-        : { authorizedWorkspace: context.authorizedWorkspace }),
+      ...serviceCaller(caller),
       previewRunId: params.previewRunId,
     });
   }

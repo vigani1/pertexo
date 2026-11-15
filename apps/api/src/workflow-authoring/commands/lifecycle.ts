@@ -1,4 +1,4 @@
-import { commandCredential } from '../../authorization/credentials.js';
+import { commandContext } from '../../workspaces/request/caller.js';
 import type { workflowLifecycleRequestSchema } from '@pertexo/contracts';
 import type { WorkflowLifecycleResponse } from '@pertexo/contracts';
 import type { z } from 'zod';
@@ -16,6 +16,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type WorkflowLifecycleInput = WorkflowApplicationInput &
   Readonly<{
@@ -49,7 +50,7 @@ export class TransitionWorkflowLifecycleService {
           capability: 'workflow:publish',
           access: this.authorization,
           disclosure: 'not_found',
-          allowedWorkspaceStatuses: ['active'],
+          allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
           ...(input.authorizedWorkspace === undefined
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
@@ -58,15 +59,9 @@ export class TransitionWorkflowLifecycleService {
         const accepted = await this.persistence.transitionWorkflowLifecycle({
           ...request,
           command: input.command,
-          workspaceId: input.routeWorkspaceId,
+          ...commandContext(input),
           workflowId: input.workflowId,
-          actorId: input.actor.actorId,
-          ...commandCredential(input.actor),
           idempotencyKey: input.idempotencyKey,
-          requestId: input.actor.requestId,
-          ...(input.actor.traceId === undefined
-            ? {}
-            : { traceId: input.actor.traceId }),
           ...(input.traceparent === undefined
             ? {}
             : { traceparent: input.traceparent }),

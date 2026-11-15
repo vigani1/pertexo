@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import type {
   WorkflowStepSampleStore,
   SampleMetadata,
@@ -14,6 +15,7 @@ import type {
   StepSampleListResponse,
   StepSampleWriteRequest,
 } from '@pertexo/contracts';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 type ReadInput = Pick<
   NodeTestServiceInput,
@@ -74,10 +76,7 @@ export class StepSamplesService {
       ...this.scope(input),
       nodeId: input.nodeId,
       idempotencyKey: input.idempotencyKey,
-      requestId: input.actor.requestId,
-      ...(input.actor.traceId === undefined
-        ? {}
-        : { traceId: input.actor.traceId }),
+      ...requestIdentifiers(input.actor),
     };
   }
   private async authorize(
@@ -95,7 +94,7 @@ export class StepSamplesService {
         : { authorizedWorkspace: input.authorizedWorkspace }),
       capability: write ? 'workflow:update' : 'workflow:read',
       allowedWorkspaceStatuses: write
-        ? ['active']
+        ? ACTIVE_WORKSPACE_STATUSES
         : BROWSABLE_WORKSPACE_STATUSES,
       disclosure: 'not_found',
     });

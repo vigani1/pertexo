@@ -1,3 +1,4 @@
+import { requestIdentifiers } from '../../workspaces/request/caller.js';
 import type { workflowRenameRequestSchema } from '@pertexo/contracts';
 import type { WorkflowRenameResponse } from '@pertexo/contracts';
 import type { z } from 'zod';
@@ -15,6 +16,7 @@ import {
   WORKFLOW_AUTHORING_OPERATION,
   type WorkflowAuthoringTelemetry,
 } from '../telemetry.js';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 export type RenameWorkflowInput = WorkflowApplicationInput &
   Readonly<{
@@ -47,7 +49,7 @@ export class RenameWorkflowService {
           capability: 'workflow:update',
           access: this.authorization,
           disclosure: 'not_found',
-          allowedWorkspaceStatuses: ['active'],
+          allowedWorkspaceStatuses: ACTIVE_WORKSPACE_STATUSES,
           ...(input.authorizedWorkspace === undefined
             ? {}
             : { authorizedWorkspace: input.authorizedWorkspace }),
@@ -60,10 +62,7 @@ export class RenameWorkflowService {
           workflowId: input.workflowId,
           workspaceId: input.routeWorkspaceId,
           actorId: input.actor.actorId,
-          requestId: input.actor.requestId,
-          ...(input.actor.traceId === undefined
-            ? {}
-            : { traceId: input.actor.traceId }),
+          ...requestIdentifiers(input.actor),
         });
         return {
           workflow: workflowSummary(renamed.workflow),
