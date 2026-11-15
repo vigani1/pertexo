@@ -12,8 +12,8 @@ output. Links determine execution order; input mappings determine the data.
 
 A step can have up to 100 directly linked predecessors. Check and Publish flag a
 step above that limit. Each predecessor output keeps its own JSON size limit;
-legal outputs do not share a single 1 MiB budget while they are loaded. The
-resolved inputs passed to the receiving step still have a 1 MiB limit. For a
+legal outputs do not share a single 1 MB budget while they are loaded. The
+resolved inputs passed to the receiving step still have a 1 MB limit. For a
 wider graph, add intermediate steps that reduce or summarize the outputs.
 
 ## Example: paid invoices, one per ID, totals by currency
@@ -173,7 +173,7 @@ that, and fails the step if it keeps happening. Work on less data, or split the
 work across steps.
 
 All collection steps accept at most 4,998 items within the existing whole-JSON
-limits: the SDK envelope is 1 MiB; retained execution JSON is capped at 256 KiB, depth 64 and 10,000 members. A wide collection can hit a whole-JSON
+limits: the SDK envelope is 1 MB; retained execution JSON is capped at 256 KB, depth 64 and 10,000 members. A wide collection can hit a whole-JSON
 limit before 4,998 items. Input/output inspection, step testing, saved workflows,
 export/import and For each bodies use the same current nodes and limits.
 One-item batches at the cap use 9,999 members, including their count fields;
@@ -187,7 +187,7 @@ not file uploads.
 These utilities are under **Shape data**. They do not fetch documents or call provider endpoints; HMAC only resolves its key through the existing secret store. Map data in
 **Inputs**, choose behavior in **Setup**, and map `$.value` into the next step
 (except Extract HTML, whose list is `$.items`). All use the existing step-data
-limits: a whole invocation up to 1 MiB, with retained JSON output up to 256 KiB, depth 64 and 10,000 members. Results that
+limits: a whole invocation up to 1 MB, with retained JSON output up to 256 KB, depth 64 and 10,000 members. Results that
 expand beyond these bounds fail with advice to split the input; limits are not
 raised by these utilities.
 
@@ -251,7 +251,7 @@ reports total matches and `truncated` tells you whether the chosen limit omitted
 matches. Feed `items` into Filter, Take or other list steps.
 
 Supported selectors: tags, classes, IDs, attributes and descendant/child/sibling
-combinators. At most 256 characters, four selector groups and 16 total tokens; each group may have one descendant and one flat structural pseudo-class. Use child (`>`) or adjacent (`+`) combinators for longer paths. Structural pseudo-classes such as `:first-child`, `:nth-child(2n+1)`,
+combinators. At most 256 characters, 4 selector groups and 16 total tokens; each group may have one descendant and one flat structural pseudo-class. Use child (`>`) or adjacent (`+`) combinators for longer paths. Structural pseudo-classes such as `:first-child`, `:nth-child(2n+1)`,
 `:last-of-type`, `:empty` and `:root` work. General sibling (`~`), relational/content pseudos, nested selectors
 (such as `:has()` or `:not()`) and pseudo-elements are refused. Documents are bounded to
 48 levels and 8,000 elements/text nodes/attributes during parsing. Scripts never

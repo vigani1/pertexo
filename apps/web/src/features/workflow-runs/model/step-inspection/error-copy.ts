@@ -1,3 +1,7 @@
+import {
+  formatByteSize,
+  STORED_EXECUTION_VALUE_LIMITS,
+} from '@pertexo/node-sdk';
 import { SUMMARY_RESULT_FAILURE } from '@pertexo/nodes-core';
 import { SLACK_REJECTIONS } from '@pertexo/integrations';
 import {
@@ -162,8 +166,7 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   },
   call_input_too_large: {
     sentence: 'The mapped input exceeds the Call’s inline value limit.',
-    advice:
-      'Reduce the mapped input to fit 256 KiB including its storage wrapper, then publish and replay.',
+    advice: `Reduce the mapped input to fit ${formatByteSize(STORED_EXECUTION_VALUE_LIMITS.inlineBytes)} including its storage wrapper, then publish and replay.`,
   },
   call_input_artifact_unsupported: {
     sentence: 'This Call cannot pass a file into another run.',
