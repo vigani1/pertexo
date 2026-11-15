@@ -15,9 +15,11 @@ import type {
   SocialSignInAttempt,
   SocialSignInResult,
 } from './social-sign-in.types.js';
+import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 // A social sign-in must come back from its provider within this.
-const SOCIAL_SIGN_IN_LIFETIME = sql.raw("interval '5 minutes'");
+const SOCIAL_SIGN_IN_LIFETIME_MINUTES = 5;
+const SOCIAL_SIGN_IN_LIFETIME = sql`${SOCIAL_SIGN_IN_LIFETIME_MINUTES}*${MINUTE_INTERVAL}`;
 
 /** A provider proves identity before this owner acquires a transaction. Nobody is signed in yet, so it stays off `withWorkspaceAccess`. */
 export class SocialSignInCommands {

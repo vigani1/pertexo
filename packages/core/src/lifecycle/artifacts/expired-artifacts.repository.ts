@@ -8,11 +8,15 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 
 import { artifactReferenceOwnersSql } from '../../artifacts/references/owners.repository.js';
+import {
+  DAY_INTERVAL,
+  MINUTE_INTERVAL,
+} from '../../shared/sql-intervals.repository.js';
 
 /** Something still refers to it, so it's looked at again much later. */
-const REFERENCED_RETRY = sql.raw("interval '1 day'");
+const REFERENCED_RETRY = DAY_INTERVAL;
 /** Long enough for this worker to erase it; another takes over after that. */
-const ERASE_RETRY = sql.raw("interval '1 minute'");
+const ERASE_RETRY = MINUTE_INTERVAL;
 
 type ExpiredArtifact = Readonly<{ id: string; workspaceId: string }>;
 

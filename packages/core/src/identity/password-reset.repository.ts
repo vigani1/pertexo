@@ -8,14 +8,17 @@ import {
 import { canonicalEmailSql } from './canonical-email.repository.js';
 import { and, eq, like, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';
 import {
   authVerifications,
   authAccounts,
   users,
 } from '@pertexo/database/schema';
+import { HOUR_INTERVAL } from '../shared/sql-intervals.repository.js';
 
-const PASSWORD_RESET_LIFETIME = "interval '1 hour'";
+const PASSWORD_RESET_LIFETIME_HOURS = 1;
+const PASSWORD_RESET_LIFETIME = sql`${PASSWORD_RESET_LIFETIME_HOURS}*${HOUR_INTERVAL}`;
 
 /** The caller holds the user lock, so sibling resets cannot outlive this change. */
 export async function invalidatePasswordResetProofs(
@@ -69,17 +72,20 @@ export async function issuePasswordResetProof(
     if (credential?.password == null) return undefined;
     const {
       rows: [clock],
-    } = await client.query<{ expiresAt: Date }>(
-      `select clock_timestamp() + ${PASSWORD_RESET_LIFETIME} as "expiresAt"`,
-    );
+    } = await db
+      .execute<{ expiresAt: string }>(
+        sql`select clock_timestamp()+${PASSWORD_RESET_LIFETIME} "expiresAt"`,
+      )
+      .catch(rethrowQueryFailure);
     if (clock === undefined) throw new Error('Database time unavailable');
+    const expiresAt = new Date(clock.expiresAt);
     const recipient = { email: user.email, displayName: user.displayName };
-    const prepared = input.prepareMail(recipient, clock.expiresAt);
+    const prepared = input.prepareMail(recipient, expiresAt);
     await db.insert(authVerifications).values({
       id: randomUUID(),
       identifier: `reset-password:${input.token}`,
       value: user.id,
-      expiresAt: clock.expiresAt,
+      expiresAt,
       createdAt: sql`clock_timestamp()`,
       updatedAt: sql`clock_timestamp()`,
     });

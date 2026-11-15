@@ -22,10 +22,12 @@ import type {
   VerifyDomainInput,
 } from './federation-management.types.js';
 import { requireResourceCapacity } from './organizations.repository.js';
+import { DAY_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 // A domain's verification challenge, and how long it can be answered.
 const CHALLENGE_BYTES = 32;
-const CHALLENGE_LIFETIME = sql.raw("interval '7 days'");
+const CHALLENGE_LIFETIME_DAYS = 7;
+const CHALLENGE_LIFETIME = sql`${CHALLENGE_LIFETIME_DAYS}*${DAY_INTERVAL}`;
 
 const newDomainChallenge = () => ({
   challenge: randomBytes(CHALLENGE_BYTES).toString('base64url'),

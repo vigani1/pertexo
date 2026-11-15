@@ -17,9 +17,11 @@ import {
 } from './credential.js';
 import { apiTokenStatus } from './metadata.js';
 import type { VerifiedApiToken } from './api-token.types.js';
+import { MINUTE_INTERVAL } from '../../shared/sql-intervals.repository.js';
 
 // A token's last use is written at most this often.
-const LAST_USED_WRITE_INTERVAL = sql.raw("interval '1 minute'");
+const LAST_USED_WRITE_MINUTES = 1;
+const LAST_USED_WRITE_INTERVAL = sql`${LAST_USED_WRITE_MINUTES}*${MINUTE_INTERVAL}`;
 
 /** Off the helper: no member is behind this yet. The token is what names one. */
 export function authenticateApiToken(

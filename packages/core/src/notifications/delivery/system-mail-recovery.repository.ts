@@ -7,9 +7,11 @@ import {
 } from '@pertexo/database/schema';
 import { auditFailureNotification } from './evidence.repository.js';
 import { failureNotificationCompletionAuditFactType } from './completion-policy.js';
+import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 
 // A delivery still in flight is looked at again after this long.
-const RECOVERY_RECHECK_INTERVAL = sql.raw("interval '60 seconds'");
+const RECOVERY_RECHECK_SECONDS = 60;
+const RECOVERY_RECHECK_INTERVAL = sql`${RECOVERY_RECHECK_SECONDS}*${SECOND_INTERVAL}`;
 
 /** A durable provider result, rather than enqueue, completes a shared alert. */
 export async function reconcileSystemMail(

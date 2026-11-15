@@ -39,9 +39,11 @@ import type {
   StartFederationJourney,
   FederationCompletion,
 } from './federation-journey.types.js';
+import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 // An organization sign-in must come back from its provider within this.
-const JOURNEY_LIFETIME = sql.raw("interval '5 minutes'");
+const JOURNEY_LIFETIME_MINUTES = 5;
+const JOURNEY_LIFETIME = sql`${JOURNEY_LIFETIME_MINUTES}*${MINUTE_INTERVAL}`;
 
 /**
  * Sign-in has no member behind it, so all but the owner's provider test stay
