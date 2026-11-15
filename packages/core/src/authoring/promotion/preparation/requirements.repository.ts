@@ -15,7 +15,7 @@ import {
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { lockWorkspaceVariableNames } from '../../../variables/head.repository.js';
 import { dataTableReferenceIssues } from '../../../data-tables/columns/references.repository.js';
-import { workflowNodes } from '@pertexo/workflow-model';
+import { PROMOTION_LIMITS, workflowNodes } from '@pertexo/workflow-model';
 
 export async function inspectPromotionRequirements(
   client: PoolClient,
@@ -112,7 +112,10 @@ export async function inspectPromotionRequirements(
       kind: 'table',
       status: 'incompatible',
       name: 'Table columns',
-      detail: issue.message.slice(0, 512),
+      detail: issue.message.slice(
+        0,
+        PROMOTION_LIMITS.requirementDetailCharacters,
+      ),
     });
   return report;
 }

@@ -1,3 +1,4 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import {
   DataTableError,
   isDataTableDefinition,
@@ -82,7 +83,7 @@ export function rebindPromotionTable(
       issue(
         `Target required columns are not supplied: ${missing.map((column) => column.name).join(', ')}.`.slice(
           0,
-          512,
+          PROMOTION_LIMITS.requirementDetailCharacters,
         ),
       );
   }

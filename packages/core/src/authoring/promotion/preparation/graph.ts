@@ -1,3 +1,4 @@
+import { formatByteSize } from '@pertexo/node-sdk';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
@@ -43,7 +44,7 @@ export class PromotionGraphBudget {
     if (this.bytes > PROMOTION_LIMITS.graphBytes)
       throw new WorkflowPromotionError(
         'limit',
-        'These workflows and their dependencies exceed the 2 MB promotion review budget. Select fewer workflows.',
+        `These workflows and their dependencies exceed the ${formatByteSize(PROMOTION_LIMITS.graphBytes)} promotion review budget. Select fewer workflows.`,
       );
   }
 }

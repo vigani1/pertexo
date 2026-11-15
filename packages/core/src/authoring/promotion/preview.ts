@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { formatByteSize } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { utf8ByteLength } from '@pertexo/workflow-model';
@@ -79,7 +80,7 @@ export async function preparePromotion(
   if (utf8ByteLength(JSON.stringify(result)) > PROMOTION_LIMITS.responseBytes)
     throw new WorkflowPromotionError(
       'limit',
-      'This promotion review exceeds 4 MB. Select fewer workflows.',
+      `This promotion review exceeds ${formatByteSize(PROMOTION_LIMITS.responseBytes)}. Select fewer workflows.`,
     );
   return result;
 }

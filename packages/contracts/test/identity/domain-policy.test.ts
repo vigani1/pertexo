@@ -22,6 +22,7 @@ it('keeps authoring and identity policy limits unchanged at the transport bounda
     responseBytes: 4194304,
     requirements: 1000,
     page: 50,
+    requirementDetailCharacters: 512,
   });
   expect(COLLABORATION_LIMITS).toEqual({
     body: 8000,
