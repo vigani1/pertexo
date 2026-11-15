@@ -8,14 +8,16 @@ import {
 } from '../../src/errors/api-problem.js';
 import {
   idempotencyKeySchema,
-  invitationAcceptanceCompleteRequestSchema,
-  invitationAcceptanceJourneySchema,
-  invitationAcceptanceResolveRequestSchema,
   workspaceCreateRequestSchema,
   workspaceRenameRequestSchema,
   workspaceInvitationCreateRequestSchema,
   workspaceMemberRoleChangeRequestSchema,
 } from '../../src/schemas/identity/workspaces.js';
+import {
+  invitationAcceptanceCompleteRequestSchema,
+  invitationAcceptanceJourneySchema,
+  invitationAcceptanceResolveRequestSchema,
+} from '../../src/schemas/identity/invitation-acceptance.js';
 import { identityWorkspaceOpenApiDocument } from '../../src/server.js';
 
 describe('identity and problem public contracts', () => {
