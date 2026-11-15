@@ -8,7 +8,7 @@ import {
   rethrowQueryFailure,
   withTenantScopedReadClient,
 } from '@pertexo/database/primitives';
-import { RUN_DETAILS_RETENTION_SQL } from '../../../runs/run-retention.repository.js';
+import { RUN_DETAILS_RETENTION_SQL } from '../../../shared/run-retention.repository.js';
 import type { Pool } from 'pg';
 import type {
   WebhookResponseScope,

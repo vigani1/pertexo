@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { RUN_VALUE_LIMITS, type RunValues } from '@pertexo/node-sdk';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { workflowRunValues, workflowRuns } from '@pertexo/database/schema';
-import { expiredRunSql } from '../run-retention.repository.js';
+import { expiredRunSql } from '../../shared/run-retention.repository.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { RunValuesLimitError } from './run-values.errors.js';
 

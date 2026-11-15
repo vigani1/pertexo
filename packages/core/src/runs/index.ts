@@ -153,7 +153,6 @@ export type {} from './commands/acceptance/accept.js';
 export type {} from './commands/acceptance/replay.repository.js';
 export type {} from './commands/cancel-run.js';
 export type {} from './commands/request-cancellation.js';
-export type {} from './run-retention.repository.js';
 export type {} from './pending-tasks/callbacks/retention.repository.js';
 export type {} from './pending-tasks/responses/eligibility.repository.js';
 export type {} from './pending-tasks/responses/pending-task-records.repository.js';

@@ -16,7 +16,7 @@ import {
 import {
   expiredRunSql,
   RUN_DETAILS_RETENTION_SQL,
-} from '../../../runs/run-retention.repository.js';
+} from '../../../shared/run-retention.repository.js';
 import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 
 const query = new QueryBuilder(),

@@ -12,7 +12,7 @@ import {
   parseStoredExecutionValue,
   serializeStoredExecutionJsonValue,
 } from '../../../shared/stored-execution.js';
-import { isTestRun } from '../../run-retention.repository.js';
+import { isTestRun } from '../../../shared/run-retention.repository.js';
 import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.repository.js';
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.repository.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.repository.js';
