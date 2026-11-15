@@ -42,7 +42,7 @@ describeIntegration('Executor diagnostic persistence', () => {
     [
       'run-values',
       'run.values_limit',
-      'A run can keep at most ten distinct values',
+      'A run can keep at most 10 distinct values',
     ],
   ] as const)(
     'keeps the ordinary %s failure on the step with its actionable reason',
