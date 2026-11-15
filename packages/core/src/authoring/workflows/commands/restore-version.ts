@@ -4,22 +4,11 @@ import { canonicalJson } from '@pertexo/workflow-model';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { recoverWorkflowDraft } from './duplicate.js';
-import {
-  claimCommand,
-  completeCommand,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
+import { WORKFLOW_NAME_MAX_CHARACTERS } from '../receipts.repository.js';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
-import { and, eq, exists, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
-import {
-  workflowDrafts,
-  workflowOrganizationState,
-  workflows,
-  workflowVersions,
-} from '@pertexo/database/schema';
 import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
 import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
 import { pruneStepSamples } from '../../step-samples/step-sample-state.repository.js';
@@ -35,11 +24,14 @@ import { draftRepresentationTag } from '../representation/tag.js';
 import { lockActiveWorkflow, lockDraft } from './locks.repository.js';
 import type { WorkflowDraftRecord } from '../representation/workflow-record.types.js';
 import {
-  draftProjection,
   projectDraft,
   projectVersion,
-  versionProjection,
 } from '../representation/workflow-representations.repository.js';
+import { replaceDraftGraph } from './draft-revisions.repository.js';
+import {
+  readRecoveryCopySource,
+  readVersionRow,
+} from './version-sources.repository.js';
 
 const restoreReceipt = z
   .object({
@@ -62,7 +54,6 @@ export async function restoreWorkflowVersion(
   const actorId = input.actorId;
   const representationTag = input.representationTag;
 
-  const db = drizzle(client);
   await lockActiveWorkflow(client, input);
   const command =
     input.idempotencyKey === undefined
@@ -139,34 +130,13 @@ export async function restoreWorkflowVersion(
     current: currentDraft,
     restoredGraph: sourceVersion.graphJson,
   });
-  const visible = db
-    .select({ id: workflows.id })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, workspaceId),
-        eq(workflows.id, workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    );
-  const [updatedRow] = await db
-    .update(workflowDrafts)
-    .set({
-      graphJson: sql`${JSON.stringify(sourceVersion.graphJson)}::json`,
-      revision: sql`${workflowDrafts.revision}+1`,
-      updatedBy: actorId,
-      updatedAt: sql`transaction_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, workspaceId),
-        eq(workflowDrafts.workflowId, workflowId),
-        eq(workflowDrafts.revision, currentDraft.revision),
-        exists(visible),
-      ),
-    )
-    .returning(draftProjection)
-    .catch(rethrowQueryFailure);
+  const updatedRow = await replaceDraftGraph(client, {
+    workspaceId,
+    workflowId,
+    expectedRevision: currentDraft.revision,
+    graph: sourceVersion.graphJson,
+    actorId,
+  });
   if (updatedRow === undefined)
     throw new WorkflowRevisionConflictError(currentDraft.revision, currentTag);
   const restoredDraft = projectDraft(updatedRow, definitionCatalog);
@@ -211,18 +181,11 @@ async function readRestorationSource(
     'workspaceId' | 'workflowId' | 'versionId'
   >,
 ) {
-  const db = drizzle(client);
-  const [sourceRow] = await db
-    .select(versionProjection)
-    .from(workflowVersions)
-    .where(
-      and(
-        eq(workflowVersions.workspaceId, workspaceId),
-        eq(workflowVersions.workflowId, workflowId),
-        eq(workflowVersions.id, versionId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  const sourceRow = await readVersionRow(client, {
+    workspaceId,
+    workflowId,
+    versionId,
+  });
   if (sourceRow === undefined)
     throw new WorkflowNotFoundError('Workflow version is not visible');
   return projectVersion(sourceRow);
@@ -243,29 +206,7 @@ async function preserveUnpublishedDraft(
 ): Promise<string | null> {
   const displaced = canonicalJson(current.graphJson);
   if (displaced === canonicalJson(restoredGraph)) return null;
-  const db = drizzle(client);
-  const [workflow] = await db
-    .select({
-      name: workflows.name,
-      publishedVersionId: workflows.publishedVersionId,
-      folderId: workflowOrganizationState.folderId,
-      date: sql<string>`to_char(transaction_timestamp() at time zone 'UTC','YYYY-MM-DD')`,
-    })
-    .from(workflows)
-    .leftJoin(
-      workflowOrganizationState,
-      and(
-        eq(workflowOrganizationState.workspaceId, workflows.workspaceId),
-        eq(workflowOrganizationState.workflowId, workflows.id),
-      ),
-    )
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, input.workflowId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  const workflow = await readRecoveryCopySource(client, input);
   if (workflow === undefined)
     throw new WorkflowNotFoundError('Workflow is not visible');
   if (workflow.publishedVersionId !== null) {
@@ -278,7 +219,7 @@ async function preserveUnpublishedDraft(
   const suffix = ` (unpublished draft, ${workflow.date})`;
   const name =
     workflow.name
-      .slice(0, 128 - suffix.length)
+      .slice(0, WORKFLOW_NAME_MAX_CHARACTERS - suffix.length)
       .replace(/[\uD800-\uDBFF]$/u, '') + suffix;
   return recoverWorkflowDraft(
     client,

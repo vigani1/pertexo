@@ -6,7 +6,10 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
 import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
-import { draftProjection } from '../representation/workflow-representations.repository.js';
+import {
+  draftProjection,
+  workflowProjection,
+} from '../representation/workflow-representations.repository.js';
 
 /**
  * The workflow and then its draft, in that order everywhere a command takes both:
@@ -49,4 +52,60 @@ export async function lockDraft(
     .for('update')
     .catch(rethrowQueryFailure);
   return row;
+}
+
+/**
+ * The workflow row under an update lock, as a revision-checked command reads
+ * it; `active` reads an archived workflow as missing.
+ */
+export async function lockWorkflowRecord(
+  client: PoolClient,
+  { workspaceId, workflowId }: WorkflowRef,
+  { active }: Readonly<{ active: boolean }>,
+) {
+  const [row] = await drizzle(client)
+    .select(workflowProjection)
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, workspaceId),
+        eq(workflows.id, workflowId),
+        active ? eq(workflows.lifecycleStatus, 'active') : undefined,
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return row;
+}
+
+/** The source of a duplicate, locked before its draft; undefined when missing. */
+export async function lockWorkflowLifecycleStatus(
+  client: PoolClient,
+  { workspaceId, workflowId }: WorkflowRef,
+) {
+  const [row] = await drizzle(client)
+    .select({ lifecycleStatus: workflows.lifecycleStatus })
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return row?.lifecycleStatus;
+}
+
+/** A replay holds the workflow it answers about under a share lock. */
+export async function shareLockWorkflow(
+  client: PoolClient,
+  { workspaceId, workflowId }: WorkflowRef,
+): Promise<boolean> {
+  const rows = await drizzle(client)
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(
+      and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  return rows.length === 1;
 }

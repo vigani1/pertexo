@@ -20,6 +20,8 @@ import { workflowProjection } from '../representation/workflow-representations.r
 
 import type { ListWorkflowsInput } from '../workflow-commands.types.js';
 
+const DEFAULT_PAGE_LIMIT = 50;
+
 const folder = new QueryBuilder()
   .select({ id: workflowOrganizationState.folderId })
   .from(workflowOrganizationState)
@@ -92,7 +94,7 @@ export async function listWorkflows(
 function listInput(input: ListWorkflowsInput) {
   return {
     workspaceId: input.workspaceId,
-    limit: input.limit ?? 50,
+    limit: input.limit ?? DEFAULT_PAGE_LIMIT,
     order: input.order ?? 'created_asc',
     afterPositionAt: input.after?.positionAt ?? null,
     afterId: input.after?.id ?? null,

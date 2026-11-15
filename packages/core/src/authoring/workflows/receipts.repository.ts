@@ -12,6 +12,9 @@ import type { CommandIdentity } from '@pertexo/database/primitives';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import type { WorkflowRecord } from './representation/workflow-record.types.js';
 
+/** A workflow name's width: the stored column's (`app.workflows.name`). */
+export const WORKFLOW_NAME_MAX_CHARACTERS = 128;
+
 const uuidSchema = z.uuid();
 const revisionSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
@@ -22,7 +25,7 @@ const storedResultSchema = z
       .object({
         id: uuidSchema,
         workspaceId: uuidSchema,
-        name: z.string().trim().min(1).max(128),
+        name: z.string().trim().min(1).max(WORKFLOW_NAME_MAX_CHARACTERS),
         nameRevision: revisionSchema,
         lifecycleStatus: workflowLifecycleStatusSchema,
         lifecycleRevision: revisionSchema,

@@ -1,10 +1,6 @@
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
-import { and, eq, exists, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
-import { workflowDrafts, workflows } from '@pertexo/database/schema';
 import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
 import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
 import { pruneStepSamples } from '../../step-samples/step-sample-state.repository.js';
@@ -18,10 +14,11 @@ import {
 import type { WorkflowDraftRecord } from '../representation/workflow-record.types.js';
 import { draftRepresentationTag } from '../representation/tag.js';
 import { requirePlaceableDefinitionAdditions } from '../placement.js';
+import { projectDraft } from '../representation/workflow-representations.repository.js';
 import {
-  draftProjection,
-  projectDraft,
-} from '../representation/workflow-representations.repository.js';
+  readActiveDraft,
+  replaceDraftGraph,
+} from './draft-revisions.repository.js';
 
 export async function saveDraft(
   client: PoolClient,
@@ -32,7 +29,7 @@ export async function saveDraft(
   const graph = input.graphJson;
   const expected = input.expectedRevision;
   const workflowId = input.workflowId;
-  const [currentRow] = await readActiveDraft(client, {
+  const currentRow = await readActiveDraft(client, {
     workspaceId: input.workspaceId,
     workflowId,
   });
@@ -55,37 +52,15 @@ export async function saveDraft(
   );
   await requireConnectionBindings(client, input, graph, currentDraft.graphJson);
   await lockArtifactReferences(client, input.workspaceId, graph, input.actorId);
-  const db = drizzle(client);
-  const visible = db
-    .select({ id: workflows.id })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    );
-  const [row] = await db
-    .update(workflowDrafts)
-    .set({
-      graphJson: sql`${JSON.stringify(graph)}::json`,
-      revision: sql`${workflowDrafts.revision}+1`,
-      updatedBy: input.actorId,
-      updatedAt: sql`transaction_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, input.workspaceId),
-        eq(workflowDrafts.workflowId, workflowId),
-        eq(workflowDrafts.revision, expected),
-        exists(visible),
-      ),
-    )
-    .returning(draftProjection)
-    .catch(rethrowQueryFailure);
+  const row = await replaceDraftGraph(client, {
+    workspaceId: input.workspaceId,
+    workflowId,
+    expectedRevision: expected,
+    graph,
+    actorId: input.actorId,
+  });
   if (row === undefined) {
-    const [latest] = await readActiveDraft(client, {
+    const latest = await readActiveDraft(client, {
       workspaceId: input.workspaceId,
       workflowId,
     });
@@ -117,28 +92,4 @@ function throwRevisionConflict(
     draft.revision,
     draftRepresentationTag(workflowId, draft),
   );
-}
-
-function readActiveDraft(
-  client: PoolClient,
-  input: Readonly<{ workspaceId: string; workflowId: string }>,
-) {
-  return drizzle(client)
-    .select(draftProjection)
-    .from(workflowDrafts)
-    .innerJoin(
-      workflows,
-      and(
-        eq(workflows.workspaceId, workflowDrafts.workspaceId),
-        eq(workflows.id, workflowDrafts.workflowId),
-      ),
-    )
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, input.workspaceId),
-        eq(workflowDrafts.workflowId, input.workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
 }
