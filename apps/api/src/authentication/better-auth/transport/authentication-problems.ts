@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
 import type { ApiProblemCode } from '@pertexo/contracts';
@@ -45,7 +46,11 @@ function refused(
     | 'auth.two_factor_code_invalid'
     | 'auth.two_factor_challenge_expired',
 ): NativeProblem {
-  return { status: 400, code, title: API_PROBLEM_MANIFEST[code].title };
+  return {
+    status: HttpStatus.BAD_REQUEST,
+    code,
+    title: API_PROBLEM_MANIFEST[code].title,
+  };
 }
 
 const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
@@ -58,7 +63,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '400:INVALID_PASSWORD',
     {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       code: 'auth.invalid_password',
       title: API_PROBLEM_MANIFEST['auth.invalid_password'].title,
     },
@@ -66,7 +71,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '409:PASSWORD_ALREADY_CONFIGURED',
     {
-      status: 409,
+      status: HttpStatus.CONFLICT,
       code: 'auth.password_already_configured',
       title: API_PROBLEM_MANIFEST['auth.password_already_configured'].title,
     },
@@ -74,7 +79,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '409:AUTHENTICATION_CHANGED',
     {
-      status: 409,
+      status: HttpStatus.CONFLICT,
       code: 'auth.authentication_changed',
       title: API_PROBLEM_MANIFEST['auth.authentication_changed'].title,
     },
@@ -82,7 +87,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '403:SESSION_NOT_FRESH',
     {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.session_not_fresh',
       title: 'Sign in again before changing account security settings.',
     },
@@ -90,7 +95,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '403:EMAIL_VERIFICATION_REQUIRED',
     {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.email_not_verified',
       title: 'Verify your email before adding a password.',
     },
@@ -98,7 +103,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '404:AUTHENTICATION_METHOD_NOT_FOUND',
     {
-      status: 404,
+      status: HttpStatus.NOT_FOUND,
       code: 'resource.not_found',
       title:
         'This sign-in method is no longer available. Reload security settings.',
@@ -107,7 +112,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '400:CURRENT_SESSION_REQUIRES_LOGOUT',
     {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       code: 'request.invalid',
       title: 'Sign out to end the current session.',
     },
@@ -115,7 +120,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '400:TRUST_DEVICE_DISABLED',
     {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       code: 'request.invalid',
       title:
         'Use an authenticator or recovery code at every password sign-in. Trusted devices are disabled.',
@@ -125,7 +130,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '400:LAST_AUTHENTICATION_METHOD',
     {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       code: 'auth.last_method',
       title:
         'Add another working sign-in method allowed by your organization before removing this one.',
@@ -134,7 +139,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '403:SIGN_UP_CLOSED',
     {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.sign_up_closed',
       title: 'Sign-up is by invitation',
     },
@@ -142,7 +147,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '403:ALTERNATIVE_SIGN_IN_REQUIRED',
     {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.alternative_required',
       title: 'Another sign-in method required',
     },
@@ -150,7 +155,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '403:ORGANIZATION_EMAIL_MANAGED',
     {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.organization_email_managed',
       title: 'Organization email address is managed',
     },
@@ -158,7 +163,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '400:AUTHENTICATION_METHOD_LIMIT',
     {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       code: 'auth.method_limit',
       title: 'Sign-in method limit reached',
     },
@@ -166,7 +171,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '403:RECOVERY_PASSWORD_REQUIRED',
     {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.recovery_required',
       title: 'Recovery password required',
     },
@@ -174,7 +179,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '403:SSO_REQUIRED',
     {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.sso_required',
       title: 'Organization sign-in required',
     },
@@ -182,7 +187,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '403:EMAIL_NOT_VERIFIED',
     {
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.email_not_verified',
       title: 'Email verification required',
     },
@@ -190,7 +195,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '400:INVALID_TOKEN',
     {
-      status: 400,
+      status: HttpStatus.BAD_REQUEST,
       code: 'auth.reset_link_invalid',
       // session-setting-exempt: a problem title shown to people, not SQL
       title: 'Reset link invalid or expired',
@@ -199,7 +204,7 @@ const NATIVE_PROBLEMS = new Map<string, NativeProblem>([
   [
     '429:ACCOUNT_TEMPORARILY_LOCKED',
     {
-      status: 429,
+      status: HttpStatus.TOO_MANY_REQUESTS,
       code: 'auth.two_factor_locked',
       title: API_PROBLEM_MANIFEST['auth.two_factor_locked'].title,
     },
@@ -210,42 +215,71 @@ const STATUS_PROBLEMS = new Map<number, NativeProblem>([
   [
     401,
     {
-      status: 401,
+      status: HttpStatus.UNAUTHORIZED,
       code: 'auth.unauthenticated',
       title: 'Authentication required',
     },
   ],
-  [403, { status: 403, code: 'auth.forbidden', title: 'Forbidden' }],
+  [
+    403,
+    {
+      status: HttpStatus.FORBIDDEN,
+      code: 'auth.forbidden',
+      title: 'Forbidden',
+    },
+  ],
   [
     404,
-    { status: 404, code: 'resource.not_found', title: 'Resource not found' },
+    {
+      status: HttpStatus.NOT_FOUND,
+      code: 'resource.not_found',
+      title: 'Resource not found',
+    },
   ],
   [
     409,
     {
-      status: 409,
+      status: HttpStatus.CONFLICT,
       code: 'auth.conflict',
       title: 'Authentication change conflict',
     },
   ],
   [
     429,
-    { status: 429, code: 'request.rate_limited', title: 'Too many requests' },
+    {
+      status: HttpStatus.TOO_MANY_REQUESTS,
+      code: 'request.rate_limited',
+      title: 'Too many requests',
+    },
   ],
   [
     503,
     {
-      status: 503,
+      status: HttpStatus.SERVICE_UNAVAILABLE,
       code: 'provider.unavailable',
       title: 'Authentication temporarily unavailable',
     },
   ],
-  [400, { status: 400, code: 'request.invalid', title: 'Invalid request' }],
-  [422, { status: 400, code: 'request.invalid', title: 'Invalid request' }],
+  [
+    400,
+    {
+      status: HttpStatus.BAD_REQUEST,
+      code: 'request.invalid',
+      title: 'Invalid request',
+    },
+  ],
+  [
+    422,
+    {
+      status: HttpStatus.BAD_REQUEST,
+      code: 'request.invalid',
+      title: 'Invalid request',
+    },
+  ],
 ]);
 
 const UNEXPECTED_PROBLEM: NativeProblem = {
-  status: 500,
+  status: HttpStatus.INTERNAL_SERVER_ERROR,
   code: 'internal.unexpected',
   title: 'Authentication unavailable',
 };

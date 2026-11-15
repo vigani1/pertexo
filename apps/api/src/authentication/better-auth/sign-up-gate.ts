@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type { SignUpAvailability } from '@pertexo/core/identity';
 
 const SIGN_UP_PATH = '/v1/auth/sign-up/email';
@@ -27,5 +28,8 @@ export async function refuseClosedSignUp(
   // Better Auth owns refusing a malformed request.
   if (typeof email !== 'string' || (await availability.admits(email)))
     return undefined;
-  return Response.json({ code: 'SIGN_UP_CLOSED' }, { status: 403 });
+  return Response.json(
+    { code: 'SIGN_UP_CLOSED' },
+    { status: HttpStatus.FORBIDDEN },
+  );
 }

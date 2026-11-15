@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { createRequestContext } from '../../platform/http/request-context.js';
 import type {
   FastifyInstance,
@@ -134,7 +135,7 @@ export function registerAuthenticationCapabilities(
         );
         sendProblem(reply, {
           ...createRequestContext(request.id),
-          status: 429,
+          status: HttpStatus.TOO_MANY_REQUESTS,
           code: 'request.rate_limited',
           title: 'Too many authentication requests',
         });
@@ -179,7 +180,7 @@ async function dispatchBetterAuthRequest(
   if (BLOCKED_BROWSER_AUTH_PATHS.has(pathname)) {
     sendProblem(reply, {
       requestId,
-      status: 404,
+      status: HttpStatus.NOT_FOUND,
       code: 'resource.not_found',
       title: 'Resource not found',
     });
@@ -192,7 +193,7 @@ async function dispatchBetterAuthRequest(
   if (crossOriginWrite) {
     sendProblem(reply, {
       requestId,
-      status: 403,
+      status: HttpStatus.FORBIDDEN,
       code: 'auth.forbidden',
       title: 'Authentication request rejected',
     });
@@ -217,7 +218,7 @@ async function dispatchBetterAuthRequest(
     );
     sendProblem(reply, {
       requestId,
-      status: 429,
+      status: HttpStatus.TOO_MANY_REQUESTS,
       code: 'request.rate_limited',
       title: 'Too many authentication requests',
     });

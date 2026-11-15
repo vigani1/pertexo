@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import { CALLBACK_LIMITS } from './callback-limits.js';
 const formCallbacks = new Map<string, 'landing' | 'proof'>([
   ['/v1/auth/federation/social/callback/apple', 'landing'],
@@ -31,10 +32,10 @@ export async function landProviderFormCallback(
       'application/x-www-form-urlencoded' ||
     url.search.length !== 0
   )
-    return new Response(null, { status: 400 });
+    return new Response(null, { status: HttpStatus.BAD_REQUEST });
   const body = await request.text();
   if (Buffer.byteLength(body) > CALLBACK_LIMITS.formBytes)
-    return new Response(null, { status: 400 });
+    return new Response(null, { status: HttpStatus.BAD_REQUEST });
   const fields = new URLSearchParams(body);
   for (const [name, maximum] of [
     ['state', CALLBACK_LIMITS.stateCharacters],
@@ -43,12 +44,12 @@ export async function landProviderFormCallback(
   ] as const) {
     const values = fields.getAll(name);
     if (values.length > 1 || (values[0]?.length ?? 0) > maximum)
-      return new Response(null, { status: 400 });
+      return new Response(null, { status: HttpStatus.BAD_REQUEST });
     if (values[0] !== undefined) url.searchParams.set(name, values[0]);
   }
   if (fields.has('error')) url.searchParams.set('error', 'provider_rejected');
   return new Response(null, {
-    status: 303,
+    status: HttpStatus.SEE_OTHER,
     headers: {
       location: url.toString(),
       'cache-control': 'no-store',

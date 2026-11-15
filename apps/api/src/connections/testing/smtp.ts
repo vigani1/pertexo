@@ -1,3 +1,4 @@
+import { SUCCEEDED_TEST } from './outcomes.js';
 import { requestInputError } from '../../platform/http/request-input.js';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import type { TestConnectionCommand } from './test-connection.js';
@@ -57,7 +58,7 @@ export async function testSmtpConnection(
           beforeDispatch: input.beforeDispatch,
         });
   return result.kind === 'submitted'
-    ? { ok: true, httpStatus: 200 }
+    ? SUCCEEDED_TEST
     : {
         ok: false,
         httpStatus: null,
