@@ -7,7 +7,8 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   },
   'app.arm_dispatcher_workflow_run_active_admission(uuid,uuid)': {
     category: 'capacity counters',
-    reason: 'Attach a recovery deadline to an existing dispatcher reservation.',
+    reason:
+      "Arm the slot protocol's own five-minute recovery lease on an existing dispatcher reservation; no TypeScript reads or chooses it.",
   },
   'app.artifact_capacity_purge_start()': {
     category: 'capacity counters',
@@ -45,7 +46,8 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   },
   'app.claim_due_trigger_schedules(character varying,integer,integer)': {
     category: 'queue claiming',
-    reason: 'Acquire bounded, token-fenced due schedule leases.',
+    reason:
+      'Acquire bounded, token-fenced due schedule leases, one per workspace per claim so no workspace starves another; core owns firing and misfire choices.',
   },
   'app.claim_due_workflow_run_deadlines(integer)': {
     category: 'queue claiming',
@@ -55,7 +57,7 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   'app.claim_workspace_inbox_events(integer)': {
     category: 'queue claiming',
     reason:
-      'Claim bounded worker queue rows; core owns grouping, notice windows, latest failure and revision writes.',
+      'Claim bounded inbox intake rows (skip locked, worker only); core owns grouping, notice windows, latest failure and revision writes.',
   },
   'app.delete_removed_member_private_rows(uuid,uuid[],regclass)': {
     category: 'workspace isolation',
@@ -65,7 +67,7 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   'app.discover_due_coordinated_events(integer)': {
     category: 'queue claiming',
     reason:
-      'Expose bounded due queue identities across workspaces; core decides admission and retry.',
+      "Expose each coordination key's due head across workspaces, ranked so each workspace gets a turn; core decides admission and retry.",
   },
   'app.enforce_workflow_run_admission()': {
     category: 'capacity counters',
@@ -85,7 +87,7 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   'app.has_pending_invitation(character varying)': {
     category: 'workspace isolation',
     reason:
-      'Pre-tenant discovery for one normalized address, exposing no invitation content.',
+      'Pre-tenant discovery: whether one normalized address has a pending, unexpired invitation, exposing no invitation content.',
   },
   'app.index_artifact_owner_references()': {
     category: 'derived storage',
@@ -99,7 +101,8 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   },
   'app.lend_workflow_run_slot(uuid,uuid,uuid,uuid)': {
     category: 'capacity counters',
-    reason: 'Transfer an existing active slot under the capacity lock order.',
+    reason:
+      "Lend a running parent's slot to its queued child under the capacity lock order, arming the same recovery lease; the yes/no is run admission's, kept under the counter lock.",
   },
   'app.lock_execution_artifact_references()': {
     category: 'constraints',
@@ -152,12 +155,13 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   },
   'app.rebind_workflow_run_active_admission(uuid,uuid,uuid,uuid)': {
     category: 'capacity counters',
-    reason: 'Transfer the delivery identity of an existing reservation.',
+    reason:
+      "Move an existing reservation to a new advance delivery for the same queued run, re-arming a borrowed slot's recovery lease.",
   },
   'app.recover_due_workflow_run_active_admissions(integer)': {
     category: 'capacity counters',
     reason:
-      'Recover capacity reservations and their durable parent wakeups under the slot protocol.',
+      "Claim reservations whose recovery lease expired (skip locked) and rebuild their lost advance job, or return a finished borrower's slot to its parent; queue claiming and counters, no product rule.",
   },
   'app.refresh_workflow_run_admission_counters()': {
     category: 'capacity counters',
@@ -211,7 +215,7 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   'app.return_workflow_run_slot(uuid,uuid,uuid)': {
     category: 'capacity counters',
     reason:
-      'Return an existing borrowed slot and update human-wait capacity bookkeeping.',
+      "Return a borrowed slot to its parent under the counter lock; whether a resumed parent keeps it is run admission's yes/no.",
   },
   'app.revoke_auth_sessions_for_email_change()': {
     category: 'security integrity',
@@ -283,6 +287,6 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
   'app.workspace_inbox_recipient_eligible(uuid,uuid)': {
     category: 'workspace isolation',
     reason:
-      'Keep personal Inbox reads inside the active recipient and workspace isolation boundary.',
+      "Row-security predicate for personal inbox reads: the caller is the recipient, an active member and user, in a workspace whose status is one of policy's BROWSABLE_WORKSPACE_STATUSES (written out here, as row security needs).",
   },
 });
