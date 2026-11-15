@@ -2,12 +2,9 @@ import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { WorkflowExecutionProjection } from './workflow-execution.types.js';
 import type { WorkflowExecutionReader } from './workflow-execution.types.js';
 import { and, eq } from 'drizzle-orm';
-import { QueryBuilder } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import {
-  workflowVersions,
-  workflowTestSnapshots,
-} from '@pertexo/database/schema';
+import { workflowTestSnapshots } from '@pertexo/database/schema';
+import { EXECUTION_SOURCE_SQL } from '../../../shared/execution-source.repository.js';
 import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
 import { withWorkspaceReadTransaction } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
@@ -18,39 +15,6 @@ import {
 } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import { sql } from 'drizzle-orm';
-/** Both sources are immutable; a test snapshot never enters publication queries. */
-const sourceBuilder = new QueryBuilder();
-export const EXECUTION_SOURCE_SQL = sourceBuilder
-  .select({
-    id: workflowVersions.id,
-    workspace_id: workflowVersions.workspaceId,
-    workflow_id: workflowVersions.workflowId,
-    version_number: workflowVersions.versionNumber,
-    checksum: workflowVersions.checksum,
-    executable_json: workflowVersions.executableJson,
-    test_dispositions: sql<
-      typeof workflowTestSnapshots.$inferSelect.dispositions | null
-    >`null::jsonb`.as('test_dispositions'),
-    test_expires_at: sql<Date | null>`null::timestamptz`
-      .mapWith(workflowTestSnapshots.expiresAt)
-      .as('test_expires_at'),
-  })
-  .from(workflowVersions)
-  .unionAll(
-    sourceBuilder
-      .select({
-        id: workflowTestSnapshots.id,
-        workspace_id: workflowTestSnapshots.workspaceId,
-        workflow_id: workflowTestSnapshots.workflowId,
-        version_number: workflowTestSnapshots.draftRevision,
-        checksum: workflowTestSnapshots.checksum,
-        executable_json: workflowTestSnapshots.executableJson,
-        test_dispositions: workflowTestSnapshots.dispositions,
-        test_expires_at: workflowTestSnapshots.expiresAt,
-      })
-      .from(workflowTestSnapshots),
-  )
-  .as('version');
 
 function executionSourceQuery(db: Pick<NodePgDatabase, 'select'>) {
   return db.select().from(EXECUTION_SOURCE_SQL);
