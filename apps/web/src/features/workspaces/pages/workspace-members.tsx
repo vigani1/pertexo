@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { InvitationsPanel } from '../components/invitations/invitations-panel';
 import { InvitePeopleSheet } from '../components/invitations/invite-people-sheet';
@@ -34,9 +33,7 @@ import {
   workspaceMembersInfiniteQueryOptions,
 } from '../data/workspaces.queries';
 import { pluralWord } from '@/lib/format/count';
-
-// An ended session isn't a loss here: the session pause keeps this page.
-type AccessLoss = 'permission';
+import { lossOf, type AccessLoss } from '../model/member-access';
 
 /** Why the page can't show the team, if it can't. */
 function blockedCopy({
@@ -143,21 +140,6 @@ function TeamHeader({
       ) : null}
     </>
   );
-}
-
-function lossOf({
-  query,
-  notFoundIsLoss,
-}: Readonly<{
-  query: Readonly<{ isError: boolean; error: unknown }>;
-  notFoundIsLoss: boolean;
-}>): AccessLoss | undefined {
-  if (!query.isError) return undefined;
-  const error = query.error;
-  if (!isApiError(error)) return undefined;
-  if (error.status === 403 || (notFoundIsLoss && error.status === 404))
-    return 'permission';
-  return undefined;
 }
 
 /**

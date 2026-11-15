@@ -29,6 +29,7 @@ import {
   workflowVersionsQueryOptions,
 } from '../data/workflow-settings.queries';
 import { shownData } from '@/lib/api/error-copy';
+import { hasNoPublishedTriggers } from '../model/triggers/published';
 
 type TriggersPageProps = Readonly<{
   apiClient: ApiClient;
@@ -294,24 +295,6 @@ function TriggersSession({
         />
       </SettingsSection>
     </div>
-  );
-}
-
-function hasNoPublishedTriggers({
-  editable,
-  webhookCount,
-  scheduleCount,
-  form,
-  onFailure,
-}: Readonly<{
-  editable: boolean;
-  webhookCount: number | undefined;
-  scheduleCount: number | undefined;
-  form: boolean;
-  onFailure: boolean;
-}>) {
-  return (
-    editable && webhookCount === 0 && scheduleCount === 0 && !form && !onFailure
   );
 }
 

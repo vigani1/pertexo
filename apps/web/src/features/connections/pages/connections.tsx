@@ -13,7 +13,6 @@ import { SkeletonRows } from '@/components/ui/skeleton';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-  ConnectionResponse,
 } from '@pertexo/contracts';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
@@ -44,18 +43,10 @@ import { connectionsInfiniteQueryOptions } from '../data/connections.queries';
 import { isReadAccessLost } from '@/lib/api/read-denial';
 import type { ConnectionsSearch } from '../model/connections-search';
 import { sentenceStart } from '@/lib/format/sentence';
-
-function countByStatus(items: readonly ConnectionResponse[]) {
-  let active = 0;
-  let reconnect = 0;
-  let revoked = 0;
-  for (const item of items) {
-    if (item.status === 'active') active += 1;
-    else if (item.status === 'revoked') revoked += 1;
-    else reconnect += 1;
-  }
-  return { active, reconnect, revoked } as const;
-}
+import {
+  countByStatus,
+  type ConnectionCounts,
+} from '../model/connection-counts';
 
 /** The title, how many connections work, and Add for people who manage them. */
 function ConnectionsHeader({
@@ -64,7 +55,7 @@ function ConnectionsHeader({
   canManage,
   onAdd,
 }: Readonly<{
-  counts: ReturnType<typeof countByStatus>;
+  counts: ConnectionCounts;
   hasConnections: boolean;
   canManage: boolean;
   onAdd: () => void;

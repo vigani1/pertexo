@@ -1,3 +1,4 @@
+import { useRunDetail } from '../hooks/use-run-detail';
 import { RunFailureNotice } from '../components/run-detail/failure-notice';
 import { PhoneFailureNotice } from '../components/run-detail/execution-history';
 import { RunBusinessValues } from '../components/run-detail/business-values';
@@ -7,10 +8,8 @@ import { ErrorWorkflowStatus } from '../components/error-workflow-status';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
-  WorkflowRunEvent,
 } from '@pertexo/contracts';
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   Sheet,
   SheetBody,
@@ -28,58 +27,9 @@ import {
   describeRunSentence,
   runEnding,
 } from '../model/presentation/run-sentence';
-import { isActiveRunStatus } from '../model/presentation/run-status';
-import { upstreamSteps } from '../model/step-inspection/inputs';
-import { buildRunTimeline, type RunTimelineRow } from '../model/timeline/runs';
-import { useMediaQuery } from '@/lib/hooks/use-media-query';
-import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
-import { useRunEvents } from '../data/run-events';
-import {
-  workflowRunQueryOptions,
-  workflowRunVersionQueryOptions,
-} from '../data/detail.queries';
-
-// From a tablet up the step lens is on the page: beside the run on a wide
-// screen, under the tabs below that. Only phones open it as a sheet.
-const PHONE_MEDIA_QUERY = '(max-width: 47.999rem)';
-
-/** The step worth opening first: what's running, waiting or went wrong. */
-function focusRow(rows: readonly RunTimelineRow[]): RunTimelineRow | undefined {
-  const order = [
-    'running',
-    'waiting',
-    'outcome_unknown',
-    'failed',
-    'timed_out',
-  ];
-  const firstByStatus = new Map<string, RunTimelineRow>();
-  for (const row of rows)
-    if (!firstByStatus.has(row.status)) firstByStatus.set(row.status, row);
-  for (const status of order) {
-    const row = firstByStatus.get(status);
-    if (row !== undefined) return row;
-  }
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const row = rows[index];
-    if (row !== undefined && row.status !== 'not_started') return row;
-  }
-  return rows[0];
-}
-
-/**
- * Whether the step lens stands beside the steps: only then does choosing a
- * step show its details without opening the sheet. Below the page's own
- * breakpoint the lens sits under everything, out of sight.
- */
-function lensFitsBeside(lens: HTMLElement | null): boolean {
-  if (lens === null) return false;
-  const box = lens.getBoundingClientRect();
-  const page = lens.parentElement?.getBoundingClientRect();
-  return box.width > 0 && page !== undefined && box.left > page.left + 1;
-}
 
 /** The story of one run: header, thread/graph/events/output and step lens. */
-type RunDetailPageProps = Readonly<{
+export type RunDetailPageProps = Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
@@ -271,118 +221,4 @@ function RunInspection({
       </Sheet>
     </>
   );
-}
-
-function useRunDetail({
-  apiClient,
-  user,
-  workspace,
-  runId,
-}: Omit<RunDetailPageProps, 'onRunAccepted'>) {
-  const { data: snapshot } = useSuspenseQuery(
-    workflowRunQueryOptions(apiClient, user.id, workspace.id, runId),
-  );
-  const events = useRunEvents(apiClient, user.id, workspace.id, runId);
-  const { run } = snapshot;
-  const canViewWorkflow = workspace.capabilities.includes('workflow:read');
-  const version = useQuery({
-    ...workflowRunVersionQueryOptions({
-      apiClient,
-      userId: user.id,
-      workspaceId: workspace.id,
-      workflowId: run.workflowId,
-      versionId: run.workflowVersionId,
-    }),
-    enabled: canViewWorkflow,
-  });
-  const active = isActiveRunStatus(run.status);
-  const nowMs = useNow({ intervalMs: CLOCK_TICK.seconds, enabled: active });
-  const view = useMemo(
-    () =>
-      buildRunTimeline({
-        run,
-        nodes: snapshot.nodes,
-        events: events.timeline,
-        ...(version.data === undefined ? {} : { graph: version.data.graph }),
-        nowMs,
-      }),
-    [run, snapshot.nodes, events.timeline, version.data, nowMs],
-  );
-  const upstream = useMemo(
-    () =>
-      version.data === undefined
-        ? undefined
-        : upstreamSteps(version.data.graph),
-    [version.data],
-  );
-  const dataScope = useMemo(
-    () => ({ apiClient, userId: user.id, workspace, runId }),
-    [apiClient, user.id, workspace, runId],
-  );
-  const compact = useMediaQuery(PHONE_MEDIA_QUERY);
-  const [selectedKey, setSelectedKey] = useState<string>();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [replayOpen, setReplayOpen] = useState(false);
-  const selected =
-    view.rows.find((row) => row.key === selectedKey) ?? focusRow(view.rows);
-  const rowLabels = useMemo(() => {
-    const labels = new Map<string, string>();
-    for (const row of view.rows) {
-      labels.set(row.key, row.label);
-      if (!labels.has(`node:${row.nodeId}`))
-        labels.set(`node:${row.nodeId}`, row.label);
-    }
-    return labels;
-  }, [view.rows]);
-  const stepLabel = (event: WorkflowRunEvent) => {
-    const { invocationKey, nodeId } = event.payload;
-    return (
-      (invocationKey === undefined
-        ? undefined
-        : rowLabels.get(invocationKey)) ??
-      (nodeId === undefined ? undefined : rowLabels.get(`node:${nodeId}`)) ??
-      nodeId
-    );
-  };
-
-  const lensRef = useRef<HTMLElement>(null);
-  function selectStep(key: string) {
-    setSelectedKey(key);
-    if (!lensFitsBeside(lensRef.current)) setSheetOpen(true);
-  }
-
-  const graphState = graphReadState({
-    canViewWorkflow,
-    failed: version.isError,
-  });
-  return {
-    run,
-    view,
-    nowMs,
-    version,
-    events,
-    compact,
-    replayOpen,
-    setReplayOpen,
-    snapshot,
-    rowLabels,
-    dataScope,
-    active,
-    selected,
-    selectStep,
-    graphState,
-    stepLabel,
-    lensRef,
-    upstream,
-    sheetOpen,
-    setSheetOpen,
-  } as const;
-}
-
-function graphReadState(
-  input: Readonly<{ canViewWorkflow: boolean; failed: boolean }>,
-) {
-  if (!input.canViewWorkflow) return 'forbidden';
-  if (input.failed) return 'error';
-  return 'loading';
 }
