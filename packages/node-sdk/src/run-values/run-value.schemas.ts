@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { storedExecutionJsonStringBytes } from '../values/stored-json.js';
+import { formatCount } from '../values/byte-size.js';
 
 export const RUN_VALUES_ERROR_CODE = Object.freeze({
   limit: 'run.values_limit',
@@ -35,7 +36,7 @@ export const runValuesSchema = z
   .record(runValueKeySchema, runValueTextSchema)
   .refine(
     (values) => Object.keys(values).length <= RUN_VALUE_LIMITS.pairs,
-    'Save at most ten run values.',
+    `Save at most ${formatCount(RUN_VALUE_LIMITS.pairs)} run values.`,
   );
 export type RunValues = Readonly<z.output<typeof runValuesSchema>>;
 export const saveRunValuesInputSchema = z
