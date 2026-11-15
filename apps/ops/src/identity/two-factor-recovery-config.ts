@@ -3,6 +3,8 @@ import {
   parseStartupSettings,
 } from '@pertexo/observability/startup';
 import { canonicalEmail } from '@pertexo/core/identity';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
+import { OPERATOR_TEXT_LIMITS } from '../operator-config.js';
 import { z } from 'zod';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -21,10 +23,17 @@ const environmentSchema = z.object({
   OPERATOR_ACTOR_REF: z
     .string()
     .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u),
-  OPERATOR_REASON: z.string().trim().min(1).max(512),
+  OPERATOR_REASON: z
+    .string()
+    .trim()
+    .min(1)
+    .max(OPERATOR_TEXT_LIMITS.reasonCharacters),
   PUBLIC_WEB_ORIGIN: z.url(),
   AUTH_MAIL_MODE: z.enum(['local', 'durable']).default('local'),
-  AUTH_MAIL_FROM: z.email().max(320).optional(),
+  AUTH_MAIL_FROM: z
+    .email()
+    .max(EMAIL_ADDRESS_LIMITS.accountCharacters)
+    .optional(),
   AUTH_MAIL_KEY: z.string().optional(),
   AUTH_MAIL_KEY_VERSION: applicationKeyVersionSchema.optional(),
   AUTH_MAIL_PREVIOUS_KEYS: z.string().optional(),
@@ -38,12 +47,14 @@ export function parseTwoFactorRecoveryConfig(
   args: readonly string[] = process.argv.slice(2),
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ) {
-  if (args.length !== 2 || args[0] !== '--email')
+  // Exactly `--email <address>`.
+  const [flag, address, ...rest] = args;
+  if (flag !== '--email' || address === undefined || rest.length > 0)
     throw new StartupSettingError('EMAIL', 'recovery_arguments_required');
   const emailResult = z
     .email()
-    .max(320)
-    .safeParse(canonicalEmail(args[1] ?? ''));
+    .max(EMAIL_ADDRESS_LIMITS.accountCharacters)
+    .safeParse(canonicalEmail(address));
   if (!emailResult.success)
     throw new StartupSettingError('EMAIL', 'recovery_arguments_required');
   const email = emailResult.data;

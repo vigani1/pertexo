@@ -4,6 +4,10 @@ import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { sep } from 'node:path';
 
+/** The longest module name a task may import. */
+const MODULE_SPECIFIER_MAX_CHARACTERS = 512;
+const BUILTIN_PREFIX = 'node:';
+
 export class RefusedCodeModule extends Error {}
 export type ModulePolicy = Readonly<{
   builtins: readonly string[];
@@ -37,10 +41,10 @@ export async function installModulePolicy(policy: ModulePolicy) {
   const require = createRequire(import.meta.url);
   registerHooks({
     resolve(specifier, context, next) {
-      if (specifier.length > 512)
+      if (specifier.length > MODULE_SPECIFIER_MAX_CHARACTERS)
         throw new RefusedCodeModule('Use an allowed module name.');
-      const normalized: string = codeTextStartsWith(specifier, 'node:')
-        ? codeTextSlice(specifier, 5)
+      const normalized: string = codeTextStartsWith(specifier, BUILTIN_PREFIX)
+        ? codeTextSlice(specifier, BUILTIN_PREFIX.length)
         : specifier;
       if (isBuiltin(specifier)) {
         const root = rootOf(normalized);
@@ -80,10 +84,13 @@ export async function installModulePolicy(policy: ModulePolicy) {
   });
   for (const name of policy.packages) await import(name);
   return (specifier: string): unknown => {
-    if (typeof specifier !== 'string' || specifier.length > 512)
+    if (
+      typeof specifier !== 'string' ||
+      specifier.length > MODULE_SPECIFIER_MAX_CHARACTERS
+    )
       throw new RefusedCodeModule('Use an allowed module name.');
-    const normalized: string = codeTextStartsWith(specifier, 'node:')
-      ? codeTextSlice(specifier, 5)
+    const normalized: string = codeTextStartsWith(specifier, BUILTIN_PREFIX)
+      ? codeTextSlice(specifier, BUILTIN_PREFIX.length)
       : specifier;
     const root = rootOf(normalized);
     let accepted = isBuiltin(specifier) && includes(policy.builtins, root);

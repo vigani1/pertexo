@@ -1,5 +1,9 @@
 import { types } from 'node:util';
 import { Buffer } from 'node:buffer';
+import { formatByteSize, NODE_JSON_LIMITS } from '@pertexo/node-sdk';
+
+// Written before user code runs, so a changed realm can't change the message.
+const OUTPUT_TOO_LARGE = `Code output exceeds ${formatByteSize(NODE_JSON_LIMITS.bytes)}. Return less data.`;
 
 // User code may mutate its realm. Capture inspection/encoding primitives first.
 const descriptor = Object.getOwnPropertyDescriptor;
@@ -31,10 +35,7 @@ export function encodeCodeJson(value: unknown, limits: JsonBounds): string {
     encoded = '';
   const append = (piece: string) => {
     bytes += byteLength(piece, 'utf8');
-    if (bytes > limits.bytes)
-      throw new InvalidCodeOutput(
-        'Code output exceeds 1 MB. Return less data.',
-      );
+    if (bytes > limits.bytes) throw new InvalidCodeOutput(OUTPUT_TOO_LARGE);
     encoded += piece;
   };
   function walkArray(
@@ -119,9 +120,7 @@ export function encodeCodeJson(value: unknown, limits: JsonBounds): string {
     }
     if (typeof item === 'string') {
       if (item.length > limits.bytes)
-        throw new InvalidCodeOutput(
-          'Code output exceeds 1 MB. Return less data.',
-        );
+        throw new InvalidCodeOutput(OUTPUT_TOO_LARGE);
       append(quote(item));
       return;
     }

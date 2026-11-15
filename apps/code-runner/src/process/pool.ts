@@ -4,6 +4,9 @@ import { resolveCodePackages } from './packages.js';
 import { startTaskSlot, type TaskSlot } from './slot.js';
 import { TaskReservationUsedError } from './task-process.errors.js';
 
+/** How long the pool waits before replacing a task process that failed to start. */
+const RESPAWN_DELAY_MILLIS = 500;
+
 /** Only unused processes are pooled. Every reservation consumes one process. */
 export async function createTaskProcessPool(config: RunnerConfig) {
   const lifetime = new AbortController();
@@ -48,9 +51,9 @@ export async function createTaskProcessPool(config: RunnerConfig) {
       } catch (error: unknown) {
         if (lifetime.signal.aborted) return;
         if (initial) throw error;
-        await delay(500, undefined, { signal: lifetime.signal }).catch(
-          () => undefined,
-        );
+        await delay(RESPAWN_DELAY_MILLIS, undefined, {
+          signal: lifetime.signal,
+        }).catch(() => undefined);
       }
     }
   };

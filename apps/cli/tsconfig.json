@@ -13,6 +13,9 @@
   "references": [
     {
       "path": "../../packages/contracts/tsconfig.json"
+    },
+    {
+      "path": "../../packages/node-sdk/tsconfig.json"
     }
   ]
 }

@@ -1,4 +1,7 @@
-import { authenticationMailAssociatedData } from '@pertexo/secrets/server';
+import {
+  authenticationMailAssociatedData,
+  SECURITY_NOTICE_VALIDITY_MILLIS,
+} from '@pertexo/secrets/server';
 import { randomUUID } from 'node:crypto';
 
 import type {
@@ -181,7 +184,7 @@ export class DurableAuthenticationMail implements AuthenticationMail {
         'If this was not you, secure your account and contact your Pertexo operator immediately.',
         input.url,
       ].join('\n'),
-      validityMillis: 24 * 60 * 60_000,
+      validityMillis: SECURITY_NOTICE_VALIDITY_MILLIS,
     });
   }
 

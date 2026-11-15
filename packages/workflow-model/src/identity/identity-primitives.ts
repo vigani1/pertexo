@@ -16,6 +16,15 @@ export const FEDERATION_LIMITS = Object.freeze({
 
 export const ACCOUNT_SIGN_IN_METHOD_LIMIT = 16;
 
+/** How recent a sign-in must be for a sensitive account or workspace command. */
+export const FRESH_SIGN_IN_WINDOW_MILLIS = 5 * 60_000;
+
+/** The longest name a person shows: at sign-up, in their profile and to their workspaces. */
+export const DISPLAY_NAME_MAX_CHARACTERS = 256;
+
+/** How long a workspace invitation's link works after it's sent. */
+export const WORKSPACE_INVITATION_VALIDITY_DAYS = 7;
+
 export const API_TOKEN_DEFAULT_LIFETIME_DAYS = 30;
 
 export const API_TOKEN_MAX_LIFETIME_DAYS = 365;

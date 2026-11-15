@@ -2,6 +2,9 @@ import { connect } from 'node:net';
 import { lstat, unlink } from 'node:fs/promises';
 import { CodeSocketOwnershipError } from './code-socket.errors.js';
 
+/** How long probing a leftover socket may take before startup gives up. */
+const STALE_PROBE_TIMEOUT_MILLIS = 1_000;
+
 /** A crashed manager may leave its socket file. An active listener is never replaced. */
 export async function removeStaleSocket(path: string): Promise<void> {
   const existing = await lstat(path).catch((error: unknown) => {
@@ -23,7 +26,7 @@ export async function removeStaleSocket(path: string): Promise<void> {
           'Cannot establish whether the Code socket is stale',
         ),
       );
-    }, 1000);
+    }, STALE_PROBE_TIMEOUT_MILLIS);
     socket.once('connect', () => {
       clearTimeout(timer);
       socket.destroy();

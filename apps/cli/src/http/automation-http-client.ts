@@ -1,3 +1,4 @@
+import { formatByteSize } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import type { AutomationHttpConfig } from '../config/automation-http-config.js';
 import { AutomationCommandError } from '../commands/automation-command.errors.js';
@@ -40,7 +41,7 @@ async function boundedResponse(response: Response): Promise<unknown> {
         await reader.cancel();
         throw new AutomationCommandError(
           'cli.invalid_response',
-          'The response exceeds 16 MB. Request a smaller page.',
+          `The response exceeds ${formatByteSize(MAX_RESPONSE_BYTES)}. Request a smaller page.`,
         );
       }
       chunks.push(item.value);
@@ -88,7 +89,7 @@ export function createAutomationHttpClient(
       if (body !== undefined && Buffer.byteLength(body) > MAX_COMMAND_BYTES)
         throw new AutomationCommandError(
           'cli.invalid_file',
-          'The request exceeds 2 MB.',
+          `The request exceeds ${formatByteSize(MAX_COMMAND_BYTES)}.`,
         );
       try {
         const response = await fetchRequest(`${config.origin}${input.path}`, {

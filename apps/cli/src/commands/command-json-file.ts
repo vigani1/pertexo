@@ -1,5 +1,7 @@
 import { constants } from 'node:fs';
 import { open } from 'node:fs/promises';
+import { formatByteSize } from '@pertexo/node-sdk';
+
 import { AutomationCommandError } from './automation-command.errors.js';
 
 export const MAX_COMMAND_BYTES = 2 * 1_024 * 1_024;
@@ -13,7 +15,7 @@ export async function readCommandJson(path: string): Promise<unknown> {
       if (!stat.isFile() || stat.size > MAX_COMMAND_BYTES)
         throw new AutomationCommandError(
           'cli.invalid_file',
-          'Use a regular JSON file no larger than 2 MB.',
+          `Use a regular JSON file no larger than ${formatByteSize(MAX_COMMAND_BYTES)}.`,
         );
       const buffer = Buffer.alloc(MAX_COMMAND_BYTES + 1);
       let length = 0;
@@ -30,7 +32,7 @@ export async function readCommandJson(path: string): Promise<unknown> {
       if (length > MAX_COMMAND_BYTES)
         throw new AutomationCommandError(
           'cli.invalid_file',
-          'The JSON file exceeds 2 MB.',
+          `The JSON file exceeds ${formatByteSize(MAX_COMMAND_BYTES)}.`,
         );
       const text = new TextDecoder('utf-8', { fatal: true }).decode(
         buffer.subarray(0, length),

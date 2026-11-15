@@ -4,7 +4,10 @@ import {
   authenticationMailAssociatedData,
   type SystemMailInput,
 } from '@pertexo/secrets/server';
-import { createApplicationSecretEnvelope } from '@pertexo/secrets/server';
+import {
+  createApplicationSecretEnvelope,
+  SECURITY_NOTICE_VALIDITY_MILLIS,
+} from '@pertexo/secrets/server';
 import type { TwoFactorRecoveryConfig } from './two-factor-recovery-config.js';
 
 export async function disableTwoFactor(
@@ -21,7 +24,7 @@ export async function disableTwoFactor(
       if (config.mail.mode !== 'durable' || envelope === undefined)
         return undefined;
       const id = randomUUID();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60_000);
+      const expiresAt = new Date(Date.now() + SECURITY_NOTICE_VALIDITY_MILLIS);
       const purpose = 'two_factor_disabled' as const;
       return {
         id,

@@ -192,6 +192,8 @@ const SETTLED_STATUSES = new Set([
 ]);
 const FIRST_POLL_MS = 1_000;
 const LONGEST_POLL_MS = 15_000;
+// Each wait between polls is twice the last, up to the longest.
+const POLL_BACKOFF_FACTOR = 2;
 
 /** A failed run is still an answer; the script reads `run.status` from the output. */
 async function waitForRun(
@@ -210,7 +212,7 @@ async function waitForRun(
     for (
       let pause = FIRST_POLL_MS;
       ;
-      pause = Math.min(pause * 2, LONGEST_POLL_MS)
+      pause = Math.min(pause * POLL_BACKOFF_FACTOR, LONGEST_POLL_MS)
     ) {
       const response = await read(waitSignal);
       // A response completing after the deadline is not a successful bounded wait.

@@ -45,8 +45,8 @@ import {
 } from './outcomes.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
 import { oauth2TestActor, testOAuth2Connection } from './oauth2.js';
+import { CONNECTION_TEST_TIMEOUT_MILLIS } from '@pertexo/contracts';
 
-const CONNECTION_TEST_TIMEOUT_MILLIS = 15_000;
 const CONNECTION_TEST_MAXIMUM_REDIRECTS = 3;
 const CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES = 65_536;
 

@@ -12,6 +12,18 @@ const dryRunSchema = z
   .enum(['true', 'false'])
   .transform((value) => value === 'true');
 
+/** How long one operator command may run, in milliseconds. */
+const OPERATOR_TIMEOUT_MILLIS = Object.freeze({
+  minimum: 1_000,
+  maximum: 5 * 60_000,
+  default: 30_000,
+});
+/** The longest reason an operator records, and the longest page cursor. */
+export const OPERATOR_TEXT_LIMITS = Object.freeze({
+  reasonCharacters: 512,
+  cursorCharacters: 4_096,
+});
+
 const unscopedEnvironmentSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
@@ -22,9 +34,9 @@ const unscopedEnvironmentSchema = z.object({
   OPERATOR_TIMEOUT_MS: z.coerce
     .number()
     .int()
-    .min(1_000)
-    .max(300_000)
-    .default(30_000),
+    .min(OPERATOR_TIMEOUT_MILLIS.minimum)
+    .max(OPERATOR_TIMEOUT_MILLIS.maximum)
+    .default(OPERATOR_TIMEOUT_MILLIS.default),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.url().optional(),
   SERVICE_VERSION: z.string().trim().min(1).default('0.0.0-dev'),
 });
@@ -34,14 +46,18 @@ const baseEnvironmentSchema = unscopedEnvironmentSchema.extend({
     .string()
     .regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/u),
   OPERATOR_COMMAND_ID: z.uuid(),
-  OPERATOR_REASON: z.string().min(1).max(512),
+  OPERATOR_REASON: z.string().min(1).max(OPERATOR_TEXT_LIMITS.reasonCharacters),
   OPERATOR_WORKSPACE_ID: z.uuid(),
 });
 
 const environmentSchema = z.discriminatedUnion('OPERATOR_COMMAND_TYPE', [
   unscopedEnvironmentSchema.extend({
     OPERATOR_COMMAND_TYPE: z.literal('stuck-work.list'),
-    OPERATOR_CURSOR: z.string().min(1).max(4096).optional(),
+    OPERATOR_CURSOR: z
+      .string()
+      .min(1)
+      .max(OPERATOR_TEXT_LIMITS.cursorCharacters)
+      .optional(),
   }),
   baseEnvironmentSchema.extend({
     OPERATOR_COMMAND_TYPE: z.literal('outbox.redispatch'),

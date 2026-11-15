@@ -1,6 +1,17 @@
 import { writeFile, unlink } from 'node:fs/promises';
 import { startCodeRunner } from './runner-application.js';
-import { parseRunnerConfig } from './config/runner-config.js';
+import {
+  parseRunnerConfig,
+  RUNNER_FILE_MODES,
+} from './config/runner-config.js';
+
+/** How much of a startup failure's chain of causes the log shows. */
+const STARTUP_FAILURE_REPORT = Object.freeze({
+  causes: 8,
+  reasonCharacters: 2_048,
+  groupedErrors: 2,
+  characters: 8_192,
+});
 
 try {
   const config = parseRunnerConfig();
@@ -8,7 +19,7 @@ try {
   const marker = '/tmp/pertexo-code-runner-ready';
   try {
     if (config.mode === 'hardened')
-      await writeFile(marker, '', { mode: 0o600 });
+      await writeFile(marker, '', { mode: RUNNER_FILE_MODES.privateFile });
   } catch (error: unknown) {
     await runner.close();
     throw error;
@@ -37,18 +48,29 @@ try {
 } catch (error: unknown) {
   const pending: unknown[] = [error];
   const reasons: string[] = [];
-  for (let index = 0; index < pending.length && index < 8; index++) {
+  for (
+    let index = 0;
+    index < pending.length && index < STARTUP_FAILURE_REPORT.causes;
+    index++
+  ) {
     const failure = pending[index];
     if (!(failure instanceof Error)) continue;
-    reasons.push(failure.message.slice(0, 2048));
+    reasons.push(
+      failure.message.slice(0, STARTUP_FAILURE_REPORT.reasonCharacters),
+    );
     if (failure instanceof AggregateError)
-      pending.push(...(failure.errors as unknown[]).slice(0, 2));
+      pending.push(
+        ...(failure.errors as unknown[]).slice(
+          0,
+          STARTUP_FAILURE_REPORT.groupedErrors,
+        ),
+      );
     if (failure.cause !== undefined) pending.push(failure.cause);
   }
   console.error(
     reasons.length === 0
       ? 'Code runner startup failed.'
-      : reasons.join('\n').slice(0, 8192),
+      : reasons.join('\n').slice(0, STARTUP_FAILURE_REPORT.characters),
   );
   process.exitCode = 1;
 }

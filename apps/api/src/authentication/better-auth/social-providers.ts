@@ -10,6 +10,7 @@ import type {
 } from '../social-provider.types.js';
 import type { PertexoBetterAuth } from './better-auth-options.js';
 import { SocialProviderUnavailableError } from './social-provider.errors.js';
+import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 
 export function configuredSocialProviders(
   socialProviders: BetterAuthOptions['socialProviders'],
@@ -98,7 +99,9 @@ export function betterAuthSocialProviders(
           ? {}
           : {
               displayName:
-                profile.user.name.slice(0, 256).trim() || 'Pertexo member',
+                profile.user.name
+                  .slice(0, DISPLAY_NAME_MAX_CHARACTERS)
+                  .trim() || 'Pertexo member',
             }),
       };
     },

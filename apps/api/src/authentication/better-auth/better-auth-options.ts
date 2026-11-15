@@ -21,6 +21,7 @@ import {
   isTwoFactorVerificationPath,
   authenticationChangedError,
 } from './two-factor.js';
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
 
 type PertexoBetterAuthInput = Readonly<{
   pool: Pool;
@@ -208,7 +209,7 @@ function sessionPolicy(sessionTtlSeconds: number) {
     },
     expiresIn: sessionTtlSeconds,
     updateAge: Math.min(60 * 60, Math.floor(sessionTtlSeconds / 4)),
-    freshAge: 5 * 60,
+    freshAge: FRESH_SIGN_IN_WINDOW_MILLIS / 1_000,
     cookieCache: { enabled: false },
   } satisfies BetterAuthOptions['session'];
 }

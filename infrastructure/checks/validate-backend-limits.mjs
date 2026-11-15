@@ -38,6 +38,9 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/workflow-engine',
   'packages/nodes-core',
   'packages/integrations',
+  'apps/cli',
+  'apps/ops',
+  'apps/code-runner',
 ]);
 
 // Unit factors: 1_000 ms in a second, 60 seconds in a minute, 1_024 bytes in a KB.

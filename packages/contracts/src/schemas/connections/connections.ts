@@ -23,6 +23,9 @@ import {
 } from './connection-credentials.js';
 export { connectionStatusSchema } from './connection-fields.js';
 
+/** How long testing a connection waits for the provider before it gives up. */
+export const CONNECTION_TEST_TIMEOUT_MILLIS = 15_000;
+
 const connectionCursorSchema = z.string().min(1).max(512);
 const connectionPageLimitSchema = z.coerce.number().int().min(1).max(100);
 

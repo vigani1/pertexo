@@ -32,6 +32,7 @@ import {
   authenticationChangedError,
 } from './two-factor.js';
 import { AuthenticationTransactionError } from './transactions/authentication-transaction.errors.js';
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
 
 type BeforeHooks = NonNullable<
   NonNullable<BetterAuthPlugin['hooks']>['before']
@@ -366,7 +367,10 @@ function nativeRouteGuards(pool: Pool): BeforeHooks {
                 ? 'Your organization manages this email address.'
                 : 'Add another sign-in method before changing your email address.',
           });
-        if (Date.now() - session.session.createdAt.getTime() >= 5 * 60_000)
+        if (
+          Date.now() - session.session.createdAt.getTime() >=
+          FRESH_SIGN_IN_WINDOW_MILLIS
+        )
           throw new APIError('FORBIDDEN', {
             code: 'SESSION_NOT_FRESH',
             message: 'Sign in again before changing your email.',

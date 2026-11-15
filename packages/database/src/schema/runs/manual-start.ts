@@ -13,6 +13,7 @@ import {
 import { appSchema } from '../namespace.js';
 import { workflows } from '../authoring/workflows.js';
 import { workspaces } from '../tenant-access/workspaces.js';
+import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 
 export const workflowManualStartRejections = appSchema.table(
   'workflow_manual_start_rejections',
@@ -29,7 +30,11 @@ export const workflowManualStartRejections = appSchema.table(
       .default(sql`clock_timestamp()`),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
       .notNull()
-      .default(sql`clock_timestamp()+interval '24 hours'`),
+      .default(
+        sql.raw(
+          `clock_timestamp()+interval '${String(IDEMPOTENCY_KEY_RETENTION_HOURS)} hours'`,
+        ),
+      ),
   },
   (table): PgTableExtraConfigValue[] => [
     check(

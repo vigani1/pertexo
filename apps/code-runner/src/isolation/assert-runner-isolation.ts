@@ -1,8 +1,15 @@
 import { readFile, stat } from 'node:fs/promises';
 import { codeContainerLimits } from '@pertexo/node-sdk';
 
-import type { RunnerConfig } from '../config/runner-config.js';
+import {
+  RUNNER_FILE_MODES,
+  RUNNER_MANAGER_GROUP_ID,
+  type RunnerConfig,
+} from '../config/runner-config.js';
 import { RunnerIsolationError } from './runner-isolation.errors.js';
+
+// /proc/net/dev opens with two header lines before one line per interface.
+const NET_DEV_HEADER_LINES = 2;
 
 /** A hardened manager starts only inside the container fences it relies on. */
 export async function assertRunnerIsolation(
@@ -41,7 +48,7 @@ function assertManagerEnvironment(config: RunnerConfig): void {
   if (
     process.platform !== 'linux' ||
     process.getuid?.() !== 0 ||
-    process.getgid?.() !== 10001
+    process.getgid?.() !== RUNNER_MANAGER_GROUP_ID
   )
     throw new RunnerIsolationError(
       'Hardened Code runner requires its Linux manager identity',
@@ -73,7 +80,7 @@ async function assertNetworkIsolation(interfaces: string): Promise<void> {
   // Docker Desktop can expose DOWN kernel tunnel devices even with network:none.
   // A runnable non-loopback interface is forbidden; tasks additionally cannot
   // create any socket under the launcher's inherited syscall filter.
-  for (const line of interfaces.split('\n').slice(2)) {
+  for (const line of interfaces.split('\n').slice(NET_DEV_HEADER_LINES)) {
     if (!line.includes(':')) continue;
     const name = line.split(':')[0]?.trim();
     if (name === undefined || !/^[a-zA-Z0-9_.-]+$/u.test(name))
@@ -98,7 +105,7 @@ function assertFilesystemIsolation(
     !root?.split(' ')[5]?.split(',').includes('ro') ||
     !temporary?.split(' ')[5]?.split(',').includes('noexec') ||
     temp.uid !== 0 ||
-    (temp.mode & 0o777) !== 0o700;
+    (temp.mode & 0o777) !== RUNNER_FILE_MODES.privateDirectory;
   if (unsafeFilesystemIsolation)
     throw new RunnerIsolationError(
       'Code runner requires a read-only root and private noexec tmpfs',
@@ -132,7 +139,7 @@ function assertContainerBounds(
     Number(pids.trim()) > limits.pids ||
     maximum.trim() === 'max' ||
     Number(maximum) <
-      codeContainerLimits(config.settings).memoryMiB * 1_048_576 ||
+      codeContainerLimits(config.settings).memoryMiB * 1_024 * 1_024 ||
     oomGroup.trim() !== '0' ||
     score.trim() !== '-1000';
   if (unsafeProcessLimits)

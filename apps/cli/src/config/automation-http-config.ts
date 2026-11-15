@@ -1,6 +1,9 @@
 import { apiTokenCredentialSchema } from '@pertexo/contracts';
 import { AutomationCommandError } from '../commands/automation-command.errors.js';
 
+/** The longest `PERTEXO_API_URL` the CLI accepts. */
+const API_URL_MAX_CHARACTERS = 2_048;
+
 export type AutomationHttpConfig = Readonly<{
   origin: string;
   credential: string;
@@ -35,7 +38,7 @@ export function parseAutomationHttpConfig(
       'Set PERTEXO_API_TOKEN to a valid personal API token.',
     );
   const value = environment.PERTEXO_API_URL;
-  if (value === undefined || value.length > 2_048)
+  if (value === undefined || value.length > API_URL_MAX_CHARACTERS)
     throw new AutomationCommandError(
       'cli.invalid_config',
       'Set PERTEXO_API_URL to your Pertexo origin.',
