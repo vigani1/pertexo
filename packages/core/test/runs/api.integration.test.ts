@@ -50,7 +50,7 @@ import {
 import { enforceRetention } from '../support/retention.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
-import type { ExecutionStateConflictError } from '../../src/shared/execution-state.errors.js';
+import type { ExecutionStateConflictError } from '../../src/shared/run-records/execution-state.errors.js';
 
 beforeAll(beforeAllFixture1);
 beforeEach(resetFixture);

@@ -4,7 +4,7 @@ import type { WorkflowExecutionReader } from './workflow-execution.types.js';
 import { and, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { workflowTestSnapshots } from '@pertexo/database/schema';
-import { EXECUTION_SOURCE_SQL } from '../../../shared/execution-source.repository.js';
+import { EXECUTION_SOURCE_SQL } from '../../../shared/run-records/execution-source.repository.js';
 import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
 import { withWorkspaceReadTransaction } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';

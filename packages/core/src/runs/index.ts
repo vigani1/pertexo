@@ -1,5 +1,5 @@
 export { RunRequiresFormError } from './commands/acceptance/run-admission.errors.js';
-export { ExecutionStateConflictError } from '../shared/execution-state.errors.js';
+export { ExecutionStateConflictError } from '../shared/run-records/execution-state.errors.js';
 export { readRunEventsAfter } from './queries/history/events.repository.js';
 export {
   WorkspaceRunAdmissionDeniedError,

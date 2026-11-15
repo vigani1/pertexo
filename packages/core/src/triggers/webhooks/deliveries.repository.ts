@@ -30,7 +30,7 @@ import type {
 import { HTTP_STATUS } from './delivery.js';
 
 import { generatePersistedId } from '@pertexo/database/platform';
-import { withWorkflowAccess } from '../workflow-access.js';
+import { withWorkflowAccess } from '../../shared/workflow-access.js';
 import { WebhookTriggerNotFoundError } from './webhook-trigger.errors.js';
 
 /**

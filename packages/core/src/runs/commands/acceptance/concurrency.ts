@@ -1,4 +1,4 @@
-import { isTestRun } from '../../../shared/run-retention.repository.js';
+import { isTestRun } from '../../../shared/run-records/run-retention.repository.js';
 
 /** Calls and test runs never count against a workflow's concurrency. */
 export function skipsWorkflowConcurrency(triggerType: string): boolean {

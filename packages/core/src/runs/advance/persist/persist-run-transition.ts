@@ -1,7 +1,7 @@
 import { recordInboxFailureDay } from './inbox-failure-day.repository.js';
 import { assertRunStartDeadline } from '../queued-run-admission.repository.js';
 import { releaseSlotDuringTimedWait } from '../timed-wait-slot.repository.js';
-import { isTestRun } from '../../../shared/run-retention.repository.js';
+import { isTestRun } from '../../../shared/run-records/run-retention.repository.js';
 import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.repository.js';
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/synchronize-human-wait.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/persist-intent.js';

@@ -6,11 +6,11 @@ import {
 } from '../../statuses.js';
 import { WORKSPACE_INBOX_FAILURE_KINDS } from '../../statuses.js';
 import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
-import { isTestRun } from '../../../shared/run-retention.repository.js';
+import { isTestRun } from '../../../shared/run-records/run-retention.repository.js';
 import { CoordinatorRunStateCorruptError } from '../coordinator-state.errors.js';
 import type { CoordinatorCommitRow } from '../load/load-run.js';
 import { canonicalTimestamp } from '../load/fact-admission.js';
-import { scheduleRunInputSchema } from '../../../shared/trigger-run-input.schemas.js';
+import { scheduleRunInputSchema } from '../../../shared/run-records/schedule-run-input.schemas.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 /**

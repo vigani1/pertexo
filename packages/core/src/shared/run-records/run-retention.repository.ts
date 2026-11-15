@@ -2,7 +2,7 @@ import { sql, type SQL } from 'drizzle-orm';
 import { alias as tableAlias } from 'drizzle-orm/pg-core';
 import { workflowRuns } from '@pertexo/database/schema';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
-import { DAY_INTERVAL } from './sql-intervals.repository.js';
+import { DAY_INTERVAL } from '../sql-intervals.repository.js';
 const TEST_TRIGGER_TYPE = 'test';
 const TEST_DAYS = DATA_RETENTION_DAYS.testRuns;
 const DETAILS_DAYS = DATA_RETENTION_DAYS.runDetails;

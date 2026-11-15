@@ -26,7 +26,7 @@ import type { PoolClient } from 'pg';
 import {
   retainedTestRunSql,
   testRunSql,
-} from '../../../shared/run-retention.repository.js';
+} from '../../../shared/run-records/run-retention.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 

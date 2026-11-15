@@ -1,17 +1,17 @@
 import type { Pool, PoolClient } from 'pg';
 
-import { readFolderScope } from '../shared/folder-access-facts.repository.js';
+import { readFolderScope } from './folder-access-facts.repository.js';
 import {
   withWorkspaceAccess,
   type WorkspaceAccess,
   type WorkspaceActor,
-} from '../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
+} from './workspace-access.js';
+import { WorkspaceAccessDeniedError } from './workspace-access.errors.js';
 import type {
   FolderScope,
   WorkflowResourceCapability,
-} from '../shared/folder-access.types.js';
-import { workflowAccessible } from '../shared/resources/workflow-access.repository.js';
+} from './folder-access.types.js';
+import { workflowAccessible } from './resources/workflow-access.repository.js';
 
 /**
  * A member reaching one workflow. The role comes from `capability`, the folder from

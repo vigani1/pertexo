@@ -58,7 +58,9 @@ user-facing copy beyond the safe messages of its errors.
   `triggers/schedules/retirement-plan.ts`.
 - A SQL fragment several areas read stays in its owning area's repository;
   one that areas below the owner read too goes to `shared/`
-  (`shared/run-retention.repository.ts` for run retention windows), and a
+  (`shared/run-records/run-retention.repository.ts` for run retention
+  windows; `shared/run-records/` holds the run records areas below `runs`
+  touch), and a
   statement two areas write the same way gets one function beside the lock
   it follows (`enterRunAdmissionProtocol` in
   `shared/workspace-fence.repository.ts`). A run admitted in a savepoint goes
@@ -119,8 +121,8 @@ user-facing copy beyond the safe messages of its errors.
   calls. A new area gets a layer there first. When a lower area needs a higher one's fact, the
   writer moves down to the producer (the run transition writes the inbox's
   intake and the failure streak's outcomes, whose rule is workflow-model's
-  `failureStreakOutcome`), or the shared piece moves to `shared/` (`run-events.repository.ts`,
-  `execution-source.repository.ts`). `validate-core-area-cycles.mjs` refuses
+  `failureStreakOutcome`), or the shared piece moves to `shared/` (`run-records/run-events.repository.ts`,
+  `run-records/execution-source.repository.ts`, `workflow-access.ts`). `validate-core-area-cycles.mjs` refuses
   any cycle between areas, type-only imports, `import()` calls and core's own
   `@pertexo/core/<area>` entries included.
 - A sealed application secret is checked with `applicationSealedSecretSchema`

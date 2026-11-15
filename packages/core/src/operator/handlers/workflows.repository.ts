@@ -1,6 +1,6 @@
 import { triggerReconciliationOutcome } from './operator-command-decisions.js';
 import { runReplayOutcome } from './operator-command-decisions.js';
-import { ordinaryRunSql } from '../../shared/run-retention.repository.js';
+import { ordinaryRunSql } from '../../shared/run-records/run-retention.repository.js';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import {
   workflows,

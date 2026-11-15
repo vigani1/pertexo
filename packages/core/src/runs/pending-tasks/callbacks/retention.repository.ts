@@ -3,7 +3,7 @@ import { and, asc, eq, exists, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { expiredRunSql } from '../../../shared/run-retention.repository.js';
+import { expiredRunSql } from '../../../shared/run-records/run-retention.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
 /** Bound tasks already cascade with node details; prepared tasks have no node. */

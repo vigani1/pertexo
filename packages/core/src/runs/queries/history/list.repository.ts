@@ -5,7 +5,7 @@ import { withRetainedRunRead } from '../../access.js';
 import {
   ordinaryRunSql,
   expiredRunSql,
-} from '../../../shared/run-retention.repository.js';
+} from '../../../shared/run-records/run-retention.repository.js';
 import { UNSUCCESSFUL_RUN_STATUSES } from '@pertexo/workflow-model';
 import {
   workflowRunValues,

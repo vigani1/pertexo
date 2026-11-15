@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { nodeRuns, runEvents } from '@pertexo/database/schema';
 import type { RecoveryCopy } from '@pertexo/workflow-engine/server';
-import { QUEUED_EVENT_SEQUENCE } from '../../shared/run-events.repository.js';
+import { QUEUED_EVENT_SEQUENCE } from '../../shared/run-records/run-events.repository.js';
 import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
 
 /** A recovered run's reused prefix: its succeeded node runs, then one `node.reused` event each. */

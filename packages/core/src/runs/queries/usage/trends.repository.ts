@@ -18,7 +18,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
-import { ordinaryRunSql } from '../../../shared/run-retention.repository.js';
+import { ordinaryRunSql } from '../../../shared/run-records/run-retention.repository.js';
 import { emptyRunCounts, type RunStatusCounts } from '../counts.js';
 
 const timestamp = (expression: SQLWrapper) =>

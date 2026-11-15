@@ -26,7 +26,7 @@ import {
 } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.types.js';
-import { withWorkflowAccess } from '../workflow-access.js';
+import { withWorkflowAccess } from '../../shared/workflow-access.js';
 import { FormUnavailableError } from './form.errors.js';
 import type {
   CoordinatedEventHistory,

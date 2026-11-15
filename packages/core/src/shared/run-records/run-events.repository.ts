@@ -2,7 +2,7 @@ import { runEvents, workflowRuns } from '@pertexo/database/schema';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { ExecutionStateConflictError } from './execution-state.errors.js';
-import { serializeStoredExecutionJsonValue } from './stored-execution.js';
+import { serializeStoredExecutionJsonValue } from '../stored-execution.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 // A run's event log: runs, attempts and the operator append to it.

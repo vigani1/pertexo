@@ -5,7 +5,7 @@ import type { RunStatus } from '@pertexo/workflow-engine';
 import { workflowRuns } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { CoordinatorRunStateCorruptError } from './coordinator-state.errors.js';
-import { ExecutionStateConflictError } from '../../shared/execution-state.errors.js';
+import { ExecutionStateConflictError } from '../../shared/run-records/execution-state.errors.js';
 
 /** The caller holds the workspace/current entitlement fence, then run and capacity locks. */
 export async function assertRunStartDeadline(
