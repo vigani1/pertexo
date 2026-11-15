@@ -2,7 +2,7 @@ import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { lockArtifactReferences } from '../../artifacts/references/locks.repository.js';
+import { lockArtifactReferences } from '../../artifacts/references/lock-references.js';
 import type { WorkflowTestOptions } from './workflow-test.types.js';
 import { TEST_RUN_RETENTION_MILLIS } from '../../shared/run-records/run-retention.repository.js';
 import { requireWorkflowCallTargets } from '../../shared/resources/workflow-call-bindings.repository.js';

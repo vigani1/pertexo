@@ -1,4 +1,4 @@
-import { lockWorkflowArtifactReferences } from '../../../artifacts/references/locks.repository.js';
+import { lockWorkflowArtifactReferences } from '../../../artifacts/references/lock-references.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   withTenantScopedClient,

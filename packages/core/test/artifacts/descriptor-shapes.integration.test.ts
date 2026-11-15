@@ -7,7 +7,7 @@ import {
   ARTIFACT_REFERENCE_PRESENCE_JSON_PATH,
   isArtifactDescriptor,
 } from '../../src/artifacts/references/descriptor-shape.js';
-import { collectArtifactReferences } from '../../src/artifacts/references/locks.repository.js';
+import { collectArtifactReferences } from '../../src/artifacts/references/lock-references.js';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
 afterAll(() => pool.end());

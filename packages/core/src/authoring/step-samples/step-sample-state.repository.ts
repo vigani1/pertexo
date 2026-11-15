@@ -19,7 +19,7 @@ import {
   stepSampleBindings,
 } from '@pertexo/workflow-model';
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
-import { collectArtifactReferences } from '../../artifacts/references/locks.repository.js';
+import { collectArtifactReferences } from '../../artifacts/references/lock-references.js';
 import { WorkflowStepSampleError } from './step-sample.errors.js';
 import type { SampleMetadata, SampleMetadataRow } from './step-sample.types.js';
 

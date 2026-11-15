@@ -4,7 +4,7 @@ import { requireRunTableReferences } from '../../../data-tables/columns/referenc
 import { requireWorkflowConcurrency } from './require-concurrency.js';
 import { variableRevisionForAcceptance } from './choose-variable-revision.js';
 import { requireFormAdmission } from './require-form-admission.js';
-import { lockExecutionArtifactReferences } from '../../../artifacts/references/locks.repository.js';
+import { lockExecutionArtifactReferences } from '../../../artifacts/references/lock-references.js';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { enqueueAdvance } from '../../../outbox/run-advance.repository.js';

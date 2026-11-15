@@ -1,5 +1,5 @@
 import { admitInSavepoint } from '../../admission-savepoint.repository.js';
-import { lockWorkflowArtifactReferences } from '../../../artifacts/references/locks.repository.js';
+import { lockWorkflowArtifactReferences } from '../../../artifacts/references/lock-references.js';
 import { lockWorkspaceRunAdmission } from '../../../shared/workspace-fence.repository.js';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/run-admission.errors.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';

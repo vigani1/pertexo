@@ -26,9 +26,9 @@ import { ArtifactUploadNotFoundError } from '../../../artifacts/uploads/artifact
 import {
   completeArtifactUpload,
   reserveArtifactUpload,
-} from '../../../artifacts/uploads/reservation.repository.js';
+} from '../../../artifacts/uploads/upload-reservation.js';
 import { FormUploadLimitError } from '../../../artifacts/form-uploads/form-upload.errors.js';
-import { assertUnsentPublicRoom } from '../../../artifacts/form-uploads/unsent.repository.js';
+import { assertUnsentPublicRoom } from '../../../artifacts/form-uploads/unsent-room.js';
 import { FORM_UPLOAD_PURPOSE } from '../../../artifacts/artifact.js';
 import type {
   BeginFormUploadInput,

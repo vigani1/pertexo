@@ -2,10 +2,8 @@ import { testStackSetting } from '../../../../infrastructure/testing/test-stack.
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { databaseSchema } from '@pertexo/database/schema';
 import { parseWorkspaceId } from '@pertexo/database/primitives';
-import {
-  createPendingArtifact,
-  artifactStorageKey,
-} from '../../src/artifacts/artifact-lifecycle.repository.js';
+import { artifactStorageKey } from '../../src/artifacts/artifact-lifecycle.repository.js';
+import { createPendingArtifact } from '../../src/artifacts/artifact-lifecycle.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   beforeEachFixture1,

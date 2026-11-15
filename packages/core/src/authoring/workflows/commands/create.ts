@@ -5,7 +5,7 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type { Role } from '@pertexo/policy';
 import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
-import { lockArtifactReferences } from '../../../artifacts/references/locks.repository.js';
+import { lockArtifactReferences } from '../../../artifacts/references/lock-references.js';
 import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
 import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
 import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';

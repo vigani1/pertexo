@@ -11,14 +11,12 @@ import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { ArtifactMetadataNotFoundError } from '../../src/artifacts/artifact.errors.js';
-import {
-  artifactStorageKey,
-  createPendingPreviewArtifact,
-} from '../../src/artifacts/artifact-lifecycle.repository.js';
+import { artifactStorageKey } from '../../src/artifacts/artifact-lifecycle.repository.js';
+import { createPendingPreviewArtifact } from '../../src/artifacts/artifact-lifecycle.js';
 import {
   lockExecutionArtifactReferences,
   requireNodeArtifactReference,
-} from '../../src/artifacts/references/locks.repository.js';
+} from '../../src/artifacts/references/lock-references.js';
 import { serializeStoredExecutionValue } from '../../src/shared/stored-execution.js';
 import {
   acceptFixture,

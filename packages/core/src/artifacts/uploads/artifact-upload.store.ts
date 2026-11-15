@@ -39,7 +39,7 @@ import {
   completeArtifactUpload,
   loadArtifact,
   reserveArtifactUpload,
-} from './reservation.repository.js';
+} from './upload-reservation.js';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 
 const SECONDS_PER_DAY = 24 * 60 * 60;

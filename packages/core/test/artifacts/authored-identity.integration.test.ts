@@ -8,7 +8,7 @@ import { visibleArtifactIds } from '../../src/artifacts/references/access.reposi
 import {
   lockArtifactReferences,
   lockActorArtifactReferences,
-} from '../../src/artifacts/references/locks.repository.js';
+} from '../../src/artifacts/references/lock-references.js';
 import { artifactOwnerFixture } from './owner-shapes.fixture.js';
 import { ownerTransaction } from './lifetime.fixture.js';
 import { workspaceId, userId } from '../lifecycle/retention.support.js';

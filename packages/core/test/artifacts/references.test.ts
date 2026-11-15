@@ -4,7 +4,7 @@ import {
   collectArtifactReferences,
   lockArtifactReferences,
   requireNodeArtifactReference,
-} from '../../src/artifacts/references/locks.repository.js';
+} from '../../src/artifacts/references/lock-references.js';
 import { ArtifactMetadataNotFoundError } from '../../src/artifacts/artifact.errors.js';
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 const reference = {

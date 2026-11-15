@@ -3,10 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  artifactStorageKey,
-  createPendingPreviewArtifact,
-} from '../../src/artifacts/artifact-lifecycle.repository.js';
+import { artifactStorageKey } from '../../src/artifacts/artifact-lifecycle.repository.js';
+import { createPendingPreviewArtifact } from '../../src/artifacts/artifact-lifecycle.js';
 import { ArtifactLifecycleConflictError } from '../../src/artifacts/artifact.errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';

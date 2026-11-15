@@ -19,18 +19,18 @@ export {
 } from './uploads/artifact-upload.js';
 export { ARTIFACT_UPLOAD_PURPOSE } from './artifact.js';
 export { FormUploadLimitError } from './form-uploads/form-upload.errors.js';
+export { artifactStorageKey } from './artifact-lifecycle.repository.js';
 export {
-  artifactStorageKey,
   createPendingArtifact,
   createPendingPreviewArtifact,
   finalizeArtifactUpload,
-} from './artifact-lifecycle.repository.js';
+} from './artifact-lifecycle.js';
 export {
   readArtifactCapacity,
   readExecutionStorageCapacity,
   type ArtifactCapacityObservation,
-} from './capacity.repository.js';
-export { requireNodeArtifactReference } from './references/locks.repository.js';
+} from './capacity.js';
+export { requireNodeArtifactReference } from './references/lock-references.js';
 export { ArtifactMetadataNotFoundError } from './artifact.errors.js';
 
 // Authoring, previews, runs and triggers use these directly (ADR 091).
@@ -39,6 +39,7 @@ export type {} from './references/owners.repository.js';
 export type {} from './form-uploads/resolve.repository.js';
 export type {} from './form-uploads/unsent.repository.js';
 export type {} from './form-uploads/bindings.repository.js';
-export type {} from './uploads/reservation.repository.js';
+export type {} from './uploads/upload-reservation.js';
 
 export type {} from './metadata.js';
+export type {} from './form-uploads/unsent-room.js';

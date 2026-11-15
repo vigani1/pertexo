@@ -50,11 +50,6 @@ export const STORAGE_INTEGRITY_ERRORS = Object.freeze({
  * decisions and throws into the operation that calls it.
  */
 export const REPOSITORY_THROW_BACKLOG = Object.freeze({
-  'packages/core/src/artifacts/artifact-lifecycle.repository.ts': 9,
-  'packages/core/src/artifacts/capacity.repository.ts': 1,
-  'packages/core/src/artifacts/form-uploads/unsent.repository.ts': 1,
-  'packages/core/src/artifacts/references/locks.repository.ts': 2,
-  'packages/core/src/artifacts/uploads/reservation.repository.ts': 6,
   'packages/core/src/authoring/input-cases/commands/mutations.repository.ts': 1,
   'packages/core/src/authoring/input-cases/read.repository.ts': 1,
   'packages/core/src/authoring/organization/folders/commands/mutations.repository.ts': 4,
