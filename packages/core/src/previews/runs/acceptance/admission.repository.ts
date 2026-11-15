@@ -9,13 +9,10 @@ import { workflowDrafts, workflows } from '@pertexo/database/schema';
 
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
-import { PreviewAdmissionDeniedError } from '../../preview.errors.js';
-
-export async function assertAdmission(
+export async function lockActivePreviewWorkflow(
   transaction: WorkspaceTransaction,
   workflowId: string,
-  draftRevision: number,
-) {
+): Promise<boolean> {
   const workflow = await transaction.db
     .select({ id: workflows.id })
     .from(workflows)
@@ -28,7 +25,13 @@ export async function assertAdmission(
     )
     .for('share')
     .limit(1);
-  if (workflow.length !== 1) throw new PreviewAdmissionDeniedError('actor');
+  return workflow.length === 1;
+}
+
+export async function lockPreviewDraft(
+  transaction: WorkspaceTransaction,
+  workflowId: string,
+) {
   const drafts = await transaction.db
     .select({
       revision: workflowDrafts.revision,
@@ -43,13 +46,11 @@ export async function assertAdmission(
     )
     .for('share')
     .limit(1);
-  if (drafts[0] === undefined) throw new PreviewAdmissionDeniedError('actor');
-  if (drafts[0].revision !== draftRevision)
-    throw new PreviewAdmissionDeniedError('draft');
-  return drafts[0].graph;
+  return drafts[0];
 }
 
-async function previewWorkflowScope(
+/** The actor's folder scope when it may update the workflow, else undefined. */
+export async function previewWorkflowScope(
   transaction: WorkspaceTransaction,
   role: Role,
   actorId: string,
@@ -83,20 +84,4 @@ export async function previewWorkflowVisible(
     (await previewWorkflowScope(transaction, role, actorId, workflowId)) !==
     undefined
   );
-}
-
-export async function assertPreviewWorkflow(
-  transaction: WorkspaceTransaction,
-  role: Role,
-  actorId: string,
-  workflowId: string,
-) {
-  const resources = await previewWorkflowScope(
-    transaction,
-    role,
-    actorId,
-    workflowId,
-  );
-  if (resources === undefined) throw new PreviewAdmissionDeniedError('actor');
-  return resources;
 }

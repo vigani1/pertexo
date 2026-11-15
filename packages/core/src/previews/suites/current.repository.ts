@@ -9,21 +9,13 @@ import {
   workspaceVariables,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import type { WorkflowTestSuiteCurrent } from '@pertexo/contracts';
-import {
-  canonicalJson,
-  WORKFLOW_TEST_SUITE_MAX_CASES,
-} from '@pertexo/workflow-model';
+import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/workflow-model';
 
-import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
-/** The same metadata signature prepares suites and labels publish freshness. */
-export async function readSuiteCurrent(
+export async function readDraftRevision(
   client: PoolClient,
   input: WorkflowActor,
-  frozenVariableSetRevision?: number | null,
-): Promise<WorkflowTestSuiteCurrent> {
+): Promise<number | undefined> {
   const db = drizzle(client);
   const draft = await db
     .select({ revision: workflowDrafts.revision })
@@ -35,8 +27,12 @@ export async function readSuiteCurrent(
       ),
     )
     .catch(rethrowQueryFailure);
-  const revision = draft[0]?.revision;
-  if (revision === undefined) throw new WorkflowTestError('not_found');
+  return draft[0]?.revision;
+}
+
+/** The live cases in order, one past the suite cap so an added case shows. */
+export async function readSuiteCases(client: PoolClient, input: WorkflowActor) {
+  const db = drizzle(client);
   const cases = await db
     .select({
       id: workflowInputCases.id,
@@ -55,8 +51,11 @@ export async function readSuiteCurrent(
     // No more cases can be added, so reading one more proves a change.
     .limit(WORKFLOW_TEST_SUITE_MAX_CASES + 1)
     .catch(rethrowQueryFailure);
-  if (cases.length > WORKFLOW_TEST_SUITE_MAX_CASES)
-    throw new WorkflowTestError('cases_changed');
+  return cases;
+}
+
+export async function readSuitePins(client: PoolClient, input: WorkflowActor) {
+  const db = drizzle(client);
   const pins = await db
     .select({
       nodeId: workflowStepSamples.nodeId,
@@ -72,41 +71,19 @@ export async function readSuiteCurrent(
     )
     .orderBy(asc(workflowStepSamples.nodeId))
     .catch(rethrowQueryFailure);
-  const variables =
-    frozenVariableSetRevision === undefined
-      ? await db
-          .select({ revision: workspaceVariables.revision })
-          .from(workspaceVariables)
-          .where(eq(workspaceVariables.workspaceId, input.workspaceId))
-          .catch(rethrowQueryFailure)
-      : undefined;
-  const variableSetRevision =
-    frozenVariableSetRevision === undefined
-      ? (variables?.[0]?.revision ?? null)
-      : frozenVariableSetRevision;
-  const identity = {
-    draftRevision: revision,
-    cases: cases.map(({ id, revision }) => ({ id, revision })),
-    samples: pins.map((row) => ({
-      nodeId: row.nodeId,
-      sampleId: row.id,
-    })),
-    variableSetRevision,
-  };
-  return {
-    ...identity,
-    cases: cases,
-    signature: createHash('sha256')
-      .update(
-        canonicalJson({
-          ...identity,
-          expiredSampleIds: pins
-            .filter((pin) => pin.expired)
-            .map((pin) => pin.id),
-        }),
-      )
-      .digest('hex'),
-  };
+  return pins;
+}
+
+export async function readVariablesRevision(
+  client: PoolClient,
+  workspaceId: string,
+): Promise<number | null> {
+  const variables = await drizzle(client)
+    .select({ revision: workspaceVariables.revision })
+    .from(workspaceVariables)
+    .where(eq(workspaceVariables.workspaceId, workspaceId))
+    .catch(rethrowQueryFailure);
+  return variables[0]?.revision ?? null;
 }
 
 export function readSuiteCasePayloads(

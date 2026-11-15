@@ -11,12 +11,8 @@ import {
 } from '../../shared/run-records/run-retention.repository.js';
 import type { PoolClient } from 'pg';
 
-import { WorkflowTestError } from './workflow-test.errors.js';
 import { ACTIVE_TEST_RUN_STATUSES } from './rules.js';
-import type {
-  WorkflowTestDetail,
-  WorkflowTestSummary,
-} from './workflow-test.types.js';
+import type { WorkflowTestSummary } from './workflow-test.types.js';
 
 /** How many recent test runs the history shows. */
 const TEST_HISTORY_ROWS = 20;
@@ -62,7 +58,7 @@ function listTestRows(client: PoolClient, input: WorkflowActor) {
     .limit(TEST_HISTORY_ROWS)
     .catch(rethrowQueryFailure);
 }
-function summary(
+export function summary(
   row: Awaited<ReturnType<typeof listTestRows>>[number],
 ): WorkflowTestSummary {
   return {
@@ -78,10 +74,10 @@ export async function listTests(client: PoolClient, input: WorkflowActor) {
   const rows = await listTestRows(client, input);
   return { items: rows.map(summary) };
 }
-export async function readTestDetail(
+export async function readTestDetailRow(
   client: PoolClient,
   input: WorkflowActor & { runId: string },
-): Promise<WorkflowTestDetail> {
+) {
   const rows = await drizzle(client)
     .select({
       ...testSummarySelection,
@@ -98,13 +94,7 @@ export async function readTestDetail(
     )
     .where(and(visibleTest(input), eq(run.id, input.runId)))
     .catch(rethrowQueryFailure);
-  const row = rows[0];
-  if (row === undefined) throw new WorkflowTestError('not_found');
-  return {
-    ...summary(row),
-    graph: row.graphJson,
-    dispositions: row.dispositions,
-  };
+  return rows[0];
 }
 
 /** Whether the actor already has an unfinished test run of this workflow. */

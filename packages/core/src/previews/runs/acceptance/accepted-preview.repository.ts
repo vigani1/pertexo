@@ -9,9 +9,9 @@ import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 import { serializeStoredExecutionValue } from '../../../shared/stored-execution.js';
 import { PREVIEW_STATUS } from '../../preview-state.js';
-import type { resolvePreviewSample } from '../samples.repository.js';
+import type { resolvePreviewSample } from '../resolve-sample.js';
 import type { AcceptPreviewRunInput } from './preview-acceptance.types.js';
-import type { resolveInput } from './replay.repository.js';
+import type { resolveInput } from './replay.js';
 
 type PinnedSample = NonNullable<
   Awaited<ReturnType<typeof resolvePreviewSample>>

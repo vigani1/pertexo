@@ -8,10 +8,11 @@ import type {
   WorkflowTestPreparation,
   WorkflowTestRunInput,
 } from './workflow-test.types.js';
-import { loadTestSnapshot } from './snapshot.repository.js';
+import { loadTestSnapshot } from './load-snapshot.js';
 import { startWorkflowTest } from './start.js';
 import { withTestChange, withTestRead } from './access.js';
-import { readTestDetail, listTests } from './workflow-tests.repository.js';
+import { listTests } from './workflow-tests.repository.js';
+import { readTestDetail } from './read-test-detail.js';
 
 export type WorkflowTestStore = ReturnType<typeof createWorkflowTestStore>;
 
