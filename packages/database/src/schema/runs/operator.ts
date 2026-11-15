@@ -1,4 +1,5 @@
 import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import type {
   GenericOperatorCommandResult,
   OperatorCommandRecord,
@@ -30,7 +31,7 @@ const WIDTHS = Object.freeze({
   status: 16,
   outcome: 32,
   pending: 16,
-  safeErrorCode: 64,
+  safeErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   evidenceKind: 64,
 });
 

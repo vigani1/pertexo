@@ -76,6 +76,16 @@ times out or fails first), the next run granted behind it starts straight away
 instead of after a 5-second retry. It changes no table or data and runs in well
 under a second, so the normal upgrade estimate applies.
 
+## Migration 0004: wider definition key and replay error code
+
+`0004_widen_definition_key_and_operator_error_code.sql` widens two columns to
+their owners' limits: `preview_runs.definition_key` from 128 to 256 characters
+(the catalog's identity key), so a preview of a step with a long definition key
+is stored instead of refused, and `operator_run_replay_requests.safe_error_code`
+from 64 to 128, like every other safe error code. Widening a `varchar` changes
+only the catalog and rewrites no rows, so it runs in well under a second and the
+normal upgrade estimate applies.
+
 ## Baseline transition: required release stop
 
 **Required stop: v0.2.0 — the final release containing migrations

@@ -1,6 +1,7 @@
 import { SHA256_HEX_CHARACTERS } from '../column-widths.js';
 import type { PreviewAttemptLease, PreviewStatus } from '../stored-shapes.js';
 import {
+  NODE_IDENTITY_KEY_MAX_CHARACTERS,
   NODE_IDENTITY_KEY_PATTERN,
   NODE_FAILURE_FIELD_LIMITS,
 } from '@pertexo/node-sdk';
@@ -27,7 +28,7 @@ import { appSchema } from '../namespace.js';
 const WIDTHS = Object.freeze({
   draftFingerprint: SHA256_HEX_CHARACTERS,
   nodeId: 256,
-  definitionKey: 128,
+  definitionKey: NODE_IDENTITY_KEY_MAX_CHARACTERS,
   executorKey: 128,
   idempotencyKeyHash: SHA256_HEX_CHARACTERS,
   requestHash: SHA256_HEX_CHARACTERS,

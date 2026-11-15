@@ -1,5 +1,6 @@
 import { responseSchema } from './shared/response-schema.js';
 import {
+  NODE_IDENTITY_KEY_MAX_CHARACTERS,
   codeSettingsSchema,
   nodeDisplayMetadataSchema,
   outputVariantSelectionSchema,
@@ -14,7 +15,7 @@ export const CATALOG_LIMITS = Object.freeze({
   capabilities: 64,
   ports: 64,
   schemaProperties: 10_000,
-  identityKeyCharacters: 256,
+  identityKeyCharacters: NODE_IDENTITY_KEY_MAX_CHARACTERS,
   schemaKeyCharacters: 256,
   // A port, requirement or capability name.
   nameCharacters: 128,

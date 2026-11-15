@@ -50,4 +50,16 @@ describe('preview worker schema contract', () => {
       constraint: 'preview_runs_integration_identity_consistent',
     });
   });
+
+  it('stores a preview of a step whose definition key is as long as the catalog allows', async () => {
+    // The catalog admits keys of 256 characters; the column once held 128.
+    const definitionKey = `${'a'.repeat(255)}b`;
+    const accepted = await acceptFixture({ definitionKey });
+    const stored = await scopedQuery<{ definition_key: string }>(
+      `select definition_key from app.preview_runs
+        where workspace_id=$1 and id=$2`,
+      [workspaceId, accepted.previewRunId],
+    );
+    expect(stored.rows).toEqual([{ definition_key: definitionKey }]);
+  });
 });
