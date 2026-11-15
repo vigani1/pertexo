@@ -9,12 +9,13 @@ import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import {
   sampleMetadataProjection,
   sampleProjection,
+  sampleMetadata,
 } from './step-sample-state.repository.js';
 import { BROWSABLE_WORKSPACE_STATUSES, hasCapability } from '@pertexo/policy';
 import type { AuthoringAccess } from '../workflows/access.js';
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
-import { sampleDraft, sampleMetadata } from './step-sample-state.repository.js';
-import { mutateStepSample } from './step-sample-commands.repository.js';
+import { sampleDraft } from './step-sample-state.js';
+import { mutateStepSample } from './step-sample-commands.js';
 import type {
   PutSampleInput,
   RemoveSampleInput,

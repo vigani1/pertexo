@@ -1,5 +1,4 @@
 import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
-import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -8,19 +7,9 @@ import {
   workflowStepSamples,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  parseStoredExecutionValue,
-  serializeStoredExecutionValue,
-} from '../../shared/stored-execution.js';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
-import {
-  parseWorkflowGraphDraft,
-  stepSampleBindings,
-} from '@pertexo/workflow-model';
-import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
-import { collectArtifactReferences } from '../../artifacts/references/lock-references.js';
-import { WorkflowStepSampleError } from './step-sample.errors.js';
+import { stepSampleBindings } from '@pertexo/workflow-model';
 import type { SampleMetadata, SampleMetadataRow } from './step-sample.types.js';
 
 export const sampleMetadataProjection = {
@@ -40,50 +29,6 @@ export const sampleProjection = {
   retainedBytes: workflowStepSamples.retainedBytes,
 };
 
-export async function sampleDraft(
-  client: PoolClient,
-  input: WorkflowActor,
-  { write }: Readonly<{ write: boolean }>,
-) {
-  const db = drizzle(client);
-  const [workflow] = await db
-    .select({ lifecycleStatus: workflows.lifecycleStatus })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, input.workspaceId),
-        eq(workflows.id, input.workflowId),
-      ),
-    )
-    .for('share')
-    .catch(rethrowQueryFailure);
-  const workflowUnavailable =
-    workflow === undefined || (write && workflow.lifecycleStatus !== 'active');
-  if (workflowUnavailable)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const [row] = await db
-    .select({
-      revision: workflowDrafts.revision,
-      graphJson: workflowDrafts.graphJson,
-    })
-    .from(workflowDrafts)
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, input.workspaceId),
-        eq(workflowDrafts.workflowId, input.workflowId),
-      ),
-    )
-    .for(write ? 'update' : 'share')
-    .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Workflow is not visible');
-  const graph = decodeStoredValue(() => parseWorkflowGraphDraft(row.graphJson));
-  return {
-    revision: row.revision,
-    graph,
-    bindings: stepSampleBindings(graph),
-  };
-}
 export function sampleMetadata(
   row: SampleMetadataRow,
   binding: string | undefined,
@@ -103,20 +48,6 @@ export function sampleMetadata(
 function requiredSourceId(id: string | null): string {
   if (id === null) throw new Error('Sample provenance is incomplete');
   return id;
-}
-export function inlineSampleOutput(output: unknown): string {
-  let parsed;
-  try {
-    parsed = parseStoredExecutionValue(output);
-  } catch {
-    throw new WorkflowStepSampleError('value_invalid');
-  }
-  if (
-    parsed.kind !== 'inline' ||
-    collectArtifactReferences(parsed.value).length > 0
-  )
-    throw new WorkflowStepSampleError('file_output');
-  return serializeStoredExecutionValue(parsed);
 }
 
 export async function pruneStepSamples(
@@ -168,4 +99,46 @@ function sampleProvenance(row: SampleMetadataRow): SampleMetadata['source'] {
     runId: requiredSourceId(row.sourceRunId),
     nodeRunId: requiredSourceId(row.sourceNodeRunId),
   };
+}
+
+export async function shareLockSampleWorkflow(
+  client: PoolClient,
+  input: WorkflowActor,
+) {
+  const db = drizzle(client);
+  const [workflow] = await db
+    .select({ lifecycleStatus: workflows.lifecycleStatus })
+    .from(workflows)
+    .where(
+      and(
+        eq(workflows.workspaceId, input.workspaceId),
+        eq(workflows.id, input.workflowId),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  return workflow;
+}
+
+export async function lockSampleDraft(
+  client: PoolClient,
+  input: WorkflowActor,
+  write: boolean,
+) {
+  const db = drizzle(client);
+  const [row] = await db
+    .select({
+      revision: workflowDrafts.revision,
+      graphJson: workflowDrafts.graphJson,
+    })
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, input.workspaceId),
+        eq(workflowDrafts.workflowId, input.workflowId),
+      ),
+    )
+    .for(write ? 'update' : 'share')
+    .catch(rethrowQueryFailure);
+  return row;
 }

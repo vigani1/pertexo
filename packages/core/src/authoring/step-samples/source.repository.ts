@@ -1,92 +1,72 @@
 import { and, eq, gt, isNotNull, isNull, sql } from 'drizzle-orm';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
+
 import { alias } from 'drizzle-orm/pg-core';
+
 import {
   previewRuns,
   nodeRuns,
   workflowRuns,
   webhookTestEvents,
 } from '@pertexo/database/schema';
+
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
+
 import {
   retainedTestRunSql,
   runRetentionIntervalSql,
 } from '../../shared/run-records/run-retention.repository.js';
-import type { PoolClient } from 'pg';
-import { inlineSampleOutput } from './step-sample-state.repository.js';
-import { WorkflowStepSampleError } from './step-sample.errors.js';
-import type {
-  SampleCommand,
-  SampleRow,
-  SampleSource,
-} from './step-sample.types.js';
 
-export async function captureSampleSource(
+import type { PoolClient } from 'pg';
+
+import type { SampleCommand, SampleSource } from './step-sample.types.js';
+
+/** Whether the stored expiry has passed by database time; an unreadable answer counts as expired. */
+export async function sampleExpired(
+  client: PoolClient,
+  expiresAt: Date,
+): Promise<boolean> {
+  const now = await drizzle(client)
+    .execute<{ expired: boolean }>(
+      sql`select ${expiresAt}::timestamptz<=clock_timestamp() expired`,
+    )
+    .catch(rethrowQueryFailure);
+  return now.rows[0]?.expired !== false;
+}
+
+/** The creator's live test event for this step and binding, share-locked. */
+export async function shareLockTestEvent(
   client: PoolClient,
   input: SampleCommand,
-  {
-    source,
-    current,
-    binding,
-  }: Readonly<{
-    source: SampleSource;
-    current: SampleRow | undefined;
-    binding: string;
-  }>,
+  { listenerId, binding }: Readonly<{ listenerId: string; binding: string }>,
 ) {
-  if (source.kind === 'confirm') {
-    if (current === undefined) throw new WorkflowStepSampleError('changed');
-    const now = await drizzle(client)
-      .execute<{ expired: boolean }>(
-        sql`select ${current.expiresAt}::timestamptz<=clock_timestamp() expired`,
-      )
-      .catch(rethrowQueryFailure);
-    if (now.rows[0]?.expired !== false)
-      throw new WorkflowStepSampleError('expired');
-    return {
-      output: current.outputRef,
-      kind: current.sourceKind,
-      runId: current.sourceRunId,
-      nodeRunId: current.sourceNodeRunId,
-      previewId: current.sourcePreviewId,
-    };
-  }
-  if (source.kind === 'json')
-    return {
-      output: inlineSampleOutput({ kind: 'inline', value: source.value }),
-      kind: source.kind,
-      runId: null,
-      nodeRunId: null,
-      previewId: null,
-    };
-  if (source.kind === 'webhook_test') {
-    const [row] = await drizzle(client)
-      .select({ outputRef: webhookTestEvents.outputRef })
-      .from(webhookTestEvents)
-      .where(
-        and(
-          eq(webhookTestEvents.workspaceId, input.workspaceId),
-          eq(webhookTestEvents.workflowId, input.workflowId),
-          eq(webhookTestEvents.nodeId, input.nodeId),
-          eq(webhookTestEvents.createdBy, input.actorId),
-          eq(webhookTestEvents.id, source.listenerId),
-          eq(webhookTestEvents.binding, binding),
-          gt(webhookTestEvents.expiresAt, sql`clock_timestamp()`),
-          isNotNull(webhookTestEvents.outputRef),
-        ),
-      )
-      .for('share')
-      .catch(rethrowQueryFailure);
-    if (row === undefined)
-      throw new WorkflowStepSampleError('source_unavailable');
-    return {
-      output: inlineSampleOutput(row.outputRef),
-      kind: source.kind,
-      runId: null,
-      nodeRunId: null,
-      previewId: null,
-    };
-  }
+  const [row] = await drizzle(client)
+    .select({ outputRef: webhookTestEvents.outputRef })
+    .from(webhookTestEvents)
+    .where(
+      and(
+        eq(webhookTestEvents.workspaceId, input.workspaceId),
+        eq(webhookTestEvents.workflowId, input.workflowId),
+        eq(webhookTestEvents.nodeId, input.nodeId),
+        eq(webhookTestEvents.createdBy, input.actorId),
+        eq(webhookTestEvents.id, listenerId),
+        eq(webhookTestEvents.binding, binding),
+        gt(webhookTestEvents.expiresAt, sql`clock_timestamp()`),
+        isNotNull(webhookTestEvents.outputRef),
+      ),
+    )
+    .for('share')
+    .catch(rethrowQueryFailure);
+  return row;
+}
+
+/** The output of the succeeded preview or retained run step the source names. */
+export async function readSourceOutput(
+  client: PoolClient,
+  input: SampleCommand,
+  source: Exclude<SampleSource, { kind: 'confirm' | 'json' | 'webhook_test' }>,
+) {
   const db = drizzle(client);
   const node = alias(nodeRuns, 'node'),
     run = alias(workflowRuns, 'run');
@@ -131,14 +111,5 @@ export async function captureSampleSource(
             ),
           )
           .catch(rethrowQueryFailure);
-  const row = rows[0];
-  if (row === undefined || row.outputRef === null)
-    throw new WorkflowStepSampleError('source_unavailable');
-  return {
-    output: inlineSampleOutput(row.outputRef),
-    kind: source.kind,
-    runId: source.kind === 'run' ? source.runId : null,
-    nodeRunId: source.kind === 'run' ? source.nodeRunId : null,
-    previewId: source.kind === 'preview' ? source.previewRunId : null,
-  };
+  return rows[0];
 }
