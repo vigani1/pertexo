@@ -25,7 +25,7 @@ import {
   createConnection,
   findConnectionCreateReplay,
   revokeConnection,
-} from './commands/manage.repository.js';
+} from './commands/manage.js';
 import {
   findConnectionRotateReplay,
   rotateConnectionSecret,
@@ -33,12 +33,12 @@ import {
 import {
   readConnectionSharing,
   replaceConnectionSharing,
-} from './commands/sharing.repository.js';
+} from './commands/sharing.js';
 import { abandonConnectionTest } from './connection-tests/abandon.repository.js';
-import { completeConnectionTest } from './connection-tests/complete.repository.js';
-import { markConnectionTestDispatched } from './connection-tests/dispatch.repository.js';
-import { resolveConnectionTestSecret } from './connection-tests/resolve-secret.repository.js';
-import { startConnectionTest } from './connection-tests/start.repository.js';
+import { completeConnectionTest } from './connection-tests/complete.js';
+import { markConnectionTestDispatched } from './connection-tests/dispatch.js';
+import { resolveConnectionTestSecret } from './connection-tests/resolve-secret.js';
+import { startConnectionTest } from './connection-tests/start.js';
 import type {
   AbandonConnectionTestInput,
   AssertConnectionSecretCurrentInput,
@@ -61,13 +61,13 @@ import {
   listConnections,
   readConnection,
 } from './discovery/reads.repository.js';
-import { listConnectionUsage } from './discovery/usage.repository.js';
+import { listConnectionUsage } from './discovery/list-usage.js';
 import {
   authorizeOAuth2Connection,
   consumeOAuth2Authorization,
   readOAuth2Client,
   startOAuth2Authorization,
-} from './oauth2/authorizations.repository.js';
+} from './oauth2/authorizations.js';
 import type {
   AuthorizeOAuth2ConnectionInput,
   ConsumeOAuth2AuthorizationInput,
@@ -75,16 +75,14 @@ import type {
   StartOAuth2AuthorizationInput,
 } from './oauth2/oauth2-grant.types.js';
 import { oauth2TokenFlows } from './oauth2/tokens.repository.js';
-import {
-  requireVisibleConnection,
-  selectConnection,
-} from './connections.repository.js';
+import { selectConnection } from './connections.repository.js';
+import { requireVisibleConnection } from './require-visible-connection.js';
 import type { ResolveConnectionLookupSecretInput } from './runtime/connection-resolution.types.js';
-import { resolveConnectionLookupSecret } from './runtime/lookup.repository.js';
+import { resolveConnectionLookupSecret } from './runtime/lookup.js';
 import {
   assertConnectionSecretCurrent,
   resolveConnectionSecret,
-} from './runtime/resolve.repository.js';
+} from './runtime/resolve.js';
 import { withConnectionTransaction } from './transaction.js';
 
 export type ConnectionStore = ReturnType<typeof createConnectionStore>;

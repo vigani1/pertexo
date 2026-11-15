@@ -1,14 +1,7 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
-import {
-  connections,
-  idempotencyRecords as records,
-} from '@pertexo/database/schema';
 
 import type { MarkConnectionTestDispatchedInput } from '../connection.types.js';
 import { CONNECTION_STATUS } from '@pertexo/workflow-model';
@@ -18,7 +11,12 @@ import {
 } from '../connection.errors.js';
 import { selectConnection } from '../connections.repository.js';
 import { connectionTestClaim, connectionTestClaimSchema } from './claim.js';
-import { connectionTestClaimRow } from './claim.repository.js';
+import {
+  connectionTestClaimRow,
+  lockClaimResult,
+  readHealthRevision,
+  storeClaimResult,
+} from './claim.repository.js';
 
 export async function markConnectionTestDispatched(
   client: PoolClient,
@@ -27,13 +25,7 @@ export async function markConnectionTestDispatched(
   const { workspaceId, actorId, connectionId, secretVersionId } = input;
   const { dispatchToken } = input;
   const { ownership, stillClaimed } = connectionTestClaimRow(input);
-  const db = drizzle(client);
-  const [claimRow] = await db
-    .select({ resultRef: records.resultRef })
-    .from(records)
-    .where(ownership)
-    .for('update')
-    .catch(rethrowQueryFailure);
+  const claimRow = await lockClaimResult(client, ownership);
   if (claimRow === undefined)
     throw new ConnectionTestInProgressError(
       'Connection test dispatch ownership was lost',
@@ -59,39 +51,27 @@ export async function markConnectionTestDispatched(
         ? 'revoked'
         : 'settings_changed',
     );
-  const [revision] = await db
-    .select({
-      healthRevision: sql<string>`${connections.healthRevision}::text`,
-    })
-    .from(connections)
-    .where(
-      and(
-        eq(connections.workspaceId, workspaceId),
-        eq(connections.id, connectionId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  const healthRevision = revision?.healthRevision;
+  const healthRevision = await readHealthRevision(
+    client,
+    workspaceId,
+    connectionId,
+  );
   if (healthRevision === undefined)
     throw new ConnectionUnavailableError(
       'Connection health revision is unavailable',
       'unavailable',
     );
-  const marked = await db
-    .update(records)
-    .set({
-      resultRef: connectionTestClaim(
-        dispatchToken,
-        'dispatched',
-        secretVersionId,
-        healthRevision,
-      ),
-      updatedAt: sql`transaction_timestamp()`,
-    })
-    .where(stillClaimed)
-    .returning({ id: records.id })
-    .catch(rethrowQueryFailure);
-  if (marked.length !== 1)
+  const marked = await storeClaimResult(
+    client,
+    stillClaimed,
+    connectionTestClaim(
+      dispatchToken,
+      'dispatched',
+      secretVersionId,
+      healthRevision,
+    ),
+  );
+  if (!marked)
     throw new ConnectionTestInProgressError(
       'Connection test dispatch ownership was lost',
     );
