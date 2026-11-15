@@ -8,7 +8,11 @@ import {
   codeTaskSchema,
   type CodeResult,
 } from '@pertexo/node-sdk';
-import type { RunnerConfig } from '../config/runner-config.js';
+import {
+  RUNNER_FILE_MODES,
+  RUNNER_MANAGER_GROUP_ID,
+  type RunnerConfig,
+} from '../config/runner-config.js';
 import type { createTaskProcessPool } from '../process/pool.js';
 import {
   readCodeFrame as readFrame,
@@ -19,6 +23,12 @@ import {
   CodeTaskRefusedError,
 } from './code-socket.errors.js';
 
+const ROOT_USER_ID = 0;
+/** How long a connection has to send its whole task. */
+const TASK_ADMISSION_TIMEOUT_MILLIS = 5_000;
+// Connections beyond the slots, so a refused caller still hears why.
+const SPARE_CONNECTIONS = 32;
+
 export async function listenForCodeTasks(
   config: RunnerConfig,
   pool: Awaited<ReturnType<typeof createTaskProcessPool>>,
@@ -26,15 +36,16 @@ export async function listenForCodeTasks(
   const directory = dirname(config.socketPath);
   await mkdir(directory, {
     recursive: true,
-    mode: config.mode === 'hardened' ? 0o770 : 0o700,
+    mode: directoryMode(config),
   });
   const owner = await lstat(directory);
   if (!owner.isDirectory() || owner.uid !== process.getuid?.())
     throw new CodeSocketOwnershipError(
       'Code socket directory must belong to its manager',
     );
-  if (config.mode === 'hardened') await chown(directory, 0, 10001);
-  await chmod(directory, config.mode === 'hardened' ? 0o770 : 0o700);
+  if (config.mode === 'hardened')
+    await chown(directory, ROOT_USER_ID, RUNNER_MANAGER_GROUP_ID);
+  await chmod(directory, directoryMode(config));
   await removeStaleSocket(config.socketPath);
   const connections = new Set<Socket>();
   const jobs = new Set<Promise<void>>();
@@ -64,7 +75,7 @@ export async function listenForCodeTasks(
         }
         const admission = AbortSignal.any([
           canceled.signal,
-          AbortSignal.timeout(5_000),
+          AbortSignal.timeout(TASK_ADMISSION_TIMEOUT_MILLIS),
         ]);
         const task = codeTaskSchema.parse(
           await readFrame(socket, CODE_LIMITS.taskBytes, admission),
@@ -99,7 +110,7 @@ export async function listenForCodeTasks(
     jobs.add(job);
     void job.finally(() => jobs.delete(job));
   });
-  server.maxConnections = config.settings.concurrency + 32;
+  server.maxConnections = config.settings.concurrency + SPARE_CONNECTIONS;
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(config.socketPath, () => {
@@ -110,7 +121,12 @@ export async function listenForCodeTasks(
   let identity: Stats | undefined;
   try {
     identity = await lstat(config.socketPath);
-    await chmod(config.socketPath, config.mode === 'hardened' ? 0o660 : 0o600);
+    await chmod(
+      config.socketPath,
+      config.mode === 'hardened'
+        ? RUNNER_FILE_MODES.sharedFile
+        : RUNNER_FILE_MODES.privateFile,
+    );
   } catch (error: unknown) {
     const stopped = new Promise<void>((resolve) => {
       server.close(() => {
@@ -149,4 +165,10 @@ export async function listenForCodeTasks(
           await unlink(config.socketPath);
       })()),
   };
+}
+
+function directoryMode(config: RunnerConfig): number {
+  return config.mode === 'hardened'
+    ? RUNNER_FILE_MODES.sharedDirectory
+    : RUNNER_FILE_MODES.privateDirectory;
 }

@@ -14,6 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
+import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 
 export const workspaceCreationIdempotencyRecords = appSchema.table(
   'workspace_creation_idempotency_records',
@@ -29,7 +30,11 @@ export const workspaceCreationIdempotencyRecords = appSchema.table(
       .notNull()
       .default(sql`'{}'::jsonb`),
     expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' })
-      .default(sql`clock_timestamp() + interval '24 hours'`)
+      .default(
+        sql.raw(
+          `clock_timestamp() + interval '${String(IDEMPOTENCY_KEY_RETENTION_HOURS)} hours'`,
+        ),
+      )
       .notNull(),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

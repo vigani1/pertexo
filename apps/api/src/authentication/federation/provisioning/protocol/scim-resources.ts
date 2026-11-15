@@ -10,6 +10,7 @@ import {
   type DirectoryGroupValues,
 } from '@pertexo/core/identity';
 import { canonicalDocument, requireSupportedInput } from './scim-protocol.js';
+import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 
 const email = z.object({
   value: z.email().max(320),
@@ -33,7 +34,7 @@ const userSchema = z.object({
   emails: z.array(email).min(1).max(DIRECTORY_LIMITS.emailsPerUser),
 });
 const groupSchema = z.object({
-  displayName: z.string().trim().min(1).max(256),
+  displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_CHARACTERS),
   externalId: z.string().min(1).max(512).optional(),
   members: z
     .array(z.object({ value: z.uuid(), type: z.literal('User').optional() }))

@@ -6,6 +6,12 @@ import {
   type CodeDiagnostics,
 } from '@pertexo/node-sdk';
 
+/** What a task's raw log stream may carry before it's cut: in all, and on one line. */
+const LOG_STREAM_LIMITS = Object.freeze({
+  wireBytes: 512 * 1_024,
+  lineCharacters: 16 * 1_024,
+});
+
 const lineSchema = codeDiagnosticsSchema.shape.logs.element;
 export function captureTaskLogs(exceeded: () => void) {
   const decoder = new StringDecoder('utf8');
@@ -17,7 +23,7 @@ export function captureTaskLogs(exceeded: () => void) {
   return {
     append(chunk: Buffer) {
       wire += chunk.length;
-      if (wire > 512 * 1024) {
+      if (wire > LOG_STREAM_LIMITS.wireBytes) {
         truncated = true;
         exceeded();
         return;
@@ -26,7 +32,7 @@ export function captureTaskLogs(exceeded: () => void) {
       for (;;) {
         const at = pending.indexOf('\n');
         if (at === -1) {
-          if (pending.length > 16 * 1024) {
+          if (pending.length > LOG_STREAM_LIMITS.lineCharacters) {
             pending = '';
             truncated = true;
             exceeded();

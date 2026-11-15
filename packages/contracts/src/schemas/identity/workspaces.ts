@@ -11,6 +11,7 @@ import {
   delegatedWorkspaceRoleSchema,
 } from './membership.js';
 import { z } from 'zod';
+import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 
 export { idempotencyKeySchema } from '../shared/transport-headers.js';
 
@@ -72,7 +73,7 @@ export const userProfileResponseSchema = responseSchema(
     .object({
       id: z.uuid(),
       email: z.string().trim().min(3).max(320),
-      displayName: z.string().trim().min(1).max(256),
+      displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_CHARACTERS),
       status: z.enum(['active', 'suspended', 'deleted']),
       revision: userProfileRevisionSchema,
       createdAt: z.iso.datetime(),
@@ -107,7 +108,7 @@ export const workspaceMemberSchema = z
   .object({
     userId: z.uuid(),
     email: z.string().trim().min(3).max(320),
-    displayName: z.string().trim().min(1).max(256),
+    displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_CHARACTERS),
     role: workspaceRoleSchema,
     roleRevision: z.number().int().positive(),
     membershipStatus: z.enum(['active', 'suspended']),

@@ -1,7 +1,11 @@
 import { boundedCodeText } from '../execution/text-primitives.js';
 import { createWriteStream, writeSync } from 'node:fs';
 import { types } from 'node:util';
-import type { CodeTask, CodeErrorCode } from '@pertexo/node-sdk';
+import {
+  CODE_LIMITS,
+  type CodeTask,
+  type CodeErrorCode,
+} from '@pertexo/node-sdk';
 import { encodeCodeJson, InvalidCodeOutput } from '../execution/encode.js';
 import { createTaskConsole } from '../execution/console.js';
 import {
@@ -11,6 +15,13 @@ import {
 } from '../execution/modules.js';
 import { readCodeFrame as readFrame } from '@pertexo/node-sdk/server';
 import type { ChildBoot } from './child-boot.types.js';
+
+// The manager hands each task its control channel as file descriptor 3.
+const CONTROL_DESCRIPTOR = 3;
+const STANDARD_ERROR = 2;
+// V8 puts the function header and its ") {" line before the body, then the
+// body opens with "use strict": the user's first line is the fourth.
+const FUNCTION_WRAPPER_LINES = 3;
 
 const nativeProcess: NodeJS.Process = process;
 const getDescriptor = Object.getOwnPropertyDescriptor;
@@ -61,7 +72,10 @@ const AsyncFunction = async function () {
   console: unknown,
 ) => Promise<unknown>;
 const boot = JSON.parse(nativeProcess.env.CODE_CHILD_BOOT ?? '') as ChildBoot;
-const control = createWriteStream('', { fd: 3, autoClose: false });
+const control = createWriteStream('', {
+  fd: CONTROL_DESCRIPTOR,
+  autoClose: false,
+});
 control.on('error', () => nativeProcess.exit(1));
 const captured = createTaskConsole(boot.console, boot.json);
 let terminal = false;
@@ -85,7 +99,7 @@ function diagnostic(error: unknown) {
       hasOwn(own, 'value') &&
       typeof own.value === 'string'
     )
-      message = boundedCodeText(own.value, 2048);
+      message = boundedCodeText(own.value, CODE_LIMITS.messageCharacters);
     if (nativeError(error)) {
       const ownStack = getDescriptor(error, 'stack');
       const stack: unknown =
@@ -95,12 +109,13 @@ function diagnostic(error: unknown) {
       if (typeof stack === 'string') {
         const location = locate(stack);
         if (location !== null) {
-          line = maximum(1, number(location[1]) - 3);
+          line = maximum(1, number(location[1]) - FUNCTION_WRAPPER_LINES);
           column = maximum(1, number(location[2]));
         }
       }
     }
-  } else if (typeof error === 'string') message = boundedCodeText(error, 2048);
+  } else if (typeof error === 'string')
+    message = boundedCodeText(error, CODE_LIMITS.messageCharacters);
   return {
     logs: [],
     truncated: false,
@@ -198,7 +213,12 @@ try {
         ? error.message +
           ('resource' in error ? ' ' + String(error.resource) : '')
         : 'Unknown startup error';
-    writeSync(2, 'Code process startup: ' + detail.slice(0, 2048) + '\n');
+    writeSync(
+      STANDARD_ERROR,
+      'Code process startup: ' +
+        detail.slice(0, CODE_LIMITS.messageCharacters) +
+        '\n',
+    );
     nativeProcess.exit(1);
   }
   await fail(codeFailureCode(error, phase), error);

@@ -28,6 +28,18 @@ import {
   TaskCanceledError,
 } from './task-process.errors.js';
 
+/** How much of a task process's startup stderr a failure keeps. */
+const STARTUP_STDERR_CHARACTERS = 8_192;
+/** How long a task process has to report ready. */
+const STARTUP_TIMEOUT_MILLIS = 10_000;
+/** The largest ready greeting a task process may send. */
+const GREETING_FRAME_BYTES = 1_024;
+// Each slot's task runs as its own user; native/launch.c accepts only
+// TASK_USER_ID_BASE through TASK_USER_ID_BASE + 15.
+const TASK_USER_ID_BASE = 20_000;
+/** How often a hardened task's memory is read. */
+const MEMORY_CHECK_INTERVAL_MILLIS = 50;
+
 export type TaskSlot = Readonly<{
   run(task: CodeTask, signal: AbortSignal): Promise<CodeResult>;
   stop(): Promise<void>;
@@ -96,8 +108,10 @@ export async function startTaskSlot(
       fail('code.output_invalid');
       return;
     }
-    if (stderr.length < 8192)
-      stderr += chunk.toString('utf8').slice(0, 8192 - stderr.length);
+    if (stderr.length < STARTUP_STDERR_CHARACTERS)
+      stderr += chunk
+        .toString('utf8')
+        .slice(0, STARTUP_STDERR_CHARACTERS - stderr.length);
   });
   if (input === null || control === null) {
     await stop();
@@ -111,11 +125,11 @@ export async function startTaskSlot(
   input.on('error', () => {
     controller.abort();
   });
-  const startup = AbortSignal.timeout(10_000);
+  const startup = AbortSignal.timeout(STARTUP_TIMEOUT_MILLIS);
   try {
     const greeting = await readFrame(
       control,
-      1024,
+      GREETING_FRAME_BYTES,
       AbortSignal.any([signal, startup]),
     );
     const invalidChildGreeting =
@@ -205,7 +219,7 @@ function spawnTaskChild(
       ? spawn(
           fileURLToPath(new URL('../launch', import.meta.url)),
           [
-            String(20000 + ordinal),
+            String(TASK_USER_ID_BASE + ordinal),
             String(config.settings.memoryMiB),
             String(config.settings.maximumSeconds),
             language === 'python'
@@ -301,7 +315,7 @@ function createTaskExecution({
               .finally(() => {
                 checking = false;
               });
-          }, 50)
+          }, MEMORY_CHECK_INTERVAL_MILLIS)
         : undefined;
     let result: CodeResult;
     try {

@@ -11,6 +11,9 @@ import type { createTelemetryLifecycle } from '@pertexo/observability/startup';
 import type * as OperatorRunModule from './execute-operator-command.js';
 import type { OperatorCommandConfig } from './operator-config.js';
 
+/** The most a command's cleanup may take after it ends, within its own timeout. */
+const CLEANUP_TIMEOUT_MILLIS = 10_000;
+
 type ShutdownSignal = 'SIGINT' | 'SIGTERM';
 
 interface OperatorCommandProcess {
@@ -82,7 +85,7 @@ export async function bootstrapOperatorCommand(
     });
     const commandResources = {
       command: config.command,
-      cleanupTimeoutMs: Math.min(config.timeoutMs, 10_000),
+      cleanupTimeoutMs: Math.min(config.timeoutMs, CLEANUP_TIMEOUT_MILLIS),
       database,
       logger,
       signal: AbortSignal.any([

@@ -50,6 +50,9 @@ export type SystemMailFailure = Readonly<{
   status?: number;
 }>;
 
+/** How long a security notice (two-factor turned off, a recovery code used) may still be sent. */
+export const SECURITY_NOTICE_VALIDITY_MILLIS = 24 * 60 * 60_000;
+
 /** Fixed guidance only: provider replies can contain credentials or message content. */
 export const SYSTEM_MAIL_FAILURE_GUIDANCE = {
   authentication:

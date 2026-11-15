@@ -4,6 +4,10 @@
  * protocol code stays a literal where it is read.
  */
 export const NOT_LIMITS = Object.freeze({
+  'apps/cli/src/main.ts: 2':
+    'process.argv: the node binary and the script come before the arguments',
+  'apps/ops/src/identity/two-factor-recovery-config.ts: 2':
+    'process.argv: the node binary and the script come before the arguments',
   'packages/artifact-store/src/s3/telemetry.ts: 404':
     'S3 answers not-found with HTTP 404',
   'packages/artifact-store/src/s3/telemetry.ts: 412':

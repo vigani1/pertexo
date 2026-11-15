@@ -27,7 +27,18 @@ const options = {
 const id = workflowIdentifierSchema.transform((value) => value.toLowerCase());
 const workspace = { workspaceId: id };
 const target = { ...workspace, workflowId: id };
-const body = { bodyFile: z.string().min(1).max(4_096) };
+/** The longest body-file path a command accepts. */
+const BODY_FILE_PATH_MAX_CHARACTERS = 4_096;
+/** How long `runs wait` waits by default, and at most. */
+const RUN_WAIT_SECONDS = Object.freeze({
+  default: 5 * 60,
+  maximum: 24 * 60 * 60,
+});
+/** A command is a group and an action (`workflows list`); only `whoami` stands alone. */
+const COMMAND_WORDS = 2;
+const body = {
+  bodyFile: z.string().min(1).max(BODY_FILE_PATH_MAX_CHARACTERS),
+};
 const commandSchema = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('whoami'), ...workspace }).strict(),
   z
@@ -104,7 +115,12 @@ const commandSchema = z.discriminatedUnion('operation', [
       operation: z.literal('runs wait'),
       ...workspace,
       runId: id,
-      timeoutSeconds: z.coerce.number().int().min(1).max(86_400).default(300),
+      timeoutSeconds: z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(RUN_WAIT_SECONDS.maximum)
+        .default(RUN_WAIT_SECONDS.default),
     })
     .strict(),
   z
@@ -162,7 +178,7 @@ export function parseAutomationArguments(
   assertUniqueOptions(flags);
   if ((flags.values.help ?? false) || args.length === 0) return 'help';
   const whoami = flags.positionals.join(' ') === 'whoami';
-  if (!whoami && flags.positionals.length !== 2)
+  if (!whoami && flags.positionals.length !== COMMAND_WORDS)
     return invalidArgument(
       'Use one command group and action. Run pertexo --help.',
     );

@@ -19,6 +19,7 @@ export { authenticationMailAssociatedData } from './mail/mail-associated-data.js
 export { createSmtpClient } from './mail/smtp.js';
 export { parseSystemMailConfig } from './mail/config.js';
 export {
+  SECURITY_NOTICE_VALIDITY_MILLIS,
   SYSTEM_MAIL_FAILURE_GUIDANCE,
   systemMailFailureCode,
   systemMailFailureInstruction,
