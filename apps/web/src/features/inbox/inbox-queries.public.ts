@@ -1,5 +1,5 @@
+export { inboxKeys } from './data/inbox-keys';
 export {
-  inboxKeys,
   inboxSummaryQueryOptions,
   inboxThreadsInfiniteQueryOptions,
 } from './data/inbox.queries';

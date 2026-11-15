@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { markInboxRead, markInboxThreadRead } from './inbox.api';
-import { inboxKeys } from './inbox.queries';
+import { inboxKeys } from './inbox-keys';
 
 export type InboxScope = Readonly<{
   apiClient: ApiClient;

@@ -3,7 +3,7 @@ import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
-import { useNoticeUnsubscribe } from '../data/notice-preferences.mutations';
+import { useNoticeUnsubscribe } from '../data/notice-unsubscribe.mutations';
 /** No query key or automatic request contains the fragment capability. */
 export function NoticeUnsubscribePage({
   apiClient,

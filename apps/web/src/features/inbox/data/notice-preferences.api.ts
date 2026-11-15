@@ -2,14 +2,12 @@ import {
   noticePreferencesResponseSchema,
   noticeCommandResponseSchema,
   noticeSubscriptionSchema,
-  noticeUnsubscribeResponseSchema,
   type NoticePreferencesRequest,
   type NoticeDefaultsRequest,
   type NoticeSubscriptionRequest,
   type NoticeSubjectParams,
 } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-import type { ApiClient } from '@/lib/api/client';
 export type NoticeSubject = Pick<
   NoticeSubjectParams,
   'subjectKind' | 'subjectId'
@@ -96,19 +94,6 @@ export function replaceNotificationSubscription(
     response: {
       kind: 'json',
       decode: (value) => noticeCommandResponseSchema.parse(value),
-    },
-  });
-}
-export function unsubscribeFromNotices(apiClient: ApiClient, token: string) {
-  return apiClient.request({
-    path: '/v1/notifications/unsubscribe',
-    method: 'POST',
-    csrf: 'external',
-    headers: { 'X-Pertexo-Unsubscribe-Key': token },
-    body: {},
-    response: {
-      kind: 'json',
-      decode: (value) => noticeUnsubscribeResponseSchema.parse(value),
     },
   });
 }
