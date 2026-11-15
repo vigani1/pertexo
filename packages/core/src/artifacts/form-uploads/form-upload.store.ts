@@ -46,6 +46,12 @@ import {
   type LoadedUploadTarget,
 } from './targets.repository.js';
 
+// Unsent files go after a day, or an hour for a public link.
+const UNSENT_UPLOAD_SECONDS = Object.freeze({
+  signedIn: 24 * 60 * 60,
+  publicLink: 60 * 60,
+});
+
 function inTarget<T>(
   pool: Pool,
   input: FormUploadSession,
@@ -196,9 +202,11 @@ async function finalizeFormUpload(
       artifactId: bound.artifact.id,
       purpose: FORM_UPLOAD_PURPOSE,
       expectedMetadata: input.expectedMetadata,
-      // Unsent files go after a day, or an hour for a public link; a
-      // submission's run keeps them.
-      retainForSeconds: target.capabilityHash === null ? 86_400 : 3_600,
+      // A submission's run keeps them.
+      retainForSeconds:
+        target.capabilityHash === null
+          ? UNSENT_UPLOAD_SECONDS.signedIn
+          : UNSENT_UPLOAD_SECONDS.publicLink,
     });
     return { artifact, filename: bound.filename };
   });
