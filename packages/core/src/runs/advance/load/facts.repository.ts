@@ -4,7 +4,7 @@ import { runEvents } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { WORKFLOW_OBSERVATION_WINDOW_LIMITS } from '@pertexo/workflow-model';
-import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
 
 import {
   attachPhysicalAttempts,

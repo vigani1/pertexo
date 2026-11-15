@@ -24,7 +24,7 @@ import { admin } from '../lifecycle/calls/calls.fixture.js';
 import { waitForApplicationLock } from '../support/postgres/lock-coordination.js';
 import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { RunVariableSnapshotUnavailableError } from '../../src/runs/commands/acceptance/variables.repository.js';
+import { RunVariableSnapshotUnavailableError } from '../../src/runs/commands/acceptance/run-admission.errors.js';
 import { createWorkflowRunDatabase } from '../../src/runs/workflow-run.store.js';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
 import { maintenanceUrl, userId } from '../lifecycle/retention.support.js';

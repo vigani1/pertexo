@@ -1,6 +1,6 @@
 import { isStoredDataError } from '../../shared/stored-values.js';
 import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
-import { CoordinatorRunStateCorruptError } from '../state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../execution-state.errors.js';
 import type { Pool } from 'pg';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {

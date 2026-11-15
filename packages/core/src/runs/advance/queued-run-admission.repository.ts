@@ -7,7 +7,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   CoordinatorRunStateCorruptError,
   ExecutionStateConflictError,
-} from '../state-errors.js';
+} from '../execution-state.errors.js';
 
 /** The caller holds the workspace/current entitlement fence, then run and capacity locks. */
 export async function assertRunStartDeadline(

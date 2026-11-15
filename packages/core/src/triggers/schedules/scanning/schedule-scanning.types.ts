@@ -1,7 +1,7 @@
 import type { ScheduleFailureReason } from '../../trigger-failure.js';
 import type { claimSchema } from './schedule-claim.schemas.js';
 
-import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.types.js';
 
 import type { Pool } from 'pg';
 import type { z } from 'zod';

@@ -17,7 +17,7 @@ import type { WorkflowCallIntent } from '@pertexo/workflow-engine';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
 import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
-import { CoordinatorRunStateCorruptError } from '../state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../execution-state.errors.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 
 async function preparedInput(

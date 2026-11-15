@@ -18,7 +18,7 @@ import type { Pool, PoolClient } from 'pg';
 import {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
-} from '../state-errors.js';
+} from '../execution-state.errors.js';
 import type {
   CoordinatorAdvanceDelivery,
   RunAdvanceResult,

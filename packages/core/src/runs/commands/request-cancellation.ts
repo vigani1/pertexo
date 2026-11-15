@@ -2,7 +2,7 @@ import {
   lockRunCancellation,
   markRunCancelRequested,
 } from './cancellation.repository.js';
-import { ExecutionStateConflictError } from '../state-errors.js';
+import { ExecutionStateConflictError } from '../execution-state.errors.js';
 import { TERMINAL_RUN_STATUSES } from '../statuses.js';
 import {
   appendLockedRunEvent,

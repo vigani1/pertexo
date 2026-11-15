@@ -1,5 +1,5 @@
-export { RunRequiresFormError } from './commands/acceptance/forms.repository.js';
-export { ExecutionStateConflictError } from './state-errors.js';
+export { RunRequiresFormError } from './commands/acceptance/run-admission.errors.js';
+export { ExecutionStateConflictError } from './execution-state.errors.js';
 export { readRunEventsAfter } from './queries/history/events.repository.js';
 export {
   WorkspaceRunAdmissionDeniedError,
@@ -11,7 +11,7 @@ export type {
   PublishedWorkflowReader,
   PublishedWorkflow,
 } from './queries/execution/workflow-execution.types.js';
-export type { InitialCheckpointFactory } from './commands/initial-checkpoint.js';
+export type { InitialCheckpointFactory } from './commands/initial-checkpoint.types.js';
 export { createWorkflowRunDatabase } from './workflow-run.store.js';
 export type { WorkflowRunDatabase } from './workflow-run.store.js';
 export {
@@ -36,7 +36,7 @@ export type {
 export {
   CoordinatorDeliveryMismatchError,
   CoordinatorRunStateCorruptError,
-} from './state-errors.js';
+} from './execution-state.errors.js';
 export type {
   RunAdvanceDecision,
   RunAdvanceInput,
@@ -94,7 +94,7 @@ export {
 } from './pending-tasks/responses/pending-task.errors.js';
 export type { PendingTaskStore } from './pending-tasks/responses/pending-task.store.js';
 
-export { RunVariableSnapshotUnavailableError } from './commands/acceptance/variables.repository.js';
+export { RunVariableSnapshotUnavailableError } from './commands/acceptance/run-admission.errors.js';
 
 export { createWorkflowExecutionReader } from './queries/execution/source.repository.js';
 export type {
@@ -105,7 +105,7 @@ export type {
 export type { UsageTrendsInput } from './queries/usage/trends.js';
 
 export { createRunValuesStore } from './values/run-values.store.js';
-export { RunValuesLimitError } from './values/run-values.js';
+export { RunValuesLimitError } from './values/run-values.errors.js';
 export type { RunValuesStore } from './values/run-values.store.js';
 export { ExecutionCapabilityExpiredError } from '../attempts/node-attempt.errors.js';
 

@@ -14,7 +14,7 @@ import {
 } from '@pertexo/database/schema';
 import { WorkflowAlreadyRunningError } from '../../../runs/commands/acceptance/run-admission.errors.js';
 import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
-import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../../runs/commands/initial-checkpoint.types.js';
 import { createHash } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 

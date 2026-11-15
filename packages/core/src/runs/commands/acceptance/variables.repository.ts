@@ -3,14 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { workflowRuns } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { captureWorkspaceVariableRevision } from '../../../variables/head.repository.js';
-export class RunVariableSnapshotUnavailableError extends Error {
-  override readonly name = 'RunVariableSnapshotUnavailableError';
-  constructor() {
-    super(
-      'The source run’s workspace variables have expired. Start a new run to use current values.',
-    );
-  }
-}
+import { RunVariableSnapshotUnavailableError } from './run-admission.errors.js';
 /** Replay precedes inheritance; neither may silently fall back to mutable workspace values. */
 export async function variableRevisionForAcceptance(
   transaction: WorkspaceTransaction,

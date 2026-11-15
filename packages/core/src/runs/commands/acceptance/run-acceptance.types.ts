@@ -1,4 +1,4 @@
-import type { RunInputValidator } from '../initial-checkpoint.js';
+import type { RunInputValidator } from '../initial-checkpoint.types.js';
 import type { RunStatus as EngineRunStatus } from '@pertexo/workflow-engine';
 import type { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.repository.js';
 import type { WorkflowRecoverySummary } from '../../recovery/workflow-recovery.types.js';

@@ -1,4 +1,4 @@
-import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.types.js';
 
 import type { PublishedWorkflow } from '../../runs/queries/execution/workflow-execution.types.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';

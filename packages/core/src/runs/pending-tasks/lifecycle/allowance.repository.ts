@@ -3,7 +3,7 @@ import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { instanceCapacity, pendingRunTasks } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
 export type PendingTaskAllowance = Readonly<{ count: number; limit: number }>;
 /** Caller holds the workspace execution counter lock across admission. */
 export async function readPendingTaskAllowance(

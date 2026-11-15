@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
   ExecutionStateConflictError,
   RunEventGapError,
-} from '../../state-errors.js';
+} from '../../execution-state.errors.js';
 import { serializeStoredExecutionJsonValue } from '../../../shared/stored-execution.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 

@@ -8,7 +8,7 @@ import {
 } from '@pertexo/database/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { InitialCheckpointFactory } from '../../../src/runs/commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../../src/runs/commands/initial-checkpoint.types.js';
 import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/schedule-scanner.store.js';
 import { createScheduleTriggerTestEnvironment } from '../../support/schedule-triggers.js';
 

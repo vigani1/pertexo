@@ -4,6 +4,7 @@ import {
   StoredExecutionValueInvalidError,
 } from '@pertexo/node-sdk';
 import type { RunAdvanceState } from './run-advance.types.js';
+import { RunResultUnavailableError } from './run-advance.errors.js';
 import type { CallableResultDecision } from '@pertexo/workflow-engine/server';
 import {
   resolveValueSource,
@@ -14,10 +15,6 @@ import {
   isTemporaryExpressionFailure,
   type ExpressionEvaluator,
 } from '@pertexo/workflow-model/server';
-
-class RunResultUnavailableError extends Error {
-  override readonly name = 'RunResultUnavailableError';
-}
 
 /** Read retained physical outputs only for the provisional success transition. */
 export async function resolveRunResult(

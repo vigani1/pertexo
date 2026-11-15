@@ -18,7 +18,7 @@ import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacit
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.repository.js';
 import type { PoolClient } from 'pg';
 
-import { CoordinatorRunStateCorruptError } from '../../state-errors.js';
+import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
 import type { CoordinatorCommitRow } from '../load/coordinator-state.repository.js';
 import { canonicalTimestamp } from '../load/fact-admission.js';
 import { scheduleRunInputSchema } from '../../../triggers/schedules/schedule-run-input.schemas.js';

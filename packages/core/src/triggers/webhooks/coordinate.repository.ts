@@ -5,7 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type { PublishedWorkflow } from '../../runs/queries/execution/workflow-execution.types.js';
 import { acceptWorkflowRun } from '../../runs/commands/acceptance/accept.js';
-import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.js';
+import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.types.js';
 import type { AcceptVerifiedWebhookDeliveryInput } from './runtime/webhook-runtime.types.js';
 import { coordinateEvent } from '../coordination/accept.repository.js';
 import type { PreparedEventCoordination } from '../coordination/event-coordination.types.js';

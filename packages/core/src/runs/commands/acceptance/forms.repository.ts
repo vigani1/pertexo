@@ -9,9 +9,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import type { StoredExecutionValue } from '@pertexo/database/schema';
-export class RunRequiresFormError extends Error {
-  override readonly name = 'RunRequiresFormError';
-}
+import { RunRequiresFormError } from './run-admission.errors.js';
 
 /** A replay may repeat a captured submission, never invent its server-owned actor or time. */
 export async function requireFormAdmission(
