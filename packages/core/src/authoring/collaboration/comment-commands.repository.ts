@@ -1,12 +1,4 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  workflowCommentThreads,
-  workflowComments,
-  workflowDrafts,
-} from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import {
   workflowNodes,
@@ -14,8 +6,12 @@ import {
 } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
-import { WorkflowCollaborationError } from './workflow-collaboration.errors.js';
+import {
+  requireThread,
+  WorkflowCollaborationError,
+} from './workflow-collaboration.errors.js';
 import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
+import type { CollaborationScope } from './workflow-collaboration.types.js';
 import type { EnterCollaboration } from './authority.repository.js';
 import type {
   CollaborationCommand,
@@ -26,34 +22,25 @@ import type {
   SetThreadStatusInput,
 } from './workflow-collaboration.types.js';
 import { lockCommentThread } from './comment-threads.repository.js';
-import { syncCommentMentions } from './mentions.repository.js';
 import { runCommentCommand } from './run-comment-command.js';
+import {
+  advanceThread,
+  deleteComment,
+  deleteCommentThread,
+  insertComment,
+  insertCommentThread,
+  lockComment,
+  setCommentThreadStatus,
+  shareDraftGraph,
+  updateCommentBody,
+} from './comments.repository.js';
+import { stepSnapshotLabel } from './comment-step-label.js';
+import {
+  replaceCommentMentions,
+  shareMentionedMembers,
+} from './mentions.repository.js';
+import { mentionsReachable } from './mention-access.js';
 
-/** A former step's label as a thread keeps it, in UTF-16 units. */
-const STEP_LABEL_MAX_UNITS = 256;
-const ELLIPSIS = '…';
-async function insertComment(
-  client: PoolClient,
-  input: CollaborationCommand & {
-    threadId: string;
-    body: string;
-    mentionUserIds: string[];
-  },
-) {
-  const commentId = generatePersistedId();
-  await drizzle(client)
-    .insert(workflowComments)
-    .values({
-      workspaceId: input.workspaceId,
-      id: commentId,
-      threadId: input.threadId,
-      authorId: input.actorId,
-      body: input.body,
-    })
-    .catch(rethrowQueryFailure);
-  await syncCommentMentions(client, input, commentId, input.mentionUserIds);
-  return commentId;
-}
 async function requireOwnComment(
   client: PoolClient,
   input: CollaborationCommand & {
@@ -62,23 +49,7 @@ async function requireOwnComment(
     expectedRevision: number;
   },
 ) {
-  const comment = (
-    await drizzle(client)
-      .select({
-        authorId: workflowComments.authorId,
-        revision: workflowComments.revision,
-      })
-      .from(workflowComments)
-      .where(
-        and(
-          eq(workflowComments.workspaceId, input.workspaceId),
-          eq(workflowComments.threadId, input.threadId),
-          eq(workflowComments.id, input.commentId),
-        ),
-      )
-      .for('update')
-      .catch(rethrowQueryFailure)
-  )[0];
+  const comment = await lockComment(client, input);
   if (comment === undefined)
     throw new WorkflowNotFoundError('Comment is not visible');
   if (comment.authorId !== input.actorId)
@@ -112,19 +83,6 @@ const commandResult = (
   threadDeleted,
   replayed: false,
 });
-/** Former-step metadata stays bounded without splitting a displayed grapheme. */
-function stepSnapshotLabel(value: string): string {
-  if (value.length <= STEP_LABEL_MAX_UNITS) return value;
-  let label = '';
-  for (const { segment } of new Intl.Segmenter('und', {
-    granularity: 'grapheme',
-  }).segment(value)) {
-    if (label.length + segment.length > STEP_LABEL_MAX_UNITS - ELLIPSIS.length)
-      break;
-    label += segment;
-  }
-  return label + ELLIPSIS;
-}
 export function collaborationCommands(enter: EnterCollaboration) {
   return {
     create: (input: CreateCommentInput) => createCommentThread(enter, input),
@@ -132,7 +90,7 @@ export function collaborationCommands(enter: EnterCollaboration) {
     edit: (input: EditCommentInput) => editComment(enter, input),
     remove: (input: RemoveCommentInput) => removeComment(enter, input),
     setStatus: (input: SetThreadStatusInput) =>
-      setCommentThreadStatus(enter, input),
+      changeCommentThreadStatus(enter, input),
   };
 }
 
@@ -150,24 +108,12 @@ function createCommentThread(
     write: async (client) => {
       let stepLabel: string | null = null;
       if (input.stepId !== null) {
-        const draft = (
-          await drizzle(client)
-            .select({ graphJson: workflowDrafts.graphJson })
-            .from(workflowDrafts)
-            .where(
-              and(
-                eq(workflowDrafts.workspaceId, input.workspaceId),
-                eq(workflowDrafts.workflowId, input.workflowId),
-              ),
-            )
-            .for('share')
-            .catch(rethrowQueryFailure)
-        )[0];
-        if (draft === undefined)
+        const graphJson = await shareDraftGraph(client, input);
+        if (graphJson === undefined)
           throw new WorkflowNotFoundError('Draft is not visible');
         const matches = [
           ...workflowNodes(
-            decodeStoredValue(() => parseWorkflowGraphDraft(draft.graphJson)),
+            decodeStoredValue(() => parseWorkflowGraphDraft(graphJson)),
           ),
         ].filter((node) => node.id === input.stepId);
         if (matches.length !== 1)
@@ -180,19 +126,16 @@ function createCommentThread(
         stepLabel = stepSnapshotLabel(step.label ?? step.definition.key);
       }
       const threadId = generatePersistedId();
-      await drizzle(client)
-        .insert(workflowCommentThreads)
-        .values({
-          workspaceId: input.workspaceId,
-          id: threadId,
-          workflowId: input.workflowId,
-          stepId: input.stepId,
-          stepLabel,
-          createdBy: input.actorId,
-          commentCount: 1,
-        })
-        .catch(rethrowQueryFailure);
-      const commentId = await insertComment(client, { ...input, threadId });
+      await insertCommentThread(client, {
+        ...input,
+        threadId,
+        stepId: input.stepId,
+        stepLabel,
+      });
+      const commentId = await commentWithMentions(client, {
+        ...input,
+        threadId,
+      });
       return commandResult(threadId, commentId, { revision: 1 });
     },
   });
@@ -210,27 +153,14 @@ function replyToCommentThread(
       mentionUserIds: input.mentionUserIds,
     },
     write: async (client) => {
-      const thread = await lockCommentThread(client, input);
+      const thread = requireThread(await lockCommentThread(client, input));
       if (thread.status !== 'open')
         throw new WorkflowCollaborationError(
           'conflict',
           'Reopen this discussion before replying. Your text is kept.',
         );
-      const commentId = await insertComment(client, input);
-      await drizzle(client)
-        .update(workflowCommentThreads)
-        .set({
-          revision: sql`${workflowCommentThreads.revision}+1`,
-          updatedAt: sql`clock_timestamp()`,
-          commentCount: sql`${workflowCommentThreads.commentCount}+1`,
-        })
-        .where(
-          and(
-            eq(workflowCommentThreads.workspaceId, input.workspaceId),
-            eq(workflowCommentThreads.id, input.threadId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
+      const commentId = await commentWithMentions(client, input);
+      await advanceThread(client, input, 1);
       return commandResult(input.threadId, commentId, { revision: 1 });
     },
   });
@@ -250,43 +180,16 @@ function editComment(
       expectedRevision: input.expectedRevision,
     },
     write: async (client) => {
-      await lockCommentThread(client, input);
+      requireThread(await lockCommentThread(client, input));
       await requireOwnComment(client, input);
-      await drizzle(client)
-        .update(workflowComments)
-        .set({
-          body: input.body,
-          revision: sql`${workflowComments.revision}+1`,
-          editedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(workflowComments.workspaceId, input.workspaceId),
-            eq(workflowComments.threadId, input.threadId),
-            eq(workflowComments.id, input.commentId),
-            eq(workflowComments.revision, input.expectedRevision),
-          ),
-        )
-        .catch(rethrowQueryFailure);
+      await updateCommentBody(client, input);
       await syncCommentMentions(
         client,
         input,
         input.commentId,
         input.mentionUserIds,
       );
-      await drizzle(client)
-        .update(workflowCommentThreads)
-        .set({
-          revision: sql`${workflowCommentThreads.revision}+1`,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(workflowCommentThreads.workspaceId, input.workspaceId),
-            eq(workflowCommentThreads.id, input.threadId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
+      await advanceThread(client, input, 0);
       return commandResult(input.threadId, input.commentId, {
         revision: input.expectedRevision + 1,
       });
@@ -306,45 +209,12 @@ function removeComment(
       expectedRevision: input.expectedRevision,
     },
     write: async (client) => {
-      const thread = await lockCommentThread(client, input);
+      const thread = requireThread(await lockCommentThread(client, input));
       await requireOwnComment(client, input);
-      await drizzle(client)
-        .delete(workflowComments)
-        .where(
-          and(
-            eq(workflowComments.workspaceId, input.workspaceId),
-            eq(workflowComments.threadId, input.threadId),
-            eq(workflowComments.id, input.commentId),
-            eq(workflowComments.revision, input.expectedRevision),
-          ),
-        )
-        .catch(rethrowQueryFailure);
+      await deleteComment(client, input);
       const empty = thread.commentCount === 1;
-      if (empty)
-        await drizzle(client)
-          .delete(workflowCommentThreads)
-          .where(
-            and(
-              eq(workflowCommentThreads.workspaceId, input.workspaceId),
-              eq(workflowCommentThreads.id, input.threadId),
-            ),
-          )
-          .catch(rethrowQueryFailure);
-      else
-        await drizzle(client)
-          .update(workflowCommentThreads)
-          .set({
-            revision: sql`${workflowCommentThreads.revision}+1`,
-            updatedAt: sql`clock_timestamp()`,
-            commentCount: sql`${workflowCommentThreads.commentCount}-1`,
-          })
-          .where(
-            and(
-              eq(workflowCommentThreads.workspaceId, input.workspaceId),
-              eq(workflowCommentThreads.id, input.threadId),
-            ),
-          )
-          .catch(rethrowQueryFailure);
+      if (empty) await deleteCommentThread(client, input);
+      else await advanceThread(client, input, -1);
       return commandResult(input.threadId, input.commentId, {
         revision: input.expectedRevision + 1,
         deleted: true,
@@ -354,7 +224,7 @@ function removeComment(
   });
 }
 
-function setCommentThreadStatus(
+function changeCommentThreadStatus(
   enter: EnterCollaboration,
   input: SetThreadStatusInput,
 ): Promise<WorkflowCommentCommandResult> {
@@ -366,33 +236,46 @@ function setCommentThreadStatus(
       expectedRevision: input.expectedRevision,
     },
     write: async (client) => {
-      const thread = await lockCommentThread(client, input);
+      const thread = requireThread(await lockCommentThread(client, input));
       if (thread.revision !== input.expectedRevision)
         throw new WorkflowCollaborationError(
           'conflict',
           'This discussion changed. Review its latest state before resolving or reopening it.',
         );
-      await drizzle(client)
-        .update(workflowCommentThreads)
-        .set({
-          revision: sql`${workflowCommentThreads.revision}+1`,
-          updatedAt: sql`clock_timestamp()`,
-          status: input.status,
-        })
-        .where(
-          and(
-            and(
-              eq(workflowCommentThreads.workspaceId, input.workspaceId),
-              eq(workflowCommentThreads.id, input.threadId),
-            ),
-            eq(workflowCommentThreads.revision, input.expectedRevision),
-          ),
-        )
-        .catch(rethrowQueryFailure);
+      await setCommentThreadStatus(client, input);
       return commandResult(input.threadId, null, {
         revision: input.expectedRevision + 1,
       });
     },
     status: input.status,
   });
+}
+
+async function commentWithMentions(
+  client: PoolClient,
+  input: Parameters<typeof insertComment>[1] & { mentionUserIds: string[] },
+) {
+  const commentId = await insertComment(client, input);
+  await syncCommentMentions(client, input, commentId, input.mentionUserIds);
+  return commentId;
+}
+
+async function syncCommentMentions(
+  client: PoolClient,
+  input: CollaborationScope,
+  commentId: string,
+  userIds: readonly string[],
+) {
+  if (
+    userIds.length > 0 &&
+    !mentionsReachable(
+      await shareMentionedMembers(client, input, userIds),
+      userIds,
+    )
+  )
+    throw new WorkflowCollaborationError(
+      'conflict',
+      'A mentioned person no longer has access. Remove them and review the comment before trying again.',
+    );
+  await replaceCommentMentions(client, input, commentId, userIds);
 }

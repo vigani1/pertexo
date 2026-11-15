@@ -11,13 +11,11 @@ import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import { rolesForCapability } from '@pertexo/policy';
 import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
-import type { EnterCollaboration } from './authority.repository.js';
-import { WorkflowCollaborationError } from './workflow-collaboration.errors.js';
 import type {
   HeartbeatInput,
   PresenceInput,
 } from './workflow-collaboration.types.js';
-async function readPresence(
+export async function readPresence(
   client: PoolClient,
   input: PresenceInput,
 ): Promise<WorkflowPresence> {
@@ -68,40 +66,8 @@ async function readPresence(
   return { people };
 }
 
-export function collaborationPresence(enter: EnterCollaboration) {
-  return {
-    presence: (input: PresenceInput): Promise<WorkflowPresence> =>
-      enter(input, { browsing: true }, async (client) => {
-        return readPresence(client, input);
-      }),
-    heartbeat: (input: HeartbeatInput): Promise<{ accepted: boolean }> =>
-      enter(
-        input,
-        { lock: 'update', editing: input.editing },
-        async (client) => {
-          return heartbeatPresence(client, input);
-        },
-      ),
-    leave: (input: PresenceInput): Promise<void> =>
-      enter(input, {}, async (client) => {
-        await drizzle(client)
-          .delete(workflowPresenceLeases)
-          .where(
-            and(
-              eq(workflowPresenceLeases.workspaceId, input.workspaceId),
-              eq(workflowPresenceLeases.workflowId, input.workflowId),
-              eq(workflowPresenceLeases.userId, input.actorId),
-              eq(workflowPresenceLeases.tabId, input.tabId),
-            ),
-          )
-          .catch(rethrowQueryFailure);
-      }),
-  };
-}
-
-async function heartbeatPresence(client: PoolClient, input: HeartbeatInput) {
-  const db = drizzle(client),
-    lease = workflowPresenceLeases;
+function presenceScopes(input: HeartbeatInput) {
+  const lease = workflowPresenceLeases;
   const scope = and(
     eq(lease.workspaceId, input.workspaceId),
     eq(lease.workflowId, input.workflowId),
@@ -111,34 +77,53 @@ async function heartbeatPresence(client: PoolClient, input: HeartbeatInput) {
     eq(lease.userId, input.actorId),
     eq(lease.tabId, input.tabId),
   );
-  await db
+  return { scope, own };
+}
+
+/** Drops the workflow's expired presence leases. */
+export async function pruneExpiredPresence(
+  client: PoolClient,
+  input: HeartbeatInput,
+) {
+  const lease = workflowPresenceLeases;
+  const { scope } = presenceScopes(input);
+  await drizzle(client)
     .delete(lease)
     .where(and(scope, lte(lease.expiresAt, sql`clock_timestamp()`)))
     .catch(rethrowQueryFailure);
-  const existing = await db
+}
+
+/** Whether this tab already holds a lease. */
+export async function holdsPresence(client: PoolClient, input: HeartbeatInput) {
+  const lease = workflowPresenceLeases;
+  const { own } = presenceScopes(input);
+  const existing = await drizzle(client)
     .select({ sequence: lease.sequence })
     .from(lease)
     .where(own)
     .catch(rethrowQueryFailure);
-  if (existing.length === 0) {
-    const [counts] = await db
-      .select({
-        total: sql<number>`count(*)::integer`,
-        own: sql<number>`count(*) filter(where ${lease.userId}=${input.actorId})::integer`,
-      })
-      .from(lease)
-      .where(scope)
-      .catch(rethrowQueryFailure);
-    if (counts === undefined) throw new Error('Presence counts missing');
-    if (
-      counts.total >= COLLABORATION_LIMITS.presence ||
-      counts.own >= COLLABORATION_LIMITS.tabs
-    )
-      throw new WorkflowCollaborationError(
-        'limit',
-        'Presence is full for this workflow. You can still edit and save normally.',
-      );
-  }
+  return existing.length > 0;
+}
+
+/** The workflow's leases, all and this person's. */
+export async function countPresence(client: PoolClient, input: HeartbeatInput) {
+  const lease = workflowPresenceLeases;
+  const { scope } = presenceScopes(input);
+  const [counts] = await drizzle(client)
+    .select({
+      total: sql<number>`count(*)::integer`,
+      own: sql<number>`count(*) filter(where ${lease.userId}=${input.actorId})::integer`,
+    })
+    .from(lease)
+    .where(scope)
+    .catch(rethrowQueryFailure);
+  return counts;
+}
+
+/** Stores the heartbeat unless a later one already did; true when it was stored. */
+export async function storePresence(client: PoolClient, input: HeartbeatInput) {
+  const db = drizzle(client),
+    lease = workflowPresenceLeases;
   const stored = await db
     .insert(lease)
     .values({
@@ -166,5 +151,20 @@ async function heartbeatPresence(client: PoolClient, input: HeartbeatInput) {
       setWhere: sql`${lease.sequence}<excluded.sequence`,
     })
     .catch(rethrowQueryFailure);
-  return { accepted: stored.rowCount === 1 };
+  return stored.rowCount === 1;
+}
+
+/** Ends this tab's presence. */
+export async function leavePresence(client: PoolClient, input: PresenceInput) {
+  await drizzle(client)
+    .delete(workflowPresenceLeases)
+    .where(
+      and(
+        eq(workflowPresenceLeases.workspaceId, input.workspaceId),
+        eq(workflowPresenceLeases.workflowId, input.workflowId),
+        eq(workflowPresenceLeases.userId, input.actorId),
+        eq(workflowPresenceLeases.tabId, input.tabId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }

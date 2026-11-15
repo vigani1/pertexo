@@ -8,42 +8,40 @@ import {
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { hasCapability } from '@pertexo/policy';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { WorkflowCollaborationError } from './workflow-collaboration.errors.js';
 import type { CollaborationScope } from './workflow-collaboration.types.js';
-export async function syncCommentMentions(
+/** The active members among the mentioned people, with their roles, shared while the comment is written. */
+export async function shareMentionedMembers(
+  client: PoolClient,
+  input: CollaborationScope,
+  userIds: readonly string[],
+) {
+  const member = alias(workspaceMemberships, 'member'),
+    actor = alias(users, 'actor');
+  const members = await drizzle(client)
+    .select({ userId: member.userId, role: member.role })
+    .from(member)
+    .innerJoin(actor, eq(actor.id, member.userId))
+    .where(
+      and(
+        eq(member.workspaceId, input.workspaceId),
+        inArray(member.userId, userIds),
+        eq(member.status, 'active'),
+        eq(actor.status, 'active'),
+      ),
+    )
+    .for('share', { of: [member, actor] })
+    .catch(rethrowQueryFailure);
+  return members;
+}
+
+/** Leaves exactly these people mentioned on the comment. */
+export async function replaceCommentMentions(
   client: PoolClient,
   input: CollaborationScope,
   commentId: string,
   userIds: readonly string[],
 ) {
-  if (userIds.length > 0) {
-    const member = alias(workspaceMemberships, 'member'),
-      actor = alias(users, 'actor');
-    const members = await drizzle(client)
-      .select({ userId: member.userId, role: member.role })
-      .from(member)
-      .innerJoin(actor, eq(actor.id, member.userId))
-      .where(
-        and(
-          eq(member.workspaceId, input.workspaceId),
-          inArray(member.userId, userIds),
-          eq(member.status, 'active'),
-          eq(actor.status, 'active'),
-        ),
-      )
-      .for('share', { of: [member, actor] })
-      .catch(rethrowQueryFailure);
-    if (
-      members.length !== userIds.length ||
-      members.some((member) => !hasCapability(member.role, 'workflow:read'))
-    )
-      throw new WorkflowCollaborationError(
-        'conflict',
-        'A mentioned person no longer has access. Remove them and review the comment before trying again.',
-      );
-  }
   const db = drizzle(client);
   await db
     .delete(workflowCommentMentions)

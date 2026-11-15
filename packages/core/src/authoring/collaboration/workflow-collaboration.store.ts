@@ -1,8 +1,8 @@
 import type { AuthoringAccess } from '../workflows/access.js';
 import { createCollaborationEntry } from './authority.repository.js';
 import { collaborationCommands } from './comment-commands.repository.js';
-import { collaborationPresence } from './presence.repository.js';
-import { collaborationReads } from './comment-reads.repository.js';
+import { collaborationPresence } from './track-presence.js';
+import { collaborationReads } from './read-comments.js';
 
 export type WorkflowCollaborationStore = ReturnType<
   typeof createWorkflowCollaborationStore

@@ -4,7 +4,6 @@ import { workflowCommentThreads } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import type { WorkflowCommentThread } from '@pertexo/contracts';
-import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type { ThreadScope } from './workflow-collaboration.types.js';
 export type StoredCommentThread = typeof workflowCommentThreads.$inferSelect & {
   preview?: string | null;
@@ -42,7 +41,5 @@ export async function lockCommentThread(
     )
     .for('update')
     .catch(rethrowQueryFailure);
-  if (row === undefined)
-    throw new WorkflowNotFoundError('Discussion is not visible');
   return row;
 }
