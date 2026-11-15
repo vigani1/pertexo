@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import { EMAIL_ADDRESS_LIMITS } from '../values/email-address.js';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '../graph/workflow-graph.schemas.js';
 
 export const FAILURE_NOTIFICATION_CONTEXT_MAX_BYTES = 4_096;
 export const FAILURE_NOTIFICATION_DESTINATION_LIST_LIMIT = 100;
 const FAILURE_NOTIFICATION_FIELD_LIMITS = Object.freeze({
-  nodeIdLength: 128,
-  invocationKeyLength: 256,
+  // Every run re-validates its graph, so its node IDs and invocation keys fit the graph's bounds.
+  nodeIdLength: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+  invocationKeyLength: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
   failureCount: 10_000,
   providerReferenceLength: 256,
 });
