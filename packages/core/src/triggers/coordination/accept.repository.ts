@@ -13,16 +13,13 @@ import {
   finishCoordinatedEvent,
   coordinatedReceipt,
 } from './events.repository.js';
-import {
-  eventDatabaseTime,
-  loadEventWindow,
-  chargeEventWindow,
-} from './keys.repository.js';
+import { loadEventWindow, chargeEventWindow } from './keys.repository.js';
 import type {
   CoordinateEventInput,
   CoordinateEventResult,
   StartCoordinatedRun,
 } from './event-coordination.types.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 
 /** Both ingress paths already hold the workspace admission lock and current publication fence. */
 export async function coordinateEvent(
@@ -39,7 +36,7 @@ export async function coordinateEvent(
     return coordinatedReceipt(input.eventId, 'refused', 'refused', reason);
   };
   if (input.prepared.keyHash === null) return refuse('invalid_key');
-  const now = await eventDatabaseTime(transaction);
+  const now = await readDatabaseClock(transaction.db);
   const key = await loadEventWindow(transaction, input, now);
   if (key === undefined) return refuse('coordination_full');
   const pending = (

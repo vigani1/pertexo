@@ -1,6 +1,5 @@
 import type { PoolClient } from 'pg';
 import { canonicalJson } from '@pertexo/workflow-model';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { WorkflowNotFoundError } from '../../authoring/workflows/workflow-authoring.errors.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '@pertexo/policy';
@@ -8,7 +7,7 @@ import {
   WorkspaceRunQuotaExceededError,
   WorkspaceRunAdmissionDeniedError,
 } from '../../runs/commands/acceptance/run-admission.errors.js';
-import { readDatabaseClock } from '../clock.repository.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 import { lockTestAuthority } from '../workflows/access.js';
 import { isActiveTestRun } from '../workflows/rules.js';
 import type { SuiteRow, SuiteCaseRow } from './workflow-test-suite.types.js';
@@ -79,7 +78,7 @@ export async function advanceSuite(
       if (error instanceof WorkflowNotFoundError) allowed = false;
       else throw error;
     }
-  const now = await readDatabaseClock(drizzle(client));
+  const now = await readDatabaseClock(client);
   if (!allowed) await stop(client, suite, 'authority_lost');
   else if (workflowStatus !== 'active')
     await stop(client, suite, 'workflow_archived');

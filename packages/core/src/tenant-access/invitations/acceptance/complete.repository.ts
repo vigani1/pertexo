@@ -1,4 +1,4 @@
-import { readInvitationTime } from '../clock.repository.js';
+import { readDatabaseClock } from '../../../shared/database-clock.repository.js';
 import { decideInvitationAcceptance } from './decide-invitation-acceptance.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -106,7 +106,7 @@ export async function completeAcceptance(
             sourceSession,
             userStatus: user[0]?.status,
             workspaceStatus: workspace[0]?.status,
-            now: await readInvitationTime(client),
+            now: await readDatabaseClock(client),
           });
         const existing = membership[0];
         // ADR 042: a removal ends the membership, so a later invitation starts

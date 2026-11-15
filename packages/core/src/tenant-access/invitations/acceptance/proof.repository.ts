@@ -1,4 +1,4 @@
-import { readInvitationTime } from '../clock.repository.js';
+import { readDatabaseClock } from '../../../shared/database-clock.repository.js';
 import { InvitationAcceptanceConflictError } from '../../tenant-access.errors.js';
 import { canonicalEmail } from '../../../identity/email-policy.js';
 import { INVITATION_PROOF_TTL_MILLIS } from './decide-invitation-acceptance.js';
@@ -89,7 +89,7 @@ export async function recordInvitationAcceptanceProof(
         .for('update', { of: alias(intents, getTableName(intents)) })
         .catch(rethrowQueryFailure);
       const current = locked[0];
-      const now = await readInvitationTime(client);
+      const now = await readDatabaseClock(client);
       if (
         current === undefined ||
         current.expires_at.getTime() <= now.getTime()

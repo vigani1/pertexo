@@ -17,6 +17,7 @@ import {
   type ScheduleRecurrence,
 } from '../schedules/recurrence.js';
 import { WorkflowTriggerReconciliationMismatchError } from './trigger-reconciliation.errors.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 
 function desiredScheduleConfig(value: unknown): Readonly<{
   recurrence: ScheduleRecurrence;
@@ -52,17 +53,12 @@ export async function reconcileActiveWorkflowTriggers(
   client: PoolClient,
   scope: ReconciliationScope,
 ): Promise<void> {
-  const observation = await drizzle(client)
-    .execute<{ observedAt: string }>(sql`select clock_timestamp() "observedAt"`)
-    .catch(rethrowQueryFailure);
-  const observedAt = observation.rows[0]?.observedAt;
-  if (observedAt === undefined)
-    throw new Error('Schedule database observation is unavailable');
+  const observedAt = await readDatabaseClock(client);
   const desired = await readDesiredSchedules(client, scope);
   for (const row of desired)
     await materializeSchedule(client, scope.workspaceId, {
       row,
-      observedAt: new Date(observedAt),
+      observedAt,
     });
   await retirePreviousResources(client, scope);
   await applyResourceDispositions(client, scope);

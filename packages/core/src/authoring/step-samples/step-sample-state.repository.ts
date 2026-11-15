@@ -1,6 +1,6 @@
 import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { and, eq, notInArray, sql } from 'drizzle-orm';
+import { and, eq, notInArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workflows,
@@ -83,14 +83,6 @@ export async function sampleDraft(
     graph,
     bindings: stepSampleBindings(graph),
   };
-}
-export async function sampleDatabaseTime(client: PoolClient): Promise<Date> {
-  const result = await drizzle(client)
-    .execute<{ now: string }>(sql`select clock_timestamp() now`)
-    .catch(rethrowQueryFailure);
-  const row = result.rows[0];
-  if (row === undefined) throw new Error('Sample database time is unavailable');
-  return new Date(row.now);
 }
 export function sampleMetadata(
   row: SampleMetadataRow,

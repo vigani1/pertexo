@@ -16,7 +16,7 @@ import { normalizedJson } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine/server';
 import type { WorkflowTestOptions } from './workflow-test.types.js';
 
-import { readDatabaseClock } from '../clock.repository.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 import { WorkflowTestError } from './workflow-test.errors.js';
 
 export async function loadTestSnapshot(

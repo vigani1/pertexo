@@ -1,8 +1,5 @@
 import type { PreparedFormEvent } from './form-admission.types.js';
-import { sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import {
-  rethrowQueryFailure,
   findCommandResult,
   withTenantScopedReadClient,
 } from '@pertexo/database/primitives';
@@ -21,6 +18,7 @@ import type {
 import { resolveFormFiles } from '../../artifacts/form-uploads/resolve.repository.js';
 
 import type { createEventCoordinationPreparation } from '../coordination/prepare.js';
+import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 /** Read an authorized immutable candidate; expression work holds no admission locks. */
 export async function prepareFormEvent(
   pool: Pool,
@@ -74,12 +72,7 @@ export async function prepareFormEvent(
           return { versionId: loaded.version.id, error };
         throw error;
       }
-      const at = (
-        await drizzle(client)
-          .execute<{ now: string }>(sql`select clock_timestamp() now`)
-          .catch(rethrowQueryFailure)
-      ).rows[0]?.now;
-      if (at === undefined) throw new Error('Form admission clock missing');
+      const at = await readDatabaseClock(client);
       return {
         versionId: loaded.version.id,
         policy: loaded.form.coordination,
