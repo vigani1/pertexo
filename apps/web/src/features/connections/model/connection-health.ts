@@ -6,6 +6,8 @@ import type { StatusTone } from '@/components/ui/status';
 import { formatElapsedTime } from '@/lib/format/time';
 import type { ProviderKey } from './connection-providers';
 import { oauth2ShortStatus } from './oauth2-copy';
+import { CONNECTION_TEST_TIMEOUT_MILLIS } from '@pertexo/contracts';
+import { formatTimeSpan } from '@/lib/format/time';
 
 /** Where a connection test stands, as the test thread draws it. */
 export type TestPhase = 'idle' | 'running' | 'ok' | 'failed' | 'unsure';
@@ -206,7 +208,7 @@ function failureDetail(errorCode: string): string {
     case 'connection.test.ssrf_blocked':
       return 'Pertexo only calls public HTTPS addresses, not private or local ones.';
     case 'connection.test.timed_out':
-      return 'No answer arrived within 15 seconds.';
+      return `No answer arrived within ${formatTimeSpan(CONNECTION_TEST_TIMEOUT_MILLIS / 1_000)}.`;
     case 'connection.oauth2_host_not_allowed':
       return 'Call a host this connection allows, or change its allowed hosts.';
     default:

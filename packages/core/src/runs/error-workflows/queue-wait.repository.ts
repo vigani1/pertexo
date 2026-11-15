@@ -9,11 +9,10 @@ import {
   canonicalOutboxPayloadChecksum,
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
+import { ERROR_WORKFLOW_QUEUE_WAIT_SECONDS } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { ErrorWorkflowDeliveryMismatchError } from './error-workflow.errors.js';
 import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
-
-const waitSeconds = 15 * 60;
 
 /** The locked intent and claimed receipt make replacement delivery atomic. */
 export async function deferErrorWorkflowForQueue(
@@ -25,7 +24,7 @@ export async function deferErrorWorkflowForQueue(
   const [observation] = await db
     .update(runErrorWorkflowIntents)
     .set({
-      queueWaitExpiresAt: sql`coalesce(${runErrorWorkflowIntents.queueWaitExpiresAt},clock_timestamp()+make_interval(secs=>${waitSeconds}))`,
+      queueWaitExpiresAt: sql`coalesce(${runErrorWorkflowIntents.queueWaitExpiresAt},clock_timestamp()+make_interval(secs=>${ERROR_WORKFLOW_QUEUE_WAIT_SECONDS}))`,
     })
     .where(
       and(

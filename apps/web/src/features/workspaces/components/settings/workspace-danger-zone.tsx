@@ -10,6 +10,8 @@ import type { ApiClient } from '@/lib/api/client';
 import { useWorkspaceLifecycleCommand } from '../../data/mutations/lifecycle/use-workspace-lifecycle-command';
 import { WorkspaceDeletionDialog } from './workspace-deletion-dialog';
 import { WorkspaceLifecycleDialog } from './workspace-lifecycle-dialog';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 type LifecycleChange = WorkspaceLifecycleChangeResponse['change'];
 /** Irreversible or hard-to-undo actions, fenced off from the rest. */
 export function DangerZone({
@@ -52,8 +54,7 @@ export function DangerAction({
   );
 }
 const COMPLETED: Readonly<Record<LifecycleChange, string>> = {
-  deletion_requested:
-    'The workspace is scheduled for deletion. Restore it within 30 days of the request to keep it.',
+  deletion_requested: `The workspace is scheduled for deletion. Restore it within ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')} of the request to keep it.`,
   deletion_restored:
     'The workspace is back, suspended. Triggers and integrations stay off until you reconnect them.',
   reactivated:
@@ -116,7 +117,7 @@ export function WorkspaceLifecycleControls({
     return (
       <DangerAction
         title="Restore workspace"
-        description="It’s scheduled for deletion within 30 days of the request. Restoring brings it back suspended, and an owner can then reactivate it; integrations stay off until they’re reconnected."
+        description={`It’s scheduled for deletion within ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')} of the request. Restoring brings it back suspended, and an owner can then reactivate it; integrations stay off until they’re reconnected.`}
       >
         <WorkspaceLifecycleDialog
           {...commandProps(command)}
@@ -147,7 +148,7 @@ export function WorkspaceLifecycleControls({
       ) : null}
       <DangerAction
         title="Delete workspace"
-        description="Access and triggers stop straight away. You can restore it for 30 days; after that it’s gone for good."
+        description={`Access and triggers stop straight away. You can restore it for ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')}; after that it’s gone for good.`}
       >
         <WorkspaceDeletionDialog
           workspaceName={workspace.name}

@@ -5,6 +5,8 @@ import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { verifyTwoFactor } from './two-factor.api';
+import { TWO_FACTOR_LOCKOUT_SECONDS } from '@pertexo/workflow-model';
+import { formatTimeSpan } from '@/lib/format/time';
 
 /** The verification request stays with the flow so every close and mode control sees its busy state. */
 export function useTwoFactorVerification({
@@ -119,7 +121,7 @@ function verificationFailure(
 const SIGN_IN_EXPIRED = 'This sign-in expired. Go back and sign in again.';
 
 const BY_CODE: Readonly<Partial<Record<string, string>>> = {
-  'auth.two_factor_locked': 'Too many wrong codes. Try again in 15 minutes.',
+  'auth.two_factor_locked': `Too many wrong codes. Try again in ${formatTimeSpan(TWO_FACTOR_LOCKOUT_SECONDS)}.`,
   'auth.two_factor_code_invalid':
     'That code wasn’t accepted. Check it and try again.',
   'auth.two_factor_challenge_expired': SIGN_IN_EXPIRED,

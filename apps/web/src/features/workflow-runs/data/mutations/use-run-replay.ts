@@ -11,6 +11,8 @@ import {
 import { replayWorkflowRun } from '../workflow-runs.api';
 import { workflowRunKeys } from '../query-cache';
 import { useRetainedSubmission } from './use-retained-submission';
+import { COMMAND_RETRY_WINDOW_HOURS } from '@/lib/api/commands/command-retry';
+import { formatCount } from '@/lib/format/count';
 export function useRunReplay({
   apiClient,
   userId,
@@ -59,7 +61,7 @@ function runReplayError(error: unknown): string {
   const admissionError = runAdmissionError(error);
   if (admissionError !== undefined) return admissionError;
   if (isUnconfirmedCommand(error))
-    return 'We couldn’t confirm whether the replay started. Retry the same request within 24 hours to check acceptance without starting it twice.';
+    return `We couldn’t confirm whether the replay started. Retry the same request within ${formatCount(COMMAND_RETRY_WINDOW_HOURS, 'hour')} to check acceptance without starting it twice.`;
   if (isApiError(error) && error.problem?.code === 'form.required')
     return 'Form replays keep the exact original response. Open the workflow form to send new values.';
   if (

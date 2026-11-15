@@ -1,6 +1,8 @@
 import { XIcon } from 'lucide-react';
 import { LabelledField } from '@/components/ui/field';
 import { cn } from '@/lib/class-names';
+import { WORKSPACE_INVITATION_VALIDITY_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 /**
  * Several addresses as chips. Typing a comma, space or Enter turns the text
@@ -35,7 +37,7 @@ export function EmailChipsField({
     <LabelledField
       id={id}
       label="Email addresses"
-      description="Separate addresses with commas or spaces. Links work for seven days."
+      description={`Separate addresses with commas or spaces. Links work for ${formatCount(WORKSPACE_INVITATION_VALIDITY_DAYS, 'day')}.`}
       error={error}
     >
       {(control) => (

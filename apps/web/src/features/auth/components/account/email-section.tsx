@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { useRequestAccountEmailChange } from '../../data/account-security.mutations';
-import { emailProblem } from '../../forms/field-rules';
+import { newEmailProblem } from '../../forms/field-rules';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { AccountCommandFailure, AccountSection } from './section';
 import { Notice } from '@/components/ui/notice';
@@ -19,7 +19,7 @@ export function AccountEmailSection({
   const fields = useFieldValues(
     {
       email: (value) =>
-        emailProblem(value) ??
+        newEmailProblem(value) ??
         (value.trim().toLowerCase() === security.email.toLowerCase()
           ? 'That’s your current email. Enter a different one.'
           : undefined),

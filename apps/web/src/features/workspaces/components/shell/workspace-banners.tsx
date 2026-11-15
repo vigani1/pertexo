@@ -4,6 +4,8 @@ import { Link } from '@tanstack/react-router';
 import { Notice } from '@/components/ui/notice';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { useOnlineStatus } from '@/lib/hooks/use-online-status';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 /** States that last: shown under the breadcrumb on every page. */
 export function WorkspaceBanners({
@@ -37,8 +39,7 @@ export function WorkspaceBanners({
           ) : undefined
         }
       >
-        This workspace is scheduled for deletion. Triggers are stopped and it
-        can be restored for 30 days after the request.
+        {`This workspace is scheduled for deletion. Triggers are stopped and it can be restored for ${formatCount(DATA_RETENTION_DAYS.workspaceRecovery, 'day')} after the request.`}
       </Notice>,
     );
   if (workspace.status === 'suspended')

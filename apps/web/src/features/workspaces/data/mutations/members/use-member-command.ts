@@ -10,6 +10,8 @@ import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
 import { workspaceKeys, workspaceMemberKeys } from '../../workspaces.queries';
 import { directoryMembershipFeedback } from '../../../model/directory-membership';
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
+import { formatTimeSpan } from '@/lib/format/time';
 
 export type MemberCommandAttempt = Readonly<{
   member: WorkspaceMember;
@@ -102,8 +104,7 @@ export function useMemberCommand<Attempt extends MemberCommandAttempt>(
       if (needsFreshSignIn(cause))
         setFeedback({
           targetUserId: attempt.targetUserId,
-          message:
-            'For your security, sign in again, then confirm within five minutes.',
+          message: `For your security, sign in again, then confirm within ${formatTimeSpan(FRESH_SIGN_IN_WINDOW_MILLIS / 1_000)}.`,
           freshSignIn: true,
         });
       else if (isTargetGone(cause)) input.onTargetUnavailable(attempt.member);

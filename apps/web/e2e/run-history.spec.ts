@@ -284,7 +284,9 @@ for (const width of [1280, 375])
       page.getByText('Error workflow did not start', { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText(/15-minute wait for queue capacity expired/u),
+      page.getByText(
+        /waited 15 minutes for queue capacity, and none came free/u,
+      ),
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: 'Failed after 2s', exact: true }),

@@ -1,8 +1,9 @@
 import { isApiError } from '../error';
 import { isUncertainOutcome } from '../error-copy';
+import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/contracts';
 
 /** How long the server keeps a command's receipt for its idempotency key. */
-export const COMMAND_RETRY_WINDOW_HOURS = 24;
+export const COMMAND_RETRY_WINDOW_HOURS = IDEMPOTENCY_KEY_RETENTION_HOURS;
 export const COMMAND_RETRY_WINDOW_MS =
   COMMAND_RETRY_WINDOW_HOURS * 60 * 60 * 1_000;
 

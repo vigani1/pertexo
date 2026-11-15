@@ -228,15 +228,13 @@ describe('team: ownership transfer', () => {
       /You become an admin/u,
       /You and Ada are both signed out everywhere/u,
       /owner can’t leave until they hand it over/u,
-      /sign-in from the last five minutes/u,
+      /sign-in from the last 5 minutes/u,
     ])
       expect(dialog.getByText(consequence)).toBeVisible();
     await actor.click(dialog.getByRole('button', { name: 'Make owner' }));
 
     expect(
-      await dialog.findByText(
-        /sign in again, then confirm within five minutes/u,
-      ),
+      await dialog.findByText(/sign in again, then confirm within 5 minutes/u),
     ).toBeVisible();
     expect(dialog.getByRole('link', { name: 'Sign in again' })).toHaveAttribute(
       'href',

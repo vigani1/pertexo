@@ -27,6 +27,8 @@ import {
   type SocialProvider,
 } from '../../model/social-provider';
 import { Notice } from '@/components/ui/notice';
+import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
+import { formatTimeSpan } from '@/lib/format/time';
 
 type Method = AccountSecurityResponse['methods'][number];
 
@@ -108,7 +110,8 @@ function SourcePicker({
 /**
  * Add a sign-in method: pick the provider, confirm it's you with a method
  * you already have, then continue to the provider. Both proofs must finish
- * within five minutes, and a matching email never links accounts by itself.
+ * within the fresh sign-in window, and a matching email never links accounts
+ * by itself.
  */
 export function LinkProviderDialog({
   apiClient,
@@ -182,8 +185,7 @@ export function LinkProviderDialog({
       <DialogContent aria-busy={pending || undefined}>
         <DialogTitle>Add a sign-in method</DialogTitle>
         <DialogDescription>
-          Confirm it’s you, then we send you to the provider to connect it. Both
-          steps need to finish within five minutes.
+          {`Confirm it’s you, then we send you to the provider to connect it. Both steps need to finish within ${formatTimeSpan(FRESH_SIGN_IN_WINDOW_MILLIS / 1_000)}.`}
         </DialogDescription>
         {target === undefined ? (
           <div className="mt-6">

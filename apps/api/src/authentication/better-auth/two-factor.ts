@@ -6,6 +6,7 @@ import {
 } from 'better-auth/api';
 import { isAuthenticationSessionAllowed } from '@pertexo/core/identity';
 import type { Pool } from 'pg';
+import { TWO_FACTOR_LOCKOUT_SECONDS } from '@pertexo/workflow-model';
 import type { AuthenticationTransactions } from './transactions/authentication-transactions.js';
 import { requireDoubleSubmitCsrf } from './csrf.js';
 
@@ -35,6 +36,8 @@ export function authenticationChangedError(): APIError {
 export function createTwoFactorPlugin() {
   return twoFactor({
     issuer: 'Pertexo',
+    // Better Auth's default, named so the browser can say it.
+    accountLockout: { durationSeconds: TWO_FACTOR_LOCKOUT_SECONDS },
     schema: {
       user: { fields: { twoFactorEnabled: 'two_factor_enabled' } },
       twoFactor: {

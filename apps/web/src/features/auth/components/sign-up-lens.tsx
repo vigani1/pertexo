@@ -3,7 +3,7 @@ import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
-import { emailProblem, newPasswordProblem } from '../forms/field-rules';
+import { newEmailProblem, newPasswordProblem } from '../forms/field-rules';
 import { PasswordField } from '../forms/password-field';
 import { signUpFailure } from '../model/auth-failure';
 import { returnToSearch } from '../model/return-path';
@@ -16,11 +16,15 @@ import {
   AuthLensTitle,
 } from './stage/auth-lens';
 import { AuthForm } from '../forms/submission';
+import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
+import { formatCount } from '@/lib/format/count';
 
 function nameProblem(value: string): string | undefined {
   if (value.trim().length === 0)
     return 'Add your name so teammates recognize you.';
-  return value.trim().length > 256 ? 'Use 256 characters or fewer.' : undefined;
+  return value.trim().length > DISPLAY_NAME_MAX_CHARACTERS
+    ? `Use ${formatCount(DISPLAY_NAME_MAX_CHARACTERS, 'character')} or fewer.`
+    : undefined;
 }
 
 /** Name, email and a password with its requirement thread. */
@@ -39,7 +43,7 @@ export function SignUpLens({
   const fields = useFieldValues(
     {
       name: nameProblem,
-      email: emailProblem,
+      email: newEmailProblem,
       password: (value) => newPasswordProblem(value, minimumPasswordLength),
     },
     { name: '', email: '', password: '' },
