@@ -32,7 +32,7 @@ import {
 import {
   createMemberships,
   updateMembership,
-} from '../../members/records.repository.js';
+} from '../../../memberships/records.repository.js';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import { replaceUserSessions } from '../../../identity/federation/sessions/user-sessions.repository.js';
 import { selectIntent } from './state.repository.js';

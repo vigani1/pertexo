@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { appendAuditFacts } from '../../../src/governance/audit/facts.js';
 import type { AuditFact } from '../../../src/governance/audit/facts.js';
-import { updateMemberships } from '../../../src/tenant-access/members/records.repository.js';
-import type { MembershipChange } from '../../../src/tenant-access/members/membership.types.js';
+import { updateMemberships } from '../../../src/memberships/records.repository.js';
+import type { MembershipChange } from '../../../src/memberships/membership.types.js';
 import { revokeSessionsForUsers } from '../../../src/identity/federation/sessions/user-sessions.repository.js';
 import { useIdentityCommandDatabase } from '../command.support.js';
 

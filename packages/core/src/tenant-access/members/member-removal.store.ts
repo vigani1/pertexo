@@ -1,5 +1,5 @@
 import type { Pool } from 'pg';
-import { updateMembership } from './records.repository.js';
+import { updateMembership } from '../../memberships/records.repository.js';
 
 import { canRemoveWorkspaceMember } from '@pertexo/policy';
 import type {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { createMemberships } from '../../../src/tenant-access/members/records.repository.js';
-import type { MembershipAddition } from '../../../src/tenant-access/members/membership.types.js';
+import { createMemberships } from '../../../src/memberships/records.repository.js';
+import type { MembershipAddition } from '../../../src/memberships/membership.types.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { useIdentityCommandDatabase } from '../command.support.js';
 

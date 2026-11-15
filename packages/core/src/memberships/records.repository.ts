@@ -12,9 +12,9 @@ import {
   workspaceInboxReads,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { appendAuditFacts } from '../../governance/audit/facts.js';
+import { appendAuditFacts } from '../governance/audit/facts.js';
 import type { Role } from '@pertexo/policy';
-import { removeMemberResourceGrants } from '../resources/revocation.repository.js';
+import { removeMemberResourceGrants } from './resource-grants.repository.js';
 import type { PoolClient } from 'pg';
 
 type MembershipCreationAudit = Readonly<{

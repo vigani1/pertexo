@@ -32,6 +32,10 @@
       "types": "./dist/governance/index.d.ts",
       "default": "./dist/governance/index.js"
     },
+    "./memberships": {
+      "types": "./dist/memberships/index.d.ts",
+      "default": "./dist/memberships/index.js"
+    },
     "./identity": {
       "types": "./dist/identity/index.d.ts",
       "default": "./dist/identity/index.js"
