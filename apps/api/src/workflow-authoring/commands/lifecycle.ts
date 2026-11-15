@@ -1,9 +1,6 @@
 import { commandCredential } from '../../authorization/credentials.js';
 import type { workflowLifecycleRequestSchema } from '@pertexo/contracts';
-import {
-  workflowLifecycleResponseSchema,
-  type WorkflowLifecycleResponse,
-} from '@pertexo/contracts';
+import type { WorkflowLifecycleResponse } from '@pertexo/contracts';
 import type { z } from 'zod';
 import {
   authorizeWorkspaceOperation,
@@ -74,10 +71,10 @@ export class TransitionWorkflowLifecycleService {
             ? {}
             : { traceparent: input.traceparent }),
         });
-        return workflowLifecycleResponseSchema.parse({
+        return {
           workflow: workflowSummary(accepted.workflow),
           replayed: accepted.replayed,
-        });
+        };
       },
     );
   }

@@ -25,11 +25,9 @@ import type {
   workspaceInvitationCommandRequestSchema,
   workspaceInvitationCreateRequestSchema,
 } from '../workspace-transport.js';
-import {
-  workspaceInvitationCommandResponseSchema,
-  workspaceInvitationsResponseSchema,
-  type WorkspaceInvitationCommandResponse,
-  type WorkspaceInvitationsResponse,
+import type {
+  WorkspaceInvitationCommandResponse,
+  WorkspaceInvitationsResponse,
 } from '../workspace-transport.js';
 
 type InvitationPersistence = Pick<
@@ -65,14 +63,14 @@ export class WorkspaceInvitationManagementService {
           : { after: decodeWorkspaceInvitationCursor(input.after) }),
       },
     );
-    return workspaceInvitationsResponseSchema.parse({
+    return {
       issuanceAvailable: this.tokens !== undefined,
       items: page.items.map(toResponse),
       nextCursor:
         page.nextCursor === undefined
           ? null
           : encodeWorkspaceInvitationCursor(page.nextCursor),
-    });
+    };
   }
 
   public async create(
@@ -102,10 +100,10 @@ export class WorkspaceInvitationManagementService {
       ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
       ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
     });
-    return workspaceInvitationCommandResponseSchema.parse({
+    return {
       invitation: toResponse(result.invitation),
       replayed: result.replayed,
-    });
+    };
   }
 
   public resend(
@@ -155,10 +153,10 @@ export class WorkspaceInvitationManagementService {
         ),
       });
     }
-    return workspaceInvitationCommandResponseSchema.parse({
+    return {
       invitation: toResponse(result.invitation),
       replayed: result.replayed,
-    });
+    };
   }
 
   private requireTokenProtection(): InvitationTokenProtector {

@@ -1,8 +1,3 @@
-import {
-  noticePreferencesResponseSchema,
-  noticeSubscriptionSchema,
-  noticeCommandResponseSchema,
-} from '@pertexo/contracts';
 import type {
   NoticePreferencesStore,
   ReadNoticeSubscriptionInput,
@@ -26,25 +21,19 @@ export class NoticePreferencesService {
     private readonly envelope: ApplicationSecretEnvelope | undefined,
   ) {}
   async read(input: WorkspaceActor) {
-    return noticePreferencesResponseSchema.parse(await this.store.read(input));
+    return await this.store.read(input);
   }
   async replace(input: ReplaceNoticePreferencesInput) {
-    return noticeCommandResponseSchema.parse(await this.store.replace(input));
+    return await this.store.replace(input);
   }
   async replaceDefaults(input: ReplaceNoticeDefaultsInput) {
-    return noticeCommandResponseSchema.parse(
-      await this.store.replaceDefaults(input),
-    );
+    return await this.store.replaceDefaults(input);
   }
   async subscription(input: ReadNoticeSubscriptionInput) {
-    return noticeSubscriptionSchema.parse(
-      await this.store.readSubscription(input),
-    );
+    return await this.store.readSubscription(input);
   }
   async replaceSubscription(input: ReplaceNoticeSubscriptionInput) {
-    return noticeCommandResponseSchema.parse(
-      await this.store.replaceSubscription(input),
-    );
+    return await this.store.replaceSubscription(input);
   }
   async unsubscribe(token: string) {
     const claims =

@@ -9,17 +9,6 @@ import type {
   workflowFolderRenameRequestSchema,
   workflowMoveReviewRequestSchema,
 } from '@pertexo/contracts';
-import {
-  folderSharingResponseSchema,
-  sharingPrincipalsResponseSchema,
-  workflowFolderCreateResponseSchema,
-  workflowFolderDeleteResponseSchema,
-  workflowFolderListResponseSchema,
-  workflowFolderMoveResponseSchema,
-  workflowFolderPlacementResponseSchema,
-  workflowFolderRenameResponseSchema,
-  workflowMoveReviewResponseSchema,
-} from '@pertexo/contracts';
 import type { WorkflowFolderStore } from '@pertexo/core/authoring';
 import type { z } from 'zod';
 import type { WorkspaceAuthorizationSource } from '../../../authorization/index.js';
@@ -50,12 +39,10 @@ export class WorkflowFoldersService {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin', {
       reading: true,
     });
-    return sharingPrincipalsResponseSchema.parse(
-      await this.folders.sharingPrincipals({
-        ...workflowOrganizationContext(input),
-        query,
-      }),
-    );
+    return await this.folders.sharingPrincipals({
+      ...workflowOrganizationContext(input),
+      query,
+    });
   }
 
   public async readSharing(
@@ -64,12 +51,10 @@ export class WorkflowFoldersService {
     await authorizeWorkflowOrganization(input, this.authorization, 'admin', {
       reading: true,
     });
-    return folderSharingResponseSchema.parse(
-      await this.folders.readSharing({
-        ...workflowOrganizationContext(input),
-        folderId: input.folderId,
-      }),
-    );
+    return await this.folders.readSharing({
+      ...workflowOrganizationContext(input),
+      folderId: input.folderId,
+    });
   }
 
   public async replaceSharing(
@@ -82,7 +67,7 @@ export class WorkflowFoldersService {
       folderId: input.folderId,
       request,
     });
-    return { ...folderSharingResponseSchema.parse(sharing), replayed };
+    return { ...sharing, replayed };
   }
 
   public async reviewMove(
@@ -94,12 +79,10 @@ export class WorkflowFoldersService {
     await authorizeWorkflowOrganization(input, this.authorization, 'editor', {
       fresh: true,
     });
-    return workflowMoveReviewResponseSchema.parse(
-      await this.folders.reviewMove({
-        ...workflowOrganizationContext(input),
-        request,
-      }),
-    );
+    return await this.folders.reviewMove({
+      ...workflowOrganizationContext(input),
+      request,
+    });
   }
 
   public async list(
@@ -113,7 +96,7 @@ export class WorkflowFoldersService {
       workflowOrganizationContext(input),
     );
     input.signal?.throwIfAborted();
-    return workflowFolderListResponseSchema.parse(result);
+    return result;
   }
 
   public async create(
@@ -123,7 +106,7 @@ export class WorkflowFoldersService {
     const context = await this.command(input, 'admin');
     const result = await this.folders.createFolder({ ...context, ...request });
     input.signal?.throwIfAborted();
-    return workflowFolderCreateResponseSchema.parse(result);
+    return result;
   }
 
   public async rename(
@@ -137,7 +120,7 @@ export class WorkflowFoldersService {
       ...request,
     });
     input.signal?.throwIfAborted();
-    return workflowFolderRenameResponseSchema.parse(result);
+    return result;
   }
 
   public async move(
@@ -151,7 +134,7 @@ export class WorkflowFoldersService {
       ...request,
     });
     input.signal?.throwIfAborted();
-    return workflowFolderMoveResponseSchema.parse(result);
+    return result;
   }
 
   public async delete(
@@ -165,7 +148,7 @@ export class WorkflowFoldersService {
       ...request,
     });
     input.signal?.throwIfAborted();
-    return workflowFolderDeleteResponseSchema.parse(result);
+    return result;
   }
 
   public async place(
@@ -182,7 +165,7 @@ export class WorkflowFoldersService {
       ...request,
     });
     input.signal?.throwIfAborted();
-    return workflowFolderPlacementResponseSchema.parse(result);
+    return result;
   }
 
   private async command(input: Command, role: 'admin' | 'editor') {

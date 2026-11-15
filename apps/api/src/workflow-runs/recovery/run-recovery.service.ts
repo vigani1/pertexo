@@ -1,8 +1,4 @@
-import {
-  type WorkflowRecoveryRequest,
-  workflowRecoveryPreviewSchema,
-  workflowRunStartResponseSchema,
-} from '@pertexo/contracts';
+import type { WorkflowRecoveryRequest } from '@pertexo/contracts';
 import { canonicalJson } from '@pertexo/workflow-model';
 import {
   authorizeWorkspaceOperation,
@@ -45,13 +41,11 @@ export class GetRunRecoveryService {
   ) {}
   public async execute(input: RecoveryPreviewInput) {
     await authorize(input, this.authorization);
-    return workflowRecoveryPreviewSchema.parse(
-      await this.persistence.recovery({
-        actorId: input.actor.actorId,
-        workspaceId: input.routeWorkspaceId,
-        runId: input.runId,
-      }),
-    );
+    return await this.persistence.recovery({
+      actorId: input.actor.actorId,
+      workspaceId: input.routeWorkspaceId,
+      runId: input.runId,
+    });
   }
 }
 
@@ -109,7 +103,7 @@ export class RecoverRunService {
         : { traceparent: input.traceparent }),
     });
     const run = result.run;
-    return workflowRunStartResponseSchema.parse({
+    return {
       replayed: result.replayed,
       run: {
         ...run,
@@ -120,6 +114,6 @@ export class RecoverRunService {
         deadlineAt: run.deadlineAt?.toISOString() ?? null,
         cancelRequestedAt: run.cancelRequestedAt?.toISOString() ?? null,
       },
-    });
+    };
   }
 }

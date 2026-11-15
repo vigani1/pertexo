@@ -1,8 +1,8 @@
 import { Module, type DynamicModule } from '@nestjs/common';
-import type { PendingTaskOperations } from './pending-task.service.js';
+import type { PendingTaskOperations } from './pending-task-operations.types.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import { PendingTasksController } from './pending-tasks.controller.js';
-import { PendingTaskService } from './pending-task.service.js';
+import { PENDING_TASKS } from './pending-tasks.tokens.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 @Module({})
 // Nest dynamic modules require a class container.
@@ -18,10 +18,7 @@ export class PendingTasksModule {
       imports: [identityModule],
       controllers: [PendingTasksController],
       providers: [
-        {
-          provide: PendingTaskService,
-          useValue: new PendingTaskService(store),
-        },
+        { provide: PENDING_TASKS, useValue: store },
         { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],
     };

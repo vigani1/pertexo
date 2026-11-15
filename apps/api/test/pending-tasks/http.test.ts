@@ -2,7 +2,7 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PendingTasksController } from '../../src/pending-tasks/pending-tasks.controller.js';
-import { PendingTaskService } from '../../src/pending-tasks/pending-task.service.js';
+import { PENDING_TASKS } from '../../src/pending-tasks/pending-tasks.tokens.js';
 import {
   browserHeaders,
   foreignWorkspaceId,
@@ -64,7 +64,7 @@ async function tasksApp() {
   };
   const fixture = await sessionHttpApp({
     controller: PendingTasksController,
-    providers: [{ provide: PendingTaskService, useValue: tasks }],
+    providers: [{ provide: PENDING_TASKS, useValue: tasks }],
     fields: { tasks },
   });
   apps.push(fixture.app);

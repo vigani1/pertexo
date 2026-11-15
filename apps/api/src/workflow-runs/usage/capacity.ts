@@ -1,7 +1,4 @@
-import {
-  usageCapacityResponseSchema,
-  type UsageCapacityResponse,
-} from '@pertexo/contracts';
+import type { UsageCapacityResponse } from '@pertexo/contracts';
 
 import {
   authorizeWorkspaceCapabilities,
@@ -35,12 +32,10 @@ export class GetUsageCapacityService {
         ? {}
         : { authorizedWorkspace: input.authorizedWorkspace }),
     });
-    return usageCapacityResponseSchema.parse(
-      await this.persistence.usageCapacity({
-        workspaceId: input.routeWorkspaceId,
-        actorId: input.actor.actorId,
-        ...(input.signal === undefined ? {} : { signal: input.signal }),
-      }),
-    );
+    return await this.persistence.usageCapacity({
+      workspaceId: input.routeWorkspaceId,
+      actorId: input.actor.actorId,
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
+    });
   }
 }

@@ -1,13 +1,8 @@
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import {
-  workflowRunCancelResponseSchema,
   normalizeWorkflowRunCreatedAt,
-  workflowRunListResponseSchema,
-  workflowRunResponseSchema,
-  workflowRunStartResponseSchema,
   type WorkflowRunCancelResponse,
   type WorkflowRunListResponse,
-  type WorkflowRunResponse,
   type WorkflowRunStartResponse,
 } from '@pertexo/contracts';
 import {
@@ -119,9 +114,7 @@ export class GetWorkflowRunService {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
-  public async execute(
-    input: GetWorkflowRunInput,
-  ): Promise<WorkflowRunResponse> {
+  public async execute(input: GetWorkflowRunInput) {
     const authorization = await authorize(
       input,
       'run:read',
@@ -193,13 +186,13 @@ export class ListWorkflowRunsService {
         ? {}
         : { after: decodeWorkflowRunCursor(input.after, context) }),
     });
-    return workflowRunListResponseSchema.parse({
+    return {
       items: page.items.map(toRunSummary),
       nextCursor:
         page.nextCursor === undefined
           ? null
           : encodeWorkflowRunCursor(context, page.nextCursor),
-    });
+    };
   }
 }
 
@@ -225,10 +218,10 @@ export class CancelWorkflowRunService {
       ...(input.reason === undefined ? {} : { reason: input.reason }),
       ...requestIdentifiers(input),
     });
-    return workflowRunCancelResponseSchema.parse({
+    return {
       run: toRunSummary(result.run),
       alreadyRequested: result.alreadyRequested,
-    });
+    };
   }
 }
 
@@ -258,10 +251,10 @@ function requestIdentifiers(
 function toStartResponse(
   result: Readonly<{ run: WorkflowRunRecord; replayed: boolean }>,
 ): WorkflowRunStartResponse {
-  return workflowRunStartResponseSchema.parse({
+  return {
     run: toRunSummary(result.run),
     replayed: result.replayed,
-  });
+  };
 }
 
 function iso(value: Date | null): string | null {
@@ -309,8 +302,8 @@ function toRunSummary(
   };
 }
 
-function toRunResponse(result: WorkflowRunReadModel): WorkflowRunResponse {
-  return workflowRunResponseSchema.parse({
+function toRunResponse(result: WorkflowRunReadModel) {
+  return {
     run: toRunSummary(result.run),
     ...(result.calls === undefined ? {} : { calls: result.calls }),
     ...(result.errorWorkflow === undefined
@@ -325,5 +318,5 @@ function toRunResponse(result: WorkflowRunReadModel): WorkflowRunResponse {
       completedAt: iso(node.completedAt),
       resumeAt: iso(node.resumeAt),
     })),
-  });
+  };
 }

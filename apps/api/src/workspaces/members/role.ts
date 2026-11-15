@@ -7,10 +7,7 @@ import {
 } from '../telemetry.js';
 import type { workspaceMemberRoleChangeRequestSchema } from '@pertexo/contracts';
 import type { z } from 'zod';
-import {
-  workspaceMemberRoleChangeResponseSchema,
-  type WorkspaceMemberRoleChangeResponse,
-} from '../workspace-transport.js';
+import type { WorkspaceMemberRoleChangeResponse } from '../workspace-transport.js';
 
 type WorkspaceMemberRolePersistence = Pick<
   IdentityWorkspacePersistence,
@@ -60,7 +57,7 @@ export class ChangeWorkspaceMemberRoleService {
           role: request.role,
           expectedRoleRevision: request.expectedRoleRevision,
         });
-        return workspaceMemberRoleChangeResponseSchema.parse(result);
+        return result;
       },
     );
   }

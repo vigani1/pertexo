@@ -1,7 +1,6 @@
 import { organizationRoutes } from '@pertexo/contracts/server';
 import type { Role } from '@pertexo/policy';
 import { describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
 import {
   WorkflowTagConflictError,
   type WorkflowTagStore,
@@ -233,34 +232,6 @@ describe('workflow organization commands', () => {
     ).rejects.toBeInstanceOf(AuthorizationError);
     expect(viewer.tags.replaceTags).not.toHaveBeenCalled();
   });
-
-  it.each(cases)(
-    'validates $method response privacy',
-    async ({ method, request, result }) => {
-      const f = fixture();
-      persistence(f, method).mockResolvedValueOnce({
-        ...result,
-        actorId,
-        generation: tagId,
-        proof: {},
-      });
-      await expect(invoke(f, method, { ...base, request })).resolves.toEqual(
-        result,
-      );
-      expect(persistence(f, method)).toHaveBeenCalledOnce();
-    },
-  );
-
-  it.each(cases)(
-    'rejects malformed $method receipts',
-    async ({ method, request }) => {
-      const f = fixture();
-      persistence(f, method).mockResolvedValueOnce({ replayed: true });
-      await expect(
-        invoke(f, method, { ...base, request }),
-      ).rejects.toBeInstanceOf(z.ZodError);
-    },
-  );
 
   it.each(cases)(
     'does not convert or retry $method persistence errors',

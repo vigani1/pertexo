@@ -1,7 +1,4 @@
-import {
-  nodeTestExecuteAcceptedResponseSchema,
-  type NodeTestExecuteAcceptedResponse,
-} from '@pertexo/contracts';
+import type { NodeTestExecuteAcceptedResponse } from '@pertexo/contracts';
 
 import type { NodeTestingPersistence } from '../ports.js';
 
@@ -62,9 +59,9 @@ export function previewOutputResponse(
 export function previewAcceptanceResponse(
   preview: PreviewAcceptanceView,
   { replayed }: Readonly<{ replayed: boolean }>,
-): NodeTestExecuteAcceptedResponse {
-  return nodeTestExecuteAcceptedResponseSchema.parse({
-    mode: 'test_execute',
+) {
+  return {
+    mode: 'test_execute' as const,
     replayed,
     preview: {
       ...previewIdentityResponse(preview),
@@ -79,7 +76,7 @@ export function previewAcceptanceResponse(
       startedAt: preview.startedAt?.toISOString() ?? null,
       completedAt: preview.completedAt?.toISOString() ?? null,
     },
-  });
+  };
 }
 
 /** Acceptance and readback expose the same safe identity and provider disclosure. */

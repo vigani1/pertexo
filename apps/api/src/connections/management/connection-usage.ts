@@ -1,4 +1,3 @@
-import { connectionUsageResponseSchema } from '@pertexo/contracts';
 import type { ConnectionUsageStore } from '@pertexo/core/connections';
 import { z } from 'zod';
 
@@ -96,7 +95,7 @@ export class ListConnectionUsageService {
             ),
           }),
     });
-    return connectionUsageResponseSchema.parse({
+    return {
       items: page.items,
       nextCursor:
         page.nextCursor === undefined
@@ -107,6 +106,6 @@ export class ListConnectionUsageService {
               connectionId: input.connectionId,
               workflowVersionId: page.nextCursor.workflowVersionId,
             }),
-    });
+    };
   }
 }

@@ -1,4 +1,3 @@
-import { workflowVersionRestoreResponseSchema } from '@pertexo/contracts';
 import type { workflowVersionRestoreRequestSchema } from '@pertexo/contracts';
 import type { z } from 'zod';
 import {
@@ -36,12 +35,7 @@ export class RestoreWorkflowVersionService {
     private readonly telemetry: WorkflowAuthoringTelemetry = NOOP_WORKFLOW_AUTHORING_TELEMETRY,
   ) {}
 
-  public execute(input: RestoreWorkflowVersionInput): Promise<
-    Readonly<{
-      body: z.output<typeof workflowVersionRestoreResponseSchema>;
-      representationTag: string;
-    }>
-  > {
+  public execute(input: RestoreWorkflowVersionInput) {
     return this.telemetry.measure(
       WORKFLOW_AUTHORING_OPERATION.versionRestore,
       async () => {
@@ -73,10 +67,10 @@ export class RestoreWorkflowVersionService {
         const draft = await serializeWorkflowDraft(restored);
         return {
           ...draft,
-          body: workflowVersionRestoreResponseSchema.parse({
+          body: {
             ...draft.body,
             recoveryCopyId: restored.recoveryCopyId,
-          }),
+          },
         };
       },
     );

@@ -5,8 +5,6 @@ import type {
 import {
   workflowFolderPlacementResponseSchema,
   workflowOrganizationBulkItemOutcomeSchema,
-  workflowOrganizationBulkResponseSchema,
-  workflowTagCleanupDetachResponseSchema,
   type WorkflowOrganizationBulkItemOutcome,
 } from '@pertexo/contracts';
 import {
@@ -44,9 +42,7 @@ export class WorkflowOrganizationBatchesService {
     input: Input<z.output<typeof workflowOrganizationBulkRequestSchema>>,
   ) {
     const request = input.request;
-    return workflowOrganizationBulkResponseSchema.parse({
-      items: await this.execute(input, request),
-    });
+    return { items: await this.execute(input, request) };
   }
 
   public async cleanup(
@@ -58,13 +54,13 @@ export class WorkflowOrganizationBatchesService {
       tagId: request.tagId,
       items: request.items,
     });
-    return workflowTagCleanupDetachResponseSchema.parse({
+    return {
       items: items.map((item) =>
         item.status === 'updated'
           ? { ...item, status: 'detached' as const }
           : item,
       ),
-    });
+    };
   }
 
   private async execute(
@@ -105,6 +101,8 @@ export class WorkflowOrganizationBatchesService {
           throw new OrganizationItemIdentityError(
             'Organization item identity is incompatible',
           );
+        // A malformed item result makes that item's outcome unknown, not the
+        // whole batch's, so each item is checked where its failure is caught.
         if (request.operation === 'move')
           workflowFolderPlacementResponseSchema.parse(result);
         else

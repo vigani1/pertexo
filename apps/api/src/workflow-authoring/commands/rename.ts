@@ -1,8 +1,5 @@
 import type { workflowRenameRequestSchema } from '@pertexo/contracts';
-import {
-  workflowRenameResponseSchema,
-  type WorkflowRenameResponse,
-} from '@pertexo/contracts';
+import type { WorkflowRenameResponse } from '@pertexo/contracts';
 import type { z } from 'zod';
 import {
   authorizeWorkspaceOperation,
@@ -68,10 +65,10 @@ export class RenameWorkflowService {
             ? {}
             : { traceId: input.actor.traceId }),
         });
-        return workflowRenameResponseSchema.parse({
+        return {
           workflow: workflowSummary(renamed.workflow),
           replayed: renamed.replayed,
-        });
+        };
       },
     );
   }

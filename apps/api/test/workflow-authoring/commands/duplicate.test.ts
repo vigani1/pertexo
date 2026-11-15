@@ -154,21 +154,6 @@ describe('workflow duplication application seam', () => {
     expect(duplicateWorkflow).not.toHaveBeenCalled();
   });
 
-  it('strips extra response fields and rejects malformed persistence results', async () => {
-    const { service, duplicateWorkflow } = fixture();
-    duplicateWorkflow.mockResolvedValue({
-      workflowId: destinationId,
-      graph: {},
-    });
-    await expect(service.execute(input)).resolves.toEqual({
-      workflowId: destinationId,
-    });
-    duplicateWorkflow.mockResolvedValue({ workflowId: 'invalid' });
-    await expect(service.execute(input)).rejects.toMatchObject({
-      name: 'ZodError',
-    });
-  });
-
   it('does not start persistence after the request has been cancelled', async () => {
     const { service, duplicateWorkflow } = fixture();
     const controller = new AbortController();

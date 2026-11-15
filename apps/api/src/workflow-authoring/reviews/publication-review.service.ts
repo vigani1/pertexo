@@ -4,11 +4,6 @@ import type {
   publicationReviewRequestSchema,
   publicationReviewDecisionSchema,
 } from '@pertexo/contracts';
-import {
-  publicationReviewSchema,
-  publicationReviewOverviewSchema,
-  publicationReviewDetailSchema,
-} from '@pertexo/contracts';
 import type { PublicationReviewStore } from '@pertexo/core/authoring';
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
 import type { WorkflowApplicationInput } from '../ports.js';
@@ -30,12 +25,10 @@ export class PublicationReviewService {
       'workflow:read',
       this.authorization,
     );
-    return publicationReviewOverviewSchema.parse(
-      await this.store.overview({
-        ...this.scope(input),
-        workflowId: input.workflowId,
-      }),
-    );
+    return await this.store.overview({
+      ...this.scope(input),
+      workflowId: input.workflowId,
+    });
   }
   async read(input: RequestInput) {
     await authorizeAuthoringOperation(
@@ -43,9 +36,10 @@ export class PublicationReviewService {
       'workflow:read',
       this.authorization,
     );
-    return publicationReviewDetailSchema.parse(
-      await this.store.read({ ...this.scope(input), reviewId: input.reviewId }),
-    );
+    return await this.store.read({
+      ...this.scope(input),
+      reviewId: input.reviewId,
+    });
   }
   async request(
     input: WorkflowInput & {
@@ -60,15 +54,13 @@ export class PublicationReviewService {
       this.authorization,
     );
     const body = input.request;
-    return publicationReviewSchema.parse(
-      await this.store.request({
-        ...this.scope(input),
-        ...body,
-        workflowId: input.workflowId,
-        representationTag: input.representationTag,
-        idempotencyKey: input.idempotencyKey,
-      }),
-    );
+    return await this.store.request({
+      ...this.scope(input),
+      ...body,
+      workflowId: input.workflowId,
+      representationTag: input.representationTag,
+      idempotencyKey: input.idempotencyKey,
+    });
   }
   async decide(
     input: RequestInput & {
@@ -82,14 +74,12 @@ export class PublicationReviewService {
       this.authorization,
     );
     const body = input.request;
-    return publicationReviewSchema.parse(
-      await this.store.decide({
-        ...this.scope(input),
-        ...body,
-        reviewId: input.reviewId,
-        idempotencyKey: input.idempotencyKey,
-      }),
-    );
+    return await this.store.decide({
+      ...this.scope(input),
+      ...body,
+      reviewId: input.reviewId,
+      idempotencyKey: input.idempotencyKey,
+    });
   }
   private scope(input: Scope) {
     return {

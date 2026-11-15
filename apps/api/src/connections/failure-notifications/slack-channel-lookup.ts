@@ -23,7 +23,6 @@ import {
 } from '../telemetry.js';
 import {
   slackBotTokenCredentialSchema,
-  slackChannelLookupResponseSchema,
   type SlackChannelLookupItem,
   type SlackChannelLookupResponse,
   type SlackChannelUnresolvedReason,
@@ -318,12 +317,12 @@ function respond(
   channelIds: readonly string[],
   items: ReadonlyMap<string, SlackChannelLookupItem>,
 ): SlackChannelLookupResponse {
-  return slackChannelLookupResponseSchema.parse({
+  return {
     items: channelIds.map(
       (channelId) =>
         items.get(channelId) ?? unresolved(channelId, 'not_a_channel'),
     ),
-  });
+  };
 }
 
 function decodeSlackCredential(plaintext: Uint8Array) {

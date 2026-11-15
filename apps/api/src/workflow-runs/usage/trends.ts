@@ -1,8 +1,4 @@
-import {
-  usageTrendsResponseSchema,
-  type UsageTrendPeriod,
-  type UsageTrendsResponse,
-} from '@pertexo/contracts';
+import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
 import {
   authorizeWorkspaceOperation,
   hasCapability,
@@ -34,14 +30,12 @@ export class GetUsageTrendsService {
         : { authorizedWorkspace: input.authorizedWorkspace }),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     });
-    return usageTrendsResponseSchema.parse(
-      await this.persistence.usageTrends({
-        actorId: input.actor.actorId,
-        workspaceId: input.routeWorkspaceId,
-        period: input.period,
-        includeWorkflowNames: hasCapability(access.role, 'workflow:read'),
-        ...(input.signal === undefined ? {} : { signal: input.signal }),
-      }),
-    );
+    return await this.persistence.usageTrends({
+      actorId: input.actor.actorId,
+      workspaceId: input.routeWorkspaceId,
+      period: input.period,
+      includeWorkflowNames: hasCapability(access.role, 'workflow:read'),
+      ...(input.signal === undefined ? {} : { signal: input.signal }),
+    });
   }
 }

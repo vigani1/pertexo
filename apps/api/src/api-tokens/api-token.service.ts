@@ -1,9 +1,6 @@
-import {
-  apiTokenCreateResponseSchema,
-  apiTokenListResponseSchema,
-  apiTokenRevokeResponseSchema,
-  type ApiTokenCreateRequest,
-  type ApiTokenListResponse,
+import type {
+  ApiTokenCreateRequest,
+  ApiTokenListResponse,
 } from '@pertexo/contracts';
 import type { z } from 'zod';
 import type { apiTokenListQuerySchema } from '@pertexo/contracts';
@@ -32,14 +29,14 @@ export class ApiTokenManagement {
     input: ApiTokenOwner & { query: z.output<typeof apiTokenListQuerySchema> },
   ): Promise<ApiTokenListResponse> {
     const { query } = input;
-    return apiTokenListResponseSchema.parse({
+    return {
       ...(await this.database.list({
         ...input,
         limit: query.limit,
         ...(query.after === undefined ? {} : { after: query.after }),
       })),
       enabled: this.enabled,
-    });
+    };
   }
   public async create(
     input: ApiTokenCommand & {
@@ -54,13 +51,9 @@ export class ApiTokenManagement {
         }),
       );
     assertRecentSignIn(input.signedInAt, this.clock.now());
-    return apiTokenCreateResponseSchema.parse(
-      await this.database.create({ ...input, ...input.request }),
-    );
+    return await this.database.create({ ...input, ...input.request });
   }
   public async revoke(input: ApiTokenCommand & { tokenId: string }) {
-    return apiTokenRevokeResponseSchema.parse(
-      await this.database.revoke(input),
-    );
+    return await this.database.revoke(input);
   }
 }

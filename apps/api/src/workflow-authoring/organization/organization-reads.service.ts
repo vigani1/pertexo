@@ -8,8 +8,6 @@ import {
   workflowCombinedOrganizationProjectionResponseSchema,
   workflowOrganizationListResponseSchema,
   workflowOrganizationProjectionResponseSchema,
-  workflowTagAssignmentsResponseSchema,
-  workflowTagListResponseSchema,
 } from '@pertexo/contracts';
 import {
   WorkflowNotFoundError,
@@ -201,13 +199,13 @@ export class WorkflowOrganizationReadsService {
           }),
     });
     input.signal?.throwIfAborted();
-    return workflowTagListResponseSchema.parse({
+    return {
       items: page.items,
       nextCursor:
         page.nextId === null
           ? null
           : encodeOrganizationPageCursor(cursorContext, page.nextId),
-    });
+    };
   }
 
   public async listTagAssignments(
@@ -236,12 +234,12 @@ export class WorkflowOrganizationReadsService {
           }),
     });
     input.signal?.throwIfAborted();
-    return workflowTagAssignmentsResponseSchema.parse({
+    return {
       items: page.items,
       nextCursor:
         page.nextId === null
           ? null
           : encodeOrganizationPageCursor(cursorContext, page.nextId),
-    });
+    };
   }
 }

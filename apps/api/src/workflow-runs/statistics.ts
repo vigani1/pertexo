@@ -1,9 +1,4 @@
 import {
-  workflowRunStatisticsResponseSchema,
-  type WorkflowRunStatisticsResponse,
-} from '@pertexo/contracts';
-
-import {
   authorizeWorkspaceOperation,
   hasCapability,
   type AuthorizationCapability,
@@ -37,9 +32,7 @@ export class GetWorkflowRunStatisticsService {
     ) => boolean = hasCapability,
   ) {}
 
-  public async execute(
-    input: GetWorkflowRunStatisticsInput,
-  ): Promise<WorkflowRunStatisticsResponse> {
+  public async execute(input: GetWorkflowRunStatisticsInput) {
     const access = await authorizeWorkspaceOperation({
       actor: input.actor,
       routeWorkspaceId: input.routeWorkspaceId,
@@ -58,9 +51,9 @@ export class GetWorkflowRunStatisticsService {
       includeWorkflows: input.breakdown === 'workflow',
       includeWorkflowName: this.capabilityPolicy(access.role, 'workflow:read'),
     });
-    return workflowRunStatisticsResponseSchema.parse({
+    return {
       ...statistics,
       workflows: statistics.workflows ?? null,
-    });
+    };
   }
 }

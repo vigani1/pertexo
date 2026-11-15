@@ -1,22 +1,8 @@
-import {
-  workflowNodeRunDiagnosticsResponseSchema,
-  type WorkflowNodeRunDiagnosticsResponse,
-} from '@pertexo/contracts';
-import {
-  workflowRunVariablesResponseSchema,
-  type WorkflowRunVariablesResponse,
-} from '@pertexo/contracts';
-import {
-  workflowNodeRunInputResponseSchema,
-  workflowNodeRunOutputResponseSchema,
-  workflowRunInputResponseSchema,
-  workflowStepHealthResponseSchema,
-  workflowStepRunsResponseSchema,
-  type WorkflowNodeRunInputResponse,
-  type WorkflowNodeRunOutputResponse,
-  type WorkflowRunInputResponse,
-  type WorkflowStepHealthResponse,
-  type WorkflowStepRunsResponse,
+import type { WorkflowNodeRunDiagnosticsResponse } from '@pertexo/contracts';
+import type { WorkflowRunVariablesResponse } from '@pertexo/contracts';
+import type {
+  WorkflowStepHealthResponse,
+  WorkflowStepRunsResponse,
 } from '@pertexo/contracts';
 
 import {
@@ -61,9 +47,7 @@ export class GetWorkflowRunInputService {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
-  public async execute(
-    input: GetWorkflowRunInputInput,
-  ): Promise<WorkflowRunInputResponse> {
+  public async execute(input: GetWorkflowRunInputInput) {
     await authorizeRunData(input, this.authorization, 'run:read-data');
     const data = await this.persistence.readInput({
       actorId: input.actor.actorId,
@@ -71,7 +55,7 @@ export class GetWorkflowRunInputService {
       runId: input.runId,
     });
     if (data === undefined) throw new WorkflowRunNotFoundError();
-    return workflowRunInputResponseSchema.parse({ input: data });
+    return { input: data };
   }
 }
 
@@ -85,9 +69,7 @@ export class GetWorkflowNodeRunOutputService {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
-  public async execute(
-    input: GetWorkflowNodeRunOutputInput,
-  ): Promise<WorkflowNodeRunOutputResponse> {
+  public async execute(input: GetWorkflowNodeRunOutputInput) {
     await authorizeRunData(input, this.authorization, 'run:read-data');
     const data = await this.persistence.readNodeRunOutput({
       actorId: input.actor.actorId,
@@ -96,7 +78,7 @@ export class GetWorkflowNodeRunOutputService {
       nodeRunId: input.nodeRunId,
     });
     if (data === undefined) throw new WorkflowRunNotFoundError();
-    return workflowNodeRunOutputResponseSchema.parse({ output: data });
+    return { output: data };
   }
 }
 
@@ -110,9 +92,7 @@ export class GetWorkflowNodeRunInputService {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
 
-  public async execute(
-    input: GetWorkflowNodeRunOutputInput,
-  ): Promise<WorkflowNodeRunInputResponse> {
+  public async execute(input: GetWorkflowNodeRunOutputInput) {
     await authorizeRunData(input, this.authorization, 'run:read-data');
     const data = await this.persistence.readNodeRunInput({
       actorId: input.actor.actorId,
@@ -121,7 +101,7 @@ export class GetWorkflowNodeRunInputService {
       nodeRunId: input.nodeRunId,
     });
     if (data === undefined) throw new WorkflowRunNotFoundError();
-    return workflowNodeRunInputResponseSchema.parse({ input: data });
+    return { input: data };
   }
 }
 
@@ -152,14 +132,14 @@ export class GetWorkflowStepHealthService {
       workflowId: input.workflowId,
     });
     if (page === undefined) throw new WorkflowRunNotFoundError();
-    return workflowStepHealthResponseSchema.parse({
+    return {
       runsConsidered: page.runsConsidered,
       oldestRunAt: iso(page.oldestRunAt),
       items: page.items.map((item) => ({
         ...item,
         lastRanAt: item.lastRanAt.toISOString(),
       })),
-    });
+    };
   }
 }
 
@@ -182,14 +162,14 @@ export class ListWorkflowStepRunsService {
       limit: input.limit ?? 20,
     });
     if (items === undefined) throw new WorkflowRunNotFoundError();
-    return workflowStepRunsResponseSchema.parse({
+    return {
       items: items.map((item) => ({
         ...item,
         runCreatedAt: item.runCreatedAt.toISOString(),
         startedAt: iso(item.startedAt),
         completedAt: iso(item.completedAt),
       })),
-    });
+    };
   }
 }
 
@@ -208,7 +188,7 @@ export class GetWorkflowRunVariablesService {
       runId: input.runId,
     });
     if (snapshot === undefined) throw new WorkflowRunNotFoundError();
-    return workflowRunVariablesResponseSchema.parse({ snapshot });
+    return { snapshot };
   }
 }
 
@@ -231,6 +211,6 @@ export class GetWorkflowNodeRunDiagnosticsService {
       nodeRunId: input.nodeRunId,
     });
     if (diagnostics === undefined) throw new WorkflowRunNotFoundError();
-    return workflowNodeRunDiagnosticsResponseSchema.parse({ diagnostics });
+    return { diagnostics };
   }
 }

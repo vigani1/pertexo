@@ -5,13 +5,6 @@ import type {
   workflowTagRenameRequestSchema,
   workflowTagReplaceRequestSchema,
 } from '@pertexo/contracts';
-import {
-  workflowFavoriteResponseSchema,
-  workflowTagCreateResponseSchema,
-  workflowTagDeleteResponseSchema,
-  workflowTagRenameResponseSchema,
-  workflowTagReplaceResponseSchema,
-} from '@pertexo/contracts';
 import type {
   WorkflowFavoriteStore,
   WorkflowTagStore,
@@ -49,7 +42,7 @@ export class WorkflowOrganizationCommandsService {
       ...request,
     });
     input.signal?.throwIfAborted();
-    return workflowTagCreateResponseSchema.parse(result);
+    return result;
   }
 
   public async renameTag(
@@ -63,7 +56,7 @@ export class WorkflowOrganizationCommandsService {
       ...request,
     });
     input.signal?.throwIfAborted();
-    return workflowTagRenameResponseSchema.parse(result);
+    return result;
   }
 
   public async deleteTag(
@@ -77,7 +70,7 @@ export class WorkflowOrganizationCommandsService {
       ...request,
     });
     input.signal?.throwIfAborted();
-    return workflowTagDeleteResponseSchema.parse(result);
+    return result;
   }
 
   public async replaceTags(
@@ -91,7 +84,7 @@ export class WorkflowOrganizationCommandsService {
       ...request,
     });
     input.signal?.throwIfAborted();
-    return workflowTagReplaceResponseSchema.parse(result);
+    return result;
   }
 
   public async setFavorite(
@@ -110,7 +103,7 @@ export class WorkflowOrganizationCommandsService {
       favorite: request.favorite,
     });
     input.signal?.throwIfAborted();
-    return workflowFavoriteResponseSchema.parse(result);
+    return result;
   }
 
   private command(input: CommandInput) {

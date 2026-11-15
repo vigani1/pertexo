@@ -6,14 +6,6 @@ import type {
   workflowPromotionPreviewRequestSchema,
   workflowPromotionApplySchema,
 } from '@pertexo/contracts';
-import {
-  workflowPromotionSettingsSchema,
-  workflowPromotionTargetResultSchema,
-  workflowPromotionCandidatesSchema,
-  workflowPromotionHistorySchema,
-  workflowPromotionPreviewSchema,
-  workflowPromotionResultSchema,
-} from '@pertexo/contracts';
 import type { WorkflowPromotionStore } from '@pertexo/core/authoring';
 import {
   authorizeWorkspaceOperation,
@@ -37,43 +29,33 @@ export class WorkflowPromotionService {
   ) {}
   async settings(input: Scope) {
     await this.authorizeRead(input);
-    return workflowPromotionSettingsSchema.parse(
-      await this.store.settings(this.scope(input)),
-    );
+    return await this.store.settings(this.scope(input));
   }
   async setTarget(input: Command<Of<typeof workflowPromotionTargetSchema>>) {
     await this.authorize(input, 'workspace:manage');
     const body = input.request;
-    return workflowPromotionTargetResultSchema.parse(
-      await this.store.setTarget({
-        ...this.scope(input),
-        ...body,
-        idempotencyKey: input.idempotencyKey,
-      }),
-    );
+    return await this.store.setTarget({
+      ...this.scope(input),
+      ...body,
+      idempotencyKey: input.idempotencyKey,
+    });
   }
   async candidates(
     input: Read<Of<typeof workflowPromotionCandidatesQuerySchema>>,
   ) {
     await this.authorizeRead(input);
     const query = input.request;
-    return workflowPromotionCandidatesSchema.parse(
-      await this.store.candidates({ ...this.scope(input), ...query }),
-    );
+    return await this.store.candidates({ ...this.scope(input), ...query });
   }
   async history(input: Read<Of<typeof workflowPromotionPageQuerySchema>>) {
     await this.authorizeRead(input);
     const query = input.request;
-    return workflowPromotionHistorySchema.parse(
-      await this.store.history({ ...this.scope(input), ...query }),
-    );
+    return await this.store.history({ ...this.scope(input), ...query });
   }
   async preview(input: Read<Of<typeof workflowPromotionPreviewRequestSchema>>) {
     await this.authorize(input, 'workflow:update');
     const body = input.request;
-    return workflowPromotionPreviewSchema.parse(
-      await this.store.preview({ ...this.scope(input), ...body }),
-    );
+    return await this.store.preview({ ...this.scope(input), ...body });
   }
   async apply(input: Command<Of<typeof workflowPromotionApplySchema>>) {
     const body = input.request;
@@ -81,13 +63,11 @@ export class WorkflowPromotionService {
       input,
       body.mode === 'draft' ? 'workflow:update' : 'workflow:publish',
     );
-    return workflowPromotionResultSchema.parse(
-      await this.store.apply({
-        ...this.scope(input),
-        ...body,
-        idempotencyKey: input.idempotencyKey,
-      }),
-    );
+    return await this.store.apply({
+      ...this.scope(input),
+      ...body,
+      idempotencyKey: input.idempotencyKey,
+    });
   }
   private scope(input: Scope) {
     return {
