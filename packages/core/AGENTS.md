@@ -118,7 +118,8 @@ user-facing copy beyond the safe messages of its errors.
   writer moves down to the producer (the run transition writes the inbox's
   intake), or the shared piece moves to `shared/` (`run-events.repository.ts`,
   `execution-source.repository.ts`). `validate-core-area-cycles.mjs` refuses
-  a new runtime cycle; type-only imports follow the same order.
+  any cycle between areas, type-only imports, `import()` calls and core's own
+  `@pertexo/core/<area>` entries included.
 - A sealed application secret is checked with `applicationSealedSecretSchema`
   from `secrets`, never a local copy.
 

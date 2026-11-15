@@ -5,6 +5,7 @@ import {
 import { validateTestFileWrites } from './test-file-writes.mjs';
 import { WEB_BROWSER_PACKAGE_ROOTS } from './browser-entry-dependencies.mjs';
 import { executionAreaDependencyAllowed } from './execution-area-rules.mjs';
+import { loadsModule } from './module-declarations.mjs';
 import console from 'node:console';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -38,30 +39,6 @@ const webRawFetchOwners = new Set([
   'apps/web/src/lib/api/client.ts',
   'apps/web/src/features/artifacts/data/artifact-upload.api.ts',
 ]);
-
-function isRuntimeImport(statement) {
-  if (ts.isImportDeclaration(statement)) {
-    if (statement.importClause?.isTypeOnly) return false;
-    const clause = statement.importClause;
-    const bindings = clause?.namedBindings;
-    return !(
-      clause &&
-      !clause.name &&
-      bindings &&
-      ts.isNamedImports(bindings) &&
-      bindings.elements.length > 0 &&
-      bindings.elements.every((element) => element.isTypeOnly)
-    );
-  }
-  if (statement.isTypeOnly) return false;
-  const clause = statement.exportClause;
-  return !(
-    clause &&
-    ts.isNamedExports(clause) &&
-    clause.elements.length > 0 &&
-    clause.elements.every((element) => element.isTypeOnly)
-  );
-}
 
 const coreSource = 'packages/core/src/';
 // Tests answer only to the direction rules, but they do answer to them.
@@ -395,7 +372,7 @@ export function validateModuleImports(sources) {
         continue;
       const specifier = statement.moduleSpecifier;
       if (!specifier || !ts.isStringLiteral(specifier)) continue;
-      inspectSpecifier(specifier.text, isRuntimeImport(statement));
+      inspectSpecifier(specifier.text, loadsModule(statement));
     }
     const inspectDeferredImport = (node) => {
       const argument =
