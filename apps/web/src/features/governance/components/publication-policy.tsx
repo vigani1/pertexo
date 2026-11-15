@@ -8,6 +8,7 @@ import { Notice } from '@/components/ui/notice';
 import { isApiError } from '@/lib/api/error';
 import type { GovernanceScope } from '../data/audit.api';
 import { useSettingForm } from '../data/governance-setting.mutations';
+import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 export function PublicationPolicy({
   scope,
   snapshot,
@@ -45,7 +46,7 @@ export function PublicationPolicy({
         <LabelledField
           id={id}
           label="Require approval to publish"
-          description="Every publisher, including an owner, needs a different owner or admin to approve the exact saved draft. If you are the only eligible reviewer, add another admin before enabling this. Turning it off is audited and invalidates pending requests."
+          description={`Every publisher, including an owner, needs a different ${ANY_ADMINISTRATOR} to approve the exact saved draft. If you are the only eligible reviewer, add another admin before enabling this. Turning it off is audited and invalidates pending requests.`}
         >
           {(control) => (
             <Checkbox

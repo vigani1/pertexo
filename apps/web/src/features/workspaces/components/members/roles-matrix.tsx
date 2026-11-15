@@ -3,11 +3,11 @@ import { SettingsSection } from '@/components/patterns/settings/section';
 import { cn } from '@/lib/class-names';
 import {
   ROLE_MATRIX,
-  ROLE_NAMES,
   WORKSPACE_ROLES,
   withArticle,
   type WorkspaceRole,
 } from '../../model/workspace-roles';
+import { ROLE_NAMES } from '../../model/role-words';
 
 /**
  * What each role can do, drawn as a woven grid: every ability is a thread

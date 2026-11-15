@@ -17,7 +17,8 @@ import { failureNotificationDestinationsQueryOptions } from '@/features/failure-
 import { countWorkflowStates } from '@/features/workflows/public';
 import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
-import { ROLE_NAMES, WORKSPACE_ROLES } from '../../model/workspace-roles';
+import { WORKSPACE_ROLES } from '../../model/workspace-roles';
+import { ROLE_NAMES } from '../../model/role-words';
 import { workspaceMembersInfiniteQueryOptions } from '../../data/workspaces.queries';
 import { pluralWord } from '@/lib/format/count';
 

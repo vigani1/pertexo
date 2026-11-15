@@ -16,7 +16,7 @@ import {
   describeInvitationExpiry,
   describeInvitationStatus,
 } from '../../model/invitation-words';
-import { ROLE_NAMES } from '../../model/workspace-roles';
+import { ROLE_NAMES } from '../../model/role-words';
 
 export type InvitationAction = 'resend' | 'revoke';
 

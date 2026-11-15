@@ -18,6 +18,7 @@ import { useEditorStoreApi } from '../model/state/context';
 import { useEditorOwnership } from '../hooks/ownership/use-editor-ownership';
 import { useEditorPublication } from '../hooks/publication/use-editor-publication';
 import { useEditorActions } from '../hooks/use-editor-actions';
+import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 
 /**
  * One authenticated editing session: identity fencing, the save pipeline,
@@ -135,8 +136,7 @@ export function WorkflowEditorSession({
               <SaveFailureNotice />
               {!canUpdate ? (
                 <Notice>
-                  View-only access. Ask a workspace owner or admin for access to
-                  edit, publish or test this draft.
+                  {`View-only access. Ask a workspace ${ANY_ADMINISTRATOR} for access to edit, publish or test this draft.`}
                 </Notice>
               ) : null}
               {triggerNotice}

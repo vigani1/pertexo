@@ -18,11 +18,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Status, StatusGlyph } from '@/components/ui/status';
 import { formatDate } from '@/lib/format/time';
-import {
-  ROLE_NAMES,
-  type ManagedRole,
-  type WorkspaceRole,
-} from '../../model/workspace-roles';
+import type { ManagedRole, WorkspaceRole } from '../../model/workspace-roles';
+import { ROLE_NAMES } from '../../model/role-words';
 import { RingMonogram } from '../shell/workspace-mark';
 import { RoleSelect } from './role-select';
 

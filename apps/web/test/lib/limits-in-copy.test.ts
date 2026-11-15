@@ -1,7 +1,6 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import ts from 'typescript';
 import { expect, it } from 'vitest';
+import { copyIn, sources } from './source-copy';
 
 // Limits the browser states (sizes, lengths, how long something lasts or is
 // kept) come from the value the server enforces, formatted with
@@ -98,40 +97,6 @@ const STILL_WRITTEN: readonly string[] = [
   'features/workspaces/components/shell/workspace-banners.tsx: for 30 days',
   'features/workspaces/data/mutations/members/use-member-command.ts: within five minutes',
 ];
-
-function sources(directory: string): string[] {
-  return readdirSync(directory).flatMap((name) => {
-    const path = join(directory, name);
-    if (statSync(path).isDirectory()) return sources(path);
-    return /\.tsx?$/u.test(name) ? [path] : [];
-  });
-}
-
-/** Every piece of text a file shows: strings, template parts and JSX text. */
-function copyIn(path: string): string[] {
-  const source = ts.createSourceFile(
-    path,
-    readFileSync(path, 'utf8'),
-    ts.ScriptTarget.Latest,
-    false,
-    path.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
-  const texts: string[] = [];
-  const visit = (node: ts.Node) => {
-    if (
-      ts.isStringLiteral(node) ||
-      ts.isNoSubstitutionTemplateLiteral(node) ||
-      ts.isTemplateHead(node) ||
-      ts.isTemplateMiddle(node) ||
-      ts.isTemplateTail(node)
-    )
-      texts.push(node.text);
-    else if (ts.isJsxText(node)) texts.push(node.text.replace(/\s+/gu, ' '));
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return texts;
-}
 
 function writtenLimits(root: string): string[] {
   return sources(root).flatMap((path) =>

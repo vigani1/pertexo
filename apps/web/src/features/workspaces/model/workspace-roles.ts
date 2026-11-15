@@ -1,6 +1,6 @@
 import { sentenceStart } from '@/lib/format/sentence';
+import { listRoles, ROLE_NAMES } from './role-words';
 import {
-  ADMINISTRATIVE_ROLES,
   ROLES,
   hasCapability,
   rolesForCapability as rolesAllowedTo,
@@ -18,14 +18,6 @@ import type { WorkspaceMember } from '@pertexo/contracts';
 export type WorkspaceRole = Role;
 export type ManagedRole = DelegatedRole;
 type Capability = AuthorizationCapability;
-
-export const ROLE_NAMES: Readonly<Record<WorkspaceRole, string>> = {
-  owner: 'Owner',
-  admin: 'Admin',
-  builder: 'Builder',
-  operator: 'Operator',
-  viewer: 'Viewer',
-};
 
 /** One line per role, for pickers: what someone with it can do. */
 export const ROLE_SUMMARIES: Readonly<Record<WorkspaceRole, string>> = {
@@ -105,27 +97,10 @@ export const ROLE_MATRIX: readonly (RoleAbility &
   }),
 );
 
-const ROLE_PLURALS: Readonly<Record<WorkspaceRole, string>> = {
-  owner: 'owners',
-  admin: 'admins',
-  builder: 'builders',
-  operator: 'operators',
-  viewer: 'viewers',
-};
-
-function listRoles(roles: readonly WorkspaceRole[]): string {
-  const names = roles.map((role) => ROLE_PLURALS[role]);
-  const last = names.pop() ?? 'owners';
-  return names.length === 0 ? last : `${names.join(', ')} and ${last}`;
-}
-
 /** Who holds a capability, as the policy grants it: "owners and admins". */
 export function whoCan(capability: Capability): string {
   return listRoles(rolesAllowedTo(capability));
 }
-
-/** Who the administrative rules name, such as who always keeps shared access. */
-export const ADMINISTRATORS = listRoles(ADMINISTRATIVE_ROLES);
 
 /** The end of a refusal, nearest role first: "Admins and owners can." */
 export function refusalWhoCan(

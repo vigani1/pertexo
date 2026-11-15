@@ -30,6 +30,10 @@ import {
 } from '../data/workflow-settings.queries';
 import { shownData } from '@/lib/api/error-copy';
 import { hasNoPublishedTriggers } from '../model/triggers/published';
+import { whoCan } from '@/features/workspaces/public';
+
+/** Editing a workflow is what shows its webhooks and lets triggers change. */
+const WEBHOOK_CAPABILITY = 'workflow:update';
 
 type TriggersPageProps = Readonly<{
   apiClient: ApiClient;
@@ -172,9 +176,9 @@ function TriggersSession({
   workspace,
   workflowId,
 }: TriggersPageProps) {
-  const editable = workspace.capabilities.includes('workflow:update');
-  // Webhook addresses and their deliveries are for the people who build
-  // (owners, admins, builders); others aren't sent to ask for them.
+  const editable = workspace.capabilities.includes(WEBHOOK_CAPABILITY);
+  // Webhook addresses and their deliveries are for the people who build;
+  // others aren't sent to ask for them.
   const webhooks = useQuery({
     ...webhookTriggersQueryOptions(
       apiClient,
@@ -272,8 +276,8 @@ function TriggersSession({
           </>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Webhook addresses and deliveries are shown to owners, admins and
-            builders.
+            Webhook addresses and deliveries are shown to{' '}
+            {whoCan(WEBHOOK_CAPABILITY)}.
           </p>
         )}
       </SettingsSection>

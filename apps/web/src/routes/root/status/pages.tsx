@@ -32,6 +32,7 @@ import {
   supportReference,
 } from '@/lib/api/error-copy';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
+import { ANY_ADMINISTRATOR } from '@/features/workspaces/workspaces-routing.public';
 
 function FullScreen({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -215,7 +216,7 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
       <FullScreenState
         art={<BarredThread />}
         title="You don’t have access to this"
-        description="Your role here doesn’t include this page. A workspace owner or admin can change it."
+        description={`Your role here doesn’t include this page. A workspace ${ANY_ADMINISTRATOR} can change it.`}
         action={goHome}
       />
     );

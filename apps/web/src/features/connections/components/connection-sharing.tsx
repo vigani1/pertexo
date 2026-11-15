@@ -208,7 +208,7 @@ function RestrictedConnectionMembers({
         aria-label="People with access"
         className="flex flex-col divide-y divide-border"
       >
-        <SharingAdministratorsEntry />
+        <SharingAdministratorsEntry administrators={ADMINISTRATORS} />
         {snapshot.members.map((member) => (
           <SharingEntry
             key={member.userId}

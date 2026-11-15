@@ -7,7 +7,7 @@ import { governanceQueryOptions } from '../data/audit.queries';
 import { AUDIT_RETENTION_RANGE } from '../model/governance-setting-edit';
 import { PublicationPolicy } from './publication-policy';
 import { AuditRetention } from './audit-retention';
-import { whoCan } from '@/features/workspaces/public';
+import { ANY_ADMINISTRATOR, whoCan } from '@/features/workspaces/public';
 import { sentenceStart } from '@/lib/format/sentence';
 
 export function GovernanceSettings({
@@ -24,7 +24,7 @@ export function GovernanceSettings({
         <>
           <SettingsSection
             title="Publishing approval"
-            description="Require another owner or admin to review each saved draft before it becomes live."
+            description={`Require another ${ANY_ADMINISTRATOR} to review each saved draft before it becomes live.`}
           >
             <PublicationPolicy
               scope={scope}

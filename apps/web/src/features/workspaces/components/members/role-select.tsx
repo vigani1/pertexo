@@ -7,11 +7,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  ROLE_NAMES,
   ROLE_SUMMARIES,
   type ManagedRole,
   type WorkspaceRole,
 } from '../../model/workspace-roles';
+import { ROLE_NAMES } from '../../model/role-words';
 
 type RoleSelectProps = Readonly<{
   value: WorkspaceRole;

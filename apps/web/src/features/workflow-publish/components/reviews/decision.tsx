@@ -13,6 +13,7 @@ import { usePublicationReviewDecision } from '../../data/mutations/use-publicati
 import type { ReviewScope } from '../../data/reviews/publication-review.api';
 import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/contracts';
 import { formatCount } from '@/lib/format/count';
+import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 export function ReviewDecision({
   scope,
   request,
@@ -114,8 +115,8 @@ function ReviewStateNotice({
     return (
       <Notice>
         {request.requestedBy === userId
-          ? 'Another owner or admin must decide your publication request.'
-          : 'Only a current workspace owner or admin can decide this request.'}
+          ? `Another ${ANY_ADMINISTRATOR} must decide your publication request.`
+          : `Only a current workspace ${ANY_ADMINISTRATOR} can decide this request.`}
       </Notice>
     );
   }
