@@ -3,7 +3,10 @@ import { tooLarge, unsupported, type WorkbookArchive } from './archive.js';
 import { decodeCell, type Cell, type CellContext } from './cells.js';
 import { SPREADSHEET_LIMITS } from './limits.js';
 import { readXml, readXmlPart } from './xml.js';
-import { EXCEL_COLUMN_LETTERS } from '../../excel-format.js';
+import {
+  EXCEL_COLUMN_LETTERS,
+  EXCEL_SHEET_LIMITS,
+} from '../../excel-format.js';
 
 /** One sheet row: cells with a value, by 1-based column. */
 export type SheetRow = Readonly<{ index: number; cells: Map<number, Cell> }>;
@@ -60,7 +63,7 @@ export async function* readSheetRows(
         lastRow = position(
           attributes.r === undefined ? undefined : Number(attributes.r),
           lastRow,
-          SPREADSHEET_LIMITS.rows,
+          EXCEL_SHEET_LIMITS.rows,
         );
         row = { index: lastRow, cells: new Map() };
         lastColumn = 0;
@@ -69,7 +72,7 @@ export async function* readSheetRows(
         lastColumn = position(
           attributes.r === undefined ? undefined : cellAt(attributes.r).column,
           lastColumn,
-          SPREADSHEET_LIMITS.columns,
+          EXCEL_SHEET_LIMITS.columns,
         );
         cell = {
           column: lastColumn,
@@ -91,7 +94,7 @@ export async function* readSheetRows(
       else if (name === 'c' && cell !== undefined && row !== undefined) {
         const decoded = decodeCell(cell, context);
         // Shared and inline text alike, as read rather than as written.
-        if ((decoded?.text.length ?? 0) > SPREADSHEET_LIMITS.cellTextLength)
+        if ((decoded?.text.length ?? 0) > EXCEL_SHEET_LIMITS.cellTextLength)
           throw new FileInputFailure({ reason: 'value_size' });
         if (decoded !== undefined) row.cells.set(cell.column, decoded);
         cell = undefined;

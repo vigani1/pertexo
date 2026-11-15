@@ -1,8 +1,11 @@
 import { formatCount, looksLikeFormula } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
-import { SPREADSHEET_LIMITS } from '../../read-file/xlsx/limits.js';
 import { refuseFileCreation } from '../create-file.errors.js';
-import { EXCEL_COLUMN_LETTERS, EXCEL_ESCAPE } from '../../excel-format.js';
+import {
+  EXCEL_COLUMN_LETTERS,
+  EXCEL_ESCAPE,
+  EXCEL_SHEET_LIMITS,
+} from '../../excel-format.js';
 
 export type SheetRow = Readonly<Record<string, JsonValue>>;
 
@@ -67,10 +70,10 @@ function cell(reference: string, value: JsonValue | undefined, row: number) {
   if (typeof value === 'boolean')
     return `<c r="${reference}" t="b"><v>${value ? '1' : '0'}</v></c>`;
   const text = typeof value === 'string' ? value : JSON.stringify(value);
-  if (text.length > SPREADSHEET_LIMITS.cellTextLength)
+  if (text.length > EXCEL_SHEET_LIMITS.cellTextLength)
     refuseFileCreation(
       'data',
-      `Excel cells hold up to ${formatCount(SPREADSHEET_LIMITS.cellTextLength)} characters; row ${String(row)} has a longer value. Shorten it, or choose CSV or JSON.`,
+      `Excel cells hold up to ${formatCount(EXCEL_SHEET_LIMITS.cellTextLength)} characters; row ${String(row)} has a longer value. Shorten it, or choose CSV or JSON.`,
     );
   return textCell(reference, text, false);
 }

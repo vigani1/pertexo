@@ -50,8 +50,9 @@ Each step is `<area>/<step>/<step>.definition.ts`, `.executor.ts` and
   `FILE_PAGE_LIMITS`, `DATA_TABLE_LIMITS`).
 - File formats are tables, not literals: `data/zip-format.ts` (the zip layout
   the workbook writer and reader share), `data/excel-format.ts` (column
-  letters and the `_xHHHH_` escape), and `read-file/xlsx/limits.ts`
-  (`SPREADSHEET_LIMITS`, the workbook reader's bounds). Readers pause for the
+  letters, the `_xHHHH_` escape and Excel's own row, column and cell-text
+  size in `EXCEL_SHEET_LIMITS`), and `read-file/xlsx/limits.ts`
+  (`SPREADSHEET_LIMITS`, the reader's own bounds on hostile workbooks). Readers pause for the
   event loop by `read-file/read-pacing.ts`.
 
 ## Rules

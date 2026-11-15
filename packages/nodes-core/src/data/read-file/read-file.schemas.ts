@@ -7,7 +7,7 @@ import {
   sheetNameSchema,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { SPREADSHEET_LIMITS } from './xlsx/limits.js';
+import { EXCEL_SHEET_LIMITS } from '../excel-format.js';
 
 export const CORE_READ_FILE_CONFIG_SCHEMA = z
   .discriminatedUnion('format', [
@@ -54,7 +54,7 @@ export const CORE_READ_FILE_CONFIG_SCHEMA = z
           .number()
           .int()
           .min(1)
-          .max(SPREADSHEET_LIMITS.rows)
+          .max(EXCEL_SHEET_LIMITS.rows)
           .default(1)
           .meta({
             title: 'Header row',
