@@ -14,7 +14,10 @@ import type { PoolClient } from 'pg';
 import type { ReplaceWorkspaceVariablesInput } from './workspace-variables.types.js';
 import { WorkspaceVariablesConflictError } from './workspace-variables.errors.js';
 import { planWorkspaceVariableReplacement } from './replacement.js';
-import { saveVariableSet } from './set.repository.js';
+import {
+  advanceVariablesHead,
+  insertVariableSetRevision,
+} from './set.repository.js';
 
 const acceptedReplacement = z
   .object({ revision: z.number().int().nonnegative(), changed: z.boolean() })
@@ -61,7 +64,15 @@ export async function replaceWorkspaceVariables(
   const changed = changedNames.length > 0;
   const revision = changed ? current.revision + 1 : current.revision;
   if (changed) {
-    await saveVariableSet(client, input, { revision, descriptions });
+    if (
+      !(await insertVariableSetRevision(client, input, {
+        revision,
+        descriptions,
+      }))
+    )
+      throw new WorkspaceVariablesConflictError();
+    if (!(await advanceVariablesHead(client, input, revision)))
+      throw new WorkspaceVariablesConflictError();
     await auditVariablesChanged(client, input, { revision, changedNames });
   }
   const accepted = { revision, changed };
