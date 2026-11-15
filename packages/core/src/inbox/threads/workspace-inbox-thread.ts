@@ -4,14 +4,6 @@ import type {
 } from '@pertexo/contracts';
 import type { WorkspaceActor } from '../../shared/workspace-access.js';
 
-/** The terminal run statuses that raise a notice (ADR 055). */
-export const WORKSPACE_INBOX_FAILURE_KINDS = [
-  'failed',
-  'timed_out',
-  'outcome_unknown',
-] as const;
-export type WorkspaceInboxFailureKind =
-  (typeof WORKSPACE_INBOX_FAILURE_KINDS)[number];
 export type WorkspaceInboxThreadRecord = WorkspaceInboxThread;
 export type WorkspaceInboxCursor = Readonly<{
   latestOccurredAt: string;

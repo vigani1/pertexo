@@ -9,7 +9,7 @@ import {
 } from '../runs/run-store/run-store.fixture.js';
 
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
-import { persistWorkspaceInboxEvent } from '../../src/inbox/folding/events.repository.js';
+import { persistWorkspaceInboxEvent } from '../../src/runs/advance/persist/inbox-event.repository.js';
 
 function plan(
   runStatus: string,
