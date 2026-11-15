@@ -96,12 +96,22 @@ export const BYTE_SIZE_OWNER = 'packages/node-sdk/src/values/byte-size.ts';
 // A unit written straight after an interpolated number: `${…} KB`.
 const UNIT_AFTER_VALUE = /^\s?(B|KB|KiB|MB|MiB|GB|GiB)\b/u;
 
-/** Byte sizes in text written by hand instead of through `formatByteSize`. */
+/**
+ * Byte sizes and counts in text written by hand instead of through
+ * `formatByteSize` and `formatCount`.
+ */
 export function findHandWrittenByteUnits(file, text) {
   if (file === BYTE_SIZE_OWNER) return [];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const found = [];
   const visit = (node) => {
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      node.name.text === 'toLocaleString'
+    )
+      found.push(
+        `${file}: .toLocaleString: write counts with formatCount (${BYTE_SIZE_OWNER}).`,
+      );
     if (ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       const unit = UNIT_AFTER_VALUE.exec(node.text)?.[1];
       if (unit !== undefined)

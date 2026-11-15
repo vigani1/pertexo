@@ -1,4 +1,4 @@
-import { looksLikeFormula } from '@pertexo/node-sdk';
+import { formatCount, looksLikeFormula } from '@pertexo/node-sdk';
 import type { JsonValue } from '@pertexo/node-sdk/server';
 import { SPREADSHEET_LIMITS } from '../../read-file/xlsx/limits.js';
 import { refuseFileCreation } from '../create-file.errors.js';
@@ -70,7 +70,7 @@ function cell(reference: string, value: JsonValue | undefined, row: number) {
   if (text.length > SPREADSHEET_LIMITS.cellTextLength)
     refuseFileCreation(
       'data',
-      `Excel cells hold up to ${SPREADSHEET_LIMITS.cellTextLength.toLocaleString('en-US')} characters; row ${String(row)} has a longer value. Shorten it, or choose CSV or JSON.`,
+      `Excel cells hold up to ${formatCount(SPREADSHEET_LIMITS.cellTextLength)} characters; row ${String(row)} has a longer value. Shorten it, or choose CSV or JSON.`,
     );
   return textCell(reference, text, false);
 }

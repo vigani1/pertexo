@@ -82,7 +82,7 @@ function assertRetainedResult(admitted: JsonValue): void {
       if (Array.isArray(item) && item.length > COLLECTION_MAX_ITEMS)
         refuseUtility(
           'too_many_items',
-          `A result list exceeds ${COLLECTION_MAX_ITEMS.toLocaleString('en-US')} items. Split the input into smaller batches.`,
+          `A result list exceeds ${formatCount(COLLECTION_MAX_ITEMS)} items. Split the input into smaller batches.`,
         );
       for (const [key, child] of Object.entries<JsonValue>(item)) {
         if (!Array.isArray(item)) storedExecutionJsonStringBytes(key);

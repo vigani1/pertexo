@@ -3,6 +3,7 @@ import { workspaceDataTableRows as tableRows } from '@pertexo/database/schema';
 import {
   DATA_TABLE_LIMITS,
   DataTableError,
+  formatCount,
   validateDataTableValues,
   type DataTableQuery,
   type DataTableValues,
@@ -132,7 +133,7 @@ async function lockFilteredRows(
   if (rows.length > DATA_TABLE_LIMITS.batchRows)
     throw new DataTableError(
       'quota_exceeded',
-      `More than ${DATA_TABLE_LIMITS.batchRows.toLocaleString('en-US')} rows match. Narrow the filter or split the operation.`,
+      `More than ${formatCount(DATA_TABLE_LIMITS.batchRows)} rows match. Narrow the filter or split the operation.`,
     );
   return rows;
 }
