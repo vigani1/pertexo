@@ -24,7 +24,7 @@ import {
   inputRequestConfigSchema,
   parseFormValues,
 } from '@pertexo/workflow-model';
-import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
+import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';
 import type { Role } from '@pertexo/policy';
 import {
   PendingTaskDecisionError,

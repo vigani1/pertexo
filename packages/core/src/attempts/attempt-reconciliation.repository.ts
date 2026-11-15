@@ -8,7 +8,7 @@ import {
 } from '../runs/queries/history/events.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { enqueue } from '../outbox/enqueue-delivery.repository.js';
-import { enqueueAdvance } from '../runs/wakeups/advance.repository.js';
+import { enqueueAdvance } from '../outbox/run-advance.repository.js';
 
 /** Where a settlement came from, kept on the attempt and in its event. */
 export type AttemptSettlementSource =

@@ -23,7 +23,7 @@ import { applyIncomingCallCancellation } from './controls.repository.js';
 import {
   wakeWorkflowRun,
   deferWorkflowRun,
-} from '../wakeups/advance.repository.js';
+} from '../../outbox/run-advance.repository.js';
 
 async function performOutgoingActions(
   client: PoolClient,

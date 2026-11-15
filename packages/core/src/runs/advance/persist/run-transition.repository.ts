@@ -27,7 +27,7 @@ import { persistFailureNotificationIntent } from './failure-notification.reposit
 import { persistWorkspaceInboxEvent } from '../../../inbox/folding/events.repository.js';
 import { persistWorkflowTriggerOutcome } from '../../../triggers/pause/outcomes.repository.js';
 import { persistCallCompletion } from '../../calls/persist.repository.js';
-import { wakeWorkflowRun } from '../../wakeups/advance.repository.js';
+import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';
 
 async function persistDerivedContinuation(
   client: PoolClient,

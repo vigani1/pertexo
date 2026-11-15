@@ -10,7 +10,7 @@ import { WorkflowRunNotFoundError } from '../workflow-run.errors.js';
 import {
   enqueueAdvance,
   enqueueAdvances,
-} from '../wakeups/advance.repository.js';
+} from '../../outbox/run-advance.repository.js';
 import {
   lockUncanceledActiveRuns,
   markRunsCancelRequested,
