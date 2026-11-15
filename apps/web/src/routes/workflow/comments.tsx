@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { workflowNodes } from '@pertexo/workflow-model';
 import { WorkflowCommentsPage } from '@/features/workflow-collaboration/public';
-import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
+import { workflowDraftQueryOptions } from '@/features/workflow-editor/workflow-editor-queries.public';
 import { describeStep } from '@/features/catalog/presentation.public';
 import { useWorkflowHubScope } from './hub/scope';
 import { WorkflowHubTabFrame } from './hub/frame';

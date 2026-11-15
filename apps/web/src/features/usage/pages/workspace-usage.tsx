@@ -26,7 +26,7 @@ import {
   usageCapacityQueryOptions,
 } from '../data/usage.queries';
 import { isReadAccessLost } from '@/lib/api/read-denial';
-import { parseUsageSearch, type UsageSearch } from '../usage-search.public';
+import { parseUsageSearch, type UsageSearch } from '../model/usage-search';
 
 const windows = {
   '1h': '1 hour',

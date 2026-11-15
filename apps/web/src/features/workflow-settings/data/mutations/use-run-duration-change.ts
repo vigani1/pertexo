@@ -5,7 +5,7 @@ import {
   getWorkflowDraft,
   saveWorkflowDraft,
   workflowDraftKeys,
-} from '@/features/workflow-editor/draft.public';
+} from '@/features/workflow-editor/workflow-editor-queries.public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';

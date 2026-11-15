@@ -67,7 +67,7 @@ export const workflowBuildRoute = createRoute({
   validateSearch: (search) => parseFirstRunGuideSearch(search),
   loader: async ({ context }) => {
     const { workflowDraftQueryOptions } =
-      await import('@/features/workflow-editor/draft.public');
+      await import('@/features/workflow-editor/workflow-editor-queries.public');
 
     const { apiClient, queryClient, user, workspace, workflowId } = context;
     if (workflowId === null) return { found: false };
@@ -209,7 +209,7 @@ export const workflowSettingsRoute = createRoute({
     ] = await Promise.all([
       import('@/features/failure-notifications/failure-notifications-queries.public'),
       import('@/features/workflow-settings/workflow-settings-queries.public'),
-      import('@/features/workflow-editor/draft.public'),
+      import('@/features/workflow-editor/workflow-editor-queries.public'),
       import('@/features/workflow-runs/workflow-runs-queries.public'),
     ]);
 
