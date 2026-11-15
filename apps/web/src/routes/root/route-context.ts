@@ -3,16 +3,14 @@ import { redirect } from '@tanstack/react-router';
 import { workspaceIdentifierSchema } from '@pertexo/contracts';
 import { isNotFound } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';
-import {
-  currentUserQueryOptions,
-  isUnauthenticated,
-} from '@/features/auth/auth-session-queries.public';
+import { currentUserQueryOptions } from '@/features/auth/auth-queries.public';
+import { isUnauthenticated } from '@/features/auth/auth-routing.public';
 import {
   allowlistedReturnPath,
   returnToSearch,
-} from '@/features/auth/return-path.public';
-import { publishSessionChange } from '@/features/auth/session/sync.public';
-import type { SessionPause } from '@/features/auth/session/pause.public';
+  publishSessionChange,
+  type SessionPause,
+} from '@/features/auth/auth-routing.public';
 
 export type RouterContext = Readonly<{
   queryClient: QueryClient;

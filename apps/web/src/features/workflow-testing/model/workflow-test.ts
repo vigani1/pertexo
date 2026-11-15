@@ -1,4 +1,4 @@
-import { describeStep } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 export function workflowTestStepLabels(
   graph: WorkflowGraphContract | undefined,

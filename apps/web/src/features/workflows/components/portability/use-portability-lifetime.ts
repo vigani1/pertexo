@@ -4,7 +4,7 @@ import { isSessionExpired } from '@/lib/api/error';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { observeSessionChanges } from '@/features/auth/session/sync.public';
+import { observeSessionChanges } from '@/features/auth/auth-routing.public';
 
 import {
   watchWorkspaceReadDenial,

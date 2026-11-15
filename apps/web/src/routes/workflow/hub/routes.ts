@@ -1,13 +1,13 @@
-import { parseFirstRunGuideSearch } from '@/features/workflows/first-run-search.public';
+import { parseFirstRunGuideSearch } from '@/features/workflows/workflows-routing.public';
 import { warmWorkspacePage } from '../../workspace/workspace-page';
-import { parseCollaborationSearch } from '@/features/workflow-collaboration/workflow-collaboration-search.public';
+import { parseCollaborationSearch } from '@/features/workflow-collaboration/workflow-collaboration-routing.public';
 import { createRoute } from '@tanstack/react-router';
 import { lazyPiece, lazyRoute } from '@/components/patterns/app-update/lazy';
 import { workflowIdentifierSchema } from '@pertexo/contracts';
 import {
   filtersFromSearch,
   sanitizeWorkflowRunSearch,
-} from '@/features/workflow-runs/workflow-runs-search.public';
+} from '@/features/workflow-runs/workflow-runs-routing.public';
 
 import { pageTitle } from '../../root/page-title';
 import {

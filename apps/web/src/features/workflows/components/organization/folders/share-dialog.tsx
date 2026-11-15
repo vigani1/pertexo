@@ -4,7 +4,7 @@ import { XIcon } from 'lucide-react';
 import type { FolderPrincipal, WorkflowFolder } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { describeReadError } from '@/lib/api/error-copy';
-import { ADMINISTRATORS, ROLE_NAMES } from '@/features/workspaces/roles.public';
+import { ADMINISTRATORS, ROLE_NAMES } from '@/features/workspaces/public';
 import { sentenceStart } from '@/lib/format/sentence';
 import { SharingModeChoice } from '@/components/patterns/sharing/mode-choice';
 import {

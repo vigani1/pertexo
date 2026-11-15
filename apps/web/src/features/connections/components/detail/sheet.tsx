@@ -1,6 +1,6 @@
 import { useConnectionSharingEditor } from '../../hooks/use-sharing-editor';
 import { ConnectionSharingPanel } from '../connection-sharing';
-import { NoticeSubjectActions } from '@/features/inbox/subscriptions.public';
+import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LockIcon } from 'lucide-react';
@@ -40,8 +40,7 @@ import { OAuth2OverviewActions } from '../oauth2/overview-actions';
 import { ReplaceCredentialForm } from './replace-credential-form';
 import { RevokeConnectionDialog } from './revoke-connection-dialog';
 import { ConnectionUsage } from './connection-usage';
-import { ConnectionLoading } from './read-state';
-import { ConnectionUnreadable } from './read-state';
+import { ConnectionLoading, ConnectionUnreadable } from './read-state';
 
 type Mode = 'overview' | 'test' | 'replace' | 'sharing';
 

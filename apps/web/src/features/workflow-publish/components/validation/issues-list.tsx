@@ -2,7 +2,8 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { WrenchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
-import { describeStep, StepTile } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
 import type { WorkflowIssueGroup } from '../../model/validation/issues';
 import {
   findWorkflowStep,

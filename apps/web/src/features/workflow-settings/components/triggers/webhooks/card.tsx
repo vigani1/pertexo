@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { WebhookTriggerHealthResponse } from '@pertexo/contracts';
 import { KeyRoundIcon, RefreshCwIcon } from 'lucide-react';
-import { StepTile, describeStep } from '@/features/catalog/presentation.public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
+import { describeStep } from '@/features/catalog/public';
 import { Notice } from '@/components/ui/notice';
 import { Button } from '@/components/ui/button';
 import { ProgressButton } from '@/components/ui/progress-button';

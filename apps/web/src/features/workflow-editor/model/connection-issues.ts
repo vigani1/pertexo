@@ -3,11 +3,11 @@ import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
-import { describeConnectionRequirement } from '@/features/catalog/presentation.public';
+import { describeConnectionRequirement } from '@/features/catalog/public';
 import {
   fitsRequirement,
   isUsableConnection,
-} from '@/features/connections/connections-queries.public';
+} from '@/features/connections/public';
 import type { WorkflowIssue } from '@/features/workflow-publish/public';
 import { findDefinition } from './graph/adapter';
 import type { GraphLevel } from './graph/scopes';

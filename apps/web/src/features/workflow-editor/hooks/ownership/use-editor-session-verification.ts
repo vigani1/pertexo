@@ -10,12 +10,10 @@ import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
-} from '@/features/auth/session/identity.public';
-import {
-  currentUserQueryOptions,
-  isUnauthenticated,
-} from '@/features/auth/auth-session-queries.public';
-import { observeSessionChanges } from '@/features/auth/session/sync.public';
+} from '@/features/auth/public';
+import { currentUserQueryOptions } from '@/features/auth/auth-queries.public';
+import { isUnauthenticated } from '@/features/auth/auth-routing.public';
+import { observeSessionChanges } from '@/features/auth/auth-routing.public';
 import { isApiError } from '@/lib/api/error';
 import { isUncertainOutcome } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';

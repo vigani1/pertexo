@@ -1,7 +1,8 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { ChevronRightIcon } from 'lucide-react';
 import { use, useId, useState, type ReactNode } from 'react';
-import { describeStep, StepTile } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
+import { StepTile } from '@/features/catalog/catalog-views.public';
 import {
   useStepOutputSample,
   type StepOutputSample,

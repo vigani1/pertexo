@@ -11,6 +11,11 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
+import {
+  featureEntryViolations,
+  isFeatureEntry,
+  shellEntryViolations,
+} from './web-feature-entries.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const webAllowedWorkspaceImports = new Set(WEB_BROWSER_PACKAGE_ROOTS);
@@ -287,6 +292,7 @@ export function validateModuleImports(sources) {
     );
     errors.push(...validateTestFileWrites(file, source));
     errors.push(...validateContractDependencies(file, source));
+    errors.push(...featureEntryViolations(file, source));
     errors.push(...validateInfrastructureBuiltPaths(file, source, sources));
     const dependencies = [];
     const workspace = file.split('/').slice(0, 2).join('/');
@@ -331,11 +337,10 @@ export function validateModuleImports(sources) {
         if (
           featureImport !== null &&
           featureImport[1] !== owner &&
-          featureImport[2] !== 'public' &&
-          !featureImport[2].endsWith('.public')
+          !isFeatureEntry(file, featureImport[1], featureImport[2])
         )
           errors.push(
-            `${file}: cross-feature imports must use ${`@/features/${featureImport[1]}/public`}`,
+            `${file}: cross-feature imports must use ${`@/features/${featureImport[1]}/public`}, its -views, -queries or -routing interface, or (from a route) one of its pages`,
           );
         if (
           specifier.startsWith('@pertexo/') &&
@@ -456,6 +461,7 @@ export function validateModuleImports(sources) {
   };
   for (const file of graph.keys()) visit(file, []);
   errors.push(...startupCoreViolations(graph, coreImporters));
+  errors.push(...shellEntryViolations(graph));
   return errors;
 }
 

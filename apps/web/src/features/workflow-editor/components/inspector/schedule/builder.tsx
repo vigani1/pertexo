@@ -5,7 +5,7 @@ import { Notice } from '@/components/ui/notice';
 import {
   describeDaylightSaving,
   describeRecurrence,
-} from '@/features/catalog/presentation.public';
+} from '@/features/catalog/public';
 import { canonicalJson } from '@pertexo/workflow-model';
 import type { NodeConfig } from '../../../model/inspector/draft';
 import {

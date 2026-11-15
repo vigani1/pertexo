@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   describeMisfirePolicy,
   describeRecurrence,
-} from '@/features/catalog/presentation.public';
+} from '@/features/catalog/public';
 import {
   describeCron,
   describeInterval,

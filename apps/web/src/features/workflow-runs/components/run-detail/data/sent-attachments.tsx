@@ -1,5 +1,5 @@
 import { emailSendNotificationOutputSchema } from '@pertexo/integrations';
-import { FileChip } from '@/features/artifacts/public';
+import { FileChip } from '@/features/artifacts/artifacts-views.public';
 import { formatByteLength } from '@/lib/format/bytes';
 import { formatCount } from '@/lib/format/count';
 

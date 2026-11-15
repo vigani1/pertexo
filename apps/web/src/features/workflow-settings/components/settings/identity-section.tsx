@@ -2,7 +2,7 @@ import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import {
   WorkflowNameField,
   WorkflowTemplateOrigin,
-} from '@/features/workflows/rename.public';
+} from '@/features/workflows/workflows-views.public';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { CopyButton } from '@/components/ui/copy-button';

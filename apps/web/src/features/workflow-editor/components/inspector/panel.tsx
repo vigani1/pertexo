@@ -1,7 +1,7 @@
 import { Suspense, type ReactNode } from 'react';
 import { lazyPiece } from '@/components/patterns/app-update/lazy';
 import { Skeleton } from '@/components/ui/skeleton';
-import { describeStep } from '@/features/catalog/presentation.public';
+import { describeStep } from '@/features/catalog/public';
 import { useEditorStore } from '../../model/state/context';
 
 import { locateStep } from '../../model/graph/scopes';

@@ -1,5 +1,5 @@
 import { useParams } from '@tanstack/react-router';
-import { PublicationReviewPage } from '@/features/workflow-publish/reviews.public';
+import { PublicationReviewPage } from '@/features/workflow-publish/pages/review';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 export function PublicationReviewRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

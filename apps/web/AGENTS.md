@@ -11,9 +11,9 @@ system and tests.
   repositories, service layers, global stores, or new packages.
 - Routes compose features; features own their UI, queries, and local model.
   Shared components/utilities cannot import features or app orchestration.
-- Cross-feature consumers use deliberate `public.ts` interfaces. A focused
-  `<responsibility>.public.ts` is allowed when separating statically imported
-  loader/command code from a lazy page preserves the route chunk.
+- Cross-feature consumers use the feature's entries: `public.ts` (no UI),
+  `<feature>-views.public.ts`, `<feature>-queries.public.ts` and
+  `<feature>-routing.public.ts`; a route imports its page from `pages/`.
 - Only public entry files sit at a feature's root. Everything else goes in the
   folder for its role: `pages/`, `components/`, `hooks/`, `data/` (`*.api.ts`,
   `*.queries.ts`, `*.mutations.ts`, `mutations/`), `forms/`, `model/`. Routes

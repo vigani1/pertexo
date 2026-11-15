@@ -1,4 +1,4 @@
-import { WorkflowSettingsPage } from '@/features/workflow-settings/public';
+import { WorkflowSettingsPage } from '@/features/workflow-settings/pages/workflow-settings';
 import { WorkflowHubTabFrame } from './hub/frame';
 import { useWorkflowHubScope } from './hub/scope';
 

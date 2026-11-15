@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createApiClient } from '@/lib/api/client';
 import { LoginPage } from '@/features/auth/pages/login';
-import { allowlistedReturnPath } from '@/features/auth/return-path.public';
+import { allowlistedReturnPath } from '@/features/auth/auth-routing.public';
 import { mockServer } from '../../support/mock-server';
 import { testFetch, renderLoadedApp } from '../../support/render-app';
 import { renderInRouter } from '../../support/render-in-router';

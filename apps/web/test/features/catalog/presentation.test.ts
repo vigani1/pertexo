@@ -8,7 +8,7 @@ import {
   prettifyDefinitionKey,
   stepGroupFor,
   stepGroups,
-} from '@/features/catalog/presentation.public';
+} from '@/features/catalog/public';
 
 describe('step presentation registry', () => {
   it('keeps established step names and side-effect explanations', () => {

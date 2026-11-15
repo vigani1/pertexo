@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { RunHistoryPage } from '@/features/workflow-runs/public';
-import { sanitizeRunSearch } from '@/features/workflow-runs/workflow-runs-queries.public';
+import { RunHistoryPage } from '@/features/workflow-runs/pages/run-history';
+import { sanitizeRunSearch } from '@/features/workflow-runs/workflow-runs-routing.public';
 import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 
 export function RunHistoryRoute() {

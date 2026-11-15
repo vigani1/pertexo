@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { renderInRouter } from '../../support/render-in-router';
-import { PublicationReviewPage } from '@/features/workflow-publish/reviews.public';
+import { PublicationReviewPage } from '@/features/workflow-publish/pages/review';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';

@@ -1,7 +1,7 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { useMemo } from 'react';
-import type { useWorkflowCommandSession } from '@/features/workflow-publish/public';
 import {
+  type useWorkflowCommandSession,
   workflowIssuesView,
   type WorkflowIssue,
 } from '@/features/workflow-publish/public';

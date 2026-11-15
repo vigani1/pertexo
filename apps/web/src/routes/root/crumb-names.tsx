@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { tablesQuery } from '@/features/data-tables/picker.public';
+import { tablesQuery } from '@/features/data-tables/public';
 import { taskQueryOptions } from '@/features/pending-tasks/pending-tasks-queries.public';
 import type { NameScope } from './breadcrumbs';
 

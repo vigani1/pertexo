@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { createPortal } from 'react-dom';
 import {
   WorkflowTestButton,
   WorkflowTestMenuItems,
-} from '@/features/workflow-testing/public';
-import type { ComponentProps } from 'react';
+} from '@/features/workflow-testing/workflow-testing-views.public';
 import type { EditorChrome } from '../components/editor-workspace';
 
 export function useWorkspaceChrome({

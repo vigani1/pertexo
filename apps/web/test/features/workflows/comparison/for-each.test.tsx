@@ -13,7 +13,7 @@ import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/
 import { summarizePublish } from '@/features/workflow-publish/model/publication/summary';
 import { PromotionReview } from '@/features/workflow-promotions/components/promotion-review';
 import { VersionDiffSummary } from '@/features/workflow-settings/components/versions/diff-summary';
-import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
+import { diffWorkflowGraphs } from '@/features/workflows/public';
 import { renderInRouter } from '../../../support/render-in-router';
 
 const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';

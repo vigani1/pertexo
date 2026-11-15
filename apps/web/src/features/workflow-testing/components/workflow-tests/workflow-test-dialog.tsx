@@ -1,5 +1,5 @@
 import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialog';
-import { useRunInput } from '@/features/workflow-runs/input.public';
+import { useRunInput } from '@/features/workflow-runs/public';
 import { WorkflowTestActions } from './workflow-test-controls';
 import { useEffect, useRef, useState } from 'react';
 import type {
@@ -22,10 +22,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { LabelledField } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
 import { Notice } from '@/components/ui/notice';
-import {
-  InputCasesPanel,
-  useInputCases,
-} from '@/features/workflows/input-cases.public';
+import { InputCasesPanel } from '@/features/workflows/workflows-views.public';
+import { useInputCases } from '@/features/workflows/public';
 import type { WorkflowTests } from '../../hooks/use-workflow-tests';
 import { formatCount } from '@/lib/format/count';
 

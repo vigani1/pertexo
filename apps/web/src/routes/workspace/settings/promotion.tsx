@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { WorkflowPromotionPage } from '@/features/workflow-promotions/public';
-import { promotionSearch } from '@/features/workflow-promotions/workflow-promotions-search.public';
+import { WorkflowPromotionPage } from '@/features/workflow-promotions/pages/workflow-promotion';
+import { promotionSearch } from '@/features/workflow-promotions/workflow-promotions-routing.public';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function WorkflowPromotionRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { InboxViews } from '@/features/inbox/page.public';
-import { TasksPage } from '@/features/pending-tasks/pages.public';
+import { InboxViews } from '@/features/inbox/inbox-views.public';
+import { TasksPage } from '@/features/pending-tasks/pages/task-list';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function RequestsRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

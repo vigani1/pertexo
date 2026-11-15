@@ -3,7 +3,7 @@ import {
   definitionName,
   stepLabel,
   triggerKindOf,
-} from '@/features/workflows/shape.public';
+} from '@/features/workflows/public';
 import { formatCount } from '@/lib/format/count';
 
 export function stepCountLabel(count: number): string {

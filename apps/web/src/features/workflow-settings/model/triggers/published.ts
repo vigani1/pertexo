@@ -2,7 +2,7 @@ import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import {
   workflowTriggerKinds,
   type TriggerKind,
-} from '@/features/workflows/shape.public';
+} from '@/features/workflows/public';
 
 /** The published version's trigger kinds, or undefined until its graph is loaded. */
 export function publishedTriggerKinds(

@@ -8,7 +8,7 @@ import {
   userProfileResponseSchema,
   accessibleWorkspaceSchema,
 } from '@pertexo/contracts';
-import { PublicationReviewPage } from '@/features/workflow-publish/reviews.public';
+import { PublicationReviewPage } from '@/features/workflow-publish/pages/review';
 import { WorkflowVersionsPage } from '@/features/workflow-settings/pages/workflow-versions';
 import { workflowSettingsKeys } from '@/features/workflow-settings/workflow-settings-queries.public';
 import { createApiClient } from '@/lib/api/client';

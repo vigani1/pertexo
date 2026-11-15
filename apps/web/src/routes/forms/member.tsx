@@ -1,5 +1,5 @@
 import { useParams } from '@tanstack/react-router';
-import { FormPage } from '@/features/forms/pages.public';
+import { FormPage } from '@/features/forms/pages/published-form';
 import { memberFormScope } from '@/features/forms/forms-queries.public';
 import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 export function MemberFormRoute() {

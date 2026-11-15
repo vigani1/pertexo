@@ -1,5 +1,5 @@
 import type { AccessibleWorkspace } from '@pertexo/contracts';
-import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { roleLimitSentence } from '@/features/workspaces/public';
 import { Link } from '@tanstack/react-router';
 import {
   BarredThread,

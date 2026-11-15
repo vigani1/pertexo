@@ -16,7 +16,7 @@ import {
   type OrganizationOperation,
 } from '../../model/organization/selection-editing';
 import { WorkflowFolderPicker } from './folders/picker';
-import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
+import { ADMINISTRATORS } from '@/features/workspaces/public';
 
 type OrganizationFieldsProps = Readonly<{
   workspace: AccessibleWorkspace;

@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { WorkflowListPage } from '@/features/workflows/list.public';
+import { WorkflowListPage } from '@/features/workflows/pages/workflow-list';
 import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 
 export function WorkflowListRoute() {

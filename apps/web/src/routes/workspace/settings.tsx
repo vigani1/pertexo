@@ -1,5 +1,5 @@
 import { useNavigate, useRouter } from '@tanstack/react-router';
-import { WorkspaceGeneralPage } from '@/features/workspaces/general.public';
+import { WorkspaceGeneralPage } from '@/features/workspaces/pages/workspace-general';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function WorkspaceSettingsRoute() {

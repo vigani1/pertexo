@@ -3,7 +3,7 @@ import { useQueries } from '@tanstack/react-query';
 import {
   describeRunFailure,
   type RunFailure,
-} from '@/features/workflow-runs/failure.public';
+} from '@/features/workflow-runs/public';
 import {
   workflowRunQueryOptions,
   workflowRunVersionQueryOptions,

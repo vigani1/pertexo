@@ -1,4 +1,4 @@
-import { VariablePicker } from '@/features/workspace-variables/picker.public';
+import { VariablePicker } from '@/features/workspace-variables/workspace-variables-views.public';
 import {
   callbackTargetNodes,
   isWorkflowTriggerDefinition,

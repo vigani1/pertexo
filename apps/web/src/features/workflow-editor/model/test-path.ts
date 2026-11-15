@@ -1,4 +1,4 @@
-import { portName } from '@/features/catalog/presentation.public';
+import { portName } from '@/features/catalog/public';
 import { stepTitle } from './graph/step-title';
 import type { GraphLevel } from './graph/scopes';
 

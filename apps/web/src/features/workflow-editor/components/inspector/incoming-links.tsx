@@ -8,7 +8,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { findDefinition } from '../../model/graph/adapter';
 import { stepTitle } from '../../model/graph/step-title';
 import type { GraphLevel, WorkflowNode } from '../../model/graph/scopes';
-import { portName } from '@/features/catalog/presentation.public';
+import { portName } from '@/features/catalog/public';
 import { ChoiceSelect } from './fields/choice-select';
 
 /**

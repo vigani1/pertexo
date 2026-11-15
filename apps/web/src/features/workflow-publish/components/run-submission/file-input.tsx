@@ -4,14 +4,14 @@ import { useState } from 'react';
 import {
   canonicalizeJson,
   validateCallableValue,
+  type JsonValue,
 } from '@pertexo/workflow-model';
 import {
   UploadFile,
   type FileUploadScope,
-  type FileReference,
-} from '@/features/artifacts/public';
+} from '@/features/artifacts/artifacts-views.public';
+import type { FileReference } from '@/features/artifacts/public';
 import { findWorkflowVersion } from '@/features/workflow-versions/public';
-import type { JsonValue } from '@pertexo/workflow-model';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

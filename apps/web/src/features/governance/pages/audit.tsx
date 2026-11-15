@@ -18,7 +18,7 @@ import { AuditEntry } from '../components/audit-entry';
 import { auditQueryOptions } from '../data/audit.queries';
 import { exportAudit, type GovernanceScope } from '../data/audit.api';
 import { auditActionWords } from '../model/audit-ledger';
-import { whoCan } from '@/features/workspaces/roles.public';
+import { whoCan } from '@/features/workspaces/public';
 
 /** Who changed what, read as sentences, newest first and grouped by day. */
 export function AuditPage({

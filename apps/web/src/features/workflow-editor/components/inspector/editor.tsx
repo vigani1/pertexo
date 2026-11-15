@@ -1,5 +1,12 @@
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
-import { WebhookTestListener } from '@/features/workflow-testing/inspector.public';
+import type {
+  NodeDefinitionCatalogItem,
+  WorkflowGraphContract,
+} from '@pertexo/contracts';
+import {
+  WebhookTestListener,
+  NodeTestPanel,
+  type NodeTestHandle,
+} from '@/features/workflow-testing/workflow-testing-views.public';
 import { useNavigate } from '@tanstack/react-router';
 
 import {
@@ -7,16 +14,10 @@ import {
   WORKFLOW_FAILURE_PORT,
 } from '@pertexo/workflow-model';
 import { FailureSetup } from '../failure-routing/setup';
-import type { ReactNode } from 'react';
-import type { WorkflowGraphContract } from '@pertexo/contracts';
+import { type ReactNode, useMemo, useState, type Ref } from 'react';
 import type { Connection } from '@xyflow/react';
-import { useMemo, useState, type Ref } from 'react';
 import { useCopyToClipboard } from '@/components/ui/use-copy-to-clipboard';
-import {
-  NodeTestPanel,
-  type NodeTestHandle,
-} from '@/features/workflow-testing/inspector.public';
-import { SchedulePreviewScope } from '@/features/workflow-testing/inspector.public';
+import { SchedulePreviewScope } from '@/features/workflow-testing/public';
 
 import {
   AddConnectionContext,

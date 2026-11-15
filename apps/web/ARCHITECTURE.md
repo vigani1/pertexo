@@ -93,7 +93,10 @@ apps/web/
         components/             # feature presentation
         hooks/                  # feature hooks
         model/                  # pure rules
-        public.ts               # only exports needed outside this feature
+        public.ts               # rules, hooks and data other code uses
+        workflows-views.public.ts   # components other features render
+        workflows-queries.public.ts # what route loaders import
+        workflows-routing.public.ts # what the always-loaded shell imports
       catalog/                  # API catalog queries + selection UI
       connections/              # credential forms, safe metadata and picker
       workflow-editor/
@@ -109,7 +112,7 @@ apps/web/
           add-step/             # palette and step selection
           inspector/            # panel layout, field renderer and sections
           chrome/               # command bar and workflow name field
-        public.ts
+        public.ts               # and workflow-editor-views/-queries.public.ts
       workflow-runs/            # run queries, commands, streams and views
       artifacts/                # signed transfer workflow, when needed
     components/
@@ -137,10 +140,12 @@ Rules:
 - `app` and `routes` compose features. Features never import either layer.
 - Shared `components` and `lib` never import features. Primitive UI has no API
   calls, workspace logic, auth dependency or query keys.
-- Features may consume another feature's deliberately small `public.ts`; never
-  its private store/components. Keep that graph acyclic. Initially the editor
-  may consume workflows, catalog and connections; those do not import the
-  editor. Run views consume workflow version queries, not editor state.
+- Features may consume another feature's entries (below); never its private
+  store/components. Keep that graph acyclic: views may use another feature's
+  `public.ts`, and `public.ts` never re-exports a component, so a rule never
+  waits on another feature's UI. Initially the editor may consume workflows,
+  catalog and connections; those do not import the editor. Run views consume
+  workflow version queries, not editor state.
 - Expose a feature entry, query factories or a reusable picker only as needed.
   No barrel that re-exports every file; no intra-feature imports through its own
   public entry. Keep heavy UI out of lightweight query export dependency paths.
@@ -185,9 +190,13 @@ it or a claim that enforcement is already implemented.
 
 ```text
 features/<feature>/
-  public.ts                   # only what outside callers actually need
-  <responsibility>.public.ts # optional loader/command interface kept separate from a lazy page export
-  pages/                      # screens a route renders (lazy-loaded)
+  public.ts                   # rules, hooks and data other code uses; no UI
+  <feature>-views.public.ts   # components other features or routes render
+  <feature>-queries.public.ts # query options and keys route loaders import
+  <feature>-routing.public.ts # what the always-loaded shell imports: search
+                              # parsers, guards, pending and stage pieces
+  pages/                      # screens a route renders (lazy-loaded); a route
+                              # imports its page from here directly
   components/                 # separate feature-owned visual responsibilities
     <meaningful-name>.tsx
     <sub-area>/               # group a substantial area when needed
@@ -233,11 +242,14 @@ in `test/support/`.
 - Hooks coordinate one meaningful React lifecycle or interaction. Do not move a
   monolithic component into a monolithic hook. Pure calculations are ordinary
   functions, not hooks; derived values are calculated rather than synchronized.
-- Keep `public.ts` small. When a route loader or another feature needs a static
-  query/command interface from a feature whose page is lazy, use one focused
-  `<responsibility>.public.ts` interface so the static import does not pull the
-  page into the eager chunk. This is an intentional interface, not an
-  export-everything barrel.
+- A feature has at most these four entries, each for one kind of caller, and
+  each name lives in one of them. Entries only re-export (the module-imports
+  check enforces the kinds, the root placement and the shell rule), so the build
+  treats them as side-effect free and a route loads only the names it imports.
+  The always-loaded shell (`main.tsx` and what it imports statically: `app/`,
+  the route trees, root layout and pending pieces) reaches features only through
+  `-routing` and `-queries` entries, which keeps pages out of the first load.
+  Export only what a caller needs; an entry is not an export-everything barrel.
 - Prefer explicit props, callbacks and children. Use compound composition or
   context for genuinely coordinated behavior, not as a mandatory wrapper. Keep
   private details private; cross-feature consumers use deliberate exports.
@@ -618,12 +630,12 @@ the catalog feature's `schedule-sentence.ts`, shared with the published trigger
 cards. An unrecognised schedule schema falls back to JSON. Under the sentence,
 `draft-next-runs.tsx` lists the next three run times the server's scheduler
 works out for the unsaved rule (ADR 048), through the public
-`useSchedulePreview` hook in `workflow-testing/inspector.public.ts`: debounced
-by 500 ms, asked again once the first time passes, with a loading line, one
-failure line with Retry (an unschedulable rule, rate limiting or a failed read)
-and nothing at all for an unfinished rule. The editor inspector provides the
-hook's `SchedulePreviewScope` (API client and workflow) once, so no inspector
-layer threads it through; without that scope nothing is shown.
+`useSchedulePreview` hook in `workflow-testing/public.ts`: debounced by 500 ms,
+asked again once the first time passes, with a loading line, one failure line
+with Retry (an unschedulable rule, rate limiting or a failed read) and nothing
+at all for an unfinished rule. The editor inspector provides the hook's
+`SchedulePreviewScope` (API client and workflow) once, so no inspector layer
+threads it through; without that scope nothing is shown.
 
 Switch cases, Parallel branches and Validate rules have list builders
 (`workflow-editor/components/inspector/builders`, model in
@@ -1185,8 +1197,9 @@ unread.
   callback (Home's Search), so features never import routes.
 - `/w/$workspaceId/workflows/$workflowId` is the immersive workflow hub (no
   spine) with Build (index), Runs, Triggers, Versions and Settings tabs. Every
-  tab renders `WorkflowHubBar` (from `features/workflows/hub.public.ts`) with
-  its own right-hand actions; Build embeds the editor.
+  tab renders `WorkflowHubBar` (from
+  `features/workflows/workflows-views.public.ts`) with its own right-hand
+  actions; Build embeds the editor.
 - Routes are thin compositions (`useWorkspaceScope`, `useWorkflowHubScope`) and
   set document titles with `pageTitle`. Resource pages render `ResourceNotFound`
   inside the frame for missing runs or workflows; their loaders use
@@ -1226,11 +1239,10 @@ unread.
   the boot page.
 - File placement is the same in every feature: `components/` holds components
   (and the Canvas scene a component owns); `model/` holds pure rules, types and
-  the editor store with its React contexts; feature hooks (`use-*.ts`) sit at
-  the feature root; server command hooks live in `<feature>.mutations.ts` or,
-  once there are several, one per file in `mutations/`. Query options other
-  features or loaders need come from one `<feature>-queries.public.ts`; lazy
-  pages and focused interfaces use `public.ts` or `<responsibility>.public.ts`.
+  the editor store with its React contexts; feature hooks (`use-*.ts`) live in
+  `hooks/`; server command hooks live in `data/<subject>.mutations.ts` or, once
+  there are several, one per file in `data/mutations/`. Other code reaches a
+  feature through its four entries (above).
 
 #### Copy and feedback rules
 
@@ -1596,13 +1608,14 @@ placeholder. This page map does not supersede the detailed protocol rules above.
 
 ### Personal automation tokens
 
-The lazy workspace Settings route composes `features/api-tokens/public.ts`. The
-feature owns metadata queries, expiry/scope forms and revoke cache effects in
-its `data/` area. Creation is a direct feature API call because its one-time
-secret must never enter the query or mutation cache. Only the mounted creation
-dialog/receipt holds it; closing or changing person/workspace clears it. Unknown
-creation outcomes refresh metadata and require revoke/replacement. Cookie/CSRF
-and recent-sign-in rules remain server-owned.
+The lazy workspace Settings route renders
+`features/api-tokens/pages/token-settings.tsx`. The feature owns metadata
+queries, expiry/scope forms and revoke cache effects in its `data/` area.
+Creation is a direct feature API call because its one-time secret must never
+enter the query or mutation cache. Only the mounted creation dialog/receipt
+holds it; closing or changing person/workspace clears it. Unknown creation
+outcomes refresh metadata and require revoke/replacement. Cookie/CSRF and
+recent-sign-in rules remain server-owned.
 
 F04 file uploads use one reviewed feature-local direct-transfer adapter in
 `features/artifacts/data/artifact-upload.api.ts`: signed PUT only, omitted
@@ -1632,15 +1645,14 @@ used by both file uploads and variable mappings. Generic inspector props call it
 
 Workflow publication owns validation, publication controls and reviews in
 `workflow-publish`. Workflow testing owns step previews, samples, workflow
-tests, suites and temporary listeners in `workflow-testing`. Their public
-entries follow loading boundaries: publication controls and testing controls
-load with Build; reviews have their own lazy route. Testing's
-`test-data.public.ts` exposes query definitions and pure projections without
-loading panels, while `inspector.public.ts` keeps step testing, webhook
-listeners and schedule previews behind the lazy inspector. Publication readiness
-reads suite data through that query entry without importing testing UI. Shared
-workflow failure wording lives in `lib/workflows`, outside the eager API
-transport chunk.
+tests, suites and temporary listeners in `workflow-testing`. Their entries
+follow the feature entry rule: publication controls and testing controls load
+with Build; reviews have their own lazy route. Testing's `public.ts` exposes
+query definitions, pure projections and the inspector's hooks without loading
+panels, and its `-views` entry keeps step testing, webhook listeners and
+schedule previews behind the lazy inspector. Publication readiness reads suite
+data through that query entry without importing testing UI. Shared workflow
+failure wording lives in `lib/workflows`, outside the eager API transport chunk.
 
 F35’s webhook Test panel lives in workflow-testing and composes into the generic
 node test panel through children. Its bounded temporary listener uses the

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { describeCoordinatedEvent } from '@/features/trigger-events/presentation.public';
+import { describeCoordinatedEvent } from '@/features/trigger-events/public';
 import { ThankYouMessage } from '../components/thank-you';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';

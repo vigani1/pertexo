@@ -4,10 +4,7 @@ import {
   FIRST_RUN_TEMPLATE_ID,
 } from '@pertexo/templates';
 import { useNotifications } from '@/components/ui/use-notifications';
-import {
-  startsInOneClick,
-  useStartExample,
-} from '@/features/workflows/start-example.public';
+import { startsInOneClick, useStartExample } from '@/features/workflows/public';
 import type { ApiClient } from '@/lib/api/client';
 import type { FirstRunOffer } from '../components/first-thread';
 

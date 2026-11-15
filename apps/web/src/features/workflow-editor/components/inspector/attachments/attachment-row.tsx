@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { StatusGlyph } from '@/components/ui/status';
-import { FileChip } from '@/features/artifacts/public';
+import { FileChip } from '@/features/artifacts/artifacts-views.public';
 import { cn } from '@/lib/class-names';
 import { directPredecessorOptions } from '../../../model/inspector/input-mappings/draft';
 import { describeMappingSource } from '../../../model/inspector/mapping-summary';

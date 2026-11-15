@@ -1,6 +1,6 @@
 import { usageCapacityQueryOptions } from '@/features/usage/data/usage.queries';
 
-import { parseUsageSearch } from '@/features/usage/usage-search.public';
+import { parseUsageSearch } from '@/features/usage/usage-routing.public';
 
 import { createApiClient } from '@/lib/api/client';
 

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
-import { describePreviewStatus } from '@/features/workflow-testing/test-data.public';
-import { shortStepError } from '@/features/workflow-runs/failure.public';
+import { describePreviewStatus } from '@/features/workflow-testing/public';
+import { shortStepError } from '@/features/workflow-runs/public';
 import { formatDurationMs } from '@/lib/format/time';
 import { useEditorStore } from '../../model/state/context';
 import { levelOf } from '../../model/graph/scopes';

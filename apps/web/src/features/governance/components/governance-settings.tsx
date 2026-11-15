@@ -7,7 +7,7 @@ import { governanceQueryOptions } from '../data/audit.queries';
 import { AUDIT_RETENTION_RANGE } from '../model/governance-setting-edit';
 import { PublicationPolicy } from './publication-policy';
 import { AuditRetention } from './audit-retention';
-import { whoCan } from '@/features/workspaces/roles.public';
+import { whoCan } from '@/features/workspaces/public';
 import { sentenceStart } from '@/lib/format/sentence';
 
 export function GovernanceSettings({

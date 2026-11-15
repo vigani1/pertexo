@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useInboxLive } from '@/features/inbox/live.public';
+import { useInboxLive } from '@/features/inbox/public';
 import { ApiError } from '@/lib/api/error';
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
 

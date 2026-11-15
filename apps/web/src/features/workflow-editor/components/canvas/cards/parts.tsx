@@ -1,5 +1,5 @@
 import { Status } from '@/components/ui/status';
-import { describeNodeStatus } from '@/features/workflow-runs/labels.public';
+import { describeNodeStatus } from '@/features/workflow-runs/public';
 import { Handle, Position } from '@xyflow/react';
 import {
   ArrowRightToLineIcon,
@@ -12,14 +12,13 @@ import { use, type ReactNode } from 'react';
 import {
   StepTile,
   TimedOutGlyph,
-  type StepPresentation,
-} from '@/features/catalog/presentation.public';
+} from '@/features/catalog/catalog-views.public';
+import { type StepPresentation, portName } from '@/features/catalog/public';
 import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
-import { sampleStateLabel } from '@/features/workflow-testing/test-data.public';
+import { sampleStateLabel } from '@/features/workflow-testing/public';
 import { formatByteLength } from '@/lib/format/bytes';
 import { cn } from '@/lib/class-names';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
-import { portName } from '@/features/catalog/presentation.public';
 import { portLinkLabel } from '../../../model/step-card';
 import { StepDiscussionsContext } from '../../../model/state/discussions';
 import { handleClass } from './style';

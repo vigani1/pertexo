@@ -5,7 +5,7 @@ import {
   channelKey,
   describeChannel,
   useSlackChannelNames,
-} from '@/features/failure-notifications/channel-names.public';
+} from '@/features/failure-notifications/public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   fieldControlId,

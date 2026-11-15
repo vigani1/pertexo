@@ -3,7 +3,7 @@ import {
   useNavigate,
   useRouteContext,
 } from '@tanstack/react-router';
-import { WorkspaceSelectionPage } from '@/features/workspaces/selection.public';
+import { WorkspaceSelectionPage } from '@/features/workspaces/pages/workspace-selection';
 import { useLogout } from '../auth/use-logout';
 
 export function WorkspaceSelectionRoute() {

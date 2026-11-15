@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 import { useRouteContext, useSearch } from '@tanstack/react-router';
-import { LoginPage, loginNoticeFrom } from '@/features/auth/login.public';
-import { allowlistedReturnPath } from '@/features/auth/return-path.public';
-import { publishSessionChange } from '@/features/auth/session/sync.public';
+import { LoginPage } from '@/features/auth/pages/login';
+import { loginNoticeFrom } from '@/features/auth/public';
+import {
+  allowlistedReturnPath,
+  publishSessionChange,
+} from '@/features/auth/auth-routing.public';
 
 export function LoginRoute() {
   const { apiClient } = useRouteContext({ from: '/_stage/login' });

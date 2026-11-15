@@ -6,7 +6,7 @@ import {
   stepGroups,
   type StepFamily,
   type StepPresentation,
-} from '@/features/catalog/presentation.public';
+} from '@/features/catalog/public';
 import { definitionIdentity } from './graph/adapter';
 
 /** The drag payload an add-step item carries onto the canvas. */

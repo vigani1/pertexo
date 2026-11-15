@@ -1,4 +1,4 @@
-import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
+import { isWorkspaceBrowsable } from '@/features/workspaces/workspaces-routing.public';
 import { LooseThread } from '@/components/patterns/states/thread-illustrations';
 import {
   FailedReadState,
@@ -41,7 +41,7 @@ import {
 } from '../data/connections.queries';
 import { isReadAccessLost } from '@/lib/api/read-denial';
 import type { ConnectionsSearch } from '../model/connections-search';
-import { roleLimitSentence, whoCan } from '@/features/workspaces/roles.public';
+import { roleLimitSentence, whoCan } from '@/features/workspaces/public';
 import { sentenceStart } from '@/lib/format/sentence';
 
 function countByStatus(items: readonly ConnectionResponse[]) {

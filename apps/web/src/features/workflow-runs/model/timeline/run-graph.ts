@@ -2,7 +2,7 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
 import type { StatusTone } from '@/components/ui/status';
 import type { RunTimelineRow, RunTimelineStepStatus } from './runs';
-import { describeStep, portName } from '@/features/catalog/presentation.public';
+import { describeStep, portName } from '@/features/catalog/public';
 
 export type GraphStepStatus = RunTimelineStepStatus;
 

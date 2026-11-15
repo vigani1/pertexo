@@ -1,7 +1,7 @@
 import {
   currentUserQueryKey,
   currentUserQueryOptions,
-} from '@/features/auth/auth-session-queries.public';
+} from '@/features/auth/auth-queries.public';
 import {
   createRouter,
   isRedirect,
@@ -9,7 +9,7 @@ import {
 } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { createSessionPause } from '@/features/auth/session/pause.public';
+import { createSessionPause } from '@/features/auth/auth-routing.public';
 import { isEditorOpen, pauseRenderedPage } from './session-pause';
 import { PagePending } from '../routes/root/status/pending';
 import { routeTree } from '../routes/root/route-tree';

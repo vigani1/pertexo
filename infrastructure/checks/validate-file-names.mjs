@@ -155,7 +155,7 @@ export function validateFileName(file, text) {
     if (
       (segments.slice(5, -1).includes('data') &&
         ['api.ts', 'queries.ts'].includes(name)) ||
-      ['queries.public', 'search.public'].includes(stem)
+      ['queries.public', 'routing.public', 'views.public'].includes(stem)
     )
       report(
         'FN004',

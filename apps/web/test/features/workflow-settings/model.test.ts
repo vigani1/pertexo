@@ -3,10 +3,7 @@ import { describeDelivery } from '@/features/workflow-settings/model/triggers/de
 import { extractEndpointKey } from '@/features/workflow-settings/model/triggers/endpoint-key';
 import { describeTriggerState } from '@/features/workflow-settings/model/triggers/trigger-state';
 import { versionSteps } from '@/features/workflow-settings/model/versions/steps';
-import {
-  diffWorkflowGraphs,
-  isEmptyDiff,
-} from '@/features/workflows/comparison.public';
+import { diffWorkflowGraphs, isEmptyDiff } from '@/features/workflows/public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describe, expect, it } from 'vitest';
 import { emptyGraph, stepNode } from './fixtures';

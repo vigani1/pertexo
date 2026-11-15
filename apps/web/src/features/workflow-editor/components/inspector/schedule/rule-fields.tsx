@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { describeMisfirePolicy } from '@/features/catalog/presentation.public';
+import { describeMisfirePolicy } from '@/features/catalog/public';
 import { fieldControlId } from '../../../model/inspector/node-form';
 import {
   timezoneChoices,

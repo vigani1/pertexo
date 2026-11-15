@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts';
 import { Status } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
-import { describeRunStatus } from '@/features/workflow-runs/labels.public';
+import { describeRunStatus } from '@/features/workflow-runs/public';
 import { formatDurationMs } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { Disclosure } from '@/components/ui/disclosure';

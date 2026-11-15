@@ -1,10 +1,6 @@
-import { canonicalJson } from '@pertexo/workflow-model';
+import { canonicalJson, EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import type { WorkflowPromotionPreview } from '@pertexo/contracts';
-import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
-import {
-  diffWorkflowGraphs,
-  isEmptyDiff,
-} from '@/features/workflows/comparison.public';
+import { diffWorkflowGraphs, isEmptyDiff } from '@/features/workflows/public';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';

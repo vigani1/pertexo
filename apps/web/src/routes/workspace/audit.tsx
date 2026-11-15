@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { AuditPage } from '@/features/governance/public';
+import { AuditPage } from '@/features/governance/pages/audit';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 export function AuditRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

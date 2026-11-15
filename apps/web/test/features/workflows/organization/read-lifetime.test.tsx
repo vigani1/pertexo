@@ -49,7 +49,7 @@ vi.mock(
   }),
 );
 
-vi.mock('@/features/auth/session/identity.public', async (original) => ({
+vi.mock('@/features/auth/public', async (original) => ({
   ...(await original<object>()),
   assertSessionIdentity: vi.fn(),
 }));

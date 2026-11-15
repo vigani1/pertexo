@@ -4,7 +4,7 @@ import type { ApiTokenCreateRequest, ApiTokenScope } from '@pertexo/contracts';
 import {
   allowlistedReturnPath,
   returnToSearch,
-} from '@/features/auth/return-path.public';
+} from '@/features/auth/auth-routing.public';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

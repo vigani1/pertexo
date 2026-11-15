@@ -41,7 +41,7 @@ for (const file of [
   `${browser}/data/publication-review.api.ts`,
   `${browser}/data/variables.queries.ts`,
   `${browser}/connections-queries.public.ts`,
-  `${browser}/connections-search.public.ts`,
+  `${browser}/connections-routing.public.ts`,
   `${browser}/public.ts`,
   `${browser}/picker.public.ts`,
   'apps/api/src/platform/config/api-config.ts',
@@ -110,7 +110,11 @@ test('browser transport subjects and focused public subjects are explicit', () =
     assert.ok(rules(`${browser}/data/nested/${name}`).includes('FN004'));
     assert.deepEqual(check(`apps/web/src/lib/${name}`), []);
   }
-  for (const name of ['queries.public.ts', 'search.public.ts'])
+  for (const name of [
+    'queries.public.ts',
+    'routing.public.ts',
+    'views.public.ts',
+  ])
     assert.ok(rules(`${browser}/nested/${name}`).includes('FN004'));
 });
 

@@ -10,10 +10,7 @@ import type {
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import type { CoordinateExtent, Edge, Node } from '@xyflow/react';
-import {
-  portName,
-  requiredConnections,
-} from '@/features/catalog/presentation.public';
+import { portName, requiredConnections } from '@/features/catalog/public';
 import {
   BODY_ORIGIN,
   bodyFrame,

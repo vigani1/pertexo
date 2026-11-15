@@ -5,7 +5,7 @@ import {
   useParams,
 } from '@tanstack/react-router';
 import { buttonVariants } from '@/components/ui/button-variants';
-import { RunDetailPage } from '@/features/workflow-runs/public';
+import { RunDetailPage } from '@/features/workflow-runs/pages/run-detail';
 import { ResourceNotFound } from '../root/status/pages';
 import { useWorkspaceScope } from '../workspace/shell/use-workspace-scope';
 

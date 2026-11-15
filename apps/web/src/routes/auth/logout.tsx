@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useRouteContext, useSearch } from '@tanstack/react-router';
-import { allowlistedReturnPath } from '@/features/auth/return-path.public';
-import { SignOutPage } from '@/features/auth/sign-out.public';
+import { allowlistedReturnPath } from '@/features/auth/auth-routing.public';
+import { SignOutPage } from '@/features/auth/pages/sign-out';
 import { useLogout } from './use-logout';
 
 export function LogoutRoute() {

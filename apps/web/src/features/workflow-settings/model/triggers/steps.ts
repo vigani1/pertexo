@@ -1,5 +1,5 @@
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
-import { stepLabel } from '@/features/workflows/shape.public';
+import { stepLabel } from '@/features/workflows/public';
 
 /**
  * A trigger's step name from the published version it belongs to, so cards

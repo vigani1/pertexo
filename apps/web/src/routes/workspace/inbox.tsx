@@ -1,5 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { InboxPage, InboxViews } from '@/features/inbox/page.public';
+import { InboxPage } from '@/features/inbox/pages/inbox';
+import { InboxViews } from '@/features/inbox/inbox-views.public';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function InboxRoute() {

@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { TasksPage } from '@/features/pending-tasks/pages.public';
+import { TasksPage } from '@/features/pending-tasks/pages/task-list';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function ApprovalsRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

@@ -1,5 +1,5 @@
 import { useRouteContext } from '@tanstack/react-router';
-import { NoticeUnsubscribePage } from '@/features/inbox/unsubscribe.public';
+import { NoticeUnsubscribePage } from '@/features/inbox/pages/notice-unsubscribe';
 export function NoticeUnsubscribeRoute() {
   const { apiClient, unsubscribeToken } = useRouteContext({
     from: '/notifications/unsubscribe',

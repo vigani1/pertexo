@@ -13,11 +13,10 @@ import { workflowAutoPauseQueryOptions } from '../../data/auto-pause.queries';
 import { useAutoPauseCommand } from '../../data/mutations/use-auto-pause-command';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
-import type { Scope } from './auto-pause-fields';
+import { type Scope, CommandProblem } from './auto-pause-fields';
 import { thresholdError } from '../../model/auto-pause-input';
-import { CommandProblem } from './auto-pause-fields';
 import { WorkspaceDefault } from './workspace-default';
-import { whoCan } from '@/features/workspaces/roles.public';
+import { whoCan } from '@/features/workspaces/public';
 function WorkflowRule({
   settings,
   scope,

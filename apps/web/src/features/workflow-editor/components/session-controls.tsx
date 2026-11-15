@@ -3,10 +3,8 @@ import { useEditorSession } from '../model/state/context';
 import type { ReactNode } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
-import {
-  WorkflowCommandActions,
-  type useWorkflowCommandSession,
-} from '@/features/workflow-publish/public';
+import { WorkflowCommandActions } from '@/features/workflow-publish/workflow-publish-views.public';
+import type { useWorkflowCommandSession } from '@/features/workflow-publish/public';
 import {
   ConfirmDialog,
   ConfirmationDetails,

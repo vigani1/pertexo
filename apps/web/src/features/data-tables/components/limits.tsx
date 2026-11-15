@@ -19,7 +19,7 @@ import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import { sendTableCommand, type TableScope } from '../data/tables.api';
 import { tableKeys } from '../data/tables.queries';
 import { TableCommandFeedback } from './command-feedback';
-import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
+import { ADMINISTRATORS } from '@/features/workspaces/public';
 import { sentenceStart } from '@/lib/format/sentence';
 export function DataTableLimits({
   scope,

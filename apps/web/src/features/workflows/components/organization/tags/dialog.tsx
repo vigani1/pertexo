@@ -14,7 +14,7 @@ import type { WorkflowOrganizationInput } from '../../../model/organization/requ
 import { useWorkflowOrganizationCommand } from '../../../hooks/organization/use-workflow-organization-command';
 import { TagManagement } from './management';
 import { WorkflowTagCleanup } from './cleanup';
-import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
+import { ADMINISTRATORS } from '@/features/workspaces/public';
 type Props = Readonly<{
   apiClient: ApiClient;
   userId: string;

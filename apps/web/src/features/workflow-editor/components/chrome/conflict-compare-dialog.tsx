@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   diffWorkflowGraphs,
   type GraphChange,
-} from '@/features/workflows/comparison.public';
+} from '@/features/workflows/public';
 import { useEditorStore } from '../../model/state/context';
 import { shownConflict } from '../../model/state/workflow-editor.store';
 import { formatCount } from '@/lib/format/count';

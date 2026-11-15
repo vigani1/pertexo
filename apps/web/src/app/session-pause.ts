@@ -1,10 +1,10 @@
 import type { AnyRouter } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
-import { currentUserQueryOptions } from '@/features/auth/auth-session-queries.public';
+import { currentUserQueryOptions } from '@/features/auth/auth-queries.public';
 import type {
   SessionPause,
   SessionPauseReason,
-} from '@/features/auth/session/pause.public';
+} from '@/features/auth/auth-routing.public';
 import type { ApiClient } from '@/lib/api/client';
 import { workflowBuildRoute } from '@/routes/workflow/hub/routes';
 

@@ -1,5 +1,5 @@
 import { HeadContent, Outlet, useRouteContext } from '@tanstack/react-router';
-import { SessionPauseBoundary } from '@/features/auth/session/pause.public';
+import { SessionPauseBoundary } from '@/features/auth/auth-routing.public';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { NavigationProgress } from './navigation-progress';
 

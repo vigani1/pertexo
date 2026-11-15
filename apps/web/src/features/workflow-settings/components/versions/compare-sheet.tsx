@@ -19,7 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { PatternGlyph } from '@/features/workflows/shape.public';
+import { PatternGlyph } from '@/features/workflows/workflows-views.public';
 import { formatDate } from '@/lib/format/time';
 import { stepCountLabel } from '../../model/versions/steps';
 import { VersionDiffSummary } from './diff-summary';

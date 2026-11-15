@@ -1,9 +1,11 @@
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useQuery } from '@tanstack/react-query';
 import { Notice } from '@/components/ui/notice';
-import type { WorkflowTestScope } from '@/features/workflow-testing/test-data.public';
-import type { WorkflowSuiteList } from '@/features/workflow-testing/test-data.public';
-import { suitesQueryOptions } from '@/features/workflow-testing/test-data.public';
+import {
+  type WorkflowTestScope,
+  type WorkflowSuiteList,
+  suitesQueryOptions,
+} from '@/features/workflow-testing/public';
 
 export function SuitePublishNotice({
   scope,

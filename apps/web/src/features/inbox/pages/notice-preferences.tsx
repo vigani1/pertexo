@@ -11,7 +11,7 @@ import {
   describePersonalChoice,
   describeSchedule,
 } from '../model/email-schedule';
-import { whoCan } from '@/features/workspaces/roles.public';
+import { whoCan } from '@/features/workspaces/public';
 import { sentenceStart } from '@/lib/format/sentence';
 export function NotificationPreferencesPage({
   scope,

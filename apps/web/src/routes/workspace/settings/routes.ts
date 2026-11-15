@@ -1,16 +1,18 @@
 import { workspacePage } from '../workspace-page';
-import { holdsCapability } from '@/features/workspaces/availability.public';
-import { parsePromotionSearch } from '@/features/workflow-promotions/workflow-promotions-search.public';
-import { parseFederationSearch } from '@/features/federation/federation-search.public';
-import { parseAuditSearch } from '@/features/governance/governance-search.public';
-import { parseUsageTrendsSearch } from '@/features/usage/usage-search.public';
+import { holdsCapability } from '@/features/workspaces/workspaces-routing.public';
+import { parsePromotionSearch } from '@/features/workflow-promotions/workflow-promotions-routing.public';
+import { parseFederationSearch } from '@/features/federation/federation-routing.public';
+import { parseAuditSearch } from '@/features/governance/governance-routing.public';
+import {
+  parseUsageTrendsSearch,
+  parseUsageSearch,
+} from '@/features/usage/usage-routing.public';
 import { createRoute } from '@tanstack/react-router';
 import { lazyRoute } from '@/components/patterns/app-update/lazy';
 
-import { parseUsageSearch } from '@/features/usage/usage-search.public';
 import { warmPrefetches } from '../../root/route-context';
 import { workspaceShellRoute } from '../routes';
-import { parseAlertsSearch } from '@/features/failure-notifications/failure-notifications-search.public';
+import { parseAlertsSearch } from '@/features/failure-notifications/failure-notifications-routing.public';
 
 /** Pathless layout: every Settings page beside the Settings rail. */
 export const settingsHubRoute = createRoute({

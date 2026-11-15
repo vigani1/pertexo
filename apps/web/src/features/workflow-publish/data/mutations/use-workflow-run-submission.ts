@@ -4,7 +4,7 @@ import {
   normalizeRunIntent,
   startWorkflowRun,
   type RunIntent,
-} from '@/features/workflow-runs/commands.public';
+} from '@/features/workflow-runs/public';
 import type { ApiClient } from '@/lib/api/client';
 import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-queries.public';
 import { ApiError, isApiError } from '@/lib/api/error';

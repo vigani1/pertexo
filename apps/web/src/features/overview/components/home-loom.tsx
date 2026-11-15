@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { RunLoom } from '@/features/workflow-runs/loom.public';
+import { RunLoom } from '@/features/workflow-runs/workflow-runs-views.public';
 import {
   loomStatisticsQueryOptions,
   runLoomQueryOptions,

@@ -26,7 +26,7 @@ import { workflowVersionsQueryOptions } from '../../data/workflow-settings.queri
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
-import { roleLimitSentence } from '@/features/workspaces/roles.public';
+import { roleLimitSentence } from '@/features/workspaces/public';
 import { shownData } from '@/lib/api/error-copy';
 
 const NO_LIMIT_VALUE = 'none';

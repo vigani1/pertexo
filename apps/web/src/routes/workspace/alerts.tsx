@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { FailureNotificationDestinationsPage } from '@/features/failure-notifications/destinations-page.public';
+import { FailureNotificationDestinationsPage } from '@/features/failure-notifications/pages/failure-notification-destinations';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function AlertsRoute() {

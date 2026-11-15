@@ -1,8 +1,6 @@
 import { InputCasesAction } from '@/features/workflows/components/input-cases/action';
-import {
-  InputCasesPanel,
-  useInputCases,
-} from '@/features/workflows/input-cases.public';
+import { InputCasesPanel } from '@/features/workflows/workflows-views.public';
+import { useInputCases } from '@/features/workflows/public';
 import type { createApiClient } from '@/lib/api/client';
 import { useState, type ComponentProps } from 'react';
 export function InputCasesActionHarness(

@@ -1,15 +1,15 @@
 import {
   WorkflowPresenceSummary,
   WorkflowPresenceWarning,
-} from '@/features/workflow-collaboration/presence.public';
+} from '@/features/workflow-collaboration/workflow-collaboration-views.public';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   WorkflowHubBar,
   type WorkflowHubTab,
-} from '@/features/workflows/hub.public';
+} from '@/features/workflows/workflows-views.public';
 import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
-import { WorkflowPausedBanner } from '@/features/workflow-settings/auto-pause.public';
+import { WorkflowPausedBanner } from '@/features/workflow-settings/workflow-settings-views.public';
 import { useWorkflowHubScope } from './scope';
 
 /** Layout for the scrolling hub tabs: the sticky bar, then the tab page. */

@@ -1,5 +1,5 @@
 import type { WebhookDeliveryResponse } from '@pertexo/contracts';
-import { describeCoordinatedEvent } from '@/features/trigger-events/presentation.public';
+import { describeCoordinatedEvent } from '@/features/trigger-events/public';
 import type { StatusTone } from '@/components/ui/status';
 
 type DeliveryOutcome = Readonly<{

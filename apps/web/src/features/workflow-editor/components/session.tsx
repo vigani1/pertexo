@@ -5,7 +5,7 @@ import { Notice } from '@/components/ui/notice';
 import type { EditorPresenceSource } from '../model/state/presence';
 
 import { useState, type ReactNode } from 'react';
-import { IssuesLens } from '@/features/workflow-publish/public';
+import { IssuesLens } from '@/features/workflow-publish/workflow-publish-views.public';
 
 import { ConflictBar } from './chrome/conflict-bar';
 import { LeaveEditorDialog } from './chrome/editor-dialogs';

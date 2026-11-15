@@ -2,9 +2,8 @@ import type {
   WorkflowGraphContract,
   WorkflowVersionResponse,
 } from '@pertexo/contracts';
-import { describeStep } from '@/features/catalog/presentation.public';
-import { diffWorkflowGraphs } from '@/features/workflows/comparison.public';
-import { triggerKindOf } from '@/features/workflows/shape.public';
+import { describeStep } from '@/features/catalog/public';
+import { diffWorkflowGraphs, triggerKindOf } from '@/features/workflows/public';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 

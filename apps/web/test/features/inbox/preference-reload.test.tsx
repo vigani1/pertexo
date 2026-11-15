@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
-import { NotificationPreferencesPage } from '@/features/inbox/settings.public';
+import { NotificationPreferencesPage } from '@/features/inbox/pages/notice-preferences';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../support/mock-server';
 import { testFetch } from '../../support/render-app';

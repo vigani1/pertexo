@@ -13,7 +13,7 @@ import type { ReactElement } from 'react';
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
-import { WorkflowCommentsPage } from '@/features/workflow-collaboration/public';
+import { WorkflowCommentsPage } from '@/features/workflow-collaboration/pages/workflow-comments';
 import { collaborationKeys } from '@/features/workflow-collaboration/data/collaboration.queries';
 import { parseCollaborationSearch } from '@/features/workflow-collaboration/model/search';
 import { createApiClient } from '@/lib/api/client';

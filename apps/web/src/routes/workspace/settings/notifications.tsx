@@ -1,4 +1,4 @@
-import { NotificationPreferencesPage } from '@/features/inbox/settings.public';
+import { NotificationPreferencesPage } from '@/features/inbox/pages/notice-preferences';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function NotificationPreferencesRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { DataTablesPage } from '@/features/data-tables/public';
+import { DataTablesPage } from '@/features/data-tables/pages/tables';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 export function DataTablesRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

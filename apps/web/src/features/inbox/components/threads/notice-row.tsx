@@ -5,7 +5,7 @@ import type {
 import { Link } from '@tanstack/react-router';
 import type { ComponentProps, MouseEvent, ReactNode } from 'react';
 import { ArrowRightIcon, CheckIcon } from 'lucide-react';
-import { TaskDetailsLine } from '@/features/pending-tasks/public';
+import { TaskDetailsLine } from '@/features/pending-tasks/pending-tasks-views.public';
 import { NoticeAction, NoticeFrame } from './thread-frame';
 import { noticeLinkClass } from './notice-link';
 import { InboxThreadRow } from './row';

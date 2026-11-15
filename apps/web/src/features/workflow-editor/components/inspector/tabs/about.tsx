@@ -18,7 +18,7 @@ import {
   describeStep,
   familyWord,
   requiredConnections,
-} from '@/features/catalog/presentation.public';
+} from '@/features/catalog/public';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 

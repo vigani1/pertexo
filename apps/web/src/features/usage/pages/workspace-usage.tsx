@@ -1,4 +1,4 @@
-import { isWorkspaceBrowsable } from '@/features/workspaces/availability.public';
+import { isWorkspaceBrowsable } from '@/features/workspaces/workspaces-routing.public';
 import { Link } from '@tanstack/react-router';
 import { ChartLineIcon } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';

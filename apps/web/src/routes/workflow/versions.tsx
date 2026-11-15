@@ -1,4 +1,4 @@
-import { WorkflowVersionsPage } from '@/features/workflow-settings/public';
+import { WorkflowVersionsPage } from '@/features/workflow-settings/pages/workflow-versions';
 import { WorkflowHubTabFrame } from './hub/frame';
 import { useWorkflowHubScope } from './hub/scope';
 

@@ -5,7 +5,7 @@ import type {
   WorkflowRunReadSummary,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { needsReconnecting } from '@/features/connections/provider.public';
+import { needsReconnecting } from '@/features/connections/public';
 import { formatElapsedTime } from '@/lib/format/time';
 import { pluralWord } from '@/lib/format/count';
 

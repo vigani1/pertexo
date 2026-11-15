@@ -8,10 +8,7 @@ import { Button } from '@/components/ui/button';
 import { statusToneText } from '@/components/ui/status-tone';
 import { cn } from '@/lib/class-names';
 import { Status } from '@/components/ui/status';
-import {
-  describeRunStatus,
-  shortRunId,
-} from '@/features/workflow-runs/labels.public';
+import { describeRunStatus, shortRunId } from '@/features/workflow-runs/public';
 import { formatDateTime } from '@/lib/format/time';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { pluralWord } from '@/lib/format/count';

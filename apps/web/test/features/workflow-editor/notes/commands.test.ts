@@ -27,7 +27,7 @@ import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
 import {
   diffWorkflowGraphs as versionDiff,
   isEmptyDiff,
-} from '@/features/workflows/comparison.public';
+} from '@/features/workflows/public';
 import { summarizePublish } from '@/features/workflow-publish/model/publication/summary';
 
 const note: WorkflowNote = {

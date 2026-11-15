@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import { WorkflowCommentsPage } from '@/features/workflow-collaboration/public';
+import { WorkflowCommentsPage } from '@/features/workflow-collaboration/pages/workflow-comments';
 import { WorkflowDiscussion } from '@/features/workflow-collaboration/components/workflow-discussion';
 import { createApiClient } from '@/lib/api/client';
 import { renderInRouter } from '../../support/render-in-router';

@@ -9,14 +9,13 @@ import { useCallback, useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import {
   InputCasesPanel,
-  useInputCases,
   type LoadedInputCase,
-} from '@/features/workflows/input-cases.public';
+} from '@/features/workflows/workflows-views.public';
+import { useInputCases } from '@/features/workflows/public';
 import type { ApiClient } from '@/lib/api/client';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import type { RunIntent } from '@/features/workflow-runs/commands.public';
-import { useRunInput } from '@/features/workflow-runs/input.public';
+import { type RunIntent, useRunInput } from '@/features/workflow-runs/public';
 import { DeadlineField } from '@/components/ui/deadline-field';
 import { runInputAvailability } from '../../model/run-input/availability';
 import { expectedRunVersion } from '../../model/run-input/version';

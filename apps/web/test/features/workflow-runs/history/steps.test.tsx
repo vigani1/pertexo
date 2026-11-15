@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   StepHealthList,
   StepHistoryPanel,
-} from '@/features/workflow-runs/step-history.public';
+} from '@/features/workflow-runs/workflow-runs-views.public';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';

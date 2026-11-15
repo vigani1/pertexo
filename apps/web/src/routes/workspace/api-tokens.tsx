@@ -1,4 +1,4 @@
-import { ApiTokensPage } from '@/features/api-tokens/public';
+import { ApiTokensPage } from '@/features/api-tokens/pages/token-settings';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
 
 export function ApiTokensRoute() {

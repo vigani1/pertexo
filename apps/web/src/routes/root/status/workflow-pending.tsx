@@ -3,7 +3,7 @@ import { useRouteContext, useRouterState } from '@tanstack/react-router';
 import {
   WorkflowHubBar,
   type WorkflowHubTab,
-} from '@/features/workflows/hub.public';
+} from '@/features/workflows/workflows-views.public';
 import { cachedWorkflowSummary } from '@/features/workflows/workflows-queries.public';
 
 import { PagePending } from './pending';

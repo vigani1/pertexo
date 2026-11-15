@@ -2,7 +2,7 @@ import { RunFailureNotice } from '../components/run-detail/failure-notice';
 import { PhoneFailureNotice } from '../components/run-detail/execution-history';
 import { RunBusinessValues } from '../components/run-detail/business-values';
 import { RunVariables } from '../components/run-detail/variables';
-import { PendingTasks } from '@/features/pending-tasks/public';
+import { PendingTasks } from '@/features/pending-tasks/pending-tasks-views.public';
 import { ErrorWorkflowStatus } from '../components/error-workflow-status';
 import type {
   AccessibleWorkspace,

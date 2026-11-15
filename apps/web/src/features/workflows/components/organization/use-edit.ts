@@ -23,7 +23,7 @@ import {
   validOrganizationSelection,
   type OrganizationOperation,
 } from '../../model/organization/selection-editing';
-import { ADMINISTRATORS } from '@/features/workspaces/roles.public';
+import { ADMINISTRATORS } from '@/features/workspaces/public';
 export type Props = Readonly<{
   apiClient: ApiClient;
   userId: string;

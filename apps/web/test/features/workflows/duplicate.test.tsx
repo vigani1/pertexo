@@ -6,7 +6,7 @@ import {
   accessibleWorkspaceSchema,
   workflowSummarySchema,
 } from '@pertexo/contracts';
-import { WorkflowDuplicateDialog } from '@/features/workflows/creation/duplicate.public';
+import { WorkflowDuplicateDialog } from '@/features/workflows/workflows-views.public';
 import { createApiClient } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/error';
 import { workflowKeys } from '@/features/workflows/workflows-queries.public';

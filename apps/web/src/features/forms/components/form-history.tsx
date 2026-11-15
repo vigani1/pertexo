@@ -4,7 +4,7 @@ import {
   RecentLog,
   RecentLogEntry,
 } from '@/components/patterns/lists/recent-log';
-import { describeCoordinatedEvent } from '@/features/trigger-events/presentation.public';
+import { describeCoordinatedEvent } from '@/features/trigger-events/public';
 import { formatDateTime } from '@/lib/format/time';
 import { Button } from '@/components/ui/button';
 import type { MemberFormScope } from '../data/forms.api';

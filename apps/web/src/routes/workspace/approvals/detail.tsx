@@ -1,5 +1,5 @@
 import { useParams } from '@tanstack/react-router';
-import { TaskDetailPage } from '@/features/pending-tasks/pages.public';
+import { TaskDetailPage } from '@/features/pending-tasks/pages/task-detail';
 import { useWorkspaceScope } from '../shell/use-workspace-scope';
 export function ApprovalDetailRoute() {
   const { apiClient, user, workspace } = useWorkspaceScope();

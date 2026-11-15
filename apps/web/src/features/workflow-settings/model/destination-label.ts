@@ -3,7 +3,7 @@ import {
   channelKey,
   describeChannel,
   type ChannelNames,
-} from '@/features/failure-notifications/channel-names.public';
+} from '@/features/failure-notifications/public';
 
 type Destination = Pick<FailureNotificationDestinationResponse, 'config'>;
 
