@@ -1,14 +1,16 @@
-import { CRON_EXPRESSION_MAX_CHARACTERS } from '@pertexo/workflow-model';
+import {
+  CRON_EXPRESSION_LIMITS,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { TIME_ZONE_NAME_CHARACTERS } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
 const SCHEDULES_BOUNDS = Object.freeze({
-  expressionCharacters: CRON_EXPRESSION_MAX_CHARACTERS,
   timezoneCharacters: TIME_ZONE_NAME_CHARACTERS,
   intervalMinutesMaximum: 43200,
-  nodeIdCharacters: 256,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   scheduleTriggerListPageItems: 1000,
   scheduleOccurrenceCursorCharacters: 512,
@@ -16,9 +18,6 @@ const SCHEDULES_BOUNDS = Object.freeze({
   scheduleOccurrenceListPageItems: 100,
   scheduleFireTimeCountMaximum: 10,
   scheduleFireTimesPageItems: 10,
-  expressionMinimumCharacters: 9,
-  previewExpressionCharacters: 255,
-  previewTimezoneCharacters: 255,
   countMaximum: 10,
 });
 
@@ -41,7 +40,10 @@ const scheduleRecurrenceSummarySchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('cron'),
-      expression: z.string().min(1).max(SCHEDULES_BOUNDS.expressionCharacters),
+      expression: z
+        .string()
+        .min(1)
+        .max(CRON_EXPRESSION_LIMITS.maximumCharacters),
       timezone: z.string().min(1).max(SCHEDULES_BOUNDS.timezoneCharacters),
     })
     .strict(),
@@ -171,13 +173,10 @@ export const scheduleStepConfigSchema = z.discriminatedUnion('kind', [
       kind: z.literal('cron'),
       expression: z
         .string()
-        .min(SCHEDULES_BOUNDS.expressionMinimumCharacters)
-        .max(SCHEDULES_BOUNDS.previewExpressionCharacters)
+        .min(CRON_EXPRESSION_LIMITS.minimumCharacters)
+        .max(CRON_EXPRESSION_LIMITS.maximumCharacters)
         .regex(/^[^\sH?#L]+(?: [^\sH?#L]+){4}$/u),
-      timezone: z
-        .string()
-        .min(1)
-        .max(SCHEDULES_BOUNDS.previewTimezoneCharacters),
+      timezone: z.string().min(1).max(SCHEDULES_BOUNDS.timezoneCharacters),
       misfirePolicy: scheduleStepMisfirePolicySchema,
     })
     .strict(),

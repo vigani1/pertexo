@@ -38,11 +38,11 @@ const RUN_BOUNDS = Object.freeze({
   remainingMillis: WORKFLOW_EXECUTION_LIMITS.maxRunDurationMs,
   handledFailureCountMaximum: 200,
   reasonsItems: 3,
-  nodeIdCharacters: 256,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   labelCharacters: 200,
   definitionKeyCharacters: NODE_IDENTITY_KEY_MAX_CHARACTERS,
   safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
-  invocationKeyCharacters: 1024,
+  invocationKeyCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
   handlerInvocationKeyCharacters:
     WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
   errorSummaryCharacters: NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters,

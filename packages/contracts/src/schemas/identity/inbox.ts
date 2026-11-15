@@ -1,15 +1,19 @@
 import { storedTimestampSchema } from '../shared/stored-timestamp.js';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
-import { INBOX_FAILURE_DAYS, taskDetailsSchema } from '@pertexo/workflow-model';
+import {
+  INBOX_FAILURE_DAYS,
+  taskDetailsSchema,
+  RESOURCE_NAME_MAX_LENGTH,
+} from '@pertexo/workflow-model';
 
 import { workflowRunFailedStepSchema } from '../execution/runs.js';
 
 const INBOX_BOUNDS = Object.freeze({
   workspaceInboxCursorCharacters: 1024,
   workspaceInboxLimitMaximum: 100,
-  workflowNameCharacters: 200,
-  nameCharacters: 200,
+  workflowNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  nameCharacters: RESOURCE_NAME_MAX_LENGTH,
   limitsItems: 4,
   workspaceInboxListPageItems: 100,
 });

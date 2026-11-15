@@ -20,8 +20,12 @@ const fieldNames: Readonly<Partial<Record<number, ReadonlySet<string>>>> = {
 };
 
 /** Only the server parses cron; both boundaries refuse the same extended operators. */
-/** The longest cron expression a schedule stores. */
-export const CRON_EXPRESSION_MAX_CHARACTERS = 256;
+/** A Schedule step's cron expression: `* * * * *` at the shortest. */
+export const CRON_EXPRESSION_LIMITS = Object.freeze({
+  // Five one-character fields and their spaces.
+  minimumCharacters: 9,
+  maximumCharacters: 255,
+});
 
 export function cronHasUnsupportedOperators(expression: string): boolean {
   return expression.split(/\s+/u).some((field, index) => {

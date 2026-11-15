@@ -26,6 +26,8 @@ import {
 } from '@pertexo/workflow-model';
 
 const WIDTHS = Object.freeze({
+  // Wider than the graph's 64-character node id, which every id is validated to
+  // before it is stored: narrowing needs a migration and gains nothing.
   nodeId: 128,
   policyHash: SHA256_HEX_CHARACTERS,
   keyHash: SHA256_HEX_CHARACTERS,

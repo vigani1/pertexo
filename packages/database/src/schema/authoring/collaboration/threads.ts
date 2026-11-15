@@ -14,6 +14,8 @@ import { users } from '../../identity/users.js';
 import { workflows } from '../workflows.js';
 
 const WIDTHS = Object.freeze({
+  // Wider than the graph's 64-character node id, which every id is validated to
+  // before it is stored: narrowing needs a migration and gains nothing.
   stepId: 128,
   stepLabel: 256,
   status: 16,

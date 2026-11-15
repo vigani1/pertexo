@@ -1,4 +1,7 @@
-import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
+import {
+  RESOURCE_NAME_MAX_LENGTH,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import {
   storageTextSchema,
@@ -24,9 +27,9 @@ import {
 
 const PENDING_TASKS_BOUNDS = Object.freeze({
   workflowNameCharacters: RESOURCE_NAME_MAX_LENGTH,
-  nodeIdCharacters: 128,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   stepNameCharacters: 200,
-  loopNodeIdCharacters: 128,
+  loopNodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   iterationPathItems: 64,
   completedByNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
   pendingTaskListPageItems: 50,

@@ -35,6 +35,8 @@ const WIDTHS = Object.freeze({
   triggerPauseState: 16,
   triggerPauseReason: 32,
   checksum: 77,
+  // Wider than the graph's 64-character node id, which every id is validated to
+  // before it is stored: narrowing needs a migration and gains nothing.
   nodeId: 128,
   kind: 16,
   status: 32,

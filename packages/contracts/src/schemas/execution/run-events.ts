@@ -1,9 +1,10 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 const RUN_EVENTS_BOUNDS = Object.freeze({
-  invocationKeyCharacters: 1024,
-  nodeIdCharacters: 256,
+  invocationKeyCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   reasonCodeCharacters: 128,
 });

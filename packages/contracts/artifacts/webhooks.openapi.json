@@ -374,7 +374,7 @@
                 "nodeId": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256
+                  "maxLength": 64
                 },
                 "kind": {
                   "type": "string",
@@ -623,7 +623,7 @@
                     "nodeId": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 128
+                      "maxLength": 64
                     },
                     "source": {
                       "type": "string",
@@ -815,7 +815,7 @@
                   "nodeId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 256
+                    "maxLength": 64
                   },
                   "kind": {
                     "type": "string",
@@ -1002,7 +1002,7 @@
                   "nodeId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 256
+                    "maxLength": 64
                   },
                   "kind": {
                     "type": "string",

@@ -21,6 +21,8 @@ const WIDTHS = Object.freeze({
   tokenNonce: 128,
   tokenTag: 256,
   tokenKeyVersion: 64,
+  // Wider than the 128-character resource name a workspace holds, which a
+  // delivery copies: narrowing needs a migration and gains nothing.
   workspaceName: 256,
   providerReference: 512,
   failureCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,

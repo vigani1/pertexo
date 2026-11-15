@@ -2,6 +2,7 @@ import { responseSchema } from '../../shared/response-schema.js';
 import {
   COLLABORATION_LIMITS,
   DISPLAY_NAME_MAX_CHARACTERS,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 export { COLLABORATION_LIMITS };
 import { z } from 'zod';
@@ -9,8 +10,9 @@ import { isStorageText } from '@pertexo/workflow-model';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 const COMMENTS_BOUNDS = Object.freeze({
-  workflowCommentStepIdCharacters: 128,
-  stepIdCharacters: 128,
+  workflowCommentStepIdCharacters:
+    WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
+  stepIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   stepLabelCharacters: 256,
   previewCharacters: 400,
   authorNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,

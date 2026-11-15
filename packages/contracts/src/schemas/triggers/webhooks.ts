@@ -1,13 +1,16 @@
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
-import { eventCoordinationReceiptSchema } from '@pertexo/workflow-model';
+import {
+  eventCoordinationReceiptSchema,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 import { coordinatedEventSchema } from '../forms/coordination.js';
 import { z } from 'zod';
 import { webhookAuthenticationSchema } from '@pertexo/workflow-model';
 
 const WEBHOOKS_BOUNDS = Object.freeze({
-  nodeIdCharacters: 256,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   webhookTriggerListPageItems: 1000,
   webhookDeliveryCursorCharacters: 512,

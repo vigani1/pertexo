@@ -579,7 +579,7 @@
                     "workflowName": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 200
+                      "maxLength": 128
                     },
                     "kind": {
                       "type": "string",
@@ -641,7 +641,7 @@
                             "nodeId": {
                               "type": "string",
                               "minLength": 1,
-                              "maxLength": 256
+                              "maxLength": 64
                             },
                             "label": {
                               "anyOf": [
@@ -759,7 +759,7 @@
                         },
                         "name": {
                           "type": "string",
-                          "maxLength": 200
+                          "maxLength": 128
                         },
                         "details": {
                           "default": {},
@@ -870,7 +870,7 @@
                         },
                         "name": {
                           "type": "string",
-                          "maxLength": 200
+                          "maxLength": 128
                         },
                         "details": {
                           "default": {},

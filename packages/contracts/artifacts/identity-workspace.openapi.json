@@ -10220,7 +10220,7 @@
                   "anyOf": [
                     {
                       "type": "string",
-                      "maxLength": 128
+                      "maxLength": 64
                     },
                     {
                       "type": "null"

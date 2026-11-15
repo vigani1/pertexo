@@ -20,6 +20,8 @@ import { workflows } from '../authoring/workflows.js';
 import { artifacts } from '../artifacts/artifacts.js';
 
 const WIDTHS = Object.freeze({
+  // Wider than the graph's 64-character node id, which every id is validated to
+  // before it is stored: narrowing needs a migration and gains nothing.
   nodeId: 128,
   members: 16,
   capabilityHash: SHA256_HEX_CHARACTERS,

@@ -1,8 +1,5 @@
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
-import {
-  CRON_EXPRESSION_MAX_CHARACTERS,
-  TIME_ZONE_NAME_CHARACTERS,
-} from '@pertexo/workflow-model';
+import { TIME_ZONE_NAME_CHARACTERS } from '@pertexo/workflow-model';
 import type { RecordedScheduleOccurrence } from '../stored-shapes.js';
 import type { ScheduleTriggerRecord } from '../stored-shapes.js';
 import { workflowTriggers } from '../authoring/workflows.js';
@@ -23,7 +20,9 @@ import { appSchema } from '../namespace.js';
 
 const WIDTHS = Object.freeze({
   recurrenceKind: 16,
-  cronExpression: CRON_EXPRESSION_MAX_CHARACTERS,
+  // One wider than CRON_EXPRESSION_LIMITS' 255, which a Schedule step is held to:
+  // narrowing needs a migration and gains nothing.
+  cronExpression: 256,
   timezone: TIME_ZONE_NAME_CHARACTERS,
   misfirePolicy: 32,
   configFingerprint: 79,

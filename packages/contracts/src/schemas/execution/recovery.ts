@@ -7,9 +7,9 @@ import {
 } from '@pertexo/workflow-model';
 
 const RECOVERY_BOUNDS = Object.freeze({
-  nodeIdCharacters: 128,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   nodeLabelCharacters: 200,
-  targetNodeIdCharacters: 128,
+  targetNodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
 });
 
 const workflowRecoveryEffectRiskSchema = z.enum([

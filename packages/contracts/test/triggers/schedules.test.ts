@@ -7,9 +7,14 @@ import {
   scheduleOccurrenceListQuerySchema,
   scheduleOccurrenceListResponseSchema,
   schedulePreviewRequestSchema,
+  scheduleStepConfigSchema,
   scheduleTriggerListResponseSchema,
 } from '../../src/schemas/triggers/schedules.js';
 import { schedulesOpenApiDocument } from '../../src/server.js';
+import {
+  CRON_EXPRESSION_LIMITS,
+  TIME_ZONE_NAME_CHARACTERS,
+} from '@pertexo/workflow-model';
 
 const trigger = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -198,5 +203,34 @@ describe('schedule public contracts', () => {
             ),
           ).toBe(true);
       }
+  });
+
+  it('holds a Schedule step to the cron expression and time zone limits the step itself enforces', () => {
+    // Five fields: one long minute list, then `* * * *`.
+    const expressionOf = (characters: number) => {
+      const minutes = '1,'.repeat((characters - 9) / 2) + '1';
+      return `${minutes} * * * *`;
+    };
+    const config = (expression: string, timezone: string) => ({
+      kind: 'cron' as const,
+      expression,
+      timezone,
+    });
+    const longest = expressionOf(CRON_EXPRESSION_LIMITS.maximumCharacters);
+    expect(longest).toHaveLength(CRON_EXPRESSION_LIMITS.maximumCharacters);
+    expect(
+      scheduleStepConfigSchema.safeParse(config(longest, 'UTC')).success,
+    ).toBe(true);
+    expect(
+      scheduleStepConfigSchema.safeParse(config(`1,${longest}`, 'UTC')).success,
+    ).toBe(false);
+    const zone = 'A'.repeat(TIME_ZONE_NAME_CHARACTERS);
+    expect(
+      scheduleStepConfigSchema.safeParse(config('* * * * *', zone)).success,
+    ).toBe(true);
+    expect(
+      scheduleStepConfigSchema.safeParse(config('* * * * *', `${zone}A`))
+        .success,
+    ).toBe(false);
   });
 });

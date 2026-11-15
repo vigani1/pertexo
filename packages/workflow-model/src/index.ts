@@ -283,7 +283,7 @@ export {
 } from './triggers/forms/values.js';
 export { FormValuesInvalidError } from './triggers/forms/forms.errors.js';
 export {
-  CRON_EXPRESSION_MAX_CHARACTERS,
+  CRON_EXPRESSION_LIMITS,
   cronHasUnsupportedOperators,
 } from './triggers/schedule-cron.js';
 export {

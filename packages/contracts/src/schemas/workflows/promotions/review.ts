@@ -1,4 +1,7 @@
-import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
+import {
+  RESOURCE_NAME_MAX_LENGTH,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 import { responseSchema } from '../../shared/response-schema.js';
 import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -9,7 +12,7 @@ import {
 } from './settings.js';
 
 const REVIEW_BOUNDS = Object.freeze({
-  nodeIdCharacters: 128,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   nameCharacters: 256,
   detailCharacters: PROMOTION_LIMITS.requirementDetailCharacters,
   sourceWorkspaceNameCharacters: RESOURCE_NAME_MAX_LENGTH,
