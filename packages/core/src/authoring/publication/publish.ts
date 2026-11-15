@@ -1,13 +1,7 @@
-import { and, desc, eq, lt, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
-import { workflowVersions, workspaces } from '@pertexo/database/schema';
+import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { recordPromotedPublication } from '../promotion/provenance.repository.js';
 import { PublicationReviewError } from '../reviews/publication-review.errors.js';
+import { requiresPublishApproval } from '../reviews/requests.repository.js';
 
 import { sameWorkflowNotes } from '@pertexo/workflow-model';
 import {
@@ -36,8 +30,8 @@ import type { WorkflowVersionRecord } from '../workflows/representation/workflow
 import {
   projectDraft,
   projectVersion,
-  versionProjection,
 } from '../workflows/representation/workflow-representations.repository.js';
+import { readVersionRow } from '../workflows/commands/version-sources.repository.js';
 
 import type {
   CompiledPublication,
@@ -51,6 +45,10 @@ import {
   finalizePublication,
   persistPublicationProjections,
 } from './projections.repository.js';
+import {
+  findRetainedVersion,
+  insertNextVersion,
+} from './versions.repository.js';
 
 type PublicationReceipt = z.output<typeof publicationReceipt>;
 
@@ -76,17 +74,11 @@ async function claimPublication(
   if (stored === null)
     return Object.freeze({ command, replay: null, workflowId });
   const { versionId, reused } = decodeStoredReceipt(publicationReceipt, stored);
-  const [row] = await drizzle(client)
-    .select(versionProjection)
-    .from(workflowVersions)
-    .where(
-      and(
-        eq(workflowVersions.workspaceId, input.workspaceId),
-        eq(workflowVersions.workflowId, workflowId),
-        eq(workflowVersions.id, versionId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  const row = await readVersionRow(client, {
+    workspaceId: input.workspaceId,
+    workflowId,
+    versionId,
+  });
   if (row === undefined)
     throw new WorkflowNotFoundError('Workflow version is not visible');
   return Object.freeze({
@@ -138,74 +130,18 @@ async function persistVersion(
   workflowId: string,
   publication: CompiledPublication,
 ): Promise<Readonly<{ reused: boolean; version: WorkflowVersionRecord }>> {
-  const db = drizzle(client);
-  const scope = and(
-    eq(workflowVersions.workspaceId, input.workspaceId),
-    eq(workflowVersions.workflowId, workflowId),
-  );
-  // Newest-first pages preserve the most recent match without retaining the full history.
-  const pageSize = 16;
-  let beforeVersion: number | undefined;
-  let versionRow: Parameters<typeof projectVersion>[0] | undefined;
-  for (;;) {
-    const retained = await db
-      .select(versionProjection)
-      .from(workflowVersions)
-      .where(
-        and(
-          scope,
-          eq(workflowVersions.checksum, publication.checksum),
-          beforeVersion === undefined
-            ? undefined
-            : lt(workflowVersions.versionNumber, beforeVersion),
-        ),
-      )
-      .orderBy(desc(workflowVersions.versionNumber))
-      .limit(pageSize)
-      .catch(rethrowQueryFailure);
-    versionRow = retained.find((row) =>
+  const workflow = { workspaceId: input.workspaceId, workflowId };
+  const retained = await findRetainedVersion(
+    client,
+    workflow,
+    publication.checksum,
+    (row) =>
       sameWorkflowNotes(projectVersion(row).graphJson, publication.graph),
-    );
-    if (versionRow !== undefined || retained.length < pageSize) break;
-    beforeVersion = retained.at(-1)?.versionNumber;
-  }
-  const reused = versionRow !== undefined;
-  if (!reused) {
-    const inserted = await db
-      .insert(workflowVersions)
-      .select(
-        db
-          .select({
-            id: sql<string>`${publication.versionId}::uuid`.as('id'),
-            workspaceId: sql<string>`${input.workspaceId}::uuid`.as(
-              'workspace_id',
-            ),
-            workflowId: sql<string>`${workflowId}::uuid`.as('workflow_id'),
-            versionNumber:
-              sql<number>`coalesce(max(${workflowVersions.versionNumber}),0)+1`.as(
-                'version_number',
-              ),
-            graphJson:
-              sql<unknown>`${JSON.stringify(publication.graph)}::json`.as(
-                'graph_json',
-              ),
-            checksum: sql<string>`${publication.checksum}::varchar`.as(
-              'checksum',
-            ),
-            executableJson:
-              sql<unknown>`${JSON.stringify(publication.executable.executableJson)}::json`.as(
-                'executable_json',
-              ),
-            publishedBy: sql<string>`${input.actorId}::uuid`.as('published_by'),
-            publishedAt: sql<Date>`clock_timestamp()`.as('published_at'),
-          })
-          .from(workflowVersions)
-          .where(scope),
-      )
-      .returning(versionProjection)
-      .catch(rethrowQueryFailure);
-    versionRow = inserted[0];
-  }
+  );
+  const reused = retained !== undefined;
+  const versionRow =
+    retained ??
+    (await insertNextVersion(client, workflow, publication, input.actorId));
   if (versionRow === undefined)
     throw new Error('Workflow publication returned no version');
   const version = projectVersion(versionRow);
@@ -250,12 +186,7 @@ export async function publishWorkflowDirectly(
   input: PublicationCandidateInput,
   catalogs: AuthoringCatalogs,
 ): Promise<PublishWorkflowResult> {
-  const [policy] = await drizzle(client)
-    .select({ requirePublishApproval: workspaces.requirePublishApproval })
-    .from(workspaces)
-    .where(eq(workspaces.id, input.workspaceId))
-    .catch(rethrowQueryFailure);
-  if (policy?.requirePublishApproval ?? false)
+  if (await requiresPublishApproval(client, input.workspaceId))
     throw new PublicationReviewError(
       'required',
       'This workspace requires publication review. Request approval for the saved draft.',
