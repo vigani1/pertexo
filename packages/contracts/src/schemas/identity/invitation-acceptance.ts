@@ -3,6 +3,7 @@ import {
   delegatedWorkspaceRoleSchema,
   workspaceRoleSchema,
 } from './membership.js';
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import { workspaceIdentifierSchema } from './workspaces.js';
 
 // The journey an invitation link starts: resolving its token, binding it to
@@ -46,7 +47,7 @@ const acceptanceBoundStateSchema = z.discriminatedUnion('state', [
       workspace: z
         .object({
           id: workspaceIdentifierSchema,
-          name: z.string().min(1).max(128),
+          name: z.string().min(1).max(RESOURCE_NAME_MAX_LENGTH),
         })
         .strict(),
       role: delegatedWorkspaceRoleSchema,
@@ -61,7 +62,7 @@ const acceptanceBoundStateSchema = z.discriminatedUnion('state', [
       workspace: z
         .object({
           id: workspaceIdentifierSchema,
-          name: z.string().min(1).max(128),
+          name: z.string().min(1).max(RESOURCE_NAME_MAX_LENGTH),
         })
         .strict(),
       role: workspaceRoleSchema,
