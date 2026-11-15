@@ -1,9 +1,12 @@
+import { sentenceStart } from '@/lib/format/sentence';
 import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
+import { INBOX_FAILURE_DAYS } from '@pertexo/workflow-model';
 import { cn } from '@/lib/class-names';
 import { formatCount } from '@/lib/format/count';
 
 const DAY_MILLIS = 86_400_000;
-const DAYS = 30;
+const DAYS = INBOX_FAILURE_DAYS;
+const WINDOW = `the last ${formatCount(INBOX_FAILURE_DAYS, 'day')}`;
 
 /** How strong a day's red is: one failure is faint, four or more solid. */
 function intensity(count: number): string {
@@ -14,7 +17,7 @@ function intensity(count: number): string {
 }
 
 /**
- * The workflow's last 30 days as one compact strip, today at the right: a
+ * The workflow's recent failure days (INBOX_FAILURE_DAYS) as one compact strip, today at the right: a
  * bar per day, red where runs failed and brighter the more did, so where a
  * failure streak starts and stops reads at a glance. The words around it
  * say since when and how many; each bar names its day on hover.
@@ -41,8 +44,8 @@ export function FailureLane({
   return (
     <figure
       className={cn('flex items-center gap-2', className)}
-      aria-label={`${formatCount(total, 'failure')} in the last 30 days`}
-      title="The last 30 days, today on the right"
+      aria-label={`${formatCount(total, 'failure')} in ${WINDOW}`}
+      title={`${sentenceStart(WINDOW)}, today on the right`}
     >
       <span
         aria-hidden="true"

@@ -1,6 +1,6 @@
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
-import { taskDetailsSchema } from '@pertexo/workflow-model';
+import { INBOX_FAILURE_DAYS, taskDetailsSchema } from '@pertexo/workflow-model';
 
 import { workflowRunFailedStepSchema } from '../execution/runs.js';
 
@@ -26,6 +26,7 @@ const workspaceInboxRevisionSchema = z
     { message: 'Revision exceeds PostgreSQL bigint' },
   );
 const workspaceInboxCursorSchema = z.string().min(1).max(1_024);
+
 export const workspaceCapacityLimitSchema = z.enum([
   'active',
   'queue',
@@ -75,7 +76,7 @@ export const workspaceInboxFailureThreadSchema = z
           })
           .strict(),
       )
-      .max(30),
+      .max(INBOX_FAILURE_DAYS),
     occurrenceCount: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
     firstOccurredAt: workspaceInboxTimestampSchema,
     latestOccurredAt: workspaceInboxTimestampSchema,

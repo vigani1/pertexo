@@ -165,6 +165,7 @@ export { isSafeExecutorErrorCode } from './execution/attempt-failure.js';
 export {
   DATA_RETENTION_DAYS,
   IDEMPOTENCY_KEY_RETENTION_HOURS,
+  INBOX_FAILURE_DAYS,
   WEBHOOK_TEST_CAPTURE_SECONDS,
 } from './execution/data-retention.js';
 export {

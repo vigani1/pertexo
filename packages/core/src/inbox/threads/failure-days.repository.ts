@@ -3,6 +3,7 @@ import { and, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { databaseSchema } from '@pertexo/database/schema';
 import { workspaceInboxFailureDays as failureDays } from '@pertexo/database/schema';
+import { INBOX_FAILURE_DAYS } from '@pertexo/workflow-model';
 
 type FailureDay = Readonly<{ day: string; count: number }>;
 
@@ -27,7 +28,7 @@ export async function readFailureDays(
         inArray(failureDays.workflowId, [...workflowIds]),
         gte(
           failureDays.day,
-          sql`(transaction_timestamp() at time zone 'UTC')::date-29`,
+          sql`(transaction_timestamp() at time zone 'UTC')::date-${sql.raw(String(INBOX_FAILURE_DAYS - 1))}`,
         ),
         lte(
           failureDays.day,

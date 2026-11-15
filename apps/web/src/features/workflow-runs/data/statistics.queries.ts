@@ -20,7 +20,9 @@ const STATUS_PAGE_SIZE = 100;
 
 const STATISTICS_REFRESH_MS = 15_000;
 
-const DAY_MS = 86_400_000;
+/** Home's attention list reads the runs that went wrong in this many hours. */
+export const ATTENTION_WINDOW_HOURS = 24;
+const ATTENTION_WINDOW_MS = ATTENTION_WINDOW_HOURS * 60 * 60 * 1_000;
 
 const LOOM_RUN_CAP = 300;
 
@@ -159,7 +161,7 @@ export function attentionRunsQueryOptions(
     queryKey: workflowRunKeys.attention(userId, workspaceId),
     queryFn: async ({ signal }): Promise<AttentionRuns> => {
       const asOf = Date.now();
-      const createdAtFrom = new Date(asOf - DAY_MS).toISOString();
+      const createdAtFrom = new Date(asOf - ATTENTION_WINDOW_MS).toISOString();
       const [failed, timedOut, outcomeUnknown] = await statusPages({
         apiClient,
         workspaceId,

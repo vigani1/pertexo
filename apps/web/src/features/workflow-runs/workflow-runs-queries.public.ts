@@ -3,6 +3,7 @@ export {
   workflowRunsInfiniteQueryOptions,
 } from './data/history.queries';
 export {
+  ATTENTION_WINDOW_HOURS,
   attentionRunsQueryOptions,
   liveRunCountQueryOptions,
   loomStatisticsQueryOptions,

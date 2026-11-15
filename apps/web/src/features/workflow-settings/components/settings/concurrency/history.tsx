@@ -1,3 +1,5 @@
+import { formatCount } from '@/lib/format/count';
+import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import {
   WORKFLOW_CONCURRENCY_RECENT_SKIPS_MAX,
   type WorkflowConcurrencySettings,
@@ -20,7 +22,8 @@ export function SkipHistory({
       <h3 className="text-sm font-medium">Recent skipped triggers</h3>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nothing skipped in the last 90 days.
+          Nothing skipped in the last{' '}
+          {formatCount(DATA_RETENTION_DAYS.runSummaries, 'day')}.
         </p>
       ) : (
         <ul className="divide-y divide-border">

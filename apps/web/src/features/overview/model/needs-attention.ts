@@ -7,7 +7,10 @@ import type {
 import type { StatusTone } from '@/components/ui/status';
 import { needsReconnecting } from '@/features/connections/public';
 import { formatElapsedTime } from '@/lib/format/time';
-import { pluralWord } from '@/lib/format/count';
+import { formatCount, pluralWord } from '@/lib/format/count';
+import { ATTENTION_WINDOW_HOURS } from '@/features/workflow-runs/workflow-runs-queries.public';
+
+const ATTENTION_WINDOW = `the last ${formatCount(ATTENTION_WINDOW_HOURS, 'hour')}`;
 
 // "Needs attention" is derived from reads the app already makes: problem
 // runs from the last day, workflows whose triggers aren't healthy,
@@ -51,16 +54,16 @@ interface RunGroup {
 function groupTitle(group: RunGroup): string {
   const total = group.failed + group.timedOut + group.unknown;
   if (group.failed === total)
-    return `${group.name} failed ${times(total)} in the last 24 hours`;
+    return `${group.name} failed ${times(total)} in ${ATTENTION_WINDOW}`;
   if (group.timedOut === total)
-    return `${group.name} timed out ${times(total)} in the last 24 hours`;
+    return `${group.name} timed out ${times(total)} in ${ATTENTION_WINDOW}`;
   if (group.unknown === total)
     return pluralWord(
       total,
       `${group.name} has a run with an unknown outcome`,
       `${group.name} has ${String(total)} runs with an unknown outcome`,
     );
-  return `${group.name} had ${String(total)} runs go wrong in the last 24 hours`;
+  return `${group.name} had ${String(total)} runs go wrong in ${ATTENTION_WINDOW}`;
 }
 
 function groupDetail(group: RunGroup, nowMs: number): string {
