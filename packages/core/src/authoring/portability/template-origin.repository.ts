@@ -1,37 +1,34 @@
-import type { WorkflowRef } from '../../shared/workflow-actor.types.js';
-import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
 import { and, eq } from 'drizzle-orm';
+
 import { drizzle } from 'drizzle-orm/node-postgres';
+
 import {
   postgresFailure,
   rethrowQueryFailure,
 } from '@pertexo/database/primitives';
+
 import {
   workflowOrganizationState,
   workflowTemplateOrigins,
   workflows,
 } from '@pertexo/database/schema';
-import {
-  workflowAccessible,
-  workflowActions,
-} from '../../shared/resources/workflow-access.repository.js';
-import { WorkflowTemplateOriginUnavailableError } from '../workflows/workflow-authoring.errors.js';
+
 import type { PoolClient } from 'pg';
-import type { FolderScope } from '../../shared/folder-access.types.js';
 
 import { workflowProjection } from '../workflows/representation/workflow-representations.repository.js';
 
-/** One scoped statement keeps summary and immutable origin in the same snapshot. */
-export async function readWorkflowWithTemplateOrigin(
+/**
+ * The workflow with its folder and stored origin, undefined when it's gone, or
+ * `unavailable` when the origin storage is missing or incompatible: that is an
+ * unsupported projection, never an authoritative null.
+ */
+export async function readTemplateOriginRow(
   client: PoolClient,
-  access: FolderScope,
-  workflow: WorkflowRef,
+  workspaceId: string,
+  workflowId: string,
 ) {
-  const { workspaceId, workflowId } = workflow;
-  if (!(await workflowAccessible(client, access, workflow))) return null;
-  let result;
   try {
-    result = await drizzle(client)
+    const result = await drizzle(client)
       .select({
         workflow: workflowProjection,
         templateOrigin: workflowTemplateOrigins.origin,
@@ -59,24 +56,11 @@ export async function readWorkflowWithTemplateOrigin(
         ),
       )
       .catch(rethrowQueryFailure);
+    return result[0];
   } catch (error) {
-    // Missing/incompatible storage is unsupported projection, never authoritative null.
     const { code } = postgresFailure(error);
     if (code === '42P01' || code === '42703' || code === '42501')
-      throw new WorkflowTemplateOriginUnavailableError();
+      return 'unavailable' as const;
     throw error;
   }
-  const row = result[0];
-  if (row === undefined) return null;
-  const origin = workflowTemplateOriginSchema
-    .nullable()
-    .safeParse(row.templateOrigin);
-  if (!origin.success) throw new WorkflowTemplateOriginUnavailableError();
-  return Object.freeze({
-    workflow: {
-      ...row.workflow,
-      resourceAccess: workflowActions(access, row.folderId),
-    },
-    templateOrigin: origin.data,
-  });
 }
