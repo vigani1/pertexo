@@ -6,7 +6,7 @@ import {
   ordinaryRunSql,
   expiredRunSql,
 } from '../../../shared/run-retention.repository.js';
-import { UNSUCCESSFUL_STATUSES } from '../../statuses.js';
+import { UNSUCCESSFUL_RUN_STATUSES } from '@pertexo/workflow-model';
 import {
   workflowRunValues,
   workflows,
@@ -28,7 +28,9 @@ import {
 } from '../../commands/workflow-run-records.repository.js';
 
 /** Outcomes a step can explain; a canceled run explains itself. */
-const EXPLAINED_BY_A_STEP: ReadonlySet<string> = new Set(UNSUCCESSFUL_STATUSES);
+const EXPLAINED_BY_A_STEP: ReadonlySet<string> = new Set(
+  UNSUCCESSFUL_RUN_STATUSES,
+);
 
 export type WorkflowRunListPosition = Readonly<{
   createdAt: string;

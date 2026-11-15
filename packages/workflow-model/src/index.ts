@@ -204,8 +204,11 @@ export {
 export {
   RUN_STATUS,
   RUN_STATUSES,
+  UNSUCCESSFUL_RUN_STATUSES,
   type RunStatus,
+  type UnsuccessfulRunStatus,
 } from './execution/run-status.js';
+export { failureStreakOutcome } from './triggers/failure-streak.js';
 export {
   DEFAULT_STEP_RETRY_SETTINGS,
   STEP_RETRY_LIMITS,

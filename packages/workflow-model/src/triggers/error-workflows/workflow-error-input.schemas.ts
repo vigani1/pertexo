@@ -1,3 +1,4 @@
+import { UNSUCCESSFUL_RUN_STATUSES } from '../../execution/run-status.js';
 import { z } from 'zod';
 import { workflowFailureClassificationSchema } from '../../flow/failure-routing/value.js';
 
@@ -55,7 +56,7 @@ export const workflowErrorInputSchema = z
       .object({
         id: z.uuid(),
         url: z.string().regex(/^\/w\/[0-9a-f-]{36}\/runs\/[0-9a-f-]{36}$/u),
-        status: z.enum(['failed', 'timed_out', 'outcome_unknown']),
+        status: z.enum(UNSUCCESSFUL_RUN_STATUSES),
       })
       .strict(),
     failedStep: failedStepSchema.nullable(),

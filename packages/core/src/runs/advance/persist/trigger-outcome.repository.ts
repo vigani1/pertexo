@@ -10,7 +10,7 @@ import type { PoolClient } from 'pg';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
-import { streakOutcome } from './trigger-outcome-rule.js';
+import { failureStreakOutcome } from '@pertexo/workflow-model';
 
 /**
  * Records the terminal outcome of an externally triggered run for the
@@ -32,7 +32,7 @@ export async function persistWorkflowTriggerOutcome(
   }>,
 ): Promise<void> {
   const status = input.plan.checkpoint.runStatus;
-  const outcome = streakOutcome({
+  const outcome = failureStreakOutcome({
     triggerType: input.triggerType,
     cancellationRequested: input.cancellationRequested,
     status,
