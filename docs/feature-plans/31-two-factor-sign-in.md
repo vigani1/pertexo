@@ -27,7 +27,7 @@ in. This matches [n8n's two-factor sign-in](https://docs.n8n.io/user-management/
   `accountSecurityResponseSchema` in `packages/contracts/src/schemas/identity/authentication.ts`.
 - The web sign-in call is `signInWithEmail` in
   `apps/web/src/features/auth/data/native-auth.api.ts`. The page is
-  `features/auth/pages/login.tsx`, with `components/sign-in/use-submit.ts`.
+  `features/auth/pages/login.tsx`, with `data/sign-in.mutations.ts`.
 - Auth tables (`users`, `auth_accounts`, `auth_sessions`,
   `auth_verifications`) are defined in
   `packages/database/src/schema/authentication.ts`.
