@@ -1,8 +1,4 @@
-import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
@@ -10,7 +6,6 @@ import {
   noticeWorkspaceSettings,
   noticeSubscriptions,
 } from '@pertexo/database/schema';
-import type { NoticeCommandResponse } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 
 import type {
@@ -18,65 +13,38 @@ import type {
   ReplaceNoticePreferencesInput,
   ReplaceNoticeSubscriptionInput,
 } from './notice-preferences.types.js';
-import { NoticeConflictError } from './notice-preferences.errors.js';
-export async function replacePreference(
+
+/** A person's own preference row, or the workspace's defaults row. */
+export type PreferenceTarget = Readonly<{
+  workspaceId: string;
+  actorId: string;
+  defaults: boolean;
+}>;
+
+/** A person's preference change, or the workspace defaults' change. */
+export type PreferenceCommand =
+  | Readonly<{ input: ReplaceNoticePreferencesInput; defaults: false }>
+  | Readonly<{ input: ReplaceNoticeDefaultsInput; defaults: true }>;
+
+/** Creates the row if it's missing, then locks it. */
+export async function lockPreference(
   client: PoolClient,
-  command:
-    | Readonly<{
-        input: ReplaceNoticePreferencesInput;
-        defaults: false;
-      }>
-    | Readonly<{
-        input: ReplaceNoticeDefaultsInput;
-        defaults: true;
-      }>,
+  target: PreferenceTarget,
 ) {
-  const { input, defaults } = command;
-  const identity = {
-    workspaceId: input.workspaceId,
-    scope: input.actorId,
-    operation: defaults
-      ? 'notice.defaults.replace'
-      : 'notice.preferences.replace',
-    idempotencyKey: input.idempotencyKey,
-  };
-  const request = {
-    mode: input.mode,
-    hour: input.hour,
-    timeZone: input.timeZone,
-    expectedRevision: input.expectedRevision,
-  };
-  const replay = await claimCommand<Omit<NoticeCommandResponse, 'replayed'>>(
-    client,
-    {
-      ...identity,
-      resourceId: input.workspaceId,
-      request,
-    },
-  );
-  if (replay !== null)
-    return {
-      ...replay,
-      replayed: true,
-    };
   const db = drizzle(client);
-  if (defaults)
+  if (target.defaults)
     await db
       .insert(noticeWorkspaceSettings)
-      .values({ workspaceId: input.workspaceId })
+      .values({ workspaceId: target.workspaceId })
       .onConflictDoNothing()
       .catch(rethrowQueryFailure);
   else
     await db
       .insert(noticePreferences)
-      .values({ workspaceId: input.workspaceId, userId: input.actorId })
+      .values({ workspaceId: target.workspaceId, userId: target.actorId })
       .onConflictDoNothing()
       .catch(rethrowQueryFailure);
-  const table = defaults ? noticeWorkspaceSettings : noticePreferences;
-  const predicate = and(
-    eq(table.workspaceId, input.workspaceId),
-    defaults ? undefined : eq(noticePreferences.userId, input.actorId),
-  );
+  const table = target.defaults ? noticeWorkspaceSettings : noticePreferences;
   const [row] = await db
     .select({
       revision: table.revision,
@@ -85,70 +53,59 @@ export async function replacePreference(
       timeZone: table.timeZone,
     })
     .from(table)
-    .where(predicate)
+    .where(preferencePredicate(target))
     .for('update')
     .catch(rethrowQueryFailure);
-  if (row?.revision !== input.expectedRevision) throw new NoticeConflictError();
-  const changed =
-    row.mode !== input.mode ||
-    row.hour !== input.hour ||
-    row.timeZone !== input.timeZone;
-  const revision = row.revision + (changed ? 1 : 0);
-  if (changed) {
-    const values = {
-      revision,
-      mode: input.mode,
-      hour: input.hour,
-      timeZone: input.timeZone,
-      changedAt: sql`clock_timestamp()`,
-    };
-    if (defaults)
-      await db
-        .update(noticeWorkspaceSettings)
-        .set({ ...values, mode: input.mode })
-        .where(predicate)
-        .catch(rethrowQueryFailure);
-    else
-      await db
-        .update(noticePreferences)
-        .set({ ...values, nextDueAt: null })
-        .where(predicate)
-        .catch(rethrowQueryFailure);
-  }
-  const result = { revision, changed };
-  await completeCommand(client, identity, result);
-  return { ...result, replayed: false };
+  return row;
 }
-export async function replaceSubscription(
+
+export async function updatePreference(
   client: PoolClient,
-  input: ReplaceNoticeSubscriptionInput,
-) {
-  const identity = {
-    workspaceId: input.workspaceId,
-    scope: input.actorId,
-    operation: 'notice.subscription.replace',
-    idempotencyKey: input.idempotencyKey,
+  command: PreferenceCommand,
+  revision: number,
+): Promise<void> {
+  const db = drizzle(client);
+  const { input } = command;
+  const target = { ...input, defaults: command.defaults };
+  const values = {
+    revision,
+    mode: input.mode,
+    hour: input.hour,
+    timeZone: input.timeZone,
+    changedAt: sql`clock_timestamp()`,
   };
-  const request = {
-    subjectKind: input.subjectKind,
-    subjectId: input.subjectId,
-    expectedRevision: input.expectedRevision,
-    followed: input.followed,
-    muted: input.muted,
-  };
-  const replay = await claimCommand<Omit<NoticeCommandResponse, 'replayed'>>(
-    client,
-    {
-      ...identity,
-      resourceId: input.subjectId,
-      request,
-    },
+  if (command.defaults)
+    await db
+      .update(noticeWorkspaceSettings)
+      .set({ ...values, mode: command.input.mode })
+      .where(preferencePredicate(target))
+      .catch(rethrowQueryFailure);
+  else
+    await db
+      .update(noticePreferences)
+      .set({ ...values, nextDueAt: null })
+      .where(preferencePredicate(target))
+      .catch(rethrowQueryFailure);
+}
+
+function preferencePredicate(target: PreferenceTarget) {
+  const table = target.defaults ? noticeWorkspaceSettings : noticePreferences;
+  return and(
+    eq(table.workspaceId, target.workspaceId),
+    target.defaults ? undefined : eq(noticePreferences.userId, target.actorId),
   );
-  if (replay !== null)
-    return {
-      ...replay,
-      replayed: true,
-    };
+}
+
+type SubscriptionKey = Pick<
+  ReplaceNoticeSubscriptionInput,
+  'workspaceId' | 'actorId' | 'subjectKind' | 'subjectId'
+>;
+
+/** Creates the row if it's missing, then locks it. */
+export async function lockSubscription(
+  client: PoolClient,
+  input: SubscriptionKey,
+): Promise<typeof noticeSubscriptions.$inferSelect | undefined> {
   const db = drizzle(client);
   await db
     .insert(noticeSubscriptions)
@@ -162,32 +119,37 @@ export async function replaceSubscription(
     })
     .onConflictDoNothing()
     .catch(rethrowQueryFailure);
-  const predicate = and(
+  const [row] = await db
+    .select()
+    .from(noticeSubscriptions)
+    .where(subscriptionPredicate(input))
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return row;
+}
+
+export async function updateSubscription(
+  client: PoolClient,
+  input: SubscriptionKey,
+  values: Readonly<{ revision: number; followed: boolean; muted: boolean }>,
+): Promise<void> {
+  await drizzle(client)
+    .update(noticeSubscriptions)
+    .set({
+      revision: values.revision,
+      followed: values.followed,
+      muted: values.muted,
+      changedAt: sql`clock_timestamp()`,
+    })
+    .where(subscriptionPredicate(input))
+    .catch(rethrowQueryFailure);
+}
+
+function subscriptionPredicate(input: SubscriptionKey) {
+  return and(
     eq(noticeSubscriptions.workspaceId, input.workspaceId),
     eq(noticeSubscriptions.userId, input.actorId),
     eq(noticeSubscriptions.subjectKind, input.subjectKind),
     eq(noticeSubscriptions.subjectId, input.subjectId),
   );
-  const [row] = await db
-    .select()
-    .from(noticeSubscriptions)
-    .where(predicate)
-    .for('update')
-    .catch(rethrowQueryFailure);
-  if (row?.revision !== input.expectedRevision) throw new NoticeConflictError();
-  const changed = row.followed !== input.followed || row.muted !== input.muted;
-  if (changed)
-    await db
-      .update(noticeSubscriptions)
-      .set({
-        revision: row.revision + 1,
-        followed: input.followed,
-        muted: input.muted,
-        changedAt: sql`clock_timestamp()`,
-      })
-      .where(predicate)
-      .catch(rethrowQueryFailure);
-  const result = { revision: row.revision + (changed ? 1 : 0), changed };
-  await completeCommand(client, identity, result);
-  return { ...result, replayed: false };
 }

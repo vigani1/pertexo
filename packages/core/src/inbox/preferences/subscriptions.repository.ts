@@ -13,15 +13,14 @@ import type { PoolClient } from 'pg';
 import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
 import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
 import type { ReadNoticeSubscriptionInput } from './notice-preferences.types.js';
-import { NoticeUnavailableError } from './notice-preferences.errors.js';
 
-/** The workflow or connection exists and, for a workflow, this person can see it. */
-export async function requireSubject(
+/** Whether the workflow or connection exists and, for a workflow, this person can see it. */
+export async function subjectAvailable(
   client: PoolClient,
   input: ReadNoticeSubscriptionInput,
   role: Role,
   { locking }: Readonly<{ locking: boolean }>,
-): Promise<void> {
+): Promise<boolean> {
   const db = drizzle(client);
   const table = input.subjectKind === 'workflow' ? workflows : connections;
   const visible =
@@ -45,8 +44,7 @@ export async function requireSubject(
   const found = await (locking ? query.for('share') : query).catch(
     rethrowQueryFailure,
   );
-  if (found.length !== 1)
-    throw new NoticeUnavailableError('This subject is unavailable.');
+  return found.length === 1;
 }
 
 export async function readSubscription(

@@ -25,14 +25,11 @@ import type {
   UnsubscribeNoticeMailInput,
 } from './notice-preferences.types.js';
 import { NoticeUnavailableError } from './notice-preferences.errors.js';
-import {
-  replacePreference,
-  replaceSubscription,
-} from './replace.repository.js';
+import { replacePreference, replaceSubscription } from './replace.js';
 import { readNoticePreferences } from './settings.repository.js';
 import {
   readSubscription,
-  requireSubject,
+  subjectAvailable,
 } from './subscriptions.repository.js';
 import { unsubscribeMail } from './unsubscribe.repository.js';
 
@@ -131,4 +128,11 @@ export function createNoticePreferencesStore(
         unsubscribeMail(client, input),
       ),
   };
+}
+
+async function requireSubject(
+  ...args: Parameters<typeof subjectAvailable>
+): Promise<void> {
+  if (!(await subjectAvailable(...args)))
+    throw new NoticeUnavailableError('This subject is unavailable.');
 }
