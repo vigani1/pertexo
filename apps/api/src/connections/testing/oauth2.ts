@@ -1,7 +1,5 @@
-import type {
-  ConnectionRecord,
-  ConnectionTestOutcome,
-} from '@pertexo/core/connections';
+import type { ConnectionRecord } from '@pertexo/core/connections';
+import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 import {
   createOAuth2RenewalClient,
   decodeClientSettings,

@@ -1,6 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import type { OAuth2StepFailureCode } from '@pertexo/contracts';
-import type { ConnectionTestOutcome } from '@pertexo/core/connections';
+import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 import type { SecureHttpError } from '@pertexo/secrets/server';
 import { classifySlackConnectionHealth } from '@pertexo/integrations/server';
 

@@ -5,7 +5,7 @@ import type { TestConnectionCommand } from './test-connection.js';
 import { connectionTestProviderKey } from '../management/connection-serialization.js';
 import { createSmtpClient } from '@pertexo/secrets/server';
 import type { smtpCredentialSchema } from '@pertexo/contracts';
-import type { ConnectionTestOutcome } from '@pertexo/core/connections';
+import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 import type { z } from 'zod';
 
 export type SmtpTestPolicy = NonNullable<
