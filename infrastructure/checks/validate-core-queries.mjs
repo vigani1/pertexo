@@ -46,7 +46,6 @@ export const PENDING_AREAS = Object.freeze([
   'identity',
   'inbox',
   'lifecycle',
-  'notifications',
   'previews',
   'runs',
 ]);

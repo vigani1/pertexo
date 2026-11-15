@@ -17,9 +17,11 @@ import {
   insertFailureNotificationDeliveryOutbox,
 } from './evidence.repository.js';
 
+// The most intents one recovery pass claims, and the most attempts it allows.
+const RECOVERY_LIMITS = Object.freeze({ intents: 100, attempts: 10 });
 const recoveryBounds = z.object({
-  limit: z.number().int().min(1).max(100),
-  maxAttempts: z.number().int().min(1).max(10),
+  limit: z.number().int().min(1).max(RECOVERY_LIMITS.intents),
+  maxAttempts: z.number().int().min(1).max(RECOVERY_LIMITS.attempts),
 });
 type RecoveryClaim = Readonly<{
   id: string;

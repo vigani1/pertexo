@@ -8,6 +8,9 @@ import {
 import { auditFailureNotification } from './evidence.repository.js';
 import { failureNotificationCompletionAuditFactType } from './completion-policy.js';
 
+// A delivery still in flight is looked at again after this long.
+const RECOVERY_RECHECK_INTERVAL = sql.raw("interval '60 seconds'");
+
 /** A durable provider result, rather than enqueue, completes a shared alert. */
 export async function reconcileSystemMail(
   client: PoolClient,
@@ -37,7 +40,7 @@ export async function reconcileSystemMail(
     await db
       .update(intents)
       .set({
-        recoveryAt: sql`clock_timestamp()+interval '60 seconds'`,
+        recoveryAt: sql`clock_timestamp()+${RECOVERY_RECHECK_INTERVAL}`,
         updatedAt: sql`clock_timestamp()`,
       })
       .where(scope);
