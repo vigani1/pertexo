@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { catalogOpenApiDocument } from '../src/server.js';
 import {
   catalogQuerySchema,
-  catalogLimits,
+  CATALOG_LIMITS,
   nodeDefinitionCatalogItemSchema,
 } from '../src/index.js';
 
@@ -24,7 +24,7 @@ describe('catalog discovery contracts', () => {
       capabilities: [],
     };
     const document = Object.fromEntries(
-      Array.from({ length: catalogLimits.schemaProperties }, (_, index) => [
+      Array.from({ length: CATALOG_LIMITS.schemaProperties }, (_, index) => [
         `property${String(index)}`,
         true,
       ]),

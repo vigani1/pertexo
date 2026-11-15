@@ -1,6 +1,7 @@
 import { responseSchema } from '../../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 export { FEDERATION_LIMITS };
 import { z } from 'zod';
 import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
@@ -8,6 +9,19 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import { delegatedWorkspaceRoleSchema } from '../membership.js';
 import { SamlHttpsOriginRequiredError } from './federation.errors.js';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+
+const SETTINGS_BOUNDS = Object.freeze({
+  federationDomainNameMinimumCharacters: 3,
+  federationDomainNameCharacters: 254,
+  issuerCharacters: 2048,
+  claimNameCharacters: 256,
+  secretCharacters: 8192,
+  clientIdCharacters: 512,
+  signInUrlCharacters: 2048,
+  samlIssuerCharacters: 2048,
+  entityIdCharacters: 2048,
+  redirectUriCharacters: 2048,
+});
 
 export const federationProtocolSchema = z.enum(['oidc', 'saml']);
 export type FederationProtocol = z.output<typeof federationProtocolSchema>;
@@ -43,12 +57,15 @@ export type FederationFailureReason = z.output<
   typeof federationFailureReasonSchema
 >;
 
-const samlXmlBytes = 256 * 1024;
+const SAML_XML_BYTES = 256 * 1024;
+// Base64 writes every three bytes as four characters.
+const BASE64_GROUP = Object.freeze({ bytes: 3, characters: 4 });
 export const SAML_LIMITS = Object.freeze({
   metadataBytes: 64 * 1024,
   formBytes: 512 * 1024,
-  xmlBytes: samlXmlBytes,
-  encodedCharacters: 4 * Math.ceil(samlXmlBytes / 3),
+  xmlBytes: SAML_XML_BYTES,
+  encodedCharacters:
+    BASE64_GROUP.characters * Math.ceil(SAML_XML_BYTES / BASE64_GROUP.bytes),
   nodes: 8192,
   elements: 2048,
   depth: 32,
@@ -62,8 +79,8 @@ export const SAML_LIMITS = Object.freeze({
 export const federationDomainNameSchema = z
   .string()
   .trim()
-  .min(3)
-  .max(254)
+  .min(SETTINGS_BOUNDS.federationDomainNameMinimumCharacters)
+  .max(SETTINGS_BOUNDS.federationDomainNameCharacters)
   .transform((value, context) => {
     try {
       if (/[\s/%@:#?\\[\]]/u.test(value)) throw new Error('Invalid domain');
@@ -71,7 +88,7 @@ export const federationDomainNameSchema = z
         .replace(/\.$/u, '')
         .toLowerCase();
       if (
-        domain.length > 253 ||
+        domain.length > EMAIL_ADDRESS_LIMITS.domainCharacters ||
         !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/u.test(
           domain,
         )
@@ -91,11 +108,11 @@ const name = storageTextSchema.trim().min(1).max(RESOURCE_NAME_MAX_LENGTH);
 const issuer = z
   .url({ protocol: /^https$/u })
   .trim()
-  .max(2048)
+  .max(SETTINGS_BOUNDS.issuerCharacters)
   .pipe(
     z
       .string()
-      .max(2048)
+      .max(SETTINGS_BOUNDS.issuerCharacters)
       .refine((value) => {
         const url = new URL(value);
         const exactIssuer =
@@ -108,18 +125,24 @@ const issuer = z
         return exactIssuer;
       }, 'Use the exact HTTPS issuer without credentials, query or fragment.'),
   );
-const claimName = storageTextSchema.trim().min(1).max(256);
+const claimName = storageTextSchema
+  .trim()
+  .min(1)
+  .max(SETTINGS_BOUNDS.claimNameCharacters);
 const secret = z
   .string()
   .min(1)
-  .max(8192)
+  .max(SETTINGS_BOUNDS.secretCharacters)
   .refine(
     (value) => utf8ByteLength(value) <= FEDERATION_LIMITS.secretBytes,
     'Client secret is too large.',
   );
 export const oidcConfigurationSchema = z
   .object({
-    clientId: storageTextSchema.trim().min(1).max(512),
+    clientId: storageTextSchema
+      .trim()
+      .min(1)
+      .max(SETTINGS_BOUNDS.clientIdCharacters),
     emailClaim: claimName.default('email'),
     nameClaim: claimName.default('name'),
     jitEnabled: z.boolean().default(false),
@@ -169,7 +192,7 @@ export const samlConfigurationSchema = z
     signInUrl: z
       .url({ protocol: /^https$/u })
       .trim()
-      .max(2048)
+      .max(SETTINGS_BOUNDS.signInUrlCharacters)
       .pipe(
         z.string().refine((value) => {
           const url = new URL(value);
@@ -195,7 +218,7 @@ export type SamlConfiguration = z.output<typeof samlConfigurationSchema>;
 const samlIssuer = z
   .url()
   .trim()
-  .max(2048)
+  .max(SETTINGS_BOUNDS.samlIssuerCharacters)
   .pipe(
     z
       .string()
@@ -357,8 +380,12 @@ export function samlServiceProviderUrls(
 export const samlMetadataSchema = responseSchema(
   z
     .object({
-      entityId: z.url({ protocol: /^https$/u }).max(2048),
-      redirectUri: z.url({ protocol: /^https$/u }).max(2048),
+      entityId: z
+        .url({ protocol: /^https$/u })
+        .max(SETTINGS_BOUNDS.entityIdCharacters),
+      redirectUri: z
+        .url({ protocol: /^https$/u })
+        .max(SETTINGS_BOUNDS.redirectUriCharacters),
       xml: z.string().min(1).max(SAML_LIMITS.metadataBytes),
     })
     .strict(),

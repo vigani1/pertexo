@@ -1,7 +1,20 @@
 import { responseSchema } from '../shared/response-schema.js';
-import { FOLDER_GRANT_LIMIT } from '@pertexo/workflow-model';
+import {
+  FOLDER_GRANT_LIMIT,
+  EMAIL_ADDRESS_LIMITS,
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { workspaceRoleSchema } from '../identity/membership.js';
+
+const SHARING_BOUNDS = Object.freeze({
+  workflowIdsItems: 50,
+  removedRestrictionsItems: 256,
+  workflowMoveReviewPageItems: 50,
+  searchCharacters: 128,
+  emailCharacters: EMAIL_ADDRESS_LIMITS.storedAddressCharacters,
+  sharingPrincipalsPageItems: 100,
+  sharingPrincipalsPageDefault: 50,
+});
 const id = z.uuid().overwrite((value) => value.toLowerCase());
 const access = z.enum(['viewer', 'editor']);
 export const folderPrincipalSchema = z.discriminatedUnion('kind', [
@@ -69,7 +82,7 @@ export const workflowMoveReviewRequestSchema = z.discriminatedUnion('kind', [
       workflowIds: z
         .array(id)
         .min(1)
-        .max(50)
+        .max(SHARING_BOUNDS.workflowIdsItems)
         .refine((ids) => new Set(ids).size === ids.length),
       destinationFolderId: id.nullable(),
     })
@@ -89,12 +102,17 @@ export const workflowMoveReviewItemSchema = z
     token: z.string().regex(/^[a-f0-9]{64}$/u),
     removedRestrictions: z
       .array(z.object({ id, name: z.string() }).strict())
-      .max(256),
+      .max(SHARING_BOUNDS.removedRestrictionsItems),
   })
   .strict();
 export const workflowMoveReviewResponseSchema = responseSchema(
   z
-    .object({ items: z.array(workflowMoveReviewItemSchema).min(1).max(50) })
+    .object({
+      items: z
+        .array(workflowMoveReviewItemSchema)
+        .min(1)
+        .max(SHARING_BOUNDS.workflowMoveReviewPageItems),
+    })
     .strict(),
 );
 export type FolderSharingRequest = z.output<typeof folderSharingRequestSchema>;
@@ -114,9 +132,14 @@ export type WorkflowMoveReviewItem = z.output<
 export const sharingPrincipalsQuerySchema = z
   .object({
     kind: z.enum(['member', 'group']),
-    search: z.string().trim().max(128).optional(),
+    search: z.string().trim().max(SHARING_BOUNDS.searchCharacters).optional(),
     after: id.optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(50),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(SHARING_BOUNDS.sharingPrincipalsPageItems)
+      .default(SHARING_BOUNDS.sharingPrincipalsPageDefault),
   })
   .strict();
 const sharingPrincipalSchema = z.discriminatedUnion('kind', [
@@ -126,7 +149,7 @@ const sharingPrincipalSchema = z.discriminatedUnion('kind', [
       userId: id,
       label: z.string(),
       // Owners and admins always have access, so pickers can say so instead of offering them.
-      email: z.string().max(320),
+      email: z.string().max(SHARING_BOUNDS.emailCharacters),
       role: workspaceRoleSchema,
     })
     .strict(),
@@ -142,7 +165,9 @@ const sharingPrincipalSchema = z.discriminatedUnion('kind', [
 export const sharingPrincipalsResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(sharingPrincipalSchema).max(100),
+      items: z
+        .array(sharingPrincipalSchema)
+        .max(SHARING_BOUNDS.sharingPrincipalsPageItems),
       nextCursor: id.nullable(),
     })
     .strict(),

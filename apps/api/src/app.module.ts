@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { ARTIFACT_OBJECT_MAX_BYTES } from '@pertexo/contracts';
 
 import type { DynamicModule } from '@nestjs/common';
 import { Module } from '@nestjs/common';
@@ -45,10 +46,7 @@ import { ScheduleModule } from './schedules/schedule.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { RateLimitModule } from './platform/rate-limit/rate-limit.module.js';
 import { APPLICATION_ERROR_MAPPERS } from './problems/application-error-mappers.js';
-import {
-  ArtifactRuntimeModule,
-  DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
-} from './platform/artifacts/artifacts-runtime.module.js';
+import { ArtifactRuntimeModule } from './platform/artifacts/artifacts-runtime.module.js';
 
 export type ApiModuleDependencies = ApiRuntimeSet &
   Readonly<{
@@ -259,8 +257,7 @@ function registerFeatureModules(
         { identity: identityModule, admission: admissionModule },
         {
           maxObjectBytes:
-            config.artifacts?.maxObjectBytes ??
-            DEFAULT_ARTIFACT_MAX_OBJECT_BYTES,
+            config.artifacts?.maxObjectBytes ?? ARTIFACT_OBJECT_MAX_BYTES,
         },
       ),
     );

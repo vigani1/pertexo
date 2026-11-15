@@ -1,10 +1,20 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { z } from 'zod';
+
+const RUN_CALLS_BOUNDS = Object.freeze({
+  invocationKeyCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+  safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+});
 
 /** A logical Call's retained identity, without mapped input or result payloads. */
 export const workflowCallSummarySchema = z
   .object({
     id: z.uuid(),
-    invocationKey: z.string().min(1).max(256),
+    invocationKey: z
+      .string()
+      .min(1)
+      .max(RUN_CALLS_BOUNDS.invocationKeyCharacters),
     targetWorkflowId: z.uuid(),
     targetVersionId: z.uuid(),
     childRunId: z.uuid().nullable(),
@@ -21,14 +31,21 @@ export const workflowCallSummarySchema = z
     ]),
     slotLent: z.boolean(),
     detailsRetired: z.boolean(),
-    safeErrorCode: z.string().min(1).max(128).nullable(),
+    safeErrorCode: z
+      .string()
+      .min(1)
+      .max(RUN_CALLS_BOUNDS.safeErrorCodeCharacters)
+      .nullable(),
   })
   .strict();
 export const workflowParentCallSchema = z
   .object({
     id: z.uuid(),
     parentRunId: z.uuid(),
-    invocationKey: z.string().min(1).max(256),
+    invocationKey: z
+      .string()
+      .min(1)
+      .max(RUN_CALLS_BOUNDS.invocationKeyCharacters),
   })
   .strict();
 export type WorkflowCallSummary = z.output<typeof workflowCallSummarySchema>;

@@ -1,5 +1,8 @@
 import { responseSchema } from '../shared/response-schema.js';
-import { MAX_AUTO_PAUSE_THRESHOLD } from '@pertexo/policy';
+import {
+  MAX_AUTO_PAUSE_THRESHOLD,
+  MIN_AUTO_PAUSE_THRESHOLD,
+} from '@pertexo/policy';
 import { z } from 'zod';
 
 import { createApiProblemSchema } from '../../errors/api-problem.js';
@@ -7,7 +10,7 @@ import { createApiProblemSchema } from '../../errors/api-problem.js';
 export const autoPauseThresholdSchema = z
   .number()
   .int()
-  .min(3)
+  .min(MIN_AUTO_PAUSE_THRESHOLD)
   .max(MAX_AUTO_PAUSE_THRESHOLD);
 export const autoPauseSettingsRevisionSchema = z
   .number()

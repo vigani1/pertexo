@@ -1,16 +1,28 @@
 import { responseSchema } from '../../shared/response-schema.js';
-import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
+import {
+  COLLABORATION_LIMITS,
+  DISPLAY_NAME_MAX_CHARACTERS,
+} from '@pertexo/workflow-model';
 export { COLLABORATION_LIMITS };
 import { z } from 'zod';
 import { isStorageText } from '@pertexo/workflow-model';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+
+const COMMENTS_BOUNDS = Object.freeze({
+  workflowCommentStepIdCharacters: 128,
+  stepIdCharacters: 128,
+  stepLabelCharacters: 256,
+  previewCharacters: 400,
+  authorNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
+  displayNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
+});
 
 const id = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(STORED_INTEGER_MAX);
 export const workflowCommentStepIdSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(COMMENTS_BOUNDS.workflowCommentStepIdCharacters)
   .refine(isStorageText);
 export const workflowCommentBodySchema = z
   .object({
@@ -71,7 +83,7 @@ export const workflowCommentDetailQuerySchema = z
       .int()
       .min(1)
       .max(COLLABORATION_LIMITS.page)
-      .default(20),
+      .default(COLLABORATION_LIMITS.page),
   })
   .strict()
   .refine(
@@ -82,15 +94,15 @@ export const workflowCommentThreadSchema = z
   .object({
     id,
     workflowId: id,
-    stepId: z.string().max(128).nullable(),
-    stepLabel: z.string().max(256).nullable(),
+    stepId: z.string().max(COMMENTS_BOUNDS.stepIdCharacters).nullable(),
+    stepLabel: z.string().max(COMMENTS_BOUNDS.stepLabelCharacters).nullable(),
     status: z.enum(['open', 'resolved']),
     revision,
     createdBy: id.nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
     commentCount: z.number().int().nonnegative(),
-    preview: z.string().max(400).nullable(),
+    preview: z.string().max(COMMENTS_BOUNDS.previewCharacters).nullable(),
   })
   .strict();
 export const workflowCommentSchema = z
@@ -98,14 +110,19 @@ export const workflowCommentSchema = z
     id,
     threadId: id,
     authorId: id.nullable(),
-    authorName: z.string().max(256),
+    authorName: z.string().max(COMMENTS_BOUNDS.authorNameCharacters),
     body: z.string().max(COLLABORATION_LIMITS.body),
     revision,
     createdAt: z.iso.datetime(),
     editedAt: z.iso.datetime().nullable(),
     mentions: z
       .array(
-        z.object({ userId: id, displayName: z.string().max(256) }).strict(),
+        z
+          .object({
+            userId: id,
+            displayName: z.string().max(COMMENTS_BOUNDS.displayNameCharacters),
+          })
+          .strict(),
       )
       .max(COLLABORATION_LIMITS.mentions),
   })

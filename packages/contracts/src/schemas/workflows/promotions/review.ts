@@ -1,3 +1,4 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
 import { responseSchema } from '../../shared/response-schema.js';
 import { workflowExecutableChecksumSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
@@ -6,6 +7,16 @@ import {
   PROMOTION_LIMITS,
   promotionIdentifierSchema as id,
 } from './settings.js';
+
+const REVIEW_BOUNDS = Object.freeze({
+  nodeIdCharacters: 128,
+  nameCharacters: 256,
+  detailCharacters: PROMOTION_LIMITS.requirementDetailCharacters,
+  sourceWorkspaceNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  targetWorkspaceNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  sourceNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  targetNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+});
 
 export const workflowPromotionModeSchema = z.enum([
   'draft',
@@ -30,7 +41,7 @@ export const workflowPromotionPreviewRequestSchema = z
 export const workflowPromotionRequirementSchema = z
   .object({
     workflowId: id,
-    nodeId: z.string().max(128).optional(),
+    nodeId: z.string().max(REVIEW_BOUNDS.nodeIdCharacters).optional(),
     kind: z.enum([
       'connection',
       'variable',
@@ -42,8 +53,8 @@ export const workflowPromotionRequirementSchema = z
       'name',
     ]),
     status: z.enum(['ready', 'missing', 'incompatible', 'warning']),
-    name: z.string().max(256),
-    detail: z.string().max(512),
+    name: z.string().max(REVIEW_BOUNDS.nameCharacters),
+    detail: z.string().max(REVIEW_BOUNDS.detailCharacters),
     dependency: selection.optional(),
     targetVersionId: id.optional(),
   })
@@ -53,9 +64,13 @@ export const workflowPromotionPreviewSchema = responseSchema(
     .object({
       fingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
       sourceWorkspaceId: id,
-      sourceWorkspaceName: z.string().max(128),
+      sourceWorkspaceName: z
+        .string()
+        .max(REVIEW_BOUNDS.sourceWorkspaceNameCharacters),
       targetWorkspaceId: id,
-      targetWorkspaceName: z.string().max(128),
+      targetWorkspaceName: z
+        .string()
+        .max(REVIEW_BOUNDS.targetWorkspaceNameCharacters),
       mode: workflowPromotionModeSchema,
       requireApproval: z.boolean(),
       compatible: z.boolean(),
@@ -64,12 +79,12 @@ export const workflowPromotionPreviewSchema = responseSchema(
           z
             .object({
               sourceWorkflowId: id,
-              sourceName: z.string().max(128),
+              sourceName: z.string().max(REVIEW_BOUNDS.sourceNameCharacters),
               sourceVersionId: id,
               sourceVersionNumber: z.number().int().positive(),
               sourceChecksum: workflowExecutableChecksumSchema,
               targetWorkflowId: id.nullable(),
-              targetName: z.string().max(128),
+              targetName: z.string().max(REVIEW_BOUNDS.targetNameCharacters),
               targetRevision: z.number().int().positive().nullable(),
               targetPublishedVersionId: id.nullable(),
               directChanges: z.boolean(),

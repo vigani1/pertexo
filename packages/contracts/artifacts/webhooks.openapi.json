@@ -1900,7 +1900,7 @@
         "description": "An unguessable per-run/per-Wait URL accepts one response. Captured Wait configuration may additionally require the existing Pertexo timestamp/raw-body signature or header secret. Body and safe headers become the Wait result. Early responses are retained until the run reaches Wait. Never starts a new run.",
         "requestBody": {
           "required": false,
-          "description": "At most 256 KiB raw bytes, additionally subject to retained execution value bounds.",
+          "description": "At most 256 KB raw bytes, additionally subject to retained execution value bounds.",
           "content": {
             "application/json": {
               "schema": {}
@@ -3367,7 +3367,7 @@
             }
           },
           "default": {
-            "description": "Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MiB, no-store, nosniff and only the safe header allowlist. Work continues after responding.",
+            "description": "Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MB, no-store, nosniff and only the safe header allowlist. Work continues after responding.",
             "content": {
               "application/json": {
                 "schema": {}
@@ -3722,7 +3722,7 @@
             }
           },
           "default": {
-            "description": "Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MiB, no-store, nosniff and only the safe header allowlist. Work continues after responding.",
+            "description": "Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MB, no-store, nosniff and only the safe header allowlist. Work continues after responding.",
             "content": {
               "application/json": {
                 "schema": {}

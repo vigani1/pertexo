@@ -14,6 +14,10 @@ import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/workflow-model';
 
 export { WORKFLOW_FOLDER_LIMITS };
 
+const ORGANIZATION_FOLDERS_BOUNDS = Object.freeze({
+  canonicalIdentifierCharacters: 36,
+});
+
 /** Display casing is retained. Sibling identity is an internal server concern. */
 function normalizeWorkflowFolderName(name: string): string {
   return trimSpaces(name);
@@ -37,7 +41,7 @@ const workflowFolderRevisionSchema = workflowOrganizationRevisionSchema.clone();
 const identifier = z.uuid().overwrite((id) => id.toLowerCase());
 const canonicalIdentifier = z
   .uuid()
-  .length(36)
+  .length(ORGANIZATION_FOLDERS_BOUNDS.canonicalIdentifierCharacters)
   .regex(/^[0-9a-f-]+$(?![\s\S])/u);
 export const workflowOrganizationFolderFilterSchema = z.union([
   identifier,

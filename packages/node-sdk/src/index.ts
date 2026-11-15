@@ -205,3 +205,5 @@ export {
   formatCount,
   formatMeasuredByteSize,
 } from './values/byte-size.js';
+// The bounds a step failure's fields keep; contracts and the database read them.
+export { NODE_FAILURE_FIELD_LIMITS } from './execution/node-failure.schemas.js';

@@ -1,8 +1,21 @@
 import { z } from 'zod';
 
-export const workflowCursorSchema = z.string().min(1).max(512);
+/** A page of workflows: its opaque cursor and how many workflows it holds. */
+export const WORKFLOW_PAGE_LIMITS = Object.freeze({
+  cursorCharacters: 512,
+  items: 100,
+});
 
-const workflowPageLimitSchema = z.coerce.number().int().min(1).max(100);
+export const workflowCursorSchema = z
+  .string()
+  .min(1)
+  .max(WORKFLOW_PAGE_LIMITS.cursorCharacters);
+
+const workflowPageLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(WORKFLOW_PAGE_LIMITS.items);
 
 const workflowListOrderSchema = z.enum(['created_asc', 'updated_desc']);
 

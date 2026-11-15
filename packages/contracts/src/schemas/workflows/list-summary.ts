@@ -2,6 +2,10 @@ import { responseSchema } from '../shared/response-schema.js';
 import { RUN_STATUSES } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
+const LIST_SUMMARY_BOUNDS = Object.freeze({
+  recentRunsItems: 20,
+});
+
 export const workflowListSummarySchema = responseSchema(
   z
     .object({
@@ -43,7 +47,7 @@ export const workflowListSummarySchema = responseSchema(
             })
             .strict(),
         )
-        .max(20)
+        .max(LIST_SUMMARY_BOUNDS.recentRunsItems)
         .optional(),
     })
     .strict(),

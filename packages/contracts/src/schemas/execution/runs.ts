@@ -1,5 +1,11 @@
+import { storedTimestampSchema } from '../shared/stored-timestamp.js';
+import { workflowRunCreatedAtSchema } from './run-created-at.js';
 import { responseSchema } from '../shared/response-schema.js';
-import { storageTextSchema } from '@pertexo/workflow-model';
+import {
+  storageTextSchema,
+  WORKFLOW_EXECUTION_LIMITS,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 import {
   WORKFLOW_GRAPH_LIMITS,
   RUN_STATUSES,
@@ -10,9 +16,9 @@ import {
   runValueKeySchema,
   runValueTextSchema,
   runValuesSchema,
+  NODE_FAILURE_FIELD_LIMITS,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { workflowRunCreatedAtSchema } from './run-created-at.js';
 import { workflowNameSchema } from '../workflows/authoring.js';
 import {
   workflowRecoverySummarySchema,
@@ -23,6 +29,23 @@ import {
   workflowParentCallSchema,
   workflowRunErrorWorkflowSchema,
 } from './run-calls.js';
+
+const RUN_BOUNDS = Object.freeze({
+  pageItems: 100,
+  cursorCharacters: 1024,
+  reasonCharacters: 500,
+  remainingMillis: WORKFLOW_EXECUTION_LIMITS.maxRunDurationMs,
+  handledFailureCountMaximum: 200,
+  reasonsItems: 3,
+  nodeIdCharacters: 256,
+  labelCharacters: 200,
+  definitionKeyCharacters: 256,
+  safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  invocationKeyCharacters: 1024,
+  handlerInvocationKeyCharacters:
+    WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
+  errorSummaryCharacters: NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters,
+});
 
 export const workflowRunIdentifierSchema = z.uuid();
 export const workflowRunParamsSchema = z
@@ -59,8 +82,15 @@ export const workflowRunTriggerTypeSchema = z.enum([
   'workflow_error',
   'form',
 ]);
-const workflowRunPageLimitSchema = z.coerce.number().int().min(1).max(100);
-const workflowRunCursorSchema = z.string().min(1).max(1_024);
+const workflowRunPageLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(RUN_BOUNDS.pageItems);
+const workflowRunCursorSchema = z
+  .string()
+  .min(1)
+  .max(RUN_BOUNDS.cursorCharacters);
 /**
  * The server applies the exact bounded execution-value contract before
  * persistence. The wire schema remains JSON-shaped without exposing that
@@ -85,7 +115,13 @@ export const workflowRunReplayRequestSchema = z
   .strict();
 
 export const workflowRunCancelRequestSchema = z
-  .object({ reason: storageTextSchema.trim().min(1).max(500).optional() })
+  .object({
+    reason: storageTextSchema
+      .trim()
+      .min(1)
+      .max(RUN_BOUNDS.reasonCharacters)
+      .optional(),
+  })
   .strict();
 
 export const workflowRunSummarySchema = responseSchema(
@@ -113,26 +149,31 @@ export const workflowRunSummarySchema = responseSchema(
             .number()
             .int()
             .positive()
-            .max(3600000)
+            .max(RUN_BOUNDS.remainingMillis)
             .nullable(),
           absoluteDeadlineAt: z.iso.datetime().nullable(),
         })
         .strict()
         .optional(),
       recovery: workflowRecoverySummarySchema.optional(),
-      handledFailureCount: z.number().int().min(0).max(200).optional(),
+      handledFailureCount: z
+        .number()
+        .int()
+        .min(0)
+        .max(RUN_BOUNDS.handledFailureCountMaximum)
+        .optional(),
     })
     .strict(),
 );
 
 export const workflowRunAdmissionBlockersSchema = z
   .object({
-    asOf: z.iso.datetime({ precision: 6 }),
+    asOf: storedTimestampSchema,
     reasons: z
       .array(
         z.enum(['workspace_capacity', 'workflow_capacity', 'workflow_order']),
       )
-      .max(3)
+      .max(RUN_BOUNDS.reasonsItems)
       .readonly(),
   })
   .strict();
@@ -156,11 +197,19 @@ export const workflowRunReadSummarySchema = responseSchema(
 /** The step that explains an unsuccessful run, for run lists (ADR 050). */
 export const workflowRunFailedStepSchema = z
   .object({
-    nodeId: z.string().min(1).max(256),
+    nodeId: z.string().min(1).max(RUN_BOUNDS.nodeIdCharacters),
     /** The step's own name in the run's version, when it has one. */
-    label: z.string().min(1).max(200).nullable(),
-    definitionKey: z.string().min(1).max(256).nullable(),
-    safeErrorCode: z.string().min(1).max(128).nullable(),
+    label: z.string().min(1).max(RUN_BOUNDS.labelCharacters).nullable(),
+    definitionKey: z
+      .string()
+      .min(1)
+      .max(RUN_BOUNDS.definitionKeyCharacters)
+      .nullable(),
+    safeErrorCode: z
+      .string()
+      .min(1)
+      .max(RUN_BOUNDS.safeErrorCodeCharacters)
+      .nullable(),
   })
   .strict();
 
@@ -205,7 +254,7 @@ export const workflowRunListQuerySchema = z
 export const workflowRunListResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(workflowRunListItemSchema).max(100),
+      items: z.array(workflowRunListItemSchema).max(RUN_BOUNDS.pageItems),
       nextCursor: workflowRunCursorSchema.nullable(),
     })
     .strict(),
@@ -215,15 +264,21 @@ export const workflowNodeRunSummarySchema = responseSchema(
   z
     .object({
       id: z.uuid(),
-      nodeId: z.string().min(1).max(256),
-      invocationKey: z.string().min(1).max(1_024),
+      nodeId: z.string().min(1).max(RUN_BOUNDS.nodeIdCharacters),
+      invocationKey: z.string().min(1).max(RUN_BOUNDS.invocationKeyCharacters),
       status: workflowNodeRunStatusSchema,
       currentAttemptNumber: z.number().int().nonnegative(),
       reused: workflowNodeReuseSchema.optional(),
       failureHandling: z
         .object({
-          entryInvocationKey: z.string().min(1).max(256),
-          sinkInvocationKey: z.string().min(1).max(256),
+          entryInvocationKey: z
+            .string()
+            .min(1)
+            .max(RUN_BOUNDS.handlerInvocationKeyCharacters),
+          sinkInvocationKey: z
+            .string()
+            .min(1)
+            .max(RUN_BOUNDS.handlerInvocationKeyCharacters),
           disposition: z.enum(['pending', 'handled']),
         })
         .strict()
@@ -231,8 +286,16 @@ export const workflowNodeRunSummarySchema = responseSchema(
       startedAt: z.iso.datetime({ offset: true }).nullable(),
       completedAt: z.iso.datetime({ offset: true }).nullable(),
       resumeAt: z.iso.datetime({ offset: true }).nullable(),
-      errorSummary: z.string().max(2048).nullable().optional(),
-      safeErrorCode: z.string().min(1).max(128).nullable(),
+      errorSummary: z
+        .string()
+        .max(RUN_BOUNDS.errorSummaryCharacters)
+        .nullable()
+        .optional(),
+      safeErrorCode: z
+        .string()
+        .min(1)
+        .max(RUN_BOUNDS.safeErrorCodeCharacters)
+        .nullable(),
     })
     .strict(),
 );

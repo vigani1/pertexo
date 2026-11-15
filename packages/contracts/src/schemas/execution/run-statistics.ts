@@ -1,6 +1,12 @@
+import { storedTimestampSchema } from '../shared/stored-timestamp.js';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { workflowNameSchema } from '../workflows/authoring.js';
+
+const RUN_STATISTICS_BOUNDS = Object.freeze({
+  activeRunLimitMaximum: 10000,
+  queuedRunLimitMaximum: 100000,
+});
 
 /** Fixed statistics windows; every one lies well inside run retention. */
 export const workflowRunStatisticsWindowSchema = z.enum([
@@ -19,7 +25,7 @@ export const workflowRunStatisticsQuerySchema = z
   })
   .strict();
 const workflowRunCountSchema = z.number().int().nonnegative();
-const workflowRunStatisticsTimestampSchema = z.iso.datetime({ precision: 6 });
+const workflowRunStatisticsTimestampSchema = storedTimestampSchema;
 /** Exact PostgreSQL bigint bytes; never rounded through a JSON number. */
 const capacityBytesSchema = z.string().regex(/^(?:0|[1-9][0-9]{0,18})$/u);
 const capacityCountSchema = z
@@ -48,8 +54,18 @@ export const usageCapacityResponseSchema = responseSchema(
                 'unavailable',
               ]),
               version: z.number().int().positive().nullable(),
-              activeRunLimit: z.number().int().min(1).max(10_000).nullable(),
-              queuedRunLimit: z.number().int().min(1).max(100_000).nullable(),
+              activeRunLimit: z
+                .number()
+                .int()
+                .min(1)
+                .max(RUN_STATISTICS_BOUNDS.activeRunLimitMaximum)
+                .nullable(),
+              queuedRunLimit: z
+                .number()
+                .int()
+                .min(1)
+                .max(RUN_STATISTICS_BOUNDS.queuedRunLimitMaximum)
+                .nullable(),
             })
             .strict(),
         })

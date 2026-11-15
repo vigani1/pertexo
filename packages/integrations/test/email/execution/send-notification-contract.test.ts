@@ -2,10 +2,8 @@ import { inlineBytes } from '../../support/artifact-runtime.js';
 
 import { describe, expect, it, vi } from 'vitest';
 import { EMAIL_SEND_NOTIFICATION_MANIFEST } from '../../../src/index.js';
-import {
-  providerEmailMailboxSchema,
-  emailSendNotificationInputSchema,
-} from '../../../src/email/send-notification/send-notification.schemas.js';
+import { emailMailboxSchema } from '@pertexo/contracts';
+import { emailSendNotificationInputSchema } from '../../../src/email/send-notification/send-notification.schemas.js';
 import {
   createEmailSendNotificationExecutorRegistration,
   createResendClient,
@@ -36,7 +34,7 @@ describe('email.send_notification@1', () => {
         'artifact_input',
       ],
     });
-    expect(providerEmailMailboxSchema.parse('Local@Example.COM')).toBe(
+    expect(emailMailboxSchema.parse('Local@Example.COM')).toBe(
       'Local@example.com',
     );
     for (const invalid of [
@@ -52,7 +50,7 @@ describe('email.send_notification@1', () => {
       'a@@example.com',
       `${'a'.repeat(65)}@example.com`,
     ])
-      expect(providerEmailMailboxSchema.safeParse(invalid).success).toBe(false);
+      expect(emailMailboxSchema.safeParse(invalid).success).toBe(false);
     expect(
       emailSendNotificationInputSchema.safeParse({
         toEmail: 'a@example.com',

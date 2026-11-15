@@ -1,7 +1,10 @@
-import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
+import {
+  codeDiagnosticsSchema,
+  NODE_FAILURE_FIELD_LIMITS,
+  type CodeDiagnostics,
+} from '@pertexo/node-sdk';
 import { z } from 'zod';
 import type { PreviewTerminalOutcome } from '@pertexo/core/previews';
-import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk/server';
 
 type PreviewFailure = Exclude<
   PreviewTerminalOutcome,

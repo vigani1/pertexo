@@ -1,3 +1,4 @@
+import { CALLBACK_LIMITS } from '../../schemas/identity/federation/sign-in.js';
 import { sessionRoutes } from '../../routes/identity/session.js';
 import { routePaths } from '../../routes/openapi.js';
 import {
@@ -148,8 +149,14 @@ export const authenticationContractPaths = Object.freeze({
             schema: {
               type: 'object',
               properties: {
-                state: { type: 'string', maxLength: 43 },
-                code: { type: 'string', maxLength: 4096 },
+                state: {
+                  type: 'string',
+                  maxLength: CALLBACK_LIMITS.stateCharacters,
+                },
+                code: {
+                  type: 'string',
+                  maxLength: CALLBACK_LIMITS.codeCharacters,
+                },
               },
             },
           },

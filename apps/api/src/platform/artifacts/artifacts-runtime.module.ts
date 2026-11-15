@@ -20,8 +20,6 @@ import {
 import type { ApiConfig } from '../config/api-config.js';
 import type { ApiIdentityRuntime } from '../identity/identity-runtime.module.js';
 
-export const DEFAULT_ARTIFACT_MAX_OBJECT_BYTES = 10 * 1024 * 1024;
-
 export type ApiArtifactRuntime = Readonly<{
   dependencies: ArtifactDependencies;
   checkReadiness(): Promise<void>;

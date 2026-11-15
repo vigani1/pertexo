@@ -9,6 +9,14 @@ import {
 import { formatByteSize, formatCount } from '@pertexo/node-sdk';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
+const INPUT_CASES_BOUNDS = Object.freeze({
+  workflowInputCaseNameCharacters: 128,
+  workflowInputCaseListPageItems: 100,
+  nextCursorCharacters: 1024,
+  afterCharacters: 1024,
+  workflowInputCaseListPageDefault: 20,
+});
+
 const WORKFLOW_INPUT_CASE_MAX_BYTES = 65_536;
 const WORKFLOW_INPUT_CASE_MAX_DEPTH = 64;
 const WORKFLOW_INPUT_CASE_MAX_MEMBERS = 10_000;
@@ -108,9 +116,15 @@ const workflowInputCaseRevisionSchema = z
   .int()
   .min(1)
   .max(STORED_INTEGER_MAX);
+// `"wic1.<case id as 32 hex digits>.<revision in base 36>"`.
+const WORKFLOW_INPUT_CASE_TAG = /^"wic1\.([0-9a-f]{32})\.([0-9a-z]{1,6})"$/u;
+const REVISION_RADIX = 36;
+// The case id's hex digits, regrouped into a UUID's five groups.
+const HEX_ID_GROUPS = /^(.{8})(.{4})(.{4})(.{4})(.{12})$/u;
+
 export const workflowInputCaseTagSchema = z
   .string()
-  .regex(/^"wic1\.[0-9a-f]{32}\.[0-9a-z]{1,6}"$/u);
+  .regex(WORKFLOW_INPUT_CASE_TAG);
 
 /** Clients must treat this strong representation validator as opaque. */
 export function createWorkflowInputCaseTag(
@@ -118,23 +132,21 @@ export function createWorkflowInputCaseTag(
   revision: number,
 ): string {
   const id = z.uuid().parse(caseId).replaceAll('-', '').toLowerCase();
-  return `"wic1.${id}.${workflowInputCaseRevisionSchema.parse(revision).toString(36)}"`;
+  return `"wic1.${id}.${workflowInputCaseRevisionSchema.parse(revision).toString(REVISION_RADIX)}"`;
 }
 export function parseWorkflowInputCaseTag(
   value: unknown,
 ): Readonly<{ caseId: string; revision: number }> | undefined {
-  const parsed = workflowInputCaseTagSchema.safeParse(value);
-  if (!parsed.success) return undefined;
-  // The strict tag grammar fixes the 32-character ID and both separators.
-  const id = parsed.data.slice(6, 38);
-  const revisionPart = parsed.data.slice(39, -1);
-  const revision = Number.parseInt(revisionPart, 36);
+  if (typeof value !== 'string') return undefined;
+  const [, id, revisionPart] = WORKFLOW_INPUT_CASE_TAG.exec(value) ?? [];
+  if (id === undefined || revisionPart === undefined) return undefined;
+  const revision = Number.parseInt(revisionPart, REVISION_RADIX);
   if (
     !workflowInputCaseRevisionSchema.safeParse(revision).success ||
-    revision.toString(36) !== revisionPart
+    revision.toString(REVISION_RADIX) !== revisionPart
   )
     return undefined;
-  const caseId = `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`;
+  const caseId = id.replace(HEX_ID_GROUPS, '$1-$2-$3-$4-$5');
   if (!z.uuid().safeParse(caseId).success) return undefined;
   return { caseId, revision };
 }
@@ -143,7 +155,7 @@ const workflowInputCaseNameSchema = z
   .string()
   .trim()
   .min(1)
-  .max(128)
+  .max(INPUT_CASES_BOUNDS.workflowInputCaseNameCharacters)
   .refine(isStorageText, 'Case names must contain supported Unicode text');
 export const workflowInputCaseMetadataSchema = z
   .object({
@@ -171,15 +183,26 @@ export const workflowInputCaseResponseSchema = responseSchema(
 export const workflowInputCaseListResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(workflowInputCaseMetadataSchema).max(100),
-      nextCursor: z.string().min(1).max(1_024).optional(),
+      items: z
+        .array(workflowInputCaseMetadataSchema)
+        .max(INPUT_CASES_BOUNDS.workflowInputCaseListPageItems),
+      nextCursor: z
+        .string()
+        .min(1)
+        .max(INPUT_CASES_BOUNDS.nextCursorCharacters)
+        .optional(),
     })
     .strict(),
 );
 export const workflowInputCaseQuerySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(100).default(20),
-    after: z.string().min(1).max(1_024).optional(),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(INPUT_CASES_BOUNDS.workflowInputCaseListPageItems)
+      .default(INPUT_CASES_BOUNDS.workflowInputCaseListPageDefault),
+    after: z.string().min(1).max(INPUT_CASES_BOUNDS.afterCharacters).optional(),
   })
   .strict();
 export const workflowInputCaseParamSchema = z

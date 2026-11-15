@@ -1,3 +1,4 @@
+import { formatByteSize, WEBHOOK_RESPONSE_MAX_BYTES } from '@pertexo/node-sdk';
 import { sharedProblemResponses } from '../problem-responses.js';
 import { callbackPaths } from './callbacks.js';
 import { testEventPaths } from './test-events.js';
@@ -133,7 +134,7 @@ export const webhooksOpenApiDocument = Object.freeze({
             'Failure before a workflow response returns only {code:"webhook.workflow_failed"}; a workflow may instead choose its own status 500 JSON/text body.',
           ),
           default: ingressWorkflowResponse(
-            'Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MiB, no-store, nosniff and only the safe header allowlist. Work continues after responding.',
+            `Opt-in Respond to webhook result (200–599), with JSON or plain text up to ${formatByteSize(WEBHOOK_RESPONSE_MAX_BYTES)}, no-store, nosniff and only the safe header allowlist. Work continues after responding.`,
           ),
         },
       },
@@ -206,7 +207,7 @@ export const webhooksOpenApiDocument = Object.freeze({
             'Failure before a workflow response returns only {code:"webhook.workflow_failed"}; a workflow may instead choose its own status 500 JSON/text body.',
           ),
           default: ingressWorkflowResponse(
-            'Opt-in Respond to webhook result (200–599), with JSON or plain text up to 1 MiB, no-store, nosniff and only the safe header allowlist. Work continues after responding.',
+            `Opt-in Respond to webhook result (200–599), with JSON or plain text up to ${formatByteSize(WEBHOOK_RESPONSE_MAX_BYTES)}, no-store, nosniff and only the safe header allowlist. Work continues after responding.`,
           ),
         },
       },

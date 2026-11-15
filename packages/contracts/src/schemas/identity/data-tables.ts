@@ -12,6 +12,7 @@ import {
   formatByteSize,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
+
 export const dataTableCreateSchema = z
   .object({
     name: dataTableNameSchema,
@@ -35,7 +36,12 @@ export const dataTableLimitsSchema = z
     tableLimit: z.number().int().min(1).max(DATA_TABLE_LIMITS.maxTables),
     columnLimit: z.number().int().min(1).max(DATA_TABLE_LIMITS.maxColumns),
     rowLimit: z.number().int().min(1).max(DATA_TABLE_LIMITS.maxRows),
-    byteLimit: z.number().int().min(65_536).max(DATA_TABLE_LIMITS.maxBytes),
+    byteLimit: z
+      .number()
+      .int()
+      // A table must hold at least one row of the largest size.
+      .min(DATA_TABLE_LIMITS.rowBytes)
+      .max(DATA_TABLE_LIMITS.maxBytes),
   })
   .strict();
 export const dataTableQuotasSchema = responseSchema(

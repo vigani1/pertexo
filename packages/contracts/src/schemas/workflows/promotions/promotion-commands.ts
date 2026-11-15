@@ -7,6 +7,10 @@ import {
 } from './settings.js';
 import { workflowPromotionPreviewRequestSchema } from './review.js';
 
+const PROMOTION_COMMANDS_BOUNDS = Object.freeze({
+  noteCharacters: 1000,
+});
+
 export const workflowPromotionApplySchema =
   workflowPromotionPreviewRequestSchema
     .extend({
@@ -19,7 +23,11 @@ export const workflowPromotionApplySchema =
           (ids) => new Set(ids).size === ids.length,
           'Acknowledge each workflow once.',
         ),
-      note: storageTextSchema.trim().min(1).max(1000).optional(),
+      note: storageTextSchema
+        .trim()
+        .min(1)
+        .max(PROMOTION_COMMANDS_BOUNDS.noteCharacters)
+        .optional(),
     })
     .strict();
 export const workflowPromotionResultSchema = responseSchema(

@@ -4,7 +4,6 @@ import {
   slackBotTokenCredentialSchema,
 } from '@pertexo/contracts';
 import {
-  resolvedHttpHeadersCredentialSchema,
   resolvedResendApiKeyCredentialSchema,
   resolvedSlackBotTokenCredentialSchema,
 } from '@pertexo/integrations';
@@ -15,7 +14,8 @@ describe('connection credential boundary compatibility', () => {
     [
       'HTTP headers',
       httpHeadersCredentialSchema,
-      resolvedHttpHeadersCredentialSchema,
+      // One schema guards both boundaries since L4x merged the two.
+      httpHeadersCredentialSchema,
       {
         type: 'http_headers',
         headers: { 'X-Workspace': 'tenant-42', Authorization: 'Bearer secret' },
@@ -80,7 +80,8 @@ describe('connection credential boundary compatibility', () => {
     [
       'transport-controlled Host header',
       httpHeadersCredentialSchema,
-      resolvedHttpHeadersCredentialSchema,
+      // One schema guards both boundaries since L4x merged the two.
+      httpHeadersCredentialSchema,
       {
         type: 'http_headers',
         headers: { Host: 'attacker.example.test' },
@@ -94,7 +95,7 @@ describe('connection credential boundary compatibility', () => {
     },
   );
 
-  it('accounts for serialized header delimiters at both boundaries', () => {
+  it('accounts for serialized header delimiters in the one header credential schema', () => {
     const oversized = {
       type: 'http_headers',
       headers: {
@@ -113,14 +114,8 @@ describe('connection credential boundary compatibility', () => {
     expect(httpHeadersCredentialSchema.safeParse(exactBoundary).success).toBe(
       true,
     );
-    expect(
-      resolvedHttpHeadersCredentialSchema.safeParse(exactBoundary).success,
-    ).toBe(true);
     expect(httpHeadersCredentialSchema.safeParse(oversized).success).toBe(
       false,
     );
-    expect(
-      resolvedHttpHeadersCredentialSchema.safeParse(oversized).success,
-    ).toBe(false);
   });
 });

@@ -1,6 +1,10 @@
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
+const SLACK_CHANNEL_LOOKUP_BOUNDS = Object.freeze({
+  nameCharacters: 80,
+});
+
 /** ADR 046: at most this many channel names resolve in one lookup. */
 export const SLACK_CHANNEL_LOOKUP_LIMIT = 10;
 const slackChannelIdPattern = '[CDGU][A-Z0-9]{1,79}';
@@ -35,7 +39,7 @@ export const slackChannelLookupItemSchema = z.discriminatedUnion('status', [
     .object({
       channelId: slackChannelLookupIdSchema,
       status: z.literal('resolved'),
-      name: z.string().min(1).max(80),
+      name: z.string().min(1).max(SLACK_CHANNEL_LOOKUP_BOUNDS.nameCharacters),
     })
     .strict()
     .readonly(),

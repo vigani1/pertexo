@@ -1,3 +1,4 @@
+import { CALLBACK_LIMITS } from '../../schemas/identity/federation/sign-in.js';
 import { federationRoutes } from '../../routes/identity/federation.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import { authorizationStartedSchema } from '../../schemas/identity/federation/authorization.js';
@@ -100,13 +101,16 @@ export const federationContractPaths = {
           name: 'state',
           in: 'query',
           required: true,
-          schema: { type: 'string', maxLength: 43 },
+          schema: {
+            type: 'string',
+            maxLength: CALLBACK_LIMITS.stateCharacters,
+          },
         },
         {
           name: 'code',
           in: 'query',
           required: true,
-          schema: { type: 'string', maxLength: 4096 },
+          schema: { type: 'string', maxLength: CALLBACK_LIMITS.codeCharacters },
         },
       ],
       responses: {
@@ -161,7 +165,10 @@ export const federationContractPaths = {
                   type: 'string',
                   maxLength: settings.SAML_LIMITS.encodedCharacters,
                 },
-                RelayState: { type: 'string', maxLength: 43 },
+                RelayState: {
+                  type: 'string',
+                  maxLength: CALLBACK_LIMITS.stateCharacters,
+                },
               },
             },
           },

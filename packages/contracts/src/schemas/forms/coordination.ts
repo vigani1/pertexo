@@ -4,10 +4,16 @@ import {
   eventCoordinationStatusSchema,
   eventCoordinationReasonSchema,
 } from '@pertexo/workflow-model';
+
+const COORDINATION_BOUNDS = Object.freeze({
+  nodeIdCharacters: 128,
+  coordinatedEventHistoryPageItems: 100,
+  coordinatedEventHistoryPageDefault: 25,
+});
 export const coordinatedEventSchema = z
   .object({
     id: z.uuid(),
-    nodeId: z.string().min(1).max(128),
+    nodeId: z.string().min(1).max(COORDINATION_BOUNDS.nodeIdCharacters),
     source: z.enum(['webhook', 'form']),
     mode: z.enum(['deduplicate', 'debounce', 'throttle']),
     outcome: z.enum([
@@ -33,14 +39,21 @@ const position = z
 export const coordinatedEventHistorySchema = responseSchema(
   z
     .object({
-      items: z.array(coordinatedEventSchema).max(100),
+      items: z
+        .array(coordinatedEventSchema)
+        .max(COORDINATION_BOUNDS.coordinatedEventHistoryPageItems),
       next: position.nullable(),
     })
     .strict(),
 );
 export const coordinatedEventHistoryQuerySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(100).default(25),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(COORDINATION_BOUNDS.coordinatedEventHistoryPageItems)
+      .default(COORDINATION_BOUNDS.coordinatedEventHistoryPageDefault),
     before: z.iso.datetime().exactOptional(),
     beforeId: z.uuid().exactOptional(),
   })

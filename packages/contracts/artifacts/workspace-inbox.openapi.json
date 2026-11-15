@@ -1878,7 +1878,7 @@
       },
       "post": {
         "operationId": "oneClickNotificationUnsubscribe",
-        "description": "RFC 8058 capability-authorized opt-out. The URL token authorizes the request. Form contents are ignored within 8 KiB. No session, cookies, CSRF header or redirect. Only turns personal email Off.",
+        "description": "RFC 8058 capability-authorized opt-out. The URL token authorizes the request. Form contents are ignored within 8 KB. No session, cookies, CSRF header or redirect. Only turns personal email Off.",
         "security": [],
         "parameters": [
           {
@@ -1896,7 +1896,7 @@
         ],
         "requestBody": {
           "required": false,
-          "description": "Opaque body, ignored. Mail clients normally send List-Unsubscribe=One-Click. Maximum 8 KiB.",
+          "description": "Opaque body, ignored. Mail clients normally send List-Unsubscribe=One-Click. Maximum 8 KB.",
           "content": {
             "application/x-www-form-urlencoded": {
               "schema": {}
@@ -1938,7 +1938,7 @@
             }
           },
           "413": {
-            "description": "Form exceeds 8 KiB",
+            "description": "Form exceeds 8 KB",
             "content": {
               "application/problem+json": {
                 "schema": {

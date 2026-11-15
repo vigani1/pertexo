@@ -19,7 +19,7 @@ import {
   decodeWebhookDeliveryCursor,
   encodeWebhookDeliveryCursor,
 } from './cursor.js';
-import { SECRET_TOKEN_BYTES } from '../../identity/secret-token.js';
+import { SECRET_TOKEN_BYTES } from '@pertexo/contracts';
 import { WEBHOOK_COMMAND_TIMEOUT_MILLIS } from '../command-deadline.js';
 
 export type WebhookCommandInput = Readonly<{

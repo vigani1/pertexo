@@ -1,3 +1,4 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '../../shared/resource-name.js';
 import { responseSchema } from '../../shared/response-schema.js';
 import { z } from 'zod';
 import {
@@ -5,7 +6,18 @@ import {
   promotionIdentifierSchema as id,
 } from './settings.js';
 import { workflowPromotionModeSchema } from './review.js';
-import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+import {
+  STORED_INTEGER_MAX,
+  DISPLAY_NAME_MAX_CHARACTERS,
+} from '@pertexo/workflow-model';
+
+const HISTORY_BOUNDS = Object.freeze({
+  searchCharacters: 128,
+  nameCharacters: 128,
+  actorNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
+  workflowNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  promotionPageDefault: 20,
+});
 
 export const workflowPromotionPageQuerySchema = z
   .object({
@@ -15,8 +27,8 @@ export const workflowPromotionPageQuerySchema = z
       .int()
       .min(1)
       .max(PROMOTION_LIMITS.page)
-      .default(20),
-    search: z.string().trim().max(128).optional(),
+      .default(HISTORY_BOUNDS.promotionPageDefault),
+    search: z.string().trim().max(HISTORY_BOUNDS.searchCharacters).optional(),
   })
   .strict();
 export const workflowPromotionCandidatesQuerySchema =
@@ -54,7 +66,7 @@ export const workflowPromotionCandidatesSchema = responseSchema(
           z
             .object({
               workflowId: id,
-              name: z.string().max(128),
+              name: z.string().max(HISTORY_BOUNDS.nameCharacters),
               versionId: id,
               versionNumber: z.number().int().positive(),
             })
@@ -77,9 +89,11 @@ export const workflowPromotionHistorySchema = responseSchema(
               promotionId: id,
               occurredAt: z.iso.datetime(),
               actorId: id.nullable(),
-              actorName: z.string().max(256),
+              actorName: z.string().max(HISTORY_BOUNDS.actorNameCharacters),
               workflowId: id,
-              workflowName: z.string().max(128),
+              workflowName: z
+                .string()
+                .max(HISTORY_BOUNDS.workflowNameCharacters),
               sourceWorkspaceId: id,
               sourceWorkflowId: id,
               sourceVersionId: id,

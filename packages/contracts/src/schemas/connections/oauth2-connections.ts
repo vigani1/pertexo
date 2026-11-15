@@ -4,6 +4,24 @@ import { z } from 'zod';
 import { connectionResponseFields } from './connection-fields.js';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 
+const OAUTH2_CONNECTIONS_BOUNDS = Object.freeze({
+  endpointUrlCharacters: 2048,
+  endpointUrlBytes: 2048,
+  extraParameters: 16,
+  extraParameterNameCharacters: 64,
+  extraParameterValueCharacters: 1024,
+  requestHostCharacters: 253,
+  hostsItems: 32,
+  clientIdCharacters: 512,
+  scopeCharacters: 2048,
+  clientSecretCharacters: 1024,
+  redirectUriCharacters: 2048,
+  authorizationUrlCharacters: 32768,
+  oauth2CallbackCodeCharacters: 4096,
+  oauth2CallbackErrorCharacters: 64,
+  oauth2ServiceErrorCharacters: 64,
+});
+
 /** A provider returns the browser here, so this is what people register with it. */
 export const OAUTH2_CALLBACK_PATH = '/v1/connections/oauth2/callback';
 /** The web page that callback redirects to, in the tab consent opened. */
@@ -26,8 +44,12 @@ function parseUrl(value: string): URL | undefined {
 function endpointUrlSchema(reservedParameters: readonly string[]) {
   return z
     .url()
-    .max(2_048)
-    .refine((value) => utf8ByteLength(value) <= 2_048, 'URL exceeds byte limit')
+    .max(OAUTH2_CONNECTIONS_BOUNDS.endpointUrlCharacters)
+    .refine(
+      (value) =>
+        utf8ByteLength(value) <= OAUTH2_CONNECTIONS_BOUNDS.endpointUrlBytes,
+      'URL exceeds byte limit',
+    )
     .refine((value) => {
       const url = parseUrl(value);
       return (
@@ -75,13 +97,21 @@ function extraParametersSchema(reservedParameters: readonly string[]) {
       z
         .string()
         .min(1)
-        .max(64)
+        .max(OAUTH2_CONNECTIONS_BOUNDS.extraParameterNameCharacters)
         .regex(/^[A-Za-z0-9_.~-]+$/u),
-      z.string().max(1_024).regex(printable),
+      z
+        .string()
+        .max(OAUTH2_CONNECTIONS_BOUNDS.extraParameterValueCharacters)
+        .regex(printable),
     )
-    .refine((parameters) => Object.keys(parameters).length <= 16, {
-      message: 'at most 16 extra parameters are allowed',
-    })
+    .refine(
+      (parameters) =>
+        Object.keys(parameters).length <=
+        OAUTH2_CONNECTIONS_BOUNDS.extraParameters,
+      {
+        message: `at most ${String(OAUTH2_CONNECTIONS_BOUNDS.extraParameters)} extra parameters are allowed`,
+      },
+    )
     .refine(
       (parameters) =>
         !Object.keys(parameters).some((name) =>
@@ -94,7 +124,7 @@ function extraParametersSchema(reservedParameters: readonly string[]) {
 const requestHostSchema = z
   .string()
   .min(1)
-  .max(253)
+  .max(OAUTH2_CONNECTIONS_BOUNDS.requestHostCharacters)
   .regex(
     /^(?:\*\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/u,
   );
@@ -111,7 +141,7 @@ const oauth2RequestHostsSchema = z.discriminatedUnion('mode', [
       hosts: z
         .array(requestHostSchema)
         .min(1)
-        .max(32)
+        .max(OAUTH2_CONNECTIONS_BOUNDS.hostsItems)
         .refine((hosts) => new Set(hosts).size === hosts.length, {
           message: 'hosts must be unique',
         }),
@@ -122,12 +152,17 @@ const oauth2RequestHostsSchema = z.discriminatedUnion('mode', [
 
 const sharedClientSettings = {
   tokenUrl: endpointUrlSchema(TOKEN_RESERVED_PARAMETERS),
-  clientId: z.string().trim().min(1).max(512).regex(printable),
+  clientId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(OAUTH2_CONNECTIONS_BOUNDS.clientIdCharacters)
+    .regex(printable),
   /** Sent as typed: some services separate scopes with commas, not spaces. */
   scope: z
     .string()
     .trim()
-    .max(2_048)
+    .max(OAUTH2_CONNECTIONS_BOUNDS.scopeCharacters)
     .regex(/^[\x20-\x7e]*$/u),
   clientAuthentication: z.enum(['basic', 'body']),
   tokenParameters: extraParametersSchema(TOKEN_RESERVED_PARAMETERS),
@@ -174,7 +209,12 @@ export const oauth2CredentialSchema = z
   .object({
     type: z.literal('oauth2'),
     settings: oauth2ClientSettingsSchema,
-    clientSecret: z.string().trim().min(1).max(1_024).regex(printable),
+    clientSecret: z
+      .string()
+      .trim()
+      .min(1)
+      .max(OAUTH2_CONNECTIONS_BOUNDS.clientSecretCharacters)
+      .regex(printable),
   })
   .strict()
   .readonly();
@@ -187,7 +227,7 @@ const oauth2ConnectionFields = {
     .object({
       settings: oauth2ClientSettingsSchema,
       /** What to register with the provider. */
-      redirectUri: z.url().max(2_048),
+      redirectUri: z.url().max(OAUTH2_CONNECTIONS_BOUNDS.redirectUriCharacters),
     })
     .strict()
     .readonly(),
@@ -251,7 +291,9 @@ export const oauth2AuthorizationStartResponseSchema = responseSchema(
     z
       .object({
         kind: z.literal('consent'),
-        authorizationUrl: z.url().max(32_768),
+        authorizationUrl: z
+          .url()
+          .max(OAUTH2_CONNECTIONS_BOUNDS.authorizationUrlCharacters),
         expiresAt: z.iso.datetime(),
       })
       .strict()
@@ -270,11 +312,14 @@ export const oauth2AuthorizationStartResponseSchema = responseSchema(
 export const oauth2CallbackStateSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}$/u);
-export const oauth2CallbackCodeSchema = z.string().min(1).max(4_096);
+export const oauth2CallbackCodeSchema = z
+  .string()
+  .min(1)
+  .max(OAUTH2_CONNECTIONS_BOUNDS.oauth2CallbackCodeCharacters);
 export const oauth2CallbackErrorSchema = z
   .string()
   .min(1)
-  .max(64)
+  .max(OAUTH2_CONNECTIONS_BOUNDS.oauth2CallbackErrorCharacters)
   .regex(/^[\x20-\x7e]+$/u);
 
 /**
@@ -300,7 +345,7 @@ export const oauth2CallbackQuerySchema = z
  */
 export const oauth2ServiceErrorSchema = z
   .string()
-  .max(64)
+  .max(OAUTH2_CONNECTIONS_BOUNDS.oauth2ServiceErrorCharacters)
   .regex(/^[a-z_]+$/u);
 
 const landingConnection = { workspaceId: z.uuid(), connectionId: z.uuid() };

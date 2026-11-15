@@ -1,8 +1,18 @@
+import { storedTimestampSchema } from '../shared/stored-timestamp.js';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { INBOX_FAILURE_DAYS, taskDetailsSchema } from '@pertexo/workflow-model';
 
 import { workflowRunFailedStepSchema } from '../execution/runs.js';
+
+const INBOX_BOUNDS = Object.freeze({
+  workspaceInboxCursorCharacters: 1024,
+  workspaceInboxLimitMaximum: 100,
+  workflowNameCharacters: 200,
+  nameCharacters: 200,
+  limitsItems: 4,
+  workspaceInboxListPageItems: 100,
+});
 
 /** ADR 055: one notice per failing workflow, never run inputs or errors. */
 const workspaceInboxFailureKindSchema = z.enum([
@@ -10,7 +20,7 @@ const workspaceInboxFailureKindSchema = z.enum([
   'timed_out',
   'outcome_unknown',
 ]);
-const workspaceInboxTimestampSchema = z.iso.datetime({ precision: 6 });
+const workspaceInboxTimestampSchema = storedTimestampSchema;
 /** PostgreSQL bigint revisions stay decimal strings across the wire. */
 const workspaceInboxRevisionSchema = z
   .string()
@@ -25,7 +35,10 @@ const workspaceInboxRevisionSchema = z
     },
     { message: 'Revision exceeds PostgreSQL bigint' },
   );
-const workspaceInboxCursorSchema = z.string().min(1).max(1_024);
+const workspaceInboxCursorSchema = z
+  .string()
+  .min(1)
+  .max(INBOX_BOUNDS.workspaceInboxCursorCharacters);
 
 export const workspaceCapacityLimitSchema = z.enum([
   'active',
@@ -48,7 +61,11 @@ export const workspaceNoticeKindSchema = z.enum([
   'workflow_mention',
 ]);
 export const workspaceInboxFilterSchema = z.enum(['all', 'unread']);
-const workspaceInboxLimitSchema = z.coerce.number().int().min(1).max(100);
+const workspaceInboxLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(INBOX_BOUNDS.workspaceInboxLimitMaximum);
 export const workspaceInboxListQuerySchema = z
   .object({
     filter: workspaceInboxFilterSchema.optional(),
@@ -65,7 +82,7 @@ export const workspaceInboxFailureThreadSchema = z
     id: z.uuid(),
     noticeKind: z.literal('workflow_failure'),
     workflowId: z.uuid(),
-    workflowName: z.string().min(1).max(200),
+    workflowName: z.string().min(1).max(INBOX_BOUNDS.workflowNameCharacters),
     kind: workspaceInboxFailureKindSchema,
     failureDays: z
       .array(
@@ -100,14 +117,14 @@ const operationalAttentionSchema = z
     ]),
     subjectId: z.uuid(),
     workflowId: z.uuid().nullable(),
-    name: z.string().max(200),
+    name: z.string().max(INBOX_BOUNDS.nameCharacters),
     details: taskDetailsSchema.default({}),
     occurrenceCount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
     firstOccurredAt: workspaceInboxTimestampSchema,
     latestOccurredAt: workspaceInboxTimestampSchema,
     revision: workspaceInboxRevisionSchema,
     unread: z.boolean(),
-    limits: z.array(workspaceCapacityLimitSchema).max(4),
+    limits: z.array(workspaceCapacityLimitSchema).max(INBOX_BOUNDS.limitsItems),
   })
   .strict();
 const mentionAttentionSchema = operationalAttentionSchema
@@ -138,7 +155,9 @@ export type WorkspaceNoticeKind = z.output<typeof workspaceNoticeKindSchema>;
 export const workspaceInboxListResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(workspaceInboxThreadSchema).max(100),
+      items: z
+        .array(workspaceInboxThreadSchema)
+        .max(INBOX_BOUNDS.workspaceInboxListPageItems),
       nextCursor: workspaceInboxCursorSchema.nullable(),
       /** The newest revision visible to the reader; the read-all cut. */
       revision: workspaceInboxRevisionSchema,

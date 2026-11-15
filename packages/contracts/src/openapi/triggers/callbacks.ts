@@ -1,3 +1,5 @@
+import { formatByteSize } from '@pertexo/node-sdk';
+import { WEBHOOK_BODY_MAX_BYTES } from '../../schemas/triggers/webhooks.js';
 import {
   pathParameter,
   problemResponse,
@@ -30,8 +32,7 @@ export const callbackPaths = {
         'An unguessable per-run/per-Wait URL accepts one response. Captured Wait configuration may additionally require the existing Pertexo timestamp/raw-body signature or header secret. Body and safe headers become the Wait result. Early responses are retained until the run reaches Wait. Never starts a new run.',
       requestBody: {
         required: false,
-        description:
-          'At most 256 KiB raw bytes, additionally subject to retained execution value bounds.',
+        description: `At most ${formatByteSize(WEBHOOK_BODY_MAX_BYTES)} raw bytes, additionally subject to retained execution value bounds.`,
         content: {
           'application/json': { schema: {} },
           'text/plain': { schema: { type: 'string' } },

@@ -4,7 +4,7 @@ import {
   isJourneyToken,
   newJourneyToken,
 } from '../../../src/authentication/journeys/browser-proof.js';
-import { CALLBACK_LIMITS } from '../../../src/authentication/journeys/callback-limits.js';
+import { CALLBACK_LIMITS } from '@pertexo/contracts';
 
 describe('journey tokens', () => {
   it('accepts a fresh journey token as the state a provider callback may carry', () => {

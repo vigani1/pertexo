@@ -1,12 +1,25 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
+
+const STEP_HISTORY_BOUNDS = Object.freeze({
+  stepIdentifierCharacters: 256,
+  workflowStepRunsPageMaximum: 50,
+  workflowStepHealthPageItems: 1000,
+  invocationKeyCharacters: 1024,
+  safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  workflowStepRunsPageItems: 50,
+});
 
 // A step's record across its workflow's last 100 runs (ADR 051).
 
 /** How many of a workflow's newest runs step history looks at. */
 const STEP_HISTORY_RUN_WINDOW = 100;
 
-const stepIdentifierSchema = z.string().min(1).max(256);
+const stepIdentifierSchema = z
+  .string()
+  .min(1)
+  .max(STEP_HISTORY_BOUNDS.stepIdentifierCharacters);
 const countSchema = z.number().int().nonnegative();
 const timestampSchema = z.iso.datetime({ offset: true });
 const nodeRunStatusSchema = z.enum([
@@ -39,7 +52,14 @@ export const workflowStepRunsParamsSchema = workflowStepHealthParamsSchema
   .extend({ nodeId: stepIdentifierSchema })
   .strict();
 export const workflowStepRunsQuerySchema = z
-  .object({ limit: z.coerce.number().int().min(1).max(50).optional() })
+  .object({
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(STEP_HISTORY_BOUNDS.workflowStepRunsPageMaximum)
+      .optional(),
+  })
   .strict();
 
 /** One step's record in the window: how often, how it ended, how long. */
@@ -66,7 +86,9 @@ export const workflowStepHealthResponseSchema = responseSchema(
       runsConsidered: z.number().int().min(0).max(STEP_HISTORY_RUN_WINDOW),
       /** When the oldest run in the window started; null without runs. */
       oldestRunAt: timestampSchema.nullable(),
-      items: z.array(workflowStepHealthSchema).max(1_000),
+      items: z
+        .array(workflowStepHealthSchema)
+        .max(STEP_HISTORY_BOUNDS.workflowStepHealthPageItems),
     })
     .strict(),
 );
@@ -79,17 +101,30 @@ export const workflowStepRunSchema = z
     runCreatedAt: timestampSchema,
     workflowVersionId: z.uuid(),
     nodeRunId: z.uuid(),
-    invocationKey: z.string().min(1).max(1_024),
+    invocationKey: z
+      .string()
+      .min(1)
+      .max(STEP_HISTORY_BOUNDS.invocationKeyCharacters),
     status: nodeRunStatusSchema,
     attempts: countSchema,
     startedAt: timestampSchema.nullable(),
     completedAt: timestampSchema.nullable(),
-    safeErrorCode: z.string().min(1).max(128).nullable(),
+    safeErrorCode: z
+      .string()
+      .min(1)
+      .max(STEP_HISTORY_BOUNDS.safeErrorCodeCharacters)
+      .nullable(),
   })
   .strict();
 
 export const workflowStepRunsResponseSchema = responseSchema(
-  z.object({ items: z.array(workflowStepRunSchema).max(50) }).strict(),
+  z
+    .object({
+      items: z
+        .array(workflowStepRunSchema)
+        .max(STEP_HISTORY_BOUNDS.workflowStepRunsPageItems),
+    })
+    .strict(),
 );
 
 export type WorkflowStepHealth = z.output<typeof workflowStepHealthSchema>;

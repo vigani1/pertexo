@@ -24,6 +24,18 @@ import {
 } from './workflows/organization.js';
 import { workflowConcurrencyProblems } from './workflows/concurrency.js';
 
+const API_PROBLEM_BOUNDS = Object.freeze({
+  pathCharacters: 1024,
+  codeCharacters: 128,
+  messageCharacters: 500,
+  typeCharacters: 256,
+  titleCharacters: 256,
+  detailCharacters: 2000,
+  instanceCharacters: 2048,
+  requestIdCharacters: 128,
+  errorsItems: 100,
+});
+
 export const API_PROBLEM_CODES = [
   ...CALLBACK_PROBLEM_CODES,
   'api_token.unavailable',
@@ -166,26 +178,34 @@ export const apiProblemCodeSchema = z.enum(API_PROBLEM_CODES);
 
 export const apiProblemIssueSchema = z
   .object({
-    path: z.string().max(1_024),
-    code: z.string().min(1).max(128),
-    message: z.string().min(1).max(500),
+    path: z.string().max(API_PROBLEM_BOUNDS.pathCharacters),
+    code: z.string().min(1).max(API_PROBLEM_BOUNDS.codeCharacters),
+    message: z.string().min(1).max(API_PROBLEM_BOUNDS.messageCharacters),
   })
   .strict()
   .readonly();
 
 export const apiProblemShape = {
-  type: z.string().min(1).max(256),
-  title: z.string().min(1).max(256),
+  type: z.string().min(1).max(API_PROBLEM_BOUNDS.typeCharacters),
+  title: z.string().min(1).max(API_PROBLEM_BOUNDS.titleCharacters),
   status: z.number().int().min(400).max(599),
-  detail: z.string().min(1).max(2_000).optional(),
-  instance: z.string().min(1).max(2_048).optional(),
+  detail: z.string().min(1).max(API_PROBLEM_BOUNDS.detailCharacters).optional(),
+  instance: z
+    .string()
+    .min(1)
+    .max(API_PROBLEM_BOUNDS.instanceCharacters)
+    .optional(),
   code: apiProblemCodeSchema,
   requestId: z
     .string()
     .min(1)
-    .max(128)
+    .max(API_PROBLEM_BOUNDS.requestIdCharacters)
     .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u),
-  errors: z.array(apiProblemIssueSchema).max(100).readonly().optional(),
+  errors: z
+    .array(apiProblemIssueSchema)
+    .max(API_PROBLEM_BOUNDS.errorsItems)
+    .readonly()
+    .optional(),
 } satisfies z.ZodRawShape;
 
 export function createApiProblemSchema<Extension extends z.ZodRawShape>(
