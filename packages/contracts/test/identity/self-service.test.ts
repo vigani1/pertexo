@@ -56,8 +56,10 @@ describe('member removal, self profile and return path contracts', () => {
     expect(userDisplayNameSchema.parse('  Ada Lovelace  ')).toBe(
       'Ada Lovelace',
     );
-    expect(userDisplayNameSchema.parse('x'.repeat(128))).toHaveLength(128);
-    for (const name of ['', '   ', 'x'.repeat(129), 'Line\nBreak', 'Nul\u0000'])
+    // One limit for every name a person shows: sign-up's 256 (batch L4b).
+    expect(userDisplayNameSchema.parse('x'.repeat(200))).toHaveLength(200);
+    expect(userDisplayNameSchema.parse('x'.repeat(256))).toHaveLength(256);
+    for (const name of ['', '   ', 'x'.repeat(257), 'Line\nBreak', 'Nul\u0000'])
       expect(userDisplayNameSchema.safeParse(name).success).toBe(false);
     expect(
       userProfileUpdateRequestSchema.safeParse({ displayName: 'Ada' }).success,
