@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { workflowSettingsKeys } from '@/features/workflow-settings/workflow-settings-queries.public';
 import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
@@ -32,7 +33,7 @@ export function latestVersionQueryOptions(
     ),
     queryFn: ({ signal }) =>
       getLatestWorkflowVersion(apiClient, workspaceId, workflowId, signal),
-    staleTime: 60_000,
+    staleTime: QUERY_FRESHNESS.settled,
   });
 }
 

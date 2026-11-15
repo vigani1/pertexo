@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import type {
   WorkspaceInboxSummaryResponse,
   WorkspaceInboxFailureThread,
@@ -51,7 +52,7 @@ export function useInboxArrivals(
           filter: 'unread',
         }),
         // The cached list can predate the summary that announced the change.
-        staleTime: 0,
+        staleTime: QUERY_FRESHNESS.none,
       })
       .then(
         (threads) => {

@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import type {
   WorkflowRunListResponse,
   WorkflowRunStatisticsResponse,
@@ -143,8 +144,8 @@ export function loomStatisticsQueryOptions(
         { window, breakdown: 'workflow' },
         signal,
       ),
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: QUERY_FRESHNESS.recent,
+    refetchInterval: QUERY_POLLING.status,
   });
 }
 
@@ -174,8 +175,8 @@ export function attentionRunsQueryOptions(
         throw new Error('Runs needing attention are incomplete.');
       return { asOf, failed, timedOut, outcomeUnknown };
     },
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: QUERY_FRESHNESS.standard,
+    refetchInterval: QUERY_POLLING.dashboard,
   });
 }
 
@@ -215,7 +216,7 @@ export function runLoomQueryOptions(
         capped: window.capped,
       };
     },
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: QUERY_FRESHNESS.recent,
+    refetchInterval: QUERY_POLLING.status,
   });
 }

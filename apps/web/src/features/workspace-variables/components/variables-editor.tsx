@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { variablesQueryOptions } from '../data/variables.queries';
 import { VariableLeaveConfirmation } from './leave-confirmation';
 import { VariableFields, VariableSaveActions } from './variable-fields';
@@ -183,7 +184,7 @@ async function reloadVariables({
   try {
     const latest = await cache.query({
       ...variablesQueryOptions(scope),
-      staleTime: 0,
+      staleTime: QUERY_FRESHNESS.none,
     });
     command.reset();
     setError(undefined);

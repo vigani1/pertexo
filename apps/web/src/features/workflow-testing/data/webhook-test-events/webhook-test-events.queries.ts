@@ -1,3 +1,8 @@
+import {
+  QUERY_FRESHNESS,
+  QUERY_POLLING,
+  QUERY_RETENTION,
+} from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { SampleScope } from '../samples/step-samples.api';
 import { readWebhookTest } from './webhook-test-events.api';
@@ -19,11 +24,11 @@ export function webhookTestQuery(
       id,
     ],
     queryFn: ({ signal }) => readWebhookTest(scope, nodeId, id, signal),
-    gcTime: 0,
-    staleTime: 0,
+    gcTime: QUERY_RETENTION.none,
+    staleTime: QUERY_FRESHNESS.none,
     retry: false,
     refetchInterval: (query) =>
-      query.state.data?.state === 'waiting' ? 1000 : false,
+      query.state.data?.state === 'waiting' ? QUERY_POLLING.inFlight : false,
     refetchIntervalInBackground: false,
   });
 }

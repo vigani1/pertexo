@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
@@ -42,7 +43,7 @@ export function errorWorkflowQuery(
         throw error;
       }
     },
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }
 export function errorTargetsQuery(
@@ -63,6 +64,6 @@ export function errorTargetsQuery(
         signal,
       }),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }

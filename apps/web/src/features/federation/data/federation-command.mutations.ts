@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import {
   reconcileQuerySnapshot,
   recoverRevisionConflict,
@@ -105,7 +106,10 @@ export function useFederationCommand(
     try {
       const options = federationSettingsQueryOptions(scope);
       await cache.cancelQueries({ queryKey: options.queryKey, exact: true });
-      const value = await cache.query({ ...options, staleTime: 0 });
+      const value = await cache.query({
+        ...options,
+        staleTime: QUERY_FRESHNESS.none,
+      });
       setRevisionRead({ kind: 'refreshed', value });
       return value;
     } catch (error) {

@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { DataTableQuery } from '@pertexo/node-sdk';
 import { readTables, readRows, type TableScope } from './tables.api';
@@ -15,8 +16,8 @@ export function tablesQuery(scope: TableScope) {
   return queryOptions({
     queryKey: [...tableKeys.scope(scope), 'list'],
     queryFn: ({ signal }) => readTables(scope, signal),
-    staleTime: 10_000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.working,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
@@ -28,8 +29,8 @@ export function tableRowsQuery(
   return queryOptions({
     queryKey: [...tableKeys.scope(scope), tableId, 'rows', query],
     queryFn: ({ signal }) => readRows(scope, tableId, query, signal),
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }

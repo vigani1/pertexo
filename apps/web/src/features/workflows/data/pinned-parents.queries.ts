@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions, skipToken } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { collectPages } from '@/lib/api/pagination';
@@ -33,6 +34,6 @@ export function pinnedParentsQueryOptions(
             { read: 'Published parent discovery', signal },
           )
       : skipToken,
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
 }

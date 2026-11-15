@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import {
   connectionFitsSlot,
   type PortableConnectionBinding,
@@ -131,7 +132,7 @@ function WorkflowImportConnections({
   const connections = useQuery({
     ...connectionDiscoveryQueryOptions(apiClient, userId, workspace.id),
     enabled: slots.length > 0 && canRead,
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
   const bindingSelectionBlocked =
     disabled || connections.isFetching || connections.isError || !canRead;

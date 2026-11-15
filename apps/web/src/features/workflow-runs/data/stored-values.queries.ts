@@ -1,3 +1,5 @@
+import { workflowRunKeys } from './query-cache';
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import {
@@ -7,7 +9,6 @@ import {
   getWorkflowRunInput,
   getWorkflowRunVariables,
 } from './workflow-runs.api';
-import { workflowRunKeys } from './query-cache';
 
 /*
  * Stored run data (ADR 050, 052): a run's input and each step run's input
@@ -25,7 +26,7 @@ export function workflowRunInputQueryOptions(
     queryKey: [...workflowRunKeys.data(userId, workspaceId, runId), 'input'],
     queryFn: ({ signal }) =>
       getWorkflowRunInput(apiClient, workspaceId, runId, signal),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_FRESHNESS.immutable,
   });
 }
 
@@ -61,12 +62,20 @@ export function nodeRunOutputQueryOptions({
         nodeRunId: step.nodeRunId,
         signal,
       }),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_FRESHNESS.immutable,
   });
 }
 
 /** Reads, the first included, while a running attempt hasn't recorded yet. */
 const INPUT_RECORDING_READS = 5;
+// Recording polls back off from one second, doubling each read.
+const INPUT_RECORDING_FIRST_WAIT_MS = 1_000;
+const INPUT_RECORDING_BACKOFF = 2;
+
+/** The wait before the next read of a recording, after `reads` reads. */
+function inputRecordingWait(reads: number): number {
+  return INPUT_RECORDING_FIRST_WAIT_MS * INPUT_RECORDING_BACKOFF ** (reads - 1);
+}
 
 /**
  * What a step run's current attempt received (ADR 052). A recording belongs
@@ -108,7 +117,7 @@ export function nodeRunInputQueryOptions({
         nodeRunId: step.nodeRunId,
         signal,
       }),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_FRESHNESS.immutable,
     refetchInterval: (query) => {
       // A failed refetch retains the last empty response. Stop here so the
       // visible retry action, not a successful-read counter, owns recovery.
@@ -117,7 +126,7 @@ export function nodeRunInputQueryOptions({
       return step.status === 'running' &&
         query.state.data?.kind === 'none' &&
         reads < INPUT_RECORDING_READS
-        ? 1_000 * 2 ** (reads - 1)
+        ? inputRecordingWait(reads)
         : false;
     },
   });
@@ -136,8 +145,8 @@ export function workflowRunVariablesQueryOptions(
     ],
     queryFn: ({ signal }) =>
       getWorkflowRunVariables(apiClient, workspaceId, runId, signal),
-    staleTime: Infinity,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.immutable,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
@@ -176,6 +185,6 @@ export function nodeRunDiagnosticsQueryOptions({
         nodeRunId: step.nodeRunId,
         signal,
       }),
-    staleTime: Infinity,
+    staleTime: QUERY_FRESHNESS.immutable,
   });
 }

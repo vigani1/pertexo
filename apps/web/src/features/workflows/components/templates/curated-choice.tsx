@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { useEffect, useEffectEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -36,7 +37,7 @@ export function CuratedTemplateChoice({
 }>) {
   const catalog = useQuery({
     ...authoringCatalogQueryOptions(apiClient, userId),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
   });
   const chooseInitial = useEffectEvent((template: CuratedTemplate) => {
     onChoose(template);

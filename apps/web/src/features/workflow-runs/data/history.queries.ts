@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import type { RunHistoryFilters } from '../model/list/run-search';
@@ -51,6 +52,6 @@ export function anyRunQueryOptions(
       );
       return page.items.length > 0;
     },
-    staleTime: 60_000,
+    staleTime: QUERY_FRESHNESS.settled,
   });
 }

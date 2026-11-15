@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getRunRecovery } from './recovery.api';
@@ -14,7 +15,7 @@ export function recoveryQueryOptions(
       'recovery',
     ],
     queryFn: ({ signal }) => getRunRecovery(client, workspaceId, runId, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
     retry: false,
   });
 }

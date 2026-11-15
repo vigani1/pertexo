@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import { workflowKeys } from '@/features/workflows/workflows-queries.public';
 import type { CoordinatedEventHistory } from '@pertexo/contracts';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
@@ -24,8 +25,8 @@ export function formQueryOptions(scope: FormScope) {
             'schema',
           ] as const),
     queryFn: ({ signal }) => readForm(scope, signal),
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
+    gcTime: QUERY_RETENTION.none,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: false,
@@ -38,7 +39,7 @@ export function formAccessQueryOptions(scope: MemberFormScope) {
       'form-access',
     ] as const,
     queryFn: ({ signal }) => readFormAccess(scope, signal),
-    staleTime: 10000,
+    staleTime: QUERY_FRESHNESS.working,
   });
 }
 
@@ -52,8 +53,8 @@ export function formEventsQueryOptions(scope: MemberFormScope) {
     queryFn: ({ pageParam, signal }) =>
       readFormEvents(scope, pageParam, signal),
     getNextPageParam: (page) => page.next ?? undefined,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

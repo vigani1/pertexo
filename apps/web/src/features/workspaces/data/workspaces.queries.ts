@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { workspaceKeys } from './workspace-keys';
@@ -24,7 +25,7 @@ export function accessibleWorkspacesQueryOptions(
   return queryOptions({
     queryKey: workspaceKeys.accessible(userId),
     queryFn: ({ signal }) => getAllAccessibleWorkspaces(apiClient, signal),
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
   });
 }
 

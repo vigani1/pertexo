@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { AuditFilter } from '@pertexo/contracts';
 import { readAudit, readSettings, type GovernanceScope } from './audit.api';
@@ -22,8 +23,8 @@ export function auditQueryOptions(
       readAudit(scope, filters, pageParam, signal),
     getNextPageParam: (page) => page.nextCursor,
     retry: false,
-    staleTime: 30_000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.standard,
+    gcTime: QUERY_RETENTION.none,
   });
 }
 export function governanceQueryOptions(scope: GovernanceScope) {
@@ -31,7 +32,7 @@ export function governanceQueryOptions(scope: GovernanceScope) {
     queryKey: [...governanceKeys.scope(scope), 'settings'],
     queryFn: ({ signal }) => readSettings(scope, signal),
     retry: false,
-    staleTime: 30_000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.standard,
+    gcTime: QUERY_RETENTION.none,
   });
 }

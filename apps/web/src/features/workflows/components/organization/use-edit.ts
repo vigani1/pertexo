@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { useAudienceMove } from '../../hooks/use-audience-move';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -133,7 +134,7 @@ export function useOrganizationEdit({
               workflowId: workflow.id,
               input: { include: 'organization' },
             }),
-            staleTime: 0,
+            staleTime: QUERY_FRESHNESS.none,
           }),
         ),
       );
@@ -201,7 +202,7 @@ function useOrganizationReads({
         workflowId: workflow.id,
         input: { include: 'organization' },
       }),
-      staleTime: 0,
+      staleTime: QUERY_FRESHNESS.none,
       enabled,
     })),
   });

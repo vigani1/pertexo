@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import {
   infiniteQueryOptions,
   queryOptions,
@@ -48,7 +49,7 @@ export function callTargetVersionsQueryOptions(
             ),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    staleTime: 30_000,
+    staleTime: QUERY_FRESHNESS.standard,
   });
 }
 
@@ -74,6 +75,6 @@ export function callPinnedVersionQueryOptions(
               versionId: pin.workflowVersionId,
               signal,
             }),
-    staleTime: Infinity,
+    staleTime: QUERY_FRESHNESS.immutable,
   });
 }

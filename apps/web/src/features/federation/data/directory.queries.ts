@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import { queryOptions, infiniteQueryOptions } from '@tanstack/react-query';
 import {
   readDirectory,
@@ -14,8 +15,8 @@ export const directoryQueryOptions = (scope: FederationScope) =>
   queryOptions({
     queryKey: directoryKey(scope),
     queryFn: ({ signal }) => readDirectory(scope, signal),
-    staleTime: 30000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.standard,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 export const directoryPeopleQueryOptions = (
@@ -36,8 +37,8 @@ export const directoryPeopleQueryOptions = (
         signal,
       ),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-    staleTime: 30000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.standard,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 export const adoptionQueryOptions = (
@@ -47,7 +48,7 @@ export const adoptionQueryOptions = (
   queryOptions({
     queryKey: [...directoryKey(scope), 'adoption', input],
     queryFn: ({ signal }) => readAdoptionPreview(scope, input, signal),
-    staleTime: 30000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.standard,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });

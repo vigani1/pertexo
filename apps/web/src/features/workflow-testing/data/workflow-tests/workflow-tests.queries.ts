@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import {
   getWorkflowTest,
@@ -21,7 +22,7 @@ export function workflowTestsQueryOptions(scope: WorkflowTestScope) {
   return queryOptions({
     queryKey: [...workflowTestsKey(scope), 'list'],
     queryFn: ({ signal }) => listWorkflowTests(scope, signal),
-    staleTime: 0,
+    staleTime: QUERY_FRESHNESS.none,
     retry: false,
   });
 }
@@ -32,7 +33,7 @@ export function workflowTestQueryOptions(
   return queryOptions({
     queryKey: [...workflowTestsKey(scope), runId],
     queryFn: ({ signal }) => getWorkflowTest(scope, runId, signal),
-    staleTime: Infinity,
+    staleTime: QUERY_FRESHNESS.immutable,
     retry: false,
   });
 }

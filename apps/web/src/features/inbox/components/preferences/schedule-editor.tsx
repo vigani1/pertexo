@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { notificationPreferencesQueryOptions } from '../../data/notice-preferences.queries';
 import {
   notificationEmailUnavailable,
@@ -72,7 +73,7 @@ export function NotificationScheduleEditor({
     try {
       const latest = await cache.query({
         ...notificationPreferencesQueryOptions(scope),
-        staleTime: 0,
+        staleTime: QUERY_FRESHNESS.none,
       });
       setDraft(initial(latest, target));
       setError(undefined);

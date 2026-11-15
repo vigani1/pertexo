@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
@@ -48,8 +49,8 @@ export function concurrencyQueryOptions(
         throw error;
       }
     },
-    staleTime: 0,
-    refetchInterval: 30_000,
+    staleTime: QUERY_FRESHNESS.none,
+    refetchInterval: QUERY_POLLING.status,
     refetchIntervalInBackground: false,
   });
 }

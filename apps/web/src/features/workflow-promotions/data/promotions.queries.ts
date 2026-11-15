@@ -1,3 +1,4 @@
+import { QUERY_FRESHNESS, QUERY_RETENTION } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import {
   readPromotionSettings,
@@ -20,8 +21,8 @@ export function promotionSettingsQuery(scope: PromotionScope) {
   return queryOptions({
     queryKey: [...promotionKeys.scope(scope), 'settings'],
     queryFn: ({ signal }) => readPromotionSettings(scope, signal),
-    staleTime: 10000,
-    gcTime: 0,
+    staleTime: QUERY_FRESHNESS.working,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
@@ -35,7 +36,7 @@ export function promotionCandidatesQuery(
     queryFn: ({ signal, pageParam }) =>
       readPromotionCandidates(scope, pageParam, search, signal),
     getNextPageParam: (page) => page.nextCursor,
-    gcTime: 0,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
@@ -46,7 +47,7 @@ export function promotionHistoryQuery(scope: PromotionScope) {
     queryFn: ({ signal, pageParam }) =>
       readPromotionHistory(scope, pageParam, signal),
     getNextPageParam: (page) => page.nextCursor,
-    gcTime: 0,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
@@ -61,7 +62,7 @@ export function promotionVersionsQuery(
     queryFn: ({ signal, pageParam }) =>
       readPromotionVersions(scope, workflowId, pageParam, signal),
     getNextPageParam: (page) => page.nextVersionNumber,
-    gcTime: 0,
+    gcTime: QUERY_RETENTION.none,
     retry: false,
   });
 }
