@@ -7,6 +7,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod';
 import type { AuthenticationMail } from '../mail/authentication-mail.js';
 import { randomSecretToken } from '../../identity/secret-token.js';
+import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
 /** A reset link's token: 192 random bits, short enough for a mailed URL. */
 const RESET_TOKEN_BYTES = 24;
@@ -25,7 +26,7 @@ export function createPasswordResetPlugin(
         {
           method: 'POST',
           body: z.object({
-            email: z.email(),
+            email: z.email().max(EMAIL_ADDRESS_LIMITS.characters),
             redirectTo: z.string().optional(),
           }),
           use: [

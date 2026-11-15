@@ -11,7 +11,10 @@ import {
   delegatedWorkspaceRoleSchema,
 } from './membership.js';
 import { z } from 'zod';
-import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
+import {
+  DISPLAY_NAME_MAX_CHARACTERS,
+  EMAIL_ADDRESS_LIMITS,
+} from '@pertexo/workflow-model';
 
 export { idempotencyKeySchema } from '../shared/transport-headers.js';
 
@@ -175,7 +178,10 @@ export const workspaceInvitationSchema = z
   .strict();
 export const workspaceInvitationCreateRequestSchema = z
   .object({
-    email: z.string().trim().pipe(z.email().max(320)),
+    email: z
+      .string()
+      .trim()
+      .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.characters)),
     role: delegatedWorkspaceRoleSchema,
   })
   .strict();

@@ -64,8 +64,10 @@ environment only in `platform/config/`.
   `HttpStatus`; a token's random bytes are `SECRET_TOKEN_BYTES`
   (`identity/secret-token.ts`); a provider callback's parameters are
   `CALLBACK_LIMITS` (`authentication/journeys/callback-limits.ts`);
-  passwords, display names, the fresh sign-in window and account emails
-  come from `workflow-model`; raw headers are read through
+  passwords, display names and the fresh sign-in window come from
+  `workflow-model`; every arriving email address is bounded by
+  `EMAIL_ADDRESS_LIMITS.characters` (254), and Better Auth's sign-up and
+  email change by `email-length-plugin.ts`; raw headers are read through
   `platform/http/raw-headers.ts`.
 - How routes check their answers: `platform/http/route-answer-check.ts`
   (production projects to the declared shape; other environments check
