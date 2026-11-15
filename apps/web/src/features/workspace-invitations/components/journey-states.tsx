@@ -5,7 +5,7 @@ import { StatusGlyph } from '@/components/ui/status';
 import {
   AuthLensDescription,
   AuthLensTitle,
-} from '@/features/auth/auth-routing.public';
+} from '@/features/auth/auth-views.public';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { currentUserQueryOptions } from '@/features/auth/auth-queries.public';
 import type { ApiClient } from '@/lib/api/client';

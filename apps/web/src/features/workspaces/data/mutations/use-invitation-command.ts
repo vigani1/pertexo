@@ -17,9 +17,9 @@ import {
   assertSessionIdentity,
   isSessionIdentityChangedError,
   isSessionIdentityUnverifiedError,
+  reportSessionChange,
 } from '@/features/auth/public';
 import { isUnauthenticated } from '@/features/auth/auth-routing.public';
-import { reportSessionChange } from '@/features/auth/auth-routing.public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { ApiClient } from '@/lib/api/client';

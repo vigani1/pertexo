@@ -1,7 +1,7 @@
 import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { AuthLensTitle } from '@/features/auth/auth-routing.public';
+import { AuthLensTitle } from '@/features/auth/auth-views.public';
 import { WorkspaceMark } from '@/features/workspaces/workspaces-views.public';
 import { roleCopy } from '../model/journey-copy';
 

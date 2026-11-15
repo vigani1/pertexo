@@ -38,8 +38,14 @@ export function commandHookViolations(file, source) {
     const builders =
       COMMAND_BUILDERS[aliasOf(file, statement.moduleSpecifier.text)];
     const bindings = statement.importClause?.namedBindings;
-    if (builders === undefined || !bindings || !ts.isNamedImports(bindings))
+    if (builders === undefined || !bindings) continue;
+    // `import * as RQ` would reach every builder as `RQ.useMutation`.
+    if (ts.isNamespaceImport(bindings)) {
+      findings.push(
+        `${file}: a namespace import of ${statement.moduleSpecifier.text} reaches its command builders (${builders.join(', ')}); import the names you need`,
+      );
       continue;
+    }
     for (const element of bindings.elements) {
       const name = (element.propertyName ?? element.name).text;
       if (!element.isTypeOnly && builders.includes(name))
@@ -62,12 +68,13 @@ function aliasOf(file, specifier) {
 
 // Who may import an endpoint module: the feature's data/ folder, its loader
 // entry (`<feature>-queries.public.ts`, which re-exports for other features'
-// data/), the shared transport, and a shared lib area's own data modules.
+// data/), the shared transport, and the shared sharing editor's own data
+// modules (`lib/resource-sharing`, used by connections and folders).
 const ENDPOINT_IMPORTERS = [
   /^apps\/web\/src\/features\/[^/]+\/data\//u,
   /^apps\/web\/src\/features\/([^/]+)\/\1-queries\.public\.ts$/u,
   /^apps\/web\/src\/lib\/api\//u,
-  /^apps\/web\/src\/lib\/[^/]+\/[^/]+\.(?:api|queries|mutations)\.ts$/u,
+  /^apps\/web\/src\/lib\/resource-sharing\/[^/]+\.(?:api|queries|mutations)\.ts$/u,
 ];
 const ENDPOINT_MODULE = /\.api(?:\.[jt]s)?$/u;
 
@@ -75,7 +82,7 @@ const ENDPOINT_MODULE = /\.api(?:\.[jt]s)?$/u;
 export function endpointImportViolations(file, source) {
   if (!file.startsWith(WEB_SOURCE)) return [];
   if (ENDPOINT_IMPORTERS.some((importer) => importer.test(file))) return [];
-  const findings = [];
+  const findings = dynamicEndpointImports(file, source);
   for (const statement of source.statements) {
     if (
       !(
@@ -109,4 +116,25 @@ function carriesValues(statement) {
   const clause = statement.exportClause;
   if (clause === undefined || !ts.isNamedExports(clause)) return true;
   return clause.elements.some((element) => !element.isTypeOnly);
+}
+
+// `import('../data/tables.api')` loads an endpoint module as surely as a
+// static import does.
+function dynamicEndpointImports(file, source) {
+  const findings = [];
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments[0] !== undefined &&
+      ts.isStringLiteralLike(node.arguments[0]) &&
+      ENDPOINT_MODULE.test(node.arguments[0].text)
+    )
+      findings.push(
+        `${file}: import('${node.arguments[0].text}') calls the server; call a named function or hook from the feature's data/ folder`,
+      );
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return findings;
 }

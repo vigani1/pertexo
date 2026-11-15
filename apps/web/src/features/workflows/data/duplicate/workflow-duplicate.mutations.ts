@@ -1,4 +1,4 @@
-import { observeSessionChanges } from '@/features/auth/auth-routing.public';
+import { observeSessionChanges } from '@/features/auth/public';
 import { useEffect, useRef, useState } from 'react';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

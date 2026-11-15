@@ -1,11 +1,7 @@
 import type { InvitationAcceptanceJourney } from '@pertexo/contracts';
 import { useState } from 'react';
-import {
-  AuthLens,
-  AuthLensTitle,
-  AuthStage,
-  LensLoading,
-} from '@/features/auth/auth-routing.public';
+import { AuthStage, LensLoading } from '@/features/auth/auth-routing.public';
+import { AuthLens, AuthLensTitle } from '@/features/auth/auth-views.public';
 import type { ApiClient } from '@/lib/api/client';
 import { AcceptanceFailureLine } from '../components/acceptance-failure-line';
 import { CompletedJourney } from '../components/completed-journey';

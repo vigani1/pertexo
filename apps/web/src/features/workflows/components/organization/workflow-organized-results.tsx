@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { promotionSearch } from '@/features/workflow-promotions/workflow-promotions-routing.public';
+import { promotionSearch } from '@/features/workflow-promotions/public';
 import { XIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import {

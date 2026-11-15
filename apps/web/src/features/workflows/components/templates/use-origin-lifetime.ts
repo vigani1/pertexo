@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { observeSessionChanges } from '@/features/auth/auth-routing.public';
+import { observeSessionChanges } from '@/features/auth/public';
 import { watchWorkspaceReadDenial } from '@/lib/api/read-denial';
 import { workflowTemplateOriginKey } from '../../data/origin/workflow-template-origin.queries';
 import { workflowKeys } from '../../data/workflows.queries';
