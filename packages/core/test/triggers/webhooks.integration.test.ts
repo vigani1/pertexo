@@ -65,7 +65,7 @@ import {
 import { webhookRunInput } from '@pertexo/nodes-core';
 import { EXPECTED_MIGRATION_HEAD } from '@pertexo/database/testing';
 import { ScheduleTriggerError } from '../../src/triggers/schedules/schedule-trigger.errors.js';
-import { isScheduleClaimEligible } from '../../src/triggers/schedules/scanning/occurrences.repository.js';
+import { isScheduleClaimEligible } from '../../src/triggers/schedules/scanning/process-claim.js';
 import { waitForBlockedBy } from '../support/postgres/lock-coordination.js';
 import type { WebhookDeliveryPosition } from '../../src/triggers/webhooks/webhook-delivery.types.js';
 import { createTriggerEventScanner } from '../../src/triggers/coordination/event-scanner.store.js';
@@ -73,7 +73,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { holdAdmissionRow } from './webhooks/ingress/hold-admission-row.js';
 import { Pool } from 'pg';
 import { createEventCoordinationPreparation } from '../../src/triggers/coordination/prepare.js';
-import { acceptVerifiedWebhookDelivery } from '../../src/triggers/webhooks/runtime/accept.repository.js';
+import { acceptVerifiedWebhookDelivery } from '../../src/triggers/webhooks/runtime/accept-delivery.js';
 import { createWorkspaceTurns } from '../../src/triggers/webhooks/runtime/workspace-turns.js';
 
 beforeAll(beforeAllFixture1, 60_000);

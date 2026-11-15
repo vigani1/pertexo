@@ -1,7 +1,7 @@
 import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import type { WorkflowPresence } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
-import type { EnterCollaboration } from './authority.repository.js';
+import type { EnterCollaboration } from './enter-collaboration.js';
 import { WorkflowCollaborationError } from './workflow-collaboration.errors.js';
 import type {
   HeartbeatInput,

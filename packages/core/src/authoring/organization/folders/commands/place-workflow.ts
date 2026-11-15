@@ -7,7 +7,7 @@ import { runOrganizationCommand } from '../../run-command.js';
 import {
   checkOrganizationReplay,
   organizeWorkflow,
-} from '../../placement.repository.js';
+} from '../../organize-workflow.js';
 import type { createOrganizationSession } from '../../session.js';
 import type {
   PlaceWorkflowInput,

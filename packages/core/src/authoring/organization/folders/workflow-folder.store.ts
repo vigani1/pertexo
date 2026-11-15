@@ -32,10 +32,7 @@ import {
   moveFolder,
   renameFolder,
 } from './commands/mutations.repository.js';
-import {
-  placeWorkflow,
-  reviewFolderMove,
-} from './commands/placement.repository.js';
+import { placeWorkflow, reviewFolderMove } from './commands/place-workflow.js';
 import { listFolders } from './list.repository.js';
 
 export type WorkflowFolderStore = ReturnType<typeof createWorkflowFolderStore>;

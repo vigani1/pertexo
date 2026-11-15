@@ -1,5 +1,5 @@
 import { isAdministrativeRole, type Role } from '@pertexo/policy';
-import type { OrganizationChange } from './placement.repository.js';
+import type { OrganizationChange } from './organize-workflow.js';
 
 /**
  * Archived workflows keep their tags; only administrators move them between

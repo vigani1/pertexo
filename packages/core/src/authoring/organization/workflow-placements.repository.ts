@@ -10,7 +10,7 @@ import {
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import type { OrganizationActor } from './session.js';
-import type { OrganizationChange } from './placement.repository.js';
+import type { OrganizationChange } from './organize-workflow.js';
 
 export async function folderExists(
   client: PoolClient,
