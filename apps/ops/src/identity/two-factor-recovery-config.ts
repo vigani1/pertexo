@@ -30,10 +30,7 @@ const environmentSchema = z.object({
     .max(OPERATOR_TEXT_LIMITS.reasonCharacters),
   PUBLIC_WEB_ORIGIN: z.url(),
   AUTH_MAIL_MODE: z.enum(['local', 'durable']).default('local'),
-  AUTH_MAIL_FROM: z
-    .email()
-    .max(EMAIL_ADDRESS_LIMITS.accountCharacters)
-    .optional(),
+  AUTH_MAIL_FROM: z.email().max(EMAIL_ADDRESS_LIMITS.characters).optional(),
   AUTH_MAIL_KEY: z.string().optional(),
   AUTH_MAIL_KEY_VERSION: applicationKeyVersionSchema.optional(),
   AUTH_MAIL_PREVIOUS_KEYS: z.string().optional(),
@@ -53,7 +50,7 @@ export function parseTwoFactorRecoveryConfig(
     throw new StartupSettingError('EMAIL', 'recovery_arguments_required');
   const emailResult = z
     .email()
-    .max(EMAIL_ADDRESS_LIMITS.accountCharacters)
+    .max(EMAIL_ADDRESS_LIMITS.characters)
     .safeParse(canonicalEmail(address));
   if (!emailResult.success)
     throw new StartupSettingError('EMAIL', 'recovery_arguments_required');

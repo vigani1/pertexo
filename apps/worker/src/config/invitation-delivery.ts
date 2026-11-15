@@ -50,9 +50,7 @@ export function parseInvitationDeliveryConfig(
     return undefined;
   const parsed = parseStartupSettings(
     z.object({
-      INVITATION_EMAIL_FROM: z
-        .email()
-        .max(EMAIL_ADDRESS_LIMITS.accountCharacters),
+      INVITATION_EMAIL_FROM: z.email().max(EMAIL_ADDRESS_LIMITS.characters),
       PUBLIC_WEB_ORIGIN: z.url(),
       INVITATION_EMAIL_TIMEOUT_MILLIS: z.coerce
         .number()

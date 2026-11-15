@@ -12,7 +12,7 @@ const subject = z.string().min(1).max(FEDERATED_SUBJECT_MAX_CHARACTERS);
 const email = z
   .string()
   .transform(canonicalEmail)
-  .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.accountCharacters));
+  .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.characters));
 export type OrganizationIdentity = Readonly<{
   subject: string;
   email: string;

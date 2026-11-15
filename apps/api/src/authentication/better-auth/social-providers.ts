@@ -94,7 +94,7 @@ export function betterAuthSocialProviders(
       const email = z
         .string()
         .transform(canonicalEmail)
-        .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.accountCharacters))
+        .pipe(z.email().max(EMAIL_ADDRESS_LIMITS.characters))
         .nullable()
         .safeParse(profile.user.email ?? null);
       if (!email.success) return undefined;

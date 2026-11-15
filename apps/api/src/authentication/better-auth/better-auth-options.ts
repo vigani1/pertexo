@@ -23,6 +23,7 @@ import {
 } from './two-factor.js';
 import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
 import { PASSWORD_LIMITS } from '@pertexo/workflow-model';
+import { createEmailLengthPlugin } from './email-length-plugin.js';
 
 // A session is refreshed after a quarter of its lifetime, and at least hourly.
 const SESSION_REFRESH = Object.freeze({
@@ -145,6 +146,7 @@ export function createPertexoBetterAuth(input: PertexoBetterAuthInput) {
       ? {}
       : { socialProviders: input.socialProviders }),
     plugins: [
+      createEmailLengthPlugin(),
       createTwoFactorPlugin(),
       createPasswordResetPlugin(pool, input.mail, input.diagnostics),
       createTrustedSessionPlugin(pool, input.availableLinkProviders, {
