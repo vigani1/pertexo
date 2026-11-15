@@ -1,10 +1,8 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../../shared/response-schema.js';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import {
-  PROMOTION_LIMITS,
-  promotionIdentifierSchema as id,
-} from './settings.js';
+import { promotionIdentifierSchema as id } from './settings.js';
 import { workflowPromotionPreviewRequestSchema } from './review.js';
 
 const PROMOTION_COMMANDS_BOUNDS = Object.freeze({

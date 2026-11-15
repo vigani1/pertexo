@@ -1,6 +1,4 @@
 import { responseSchema } from '../../shared/response-schema.js';
-import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
-export { PROMOTION_LIMITS };
 import { z } from 'zod';
 
 const SETTINGS_BOUNDS = Object.freeze({

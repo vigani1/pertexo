@@ -1,11 +1,14 @@
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
+import {
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  STEP_SAMPLE_LIMITS,
+} from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
 
 const STEP_SAMPLES_BOUNDS = Object.freeze({
   nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
-  stepSampleListPageItems: 200,
+  stepSampleListPageItems: STEP_SAMPLE_LIMITS.perWorkflow,
 });
 
 export const stepSampleSourceSchema = z.discriminatedUnion('kind', [

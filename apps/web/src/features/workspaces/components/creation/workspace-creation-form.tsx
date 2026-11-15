@@ -1,7 +1,7 @@
 import {
   RESOURCE_NAME_MAX_LENGTH,
   WORKSPACE_TEXT_LIMITS,
-} from '@pertexo/contracts';
+} from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
 import { workspaceCreateRequestSchema } from '@pertexo/contracts';
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react';

@@ -1,6 +1,6 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import { responseSchema } from '../../shared/response-schema.js';
 import { z } from 'zod';
-import { COLLABORATION_LIMITS } from './comments.js';
 import {
   STORED_INTEGER_MAX,
   DISPLAY_NAME_MAX_CHARACTERS,

@@ -4,7 +4,6 @@ import {
   DISPLAY_NAME_MAX_CHARACTERS,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
-export { COLLABORATION_LIMITS };
 import { z } from 'zod';
 import { isStorageText } from '@pertexo/workflow-model';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';

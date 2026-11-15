@@ -1,4 +1,8 @@
-import type { ValueSource, WorkflowGraph } from '@pertexo/workflow-model';
+import {
+  RESOURCE_NAME_MAX_LENGTH,
+  type ValueSource,
+  type WorkflowGraph,
+} from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
 import { WorkspaceVariableUsageChangedError } from '../../src/variables/workspace-variables.errors.js';
@@ -370,7 +374,7 @@ describe('what counts as a reference', () => {
       {
         id: expect.stringMatching(/^[0-9a-f]{64}$/u) as string,
         workflowId: WORKFLOW,
-        workflowName: 'n'.repeat(160),
+        workflowName: 'n'.repeat(RESOURCE_NAME_MAX_LENGTH),
         archived: true,
         stage: 'draft',
         nodeId: 'step',

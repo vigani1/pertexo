@@ -5,7 +5,6 @@ import {
   EMAIL_ADDRESS_LIMITS,
 } from '@pertexo/workflow-model';
 import { ACCOUNT_SIGN_IN_METHOD_LIMIT } from '@pertexo/workflow-model';
-export { ACCOUNT_SIGN_IN_METHOD_LIMIT };
 import { authorizationStartedSchema } from './federation/authorization.js';
 import { z } from 'zod';
 

@@ -1,5 +1,5 @@
+import { COLLABORATION_LIMITS } from '@pertexo/workflow-model';
 import {
-  COLLABORATION_LIMITS,
   workflowCommentListSchema,
   workflowCommentDetailSchema,
   workflowCommentCommandResultSchema,

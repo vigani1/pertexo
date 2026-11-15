@@ -1,4 +1,4 @@
-import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { workspaceRenameRequestSchema } from '@pertexo/contracts';

@@ -48,9 +48,14 @@ its types, never its runtime schemas (a lint rule enforces it).
   its top (`<SUBJECT>_BOUNDS`, or an exported `<SUBJECT>_LIMITS` when the API
   or the database reads it too). An entry reads its owner wherever one
   exists: `WORKFLOW_GRAPH_CONTRACT_LIMITS`, `EMAIL_ADDRESS_LIMITS`,
-  `PASSWORD_LIMITS`, `DISPLAY_NAME_MAX_CHARACTERS`, `TIME_ZONE_NAME_CHARACTERS`
-  (`workflow-model`), `NODE_FAILURE_FIELD_LIMITS` (`node-sdk`) and
-  `RESOURCE_NAME_MAX_LENGTH` (`schemas/shared/`).
+  `PASSWORD_LIMITS`, `DISPLAY_NAME_MAX_CHARACTERS`, `TIME_ZONE_NAME_CHARACTERS`,
+  `RESOURCE_NAME_MAX_LENGTH`, `CRON_EXPRESSION_LIMITS` (`workflow-model`),
+  `NODE_FAILURE_FIELD_LIMITS` and `NODE_IDENTITY_KEY_MAX_CHARACTERS`
+  (`node-sdk`).
+- A bound the database stores too lives in `workflow-model`, because storage
+  may not read contracts. Clients import it from there; contracts re-exports
+  only what the web's shared layer, which may import nothing but contracts,
+  needs (`IDEMPOTENCY_KEY_RETENTION_HOURS`).
 - Bounds the API enforces and these documents state live here, and the API
   reads them: `CALLBACK_LIMITS`, `SECRET_TOKEN_CHARACTERS`,
   `ARTIFACT_OBJECT_MAX_BYTES`, `NOTICE_UNSUBSCRIBE_LIMITS`. OpenAPI text

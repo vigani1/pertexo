@@ -87,7 +87,6 @@ export const workflowNameSchema = storageTextSchema
 const positiveVersionSchema = z.number().int().positive();
 export { workflowGraphSchema };
 // Browser-safe graph bounds, shared with the structural schema and admission.
-export { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 export type WorkflowGraphContract = WorkflowGraph;
 
 export const workflowCreateRequestSchema = z

@@ -1,3 +1,4 @@
+import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/workflow-model';
 import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialog';
 import { unreachableStepIssues } from '../../model/validation/reachability';
 import { groupWorkflowFindings } from '../../model/validation/issues';
@@ -28,7 +29,6 @@ import type { WorkflowValidationTarget } from '../../model/validation/target';
 import type { PublishStage } from '../../data/mutations/use-workflow-publication';
 import { IssuesList } from '../validation/issues-list';
 import { PublishChanges } from './publish-changes';
-import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/contracts';
 import { formatCount, pluralWord } from '@/lib/format/count';
 
 const touchTargets =

@@ -1,16 +1,23 @@
 import { workflowCommentListQuerySchema } from '@pertexo/contracts';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 import { parseCollaborationSearch } from '@/features/workflow-collaboration/model/search';
 
 const threadId = '11111111-1111-4111-8111-111111111111';
 const commentId = '22222222-2222-4222-8222-222222222222';
 
-// A step deep link is a step ID the discussion list accepts: 1 to 128
-// characters of storable text.
+// A step deep link is a step ID the discussion list accepts: a node id of 1
+// to the graph's identifier length, in storable text.
 const steps = [
   { step: 'check', kept: true },
-  { step: 'a'.repeat(128), kept: true },
-  { step: 'a'.repeat(129), kept: false },
+  {
+    step: 'a'.repeat(WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength),
+    kept: true,
+  },
+  {
+    step: 'a'.repeat(WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength + 1),
+    kept: false,
+  },
   { step: '', kept: false },
   { step: 'check\0', kept: false },
   { step: 'check\uD800', kept: false },

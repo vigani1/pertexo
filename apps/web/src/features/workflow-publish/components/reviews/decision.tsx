@@ -1,3 +1,4 @@
+import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/workflow-model';
 import { useId } from 'react';
 import type {
   PublicationReview,
@@ -11,7 +12,6 @@ import { Notice } from '@/components/ui/notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { usePublicationReviewDecision } from '../../data/mutations/use-publication-review-decision';
 import type { ReviewScope } from '../../data/reviews/publication-review.api';
-import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/contracts';
 import { formatCount } from '@/lib/format/count';
 import { ANY_ADMINISTRATOR } from '@/features/workspaces/public';
 export function ReviewDecision({

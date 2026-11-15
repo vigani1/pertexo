@@ -1,9 +1,7 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import { useState, useDeferredValue } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import {
-  PROMOTION_LIMITS,
-  type WorkflowPromotionPreviewRequest,
-} from '@pertexo/contracts';
+import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';

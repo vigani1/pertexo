@@ -1,4 +1,4 @@
-import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/contracts';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
 import { useId, useRef, useState, type RefObject } from 'react';
 import {

@@ -1,8 +1,8 @@
+import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { authenticationReturnPathSchema } from '../authentication.js';
 import {
   federationDomainNameSchema,
-  FEDERATION_LIMITS,
   federationProtocolSchema,
 } from './settings.js';
 

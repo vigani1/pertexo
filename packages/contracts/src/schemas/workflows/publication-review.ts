@@ -14,8 +14,6 @@ const PUBLICATION_REVIEW_BOUNDS = Object.freeze({
   deciderNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
 });
 
-export { PUBLICATION_REVIEW_TEXT_MAX_LENGTH };
-
 export const publicationReviewRequestSchema = z
   .object({
     note: storageTextSchema

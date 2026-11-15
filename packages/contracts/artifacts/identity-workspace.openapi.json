@@ -10204,7 +10204,7 @@
                 },
                 "workflowName": {
                   "type": "string",
-                  "maxLength": 160
+                  "maxLength": 128
                 },
                 "archived": {
                   "type": "boolean"
@@ -11155,7 +11155,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128,
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
           },
           "errors": {
             "readOnly": true,

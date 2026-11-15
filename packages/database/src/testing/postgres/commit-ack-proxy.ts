@@ -17,14 +17,27 @@ interface ConnectionState {
 }
 
 const MAX_PROTOCOL_BUFFER_BYTES = 1024 * 1024;
+// PostgreSQL's wire protocol: a message is a type byte and a 4-byte length that
+// counts itself; a startup message is a length and a 4-byte protocol version.
+const WIRE = Object.freeze({
+  typeBytes: 1,
+  lengthBytes: 4,
+  headerBytes: 5,
+  startupHeaderBytes: 8,
+  protocolVersion3: 196_608,
+  defaultPort: 5_432,
+});
 const DROP_MILESTONE_TIMEOUT_MS = 5_000;
 
 function messageLength(buffer: Buffer, offset: number): number | undefined {
-  if (buffer.length < offset + 5) return undefined;
-  const length = buffer.readUInt32BE(offset + 1);
-  if (length < 4 || length + 1 > MAX_PROTOCOL_BUFFER_BYTES)
+  if (buffer.length < offset + WIRE.headerBytes) return undefined;
+  const length = buffer.readUInt32BE(offset + WIRE.typeBytes);
+  if (
+    length < WIRE.lengthBytes ||
+    length + WIRE.typeBytes > MAX_PROTOCOL_BUFFER_BYTES
+  )
     throw new Error('Invalid PostgreSQL protocol frame');
-  return length + 1;
+  return length + WIRE.typeBytes;
 }
 
 export async function createPostgresCommitAckProxy(
@@ -44,7 +57,7 @@ export async function createPostgresCommitAckProxy(
     connections += 1;
     const target = connect({
       host: upstream.hostname,
-      port: Number(upstream.port || 5432),
+      port: Number(upstream.port || WIRE.defaultPort),
     });
     sockets.add(downstream);
     sockets.add(target);
@@ -79,10 +92,10 @@ export async function createPostgresCommitAckProxy(
         if (state.frontend.length > MAX_PROTOCOL_BUFFER_BYTES)
           throw new Error('PostgreSQL frontend buffer limit exceeded');
         if (state.startupRemaining === undefined) {
-          if (state.frontend.length < 4) return;
+          if (state.frontend.length < WIRE.lengthBytes) return;
           state.startupRemaining = state.frontend.readUInt32BE(0);
           if (
-            state.startupRemaining < 8 ||
+            state.startupRemaining < WIRE.startupHeaderBytes ||
             state.startupRemaining > MAX_PROTOCOL_BUFFER_BYTES
           )
             throw new Error('Invalid PostgreSQL startup frame');
@@ -90,7 +103,7 @@ export async function createPostgresCommitAckProxy(
         if (state.startupRemaining !== 0) {
           if (state.frontend.length < state.startupRemaining) return;
           const startup = state.frontend.subarray(0, state.startupRemaining);
-          if (startup.readUInt32BE(4) !== 196_608)
+          if (startup.readUInt32BE(WIRE.lengthBytes) !== WIRE.protocolVersion3)
             throw new Error('Unsupported PostgreSQL startup negotiation');
           state.frontend = state.frontend.subarray(state.startupRemaining);
           state.startupRemaining = 0;
@@ -103,8 +116,11 @@ export async function createPostgresCommitAckProxy(
           if (
             dropArmed &&
             frame[0] === 'Q'.charCodeAt(0) &&
-            frame.subarray(5, -1).toString('utf8').trim().toLowerCase() ===
-              'commit'
+            frame
+              .subarray(WIRE.headerBytes, -1)
+              .toString('utf8')
+              .trim()
+              .toLowerCase() === 'commit'
           ) {
             dropArmed = false;
             state.suppressBackend = true;

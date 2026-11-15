@@ -1,4 +1,3 @@
-import { WORKSPACE_TEXT_LIMITS } from '@pertexo/contracts';
 import { formatCount } from '@/lib/format/count';
 import { useId, useState } from 'react';
 import { workspaceDeletionRequestSchema } from '@pertexo/contracts';
@@ -11,7 +10,10 @@ import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
-import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
+import {
+  DATA_RETENTION_DAYS,
+  WORKSPACE_TEXT_LIMITS,
+} from '@pertexo/workflow-model';
 type WorkspaceDeletionDialogProps = Readonly<{
   workspaceName: string;
   pending: boolean;
