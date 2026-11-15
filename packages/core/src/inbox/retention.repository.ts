@@ -6,7 +6,7 @@ import {
   workspaceInboxFailureDays as days,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { expiredNoticeSql } from './lifetime.js';
+import { expiredNoticeSql } from './lifetime.repository.js';
 export const INBOX_RETENTION_RULE = {
   name: 'workspace_inbox_threads',
   async run(client: PoolClient, pageSize: number): Promise<number> {

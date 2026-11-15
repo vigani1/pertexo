@@ -39,7 +39,7 @@ import {
   connectionNeedsAttentionSql,
   type AttentionSubject,
 } from './facts.repository.js';
-import { NOTICE_WINDOW_SQL } from '../lifetime.js';
+import { NOTICE_WINDOW_SQL } from '../lifetime.repository.js';
 import { destinationConnectionIdSql } from '../../notifications/policies/admission.repository.js';
 import { UNDELIVERED_ALERT_STATUSES } from './failure-alert-state.js';
 import { RECENT_ALERT_FAILURE_SQL } from './failure-alert.repository.js';

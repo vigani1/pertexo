@@ -1,12 +1,14 @@
 const FIRST_RETRY_MILLIS = 60_000;
 const LONGEST_RETRY_MILLIS = 3_600_000;
+// Each failure in a row doubles the wait, up to the longest.
+const RETRY_GROWTH = 2;
 
 type Attempt = Readonly<{ failures: number; retryAt: number }>;
 
 /** How long to leave someone alone after this many failures in a row. */
 function retryDelayMillis(failures: number): number {
   return Math.min(
-    FIRST_RETRY_MILLIS * 2 ** (failures - 1),
+    FIRST_RETRY_MILLIS * RETRY_GROWTH ** (failures - 1),
     LONGEST_RETRY_MILLIS,
   );
 }
@@ -16,18 +18,18 @@ function retryDelayMillis(failures: number): number {
  * rather than one per cycle. In memory: after a restart everyone gets one more
  * try, which costs nothing, and several workers each keep their own.
  */
-export function createPersonBackoff() {
+export function createPersonBackoff(now: () => number = () => Date.now()) {
   const attempts = new Map<string, Attempt>();
   return {
     isWaiting: (key: string) => {
       const attempt = attempts.get(key);
-      return attempt !== undefined && attempt.retryAt > Date.now();
+      return attempt !== undefined && attempt.retryAt > now();
     },
     failed: (key: string) => {
       const failures = (attempts.get(key)?.failures ?? 0) + 1;
       attempts.set(key, {
         failures,
-        retryAt: Date.now() + retryDelayMillis(failures),
+        retryAt: now() + retryDelayMillis(failures),
       });
       return failures;
     },

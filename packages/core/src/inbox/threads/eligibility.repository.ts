@@ -1,4 +1,7 @@
-import { NOTICE_WINDOW_SQL, windowedNoticeSql } from '../lifetime.js';
+import {
+  NOTICE_WINDOW_SQL,
+  windowedNoticeSql,
+} from '../lifetime.repository.js';
 import { and, eq, exists, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';

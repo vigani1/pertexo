@@ -1,6 +1,6 @@
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { NOTICE_WINDOW_SQL } from '../lifetime.js';
+import { NOTICE_WINDOW_SQL } from '../lifetime.repository.js';
 import { and, eq, gt, inArray, isNull, notExists, or, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
