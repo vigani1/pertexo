@@ -27,10 +27,3 @@ export type VariableUsagePage = Omit<
   Readonly<{ next: WorkspaceVariableUsageCursor | null }>;
 /** A bounded page and its continuation, with no global population recount. */
 export type VariableUsageScan = VariableUsagePage;
-
-export class WorkspaceVariablesConflictError extends Error {
-  override readonly name = 'WorkspaceVariablesConflictError';
-}
-export class WorkspaceVariableUsageChangedError extends Error {
-  override readonly name = 'WorkspaceVariableUsageChangedError';
-}

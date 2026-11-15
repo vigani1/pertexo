@@ -6,12 +6,12 @@ import {
 } from '@pertexo/workflow-model/server';
 import { createHash } from 'node:crypto';
 
-import {
-  WorkspaceVariableUsageChangedError,
-  type VariableUsageInput,
-  type VariableUsagePage,
-  type VariableUsageScan,
+import type {
+  VariableUsageInput,
+  VariableUsagePage,
+  VariableUsageScan,
 } from './workspace-variables.js';
+import { WorkspaceVariableUsageChangedError } from './workspace-variables.errors.js';
 
 const MAX_SOURCES_PER_PAGE = 100;
 const MAX_SOURCE_BYTES_PER_PAGE = 65_536;

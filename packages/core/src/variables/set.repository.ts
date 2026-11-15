@@ -10,10 +10,8 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import {
-  WorkspaceVariablesConflictError,
-  type ReplaceWorkspaceVariablesInput,
-} from './workspace-variables.js';
+import type { ReplaceWorkspaceVariablesInput } from './workspace-variables.js';
+import { WorkspaceVariablesConflictError } from './workspace-variables.errors.js';
 
 /** Settings read one committed head/set view; a missing head is an untouched workspace. */
 export async function readWorkspaceVariables(
