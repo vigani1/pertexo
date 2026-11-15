@@ -10,7 +10,7 @@ import {
 } from '../queries/workflow-runs.repository.js';
 import type { RunValues } from '@pertexo/node-sdk';
 import { runValuesInTransaction } from '../values/rows.repository.js';
-import { retainedTestRunSql } from '../run-retention.repository.js';
+import { retainedTestRunSql } from '../../shared/run-retention.repository.js';
 import type { WorkflowRecoverySummary } from '../recovery/workflow-recovery.types.js';
 import { workflowRuns } from '@pertexo/database/schema';
 import {

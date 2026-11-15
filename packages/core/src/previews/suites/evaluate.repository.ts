@@ -14,7 +14,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
-import { testRunSql } from '../../runs/run-retention.repository.js';
+import { testRunSql } from '../../shared/run-retention.repository.js';
 import {
   nodeRuns,
   workflowRuns,

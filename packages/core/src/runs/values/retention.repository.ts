@@ -3,7 +3,7 @@ import { and, asc, eq, exists, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import { expiredRunSql } from '../run-retention.repository.js';
+import { expiredRunSql } from '../../shared/run-retention.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
 export const RUN_VALUES_RETENTION_RULE = {

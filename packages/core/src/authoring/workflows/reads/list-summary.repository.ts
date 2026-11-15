@@ -8,7 +8,7 @@ import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
-import { ordinaryRunSql } from '../../../runs/run-retention.repository.js';
+import { ordinaryRunSql } from '../../../shared/run-retention.repository.js';
 
 type Summary = NonNullable<WorkflowSummary['listSummary']>;
 

@@ -11,7 +11,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   retainedTestRunSql,
   runRetentionIntervalSql,
-} from '../../runs/run-retention.repository.js';
+} from '../../shared/run-retention.repository.js';
 import type { PoolClient } from 'pg';
 import { inlineSampleOutput } from './step-sample-state.repository.js';
 import { WorkflowStepSampleError } from './step-sample.errors.js';

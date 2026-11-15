@@ -1,7 +1,7 @@
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { runEvents, workflowRuns } from '@pertexo/database/schema';
 import { utf8ByteLength } from '@pertexo/workflow-model';
-import { retainedTestRunSql } from '../../run-retention.repository.js';
+import { retainedTestRunSql } from '../../../shared/run-retention.repository.js';
 import { and, desc, eq, gt, inArray, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import {
