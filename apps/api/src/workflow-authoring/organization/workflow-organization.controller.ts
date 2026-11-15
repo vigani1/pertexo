@@ -10,6 +10,10 @@ import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js'
 import { WorkflowOrganizationCommandsService } from './organization-commands.service.js';
 import { withWorkflowOrganizationRequest } from './http.js';
 import { WorkflowOrganizationReadsService } from './organization-reads.service.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
@@ -22,10 +26,10 @@ export class WorkflowOrganizationController {
   @Route(routes.listTags)
   public listTags(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, query }: RouteInput<typeof routes.listTags>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.listTags>,
   ) {
-    const { workspaceId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.reads.listTags({
         ...input,
         query: query,
@@ -36,10 +40,10 @@ export class WorkflowOrganizationController {
   @Route(routes.createTag)
   public createTag(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.createTag>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.createTag>,
   ) {
-    const { workspaceId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.commands.createTag({
         ...input,
         idempotencyKey,
@@ -51,10 +55,11 @@ export class WorkflowOrganizationController {
   @Route(routes.renameTag)
   public renameTag(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.renameTag>,
   ) {
-    const { workspaceId, tagId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { tagId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.commands.renameTag({
         ...input,
         idempotencyKey,
@@ -67,10 +72,11 @@ export class WorkflowOrganizationController {
   @Route(routes.deleteTag)
   public deleteTag(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.deleteTag>,
   ) {
-    const { workspaceId, tagId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { tagId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.commands.deleteTag({
         ...input,
         idempotencyKey,
@@ -83,10 +89,11 @@ export class WorkflowOrganizationController {
   @Route(routes.assignments)
   public assignments(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.assignments>,
   ) {
-    const { workspaceId, tagId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { tagId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.reads.listTagAssignments({
         ...input,
         tagId,
@@ -98,11 +105,12 @@ export class WorkflowOrganizationController {
   @Route(routes.replaceTags)
   public replaceTags(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.replaceTags>,
   ) {
-    const { workspaceId, workflowId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { workflowId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.commands.replaceTags({
         ...input,
         idempotencyKey,
@@ -115,10 +123,11 @@ export class WorkflowOrganizationController {
   @Route(routes.favorite)
   public favorite(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body }: RouteInput<typeof routes.favorite>,
   ) {
-    const { workspaceId, workflowId } = params;
-    return withWorkflowOrganizationRequest(request, workspaceId, (input) =>
+    const { workflowId } = params;
+    return withWorkflowOrganizationRequest(request, caller, (input) =>
       this.commands.setFavorite({
         ...input,
         workflowId,

@@ -3,15 +3,18 @@ import {
   formRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { authenticatedSession } from '../workspaces/index.js';
 import { In, Route } from '../platform/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { FormService } from './form.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { memberFormFailure } from '../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  requestIdentifiers,
+  type WorkspaceCaller,
+} from '../workspaces/request/caller.js';
 
 type FormRequest = IdentityWorkspaceRequest & AbortableRequest;
 
@@ -23,16 +26,18 @@ export class MemberFormsController {
   @Route(routes.read)
   read(
     @Req() request: FormRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.read>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.forms.read({ ...params, actorId: actorId(request), signal }),
+      this.forms.read({ ...params, actorId: caller.actor.actorId, signal }),
     );
   }
 
   @Route(routes.submit)
   submit(
     @Req() request: FormRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey, headers }: RouteInput<typeof routes.submit>,
   ) {
@@ -42,9 +47,9 @@ export class MemberFormsController {
         ...params,
         ...body,
         ...(uploadSession === undefined ? {} : { uploadSession }),
-        actorId: actorId(request),
+        actorId: caller.actor.actorId,
         idempotencyKey,
-        ...authenticatedRequestIdentifiers(request),
+        ...requestIdentifiers(caller),
         signal,
       }),
     );
@@ -53,13 +58,14 @@ export class MemberFormsController {
   @Route(routes.events)
   history(
     @Req() request: FormRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.events>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.forms.history({
         ...params,
         ...query,
-        actorId: actorId(request),
+        actorId: caller.actor.actorId,
         signal,
       }),
     );
@@ -68,31 +74,29 @@ export class MemberFormsController {
   @Route(routes.access)
   access(
     @Req() request: FormRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.access>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.forms.access({ ...params, actorId: actorId(request), signal }),
+      this.forms.access({ ...params, actorId: caller.actor.actorId, signal }),
     );
   }
 
   @Route(routes.setAccess)
   setAccess(
     @Req() request: FormRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.setAccess>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.forms.setAccess({
         ...params,
         ...body,
-        actorId: actorId(request),
+        actorId: caller.actor.actorId,
         idempotencyKey,
-        ...authenticatedRequestIdentifiers(request),
+        ...requestIdentifiers(caller),
         signal,
       }),
     );
   }
-}
-
-function actorId(request: FormRequest): string {
-  return authenticatedSession(request).userId;
 }

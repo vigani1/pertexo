@@ -10,10 +10,6 @@ import { workspaceFailure } from '../../problems/context/normalize-context-error
 import { RenameWorkspaceService } from '../commands/rename.js';
 import { UpdateUserProfileService } from '../commands/user-profile.js';
 import { RemoveWorkspaceMemberService } from '../members/removal.js';
-import {
-  optionalAuthorizedWorkspace,
-  projectAuthenticatedWorkspaceContext,
-} from '../request/authenticated-context.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import { memberCommand } from '../request/member-commands.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
@@ -27,6 +23,12 @@ import {
 } from '../workspaces.service.js';
 import { authenticatedSession } from './guards.js';
 import { In, Route } from '../../platform/http/route.js';
+import {
+  Caller,
+  serviceCaller,
+  requestIdentifiers,
+  type WorkspaceCaller,
+} from '../request/caller.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller()
@@ -84,13 +86,11 @@ export class WorkspaceMembersController {
 
   @Route(routes.members)
   public async list(
-    @Req() request: IdentityWorkspaceRequest,
-    @In() { params, query }: RouteInput<typeof routes.members>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.members>,
   ) {
     return this.members.execute({
-      actor: actorFrom(request, params.workspaceId),
-      ...optionalAuthorizedWorkspace(request),
-      routeWorkspaceId: params.workspaceId,
+      ...serviceCaller(caller),
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined ? {} : { after: query.after }),
     });
@@ -98,18 +98,18 @@ export class WorkspaceMembersController {
 
   @Route(routes.changeRole)
   public async changeRole(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.changeRole>,
   ) {
-    return this.roleChange.execute(memberCommand(request, input));
+    return this.roleChange.execute(memberCommand(caller, input));
   }
 
   @Route(routes.remove)
   public async remove(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.remove>,
   ) {
-    return this.removal.execute(memberCommand(request, input));
+    return this.removal.execute(memberCommand(caller, input));
   }
 }
 
@@ -139,71 +139,50 @@ export class WorkspaceController {
   @Route(routes.rename)
   public async rename(
     @Req() request: IdentityWorkspaceRequest,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.rename>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.rename>,
   ) {
-    const actor = actorFrom(request, params.workspaceId);
     return this.renameWorkspace.execute({
-      actor,
-      routeWorkspaceId: params.workspaceId,
+      actor: caller.actor,
+      routeWorkspaceId: caller.workspaceId,
       request: body,
       idempotencyKey,
-      requestId: actor.requestId,
-      ...traceFields(actor.traceId),
+      ...requestIdentifiers(caller),
     });
   }
 
   @Route(routes.requestDeletion)
   public async requestDeletion(
-    @Req() request: IdentityWorkspaceRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
-    { params, body, idempotencyKey }: RouteInput<typeof routes.requestDeletion>,
+    { body, idempotencyKey }: RouteInput<typeof routes.requestDeletion>,
   ) {
     return this.lifecycle.requestDeletion({
-      ...lifecycleCommand(request, params.workspaceId, idempotencyKey),
+      ...lifecycleCommand(caller, idempotencyKey),
       reason: body.reason,
     });
   }
 
   @Route(routes.restore)
   public async restore(
-    @Req() request: IdentityWorkspaceRequest,
-    @In() { params, idempotencyKey }: RouteInput<typeof routes.restore>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { idempotencyKey }: RouteInput<typeof routes.restore>,
   ) {
-    return this.lifecycle.restore(
-      lifecycleCommand(request, params.workspaceId, idempotencyKey),
-    );
+    return this.lifecycle.restore(lifecycleCommand(caller, idempotencyKey));
   }
 
   @Route(routes.reactivate)
   public async reactivate(
-    @Req() request: IdentityWorkspaceRequest,
-    @In() { params, idempotencyKey }: RouteInput<typeof routes.reactivate>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { idempotencyKey }: RouteInput<typeof routes.reactivate>,
   ) {
-    return this.lifecycle.reactivate(
-      lifecycleCommand(request, params.workspaceId, idempotencyKey),
-    );
+    return this.lifecycle.reactivate(lifecycleCommand(caller, idempotencyKey));
   }
 }
 
 /** Who changes the workspace's lifecycle, with what the guard proved. */
-function lifecycleCommand(
-  request: IdentityWorkspaceRequest,
-  workspaceId: string,
-  idempotencyKey: string,
-) {
-  const actor = actorFrom(request, workspaceId);
-  return {
-    actor,
-    ...optionalAuthorizedWorkspace(request),
-    idempotencyKey,
-    routeWorkspaceId: workspaceId,
-    requestId: actor.requestId,
-    ...traceFields(actor.traceId),
-  };
-}
-
-function actorFrom(request: IdentityWorkspaceRequest, workspaceId: string) {
-  return projectAuthenticatedWorkspaceContext(request, workspaceId).actor;
+function lifecycleCommand(caller: WorkspaceCaller, idempotencyKey: string) {
+  return { ...serviceCaller(caller), idempotencyKey };
 }
 
 function traceFields(trace: string | undefined): Readonly<{

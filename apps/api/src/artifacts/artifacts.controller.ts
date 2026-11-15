@@ -4,10 +4,6 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import {
-  optionalAuthorizedWorkspace,
-  projectAuthenticatedWorkspaceContext,
-} from '../workspaces/request/authenticated-context.js';
 import { In, Route, UnconfiguredRoute } from '../platform/http/route.js';
 import {
   withRequestOperationSignal,
@@ -19,6 +15,11 @@ import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport
 import { ArtifactService } from './artifact.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { artifactFailure } from '../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../workspaces/request/caller.js';
 
 type ArtifactRequest = IdentityWorkspaceRequest & AbortableRequest;
 
@@ -30,12 +31,13 @@ export class ArtifactsController {
   @Route(routes.beginUpload)
   public beginUpload(
     @Req() request: ArtifactRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
-    { params, body, idempotencyKey }: RouteInput<typeof routes.beginUpload>,
+    { body, idempotencyKey }: RouteInput<typeof routes.beginUpload>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.artifacts.beginUpload({
-        ...operation(request, params.workspaceId),
+        ...serviceCaller(caller),
         idempotencyKey,
         request: body,
         signal,
@@ -46,11 +48,12 @@ export class ArtifactsController {
   @Route(routes.finalizeUpload)
   public finalizeUpload(
     @Req() request: ArtifactRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.finalizeUpload>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.artifacts.finalizeUpload({
-        ...operation(request, params.workspaceId),
+        ...serviceCaller(caller),
         artifactId: params.artifactId,
         signal,
       }),
@@ -59,11 +62,11 @@ export class ArtifactsController {
 
   @Route(routes.metadata)
   public getMetadata(
-    @Req() request: ArtifactRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.metadata>,
   ) {
     return this.artifacts.getMetadata({
-      ...operation(request, params.workspaceId),
+      ...serviceCaller(caller),
       artifactId: params.artifactId,
     });
   }
@@ -71,11 +74,12 @@ export class ArtifactsController {
   @Route(routes.beginDownload)
   public beginDownload(
     @Req() request: ArtifactRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.beginDownload>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.artifacts.beginDownload({
-        ...operation(request, params.workspaceId),
+        ...serviceCaller(caller),
         artifactId: params.artifactId,
         signal,
       }),
@@ -115,12 +119,4 @@ function unavailableStorage(): never {
         'File storage is disabled on this server. Configure ARTIFACT_STORE_* to enable uploads and downloads.',
     }),
   );
-}
-
-function operation(request: ArtifactRequest, workspaceId: string) {
-  return {
-    actor: projectAuthenticatedWorkspaceContext(request, workspaceId).actor,
-    ...optionalAuthorizedWorkspace(request),
-    routeWorkspaceId: workspaceId,
-  };
 }

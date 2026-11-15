@@ -1,19 +1,21 @@
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowOrganizationInput } from './authority.js';
 
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
+import {
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 /** Shared scoped cancellation/error translation, never manual HTTP formatting. */
 export async function withWorkflowOrganizationRequest<T>(
   request: WorkflowAuthoringRequest,
-  workspaceId: string,
+  caller: WorkspaceCaller,
   work: (input: WorkflowOrganizationInput) => Promise<T>,
 ): Promise<T> {
   return await withRequestOperationSignal(request, (signal) =>
     work({
-      ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-      routeWorkspaceId: workspaceId,
+      ...serviceCaller(caller),
       signal,
     }),
   );

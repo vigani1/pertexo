@@ -9,11 +9,15 @@ import { resourceFailure } from '../../../problems/context/normalize-context-err
 import { In, Route } from '../../../platform/http/route.js';
 import {
   federationCommand,
-  federationScope,
   type FederationCommandScope,
   type FederationManagementRequest,
 } from './federation-request.js';
 import { FederationManagementService } from './federation-management.service.js';
+import {
+  Caller,
+  storeCaller,
+  type WorkspaceCaller,
+} from '../../../workspaces/request/caller.js';
 
 type Request = FederationManagementRequest;
 @UseInterceptors(domainErrors(resourceFailure))
@@ -22,13 +26,14 @@ export class FederationManagementController {
   constructor(private readonly service: FederationManagementService) {}
   private command<T>(
     request: Request,
+    caller: WorkspaceCaller,
     input: Pick<RouteInput<typeof routes.create>, 'params' | 'idempotencyKey'>,
     work: (scope: FederationCommandScope) => Promise<T>,
   ) {
     return federationCommand(
       request,
+      caller,
       {
-        workspaceId: input.params.workspaceId,
         idempotencyKey: input.idempotencyKey,
       },
       (scope) => {
@@ -38,13 +43,10 @@ export class FederationManagementController {
     );
   }
   @Route(routes.settings)
-  settings(
-    @Req() request: Request,
-    @In() { params }: RouteInput<typeof routes.settings>,
-  ) {
+  settings(@Req() request: Request, @Caller() caller: WorkspaceCaller) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.settings({
-        ...federationScope(request, params.workspaceId),
+        ...storeCaller(caller),
         signal,
       }),
     );
@@ -52,15 +54,20 @@ export class FederationManagementController {
   @Route(routes.create)
   create(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.create>,
   ) {
-    return this.command(request, input, (scope) =>
+    return this.command(request, caller, input, (scope) =>
       this.service.store.createOrganization({ ...scope, ...input.body }),
     );
   }
   @Route(routes.link)
-  link(@Req() request: Request, @In() input: RouteInput<typeof routes.link>) {
-    return this.command(request, input, (scope) =>
+  link(
+    @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
+    @In() input: RouteInput<typeof routes.link>,
+  ) {
+    return this.command(request, caller, input, (scope) =>
       this.service.store.linkWorkspace({
         ...scope,
         targetWorkspaceId: input.body.workspaceId,
@@ -72,18 +79,20 @@ export class FederationManagementController {
   @Route(routes.domain)
   domain(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.domain>,
   ) {
-    return this.command(request, input, (scope) =>
+    return this.command(request, caller, input, (scope) =>
       this.service.store.createDomain({ ...scope, ...input.body }),
     );
   }
   @Route(routes.verify)
   verify(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.verify>,
   ) {
-    return this.command(request, input, (scope) =>
+    return this.command(request, caller, input, (scope) =>
       this.service.verifyDomain({
         ...scope,
         ...input.body,
@@ -92,8 +101,12 @@ export class FederationManagementController {
     );
   }
   @Route(routes.renew)
-  renew(@Req() request: Request, @In() input: RouteInput<typeof routes.renew>) {
-    return this.command(request, input, (scope) =>
+  renew(
+    @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
+    @In() input: RouteInput<typeof routes.renew>,
+  ) {
+    return this.command(request, caller, input, (scope) =>
       this.service.store.renewDomainChallenge({
         ...scope,
         ...input.body,
@@ -104,9 +117,10 @@ export class FederationManagementController {
   @Route(routes.removeDomain)
   removeDomain(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.removeDomain>,
   ) {
-    return this.command(request, input, (scope) =>
+    return this.command(request, caller, input, (scope) =>
       this.service.store.removeDomain({
         ...scope,
         ...input.body,
@@ -117,9 +131,10 @@ export class FederationManagementController {
   @Route(routes.enforce)
   enforce(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.enforce>,
   ) {
-    return this.command(request, input, (scope) =>
+    return this.command(request, caller, input, (scope) =>
       this.service.store.configureEnforcement({
         ...scope,
         ...input.body,
@@ -130,18 +145,20 @@ export class FederationManagementController {
   @Route(routes.provider)
   provider(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.provider>,
   ) {
-    return this.command(request, input, (scope) =>
+    return this.command(request, caller, input, (scope) =>
       this.service.createProvider({ ...scope, ...input.body }),
     );
   }
   @Route(routes.updateProvider)
   updateProvider(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.updateProvider>,
   ) {
-    return this.command(request, input, (scope) =>
+    return this.command(request, caller, input, (scope) =>
       this.service.updateProvider({
         ...scope,
         ...input.body,
@@ -150,13 +167,10 @@ export class FederationManagementController {
     );
   }
   @Route(routes.metadata)
-  metadata(
-    @Req() request: Request,
-    @In() { params }: RouteInput<typeof routes.metadata>,
-  ) {
+  metadata(@Req() request: Request, @Caller() caller: WorkspaceCaller) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.metadata({
-        ...federationScope(request, params.workspaceId),
+        ...storeCaller(caller),
         signal,
       }),
     );
@@ -164,9 +178,10 @@ export class FederationManagementController {
   @Route(routes.removeProvider)
   removeProvider(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.removeProvider>,
   ) {
-    return this.command(request, input, (scope) =>
+    return this.command(request, caller, input, (scope) =>
       this.service.store.removeProvider({
         ...scope,
         ...input.body,

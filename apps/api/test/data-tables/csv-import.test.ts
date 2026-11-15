@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DataTableError } from '@pertexo/node-sdk';
 import type { DataTablesStore } from '@pertexo/core/data-tables';
-import { DataTablesService } from '../../src/data-tables/data-tables.service.js';
+import { importCsvRows } from '../../src/data-tables/import-csv-rows.js';
 function fixture() {
   const prepared: unknown[] = [];
   const definition = {
@@ -54,7 +54,7 @@ function fixture() {
     importRows: imported,
     close: vi.fn<DataTablesStore['close']>(),
   } satisfies DataTablesStore;
-  return { service: new DataTablesService(store), imported, prepared };
+  return { store, imported, prepared };
 }
 const input = {
   workspaceId: 'workspace',
@@ -65,9 +65,9 @@ const input = {
 };
 describe('typed CSV import', () => {
   it('handles a BOM, quoted commas and newlines and converts only declared types', async () => {
-    const { service, prepared } = fixture();
+    const { store, prepared } = fixture();
     expect(
-      await service.importCsv({
+      await importCsvRows(store, {
         ...input,
         csv: '\ufeffid,amount,active\r\n"001,23",12.5,false\r\n"two\nlines",0,true',
       }),
@@ -84,17 +84,19 @@ describe('typed CSV import', () => {
   ])(
     'refuses malformed or mismatched headers before writing: %s',
     async (csv) => {
-      const { service } = fixture();
-      await expect(service.importCsv({ ...input, csv })).rejects.toMatchObject({
+      const { store } = fixture();
+      await expect(
+        importCsvRows(store, { ...input, csv }),
+      ).rejects.toMatchObject({
         name: 'DataTableError',
         code: 'invalid_values',
       });
     },
   );
   it('imports a file that leaves out optional columns, which stay empty', async () => {
-    const { service, prepared } = fixture();
+    const { store, prepared } = fixture();
     expect(
-      await service.importCsv({ ...input, csv: 'amount,id\n3,b-1' }),
+      await importCsvRows(store, { ...input, csv: 'amount,id\n3,b-1' }),
     ).toEqual({ affected: 1 });
     expect(prepared[0]).toEqual([{ amount: 3, id: 'b-1' }]);
   });
@@ -106,30 +108,32 @@ describe('typed CSV import', () => {
     ],
     ['id,active\na,true', 'The CSV is missing the required column amount.'],
   ])('names what is wrong with the header: %s', async (csv, message) => {
-    const { service } = fixture();
-    await expect(service.importCsv({ ...input, csv })).rejects.toThrow(message);
+    const { store } = fixture();
+    await expect(importCsvRows(store, { ...input, csv })).rejects.toThrow(
+      message,
+    );
   });
   it('passes an empty cell on as no value, for the store to require', async () => {
-    const { service, prepared } = fixture();
-    await service.importCsv({ ...input, csv: 'id,amount\n,4' });
+    const { store, prepared } = fixture();
+    await importCsvRows(store, { ...input, csv: 'id,amount\n,4' });
     expect(prepared[0]).toEqual([{ id: null, amount: 4 }]);
   });
   it('adds the CSV header offset to a store-reported record error', async () => {
-    const { service, imported } = fixture();
+    const { store, imported } = fixture();
     imported.mockRejectedValue(
       new DataTableError('invalid_values', 'Column amount needs number.', 2),
     );
     await expect(
-      service.importCsv({
+      importCsvRows(store, {
         ...input,
         csv: 'id,amount,active\na,12,true\nb,wrong,false',
       }),
     ).rejects.toThrow('CSV row 3: Column amount needs number');
   });
   it('bounds rows and bytes with split-file guidance', async () => {
-    const { service, imported } = fixture();
+    const { store, imported } = fixture();
     await expect(
-      service.importCsv({
+      importCsvRows(store, {
         ...input,
         csv:
           'id,amount,active\n' +
@@ -139,7 +143,7 @@ describe('typed CSV import', () => {
       }),
     ).rejects.toThrow('Split');
     await expect(
-      service.importCsv({ ...input, csv: 'x'.repeat(1048577) }),
+      importCsvRows(store, { ...input, csv: 'x'.repeat(1048577) }),
     ).rejects.toThrow('Split');
     expect(imported).toHaveBeenCalledTimes(2);
   });

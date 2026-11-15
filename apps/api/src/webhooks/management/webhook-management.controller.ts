@@ -1,5 +1,3 @@
-import { commandCredential } from '../../authorization/credentials.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
   webhookRoutes as routes,
@@ -13,6 +11,11 @@ import type { AbortableRequest } from '../../platform/http/request-operation-sig
 import { WebhookManagementService } from './webhook-management.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  storeCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 type Request = IdentityWorkspaceRequest & AbortableRequest;
 type Command = RouteInput<typeof routes.provision>;
@@ -24,65 +27,73 @@ export class WebhookManagementController {
 
   @Route(routes.list)
   public list(
-    @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.list>,
   ) {
     return this.service.list({
       ...params,
-      actorId: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
-        .actor.actorId,
+      actorId: caller.actor.actorId,
     });
   }
 
   @Route(routes.deliveries)
   public deliveries(
-    @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.deliveries>,
   ) {
     return this.service.listDeliveries({
       ...params,
-      actorId: projectAuthenticatedWorkspaceContext(request, params.workspaceId)
-        .actor.actorId,
+      actorId: caller.actor.actorId,
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined ? {} : { after: query.after }),
     });
   }
 
   @Route(routes.provision)
-  public provision(@Req() request: Request, @In() input: Command) {
+  public provision(
+    @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
+    @In() input: Command,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.provision(command(request, input, signal)),
+      this.service.provision(command(caller, input, signal)),
     );
   }
 
   @Route(routes.configureAuthentication)
   public configureAuthentication(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.configureAuthentication>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.configureAuthentication({
-        ...command(request, input, signal),
+        ...command(caller, input, signal),
         authentication: input.body,
       }),
     );
   }
 
   @Route(routes.rotateEndpoint)
-  public rotateEndpoint(@Req() request: Request, @In() input: Command) {
+  public rotateEndpoint(
+    @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
+    @In() input: Command,
+  ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.service.rotateEndpoint(command(request, input, signal)),
+      this.service.rotateEndpoint(command(caller, input, signal)),
     );
   }
 
   @Route(routes.rotateSecret)
   public rotateSecret(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() input: RouteInput<typeof routes.rotateSecret>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.rotateSecret({
-        ...command(request, input, signal),
+        ...command(caller, input, signal),
         endpointKey: input.body.endpointKey,
       }),
     );
@@ -90,18 +101,13 @@ export class WebhookManagementController {
 }
 
 function command(
-  request: Request,
+  caller: WorkspaceCaller,
   { params, idempotencyKey }: Pick<Command, 'params' | 'idempotencyKey'>,
   signal: AbortSignal,
 ) {
-  const { actor } = projectAuthenticatedWorkspaceContext(
-    request,
-    params.workspaceId,
-  );
   return {
     ...params,
-    actorId: actor.actorId,
-    ...commandCredential(actor),
+    ...storeCaller(caller),
     idempotencyKey,
     signal,
   };

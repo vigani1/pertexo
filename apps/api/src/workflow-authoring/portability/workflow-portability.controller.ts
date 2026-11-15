@@ -8,7 +8,6 @@ import { requestHeaderValue } from '../../platform/http/request-headers.js';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
 import { In, Route } from '../../platform/http/route.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type {
   WorkflowAuthoringRequest,
   WorkflowResponse,
@@ -18,6 +17,11 @@ import {
   ImportWorkflowService,
   PreviewWorkflowImportService,
 } from './workflow-portability.service.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
@@ -28,9 +32,12 @@ export class WorkflowPortabilityController {
     private readonly importWorkflow: ImportWorkflowService,
   ) {}
 
+  // Nest binds handler arguments by decorator position, so they stay separate.
+  // eslint-disable-next-line max-params
   @Route(routes.export)
   public async export(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.export>,
     @Body() body: unknown,
     @Res({ passthrough: true }) response: WorkflowResponse,
@@ -38,8 +45,7 @@ export class WorkflowPortabilityController {
     const route = params;
     const result = await withRequestOperationSignal(request, (signal) =>
       this.exportWorkflow.execute({
-        ...projectAuthenticatedWorkspaceContext(request, route.workspaceId),
-        routeWorkspaceId: route.workspaceId,
+        ...serviceCaller(caller),
         workflowId: route.workflowId,
         request: body,
         ...(requestHeaderValue(request.headers, 'if-match') === undefined
@@ -64,23 +70,24 @@ export class WorkflowPortabilityController {
   @Route(routes.preview)
   public preview(
     @Req() request: WorkflowAuthoringRequest,
-    @In() { params }: RouteInput<typeof routes.preview>,
+    @Caller() caller: WorkspaceCaller,
     @Body() body: unknown,
   ) {
-    const { workspaceId } = params;
     return withRequestOperationSignal(request, (signal) =>
       this.previewImport.execute({
-        ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-        routeWorkspaceId: workspaceId,
+        ...serviceCaller(caller),
         request: body,
         signal,
       }),
     );
   }
 
+  // Nest binds handler arguments by decorator position, so they stay separate.
+  // eslint-disable-next-line max-params
   @Route(routes.import)
   public async import(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, idempotencyKey }: RouteInput<typeof routes.import>,
     @Body() body: unknown,
     @Res({ passthrough: true }) response: WorkflowResponse,
@@ -88,8 +95,7 @@ export class WorkflowPortabilityController {
     const { workspaceId } = params;
     const result = await withRequestOperationSignal(request, (signal) =>
       this.importWorkflow.execute({
-        ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-        routeWorkspaceId: workspaceId,
+        ...serviceCaller(caller),
         request: body,
         idempotencyKey: idempotencyKey,
         signal,

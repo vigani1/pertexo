@@ -8,11 +8,15 @@ import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import { parseStrongIfMatch } from '../http/preconditions.js';
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { PublicationReviewService } from './publication-review.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
@@ -22,11 +26,12 @@ export class WorkflowPublicationReviewController {
   @Route(routes.overview)
   async overview(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.overview>,
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.overview({
-        ...context(request, params.workspaceId),
+        ...context(caller, request),
         workflowId: params.workflowId,
         signal,
       }),
@@ -37,6 +42,7 @@ export class WorkflowPublicationReviewController {
   @Route(routes.request)
   async create(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.request>,
   ) {
     const representationTag = parseStrongIfMatch(
@@ -44,7 +50,7 @@ export class WorkflowPublicationReviewController {
     );
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.request({
-        ...context(request, params.workspaceId),
+        ...context(caller, request),
         workflowId: params.workflowId,
         request: body,
         representationTag,
@@ -63,11 +69,12 @@ export class PublicationReviewController {
   @Route(routes.read)
   async read(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.read>,
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.read({
-        ...context(request, params.workspaceId),
+        ...context(caller, request),
         reviewId: params.requestId,
         signal,
       }),
@@ -77,11 +84,12 @@ export class PublicationReviewController {
   @Route(routes.decide)
   async decide(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.decide>,
   ) {
     return await withRequestOperationSignal(request, (signal) =>
       this.controls.decide({
-        ...context(request, params.workspaceId),
+        ...context(caller, request),
         reviewId: params.requestId,
         request: body,
         idempotencyKey,
@@ -90,10 +98,9 @@ export class PublicationReviewController {
     );
   }
 }
-function context(request: WorkflowAuthoringRequest, workspaceId: string) {
+function context(caller: WorkspaceCaller, request: WorkflowAuthoringRequest) {
   return {
-    ...projectAuthenticatedWorkspaceContext(request, workspaceId),
-    routeWorkspaceId: workspaceId,
+    ...serviceCaller(caller),
     ...traceparent(request),
   };
 }

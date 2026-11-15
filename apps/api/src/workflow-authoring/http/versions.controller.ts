@@ -3,7 +3,6 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { In, Route } from '../../platform/http/route.js';
-import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 
 import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';
 
@@ -18,6 +17,11 @@ import type {
 } from '../workflow-authoring-request.js';
 import { ListWorkflowVersionsService } from '../workflow-authoring.service.js';
 import { parseStrongIfMatch } from './preconditions.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 @UseInterceptors(domainErrors(authoringFailure))
 @Controller()
 export class WorkflowVersionsController {
@@ -29,18 +33,15 @@ export class WorkflowVersionsController {
   @Route(routes.restoreVersion)
   public async restoreVersion(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.restoreVersion>,
     @Res({ passthrough: true }) response: WorkflowResponse,
   ) {
     const route = params;
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
+    const context = serviceCaller(caller);
     const result = await this.restoreWorkflowVersion.execute({
       ...context,
-      routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       versionId: route.versionId,
       representationTag: parseStrongIfMatch(
@@ -55,18 +56,14 @@ export class WorkflowVersionsController {
 
   @Route(routes.versions)
   public async versions(
-    @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.versions>,
   ) {
     const route = params;
     const input = query;
-    const context = projectAuthenticatedWorkspaceContext(
-      request,
-      route.workspaceId,
-    );
+    const context = serviceCaller(caller);
     return this.listVersions.execute({
       ...context,
-      routeWorkspaceId: route.workspaceId,
       workflowId: route.workflowId,
       includeGraphDigest: input.include === 'graphDigest',
       ...(input.versionId === undefined ? {} : { versionId: input.versionId }),

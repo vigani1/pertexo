@@ -3,7 +3,6 @@ import {
   formUploadRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { authenticatedSession } from '../../workspaces/index.js';
 import { In, Route } from '../../platform/http/route.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/workspace-transport.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
@@ -11,6 +10,10 @@ import type { AbortableRequest } from '../../platform/http/request-operation-sig
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize-context-errors.js';
 import { FormUploadService } from './form-upload.service.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
 
@@ -23,6 +26,7 @@ export class InputRequestUploadsController {
   @Route(routes.taskBegin)
   begin(
     @Req() request: TaskRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     {
       params,
@@ -33,7 +37,7 @@ export class InputRequestUploadsController {
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.begin({
-        target: taskTarget(request, params),
+        target: taskTarget(caller, params),
         session: headers['x-pertexo-form-session'],
         ...body,
         idempotencyKey,
@@ -45,12 +49,13 @@ export class InputRequestUploadsController {
   @Route(routes.taskFinalize)
   finalize(
     @Req() request: TaskRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, headers }: RouteInput<typeof routes.taskFinalize>,
   ) {
     const { uploadId, ...scope } = params;
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.finalize({
-        target: taskTarget(request, scope),
+        target: taskTarget(caller, scope),
         session: headers['x-pertexo-form-session'],
         uploadId,
         signal,
@@ -60,13 +65,13 @@ export class InputRequestUploadsController {
 }
 
 function taskTarget(
-  request: TaskRequest,
+  caller: WorkspaceCaller,
   { workspaceId, taskId }: Readonly<{ workspaceId: string; taskId: string }>,
 ) {
   return {
     kind: 'input_request' as const,
     workspaceId,
     taskId,
-    actorId: authenticatedSession(request).userId,
+    actorId: caller.actor.actorId,
   };
 }

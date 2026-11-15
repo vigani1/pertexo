@@ -2,8 +2,11 @@ import {
   withRequestOperationSignal,
   type AbortableRequest,
 } from '../../../platform/http/request-operation-signal.js';
-import { authenticatedSession } from '../../../workspaces/index.js';
 import type { IdentityWorkspaceRequest } from '../../../workspaces/workspace-transport.js';
+import {
+  storeCaller,
+  type WorkspaceCaller,
+} from '../../../workspaces/request/caller.js';
 
 export type FederationManagementRequest = IdentityWorkspaceRequest &
   AbortableRequest;
@@ -14,22 +17,13 @@ export type FederationScope = Readonly<{
 export type FederationCommandScope = FederationScope &
   Readonly<{ idempotencyKey: string; signal: AbortSignal }>;
 
-export function federationScope(
-  request: FederationManagementRequest,
-  workspaceId: string,
-): FederationScope {
-  return {
-    workspaceId,
-    actorId: authenticatedSession(request).userId,
-  };
-}
 export function federationCommand<T>(
   request: FederationManagementRequest,
-  input: Readonly<{ workspaceId: string; idempotencyKey: string }>,
+  caller: WorkspaceCaller,
+  { idempotencyKey }: Readonly<{ idempotencyKey: string }>,
   work: (scope: FederationCommandScope) => Promise<T>,
 ): Promise<T> {
-  const scope = federationScope(request, input.workspaceId);
-  const { idempotencyKey } = input;
+  const scope = storeCaller(caller);
   return withRequestOperationSignal(request, (signal) =>
     work({ ...scope, idempotencyKey, signal }),
   );

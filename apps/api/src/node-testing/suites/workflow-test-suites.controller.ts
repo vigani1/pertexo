@@ -10,6 +10,10 @@ import { WorkflowTestSuitesService } from './workflow-test-suites.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize-context-errors.js';
 import { draftContext, type DraftRequest } from '../draft-context.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller()
@@ -19,31 +23,34 @@ export class WorkflowTestSuitesController {
   @Route(routes.prepare)
   prepare(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.prepare>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.suites.prepare({ ...draftContext(request, params), signal }),
+      this.suites.prepare({ ...draftContext(caller, params), signal }),
     );
   }
 
   @Route(routes.list)
   list(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.list>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.suites.list({ ...draftContext(request, params), signal }),
+      this.suites.list({ ...draftContext(caller, params), signal }),
     );
   }
 
   @Route(routes.get)
   get(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.get>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.suites.get({
-        ...draftContext(request, params),
+        ...draftContext(caller, params),
         suiteId: params.suiteId,
         signal,
       }),
@@ -53,11 +60,12 @@ export class WorkflowTestSuitesController {
   @Route(routes.report)
   report(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.report>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.suites.report({
-        ...draftContext(request, params),
+        ...draftContext(caller, params),
         suiteId: params.suiteId,
         ordinal: params.ordinal,
         signal,
@@ -68,11 +76,12 @@ export class WorkflowTestSuitesController {
   @Route(routes.start)
   start(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.start>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.suites.start({
-        ...draftContext(request, params),
+        ...draftContext(caller, params),
         request: body,
         idempotencyKey,
         signal,
@@ -83,11 +92,12 @@ export class WorkflowTestSuitesController {
   @Route(routes.cancel)
   cancel(
     @Req() request: DraftRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.cancel>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.suites.cancel({
-        ...draftContext(request, params),
+        ...draftContext(caller, params),
         suiteId: params.suiteId,
         signal,
       }),

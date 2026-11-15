@@ -9,6 +9,10 @@ import { collaborationOperation } from './http.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { collaborationFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 @UseInterceptors(domainErrors(collaborationFailure))
 @Controller()
 export class WorkflowCommentsController {
@@ -16,36 +20,40 @@ export class WorkflowCommentsController {
   @Route(routes.list)
   async list(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.list>,
   ) {
-    return collaborationOperation(request, params, (scope, route) =>
+    return collaborationOperation(request, caller, params, (scope, route) =>
       this.collaboration.list({ ...scope, ...route, query }),
     );
   }
   @Route(routes.people)
   async people(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.people>,
   ) {
-    return collaborationOperation(request, params, (scope, route) =>
+    return collaborationOperation(request, caller, params, (scope, route) =>
       this.collaboration.people({ ...scope, ...route, query }),
     );
   }
   @Route(routes.read)
   async read(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.read>,
   ) {
-    return collaborationOperation(request, params, (scope, route) =>
+    return collaborationOperation(request, caller, params, (scope, route) =>
       this.collaboration.read({ ...scope, ...route, query }),
     );
   }
   @Route(routes.create)
   async create(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.create>,
   ) {
-    return collaborationOperation(request, params, (scope, route) =>
+    return collaborationOperation(request, caller, params, (scope, route) =>
       this.collaboration.create({
         ...scope,
         ...route,
@@ -57,9 +65,10 @@ export class WorkflowCommentsController {
   @Route(routes.reply)
   async reply(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.reply>,
   ) {
-    return collaborationOperation(request, params, (scope, route) =>
+    return collaborationOperation(request, caller, params, (scope, route) =>
       this.collaboration.reply({
         ...scope,
         ...route,
@@ -71,9 +80,10 @@ export class WorkflowCommentsController {
   @Route(routes.edit)
   async edit(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.edit>,
   ) {
-    return collaborationOperation(request, params, (scope, route) =>
+    return collaborationOperation(request, caller, params, (scope, route) =>
       this.collaboration.edit({
         ...scope,
         ...route,
@@ -85,9 +95,10 @@ export class WorkflowCommentsController {
   @Route(routes.remove)
   async remove(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.remove>,
   ) {
-    return collaborationOperation(request, params, (scope, route) =>
+    return collaborationOperation(request, caller, params, (scope, route) =>
       this.collaboration.remove({
         ...scope,
         ...route,
@@ -99,9 +110,10 @@ export class WorkflowCommentsController {
   @Route(routes.setStatus)
   async setStatus(
     @Req() request: WorkflowAuthoringRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.setStatus>,
   ) {
-    return collaborationOperation(request, params, (scope, route) =>
+    return collaborationOperation(request, caller, params, (scope, route) =>
       this.collaboration.setStatus({
         ...scope,
         ...route,

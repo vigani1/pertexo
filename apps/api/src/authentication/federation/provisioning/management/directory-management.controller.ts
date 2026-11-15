@@ -10,10 +10,14 @@ import { resourceFailure } from '../../../../problems/context/normalize-context-
 import { In, Route } from '../../../../platform/http/route.js';
 import {
   federationCommand,
-  federationScope,
   type FederationManagementRequest,
 } from '../../management/federation-request.js';
 import { DIRECTORY_STORE } from './tokens.js';
+import {
+  Caller,
+  storeCaller,
+  type WorkspaceCaller,
+} from '../../../../workspaces/request/caller.js';
 
 type Request = FederationManagementRequest;
 @UseInterceptors(domainErrors(resourceFailure))
@@ -23,13 +27,10 @@ export class DirectoryManagementController {
     @Inject(DIRECTORY_STORE) private readonly service: DirectoryStore,
   ) {}
   @Route(routes.settings)
-  settings(
-    @Req() request: Request,
-    @In() { params }: RouteInput<typeof routes.settings>,
-  ) {
+  settings(@Req() request: Request, @Caller() caller: WorkspaceCaller) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.settings({
-        ...federationScope(request, params.workspaceId),
+        ...storeCaller(caller),
         signal,
       }),
     );
@@ -37,12 +38,13 @@ export class DirectoryManagementController {
   @Route(routes.people)
   people(
     @Req() request: Request,
-    @In() { params, query }: RouteInput<typeof routes.people>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.people>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.people(
         {
-          ...federationScope(request, params.workspaceId),
+          ...storeCaller(caller),
           signal,
         },
         query,
@@ -52,18 +54,15 @@ export class DirectoryManagementController {
   @Route(routes.createCredential)
   createCredential(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In()
-    {
-      params,
-      body,
-      idempotencyKey,
-    }: RouteInput<typeof routes.createCredential>,
+    { body, idempotencyKey }: RouteInput<typeof routes.createCredential>,
   ) {
     const input = body;
     return federationCommand(
       request,
+      caller,
       {
-        workspaceId: params.workspaceId,
         idempotencyKey: idempotencyKey,
       },
       (scope) => this.service.createCredential({ ...scope, ...input }),
@@ -72,6 +71,7 @@ export class DirectoryManagementController {
   @Route(routes.revokeCredential)
   revokeCredential(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In()
     {
       params,
@@ -83,8 +83,8 @@ export class DirectoryManagementController {
       credentialId = params.credentialId;
     return federationCommand(
       request,
+      caller,
       {
-        workspaceId: params.workspaceId,
         idempotencyKey: idempotencyKey,
       },
       async (scope) => {
@@ -100,13 +100,14 @@ export class DirectoryManagementController {
   @Route(routes.mappings)
   mappings(
     @Req() request: Request,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.mappings>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.mappings>,
   ) {
     const input = body;
     return federationCommand(
       request,
+      caller,
       {
-        workspaceId: params.workspaceId,
         idempotencyKey: idempotencyKey,
       },
       async (scope) => {
@@ -118,12 +119,13 @@ export class DirectoryManagementController {
   @Route(routes.adoption)
   adoption(
     @Req() request: Request,
-    @In() { params, query }: RouteInput<typeof routes.adoption>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.adoption>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.service.adoption(
         {
-          ...federationScope(request, params.workspaceId),
+          ...storeCaller(caller),
           signal,
         },
         query,
@@ -133,13 +135,14 @@ export class DirectoryManagementController {
   @Route(routes.adopt)
   adopt(
     @Req() request: Request,
-    @In() { params, body, idempotencyKey }: RouteInput<typeof routes.adopt>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body, idempotencyKey }: RouteInput<typeof routes.adopt>,
   ) {
     const input = body;
     return federationCommand(
       request,
+      caller,
       {
-        workspaceId: params.workspaceId,
         idempotencyKey: idempotencyKey,
       },
       async (scope) => {
@@ -151,14 +154,15 @@ export class DirectoryManagementController {
   @Route(routes.unlink)
   unlink(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.unlink>,
   ) {
     const input = body,
       targetWorkspaceId = params.targetWorkspaceId;
     return federationCommand(
       request,
+      caller,
       {
-        workspaceId: params.workspaceId,
         idempotencyKey: idempotencyKey,
       },
       async (scope) => {

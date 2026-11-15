@@ -3,7 +3,6 @@ import {
   formUploadRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { authenticatedSession } from '../../workspaces/index.js';
 import { In, Route } from '../../platform/http/route.js';
 import type { IdentityWorkspaceRequest } from '../../workspaces/workspace-transport.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
@@ -11,6 +10,10 @@ import type { AbortableRequest } from '../../platform/http/request-operation-sig
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { formUploadFailure } from '../../problems/context/normalize-context-errors.js';
 import { FormUploadService } from './form-upload.service.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 type MemberRequest = IdentityWorkspaceRequest & AbortableRequest;
 
@@ -22,6 +25,7 @@ export class MemberFormUploadsController {
   @Route(routes.memberBegin)
   begin(
     @Req() request: MemberRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     {
       params,
@@ -32,7 +36,7 @@ export class MemberFormUploadsController {
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.begin({
-        target: memberTarget(request, params),
+        target: memberTarget(caller, params),
         session: headers['x-pertexo-form-session'],
         ...body,
         idempotencyKey,
@@ -44,12 +48,13 @@ export class MemberFormUploadsController {
   @Route(routes.memberFinalize)
   finalize(
     @Req() request: MemberRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, headers }: RouteInput<typeof routes.memberFinalize>,
   ) {
     const { uploadId, ...scope } = params;
     return withRequestOperationSignal(request, (signal) =>
       this.uploads.finalize({
-        target: memberTarget(request, scope),
+        target: memberTarget(caller, scope),
         session: headers['x-pertexo-form-session'],
         uploadId,
         signal,
@@ -59,7 +64,7 @@ export class MemberFormUploadsController {
 }
 
 function memberTarget(
-  request: MemberRequest,
+  caller: WorkspaceCaller,
   {
     workspaceId,
     workflowId,
@@ -69,6 +74,6 @@ function memberTarget(
     kind: 'member_form' as const,
     workspaceId,
     workflowId,
-    actorId: authenticatedSession(request).userId,
+    actorId: caller.actor.actorId,
   };
 }

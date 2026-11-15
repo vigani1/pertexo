@@ -13,6 +13,10 @@ import {
 import { StepSamplesService } from './step-samples.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { nodeTestingFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(nodeTestingFailure))
 @Controller()
@@ -22,21 +26,23 @@ export class StepSamplesController {
   @Route(routes.list)
   list(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.list>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.samples.list({ ...context(request, params), signal }),
+      this.samples.list({ ...context(caller, params), signal }),
     );
   }
 
   @Route(routes.get)
   get(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.get>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.samples.get({
-        ...context(request, params),
+        ...context(caller, params),
         nodeId: params.nodeId,
         signal,
       }),
@@ -46,11 +52,12 @@ export class StepSamplesController {
   @Route(routes.put)
   put(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.put>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.samples.put({
-        ...context(request, params),
+        ...context(caller, params),
         nodeId: params.nodeId,
         request: body,
         idempotencyKey,
@@ -62,11 +69,12 @@ export class StepSamplesController {
   @Route(routes.remove)
   remove(
     @Req() request: Request,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.remove>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.samples.remove({
-        ...context(request, params),
+        ...context(caller, params),
         nodeId: params.nodeId,
         request: body,
         idempotencyKey,

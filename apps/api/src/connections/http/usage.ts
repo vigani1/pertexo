@@ -1,4 +1,4 @@
-import { Controller, Req, UseInterceptors } from '@nestjs/common';
+import { Controller, UseInterceptors } from '@nestjs/common';
 import {
   connectionRoutes as routes,
   type RouteInput,
@@ -6,10 +6,13 @@ import {
 
 import { In, Route } from '../../platform/http/route.js';
 import { ListConnectionUsageService } from '../management/connection-usage.js';
-import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
-import { context } from './connections.controller.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 /** Registered only when usage can be read, so it stands apart from the others. */
 @UseInterceptors(domainErrors(connectionFailure))
@@ -19,11 +22,11 @@ export class ConnectionUsageController {
 
   @Route(routes.usage)
   public list(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query }: RouteInput<typeof routes.usage>,
   ) {
     return this.usage.execute({
-      ...context(request, params),
+      ...serviceCaller(caller),
       connectionId: params.connectionId,
       ...(query.limit === undefined ? {} : { limit: query.limit }),
       ...(query.after === undefined ? {} : { after: query.after }),

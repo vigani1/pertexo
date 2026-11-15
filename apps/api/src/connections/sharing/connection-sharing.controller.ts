@@ -5,11 +5,15 @@ import {
 } from '@pertexo/contracts/server';
 
 import { In, Route } from '../../platform/http/route.js';
-import { context } from '../http/connections.controller.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { ConnectionSharingServices } from './connection-sharing.service.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
 import { connectionFailure } from '../../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  serviceCaller,
+  type WorkspaceCaller,
+} from '../../workspaces/request/caller.js';
 
 @UseInterceptors(domainErrors(connectionFailure))
 @Controller()
@@ -18,11 +22,11 @@ export class ConnectionSharingController {
 
   @Route(routes.sharing)
   read(
-    @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.sharing>,
   ) {
     return this.sharing.read({
-      ...context(request, params),
+      ...serviceCaller(caller),
       connectionId: params.connectionId,
     });
   }
@@ -30,11 +34,12 @@ export class ConnectionSharingController {
   @Route(routes.replaceSharing)
   replace(
     @Req() request: ConnectionRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.replaceSharing>,
   ) {
     return this.sharing.replace({
-      ...context(request, params),
+      ...serviceCaller(caller),
       connectionId: params.connectionId,
       request: body,
       idempotencyKey,

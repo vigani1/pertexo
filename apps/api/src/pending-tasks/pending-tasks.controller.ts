@@ -3,15 +3,19 @@ import {
   pendingTaskRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { authenticatedSession } from '../workspaces/index.js';
 import { In, Route } from '../platform/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { withRequestOperationSignal } from '../platform/http/index.js';
 import type { AbortableRequest } from '../platform/http/request-operation-signal.js';
-import { authenticatedRequestIdentifiers } from '../workspaces/request/authenticated-context.js';
 import { PendingTaskService } from './pending-task.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../problems/context/normalize-context-errors.js';
+import {
+  Caller,
+  storeCaller,
+  requestIdentifiers,
+  type WorkspaceCaller,
+} from '../workspaces/request/caller.js';
 
 type TaskRequest = IdentityWorkspaceRequest & AbortableRequest;
 
@@ -23,31 +27,34 @@ export class PendingTasksController {
   @Route(routes.list)
   list(
     @Req() request: TaskRequest,
-    @In() { params, query }: RouteInput<typeof routes.list>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.list>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.tasks.list({ ...asker(request, params), ...query, signal }),
+      this.tasks.list({ ...storeCaller(caller), ...query, signal }),
     );
   }
 
   @Route(routes.audience)
   audience(
     @Req() request: TaskRequest,
-    @In() { params, query }: RouteInput<typeof routes.audience>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { query }: RouteInput<typeof routes.audience>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.tasks.audience({ ...asker(request, params), ...query, signal }),
+      this.tasks.audience({ ...storeCaller(caller), ...query, signal }),
     );
   }
 
   @Route(routes.inspectAudience)
   inspectAudience(
     @Req() request: TaskRequest,
-    @In() { params, body }: RouteInput<typeof routes.inspectAudience>,
+    @Caller() caller: WorkspaceCaller,
+    @In() { body }: RouteInput<typeof routes.inspectAudience>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.inspectAudience({
-        ...asker(request, params),
+        ...storeCaller(caller),
         ...body,
         signal,
       }),
@@ -57,25 +64,27 @@ export class PendingTasksController {
   @Route(routes.read)
   read(
     @Req() request: TaskRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.read>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
-      this.tasks.read({ ...asker(request, params), ...params, signal }),
+      this.tasks.read({ ...storeCaller(caller), ...params, signal }),
     );
   }
 
   @Route(routes.decide)
   decide(
     @Req() request: TaskRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body, idempotencyKey }: RouteInput<typeof routes.decide>,
   ) {
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.decide({
-        ...asker(request, params),
+        ...storeCaller(caller),
         ...params,
         ...body,
         idempotencyKey,
-        ...authenticatedRequestIdentifiers(request),
+        ...requestIdentifiers(caller),
         signal,
       }),
     );
@@ -84,27 +93,21 @@ export class PendingTasksController {
   @Route(routes.submit)
   submit(
     @Req() request: TaskRequest,
+    @Caller() caller: WorkspaceCaller,
     @In()
     { params, body, idempotencyKey, headers }: RouteInput<typeof routes.submit>,
   ) {
     const uploadSession = headers['x-pertexo-form-session'];
     return withRequestOperationSignal(request, (signal) =>
       this.tasks.submit({
-        ...asker(request, params),
+        ...storeCaller(caller),
         ...params,
         ...body,
         ...(uploadSession === undefined ? {} : { uploadSession }),
         idempotencyKey,
-        ...authenticatedRequestIdentifiers(request),
+        ...requestIdentifiers(caller),
         signal,
       }),
     );
   }
-}
-
-function asker(
-  request: TaskRequest,
-  { workspaceId }: Readonly<{ workspaceId: string }>,
-) {
-  return { workspaceId, actorId: authenticatedSession(request).userId };
 }

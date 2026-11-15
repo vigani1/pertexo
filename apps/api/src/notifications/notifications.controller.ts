@@ -12,7 +12,6 @@ import {
 } from '@pertexo/contracts/server';
 import type { FastifyReply } from 'fastify';
 
-import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import { authenticatedSession } from '../workspaces/index.js';
 import { In, Route } from '../platform/http/route.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
@@ -35,6 +34,7 @@ import { WorkspaceInboxService } from './workspace-inbox.service.js';
 import { INBOX_HINT_SOURCE, NOTIFICATION_AUTHORIZATION } from './tokens.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';
 import { inboxFailure } from '../problems/context/normalize-context-errors.js';
+import { Caller, type WorkspaceCaller } from '../workspaces/request/caller.js';
 
 /** Maximum time an open stream may rely on a previously verified access fact. */
 const STREAM_REAUTHORIZATION_INTERVAL_MS = 5_000;
@@ -62,12 +62,12 @@ export class NotificationsController {
 
   @Route(routes.list)
   public async list(
-    @Req() request: NotificationsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, query: input }: RouteInput<typeof routes.list>,
   ) {
     return this.service.list({
       workspaceId: params.workspaceId,
-      actorId: authenticatedSession(request).userId,
+      actorId: caller.actor.actorId,
       ...(input.filter === undefined ? {} : { filter: input.filter }),
       ...(input.noticeKind === undefined
         ? {}
@@ -79,35 +79,35 @@ export class NotificationsController {
 
   @Route(routes.summary)
   public async summary(
-    @Req() request: NotificationsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.summary>,
   ) {
     return this.service.summary({
       workspaceId: params.workspaceId,
-      actorId: authenticatedSession(request).userId,
+      actorId: caller.actor.actorId,
     });
   }
 
   @Route(routes.readAll)
   public async readAll(
-    @Req() request: NotificationsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body }: RouteInput<typeof routes.readAll>,
   ) {
     return this.service.markAllRead({
       workspaceId: params.workspaceId,
-      actorId: authenticatedSession(request).userId,
+      actorId: caller.actor.actorId,
       revision: body.revision,
     });
   }
 
   @Route(routes.read)
   public async read(
-    @Req() request: NotificationsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params, body }: RouteInput<typeof routes.read>,
   ) {
     return this.service.markRead({
       workspaceId: params.workspaceId,
-      actorId: authenticatedSession(request).userId,
+      actorId: caller.actor.actorId,
       threadId: params.threadId,
       revision: body.revision,
     });
@@ -116,6 +116,7 @@ export class NotificationsController {
   @Route(routes.events)
   public async events(
     @Req() request: NotificationsRequest,
+    @Caller() caller: WorkspaceCaller,
     @In() { params }: RouteInput<typeof routes.events>,
     @Res() reply: FastifyReply,
   ): Promise<void> {
@@ -134,8 +135,7 @@ export class NotificationsController {
       subscription = await this.hints.subscribe(workspaceId);
       lifetime = createStreamAuthorizationLifetime(
         {
-          actor: projectAuthenticatedWorkspaceContext(request, workspaceId)
-            .actor,
+          actor: caller.actor,
           routeWorkspaceId: workspaceId,
           capability: 'workspace:read',
           allowedWorkspaceStatuses: BROWSABLE_WORKSPACE_STATUSES,

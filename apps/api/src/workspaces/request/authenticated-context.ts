@@ -8,7 +8,7 @@ import { requestIdentifier, traceIdentifier } from './identifiers.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
 import { InvalidAuthenticatedWorkspaceContextError } from './authenticated-context.errors.js';
 
-export function authenticatedRequestIdentifiers(
+function authenticatedRequestIdentifiers(
   request: IdentityWorkspaceRequest,
 ): Readonly<{ requestId: string; traceId?: string }> {
   const actor = request.authorizedWorkspace?.actor;
@@ -24,7 +24,7 @@ export function authenticatedRequestIdentifiers(
   };
 }
 
-export function optionalAuthorizedWorkspace(
+function optionalAuthorizedWorkspace(
   request: IdentityWorkspaceRequest,
 ): Readonly<{ authorizedWorkspace?: AuthorizedWorkspaceContext }> {
   return request.authorizedWorkspace === undefined
