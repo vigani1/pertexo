@@ -53,8 +53,9 @@ user-facing copy beyond the safe messages of its errors.
   `connections/health/rules.ts`), with no I/O. Retry, timing and health
   choices count: `triggers/coordination/release-timing.ts`,
   `triggers/schedules/retirement-plan.ts`.
-- A SQL fragment several areas read stays in its owning area's repository
-  (`runs/run-retention.repository.ts` for run retention windows), and a
+- A SQL fragment several areas read stays in its owning area's repository;
+  one that areas below the owner read too goes to `shared/`
+  (`shared/run-retention.repository.ts` for run retention windows), and a
   statement two areas write the same way gets one function beside the lock
   it follows (`enterRunAdmissionProtocol` in
   `shared/workspace-fence.repository.ts`). A run admitted in a savepoint goes

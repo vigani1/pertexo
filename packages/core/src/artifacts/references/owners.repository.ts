@@ -1,7 +1,7 @@
 import {
   expiredRunSql,
   retainedTestRunSql,
-} from '../../runs/run-retention.repository.js';
+} from '../../shared/run-retention.repository.js';
 import { and, eq, exists, sql, type SQL, type SQLWrapper } from 'drizzle-orm';
 import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
 import {

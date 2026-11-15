@@ -5,7 +5,7 @@ import { withRetainedRunRead } from '../../access.js';
 import {
   ordinaryRunSql,
   expiredRunSql,
-} from '../../run-retention.repository.js';
+} from '../../../shared/run-retention.repository.js';
 import { UNSUCCESSFUL_STATUSES } from '../../statuses.js';
 import {
   workflowRunValues,

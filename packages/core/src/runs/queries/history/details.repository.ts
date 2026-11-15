@@ -10,7 +10,7 @@ import {
   retainedTestRunSql,
   runRetentionIntervalSql,
   RUN_DETAILS_RETENTION_SQL,
-} from '../../run-retention.repository.js';
+} from '../../../shared/run-retention.repository.js';
 import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
 import { readVariableSetValues } from '../../../variables/values.repository.js';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
