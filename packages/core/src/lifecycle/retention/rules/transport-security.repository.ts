@@ -1,6 +1,6 @@
 import { transportSecurityAuditFacts } from '@pertexo/database/schema';
 import { sql } from 'drizzle-orm';
-import { deletionRule } from '../../../shared/retention-deletion.js';
+import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 
 export const transportFacts = deletionRule('transport_security_audit_facts', {
   table: transportSecurityAuditFacts,

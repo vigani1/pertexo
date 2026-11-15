@@ -42,7 +42,7 @@ import {
 import {
   workspaceRecord,
   workspaceSelection,
-} from './workspaces/projection.js';
+} from './workspaces/projection.repository.js';
 import { createIdentityWorkspaceRenameStore } from './workspaces/workspace-rename.store.js';
 
 export type IdentityWorkspaceStore = ReturnType<

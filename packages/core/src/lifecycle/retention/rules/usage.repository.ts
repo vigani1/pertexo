@@ -1,7 +1,7 @@
 import { usageEvents } from '@pertexo/database/schema';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { RUN_SUMMARY_RETENTION_SQL } from '../../../runs/data-policy.js';
-import { deletionRule } from '../../../shared/retention-deletion.js';
+import { deletionRule } from '../../../shared/retention-deletion.repository.js';
 
 const skipsExpired = and(
   inArray(usageEvents.category, ['trigger.skipped', 'trigger.coordinated']),

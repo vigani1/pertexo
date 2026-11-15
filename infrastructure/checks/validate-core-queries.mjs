@@ -52,8 +52,6 @@ export const PENDING_AREAS = Object.freeze([
   'outbox',
   'previews',
   'runs',
-  'shared',
-  'tenant-access',
 ]);
 
 // The calls that run or start a query on a drizzle database, a pg client or
