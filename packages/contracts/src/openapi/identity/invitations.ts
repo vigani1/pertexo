@@ -15,7 +15,7 @@ import {
   invitationAcceptanceReceiptSchema,
   invitationAcceptanceResolveRequestSchema,
   invitationAcceptanceSessionRequestSchema,
-} from '../../schemas/identity/workspaces.js';
+} from '../../schemas/identity/invitation-acceptance.js';
 
 /**
  * Invitation management and browser-bound invitation acceptance operations

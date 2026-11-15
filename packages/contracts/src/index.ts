@@ -15,6 +15,7 @@ export * from './schemas/connections/slack-channel-lookup.js';
 export * from './schemas/connections/oauth2-connections.js';
 export * from './schemas/failure-notification-destinations.js';
 export * from './schemas/identity/workspaces.js';
+export * from './schemas/identity/invitation-acceptance.js';
 export * from './schemas/execution/node-testing.js';
 export * from './schemas/triggers/schedules.js';
 export * from './schemas/shared/transport-headers.js';

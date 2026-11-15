@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { authenticationReturnPathSchema } from '../../src/schemas/identity/authentication.js';
 import {
-  invitationAcceptanceSessionRequestSchema,
   userDisplayNameSchema,
   userProfileResponseSchema,
   userProfileUpdateRequestSchema,
   workspaceMemberRemovalRequestSchema,
   workspaceMemberRemovalResponseSchema,
 } from '../../src/schemas/identity/workspaces.js';
+import { invitationAcceptanceSessionRequestSchema } from '../../src/schemas/identity/invitation-acceptance.js';
 import { identityWorkspaceOpenApiDocument } from '../../src/server.js';
 
 const workspaceId = '0199a4a2-5c1e-7000-8000-000000000001';
