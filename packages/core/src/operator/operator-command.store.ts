@@ -12,6 +12,8 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { z } from 'zod';
 
+import { transactionTimeoutsShape } from '../shared/transaction-timeouts.schemas.js';
+
 import { readStuckWork } from '../runs/stalled/stuck-work.repository.js';
 import { commandRecord } from './command-record.js';
 import type {
@@ -45,32 +47,8 @@ import {
 
 const EVIDENCE_REF_BYTES = 4096;
 
-// The bounds and defaults of an operator transaction's lock and statement waits.
-const OPERATOR_TIMEOUT_MILLIS = Object.freeze({
-  lock: Object.freeze({ minimum: 100, maximum: 300_000, default: 10_000 }),
-  statement: Object.freeze({
-    minimum: 1_000,
-    maximum: 300_000,
-    default: 30_000,
-  }),
-});
-
 // These constructor options have no upstream configuration parser.
-const optionsSchema = z.object({
-  lockTimeoutMs: timeoutSchema(OPERATOR_TIMEOUT_MILLIS.lock),
-  statementTimeoutMs: timeoutSchema(OPERATOR_TIMEOUT_MILLIS.statement),
-});
-
-function timeoutSchema(
-  bounds: Readonly<{ minimum: number; maximum: number; default: number }>,
-) {
-  return z
-    .number()
-    .int()
-    .min(bounds.minimum)
-    .max(bounds.maximum)
-    .default(bounds.default);
-}
+const optionsSchema = z.object(transactionTimeoutsShape);
 
 export type OperatorCommandStore = ReturnType<
   typeof createOperatorCommandStore
