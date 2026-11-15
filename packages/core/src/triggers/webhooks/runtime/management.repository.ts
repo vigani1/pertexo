@@ -36,6 +36,10 @@ import {
   insertSecret,
 } from './receipts.repository.js';
 import { oneHealth } from './webhook-state.repository.js';
+import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
+
+/** How long a rotated-out secret still verifies, for senders mid-switch. */
+const PREVIOUS_SECRET_GRACE_MINUTES = 5;
 
 /** Finds the endpoint through its step, so a trigger row of any version addresses it. */
 function endpointOfTrigger(input: Command) {
@@ -267,7 +271,7 @@ export function rotateWebhookSecret(
         .set({
           currentSecretVersionId: secret.id,
           previousSecretVersionId: current,
-          previousSecretValidUntil: sql`clock_timestamp()+interval '5 minutes'`,
+          previousSecretValidUntil: sql`clock_timestamp()+${PREVIOUS_SECRET_GRACE_MINUTES}*${MINUTE_INTERVAL}`,
           updatedAt: sql`clock_timestamp()`,
         })
         .where(endpointOfTrigger(input))

@@ -15,10 +15,8 @@ import {
   claimDueSchedules,
   closeScheduleScannerLeases,
 } from './scanning/leases.repository.js';
-import {
-  processScheduleClaim,
-  ScanInterruptedError,
-} from './scanning/occurrences.repository.js';
+import { processScheduleClaim } from './scanning/occurrences.repository.js';
+import { ScanInterruptedError } from './schedule-trigger.errors.js';
 import { releaseClaims } from './retirement.repository.js';
 /**
  * Each claim stands alone: one that can't fire is retired and the rest still fire.

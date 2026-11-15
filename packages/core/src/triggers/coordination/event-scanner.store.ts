@@ -17,6 +17,9 @@ import {
   restFailedCoordinatedEvent,
 } from './release.repository.js';
 
+/** How long marking a failed release as resting may take. */
+const REST_FAILED_EVENT_TIMEOUT_MILLIS = 5_000;
+
 export type TriggerEventScanner = ReturnType<typeof createTriggerEventScanner>;
 
 /** The worker releasing held events: no member behind it, so it stays off the helper. */
@@ -80,7 +83,9 @@ export function createTriggerEventScanner(
                 row.workspace_id,
                 (transaction) =>
                   restFailedCoordinatedEvent(transaction, row.event_id),
-                { signal: AbortSignal.timeout(5_000) },
+                {
+                  signal: AbortSignal.timeout(REST_FAILED_EVENT_TIMEOUT_MILLIS),
+                },
               );
             } catch (retirementError) {
               failures.push(retirementError);

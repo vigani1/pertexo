@@ -18,3 +18,10 @@ export class ScheduleTriggerError extends Error {
 export class ScheduleClaimLostError extends Error {
   public override readonly name = 'ScheduleClaimLostError';
 }
+
+export class ScanInterruptedError extends Error {
+  public override readonly name = 'ScanInterruptedError';
+  public constructor(public override readonly cause: unknown) {
+    super('Schedule scan interrupted', { cause });
+  }
+}

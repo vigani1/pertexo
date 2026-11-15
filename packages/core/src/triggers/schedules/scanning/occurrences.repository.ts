@@ -30,14 +30,17 @@ import {
 import { claimedScheduleWorkflowPaused } from '../pause.repository.js';
 import type { RecordedScheduleOccurrence } from '../schedule-occurrence.types.js';
 import {
-  claimCleanupTimeoutMillis,
+  CLAIM_CLEANUP_TIMEOUT_MILLIS,
   retireScheduleClaim,
 } from '../retirement.repository.js';
 import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import { ScheduleClaimLostError } from '../schedule-trigger.errors.js';
+import {
+  ScanInterruptedError,
+  ScheduleClaimLostError,
+} from '../schedule-trigger.errors.js';
 import type {
   ClaimRetirement,
   ScheduleClaim,
@@ -231,12 +234,6 @@ async function persistClaimedOccurrence(
 }
 
 /** The batch can't go on, and `cause` says why: the scan was cancelled, or a claim couldn't be retired. */
-export class ScanInterruptedError extends Error {
-  public override readonly name = 'ScanInterruptedError';
-  public constructor(public override readonly cause: unknown) {
-    super('Schedule scan interrupted', { cause });
-  }
-}
 
 /** Failing to retire a claim stops the batch, reporting what led here if anything did. */
 async function retireClaim(
@@ -250,7 +247,7 @@ async function retireClaim(
       resources.claimPool,
       claim,
       retirement,
-      AbortSignal.timeout(claimCleanupTimeoutMillis),
+      AbortSignal.timeout(CLAIM_CLEANUP_TIMEOUT_MILLIS),
     );
   } catch (error: unknown) {
     throw new ScanInterruptedError(failure.length === 0 ? error : failure[0]);

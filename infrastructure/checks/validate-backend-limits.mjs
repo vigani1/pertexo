@@ -61,6 +61,7 @@ export const LIMITS_CHECKED = Object.freeze([
   'packages/core/src/outbox',
   'packages/core/src/shared',
   'packages/core/src/tenant-access',
+  'packages/core/src/triggers',
   'packages/core/src/variables',
 ]);
 

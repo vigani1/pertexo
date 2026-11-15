@@ -1,11 +1,20 @@
 import { z } from 'zod';
 
+/** What a stored schedule row can hold: its columns' widths and interval check. */
+const STORED_SCHEDULE = Object.freeze({
+  nodeIdCharacters: 256,
+  errorCodeCharacters: 128,
+  cronExpressionCharacters: 256,
+  timezoneCharacters: 128,
+  intervalMinutes: 43_200,
+});
+
 export const scheduleTriggerSchema = z
   .object({
     id: z.uuid(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
-    nodeId: z.string().min(1).max(256),
+    nodeId: z.string().min(1).max(STORED_SCHEDULE.nodeIdCharacters),
     kind: z.literal('schedule'),
     status: z.enum([
       'desired',
@@ -17,18 +26,28 @@ export const scheduleTriggerSchema = z
       'error',
     ]),
     healthStatus: z.enum(['healthy', 'degraded', 'unhealthy', 'disabled']),
-    lastErrorCode: z.string().max(128).nullable(),
+    lastErrorCode: z
+      .string()
+      .max(STORED_SCHEDULE.errorCodeCharacters)
+      .nullable(),
     reconciledAt: z.date().nullable(),
     recurrence: z
       .discriminatedUnion('kind', [
         z.object({
           kind: z.literal('cron'),
-          expression: z.string().min(1).max(256),
-          timezone: z.string().min(1).max(128),
+          expression: z
+            .string()
+            .min(1)
+            .max(STORED_SCHEDULE.cronExpressionCharacters),
+          timezone: z.string().min(1).max(STORED_SCHEDULE.timezoneCharacters),
         }),
         z.object({
           kind: z.literal('interval'),
-          intervalMinutes: z.number().int().min(1).max(43_200),
+          intervalMinutes: z
+            .number()
+            .int()
+            .min(1)
+            .max(STORED_SCHEDULE.intervalMinutes),
         }),
       ])
       .nullable(),

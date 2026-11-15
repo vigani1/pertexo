@@ -9,7 +9,10 @@ import { withPlatformTransaction } from '@pertexo/database/platform';
 /** A schedule claim the scanner holds: the trigger and its lease. */
 type RetirableClaim = Readonly<{ trigger_id: string; lease_token: string }>;
 
-export const claimCleanupTimeoutMillis = 5_000;
+/** How long releasing or retiring one claim may take. */
+export const CLAIM_CLEANUP_TIMEOUT_MILLIS = 5_000;
+/** A failed claim waits a minute; a deferred one at most five. */
+const RETIREMENT_RETRY_SECONDS = Object.freeze({ failed: 60, maximum: 300 });
 
 export async function retireScheduleClaim(
   pool: Pool,
@@ -29,11 +32,13 @@ export async function retireScheduleClaim(
         return;
       }
       const retrySeconds =
-        retirement.kind === 'defer' ? retirement.retryAfterSeconds : 60;
+        retirement.kind === 'defer'
+          ? retirement.retryAfterSeconds
+          : RETIREMENT_RETRY_SECONDS.failed;
       if (
         !Number.isInteger(retrySeconds) ||
         retrySeconds < 1 ||
-        retrySeconds > 300
+        retrySeconds > RETIREMENT_RETRY_SECONDS.maximum
       )
         throw new RangeError('Invalid schedule admission backoff');
       const reason =
@@ -74,7 +79,7 @@ export async function releaseClaims(
   pool: Pool,
   claims: readonly RetirableClaim[],
 ): Promise<void> {
-  const signal = AbortSignal.timeout(claimCleanupTimeoutMillis);
+  const signal = AbortSignal.timeout(CLAIM_CLEANUP_TIMEOUT_MILLIS);
   for (const claim of claims)
     await retireScheduleClaim(pool, claim, { kind: 'release' }, signal).catch(
       () => undefined,

@@ -21,8 +21,11 @@ import {
   listenerSelection,
   lockListener,
 } from './webhook-test-listeners.repository.js';
+import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 const LISTENER_ATTEMPT_LIMIT = 60;
+/** How long a received test event stays readable. */
+const TEST_EVENT_LIFETIME_MINUTES = 10;
 
 /**
  * What the test address does for an HTTP sender. No member is acting, so these stay off
@@ -206,7 +209,7 @@ export async function captureTestEvent(
         .set({
           outputRef: output,
           receivedAt: sql`clock_timestamp()`,
-          expiresAt: sql`clock_timestamp()+interval '10 minutes'`,
+          expiresAt: sql`clock_timestamp()+${TEST_EVENT_LIFETIME_MINUTES}*${MINUTE_INTERVAL}`,
         })
         .where(
           and(
