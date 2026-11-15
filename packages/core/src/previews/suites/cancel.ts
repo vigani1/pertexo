@@ -1,21 +1,18 @@
-import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
-import {
-  parseWorkspaceId,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
-import {
-  databaseSchema,
-  workflowTestSuiteCases,
-  workflowTestSuites,
-} from '@pertexo/database/schema';
+import { parseWorkspaceId } from '@pertexo/database/primitives';
+import { databaseSchema } from '@pertexo/database/schema';
 import type { Role } from '@pertexo/policy';
 import { cancelInTransaction } from '../../runs/commands/cancel-run.js';
 import { WorkflowRunNotFoundError } from '../../runs/workflow-run.errors.js';
 import { requireTestStopAuthority } from '../workflows/access.js';
 import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
-import { skipPendingCases } from './cases.repository.js';
+import { readRunningCaseRunId, skipPendingCases } from './cases.repository.js';
+import {
+  completeSuite,
+  lockLiveSuite,
+  requestSuiteCancel,
+} from './suite-state.repository.js';
 import type { WorkflowTestSuiteInput } from './workflow-test-suite.types.js';
 
 export async function cancelTestSuite(
@@ -23,62 +20,15 @@ export async function cancelTestSuite(
   role: Role,
   input: WorkflowTestSuiteInput,
 ): Promise<void> {
-  const db = drizzle(client);
-  const found = await db
-    .select()
-    .from(workflowTestSuites)
-    .where(
-      and(
-        eq(workflowTestSuites.workspaceId, input.workspaceId),
-        eq(workflowTestSuites.workflowId, input.workflowId),
-        eq(workflowTestSuites.id, input.suiteId),
-        sql`${workflowTestSuites.expiresAt}>clock_timestamp()`,
-      ),
-    )
-    .for('update')
-    .catch(rethrowQueryFailure);
-  const suite = found[0];
+  const suite = await lockLiveSuite(client, input);
   if (suite === undefined) throw new WorkflowTestError('not_found');
   requireTestStopAuthority(role, suite.startedBy, input.actorId);
   if (suite.status !== 'running') return;
-  await db
-    .update(workflowTestSuites)
-    .set({
-      cancelRequested: true,
-      stopReason: 'user_canceled',
-      nextCheckAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workflowTestSuites.workspaceId, input.workspaceId),
-        eq(workflowTestSuites.id, input.suiteId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  const key = { workspaceId: input.workspaceId, id: input.suiteId };
+  await requestSuiteCancel(client, key);
   await skipPendingCases(client, input.workspaceId, input.suiteId);
-  const active = await db
-    .select({ runId: workflowTestSuiteCases.runId })
-    .from(workflowTestSuiteCases)
-    .where(
-      and(
-        eq(workflowTestSuiteCases.workspaceId, input.workspaceId),
-        eq(workflowTestSuiteCases.suiteId, input.suiteId),
-        eq(workflowTestSuiteCases.status, 'running'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  const runId = active[0]?.runId;
-  if (runId === undefined)
-    await db
-      .update(workflowTestSuites)
-      .set({ status: 'canceled', completedAt: sql`clock_timestamp()` })
-      .where(
-        and(
-          eq(workflowTestSuites.workspaceId, input.workspaceId),
-          eq(workflowTestSuites.id, input.suiteId),
-        ),
-      )
-      .catch(rethrowQueryFailure);
+  const runId = await readRunningCaseRunId(client, input);
+  if (runId === undefined) await completeSuite(client, key, 'canceled');
   else if (runId === null) throw new WorkflowRunNotFoundError();
   else
     await cancelInTransaction(

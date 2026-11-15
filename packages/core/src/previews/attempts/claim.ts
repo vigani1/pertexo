@@ -1,12 +1,6 @@
 import { requireActivePreviewWorkspace } from './workspace-fence.repository.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool, PoolClient } from 'pg';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
-import { previewAttempts, previewRuns } from '@pertexo/database/schema';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 import type {
   ClaimPreviewDeliveryInput,
   PreviewClaimResult,
@@ -18,7 +12,6 @@ import { PreviewAttemptStateError } from '../preview.errors.js';
 import {
   mayHaveDispatchedUnsafely,
   TERMINAL_PREVIEW_STATUSES,
-  UNFINISHED_PREVIEW_STATUSES,
 } from '../preview-state.js';
 import {
   auditingDeliveryMismatch,
@@ -28,6 +21,14 @@ import {
   validatePreviewDelivery,
 } from './deliveries.repository.js';
 import { appendPreviewTerminalFacts } from './facts.repository.js';
+import {
+  leasePreviewAttempt,
+  markPreviewRunStarted,
+} from './lease.repository.js';
+import {
+  timeOutPreviewAttempt,
+  timeOutPreviewRun,
+} from './outcomes.repository.js';
 
 import {
   loadPreviewLease,
@@ -43,51 +44,10 @@ async function terminalizeExpiredPreview(
     workspaceId: string;
   }>,
 ): Promise<void> {
-  const safeErrorCode = 'preview.deadline_exceeded';
-  const db = drizzle(client);
-  const attempt = await db
-    .update(previewAttempts)
-    .set({
-      status: 'timed_out',
-      safeErrorCode,
-      startedAt: sql`coalesce(${previewAttempts.startedAt},clock_timestamp())`,
-      completedAt: sql`clock_timestamp()`,
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      fenceToken: sql`${previewAttempts.fenceToken}+1`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(previewAttempts.workspaceId, input.workspaceId),
-        eq(previewAttempts.id, input.previewAttemptId),
-        eq(previewAttempts.previewRunId, input.previewRunId),
-        inArray(previewAttempts.status, UNFINISHED_PREVIEW_STATUSES),
-      ),
-    )
-    .returning({ id: previewAttempts.id })
-    .catch(rethrowQueryFailure);
-  if (attempt.length !== 1)
+  if (!(await timeOutPreviewAttempt(client, input)))
     throw new PreviewAttemptStateError('deadline_transition_lost');
-  const run = await db
-    .update(previewRuns)
-    .set({
-      status: 'timed_out',
-      safeErrorCode,
-      startedAt: sql`coalesce(${previewRuns.startedAt},clock_timestamp())`,
-      completedAt: sql`clock_timestamp()`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(previewRuns.workspaceId, input.workspaceId),
-        eq(previewRuns.id, input.previewRunId),
-        inArray(previewRuns.status, UNFINISHED_PREVIEW_STATUSES),
-      ),
-    )
-    .returning({ id: previewRuns.id })
-    .catch(rethrowQueryFailure);
-  if (run.length !== 1) throw new PreviewAttemptStateError('run_sync_lost');
+  if (!(await timeOutPreviewRun(client, input)))
+    throw new PreviewAttemptStateError('run_sync_lost');
   await appendPreviewTerminalFacts(client, {
     previewAttemptId: input.previewAttemptId,
     previewRunId: input.previewRunId,
@@ -206,54 +166,10 @@ async function claimPreviewLease(
     | 'leaseDurationSeconds'
   >,
 ) {
-  const db = drizzle(client);
-  const claimed = await db
-    .update(previewAttempts)
-    .set({
-      status: 'running',
-      leaseOwner: parsed.workerId,
-      leaseExpiresAt: sql`least(clock_timestamp()+(${parsed.leaseDurationSeconds}::int*interval '1 second'),${previewRuns.executionDeadlineAt})`,
-      fenceToken: sql`${previewAttempts.fenceToken}+1`,
-      startedAt: sql`coalesce(${previewAttempts.startedAt},clock_timestamp())`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .from(previewRuns)
-    .where(
-      and(
-        eq(previewAttempts.workspaceId, parsed.workspaceId),
-        eq(previewAttempts.id, parsed.previewAttemptId),
-        eq(previewAttempts.previewRunId, parsed.previewRunId),
-        inArray(previewAttempts.status, UNFINISHED_PREVIEW_STATUSES),
-        eq(previewRuns.workspaceId, previewAttempts.workspaceId),
-        eq(previewRuns.id, previewAttempts.previewRunId),
-        sql`${previewRuns.executionDeadlineAt}>clock_timestamp()`,
-      ),
-    )
-    .returning({
-      fenceToken: previewAttempts.fenceToken,
-      leaseExpiresAt: sql<Date>`${previewAttempts.leaseExpiresAt}`.mapWith(
-        previewAttempts.leaseExpiresAt,
-      ),
-    })
-    .catch(rethrowQueryFailure);
-  const claimedRow = claimed[0];
+  const claimedRow = await leasePreviewAttempt(client, parsed);
   if (claimedRow === undefined)
     throw new PreviewAttemptStateError('claim_lost');
-  await db
-    .update(previewRuns)
-    .set({
-      status: 'running',
-      startedAt: sql`coalesce(${previewRuns.startedAt},clock_timestamp())`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(previewRuns.workspaceId, parsed.workspaceId),
-        eq(previewRuns.id, parsed.previewRunId),
-        eq(previewRuns.status, 'queued'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
+  await markPreviewRunStarted(client, parsed);
   const lease = await loadPreviewLease(client, {
     attemptFenceToken: claimedRow.fenceToken,
     previewAttemptId: parsed.previewAttemptId,

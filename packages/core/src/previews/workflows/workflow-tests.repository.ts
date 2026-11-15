@@ -18,6 +18,9 @@ import type {
   WorkflowTestSummary,
 } from './workflow-test.types.js';
 
+/** How many recent test runs the history shows. */
+const TEST_HISTORY_ROWS = 20;
+
 const run = alias(workflowRuns, 'run');
 const testSummarySelection = {
   runId: run.id,
@@ -56,7 +59,7 @@ function listTestRows(client: PoolClient, input: WorkflowActor) {
       desc(run.createdAt),
       desc(run.id),
     )
-    .limit(20)
+    .limit(TEST_HISTORY_ROWS)
     .catch(rethrowQueryFailure);
 }
 function summary(
@@ -102,4 +105,26 @@ export async function readTestDetail(
     graph: row.graphJson,
     dispositions: row.dispositions,
   };
+}
+
+/** Whether the actor already has an unfinished test run of this workflow. */
+export async function hasActiveTestRun(
+  client: PoolClient,
+  input: WorkflowActor,
+): Promise<boolean> {
+  const active = await drizzle(client)
+    .select({ id: workflowRuns.id })
+    .from(workflowRuns)
+    .where(
+      and(
+        eq(workflowRuns.workspaceId, input.workspaceId),
+        eq(workflowRuns.workflowId, input.workflowId),
+        eq(workflowRuns.startedBy, input.actorId),
+        testRunSql(),
+        inArray(workflowRuns.status, ACTIVE_TEST_RUN_STATUSES),
+      ),
+    )
+    .limit(1)
+    .catch(rethrowQueryFailure);
+  return active.length !== 0;
 }

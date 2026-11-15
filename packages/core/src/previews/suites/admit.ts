@@ -1,15 +1,10 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
-import {
-  workflowTestSuiteCases,
-  workflowTestSnapshots,
-} from '@pertexo/database/schema';
 import { admitTestRun } from '../workflows/admit.js';
+import { extendTestSnapshotRetention } from '../workflows/snapshot.repository.js';
+import { startPendingCase } from './cases.repository.js';
 import type { SuiteCaseRow, SuiteRow } from './workflow-test-suite.types.js';
 export async function admitSuiteCase(
   client: PoolClient,
@@ -48,32 +43,16 @@ export async function admitSuiteCase(
       },
     },
   });
-  const db = drizzle(client);
-  await db
-    .update(workflowTestSnapshots)
-    .set({
-      expiresAt: sql`greatest(${workflowTestSnapshots.expiresAt},${new Date(accepted.acceptedAt.getTime() + TEST_RUN_RETENTION_MILLIS)})`,
-    })
-    .where(
-      and(
-        eq(workflowTestSnapshots.workspaceId, suite.workspaceId),
-        eq(workflowTestSnapshots.id, suite.snapshotId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  const changed = await db
-    .update(workflowTestSuiteCases)
-    .set({ runId: accepted.runId, status: 'running' })
-    .where(
-      and(
-        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
-        eq(workflowTestSuiteCases.suiteId, suite.id),
-        eq(workflowTestSuiteCases.ordinal, entry.ordinal),
-        eq(workflowTestSuiteCases.status, 'pending'),
-      ),
-    )
-    .returning({ ordinal: workflowTestSuiteCases.ordinal })
-    .catch(rethrowQueryFailure);
-  if (changed.length !== 1)
-    throw new Error('Suite case admission lost its pending case');
+  await extendTestSnapshotRetention(
+    client,
+    suite,
+    new Date(accepted.acceptedAt.getTime() + TEST_RUN_RETENTION_MILLIS),
+  );
+  const started = await startPendingCase(
+    client,
+    { workspaceId: suite.workspaceId, suiteId: suite.id },
+    entry.ordinal,
+    accepted.runId,
+  );
+  if (!started) throw new Error('Suite case admission lost its pending case');
 }

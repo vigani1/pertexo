@@ -1,16 +1,15 @@
 import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
-import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
-import {
-  rethrowQueryFailure,
-  withTenantScopedClient,
-} from '@pertexo/database/primitives';
-import { previewAttempts } from '@pertexo/database/schema';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 
 import { isConnectionFenceCurrent } from '../../connections/runtime/credential-use.repository.js';
 import { PreviewAttemptStateError } from '../preview.errors.js';
 import type { MarkPreviewDispatchedInput } from './preview-attempt.types.js';
+import {
+  lockPreviewDispatchBinding,
+  markPreviewDispatch,
+} from './dispatch-marks.repository.js';
 
 export async function markPreviewDispatched(
   pool: Pool,
@@ -50,25 +49,7 @@ export async function markPreviewDispatched(
       }
       if (workspaceStatus !== 'active')
         throw new PreviewAttemptStateError('workspace_unavailable');
-      const db = drizzle(client);
-      const ownsLiveLease = and(
-        eq(previewAttempts.workspaceId, scope.workspaceId),
-        eq(previewAttempts.id, scope.previewAttemptId),
-        eq(previewAttempts.previewRunId, scope.previewRunId),
-        eq(previewAttempts.status, 'running'),
-        eq(previewAttempts.leaseOwner, scope.workerId),
-        eq(previewAttempts.fenceToken, scope.attemptFenceToken),
-        sql`${previewAttempts.leaseExpiresAt}>clock_timestamp()`,
-      );
-      const locked = await db
-        .select({
-          providerDispatchBinding: previewAttempts.providerDispatchBinding,
-        })
-        .from(previewAttempts)
-        .where(ownsLiveLease)
-        .for('update')
-        .catch(rethrowQueryFailure);
-      const existingBinding = locked[0]?.providerDispatchBinding;
+      const existingBinding = await lockPreviewDispatchBinding(client, scope);
       if (existingBinding === undefined)
         throw new PreviewAttemptStateError('dispatch_marker_lost');
       const dispatchBindingChanged =
@@ -77,17 +58,13 @@ export async function markPreviewDispatched(
         existingBinding !== scope.providerDispatchBinding;
       if (dispatchBindingChanged)
         throw new PreviewAttemptStateError('dispatch_binding_mismatch');
-      const result = await db
-        .update(previewAttempts)
-        .set({
-          dispatchMarkedAt: sql`coalesce(${previewAttempts.dispatchMarkedAt},clock_timestamp())`,
-          providerDispatchBinding: sql`coalesce(${previewAttempts.providerDispatchBinding},${scope.providerDispatchBinding ?? null})`,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(ownsLiveLease)
-        .returning({ id: previewAttempts.id })
-        .catch(rethrowQueryFailure);
-      if (result.length !== 1)
+      if (
+        !(await markPreviewDispatch(
+          client,
+          scope,
+          scope.providerDispatchBinding,
+        ))
+      )
         throw new PreviewAttemptStateError('dispatch_marker_lost');
       return 'committed' as const;
     },

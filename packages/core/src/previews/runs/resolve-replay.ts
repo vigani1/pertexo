@@ -5,14 +5,13 @@ import type {
 } from './preview-replay.types.js';
 
 import type { Role } from '@pertexo/policy';
-import { and, eq, gt } from 'drizzle-orm';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 
 import { PreviewAcceptanceCorruptError } from '../preview.errors.js';
 import { previewWorkflowVisible } from './acceptance/admission.repository.js';
 import { readExistingAcceptance } from './acceptance/replay.repository.js';
 
-import { previewAttempts, previewRuns } from '@pertexo/database/schema';
+import { readLivePreviewReplay } from './preview-runs.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 export async function resolvePreviewReplay(
@@ -37,45 +36,11 @@ export async function resolvePreviewReplay(
     scope: `${input.actorUserId}:${input.workflowId}`,
   });
   if (existing === null) return null;
-  const rows = await transaction.db
-    .select({
-      id: previewRuns.id,
-      workspaceId: previewRuns.workspaceId,
-      workflowId: previewRuns.workflowId,
-      draftRevision: previewRuns.draftRevision,
-      nodeId: previewRuns.nodeId,
-      status: previewRuns.status,
-      sideEffectClass: previewRuns.sideEffectClass,
-      mayContactProvider: previewRuns.mayContactProvider,
-      mayCauseExternalSideEffect: previewRuns.mayCauseExternalSideEffect,
-      dryRun: previewRuns.dryRun,
-      pinnedSampleId: previewRuns.pinnedSampleId,
-      outputRef: previewRuns.outputRef,
-      createdAt: previewRuns.createdAt,
-      completedAt: previewRuns.completedAt,
-      startedAt: previewRuns.startedAt,
-      safeErrorCode: previewRuns.safeErrorCode,
-      errorSummary: previewAttempts.errorSummary,
-      codeDiagnostics: previewAttempts.codeDiagnostics,
-      expiresAt: previewRuns.expiresAt,
-    })
-    .from(previewRuns)
-    .leftJoin(
-      previewAttempts,
-      and(
-        eq(previewAttempts.workspaceId, previewRuns.workspaceId),
-        eq(previewAttempts.previewRunId, previewRuns.id),
-      ),
-    )
-    .where(
-      and(
-        eq(previewRuns.workspaceId, transaction.workspaceId),
-        eq(previewRuns.id, existing.previewRunId),
-        gt(previewRuns.expiresAt, now),
-      ),
-    )
-    .limit(1);
-  const replay = rows[0];
+  const replay = await readLivePreviewReplay(
+    transaction,
+    existing.previewRunId,
+    now,
+  );
   if (replay === undefined) return null;
   if (replay.workflowId !== input.workflowId)
     throw new PreviewAcceptanceCorruptError();

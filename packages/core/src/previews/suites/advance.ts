@@ -1,14 +1,6 @@
-import { and, asc, eq, ne, sql, type SQL } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  workflowTestSuites,
-  workflowTestSuiteCases,
-  workspaces,
-  workflows,
-} from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { canonicalJson } from '@pertexo/workflow-model';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { WorkflowNotFoundError } from '../../authoring/workflows/workflow-authoring.errors.js';
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { rolesForCapability } from '@pertexo/policy';
@@ -22,85 +14,42 @@ import { isActiveTestRun } from '../workflows/rules.js';
 import type { SuiteRow, SuiteCaseRow } from './workflow-test-suite.types.js';
 import { admitSuiteCase } from './admit.js';
 import { suiteOutcome } from './rules.js';
-import { skipPendingCases } from './cases.repository.js';
+import {
+  countNonpassingCases,
+  readFirstCaseIn,
+  settleSuiteCase,
+  skipPendingCases,
+} from './cases.repository.js';
 import {
   evaluateSuiteCase,
   readSuiteRunOutcome,
 } from './evaluate.repository.js';
+import {
+  completeSuite,
+  keepCaseAdmission,
+  lockDueSuite,
+  lockSuiteWorkflowStatus,
+  lockSuiteWorkspace,
+  openCaseAdmission,
+  recordSuiteStopReason,
+  scheduleSuiteCheck,
+  undoCaseAdmission,
+} from './suite-state.repository.js';
 
-async function stop(
-  client: PoolClient,
-  suite: SuiteRow,
-  reason: string,
-): Promise<void> {
-  await drizzle(client)
-    .update(workflowTestSuites)
-    .set({
-      stopReason: sql`coalesce(${workflowTestSuites.stopReason},${reason})`,
-    })
-    .where(
-      and(
-        eq(workflowTestSuites.workspaceId, suite.workspaceId),
-        eq(workflowTestSuites.id, suite.id),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  suite.stopReason ??= reason;
-  await skipPendingCases(client, suite.workspaceId, suite.id);
-}
-async function checkSuiteAgain(
-  client: PoolClient,
-  suite: SuiteRow,
-  after: SQL,
-): Promise<void> {
-  await drizzle(client)
-    .update(workflowTestSuites)
-    .set({ nextCheckAt: sql`clock_timestamp()+${after}` })
-    .where(
-      and(
-        eq(workflowTestSuites.workspaceId, suite.workspaceId),
-        eq(workflowTestSuites.id, suite.id),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-}
-async function finish(client: PoolClient, suite: SuiteRow): Promise<void> {
-  const remaining = await drizzle(client)
-    .select({ nonpassing: sql<number>`count(*)::integer` })
-    .from(workflowTestSuiteCases)
-    .where(
-      and(
-        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
-        eq(workflowTestSuiteCases.suiteId, suite.id),
-        ne(workflowTestSuiteCases.status, 'passed'),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  const status = suiteOutcome(suite, remaining[0]?.nonpassing);
-  await drizzle(client)
-    .update(workflowTestSuites)
-    .set({ status, completedAt: sql`clock_timestamp()` })
-    .where(
-      and(
-        eq(workflowTestSuites.workspaceId, suite.workspaceId),
-        eq(workflowTestSuites.id, suite.id),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-}
+/** How soon a suite is checked again, in seconds. */
+const SUITE_CHECK_AFTER_SECONDS = Object.freeze({
+  // A case is running, or the next one was just admitted.
+  next: 1,
+  // The workspace has no room for another run yet.
+  quotaFull: 5,
+});
+
 /** Called after the workspace fence; never from a transaction holding a run row. */
 export async function advanceSuite(
   client: PoolClient,
   candidate: Pick<SuiteRow, 'workspaceId' | 'workflowId' | 'startedBy' | 'id'>,
 ): Promise<boolean> {
-  const db = drizzle(client);
-  const workspace = await db
-    .select({ id: workspaces.id })
-    .from(workspaces)
-    .where(eq(workspaces.id, candidate.workspaceId))
-    .for('share')
-    .catch(rethrowQueryFailure);
-  if (workspace.length !== 1) return false;
+  if (!(await lockSuiteWorkspace(client, candidate.workspaceId))) return false;
   let allowed = true;
   const scope = {
     workspaceId: candidate.workspaceId,
@@ -113,32 +62,12 @@ export async function advanceSuite(
     if (error instanceof WorkflowNotFoundError) allowed = false;
     else throw error;
   }
-  const workflow = await db
-    .select({ lifecycleStatus: workflows.lifecycleStatus })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, candidate.workspaceId),
-        eq(workflows.id, candidate.workflowId),
-      ),
-    )
-    .for('share')
-    .catch(rethrowQueryFailure);
-  const found = await db
-    .select()
-    .from(workflowTestSuites)
-    .where(
-      and(
-        eq(workflowTestSuites.workspaceId, candidate.workspaceId),
-        eq(workflowTestSuites.id, candidate.id),
-        eq(workflowTestSuites.status, 'running'),
-        sql`${workflowTestSuites.expiresAt}>clock_timestamp()`,
-        sql`${workflowTestSuites.nextCheckAt}<=clock_timestamp()`,
-      ),
-    )
-    .for('update', { skipLocked: true })
-    .catch(rethrowQueryFailure);
-  const suite = found[0];
+  const workflowStatus = await lockSuiteWorkflowStatus(
+    client,
+    candidate.workspaceId,
+    candidate.workflowId,
+  );
+  const suite = await lockDueSuite(client, candidate);
   if (suite === undefined) return false;
   if (allowed && suite.usesConnections)
     try {
@@ -150,26 +79,14 @@ export async function advanceSuite(
       if (error instanceof WorkflowNotFoundError) allowed = false;
       else throw error;
     }
-  const now = await readDatabaseClock(db);
+  const now = await readDatabaseClock(drizzle(client));
   if (!allowed) await stop(client, suite, 'authority_lost');
-  else if (workflow[0]?.lifecycleStatus !== 'active')
+  else if (workflowStatus !== 'active')
     await stop(client, suite, 'workflow_archived');
   if (now >= suite.deadlineAt) await stop(client, suite, 'deadline_exceeded');
   if (suite.cancelRequested) await stop(client, suite, 'user_canceled');
-  const active = await db
-    .select()
-    .from(workflowTestSuiteCases)
-    .where(
-      and(
-        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
-        eq(workflowTestSuiteCases.suiteId, suite.id),
-        eq(workflowTestSuiteCases.status, 'running'),
-      ),
-    )
-    .orderBy(asc(workflowTestSuiteCases.ordinal))
-    .limit(1)
-    .catch(rethrowQueryFailure);
-  const entry = active[0];
+  const cases = { workspaceId: suite.workspaceId, suiteId: suite.id };
+  const entry = await readFirstCaseIn(client, cases, 'running');
   if (
     entry !== undefined &&
     (await completeActiveSuiteCase(client, suite, entry))
@@ -179,20 +96,7 @@ export async function advanceSuite(
     await finish(client, suite);
     return true;
   }
-  const pending = await db
-    .select()
-    .from(workflowTestSuiteCases)
-    .where(
-      and(
-        eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
-        eq(workflowTestSuiteCases.suiteId, suite.id),
-        eq(workflowTestSuiteCases.status, 'pending'),
-      ),
-    )
-    .orderBy(asc(workflowTestSuiteCases.ordinal))
-    .limit(1)
-    .catch(rethrowQueryFailure);
-  const next = pending[0];
+  const next = await readFirstCaseIn(client, cases, 'pending');
   if (next === undefined) {
     await finish(client, suite);
     return true;
@@ -201,11 +105,30 @@ export async function advanceSuite(
   return true;
 }
 
+async function stop(
+  client: PoolClient,
+  suite: SuiteRow,
+  reason: string,
+): Promise<void> {
+  await recordSuiteStopReason(client, suite, reason);
+  suite.stopReason ??= reason;
+  await skipPendingCases(client, suite.workspaceId, suite.id);
+}
+
+async function finish(client: PoolClient, suite: SuiteRow): Promise<void> {
+  const nonpassing = await countNonpassingCases(client, {
+    workspaceId: suite.workspaceId,
+    suiteId: suite.id,
+  });
+  await completeSuite(client, suite, suiteOutcome(suite, nonpassing));
+}
+
 async function completeActiveSuiteCase(
   client: PoolClient,
   suite: SuiteRow,
   entry: SuiteCaseRow,
 ): Promise<boolean> {
+  const cases = { workspaceId: suite.workspaceId, suiteId: suite.id };
   const run =
     entry.runId === null
       ? undefined
@@ -217,33 +140,16 @@ async function completeActiveSuiteCase(
         );
   if (run === undefined) {
     await stop(client, suite, 'run_unavailable');
-    await drizzle(client)
-      .update(workflowTestSuiteCases)
-      .set({ status: 'error' })
-      .where(
-        and(
-          eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
-          eq(workflowTestSuiteCases.suiteId, suite.id),
-          eq(workflowTestSuiteCases.ordinal, entry.ordinal),
-        ),
-      )
-      .catch(rethrowQueryFailure);
+    await settleSuiteCase(client, cases, entry.ordinal, { status: 'error' });
   } else if (isActiveTestRun(run.status)) {
-    await checkSuiteAgain(client, suite, sql`interval '1 second'`);
+    await scheduleSuiteCheck(client, suite, SUITE_CHECK_AFTER_SECONDS.next);
     return true;
   } else {
     const result = await evaluateSuiteCase(client, entry, run);
-    await drizzle(client)
-      .update(workflowTestSuiteCases)
-      .set({ status: result.status, report: canonicalJson(result.report) })
-      .where(
-        and(
-          eq(workflowTestSuiteCases.workspaceId, suite.workspaceId),
-          eq(workflowTestSuiteCases.suiteId, suite.id),
-          eq(workflowTestSuiteCases.ordinal, entry.ordinal),
-        ),
-      )
-      .catch(rethrowQueryFailure);
+    await settleSuiteCase(client, cases, entry.ordinal, {
+      status: result.status,
+      report: canonicalJson(result.report),
+    });
     if (run.status === 'canceled') await stop(client, suite, 'case_canceled');
   }
 
@@ -256,21 +162,19 @@ async function admitNextSuiteCase(
   next: SuiteCaseRow,
   now: Date,
 ): Promise<void> {
-  await drizzle(client)
-    .execute(sql`savepoint suite_case_admission`)
-    .catch(rethrowQueryFailure);
+  await openCaseAdmission(client);
   try {
     await admitSuiteCase(client, suite, next, now);
-    await drizzle(client)
-      .execute(sql`release savepoint suite_case_admission`)
-      .catch(rethrowQueryFailure);
-    await checkSuiteAgain(client, suite, sql`interval '1 second'`);
+    await keepCaseAdmission(client);
+    await scheduleSuiteCheck(client, suite, SUITE_CHECK_AFTER_SECONDS.next);
   } catch (error) {
-    await drizzle(client)
-      .execute(sql`rollback to savepoint suite_case_admission`)
-      .catch(rethrowQueryFailure);
+    await undoCaseAdmission(client);
     if (error instanceof WorkspaceRunQuotaExceededError)
-      await checkSuiteAgain(client, suite, sql`interval '5 seconds'`);
+      await scheduleSuiteCheck(
+        client,
+        suite,
+        SUITE_CHECK_AFTER_SECONDS.quotaFull,
+      );
     else if (error instanceof WorkspaceRunAdmissionDeniedError) {
       await stop(client, suite, 'admission_denied');
       await finish(client, suite);
