@@ -13,7 +13,7 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
-import { respondToTask } from './respond.repository.js';
+import { respondToTask } from './respond.js';
 import { requireVisibleTask } from './pending-task.errors.js';
 import { inspectAudience } from './inspect-audience.repository.js';
 import {

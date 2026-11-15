@@ -15,7 +15,7 @@ import {
 import type { InitialCheckpointFactory } from '../commands/initial-checkpoint.types.js';
 import { ErrorWorkflowDeliveryMismatchError } from './error-workflow.errors.js';
 import type { ErrorWorkflowDeliveryInput } from './error-workflow-delivery.types.js';
-import { acceptErrorWorkflow } from './accept.repository.js';
+import { acceptErrorWorkflow } from './accept-error-workflow.js';
 import { DELIVERY_CONSUMER } from '../../outbox/delivery-consumers.js';
 
 const consumerName = DELIVERY_CONSUMER['start-error-workflow'];

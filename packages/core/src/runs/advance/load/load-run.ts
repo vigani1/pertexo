@@ -6,7 +6,7 @@ import {
   readPendingFailures,
   readDueInvocations,
 } from './locks.repository.js';
-import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.repository.js';
+import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/synchronize-human-wait.js';
 import { readPendingTaskFacts } from '../../pending-tasks/lifecycle/read-task-facts.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';

@@ -19,10 +19,6 @@ import {
 } from '../queries/admission.repository.js';
 import { and, eq } from 'drizzle-orm';
 
-import { acceptWorkflowRun } from './acceptance/accept.js';
-import type { AcceptWorkflowRunInput } from './acceptance/run-acceptance.types.js';
-import { requireWorkflowRun } from '../workflow-run.errors.js';
-
 export type WorkflowRunRecord = Readonly<WorkflowRunRow>;
 
 export type WorkflowRunReadRecord = WorkflowRunRecord &
@@ -89,37 +85,6 @@ export async function readWorkflowRunReadRecord(
     }),
     runValues: await runValuesInTransaction(transaction, runId),
   });
-}
-
-export async function acceptWorkflowRunWithAudit(
-  transaction: WorkspaceTransaction,
-  input: Readonly<{
-    acceptance: AcceptWorkflowRunInput;
-    actorId: string;
-    auditAction: string;
-    auditMetadata: AuditMetadata;
-    requestId?: string;
-    traceId?: string;
-  }>,
-): Promise<Readonly<{ run: WorkflowRunRecord; replayed: boolean }>> {
-  const accepted = await acceptWorkflowRun(transaction, {
-    ...input.acceptance,
-    startedBy: input.actorId,
-  });
-  const run = requireWorkflowRun(
-    await readWorkflowRunRecord(transaction, accepted.runId),
-  );
-  if (!accepted.duplicate) {
-    await insertWorkflowRunAudit(transaction, {
-      action: input.auditAction,
-      actorId: input.actorId,
-      runId: run.id,
-      ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
-      ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
-      metadata: input.auditMetadata,
-    });
-  }
-  return Object.freeze({ run, replayed: accepted.duplicate });
 }
 
 export async function insertWorkflowRunAudit(

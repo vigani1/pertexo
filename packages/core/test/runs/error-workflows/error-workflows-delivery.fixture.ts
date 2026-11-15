@@ -9,7 +9,7 @@ import { expect } from 'vitest';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { createCheckpoint } from '@pertexo/workflow-engine/server';
 import { createErrorWorkflowStore } from '../../../src/runs/error-workflows/error-workflow.store.js';
-import { persistErrorWorkflowIntent } from '../../../src/runs/error-workflows/produce.repository.js';
+import { persistErrorWorkflowIntent } from '../../../src/runs/error-workflows/persist-intent.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { admin, createFamily } from '../../lifecycle/calls/calls.fixture.js';
 
