@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { storageTextSchema } from '../../values/json/text.js';
 import { withoutHiddenCharacters } from '../../values/text.js';
 import { FormFileRejectedError } from './forms.errors.js';
-import { formatByteSize } from '@pertexo/node-sdk';
+import { formatByteSize, formatMeasuredByteSize } from '@pertexo/node-sdk';
 
 const MEBIBYTE = 1_048_576;
 
@@ -126,9 +126,15 @@ export function formFileType(
 
 export function assertFormFileSize(byteLength: number, maxBytes: number) {
   if (byteLength <= maxBytes) return;
+  // The file's size is measured and rounds; the limit is written exactly.
+  const size = formatMeasuredByteSize(byteLength);
+  const limit = formatByteSize(maxBytes);
   throw new FormFileRejectedError(
     'size',
-    `This file is over the ${formatByteSize(maxBytes)} limit.`,
+    // A file just over the limit can round to the limit's own size.
+    size === limit
+      ? `This file is just over the ${limit} limit.`
+      : `This file is ${size}; the limit is ${limit}.`,
   );
 }
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatByteSize, formatCount } from '../../src/index.js';
+import {
+  formatByteSize,
+  formatCount,
+  formatMeasuredByteSize,
+} from '../../src/index.js';
 
 describe('byte sizes and counts in messages', () => {
   it.each([
@@ -27,6 +31,17 @@ describe('byte sizes and counts in messages', () => {
       expect(formatByteSize(bytes)).toBe(text);
     },
   );
+
+  it.each([
+    [512, '512 B'],
+    [1_600, '1.6 KB'],
+    [2 * 1_048_576, '2 MB'],
+    [12_897_484, '12.3 MB'],
+    [1_048_577, '1 MB'],
+    [1_101_004_800, '1,050 MB'],
+  ])('shows a measured %i bytes rounded as %s', (bytes, text) => {
+    expect(formatMeasuredByteSize(bytes)).toBe(text);
+  });
 
   it('groups counts with commas', () => {
     expect(formatCount(1_000_000)).toBe('1,000,000');
