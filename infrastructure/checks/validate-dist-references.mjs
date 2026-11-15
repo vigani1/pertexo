@@ -9,11 +9,16 @@ import { readSource, report, repositoryRoot } from './workspace-sources.mjs';
 // A path written as a string (a child process importing a built file, a script
 // mounting one) isn't followed by renames or the typecheck, and a stale local
 // `dist` hides the break until CI builds from scratch.
-const scanned = /\.(?:ts|tsx|mts|mjs|js|cjs|sh|ya?ml)$|(?:^|\/)Dockerfile$/u;
+const scanned = /\.(?:ts|tsx|mts|mjs|js|cjs|sh|ya?ml|md)$|(?:^|\/)Dockerfile$/u;
+// Workflow steps, shell scripts and documented commands run from the repository
+// root, so their `./` paths name files from there, not from the file itself.
+const runsFromRoot = /\.(?:ya?ml|sh|md)$|(?:^|\/)Dockerfile$/u;
+// The image keeps the repository at /workspace.
+const IMAGE_ROOT = '/workspace/';
 // Their samples name made-up packages on purpose.
 const fixtureChecks = /^infrastructure\/checks\/[^/]+\.test\.mjs$/u;
 const reference =
-  /(?<![\w@/.-])((?:\.{1,2}\/)+(?:[\w.-]+\/)*dist\/[\w./-]+\.m?js|(?:apps|packages)\/[\w-]+\/dist\/[\w./-]+\.m?js)/gu;
+  /(?<![\w@/.-])(\/workspace\/(?:apps|packages)\/[\w-]+\/dist\/[\w./-]+\.m?js|(?:\.{1,2}\/)+(?:[\w.-]+\/)*dist\/[\w./-]+\.m?js|(?:apps|packages)\/[\w-]+\/dist\/[\w./-]+\.m?js)/gu;
 const workspaceDist = /^((?:apps|packages)\/[\w-]+)\/dist\/(.+)\.(m?)js$/u;
 
 // Backup, storage and encryption scripts are mounted from the host into the
@@ -38,6 +43,30 @@ export const MOUNTED_INTERNALS = Object.freeze({
     'Runtime verification builds the mail client the worker uses.',
 });
 
+/**
+ * Built files only older releases have, named on purpose where a command may
+ * run in an older image. Each names the file, the workspace and the built
+ * module (without `dist/` or extension), with the reason.
+ */
+export const OLDER_RELEASE_BUILDS = Object.freeze([
+  {
+    file: 'docs/operations/upgrading.md',
+    workspace: 'packages/database',
+    built: 'migrations',
+    reason:
+      "The migration command may run in a v0.2.0 image, whose /platform entry doesn't export the runner.",
+  },
+]);
+
+function resolveReference(file, written) {
+  if (written.startsWith(IMAGE_ROOT)) return written.slice(IMAGE_ROOT.length);
+  if (written.startsWith('.') && !runsFromRoot.test(file))
+    return path.posix.normalize(
+      path.posix.join(path.posix.dirname(file), written),
+    );
+  return path.posix.normalize(written);
+}
+
 /** Built-file paths in `file` whose source is missing from its workspace. */
 export function unresolvedDistReferences(
   file,
@@ -47,18 +76,22 @@ export function unresolvedDistReferences(
 ) {
   const findings = [];
   for (const [, written] of text.matchAll(reference)) {
-    const resolved = path.posix.normalize(
-      written.startsWith('.')
-        ? path.posix.join(path.posix.dirname(file), written)
-        : written,
-    );
-    const target = workspaceDist.exec(resolved);
+    const target = workspaceDist.exec(resolveReference(file, written));
     if (!target) continue;
     const [, workspace, built, module] = target;
     const sources = (module ? ['.mts'] : ['.ts', '.tsx']).map(
       (extension) => `${workspace}/src/${built}${extension}`,
     );
     const builtFile = `${workspace}/dist/${built}.${module}js`;
+    if (
+      OLDER_RELEASE_BUILDS.some(
+        (older) =>
+          older.file === file &&
+          older.workspace === workspace &&
+          older.built === built,
+      )
+    )
+      continue;
     if (!sources.some((source) => exists(path.join(repositoryRoot, source))))
       findings.push(
         `${file}: ${written} names ${builtFile}, but ${sources[0]} doesn't exist; a moved source needs this path updated`,
@@ -109,6 +142,15 @@ export async function inspectDistReferences(root = repositoryRoot) {
     findings.push(
       ...unresolvedDistReferences(file, await readSource(file, root)),
     );
+  for (const older of OLDER_RELEASE_BUILDS) {
+    const source = files.includes(older.file)
+      ? await readSource(older.file, root)
+      : '';
+    if (!source.includes(`${older.workspace}/dist/${older.built}.`))
+      findings.push(
+        `${older.file}: no longer names ${older.workspace}'s built ${older.built} module; remove its older-release allowance`,
+      );
+  }
   return findings;
 }
 

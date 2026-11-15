@@ -100,3 +100,68 @@ test('a host-mounted script may load only entry points or named internals', () =
     [],
   );
 });
+
+test('reads workflow, shell and Markdown paths from the repository root', () => {
+  for (const file of [
+    '.github/workflows/ci.yml',
+    'infrastructure/scripts/run.sh',
+    'docs/operations/deploying.md',
+  ]) {
+    assert.deepEqual(
+      unresolvedDistReferences(
+        file,
+        "import('./packages/database/dist/migrate.js')",
+        exists,
+      ),
+      [],
+    );
+    const [finding] = unresolvedDistReferences(
+      file,
+      "import('./packages/database/dist/migrations.js')",
+      exists,
+    );
+    assert.match(
+      finding,
+      /packages\/database\/src\/migrations\.ts doesn't exist/u,
+    );
+  }
+});
+
+test('reads /workspace paths as the repository root inside the image', () => {
+  const [finding] = unresolvedDistReferences(
+    '.github/workflows/ci.yml',
+    "Cannot find module '/workspace/packages/database/dist/migrations.js'",
+    exists,
+  );
+  assert.match(
+    finding,
+    /packages\/database\/src\/migrations\.ts doesn't exist/u,
+  );
+  assert.deepEqual(
+    unresolvedDistReferences(
+      'Dockerfile',
+      'RUN node /workspace/packages/database/dist/migrate.js',
+      exists,
+    ),
+    [],
+  );
+});
+
+test('allows an older release path only where it is listed', () => {
+  assert.deepEqual(
+    unresolvedDistReferences(
+      'docs/operations/upgrading.md',
+      'await import("./packages/database/dist/migrations.js")',
+      exists,
+    ),
+    [],
+  );
+  assert.equal(
+    unresolvedDistReferences(
+      'docs/operations/other.md',
+      'await import("./packages/database/dist/migrations.js")',
+      exists,
+    ).length,
+    1,
+  );
+});
