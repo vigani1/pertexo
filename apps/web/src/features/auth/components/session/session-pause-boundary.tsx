@@ -13,7 +13,7 @@ import { useLocation, useRouter } from '@tanstack/react-router';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { currentUserQueryOptions } from '../../data/auth.queries';
-import { checkSessionOwner } from '../../model/session/identity';
+import { checkSessionOwner } from '../../data/session-identity';
 import type { SessionPause } from '../../model/session/pause';
 import { returnToSearch, allowlistedReturnPath } from '../../model/return-path';
 import { SessionPaused } from './session-paused';

@@ -16,15 +16,12 @@ import {
   commandErrorMessage,
   parseCommandJson,
 } from '@/lib/workflows/command-errors';
-import {
-  observePreview,
-  previewTerminalStatuses,
-} from '../../model/preview-observation';
+import { observePreview, previewTerminalStatuses } from './preview-observation';
 import {
   executeWorkflowNodePreview,
   validateWorkflowNode,
   type NodeTestInputSource,
-} from '../../data/node-test.api';
+} from './node-test.api';
 
 type TestAttempt = Readonly<{
   nodeId: string;

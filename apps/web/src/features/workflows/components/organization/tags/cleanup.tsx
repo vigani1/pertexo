@@ -18,7 +18,7 @@ import {
   OrganizationCommandFeedback,
   type OrganizationCommand,
 } from '../command-feedback';
-import { useOrganizationWorkflowNames } from '../use-workflow-names';
+import { useOrganizationWorkflowNames } from '../../../data/organization/workflow-names';
 
 type WorkflowTagCleanupProps = Readonly<{
   apiClient: ApiClient;

@@ -1,4 +1,4 @@
-import { useRunEvents } from '@/features/workflow-runs/hooks/use-run-events';
+import { useRunEvents } from '@/features/workflow-runs/data/run-events';
 
 import type { ApiByteStream, ApiClient } from '@/lib/api/client';
 

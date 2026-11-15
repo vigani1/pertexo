@@ -9,8 +9,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
 import { decodeSseMessages } from '@/lib/api/sse';
-import { openWorkflowRunEvents } from '../data/workflow-runs.api';
-import { workflowRunQueryOptions } from '../data/detail.queries';
+import { openWorkflowRunEvents } from './workflow-runs.api';
+import { workflowRunQueryOptions } from './detail.queries';
 import {
   appendRunEvent,
   classifyRunEvent,

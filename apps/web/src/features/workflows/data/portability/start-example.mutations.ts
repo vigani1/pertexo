@@ -13,13 +13,13 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   importWorkflow,
   previewWorkflowImport,
-} from '../data/portability/workflow-portability.api';
-import { workflowKeys } from '../data/workflows.queries';
-import { workflowOrganizationKeys } from '../data/organization/workflow-organization.queries';
+} from './workflow-portability.api';
+import { workflowKeys } from '../workflows.queries';
+import { workflowOrganizationKeys } from '../organization/workflow-organization.queries';
 import {
   templateOrigin,
   type CuratedTemplate,
-} from '../model/templates/curated-setup';
+} from '../../model/templates/curated-setup';
 
 /** An example that starts in one click: nothing to fill in or connect. */
 export function startsInOneClick(template: CuratedTemplate): boolean {

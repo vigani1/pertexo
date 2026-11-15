@@ -3,7 +3,7 @@ import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { RadioChoice } from '@/components/ui/radio-choice';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
-import type { useOAuth2Consent } from '../../hooks/use-oauth2-consent';
+import type { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { connectionCommandError } from '../../model/connection-errors';
 import { isOAuth2Connection } from '../../model/oauth2-copy';
 import type { ConnectionChoice } from '../../model/connection-providers';

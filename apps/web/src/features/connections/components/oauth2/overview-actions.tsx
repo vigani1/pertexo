@@ -4,7 +4,7 @@ import { Notice } from '@/components/ui/notice';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
-import { useOAuth2Consent } from '../../hooks/use-oauth2-consent';
+import { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { connectLabel, oauth2Notice } from '../../model/oauth2-copy';
 import { OAuth2ConsentStatus } from './connect';
 

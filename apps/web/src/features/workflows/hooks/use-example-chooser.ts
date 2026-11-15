@@ -4,7 +4,10 @@ import {
 } from '@pertexo/templates';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { startsInOneClick, useStartExample } from './use-start-example';
+import {
+  startsInOneClick,
+  useStartExample,
+} from '../data/portability/start-example.mutations';
 
 /**
  * Choosing an example: one with nothing to set up starts at once and opens

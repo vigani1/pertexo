@@ -7,7 +7,7 @@ import {
   readInvitation,
   resolveInvitation,
   verifyInvitationSession,
-} from '../data/invitation-acceptance.api';
+} from './invitation-acceptance.api';
 import { isUnauthenticated } from '@/features/auth/auth-routing.public';
 import {
   acceptanceFailure,
@@ -16,7 +16,7 @@ import {
   NOT_JOINED_YET,
   SIGN_IN_AGAIN,
   type AcceptanceFailure,
-} from './acceptance-failure';
+} from '../model/acceptance-failure';
 
 type CompletionAttempt = Readonly<{
   intentId: string;

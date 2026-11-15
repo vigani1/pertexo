@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   isHarmlessSetup,
   sideEffectSentence,
-} from '../../model/preview-observation';
+} from '../../data/preview-observation';
 export function PreviewInputFields({
   nodeId,
   priorPreview,

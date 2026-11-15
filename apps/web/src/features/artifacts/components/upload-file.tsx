@@ -16,7 +16,7 @@ import { Notice } from '@/components/ui/notice';
 import { Status, type StatusTone } from '@/components/ui/status';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { useUpload } from '../hooks/use-artifact-upload';
+import { useUpload } from '../data/artifact-upload.mutations';
 import type { FileReference, UploadPhase } from '../model/artifact-upload';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';

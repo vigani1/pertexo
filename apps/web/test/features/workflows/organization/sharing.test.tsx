@@ -7,7 +7,7 @@ import type { FolderSharing } from '@pertexo/contracts';
 import { FolderShareDialog } from '@/features/workflows/components/organization/folders/share-dialog';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { AudienceMoveReview } from '@/features/workflows/components/organization/folders/audience-review';
-import { useAudienceMove } from '@/features/workflows/hooks/use-audience-move';
+import { useAudienceMove } from '@/features/workflows/data/organization/audience-move.mutations';
 import { createApiClient } from '@/lib/api/client';
 import { mockServer } from '../../../support/mock-server';
 import { testFetch } from '../../../support/render-app';

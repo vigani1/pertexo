@@ -33,7 +33,7 @@ import { upstreamSteps } from '../model/step-inspection/inputs';
 import { buildRunTimeline, type RunTimelineRow } from '../model/timeline/runs';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { useNow } from '@/lib/hooks/use-now';
-import { useRunEvents } from '../hooks/use-run-events';
+import { useRunEvents } from '../data/run-events';
 import {
   workflowRunQueryOptions,
   workflowRunVersionQueryOptions,

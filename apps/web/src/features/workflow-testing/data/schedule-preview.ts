@@ -3,7 +3,7 @@ import { use, useEffect, useEffectEvent, useState } from 'react';
 import { isApiError } from '@/lib/api/error';
 import { describeReadError } from '@/lib/api/error-copy';
 import { canonicalJson } from '@pertexo/workflow-model';
-import { previewScheduleRuns } from '../data/schedule-preview.api';
+import { previewScheduleRuns } from './schedule-preview.api';
 import { SchedulePreviewScope } from '../model/schedule-preview-scope';
 
 /** Typing pauses this long before the rule is sent for a preview. */

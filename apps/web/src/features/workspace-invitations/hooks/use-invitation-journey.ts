@@ -9,7 +9,7 @@ import {
   startBootstrap,
   verifyJourneySession,
   type JourneyRuntime,
-} from '../model/invitation-journey-operations';
+} from '../data/invitation-journey';
 import {
   CLEANUP_UNFINISHED,
   NOT_SET_ASIDE,

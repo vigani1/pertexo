@@ -7,8 +7,8 @@ import {
   beginUpload,
   finalizeUpload,
   transferFile,
-} from '../data/artifact-upload.api';
-import { getArtifactMetadata } from '../data/artifacts.api';
+} from './artifact-upload.api';
+import { getArtifactMetadata } from './artifacts.api';
 import {
   UploadValidationError,
   describeUpload,
