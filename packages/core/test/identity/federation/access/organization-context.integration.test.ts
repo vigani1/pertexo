@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
 import { db, organization, admin, federation, directory } from './fixture.js';
-import { readDirectoryManagement } from '../../../../src/identity/federation/provisioning/management/commands.repository.js';
+import { readDirectoryManagement } from '../../../../src/identity/federation/provisioning/management/directory-commands.js';
 
 it('derives organization from the authorized workspace without widening reader authority', async () => {
   const o = await organization(),

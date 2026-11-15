@@ -23,13 +23,11 @@ import {
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';
 import type { DirectoryUserRow } from './resources/directory-resources.repository.js';
 import type { DirectoryOrganization } from './directory-provisioning.types.js';
-import { projectDirectoryMemberships } from './projection.repository.js';
 
-/** A directory email is authorization to await SSO, never proof of account ownership. */
-export async function directorySignInCandidate(
+/** Directory users matching the email or already bound to the provider subject, live first. */
+export async function readDirectorySignInRows(
   client: PoolClient,
   organizationId: string,
   {
@@ -37,7 +35,7 @@ export async function directorySignInCandidate(
     providerId,
     subject,
   }: Readonly<{ email: string; providerId: string; subject: string }>,
-): Promise<DirectoryUserRow | undefined> {
+): Promise<DirectoryUserRow[]> {
   const db = drizzle(client);
   const accounts = db
     .select({ id: authAccounts.userId })
@@ -64,68 +62,51 @@ export async function directorySignInCandidate(
       desc(directoryUsers.id),
     )
     .catch(rethrowQueryFailure);
-  const live = rows.filter((row) => row.deleted_at === null);
-  if (live.length > 1) throw new SignInProofRejectedError();
-  const candidate = live[0] ?? rows[0];
-  const directoryUserInactive =
-    candidate !== undefined &&
-    (!candidate.active || candidate.deleted_at !== null);
-  if (directoryUserInactive) throw new SignInProofRejectedError();
-  return candidate;
+  return rows;
 }
 
-/** Called only after verified provider proof and the existing global-account check. */
-export async function bindDirectorySignIn(
+/** Binds the directory user to the person, and moves their earlier managed grants to it. */
+export async function linkDirectoryUser(
   client: PoolClient,
   organization: DirectoryOrganization,
   directory: DirectoryUserRow,
   userId: string,
 ): Promise<void> {
-  if (directory.user_id !== null && directory.user_id !== userId)
-    throw new SignInProofRejectedError();
-  if (directory.user_id === null) {
-    await drizzle(client)
-      .update(authDirectoryUsers)
-      .set({
-        userId,
-        revision: sql`${authDirectoryUsers.revision}+1`,
-        updatedAt: sql`clock_timestamp()`,
-      })
-      .where(
-        and(
-          eq(authDirectoryUsers.organizationId, organization.id),
-          eq(authDirectoryUsers.id, directory.id),
-        ),
-      )
-      .catch(rethrowQueryFailure);
-    // A deliberate recreation inherits only its own organization's old managed grants.
-    for (const workspace of organization.workspaces)
-      await withWorkspaceScope(
-        client,
-        { workspaceId: workspace.workspace_id },
-        async (scoped) => {
-          const prior = alias(authDirectoryUsers, 'prior');
-          await drizzle(scoped)
-            .update(authDirectoryMemberships)
-            .set({ directoryUserId: directory.id })
-            .from(prior)
-            .where(
-              and(
-                eq(authDirectoryMemberships.organizationId, organization.id),
-                eq(
-                  authDirectoryMemberships.workspaceId,
-                  workspace.workspace_id,
-                ),
-                eq(authDirectoryMemberships.userId, userId),
-                eq(prior.id, authDirectoryMemberships.directoryUserId),
-                isNotNull(prior.deletedAt),
-              ),
-            )
-            .catch(rethrowQueryFailure);
-        },
-      );
-  }
-  await projectDirectoryMemberships(client, organization, { actorId: userId }, [
-    directory.id,
-  ]);
+  await drizzle(client)
+    .update(authDirectoryUsers)
+    .set({
+      userId,
+      revision: sql`${authDirectoryUsers.revision}+1`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organization.id),
+        eq(authDirectoryUsers.id, directory.id),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  // A deliberate recreation inherits only its own organization's old managed grants.
+  for (const workspace of organization.workspaces)
+    await withWorkspaceScope(
+      client,
+      { workspaceId: workspace.workspace_id },
+      async (scoped) => {
+        const prior = alias(authDirectoryUsers, 'prior');
+        await drizzle(scoped)
+          .update(authDirectoryMemberships)
+          .set({ directoryUserId: directory.id })
+          .from(prior)
+          .where(
+            and(
+              eq(authDirectoryMemberships.organizationId, organization.id),
+              eq(authDirectoryMemberships.workspaceId, workspace.workspace_id),
+              eq(authDirectoryMemberships.userId, userId),
+              eq(prior.id, authDirectoryMemberships.directoryUserId),
+              isNotNull(prior.deletedAt),
+            ),
+          )
+          .catch(rethrowQueryFailure);
+      },
+    );
 }

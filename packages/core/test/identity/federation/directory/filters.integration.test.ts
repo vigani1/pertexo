@@ -2,14 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { parse } from 'scim2-parse-filter';
 import { describe, expect, it } from 'vitest';
 import { useIdentityCommandDatabase } from '../../command.support.js';
-import { createDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.repository.js';
-import { createDirectoryGroup } from '../../../../src/identity/federation/provisioning/resources/groups.repository.js';
+import { createDirectoryUser } from '../../../../src/identity/federation/provisioning/resources/users.js';
+import { createDirectoryGroup } from '../../../../src/identity/federation/provisioning/resources/groups.js';
 import {
   listDirectoryUsers,
   listDirectoryGroups,
 } from '../../../../src/identity/federation/provisioning/resources/list-resources.js';
 import type { DirectoryQuery } from '../../../../src/identity/federation/provisioning/directory-provisioning.types.js';
-import { withDirectoryRead } from '../../../../src/identity/federation/provisioning/authority.repository.js';
+import { withDirectoryRead } from '../../../../src/identity/federation/provisioning/directory-authority.js';
 
 const db = useIdentityCommandDatabase('scim_filter');
 async function setup() {

@@ -4,11 +4,11 @@ import {
   withWorkspaceScope,
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
-import { lockDirectoryOrganization } from '../provisioning/authority.repository.js';
+import { lockDirectoryOrganization } from '../provisioning/directory-authority.js';
 import {
   bindDirectorySignIn,
   directorySignInCandidate,
-} from '../provisioning/sign-in.repository.js';
+} from '../provisioning/directory-sign-in.js';
 import { bindVerifiedAccount } from '../accounts/link.repository.js';
 import type { PoolClient } from 'pg';
 import { lockWorkspaceAuthority } from '../../../shared/workspace-authority.js';

@@ -79,13 +79,4 @@ export const REPOSITORY_THROW_BACKLOG = Object.freeze({
   'packages/core/src/authoring/step-samples/webhook-test-events/ingress.repository.ts': 3,
   'packages/core/src/authoring/workflows/commands/locks.repository.ts': 1,
   'packages/core/src/authoring/workflows/reads/versions.repository.ts': 2,
-  'packages/core/src/identity/federation/provisioning/authority.repository.ts': 4,
-  'packages/core/src/identity/federation/provisioning/management/adoption.repository.ts': 2,
-  'packages/core/src/identity/federation/provisioning/management/commands.repository.ts': 6,
-  'packages/core/src/identity/federation/provisioning/management/credentials.repository.ts': 4,
-  'packages/core/src/identity/federation/provisioning/management/mappings.repository.ts': 10,
-  'packages/core/src/identity/federation/provisioning/management/unlink.repository.ts': 4,
-  'packages/core/src/identity/federation/provisioning/resources/groups.repository.ts': 3,
-  'packages/core/src/identity/federation/provisioning/resources/users.repository.ts': 2,
-  'packages/core/src/identity/federation/provisioning/sign-in.repository.ts': 3,
 });

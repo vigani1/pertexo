@@ -1,5 +1,4 @@
 import { canonicalEmail } from '../../../email-policy.js';
-import type { DirectoryUser } from '../directory-provisioning.types.js';
 import {
   authDirectoryGroupMembers,
   authDirectoryUsers,
@@ -10,27 +9,14 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { directoryUserRecords } from './directory-resources.repository.js';
 import { directoryUsers } from './tables.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { Pool, PoolClient } from 'pg';
-import { generatePersistedId } from '@pertexo/database/platform';
-import { withDirectoryTransaction } from '../authority.repository.js';
-import { DirectoryError } from '../directory.errors.js';
-import type {
-  DirectoryPrincipal,
-  DirectoryUserValues,
-} from '../directory-provisioning.types.js';
+import type { PoolClient } from 'pg';
+import type { DirectoryUserValues } from '../directory-provisioning.types.js';
 
-import { DIRECTORY_LIMITS } from '@pertexo/workflow-model';
-import { projectDirectoryMemberships } from '../projection.repository.js';
-import {
-  assertDirectoryRevision,
-  directoryAudit,
-  withDirectoryConstraintErrors,
-} from './shared.js';
-export async function readDirectoryUser(
+export async function findDirectoryUser(
   client: PoolClient,
   organizationId: string,
   id: string,
-): Promise<DirectoryUser> {
+) {
   const [user] = await directoryUserRecords(client)
     .where(
       and(
@@ -40,7 +26,14 @@ export async function readDirectoryUser(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (user === undefined) throw new DirectoryError('not_found');
+  return user;
+}
+
+export async function readUserGroupIds(
+  client: PoolClient,
+  organizationId: string,
+  id: string,
+): Promise<string[]> {
   const groups = await drizzle(client)
     .select({ group_id: authDirectoryGroupMembers.groupId })
     .from(authDirectoryGroupMembers)
@@ -52,183 +45,117 @@ export async function readDirectoryUser(
     )
     .orderBy(asc(authDirectoryGroupMembers.groupId))
     .catch(rethrowQueryFailure);
-  return { ...user, groupIds: groups.map((group) => group.group_id) };
+  return groups.map((group) => group.group_id);
 }
-export function createDirectoryUser(
-  pool: Pool,
-  principal: DirectoryPrincipal,
-  values: DirectoryUserValues,
-): Promise<DirectoryUser> {
-  return withDirectoryConstraintErrors(() =>
-    withDirectoryTransaction(pool, principal, async (client) => {
-      const [row] = await drizzle(client)
-        .select({ count: count() })
-        .from(authDirectoryUsers)
-        .where(
-          and(
-            eq(authDirectoryUsers.organizationId, principal.organizationId),
-            isNull(authDirectoryUsers.deletedAt),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      if ((row?.count ?? 0) >= DIRECTORY_LIMITS.users)
-        throw new DirectoryError('limit');
-      const id = generatePersistedId();
-      await drizzle(client)
-        .insert(authDirectoryUsers)
-        .values({
-          id,
-          organizationId: principal.organizationId,
-          userName: values.userName,
-          normalizedUserName: values.userName.toLowerCase(),
-          loginEmail: canonicalEmail(values.profile.emails[0].value),
-          externalId: values.externalId,
-          active: values.active,
-          profile: values.profile,
-        })
-        .catch(rethrowQueryFailure);
-      await directoryAudit(
-        client,
-        principal,
-        'identity.directory_user_created',
-        id,
-      );
-      return readDirectoryUser(client, principal.organizationId, id);
-    }),
-  );
+
+export async function countLiveDirectoryUsers(
+  client: PoolClient,
+  organizationId: string,
+): Promise<number> {
+  const [row] = await drizzle(client)
+    .select({ count: count() })
+    .from(authDirectoryUsers)
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organizationId),
+        isNull(authDirectoryUsers.deletedAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return row?.count ?? 0;
 }
-/** PATCH transforms the current resource under the same lock as If-Match and persistence. */
-export function changeDirectoryUser(
-  pool: Pool,
-  principal: DirectoryPrincipal,
-  {
-    id,
-    expectedRevision,
-    transform,
-  }: Readonly<{
-    id: string;
-    expectedRevision: number | undefined;
-    transform: (current: DirectoryUser) => DirectoryUserValues;
-  }>,
-): Promise<DirectoryUser> {
-  return withDirectoryConstraintErrors(() =>
-    withDirectoryTransaction(pool, principal, async (client, organization) => {
-      const current = await readDirectoryUser(
-        client,
-        principal.organizationId,
-        id,
-      );
-      assertDirectoryRevision(current.revision, expectedRevision);
-      const values = transform(current);
-      await drizzle(client)
-        .update(authDirectoryUsers)
-        .set({
-          userName: values.userName,
-          normalizedUserName: values.userName.toLowerCase(),
-          loginEmail: canonicalEmail(values.profile.emails[0].value),
-          externalId: values.externalId,
-          active: values.active,
-          profile: values.profile,
-          revision: sql`${authDirectoryUsers.revision}+1`,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(authDirectoryUsers.organizationId, principal.organizationId),
-            eq(authDirectoryUsers.id, id),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      if (current.user_id !== null)
-        await projectDirectoryMemberships(
-          client,
-          organization,
-          { credentialId: principal.credentialId },
-          [current.id],
-        );
-      await directoryAudit(
-        client,
-        principal,
-        'identity.directory_user_changed',
-        id,
-      );
-      return readDirectoryUser(client, principal.organizationId, id);
-    }),
-  );
-}
-export function deleteDirectoryUser(
-  pool: Pool,
-  principal: DirectoryPrincipal,
-  id: string,
-  expectedRevision: number | undefined,
+
+export async function insertDirectoryUser(
+  client: PoolClient,
+  organizationId: string,
+  { id, values }: Readonly<{ id: string; values: DirectoryUserValues }>,
 ): Promise<void> {
-  return withDirectoryTransaction(
-    pool,
-    principal,
-    async (client, organization) => {
-      const user = await readDirectoryUser(
-        client,
-        principal.organizationId,
-        id,
-      );
-      assertDirectoryRevision(user.revision, expectedRevision);
-      await drizzle(client)
-        .update(authDirectoryUsers)
-        .set({
-          active: false,
-          deletedAt: sql`clock_timestamp()`,
-          updatedAt: sql`clock_timestamp()`,
-          revision: sql`${authDirectoryUsers.revision}+1`,
-        })
-        .where(
-          and(
-            eq(authDirectoryUsers.organizationId, principal.organizationId),
-            eq(authDirectoryUsers.id, id),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      const groups = await drizzle(client)
-        .delete(authDirectoryGroupMembers)
-        .where(
-          and(
-            eq(
-              authDirectoryGroupMembers.organizationId,
-              principal.organizationId,
-            ),
-            eq(authDirectoryGroupMembers.directoryUserId, id),
-          ),
-        )
-        .returning({ group_id: authDirectoryGroupMembers.groupId })
-        .catch(rethrowQueryFailure);
-      await drizzle(client)
-        .update(authDirectoryGroups)
-        .set({
-          revision: sql`${authDirectoryGroups.revision}+1`,
-          updatedAt: sql`clock_timestamp()`,
-        })
-        .where(
-          and(
-            eq(authDirectoryGroups.organizationId, principal.organizationId),
-            inArray(
-              authDirectoryGroups.id,
-              groups.map((group) => group.group_id),
-            ),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      if (user.user_id !== null)
-        await projectDirectoryMemberships(
-          client,
-          organization,
-          { credentialId: principal.credentialId },
-          [user.id],
-        );
-      await directoryAudit(
-        client,
-        principal,
-        'identity.directory_user_deleted',
-        id,
-      );
-    },
-  );
+  await drizzle(client)
+    .insert(authDirectoryUsers)
+    .values({
+      id,
+      organizationId: organizationId,
+      userName: values.userName,
+      normalizedUserName: values.userName.toLowerCase(),
+      loginEmail: canonicalEmail(values.profile.emails[0].value),
+      externalId: values.externalId,
+      active: values.active,
+      profile: values.profile,
+    })
+    .catch(rethrowQueryFailure);
+}
+
+export async function updateDirectoryUser(
+  client: PoolClient,
+  organizationId: string,
+  { id, values }: Readonly<{ id: string; values: DirectoryUserValues }>,
+): Promise<void> {
+  await drizzle(client)
+    .update(authDirectoryUsers)
+    .set({
+      userName: values.userName,
+      normalizedUserName: values.userName.toLowerCase(),
+      loginEmail: canonicalEmail(values.profile.emails[0].value),
+      externalId: values.externalId,
+      active: values.active,
+      profile: values.profile,
+      revision: sql`${authDirectoryUsers.revision}+1`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organizationId),
+        eq(authDirectoryUsers.id, id),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+}
+
+/** Deactivates the user, removes it from its groups and moves those groups' revisions. */
+export async function deleteDirectoryUserRow(
+  client: PoolClient,
+  organizationId: string,
+  id: string,
+): Promise<void> {
+  await drizzle(client)
+    .update(authDirectoryUsers)
+    .set({
+      active: false,
+      deletedAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+      revision: sql`${authDirectoryUsers.revision}+1`,
+    })
+    .where(
+      and(
+        eq(authDirectoryUsers.organizationId, organizationId),
+        eq(authDirectoryUsers.id, id),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const groups = await drizzle(client)
+    .delete(authDirectoryGroupMembers)
+    .where(
+      and(
+        eq(authDirectoryGroupMembers.organizationId, organizationId),
+        eq(authDirectoryGroupMembers.directoryUserId, id),
+      ),
+    )
+    .returning({ group_id: authDirectoryGroupMembers.groupId })
+    .catch(rethrowQueryFailure);
+  await drizzle(client)
+    .update(authDirectoryGroups)
+    .set({
+      revision: sql`${authDirectoryGroups.revision}+1`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(authDirectoryGroups.organizationId, organizationId),
+        inArray(
+          authDirectoryGroups.id,
+          groups.map((group) => group.group_id),
+        ),
+      ),
+    )
+    .catch(rethrowQueryFailure);
 }
