@@ -18,7 +18,7 @@ import {
 } from '../provisioning/sign-in.repository.js';
 import { bindVerifiedAccount } from '../accounts/link.repository.js';
 import type { PoolClient } from 'pg';
-import { lockWorkspaceAuthority } from '../../../shared/authority.repository.js';
+import { lockWorkspaceAuthority } from '../../../shared/workspace-authority.js';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
 import { resolveVerifiedSignInUser } from '../accounts/resolve.repository.js';
 import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';

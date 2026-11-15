@@ -13,10 +13,8 @@ import {
   generatePersistedId,
   withPlatformTransaction,
 } from '@pertexo/database/platform';
-import {
-  lockWorkspaceAuthority,
-  lockWorkspaceRow,
-} from '../../../../shared/authority.repository.js';
+import { lockWorkspaceRow } from '../../../../shared/authority.repository.js';
+import { lockWorkspaceAuthority } from '../../../../shared/workspace-authority.js';
 import {
   authorizeOrganizationContext,
   recordFederationAudit,

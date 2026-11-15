@@ -16,7 +16,7 @@ import {
   workspaces,
 } from '@pertexo/database/schema';
 import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
-import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
+import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
 import type { ConnectionRecord } from '../connection.types.js';
 import {
   CONNECTION_AUTH_TYPE,

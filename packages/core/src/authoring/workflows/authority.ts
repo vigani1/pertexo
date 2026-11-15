@@ -7,7 +7,7 @@ import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors
 import {
   lockBrowsableWorkspaceAuthority,
   lockWorkspaceAuthority,
-} from '../../shared/authority.repository.js';
+} from '../../shared/workspace-authority.js';
 import { WorkflowNotFoundError } from './workflow-authoring.errors.js';
 
 /** Preserve authoring's non-disclosure contract at the shared authority fence. */

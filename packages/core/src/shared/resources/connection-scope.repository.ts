@@ -12,7 +12,7 @@ import { connections, connectionShares } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 import { hasCapability, rolesForCapability, type Role } from '@pertexo/policy';
 import { WorkspaceAccessDeniedError } from '../workspace-access.errors.js';
-import { readWorkspaceAuthority } from '../authority.repository.js';
+import { readWorkspaceAuthority } from '../workspace-authority.js';
 import type { ResourceActor } from '../folder-access.types.js';
 import { RESOURCE_ADMINISTRATORS } from '../folder-policy.js';
 

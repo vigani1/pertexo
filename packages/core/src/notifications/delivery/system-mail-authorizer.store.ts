@@ -12,7 +12,7 @@ import {
 import { rolesForCapability } from '@pertexo/policy';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
+import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
 import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
 import { destinationConfigSql } from '../destinations/notification-destinations.repository.js';
 import { readSystemMailRecipient } from './system-mail-recipient.repository.js';

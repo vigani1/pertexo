@@ -10,16 +10,16 @@ import {
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import {
-  ACTIVE_WORKSPACE_STATUSES,
-  BROWSABLE_WORKSPACE_STATUSES,
-  type Role,
-} from '@pertexo/policy';
+import { ACTIVE_WORKSPACE_STATUSES, type Role } from '@pertexo/policy';
 import type { ResourceActor } from './folder-access.types.js';
-import { WorkspaceAccessDeniedError } from './workspace-access.errors.js';
 
-/** Ordered current authority fence shared by workspace commands. Call only inside the same tenant transaction as the protected work. */
-async function workspaceAuthority(
+/**
+ * Ordered current authority fence shared by workspace commands: the workspace,
+ * then the actor, then the membership, stopping at the first that's missing.
+ * Undefined means no authority. Call only inside the same tenant transaction as
+ * the protected work.
+ */
+export async function findWorkspaceAuthority(
   client: PoolClient,
   workspaceId: string,
   {
@@ -33,7 +33,7 @@ async function workspaceAuthority(
     locking: boolean;
     allowedStatuses?: readonly string[] | undefined;
   }>,
-): Promise<Role> {
+): Promise<Role | undefined> {
   const db = drizzle(client);
   const workspaceQuery = db
     .select({ one: sql`1` })
@@ -47,8 +47,7 @@ async function workspaceAuthority(
   const workspace = await (
     locking ? workspaceQuery.for('share') : workspaceQuery
   ).catch(rethrowQueryFailure);
-  if (workspace.length !== 1)
-    throw new WorkspaceAccessDeniedError('Workspace access is unavailable');
+  if (workspace.length !== 1) return undefined;
   const actorQuery = db
     .select({ one: sql`1` })
     .from(users)
@@ -56,8 +55,7 @@ async function workspaceAuthority(
   const actor = await (locking ? actorQuery.for('share') : actorQuery).catch(
     rethrowQueryFailure,
   );
-  if (actor.length !== 1)
-    throw new WorkspaceAccessDeniedError('Workspace access is unavailable');
+  if (actor.length !== 1) return undefined;
   const memberQuery = db
     .select({ role: workspaceMemberships.role })
     .from(workspaceMemberships)
@@ -72,23 +70,7 @@ async function workspaceAuthority(
   const membership = await (
     locking ? memberQuery.for('share') : memberQuery
   ).catch(rethrowQueryFailure);
-  const role = membership[0]?.role;
-  if (role === undefined)
-    throw new WorkspaceAccessDeniedError('Workspace access is unavailable');
-  return role;
-}
-
-export function lockWorkspaceAuthority(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-  roles: readonly Role[],
-): Promise<Role> {
-  return workspaceAuthority(client, workspaceId, {
-    actorId,
-    roles,
-    locking: true,
-  });
+  return membership[0]?.role;
 }
 
 /**
@@ -106,65 +88,6 @@ export async function lockWorkspaceRow(
     .for('update')
     .catch(rethrowQueryFailure);
   return rows[0]?.status;
-}
-
-/** The fence for core's one authority helper, which names its status list. */
-export function lockWorkspaceAuthorityInStatuses(
-  client: PoolClient,
-  workspaceId: string,
-  {
-    actorId,
-    roles,
-    allowedStatuses,
-  }: Readonly<{
-    actorId: string;
-    roles: readonly Role[];
-    allowedStatuses: readonly string[];
-  }>,
-): Promise<Role> {
-  return workspaceAuthority(client, workspaceId, {
-    actorId,
-    roles,
-    locking: true,
-    allowedStatuses,
-  });
-}
-
-/** The same fence for a read a suspended workspace still allows (ADR 013/027). */
-export function lockBrowsableWorkspaceAuthority(
-  client: PoolClient,
-  workspaceId: string,
-  actorId: string,
-  roles: readonly Role[],
-): Promise<Role> {
-  return workspaceAuthority(client, workspaceId, {
-    actorId,
-    roles,
-    locking: true,
-    allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
-  });
-}
-
-/** The caller owns a repeatable-read snapshot; decision commands use the lock. */
-export function readWorkspaceAuthority(
-  client: PoolClient,
-  workspaceId: string,
-  {
-    actorId,
-    roles,
-    allowedStatuses = ACTIVE_WORKSPACE_STATUSES,
-  }: Readonly<{
-    actorId: string;
-    roles: readonly Role[];
-    allowedStatuses?: readonly string[] | undefined;
-  }>,
-): Promise<Role> {
-  return workspaceAuthority(client, workspaceId, {
-    actorId,
-    roles,
-    locking: false,
-    allowedStatuses,
-  });
 }
 
 /**
