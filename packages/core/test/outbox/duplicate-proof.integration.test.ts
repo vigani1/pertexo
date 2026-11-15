@@ -4,11 +4,11 @@ import { eq, sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { consumeInboxMessage } from '../../src/outbox/consume-message.js';
 import {
-  consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from '../../src/outbox/consume-message.js';
+} from '../../src/outbox/outbox.errors.js';
 import {
   canonicalOutboxPayloadChecksum,
   insertOutboxEvent,

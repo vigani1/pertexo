@@ -11,7 +11,7 @@ import {
   MIGRATIONS_DIRECTORY,
   migrateDatabase,
 } from '@pertexo/database/testing';
-import { claimOutboxBatch } from '../../../src/outbox/dispatcher/claim.js';
+import { claimOutboxBatch } from '../../../src/outbox/dispatcher/claim.repository.js';
 
 const WORKSPACE_LIMIT = 3;
 const WORKFLOW_LIMIT = 2;

@@ -11,7 +11,7 @@ import {
   rethrowQueryFailure,
   checkDatabaseReadiness,
 } from '@pertexo/database/primitives';
-import { claimOutboxBatch } from './claim.js';
+import { claimOutboxBatch } from './claim.repository.js';
 import type { ClaimOutboxBatchInput } from './outbox-dispatcher.types.js';
 import type { ReleaseInput } from './outbox-dispatcher.types.js';
 import type {

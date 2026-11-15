@@ -202,11 +202,11 @@ export type {
   OutboxDispatcherDatabase,
   ReleaseOutboxResult,
 } from './outbox/dispatcher/outbox-dispatcher.types.js';
+export { consumeInboxMessage } from './outbox/consume-message.js';
 export {
-  consumeInboxMessage,
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
-} from './outbox/consume-message.js';
+} from './outbox/outbox.errors.js';
 export type {
   InboxConsumeOptions,
   InboxConsumeResult,

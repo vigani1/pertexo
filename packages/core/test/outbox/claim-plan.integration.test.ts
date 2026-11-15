@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { createTransportTestEnvironment } from './transport.support.js';
-import { claimOutboxBatch } from '../../src/outbox/dispatcher/claim.js';
+import { claimOutboxBatch } from '../../src/outbox/dispatcher/claim.repository.js';
 
 const transport = createTransportTestEnvironment();
 beforeAll(transport.initialize);

@@ -8,6 +8,11 @@ import {
 } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
+import {
+  InboxChecksumMismatchError,
+  InboxReceiptUnavailableError,
+} from './outbox.errors.js';
+
 export interface InboxMessage {
   consumerName: string;
   messageId: string;
@@ -21,20 +26,6 @@ export type InboxConsumeOptions = Readonly<{
 export type InboxConsumeResult<T> =
   | Readonly<{ status: 'processed'; value: T }>
   | Readonly<{ status: 'duplicate' }>;
-
-export class InboxChecksumMismatchError extends Error {
-  public constructor() {
-    super('Inbox message checksum does not match the existing receipt');
-    this.name = 'InboxChecksumMismatchError';
-  }
-}
-
-export class InboxReceiptUnavailableError extends Error {
-  public constructor() {
-    super('Inbox receipt exists outside the active workspace or is incomplete');
-    this.name = 'InboxReceiptUnavailableError';
-  }
-}
 
 const CHECKSUM_MISMATCH = Symbol('checksum-mismatch');
 
