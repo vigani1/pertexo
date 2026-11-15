@@ -43,10 +43,3 @@ export const STORAGE_INTEGRITY_ERRORS = Object.freeze({
   WorkflowTriggerReconciliationMismatchError:
     "A trigger reconciliation's durable outbox identity is inconsistent.",
 });
-
-/**
- * Core repositories that still throw domain errors, with how many; the list
- * only shrinks (validate-core-repository-throws.mjs). Each moves its
- * decisions and throws into the operation that calls it.
- */
-export const REPOSITORY_THROW_BACKLOG = Object.freeze({});
