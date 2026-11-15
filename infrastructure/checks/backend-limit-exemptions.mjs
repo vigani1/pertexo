@@ -77,8 +77,6 @@ export const NOT_LIMITS = Object.freeze({
     'two hex digits per digest byte',
   'packages/workflow-model/src/execution/notice-schedule.ts: 2':
     'the bisection halves its interval',
-  'packages/workflow-model/src/graph/validation/admission.ts: 2':
-    'JSON text layout: the two brackets of a container',
   'packages/workflow-model/src/triggers/forms/files.ts: 2':
     'a list of two or more names joins with “or”',
   'packages/workflow-model/src/triggers/schedule-cron.ts: 3':

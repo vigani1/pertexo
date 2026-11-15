@@ -1,59 +1,61 @@
-import { jsonStringByteLength } from '../text.js';
-
-/** Bounds on a JSON value's text bytes, container nesting, members and array length. */
-export type BoundedJsonSizeBounds = Readonly<{
-  bytes: number;
-  depth: number;
-  members: number;
-  /** Defaults to `members`: one array can't hold more items than the value has members. */
-  arrayItems?: number;
-}>;
-
-/** Why a value isn't bounded JSON; each caller words its own refusal. */
-export type BoundedJsonSizeRefusal =
-  | 'bytes'
-  | 'depth'
-  | 'members'
-  | 'array_items'
-  | 'not_json'
-  | 'cycle'
-  | 'not_plain'
-  | 'array_extra_keys'
-  | 'sparse_array';
+import {
+  MEASURE_RULES,
+  walkBoundedJson,
+  type MemberReading,
+  type Place,
+  type BoundedJsonSizeBounds,
+  type BoundedJsonSizeRefusal,
+  type BoundedJsonSnapshotRefusal,
+} from './bounded-json-walk.js';
 
 export type BoundedJsonSize =
   | Readonly<{ ok: true; bytes: number; depth: number; members: number }>
   | Readonly<{ ok: false; refusal: BoundedJsonSizeRefusal }>;
 
+/** Where a refused value sits: object keys and array indexes from the root. */
+export type BoundedJsonPath = readonly (string | number)[];
+
+export type BoundedJsonSnapshot =
+  | Readonly<{
+      ok: true;
+      snapshot: unknown;
+      bytes: number;
+      depth: number;
+      members: number;
+    }>
+  | Readonly<{
+      ok: false;
+      refusal: BoundedJsonSnapshotRefusal;
+      path: BoundedJsonPath;
+    }>;
+
+export type BoundedJsonSnapshotOptions = Readonly<{
+  /**
+   * `exact` (the default) refuses own properties JSON would leave out (hidden
+   * ones, an array's named ones); `written` skips them as `JSON.stringify`
+   * does. Both refuse accessors and symbol keys.
+   */
+  properties?: Exclude<MemberReading, 'get'>;
+  /**
+   * `containers` (the default) bounds the nesting of objects and arrays;
+   * `values` bounds every value's depth, leaves included, as the graph's
+   * depth limits count it.
+   */
+  depthCounts?: 'containers' | 'values';
+  /** NaN and the infinities, written by JSON as `null`; refused otherwise. */
+  allowNonFiniteNumbers?: boolean;
+  /** Refuses text PostgreSQL `jsonb` can't hold: U+0000 and lone surrogates. */
+  jsonbText?: boolean;
+  /** Copies objects without a prototype, so no inherited member can shadow a key. */
+  nullPrototype?: boolean;
+  /** An extra refusal for objects the host can recognise, such as proxies. */
+  refuseObject?: (value: object) => boolean;
+}>;
 const UNBOUNDED: BoundedJsonSizeBounds = Object.freeze({
   bytes: Infinity,
   depth: Infinity,
   members: Infinity,
 });
-
-/** JSON text widths of the literals: `null` and `true` are four bytes, `false` five. */
-export const JSON_LITERAL_BYTES = Object.freeze({ null: 4, true: 4, false: 5 });
-const NULL_BYTES = JSON_LITERAL_BYTES.null;
-const TRUE_BYTES = JSON_LITERAL_BYTES.true;
-const FALSE_BYTES = JSON_LITERAL_BYTES.false;
-// A container's brackets, and the colon after an object key.
-const BRACKET_BYTES = 2;
-const COLON_BYTES = 1;
-const COMMA_BYTES = 1;
-
-type Frame =
-  | Readonly<{ kind: 'value'; value: unknown; depth: number }>
-  | Readonly<{ kind: 'exit'; value: object }>;
-
-interface Walk {
-  readonly bounds: BoundedJsonSizeBounds;
-  readonly arrayItems: number;
-  readonly pending: Frame[];
-  readonly ancestors: Set<object>;
-  bytes: number;
-  depth: number;
-  members: number;
-}
 
 /**
  * Measures a value as compact JSON text without building it, and refuses
@@ -61,121 +63,59 @@ interface Walk {
  * untrusted values (checkpoints, executables) use this walk, which stops at the
  * first bound crossed; an already-normalized value is measured natively by
  * `inspectJsonValue`, and json-measures.test.ts keeps the two in agreement.
+ * It reads members the way `JSON.stringify` does: own enumerable string keys.
  */
 export function measureBoundedJson(
   value: unknown,
   bounds: BoundedJsonSizeBounds = UNBOUNDED,
 ): BoundedJsonSize {
-  const walk: Walk = {
-    bounds,
-    arrayItems: bounds.arrayItems ?? bounds.members,
-    pending: [{ kind: 'value', value, depth: 1 }],
-    ancestors: new Set<object>(),
-    bytes: 0,
-    depth: 0,
-    members: 0,
-  };
-  while (walk.pending.length > 0) {
-    const frame = walk.pending.pop();
-    if (frame === undefined) continue;
-    if (frame.kind === 'exit') {
-      walk.ancestors.delete(frame.value);
-      continue;
-    }
-    const refusal = measureValue(walk, frame.value, frame.depth);
-    if (refusal !== undefined) return { ok: false, refusal };
-  }
-  return {
-    ok: true,
-    bytes: walk.bytes,
-    depth: walk.depth,
-    members: walk.members,
-  };
+  const walked = walkBoundedJson(value, bounds, MEASURE_RULES);
+  return walked.ok
+    ? {
+        ok: true,
+        bytes: walked.bytes,
+        depth: walked.depth,
+        members: walked.members,
+      }
+    : // Measure rules read leniently and keep all text, so the walk can only
+      // refuse with a measure refusal here.
+      { ok: false, refusal: walked.refusal as BoundedJsonSizeRefusal };
 }
 
-function measureValue(
-  walk: Walk,
-  item: unknown,
-  depth: number,
-): BoundedJsonSizeRefusal | undefined {
-  const primitive = primitiveBytes(item, walk.bounds.bytes - walk.bytes);
-  if (primitive !== undefined) return addBytes(walk, primitive);
-  if (typeof item !== 'object' || item === null) return 'not_json';
-  if (depth > walk.bounds.depth) return 'depth';
-  if (walk.ancestors.has(item)) return 'cycle';
-  const isArray = Array.isArray(item);
-  const prototype: unknown = Object.getPrototypeOf(item);
-  if (!isArray && prototype !== Object.prototype && prototype !== null)
-    return 'not_plain';
-  if (isArray && item.length > walk.arrayItems) return 'array_items';
-  walk.depth = Math.max(walk.depth, depth);
-  const brackets = addBytes(
-    walk,
-    BRACKET_BYTES + (isArray ? Math.max(0, item.length - 1) * COMMA_BYTES : 0),
-  );
-  if (brackets !== undefined) return brackets;
-  walk.ancestors.add(item);
-  walk.pending.push({ kind: 'exit', value: item });
-  return isArray
-    ? enterArray(walk, item as readonly unknown[], depth)
-    : enterObject(walk, item as Readonly<Record<string, unknown>>, depth);
+/**
+ * The same walk and costs as `measureBoundedJson`, building a frozen copy as
+ * it goes, for input that is then trusted (graph admission, stored values).
+ * It reads only own, enumerable data properties, so no getter runs and nothing
+ * hidden is dropped silently, and it writes `-0` as `0`, as JSON does.
+ */
+export function snapshotBoundedJson(
+  value: unknown,
+  bounds: BoundedJsonSizeBounds = UNBOUNDED,
+  options: BoundedJsonSnapshotOptions = {},
+): BoundedJsonSnapshot {
+  const root = { value: undefined as unknown };
+  const walked = walkBoundedJson(value, bounds, {
+    reading: options.properties ?? 'exact',
+    depthCountsValues: options.depthCounts === 'values',
+    allowNonFiniteNumbers: options.allowNonFiniteNumbers ?? false,
+    jsonbText: options.jsonbText ?? false,
+    nullPrototype: options.nullPrototype ?? false,
+    refuseObject: options.refuseObject,
+    root,
+  });
+  return walked.ok
+    ? {
+        ok: true,
+        snapshot: root.value,
+        bytes: walked.bytes,
+        depth: walked.depth,
+        members: walked.members,
+      }
+    : { ok: false, refusal: walked.refusal, path: pathOf(walked.at) };
 }
 
-function enterArray(
-  walk: Walk,
-  item: readonly unknown[],
-  depth: number,
-): BoundedJsonSizeRefusal | undefined {
-  let count = 0;
-  for (const key of Object.keys(item)) {
-    walk.members += 1;
-    if (walk.members > walk.bounds.members) return 'members';
-    if (key !== String(count)) return 'array_extra_keys';
-    count += 1;
-    walk.pending.push({
-      kind: 'value',
-      value: item[count - 1],
-      depth: depth + 1,
-    });
-  }
-  return count === item.length ? undefined : 'sparse_array';
-}
-
-function enterObject(
-  walk: Walk,
-  item: Readonly<Record<string, unknown>>,
-  depth: number,
-): BoundedJsonSizeRefusal | undefined {
-  let count = 0;
-  for (const key of Object.keys(item)) {
-    walk.members += 1;
-    if (walk.members > walk.bounds.members) return 'members';
-    const separator = count > 0 ? COMMA_BYTES : 0;
-    const keyBytes = jsonStringByteLength(key, {
-      stopAfterBytes: walk.bounds.bytes - walk.bytes,
-    });
-    const refusal = addBytes(walk, separator + keyBytes + COLON_BYTES);
-    if (refusal !== undefined) return refusal;
-    count += 1;
-    walk.pending.push({ kind: 'value', value: item[key], depth: depth + 1 });
-  }
-  return undefined;
-}
-
-function addBytes(walk: Walk, added: number): 'bytes' | undefined {
-  walk.bytes += added;
-  return walk.bytes > walk.bounds.bytes ? 'bytes' : undefined;
-}
-
-function primitiveBytes(
-  item: unknown,
-  remainingBytes: number,
-): number | undefined {
-  if (item === null) return NULL_BYTES;
-  if (typeof item === 'string')
-    return jsonStringByteLength(item, { stopAfterBytes: remainingBytes });
-  if (typeof item === 'boolean') return item ? TRUE_BYTES : FALSE_BYTES;
-  if (typeof item === 'number' && Number.isFinite(item))
-    return Object.is(item, -0) ? 1 : String(item).length;
-  return undefined;
+function pathOf(place: Place | undefined): BoundedJsonPath {
+  const path: (string | number)[] = [];
+  for (let at = place; at !== undefined; at = at.parent) path.push(at.key);
+  return path.reverse();
 }
