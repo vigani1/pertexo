@@ -80,7 +80,6 @@ export const REPOSITORY_THROW_BACKLOG = Object.freeze({
   'packages/core/src/authoring/workflows/commands/locks.repository.ts': 1,
   'packages/core/src/authoring/workflows/reads/versions.repository.ts': 2,
   'packages/core/src/connections/commands/manage.repository.ts': 2,
-  'packages/core/src/connections/commands/rotate.repository.ts': 4,
   'packages/core/src/connections/commands/sharing.repository.ts': 3,
   'packages/core/src/connections/connection-tests/complete.repository.ts': 4,
   'packages/core/src/connections/connection-tests/dispatch.repository.ts': 5,
