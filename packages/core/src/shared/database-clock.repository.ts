@@ -18,17 +18,26 @@ export async function readDatabaseClock(
 }
 
 /**
- * The same reading as PostgreSQL writes it, with its microseconds, for a
- * flow that stores it back into a timestamp column.
+ * The same reading in UTC with its microseconds (`2026-11-15T10:00:00.123456Z`),
+ * for a flow that stores it back into a timestamp column, hands it on as a
+ * cursor or compares it at microsecond precision.
  */
 export async function readDatabaseClockText(
   source: DatabaseClockSource,
 ): Promise<string> {
   const db = 'execute' in source ? source : drizzle(source);
   const clock = await db
-    .execute<{ now: string }>(sql`select clock_timestamp() now`)
+    .execute<{ now: string }>(
+      sql`select to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') now`,
+    )
     .catch(rethrowQueryFailure);
   const now = clock.rows[0]?.now;
   if (now === undefined) throw new Error('Database clock is unavailable');
   return now;
+}
+
+/** A clock reading's seconds since the epoch, keeping its microseconds. */
+export function databaseClockEpochSeconds(reading: string): number {
+  const [whole, fraction = '0'] = reading.slice(0, -1).split('.');
+  return Number(`${String(Date.parse(`${whole ?? ''}Z`) / 1_000)}.${fraction}`);
 }

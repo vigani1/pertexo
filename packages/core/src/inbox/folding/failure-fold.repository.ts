@@ -1,3 +1,4 @@
+import { readDatabaseClockText } from '../../shared/database-clock.repository.js';
 import { and, eq, inArray, sql, type SQLWrapper } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -36,13 +37,7 @@ const utc = (value: SQLWrapper) =>
 
 export async function claimFailures(client: PoolClient, limit: number) {
   const db = drizzle(client);
-  const clock = await db
-    .execute<{ now: string }>(
-      sql`select to_char(statement_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"') now`,
-    )
-    .catch(rethrowQueryFailure);
-  const now = clock.rows[0]?.now;
-  if (now === undefined) throw new Error('Inbox fold clock unavailable');
+  const now = await readDatabaseClockText(db);
   const claimed = await db
     .execute<ClaimedFailure>(
       sql`select * from app.claim_workspace_inbox_events(${limit})`,

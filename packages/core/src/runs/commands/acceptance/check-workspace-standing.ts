@@ -2,10 +2,11 @@ import { entitlementPolicyStateAt } from '../../queries/entitlement-effect.repos
 import { lockWorkspaceRunAdmission } from '../../../shared/workspace-fence.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { WorkspaceRunAdmissionDeniedError } from './run-admission.errors.js';
+import { readCurrentEntitlement } from './entitlements.repository.js';
 import {
-  readAdmissionClock,
-  readCurrentEntitlement,
-} from './entitlements.repository.js';
+  databaseClockEpochSeconds,
+  readDatabaseClockText,
+} from '../../../shared/database-clock.repository.js';
 
 /** A workspace takes new runs while it is active and its entitlement is in effect. */
 export async function assertWorkspaceAcceptsNewRuns(
@@ -20,8 +21,7 @@ export async function assertWorkspaceAcceptsNewRuns(
   if (entitlement === undefined) throw new WorkspaceRunAdmissionDeniedError();
   // A SELECT's projection can be evaluated before its row-lock wait. Observe
   // the database clock separately, after both pointer/version share locks.
-  const clock = await readAdmissionClock(transaction);
-  if (clock === undefined) throw new Error('Database clock returned no value');
+  const clock = await readDatabaseClockText(transaction.db);
   if (
     entitlementPolicyStateAt(
       {
@@ -32,7 +32,7 @@ export async function assertWorkspaceAcceptsNewRuns(
             ? null
             : Number(entitlement.expires_at),
       },
-      Number(clock),
+      databaseClockEpochSeconds(clock),
     ) !== 'active'
   )
     throw new WorkspaceRunAdmissionDeniedError();
