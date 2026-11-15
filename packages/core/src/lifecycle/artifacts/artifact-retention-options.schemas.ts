@@ -1,23 +1,29 @@
 import { z } from 'zod';
 
+import {
+  timeoutMillisSchema,
+  transactionTimeoutsShape,
+} from '../../shared/transaction-timeouts.schemas.js';
+
+/** How long erasing one artifact's bytes from the store may take. */
+const EXTERNAL_OPERATION_TIMEOUT_MILLIS = Object.freeze({
+  minimum: 1_000,
+  maximum: 300_000,
+  default: 30_000,
+});
+
+/** The erasure timeout option every retention coordinator takes. */
+export const externalOperationTimeoutSchema = timeoutMillisSchema(
+  EXTERNAL_OPERATION_TIMEOUT_MILLIS,
+);
+
 export type RunArtifactRetentionCoordinatorOptions = Readonly<
   z.input<typeof optionsSchema>
 >;
 
 export const optionsSchema = z
   .object({
-    externalOperationTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
-    lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
-    statementTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
+    externalOperationTimeoutMs: externalOperationTimeoutSchema,
+    ...transactionTimeoutsShape,
   })
   .strict();

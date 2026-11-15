@@ -1,24 +1,28 @@
 import { z } from 'zod';
 
+import { transactionTimeoutsShape } from '../../shared/transaction-timeouts.schemas.js';
+import { externalOperationTimeoutSchema } from '../artifacts/artifact-retention-options.schemas.js';
+
+/** How long a deleting artifact stays untouched, so in-flight uploads time out first. */
+const ARTIFACT_QUIESCENCE_SECONDS = Object.freeze({
+  minimum: 1,
+  maximum: 120,
+  default: 60,
+});
+
 export type PreviewRetentionCoordinatorOptions = Readonly<
   z.input<typeof optionsSchema>
 >;
 
 export const optionsSchema = z
   .object({
-    artifactQuiescenceSeconds: z.number().int().min(1).max(120).default(60),
-    externalOperationTimeoutMs: z
+    artifactQuiescenceSeconds: z
       .number()
       .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
-    lockTimeoutMs: z.number().int().min(100).max(300_000).default(10_000),
-    statementTimeoutMs: z
-      .number()
-      .int()
-      .min(1_000)
-      .max(300_000)
-      .default(30_000),
+      .min(ARTIFACT_QUIESCENCE_SECONDS.minimum)
+      .max(ARTIFACT_QUIESCENCE_SECONDS.maximum)
+      .default(ARTIFACT_QUIESCENCE_SECONDS.default),
+    externalOperationTimeoutMs: externalOperationTimeoutSchema,
+    ...transactionTimeoutsShape,
   })
   .strict();

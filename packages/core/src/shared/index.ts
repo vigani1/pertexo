@@ -21,6 +21,7 @@ export type {} from './retention-deletion.repository.js';
 export type {} from './workflow-actor.js';
 export type {} from './traceparent.js';
 export type {} from './sql-intervals.repository.js';
+export type {} from './transaction-timeouts.schemas.js';
 
 // Resource authority is shared by authoring, execution and tenant discovery.
 export type {} from './resources/workflow-authority.repository.js';
