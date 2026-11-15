@@ -1,15 +1,12 @@
-import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
-import type { PoolClient } from 'pg';
-
-import type { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
+  PROMOTION_LIMITS,
   EMPTY_WORKFLOW_GRAPH,
   WorkflowPortabilityError,
   WorkflowCallDependencyError,
 } from '@pertexo/workflow-model';
-
+import type { PoolClient } from 'pg';
+import type { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { collectArtifactReferences } from '../../../../artifacts/references/lock-references.js';
-
 import { admitWorkflowAuthoring } from '../../../workflows/admit-graph.js';
 import { lockWorkspaceVariableNames } from '../../../../variables/head.repository.js';
 import { requirePlaceableDefinitionAdditions } from '../../../workflows/placement.js';
@@ -17,7 +14,7 @@ import type { PromotionContext } from '../../workflow-promotion.types.js';
 import { mapPromotionNodes } from '../graph.js';
 import type { PromotionSource } from '../source.repository.js';
 import { rebindPromotionTable } from '../tables.js';
-import { rebindPromotionConnections } from '../connections.repository.js';
+import { rebindPromotionConnections } from '../rebind-connections.js';
 import {
   rebindPromotionCalls,
   inspectPromotionCallDependencies,

@@ -6,7 +6,7 @@ import type {
 } from './workflow-promotion.types.js';
 import { preparePromotion } from './preview.js';
 import { promotionReads } from './promotion-sources.repository.js';
-import { promotionSettings } from './settings.repository.js';
+import { promotionSettings } from './settings.js';
 
 export type WorkflowPromotionStore = ReturnType<
   typeof createWorkflowPromotionStore

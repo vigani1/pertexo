@@ -3,10 +3,8 @@ import { requireReadableReceipt } from '../../shared/receipts.js';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { writePromotedDraft } from './write-promoted-draft.js';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
-import {
-  promotionReceiptSchema,
-  readAuthorizedPromotionReceipt,
-} from './receipt.repository.js';
+import { promotionReceiptSchema } from './receipt.repository.js';
+import { readAuthorizedPromotionReceipt } from './receipt.js';
 import type {
   WorkflowPromotionPreview,
   WorkflowPromotionResult,
