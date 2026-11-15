@@ -16,6 +16,7 @@ export function useAuthRequest(describeFailure: (error: unknown) => string) {
   async function run(
     work: (signal: AbortSignal) => Promise<unknown>,
     onSuccess: () => void,
+    onFailure?: (error: unknown) => void,
   ) {
     const request = requests.begin();
     setFailure(undefined);
@@ -27,6 +28,7 @@ export function useAuthRequest(describeFailure: (error: unknown) => string) {
       const seconds = rateLimitSeconds(error);
       if (seconds !== undefined) rateLimit.startSeconds(seconds);
       setFailure(describeFailure(error));
+      onFailure?.(error);
     } finally {
       request.finish();
     }
@@ -53,6 +55,8 @@ export function useAuthRequest(describeFailure: (error: unknown) => string) {
     pending: requests.pending,
     failure,
     waitSeconds: rateLimit.remainingSeconds,
+    /** Sends without a form; `onFailure` sees the cause after `failure` is set. */
+    run,
     submit,
   };
 }

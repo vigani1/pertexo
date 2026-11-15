@@ -18,10 +18,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { isUnconfirmedCommand } from '@/lib/api/commands/command-retry';
 import { describeCommandError } from '@/lib/api/error-copy';
-import { issueDirectoryCredential } from '../../data/directory.mutations';
+import { useDirectoryCredentialIssue } from '../../data/directory.mutations';
 import type { FederationScope } from '../../data/federation-settings.api';
 
 type View =
@@ -41,13 +40,12 @@ export function DirectoryCredentialDialog({
   onClose: () => void;
 }>) {
   const id = useId(),
-    request = useLatestRequest(),
-    busy = useRef(false),
+    request = useDirectoryCredentialIssue(scope),
     nameInput = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<View>({ kind: 'form' }),
     [name, setName] = useState('');
   async function create() {
-    if (busy.current || view.kind !== 'form') return;
+    if (view.kind !== 'form') return;
     const input = directoryCredentialCreateSchema.safeParse({
       name,
       expectedRevision: revision,
@@ -60,39 +58,27 @@ export function DirectoryCredentialDialog({
       nameInput.current?.focus();
       return;
     }
-    busy.current = true;
-    const attempt = request.begin();
     setView({ kind: 'form' });
-    try {
-      const result = await issueDirectoryCredential(
-        scope,
-        input.data,
-        attempt.signal,
-      );
-      if (!attempt.isCurrent()) return;
+    const outcome = await request.run(input.data);
+    if (outcome.kind === 'superseded') return;
+    if (outcome.kind === 'done') {
       setView(
-        result.replayed
+        outcome.value.replayed
           ? { kind: 'unconfirmed' }
-          : { kind: 'secret', secret: result.secret },
+          : { kind: 'secret', secret: outcome.value.secret },
       );
       onRefresh();
-    } catch (cause: unknown) {
-      if (!attempt.isCurrent()) return;
-      if (isUnconfirmedCommand(cause)) {
-        setView({ kind: 'unconfirmed' });
-        onRefresh();
-      } else
-        setView({
-          kind: 'form',
-          error: describeCommandError(
-            cause,
-            'creating this provisioning credential',
-          ),
-        });
-    } finally {
-      busy.current = false;
-      attempt.finish();
-    }
+    } else if (isUnconfirmedCommand(outcome.cause)) {
+      setView({ kind: 'unconfirmed' });
+      onRefresh();
+    } else
+      setView({
+        kind: 'form',
+        error: describeCommandError(
+          outcome.cause,
+          'creating this provisioning credential',
+        ),
+      });
   }
   return (
     <Dialog

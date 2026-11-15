@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type { AccountSecurityResponse } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { AccountSection } from '../account/section';
-import { accountSecurityKeys } from '../../data/account-security.queries';
+import { useAccountSecurityRefresh } from '../../data/account-security.mutations';
 import { TwoFactorSetupDialog } from './setup-dialog';
 import type { TwoFactorAction } from '../../data/two-factor.mutations';
 import { pluralWord } from '@/lib/format/count';
@@ -22,15 +21,13 @@ export function AccountTwoFactorSection({
   readState: 'ready' | 'refreshing' | 'unavailable';
 }>) {
   const [action, setAction] = useState<TwoFactorAction>();
-  const queryClient = useQueryClient();
+  const refreshSecurity = useAccountSecurityRefresh(userId);
   const [closing, setClosing] = useState(false);
   async function refreshAndClose() {
     if (closing) return;
     setClosing(true);
     try {
-      await queryClient.invalidateQueries({
-        queryKey: accountSecurityKeys.scope(userId),
-      });
+      await refreshSecurity();
     } finally {
       setAction(undefined);
       setClosing(false);

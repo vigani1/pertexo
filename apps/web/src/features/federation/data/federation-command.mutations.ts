@@ -153,3 +153,13 @@ export function useFederationCommand(
   };
 }
 export type FederationCommandState = ReturnType<typeof useFederationCommand>;
+
+/** Reads the organization's sign-in settings again (after a credential is issued). */
+export function useFederationSettingsRefresh(scope: FederationScope) {
+  const cache = useQueryClient();
+  return () => {
+    void cache.invalidateQueries({
+      queryKey: federationSettingsQueryOptions(scope).queryKey,
+    });
+  };
+}

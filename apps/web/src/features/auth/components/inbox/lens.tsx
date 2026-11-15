@@ -7,7 +7,7 @@ import {
 } from '../../model/auth-failure';
 import { ProgressButton } from '@/components/ui/progress-button';
 import type { Countdown } from '@/lib/hooks/use-countdown';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
+import { useAuthRequest } from '../../data/auth-request';
 import {
   AuthLens,
   AuthLensDescription,
@@ -41,29 +41,27 @@ export function InboxLens({
   sentFeedback?: string;
   footer?: ReactNode;
 }>) {
-  const requests = useLatestRequest();
-  const { pending } = requests;
-  const [feedback, setFeedback] = useState<Feedback>();
+  const request = useAuthRequest(resendFailure);
+  const { pending } = request;
+  const [sent, setSent] = useState(false);
+  const feedback = resendFeedback(request.failure, sent, sentFeedback);
 
   async function send() {
     if (pending || cooldown.remainingSeconds > 0) return;
-    const request = requests.begin();
-    setFeedback(undefined);
-    try {
-      await resend(request.signal);
-      if (!request.isCurrent()) return;
-      cooldown.startSeconds(RESEND_COOLDOWN_SECONDS);
-      setFeedback({ tone: 'success', text: sentFeedback });
-    } catch (error) {
-      if (!request.isCurrent()) return;
-      if (isRateLimited(error))
-        cooldown.startSeconds(
-          rateLimitSeconds(error) ?? RESEND_COOLDOWN_SECONDS,
-        );
-      setFeedback({ tone: 'destructive', text: resendFailure(error) });
-    } finally {
-      request.finish();
-    }
+    setSent(false);
+    await request.run(
+      resend,
+      () => {
+        cooldown.startSeconds(RESEND_COOLDOWN_SECONDS);
+        setSent(true);
+      },
+      (error) => {
+        if (isRateLimited(error))
+          cooldown.startSeconds(
+            rateLimitSeconds(error) ?? RESEND_COOLDOWN_SECONDS,
+          );
+      },
+    );
   }
 
   return (
@@ -96,4 +94,13 @@ export function InboxLens({
       {footer}
     </AuthLens>
   );
+}
+
+function resendFeedback(
+  failure: string | undefined,
+  sent: boolean,
+  sentText: string,
+): Feedback | undefined {
+  if (failure !== undefined) return { tone: 'destructive', text: failure };
+  return sent ? { tone: 'success', text: sentText } : undefined;
 }

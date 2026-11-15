@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import type { ApiTokenCreateRequest, ApiTokenScope } from '@pertexo/contracts';
 import {
@@ -14,8 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import type { ApiClient } from '@/lib/api/client';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
-import { issueApiToken } from '../data/api-tokens.mutations';
+import { useApiTokenIssue } from '../data/api-tokens.mutations';
 import {
   tokenCommandFeedback,
   uncertainTokenOutcome,
@@ -42,41 +41,28 @@ export function CreateTokenDialog({
   onClose: () => void;
 }>) {
   const [view, setView] = useState<CreationView>({ kind: 'form' });
-  const request = useLatestRequest();
-  const inFlight = useRef(false);
+  const request = useApiTokenIssue(apiClient, workspaceId);
   async function create(body: ApiTokenCreateRequest) {
-    if (inFlight.current || view.kind !== 'form') return;
-    inFlight.current = true;
-    const attempt = request.begin();
+    if (view.kind !== 'form') return;
     setView({ kind: 'form' });
-    try {
-      const result = await issueApiToken(
-        apiClient,
-        workspaceId,
-        body,
-        attempt.signal,
-      );
-      if (!attempt.isCurrent()) return;
+    const outcome = await request.run(body);
+    if (outcome.kind === 'superseded') return;
+    if (outcome.kind === 'done') {
+      const result = outcome.value;
       setView(
         result.replayed
           ? { kind: 'unconfirmed' }
           : { kind: 'secret', secret: result.secret, name: result.token.name },
       );
       onRefresh();
-    } catch (cause) {
-      if (!attempt.isCurrent()) return;
-      if (uncertainTokenOutcome(cause)) {
-        setView({ kind: 'unconfirmed' });
-        onRefresh();
-      } else
-        setView({
-          kind: 'form',
-          feedback: tokenCommandFeedback(cause, 'creating this token'),
-        });
-    } finally {
-      inFlight.current = false;
-      attempt.finish();
-    }
+    } else if (uncertainTokenOutcome(outcome.cause)) {
+      setView({ kind: 'unconfirmed' });
+      onRefresh();
+    } else
+      setView({
+        kind: 'form',
+        feedback: tokenCommandFeedback(outcome.cause, 'creating this token'),
+      });
   }
   return (
     <Dialog

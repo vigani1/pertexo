@@ -1,5 +1,5 @@
+import { usePublicationRefresh } from '../../data/publication-refresh';
 import { useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type {
   NodeDefinitionCatalogItem,
   ConnectionResponse,
@@ -9,11 +9,6 @@ import {
   useWorkflowCommandSession,
   useAutoValidation,
 } from '@/features/workflow-publish/public';
-import { workflowRunKeys } from '@/features/workflow-runs/workflow-runs-queries.public';
-import {
-  workflowKeys,
-  workflowOrganizationKeys,
-} from '@/features/workflows/workflows-queries.public';
 import { useEditorStore, useEditorStoreApi } from '../../model/state/context';
 import { workflowConnectionIssues } from '../../model/connection-issues';
 import { workflowPlaceholderIssues } from '../../model/inspector/http-body';
@@ -51,7 +46,7 @@ export function useEditorPublication({
   const { apiClient, userId, workspaceId, workflowId } = scope;
   const { definitions, connections, connectionsAvailable } = catalog;
   const store = useEditorStoreApi();
-  const queryClient = useQueryClient();
+  const refresh = usePublicationRefresh(userId, workspaceId);
   const graph = useEditorStore((state) => state.graph);
   const generation = useEditorStore((state) => state.generation);
   const revision = useEditorStore((state) => state.revision);
@@ -78,17 +73,10 @@ export function useEditorPublication({
     },
     onRunAccepted,
     onRunCommandAccepted: () => {
-      void queryClient.invalidateQueries({
-        queryKey: workflowRunKeys.scope(userId, workspaceId),
-      });
+      refresh.runAccepted();
     },
     onPublicationAccepted: () => {
-      void queryClient.invalidateQueries({
-        queryKey: workflowOrganizationKeys.scope(userId, workspaceId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: workflowKeys.scope(userId, workspaceId),
-      });
+      refresh.publicationAccepted();
       onPublished?.();
     },
   });

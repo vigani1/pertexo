@@ -1,4 +1,5 @@
 import type { ApiClient } from '@/lib/api/client';
+import { useLatestCommand } from '@/lib/api/commands/use-latest-command';
 import { getArtifactMetadata, prepareArtifactDownload } from './artifacts.api';
 
 type ArtifactMetadata = Awaited<ReturnType<typeof getArtifactMetadata>>;
@@ -11,7 +12,7 @@ export type PreparedDownload = Awaited<
  * written has none yet; `known` saves a read when the page already holds
  * the file's metadata.
  */
-export async function prepareFileDownload(
+async function prepareFileDownload(
   input: Readonly<{
     apiClient: ApiClient;
     workspaceId: string;
@@ -38,4 +39,22 @@ export async function prepareFileDownload(
       signal,
     ),
   };
+}
+
+/** Prepares a file's download; a newer click replaces the one in flight. */
+export function useFileDownload(
+  apiClient: ApiClient,
+  workspaceId: string,
+  artifactId: string,
+) {
+  return useLatestCommand(
+    (known: ArtifactMetadata | undefined, signal: AbortSignal) =>
+      prepareFileDownload({
+        apiClient,
+        workspaceId,
+        artifactId,
+        known,
+        signal,
+      }),
+  );
 }

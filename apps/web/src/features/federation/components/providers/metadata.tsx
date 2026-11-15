@@ -1,10 +1,9 @@
-import { readSamlMetadataFile } from '../../data/saml-metadata';
+import { useSamlMetadataFile } from '../../data/saml-metadata';
 import { useState } from 'react';
 import { samlServiceProviderUrls } from '@pertexo/contracts';
 import { CopyButton } from '@/components/ui/copy-button';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Notice } from '@/components/ui/notice';
-import { useLatestRequest } from '@/lib/hooks/use-latest-request';
 import { describeCommandError } from '@/lib/api/error-copy';
 import type { FederationScope } from '../../data/federation-settings.api';
 import { downloadTextFile } from '@/lib/download-file';
@@ -27,7 +26,7 @@ export function SamlMetadata({
   scope,
   organizationId,
 }: Readonly<{ scope: FederationScope; organizationId: string }>) {
-  const request = useLatestRequest(),
+  const request = useSamlMetadataFile(scope),
     [error, setError] = useState<string>();
   if (window.location.protocol !== 'https:')
     return (
@@ -42,17 +41,13 @@ export function SamlMetadata({
   );
   async function download() {
     if (request.pending) return;
-    const attempt = request.begin();
     setError(undefined);
-    try {
-      const file = await readSamlMetadataFile(scope, attempt.signal);
-      if (attempt.isCurrent()) downloadTextFile(file);
-    } catch (cause) {
-      if (attempt.isCurrent())
-        setError(describeCommandError(cause, 'downloading SAML metadata'));
-    } finally {
-      attempt.finish();
-    }
+    const outcome = await request.run(null);
+    if (outcome.kind === 'done') downloadTextFile(outcome.value);
+    else if (outcome.kind === 'failed')
+      setError(
+        describeCommandError(outcome.cause, 'downloading SAML metadata'),
+      );
   }
   return (
     <Disclosure

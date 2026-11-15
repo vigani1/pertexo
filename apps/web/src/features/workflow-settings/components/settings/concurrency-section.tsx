@@ -1,7 +1,8 @@
+import { useConcurrencyReadScope } from '../../data/concurrency.queries';
 import { OverflowPicker } from './concurrency/overflow';
 import { SkipHistory } from './concurrency/history';
-import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type {
   AccessibleWorkspace,
   WorkflowConcurrencySettings,
@@ -16,10 +17,7 @@ import { useFieldValidation } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format/time';
-import {
-  concurrencyKey,
-  concurrencyQueryOptions,
-} from '../../data/concurrency.queries';
+import { concurrencyQueryOptions } from '../../data/concurrency.queries';
 import { useConcurrencyCommand } from '../../data/mutations/use-concurrency-command';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { settingsReadFailure } from '../settings-read-failure';
@@ -265,20 +263,12 @@ function ConcurrencyPolicy({
 }
 export function ConcurrencySection(scope: Scope) {
   const canRead = scope.workspace.capabilities.includes('workflow:read');
-  const cache = useQueryClient();
-  const userId = scope.userId;
-  const workspaceId = scope.workspace.id;
-  const workflowId = scope.workflowId;
-  useEffect(() => {
-    if (canRead) return;
-    const queryKey = concurrencyKey(userId, workspaceId, workflowId);
-    void cache.cancelQueries({ queryKey, exact: true }).then(() => {
-      cache
-        .getQueryCache()
-        .find({ queryKey, exact: true })
-        ?.setState({ data: undefined, dataUpdatedAt: 0 });
-    });
-  }, [cache, canRead, userId, workspaceId, workflowId]);
+  useConcurrencyReadScope(
+    scope.userId,
+    scope.workspace.id,
+    scope.workflowId,
+    canRead,
+  );
   const query = useQuery({
     ...concurrencyQueryOptions(
       scope.apiClient,

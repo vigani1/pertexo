@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import { queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
@@ -53,4 +55,24 @@ export function concurrencyQueryOptions(
     refetchInterval: QUERY_POLLING.status,
     refetchIntervalInBackground: false,
   });
+}
+
+/** Drops the concurrency snapshot once the person can no longer read the workflow. */
+export function useConcurrencyReadScope(
+  userId: string,
+  workspaceId: string,
+  workflowId: string,
+  canRead: boolean,
+) {
+  const cache = useQueryClient();
+  useEffect(() => {
+    if (canRead) return;
+    const queryKey = concurrencyKey(userId, workspaceId, workflowId);
+    void cache.cancelQueries({ queryKey, exact: true }).then(() => {
+      cache
+        .getQueryCache()
+        .find({ queryKey, exact: true })
+        ?.setState({ data: undefined, dataUpdatedAt: 0 });
+    });
+  }, [cache, canRead, userId, workspaceId, workflowId]);
 }

@@ -1,24 +1,16 @@
+import { useHomeRefresh } from '../data/home-refresh';
 import type {
   AccessibleWorkspace,
   UserProfileResponse,
 } from '@pertexo/contracts';
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
-import { useState } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 import { SkeletonLines } from '@/components/ui/skeleton';
 import {
   anyRunQueryOptions,
   runStatisticsQueryOptions,
-  workflowRunKeys,
 } from '@/features/workflow-runs/workflow-runs-queries.public';
-import {
-  workflowKeys,
-  workflowsInfiniteQueryOptions,
-} from '@/features/workflows/workflows-queries.public';
+import { workflowsInfiniteQueryOptions } from '@/features/workflows/workflows-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import { AttentionSection } from '../components/attention-section';
 import { FirstThreadSection } from '../components/first-thread-section';
@@ -53,10 +45,12 @@ export function HomePage({
   /** The example can't start here as is: the workflow list explains why. */
   onReviewExamples: () => void;
 }>) {
-  const queryClient = useQueryClient();
-  const [refreshing, setRefreshing] = useState(false);
   const canReadRuns = workspace.capabilities.includes('run:read');
   const canReadWorkflows = workspace.capabilities.includes('workflow:read');
+  const { refreshing, refresh } = useHomeRefresh(user.id, workspace.id, {
+    runs: canReadRuns,
+    workflows: canReadWorkflows,
+  });
   const statistics = useQuery({
     ...runStatisticsQueryOptions(apiClient, user.id, workspace.id),
     enabled: canReadRuns,
@@ -84,21 +78,6 @@ export function HomePage({
     onCreated: onExampleCreated,
     onNeedsReview: onReviewExamples,
   });
-
-  function refresh() {
-    setRefreshing(true);
-    const scopes = [
-      ...(canReadRuns ? [workflowRunKeys.scope(user.id, workspace.id)] : []),
-      ...(canReadWorkflows ? [workflowKeys.scope(user.id, workspace.id)] : []),
-    ];
-    void Promise.allSettled(
-      scopes.map((queryKey) =>
-        queryClient.refetchQueries({ queryKey, type: 'active' }),
-      ),
-    ).finally(() => {
-      setRefreshing(false);
-    });
-  }
 
   if (!canReadRuns && !canReadWorkflows)
     return (

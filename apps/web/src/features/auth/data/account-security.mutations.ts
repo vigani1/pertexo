@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLatestCommand } from '@/lib/api/commands/use-latest-command';
 import type { ApiClient } from '@/lib/api/client';
 import type { AccountSecurityLinkStartRequest } from '@pertexo/contracts';
 import {
@@ -65,7 +66,7 @@ export function useRequestAccountEmailChange(apiClient: ApiClient) {
  * Saves the account password: a change needs the current one, and an
  * account that signs in only through a provider sets its first.
  */
-export function saveAccountPassword(
+function saveAccountPassword(
   apiClient: ApiClient,
   input: Readonly<{ hasPassword: boolean; current: string; password: string }>,
   signal: AbortSignal,
@@ -80,10 +81,39 @@ export function saveAccountPassword(
 }
 
 /** Starts linking a sign-in method; the answer is the provider's address. */
-export function beginAccountLink(
-  apiClient: ApiClient,
-  input: AccountSecurityLinkStartRequest,
-  signal: AbortSignal,
-) {
-  return startAccountLink(apiClient, input, signal);
+export function useAccountLinkStart(apiClient: ApiClient) {
+  return useLatestCommand(
+    (input: AccountSecurityLinkStartRequest, signal: AbortSignal) =>
+      startAccountLink(apiClient, input, signal),
+  );
+}
+
+/**
+ * The password save, then a fresh read of the account's security (other
+ * devices are signed out, so their sessions go).
+ */
+export function useAccountPasswordSave(apiClient: ApiClient, userId: string) {
+  const cache = useQueryClient();
+  return useLatestCommand(
+    async (
+      input: Readonly<{
+        hasPassword: boolean;
+        current: string;
+        password: string;
+      }>,
+      signal: AbortSignal,
+    ) => {
+      await saveAccountPassword(apiClient, input, signal);
+      await cache.invalidateQueries({
+        queryKey: accountSecurityKeys.scope(userId),
+      });
+    },
+  );
+}
+
+/** Reads the account's security again after a change made elsewhere on the page. */
+export function useAccountSecurityRefresh(userId: string) {
+  const cache = useQueryClient();
+  return () =>
+    cache.invalidateQueries({ queryKey: accountSecurityKeys.scope(userId) });
 }

@@ -22,6 +22,10 @@ export function useRetainedCommand<Input, Output>(
     expiredMessage?: string;
     onRefused?: (cause: unknown) => Promise<void>;
     failureMessage?: (cause: unknown) => string | undefined;
+    /** Which failures leave the outcome unknown; the default is isUnconfirmedCommand. */
+    isUnconfirmed?: (cause: unknown) => boolean;
+    /** What to say while an unconfirmed command waits for its retry. */
+    uncertainMessage?: string;
   }> = {},
 ) {
   const intent = useRef<Command<Input> | undefined>(undefined);
@@ -39,7 +43,10 @@ export function useRetainedCommand<Input, Output>(
       await onSuccess?.(result, command.body);
     },
     onError: async (error, command) => {
-      if (command.uncertain || isUnconfirmedCommand(error)) {
+      if (
+        command.uncertain ||
+        (options.isUnconfirmed ?? isUnconfirmedCommand)(error)
+      ) {
         intent.current = { ...command, uncertain: true };
         setHeld(command);
       } else {
@@ -81,7 +88,10 @@ export function useRetainedCommand<Input, Output>(
     if (refused)
       return `${refusal()} Pertexo refused this retry; the first attempt’s answer was lost, so check the current state to see whether it saved.`;
     if (uncertain)
-      return 'We couldn’t confirm the result. Retry the same action before changing anything.';
+      return (
+        options.uncertainMessage ??
+        'We couldn’t confirm the result. Retry the same action before changing anything.'
+      );
     if (mutation.isError) return refusal();
     return undefined;
   }

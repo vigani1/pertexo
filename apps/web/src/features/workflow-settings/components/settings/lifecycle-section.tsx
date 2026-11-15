@@ -1,6 +1,6 @@
+import { useWorkflowSettingsRefresh } from '../../data/mutations/use-settings-refresh';
 import { useState } from 'react';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
-import { useQueryClient } from '@tanstack/react-query';
 import { ArchiveIcon, ArchiveRestoreIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Status } from '@/components/ui/status';
@@ -12,7 +12,6 @@ import {
 } from '@/features/workflows/public';
 import { WorkflowLifecycleDialog } from '@/features/workflows/workflows-views.public';
 import type { ApiClient } from '@/lib/api/client';
-import { workflowSettingsKeys } from '../../data/workflow-settings.queries';
 import {
   QueryView,
   type ReadQuery,
@@ -101,7 +100,11 @@ export function LifecycleSection({
   workflowId: string;
   query: ReadQuery<WorkflowSummary>;
 }>) {
-  const queryClient = useQueryClient();
+  const refreshSettings = useWorkflowSettingsRefresh(
+    userId,
+    workspace.id,
+    workflowId,
+  );
   const [intent, setIntent] = useState<LifecycleIntent>();
   const workflow = shownData(query);
   const canManage = workspace.capabilities.includes('workflow:publish');
@@ -139,15 +142,7 @@ export function LifecycleSection({
         workflowId={workflowId}
         workflowName={workflow?.name ?? ''}
         intent={workflow === undefined ? undefined : intent}
-        onCompleted={() =>
-          void queryClient.invalidateQueries({
-            queryKey: workflowSettingsKeys.root(
-              userId,
-              workspace.id,
-              workflowId,
-            ),
-          })
-        }
+        onCompleted={refreshSettings}
         onClose={() => {
           setIntent(undefined);
         }}

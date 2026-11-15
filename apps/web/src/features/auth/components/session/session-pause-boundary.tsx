@@ -8,12 +8,10 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRouter } from '@tanstack/react-router';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { currentUserQueryOptions } from '../../data/auth.queries';
-import { checkSessionOwner } from '../../data/session-identity';
+import { useSessionOwnerCheck } from '../../data/session-owner-check';
 import type { SessionPause } from '../../model/session/pause';
 import { returnToSearch, allowlistedReturnPath } from '../../model/return-path';
 import { SessionPaused } from './session-paused';
@@ -33,56 +31,44 @@ export function SessionPauseBoundary({
   children: ReactNode;
 }>) {
   const state = useSyncExternalStore(pause.subscribe, pause.current);
-  const queryClient = useQueryClient();
+  const session = useSessionOwnerCheck(apiClient);
   const router = useRouter();
   const notifications = useNotifications();
-  const [checking, setChecking] = useState(false);
+  const { checking, check: checkOwner } = session;
   const [stillSignedOut, setStillSignedOut] = useState(false);
-  const inFlight = useRef(false);
   const paused = state.kind === 'paused';
   const owner = paused ? state.userId : undefined;
 
   const check = useCallback(
     async (asked: boolean) => {
-      if (owner === undefined || inFlight.current) return;
-      inFlight.current = true;
-      setChecking(true);
-      try {
-        const answer = await checkSessionOwner(apiClient, owner);
-        const user = currentUserQueryOptions(apiClient).queryKey;
-        switch (answer.kind) {
-          case 'same':
-            queryClient.setQueryData(user, answer.user);
-            setStillSignedOut(false);
-            pause.resume();
-            // Reads refused while paused answer again for the same person.
-            void queryClient.invalidateQueries();
-            return;
-          case 'other':
-            queryClient.clear();
-            queryClient.setQueryData(user, answer.user);
-            setStillSignedOut(false);
-            pause.discard();
-            notifications.info({
-              title: 'Signed in as a different account',
-              description: `You’re now signed in as ${answer.user.email}. Unsaved changes on this page belonged to the other account, so they were discarded.`,
-            });
-            void router.invalidate();
-            return;
-          case 'signed-out':
-            setStillSignedOut(asked);
-            pause.pause(owner, 'expired');
-            return;
-          case 'unreachable':
-            pause.pause(owner, 'unreachable');
-            return;
-        }
-      } finally {
-        inFlight.current = false;
-        setChecking(false);
+      if (owner === undefined) return;
+      const answer = await checkOwner(owner);
+      if (answer === undefined) return;
+      switch (answer.kind) {
+        case 'same':
+          setStillSignedOut(false);
+          pause.resume();
+          session.refreshAfterResume();
+          return;
+        case 'other':
+          setStillSignedOut(false);
+          pause.discard();
+          notifications.info({
+            title: 'Signed in as a different account',
+            description: `You’re now signed in as ${answer.user.email}. Unsaved changes on this page belonged to the other account, so they were discarded.`,
+          });
+          void router.invalidate();
+          return;
+        case 'signed-out':
+          setStillSignedOut(asked);
+          pause.pause(owner, 'expired');
+          return;
+        case 'unreachable':
+          pause.pause(owner, 'unreachable');
+          return;
       }
     },
-    [apiClient, notifications, owner, pause, queryClient, router],
+    [checkOwner, notifications, owner, pause, router, session],
   );
 
   // A discarded page (another account, or a sign-out on purpose) takes the
@@ -96,6 +82,7 @@ export function SessionPauseBoundary({
   const reason = paused ? state.reason : undefined;
   // Another tab changed the session: ask at once who is signed in now.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- The check sets state only after its request answers.
     if (reason === 'checking') void check(false);
   }, [check, reason]);
   // Coming back from the sign-in tab resumes without another click.
@@ -117,7 +104,7 @@ export function SessionPauseBoundary({
   });
   function leave() {
     const returnTo = allowlistedReturnPath(here);
-    queryClient.clear();
+    session.forgetEverything();
     pause.discard();
     // Discarding was the choice, so no leave-unsaved prompt asks again.
     void router.navigate({

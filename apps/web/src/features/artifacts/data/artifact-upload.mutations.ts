@@ -1,3 +1,4 @@
+import { useLatestCommand } from '@/lib/api/commands/use-latest-command';
 import { useRef, useState } from 'react';
 import type { ArtifactMetadataResponse } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
@@ -166,4 +167,25 @@ export function useUpload(apiClient: ApiClient, workspaceId: string) {
       setState({ phase: 'empty' });
     },
   };
+}
+
+/**
+ * Hands an uploaded file to whatever asked for it (a run input, a form
+ * field), which may check it with the server; a returned reason keeps the
+ * file for a correction.
+ */
+export function useUploadedFileUse(
+  onUse: (
+    reference: FileReference,
+    signal: AbortSignal,
+  ) => string | undefined | Promise<string | undefined>,
+) {
+  return useLatestCommand(
+    async (reference: FileReference, signal: AbortSignal) => {
+      // Wait a turn: a target that changes before then never sees the file.
+      await Promise.resolve();
+      signal.throwIfAborted();
+      return onUse(reference, signal);
+    },
+  );
 }
