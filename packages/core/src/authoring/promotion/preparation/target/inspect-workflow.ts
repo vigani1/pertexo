@@ -1,0 +1,155 @@
+import { promotionGraphDigest } from '../graph.js';
+import type {
+  TargetWorkflowRow,
+  Origin,
+} from './target-workflows.repository.js';
+import { decodeStoredValue } from '../../../../shared/stored-values.js';
+import {
+  readTargetOrigin,
+  lockTargetWorkflow,
+} from './target-workflows.repository.js';
+import { workflowAccessible } from '../../../../shared/resources/workflow-access.repository.js';
+import { WorkflowNotFoundError } from '../../../workflows/workflow-authoring.errors.js';
+import type { PoolClient } from 'pg';
+import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
+import type { PromotionContext } from '../../workflow-promotion.types.js';
+import type { PromotionSource } from '../source.repository.js';
+import type {
+  ReviewedWorkflow,
+  TargetReviewState,
+} from './target-review.types.js';
+import { prepareTargetGraph } from './bind-graph.js';
+import { countNameCollisions } from './inspect-workflow.repository.js';
+
+export async function prepareTargetWorkflow(
+  client: PoolClient,
+  context: PromotionContext,
+  source: PromotionSource,
+  state: TargetReviewState,
+): Promise<{ origin: Origin | null; workflow: ReviewedWorkflow }> {
+  const { input, sourceWorkspaceId, sources, budget, scope, report } = state;
+
+  input.signal?.throwIfAborted();
+  const origin =
+    (
+      await readTargetOrigin(client, {
+        workspaceId: input.workspaceId,
+        sourceWorkspaceId,
+        sourceWorkflowId: source.workflowId,
+      })
+    )[0] ?? null;
+  if (
+    origin !== null &&
+    !(await workflowAccessible(client, scope, {
+      workspaceId: input.workspaceId,
+      workflowId: origin.workflow_id,
+      capability: 'workflow:update',
+    }))
+  )
+    throw new WorkflowNotFoundError('The target workflow is unavailable.');
+  if (origin === null && !scope.permits(null, 'workflow:create'))
+    throw new WorkflowNotFoundError('The target workflow is unavailable.');
+
+  const target =
+    origin === null
+      ? undefined
+      : (
+          await lockTargetWorkflow(client, {
+            workspaceId: input.workspaceId,
+            workflowId: origin.workflow_id,
+          })
+        )[0];
+  const targetGraph =
+    target === undefined
+      ? null
+      : decodeStoredValue(() => parseWorkflowGraphDraft(target.graph_json));
+  if (targetGraph !== null) budget.add(targetGraph);
+  if (origin !== null && target?.lifecycle_status !== 'active')
+    report({
+      workflowId: source.workflowId,
+      kind: 'validation',
+      status: 'incompatible',
+      name: source.name,
+      detail: 'Restore the target workflow before promoting to it.',
+    });
+  const collisions = await countNameCollisions(client, input.workspaceId, {
+    name: source.name,
+    exceptWorkflowId: origin?.workflow_id,
+  });
+  if (
+    collisions !== 0 ||
+    sources.workflows.some(
+      (other) =>
+        other.workflowId !== source.workflowId && other.name === source.name,
+    )
+  )
+    report({
+      workflowId: source.workflowId,
+      kind: 'name',
+      status: 'incompatible',
+      name: source.name,
+      detail:
+        'An unrelated workflow has this name. Rename it or the source before promotion; existing workflows are never adopted by name.',
+    });
+  const directChanges = targetChangedDirectly(origin, target, targetGraph);
+  const graph = await prepareTargetGraph(client, context, source, {
+    ...state,
+    origin,
+    targetGraph,
+  });
+  return {
+    origin,
+    workflow: targetWorkflowReview(source, origin, {
+      target,
+      targetGraph,
+      directChanges,
+      graph,
+    }),
+  };
+}
+
+export function targetChangedDirectly(
+  origin: Origin | null,
+  target: TargetWorkflowRow | undefined,
+  targetGraph: ReturnType<typeof parseWorkflowGraphDraft> | null,
+): boolean {
+  return (
+    origin !== null &&
+    target !== undefined &&
+    (target.name !== origin.target_name ||
+      target.revision !== origin.draft_revision ||
+      target.published_version_id !== origin.published_version_id ||
+      promotionGraphDigest(targetGraph) !== origin.graph_digest)
+  );
+}
+
+export function targetWorkflowReview(
+  source: PromotionSource,
+  origin: Origin | null,
+  {
+    target,
+    targetGraph,
+    directChanges,
+    graph,
+  }: Readonly<{
+    target: TargetWorkflowRow | undefined;
+    targetGraph: ReturnType<typeof parseWorkflowGraphDraft> | null;
+    directChanges: boolean;
+    graph: ReturnType<typeof parseWorkflowGraphDraft>;
+  }>,
+): ReviewedWorkflow {
+  return {
+    sourceWorkflowId: source.workflowId,
+    sourceName: source.name,
+    sourceVersionId: source.versionId,
+    sourceVersionNumber: source.versionNumber,
+    sourceChecksum: source.checksum,
+    targetWorkflowId: origin?.workflow_id ?? null,
+    targetName: target?.name ?? source.name,
+    targetRevision: target?.revision ?? null,
+    targetPublishedVersionId: target?.published_version_id ?? null,
+    directChanges,
+    proposedGraph: graph,
+    targetGraph,
+  };
+}

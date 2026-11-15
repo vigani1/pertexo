@@ -1,22 +1,24 @@
 import { createHash } from 'node:crypto';
 import { formatByteSize } from '@pertexo/node-sdk';
-import { canonicalJson } from '@pertexo/workflow-model';
-import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
-import { utf8ByteLength } from '@pertexo/workflow-model';
+import {
+  canonicalJson,
+  PROMOTION_LIMITS,
+  utf8ByteLength,
+} from '@pertexo/workflow-model';
 import type {
   WorkflowPromotionPreview,
   WorkflowPromotionPreviewRequest,
 } from '@pertexo/contracts';
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
-import { linkedPromotionTarget } from './authority.repository.js';
+import { linkedPromotionTarget } from './linked-target.js';
 import { WorkflowPromotionError } from './workflow-promotion.errors.js';
 import type {
   PromotionContext,
   PromotionScope,
 } from './workflow-promotion.types.js';
 import { PromotionGraphBudget } from './preparation/graph.js';
-import { readPromotionSources } from './preparation/source.repository.js';
-import { preparePromotionTarget } from './preparation/target.repository.js';
+import { readPromotionSources } from './preparation/read-sources.js';
+import { preparePromotionTarget } from './preparation/prepare-target.js';
 
 export async function preparePromotion(
   context: PromotionContext,
