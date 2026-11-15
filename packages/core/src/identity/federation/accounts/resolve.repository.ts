@@ -2,7 +2,7 @@ import { canonicalEmail } from '../../email-policy.js';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { users, authAccounts } from '@pertexo/database/schema';
-import { canonicalEmailSql } from '../../canonical-email.js';
+import { canonicalEmailSql } from '../../canonical-email.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';

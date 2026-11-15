@@ -1,6 +1,6 @@
 import { invalidatePasswordResetProofs } from './password-reset.repository.js';
 import { canonicalEmail } from './email-policy.js';
-import { canonicalEmailSql } from './canonical-email.js';
+import { canonicalEmailSql } from './canonical-email.repository.js';
 import { readIdentityEmailChangeEligibility } from './federation/sessions/authority.repository.js';
 import { randomUUID } from 'node:crypto';
 
