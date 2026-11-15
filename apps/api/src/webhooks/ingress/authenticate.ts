@@ -7,10 +7,8 @@ import {
   webhookOriginAllowed,
 } from '../authentication/cors.js';
 
-import type {
-  TestEventReference,
-  WebhookVerificationReference,
-} from '@pertexo/core/triggers';
+import type { WebhookVerificationReference } from '@pertexo/core/triggers';
+import type { TestEventReference } from '@pertexo/core/authoring';
 
 import { verifyWebhookSignature } from '@pertexo/integrations/server';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';

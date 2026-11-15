@@ -4,11 +4,11 @@ import { asksSenderToRetry } from '@pertexo/workflow-model';
 
 import { replyToAcceptedWebhook } from '../responses/reply.js';
 
+import type { WebhookVerificationReference } from '@pertexo/core/triggers';
 import {
   WebhookTestEventError,
   type TestEventReference,
-  type WebhookVerificationReference,
-} from '@pertexo/core/triggers';
+} from '@pertexo/core/authoring';
 
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { REJECTED_ATTEMPT } from '../management/delivery-log.js';

@@ -3,11 +3,13 @@ import type { webhookRunInput } from '@pertexo/nodes-core';
 import type { createWebhookResponseWaiter } from '../responses/wait.js';
 
 import type {
-  WebhookTestEventStore,
-  TestEventReference,
   WebhookTriggerStore,
   WebhookVerificationReference,
 } from '@pertexo/core/triggers';
+import type {
+  WebhookTestEventStore,
+  TestEventReference,
+} from '@pertexo/core/authoring';
 import type { InitialCheckpointFactory } from '@pertexo/core/runs';
 import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import type { StructuredLogger } from '@pertexo/observability/server';
