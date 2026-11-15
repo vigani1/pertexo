@@ -109,8 +109,14 @@ function mergeEpisode(
   };
 }
 
+// Where an ISO timestamp with microseconds keeps the digits past the millisecond.
+const SUB_MILLISECOND_DIGITS = Object.freeze({ start: 23, end: 26 });
+
 function micros(timestamp: string): bigint {
   return (
-    BigInt(Date.parse(timestamp)) * 1000n + BigInt(timestamp.slice(23, 26))
+    BigInt(Date.parse(timestamp)) * 1000n +
+    BigInt(
+      timestamp.slice(SUB_MILLISECOND_DIGITS.start, SUB_MILLISECOND_DIGITS.end),
+    )
   );
 }

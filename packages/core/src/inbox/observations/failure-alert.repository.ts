@@ -23,7 +23,7 @@ import {
  * on. A week: long enough to be seen after a weekend, short enough that a one-off
  * doesn't sit there once the destination has simply had nothing to send.
  */
-export const RECENT_ALERT_FAILURE_SQL = sql`interval '168 hours'`;
+export const RECENT_ALERT_FAILURE_SQL = sql.raw("interval '168 hours'");
 
 type Subject = Readonly<{ workspaceId: string; subjectId: string }>;
 

@@ -1,6 +1,6 @@
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { alias } from 'drizzle-orm/pg-core';
-import { NOTICE_WINDOW_SQL } from '../lifetime.js';
+import { NOTICE_WINDOW_SQL } from '../lifetime.repository.js';
 import {
   workflowCommentThreads as discussion,
   workflowCommentMentions as mentionsTable,
