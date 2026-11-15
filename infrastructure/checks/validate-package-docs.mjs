@@ -28,14 +28,7 @@ const ORIGINAL_PENDING_DOCS = Object.freeze([
 ]);
 
 /** Workspaces still without their AGENTS.md; this list may only shrink. */
-export const PENDING_DOCS = Object.freeze([
-  'apps/api',
-  'apps/cli',
-  'apps/code-runner',
-  'apps/ops',
-  'apps/worker',
-  'packages/core',
-]);
+export const PENDING_DOCS = Object.freeze(['packages/core']);
 
 // A link to the root rules from `apps/<name>` or `packages/<name>`.
 const ROOT_RULES_LINK = /\]\(\.\.\/\.\.\/AGENTS\.md(?:#[^)]*)?\)/u;

@@ -4,7 +4,6 @@ import { pathToFileURL } from 'node:url';
 
 import {
   directoryEntries,
-  entriesAddedSince,
   listWorkspaces,
   report,
   repositoryRoot,
@@ -68,30 +67,29 @@ export const ROOT_CONCEPTS = Object.freeze({
     'workflow-execution.ts': 'the engine’s state vocabulary every area reads',
     'workflow-engine.errors.ts': 'the engine’s one error family',
   },
+  'apps/api': {
+    'app.ts':
+      'builds and starts the HTTP application; the production-image check loads its built file',
+    'app.module.ts': 'the Nest composition root',
+  },
+  'apps/worker': {
+    'worker-application.ts':
+      'starts and stops the worker; the production-image check loads its built file',
+    'worker.module.ts': 'the Nest composition root',
+  },
+  'apps/cli': {
+    'run-automation-cli.ts': 'one CLI run: parse, configure, execute, print',
+  },
+  'apps/ops': {
+    'execute-operator-command.ts':
+      'runs one operator command; the production-image check loads its built file',
+    'operator-config.ts': 'the operator settings',
+  },
+  'apps/code-runner': {
+    'runner-application.ts':
+      'checks isolation, then starts the task pool and the socket',
+  },
 });
-
-// PENDING_ROOTS as it stood when the check began; it stays within this list.
-const ORIGINAL_PENDING_ROOTS = Object.freeze([
-  'apps/api',
-  'apps/cli',
-  'apps/code-runner',
-  'apps/ops',
-  'apps/worker',
-  'packages/database',
-  'packages/integrations',
-  'packages/nodes-core',
-  'packages/workflow-engine',
-  'packages/workflow-model',
-]);
-
-/** Workspaces whose roots haven't been reworked yet; this list may only shrink. */
-export const PENDING_ROOTS = Object.freeze([
-  'apps/api',
-  'apps/cli',
-  'apps/code-runner',
-  'apps/ops',
-  'apps/worker',
-]);
 
 /** Findings for one workspace's direct `src` files. */
 export function validatePackageRoot(workspace, files) {
@@ -104,13 +102,6 @@ export function validatePackageRoot(workspace, files) {
       !Object.hasOwn(concepts, file),
   );
   const findings = [];
-  if (PENDING_ROOTS.includes(workspace)) {
-    if (loose.length === 0)
-      findings.push(
-        `${workspace}: its src root is settled; remove it from PENDING_ROOTS.`,
-      );
-    return findings;
-  }
   for (const file of loose)
     findings.push(
       `${workspace}/src/${file}: a src root holds entry files and named core concepts; move it into an area or list it with a reason in ROOT_CONCEPTS.`,
@@ -123,13 +114,8 @@ export function validatePackageRoot(workspace, files) {
   return findings;
 }
 
-/** A pending list that gained an entry since the check began. */
-export function validatePendingRoots(pending = PENDING_ROOTS) {
-  return entriesAddedSince('PENDING_ROOTS', pending, ORIGINAL_PENDING_ROOTS);
-}
-
 export async function inspectPackageRoots(root = repositoryRoot) {
-  const findings = [...validatePendingRoots()];
+  const findings = [];
   for (const workspace of await listWorkspaces(root)) {
     const entries = await directoryEntries(path.join(root, workspace, 'src'));
     const files = entries
