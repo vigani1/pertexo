@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import { activeCapacityAvailable } from '../admission-locks.repository.js';
-import { deferWorkflowRun } from '../wakeups/advance.repository.js';
+import { deferWorkflowRun } from '../../outbox/run-advance.repository.js';
 
 import type { Pool, PoolClient } from 'pg';
 

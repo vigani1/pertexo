@@ -20,3 +20,5 @@ export type {} from './retention.repository.js';
 export type {} from './enqueue-delivery.repository.js';
 
 export type {} from './overdue-delivery.js';
+
+export type {} from './run-advance.repository.js';
