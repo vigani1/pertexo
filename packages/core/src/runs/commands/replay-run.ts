@@ -1,6 +1,9 @@
-import { workflowRuns } from '@pertexo/database/schema';
 import { isTestRun } from '../run-retention.repository.js';
-import { and, eq, sql } from 'drizzle-orm';
+import {
+  findLockedReplayVersion,
+  lockReplaySourceRow,
+  readRunTriggerType,
+} from './execution-sources.repository.js';
 
 import { readWorkflowRunAcceptanceReplay } from './acceptance/replay.repository.js';
 import type { PublishedWorkflow } from '../queries/execution/workflow-execution.types.js';
@@ -79,28 +82,13 @@ export async function lockReplaySource(
   transaction: WorkspaceTransaction,
   sourceRunId: string,
 ): Promise<Readonly<{ workflowId: string }>> {
-  const [source] = await transaction.db
-    .select({
-      workflow_id: sql<string>`source.workflow_id`,
-      lifecycle_status: sql<string>`source.lifecycle_status`,
-    })
-    .from(
-      sql`app.lock_workflow_run_replay_source(${transaction.workspaceId},${sourceRunId}) as source`,
-    );
-  const [run] = await transaction.db
-    .select({ trigger_type: workflowRuns.triggerType })
-    .from(workflowRuns)
-    .where(
-      and(
-        eq(workflowRuns.workspaceId, transaction.workspaceId),
-        eq(workflowRuns.id, sourceRunId),
-      ),
-    );
-  if (isTestRun(run?.trigger_type)) throw new WorkflowRunNotExecutableError();
+  const source = await lockReplaySourceRow(transaction, sourceRunId);
+  const triggerType = await readRunTriggerType(transaction, sourceRunId);
+  if (isTestRun(triggerType)) throw new WorkflowRunNotExecutableError();
   if (source === undefined) throw new WorkflowRunNotFoundError();
-  if (source.lifecycle_status !== 'active')
+  if (source.lifecycleStatus !== 'active')
     throw new WorkflowRunNotExecutableError();
-  return Object.freeze({ workflowId: source.workflow_id });
+  return Object.freeze({ workflowId: source.workflowId });
 }
 
 export async function lockReplayVersion(
@@ -119,25 +107,4 @@ export async function lockReplayVersion(
   )
     throw new WorkflowRunNotFoundError();
   return version;
-}
-
-export async function findLockedReplayVersion(
-  transaction: WorkspaceTransaction,
-  workflowId: string,
-  workflowVersionId: string,
-): Promise<PublishedWorkflow | null> {
-  // The app cannot update immutable version rows; this retained guard owns their share lock.
-  const [row] = await transaction.db
-    .select({
-      id: sql<string>`version.id`,
-      workspaceId: sql<string>`version.workspace_id`,
-      workflowId: sql<string>`version.workflow_id`,
-      versionNumber: sql<number>`version.version_number`,
-      checksum: sql<string>`version.checksum`,
-      executableJson: sql<unknown>`version.executable_json`,
-    })
-    .from(
-      sql`app.lock_workflow_run_replay_version(${transaction.workspaceId},${workflowId},${workflowVersionId}) as version`,
-    );
-  return row === undefined ? null : Object.freeze(row);
 }

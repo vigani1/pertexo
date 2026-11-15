@@ -1,5 +1,4 @@
-import { workflows } from '@pertexo/database/schema';
-import { and, eq } from 'drizzle-orm';
+import { shareLockPublishedVersionId } from './execution-sources.repository.js';
 import { readWorkflowRunAcceptanceReplay } from './acceptance/replay.repository.js';
 import { lockRunAcceptanceCommand } from './acceptance/lock.repository.js';
 import {
@@ -95,21 +94,10 @@ async function lockPublishedExecution(
   transaction: WorkspaceTransaction,
   workflowId: string,
 ): Promise<PublishedWorkflow> {
-  // Lock the workflow on its own. A locked join that waits on a concurrent
-  // publication re-checks the new workflow row against the old version row,
-  // finds nothing and would report an executable workflow as unavailable.
-  const [locked] = await transaction.db
-    .select({ publishedVersionId: workflows.publishedVersionId })
-    .from(workflows)
-    .where(
-      and(
-        eq(workflows.workspaceId, transaction.workspaceId),
-        eq(workflows.id, workflowId),
-        eq(workflows.lifecycleStatus, 'active'),
-      ),
-    )
-    .for('share');
-  const publishedVersionId = locked?.publishedVersionId;
+  const publishedVersionId = await shareLockPublishedVersionId(
+    transaction,
+    workflowId,
+  );
   if (publishedVersionId === undefined || publishedVersionId === null)
     throw new WorkflowRunNotExecutableError();
   const version = await findPublishedWorkflow(transaction.db, {
