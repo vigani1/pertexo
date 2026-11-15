@@ -29,7 +29,7 @@ import {
 import {
   findConnectionRotateReplay,
   rotateConnectionSecret,
-} from './commands/rotate.repository.js';
+} from './commands/rotate.js';
 import {
   readConnectionSharing,
   replaceConnectionSharing,
