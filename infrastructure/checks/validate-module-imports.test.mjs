@@ -1183,3 +1183,38 @@ test('startup settings never reach the core runtime through a local helper', () 
     /apps\/worker\/src\/config\/worker\.ts -> apps\/worker\/src\/shared\/limits\.ts loads @pertexo\/core/u,
   );
 });
+
+test('web server-command hooks are built only in a feature data folder', () => {
+  const builder = (file, line) => ({
+    [file]: line,
+    'apps/web/src/lib/api/commands/use-retained.ts':
+      'export const useRetainedCommand = () => undefined;',
+  });
+  const planted = validateModuleImports({
+    ...builder(
+      'apps/web/src/features/tables/components/remove.tsx',
+      "import { useRetainedCommand } from '@/lib/api/commands/use-retained';\nexport const remove = useRetainedCommand;",
+    ),
+    'apps/web/src/features/tables/pages/tables.tsx':
+      "import { useMutation as command } from '@tanstack/react-query';\nexport const tables = command;",
+  }).join('\n');
+  assert.match(
+    planted,
+    /components\/remove\.tsx: useRetainedCommand builds a server command/u,
+  );
+  assert.match(
+    planted,
+    /pages\/tables\.tsx: useMutation builds a server command/u,
+  );
+  assert.deepEqual(
+    validateModuleImports({
+      ...builder(
+        'apps/web/src/features/tables/data/tables.mutations.ts',
+        "import { useRetainedCommand } from '@/lib/api/commands/use-retained';\nexport const remove = useRetainedCommand;",
+      ),
+      'apps/web/src/features/tables/components/remove.tsx':
+        "import type { useMutation } from '@tanstack/react-query';\nexport type Remove = typeof useMutation;",
+    }),
+    [],
+  );
+});
