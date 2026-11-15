@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatCount } from '../values/byte-size.js';
 
 const SIGNING_KEY_MAX_BYTES = 4_096;
 
@@ -17,7 +18,7 @@ export const signingKeyCredentialSchema = z
       .refine(
         (value) =>
           new TextEncoder().encode(value).byteLength <= SIGNING_KEY_MAX_BYTES,
-        `Signing keys must fit ${SIGNING_KEY_MAX_BYTES.toLocaleString('en-US')} UTF-8 bytes`,
+        `Signing keys must fit ${formatCount(SIGNING_KEY_MAX_BYTES)} UTF-8 bytes`,
       ),
   })
   .strict()

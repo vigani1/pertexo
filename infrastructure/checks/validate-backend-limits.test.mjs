@@ -160,6 +160,15 @@ test('refuses dropping a reworked package from the check', () => {
   );
 });
 
+test('refuses a count formatted by hand, outside the formatter', () => {
+  const text = 'const hint = `fit ${MAX.toLocaleString("en-US")} bytes`;';
+  assert.match(
+    findHandWrittenByteUnits('packages/x/src/a.ts', text).join(),
+    /formatCount/u,
+  );
+  assert.deepEqual(findHandWrittenByteUnits(BYTE_SIZE_OWNER, text), []);
+});
+
 test('refuses a byte unit written after a computed size, outside the formatter', () => {
   const text =
     'const a = `fits ${String(bytes / 1_024)} KB`; const b = `of ${count} items`;';
