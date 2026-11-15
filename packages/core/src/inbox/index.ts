@@ -21,15 +21,17 @@ export {
   createNoticePreferencesStore,
   type NoticePreferencesStore,
 } from './preferences/notice-preferences.store.js';
+export type {
+  ReadNoticeSubscriptionInput,
+  ReplaceNoticeDefaultsInput,
+  ReplaceNoticePreferencesInput,
+  ReplaceNoticeSubscriptionInput,
+  UnsubscribeNoticeMailInput,
+} from './preferences/notice-preferences.types.js';
 export {
   NoticeConflictError,
   NoticeUnavailableError,
-  type ReadNoticeSubscriptionInput,
-  type ReplaceNoticeDefaultsInput,
-  type ReplaceNoticePreferencesInput,
-  type ReplaceNoticeSubscriptionInput,
-  type UnsubscribeNoticeMailInput,
-} from './preferences/notice-preferences.js';
+} from './preferences/notice-preferences.errors.js';
 export {
   createNoticeMailStore,
   type NoticeMailStore,

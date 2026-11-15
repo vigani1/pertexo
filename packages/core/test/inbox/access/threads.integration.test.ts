@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { createWorkflowFolderStore } from '../../../src/authoring/organization/folders/workflow-folder.store.js';
-import { NoticeUnavailableError } from '../../../src/inbox/preferences/notice-preferences.js';
+import { NoticeUnavailableError } from '../../../src/inbox/preferences/notice-preferences.errors.js';
 import { adminDatabaseUrl } from '../../support/workflow-authoring/base.js';
 import {
   config,

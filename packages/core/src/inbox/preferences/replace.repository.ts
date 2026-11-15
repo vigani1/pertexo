@@ -13,12 +13,12 @@ import {
 import type { NoticeCommandResponse } from '@pertexo/contracts';
 import type { PoolClient } from 'pg';
 
-import {
-  NoticeConflictError,
-  type ReplaceNoticeDefaultsInput,
-  type ReplaceNoticePreferencesInput,
-  type ReplaceNoticeSubscriptionInput,
-} from './notice-preferences.js';
+import type {
+  ReplaceNoticeDefaultsInput,
+  ReplaceNoticePreferencesInput,
+  ReplaceNoticeSubscriptionInput,
+} from './notice-preferences.types.js';
+import { NoticeConflictError } from './notice-preferences.errors.js';
 export async function replacePreference(
   client: PoolClient,
   command:
