@@ -4,7 +4,7 @@ import {
 } from './contract-infra-drift.mjs';
 import { validateTestFileWrites } from './test-file-writes.mjs';
 import { WEB_BROWSER_PACKAGE_ROOTS } from './browser-entry-dependencies.mjs';
-import { executionAreaDependencyAllowed } from './execution-area-rules.mjs';
+import { coreAreaDependencyAllowed } from './core-area-order.mjs';
 import { loadsModule } from './module-declarations.mjs';
 import console from 'node:console';
 import { readdir, readFile } from 'node:fs/promises';
@@ -69,8 +69,8 @@ function coreAreaViolation(file, specifier, namedFiles) {
     return `core areas import the files ${targetArea}/index.ts names, never the index`;
   if (!namedFiles(targetArea).has(reached))
     return `core areas import the files ${targetArea}/index.ts names, and it doesn't name ${reached}`;
-  if (!executionAreaDependencyAllowed(area, targetArea))
-    return `execution-area dependency is not allowed: ${area} -> ${targetArea}; keep the rule with its decided owner`;
+  if (!coreAreaDependencyAllowed(area, targetArea))
+    return `core area ${area} may not import ${targetArea}: areas import only the layers below theirs in CORE_AREA_LAYERS (core-area-order.mjs)`;
 }
 
 /** The relative files one core area's index re-exports from: its public files. */

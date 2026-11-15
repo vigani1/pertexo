@@ -776,10 +776,10 @@ test("a core area doesn't import the entry points above it", () => {
   );
 });
 
-test('execution areas refuse removed accidental dependencies even when a file is public', () => {
+test('core areas refuse an import up the area order even when a file is public', () => {
   for (const [from, to] of [
     ['runs', 'operator'],
-    ['runs', 'tenant-access'],
+    ['memberships', 'identity'],
     ['connections', 'runs'],
     ['notifications', 'runs'],
     ['outbox', 'runs'],
@@ -795,20 +795,21 @@ test('execution areas refuse removed accidental dependencies even when a file is
       });
       assert.match(
         errors.join('\n'),
-        /execution-area dependency is not allowed/u,
+        /may not import .*CORE_AREA_LAYERS/u,
         `${from} -> ${to}`,
       );
     }
   }
 });
 
-test('execution areas keep legitimate transaction and execution-source dependencies', () => {
+test('core keeps its execution-source dependency down the area order', () => {
   assert.deepEqual(
     validateModuleImports({
-      'packages/core/src/attempts/operation.ts':
-        "import type { A } from '../runs/public.js';",
-      'packages/core/src/runs/index.ts': "export type {} from './public.js';",
-      'packages/core/src/runs/public.ts': 'export type A = number;',
+      'packages/core/src/runs/operation.ts':
+        "import type { A } from '../attempts/public.js';",
+      'packages/core/src/attempts/index.ts':
+        "export type {} from './public.js';",
+      'packages/core/src/attempts/public.ts': 'export type A = number;',
     }),
     [],
   );
@@ -830,24 +831,21 @@ for (const [from, to] of [
         [`packages/core/src/${to}/public.ts`]:
           'export const a = 1; export type A = number;',
       });
-      assert.match(
-        errors.join('\n'),
-        /execution-area dependency is not allowed/u,
-      );
+      assert.match(errors.join('\n'), /may not import .*CORE_AREA_LAYERS/u);
     }
   });
 }
 
 for (const [from, to] of [
-  ['artifacts', 'connections'],
-  ['authoring', 'identity'],
+  ['artifacts', 'triggers'],
+  ['governance', 'previews'],
   ['governance', 'artifacts'],
-  ['lifecycle', 'authoring'],
-  ['previews', 'identity'],
+  ['identity', 'tenant-access'],
   ['previews', 'tenant-access'],
   ['tenant-access', 'lifecycle'],
+  ['inbox', 'previews'],
 ]) {
-  test(`batch D refuses unapproved ${from} -> ${to} imports`, () => {
+  test(`core refuses ${from} -> ${to}, up or across the area order or cut`, () => {
     for (const declaration of ['import { a }', 'import type { A }']) {
       assert.match(
         validateModuleImports({
@@ -857,18 +855,20 @@ for (const [from, to] of [
           [`packages/core/src/${to}/public.ts`]:
             'export const a = 1; export type A = number;',
         }).join('\n'),
-        /execution-area dependency is not allowed/u,
+        /may not import .*CORE_AREA_LAYERS/u,
       );
     }
   });
 }
 
-test('batch D retains its real transactional and disclosure dependencies', () => {
+test('core allows an import down the area order', () => {
   for (const [from, to] of [
-    ['artifacts', 'triggers'],
+    ['authoring', 'triggers'],
     ['authoring', 'artifacts'],
-    ['governance', 'previews'],
+    ['previews', 'artifacts'],
     ['lifecycle', 'identity'],
+    ['identity', 'memberships'],
+    ['tenant-access', 'identity'],
     ['previews', 'authoring'],
     ['identity', 'governance'],
     ['inbox', 'authoring'],
@@ -887,12 +887,12 @@ test('batch D retains its real transactional and disclosure dependencies', () =>
 
 for (const [from, to] of [
   ['inbox', 'operator'],
-  ['notifications', 'variables'],
+  ['variables', 'connections'],
   ['data-tables', 'operator'],
-  ['operator', 'identity'],
+  ['outbox', 'governance'],
   ['variables', 'notifications'],
 ]) {
-  test(`batch E refuses an undecided ${from} -> ${to} edge`, () => {
+  test(`core refuses the ${from} -> ${to} edge against the area order`, () => {
     for (const declaration of ['import { a }', 'import type { A }']) {
       assert.match(
         validateModuleImports({
@@ -902,7 +902,7 @@ for (const [from, to] of [
           [`packages/core/src/${to}/public.ts`]:
             'export const a = 1; export type A = number;',
         }).join('\n'),
-        /execution-area dependency is not allowed/u,
+        /may not import .*CORE_AREA_LAYERS/u,
       );
     }
   });
