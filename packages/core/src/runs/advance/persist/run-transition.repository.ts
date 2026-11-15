@@ -1,87 +1,31 @@
 import { recordInboxFailureDay } from './inbox-failure-day.repository.js';
-import { WORKSPACE_INBOX_FAILURE_KINDS } from '../../statuses.js';
 import { assertRunStartDeadline } from '../queued-run-admission.repository.js';
-import { decodeStoredValue } from '../../../shared/stored-values.js';
-import { isTerminalRunEvent, TERMINAL_RUN_STATUSES } from '../../statuses.js';
 import { releaseSlotDuringTimedWait } from '../timed-wait-slot.repository.js';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { and, eq, sql } from 'drizzle-orm';
-import { workflowRuns, runCheckpoints } from '@pertexo/database/schema';
-import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import {
-  parseStoredExecutionValue,
-  serializeStoredExecutionJsonValue,
-} from '../../../shared/stored-execution.js';
 import { isTestRun } from '../../../shared/run-retention.repository.js';
 import { wakeErrorWorkflowsForCapacity } from '../../error-workflows/queue-wait.repository.js';
 import { synchronizeHumanWait } from '../../pending-tasks/lifecycle/time-capacity.repository.js';
 import { persistErrorWorkflowIntent } from '../../error-workflows/produce.repository.js';
 import type { PoolClient } from 'pg';
-
 import { CoordinatorRunStateCorruptError } from '../../execution-state.errors.js';
 import type { CoordinatorCommitRow } from '../load/coordinator-state.repository.js';
-import { canonicalTimestamp } from '../load/fact-admission.js';
-import { scheduleRunInputSchema } from '../../../shared/trigger-run-input.schemas.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { persistFailureNotificationIntent } from './failure-notification.repository.js';
 import { persistWorkspaceInboxEvent } from './inbox-event.repository.js';
 import { persistWorkflowTriggerOutcome } from './trigger-outcome.repository.js';
 import { persistCallCompletion } from '../../calls/persist.repository.js';
 import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';
-
-async function persistDerivedContinuation(
-  client: PoolClient,
-  input: Readonly<{
-    plan: WorkflowTransitionPlan;
-    runId: string;
-    workspaceId: string;
-    traceparent?: string;
-  }>,
-): Promise<void> {
-  // The engine decides whether its scheduler still has immediate work. Keep
-  // that wakeup durable in the same checkpoint/outbox transaction.
-  const cannotContinueImmediately =
-    !(input.plan.immediateContinuation ?? false) ||
-    TERMINAL_RUN_STATUSES.has(input.plan.checkpoint.runStatus) ||
-    input.plan.attempts.length > 0;
-  if (cannotContinueImmediately) return;
-  await wakeWorkflowRun(
-    client,
-    input.workspaceId,
-    input.runId,
-    input.traceparent,
-  );
-}
-
-function scheduledOccurrence(
-  row: CoordinatorCommitRow,
-  plan: WorkflowTransitionPlan,
-): string | undefined {
-  const startedAt = plan.events.find(
-    ({ name }) => name === 'run.started',
-  )?.occurredAt;
-  if (startedAt === undefined || row.trigger_type !== 'schedule')
-    return undefined;
-  const storedInput = decodeStoredValue(() =>
-    parseStoredExecutionValue(row.input_ref),
-  );
-  if (storedInput.kind !== 'inline')
-    throw new CoordinatorRunStateCorruptError();
-  const scheduleInput = scheduleRunInputSchema.safeParse(storedInput.value);
-  if (!scheduleInput.success) throw new CoordinatorRunStateCorruptError();
-  return canonicalTimestamp(scheduleInput.data.scheduledAt);
-}
-
-async function secondsSince(client: PoolClient, moment: string) {
-  const { rows } = await drizzle(client)
-    .execute<{ seconds: number }>(
-      sql`select extract(epoch from clock_timestamp()-${moment}::timestamptz)::float8 seconds`,
-    )
-    .catch(rethrowQueryFailure);
-  const seconds = rows[0]?.seconds;
-  if (seconds === undefined) throw new CoordinatorRunStateCorruptError();
-  return seconds;
-}
+import {
+  secondsSince,
+  storeRunTransition,
+  storeTransitionCheckpoint,
+} from './run-transitions.repository.js';
+import {
+  continuesImmediately,
+  recordsInboxFailureDay,
+  scheduledOccurrence,
+  transitionHasHumanWait,
+  transitionMoments,
+} from './run-transition.js';
 
 export async function persistCoordinatorRunTransition(
   client: PoolClient,
@@ -98,79 +42,26 @@ export async function persistCoordinatorRunTransition(
 ): Promise<Readonly<{ scheduleToStartSeconds?: number }>> {
   const { plan, row, runId, workspaceId } = input;
   await persistRunNotices(client, input);
-  const checkpointUpdate = await drizzle(client)
-    .update(runCheckpoints)
-    .set({
-      revision: plan.checkpoint.revision,
-      schedulerState: sql`${serializeStoredExecutionJsonValue(plan.checkpoint)}::jsonb`,
-      resumeAt: null,
-      resumeLeaseOwner: null,
-      resumeLeaseToken: null,
-      resumeLeaseExpiresAt: null,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(runCheckpoints.workspaceId, workspaceId),
-        eq(runCheckpoints.workflowRunId, runId),
-        eq(runCheckpoints.revision, plan.expectedRevision),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  if (checkpointUpdate.rowCount !== 1)
-    throw new CoordinatorRunStateCorruptError();
+  const stored = await storeTransitionCheckpoint(client, input);
+  if (!stored) throw new CoordinatorRunStateCorruptError();
 
-  const startedAt = plan.events.find(
-    ({ name }) => name === 'run.started',
-  )?.occurredAt;
-  const completedAt = plan.events.find(({ name }) =>
-    isTerminalRunEvent(name),
-  )?.occurredAt;
+  const { startedAt, completedAt, runFailure } = transitionMoments(plan);
   await persistFailureDay(client, input, completedAt);
-  const runFailure = plan.events.find(
-    ({ name }) =>
-      name === 'run.failed' ||
-      name === 'run.timed_out' ||
-      name === 'run.outcome_unknown',
-  )?.reasonCode;
   await assertRunStartDeadline(client, {
     workspaceId,
     runId,
     currentStatus: row.status,
     nextStatus: plan.checkpoint.runStatus,
   });
-  await drizzle(client)
-    .update(workflowRuns)
-    .set({
-      status: plan.checkpoint.runStatus,
-      handledFailureCount: plan.checkpoint.invocations.filter(
-        ({ failureHandling }) => failureHandling?.disposition === 'handled',
-      ).length,
-      startedAt: sql`coalesce(${workflowRuns.startedAt},${startedAt ?? null}::timestamptz)`,
-      completedAt:
-        completedAt === undefined
-          ? undefined
-          : sql`${completedAt}::timestamptz`,
-      outputRef:
-        plan.runResult === undefined
-          ? undefined
-          : sql`${JSON.stringify({ kind: 'inline', value: plan.runResult })}::json`,
-      errorSummary: sql`coalesce(${runFailure ?? null}::varchar,${workflowRuns.errorSummary})`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(workflowRuns.workspaceId, workspaceId),
-        eq(workflowRuns.id, runId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  const hasHumanWait =
-    row.human_wait_started_at !== null ||
-    row.has_unconsumed_tasks ||
-    (row.has_human_child ?? false) ||
-    (plan.taskIntents?.length ?? 0) > 0;
-  if (hasHumanWait)
+  await storeRunTransition(client, {
+    workspaceId,
+    runId,
+    plan,
+    startedAt,
+    completedAt,
+    runFailure,
+  });
+  if (transitionHasHumanWait(row, plan))
     await synchronizeHumanWait(client, workspaceId, {
       runId,
       phase: 'committed',
@@ -184,13 +75,18 @@ export async function persistCoordinatorRunTransition(
   if (row.status === 'queued' && plan.checkpoint.runStatus !== 'queued')
     await wakeErrorWorkflowsForCapacity(client, workspaceId);
   await persistCallCompletion(client, input);
-  await persistDerivedContinuation(client, input);
+  // Keep the engine's immediate continuation durable in the same transaction.
+  if (continuesImmediately(plan))
+    await wakeWorkflowRun(client, workspaceId, runId, input.traceparent);
   const scheduleDueAt = scheduledOccurrence(row, plan);
   return Object.freeze(
     scheduleDueAt === undefined
       ? {}
       : {
-          scheduleToStartSeconds: await secondsSince(client, scheduleDueAt),
+          scheduleToStartSeconds: await scheduleToStartSeconds(
+            client,
+            scheduleDueAt,
+          ),
         },
   );
 }
@@ -260,18 +156,17 @@ async function persistFailureDay(
   completedAt: string | undefined,
 ): Promise<void> {
   const { workspaceId, row, plan } = input;
-  if (
-    completedAt !== undefined &&
-    !isTestRun(row.trigger_type) &&
-    !TERMINAL_RUN_STATUSES.has(row.status) &&
-    new Set<string>(WORKSPACE_INBOX_FAILURE_KINDS).has(
-      plan.checkpoint.runStatus,
-    )
-  ) {
+  if (recordsInboxFailureDay(row, plan, completedAt)) {
     await recordInboxFailureDay(client, {
       workspaceId,
       workflowId: row.workflow_id,
       completedAt,
     });
   }
+}
+
+async function scheduleToStartSeconds(client: PoolClient, dueAt: string) {
+  const seconds = await secondsSince(client, dueAt);
+  if (seconds === undefined) throw new CoordinatorRunStateCorruptError();
+  return seconds;
 }
