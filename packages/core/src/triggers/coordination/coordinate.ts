@@ -5,7 +5,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { WorkflowAlreadyRunningError } from '../../runs/commands/acceptance/run-admission.errors.js';
-import { recordWorkflowTriggerSkip } from '../skips.repository.js';
+import { recordWorkflowTriggerSkip } from '../../runs/commands/acceptance/trigger-skips.repository.js';
 import {
   recordCoordinatedEvent,
   finishCoordinatedEvent,

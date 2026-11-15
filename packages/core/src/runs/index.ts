@@ -162,4 +162,6 @@ export type {} from './values/retention.repository.js';
 
 export type {} from './stalled/stuck-work.repository.js';
 
+export type {} from './commands/acceptance/trigger-skips.repository.js';
+
 export type {} from './statuses.js';

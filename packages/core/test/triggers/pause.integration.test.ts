@@ -11,7 +11,7 @@ import {
 import { createIdentityWorkspaceStore } from '../../src/tenant-access/identity-workspace.store.js';
 import { createWorkflowTriggerPauseFoldStore } from '../../src/triggers/pause/fold.store.js';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
-import { persistWorkflowTriggerOutcome } from '../../src/triggers/pause/outcomes.repository.js';
+import { persistWorkflowTriggerOutcome } from '../../src/runs/advance/persist/trigger-outcome.repository.js';
 
 type Status =
   'succeeded' | 'failed' | 'timed_out' | 'outcome_unknown' | 'canceled';

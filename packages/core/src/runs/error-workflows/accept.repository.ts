@@ -11,7 +11,7 @@ import {
   parseWorkspaceId,
 } from '@pertexo/database/primitives';
 import { WorkflowAlreadyRunningError } from '../commands/acceptance/run-admission.errors.js';
-import { recordWorkflowTriggerSkip } from '../../triggers/skips.repository.js';
+import { recordWorkflowTriggerSkip } from '../commands/acceptance/trigger-skips.repository.js';
 import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';

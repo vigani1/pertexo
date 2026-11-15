@@ -6,7 +6,7 @@ import { webhookTriggerReplayRecords as replays } from '@pertexo/database/schema
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { lockEventCoordination } from '../../coordination/keys.repository.js';
 import type { createEventCoordinationPreparation } from '../../coordination/prepare.js';
-import { recordWorkflowTriggerSkip } from '../../skips.repository.js';
+import { recordWorkflowTriggerSkip } from '../../../runs/commands/acceptance/trigger-skips.repository.js';
 import { coordinateVerifiedWebhook, startWebhookRun } from '../coordinate.js';
 
 import {
