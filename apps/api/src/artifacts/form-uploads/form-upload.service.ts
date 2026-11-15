@@ -3,7 +3,7 @@ import type {
   FormUploadMetadata,
   FormUploadResponse,
 } from '@pertexo/contracts';
-import type { FormUpload, FormUploadTarget } from '@pertexo/core/artifacts';
+import type { FormUpload, FormUploadTarget } from '@pertexo/core/triggers';
 import {
   FORM_FILE_LIMITS,
   FormFileRejectedError,

@@ -1,13 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
-import { createFormUploadStore } from '../../src/artifacts/form-uploads/form-upload.store.js';
-import type { FormUploadTarget } from '../../src/artifacts/form-uploads/form-upload.types.js';
-import { admin } from '../lifecycle/calls/calls.fixture.js';
-import { apiUrl } from '../lifecycle/retention.support.js';
-import {
-  fixture,
-  store,
-} from '../triggers/forms/admission/admission.fixture.js';
+import { createFormUploadStore } from '../../../../src/triggers/forms/uploads/form-upload.store.js';
+import type { FormUploadTarget } from '../../../../src/triggers/forms/uploads/form-upload.types.js';
+import { admin } from '../../../lifecycle/calls/calls.fixture.js';
+import { apiUrl } from '../../../lifecycle/retention.support.js';
+import { fixture, store } from '../admission/admission.fixture.js';
 
 export { admin, store };
 export let uploads: ReturnType<typeof createFormUploadStore>;
