@@ -21,7 +21,7 @@ import {
   workflowTestSnapshots,
 } from '@pertexo/database/schema';
 import { WorkflowTestError } from '../workflows/workflow-test.errors.js';
-import { SUITE_MAX_CASES } from './rules.js';
+import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/workflow-model';
 
 /** How many recent suites the history shows. */
 const SUITE_HISTORY_ROWS = 20;
@@ -205,7 +205,7 @@ export async function readSuite(
       ),
     )
     .orderBy(asc(workflowTestSuiteCases.ordinal))
-    .limit(SUITE_MAX_CASES)
+    .limit(WORKFLOW_TEST_SUITE_MAX_CASES)
     .catch(rethrowQueryFailure);
   return { ...summary(row), cases };
 }

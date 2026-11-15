@@ -1,12 +1,13 @@
 import { responseSchema } from '../shared/response-schema.js';
-import { workflowTestSuiteReportSchema } from '@pertexo/workflow-model';
+import {
+  WORKFLOW_TEST_SUITE_MAX_CASES,
+  workflowTestSuiteReportSchema,
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
 import {
   workflowTestPreparationSchema,
   workflowTestStartRequestSchema,
 } from './workflow-tests.js';
-/** How many saved input cases one suite runs. */
-export const WORKFLOW_TEST_SUITE_MAX_CASES = 50;
 const caseIdentity = z
   .object({ id: z.uuid(), revision: z.number().int().positive() })
   .strict();

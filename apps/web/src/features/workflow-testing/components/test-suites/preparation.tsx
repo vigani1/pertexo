@@ -1,4 +1,4 @@
-import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/contracts';
+import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/workflow-model';
 import type { WorkflowTestSuitePreparation } from '@pertexo/contracts';
 import { Notice } from '@/components/ui/notice';
 import { LabelledField } from '@/components/ui/field';

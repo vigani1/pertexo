@@ -5,6 +5,9 @@ import {
   WORKFLOW_TEST_LIMITS,
 } from './workflow-test-expectations.schemas.js';
 
+/** How many saved input cases one suite runs: the API, core and the editor share it. */
+export const WORKFLOW_TEST_SUITE_MAX_CASES = 50;
+
 const observation = z
   .object({
     state: z.enum(['value', 'missing', 'unavailable', 'ambiguous']),

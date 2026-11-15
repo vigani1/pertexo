@@ -383,6 +383,7 @@ export {
   type TestAssertionObservation,
 } from './authoring/test-suites/compare.js';
 export {
+  WORKFLOW_TEST_SUITE_MAX_CASES,
   workflowTestSuiteReportSchema,
   type SuiteCaseReport,
 } from './authoring/test-suites/report.js';
