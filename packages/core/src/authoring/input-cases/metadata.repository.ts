@@ -1,3 +1,4 @@
+import { WORKFLOW_INPUT_CASE_LIMITS } from '@pertexo/workflow-model';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
@@ -80,11 +81,11 @@ export async function quota(
     )
     .catch(rethrowQueryFailure);
   if (!row) throw new Error('Case quota authority unavailable');
-  if (create && row.workflowCount >= 50)
+  if (create && row.workflowCount >= WORKFLOW_INPUT_CASE_LIMITS.perWorkflow)
     throw new WorkflowInputCaseLimitError('workflow_count');
-  if (create && row.workspaceCount >= 200)
+  if (create && row.workspaceCount >= WORKFLOW_INPUT_CASE_LIMITS.perWorkspace)
     throw new WorkflowInputCaseLimitError('workspace_count');
-  if (row.retainedBytes + bytes > 4_194_304)
+  if (row.retainedBytes + bytes > WORKFLOW_INPUT_CASE_LIMITS.retainedBytes)
     throw new WorkflowInputCaseLimitError('retained_bytes');
 }
 

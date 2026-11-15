@@ -1,7 +1,16 @@
-import { normalizedJson, utf8ByteLength } from '@pertexo/workflow-model';
+import {
+  normalizedJson,
+  STORED_INTEGER_MAX,
+  utf8ByteLength,
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-const revisionSchema = z.number().int().positive().max(2_147_483_646);
+// One below the column's maximum, so the stored revision can still move on.
+const revisionSchema = z
+  .number()
+  .int()
+  .positive()
+  .max(STORED_INTEGER_MAX - 1);
 
 export const resultSchema = z
   .object({ caseId: z.uuid(), revision: revisionSchema })

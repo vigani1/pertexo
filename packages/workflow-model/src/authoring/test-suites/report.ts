@@ -4,9 +4,14 @@ import {
   testExpectationValueSchema,
   WORKFLOW_TEST_LIMITS,
 } from './workflow-test-expectations.schemas.js';
+import { WORKFLOW_INPUT_CASE_LIMITS } from './input-case-limits.js';
 
-/** How many saved input cases one suite runs: the API, core and the editor share it. */
-export const WORKFLOW_TEST_SUITE_MAX_CASES = 50;
+/**
+ * How many saved input cases one suite runs: every case a workflow may keep,
+ * so a suite that reads one more knows the cases changed.
+ */
+export const WORKFLOW_TEST_SUITE_MAX_CASES =
+  WORKFLOW_INPUT_CASE_LIMITS.perWorkflow;
 
 const observation = z
   .object({

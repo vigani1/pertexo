@@ -1,3 +1,4 @@
+import { STORED_TIMESTAMP_FRACTION_DIGITS } from '@pertexo/workflow-model';
 import type { WorkflowActor } from '../../../shared/workflow-actor.types.js';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { z } from 'zod';
@@ -29,7 +30,7 @@ import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors
 /** The command output retained for exact retries. */
 const concurrencyReceipt = z
   .object({
-    asOf: z.iso.datetime({ precision: 6 }),
+    asOf: z.iso.datetime({ precision: STORED_TIMESTAMP_FRACTION_DIGITS }),
     limit: z.number().int().positive().nullable(),
     revision: z.number().int().positive(),
     workspaceActiveRunLimit: z.number().int().positive().nullable(),

@@ -31,6 +31,7 @@ import {
   portableGraphDigest,
   portableManifestDigest,
   projectWorkflowPortableManifest,
+  PORTABLE_MANIFEST_FIELD_LIMITS,
   WORKFLOW_PORTABILITY_LIMITS,
 } from '@pertexo/workflow-model';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
@@ -135,7 +136,10 @@ function exportPortableWorkflow(
             .slice(0, WORKFLOW_PORTABILITY_LIMITS.issues)
             .map(({ code, path }) => ({
               code,
-              path: path.slice(0, 2048),
+              path: path.slice(
+                0,
+                PORTABLE_MANIFEST_FIELD_LIMITS.issuePathLength,
+              ),
               message:
                 'The graph is not valid under the serving authoring policy.',
             })),
