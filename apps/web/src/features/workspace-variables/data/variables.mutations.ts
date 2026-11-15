@@ -3,6 +3,7 @@ import type {
   WorkspaceVariablesRequest,
   WorkspaceVariablesResponse,
 } from '@pertexo/contracts';
+import { COMMAND_RETRY_WINDOW_HOURS } from '@/lib/api/commands/command-retry';
 import { useRetainedCommand } from '@/lib/api/commands/use-retained';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
 import { replaceVariables } from './variables.api';
@@ -45,8 +46,7 @@ export function useVariablesSave(
     },
     {
       action: 'saving workspace variables',
-      expiredMessage:
-        'The 24-hour retry window ended. Check the current variables, then reload before saving again.',
+      expiredMessage: `The ${String(COMMAND_RETRY_WINDOW_HOURS)}-hour retry window ended. Check the current variables, then reload before saving again.`,
     },
   );
 }

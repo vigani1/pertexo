@@ -1,3 +1,4 @@
+import { WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS } from '@pertexo/contracts';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import {
   webhookAuthenticationSchema,
@@ -164,8 +165,7 @@ export function WebhookAuthenticationDialog({
 const AUTHENTICATION_COPY: Readonly<
   Record<WebhookAuthentication['mode'], string>
 > = {
-  signed:
-    'Signs the exact request bytes and checks a five-minute timestamp. Recommended when the sender supports it.',
+  signed: `Signs the exact request bytes and checks a ${String(WEBHOOK_FRESHNESS_ALLOWANCE_SECONDS / 60)}-minute timestamp. Recommended when the sender supports it.`,
   secret_url:
     'The URL is the only credential. Anyone who obtains it can start runs. Keep it private and rotate it if shared accidentally.',
   header_secret:

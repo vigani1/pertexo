@@ -10,6 +10,7 @@ import { getAllAccessibleWorkspaces } from '@/features/workspaces/workspaces-que
 import { ApiError, isApiError } from '@/lib/api/error';
 import {
   canResend,
+  COMMAND_RETRY_WINDOW_HOURS,
   isUnconfirmedCommand,
   newCommandKey,
   type CommandKey,
@@ -101,7 +102,7 @@ export function useWorkflowRunSubmission({
     if (isSessionPaused()) return false;
     if (!canResend(attempt.current)) {
       setError(
-        'The 24-hour recovery window has ended. Check run history before deciding whether to start another run; retrying can no longer guarantee the original result.',
+        `The ${String(COMMAND_RETRY_WINDOW_HOURS)}-hour recovery window has ended. Check run history before deciding whether to start another run; retrying can no longer guarantee the original result.`,
       );
       return false;
     }
