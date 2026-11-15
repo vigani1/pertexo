@@ -13,6 +13,7 @@ const VARIABLES_BOUNDS = Object.freeze({
   afterCharacters: 1024,
   offsetMaximum: 100000,
   workflowNameCharacters: WORKSPACE_VARIABLE_LIMITS.usageWorkflowNameCharacters,
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 128,
   labelCharacters: 160,
   inputCharacters: 128,

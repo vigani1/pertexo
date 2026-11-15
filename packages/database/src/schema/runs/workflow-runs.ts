@@ -29,12 +29,14 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
 const WIDTHS = Object.freeze({
+  // Wider than the graph's 64-character node id on purpose: narrowing could refuse rows already stored.
   recoveryTargetNodeId: 128,
   recoveryEffectRisk: 32,
   triggerType: 32,
   failureNotificationSideEffectClass: 32,
   status: 32,
   cancelRequestedBy: 128,
+  // Wider than the 500 characters a cancel request admits on purpose: narrowing could refuse stored rows.
   cancelReason: 512,
   errorSummary: NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters,
 });

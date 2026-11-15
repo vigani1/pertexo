@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { webhookAuthenticationSchema } from '@pertexo/workflow-model';
 
 const WEBHOOKS_BOUNDS = Object.freeze({
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 256,
   lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   webhookTriggerListPageItems: 1000,

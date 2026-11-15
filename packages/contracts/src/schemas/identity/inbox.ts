@@ -8,7 +8,9 @@ import { workflowRunFailedStepSchema } from '../execution/runs.js';
 const INBOX_BOUNDS = Object.freeze({
   workspaceInboxCursorCharacters: 1024,
   workspaceInboxLimitMaximum: 100,
+  // Wider than the 128-character resource name on purpose: a response must carry any name storage holds.
   workflowNameCharacters: 200,
+  // Wider than the 128-character resource name on purpose: a response must carry any name storage holds.
   nameCharacters: 200,
   limitsItems: 4,
   workspaceInboxListPageItems: 100,

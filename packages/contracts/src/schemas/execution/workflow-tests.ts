@@ -5,6 +5,7 @@ import { workflowRunStatusSchema } from './runs.js';
 import { workflowGraphStructuralSchema } from '@pertexo/workflow-model';
 
 const WORKFLOW_TESTS_BOUNDS = Object.freeze({
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 256,
   samplesItems: 200,
   labelCharacters: 256,

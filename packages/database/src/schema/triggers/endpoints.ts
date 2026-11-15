@@ -18,6 +18,7 @@ import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 
 const WIDTHS = Object.freeze({
+  // Wider than the graph's 64-character node id on purpose: narrowing could refuse rows already stored.
   nodeId: 128,
   purpose: 32,
   kmsKeyReference: 2048,

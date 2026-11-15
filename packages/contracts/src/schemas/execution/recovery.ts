@@ -7,8 +7,10 @@ import {
 } from '@pertexo/workflow-model';
 
 const RECOVERY_BOUNDS = Object.freeze({
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 128,
   nodeLabelCharacters: 200,
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   targetNodeIdCharacters: 128,
 });
 

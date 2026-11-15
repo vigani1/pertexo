@@ -6,6 +6,7 @@ import {
 } from '@pertexo/workflow-model';
 
 const COORDINATION_BOUNDS = Object.freeze({
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 128,
   coordinatedEventHistoryPageItems: 100,
   coordinatedEventHistoryPageDefault: 25,

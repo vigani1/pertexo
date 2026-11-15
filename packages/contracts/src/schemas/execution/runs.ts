@@ -37,10 +37,12 @@ const RUN_BOUNDS = Object.freeze({
   remainingMillis: WORKFLOW_EXECUTION_LIMITS.maxRunDurationMs,
   handledFailureCountMaximum: 200,
   reasonsItems: 3,
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 256,
   labelCharacters: 200,
   definitionKeyCharacters: 256,
   safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  // Wider than the graph's 256-character invocation key on purpose: loop and call keys extend it at run time.
   invocationKeyCharacters: 1024,
   handlerInvocationKeyCharacters:
     WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,

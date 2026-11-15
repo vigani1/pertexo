@@ -24,8 +24,10 @@ import {
 
 const PENDING_TASKS_BOUNDS = Object.freeze({
   workflowNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 128,
   stepNameCharacters: 200,
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   loopNodeIdCharacters: 128,
   iterationPathItems: 64,
   completedByNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,

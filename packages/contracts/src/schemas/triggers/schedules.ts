@@ -8,6 +8,7 @@ const SCHEDULES_BOUNDS = Object.freeze({
   expressionCharacters: CRON_EXPRESSION_MAX_CHARACTERS,
   timezoneCharacters: TIME_ZONE_NAME_CHARACTERS,
   intervalMinutesMaximum: 43200,
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 256,
   lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   scheduleTriggerListPageItems: 1000,
@@ -17,6 +18,7 @@ const SCHEDULES_BOUNDS = Object.freeze({
   scheduleFireTimeCountMaximum: 10,
   scheduleFireTimesPageItems: 10,
   expressionMinimumCharacters: 9,
+  // Wider than the stored 256/128 on purpose: a preview computes fire times and stores nothing.
   previewExpressionCharacters: 255,
   previewTimezoneCharacters: 255,
   countMaximum: 10,

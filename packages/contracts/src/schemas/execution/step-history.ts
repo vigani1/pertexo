@@ -3,9 +3,11 @@ import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
 const STEP_HISTORY_BOUNDS = Object.freeze({
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   stepIdentifierCharacters: 256,
   workflowStepRunsPageMaximum: 50,
   workflowStepHealthPageItems: 1000,
+  // Wider than the graph's 256-character invocation key on purpose: loop and call keys extend it at run time.
   invocationKeyCharacters: 1024,
   safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   workflowStepRunsPageItems: 50,

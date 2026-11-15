@@ -27,6 +27,7 @@ import { appSchema } from '../namespace.js';
 
 const WIDTHS = Object.freeze({
   draftFingerprint: SHA256_HEX_CHARACTERS,
+  // Wider than the graph's 64-character node id on purpose: narrowing could refuse rows already stored.
   nodeId: 256,
   definitionKey: NODE_IDENTITY_KEY_MAX_CHARACTERS,
   executorKey: 128,

@@ -9,6 +9,7 @@ import { isStorageText } from '@pertexo/workflow-model';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
 const COMMENTS_BOUNDS = Object.freeze({
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   workflowCommentStepIdCharacters: 128,
   stepIdCharacters: 128,
   stepLabelCharacters: 256,

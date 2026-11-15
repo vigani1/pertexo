@@ -2,7 +2,9 @@ import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 const RUN_EVENTS_BOUNDS = Object.freeze({
+  // Wider than the graph's 256-character invocation key on purpose: loop and call keys extend it at run time.
   invocationKeyCharacters: 1024,
+  // Wider than the graph's 64-character node id on purpose: a response must carry any id storage holds.
   nodeIdCharacters: 256,
   safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   reasonCodeCharacters: 128,
