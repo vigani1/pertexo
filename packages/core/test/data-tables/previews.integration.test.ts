@@ -7,7 +7,7 @@ import {
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { markPreviewDispatched } from '../../src/previews/attempts/mark-dispatched.js';
 import { completePreviewAttempt } from '../../src/previews/attempts/complete.js';
-import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/coordinator.js';
+import { createPreviewRetentionCoordinator } from '../../src/lifecycle/previews/preview-retention.store.js';
 import {
   actorUserId,
   workspaceId,
