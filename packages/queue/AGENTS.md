@@ -13,7 +13,8 @@ the worker.
 It never owns a business decision: retries, ordering and state live in
 PostgreSQL (`core`, `workflow-engine`); BullMQ redelivery only covers
 transport loss. It never reads the environment (callers pass the Redis URL and
-timeouts) and never logs (it reports through observers).
+timeouts) and never logs (it reports through observers). Its one workspace
+dependency is `workflow-model`, for the traceparent format every carrier shares.
 
 ## Layout
 

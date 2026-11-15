@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { traceparentSchema } from '../shared/traceparent.js';
+import { traceparentSchema } from '@pertexo/workflow-model';
 import { DELIVERY_CONSUMER } from '../outbox/delivery-consumers.js';
 
 export const previewConsumerName = DELIVERY_CONSUMER['execute-preview-attempt'];
@@ -13,7 +13,7 @@ export const previewDeliveryPayloadSchema = z
     outboxEventId: z.uuid(),
     previewRunId: z.uuid(),
     previewAttemptId: z.uuid(),
-    traceparent: traceparentSchema,
+    traceparent: traceparentSchema.optional(),
   })
   .strict();
 
@@ -24,6 +24,6 @@ export const previewReconciliationPayloadSchema = z
     previewRunId: z.uuid(),
     previewAttemptId: z.uuid(),
     attemptFenceToken: z.number().int().nonnegative(),
-    traceparent: traceparentSchema,
+    traceparent: traceparentSchema.optional(),
   })
   .strict();

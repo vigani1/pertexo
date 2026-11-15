@@ -12,6 +12,7 @@ import { connectionScope } from '../../shared/resources/connection-scope.reposit
 import { resolvePreviewSample } from './samples.repository.js';
 
 import type { Role } from '@pertexo/policy';
+import { traceIdOf } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { lockActorArtifactReferences } from '../../artifacts/references/locks.repository.js';
 import { captureWorkspaceVariableRevision } from '../../variables/head.repository.js';
@@ -252,7 +253,7 @@ async function insertAcceptedPreviewRun(
         input.traceId ??
         (input.traceparent === undefined
           ? null
-          : input.traceparent.slice(3, 35)),
+          : (traceIdOf(input.traceparent) ?? null)),
       providerKey: sample === undefined ? (input.providerKey ?? null) : null,
       operationKey: sample === undefined ? (input.operationKey ?? null) : null,
       executableNodeJson: input.executableNode,

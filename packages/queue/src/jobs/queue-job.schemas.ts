@@ -1,22 +1,8 @@
 import { UnknownQueueJobError } from './queue-job.errors.js';
+import { traceparentSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 import { JOB_NAME, QUEUE_FOR_JOB, type JobName } from './names.js';
-
-const traceparentSchema = z
-  .string()
-  .regex(
-    /^00-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$/,
-    'traceparent must use the bounded W3C version 00 format',
-  )
-  .refine(
-    (value: string) => value.slice(3, 35) !== '0'.repeat(32),
-    'traceparent trace-id must not be all zeroes',
-  )
-  .refine(
-    (value: string) => value.slice(36, 52) !== '0'.repeat(16),
-    'traceparent parent-id must not be all zeroes',
-  );
 
 const commonJobShape = {
   workspaceId: z.uuid(),
@@ -183,6 +169,9 @@ export const QUEUE_JOB_REGISTRY = Object.freeze({
 
 for (const entry of Object.values(QUEUE_JOB_REGISTRY)) Object.freeze(entry);
 
+// A job envelope holds exactly these keys.
+const ENVELOPE_KEYS = ['name', 'data'] as const;
+
 interface QueueJobEnvelope {
   readonly name: unknown;
   readonly data: unknown;
@@ -194,11 +183,10 @@ function isQueueJobEnvelope(value: unknown): value is QueueJobEnvelope {
   try {
     const keys = Object.keys(value);
     return (
-      keys.length === 2 &&
-      Object.hasOwn(value, 'name') &&
-      Object.hasOwn(value, 'data') &&
-      keys.includes('name') &&
-      keys.includes('data')
+      keys.length === ENVELOPE_KEYS.length &&
+      ENVELOPE_KEYS.every(
+        (key) => Object.hasOwn(value, key) && keys.includes(key),
+      )
     );
   } catch {
     return false;
