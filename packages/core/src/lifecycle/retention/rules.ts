@@ -59,8 +59,8 @@ import {
   authenticationMail,
 } from './rules/identity.repository.js';
 
-import { CALLBACK_TASK_RETENTION_RULE } from '../../runs/pending-tasks/callbacks/retention.js';
-import { RUN_VALUES_RETENTION_RULE } from '../../runs/values/retention.js';
+import { CALLBACK_TASK_RETENTION_RULE } from '../../runs/pending-tasks/callbacks/retention.repository.js';
+import { RUN_VALUES_RETENTION_RULE } from '../../runs/values/retention.repository.js';
 
 import { VARIABLE_SET_RETENTION_RULE } from '../../variables/retention.repository.js';
 import { API_TOKEN_RETENTION_RULE } from './rules/api-tokens.repository.js';

@@ -51,8 +51,8 @@ export { createNotificationDestinationStore } from './notifications/destinations
 export { FailureNotificationDestinationError } from './notifications/destinations/notification-destination.errors.js';
 export { type FailureNotificationDestinationRecord } from './notifications/destinations/notification-destination.types.js';
 export type { NotificationDestinationStore } from './notifications/destinations/notification-destination.store.js';
-export { createDueNodeWakeupScanner } from './runs/wakeups/scanners.js';
-export type { WakeupScanner } from './runs/wakeups/scanners.js';
+export { createDueNodeWakeupScanner } from './runs/wakeups/wakeup-scanner.store.js';
+export type { WakeupScanner } from './runs/wakeups/wakeup-scanner.store.js';
 export {
   createFailureNotificationStore,
   type FailureNotificationStore,
@@ -63,7 +63,7 @@ export type {
   FailureNotificationDelivery,
   FailureNotificationResolvedDestination,
 } from './notifications/failure-notification.types.js';
-export { createDeadlineWakeupScanner } from './runs/wakeups/scanners.js';
+export { createDeadlineWakeupScanner } from './runs/wakeups/wakeup-scanner.store.js';
 export { ARTIFACT_STATUS } from './artifacts/artifact.js';
 export {
   ArtifactFinalizeConflictError,

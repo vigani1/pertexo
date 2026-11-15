@@ -1,5 +1,5 @@
 import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
-import { RUN_DETAILS_RETENTION_SQL } from '../data-policy.js';
+import { RUN_DETAILS_RETENTION_SQL } from '../run-retention.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { withResourceRunRead } from '../access.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';

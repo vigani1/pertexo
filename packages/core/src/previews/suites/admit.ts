@@ -1,7 +1,7 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import type { PoolClient } from 'pg';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { TEST_RUN_RETENTION_MILLIS } from '../../runs/data-policy.js';
+import { TEST_RUN_RETENTION_MILLIS } from '../../runs/run-retention.repository.js';
 import { admitTestRun } from '../workflows/admit.js';
 import { extendTestSnapshotRetention } from '../workflows/snapshot.repository.js';
 import { startPendingCase } from './cases.repository.js';

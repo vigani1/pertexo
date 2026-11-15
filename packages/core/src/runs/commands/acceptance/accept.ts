@@ -2,7 +2,7 @@ import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { requireRunTableReferences } from '../../../data-tables/columns/references.repository.js';
 import { requireWorkflowConcurrency } from './concurrency.repository.js';
-import { runInputRetentionSql } from '../../data-policy.js';
+import { runInputRetentionSql } from '../../run-retention.repository.js';
 import { variableRevisionForAcceptance } from './variables.repository.js';
 import { requireFormAdmission } from './forms.repository.js';
 import { and, eq, sql } from 'drizzle-orm';

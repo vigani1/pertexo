@@ -1,5 +1,5 @@
 import { workflowRuns } from '@pertexo/database/schema';
-import { isTestRun } from '../data-policy.js';
+import { isTestRun } from '../run-retention.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { readWorkflowRunAcceptanceReplay } from './acceptance/replay.repository.js';
