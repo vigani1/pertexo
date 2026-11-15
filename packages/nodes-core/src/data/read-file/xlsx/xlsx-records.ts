@@ -4,6 +4,7 @@ import type { CoreReadFileConfig } from '../read-file.schemas.js';
 import { tooLarge } from './archive.js';
 import type { Cell } from './cells.js';
 import { SPREADSHEET_LIMITS } from './limits.js';
+import { EXCEL_SHEET_LIMITS } from '../../excel-format.js';
 import { readSharedStrings } from './shared-strings.js';
 import {
   readMergedAreas,
@@ -150,7 +151,7 @@ function mergedFill(areas: readonly MergedArea[], countCell: () => void) {
         if (value !== undefined) active.push({ ...area, value });
       }
     },
-    fill(row: SheetRow, width: number = SPREADSHEET_LIMITS.columns) {
+    fill(row: SheetRow, width: number = EXCEL_SHEET_LIMITS.columns) {
       active = active.filter((area) => area.bottom >= row.index);
       for (const area of active) {
         for (
