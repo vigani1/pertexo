@@ -15,7 +15,7 @@ import {
 /** Files that read the environment outside a config module; this list may only shrink. */
 export const ENVIRONMENT_READS_PENDING = Object.freeze([
   // NODE_ENV picks the cookie's Secure flag; it belongs in the API's config.
-  'apps/api/src/workspaces/http/route.ts',
+  'apps/api/src/platform/http/route.ts',
   // The CLI's entry hands its environment to the parser it runs.
   'apps/cli/src/run-automation-cli.ts',
   // The sandboxed child inherits only PATH; the runner's config should pass it.
@@ -24,7 +24,7 @@ export const ENVIRONMENT_READS_PENDING = Object.freeze([
 
 // The list as it stood when the check began; ENVIRONMENT_READS_PENDING stays within it.
 const ORIGINAL_ENVIRONMENT_READS_PENDING = Object.freeze([
-  'apps/api/src/workspaces/http/route.ts',
+  'apps/api/src/platform/http/route.ts',
   'apps/cli/src/run-automation-cli.ts',
   'apps/code-runner/src/process/slot.ts',
 ]);

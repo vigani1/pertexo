@@ -8,7 +8,7 @@ import {
 } from '@pertexo/contracts/server';
 
 import { requestIdentifier, traceIdentifier } from '../workspaces/index.js';
-import { In, Route } from '../workspaces/http/route.js';
+import { In, Route } from '../platform/http/route.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { ScheduleManagementService } from './schedule-management.service.js';
 import { domainErrors } from '../platform/http/problems/interceptor.js';

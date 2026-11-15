@@ -5,7 +5,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 import { withRequestOperationSignal } from '../../platform/http/request-operation-signal.js';
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 
 import { requestHeaderValue } from '../../platform/http/request-headers.js';
 

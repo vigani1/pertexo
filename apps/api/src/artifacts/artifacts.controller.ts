@@ -8,7 +8,7 @@ import {
   optionalAuthorizedWorkspace,
   projectAuthenticatedWorkspaceContext,
 } from '../workspaces/request/authenticated-context.js';
-import { In, Route, UnconfiguredRoute } from '../workspaces/http/route.js';
+import { In, Route, UnconfiguredRoute } from '../platform/http/route.js';
 import {
   withRequestOperationSignal,
   applicationError,

@@ -3,7 +3,7 @@ import {
   lifecycleRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
 
 import { Controller, Req, Res, UseInterceptors } from '@nestjs/common';

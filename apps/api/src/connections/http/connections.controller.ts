@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts/server';
 
 import { projectAuthenticatedWorkspaceContext } from '../../workspaces/request/authenticated-context.js';
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import {
   CreateConnectionUseCase,

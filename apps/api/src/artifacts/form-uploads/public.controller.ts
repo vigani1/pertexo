@@ -4,7 +4,7 @@ import {
   formUploadRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { withRequestOperationSignal } from '../../platform/http/index.js';
 import type { AbortableRequest } from '../../platform/http/request-operation-signal.js';
 import { HttpRateLimitAdmission } from '../../platform/rate-limit/admission.js';

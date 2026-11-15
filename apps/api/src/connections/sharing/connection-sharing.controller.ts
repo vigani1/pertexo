@@ -4,7 +4,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { context } from '../http/connections.controller.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { ConnectionSharingUseCases } from './connection-sharing.service.js';

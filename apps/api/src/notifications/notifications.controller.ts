@@ -14,7 +14,7 @@ import type { FastifyReply } from 'fastify';
 
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import { authenticatedSession } from '../workspaces/index.js';
-import { In, Route } from '../workspaces/http/route.js';
+import { In, Route } from '../platform/http/route.js';
 import type { WorkspaceAuthorizationSource } from '../workspaces/ports.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 import { ApiDrainState } from '../platform/health/drain-state.js';

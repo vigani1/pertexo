@@ -3,7 +3,7 @@ import { Controller } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import type { AnyRoute } from '@pertexo/contracts/server';
-import { Route, In } from '../../src/workspaces/http/route.js';
+import { Route, In } from '../../src/platform/http/route.js';
 import { routeHarness } from '../support/route-harness.js';
 
 const declaration = {

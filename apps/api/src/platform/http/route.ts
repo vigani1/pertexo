@@ -23,18 +23,18 @@ import type { AnyRoute, RouteCapability } from '@pertexo/contracts/server';
 import { map, type Observable } from 'rxjs';
 import type { z } from 'zod';
 
-import { requestIdempotencyKey } from '../../platform/http/idempotency-key.js';
-import { parseRequestInput } from '../../platform/http/request-input.js';
-import { firstRequestHeader } from '../../platform/http/request-headers.js';
-import { RateLimit } from '../../platform/rate-limit/metadata.js';
+import { requestIdempotencyKey } from './idempotency-key.js';
+import { parseRequestInput } from './request-input.js';
+import { firstRequestHeader } from './request-headers.js';
+import { RateLimit } from '../rate-limit/metadata.js';
 import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
-import { WORKSPACE_AUTHORIZATION } from '../tokens.js';
-import type { IdentityWorkspaceRequest } from '../workspace-transport.js';
+import { WORKSPACE_AUTHORIZATION } from '../../workspaces/tokens.js';
+import type { IdentityWorkspaceRequest } from '../../workspaces/workspace-transport.js';
 import {
   capabilityGuard,
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
-} from './guards.js';
+} from '../../workspaces/http/guards.js';
 
 const ROUTE_METADATA = Symbol('ROUTE_METADATA');
 

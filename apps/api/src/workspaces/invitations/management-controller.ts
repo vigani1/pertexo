@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts/server';
 
 import { projectAuthenticatedWorkspaceContext } from '../request/authenticated-context.js';
-import { In, Route } from '../http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { WorkspaceInvitationManagementUseCase } from './management.js';
 import { requestIdentifier, traceIdentifier } from '../request/identifiers.js';
 import type { IdentityWorkspaceRequest } from '../workspace-transport.js';

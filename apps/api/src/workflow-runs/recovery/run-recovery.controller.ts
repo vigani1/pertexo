@@ -4,7 +4,7 @@ import {
   workflowRunRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';
 import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import {

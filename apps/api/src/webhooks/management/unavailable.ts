@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { webhookRoutes as routes } from '@pertexo/contracts/server';
-import { UnconfiguredRoute } from '../../workspaces/http/route.js';
+import { UnconfiguredRoute } from '../../platform/http/route.js';
 import {
   applicationError,
   throwApplicationError,

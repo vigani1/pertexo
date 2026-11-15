@@ -4,7 +4,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { caller, type WorkflowRunsRequest } from '../http/request-context.js';
 import {
   GetWorkflowNodeRunInputUseCase,
