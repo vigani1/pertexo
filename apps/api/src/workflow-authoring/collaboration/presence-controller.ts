@@ -3,7 +3,7 @@ import {
   collaborationRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { WorkflowCollaborationUseCase } from './workflow-collaboration.service.js';
 import { collaborationOperation } from './http.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';

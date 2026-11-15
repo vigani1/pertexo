@@ -6,7 +6,7 @@ import {
 import { withRequestOperationSignal } from '../../../platform/http/index.js';
 import { domainErrors } from '../../../platform/http/problems/interceptor.js';
 import { resourceFailure } from '../../../problems/context/normalize-context-errors.js';
-import { In, Route } from '../../../workspaces/http/route.js';
+import { In, Route } from '../../../platform/http/route.js';
 import {
   federationCommand,
   federationScope,

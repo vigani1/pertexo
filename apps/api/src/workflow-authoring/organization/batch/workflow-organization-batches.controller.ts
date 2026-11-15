@@ -5,7 +5,7 @@ import {
 } from '@pertexo/contracts/server';
 import { domainErrors } from '../../../platform/http/problems/interceptor.js';
 import { authoringFailure } from '../../../problems/context/normalize-context-errors.js';
-import { In, Route } from '../../../workspaces/http/route.js';
+import { In, Route } from '../../../platform/http/route.js';
 import type { WorkflowAuthoringRequest } from '../../workflow-authoring-request.js';
 import { withWorkflowOrganizationRequest } from '../http.js';
 import { WorkflowOrganizationBatchesUseCase } from './workflow-organization-batches.service.js';

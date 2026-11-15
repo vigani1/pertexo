@@ -14,7 +14,7 @@ import {
 import type { FastifyReply } from 'fastify';
 
 import { traceparent } from '../../platform/http/tracing-headers.js';
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 
 import { authenticatedSession } from '../../workspaces/index.js';
 import { authenticatedRequestIdentifiers } from '../../workspaces/request/authenticated-context.js';

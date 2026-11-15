@@ -6,7 +6,7 @@ import {
 
 import { memberCommand } from '../request/member-commands.js';
 import { requireSignInEvidence } from '../http/guards.js';
-import { In, Route } from '../http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { WorkspaceMembershipLifecycleUseCase } from './lifecycle.js';
 import type { IdentitySessionAuthority } from '../ports.js';
 import { SESSION_AUTHORITY } from '../tokens.js';

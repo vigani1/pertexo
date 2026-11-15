@@ -12,7 +12,7 @@ import {
   apiTokenRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { In, Route } from '../workspaces/http/route.js';
+import { In, Route } from '../platform/http/route.js';
 import { AutomationAuthenticationGuard } from '../authentication/automation/guard.js';
 import { SESSION_AUTHORITY } from '../workspaces/tokens.js';
 import type { IdentitySessionAuthority } from '../workspaces/ports.js';

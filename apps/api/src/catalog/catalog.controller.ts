@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { catalogRoutes as routes } from '@pertexo/contracts/server';
 
-import { Route } from '../workspaces/http/route.js';
+import { Route } from '../platform/http/route.js';
 import {
   ListIntegrationsUseCase,
   ListNodeDefinitionsUseCase,

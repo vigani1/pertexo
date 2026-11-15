@@ -7,7 +7,7 @@ import {
 
 import { projectAuthenticatedWorkspaceContext } from '../workspaces/request/authenticated-context.js';
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
-import { In, Route } from '../workspaces/http/route.js';
+import { In, Route } from '../platform/http/route.js';
 import { requestIdempotencyKey } from '../platform/http/index.js';
 import { GetPreviewRunUseCase } from './previews/read.js';
 import { TestWorkflowNodeUseCase } from './node-testing.service.js';

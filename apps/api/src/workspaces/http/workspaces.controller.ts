@@ -26,7 +26,7 @@ import {
   WorkspaceLifecycleUseCase,
 } from '../workspaces.service.js';
 import { authenticatedSession } from './guards.js';
-import { In, Route } from './route.js';
+import { In, Route } from '../../platform/http/route.js';
 
 @UseInterceptors(domainErrors(workspaceFailure))
 @Controller()

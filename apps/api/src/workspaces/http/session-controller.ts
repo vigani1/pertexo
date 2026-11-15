@@ -1,6 +1,6 @@
 import { Controller, Inject, Req, Res, UseInterceptors } from '@nestjs/common';
 import { sessionRoutes } from '@pertexo/contracts/server';
-import { Route } from './route.js';
+import { Route } from '../../platform/http/route.js';
 
 import {
   applicationError,

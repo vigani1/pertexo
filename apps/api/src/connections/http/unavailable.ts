@@ -3,7 +3,7 @@ import {
   connectionRoutes,
   failureNotificationRoutes,
 } from '@pertexo/contracts/server';
-import { UnconfiguredRoute } from '../../workspaces/http/route.js';
+import { UnconfiguredRoute } from '../../platform/http/route.js';
 import {
   applicationError,
   throwApplicationError,

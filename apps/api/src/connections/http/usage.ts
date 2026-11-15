@@ -4,7 +4,7 @@ import {
   type RouteInput,
 } from '@pertexo/contracts/server';
 
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { ListConnectionUsageUseCase } from '../use-cases/usage.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';

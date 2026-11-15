@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { responseProjection } from '../../src/workspaces/http/response-projection.js';
+import { responseProjection } from '../../src/platform/http/response-projection.js';
 import { Controller, Module } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formRoutes } from '@pertexo/contracts/server';
-import { Route } from '../../src/workspaces/http/route.js';
+import { Route } from '../../src/platform/http/route.js';
 import { routeHarness } from '../support/route-harness.js';
 
 const id = '11111111-1111-4111-8111-111111111111';

@@ -3,7 +3,7 @@ import {
   workflowSettingsRoutes as routes,
   type RouteInput,
 } from '@pertexo/contracts/server';
-import { In, Route } from '../../workspaces/http/route.js';
+import { In, Route } from '../../platform/http/route.js';
 import { WorkflowAutoPauseUseCase } from './auto-pause.js';
 import { asker } from './asker.js';
 import type { WorkflowAuthoringRequest } from '../workflow-authoring-request.js';
