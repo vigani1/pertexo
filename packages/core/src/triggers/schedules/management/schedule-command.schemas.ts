@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { TRIGGER_NODE_ID_MAX_CHARACTERS } from '../../reconciliation/projection.js';
+import { TRIGGER_NODE_ID_MAX_CHARACTERS } from '../../../shared/trigger-run-input.schemas.js';
 
 /** What a stored schedule row can hold: its columns' widths and interval check. */
 const STORED_SCHEDULE = Object.freeze({

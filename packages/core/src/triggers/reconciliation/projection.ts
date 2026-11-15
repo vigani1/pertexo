@@ -5,12 +5,7 @@ import { createHash } from 'node:crypto';
 
 import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { z } from 'zod';
-
-/**
- * The widest node id a trigger row stores (`workflow_triggers.node_id
- * varchar(128)`); every trigger record that names a node reads it.
- */
-export const TRIGGER_NODE_ID_MAX_CHARACTERS = 128;
+import { TRIGGER_NODE_ID_MAX_CHARACTERS } from '../../shared/trigger-run-input.schemas.js';
 
 function triggerKind(
   identity: string,
