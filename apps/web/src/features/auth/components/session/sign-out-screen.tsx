@@ -3,7 +3,7 @@ import { buttonVariants } from '@/components/ui/button-variants';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { CoreOrb } from '@/components/patterns/core/orb';
 import { cn } from '@/lib/class-names';
-import { Wordmark } from '../components/stage/wordmark';
+import { Wordmark } from '../stage/wordmark';
 
 /**
  * Signing out: the Core fades down while the session ends. If Pertexo can't
