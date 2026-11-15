@@ -1,7 +1,6 @@
 import { DATA_TABLE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
 import { formatCount } from '@/lib/format/count';
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { FileDrop } from '@/components/ui/file-drop';
@@ -15,9 +14,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { sendTableCommand, type TableScope } from '../data/tables.api';
-import { tableKeys } from '../data/tables.queries';
+import { useTableCommand } from '../data/tables.mutations';
+import type { TableScope } from '../data/tables.api';
 import { TableCommandFeedback } from './command-feedback';
 
 const IMPORT_SIZE = formatByteSize(DATA_TABLE_LIMITS.csvImportBytes);
@@ -30,18 +28,13 @@ export function ImportTableCsv({
   table: DataTableDefinition;
   onClose: () => void;
 }>) {
-  const cache = useQueryClient();
   const [csv, setCsv] = useState('');
   const [error, setError] = useState<string>();
   const [reading, setReading] = useState(false);
-  const command = useRetainedCommand(
-    (body: { csv: string }, key: string) =>
-      sendTableCommand(scope, { kind: 'import', tableId: table.id, body }, key),
-    async () => {
-      await cache.invalidateQueries({ queryKey: tableKeys.scope(scope) });
-      onClose();
-    },
-    { action: 'importing these rows' },
+  const command = useTableCommand(
+    scope,
+    (body: { csv: string }) => ({ kind: 'import', tableId: table.id, body }),
+    { action: 'importing these rows', onDone: onClose },
   );
   const locked = command.pending || command.uncertain || reading;
   return (

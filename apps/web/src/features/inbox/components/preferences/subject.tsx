@@ -1,12 +1,9 @@
 import { BellIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type {
-  NoticeSubscription,
-  NoticeSubscriptionRequest,
-} from '@pertexo/contracts';
+import type { NoticeSubscription } from '@pertexo/contracts';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
+import { useNotificationSubscriptionSave } from '../../data/notice-preferences.mutations';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldLabel as Label } from '@/components/ui/field';
@@ -21,11 +18,7 @@ import {
   SheetBody,
 } from '@/components/ui/sheet';
 import { notificationSubscriptionQueryOptions } from '../../data/notice-preferences.queries';
-import {
-  replaceNotificationSubscription,
-  type NoticeSubject,
-} from '../../data/notice-preferences.api';
-import { inboxKeys } from '../../data/inbox.queries';
+import type { NoticeSubject } from '../../data/notice-preferences.api';
 import { NotificationSaveFeedback } from './feedback';
 function SubscriptionEditor({
   scope,
@@ -42,32 +35,13 @@ function SubscriptionEditor({
   const [saved, setSaved] = useState(false);
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState<string>();
-  const command = useRetainedCommand(
-    (body: NoticeSubscriptionRequest, key: string) =>
-      replaceNotificationSubscription(scope, subject, body, key),
-    async (result, body) => {
-      cache.setQueryData(
-        notificationSubscriptionQueryOptions(scope, subject).queryKey,
-        (current) =>
-          current !== undefined && current.revision > result.revision
-            ? current
-            : {
-                revision: result.revision,
-                followed: body.followed,
-                muted: body.muted,
-              },
-      );
-      setDraft({
-        revision: result.revision,
-        followed: body.followed,
-        muted: body.muted,
-      });
+  const command = useNotificationSubscriptionSave(
+    scope,
+    subject,
+    (accepted) => {
+      setDraft(accepted);
       setSaved(true);
-      await cache.invalidateQueries({
-        queryKey: inboxKeys.scope(scope.userId, scope.workspaceId),
-      });
     },
-    { action: 'saving this personal subscription' },
   );
   const locked = command.pending || command.uncertain || reloading;
   async function reload() {

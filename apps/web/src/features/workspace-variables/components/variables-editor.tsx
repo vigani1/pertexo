@@ -1,16 +1,15 @@
+import { variablesQueryOptions } from '../data/variables.queries';
 import { VariableLeaveConfirmation } from './leave-confirmation';
 import { VariableFields, VariableSaveActions } from './variable-fields';
 import { VariableEditorFeedback } from './variable-feedback';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import type {
-  WorkspaceVariablesResponse,
-  WorkspaceVariablesRequest,
-} from '@pertexo/contracts';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { replaceVariables } from '../data/variables.api';
+import type { WorkspaceVariablesResponse } from '@pertexo/contracts';
+import {
+  useVariablesSave,
+  type AcceptedVariables,
+} from '../data/variables.mutations';
 import type { WorkspaceApiScope } from '@/lib/api/workspace-scope';
-import { variableKeys, variablesQueryOptions } from '../data/variables.queries';
 import {
   variableMatches,
   variableDraftChanged,
@@ -48,21 +47,9 @@ export function VariablesEditor({
     setOpen,
   } = rows.actions;
   const [reloading, setReloading] = useState(false);
-  const command = useRetainedCommand(
-    (
-      body: WorkspaceVariablesRequest & {
-        descriptions: WorkspaceVariablesResponse['descriptions'];
-      },
-      key: string,
-    ) => replaceVariables(scope, body, key),
-    (result, body) =>
-      acceptVariables({ scope, cache, actions: rows.actions }, result, body),
-    {
-      action: 'saving workspace variables',
-      expiredMessage:
-        'The 24-hour retry window ended. Check the current variables, then reload before saving again.',
-    },
-  );
+  const command = useVariablesSave(scope, (accepted) => {
+    acceptVariables(rows.actions, accepted);
+  });
   const parsed = readVariableRows(draft.rows);
   const changed = variableDraftChanged(draft.base, parsed);
   const locked = command.pending || command.uncertain || reloading;
@@ -168,7 +155,7 @@ interface VariableDraft {
 type VariableReloadContext = Readonly<{
   scope: WorkspaceApiScope;
   cache: QueryClient;
-  command: Pick<ReturnType<typeof useRetainedCommand>, 'reset'>;
+  command: Pick<ReturnType<typeof useVariablesSave>, 'reset'>;
   draft: VariableDraft;
   open: ReadonlySet<string>;
   locked: boolean;
@@ -289,37 +276,20 @@ function useVariableRows({
   };
 }
 
-async function acceptVariables(
+function acceptVariables(
   {
-    scope,
-    cache,
-    actions,
-  }: Readonly<{
-    scope: WorkspaceApiScope;
-    cache: QueryClient;
-    actions: Pick<
-      ReturnType<typeof useVariableRows>['actions'],
-      'setDraft' | 'setOpen' | 'setSaved' | 'setError'
-    >;
-  }>,
-  result: Awaited<ReturnType<typeof replaceVariables>>,
-  body: WorkspaceVariablesRequest & {
-    descriptions: WorkspaceVariablesResponse['descriptions'];
-  },
+    setDraft,
+    setOpen,
+    setSaved,
+    setError,
+  }: Pick<
+    ReturnType<typeof useVariableRows>['actions'],
+    'setDraft' | 'setOpen' | 'setSaved' | 'setError'
+  >,
+  accepted: AcceptedVariables,
 ) {
-  const { setDraft, setOpen, setSaved, setError } = actions;
-  const accepted = {
-    revision: result.revision,
-    values: body.values,
-    descriptions: body.descriptions,
-  };
   setDraft((current) => ({ ...current, base: accepted }));
   setOpen(new Set());
-  setSaved(result.revision);
+  setSaved(accepted.revision);
   setError(undefined);
-  const key = variablesQueryOptions(scope).queryKey;
-  const current = cache.getQueryData(key);
-  if (current === undefined || current.revision <= accepted.revision)
-    cache.setQueryData(key, accepted);
-  await cache.invalidateQueries({ queryKey: variableKeys.scope(scope) });
 }

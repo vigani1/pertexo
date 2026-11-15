@@ -1,10 +1,9 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { Status } from '@/components/ui/status';
-import { unsubscribeFromNotices } from '../data/notice-preferences.api';
+import { useNoticeUnsubscribe } from '../data/notice-preferences.mutations';
 /** No query key or automatic request contains the fragment capability. */
 export function NoticeUnsubscribePage({
   apiClient,
@@ -13,22 +12,7 @@ export function NoticeUnsubscribePage({
   apiClient: ApiClient;
   token: string | null;
 }) {
-  const cache = useQueryClient();
-  const command = useMutation({
-    mutationFn: () =>
-      token === null
-        ? Promise.reject(new Error('Unavailable link'))
-        : unsubscribeFromNotices(apiClient, token),
-    retry: false,
-    // The capability stays opaque; refresh any personal schedules cached in this tab.
-    onSuccess: () =>
-      cache.invalidateQueries({
-        predicate: ({ queryKey }) =>
-          queryKey[0] === 'identity' &&
-          queryKey[4] === 'inbox' &&
-          queryKey[5] === 'preferences',
-      }),
-  });
+  const command = useNoticeUnsubscribe(apiClient, token);
   return (
     <main className="min-h-dvh bg-background px-5 py-12 text-foreground">
       <div className="mx-auto flex max-w-xl flex-col gap-6">

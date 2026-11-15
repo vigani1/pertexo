@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +10,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { sendTableCommand, type TableScope } from '../data/tables.api';
-import { tableKeys } from '../data/tables.queries';
+import { useTableCommand } from '../data/tables.mutations';
+import type { TableScope } from '../data/tables.api';
 import { TableCommandFeedback } from './command-feedback';
 export function RemoveDataTable({
   scope,
@@ -26,25 +24,21 @@ export function RemoveDataTable({
   onClose: () => void;
   onRemoved: () => void;
 }>) {
-  const cache = useQueryClient();
   const [confirmation, setConfirmation] = useState('');
-  const command = useRetainedCommand(
-    (revision: number, key: string) =>
-      sendTableCommand(
-        scope,
-        {
-          kind: 'remove',
-          tableId: table.id,
-          body: { expectedRevision: revision },
-        },
-        key,
-      ),
-    async () => {
-      await cache.invalidateQueries({ queryKey: tableKeys.scope(scope) });
-      onRemoved();
-      onClose();
+  const command = useTableCommand(
+    scope,
+    (revision: number) => ({
+      kind: 'remove',
+      tableId: table.id,
+      body: { expectedRevision: revision },
+    }),
+    {
+      action: 'deleting this table',
+      onDone: () => {
+        onRemoved();
+        onClose();
+      },
     },
-    { action: 'deleting this table' },
   );
   const locked = command.pending || command.uncertain;
   return (

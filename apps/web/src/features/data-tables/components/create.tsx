@@ -1,6 +1,5 @@
 import { DATA_TABLE_LIMITS, formatByteSize } from '@pertexo/node-sdk';
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   dataTableCreateSchema,
   type DataTableCreate,
@@ -21,9 +20,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import { sendTableCommand, type TableScope } from '../data/tables.api';
-import { tableKeys } from '../data/tables.queries';
+import { useTableCommand } from '../data/tables.mutations';
+import type { TableScope } from '../data/tables.api';
 import { TableChoice } from './choice';
 import { TableCommandFeedback } from './command-feedback';
 type Column = DataTableNewColumn & { id: string };
@@ -42,20 +40,20 @@ export function CreateDataTable({
   onClose: () => void;
   onCreated: (id: string) => void;
 }>) {
-  const cache = useQueryClient();
   const [name, setName] = useState('');
   const [columns, setColumns] = useState<Column[]>(() => [newColumn()]);
   const [keyColumn, setKeyColumn] = useState('');
   const [error, setError] = useState<string>();
-  const command = useRetainedCommand(
-    (body: DataTableCreate, key: string) =>
-      sendTableCommand(scope, { kind: 'create', body }, key),
-    async (result) => {
-      await cache.invalidateQueries({ queryKey: tableKeys.scope(scope) });
-      if ('id' in result) onCreated(result.id);
-      onClose();
+  const command = useTableCommand(
+    scope,
+    (body: DataTableCreate) => ({ kind: 'create', body }),
+    {
+      action: 'creating this table',
+      onDone: (result) => {
+        if ('id' in result) onCreated(result.id);
+        onClose();
+      },
     },
-    { action: 'creating this table' },
   );
   const locked = command.pending || command.uncertain;
   function change(id: string, patch: Partial<DataTableNewColumn>) {

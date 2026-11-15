@@ -1,10 +1,11 @@
+import { formAccessQueryOptions } from '../data/forms.queries';
 import { encode } from 'uqr';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import { isApiError } from '@/lib/api/error';
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import type { FormAccessRequest, FormAccess } from '@pertexo/contracts';
+import type { FormAccess } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Input } from '@/components/ui/input';
@@ -12,9 +13,8 @@ import { LabelledField } from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { Status } from '@/components/ui/status';
-import { formAccessQueryOptions } from '../data/forms.queries';
-import { setFormAccess, type MemberFormScope } from '../data/forms.api';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
+import type { MemberFormScope } from '../data/forms.api';
+import { useFormAccessCommand } from '../data/forms.mutations';
 function newCapability() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes))
@@ -53,19 +53,12 @@ function SharedFormAccess({
   scope,
   access,
 }: Readonly<{ scope: MemberFormScope; access: FormAccess }>) {
-  const cache = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const [issuedAccess, setIssuedAccess] = useState<FormAccess>();
-  const command = useRetainedCommand(
-    (body: FormAccessRequest, key: string) => setFormAccess(scope, body, key),
-    async (result) => {
-      setConfirming(false);
-      await cache.invalidateQueries({
-        queryKey: formAccessQueryOptions(scope).queryKey,
-      });
-      setIssuedAccess(result.capability ? result : undefined);
-    },
-  );
+  const command = useFormAccessCommand(scope, (result) => {
+    setConfirming(false);
+    setIssuedAccess(result.capability ? result : undefined);
+  });
   const disabled = command.pending || command.uncertain;
   const link = visibleFormLink(access, issuedAccess);
   return (

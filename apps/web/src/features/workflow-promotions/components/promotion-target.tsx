@@ -1,9 +1,6 @@
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type {
-  WorkflowPromotionSettings,
-  WorkflowPromotionTarget,
-} from '@pertexo/contracts';
+import { useQuery } from '@tanstack/react-query';
+import type { WorkflowPromotionSettings } from '@pertexo/contracts';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
@@ -15,12 +12,8 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { useRetainedCommand } from '@/lib/api/commands/use-retained';
-import {
-  setPromotionTarget,
-  type PromotionScope,
-} from '../data/promotions.api';
-import { promotionKeys } from '../data/promotions.queries';
+import { usePromotionTargetSave } from '../data/promotions.mutations';
+import type { PromotionScope } from '../data/promotions.api';
 import { PromotionCommandFeedback } from './command-feedback';
 export function PromotionTarget({
   scope,
@@ -33,26 +26,19 @@ export function PromotionTarget({
   disabled: boolean;
   onChange: () => void;
 }) {
-  const cache = useQueryClient();
   const currentTargetId = snapshot.target?.workspaceId ?? null;
   const [target, setTarget] = useState(currentTargetId ?? 'none');
   const [base, setBase] = useState({
     revision: snapshot.revision,
     targetWorkspaceId: currentTargetId,
   });
-  const command = useRetainedCommand(
-    (body: WorkflowPromotionTarget, key: string) =>
-      setPromotionTarget(scope, body, key),
-    async (result) => {
-      setBase({
-        revision: result.revision,
-        targetWorkspaceId: result.targetWorkspaceId,
-      });
-      onChange();
-      await cache.invalidateQueries({ queryKey: promotionKeys.scope(scope) });
-    },
-    { action: 'saving the promotion target' },
-  );
+  const command = usePromotionTargetSave(scope, (result) => {
+    setBase({
+      revision: result.revision,
+      targetWorkspaceId: result.targetWorkspaceId,
+    });
+    onChange();
+  });
   const locked = disabled || command.pending || command.uncertain;
   const changed =
     snapshot.revision !== base.revision ||
