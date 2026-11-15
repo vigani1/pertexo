@@ -32,6 +32,7 @@ function currentLease(id: string, leaseToken: string) {
 }
 
 import { REPAIRABLE_DELIVERY_JOB_NAMES } from '../delivery-consumers.js';
+import { MILLISECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 
 const repairableDeliveryJob = sql`${outboxEvents.jobName} in ${REPAIRABLE_DELIVERY_JOB_NAMES}`;
 
@@ -92,7 +93,7 @@ async function releaseOrFail(
           deliveryDueAt: sql`case when ${repairableDeliveryJob} then clock_timestamp() end`,
         }
       : {
-          availableAt: sql`clock_timestamp() + ${input.retryDelayMillis}::double precision * interval '1 millisecond'`,
+          availableAt: sql`clock_timestamp() + ${input.retryDelayMillis}::double precision * ${MILLISECOND_INTERVAL}`,
         };
   const updated = db.$with('updated').as(
     db

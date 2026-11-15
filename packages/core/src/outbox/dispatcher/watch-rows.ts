@@ -3,8 +3,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { createDedicatedClient } from '@pertexo/database/primitives';
 import type { Pool } from 'pg';
 
-/** A trigger on `outbox_events` signals this after every statement that adds rows. */
-const OUTBOX_ROWS_CHANNEL = 'outbox_rows';
+import { listenForOutboxRows } from './backlog.repository.js';
+
 const RELISTEN_MILLIS = 5_000;
 
 /**
@@ -44,7 +44,7 @@ async function listenUntilLost(
   try {
     if (signal.aborted) return;
     await client.connect();
-    await client.query(`listen ${OUTBOX_ROWS_CHANNEL}`);
+    await listenForOutboxRows(client);
     // Rows written before the listen took effect signalled nobody.
     onRows();
     await lost.promise;
