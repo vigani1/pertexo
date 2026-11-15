@@ -19,7 +19,6 @@ const fieldNames: Readonly<Partial<Record<number, ReadonlySet<string>>>> = {
   4: dayNames,
 };
 
-/** Only the server parses cron; both boundaries refuse the same extended operators. */
 /** A Schedule step's cron expression: `* * * * *` at the shortest. */
 export const CRON_EXPRESSION_LIMITS = Object.freeze({
   // Five one-character fields and their spaces.
@@ -27,6 +26,7 @@ export const CRON_EXPRESSION_LIMITS = Object.freeze({
   maximumCharacters: 255,
 });
 
+/** Only the server parses cron; both boundaries refuse the same extended operators. */
 export function cronHasUnsupportedOperators(expression: string): boolean {
   return expression.split(/\s+/u).some((field, index) => {
     const names = fieldNames[index];
