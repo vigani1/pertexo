@@ -3,6 +3,7 @@ import { after, before, test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DEFAULT_CODE_SETTINGS } from '@pertexo/node-sdk';
 import { createTaskProcessPool } from '../dist/process/pool.js';
+import { HARDENED_TASK_PATH } from '../dist/runner-config.js';
 
 let pool;
 before(async () => {
@@ -10,6 +11,8 @@ before(async () => {
     settings: DEFAULT_CODE_SETTINGS,
     mode: 'process',
     socketPath: '/tmp/unused-python-json.sock',
+    taskPath: process.env.PATH ?? HARDENED_TASK_PATH,
+    inheritedVariableNames: [],
   });
 });
 after(async () => {

@@ -1,9 +1,13 @@
 import { z } from 'zod';
 import { responseProjection } from '../../src/platform/http/response-projection.js';
 import { Controller, Module } from '@nestjs/common';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { formRoutes } from '@pertexo/contracts/server';
 import { Route } from '../../src/platform/http/route.js';
+import {
+  ROUTE_ANSWER_CHECK,
+  routeAnswerCheckFor,
+} from '../../src/platform/http/route-answer-check.js';
 import { routeHarness } from '../support/route-harness.js';
 
 const id = '11111111-1111-4111-8111-111111111111';
@@ -57,17 +61,26 @@ for (const [method, route] of [
   Route(route)(ReceiptController.prototype, method, descriptor);
 }
 
-afterEach(() => vi.unstubAllEnvs());
 const headers = {
   'x-pertexo-form-key': 'k'.repeat(43),
   'idempotency-key': 'submit-1',
 };
 describe('the declared form response boundary', () => {
+  it('projects answers only in production', () => {
+    expect(routeAnswerCheckFor('production')).toBe('project');
+    for (const environment of ['development', 'test', 'staging'] as const)
+      expect(routeAnswerCheckFor(environment)).toBe('strict');
+  });
   it('projects private and undeclared fields once in production while retaining a successful response', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
     const app = await routeHarness({
       module: ReceiptModule,
       controllers: [ReceiptController],
+      providers: [
+        {
+          provide: ROUTE_ANSWER_CHECK,
+          useValue: routeAnswerCheckFor('production'),
+        },
+      ],
     });
     try {
       const submitted = await app.send('POST', `/v1/forms/${id}/submit`, {
@@ -100,7 +113,6 @@ describe('the declared form response boundary', () => {
     }
   });
   it('strips undeclared response fields in tests just as in production', async () => {
-    vi.stubEnv('NODE_ENV', 'test');
     const app = await routeHarness({
       module: ReceiptModule,
       controllers: [ReceiptController],

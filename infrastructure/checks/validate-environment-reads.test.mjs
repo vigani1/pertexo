@@ -5,7 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  ENVIRONMENT_READS_PENDING,
   inspectEnvironmentReads,
   isConfigModule,
   readsEnvironment,
@@ -38,24 +37,14 @@ test('finds process.env reads, not the words in a string', () => {
   );
 });
 
-test('refuses a read outside config and a stale pending entry', () => {
+test('refuses a read outside config', () => {
   assert.deepEqual(
-    validateEnvironmentReads([
-      'packages/example/src/config.ts',
-      ...ENVIRONMENT_READS_PENDING,
-    ]),
+    validateEnvironmentReads(['packages/example/src/config.ts']),
     [],
   );
   assert.match(
-    validateEnvironmentReads([
-      'packages/example/src/runtime.ts',
-      ...ENVIRONMENT_READS_PENDING,
-    ]).join(),
+    validateEnvironmentReads(['packages/example/src/runtime.ts']).join(),
     /runtime\.ts: read process\.env only in a config module/u,
-  );
-  assert.match(
-    validateEnvironmentReads([]).join(),
-    /remove it from ENVIRONMENT_READS_PENDING/u,
   );
 });
 
@@ -96,15 +85,5 @@ test('finds the environment read by destructuring, import, index or globalThis',
   assert.equal(
     readsEnvironment('a.ts', "import { argv } from 'node:process';"),
     false,
-  );
-});
-
-test('refuses a file added to the pending list', () => {
-  assert.match(
-    validateEnvironmentReads(
-      ['packages/example/src/runtime.ts', ...ENVIRONMENT_READS_PENDING],
-      [...ENVIRONMENT_READS_PENDING, 'packages/example/src/runtime.ts'],
-    ).join(),
-    /runtime\.ts: ENVIRONMENT_READS_PENDING may only shrink/u,
   );
 });

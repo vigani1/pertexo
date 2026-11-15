@@ -31,6 +31,7 @@ import {
   ApiShutdownCoordinator,
 } from './platform/health/drain-state.js';
 import { HttpPlatformModule } from './platform/http/http-platform.module.js';
+import { routeAnswerCheckFor } from './platform/http/route-answer-check.js';
 import type {
   HttpErrorLogEntry,
   HttpErrorLogger,
@@ -130,7 +131,11 @@ export class AppModule {
           dependencies.logger,
           dependencies.telemetry,
         ),
-        HttpPlatformModule.register(httpErrorLogger, APPLICATION_ERROR_MAPPERS),
+        HttpPlatformModule.register(
+          httpErrorLogger,
+          APPLICATION_ERROR_MAPPERS,
+          routeAnswerCheckFor(config.nodeEnv),
+        ),
         admissionModule,
       ],
       controllers: [LiveController, ReadyController, PublicApiController],

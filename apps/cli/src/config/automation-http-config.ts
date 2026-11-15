@@ -6,8 +6,25 @@ export type AutomationHttpConfig = Readonly<{
   credential: string;
 }>;
 
+/** The settings the CLI reads: only `PERTEXO_API_URL` and `PERTEXO_API_TOKEN`. */
+export type AutomationEnvironment = Readonly<
+  Record<string, string | undefined>
+>;
+
+/** The process environment, read here and nowhere else in the CLI. */
+export function readAutomationEnvironment(): AutomationEnvironment {
+  return process.env;
+}
+
+/** The workspace a personal token belongs to: its middle segment. */
+export function tokenWorkspaceId(
+  token: string | undefined,
+): string | undefined {
+  return token?.split('.')[1];
+}
+
 export function parseAutomationHttpConfig(
-  environment: Readonly<Record<string, string | undefined>>,
+  environment: AutomationEnvironment,
 ): AutomationHttpConfig {
   const parsed = apiTokenCredentialSchema.safeParse(
     environment.PERTEXO_API_TOKEN,

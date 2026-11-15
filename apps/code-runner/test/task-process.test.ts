@@ -2,6 +2,7 @@ import { reserveProcess } from './task-reservation.fixture.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_CODE_SETTINGS, type CodeResult } from '@pertexo/node-sdk';
 import { createTaskProcessPool } from '../dist/process/pool.js';
+import { HARDENED_TASK_PATH } from '../dist/runner-config.js';
 
 describe('single-use Code processes', () => {
   let pool: Awaited<ReturnType<typeof createTaskProcessPool>>;
@@ -10,6 +11,8 @@ describe('single-use Code processes', () => {
       settings: DEFAULT_CODE_SETTINGS,
       mode: 'process',
       socketPath: '/tmp/unused-code-test.sock',
+      taskPath: process.env.PATH ?? HARDENED_TASK_PATH,
+      inheritedVariableNames: [],
     });
   });
   afterAll(async () => {
