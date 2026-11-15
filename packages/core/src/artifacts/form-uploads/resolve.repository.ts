@@ -13,7 +13,7 @@ import { artifacts, formUploads } from '@pertexo/database/schema';
 import {
   boundUploadsSql,
   type FormUploadBinding,
-} from './targets.repository.js';
+} from './bindings.repository.js';
 
 /**
  * Swaps a response's upload IDs for file references. Only finalized, unexpired
