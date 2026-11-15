@@ -63,7 +63,7 @@ export {
   WorkflowConcurrencyLimitExceededError,
   WorkflowConcurrencyLimitUnavailableError,
   WorkflowConcurrencyRevisionConflictError,
-} from './settings/concurrency/workflow-concurrency.store.js';
+} from './settings/concurrency/workflow-concurrency.errors.js';
 export type {
   WorkflowConcurrencyStore,
   WorkflowConcurrencySettings,
@@ -117,8 +117,8 @@ export type {
 export {
   WorkflowErrorSettingsConflictError,
   WorkflowErrorTargetUnavailableError,
-  type WorkflowErrorStore,
-} from './settings/error-workflow/workflow-error.store.js';
+} from './settings/error-workflow/workflow-error.errors.js';
+export type { WorkflowErrorStore } from './settings/error-workflow/workflow-error.store.js';
 
 export { WorkflowStepSampleError } from './step-samples/step-sample.errors.js';
 export type {

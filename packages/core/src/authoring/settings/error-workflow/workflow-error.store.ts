@@ -28,6 +28,10 @@ import type {
 import type { AuthoringAccess } from '../../workflows/access.js';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
+import {
+  WorkflowErrorSettingsConflictError,
+  WorkflowErrorTargetUnavailableError,
+} from './workflow-error.errors.js';
 
 /** The command output retained for exact retries. */
 const errorWorkflowReceipt = z
@@ -45,20 +49,6 @@ export type ListErrorWorkflowTargetsInput = Scope &
 export type UpdateErrorWorkflowSettingsInput = Scope &
   WorkflowErrorSettingsRequest &
   Readonly<{ idempotencyKey: string }>;
-export class WorkflowErrorSettingsConflictError extends Error {
-  public override readonly name = 'WorkflowErrorSettingsConflictError';
-  public constructor(public readonly currentRevision: number) {
-    super('Error workflow settings changed. Reload and try again.');
-  }
-}
-export class WorkflowErrorTargetUnavailableError extends Error {
-  public override readonly name = 'WorkflowErrorTargetUnavailableError';
-  public constructor() {
-    super(
-      'Choose a different active workflow published with When a workflow fails.',
-    );
-  }
-}
 export type WorkflowErrorStore = ReturnType<typeof createWorkflowErrorStore>;
 
 /** Operational Settings share the authoring transaction and current authority fence. */
