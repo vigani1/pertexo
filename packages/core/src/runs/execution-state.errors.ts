@@ -24,3 +24,9 @@ export class CoordinatorDeliveryMismatchError extends Error {
     super('Coordinator delivery does not match its durable outbox identity');
   }
 }
+
+/**
+ * A coordinator delivery that no longer matches its outbox row or the run's
+ * current lease; the caller audits it, or drops it as superseded.
+ */
+export class DeliveryMismatch extends Error {}

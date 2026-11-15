@@ -43,9 +43,12 @@ user-facing copy beyond the safe messages of its errors.
   repositories by what they write, not one per command
   (`authoring/workflows/commands/new-workflow.repository.ts`,
   `draft-revisions.repository.ts`, `workflow-revisions.repository.ts`).
-- A repository function returns a row, a boolean or `undefined`; the
-  operation decides and throws (`runs/run-access.repository.ts` beside
-  `runs/access.ts`).
+- The goal: a repository function returns a row, a boolean or `undefined`,
+  and the operation decides and throws (`runs/run-access.repository.ts`
+  beside `runs/access.ts`). Many repositories don't do this yet, most of them
+  in `runs`, `authoring` and `triggers`, where they still make decisions and
+  throw domain errors. Batch L4e moves those decisions into their operations;
+  new code follows the goal.
 - A query, lock or SQL fragment (`clock_timestamp()`, an increment, an
   interval): the `<subject>.repository.ts` beside the operation, or the
   flow's `.store.ts` when that file is its facade.
