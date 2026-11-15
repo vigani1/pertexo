@@ -1,17 +1,17 @@
 import { lockWorkspaceRunAdmission } from '../shared/workspace-fence.repository.js';
-import { generatePersistedId } from '@pertexo/database/platform';
-import { and, eq, sql } from 'drizzle-orm';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
-import {
-  inboxReceipts,
-  transportSecurityAuditFacts,
-} from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 import {
   InboxChecksumMismatchError,
   InboxReceiptUnavailableError,
 } from './outbox.errors.js';
+import {
+  claimInboxReceipt,
+  completeInboxReceipt,
+  readInboxReceipt,
+  recordChecksumMismatch,
+} from './inbox-receipts.repository.js';
 
 export interface InboxMessage {
   consumerName: string;
@@ -50,33 +50,9 @@ export async function consumeInboxMessage<T>(
           transaction.db,
           transaction.workspaceId,
         );
-      const inserted = await transaction.db
-        .insert(inboxReceipts)
-        .values({
-          consumerName: message.consumerName,
-          messageId: message.messageId,
-          workspaceId: transaction.workspaceId,
-          payloadChecksum: message.payloadChecksum,
-        })
-        .onConflictDoNothing({
-          target: [inboxReceipts.consumerName, inboxReceipts.messageId],
-        })
-        .returning({ messageId: inboxReceipts.messageId });
-
-      if (inserted.length === 0) {
-        const receipts = await transaction.db
-          .select({
-            completedAt: inboxReceipts.completedAt,
-            payloadChecksum: inboxReceipts.payloadChecksum,
-          })
-          .from(inboxReceipts)
-          .where(
-            and(
-              eq(inboxReceipts.consumerName, message.consumerName),
-              eq(inboxReceipts.messageId, message.messageId),
-            ),
-          );
-        const receipt = receipts[0];
+      const claimed = await claimInboxReceipt(transaction, message);
+      if (!claimed) {
+        const receipt = await readInboxReceipt(transaction, message);
         if (receipt?.completedAt == null) {
           throw new InboxReceiptUnavailableError();
         }
@@ -87,18 +63,8 @@ export async function consumeInboxMessage<T>(
       }
 
       const value = await operation(transaction);
-      const completed = await transaction.db
-        .update(inboxReceipts)
-        .set({ completedAt: sql`clock_timestamp()` })
-        .where(
-          and(
-            eq(inboxReceipts.consumerName, message.consumerName),
-            eq(inboxReceipts.messageId, message.messageId),
-            eq(inboxReceipts.workspaceId, transaction.workspaceId),
-          ),
-        )
-        .returning({ messageId: inboxReceipts.messageId });
-      if (completed.length !== 1) {
+      const completed = await completeInboxReceipt(transaction, message);
+      if (!completed) {
         throw new InboxReceiptUnavailableError();
       }
       return Object.freeze({ status: 'processed' as const, value });
@@ -116,13 +82,7 @@ export async function consumeInboxMessage<T>(
   await database.withWorkspace(
     workspaceId,
     async (transaction) => {
-      await transaction.db.insert(transportSecurityAuditFacts).values({
-        id: generatePersistedId(),
-        workspaceId: transaction.workspaceId,
-        factType: 'inbox_checksum_mismatch',
-        consumerName: message.consumerName,
-        messageId: message.messageId,
-      });
+      await recordChecksumMismatch(transaction, message);
     },
     options,
   );

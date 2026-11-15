@@ -12,6 +12,10 @@ import type {
   ClaimOutboxBatchResult,
 } from './outbox-dispatcher.types.js';
 import type { LeasedOutboxEvent } from './outbox-dispatcher.types.js';
+import { MILLISECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
+
+// Due admission recoveries each claim settles before it leases.
+const ADMISSION_RECOVERY_BATCH = 100;
 
 export async function claimOutboxBatch(
   pool: Pool,
@@ -33,7 +37,9 @@ export async function claimOutboxBatch(
       )
       .catch(rethrowQueryFailure);
     await drizzle(client)
-      .execute(sql`select app.recover_due_workflow_run_active_admissions(100)`)
+      .execute(
+        sql`select app.recover_due_workflow_run_active_admissions(${ADMISSION_RECOVERY_BATCH})`,
+      )
       .catch(rethrowQueryFailure);
     const claim = await leaseFairOutboxBatch(client, input);
     transactionState = 'committing';
@@ -183,7 +189,7 @@ async function leaseFairOutboxBatch(
           set
             ${sql.identifier(outboxEvents.leaseOwner.name)} = ${parsed.leaseOwner},
             ${sql.identifier(outboxEvents.leaseToken.name)} = ${parsed.leaseToken},
-            ${sql.identifier(outboxEvents.leaseExpiresAt.name)} = clock_timestamp() + (${parsed.leaseDurationMillis}::integer * interval '1 millisecond'),
+            ${sql.identifier(outboxEvents.leaseExpiresAt.name)} = clock_timestamp() + (${parsed.leaseDurationMillis}::integer * ${MILLISECOND_INTERVAL}),
             ${sql.identifier(outboxEvents.publishAttempts.name)} = ${event.publishAttempts} + 1,
             ${sql.identifier(outboxEvents.updatedAt.name)} = clock_timestamp()
           from admitted

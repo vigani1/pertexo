@@ -1,6 +1,6 @@
 import { and, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { Pool } from 'pg';
+import type { Client, Pool } from 'pg';
 import { outboxEvents } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type {
@@ -42,4 +42,11 @@ export async function observeOutboxBacklog(
       ? {}
       : { oldestAgeSeconds: Math.max(0, row.oldestAgeSeconds) }),
   });
+}
+
+/** A trigger on `outbox_events` signals this after every statement that adds rows. */
+const OUTBOX_ROWS_CHANNEL = 'outbox_rows';
+
+export async function listenForOutboxRows(client: Client): Promise<void> {
+  await client.query(`listen ${OUTBOX_ROWS_CHANNEL}`);
 }

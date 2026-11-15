@@ -49,7 +49,6 @@ export const PENDING_AREAS = Object.freeze([
   'lifecycle',
   'notifications',
   'operator',
-  'outbox',
   'previews',
   'runs',
 ]);
