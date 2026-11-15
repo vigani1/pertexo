@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useNotifications } from '@/components/ui/use-notifications';
-import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
+import { workflowDraftQueryOptions } from '@/features/workflow-editor/workflow-editor-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   RUN_DURATION_CHOICES,

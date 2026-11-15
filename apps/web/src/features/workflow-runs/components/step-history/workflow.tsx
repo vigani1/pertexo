@@ -5,7 +5,7 @@ import type {
 import { useQuery } from '@tanstack/react-query';
 import { useId, useMemo } from 'react';
 import { describeStep } from '@/features/catalog/presentation.public';
-import { workflowDraftQueryOptions } from '@/features/workflow-editor/draft.public';
+import { workflowDraftQueryOptions } from '@/features/workflow-editor/workflow-editor-queries.public';
 import { StepHealthList } from './health-list';
 import type { ApiClient } from '@/lib/api/client';
 

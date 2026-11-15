@@ -11,7 +11,7 @@ import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import {
   getWorkflowDraft,
   workflowDraftKeys,
-} from '@/features/workflow-editor/draft.public';
+} from '@/features/workflow-editor/workflow-editor-queries.public';
 import { restoreWorkflowVersion } from '@/features/workflow-versions/public';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
