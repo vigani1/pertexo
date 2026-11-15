@@ -6,7 +6,7 @@ import {
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
 import { serializeStoredExecutionValue } from '../../shared/stored-execution.js';
-import { requireTransactionConnectionBindings } from '../../shared/resources/connection-bindings.repository.js';
+import { requireTransactionConnectionBindings } from '../../shared/resources/require-connection-bindings.js';
 import { connectionScope } from '../../shared/resources/connection-scope.repository.js';
 
 import { resolvePreviewSample } from './samples.repository.js';

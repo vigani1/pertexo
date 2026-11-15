@@ -1,8 +1,8 @@
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/lock-references.js';
-import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
-import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
+import { requireWorkflowCallTargets } from '../../../shared/resources/require-workflow-call-targets.js';
+import { requireConnectionBindings } from '../../../shared/resources/require-connection-bindings.js';
 import { pruneStepSamples } from '../../step-samples/step-sample-state.repository.js';
 
 import type { AuthoringCatalogs } from '../catalogs.js';

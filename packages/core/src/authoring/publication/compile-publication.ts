@@ -9,7 +9,7 @@ import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
 import { parseWorkflowGraphForPublish } from '@pertexo/workflow-model/server';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { dataTableReferenceIssues } from '../../data-tables/columns/references.repository.js';
-import { requireWorkflowCallTargets } from '../../shared/resources/workflow-call-bindings.repository.js';
+import { requireWorkflowCallTargets } from '../../shared/resources/require-workflow-call-targets.js';
 import { lockWorkspaceVariableNames } from '../../variables/head.repository.js';
 import { lockArtifactReferences } from '../../artifacts/references/lock-references.js';
 import { admitWorkflowAuthoring } from '../workflows/admit-graph.js';

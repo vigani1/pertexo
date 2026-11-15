@@ -1,10 +1,5 @@
 import type { PoolClient } from 'pg';
 import { and, eq, sql } from 'drizzle-orm';
-import {
-  addedWorkflowCallTargets,
-  InvalidWorkflowGraphError,
-  type WorkflowGraph,
-} from '@pertexo/workflow-model';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -12,15 +7,12 @@ import { readFolderScope } from '../folder-access-facts.repository.js';
 import { workflowScopeSql } from '../folder-scope.repository.js';
 import type { ResourceActor } from '../folder-access.types.js';
 
-/** Only direct bindings are admitted; immutable child versions delegate their own closure. */
-export async function requireWorkflowCallTargets(
+/** How many of `targets` the actor's folder scope lets it read. */
+export async function countReadableWorkflows(
   client: PoolClient,
   actor: ResourceActor,
-  graph: WorkflowGraph,
-  previous?: WorkflowGraph,
-): Promise<void> {
-  const targets = addedWorkflowCallTargets(graph, previous);
-  if (targets.length === 0) return;
+  targets: readonly string[],
+): Promise<number> {
   const scope = await readFolderScope(client, actor);
   const found = await drizzle(client)
     .select({ id: workflows.id })
@@ -33,13 +25,5 @@ export async function requireWorkflowCallTargets(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (found.length !== targets.length)
-    throw new InvalidWorkflowGraphError([
-      {
-        code: 'invalid_graph',
-        path: '$.nodes',
-        message:
-          'A Call target is unavailable. Choose a workflow you can read.',
-      },
-    ]);
+  return found.length;
 }

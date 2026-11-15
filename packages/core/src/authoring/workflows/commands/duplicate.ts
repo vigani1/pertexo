@@ -9,8 +9,8 @@ import {
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/lock-references.js';
-import { requireWorkflowCallTargets } from '../../../shared/resources/workflow-call-bindings.repository.js';
-import { requireConnectionBindings } from '../../../shared/resources/connection-bindings.repository.js';
+import { requireWorkflowCallTargets } from '../../../shared/resources/require-workflow-call-targets.js';
+import { requireConnectionBindings } from '../../../shared/resources/require-connection-bindings.js';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import { decodeStoredValue } from '../../../shared/stored-values.js';

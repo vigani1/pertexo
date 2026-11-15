@@ -25,7 +25,7 @@ import {
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../../../shared/authority.repository.js';
+} from '../../../../shared/workspace-authority.js';
 import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
 import {
   organizationForWorkspace,

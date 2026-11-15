@@ -9,7 +9,7 @@ import {
   lockBrowsableWorkspaceAuthority,
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../authority.repository.js';
+} from '../workspace-authority.js';
 import type {
   ResourceActor,
   WorkflowResourceCapability,

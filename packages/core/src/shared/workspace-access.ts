@@ -1,9 +1,8 @@
+import { lockWorkspaceRow, readWorkspaceRole } from './authority.repository.js';
 import {
   lockWorkspaceAuthorityInStatuses,
-  lockWorkspaceRow,
   readWorkspaceAuthority,
-  readWorkspaceRole,
-} from './authority.repository.js';
+} from './workspace-authority.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   withTenantScopedClient,

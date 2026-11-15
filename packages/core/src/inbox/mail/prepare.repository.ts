@@ -13,7 +13,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
+import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
 import { createNoticeMailBatch } from './batches.repository.js';
 import type {
   NoticeMailPerson,

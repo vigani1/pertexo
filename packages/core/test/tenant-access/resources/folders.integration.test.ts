@@ -36,7 +36,7 @@ import { PromotionGraphBudget } from '../../../src/authoring/promotion/preparati
 import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { InvalidWorkflowGraphError } from '@pertexo/workflow-model';
-import { requireWorkflowCallTargets } from '../../../src/shared/resources/workflow-call-bindings.repository.js';
+import { requireWorkflowCallTargets } from '../../../src/shared/resources/require-workflow-call-targets.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 
 beforeAll(beforeAllFixture1, 30_000);

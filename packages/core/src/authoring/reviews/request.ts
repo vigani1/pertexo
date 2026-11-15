@@ -1,7 +1,7 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
-import { requireConnectionBindings } from '../../shared/resources/connection-bindings.repository.js';
+import { requireConnectionBindings } from '../../shared/resources/require-connection-bindings.js';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
 import { generatePersistedId } from '@pertexo/database/platform';

@@ -19,8 +19,8 @@ import {
   workflowDrafts,
   workflows,
 } from '@pertexo/database/schema';
-import { requireWorkflowCallTargets } from '../../shared/resources/workflow-call-bindings.repository.js';
-import { requireConnectionBindings } from '../../shared/resources/connection-bindings.repository.js';
+import { requireWorkflowCallTargets } from '../../shared/resources/require-workflow-call-targets.js';
+import { requireConnectionBindings } from '../../shared/resources/require-connection-bindings.js';
 
 import {
   ACTIVE_WORKSPACE_STATUSES,

@@ -5,7 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { lockWorkspaceAuthority } from '../../shared/authority.repository.js';
+import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
 import type { NoticeMailPerson } from './notice-mail.types.js';
 import { mailCutoff } from './items.js';
 import { recipient, settings } from './recipients.repository.js';
