@@ -10,6 +10,8 @@ import { WorkflowTagConflictError } from '../workflow-organization.errors.js';
 
 import type { Page, PageInput } from './workflow-tag.types.js';
 
+const DEFAULT_PAGE_LIMIT = 50;
+
 export const tagProjection = {
   id: workflowTags.id,
   key: workflowTags.key,
@@ -66,7 +68,7 @@ export function requireRevision(row: TagRow, expected: number): void {
 
 export function page(input: PageInput) {
   return {
-    limit: input.limit ?? 50,
+    limit: input.limit ?? DEFAULT_PAGE_LIMIT,
     after: input.afterId ?? null,
   };
 }

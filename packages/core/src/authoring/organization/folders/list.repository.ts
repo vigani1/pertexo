@@ -1,3 +1,4 @@
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/workflow-model';
 import type { OrganizationRequestScope } from '../session.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { asc, eq, sql } from 'drizzle-orm';
@@ -6,8 +7,6 @@ import { workflowFolders } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { folderProjection, type FolderRow } from './hierarchy.repository.js';
 import { readBrowsableFolderScope } from '../../../shared/folder-access-facts.repository.js';
-import { FOLDER_DEPTH_LIMIT } from '../limits.js';
-import { FOLDER_LIMIT } from '../../../shared/folder-policy.js';
 
 import type { createOrganizationSession } from '../session.js';
 import type { WorkflowFolderRecord } from './workflow-folder.types.js';
@@ -29,14 +28,14 @@ export function listFolders(
         .from(workflowFolders)
         .where(eq(workflowFolders.workspaceId, scope.workspaceId))
         .orderBy(asc(workflowFolders.id))
-        .limit(FOLDER_LIMIT + 1);
+        .limit(WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace + 1);
       const result = await db
         .execute<{ items: (FolderRow & { depth: number })[]; total: number }>(
           sql`
       with recursive bounded as materialized (${bounded}),tree as (
         select *,1 depth,array[id] path from bounded where parent_id is null
         union all select f.*,t.depth+1,t.path||f.id from bounded f join tree t on f.parent_id=t.id
-          where t.depth<${FOLDER_DEPTH_LIMIT + 1} and not f.id=any(t.path)
+          where t.depth<${WORKFLOW_FOLDER_LIMITS.depth + 1} and not f.id=any(t.path)
       ) select (select count(*)::int from bounded) total,
         coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'parentId',parent_id,'revision',revision,'depth',depth,'accessMode',access_mode) order by id),'[]'::jsonb) items from tree
     `,
@@ -46,9 +45,9 @@ export function listFolders(
       const access = await readBrowsableFolderScope(client, scope);
       const items = row?.items ?? [];
       const hierarchyCompatible =
-        items.length <= FOLDER_LIMIT &&
+        items.length <= WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace &&
         row?.total === items.length &&
-        items.every((item) => item.depth <= FOLDER_DEPTH_LIMIT);
+        items.every((item) => item.depth <= WORKFLOW_FOLDER_LIMITS.depth);
       if (!hierarchyCompatible)
         throw new Error('Workflow folder hierarchy is incompatible');
       return Object.freeze({

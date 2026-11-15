@@ -1,6 +1,6 @@
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/workflow-model';
 import { and, eq, isNull } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { FOLDER_LIMIT } from './folder-policy.js';
 import {
   databaseSchema,
   workflowFolders,
@@ -106,9 +106,9 @@ export async function readTransactionFolderScope(
     .from(workflowFolders)
     .where(eq(workflowFolders.workspaceId, actor.workspaceId))
     .orderBy(workflowFolders.id)
-    .limit(FOLDER_LIMIT + 1)
+    .limit(WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace + 1)
     .catch(rethrowQueryFailure);
-  if (folders.length > FOLDER_LIMIT)
+  if (folders.length > WORKFLOW_FOLDER_LIMITS.foldersPerWorkspace)
     throw new Error('Workspace folder facts exceed the supported bound.');
   const grants = RESOURCE_ADMINISTRATORS.includes(role)
     ? []

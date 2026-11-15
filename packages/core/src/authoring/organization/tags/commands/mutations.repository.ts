@@ -1,3 +1,4 @@
+import { WORKFLOW_ORGANIZATION_LIMITS } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -14,7 +15,6 @@ import { runOrganizationCommand } from '../../run-command.js';
 import type { OrganizationScope } from '../../session.js';
 import { WorkflowTagConflictError } from '../../workflow-organization.errors.js';
 
-import { TAG_DELETE_WORKFLOW_LIMIT, TAG_LIMIT } from '../../limits.js';
 import type { createOrganizationSession } from '../../session.js';
 import type {
   CreateTagInput,
@@ -40,6 +40,9 @@ import {
 } from '../tag-state.repository.js';
 import { assignmentCommand, tagCommand } from './receipts.js';
 
+/** A workflow without an organization row reads as revision 1; its first change writes 2. */
+const REVISION_AFTER_FIRST_CHANGE = 2;
+
 /** Detaches a tag from at most 50 workflows, advancing each one's revision. */
 async function deleteTag(
   client: PoolClient,
@@ -57,9 +60,9 @@ async function deleteTag(
       ),
     )
     .orderBy(asc(workflowTagAssignments.workflowId))
-    .limit(TAG_DELETE_WORKFLOW_LIMIT + 1)
+    .limit(WORKFLOW_ORGANIZATION_LIMITS.cleanupItems + 1)
     .catch(rethrowQueryFailure);
-  if (assigned.length > TAG_DELETE_WORKFLOW_LIMIT)
+  if (assigned.length > WORKFLOW_ORGANIZATION_LIMITS.cleanupItems)
     throw new WorkflowTagConflictError('delete_overflow');
   const workflowIds = assigned.map((row) => row.workflowId);
   await db
@@ -81,7 +84,7 @@ async function deleteTag(
         workflowIds.map((workflowId) => ({
           workspaceId: scope.workspaceId,
           workflowId,
-          revision: 2,
+          revision: REVISION_AFTER_FIRST_CHANGE,
         })),
       )
       .onConflictDoUpdate({
@@ -130,7 +133,7 @@ export async function createTag(
         .from(workflowTags)
         .where(eq(workflowTags.workspaceId, workspaceId))
         .catch(rethrowQueryFailure);
-      if ((count?.count ?? 0) >= TAG_LIMIT)
+      if ((count?.count ?? 0) >= WORKFLOW_ORGANIZATION_LIMITS.tagsPerWorkspace)
         throw new WorkflowTagConflictError('limit');
       const [row] = await db
         .insert(workflowTags)

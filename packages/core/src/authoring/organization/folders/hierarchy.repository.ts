@@ -1,9 +1,9 @@
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/workflow-model';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import { workflowFolders } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { FOLDER_DEPTH_LIMIT } from '../limits.js';
 import type { PoolClient } from 'pg';
 
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
@@ -63,7 +63,7 @@ export async function folderDepth(
       select ${folder.parentId},ancestors.depth+1 from ancestors
       join ${workflowFolders} ${sql.identifier('folder')}
         on ${folder.workspaceId}=${workspaceId} and ${folder.id}=ancestors.parent_id
-      where ancestors.depth<=${FOLDER_DEPTH_LIMIT}
+      where ancestors.depth<=${WORKFLOW_FOLDER_LIMITS.depth}
     ) select max(depth)::int depth,bool_or(parent_id is null) rooted from ancestors
   `,
     )
@@ -74,7 +74,7 @@ export async function folderDepth(
     !row?.rooted ||
     depth === undefined ||
     depth === null ||
-    depth > FOLDER_DEPTH_LIMIT;
+    depth > WORKFLOW_FOLDER_LIMITS.depth;
   if (invalidAncestry) throw new WorkflowFolderConflictError('hierarchy');
   return depth;
 }

@@ -10,12 +10,9 @@ import {
   workflowTagReplaceRequestSchema,
 } from './organization.js';
 
-export const WORKFLOW_FOLDER_LIMITS = Object.freeze({
-  nameBytes: 128,
-  depth: 4,
-  foldersPerWorkspace: 256,
-  bulkItems: 50,
-});
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/workflow-model';
+
+export { WORKFLOW_FOLDER_LIMITS };
 
 /** Display casing is retained. Sibling identity is an internal server concern. */
 function normalizeWorkflowFolderName(name: string): string {
