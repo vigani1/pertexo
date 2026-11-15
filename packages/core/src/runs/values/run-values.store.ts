@@ -12,10 +12,8 @@ import {
   type DatabaseRuntime,
   generatePersistedId,
 } from '@pertexo/database/platform';
-import {
-  lockCapabilityExecution,
-  assertCapabilityExecution,
-} from '../../attempts/dispatch/fence.repository.js';
+import { assertCapabilityExecution } from '../../attempts/dispatch/fence.repository.js';
+import { lockCapabilityExecution } from '../../attempts/dispatch/fence.js';
 import { RunValuesLimitError } from './run-values.errors.js';
 import type { RunValuesSaveInput } from './run-values.types.js';
 

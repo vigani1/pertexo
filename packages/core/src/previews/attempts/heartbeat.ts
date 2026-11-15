@@ -1,4 +1,4 @@
-import { requireActivePreviewWorkspace } from './workspace-fence.repository.js';
+import { requireActivePreviewWorkspace } from './require-active-workspace.js';
 import type { Pool } from 'pg';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { extendPreviewLease } from './lease.repository.js';
