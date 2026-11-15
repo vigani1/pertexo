@@ -7,3 +7,12 @@ export class GovernanceError extends Error {
     super(message);
   }
 }
+
+export function requireGovernanceSettings<T>(settings: T | undefined): T {
+  if (settings === undefined)
+    throw new GovernanceError(
+      'conflict',
+      'Workspace settings are unavailable.',
+    );
+  return settings;
+}
