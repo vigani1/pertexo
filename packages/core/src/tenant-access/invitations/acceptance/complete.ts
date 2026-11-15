@@ -1,0 +1,259 @@
+import { readDatabaseClock } from '../../../shared/database-clock.repository.js';
+import { decideInvitationAcceptance } from './decide-invitation-acceptance.js';
+import { eq } from 'drizzle-orm';
+import type { Pool, PoolClient } from 'pg';
+import { readEligibleAuthenticationSession } from '../../../identity/federation/sessions/authority.repository.js';
+import type { CommandIdentity } from '@pertexo/database/primitives';
+import {
+  claimCommand,
+  completeCommand,
+  withWorkspaceScope,
+} from '@pertexo/database/primitives';
+import { workspaceInvitationAcceptanceIntents as intents } from '@pertexo/database/schema';
+import type {
+  CompleteInvitationAcceptanceInput,
+  InvitationAcceptanceResult,
+} from '../../tenant-access.types.js';
+import { InvitationAcceptanceConflictError } from '../../tenant-access.errors.js';
+import { recordAcceptedInvitation } from '../receipts.repository.js';
+import {
+  decodeAcceptanceReceipt,
+  replayedAcceptance,
+} from '../acceptance-receipt.js';
+
+import {
+  createMemberships,
+  updateMembership,
+} from '../../../memberships/records.repository.js';
+import { withPlatformTransaction } from '@pertexo/database/platform';
+import { replaceUserSessions } from '../../../identity/federation/sessions/user-sessions.repository.js';
+import { selectIntent } from './state.repository.js';
+import {
+  lockAcceptanceParties,
+  lockAcceptanceRows,
+} from './complete.repository.js';
+
+export async function completeAcceptance(
+  pool: Pool,
+  raw: CompleteInvitationAcceptanceInput,
+): Promise<InvitationAcceptanceResult> {
+  const { identity, command } = prepareAcceptance(raw);
+  const { workspaceId, intentId, actorUserId, invitationRevision } = identity;
+  return withPlatformTransaction(pool, async (client) => {
+    const preview = await withWorkspaceScope(
+      client,
+      { workspaceId, actorId: actorUserId },
+      (scoped) => selectIntent(scoped, eq(intents.id, intentId)),
+    );
+    if (preview === null)
+      throw new InvitationAcceptanceConflictError(
+        'unavailable',
+        'The invitation journey is unavailable',
+      );
+    const { workspaceStatus, userStatus } = await lockAcceptanceParties(
+      client,
+      workspaceId,
+      actorUserId,
+    );
+    const sourceSession =
+      preview.verifiedSessionId === null
+        ? undefined
+        : await readEligibleAuthenticationSession(
+            client,
+            preview.verifiedSessionId,
+          );
+    return withWorkspaceScope(
+      client,
+      { workspaceId, actorId: actorUserId },
+      async (client) => {
+        const state = await readScopedAcceptance(client, {
+          ...identity,
+          preview,
+        });
+        const { membership, intent } = state;
+        const stored = await claimCommand(client, {
+          ...command,
+          request: { intentId, invitationRevision },
+          resourceId: intentId,
+        });
+        if (stored !== null)
+          return replayedAcceptance(decodeAcceptanceReceipt(stored));
+        if (intent.status === 'completed') {
+          if (intent.acceptedUserId !== actorUserId || intent.receipt === null)
+            throw new InvitationAcceptanceConflictError(
+              'unavailable',
+              'The invitation receipt is unavailable',
+            );
+          await completeCommand(client, command, intent.receipt);
+          return replayedAcceptance(intent.receipt);
+        }
+        const { current, sourceSession: verifiedSession } =
+          requireAcceptanceProof(identity, {
+            ...state,
+            preview,
+            sourceSession,
+            userStatus,
+            workspaceStatus,
+            now: await readDatabaseClock(client),
+          });
+        const existing = membership[0];
+        // ADR 042: a removal ends the membership, so a later invitation starts
+        // a new one at the invited role. Suspension stays a conflict.
+        const rejoining = existing?.status === 'removed';
+        const membershipUnavailable =
+          existing !== undefined && existing.status !== 'active' && !rejoining;
+        if (membershipUnavailable)
+          throw new InvitationAcceptanceConflictError(
+            'member_inactive',
+            'Inactive membership cannot be restored by invitation',
+          );
+        const membershipCreated = existing === undefined || rejoining;
+        const assignedRole = membershipCreated ? current.role : existing.role;
+        if (membershipCreated) {
+          if (existing === undefined)
+            await createMemberships(
+              client,
+              workspaceId,
+              [
+                {
+                  userId: actorUserId,
+                  role: assignedRole,
+                  source: 'invitation',
+                  invitationId: intent.invitationId,
+                },
+              ],
+              {
+                actorId: actorUserId,
+                requestId: raw.requestId ?? null,
+                traceId: raw.traceId ?? null,
+              },
+            );
+          else
+            await updateMembership(client, workspaceId, {
+              userId: actorUserId,
+              role: assignedRole,
+              status: 'active',
+              roleRevision: existing.role_revision + 1,
+            });
+          await replaceUserSessions(
+            client,
+            actorUserId,
+            raw.replacementSession,
+            verifiedSession.proof,
+          );
+        }
+        const receipt = {
+          intentId,
+          workspaceId,
+          role: assignedRole,
+          membershipCreated,
+        };
+        await recordAcceptedInvitation(client, {
+          command,
+          receipt,
+          actorUserId,
+          invitationId: intent.invitationId,
+          invitationRevision,
+          requestId: raw.requestId ?? null,
+          traceId: raw.traceId ?? null,
+        });
+        return Object.freeze({
+          ...receipt,
+          replayed: false,
+          replacementSessionCreated: membershipCreated,
+        });
+      },
+    );
+  });
+}
+
+type AcceptanceIdentity = Readonly<{
+  workspaceId: string;
+  intentId: string;
+  actorUserId: string;
+  invitationRevision: number;
+}>;
+async function readScopedAcceptance(
+  client: PoolClient,
+  {
+    workspaceId,
+    intentId,
+    actorUserId,
+    preview,
+  }: AcceptanceIdentity &
+    Readonly<{
+      preview: NonNullable<Awaited<ReturnType<typeof selectIntent>>>;
+    }>,
+) {
+  const { membership, invitation } = await lockAcceptanceRows(client, {
+    workspaceId,
+    actorUserId,
+    invitationId: preview.invitationId,
+  });
+  const intent = await selectIntent(client, eq(intents.id, intentId), {
+    lock: true,
+  });
+  if (intent === null)
+    throw new InvitationAcceptanceConflictError(
+      'unavailable',
+      'The invitation journey is unavailable',
+    );
+
+  return { membership, invitation, intent };
+}
+function requireAcceptanceProof(
+  { actorUserId, invitationRevision }: AcceptanceIdentity,
+  {
+    intent,
+    invitation,
+    preview,
+    sourceSession,
+    userStatus,
+    workspaceStatus,
+    now,
+  }: Awaited<ReturnType<typeof readScopedAcceptance>> &
+    Readonly<{
+      preview: NonNullable<Awaited<ReturnType<typeof selectIntent>>>;
+      sourceSession: Awaited<
+        ReturnType<typeof readEligibleAuthenticationSession>
+      >;
+      userStatus: string | undefined;
+      workspaceStatus: string | undefined;
+      now: Date;
+    }>,
+) {
+  const decision = decideInvitationAcceptance({
+    actorUserId,
+    invitationRevision,
+    intent,
+    current: invitation[0],
+    previewSessionId: preview.verifiedSessionId,
+    sourceSession,
+    userStatus,
+    workspaceStatus,
+    now,
+  });
+  if (!decision.allowed)
+    throw new InvitationAcceptanceConflictError(
+      decision.reason,
+      decision.message,
+    );
+  return decision;
+}
+
+function prepareAcceptance(raw: CompleteInvitationAcceptanceInput) {
+  const workspaceId = raw.workspaceId;
+  const intentId = raw.intentId;
+  const actorUserId = raw.actorUserId;
+  const invitationRevision = raw.invitationRevision;
+  const command: CommandIdentity = {
+    workspaceId,
+    operation: 'workspace.invitation.accept',
+    scope: actorUserId,
+    idempotencyKey: raw.idempotencyKey,
+  };
+  return {
+    identity: { workspaceId, intentId, actorUserId, invitationRevision },
+    command,
+  };
+}

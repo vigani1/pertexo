@@ -21,11 +21,13 @@ import {
 } from '../tenant-access.errors.js';
 import { revokeUserSessions } from '../../identity/federation/sessions/user-sessions.repository.js';
 import {
-  executeMemberCommand,
   recordMemberCommandAudit,
-  type AdmittedMemberCommand,
   type LockedMember,
 } from './commands.repository.js';
+import {
+  executeMemberCommand,
+  type AdmittedMemberCommand,
+} from './execute-member-command.js';
 import { isActiveMemberManager } from './manager.js';
 import {
   memberReceipt,

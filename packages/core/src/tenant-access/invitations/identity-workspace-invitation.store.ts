@@ -8,9 +8,9 @@ import type {
 import {
   resendInvitation,
   revokeInvitation,
-} from './management/commands.repository.js';
-import { listWorkspaceInvitations } from './management/list.repository.js';
-import { createWorkspaceInvitation } from './management/create.repository.js';
+} from './management/change-invitation.js';
+import { listWorkspaceInvitations } from './management/list-invitations.js';
+import { createWorkspaceInvitation } from './management/create-invitation.js';
 
 export function createIdentityWorkspaceInvitationStore(pool: Pool) {
   return Object.freeze({

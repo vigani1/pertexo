@@ -6,13 +6,13 @@ import type {
   ResolveInvitationAcceptanceInput,
 } from '../../tenant-access.types.js';
 
-import { completeAcceptance } from './complete.repository.js';
+import { completeAcceptance } from './complete.js';
 import { resolveInvitationAcceptance } from './resolve.repository.js';
 import {
   readInvitationAcceptance,
-  recordInvitationAcceptanceProof,
   abandonInvitationAcceptance,
 } from './proof.repository.js';
+import { recordInvitationAcceptanceProof } from './record-proof.js';
 
 /**
  * Off withWorkspaceAccess: no member is behind these. An invitation's token is,

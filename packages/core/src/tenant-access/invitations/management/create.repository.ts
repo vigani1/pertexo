@@ -1,152 +1,79 @@
-import { INVITATION_TTL_MILLIS } from '../deadlines.js';
-import { readDatabaseClock } from '../../../shared/database-clock.repository.js';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import type { Pool } from 'pg';
+import type { PoolClient } from 'pg';
 import {
   isUniqueConstraintFailure,
   rethrowQueryFailure,
-  withTenantScopedClient,
 } from '@pertexo/database/primitives';
 import { workspaceInvitations as invitations } from '@pertexo/database/schema';
+import type { CreateWorkspaceInvitationInput } from '../../tenant-access.types.js';
+import { invitationSelection } from './state.repository.js';
 
-import { generatePersistedId } from '@pertexo/database/platform';
+/** Whether a pending invitation to this email exists, locking it. */
+export async function lockPendingInvitation(
+  client: PoolClient,
+  workspaceId: string,
+  email: string,
+): Promise<boolean> {
+  const db = drizzle(client);
+  const duplicate = await db
+    .select({ one: sql`1` })
+    .from(invitations)
+    .where(
+      and(
+        eq(invitations.workspaceId, workspaceId),
+        eq(invitations.normalizedEmail, email),
+        eq(invitations.status, 'pending'),
+      ),
+    )
+    .for('update')
+    .catch(rethrowQueryFailure);
+  return duplicate.length > 0;
+}
 
-import { WorkspaceInvitationCommandConflictError } from '../../tenant-access.errors.js';
-
-import { canInviteWorkspaceRole } from '@pertexo/policy';
-import { canonicalEmail } from '../../../identity/email-policy.js';
-import { expireWorkspaceInvitations } from '../expiration.repository.js';
-import type {
-  CreateWorkspaceInvitationInput,
-  WorkspaceInvitationCommandResult,
-} from '../../tenant-access.types.js';
-import {
-  claimInvitationCommand,
-  completeInvitationCommand,
-  insertDelivery,
-  invitationKey,
-  recordAudit,
-} from './receipts.repository.js';
-import {
-  invitationSelection,
-  lockAuthorizedActor,
-} from './state.repository.js';
-
-export async function createWorkspaceInvitation(
-  pool: Pool,
-  raw: CreateWorkspaceInvitationInput,
-): Promise<WorkspaceInvitationCommandResult> {
-  const workspaceId = raw.workspaceId;
-  const actorUserId = raw.actorUserId;
-  const invitationId = raw.invitationId ?? generatePersistedId();
-  const deliveryAttemptId = raw.deliveryAttemptId ?? generatePersistedId();
-  const email = canonicalEmail(raw.email);
-  const role = raw.role;
-  const tokenDigest = raw.tokenDigest;
-  const sealed = raw.sealedToken;
-  return withTenantScopedClient(
-    pool,
-    { workspaceId, actorId: actorUserId },
-    async (client) => {
-      const actorRole = await lockAuthorizedActor(
-        client,
+/** A unique pending invitation that raced in reads as `duplicate`. */
+export async function insertInvitation(
+  client: PoolClient,
+  values: Readonly<{
+    invitationId: string;
+    workspaceId: string;
+    email: string;
+    role: CreateWorkspaceInvitationInput['role'];
+    tokenDigest: string;
+    actorUserId: string;
+    expiresAt: Date;
+  }>,
+) {
+  const { invitationId, workspaceId, email, role, tokenDigest, actorUserId } =
+    values;
+  try {
+    const inserted = await drizzle(client)
+      .insert(invitations)
+      .values({
+        id: invitationId,
         workspaceId,
-        actorUserId,
-      );
-      if (!canInviteWorkspaceRole(actorRole, role))
-        throw new WorkspaceInvitationCommandConflictError(
-          'role_forbidden',
-          'The actor cannot assign this invitation role',
-        );
-      await expireWorkspaceInvitations(client, {
-        workspaceId,
+        recipientEmail: email,
         normalizedEmail: email,
-      });
-      const key = invitationKey(
-        workspaceId,
-        actorUserId,
-        'create',
-        raw.idempotencyKey,
-      );
-      const replay = await claimInvitationCommand(
-        client,
-        key,
-        { email, role },
-        invitationId,
-      );
-      if (replay !== null) return replay;
-      const db = drizzle(client);
-      const duplicate = await db
-        .select({ one: sql`1` })
-        .from(invitations)
-        .where(
-          and(
-            eq(invitations.workspaceId, workspaceId),
-            eq(invitations.normalizedEmail, email),
-            eq(invitations.status, 'pending'),
-          ),
-        )
-        .for('update')
-        .catch(rethrowQueryFailure);
-      if (duplicate.length > 0)
-        throw new WorkspaceInvitationCommandConflictError(
-          'duplicate_pending',
-          'A pending invitation already exists for this recipient',
-        );
-      let inserted;
-      try {
-        inserted = await db
-          .insert(invitations)
-          .values({
-            id: invitationId,
-            workspaceId,
-            recipientEmail: email,
-            normalizedEmail: email,
-            role,
-            status: 'pending',
-            revision: 1,
-            tokenDigest,
-            deliveryStatus: 'queued',
-            createdBy: actorUserId,
-            expiresAt: new Date(
-              (await readDatabaseClock(client)).getTime() +
-                INVITATION_TTL_MILLIS,
-            ),
-          })
-          .returning(invitationSelection)
-          .catch(rethrowQueryFailure);
-      } catch (error: unknown) {
-        if (isUniqueConstraintFailure(error))
-          throw new WorkspaceInvitationCommandConflictError(
-            'duplicate_pending',
-            'A pending invitation already exists for this recipient',
-            { cause: error },
-          );
-        throw error;
-      }
-      const insertedInvitation = inserted[0];
-      if (insertedInvitation === undefined)
-        throw new Error('Invitation insert returned no row');
-      const invitation = Object.freeze(insertedInvitation);
-      await insertDelivery(client, {
-        workspaceId,
-        invitationId,
-        revision: 1,
-        deliveryAttemptId,
-        sealed,
-      });
-      await recordAudit(client, {
-        workspaceId,
-        actorUserId,
-        invitationId,
-        action: 'workspace.invitation_created',
-        revision: 1,
         role,
-        ...(raw.requestId === undefined ? {} : { requestId: raw.requestId }),
-        ...(raw.traceId === undefined ? {} : { traceId: raw.traceId }),
-      });
-      return completeInvitationCommand(client, key, invitation);
-    },
-  );
+        status: 'pending',
+        revision: 1,
+        tokenDigest,
+        deliveryStatus: 'queued',
+        createdBy: actorUserId,
+        expiresAt: values.expiresAt,
+      })
+      .returning(invitationSelection)
+      .catch(rethrowQueryFailure);
+    const insertedInvitation = inserted[0];
+    if (insertedInvitation === undefined)
+      throw new Error('Invitation insert returned no row');
+    return {
+      kind: 'inserted',
+      invitation: Object.freeze(insertedInvitation),
+    } as const;
+  } catch (error: unknown) {
+    if (isUniqueConstraintFailure(error))
+      return { kind: 'duplicate', cause: error } as const;
+    throw error;
+  }
 }
