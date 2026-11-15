@@ -5,7 +5,6 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 import {
-  entriesAddedSince,
   listSourceFiles,
   readSource,
   report,
@@ -16,30 +15,6 @@ const CORE_SOURCE = 'packages/core/src/';
 // Repositories hold the queries; a store is the flow's facade and may run
 // the ones it owns (AGENTS.md: "Database access").
 const QUERY_ROLES = /\.(?:repository|store)\.ts$/u;
-
-// PENDING_AREAS as it stood when the check began; it stays within this list.
-// `artifacts` and `triggers` already kept their queries in repositories.
-const ORIGINAL_PENDING_AREAS = Object.freeze([
-  'attempts',
-  'authoring',
-  'connections',
-  'data-tables',
-  'governance',
-  'identity',
-  'inbox',
-  'lifecycle',
-  'notifications',
-  'operator',
-  'outbox',
-  'previews',
-  'runs',
-  'shared',
-  'tenant-access',
-  'variables',
-]);
-
-/** Core areas whose queries haven't moved yet; this list may only shrink. */
-export const PENDING_AREAS = Object.freeze([]);
 
 // The calls that run or start a query on a drizzle database, a pg client or
 // a pool.
@@ -72,13 +47,6 @@ const BUILDER_STEPS = new Set([
 ]);
 // `sql.raw(...)`, `sql.join(...)` and friends build fragments too.
 const SQL_HELPERS = new Set(['raw', 'join', 'identifier', 'placeholder']);
-
-/** The core area a file belongs to, or undefined outside core's src. */
-export function coreArea(file) {
-  if (!file.startsWith(CORE_SOURCE)) return undefined;
-  const [area, ...rest] = file.slice(CORE_SOURCE.length).split('/');
-  return rest.length === 0 ? undefined : area;
-}
 
 /**
  * Database access outside a `.repository.ts` or `.store.ts`: a query method
@@ -224,17 +192,6 @@ function chainsIntoBuilder(call, method) {
   return BUILDER_STEPS.has(step) || (method === 'insert' && step === 'select');
 }
 
-/** Findings for files in an area that is still pending. */
-export function isPending(file, pending = PENDING_AREAS) {
-  const area = coreArea(file);
-  return area !== undefined && pending.includes(area);
-}
-
-/** A pending list that gained an entry since the check began. */
-export function validatePendingAreas(pending = PENDING_AREAS) {
-  return entriesAddedSince('PENDING_AREAS', pending, ORIGINAL_PENDING_AREAS);
-}
-
 const STORE = /\.store\.ts$/u;
 const CORE_ENTRY =
   /^packages\/core\/src\/(?:testing\.ts|[^/]+\/(?:index|testing)\.ts)$/u;
@@ -272,21 +229,14 @@ export function findStoreProblems(sources) {
 }
 
 export async function inspectCoreQueries(root = repositoryRoot) {
-  const findings = [...validatePendingAreas()];
-  const pendingWithoutQueries = new Set(PENDING_AREAS);
+  const findings = [];
   const sources = [];
   for (const file of await listSourceFiles('packages/core', root)) {
     const text = await readSource(file, root);
     sources.push([file, text]);
-    const queries = findCoreQueries(file, text);
-    if (!isPending(file)) findings.push(...queries);
-    else if (queries.length > 0) pendingWithoutQueries.delete(coreArea(file));
+    findings.push(...findCoreQueries(file, text));
   }
   findings.push(...findStoreProblems(sources));
-  for (const area of pendingWithoutQueries)
-    findings.push(
-      `packages/core/src/${area}: has no queries outside its repositories; remove it from PENDING_AREAS.`,
-    );
   return findings;
 }
 
