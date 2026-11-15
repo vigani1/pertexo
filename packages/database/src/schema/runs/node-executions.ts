@@ -27,6 +27,8 @@ import { workflowRuns } from './workflow-runs.js';
 import type { CodeDiagnostics } from '@pertexo/node-sdk';
 
 const WIDTHS = Object.freeze({
+  // Wider than the graph's 64-character node id, which every id is validated to
+  // before it is stored: narrowing needs a migration and gains nothing.
   nodeId: 128,
   status: 32,
   sideEffectClass: 32,

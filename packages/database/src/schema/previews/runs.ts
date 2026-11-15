@@ -27,6 +27,8 @@ import { appSchema } from '../namespace.js';
 
 const WIDTHS = Object.freeze({
   draftFingerprint: SHA256_HEX_CHARACTERS,
+  // Wider than the graph's 64-character node id, which every id is validated to
+  // before it is stored: narrowing needs a migration and gains nothing.
   nodeId: 256,
   // Both keys are held to NODE_IDENTITY_KEY_MAX_CHARACTERS (64) before they are
   // stored; the columns stay wider, since narrowing needs a migration and gains nothing.

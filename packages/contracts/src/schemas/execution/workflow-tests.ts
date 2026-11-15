@@ -2,10 +2,13 @@ import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
 import { workflowRunStatusSchema } from './runs.js';
-import { workflowGraphStructuralSchema } from '@pertexo/workflow-model';
+import {
+  workflowGraphStructuralSchema,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 
 const WORKFLOW_TESTS_BOUNDS = Object.freeze({
-  nodeIdCharacters: 256,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   samplesItems: 200,
   labelCharacters: 256,
   effectfulStepsItems: 200,

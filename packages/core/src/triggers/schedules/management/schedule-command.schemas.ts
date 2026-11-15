@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { TRIGGER_NODE_ID_MAX_CHARACTERS } from '../../reconciliation/projection.js';
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 
 /** What a stored schedule row can hold: its columns' widths and interval check. */
 const STORED_SCHEDULE = Object.freeze({
@@ -15,7 +15,10 @@ export const scheduleTriggerSchema = z
     id: z.uuid(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
-    nodeId: z.string().min(1).max(TRIGGER_NODE_ID_MAX_CHARACTERS),
+    nodeId: z
+      .string()
+      .min(1)
+      .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength),
     kind: z.literal('schedule'),
     status: z.enum([
       'desired',

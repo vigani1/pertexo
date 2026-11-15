@@ -6,6 +6,7 @@ import {
   workspaceVariableSnapshotSchema,
   workspaceVariableNameSchema,
   WORKSPACE_VARIABLE_LIMITS,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 
@@ -13,7 +14,7 @@ const VARIABLES_BOUNDS = Object.freeze({
   afterCharacters: 1024,
   offsetMaximum: 100000,
   workflowNameCharacters: WORKSPACE_VARIABLE_LIMITS.usageWorkflowNameCharacters,
-  nodeIdCharacters: 128,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   labelCharacters: 160,
   inputCharacters: 128,
   workspaceVariableUsagePageItems: 100,

@@ -1,16 +1,13 @@
 import type { WorkflowTriggerProjection } from './trigger-reconciliation.types.js';
-import { CORE_WEBHOOK_CONFIG_SCHEMA } from '@pertexo/workflow-model';
+import {
+  CORE_WEBHOOK_CONFIG_SCHEMA,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { createHash } from 'node:crypto';
 
 import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { z } from 'zod';
-
-/**
- * The widest node id a trigger row stores (`workflow_triggers.node_id
- * varchar(128)`); every trigger record that names a node reads it.
- */
-export const TRIGGER_NODE_ID_MAX_CHARACTERS = 128;
 
 function triggerKind(
   identity: string,
@@ -25,7 +22,10 @@ const graphSchema = z
     nodes: z.array(
       z
         .object({
-          id: z.string().min(1).max(TRIGGER_NODE_ID_MAX_CHARACTERS),
+          id: z
+            .string()
+            .min(1)
+            .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength),
           definition: z.looseObject({
             key: z.string(),
             version: z.number().int(),

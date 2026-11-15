@@ -8891,7 +8891,7 @@
                   "anyOf": [
                     {
                       "type": "string",
-                      "maxLength": 128
+                      "maxLength": 64
                     },
                     {
                       "type": "null"
@@ -18956,7 +18956,7 @@
                     "targetNodeId": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 128
+                      "maxLength": 64
                     },
                     "reusedCount": {
                       "type": "integer",
@@ -19063,7 +19063,7 @@
                         "nodeId": {
                           "type": "string",
                           "minLength": 1,
-                          "maxLength": 256
+                          "maxLength": 64
                         },
                         "label": {
                           "anyOf": [
@@ -19370,7 +19370,7 @@
                   "targetNodeId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 128
+                    "maxLength": 64
                   },
                   "reusedCount": {
                     "type": "integer",
@@ -19629,7 +19629,7 @@
                   "targetNodeId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 128
+                    "maxLength": 64
                   },
                   "reusedCount": {
                     "type": "integer",
@@ -19759,12 +19759,12 @@
                 "nodeId": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256
+                  "maxLength": 64
                 },
                 "invocationKey": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 1024
+                  "maxLength": 256
                 },
                 "status": {
                   "type": "string",
@@ -20758,7 +20758,7 @@
                   "targetNodeId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 128
+                    "maxLength": 64
                   },
                   "reusedCount": {
                     "type": "integer",
@@ -24140,7 +24140,7 @@
                 "nodeId": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256
+                  "maxLength": 64
                 },
                 "kind": {
                   "type": "string",
@@ -24204,7 +24204,7 @@
                             "expression": {
                               "type": "string",
                               "minLength": 1,
-                              "maxLength": 256
+                              "maxLength": 255
                             },
                             "timezone": {
                               "type": "string",
@@ -24429,7 +24429,7 @@
                   "timezone": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 255
+                    "maxLength": 128
                   },
                   "misfirePolicy": {
                     "type": "string",
@@ -24516,7 +24516,7 @@
               "nodeId": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 256
+                "maxLength": 64
               },
               "kind": {
                 "type": "string",
@@ -24580,7 +24580,7 @@
                           "expression": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 256
+                            "maxLength": 255
                           },
                           "timezone": {
                             "type": "string",
@@ -24701,7 +24701,7 @@
                 "nodeId": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256
+                  "maxLength": 64
                 },
                 "kind": {
                   "type": "string",
@@ -24950,7 +24950,7 @@
                     "nodeId": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 128
+                      "maxLength": 64
                     },
                     "source": {
                       "type": "string",
@@ -25142,7 +25142,7 @@
                   "nodeId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 256
+                    "maxLength": 64
                   },
                   "kind": {
                     "type": "string",
@@ -25329,7 +25329,7 @@
                   "nodeId": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 256
+                    "maxLength": 64
                   },
                   "kind": {
                     "type": "string",

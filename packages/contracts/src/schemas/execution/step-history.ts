@@ -1,12 +1,13 @@
+import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 
 const STEP_HISTORY_BOUNDS = Object.freeze({
-  stepIdentifierCharacters: 256,
+  stepIdentifierCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   workflowStepRunsPageMaximum: 50,
   workflowStepHealthPageItems: 1000,
-  invocationKeyCharacters: 1024,
+  invocationKeyCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
   safeErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   workflowStepRunsPageItems: 50,
 });

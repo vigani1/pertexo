@@ -3,10 +3,11 @@ import { z } from 'zod';
 import {
   eventCoordinationStatusSchema,
   eventCoordinationReasonSchema,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 
 const COORDINATION_BOUNDS = Object.freeze({
-  nodeIdCharacters: 128,
+  nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   coordinatedEventHistoryPageItems: 100,
   coordinatedEventHistoryPageDefault: 25,
 });
