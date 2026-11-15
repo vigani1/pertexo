@@ -4,6 +4,8 @@ export const PROMOTION_LIMITS = Object.freeze({
   responseBytes: 4 * 1024 * 1024,
   requirements: 1000,
   page: 50,
+  /** A requirement's detail text, as a review shows it. */
+  requirementDetailCharacters: 512,
 });
 
 /** How many people a restricted connection can be shared with. */

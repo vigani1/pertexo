@@ -29,6 +29,9 @@ import { workflowNodes } from '@pertexo/workflow-model';
 import type { PromotionGraphBudget } from './graph.js';
 import { WorkflowPromotionError } from '../workflow-promotion.errors.js';
 
+/** Distinct connections one promotion review reads. */
+const REVIEWED_CONNECTION_MAX = 1000;
+
 export const promotionConnection = alias(storedConnections, 'connection');
 export const promotionConnectionProjection = {
   id: promotionConnection.id,
@@ -128,7 +131,7 @@ export async function readPromotionSources(
   const connectionIds = [
     ...new Set(nodes.flatMap((node) => Object.values(node.connectionRefs))),
   ].sort();
-  if (connectionIds.length > 1000)
+  if (connectionIds.length > REVIEWED_CONNECTION_MAX)
     throw new WorkflowPromotionError(
       'limit',
       'Select fewer workflows to review their connections.',

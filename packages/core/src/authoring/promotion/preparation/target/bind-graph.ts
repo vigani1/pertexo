@@ -1,3 +1,4 @@
+import { PROMOTION_LIMITS } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
 import type { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
@@ -107,7 +108,10 @@ export async function prepareTargetGraph(
         kind: 'validation',
         status: 'incompatible',
         name: source.name,
-        detail: issue.message.slice(0, 512),
+        detail: issue.message.slice(
+          0,
+          PROMOTION_LIMITS.requirementDetailCharacters,
+        ),
       });
     if (
       !requirements.some(
