@@ -31,3 +31,5 @@ export type {} from './dispatch/uncertainty.repository.js';
 export type {} from './attempt-reconciliation.repository.js';
 
 export type {} from './attempt-reconciliation.js';
+
+export type {} from './attempt-events.repository.js';

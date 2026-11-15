@@ -1,5 +1,5 @@
 export { RunRequiresFormError } from './commands/acceptance/run-admission.errors.js';
-export { ExecutionStateConflictError } from './execution-state.errors.js';
+export { ExecutionStateConflictError } from '../shared/execution-state.errors.js';
 export { readRunEventsAfter } from './queries/history/events.repository.js';
 export {
   WorkspaceRunAdmissionDeniedError,
@@ -161,5 +161,3 @@ export type {} from './stalled/overdue.repository.js';
 export type {} from './values/retention.repository.js';
 
 export type {} from './stalled/stuck-work.repository.js';
-
-export type {} from './queries/history/attempt-events.repository.js';

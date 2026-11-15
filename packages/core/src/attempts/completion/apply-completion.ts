@@ -1,5 +1,5 @@
 import { isCurrentAttemptLease } from './attempt-completion.repository.js';
-import { appendAttemptEvent } from '../../runs/queries/history/attempt-events.repository.js';
+import { appendAttemptEvent } from '../attempt-events.repository.js';
 import type { PoolClient } from 'pg';
 
 import {
