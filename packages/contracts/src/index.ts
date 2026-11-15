@@ -28,6 +28,7 @@ export {
 export * from './schemas/workflows/authoring.js';
 export * from './schemas/workflows/portability.js';
 export * from './schemas/execution/runs.js';
+export { normalizeWorkflowRunCreatedAt } from './schemas/execution/run-created-at.js';
 export * from './schemas/execution/run-events.js';
 export * from './schemas/execution/run-statistics.js';
 export * from './schemas/identity/inbox.js';
