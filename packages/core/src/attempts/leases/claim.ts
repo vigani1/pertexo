@@ -1,12 +1,7 @@
-import {
-  withTenantScopedClient,
-  rethrowQueryFailure,
-} from '@pertexo/database/primitives';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { nodeRuns, nodeAttempts } from '@pertexo/database/schema';
+import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { appendAttemptEvent } from '../../runs/queries/history/attempt-events.repository.js';
 import { lockClaimCandidate } from './candidates.repository.js';
+import { markNodeRunStarted, startAttemptLease } from './lease.repository.js';
 import type { Pool } from 'pg';
 import type { z } from 'zod';
 import {
@@ -75,45 +70,9 @@ export async function claimNodeAttemptDelivery(
           throw error;
         }
 
-        const claimed = await drizzle(client)
-          .update(nodeAttempts)
-          .set({
-            status: 'running',
-            leaseOwner: input.workerId,
-            leaseExpiresAt: sql`clock_timestamp()+make_interval(secs=>${input.leaseDurationSeconds})`,
-            fenceToken: sql`${nodeAttempts.fenceToken}+1`,
-            startedAt: sql`coalesce(${nodeAttempts.startedAt},clock_timestamp())`,
-            updatedAt: sql`clock_timestamp()`,
-          })
-          .where(
-            and(
-              eq(nodeAttempts.workspaceId, input.workspaceId),
-              eq(nodeAttempts.id, input.attemptId),
-            ),
-          )
-          .returning({
-            fenceToken: nodeAttempts.fenceToken,
-            leaseExpiresAt: sql<Date>`${nodeAttempts.leaseExpiresAt}`.mapWith(
-              nodeAttempts.leaseExpiresAt,
-            ),
-          })
-          .catch(rethrowQueryFailure);
-        const claim = claimed[0];
+        const claim = await startAttemptLease(client, input);
         if (claim === undefined) throw new NodeAttemptStateCorruptError();
-        await drizzle(client)
-          .update(nodeRuns)
-          .set({
-            status: 'running',
-            startedAt: sql`coalesce(${nodeRuns.startedAt},clock_timestamp())`,
-            updatedAt: sql`clock_timestamp()`,
-          })
-          .where(
-            and(
-              eq(nodeRuns.workspaceId, input.workspaceId),
-              eq(nodeRuns.id, input.nodeRunId),
-            ),
-          )
-          .catch(rethrowQueryFailure);
+        await markNodeRunStarted(client, input);
         await appendAttemptEvent(client, {
           workspaceId: input.workspaceId,
           runId: input.runId,

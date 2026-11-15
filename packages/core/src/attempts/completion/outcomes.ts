@@ -1,15 +1,5 @@
 import { isCurrentAttemptLease } from './attempt-completion.repository.js';
-import { and, eq, sql } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { nodeRuns, nodeAttempts, outboxEvents } from '@pertexo/database/schema';
-import {
-  rethrowQueryFailure,
-  canonicalOutboxPayloadChecksum,
-} from '@pertexo/database/primitives';
-import { serializeStoredExecutionJsonValue } from '../../shared/stored-execution.js';
 import { appendAttemptEvent } from '../../runs/queries/history/attempt-events.repository.js';
-import { canonicalJson } from '@pertexo/workflow-model';
-import { generatePersistedId } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';
 
 import {
@@ -29,6 +19,12 @@ import type {
   CompletionFields,
 } from './attempt-completion.types.js';
 import { duplicateCompletion } from './replay.js';
+import {
+  enqueueRunAdvance,
+  saveAttemptCompletion,
+  settleNodeRun,
+  suspendNodeRun,
+} from './outcomes.repository.js';
 
 function completionFields(input: CompleteAttemptInput): CompletionFields {
   const outcome = input.outcome;
@@ -84,77 +80,11 @@ function assertActiveLease(
   }
 }
 
-async function updateAttempt(
-  client: PoolClient,
-  input: CompleteAttemptInput,
-  serializedOutput: string | null,
-  fields: CompletionFields,
-): Promise<void> {
-  await drizzle(client)
-    .update(nodeAttempts)
-    .set({
-      status: fields.durableStatus,
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      outputRef: sql`${serializedOutput}::json`,
-      safeErrorCode: fields.safeErrorCode,
-      errorSummary: fields.errorSummary,
-      executorFailureKind: fields.executorOutcome?.failureKind ?? null,
-      executorErrorKind: fields.executorOutcome?.errorKind ?? null,
-      executorPossiblyDispatched:
-        fields.executorOutcome?.possiblyDispatched ?? null,
-      retryDecision: fields.executorOutcome === undefined ? null : 'pending',
-      codeDiagnostics:
-        input.codeDiagnostics === undefined
-          ? null
-          : sql`${canonicalJson(input.codeDiagnostics)}::jsonb`,
-      executorRetryAfterMillis:
-        fields.executorOutcome?.minimumRetryDelayMillis ?? null,
-      completedAt: sql`clock_timestamp()`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(nodeAttempts.workspaceId, input.lease.workspaceId),
-        eq(nodeAttempts.id, input.lease.attemptId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-}
-
-async function enqueueAdvance(
-  client: PoolClient,
-  input: CompleteAttemptInput,
-): Promise<string> {
-  const outboxEventId = generatePersistedId();
-  const payload = {
-    workspaceId: input.lease.workspaceId,
-    runId: input.lease.runId,
-    outboxEventId,
-    ...(input.traceparent === undefined
-      ? {}
-      : { traceparent: input.traceparent }),
-  } as const;
-  await drizzle(client)
-    .insert(outboxEvents)
-    .values({
-      id: outboxEventId,
-      workspaceId: input.lease.workspaceId,
-      jobName: 'advance-workflow-run',
-      aggregateType: 'workflow-run',
-      aggregateId: input.lease.runId,
-      payload: sql`${serializeStoredExecutionJsonValue(payload)}::jsonb`,
-      payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-    })
-    .catch(rethrowQueryFailure);
-  return outboxEventId;
-}
-
 async function commitAndReceipt(
   client: PoolClient,
   input: CompleteAttemptInput,
 ): Promise<CompleteNodeAttemptResult> {
-  const outboxEventId = await enqueueAdvance(client, input);
+  const outboxEventId = await enqueueRunAdvance(client, input);
   await completeReceipt(client, input.lease.workspaceId, input.lease.delivery);
   return Object.freeze({ kind: 'committed' as const, outboxEventId });
 }
@@ -165,32 +95,12 @@ async function commitSuspension(
   outcome: SuspendedOutcome,
   serializedOutput: string | null,
 ): Promise<CompleteNodeAttemptResult> {
-  const suspended = await drizzle(client)
-    .update(nodeRuns)
-    .set({
-      status: 'waiting',
-      outputRef: sql`${serializedOutput}::json`,
-      waitKind: 'node_wait',
-      resumeAt: sql`clock_timestamp()+make_interval(secs=>${outcome.durationSeconds})`,
-      retryDueAt: null,
-      dueWakeupAt: null,
-      safeErrorCode: null,
-      completedAt: null,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(nodeRuns.workspaceId, input.lease.workspaceId),
-        eq(nodeRuns.id, input.lease.nodeRunId),
-        eq(nodeRuns.currentAttemptId, input.lease.attemptId),
-        eq(nodeRuns.status, 'running'),
-      ),
-    )
-    .returning({
-      resumeAt: sql<Date>`${nodeRuns.resumeAt}`.mapWith(nodeRuns.resumeAt),
-    })
-    .catch(rethrowQueryFailure);
-  const resumeAt = suspended[0]?.resumeAt;
+  const resumeAt = await suspendNodeRun(
+    client,
+    input,
+    outcome,
+    serializedOutput,
+  );
   if (resumeAt === undefined) throw new NodeAttemptStateCorruptError();
   await appendAttemptEvent(client, {
     workspaceId: input.lease.workspaceId,
@@ -215,25 +125,8 @@ async function commitTerminal(
   serializedOutput: string | null,
   fields: CompletionFields,
 ): Promise<CompleteNodeAttemptResult> {
-  const node = await drizzle(client)
-    .update(nodeRuns)
-    .set({
-      status: fields.durableStatus,
-      outputRef: sql`${serializedOutput}::json`,
-      safeErrorCode: fields.safeErrorCode,
-      completedAt: sql`clock_timestamp()`,
-      updatedAt: sql`clock_timestamp()`,
-    })
-    .where(
-      and(
-        eq(nodeRuns.workspaceId, input.lease.workspaceId),
-        eq(nodeRuns.id, input.lease.nodeRunId),
-        eq(nodeRuns.currentAttemptId, input.lease.attemptId),
-      ),
-    )
-    .returning({ id: nodeRuns.id })
-    .catch(rethrowQueryFailure);
-  if (node.length !== 1) throw new NodeAttemptStateCorruptError();
+  const settled = await settleNodeRun(client, input, serializedOutput, fields);
+  if (!settled) throw new NodeAttemptStateCorruptError();
   await appendAttemptEvent(client, {
     workspaceId: input.lease.workspaceId,
     runId: input.lease.runId,
@@ -278,7 +171,7 @@ export async function applyNodeAttemptCompletion(
   if (fields.suspendedOutcome !== undefined && controlActive)
     throw new NodeAttemptReconciliationRequiredError();
   assertActiveLease(input, row, receipt);
-  await updateAttempt(client, input, serializedOutput, fields);
+  await saveAttemptCompletion(client, input, serializedOutput, fields);
   await persistConnectionHealthObservation(client, input);
   if (fields.executorOutcome !== undefined) {
     return commitAndReceipt(client, input);
