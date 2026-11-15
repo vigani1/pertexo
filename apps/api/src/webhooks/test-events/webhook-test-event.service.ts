@@ -5,12 +5,12 @@ import type {
   TestEventScope,
 } from '@pertexo/core/triggers';
 
-import type { WebhookAuthentication } from '@pertexo/contracts';
-import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
 import {
-  randomSecretToken,
   SECRET_TOKEN_BYTES,
-} from '../../identity/secret-token.js';
+  type WebhookAuthentication,
+} from '@pertexo/contracts';
+import type { WebhookTriggerEnvelopeEncryption } from '@pertexo/secrets/server';
+import { randomSecretToken } from '../../identity/secret-token.js';
 import { WEBHOOK_COMMAND_TIMEOUT_MILLIS } from '../command-deadline.js';
 
 export class WebhookTestEventService {

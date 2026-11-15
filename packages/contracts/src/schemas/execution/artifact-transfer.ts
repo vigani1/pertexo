@@ -3,16 +3,27 @@ import { z } from 'zod';
 
 import { isSupportedHttpFieldValue } from '../shared/http-field-value.js';
 
+/** The largest artifact the API stores; an operator may configure a lower one. */
+export const ARTIFACT_OBJECT_MAX_BYTES = 10 * 1024 * 1024;
+
+const ARTIFACT_TRANSFER_BOUNDS = Object.freeze({
+  artifactMediaTypeMinimumCharacters: 3,
+  artifactMediaTypeCharacters: 255,
+  expiresInSecondsMinimum: 60,
+  expiresInSecondsMaximum: 900,
+  artifactBytes: 5 * 1024 * 1024 * 1024,
+});
+
 const artifactByteLengthSchema = z
   .number()
   .int()
   .min(0)
-  .max(5 * 1024 * 1024 * 1024);
+  .max(ARTIFACT_TRANSFER_BOUNDS.artifactBytes);
 const artifactMediaTypeSchema = z
   .string()
   .trim()
-  .min(3)
-  .max(255)
+  .min(ARTIFACT_TRANSFER_BOUNDS.artifactMediaTypeMinimumCharacters)
+  .max(ARTIFACT_TRANSFER_BOUNDS.artifactMediaTypeCharacters)
   .regex(/^[^\s/;]+\/[^\r\n]+$/u)
   .refine(isSupportedHttpFieldValue, {
     message: 'Media type contains an unsupported HTTP field value',
@@ -61,7 +72,11 @@ export const artifactUploadResponseSchema = responseSchema(
           url: z.url(),
           headers: z.record(z.string(), z.string()),
           expiresAt: z.iso.datetime(),
-          expiresInSeconds: z.number().int().min(60).max(900),
+          expiresInSeconds: z
+            .number()
+            .int()
+            .min(ARTIFACT_TRANSFER_BOUNDS.expiresInSecondsMinimum)
+            .max(ARTIFACT_TRANSFER_BOUNDS.expiresInSecondsMaximum),
         })
         .strict(),
       replayed: z.boolean(),
@@ -74,7 +89,11 @@ export const artifactDownloadResponseSchema = responseSchema(
       method: z.literal('GET'),
       url: z.url(),
       expiresAt: z.iso.datetime(),
-      expiresInSeconds: z.number().int().min(60).max(900),
+      expiresInSeconds: z
+        .number()
+        .int()
+        .min(ARTIFACT_TRANSFER_BOUNDS.expiresInSecondsMinimum)
+        .max(ARTIFACT_TRANSFER_BOUNDS.expiresInSecondsMaximum),
     })
     .strict(),
 );

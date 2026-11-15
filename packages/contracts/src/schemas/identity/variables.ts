@@ -5,8 +5,21 @@ import {
   workspaceVariableDescriptionsSchema,
   workspaceVariableSnapshotSchema,
   workspaceVariableNameSchema,
+  WORKSPACE_VARIABLE_LIMITS,
 } from '@pertexo/workflow-model';
 import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+
+const VARIABLES_BOUNDS = Object.freeze({
+  afterCharacters: 1024,
+  offsetMaximum: 100000,
+  workflowNameCharacters: WORKSPACE_VARIABLE_LIMITS.usageWorkflowNameCharacters,
+  nodeIdCharacters: 128,
+  labelCharacters: 160,
+  inputCharacters: 128,
+  workspaceVariableUsagePageItems: 100,
+  nextCursorCharacters: 1024,
+  workspaceVariableUsagePageDefault: 25,
+});
 export const workspaceVariablesResponseSchema = responseSchema(
   workspaceVariableSnapshotSchema
     .unwrap()
@@ -50,16 +63,21 @@ export const workspaceVariableUsageQuerySchema = z
     after: z
       .string()
       .min(1)
-      .max(1024)
+      .max(VARIABLES_BOUNDS.afterCharacters)
       .regex(/^[A-Za-z0-9_-]+$/u)
       .optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(25),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(VARIABLES_BOUNDS.workspaceVariableUsagePageItems)
+      .default(VARIABLES_BOUNDS.workspaceVariableUsagePageDefault),
   })
   .strict();
 export const workspaceVariableUsageCursorSchema = z
   .object({
     workflowId: z.uuid(),
-    offset: z.number().int().nonnegative().max(100_000),
+    offset: z.number().int().nonnegative().max(VARIABLES_BOUNDS.offsetMaximum),
     stamp: z.string().regex(/^[0-9a-f]{64}$/u),
   })
   .strict();
@@ -72,18 +90,26 @@ export const workspaceVariableUsageResponseSchema = responseSchema(
             .object({
               id: z.string().regex(/^[0-9a-f]{64}$/u),
               workflowId: z.uuid(),
-              workflowName: z.string().max(160),
+              workflowName: z
+                .string()
+                .max(VARIABLES_BOUNDS.workflowNameCharacters),
               archived: z.boolean(),
               stage: z.enum(['draft', 'published']),
-              nodeId: z.string().max(128).nullable(),
-              label: z.string().max(160),
-              input: z.string().max(128),
+              nodeId: z
+                .string()
+                .max(VARIABLES_BOUNDS.nodeIdCharacters)
+                .nullable(),
+              label: z.string().max(VARIABLES_BOUNDS.labelCharacters),
+              input: z.string().max(VARIABLES_BOUNDS.inputCharacters),
               kind: z.enum(['direct', 'dynamic']),
             })
             .strict(),
         )
-        .max(100),
-      nextCursor: z.string().max(1024).nullable(),
+        .max(VARIABLES_BOUNDS.workspaceVariableUsagePageItems),
+      nextCursor: z
+        .string()
+        .max(VARIABLES_BOUNDS.nextCursorCharacters)
+        .nullable(),
       incomplete: z.boolean(),
     })
     .strict(),

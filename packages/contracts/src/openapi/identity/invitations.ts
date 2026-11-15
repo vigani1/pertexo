@@ -1,3 +1,4 @@
+import { INVITATION_ACCEPTANCE_LIMITS } from '../../schemas/identity/invitation-acceptance.js';
 import { invitationRoutes } from '../../routes/identity/invitations.js';
 import { routePaths, routeSchemas } from '../../routes/openapi.js';
 import {
@@ -151,6 +152,10 @@ function invitationCsrfHeaderParameter() {
     name: 'X-Invitation-Csrf-Token',
     in: 'header',
     required: true,
-    schema: { type: 'string', minLength: 1, maxLength: 512 },
+    schema: {
+      type: 'string',
+      minLength: 1,
+      maxLength: INVITATION_ACCEPTANCE_LIMITS.csrfTokenCharacters,
+    },
   } as const;
 }

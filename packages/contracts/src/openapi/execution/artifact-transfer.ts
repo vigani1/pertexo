@@ -1,3 +1,5 @@
+import { formatByteSize } from '@pertexo/node-sdk';
+import { ARTIFACT_OBJECT_MAX_BYTES } from '../../schemas/execution/artifact-transfer.js';
 import { sharedProblemResponses } from '../problem-responses.js';
 import { apiProblemSchema } from '../../errors/api-problem.js';
 import { artifactRoutes } from '../../routes/execution/artifacts.js';
@@ -27,7 +29,7 @@ export const artifactTransferOpenApiDocument = Object.freeze({
         'Artifact lifecycle, metadata or idempotency conflict',
       ),
       TooLarge: problemResponse(
-        'File exceeds 10 MB or the configured lower storage limit',
+        `File exceeds ${formatByteSize(ARTIFACT_OBJECT_MAX_BYTES)} or the configured lower storage limit`,
       ),
       QuotaExceeded: problemResponse('Workspace artifact capacity exceeded'),
       ArtifactStoreUnavailable: problemResponse(

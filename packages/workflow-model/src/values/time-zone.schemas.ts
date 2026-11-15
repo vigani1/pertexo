@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Longer than any IANA zone name, short enough to store as an identifier.
-const TIME_ZONE_NAME_CHARACTERS = 128;
+export const TIME_ZONE_NAME_CHARACTERS = 128;
 
 export const ianaTimeZoneSchema = z
   .string()

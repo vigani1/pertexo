@@ -9,6 +9,17 @@ import {
 import { oauth2CredentialSchema } from './oauth2-connections.js';
 import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
+const CONNECTION_CREDENTIALS_BOUNDS = Object.freeze({
+  botTokenMinimumCharacters: 10,
+  botTokenCharacters: 512,
+  apiKeyMinimumCharacters: 8,
+  apiKeyCharacters: 512,
+  hostCharacters: 253,
+  portMaximum: 65535,
+  usernameCharacters: 1024,
+  passwordCharacters: 4096,
+});
+
 const httpHeaderNameSchema = z
   .string()
   .min(1)
@@ -110,13 +121,18 @@ export const slackBotTokenCredentialSchema = z
     type: z.literal('slack_bot_token'),
     botToken: z
       .string()
-      .min(10)
-      .max(512)
+      .min(CONNECTION_CREDENTIALS_BOUNDS.botTokenMinimumCharacters)
+      .max(CONNECTION_CREDENTIALS_BOUNDS.botTokenCharacters)
       .regex(/^xoxb-[A-Za-z0-9-]+$/u),
   })
   .strict()
   .readonly();
-const emailMailboxSchema = z
+const mailboxLocalPart =
+  /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u;
+const mailboxDomainLabel = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
+
+/** A bare sender or recipient address a mail provider accepts; its domain is lowercased. */
+export const emailMailboxSchema = z
   .string()
   .min(EMAIL_ADDRESS_LIMITS.minimumCharacters)
   .max(EMAIL_ADDRESS_LIMITS.newAddressCharacters)
@@ -127,16 +143,17 @@ const emailMailboxSchema = z
     const at = value.indexOf('@');
     if (at < 1 || at !== value.lastIndexOf('@')) return false;
     const local = value.slice(0, at);
-    const labels = value.slice(at + 1).split('.');
+    const domain = value.slice(at + 1);
+    if (
+      local.length > EMAIL_ADDRESS_LIMITS.localPartCharacters ||
+      domain.length > EMAIL_ADDRESS_LIMITS.domainCharacters ||
+      !mailboxLocalPart.test(local)
+    )
+      return false;
+    const labels = domain.split('.');
     return (
-      local.length <= EMAIL_ADDRESS_LIMITS.localPartCharacters &&
-      /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u.test(
-        local,
-      ) &&
       labels.length >= EMAIL_ADDRESS_LIMITS.minimumDomainLabels &&
-      labels.every((label) =>
-        /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u.test(label),
-      )
+      labels.every((label) => mailboxDomainLabel.test(label))
     );
   })
   .overwrite((value) => {
@@ -148,8 +165,8 @@ export const resendApiKeyCredentialSchema = z
     type: z.literal('resend_api_key'),
     apiKey: z
       .string()
-      .min(8)
-      .max(512)
+      .min(CONNECTION_CREDENTIALS_BOUNDS.apiKeyMinimumCharacters)
+      .max(CONNECTION_CREDENTIALS_BOUNDS.apiKeyCharacters)
       .regex(/^re_[A-Za-z0-9_-]+$/u),
     fromEmail: emailMailboxSchema,
   })
@@ -158,15 +175,26 @@ export const resendApiKeyCredentialSchema = z
 export const smtpCredentialSchema = z
   .object({
     type: z.literal('smtp'),
-    host: z.union([z.ipv4(), z.ipv6(), z.hostname().max(253)]),
-    port: z.number().int().min(1).max(65535),
+    host: z.union([
+      z.ipv4(),
+      z.ipv6(),
+      z.hostname().max(CONNECTION_CREDENTIALS_BOUNDS.hostCharacters),
+    ]),
+    port: z
+      .number()
+      .int()
+      .min(1)
+      .max(CONNECTION_CREDENTIALS_BOUNDS.portMaximum),
     security: z.enum(['implicit', 'starttls', 'none']),
     username: z
       .string()
       .min(1)
-      .max(1024)
+      .max(CONNECTION_CREDENTIALS_BOUNDS.usernameCharacters)
       .regex(/^[^\r\n\0]+$/u),
-    password: z.string().min(1).max(4096),
+    password: z
+      .string()
+      .min(1)
+      .max(CONNECTION_CREDENTIALS_BOUNDS.passwordCharacters),
     fromEmail: emailMailboxSchema,
     fromName: z
       .string()

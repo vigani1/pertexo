@@ -16,6 +16,11 @@ export {
 import { z } from 'zod';
 import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 
+const API_TOKENS_BOUNDS = Object.freeze({
+  apiTokenListPageItems: 50,
+  apiTokenListPageDefault: 25,
+});
+
 export const apiTokenScopeSchema = z.enum(API_TOKEN_SCOPES);
 export type ApiTokenScope = z.output<typeof apiTokenScopeSchema>;
 
@@ -85,7 +90,12 @@ export const apiTokenCreateResponseSchema = responseSchema(
 );
 export const apiTokenListQuerySchema = z
   .object({
-    limit: z.coerce.number().int().min(1).max(50).default(25),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(API_TOKENS_BOUNDS.apiTokenListPageItems)
+      .default(API_TOKENS_BOUNDS.apiTokenListPageDefault),
     after: z.uuid().optional(),
   })
   .strict();
@@ -96,7 +106,9 @@ export const apiTokenListResponseSchema = responseSchema(
       availableScopes: z
         .array(apiTokenScopeSchema)
         .max(API_TOKEN_SCOPES.length),
-      items: z.array(apiTokenMetadataSchema).max(50),
+      items: z
+        .array(apiTokenMetadataSchema)
+        .max(API_TOKENS_BOUNDS.apiTokenListPageItems),
       nextCursor: z.uuid().nullable(),
     })
     .strict(),

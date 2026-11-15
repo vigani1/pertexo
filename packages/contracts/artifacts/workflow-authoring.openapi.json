@@ -4905,7 +4905,7 @@
                 "schema": {
                   "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "type": "string",
-                  "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
+                  "pattern": "^\"wic1\\.([0-9a-f]{32})\\.([0-9a-z]{1,6})\"$"
                 }
               }
             }
@@ -5000,7 +5000,7 @@
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
+              "pattern": "^\"wic1\\.([0-9a-f]{32})\\.([0-9a-z]{1,6})\"$"
             }
           }
         ],
@@ -5131,7 +5131,7 @@
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
+              "pattern": "^\"wic1\\.([0-9a-f]{32})\\.([0-9a-z]{1,6})\"$"
             }
           }
         ],
@@ -21757,7 +21757,7 @@
                 },
                 "representationTag": {
                   "type": "string",
-                  "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
+                  "pattern": "^\"wic1\\.([0-9a-f]{32})\\.([0-9a-z]{1,6})\"$"
                 },
                 "createdAt": {
                   "type": "string",
@@ -21972,7 +21972,7 @@
               },
               "representationTag": {
                 "type": "string",
-                "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
+                "pattern": "^\"wic1\\.([0-9a-f]{32})\\.([0-9a-z]{1,6})\"$"
               },
               "createdAt": {
                 "type": "string",
@@ -22369,7 +22369,7 @@
           },
           "representationTag": {
             "type": "string",
-            "pattern": "^\"wic1\\.[0-9a-f]{32}\\.[0-9a-z]{1,6}\"$"
+            "pattern": "^\"wic1\\.([0-9a-f]{32})\\.([0-9a-z]{1,6})\"$"
           },
           "createdAt": {
             "type": "string",
@@ -28026,7 +28026,7 @@
         },
         "headers": {
           "Retry-After": {
-            "description": "One-second explicit retry delay for validation or limiter unavailability; absent when automation tokens are disabled",
+            "description": "Explicit retry delay in seconds for validation or limiter unavailability; absent when automation tokens are disabled",
             "required": false,
             "schema": {
               "type": "integer",

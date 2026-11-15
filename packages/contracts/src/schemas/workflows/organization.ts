@@ -8,6 +8,14 @@ import { WORKFLOW_ORGANIZATION_LIMITS } from '@pertexo/workflow-model';
 
 export { WORKFLOW_ORGANIZATION_LIMITS };
 
+const ORGANIZATION_BOUNDS = Object.freeze({
+  canonicalIdentifierCharacters: 36,
+  workflowOrganizationPageCursorCharacters: 512,
+  workflowTagListPageMaximum: 100,
+  workflowTagListPageItems: 100,
+  workflowTagAssignmentsPageItems: 100,
+});
+
 /** U+0020 trim and ASCII-only case mapping; no Unicode fold/transliteration. */
 export function normalizeWorkflowTagKey(value: string): string {
   return trimSpaces(value).replace(/[A-Z]/gu, (letter) => letter.toLowerCase());
@@ -35,7 +43,7 @@ export const workflowTagKeyInputSchema = z
 const commandIdentifierSchema = z.uuid().overwrite((id) => id.toLowerCase());
 const canonicalIdentifierSchema = z
   .uuid()
-  .length(36)
+  .length(ORGANIZATION_BOUNDS.canonicalIdentifierCharacters)
   .regex(/^[0-9a-f-]+(?![\s\S])/u);
 const workflowTagWorkspaceParamsSchema = z
   .object({ workspaceId: commandIdentifierSchema })
@@ -47,16 +55,26 @@ export const workflowTagParamsSchema = workflowTagWorkspaceParamsSchema.extend({
 const workflowOrganizationPageCursorSchema = z
   .string()
   .min(1)
-  .max(512)
+  .max(ORGANIZATION_BOUNDS.workflowOrganizationPageCursorCharacters)
   .regex(/^[A-Za-z0-9_-]+(?![\s\S])/u);
 export const workflowTagListQuerySchema = z
   .object({
     limit: z
       .union([
-        z.number().int().min(1).max(100),
+        z
+          .number()
+          .int()
+          .min(1)
+          .max(ORGANIZATION_BOUNDS.workflowTagListPageMaximum),
         z.string().regex(/^(?:[1-9]|[1-9][0-9]|100)(?![\s\S])/u),
       ])
-      .pipe(z.coerce.number<string | number>().int().min(1).max(100))
+      .pipe(
+        z.coerce
+          .number<string | number>()
+          .int()
+          .min(1)
+          .max(ORGANIZATION_BOUNDS.workflowTagListPageMaximum),
+      )
       .optional(),
     after: workflowOrganizationPageCursorSchema.optional(),
   })
@@ -122,7 +140,7 @@ export const workflowTagListResponseSchema = responseSchema(
     .object({
       items: z
         .array(workflowTagSchema.extend({ id: canonicalIdentifierSchema }))
-        .max(100)
+        .max(ORGANIZATION_BOUNDS.workflowTagListPageItems)
         .refine((items) =>
           strictlyAscendingIdentifiers(items.map((item) => item.id)),
         ),
@@ -141,7 +159,7 @@ export const workflowTagAssignmentsResponseSchema = responseSchema(
     .object({
       items: z
         .array(workflowTagAssignmentSchema)
-        .max(100)
+        .max(ORGANIZATION_BOUNDS.workflowTagAssignmentsPageItems)
         .refine((items) =>
           strictlyAscendingIdentifiers(items.map((item) => item.workflowId)),
         ),

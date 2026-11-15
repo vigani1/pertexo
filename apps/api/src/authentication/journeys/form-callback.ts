@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { CALLBACK_LIMITS } from './callback-limits.js';
+import { CALLBACK_LIMITS } from '@pertexo/contracts';
 const formCallbacks = new Map<string, 'landing' | 'proof'>([
   ['/v1/auth/federation/social/callback/apple', 'landing'],
   ['/v1/auth/account-security/methods/link/callback/apple', 'landing'],

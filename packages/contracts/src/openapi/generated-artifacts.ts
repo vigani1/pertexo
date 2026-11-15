@@ -45,16 +45,19 @@ function problemCatalog(): string {
   ].join('\n');
 }
 
+// Spaces per level in the generated documents.
+const JSON_INDENT = 2;
+
 export const CONTRACT_ARTIFACTS = Object.freeze([
   Object.freeze({ fileName: 'problem-codes.md', content: problemCatalog() }),
   Object.freeze({
     fileName: 'public-api.openapi.json',
-    content: `${JSON.stringify(publicOpenApiDocument, undefined, 2)}\n`,
+    content: `${JSON.stringify(publicOpenApiDocument, undefined, JSON_INDENT)}\n`,
   }),
   ...CONTRACT_DOMAINS.map(([domain, openapi]) =>
     Object.freeze({
       fileName: `${domain}.openapi.json`,
-      content: `${JSON.stringify(openapi, undefined, 2)}\n`,
+      content: `${JSON.stringify(openapi, undefined, JSON_INDENT)}\n`,
     }),
   ),
 ]);

@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
@@ -211,8 +212,7 @@ export const workflowRunRoutes = {
     access: session(replay),
     rateLimit: 'run_admission',
     idempotent: true,
-    description:
-      'New run of the exact source version and input; completed steps are owned copies with no attempts. Possible effects require explicit acknowledgement. An unknown target requires separate acknowledgeUnknownOutcome; possible-effects acknowledgement alone is refused. Unknown outcomes outside the target remain refused. Exact retries use the retained 24-hour command key and current authority.',
+    description: `New run of the exact source version and input; completed steps are owned copies with no attempts. Possible effects require explicit acknowledgement. An unknown target requires separate acknowledgeUnknownOutcome; possible-effects acknowledgement alone is refused. Unknown outcomes outside the target remain refused. Exact retries use the retained ${String(IDEMPOTENCY_KEY_RETENTION_HOURS)}-hour command key and current authority.`,
     body: named('WorkflowRecoveryRequest', workflowRecoveryRequestSchema),
     success: {
       status: 202,

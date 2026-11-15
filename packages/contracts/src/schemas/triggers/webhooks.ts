@@ -1,9 +1,19 @@
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
 import { eventCoordinationReceiptSchema } from '@pertexo/workflow-model';
 import { coordinatedEventSchema } from '../forms/coordination.js';
 import { z } from 'zod';
 import { webhookAuthenticationSchema } from '@pertexo/workflow-model';
+
+const WEBHOOKS_BOUNDS = Object.freeze({
+  nodeIdCharacters: 256,
+  lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
+  webhookTriggerListPageItems: 1000,
+  webhookDeliveryCursorCharacters: 512,
+  webhookDeliveryPageLimitMaximum: 100,
+  webhookDeliveryListPageItems: 100,
+});
 
 const webhookCredentialSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
 const webhookTriggerStatusSchema = z.enum([
@@ -34,18 +44,27 @@ export const webhookTriggerHealthSchema = z
     id: z.uuid(),
     workflowId: z.uuid(),
     workflowVersionId: z.uuid(),
-    nodeId: z.string().min(1).max(256),
+    nodeId: z.string().min(1).max(WEBHOOKS_BOUNDS.nodeIdCharacters),
     kind: z.literal('webhook'),
     status: webhookTriggerStatusSchema,
     healthStatus: webhookTriggerHealthStatusSchema,
-    lastErrorCode: z.string().max(128).nullable(),
+    lastErrorCode: z
+      .string()
+      .max(WEBHOOKS_BOUNDS.lastErrorCodeCharacters)
+      .nullable(),
     endpointReady: z.boolean(),
     authentication: webhookAuthenticationSchema,
     reconciledAt: z.iso.datetime().nullable(),
   })
   .strict();
 export const webhookTriggerListResponseSchema = responseSchema(
-  z.object({ items: z.array(webhookTriggerHealthSchema).max(1_000) }).strict(),
+  z
+    .object({
+      items: z
+        .array(webhookTriggerHealthSchema)
+        .max(WEBHOOKS_BOUNDS.webhookTriggerListPageItems),
+    })
+    .strict(),
 );
 export const webhookRotateSecretRequestSchema = z
   .object({ endpointKey: webhookCredentialSchema })
@@ -113,8 +132,15 @@ const webhookDeliveryReplayCheckSchema = z.enum([
   'stale_timestamp',
   'not_checked',
 ]);
-const webhookDeliveryCursorSchema = z.string().min(1).max(512);
-const webhookDeliveryPageLimitSchema = z.coerce.number().int().min(1).max(100);
+const webhookDeliveryCursorSchema = z
+  .string()
+  .min(1)
+  .max(WEBHOOKS_BOUNDS.webhookDeliveryCursorCharacters);
+const webhookDeliveryPageLimitSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(WEBHOOKS_BOUNDS.webhookDeliveryPageLimitMaximum);
 export const webhookDeliveryListQuerySchema = z
   .object({
     limit: webhookDeliveryPageLimitSchema.optional(),
@@ -138,7 +164,9 @@ export const webhookDeliverySchema = z
 export const webhookDeliveryListResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(webhookDeliverySchema).max(100),
+      items: z
+        .array(webhookDeliverySchema)
+        .max(WEBHOOKS_BOUNDS.webhookDeliveryListPageItems),
       nextCursor: webhookDeliveryCursorSchema.nullable(),
     })
     .strict(),

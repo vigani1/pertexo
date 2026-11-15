@@ -1,5 +1,9 @@
+import { RESOURCE_NAME_MAX_LENGTH } from '../shared/resource-name.js';
 import { responseSchema } from '../shared/response-schema.js';
-import { storageTextSchema } from '@pertexo/workflow-model';
+import {
+  storageTextSchema,
+  DISPLAY_NAME_MAX_CHARACTERS,
+} from '@pertexo/workflow-model';
 import {
   workspacePeopleQuerySchema as approvalAudienceQuerySchema,
   workspacePeoplePageSchema as approvalAudiencePageSchema,
@@ -17,6 +21,16 @@ import {
   taskContextSchema,
   taskExpiryChoiceSchema,
 } from '@pertexo/workflow-model';
+
+const PENDING_TASKS_BOUNDS = Object.freeze({
+  workflowNameCharacters: RESOURCE_NAME_MAX_LENGTH,
+  nodeIdCharacters: 128,
+  stepNameCharacters: 200,
+  loopNodeIdCharacters: 128,
+  iterationPathItems: 64,
+  completedByNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
+  pendingTaskListPageItems: 50,
+});
 
 export const pendingTaskParamsSchema = z
   .object({ workspaceId: z.uuid(), taskId: z.uuid() })
@@ -45,22 +59,28 @@ export const pendingTaskSummarySchema = responseSchema(
       id: z.uuid(),
       workspaceId: z.uuid(),
       workflowId: z.uuid(),
-      workflowName: z.string().max(128),
+      workflowName: z.string().max(PENDING_TASKS_BOUNDS.workflowNameCharacters),
       runId: z.uuid(),
-      nodeId: z.string().max(128),
+      nodeId: z.string().max(PENDING_TASKS_BOUNDS.nodeIdCharacters),
       /** The step's label in its version; null when it has none. */
-      stepName: z.string().max(200).nullable(),
+      stepName: z
+        .string()
+        .max(PENDING_TASKS_BOUNDS.stepNameCharacters)
+        .nullable(),
       nodeRunId: z.uuid(),
       iterationPath: z
         .array(
           z
             .object({
-              loopNodeId: z.string().min(1).max(128),
+              loopNodeId: z
+                .string()
+                .min(1)
+                .max(PENDING_TASKS_BOUNDS.loopNodeIdCharacters),
               ordinal: z.number().int().nonnegative(),
             })
             .strict(),
         )
-        .max(64),
+        .max(PENDING_TASKS_BOUNDS.iterationPathItems),
       kind: z.enum(['approval', 'input_request']),
       title: z.string().max(PENDING_TASK_LIMITS.titleCharacters),
       details: taskDetailsSchema.default({}),
@@ -69,7 +89,10 @@ export const pendingTaskSummarySchema = responseSchema(
       expiresAt: z.iso.datetime(),
       onExpiry: taskExpiryChoiceSchema,
       completedAt: z.iso.datetime().nullable(),
-      completedByName: z.string().max(256).nullable(),
+      completedByName: z
+        .string()
+        .max(PENDING_TASKS_BOUNDS.completedByNameCharacters)
+        .nullable(),
       canRespond: z.boolean(),
       blockedReason: z
         .enum([
@@ -117,7 +140,9 @@ export const pendingTaskResponseSchema = responseSchema(
 export const pendingTaskListResponseSchema = responseSchema(
   z
     .object({
-      items: z.array(pendingTaskSummarySchema).max(50),
+      items: z
+        .array(pendingTaskSummarySchema)
+        .max(PENDING_TASKS_BOUNDS.pendingTaskListPageItems),
       nextCursor: z.uuid().nullable(),
       pendingCount: z.number().int().nonnegative(),
     })

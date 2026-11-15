@@ -226,7 +226,7 @@
       },
       "post": {
         "operationId": "createApiToken",
-        "description": "Browser-only, with sign-in evidence from the last five minutes. First success returns the secret once. Exact command replay returns metadata without a secret.",
+        "description": "Browser-only, with sign-in evidence from the last 5 minutes. First success returns the secret once. Exact command replay returns metadata without a secret.",
         "security": [
           {
             "cookieSession": []

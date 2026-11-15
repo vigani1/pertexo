@@ -24,7 +24,7 @@ import {
   newJourneyToken,
   readCookie,
 } from '../journeys/browser-proof.js';
-import { CALLBACK_LIMITS } from '../journeys/callback-limits.js';
+import { CALLBACK_LIMITS } from '@pertexo/contracts';
 
 const CALLBACK_PATH = '/v1/auth/federation/social/callback/';
 

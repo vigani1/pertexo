@@ -11,6 +11,10 @@ import {
   workflowPortableManifestSchema,
 } from '@pertexo/workflow-model';
 
+const PORTABILITY_BOUNDS = Object.freeze({
+  nameCharacters: 128,
+});
+
 const source = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('draft') }).strict(),
   z.object({ kind: z.literal('version'), versionId: z.uuid() }).strict(),
@@ -33,7 +37,10 @@ export const workflowImportPreviewRequestSchema = z
   .strict();
 export const workflowImportRequestSchema =
   workflowImportPreviewRequestSchema.extend({
-    name: storageTextSchema.trim().min(1).max(128),
+    name: storageTextSchema
+      .trim()
+      .min(1)
+      .max(PORTABILITY_BOUNDS.nameCharacters),
     expectedCompatibilityFingerprint: z
       .string()
       .regex(/^wf-compat:sha256:[a-f0-9]{64}$/u),

@@ -1,12 +1,26 @@
 import { responseSchema } from '../shared/response-schema.js';
 import { z } from 'zod';
 import { workspaceRoleSchema } from './membership.js';
-import { isStorageText } from '@pertexo/workflow-model';
+import {
+  isStorageText,
+  DISPLAY_NAME_MAX_CHARACTERS,
+} from '@pertexo/workflow-model';
+
+const PEOPLE_BOUNDS = Object.freeze({
+  qCharacters: 100,
+  displayNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
+  workspacePeoplePageItems: 50,
+});
 
 export const workspacePeopleQuerySchema = z
   .object({
     after: z.uuid().optional(),
-    q: z.string().trim().max(100).refine(isStorageText).default(''),
+    q: z
+      .string()
+      .trim()
+      .max(PEOPLE_BOUNDS.qCharacters)
+      .refine(isStorageText)
+      .default(''),
   })
   .strict();
 export const workspacePeoplePageSchema = responseSchema(
@@ -17,12 +31,12 @@ export const workspacePeoplePageSchema = responseSchema(
           z
             .object({
               userId: z.uuid(),
-              displayName: z.string().max(256),
+              displayName: z.string().max(PEOPLE_BOUNDS.displayNameCharacters),
               role: workspaceRoleSchema,
             })
             .strict(),
         )
-        .max(50),
+        .max(PEOPLE_BOUNDS.workspacePeoplePageItems),
       nextCursor: z.uuid().nullable(),
     })
     .strict(),

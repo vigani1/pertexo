@@ -1,7 +1,14 @@
 import { responseSchema } from '../../shared/response-schema.js';
 import { z } from 'zod';
 import { COLLABORATION_LIMITS } from './comments.js';
-import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
+import {
+  STORED_INTEGER_MAX,
+  DISPLAY_NAME_MAX_CHARACTERS,
+} from '@pertexo/workflow-model';
+
+const PRESENCE_BOUNDS = Object.freeze({
+  displayNameCharacters: DISPLAY_NAME_MAX_CHARACTERS,
+});
 export const workflowPresenceQuerySchema = z
   .object({ tabId: z.uuid() })
   .strict();
@@ -32,7 +39,9 @@ export const workflowPresenceSchema = responseSchema(
           z
             .object({
               userId: z.uuid(),
-              displayName: z.string().max(256),
+              displayName: z
+                .string()
+                .max(PRESENCE_BOUNDS.displayNameCharacters),
               editing: z.boolean(),
               dirty: z.boolean(),
               baseRevision: z.number().int().positive().nullable(),

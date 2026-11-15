@@ -1,3 +1,4 @@
+import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/workflow-model';
 import { workflowIdParamSchema } from '../../schemas/workflows/authoring.js';
 import * as schemas from '../../schemas/workflows/input-cases.js';
 import { jsonSchema, responseReference } from '../openapi-primitives.js';
@@ -72,8 +73,7 @@ export const inputCaseRoutes = {
     rateLimit: 'ordinary_mutation',
     idempotent: true,
     cacheControl: noStore,
-    description:
-      'Create a manually entered synthetic run-input case bound to a retained published version. Requires workflow:update; never runs a workflow. Exact retries recover the original identifiers for 24 hours.',
+    description: `Create a manually entered synthetic run-input case bound to a retained published version. Requires workflow:update; never runs a workflow. Exact retries recover the original identifiers for ${String(IDEMPOTENCY_KEY_RETENTION_HOURS)} hours.`,
     body: projected(
       'WorkflowInputCaseCreateRequest',
       schemas.workflowInputCaseCreateRequestSchema,

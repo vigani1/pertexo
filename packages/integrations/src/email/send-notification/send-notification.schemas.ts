@@ -1,8 +1,8 @@
+import { emailMailboxSchema } from '@pertexo/contracts';
 import { nodeArtifactReferenceSchema } from '@pertexo/node-sdk';
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { PROVIDER_STEP_TIMEOUT } from '../../providers/provider-timeout.js';
-import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
 const MAX_SUBJECT_BYTES = 1_024;
 const MAX_TEXT_BYTES = 262_144;
@@ -22,55 +22,6 @@ const EMAIL_FIELD_LIMITS = Object.freeze({
 });
 // Base64 writes 4 characters for every 3 bytes.
 const BASE64_GROUP = Object.freeze({ bytes: 3, characters: 4 });
-const UNSAFE_MAILBOX_CHARACTERS = [
-  '(',
-  ')',
-  ',',
-  ':',
-  ';',
-  '<',
-  '>',
-  '[',
-  ']',
-  '"',
-  '\\',
-] as const;
-
-const localPart =
-  /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u;
-const domainLabel = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
-
-export const providerEmailMailboxSchema = z
-  .string()
-  .min(EMAIL_ADDRESS_LIMITS.minimumCharacters)
-  .max(EMAIL_ADDRESS_LIMITS.newAddressCharacters)
-  .refine((value) => /^[\x21-\x7e]+$/u.test(value))
-  .refine((value) => {
-    if (
-      UNSAFE_MAILBOX_CHARACTERS.some((character) => value.includes(character))
-    )
-      return false;
-    const at = value.indexOf('@');
-    if (at < 1 || at !== value.lastIndexOf('@')) return false;
-    const local = value.slice(0, at);
-    const domain = value.slice(at + 1);
-    if (
-      local.length > EMAIL_ADDRESS_LIMITS.localPartCharacters ||
-      domain.length > EMAIL_ADDRESS_LIMITS.domainCharacters ||
-      !localPart.test(local)
-    )
-      return false;
-    const labels = domain.split('.');
-    return (
-      labels.length >= EMAIL_ADDRESS_LIMITS.minimumDomainLabels &&
-      labels.every((label) => domainLabel.test(label))
-    );
-  })
-  .overwrite((value) => {
-    const at = value.indexOf('@');
-    return `${value.slice(0, at)}@${value.slice(at + 1).toLowerCase()}`;
-  });
-
 export const emailSendNotificationConfigSchema = z
   .object({
     timeoutMillis: z
@@ -100,7 +51,7 @@ export const emailAttachmentSchema = z
 
 export const emailSendNotificationInputSchema = z
   .object({
-    toEmail: providerEmailMailboxSchema,
+    toEmail: emailMailboxSchema,
     subject: z
       .string()
       .min(1)
@@ -150,7 +101,7 @@ export const resolvedResendApiKeyCredentialSchema = z
       .min(EMAIL_FIELD_LIMITS.minimumApiKeyCharacters)
       .max(EMAIL_FIELD_LIMITS.apiKeyCharacters)
       .regex(/^re_[A-Za-z0-9_-]+$/u),
-    fromEmail: providerEmailMailboxSchema,
+    fromEmail: emailMailboxSchema,
   })
   .strict()
   .readonly();

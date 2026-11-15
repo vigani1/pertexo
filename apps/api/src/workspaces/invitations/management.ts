@@ -29,7 +29,7 @@ import type {
   WorkspaceInvitationCommandResponse,
   WorkspaceInvitationsResponse,
 } from '../workspace-transport.js';
-import { SECRET_TOKEN_BYTES } from '../../identity/secret-token.js';
+import { SECRET_TOKEN_BYTES } from '@pertexo/contracts';
 
 type InvitationPersistence = Pick<
   IdentityWorkspacePersistence,

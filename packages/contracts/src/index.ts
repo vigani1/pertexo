@@ -5,6 +5,7 @@ export * from './schemas/execution/artifact-transfer.js';
 export * from './schemas/catalog.js';
 export * from './schemas/connections/connections.js';
 export {
+  emailMailboxSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
   slackBotTokenCredentialSchema,
@@ -20,6 +21,7 @@ export * from './schemas/execution/node-testing.js';
 export * from './schemas/triggers/schedules.js';
 export * from './schemas/shared/transport-headers.js';
 export * from './schemas/shared/resource-name.js';
+export * from './schemas/shared/secret-token.js';
 export * from './schemas/triggers/webhooks.js';
 export {
   webhookAuthenticationSchema,
@@ -122,6 +124,7 @@ export {
   type NoticeSubscriptionRequest,
   type NoticeCommandResponse,
   type NoticeSubjectParams,
+  NOTICE_UNSUBSCRIBE_LIMITS,
 } from './schemas/notifications/preferences.js';
 
 export {
@@ -249,6 +252,7 @@ export {
   type FederationEnforcement,
 } from './schemas/identity/federation/settings.js';
 export {
+  CALLBACK_LIMITS,
   federationDiscoveryQuerySchema,
   federationDiscoverySchema,
   federationSignInStartSchema,

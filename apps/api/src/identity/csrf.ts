@@ -8,7 +8,7 @@ import {
 } from './crypto.js';
 import { IdentityError } from './identity.errors.js';
 import type { IdentityCrypto } from './crypto.js';
-import { SECRET_TOKEN_BYTES } from './secret-token.js';
+import { SECRET_TOKEN_BYTES } from '@pertexo/contracts';
 
 const mutationMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

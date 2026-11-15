@@ -6,6 +6,12 @@ import {
   WORKFLOW_RECOVERY_REFUSALS,
 } from '@pertexo/workflow-model';
 
+const RECOVERY_BOUNDS = Object.freeze({
+  nodeIdCharacters: 128,
+  nodeLabelCharacters: 200,
+  targetNodeIdCharacters: 128,
+});
+
 const workflowRecoveryEffectRiskSchema = z.enum([
   'ordinary',
   'possible_effects',
@@ -26,8 +32,11 @@ export const workflowRecoveryPreviewSchema = responseSchema(
         workflowVersionId: z.uuid(),
         versionNumber: z.number().int().positive(),
         nodeRunId: z.uuid(),
-        nodeId: z.string().min(1).max(128),
-        nodeLabel: z.string().max(200).nullable(),
+        nodeId: z.string().min(1).max(RECOVERY_BOUNDS.nodeIdCharacters),
+        nodeLabel: z
+          .string()
+          .max(RECOVERY_BOUNDS.nodeLabelCharacters)
+          .nullable(),
         reusedCount: z
           .number()
           .int()
@@ -52,7 +61,10 @@ export const workflowRecoverySummarySchema = responseSchema(
   z
     .object({
       targetNodeRunId: z.uuid(),
-      targetNodeId: z.string().min(1).max(128),
+      targetNodeId: z
+        .string()
+        .min(1)
+        .max(RECOVERY_BOUNDS.targetNodeIdCharacters),
       reusedCount: z
         .number()
         .int()

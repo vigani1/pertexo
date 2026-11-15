@@ -1,9 +1,16 @@
 import { responseSchema } from '../shared/response-schema.js';
-import { codeDiagnosticsSchema } from '@pertexo/node-sdk';
+import {
+  codeDiagnosticsSchema,
+  NODE_FAILURE_FIELD_LIMITS,
+} from '@pertexo/node-sdk';
 import { z } from 'zod';
 
 import { apiProblemIssueSchema } from '../../errors/api-problem.js';
 import { boundedNodeTestJsonInputSchema } from '../shared/bounded-json-input.js';
+
+const NODE_TESTING_BOUNDS = Object.freeze({
+  errorSummaryCharacters: NODE_FAILURE_FIELD_LIMITS.errorSummaryCharacters,
+});
 
 const NODE_TEST_LIMITS = Object.freeze({
   validationIssues: 100,
@@ -125,7 +132,11 @@ export const previewRunSummarySchema = responseSchema(
         .max(NODE_TEST_LIMITS.safeErrorCodeLength)
         .nullable(),
       /** The step's own reason, when it refused its input or setup. */
-      errorSummary: z.string().min(1).max(2048).optional(),
+      errorSummary: z
+        .string()
+        .min(1)
+        .max(NODE_TESTING_BOUNDS.errorSummaryCharacters)
+        .optional(),
       createdAt: z.iso.datetime({ offset: true }),
       startedAt: z.iso.datetime({ offset: true }).nullable(),
       completedAt: z.iso.datetime({ offset: true }).nullable(),
