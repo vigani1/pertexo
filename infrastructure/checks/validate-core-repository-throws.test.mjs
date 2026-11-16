@@ -273,6 +273,44 @@ test('only genuine rejection parameters are rethrows', () => {
 
 for (const [name, files, refused, chain] of [
   [
+    'allows a platform abort guard',
+    {
+      'a.ts':
+        "export function guard() { throw new DOMException('Aborted', 'AbortError'); }",
+      'example.repository.ts': "import { guard } from './a.js'; guard();",
+    },
+    false,
+  ],
+  [
+    'refuses a core-defined error behind an abort guard',
+    {
+      'a.ts':
+        "class DOMException extends Error {} export function guard() { throw new DOMException('Aborted'); }",
+      'example.repository.ts': "import { guard } from './a.js'; guard();",
+    },
+    true,
+  ],
+  [
+    'refuses a core error imported with the same platform name',
+    {
+      'a.ts':
+        "import { TypeError } from './subject.errors.js'; export function guard() { throw new TypeError(); }",
+      'subject.errors.ts': 'export class TypeError extends Error {}',
+      'example.repository.ts': "import { guard } from './a.js'; guard();",
+    },
+    true,
+  ],
+  [
+    'refuses a core error imported under a platform name',
+    {
+      'a.ts':
+        "import { RefusalError as TypeError } from './subject.errors.js'; export function guard() { throw new TypeError(); }",
+      'subject.errors.ts': 'export class RefusalError extends Error {}',
+      'example.repository.ts': "import { guard } from './a.js'; guard();",
+    },
+    true,
+  ],
+  [
     'follows imported wrappers',
     {
       'a.ts':
