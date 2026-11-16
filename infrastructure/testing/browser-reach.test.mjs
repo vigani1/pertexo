@@ -6,6 +6,7 @@ import {
   browserFeatures,
   browserReach,
   validateBrowserReach,
+  selectBrowserReach,
 } from './browser-reach.mjs';
 
 const specs = readdirSync('apps/web/e2e', { recursive: true })
@@ -24,5 +25,15 @@ test('missing, stale and unknown feature entries fail the check', () => {
   assert.deepEqual(
     validateBrowserReach({ old: ['missing'] }, ['new'], [], []),
     ['Missing reach: new', 'Stale reach: old', 'Unknown feature: missing'],
+  );
+});
+test('a feature change selects its own reach and cross-feature tests', () => {
+  assert.deepEqual(
+    selectBrowserReach(['apps/web/src/features/usage/pages/usage.tsx'], {
+      usage: ['usage'],
+      editor: ['workflow-editor'],
+      shared: 'all',
+    }),
+    ['usage', 'shared'],
   );
 });

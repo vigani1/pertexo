@@ -29,3 +29,19 @@ export function validateBrowserReach(reach, specs, journeys, features) {
 export function browserFeatures() {
   return readdirSync(new URL('../../apps/web/src/features', import.meta.url));
 }
+
+export function selectBrowserReach(files, reach = browserReach) {
+  const features = new Set();
+  const knownFeatures = browserFeatures();
+  for (const file of files) {
+    const match = /^apps\/web\/(?:src|test)\/features\/([^/]+)\//u.exec(file);
+    if (!match || !knownFeatures.includes(match[1])) return undefined;
+    features.add(match[1]);
+  }
+  return Object.entries(reach)
+    .filter(
+      ([, entry]) =>
+        entry === 'all' || entry.some((name) => features.has(name)),
+    )
+    .map(([name]) => name);
+}

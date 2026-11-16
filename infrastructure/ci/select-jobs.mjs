@@ -1,3 +1,4 @@
+import { selectBrowserReach } from '../testing/browser-reach.mjs';
 import { recordedMockedShards } from '../testing/mocked-shards.mjs';
 import { assignDurationShards } from '../testing/duration-shards.mjs';
 import { appendFileSync, readFileSync, readdirSync } from 'node:fs';
@@ -154,6 +155,13 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
   if (reaches(['web'])) check.push('lint-web');
   if (all || [...affected].some((name) => name !== '@pertexo/web'))
     check.push('lint-rest');
+  const selectedBrowser = all
+    ? undefined
+    : selectBrowserReach(
+        files.filter(
+          (file) => !file.startsWith('docs/') && !file.endsWith('.md'),
+        ),
+      );
   return {
     code,
     faults:
@@ -180,11 +188,46 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
       ),
     },
     browser: {
-      include: browserEntries.filter(({ suite }) =>
+      include: browserMatrix(selectedBrowser).filter(({ suite }) =>
         reaches(suite.startsWith('mocked') ? ['web'] : liveWorkspaces),
       ),
     },
   };
+}
+
+function browserMatrix(selected) {
+  if (selected === undefined) return browserEntries;
+  const mocked = selected.filter((name) => name.startsWith('e2e/'));
+  const live = selected
+    .filter((name) => name.startsWith('journey:'))
+    .map((name) => name.slice(8));
+  const durations = JSON.parse(
+    readFileSync(
+      new URL('../testing/mocked-durations.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const mockedCount = Math.min(2, Math.ceil(mocked.length / 20));
+  const liveCount = Math.min(3, Math.ceil(live.length / 8));
+  return [
+    ...assignDurationShards(mocked, durations, mockedCount).map(
+      ({ files }, index) => ({
+        suite: `mocked-${index + 1}`,
+        journeys: '',
+        shard: `${index + 1}/${mockedCount}`,
+        specs: JSON.stringify(files),
+      }),
+    ),
+    ...assignDurationShards(live, liveDurations, liveCount)
+      .sort(
+        (a, b) =>
+          Number(b.files.includes('code')) - Number(a.files.includes('code')),
+      )
+      .map(({ files }, index) => ({
+        suite: `live-${index + 1}`,
+        journeys: files.join(' '),
+      })),
+  ];
 }
 
 if (

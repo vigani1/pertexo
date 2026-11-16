@@ -165,3 +165,37 @@ test('live jobs balance recorded work and keep every journey exactly once', () =
     totals.join(', '),
   );
 });
+
+test('feature-only PRs select only reachable specs and journeys with fewer jobs', () => {
+  const selected = select('apps/web/src/features/usage/pages/usage.tsx').browser
+    .include;
+  const specs = selected
+    .filter(({ suite }) => suite.startsWith('mocked'))
+    .flatMap(({ specs }) => JSON.parse(specs));
+  assert.ok(specs.includes('e2e/usage.spec.ts'));
+  assert.ok(!specs.includes('e2e/connections.spec.ts'));
+  const journeys = selected
+    .filter(({ suite }) => suite.startsWith('live'))
+    .flatMap(({ journeys }) => journeys.split(' '));
+  assert.ok(journeys.includes('usage'));
+  assert.ok(!journeys.includes('two-factor'));
+  assert.ok(selected.length < 5);
+});
+
+for (const file of [
+  'apps/web/src/lib/api/client.ts',
+  'apps/web/src/routes/root/layout.tsx',
+  'apps/web/e2e/support/fixtures.ts',
+  'packages/contracts/src/index.ts',
+  'unknown-path',
+])
+  test(`${file} preserves complete browser coverage`, () => {
+    assert.deepEqual(select(file).browser.include, browserEntries);
+  });
+
+test('backend changes retain every live journey', () => {
+  assert.deepEqual(
+    select('apps/api/src/main.ts').browser.include,
+    browserEntries.filter(({ suite }) => suite.startsWith('live')),
+  );
+});
