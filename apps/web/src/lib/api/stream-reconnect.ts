@@ -1,4 +1,5 @@
 import { isApiError } from './error';
+import { TransientStreamDisconnect } from './stream-reconnect.errors';
 
 /** How long a quiet stream stays open before a drop counts as a fresh one. */
 const HEALTHY_STREAM_MS = 30_000;
@@ -33,9 +34,6 @@ export type StreamRecovery =
       reason: 'rate-limited' | 'disconnected';
       delayMs: number;
     }>;
-
-/** The stream ended early and normally; reconnecting may help. */
-export class TransientStreamDisconnect extends Error {}
 
 export function classifyStreamFailure(
   error: unknown,
