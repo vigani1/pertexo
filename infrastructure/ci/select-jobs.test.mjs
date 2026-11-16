@@ -233,3 +233,32 @@ test('Usage changes retain the webhook journey that opens the Usage page', () =>
       .includes('webhook-responses'),
   );
 });
+
+test('full web unit runs have two shards while a feature PR has one related job', () => {
+  for (const file of [
+    'apps/web/test/setup.ts',
+    'apps/web/vitest.config.ts',
+    'packages/contracts/src/index.ts',
+    'apps/web/src/unknown-file.ts',
+  ]) {
+    assert.deepEqual(
+      select(file)
+        .unit.include.filter(({ group }) => group === 'web')
+        .map(({ shard }) => shard),
+      [1, 2],
+    );
+  }
+  const feature = select('apps/web/src/features/usage/model/usage-search.ts')
+    .unit.include;
+  assert.equal(feature.length, 1);
+  assert.deepEqual(JSON.parse(feature[0].related), [
+    'src/features/usage/model/usage-search.ts',
+  ]);
+  for (const event of ['push', 'schedule'])
+    assert.deepEqual(
+      select('apps/web/src/features/usage/model/usage-search.ts', event)
+        .unit.include.filter(({ group }) => group === 'web')
+        .map(({ shard }) => shard),
+      [1, 2],
+    );
+});

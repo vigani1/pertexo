@@ -337,7 +337,8 @@ test('consumes the selector matrices and keeps every selected job behind the gat
     fullSelection.browser.include.length +
     4;
   // Image, security and the two self-host legs can overlap these matrices.
-  assert.ok(heavyJobs <= 20);
+  // CI-E explicitly adds the second full web unit shard.
+  assert.ok(heavyJobs <= 21);
   assert.match(jobText(ci.jobs['ci-passed']), /success \| skipped/u);
   assert.match(jobText(ci.jobs['ci-passed']), /exit 1/u);
 });
