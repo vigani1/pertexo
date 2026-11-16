@@ -219,12 +219,12 @@ function TestStream({
   tests,
   runId,
 }: Readonly<{ tests: WorkflowTests; runId: string }>) {
-  const events = useRunEvents(
-    tests.scope.apiClient,
-    tests.scope.userId,
-    tests.scope.workspaceId,
+  const events = useRunEvents({
+    apiClient: tests.scope.apiClient,
+    userId: tests.scope.userId,
+    workspaceId: tests.scope.workspaceId,
     runId,
-  );
+  });
   return (
     <p className="mt-1 text-xs text-muted-foreground" role="status">
       {events.connectionStatus === 'live'

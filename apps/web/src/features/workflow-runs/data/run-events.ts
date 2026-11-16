@@ -36,12 +36,21 @@ function initialRunEventState(scopeKey: string): RunEventState {
   };
 }
 
-export function useRunEvents(
-  apiClient: ApiClient,
-  userId: string,
-  workspaceId: string,
-  runId: string,
-) {
+type RunEventsInput = Readonly<{
+  apiClient: ApiClient;
+  userId: string;
+  workspaceId: string;
+  runId: string;
+  now?: () => number;
+}>;
+
+export function useRunEvents({
+  apiClient,
+  userId,
+  workspaceId,
+  runId,
+  now = Date.now,
+}: RunEventsInput) {
   const queryClient = useQueryClient();
   // Reconnecting after a pause starts a fresh stream that backfills from the
   // first event, so it also starts a fresh timeline.
@@ -113,6 +122,7 @@ export function useRunEvents(
     };
 
     void followRunEvents({
+      now,
       signal: controller.signal,
       isCurrent,
       updateCurrent,
@@ -143,7 +153,7 @@ export function useRunEvents(
       activeStream = undefined;
       if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
     };
-  }, [apiClient, queryClient, runId, scopeKey, userId, workspaceId]);
+  }, [apiClient, queryClient, runId, scopeKey, userId, workspaceId, now]);
 
   const visible =
     state.scopeKey === scopeKey ? state : initialRunEventState(scopeKey);
@@ -160,6 +170,7 @@ export function useRunEvents(
 
 type RunEventStream = Awaited<ReturnType<typeof openWorkflowRunEvents>>;
 type RunEventSession = Readonly<{
+  now: () => number;
   signal: AbortSignal;
   isCurrent: () => boolean;
   open: (cursor: number) => Promise<RunEventStream>;
@@ -183,7 +194,7 @@ async function followRunEvents(options: RunEventSession) {
     try {
       options.setConnectionStatus(reconnectStatus(failures));
       stream = await options.open(cursor);
-      openedAt = Date.now();
+      openedAt = options.now();
       if (!options.isCurrent()) return;
       options.setConnectionStatus('live');
       for await (const message of decodeSseMessages(stream.body)) {
@@ -212,7 +223,7 @@ async function followRunEvents(options: RunEventSession) {
       );
     } catch (error) {
       if (!options.isCurrent()) return;
-      if (streamWasHealthy({ delivered, openedAt })) failures = 0;
+      if (streamWasHealthy({ delivered, openedAt }, options.now)) failures = 0;
       const recovery = runStreamRecovery(error, failures + 1);
       if (recovery.kind === 'stop') {
         options.setRecovery(recovery.status, recovery.message);
@@ -220,12 +231,12 @@ async function followRunEvents(options: RunEventSession) {
       }
       failures += 1;
       options.setRecovery(recovery.status, recovery.message);
-      if (failures >= 3 && Date.now() >= snapshotRetryNotBefore) {
+      if (failures >= 3 && options.now() >= snapshotRetryNotBefore) {
         const nextSnapshotRetry = await refreshAfterFailures(options, failures);
         if (nextSnapshotRetry === undefined) return;
         snapshotRetryNotBefore = nextSnapshotRetry;
       }
-      const snapshotWait = snapshotRetryNotBefore - Date.now();
+      const snapshotWait = snapshotRetryNotBefore - options.now();
       await waitToReconnect(
         snapshotWait > 0
           ? Math.max(recovery.delayMs, snapshotWait)
@@ -260,7 +271,7 @@ async function refreshAfterFailures(
       options.setRecovery(recovery.status, recovery.message);
       return undefined;
     }
-    const nextRetry = Date.now() + recovery.delayMs;
+    const nextRetry = options.now() + recovery.delayMs;
     options.setRecovery(recovery.status, recovery.message);
     return nextRetry;
   }

@@ -39,11 +39,13 @@ export function useInboxLive({
   userId,
   workspaceId,
   enabled,
+  now = Date.now,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
   enabled: boolean;
+  now?: () => number;
 }>): InboxLiveStatus {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<InboxLiveStatus>('connecting');
@@ -79,7 +81,7 @@ export function useInboxLive({
         try {
           report(failures === 0 ? 'connecting' : 'reconnecting');
           stream = await openInboxEvents(apiClient, workspaceId, signal);
-          openedAt = Date.now();
+          openedAt = now();
           report('live');
           for await (const message of decodeSseMessages(stream.body)) {
             // The signal can change while the stream awaits its next chunk.
@@ -96,7 +98,7 @@ export function useInboxLive({
           // Cancellation may arrive while opening or reading the stream awaits I/O.
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (signal.aborted) return;
-          if (streamWasHealthy({ delivered, openedAt })) failures = 0;
+          if (streamWasHealthy({ delivered, openedAt }, now)) failures = 0;
           failures += 1;
           const recovery = classifyStreamFailure(error, failures);
           if (recovery.kind === 'stop') {
@@ -121,7 +123,7 @@ export function useInboxLive({
       document.removeEventListener('visibilitychange', onVisible);
       if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
     };
-  }, [apiClient, enabled, queryClient, userId, workspaceId]);
+  }, [apiClient, enabled, queryClient, userId, workspaceId, now]);
 
   return enabled ? status : 'paused';
 }

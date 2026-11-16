@@ -52,6 +52,7 @@ const failed: PublishResult = { kind: 'failed' };
  * keyed command; an uncertain outcome keeps that command for an exact retry.
  */
 type PublicationOptions = Readonly<{
+  now?: () => number;
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
@@ -71,6 +72,7 @@ export function useWorkflowPublication({
   ensureSaved,
   isSavedDraftCurrent,
   onPublicationAccepted,
+  now = Date.now,
 }: PublicationOptions) {
   const queryClient = useQueryClient();
   const [publishStage, setPublishStage] = useState<PublishStage>();
@@ -83,6 +85,7 @@ export function useWorkflowPublication({
   const publishAttempt = useRef<PublishAttempt | undefined>(undefined);
   const owner = useRef<symbol | undefined>(undefined);
   const draftValidation = useWorkflowDraftValidation({
+    now,
     apiClient,
     workspaceId,
     workflowId,
