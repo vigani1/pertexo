@@ -6,8 +6,6 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { workflowTriggers, triggerSchedules } from '@pertexo/database/schema';
 
-import { ScheduleTriggerError } from '../schedule-trigger.errors.js';
-
 import type {
   ScheduleCommandIdentity,
   ScheduleHealthTransition,
@@ -29,20 +27,6 @@ export function scheduleCommandIdentity(
     triggerId,
     workflowId: input.workflowId,
   });
-}
-
-export function scheduleCommand(
-  input: SetEnabledInput,
-  identity: ScheduleCommandIdentity,
-) {
-  return {
-    workspaceId: input.workspaceId,
-    operation: identity.operation,
-    scope: identity.scope,
-    idempotencyKey: identity.idempotencyKey,
-    requestHash: identity.requestHash,
-    conflict: () => new ScheduleTriggerError('idempotency_conflict'),
-  };
 }
 
 export async function applyScheduleHealthTransition(

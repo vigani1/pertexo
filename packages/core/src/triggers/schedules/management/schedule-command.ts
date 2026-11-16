@@ -15,7 +15,19 @@ import {
   parseStoredScheduleTrigger,
   readSchedule,
 } from './schedule-state.repository.js';
-import { scheduleCommand } from './receipts.repository.js';
+function scheduleCommand(
+  input: SetEnabledInput,
+  identity: ScheduleCommandIdentity,
+) {
+  return {
+    workspaceId: input.workspaceId,
+    operation: identity.operation,
+    scope: identity.scope,
+    idempotencyKey: identity.idempotencyKey,
+    requestHash: identity.requestHash,
+    conflict: () => new ScheduleTriggerError('idempotency_conflict'),
+  };
+}
 
 export async function claimScheduleCommand(
   client: PoolClient,

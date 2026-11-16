@@ -1,12 +1,6 @@
-import { credentialCommandScope } from '@pertexo/database/platform';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  rethrowQueryFailure,
-  claimCommand,
-  completeCommand,
-} from '@pertexo/database/primitives';
-import { appendAuditFact } from '../../../governance/audit/facts.js';
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   workflowTriggers,
   webhookTriggerSecretVersions as secrets,
@@ -14,57 +8,10 @@ import {
 
 import type { PoolClient } from 'pg';
 
-import { WebhookTriggerIdempotencyConflictError } from '../webhook-trigger.errors.js';
-
 import type {
   Command,
   SealedWebhookTriggerSecret,
 } from './webhook-runtime.types.js';
-
-function webhookCommand(input: Command, operation: string) {
-  return {
-    workspaceId: input.workspaceId,
-    operation,
-    scope: credentialCommandScope(
-      `${input.actorId}:${input.workflowId}:${input.triggerId}`,
-      input.commandCredentialId,
-    ),
-    idempotencyKey: input.idempotencyKey,
-    requestHash: input.requestHash,
-    conflict: () => new WebhookTriggerIdempotencyConflictError(),
-  };
-}
-
-/** Claims the command's key; true when an exact retry already completed it. */
-export async function claimWebhookCommand(
-  client: PoolClient,
-  input: Command,
-  operation: string,
-): Promise<boolean> {
-  const stored = await claimCommand(client, {
-    ...webhookCommand(input, operation),
-    resourceId: input.triggerId,
-  });
-  return stored !== null;
-}
-
-export async function completeWebhookCommand(
-  client: PoolClient,
-  input: Command,
-  operation: string,
-): Promise<void> {
-  await appendAuditFact(client, {
-    workspaceId: input.workspaceId,
-    actorId: input.actorId,
-    action: operation,
-    targetType: 'webhook_trigger',
-    targetId: input.triggerId,
-    metadata: { workflowId: input.workflowId },
-  });
-  await completeCommand(client, webhookCommand(input, operation), {
-    triggerId: input.triggerId,
-  });
-}
 
 /** Stores the trigger's secret; undefined, with nothing stored, when the trigger is gone. */
 export async function insertSecret(
