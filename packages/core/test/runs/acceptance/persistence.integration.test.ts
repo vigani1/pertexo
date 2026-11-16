@@ -1,3 +1,4 @@
+import { executionValueCaps } from '../../shared/execution-value-caps.fixture.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   installExecutionAcceptanceFixture,
@@ -328,6 +329,7 @@ describe('workflow run acceptance persistence and idempotency', () => {
     for (const runInput of [
       'x'.repeat(STORED_EXECUTION_VALUE_LIMITS.inlineBytes - 1),
       hostile,
+      ...executionValueCaps().map(([, value]) => value),
     ]) {
       await expect(
         apiDatabase.withWorkspace(workspaceA, (transaction) =>

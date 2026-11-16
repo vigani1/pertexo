@@ -1,3 +1,9 @@
+import {
+  StoredExecutionValueInvalidError,
+  STORED_EXECUTION_VALUE_LIMITS,
+  formatByteSize,
+  formatCount,
+} from '@pertexo/node-sdk';
 import 'reflect-metadata';
 import { Controller, Get } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -84,6 +90,12 @@ describe('remaining domain translations over HTTP', () => {
   });
 
   it.each([
+    [
+      new StoredExecutionValueInvalidError(),
+      422,
+      'workflow.invalid',
+      `Keep test input within ${formatByteSize(STORED_EXECUTION_VALUE_LIMITS.inlineBytes)}, depth ${String(STORED_EXECUTION_VALUE_LIMITS.depth)} and ${formatCount(STORED_EXECUTION_VALUE_LIMITS.members)} values. Split larger input before testing.`,
+    ],
     [
       new PreviewIdempotencyConflictError(),
       409,
