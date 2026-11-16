@@ -8,7 +8,7 @@
     "build": "pnpm typecheck && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --build --pretty false && tsc --project tsconfig.test.json --pretty false",
-    "lint": "oxlint --deny-warnings . && eslint . --max-warnings 0",
+    "lint": "oxlint --deny-warnings . && eslint --cache --cache-strategy content . --max-warnings 0",
     "test": "TZ=Europe/Belgrade vitest run",
     "test:watch": "vitest",
     "test:e2e": "pnpm --filter '@pertexo/node-catalog...' --filter '@pertexo/workflow-engine...' build && playwright test"

@@ -11,3 +11,5 @@ test-results/
 !infrastructure/single-server/.env.production.example
 
 .pertexo/
+
+.eslintcache
