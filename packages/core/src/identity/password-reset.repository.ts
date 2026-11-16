@@ -1,5 +1,5 @@
 import { readDatabaseClock } from '../shared/database-clock.repository.js';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 import { canonicalEmail } from './email-policy.js';
 import { withPlatformTransaction } from '@pertexo/database/platform';
 import {
@@ -76,7 +76,7 @@ export async function issuePasswordResetProof(
     const recipient = { email: user.email, displayName: user.displayName };
     const prepared = input.prepareMail(recipient, expiresAt);
     await db.insert(authVerifications).values({
-      id: randomUUID(),
+      id: generatePersistedId(),
       identifier: `reset-password:${input.token}`,
       value: user.id,
       expiresAt,

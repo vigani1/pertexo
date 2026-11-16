@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 import type { TwoFactorRecoveryStore } from '@pertexo/core/identity';
 import {
   authenticationMailAssociatedData,
@@ -23,7 +23,7 @@ export async function disableTwoFactor(
     (user): SystemMailInput | undefined => {
       if (config.mail.mode !== 'durable' || envelope === undefined)
         return undefined;
-      const id = randomUUID();
+      const id = generatePersistedId();
       const expiresAt = new Date(Date.now() + SECURITY_NOTICE_VALIDITY_MILLIS);
       const purpose = 'two_factor_disabled' as const;
       return {

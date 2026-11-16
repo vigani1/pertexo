@@ -1,6 +1,7 @@
 import { canonicalEmail } from '@pertexo/core/identity';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import { InvitationAcceptanceConflictError } from '@pertexo/core/tenant-access';
 import {
@@ -222,7 +223,7 @@ export class InvitationAcceptanceService {
       actorUserId: input.authenticatedUserId,
       idempotencyKey: input.idempotencyKey,
       replacementSession: {
-        id: randomUUID(),
+        id: generatePersistedId(),
         token: rawToken,
         expiresAt,
         ...(input.userAgent === undefined

@@ -3,7 +3,7 @@ import {
   type AuthenticationFailureReason,
 } from '../journeys/failures.js';
 import { HttpStatus } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 import { SocialSignInCommands, type SignUpMode } from '@pertexo/core/identity';
 import {
   authenticationProviderSchema,
@@ -75,7 +75,7 @@ export class SocialSignIn {
     const returnPath = authenticationReturnPathSchema.safeParse(
       parsed.data.callbackURL,
     );
-    const id = randomUUID();
+    const id = generatePersistedId();
     const state = newJourneyToken();
     const browser = newJourneyToken();
     let failedAt: AuthenticationFailureReason = 'provider_unavailable';
