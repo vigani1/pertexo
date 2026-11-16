@@ -1,5 +1,5 @@
 import { authorizeOrganizationContext } from './authorize-organization.js';
-import { requireWorkspaceAuthority } from '../../../shared/workspace-access.errors.js';
+import { requireWorkspaceAuthority } from '../../../shared/access/workspace-access.errors.js';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 
 import type { Pool } from 'pg';
@@ -22,9 +22,9 @@ import {
 import { ADMINISTRATIVE_ROLES, type Role } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
-import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
+import { lockWorkspaceRow } from '../../../shared/access/authority.repository.js';
 
-import { lockWorkspaceAuthority } from '../../../shared/workspace-authority.js';
+import { lockWorkspaceAuthority } from '../../../shared/access/workspace-authority.js';
 import { FederationConflictError } from './federation-management.errors.js';
 
 import type { FederationScope } from './federation-management.types.js';

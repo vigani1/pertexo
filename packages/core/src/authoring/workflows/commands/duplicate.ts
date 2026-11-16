@@ -14,7 +14,7 @@ import { requireConnectionBindings } from '../../../shared/resources/require-con
 
 import { generatePersistedId } from '@pertexo/database/platform';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { requireWorkflowInScope } from '../access.js';
 import { createdWorkflowReceipt } from '../receipts.repository.js';

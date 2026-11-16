@@ -13,7 +13,7 @@ import {
   connectionScopeSql,
   type ConnectionCapability,
 } from '../shared/resources/connection-scope.repository.js';
-import type { ResourceActor } from '../shared/folder-access.types.js';
+import type { ResourceActor } from '../shared/access/folder-access.types.js';
 import type { ConnectionRecord } from './connection.types.js';
 
 export const connectionFields = {

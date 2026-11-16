@@ -9,8 +9,8 @@ import {
   workflowVersionPromotions,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
+import { workflowScopeSql } from '../../../shared/access/folder-scope.repository.js';
 import type { PoolClient } from 'pg';
 
 export async function readPromotionCallMatch(

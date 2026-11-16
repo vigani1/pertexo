@@ -1,5 +1,5 @@
 import type { AuditFilter, AuditQuery } from '@pertexo/contracts';
-import type { WorkspaceActor } from '../shared/workspace-access.js';
+import type { WorkspaceActor } from '../shared/access/workspace-access.js';
 
 export type ListAuditInput = WorkspaceActor & Readonly<{ query: AuditQuery }>;
 

@@ -4,7 +4,7 @@ import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import type { WorkflowRef } from '../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../shared/access/workflow-actor.types.js';
 import { versionProjection } from '../workflows/representation/workflow-representations.repository.js';
 import type { CompiledPublication } from './workflow-publication.types.js';
 

@@ -1,5 +1,5 @@
 import { readWorkspacePeople } from './discovery.repository.js';
-import type { WorkspaceActor } from '../../shared/workspace-access.js';
+import type { WorkspaceActor } from '../../shared/access/workspace-access.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
@@ -29,7 +29,7 @@ import type {
   WorkspaceAccessRecord,
   WorkspaceMembersPage,
 } from '../tenant-access.types.js';
-import { withWorkspaceAccess } from '../../shared/workspace-access.js';
+import { withWorkspaceAccess } from '../../shared/access/workspace-access.js';
 import { DEFAULT_PAGE_LIMIT } from '../../shared/page-limits.js';
 
 /** Spans the actor's workspaces, so no one workspace's authority can decide it. */

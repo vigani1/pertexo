@@ -1,7 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import { setOrganizationContext } from '@pertexo/database/primitives';
 import { withPlatformTransaction } from '@pertexo/database/platform';
-import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
+import { lockWorkspaceRow } from '../../../shared/access/authority.repository.js';
 import { DirectoryError } from './directory.errors.js';
 import type {
   DirectoryOrganization,

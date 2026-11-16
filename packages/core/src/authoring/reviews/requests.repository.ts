@@ -9,7 +9,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
 import { DAY_INTERVAL } from '../../shared/sql-intervals.repository.js';
-import type { WorkflowRef } from '../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../shared/access/workflow-actor.types.js';
 import {
   review,
   reviewSource,

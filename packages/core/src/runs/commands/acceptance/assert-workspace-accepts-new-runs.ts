@@ -1,5 +1,5 @@
 import { entitlementPolicyStateAt } from '../../queries/entitlement-effect.repository.js';
-import { lockWorkspaceRunAdmission } from '../../../shared/workspace-fence.repository.js';
+import { lockWorkspaceRunAdmission } from '../../../shared/access/workspace-fence.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { WorkspaceRunAdmissionDeniedError } from './run-admission.errors.js';
 import { readCurrentEntitlement } from './entitlements.repository.js';

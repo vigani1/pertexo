@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import {
   parseStoredExecutionValue,

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { withWorkspaceAccess } from '../../../src/shared/workspace-access.js';
+import { withWorkspaceAccess } from '../../../src/shared/access/workspace-access.js';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { createGovernanceStore } from '../../../src/governance/governance.store.js';
 import { WorkflowRunNotFoundError } from '../../../src/runs/workflow-run.errors.js';

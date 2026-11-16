@@ -41,7 +41,7 @@ export type {
   NoticeMailSealer,
   NoticeMailToSeal,
 } from './mail/notice-mail.types.js';
-export type { WorkspaceActor } from '../shared/workspace-access.js';
+export type { WorkspaceActor } from '../shared/access/workspace-access.js';
 
 // A run's completion and retention use these directly (ADR 091).
 export type {} from './retention.repository.js';

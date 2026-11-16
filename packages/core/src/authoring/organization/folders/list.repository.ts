@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflowFolders } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { folderProjection, type FolderRow } from './hierarchy.repository.js';
-import { readBrowsableFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { readBrowsableFolderScope } from '../../../shared/access/folder-access-facts.repository.js';
 
 import type { createOrganizationSession } from '../session.js';
 import type { WorkflowFolderRecord } from './workflow-folder.types.js';

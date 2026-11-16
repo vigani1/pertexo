@@ -10,7 +10,7 @@ export {
   WorkspaceVariablesConflictError,
   WorkspaceVariableUsageChangedError,
 } from './workspace-variables.errors.js';
-export type { WorkspaceActor } from '../shared/workspace-access.js';
+export type { WorkspaceActor } from '../shared/access/workspace-access.js';
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './head.repository.js';

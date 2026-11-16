@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../shared/workspace-fence.repository.js';
+import { lockWorkspaceRunAdmission } from '../shared/access/workspace-fence.repository.js';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 

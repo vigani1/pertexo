@@ -11,7 +11,7 @@ import {
 } from '../../../../src/identity/index.js';
 import { createDirectoryCredential } from '../../../../src/identity/federation/provisioning/management/credentials.js';
 import { createDirectoryStore } from '../../../../src/identity/federation/provisioning/directory.store.js';
-import { WorkspaceAccessDeniedError } from '../../../../src/shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../../../src/shared/access/workspace-access.errors.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 
 export const db = useIdentityCommandDatabase('identity_access');

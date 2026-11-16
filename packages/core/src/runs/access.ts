@@ -3,20 +3,20 @@ import {
   type WorkspaceStatusList,
 } from '@pertexo/policy';
 import type { Pool } from 'pg';
-import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
-import { readResourceTransaction } from '../shared/folder-access-facts.repository.js';
+import { WorkspaceAccessDeniedError } from '../shared/access/workspace-access.errors.js';
+import { readResourceTransaction } from '../shared/access/folder-access-facts.repository.js';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
-} from '../shared/workspace-access.js';
+} from '../shared/access/workspace-access.js';
 import { WorkflowRunNotFoundError } from './workflow-run.errors.js';
-import type { ResourceTransaction } from '../shared/folder-access.types.js';
+import type { ResourceTransaction } from '../shared/access/folder-access.types.js';
 import {
   ownerVisible,
   runInScope,
   workflowInScope,
 } from './run-access.repository.js';
-import type { WorkflowResourceCapability } from '../shared/folder-access.types.js';
+import type { WorkflowResourceCapability } from '../shared/access/folder-access.types.js';
 
 /** The command already holds the workspace authority fence before touching run rows. */
 export async function requireRunAccess(

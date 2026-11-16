@@ -2,7 +2,7 @@ import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
 import { projectVersion } from '../representation/workflow-representations.repository.js';
 import type { PoolClient } from 'pg';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 import type { ListWorkflowVersionsInput } from '../workflow-commands.types.js';
 import { workflowExists, readVersionPage } from './versions.repository.js';

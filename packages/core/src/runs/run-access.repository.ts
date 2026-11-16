@@ -5,8 +5,8 @@ import { and, eq, sql } from 'drizzle-orm';
 import type {
   ResourceTransaction,
   WorkflowResourceCapability,
-} from '../shared/folder-access.types.js';
-import { workflowScopeSql } from '../shared/folder-scope.repository.js';
+} from '../shared/access/folder-access.types.js';
+import { workflowScopeSql } from '../shared/access/folder-scope.repository.js';
 
 /** Whether the run exists and its workflow is in the transaction's folder scope. */
 export async function runInScope(

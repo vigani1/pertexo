@@ -2,7 +2,7 @@ import type {
   WorkspaceInboxThread,
   WorkspaceNoticeKind,
 } from '@pertexo/contracts';
-import type { WorkspaceActor } from '../../shared/workspace-access.js';
+import type { WorkspaceActor } from '../../shared/access/workspace-access.js';
 
 export type WorkspaceInboxThreadRecord = WorkspaceInboxThread;
 export type WorkspaceInboxCursor = Readonly<{

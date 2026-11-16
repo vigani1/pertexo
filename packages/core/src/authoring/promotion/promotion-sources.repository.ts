@@ -12,8 +12,8 @@ import {
   users,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
+import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js';
 
 import type {
   PromotionCandidatesInput,

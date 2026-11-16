@@ -13,7 +13,7 @@ import type { PoolClient } from 'pg';
 import {
   withWorkspaceAccess,
   type WorkspaceAccess,
-} from '../../shared/workspace-access.js';
+} from '../../shared/access/workspace-access.js';
 import { readAsNotVisible } from '../workflows/access.js';
 
 export type OrganizationScope = Readonly<{

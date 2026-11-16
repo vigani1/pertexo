@@ -1,4 +1,4 @@
-import { enterRunAdmissionProtocol } from '../../shared/workspace-fence.repository.js';
+import { enterRunAdmissionProtocol } from '../../shared/access/workspace-fence.repository.js';
 import { sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';

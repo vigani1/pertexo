@@ -5,7 +5,7 @@ import { and, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../../shared/access/workflow-actor.types.js';
 import { draftProjection } from '../representation/workflow-representations.repository.js';
 
 /** The draft of an active workflow, without a lock; undefined when missing. */

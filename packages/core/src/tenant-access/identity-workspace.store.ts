@@ -8,7 +8,7 @@ import {
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../governance/audit/facts.js';
 import { eq } from 'drizzle-orm';
-import { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../shared/access/workspace-access.errors.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import {

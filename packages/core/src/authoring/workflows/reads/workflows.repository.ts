@@ -1,6 +1,6 @@
 import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import { readListSummaries } from './list-summary.repository.js';
-import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../../shared/access/workflow-actor.types.js';
 import { and, asc, desc, eq, exists, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
@@ -11,8 +11,8 @@ import {
   workflowOrganizationState,
   workflows,
 } from '@pertexo/database/schema';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
+import { workflowScopeSql } from '../../../shared/access/folder-scope.repository.js';
 import {
   workflowAccessible,
   workflowActions,

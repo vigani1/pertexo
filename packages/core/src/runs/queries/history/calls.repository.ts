@@ -2,8 +2,8 @@ import { workflowCalls, workflowRuns } from '@pertexo/database/schema';
 import { alias } from 'drizzle-orm/pg-core';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { and, eq, exists, or, sql } from 'drizzle-orm';
-import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
+import type { ResourceTransaction } from '../../../shared/access/folder-access.types.js';
+import { workflowScopeSql } from '../../../shared/access/folder-scope.repository.js';
 
 /** The run's child calls at most, and the one call that started it. */
 export const CALL_ROWS = WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations + 1;

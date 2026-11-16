@@ -1,10 +1,10 @@
-import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../../shared/access/folder-access-facts.repository.js';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
   acquireDatabasePool,
   type DatabaseRuntime,
 } from '@pertexo/database/platform';
-import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
+import { withWorkspaceAccess } from '../../../shared/access/workspace-access.js';
 import type {
   ApprovalAudienceInspectionRequest,
   PendingTaskListQuery,

@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import type { Pool, PoolClient } from 'pg';
 import {
   ACTIVE_WORKSPACE_STATUSES,
@@ -10,10 +10,10 @@ import {
 
 import { lockWorkflowAuthoringAuthority } from '../../authoring/workflows/authority.js';
 import { WorkflowNotFoundError } from '../../authoring/workflows/workflow-authoring.errors.js';
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { withWorkspaceAccess } from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
-import type { WorkflowResourceCapability } from '../../shared/folder-access.types.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
+import { withWorkspaceAccess } from '../../shared/access/workspace-access.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
+import type { WorkflowResourceCapability } from '../../shared/access/folder-access.types.js';
 import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 
 const capabilities = ['workflow:update', 'run:read', 'run:start'] as const;

@@ -5,8 +5,8 @@ import {
 import { and, eq, exists, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import type { FolderScope } from '../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
+import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js';
 import {
   rolesForCapability,
   type AuthorizationCapability,

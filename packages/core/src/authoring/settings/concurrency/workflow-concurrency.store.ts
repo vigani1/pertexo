@@ -1,5 +1,5 @@
 import { STORED_TIMESTAMP_FRACTION_DIGITS } from '@pertexo/workflow-model';
-import type { WorkflowActor } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../../shared/access/workflow-actor.types.js';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { z } from 'zod';
 import {

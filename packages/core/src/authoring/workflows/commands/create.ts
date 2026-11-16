@@ -6,7 +6,7 @@ import type { Role } from '@pertexo/policy';
 import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 import { lockArtifactReferences } from '../../../artifacts/references/lock-references.js';
-import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../../shared/access/folder-access-facts.repository.js';
 import { requireWorkflowCallTargets } from '../../../shared/resources/require-workflow-call-targets.js';
 import { requireConnectionBindings } from '../../../shared/resources/require-connection-bindings.js';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';

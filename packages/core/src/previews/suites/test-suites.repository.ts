@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import type { WorkflowTestSuiteSummary } from '@pertexo/contracts';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';

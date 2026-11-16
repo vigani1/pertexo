@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 import { previewRuns, previewAttempts } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import { isStoredDataError } from '../../shared/stored-values.js';
 import { loadPreviewLease } from './preview-claim.repository.js';
 import { appendPreviewTerminalFacts } from './facts.repository.js';

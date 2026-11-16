@@ -1,4 +1,4 @@
-import { requireWorkspaceAuthority } from '../../../../shared/workspace-access.errors.js';
+import { requireWorkspaceAuthority } from '../../../../shared/access/workspace-access.errors.js';
 import { authorizeOrganizationContext } from '../../management/authorize-organization.js';
 import {
   claimCommand,
@@ -13,9 +13,9 @@ import {
   withPlatformTransaction,
 } from '@pertexo/database/platform';
 
-import { lockWorkspaceRow } from '../../../../shared/authority.repository.js';
+import { lockWorkspaceRow } from '../../../../shared/access/authority.repository.js';
 
-import { lockWorkspaceAuthority } from '../../../../shared/workspace-authority.js';
+import { lockWorkspaceAuthority } from '../../../../shared/access/workspace-authority.js';
 
 import { recordFederationAudit } from '../../management/authority.repository.js';
 

@@ -1,7 +1,7 @@
 import { HOUR_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
-import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
+import type { ResourceTransaction } from '../../../shared/access/folder-access.types.js';
+import { workflowScopeSql } from '../../../shared/access/folder-scope.repository.js';
 import { workflowRuns, workflows, usageEvents } from '@pertexo/database/schema';
 import { ordinaryRunSql } from '../../../shared/run-records/run-retention.repository.js';
 import { ACTIVE_RUN_STATUSES } from '../../statuses.js';

@@ -68,7 +68,7 @@ user-facing copy beyond the safe messages of its errors.
   touch), and a
   statement two areas write the same way gets one function beside the lock
   it follows (`enterRunAdmissionProtocol` in
-  `shared/workspace-fence.repository.ts`). A run admitted in a savepoint goes
+  `shared/access/workspace-fence.repository.ts`). A run admitted in a savepoint goes
   through `admitInSavepoint` (`triggers/admission-savepoint.repository.ts`).
 - An error: the area's or sub-area's `.errors.ts`; the API maps it to a
   problem.
@@ -95,7 +95,7 @@ user-facing copy beyond the safe messages of its errors.
 ## Rules
 
 - A flow a member starts opens its transaction through `withWorkspaceAccess`
-  (`shared/workspace-access.ts`). It names its workspace status list once
+  (`shared/access/workspace-access.ts`). It names its workspace status list once
   there, checks authority inside the transaction and uses the role it gets.
 - Keep each flow's lock order. The shared order is workspace first, then
   users in a fixed order, then memberships, then the feature's own rows

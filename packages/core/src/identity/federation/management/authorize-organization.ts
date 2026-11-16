@@ -7,8 +7,8 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
   rolesForCapability,
 } from '@pertexo/policy';
-import { requireWorkspaceAuthority } from '../../../shared/workspace-access.errors.js';
-import { readWorkspaceAuthority } from '../../../shared/workspace-authority.js';
+import { requireWorkspaceAuthority } from '../../../shared/access/workspace-access.errors.js';
+import { readWorkspaceAuthority } from '../../../shared/access/workspace-authority.js';
 import { organizationForWorkspace } from './authority.repository.js';
 import type { OrganizationRow } from './identity-organizations.repository.js';
 import type { FederationScope } from './federation-management.types.js';

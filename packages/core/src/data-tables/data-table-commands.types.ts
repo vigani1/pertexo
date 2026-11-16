@@ -12,7 +12,7 @@ import type {
   DataTableValues,
 } from '@pertexo/node-sdk';
 import type { ExecutionCapabilityScope } from '../attempts/dispatch/execution-capability.types.js';
-import type { WorkspaceActor } from '../shared/workspace-access.js';
+import type { WorkspaceActor } from '../shared/access/workspace-access.js';
 
 export type { DataTableDefinition } from '@pertexo/contracts';
 export type DataTableQuotas = DataTablesResponse['quotas'];

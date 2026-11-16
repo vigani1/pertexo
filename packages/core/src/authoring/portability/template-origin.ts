@@ -1,4 +1,4 @@
-import type { WorkflowRef } from '../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../shared/access/workflow-actor.types.js';
 
 import { workflowTemplateOriginSchema } from '@pertexo/workflow-model';
 
@@ -11,7 +11,7 @@ import { WorkflowTemplateOriginUnavailableError } from '../workflows/workflow-au
 
 import type { PoolClient } from 'pg';
 
-import type { FolderScope } from '../../shared/folder-access.types.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
 
 import { readTemplateOriginRow } from './template-origin.repository.js';
 

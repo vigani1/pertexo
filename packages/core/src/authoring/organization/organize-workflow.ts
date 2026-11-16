@@ -1,6 +1,6 @@
 import type { AudienceReview } from '@pertexo/contracts';
 import { requireMoveAudienceReview } from './sharing/audience.js';
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';

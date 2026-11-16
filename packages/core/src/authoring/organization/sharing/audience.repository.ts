@@ -14,10 +14,10 @@ import {
 
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 
 import type { WorkflowMoveReviewRequest } from '@pertexo/contracts';
-import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
+import { workflowScopeSql } from '../../../shared/access/folder-scope.repository.js';
 
 import type { OrganizationActor } from '../session.js';
 

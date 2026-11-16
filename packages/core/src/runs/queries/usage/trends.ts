@@ -14,7 +14,7 @@ import {
 import { USAGE_READ_STATEMENT_TIMEOUT_MILLIS } from './capacity.js';
 import type { Pool } from 'pg';
 import type { UsageTrendPeriod, UsageTrendsResponse } from '@pertexo/contracts';
-import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../../shared/access/workspace-access.errors.js';
 import { withRetainedRunRead } from '../../access.js';
 
 export type UsageTrendsInput = Readonly<{

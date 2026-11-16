@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { PendingTaskDecisionError } from '../../../src/runs/pending-tasks/responses/pending-task.errors.js';
-import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/access/workspace-access.errors.js';
 import {
   admin,
   store,

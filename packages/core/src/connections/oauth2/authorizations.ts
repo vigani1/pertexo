@@ -1,13 +1,13 @@
-import { requireWorkspaceAuthority } from '../../shared/workspace-access.errors.js';
+import { requireWorkspaceAuthority } from '../../shared/access/workspace-access.errors.js';
 import { rolesForCapability } from '@pertexo/policy';
 
 import type { Pool, PoolClient } from 'pg';
 
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
 
-import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
+import { lockWorkspaceAuthority } from '../../shared/access/workspace-authority.js';
 
 import type { ConnectionRecord } from '../connection.types.js';
 

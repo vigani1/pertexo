@@ -1,4 +1,4 @@
-import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../../shared/access/workflow-actor.types.js';
 import type { PoolClient } from 'pg';
 import { WorkflowNotFoundError } from '../workflow-authoring.errors.js';
 import { lockActiveWorkflowRow } from './locks.repository.js';

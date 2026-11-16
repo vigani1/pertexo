@@ -11,9 +11,9 @@ import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
 import { connections, connectionShares } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 import { hasCapability, rolesForCapability, type Role } from '@pertexo/policy';
-import { readWorkspaceAuthority } from '../workspace-authority.js';
-import type { ResourceActor } from '../folder-access.types.js';
-import { RESOURCE_ADMINISTRATORS } from '../folder-policy.js';
+import { readWorkspaceAuthority } from '../access/workspace-authority.js';
+import type { ResourceActor } from '../access/folder-access.types.js';
+import { RESOURCE_ADMINISTRATORS } from '../access/folder-policy.js';
 
 export type ConnectionCapability = 'connection:read' | 'connection:use';
 export type ConnectionScope = Readonly<{

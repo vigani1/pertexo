@@ -1,5 +1,5 @@
 import { STEP_SAMPLE_LIMITS } from '@pertexo/workflow-model';
-import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';

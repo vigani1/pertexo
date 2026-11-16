@@ -8,12 +8,12 @@ import {
   lockBrowsableWorkspaceAuthority,
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../workspace-authority.js';
+} from '../access/workspace-authority.js';
 import type {
   ResourceActor,
   WorkflowResourceCapability,
-} from '../folder-access.types.js';
-import { readFolderScope } from '../folder-access-facts.repository.js';
+} from '../access/folder-access.types.js';
+import { readFolderScope } from '../access/folder-access-facts.repository.js';
 import { workflowAccessible } from './workflow-access.repository.js';
 
 /** Commands stabilize current grants through the workspace-first authority fence. */

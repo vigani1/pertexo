@@ -10,13 +10,13 @@ import {
 } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
-} from '../../shared/workspace-access.js';
-import type { FolderScope } from '../../shared/folder-access.types.js';
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+} from '../../shared/access/workspace-access.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
 import type {
   ListThreadsInput,
   MarkAllReadInput,

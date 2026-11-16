@@ -11,7 +11,7 @@ import {
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
-} from '../shared/workspace-access.js';
+} from '../shared/access/workspace-access.js';
 import type {
   ReplaceWorkspaceVariablesInput,
   VariableUsageInput,

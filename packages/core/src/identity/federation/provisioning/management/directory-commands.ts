@@ -1,4 +1,4 @@
-import { requireWorkspaceAuthority } from '../../../../shared/workspace-access.errors.js';
+import { requireWorkspaceAuthority } from '../../../../shared/access/workspace-access.errors.js';
 import { authorizeOrganizationContext } from '../../management/authorize-organization.js';
 import {
   setOrganizationContext,
@@ -27,9 +27,9 @@ import {
 import {
   lockWorkspaceAuthority,
   readWorkspaceAuthority,
-} from '../../../../shared/workspace-authority.js';
+} from '../../../../shared/access/workspace-authority.js';
 
-import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
+import { withWorkspaceAccess } from '../../../../shared/access/workspace-access.js';
 
 import {
   organizationForWorkspace,

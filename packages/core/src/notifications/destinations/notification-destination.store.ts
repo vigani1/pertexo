@@ -15,8 +15,8 @@ import type { PoolClient } from 'pg';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
-} from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+} from '../../shared/access/workspace-access.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
 import {
   clearWorkflowPolicy,
   readWorkflowPolicy,

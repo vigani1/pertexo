@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { withPlatformTransaction } from '@pertexo/database/platform';
-import { withWorkspaceAccess } from '../../../shared/workspace-access.js';
+import { withWorkspaceAccess } from '../../../shared/access/workspace-access.js';
 import {
   lockFederationWorkspace,
   requireFederationOwner,

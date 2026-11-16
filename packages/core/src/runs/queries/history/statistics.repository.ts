@@ -1,4 +1,4 @@
-import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
+import type { ResourceTransaction } from '../../../shared/access/folder-access.types.js';
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { emptyRunCounts } from '../counts.js';
 import {

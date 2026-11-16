@@ -17,7 +17,7 @@ import {
   readConnectionScope,
   connectionScopeSql,
 } from '../../shared/resources/connection-scope.repository.js';
-import type { ResourceActor } from '../../shared/folder-access.types.js';
+import type { ResourceActor } from '../../shared/access/folder-access.types.js';
 
 /** Permission applies to every binding; only enabled steps require a non-revoked secret. */
 export async function connectionReferenceIssues(

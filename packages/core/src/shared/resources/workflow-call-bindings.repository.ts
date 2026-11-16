@@ -3,9 +3,9 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { workflows } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { readFolderScope } from '../folder-access-facts.repository.js';
-import { workflowScopeSql } from '../folder-scope.repository.js';
-import type { ResourceActor } from '../folder-access.types.js';
+import { readFolderScope } from '../access/folder-access-facts.repository.js';
+import { workflowScopeSql } from '../access/folder-scope.repository.js';
+import type { ResourceActor } from '../access/folder-access.types.js';
 
 /** How many of `targets` the actor's folder scope lets it read. */
 export async function countReadableWorkflows(

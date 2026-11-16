@@ -19,7 +19,7 @@ export type {
   RemoveTableInput,
   WriteRowsInput,
 } from './data-table-commands.types.js';
-export type { WorkspaceActor } from '../shared/workspace-access.js';
+export type { WorkspaceActor } from '../shared/access/workspace-access.js';
 
 // Runs and authoring check table references directly (ADR 091).
 export type {} from './columns/references.repository.js';

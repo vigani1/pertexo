@@ -8,7 +8,7 @@ import {
   workspaces,
 } from '@pertexo/database/schema';
 
-import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import type {
   SuiteRow,

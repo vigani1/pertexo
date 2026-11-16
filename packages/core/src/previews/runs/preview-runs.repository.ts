@@ -1,8 +1,8 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import type { Role } from '@pertexo/policy';
 import { sql } from 'drizzle-orm';
-import { readTransactionFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
+import { readTransactionFolderScope } from '../../shared/access/folder-access-facts.repository.js';
+import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js';
 
 import { and, eq, gt } from 'drizzle-orm';
 

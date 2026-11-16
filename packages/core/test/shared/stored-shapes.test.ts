@@ -47,7 +47,7 @@ import type { AcceptWorkflowRunInput as AcceptanceInput } from '../../src/runs/c
 import type {
   FolderAccess,
   FolderFact,
-} from '../../src/shared/folder-access.types.js';
+} from '../../src/shared/access/folder-access.types.js';
 import type { WorkflowTriggerHealth } from '../../src/triggers/reconciliation/trigger-reconciliation.types.js';
 import type { RecordedScheduleOccurrence } from '../../src/triggers/schedules/schedule-occurrence.types.js';
 import type { ScheduleTriggerRecord } from '../../src/triggers/schedules/management/schedule-management.types.js';

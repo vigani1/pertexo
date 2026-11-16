@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   folderScope,
   removesFolderRestriction,
-} from '../../../src/shared/folder-policy.js';
-import type { FolderFact } from '../../../src/shared/folder-access.types.js';
+} from '../../../src/shared/access/folder-policy.js';
+import type { FolderFact } from '../../../src/shared/access/folder-access.types.js';
 
 const workspaceId = '11111111-1111-4111-8111-111111111111';
 

@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg';
 
 import type { Role } from '@pertexo/policy';
 
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
 
 import { ConnectionNotFoundError } from '../connection.errors.js';
 

@@ -5,7 +5,7 @@ import {
   RESOURCE_NAME_MAX_LENGTH,
 } from '@pertexo/workflow-model';
 import type { WorkflowGraph } from '@pertexo/workflow-model';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 import { recoverWorkflowDraft } from './duplicate.js';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../../governance/audit/facts.js';

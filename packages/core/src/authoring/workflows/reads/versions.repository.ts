@@ -1,4 +1,4 @@
-import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../../shared/access/workflow-actor.types.js';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -8,7 +8,7 @@ import {
   versionProjection,
 } from '../representation/workflow-representations.repository.js';
 import type { PoolClient } from 'pg';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 import type { ListWorkflowVersionsInput } from '../workflow-commands.types.js';
 
