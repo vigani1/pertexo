@@ -1,7 +1,11 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { redisPassword, repositoryRoot } from './environment.js';
+import {
+  composeProject,
+  redisPassword,
+  repositoryRoot,
+} from './environment.js';
 
 const execFileAsync = promisify(execFile);
 const COMPOSE_LIMIT_MS = 120_000;
@@ -9,11 +13,15 @@ const COMPOSE_LIMIT_MS = 120_000;
 export type ComposeService = 'artifact-store' | 'postgres' | 'redis';
 
 async function compose(...arguments_: readonly string[]): Promise<string> {
-  const { stdout } = await execFileAsync('docker', ['compose', ...arguments_], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    timeout: COMPOSE_LIMIT_MS,
-  });
+  const { stdout } = await execFileAsync(
+    'docker',
+    ['compose', '--project-name', composeProject, ...arguments_],
+    {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      timeout: COMPOSE_LIMIT_MS,
+    },
+  );
   return stdout.trim();
 }
 
