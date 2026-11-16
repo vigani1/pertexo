@@ -83,7 +83,13 @@ jobs:
     outputs:
       code: ${{ steps.classify.outputs.code }}
       faults: ${{ steps.classify.outputs.faults }}
+      check: ${{ steps.classify.outputs.check }}
+      unit: ${{ steps.classify.outputs.unit }}
+      integration: ${{ steps.classify.outputs.integration }}
+      browser: ${{ steps.classify.outputs.browser }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Classify the change
         id: classify
         env:
@@ -92,16 +98,14 @@ jobs:
           PULL_REQUEST: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          code=true
-          faults=true
+          set -euo pipefail
+          files="$RUNNER_TEMP/changed-files.json"
+          echo '[]' > "$files"
           if [ "$EVENT_NAME" = pull_request ]; then
-            files=$(gh api --paginate "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" --jq '.[].filename')
-            faults=false
-            if printf '%s\n' "$files" | grep -qE '^apps/worker/test/(recovery|support/recovery)/|^apps/worker/vitest.resilience.config.ts$|^infrastructure/testing/(run-fault-shard|fault-project|fault-durations|test-stack)[^/]*$|^\.github/(workflows/ci.yml|actions/(start-services|setup|docker-mirror)/)|^compose.yaml$|^infrastructure/(postgres|redis|images)/'; then faults=true; fi
-            if ! printf '%s\n' "$files" | grep -qvE '^docs/|\.md$'; then code=false; fi
+            gh api --paginate --slurp "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" \
+              --jq '[.[][] | .filename, (.previous_filename // empty)]' > "$files"
           fi
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "faults=$faults" >> "$GITHUB_OUTPUT"
+          node infrastructure/ci/select-jobs.mjs "$files" "$EVENT_NAME"
 
   docs:
     needs: changes
@@ -119,15 +123,13 @@ jobs:
   check:
     name: check (${{ matrix.part }})
     needs: changes
-    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     # The checks ran one after another for about 13 minutes, lint alone for 6.
     # Four parallel parts, each with its own build, finish in about 5.
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix:
-        part: [static, deploy, lint-web, lint-rest]
+      matrix: ${{ fromJSON(needs.changes.outputs.check) }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -136,6 +138,9 @@ jobs:
       - name: Format
         if: matrix.part == 'static'
         run: pnpm format:check
+      - name: CI selection tests
+        if: matrix.part == 'static'
+        run: node --test infrastructure/ci/*.test.mjs
       - name: Build
         run: pnpm build
       - name: Deployment checks and test tools
@@ -181,31 +186,14 @@ jobs:
   unit:
     name: unit (${{ matrix.group }})
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if:
+      needs.changes.outputs.unit != '' &&
+      toJSON(fromJSON(needs.changes.outputs.unit).include) != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 16
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - group: core
-            filter: >-
-              --filter @pertexo/contracts --filter @pertexo/core --filter
-              @pertexo/integrations --filter @pertexo/node-catalog --filter
-              @pertexo/node-sdk --filter @pertexo/nodes-core --filter
-              @pertexo/observability --filter @pertexo/queue --filter
-              @pertexo/rate-limit --filter @pertexo/secrets --filter
-              @pertexo/templates --filter @pertexo/workflow-engine --filter
-              @pertexo/workflow-model --filter @pertexo/policy --filter
-              @pertexo/artifact-store --filter @pertexo/database
-          # Worker tests also cover provider/security composition; packages stay independent.
-          # Web runs on its own leg: together the apps reached the 16-minute limit.
-          - group: apps
-            filter: >-
-              --filter @pertexo/api --filter @pertexo/worker --filter
-              @pertexo/ops --filter @pertexo/cli
-          - group: web
-            filter: --filter @pertexo/web
+      matrix: ${{ fromJSON(needs.changes.outputs.unit) }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -213,6 +201,11 @@ jobs:
         uses: ./.github/actions/setup
       - name: Build
         run: pnpm build
+      - name: Install the pinned Code-step Python
+        if: matrix.group == 'apps'
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.1'
       - name: Unit tests
         run:
           pnpm ${{ matrix.filter }} --workspace-concurrency=1 run --if-present
@@ -221,7 +214,9 @@ jobs:
   integration:
     name: integration (${{ matrix.group }})
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if:
+      needs.changes.outputs.integration != '' &&
+      toJSON(fromJSON(needs.changes.outputs.integration).include) != '[]'
     runs-on: ubuntu-latest
     # The worker leg runs three suite shards on one runner (run-worker-suite.mjs): up
     # to 12.5 minutes plus the build when the runner is busy. The services leg runs its
@@ -232,12 +227,7 @@ jobs:
       }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - group: database
-          - group: core
-          - group: services
-          - group: worker
+      matrix: ${{ fromJSON(needs.changes.outputs.integration) }}
     env:
       # Tests that own their fixtures expect the project suffix `-integration`.
       COMPOSE_PROJECT_NAME:
@@ -389,39 +379,15 @@ jobs:
   browser:
     name: browser (${{ matrix.suite }})
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if:
+      needs.changes.outputs.browser != '' &&
+      toJSON(fromJSON(needs.changes.outputs.browser).include) != '[]'
     # Keep browser OS dependencies stable across ubuntu-latest image rollouts.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix:
-        # Journeys are listed longest first, because the runner hands the next one to
-        # whichever stack is free. Put a new journey on the lighter job; the runner
-        # prints what each one took. `code` stays where Python is installed.
-        include:
-          - suite: mocked-1
-            journeys: ''
-            shard: 1/2
-          - suite: mocked-2
-            journeys: ''
-            shard: 2/2
-          - suite: live-1
-            journeys: >-
-              pinned-samples curated-templates schedule code approvals
-              failure-routing promotion run-recovery task-timeouts portability
-              organization-saml http-pagination run-values api-tokens two-factor
-          - suite: live-2
-            journeys: >-
-              collaboration workflow-organization variables transforms oauth2
-              forms expression-admission spreadsheets readonly duplication
-              federation receipts input-cases connection-health first-use
-          - suite: live-3
-            journeys: >-
-              artifact-inputs product webhook-responses webhook-controlled-http
-              nested-conflict callable security governance error-workflows
-              form-uploads notifications organization-oidc email-attachments
-              workflow-concurrency usage
+      matrix: ${{ fromJSON(needs.changes.outputs.browser) }}
     env:
       COMPOSE_PROJECT_NAME:
         pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-browser
