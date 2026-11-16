@@ -1,22 +1,15 @@
 import {
   createNodeSecureHttpClient,
-  SecureHttpError,
-  inspectSecureHttpError,
-  redactText,
+  SECURE_HTTP_PROVIDER_SECURITY,
   type SecureHttpClient,
 } from '@pertexo/secrets/server';
 import { createProviderHttpClient } from '@pertexo/integrations/server';
 
-/** Adapts safe-network errors once at application composition. */
+/** The provider client over the secure client, composed once per application. */
 export function provideHttpClient(
   client: Pick<SecureHttpClient, 'execute' | 'executeStreaming'>,
 ) {
-  return createProviderHttpClient(client, {
-    inspectError: inspectSecureHttpError,
-    createError: (failure) =>
-      new SecureHttpError(failure.code, failure.classification, failure),
-    redactText,
-  });
+  return createProviderHttpClient(client, SECURE_HTTP_PROVIDER_SECURITY);
 }
 
 export function createNodeProviderHttpClient(

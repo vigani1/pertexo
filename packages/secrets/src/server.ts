@@ -149,6 +149,7 @@ export {
 export { redactText } from './outbound-http/redaction/redact-text.js';
 
 export { inspectSecureHttpError } from './outbound-http/secure-http.errors.js';
+export { SECURE_HTTP_PROVIDER_SECURITY } from './outbound-http/provider-security.js';
 export {
   isAllowedPrivateAddress,
   normalizeUrlHostname,
