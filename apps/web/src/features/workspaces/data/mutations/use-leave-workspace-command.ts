@@ -6,8 +6,8 @@ import {
 import { isUnauthenticated } from '@/features/auth/auth-routing.public';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { leaveWorkspace } from '../../workspaces.api';
-import { directoryMembershipFeedback } from '../../../model/directory-membership';
+import { leaveWorkspace } from '../workspaces.api';
+import { directoryMembershipFeedback } from '../../model/directory-membership';
 
 export function useLeaveWorkspaceCommand({
   apiClient,

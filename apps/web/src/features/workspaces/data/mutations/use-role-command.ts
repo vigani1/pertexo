@@ -1,7 +1,7 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import type { ManagedRole } from '../../../model/workspace-roles';
-import { changeWorkspaceMemberRole } from '../../workspaces.api';
+import type { ManagedRole } from '../../model/workspace-roles';
+import { changeWorkspaceMemberRole } from '../workspaces.api';
 import {
   useMemberCommand,
   type MemberCommandAttempt,

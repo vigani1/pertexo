@@ -7,7 +7,7 @@ import { newEmailProblem, newPasswordProblem } from '../forms/field-rules';
 import { PasswordField } from '../forms/password-field';
 import { signUpFailure } from '../model/auth-failure';
 import { returnToSearch } from '../model/return-path';
-import { signUp } from '../data/native-auth-flows';
+import { signUp } from '../data/native-auth/native-auth-flows';
 import { useAuthRequest } from '../data/auth-request';
 import {
   AuthLens,

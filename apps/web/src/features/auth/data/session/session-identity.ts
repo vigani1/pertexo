@@ -1,7 +1,7 @@
 import type { UserProfileResponse } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
-import { getCurrentUser } from './auth.api';
+import { getCurrentUser } from '../auth.api';
 
 class SessionIdentityChangedError extends Error {
   public override readonly name = 'SessionIdentityChangedError';

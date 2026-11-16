@@ -1,8 +1,8 @@
 import { NativeAuthenticationError } from './native-auth.errors';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { verifiedSignInPath } from '../model/return-path';
-import type { SocialProvider } from '../model/social-provider';
+import { verifiedSignInPath } from '../../model/return-path';
+import type { SocialProvider } from '../../model/social-provider';
 import {
   nativeAuthenticationAcknowledgmentSchema,
   nativeRegistrationResponseSchema,

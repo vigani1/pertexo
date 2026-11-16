@@ -8,8 +8,8 @@ import { useState } from 'react';
 
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { workspaceKeys, workspaceMemberKeys } from '../../workspaces.queries';
-import { directoryMembershipFeedback } from '../../../model/directory-membership';
+import { workspaceKeys, workspaceMemberKeys } from '../workspaces.queries';
+import { directoryMembershipFeedback } from '../../model/directory-membership';
 import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
 import { formatTimeSpan } from '@/lib/format/time';
 

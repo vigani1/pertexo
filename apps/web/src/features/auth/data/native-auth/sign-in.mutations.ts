@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import type { ApiClient } from '@/lib/api/client';
-import { providerName, type SocialProvider } from '../model/social-provider';
+import { providerName, type SocialProvider } from '../../model/social-provider';
 import {
   isCredentialMismatch,
   isEmailNotVerified,
   providerStartFailure,
   rateLimitSeconds,
   signInFailure,
-} from '../model/auth-failure';
+} from '../../model/auth-failure';
 import { signInWithEmail, startSocialAuthentication } from './native-auth.api';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 import { useLatestRequest } from '@/lib/hooks/use-latest-request';

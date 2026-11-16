@@ -6,7 +6,7 @@ import {
   resendVerificationEmail,
   requestPasswordReset,
   resetPassword,
-} from '@/features/auth/data/native-auth.api';
+} from '@/features/auth/data/native-auth/native-auth.api';
 import { createApiClient, type ApiClient } from '@/lib/api/client';
 import { testFetch } from '../../support/render-app';
 import { mockServer } from '../../support/mock-server';

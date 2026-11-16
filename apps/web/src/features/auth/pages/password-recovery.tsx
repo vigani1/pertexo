@@ -7,7 +7,7 @@ import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
 import { AuthLensFooter } from '../components/stage/auth-lens';
 import { PasswordCapabilityGate } from '../components/stage/lens-states';
 import { recoveryFailure } from '../model/auth-failure';
-import { sendPasswordReset } from '../data/native-auth-flows';
+import { sendPasswordReset } from '../data/native-auth/native-auth-flows';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 
 const backToSignIn = (

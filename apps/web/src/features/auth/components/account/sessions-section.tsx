@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import type { ApiClient } from '@/lib/api/client';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
-import { accountSecuritySessionsQueryOptions } from '../../data/account-security.queries';
+import { accountSecuritySessionsQueryOptions } from '../../data/account-security/account-security.queries';
 import { accountCommandFailure } from '../../model/account/failure';
 import { orderSessions } from '../../model/account/sessions';
 import { describeUserAgent } from '../../model/account/user-agent';

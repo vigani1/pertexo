@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { useUnlinkAccountMethod } from '../../data/account-security.mutations';
+import { useUnlinkAccountMethod } from '../../data/account-security/account-security.mutations';
 import { ProviderMark } from '../social/provider-button';
 import { isSocialProvider, providerName } from '../../model/social-provider';
 import { accountCommandFailure } from '../../model/account/failure';

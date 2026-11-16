@@ -10,8 +10,8 @@ import {
   reactivateWorkspace,
   requestWorkspaceDeletion,
   restoreWorkspaceDeletion,
-} from '../../workspace-lifecycle.api';
-import { accessibleWorkspacesQueryOptions } from '../../workspaces.queries';
+} from '../workspace-lifecycle.api';
+import { accessibleWorkspacesQueryOptions } from '../workspaces.queries';
 
 type LifecycleIntent =
   | Readonly<{ command: 'request-deletion'; reason: string }>

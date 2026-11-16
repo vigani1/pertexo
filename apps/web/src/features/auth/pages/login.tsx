@@ -18,7 +18,7 @@ import { SignInLens } from '../components/sign-in-lens';
 import { LensLoading, LensUnavailable } from '../components/stage/lens-states';
 import { resendFailure } from '../model/auth-failure';
 import type { LoginNotice } from '../model/login-notice';
-import { resendVerification } from '../data/native-auth-flows';
+import { resendVerification } from '../data/native-auth/native-auth-flows';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 
 type LoginView =

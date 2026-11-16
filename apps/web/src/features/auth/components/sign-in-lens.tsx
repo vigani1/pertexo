@@ -11,7 +11,7 @@ import { AuthForm } from '../forms/submission';
 import { PasswordField } from '../forms/password-field';
 import type { LoginNotice } from '../model/login-notice';
 import { isInvitationReturn, returnToSearch } from '../model/return-path';
-import { useSignIn } from '../data/sign-in.mutations';
+import { useSignIn } from '../data/native-auth/sign-in.mutations';
 import { OrDivider, SocialProviderGrid } from './social/provider-grid';
 import {
   AuthLens,

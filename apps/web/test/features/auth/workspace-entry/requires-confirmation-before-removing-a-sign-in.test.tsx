@@ -1,6 +1,6 @@
 import { createQueryClient } from '@/app/query-client';
 
-import { endBrowserSession } from '@/features/auth/data/session-end';
+import { endBrowserSession } from '@/features/auth/data/session/session-end';
 
 import { createApiClient } from '@/lib/api/client';
 
