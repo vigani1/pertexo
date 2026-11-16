@@ -1,3 +1,12 @@
+import { connectionsProblems } from './connections.js';
+import { runsProblems } from './runs.js';
+import { workflowsLifecycleProblems } from './workflows/lifecycle.js';
+import { webhooksProblems } from './webhooks.js';
+import { dataTablesProblems } from './data-tables.js';
+import { artifactsProblems } from './artifacts.js';
+import { workspacesProblems } from './workspaces.js';
+import { requestProblems } from './request.js';
+import { authProblems } from './auth.js';
 import { responseSchema } from '../schemas/shared/response-schema.js';
 import { CALLBACK_PROBLEM_CODES, callbackProblems } from './callbacks.js';
 import { collaborationProblems } from './workflows/collaboration.js';
@@ -226,400 +235,100 @@ export type ApiProblemIssue = z.output<typeof apiProblemIssueSchema>;
 export type ApiProblem = z.output<typeof apiProblemSchema>;
 const apiProblemDetails = {
   ...callbackProblems,
-  'api_token.unavailable': {
-    status: 503,
-    title: 'Automation tokens unavailable',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'api_token.limit': {
-    status: 409,
-    title: 'Active token limit reached',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'auth.unauthenticated': {
-    status: 401,
-    title: 'Authentication required',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.forbidden': {
-    status: 403,
-    title: 'Forbidden',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'auth.token_scope_required': {
-    status: 403,
-    title: 'Token scope required',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'auth.token_not_supported': {
-    status: 403,
-    title: 'API tokens are not accepted here',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'auth.email_not_verified': {
-    status: 403,
-    title: 'Email verification required',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.sso_required': {
-    status: 403,
-    title: 'Organization sign-in required',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.two_factor_locked': {
-    status: 429,
-    title: 'Two-factor sign-in temporarily locked',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  // A refused credential while signing in or proving it is you. 400, like
-  // auth.invalid_password: a 401 means only an ended session.
-  'auth.invalid_credentials': {
-    status: 400,
-    title: 'Sign-in details not accepted',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.two_factor_code_invalid': {
-    status: 400,
-    title: 'Two-factor code not accepted',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.two_factor_challenge_expired': {
-    status: 400,
-    title: 'Two-factor sign-in expired',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.invalid_password': {
-    status: 400,
-    title: 'The current password is incorrect. Check it and try again.',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.password_already_configured': {
-    status: 409,
-    title:
-      'A password is already configured. Reload security settings and use Change password.',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.authentication_changed': {
-    status: 409,
-    title:
-      'Sign-in settings changed. Sign in again using your current organization policy.',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.last_method': {
-    status: 400,
-    title: 'Another working sign-in method required',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.method_limit': {
-    status: 400,
-    title: 'Sign-in method limit reached',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.recovery_required': {
-    status: 403,
-    title: 'Recovery password required',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.organization_email_managed': {
-    status: 403,
-    title: 'Organization email address is managed',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.alternative_required': {
-    status: 403,
-    title: 'Another sign-in method required',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.reset_link_invalid': {
-    status: 400,
-    title: 'Reset link invalid or expired',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.sign_up_closed': {
-    status: 403,
-    title: 'Sign-up is by invitation',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.conflict': {
-    status: 409,
-    title: 'Authentication change conflict',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'auth.session_not_fresh': {
-    status: 403,
-    title: 'Recent sign-in required',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'resource.not_found': {
-    status: 404,
-    title: 'Resource not found',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'request.invalid': {
-    status: 400,
-    title: 'Invalid request',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'request.precondition_required': {
-    status: 428,
-    title: 'Precondition required',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'request.idempotency_conflict': {
-    status: 409,
-    title: 'Idempotency conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'request.rate_limited': {
-    status: 429,
-    title: 'Request rate limit reached',
-    severity: 'warn',
-    exposeDetail: false,
-  },
-  'request.rate_limit_unavailable': {
-    status: 503,
-    title: 'Request rate limiter unavailable',
-    severity: 'error',
-    exposeDetail: false,
-  },
-  'request.method_not_allowed': {
-    status: 405,
-    title: 'Method not allowed',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'request.too_large': {
-    status: 413,
-    title: 'Request body too large',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'request.unsupported_media_type': {
-    status: 415,
-    title: 'Unsupported media type',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'workspace.quota_exceeded': {
-    status: 429,
-    title: 'Workspace quota exceeded',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'artifact.too_large': {
-    status: 413,
-    title: 'File too large',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'artifact.upload_unavailable': {
-    status: 404,
-    title: 'Upload no longer available',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'artifact.conflict': {
-    status: 409,
-    title: 'Artifact conflict',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'artifact.unavailable': {
-    status: 503,
-    title: 'Artifact storage unavailable',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workspace.conflict': {
-    status: 409,
-    title: 'Workspace conflict',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'data_table.stored_definition_invalid': {
-    status: 500,
-    title: 'Stored table definition is damaged',
-    severity: 'error',
-    exposeDetail: true,
-  },
-  'data_table.conflict': {
-    status: 409,
-    title: 'Data table changed',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'data_table.key_conflict': {
-    status: 409,
-    title: 'Unique key already used',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'data_table.quota_exceeded': {
-    status: 409,
-    title: 'Data table limit reached',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'export.already_running': {
-    status: 409,
-    title: 'An export is already running',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'webhook.setting_up': {
-    status: 409,
-    title: 'Webhook still being set up',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'workspace.revision_conflict': {
-    status: 412,
-    title: 'Workspace revision conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workspace.member_role_revision_conflict': {
-    status: 409,
-    title: 'Workspace member role changed',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workspace.member_role_transition_conflict': {
-    status: 409,
-    title: 'Workspace member role transition conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workspace.member_removal_conflict': {
-    status: 409,
-    title: 'Workspace member removal conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workspace.member_directory_managed': {
-    status: 409,
-    title: 'Membership managed by organization directory',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'workspace.member_status_conflict': {
-    status: 409,
-    title: 'Workspace member status conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workspace.recovery_owner_ineligible': {
-    status: 409,
-    title: 'Recovery account required for ownership transfer',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'workspace.invitation_conflict': {
-    status: 409,
-    title: 'Workspace invitation conflict',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'workspace.invitation_proof_expired': {
-    status: 409,
-    title: 'Invitation verification expired',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'workspace.invitation_revision_conflict': {
-    status: 409,
-    title: 'Workspace invitation changed',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workspace.invitation_recipient_mismatch': {
-    status: 409,
-    title: 'Invitation recipient does not match',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'workspace.invitation_unavailable': {
-    status: 404,
-    title: 'Workspace invitation unavailable',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'workspace.invitation_delivery_unavailable': {
-    status: 503,
-    title: 'Invitation delivery unavailable',
-    severity: 'error',
-    exposeDetail: true,
-  },
-  'workspace.invitation_not_configured': {
-    status: 503,
-    title: 'Invitations are not configured',
-    severity: 'warn',
-    exposeDetail: false,
-  },
-  'user.profile_revision_conflict': {
-    status: 412,
-    title: 'Profile revision conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.revision_conflict': {
-    status: 412,
-    title: 'Workflow revision conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.lifecycle_conflict': {
-    status: 409,
-    title: 'Workflow lifecycle conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.name_conflict': {
-    status: 409,
-    title: 'Workflow name conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.pause_conflict': {
-    status: 409,
-    title: 'Workflow pause conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.auto_pause_settings_conflict': {
-    status: 409,
-    title: 'Workflow auto-pause settings conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
+  'api_token.unavailable': authProblems['api_token.unavailable'],
+  'api_token.limit': authProblems['api_token.limit'],
+  'auth.unauthenticated': authProblems['auth.unauthenticated'],
+  'auth.forbidden': authProblems['auth.forbidden'],
+  'auth.token_scope_required': authProblems['auth.token_scope_required'],
+  'auth.token_not_supported': authProblems['auth.token_not_supported'],
+  'auth.email_not_verified': authProblems['auth.email_not_verified'],
+  'auth.sso_required': authProblems['auth.sso_required'],
+  'auth.two_factor_locked': authProblems['auth.two_factor_locked'],
+  'auth.invalid_credentials': authProblems['auth.invalid_credentials'],
+  'auth.two_factor_code_invalid': authProblems['auth.two_factor_code_invalid'],
+  'auth.two_factor_challenge_expired':
+    authProblems['auth.two_factor_challenge_expired'],
+  'auth.invalid_password': authProblems['auth.invalid_password'],
+  'auth.password_already_configured':
+    authProblems['auth.password_already_configured'],
+  'auth.authentication_changed': authProblems['auth.authentication_changed'],
+  'auth.last_method': authProblems['auth.last_method'],
+  'auth.method_limit': authProblems['auth.method_limit'],
+  'auth.recovery_required': authProblems['auth.recovery_required'],
+  'auth.organization_email_managed':
+    authProblems['auth.organization_email_managed'],
+  'auth.alternative_required': authProblems['auth.alternative_required'],
+  'auth.reset_link_invalid': authProblems['auth.reset_link_invalid'],
+  'auth.sign_up_closed': authProblems['auth.sign_up_closed'],
+  'auth.conflict': authProblems['auth.conflict'],
+  'auth.session_not_fresh': authProblems['auth.session_not_fresh'],
+  'resource.not_found': requestProblems['resource.not_found'],
+  'request.invalid': requestProblems['request.invalid'],
+  'request.precondition_required':
+    requestProblems['request.precondition_required'],
+  'request.idempotency_conflict':
+    requestProblems['request.idempotency_conflict'],
+  'request.rate_limited': requestProblems['request.rate_limited'],
+  'request.rate_limit_unavailable':
+    requestProblems['request.rate_limit_unavailable'],
+  'request.method_not_allowed': requestProblems['request.method_not_allowed'],
+  'request.too_large': requestProblems['request.too_large'],
+  'request.unsupported_media_type':
+    requestProblems['request.unsupported_media_type'],
+  'workspace.quota_exceeded': workspacesProblems['workspace.quota_exceeded'],
+  'artifact.too_large': artifactsProblems['artifact.too_large'],
+  'artifact.upload_unavailable':
+    artifactsProblems['artifact.upload_unavailable'],
+  'artifact.conflict': artifactsProblems['artifact.conflict'],
+  'artifact.unavailable': artifactsProblems['artifact.unavailable'],
+  'workspace.conflict': workspacesProblems['workspace.conflict'],
+  'data_table.stored_definition_invalid':
+    dataTablesProblems['data_table.stored_definition_invalid'],
+  'data_table.conflict': dataTablesProblems['data_table.conflict'],
+  'data_table.key_conflict': dataTablesProblems['data_table.key_conflict'],
+  'data_table.quota_exceeded': dataTablesProblems['data_table.quota_exceeded'],
+  'export.already_running': dataTablesProblems['export.already_running'],
+  'webhook.setting_up': webhooksProblems['webhook.setting_up'],
+  'workspace.revision_conflict':
+    workspacesProblems['workspace.revision_conflict'],
+  'workspace.member_role_revision_conflict':
+    workspacesProblems['workspace.member_role_revision_conflict'],
+  'workspace.member_role_transition_conflict':
+    workspacesProblems['workspace.member_role_transition_conflict'],
+  'workspace.member_removal_conflict':
+    workspacesProblems['workspace.member_removal_conflict'],
+  'workspace.member_directory_managed':
+    workspacesProblems['workspace.member_directory_managed'],
+  'workspace.member_status_conflict':
+    workspacesProblems['workspace.member_status_conflict'],
+  'workspace.recovery_owner_ineligible':
+    workspacesProblems['workspace.recovery_owner_ineligible'],
+  'workspace.invitation_conflict':
+    workspacesProblems['workspace.invitation_conflict'],
+  'workspace.invitation_proof_expired':
+    workspacesProblems['workspace.invitation_proof_expired'],
+  'workspace.invitation_revision_conflict':
+    workspacesProblems['workspace.invitation_revision_conflict'],
+  'workspace.invitation_recipient_mismatch':
+    workspacesProblems['workspace.invitation_recipient_mismatch'],
+  'workspace.invitation_unavailable':
+    workspacesProblems['workspace.invitation_unavailable'],
+  'workspace.invitation_delivery_unavailable':
+    workspacesProblems['workspace.invitation_delivery_unavailable'],
+  'workspace.invitation_not_configured':
+    workspacesProblems['workspace.invitation_not_configured'],
+  'user.profile_revision_conflict':
+    workspacesProblems['user.profile_revision_conflict'],
+  'workflow.revision_conflict':
+    workflowsLifecycleProblems['workflow.revision_conflict'],
+  'workflow.lifecycle_conflict':
+    workflowsLifecycleProblems['workflow.lifecycle_conflict'],
+  'workflow.name_conflict':
+    workflowsLifecycleProblems['workflow.name_conflict'],
+  'workflow.pause_conflict':
+    workflowsLifecycleProblems['workflow.pause_conflict'],
+  'workflow.auto_pause_settings_conflict':
+    workflowsLifecycleProblems['workflow.auto_pause_settings_conflict'],
   ...workflowConcurrencyProblems,
   ...publicationReviewProblems,
   ...promotionProblems,
@@ -628,181 +337,51 @@ const apiProblemDetails = {
   ...pendingTaskProblems,
   ...notificationProblems,
   ...variableProblems,
-  'trigger.coordination_unavailable': {
-    status: 503,
-    title: 'Event coordination temporarily unavailable',
-    severity: 'warn',
-    exposeDetail: false,
-  },
+  'trigger.coordination_unavailable':
+    webhooksProblems['trigger.coordination_unavailable'],
   ...formProblems,
   ...stepSampleProblems,
   ...workflowInputCaseProblems,
   ...workflowOrganizationProblems,
-  'workspace.auto_pause_settings_conflict': {
-    status: 409,
-    title: 'Workspace auto-pause settings conflict',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'workflow.invalid': {
-    status: 422,
-    title: 'Invalid workflow',
-    severity: 'info',
-    exposeDetail: true,
-  },
+  'workspace.auto_pause_settings_conflict':
+    workspacesProblems['workspace.auto_pause_settings_conflict'],
+  'workflow.invalid': workflowsLifecycleProblems['workflow.invalid'],
   ...WORKFLOW_PORTABILITY_PROBLEM_DETAILS,
-  'workflow.validation_unavailable': {
-    status: 503,
-    title: 'Workflow validation unavailable',
-    severity: 'warn',
-    exposeDetail: true,
-  },
+  'workflow.validation_unavailable':
+    workflowsLifecycleProblems['workflow.validation_unavailable'],
   ...checkedStartProblems,
-  'workflow.not_published': {
-    status: 409,
-    title: 'Workflow not published',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'workflow.activation_failed': {
-    status: 409,
-    title: 'Workflow activation failed',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'run.not_cancelable': {
-    status: 409,
-    title: 'Run cannot be canceled',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'run.outcome_unknown': {
-    status: 409,
-    title: 'Run outcome is unknown',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'run.recovery_unavailable': {
-    status: 409,
-    title: 'Recovery unavailable',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'connection.not_configured': {
-    status: 503,
-    title: 'Connections are not configured',
-    severity: 'warn',
-    exposeDetail: false,
-  },
-  'webhook.not_configured': {
-    status: 503,
-    title: 'Webhooks are not configured',
-    severity: 'warn',
-    exposeDetail: false,
-  },
-  'connection.conflict': {
-    status: 409,
-    title: 'Connection conflict',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'connection.revoked': {
-    status: 409,
-    title: 'Connection unavailable',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'connection.oauth2_endpoint_refused': {
-    status: 400,
-    title: 'OAuth2 address refused',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'connection.oauth2_token_refused': {
-    status: 409,
-    title: 'OAuth2 token refused',
-    severity: 'info',
-    exposeDetail: true,
-  },
-  'provider.unavailable': {
-    status: 503,
-    title: 'Provider unavailable',
-    severity: 'error',
-    exposeDetail: true,
-  },
-  'webhook.authentication_failed': {
-    status: 401,
-    title: 'Webhook authentication failed',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'webhook.payload_too_large': {
-    status: 413,
-    title: 'Webhook payload too large',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'webhook.unsupported_media_type': {
-    status: 415,
-    title: 'Unsupported webhook media type',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'webhook.invalid_json': {
-    status: 400,
-    title: 'Invalid webhook JSON',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'webhook.method_not_allowed': {
-    status: 405,
-    title: 'Webhook method not allowed',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'webhook.idempotency_conflict': {
-    status: 409,
-    title: 'Webhook idempotency conflict',
-    severity: 'warn',
-    exposeDetail: false,
-  },
-  'webhook.rate_limited': {
-    status: 429,
-    title: 'Webhook rate limit reached',
-    severity: 'warn',
-    exposeDetail: false,
-  },
-  // ADR 056: returned only after the signature verified.
-  'webhook.workflow_paused': {
-    status: 423,
-    title: 'Workflow paused',
-    severity: 'warn',
-    exposeDetail: false,
-  },
-  'webhook.unavailable': {
-    status: 503,
-    title: 'Webhook unavailable',
-    severity: 'error',
-    exposeDetail: false,
-  },
-  'request.temporarily_unavailable': {
-    status: 503,
-    title: 'Service temporarily unavailable',
-    severity: 'warn',
-    exposeDetail: true,
-  },
-  'request.aborted': {
-    status: 499,
-    title: 'Request closed by the client',
-    severity: 'info',
-    exposeDetail: false,
-  },
-  'internal.unexpected': {
-    status: 500,
-    title: 'Internal server error',
-    severity: 'error',
-    exposeDetail: false,
-  },
+  'workflow.not_published':
+    workflowsLifecycleProblems['workflow.not_published'],
+  'workflow.activation_failed':
+    workflowsLifecycleProblems['workflow.activation_failed'],
+  'run.not_cancelable': runsProblems['run.not_cancelable'],
+  'run.outcome_unknown': runsProblems['run.outcome_unknown'],
+  'run.recovery_unavailable': runsProblems['run.recovery_unavailable'],
+  'connection.not_configured': connectionsProblems['connection.not_configured'],
+  'webhook.not_configured': webhooksProblems['webhook.not_configured'],
+  'connection.conflict': connectionsProblems['connection.conflict'],
+  'connection.revoked': connectionsProblems['connection.revoked'],
+  'connection.oauth2_endpoint_refused':
+    connectionsProblems['connection.oauth2_endpoint_refused'],
+  'connection.oauth2_token_refused':
+    connectionsProblems['connection.oauth2_token_refused'],
+  'provider.unavailable': connectionsProblems['provider.unavailable'],
+  'webhook.authentication_failed':
+    webhooksProblems['webhook.authentication_failed'],
+  'webhook.payload_too_large': webhooksProblems['webhook.payload_too_large'],
+  'webhook.unsupported_media_type':
+    webhooksProblems['webhook.unsupported_media_type'],
+  'webhook.invalid_json': webhooksProblems['webhook.invalid_json'],
+  'webhook.method_not_allowed': webhooksProblems['webhook.method_not_allowed'],
+  'webhook.idempotency_conflict':
+    webhooksProblems['webhook.idempotency_conflict'],
+  'webhook.rate_limited': webhooksProblems['webhook.rate_limited'],
+  'webhook.workflow_paused': webhooksProblems['webhook.workflow_paused'],
+  'webhook.unavailable': webhooksProblems['webhook.unavailable'],
+  'request.temporarily_unavailable':
+    requestProblems['request.temporarily_unavailable'],
+  'request.aborted': requestProblems['request.aborted'],
+  'internal.unexpected': requestProblems['internal.unexpected'],
 } as const satisfies Record<
   ApiProblemCode,
   Readonly<{
