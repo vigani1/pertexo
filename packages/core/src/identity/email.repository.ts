@@ -2,7 +2,7 @@ import { invalidatePasswordResetProofs } from './password-reset.repository.js';
 import { canonicalEmail } from './email-policy.js';
 import { canonicalEmailSql } from './canonical-email.repository.js';
 import { readIdentityEmailChangeEligibility } from './federation/sessions/authority.repository.js';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -62,7 +62,7 @@ export class EmailProofCommands {
           return false;
       }
       await db.insert(authEmailProofs).values({
-        id: randomUUID(),
+        id: generatePersistedId(),
         tokenDigest,
         userId: user.id,
         purpose,
@@ -194,7 +194,7 @@ async function consumeProof(
         !user.emailVerified || next === undefined || proof.newEmail === null;
       if (cannotIssueSuccessor) return 'invalid';
       await db.insert(authEmailProofs).values({
-        id: randomUUID(),
+        id: generatePersistedId(),
         tokenDigest: next.digest,
         userId,
         purpose: 'change_new',

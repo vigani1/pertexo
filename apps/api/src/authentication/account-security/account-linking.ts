@@ -1,7 +1,7 @@
 import { browserCsrfRefusal } from '../../identity/csrf.js';
 import { HttpStatus } from '@nestjs/common';
 import { recordAuthenticationFailure } from '../journeys/failures.js';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import type { Pool } from 'pg';
 import { AccountLinkingCommands } from '@pertexo/core/identity';
@@ -125,7 +125,7 @@ export class AccountLinking {
     if (await this.commands.hasMethod(session.userId, provider))
       return problem(HttpStatus.CONFLICT);
 
-    const attemptId = randomUUID();
+    const attemptId = generatePersistedId();
     const binding = newJourneyToken();
     const state = newJourneyToken();
     const phase = sourceProvider === 'credential' ? 'target' : 'source';

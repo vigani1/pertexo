@@ -2,7 +2,7 @@ import {
   authenticationMailAssociatedData,
   SECURITY_NOTICE_VALIDITY_MILLIS,
 } from '@pertexo/secrets/server';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import type {
   SystemMailEnqueueStore,
@@ -310,7 +310,7 @@ export class DurableAuthenticationMail implements AuthenticationMail {
     expiresAt: Date;
     sealedPayload: SealedSystemMailPayload;
   }> {
-    const id = randomUUID();
+    const id = generatePersistedId();
     const expiresAt = new Date(this.now().getTime() + validityMillis);
     const associatedData = authenticationMailAssociatedData(
       purpose,

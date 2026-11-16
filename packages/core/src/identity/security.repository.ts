@@ -10,7 +10,7 @@ import {
 } from './federation/sessions/user-sessions.repository.js';
 import type { AuthenticationReplacement } from './federation/sessions/authentication-session.types.js';
 import { isProtectedRecoveryOwner } from './federation/sessions/recovery.repository.js';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -120,7 +120,7 @@ export async function setupPasswordAndRevokeSessions(
     if (sessionChange === undefined) return 'inactive';
 
     await db.insert(authAccounts).values({
-      id: randomUUID(),
+      id: generatePersistedId(),
       accountId: input.userId,
       providerId: 'credential',
       userId: input.userId,

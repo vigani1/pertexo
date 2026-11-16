@@ -5,7 +5,7 @@ import {
 import { HttpStatus } from '@nestjs/common';
 import type { OrganizationIdentity } from '../protocol/identity.js';
 import { federationFailureReason } from '../protocol/failure.js';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 import type { Pool } from 'pg';
 import { OrganizationSignInCommands } from '@pertexo/core/identity';
 import {
@@ -156,7 +156,7 @@ export class OrganizationSignIn {
       const { material, owner, returnPath } = prepared;
       if (material?.provider.kind !== protocol)
         return failure(HttpStatus.NOT_FOUND);
-      const id = randomUUID(),
+      const id = generatePersistedId(),
         state = newJourneyToken(),
         browser = newJourneyToken();
       failedAt = 'provider_unavailable';

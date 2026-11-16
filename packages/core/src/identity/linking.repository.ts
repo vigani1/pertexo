@@ -3,7 +3,8 @@ import { hasSignInMethodCapacity } from './federation/accounts/limits.repository
 import { readEligibleAuthenticationSession } from './federation/sessions/authority.repository.js';
 import { issueSession } from './federation/sessions/issue.repository.js';
 import type { AuthenticationSession } from './federation/sessions/authentication-session.types.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -175,7 +176,7 @@ export class AccountLinkingCommands {
         if (!(await hasSignInMethodCapacity(client, attempt.userId)))
           return { kind: 'failed' };
         await db.insert(authAccounts).values({
-          id: randomUUID(),
+          id: generatePersistedId(),
           accountId: identity.accountId,
           providerId: attempt.targetProvider,
           userId: attempt.userId,
