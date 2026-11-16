@@ -81,7 +81,6 @@ export function followThrowingExports(texts, throwingByModule) {
             name: statement.expression.text,
             exported: 'default',
           });
-        else throwingByModule.get(file)?.add('*');
       }
     }
   }
@@ -94,20 +93,25 @@ export function followThrowingExports(texts, throwingByModule) {
       if (names === undefined) continue;
       // An external or otherwise unindexed re-export cannot certify a declaration.
       const forwarded =
-        source === undefined || source.has('*')
-          ? ['*']
-          : name === '*'
-            ? exported === undefined
-              ? [...source].filter((value) => value !== 'default')
-              : source.size > 0
+        source === undefined
+          ? name === '*'
+            ? ['*']
+            : []
+          : source.has('*')
+            ? ['*']
+            : name === '*'
+              ? exported === undefined
+                ? [...source].filter((value) => value !== 'default')
+                : source.size > 0
+                  ? [exported]
+                  : []
+              : source.has(name)
                 ? [exported]
-                : []
-            : source.has(name)
-              ? [exported]
-              : [];
+                : [];
       for (const value of forwarded)
         if (!names.has(value)) {
           names.add(value);
+          names.chains?.set(value, source?.chains?.get(name) ?? [value]);
           changed = true;
         }
     }

@@ -5,6 +5,7 @@ import ts from 'typescript';
 import { followThrowingExports } from './core-repository-exports.mjs';
 
 import {
+  TEMPORARY_TRANSITIVE_FINDINGS,
   STORAGE_INTEGRITY_DECODERS,
   STORAGE_INTEGRITY_ERRORS,
 } from './core-repository-throws.mjs';
@@ -48,7 +49,27 @@ export function findThrownErrors(file, text) {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return found;
+  const constructions = [];
+  const inspect = (node) => {
+    if (ts.isNewExpression(node)) {
+      const name = resolved(node.expression.getText(source), imported);
+      if (
+        /(?:Error|Mismatch)$/u.test(name) &&
+        !integrityError(name, imported)
+      ) {
+        const { line } = source.getLineAndCharacterOfPosition(node.getStart());
+        constructions.push({ file, line: line + 1, name, node });
+      }
+    }
+    ts.forEachChild(node, inspect);
+  };
+  inspect(source);
+  return [
+    ...found.filter(
+      (item) => !constructions.some((built) => built.name === item.name),
+    ),
+    ...constructions,
+  ].sort((a, b) => a.node.getStart() - b.node.getStart());
 }
 
 /** The domain throws written in a core repository. */
@@ -91,6 +112,7 @@ export function throwingFunctions(file, text) {
       )
     )
       throwing.add('default');
+    if (ts.isExportAssignment(node)) throwing.add('default');
     const name = declaredName(node);
     if (name !== undefined && !Object.hasOwn(STORAGE_INTEGRITY_DECODERS, name))
       throwing.add(name);
@@ -99,10 +121,29 @@ export function throwingFunctions(file, text) {
 }
 
 /** Value imports in a repository of throwing functions from core operations. */
-export function repositoryHops(file, text, throwingByModule) {
+export function repositoryHops(
+  file,
+  text,
+  throwingByModule,
+  callsOnly = false,
+) {
   if (!REPOSITORY.test(file)) return [];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const hops = [];
+  const used = new Set();
+  const calls = (node) => {
+    if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+      let target = unwrap(node.expression);
+      while (
+        ts.isPropertyAccessExpression(target) ||
+        ts.isElementAccessExpression(target)
+      )
+        target = unwrap(target.expression);
+      if (ts.isIdentifier(target)) used.add(target.text);
+    }
+    ts.forEachChild(node, calls);
+  };
+  calls(source);
   for (const statement of source.statements) {
     if (!ts.isImportDeclaration(statement)) continue;
     const clause = statement.importClause;
@@ -117,17 +158,28 @@ export function repositoryHops(file, text, throwingByModule) {
     if (throwing === undefined) continue;
     if (throwing.has('*'))
       hops.push({ file, target, name: '*', unsupported: true });
-    if (clause.name !== undefined && throwing.has('default'))
+    if (
+      clause.name !== undefined &&
+      (!callsOnly || used.has(clause.name.text)) &&
+      throwing.has('default')
+    )
       hops.push({ file, target, name: 'default' });
     if (bindings === undefined) continue;
-    if (ts.isNamespaceImport(bindings)) {
+    if (
+      ts.isNamespaceImport(bindings) &&
+      (!callsOnly || used.has(bindings.name.text))
+    ) {
       for (const name of throwing) hops.push({ file, target, name });
       continue;
     }
     if (!ts.isNamedImports(bindings)) continue;
     for (const element of bindings.elements) {
       const name = (element.propertyName ?? element.name).text;
-      if (!element.isTypeOnly && throwing.has(name))
+      if (
+        !element.isTypeOnly &&
+        (!callsOnly || used.has(element.name.text)) &&
+        throwing.has(name)
+      )
         hops.push({ file, target, name });
     }
   }
@@ -145,14 +197,19 @@ export function repositoryHops(file, text, throwingByModule) {
     ts.forEachChild(node, visit);
   };
   visit(source);
-  return hops;
+  return hops.map((hop) => ({
+    ...hop,
+    chain: throwingByModule.get(hop.target)?.chains?.get(hop.name) ?? [
+      hop.name,
+    ],
+  }));
 }
 
 export function repositoryHopFindings(hops) {
-  return hops.map(({ file, target, name, unsupported }) =>
+  return hops.map(({ file, target, name, unsupported, chain }) =>
     unsupported
       ? `${file}: ${target} cannot be resolved soundly in a repository; load it in the operation instead.`
-      : `${file}: imports ${name} from ${target}, which throws a domain error, so the repository decides one hop away. Call it from the operation instead, or list it in STORAGE_INTEGRITY_DECODERS if it only refuses a corrupt stored value.`,
+      : `${file}: imports ${name} from ${target}, which throws a domain error (${[file, ...(chain ?? [name])].join(' → ')}). Call it from the operation instead, or list it in STORAGE_INTEGRITY_DECODERS if it only refuses a corrupt stored value.`,
   );
 }
 
@@ -192,7 +249,7 @@ export async function collectCoreFindings(root = repositoryRoot) {
   for (const [file, text] of texts)
     if (!QUERY_ROLE.test(file))
       throwingByModule.set(file, throwingFunctions(file, text));
-  followThrowingExports(texts, throwingByModule);
+  followCallChains(texts, throwingByModule);
   const throwsByFile = new Map();
   const hops = [];
   for (const [file, text] of texts)
@@ -204,7 +261,91 @@ export async function collectCoreFindings(root = repositoryRoot) {
     ...repositoryThrowFindings(throwsByFile),
     ...repositoryHopFindings(hops),
     ...staleExemptionFindings([...texts.values()]),
-  ];
+  ].filter(
+    (finding) =>
+      root !== repositoryRoot ||
+      !TEMPORARY_TRANSITIVE_FINDINGS.includes(finding),
+  );
+}
+
+/** Propagate monotonically: cycles terminate because each declaration is added once. */
+function followCallChains(texts, throwingByModule) {
+  const modules = [];
+  for (const [file, text] of texts) {
+    const names = throwingByModule.get(file);
+    if (!names) continue;
+    names.chains = new Map([...names].map((name) => [name, [name]]));
+    const source = ts.createSourceFile(
+      file,
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const imports = source.statements
+      .filter(ts.isImportDeclaration)
+      .map((node) => node.getText(source))
+      .join('\n');
+    modules.push({ file, source, imports, names });
+  }
+  let changed = true;
+  while (changed) {
+    const before = [...throwingByModule.values()].reduce(
+      (sum, names) => sum + names.size,
+      0,
+    );
+    followThrowingExports(texts, throwingByModule);
+    for (const { file, source, imports, names } of modules) {
+      for (const statement of source.statements) {
+        const name =
+          ts.isExportAssignment(statement) ||
+          statement.modifiers?.some(
+            (modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+          )
+            ? 'default'
+            : declaredName(statement);
+        if (
+          !name ||
+          names.has(name) ||
+          Object.hasOwn(STORAGE_INTEGRITY_DECODERS, name)
+        )
+          continue;
+        const body = statement.getText(source);
+        const hop = repositoryHops(
+          path.posix.join(path.posix.dirname(file), 'chain.repository.ts'),
+          imports + '\n' + body,
+          throwingByModule,
+          true,
+        )[0];
+        let local;
+        const visit = (node) => {
+          if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+            let target = unwrap(node.expression);
+            while (
+              ts.isPropertyAccessExpression(target) ||
+              ts.isElementAccessExpression(target)
+            )
+              target = unwrap(target.expression);
+            if (ts.isIdentifier(target) && names.has(target.text))
+              local ??= target.text;
+          }
+          ts.forEachChild(node, visit);
+        };
+        visit(statement);
+        if (hop || local) {
+          names.add(name);
+          names.chains.set(name, [
+            name,
+            ...(hop?.chain ?? names.chains.get(local) ?? [local]),
+          ]);
+        }
+      }
+    }
+    changed =
+      [...throwingByModule.values()].reduce(
+        (sum, names) => sum + names.size,
+        0,
+      ) > before;
+  }
 }
 
 function unwrap(expression) {
@@ -270,15 +411,23 @@ function caughtBinding(identifier) {
     if (ts.isFunctionLike(node)) {
       const parameter = node.parameters.find(binds);
       if (parameter !== undefined) {
-        const call = node.parent;
+        let handler = node;
+        while (handler.parent && unwrap(handler.parent) === node)
+          handler = handler.parent;
+        const call = handler.parent;
+        const callee = ts.isCallExpression(call)
+          ? unwrap(call.expression)
+          : undefined;
         return (
           parameter.initializer === undefined &&
           ts.isCallExpression(call) &&
-          ts.isPropertyAccessExpression(call.expression) &&
-          ((call.expression.name.text === 'catch' &&
-            call.arguments[0] === node) ||
-            (call.expression.name.text === 'then' &&
-              call.arguments[1] === node))
+          callee !== undefined &&
+          ts.isPropertyAccessExpression(callee) &&
+          ((callee.name.text === 'catch' &&
+            unwrap(call.arguments[0]) === node) ||
+            (callee.name.text === 'then' &&
+              call.arguments[1] !== undefined &&
+              unwrap(call.arguments[1]) === node))
         );
       }
     }
