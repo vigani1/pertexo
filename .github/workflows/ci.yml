@@ -373,7 +373,8 @@ jobs:
         run: pnpm db:migrate
       - name: Fault tests
         run:
-          node infrastructure/testing/run-fault-shard.mjs ${{ matrix.shard }} 4
+          node infrastructure/testing/run-fault-shard.mjs ${{ matrix.shard }}
+          ${{ strategy.job-total }}
       - name: Service logs
         if: failure()
         run: docker compose logs --no-color --timestamps
@@ -642,6 +643,7 @@ jobs:
         unit,
         integration,
         e2e,
+        faults,
         image,
         security,
         self-host-drill,
