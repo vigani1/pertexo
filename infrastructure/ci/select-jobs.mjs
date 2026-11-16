@@ -40,6 +40,12 @@ const liveDurations = JSON.parse(
     'utf8',
   ),
 );
+const mockedDurations = JSON.parse(
+  readFileSync(
+    new URL('../testing/mocked-durations.json', import.meta.url),
+    'utf8',
+  ),
+);
 // Read the scenario catalog so adding a journey also puts it in CI.
 const editorScenarios = readFileSync(
   new URL(
@@ -60,22 +66,15 @@ const journeys = [
   'oauth2',
   'workflow-organization',
 ];
+const fullMockedShards = recordedMockedShards();
 export const browserEntries = [
-  ...recordedMockedShards().map(({ milliseconds }, index) => ({
+  ...fullMockedShards.map(({ milliseconds }, index) => ({
     suite: `mocked-${index + 1}`,
     journeys: '',
-    shard: `${index + 1}/2`,
+    shard: `${index + 1}/${fullMockedShards.length}`,
     milliseconds,
   })),
-  ...assignDurationShards(journeys, liveDurations, 3)
-    .sort(
-      (a, b) =>
-        Number(b.files.includes('code')) - Number(a.files.includes('code')),
-    )
-    .map(({ files }, index) => ({
-      suite: `live-${index + 1}`,
-      journeys: files.join(' '),
-    })),
+  ...liveBrowserEntries(journeys, 3),
 ];
 // Fault tests stop real services and take about 15 minutes on four runners, so
 // a pull request runs them only when it changes those tests, their tooling or
@@ -198,25 +197,34 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
 const MOCKED_SPECS_PER_JOB = 20;
 const LIVE_JOURNEYS_PER_JOB = 8;
 
+function liveBrowserEntries(journeys, count) {
+  return assignDurationShards(journeys, liveDurations, count)
+    .sort(
+      (a, b) =>
+        Number(b.files.includes('code')) - Number(a.files.includes('code')),
+    )
+    .map(({ files }, index) => ({
+      suite: `live-${index + 1}`,
+      journeys: files.join(' '),
+    }));
+}
+
 function browserMatrix(selected) {
   if (selected === undefined) return browserEntries;
   const mocked = selected.filter((name) => name.startsWith('e2e/'));
   const live = selected
     .filter((name) => name.startsWith('journey:'))
     .map((name) => name.slice(8));
-  const durations = JSON.parse(
-    readFileSync(
-      new URL('../testing/mocked-durations.json', import.meta.url),
-      'utf8',
-    ),
-  );
   const mockedCount = Math.min(
-    2,
+    fullMockedShards.length,
     Math.ceil(mocked.length / MOCKED_SPECS_PER_JOB),
   );
-  const liveCount = Math.min(3, Math.ceil(live.length / LIVE_JOURNEYS_PER_JOB));
+  const liveCount = Math.min(
+    browserEntries.filter(({ suite }) => suite.startsWith('live')).length,
+    Math.ceil(live.length / LIVE_JOURNEYS_PER_JOB),
+  );
   return [
-    ...assignDurationShards(mocked, durations, mockedCount).map(
+    ...assignDurationShards(mocked, mockedDurations, mockedCount).map(
       ({ files }, index) => ({
         suite: `mocked-${index + 1}`,
         journeys: '',
@@ -224,15 +232,7 @@ function browserMatrix(selected) {
         specs: JSON.stringify(files),
       }),
     ),
-    ...assignDurationShards(live, liveDurations, liveCount)
-      .sort(
-        (a, b) =>
-          Number(b.files.includes('code')) - Number(a.files.includes('code')),
-      )
-      .map(({ files }, index) => ({
-        suite: `live-${index + 1}`,
-        journeys: files.join(' '),
-      })),
+    ...liveBrowserEntries(live, liveCount),
   ];
 }
 

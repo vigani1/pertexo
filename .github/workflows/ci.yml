@@ -155,18 +155,23 @@ jobs:
             pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
             }}-observability
         run: pnpm observability:check
+      # No ESLint cache here: the rules ESLint still runs are type-aware, and a
+      # per-file cache would keep a stale pass for an unchanged file whose types
+      # changed elsewhere. Local runs keep the cache; CI is the authority.
       - name: Lint the web app
         if: matrix.part == 'lint-web'
         env:
           NODE_OPTIONS: --max-old-space-size=8192
-        run: pnpm --filter @pertexo/web exec eslint .
+        run: pnpm --filter @pertexo/web lint
       - name: Lint infrastructure and the other workspaces
         if: matrix.part == 'lint-rest'
         env:
           NODE_OPTIONS: --max-old-space-size=8192
         run: >-
-          pnpm lint:infrastructure && pnpm --recursive --workspace-concurrency=1
-          --filter '!@pertexo/web' exec eslint .
+          pnpm exec oxlint --ignore-pattern apps/web . && pnpm
+          lint:infrastructure && pnpm --recursive --workspace-concurrency=1
+          --filter '!@pertexo/web' exec eslint --cache --cache-strategy content
+          .
       - name: Typecheck
         if: matrix.part == 'static'
         run: pnpm typecheck

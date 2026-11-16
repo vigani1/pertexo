@@ -1,7 +1,7 @@
 import { WEB_BROWSER_PACKAGE_ROOTS } from '../../infrastructure/checks/browser-entry-dependencies.mjs';
 import tseslint from 'typescript-eslint';
+import oxlint from 'eslint-plugin-oxlint';
 import reactHooks from 'eslint-plugin-react-hooks';
-import reactRefresh from 'eslint-plugin-react-refresh';
 import rootConfig, {
   readabilityRules,
   testIntegrity,
@@ -58,19 +58,9 @@ export default tseslint.config(
   {
     files: ['test/**/*.{ts,tsx}', 'e2e/**/*.ts', 'e2e-live/**/*.ts'],
     rules: {
-      'max-params': ['error', 4],
-      complexity: ['error', 20],
-      'max-lines': ['error', 400],
+      'max-params': readabilityRules['max-params'],
+      'max-lines': readabilityRules['max-lines'],
     },
-  },
-  {
-    files: [
-      'test/**/*.{ts,tsx}',
-      'e2e/**/*.ts',
-      'e2e-live/**/*.ts',
-      'playwright*.config.ts',
-    ],
-    rules: { 'no-nested-ternary': 'error' },
   },
   { ignores: ['playwright-report/**', 'test-results/**'] },
   {
@@ -81,17 +71,8 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
-    rules: {
-      ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': [
-        'error',
-        {
-          allowConstantExport: true,
-          allowExportNames: ['buttonVariants'],
-        },
-      ],
-    },
+    plugins: { 'react-hooks': reactHooks },
+    rules: reactHooks.configs.recommended.rules,
   },
   {
     files: ['src/**/*.{ts,tsx}'],
@@ -171,4 +152,7 @@ export default tseslint.config(
       ],
     },
   },
+  ...(await oxlint.buildFromConfigFile(
+    new URL('.oxlintrc.json', import.meta.url).pathname,
+  )),
 );

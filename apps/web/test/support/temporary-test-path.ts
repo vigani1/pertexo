@@ -11,7 +11,7 @@ const directories = new Map<string, string>();
 export const test = base.extend<{ temporaryFiles: undefined }>({
   temporaryFiles: [
     // Playwright requires destructuring even when a fixture has no dependencies.
-    // eslint-disable-next-line no-empty-pattern
+    // oxlint-disable-next-line no-empty-pattern
     async ({}, runWithFiles, info) => {
       try {
         await runWithFiles(undefined);

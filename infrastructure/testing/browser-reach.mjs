@@ -27,12 +27,17 @@ export function validateBrowserReach(reach, specs, journeys, features) {
 }
 
 export function browserFeatures() {
-  return readdirSync(new URL('../../apps/web/src/features', import.meta.url));
+  return readdirSync(new URL('../../apps/web/src/features', import.meta.url), {
+    withFileTypes: true,
+  })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
 }
+
+const knownFeatures = browserFeatures();
 
 export function selectBrowserReach(files, reach = browserReach) {
   const features = new Set();
-  const knownFeatures = browserFeatures();
   for (const file of files) {
     const match = /^apps\/web\/(?:src|test)\/features\/([^/]+)\//u.exec(file);
     if (!match || !knownFeatures.includes(match[1])) return undefined;
