@@ -199,3 +199,13 @@ test('backend changes retain every live journey', () => {
     browserEntries.filter(({ suite }) => suite.startsWith('live')),
   );
 });
+
+test('a feature used by another feature retains that feature’s browser coverage', () => {
+  const selected = select(
+    'apps/web/src/features/failure-notifications/public.ts',
+  ).browser.include;
+  const specs = selected
+    .filter(({ suite }) => suite.startsWith('mocked'))
+    .flatMap(({ specs }) => JSON.parse(specs));
+  assert.ok(specs.includes('e2e/approvals/setup.spec.ts'));
+});
