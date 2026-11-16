@@ -340,8 +340,7 @@ jobs:
         run: docker compose down -v --remove-orphans
 
   # Real faults against real processes. They stop Postgres, Redis and the object
-  # store, so nothing else shares their compose project. About 50 minutes, so it runs
-  # on main and nightly and no pull request waits for it.
+  # store. Four runners each own a stack; relevant pull requests prove recovery too.
   faults:
     name: faults (${{ matrix.shard }})
     needs: changes
