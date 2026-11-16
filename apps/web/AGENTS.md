@@ -127,6 +127,10 @@ their owners and lets the server refuse.
 
 ## Exceptions
 
+- Workflow-editor inspector panels and their matching model subjects keep their
+  nested folders; `DEEP_FOLDERS` in `infrastructure/checks/validate-folder-layout.mjs`
+  lists them and the other reviewed feature sub-areas.
+
 - Ten features expose no `public.ts` (only views, queries or routing), and
   three expose nothing: their pages are reached only from routes.
 - The form routes (`routes/forms/routes.ts`, `routes/forms/member.tsx`) read
