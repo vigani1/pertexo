@@ -1,3 +1,4 @@
+// Disposable CI selection proof; this pull request is closed unmerged.
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/class-names';
 
