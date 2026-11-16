@@ -102,8 +102,8 @@ jobs:
           files="$RUNNER_TEMP/changed-files.json"
           echo '[]' > "$files"
           if [ "$EVENT_NAME" = pull_request ]; then
-            gh api --paginate --slurp "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" \
-              --jq '[.[][] | .filename, (.previous_filename // empty)]' > "$files"
+            gh api --paginate --slurp "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" > "$RUNNER_TEMP/changed-pages.json"
+            jq '[.[][] | .filename, (.previous_filename // empty)]' "$RUNNER_TEMP/changed-pages.json" > "$files"
           fi
           node infrastructure/ci/select-jobs.mjs "$files" "$EVENT_NAME"
 
