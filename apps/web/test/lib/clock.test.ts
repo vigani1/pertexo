@@ -27,6 +27,28 @@ afterEach(() => {
 });
 
 describe('useNow', () => {
+  it('ticks and stops at the injected clock deadline while wall time is behind', () => {
+    let current = Date.now() + 1_000_000;
+    const untilMs = current + 2_000;
+    const now = () => current;
+    const { result } = renderHook(() =>
+      useNow({ intervalMs: 1_000, untilMs, now }),
+    );
+    expect(result.current).toBe(current);
+    current += 1_999;
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(result.current).toBe(current);
+    expect(vi.getTimerCount()).toBe(1);
+    current += 2;
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+    });
+    expect(result.current).toBe(current);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('ticks only while enabled', () => {
     const start = Date.now();
     const { result, rerender } = renderHook(

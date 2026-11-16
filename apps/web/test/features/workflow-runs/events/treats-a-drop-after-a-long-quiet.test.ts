@@ -51,7 +51,13 @@ describe('run event lifecycle', () => {
         stream,
       } as unknown as ApiClient;
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper: queryWrapper(false) },
     );
 
@@ -92,7 +98,13 @@ describe('run event lifecycle', () => {
         stream,
       } as unknown as ApiClient;
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper: queryWrapper(false) },
     );
 
@@ -133,7 +145,13 @@ describe('run event lifecycle', () => {
         stream,
       } as unknown as ApiClient;
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper: queryWrapper(false) },
     );
 

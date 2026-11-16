@@ -22,12 +22,14 @@ export function useNow({
   intervalMs,
   enabled = true,
   untilMs = Number.POSITIVE_INFINITY,
+  now: readNow = Date.now,
 }: Readonly<{
+  now?: () => number;
   intervalMs: number;
   enabled?: boolean | undefined;
   untilMs?: number | undefined;
 }>): number {
-  const [now, setNow] = useState(Date.now);
+  const [now, setNow] = useState(readNow);
 
   useEffect(() => {
     if (!enabled) return;
@@ -38,12 +40,12 @@ export function useNow({
       timer = undefined;
     };
     const tick = () => {
-      const current = Date.now();
+      const current = readNow();
       setNow(current);
       if (current >= untilMs) stop();
     };
     const start = () => {
-      if (timer === undefined && !document.hidden && Date.now() < untilMs)
+      if (timer === undefined && !document.hidden && readNow() < untilMs)
         timer = window.setInterval(tick, intervalMs);
     };
     const followVisibility = () => {
@@ -60,7 +62,7 @@ export function useNow({
       stop();
       document.removeEventListener('visibilitychange', followVisibility);
     };
-  }, [enabled, intervalMs, untilMs]);
+  }, [enabled, intervalMs, untilMs, readNow]);
 
   return now;
 }

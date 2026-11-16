@@ -45,7 +45,12 @@ export function useRunDetail({
   const { data: snapshot } = useSuspenseQuery(
     workflowRunQueryOptions(apiClient, user.id, workspace.id, runId),
   );
-  const events = useRunEvents(apiClient, user.id, workspace.id, runId);
+  const events = useRunEvents({
+    apiClient,
+    userId: user.id,
+    workspaceId: workspace.id,
+    runId,
+  });
   const { run } = snapshot;
   const canViewWorkflow = workspace.capabilities.includes('workflow:read');
   const version = useQuery({

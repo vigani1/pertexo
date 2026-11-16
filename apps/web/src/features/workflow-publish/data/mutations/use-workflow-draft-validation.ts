@@ -25,7 +25,7 @@ export type SavedDraft = Readonly<{
 }>;
 
 type DraftValidationInput = Readonly<{
-  now?: () => number;
+  now: () => number;
   apiClient: ApiClient;
   workspaceId: string;
   workflowId: string;
@@ -45,7 +45,7 @@ export function useWorkflowDraftValidation({
   owner,
   ensureSaved,
   isSavedDraftCurrent,
-  now: readNow = Date.now,
+  now: readNow,
 }: DraftValidationInput) {
   const [refusal, setRefusal] = useState<ValidationResult>();
   const [validation, setValidation] = useState<ValidationResult>();
@@ -58,7 +58,8 @@ export function useWorkflowDraftValidation({
   // Imperative dispatch must see deadlines established by concurrent actions,
   // even before React renders or after this callback crosses an await.
   const validationDeadline = useRef(0);
-  const now = useNow({
+  useNow({
+    now: readNow,
     intervalMs: CLOCK_TICK.countdown,
     enabled: validationBlockedUntil !== undefined,
     untilMs: validationBlockedUntil,
@@ -97,7 +98,7 @@ export function useWorkflowDraftValidation({
     const validationUnavailable =
       validationInFlight.current !== undefined ||
       checkOwner === undefined ||
-      (validationBlockedUntil ?? 0) > now;
+      validationDeadline.current > readNow();
     if (validationUnavailable) return;
     setChecking(checkOwner);
     setValidationError(undefined);
@@ -231,7 +232,7 @@ type CheckedDraft = SavedDraft & Readonly<{ report: WorkflowValidateResponse }>;
 
 function validationRetryDeadline(
   error: unknown,
-  now: () => number = Date.now,
+  now: () => number,
 ): number | undefined {
   const seconds = retryAfterSeconds(error);
   const unavailable =

@@ -75,7 +75,13 @@ describe('run event lifecycle', () => {
     const wrapper = queryWrapper(true);
 
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper },
     );
 
@@ -102,7 +108,13 @@ describe('run event lifecycle', () => {
       stream,
     } satisfies ApiClient;
     const result = renderHook(
-      ({ runId }) => useRunEvents(apiClient, 'user-a', 'workspace-a', runId),
+      ({ runId }) =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId,
+        }),
       { initialProps: { runId: 'run-a' }, wrapper: queryWrapper(false) },
     );
 
@@ -144,7 +156,13 @@ describe('run event lifecycle', () => {
         stream,
       } satisfies ApiClient;
       const result = renderHook(
-        () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+        () =>
+          useRunEvents({
+            apiClient,
+            userId: 'user-a',
+            workspaceId: 'workspace-a',
+            runId: 'run-a',
+          }),
         { wrapper: queryWrapper(false) },
       );
 
@@ -175,7 +193,13 @@ describe('run event lifecycle', () => {
       stream,
     } satisfies ApiClient;
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper: queryWrapper(false) },
     );
     await act(async () => {
@@ -212,7 +236,13 @@ describe('run event lifecycle', () => {
       stream,
     } satisfies ApiClient;
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper: queryWrapper(false) },
     );
 
@@ -238,7 +268,13 @@ describe('run event lifecycle', () => {
       stream,
     } satisfies ApiClient;
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper: queryWrapper(false) },
     );
     await waitFor(() => {
@@ -271,7 +307,13 @@ describe('run event lifecycle', () => {
       stream,
     } satisfies ApiClient;
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper: queryWrapper(false) },
     );
     await act(async () => {
@@ -310,7 +352,13 @@ describe('run event lifecycle', () => {
         stream,
       } as unknown as ApiClient;
     const result = renderHook(
-      () => useRunEvents(apiClient, 'user-a', 'workspace-a', 'run-a'),
+      () =>
+        useRunEvents({
+          apiClient,
+          userId: 'user-a',
+          workspaceId: 'workspace-a',
+          runId: 'run-a',
+        }),
       { wrapper: queryWrapper(false) },
     );
 
