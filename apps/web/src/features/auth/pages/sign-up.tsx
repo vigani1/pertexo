@@ -12,7 +12,7 @@ import {
 } from '../components/stage/auth-lens';
 import { isInvitationReturn } from '../model/return-path';
 import { PasswordCapabilityGate } from '../components/stage/lens-states';
-import { resendVerification } from '../data/native-auth-flows';
+import { resendVerification } from '../data/native-auth/native-auth-flows';
 import { useCountdown } from '@/lib/hooks/use-countdown';
 
 /** Said on its own page, because a link can still bring someone here. */

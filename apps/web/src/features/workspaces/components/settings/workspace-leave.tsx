@@ -12,7 +12,7 @@ import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
 import { canLeaveWorkspace } from '../../model/workspace-roles';
 import { ANY_ADMINISTRATOR } from '../../model/role-words';
-import { useLeaveWorkspaceCommand } from '../../data/mutations/lifecycle/use-leave-workspace-command';
+import { useLeaveWorkspaceCommand } from '../../data/mutations/use-leave-workspace-command';
 import { DangerAction } from './workspace-danger-zone';
 /**
  * Leave the workspace (ADR 047). The owner can't: they are told to make

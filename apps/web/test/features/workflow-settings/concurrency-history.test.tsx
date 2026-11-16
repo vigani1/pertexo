@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { SkipHistory } from '@/features/workflow-settings/components/settings/concurrency/history';
+import { SkipHistory } from '@/features/workflow-settings/components/settings/concurrency-history';
 
 function skips(count: number) {
   return Array.from({ length: count }, (_, index) => ({

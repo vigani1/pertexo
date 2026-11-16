@@ -4,7 +4,7 @@ import {
   requestPasswordReset,
   resetPassword,
   startSocialAuthentication,
-} from '@/features/auth/data/native-auth.api';
+} from '@/features/auth/data/native-auth/native-auth.api';
 import type { ApiClient } from '@/lib/api/client';
 
 describe('native authentication API', () => {

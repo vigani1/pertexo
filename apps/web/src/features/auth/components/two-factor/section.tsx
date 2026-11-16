@@ -4,9 +4,9 @@ import type { ApiClient } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
 import { AccountSection } from '../account/section';
-import { useAccountSecurityRefresh } from '../../data/account-security.mutations';
+import { useAccountSecurityRefresh } from '../../data/account-security/account-security.mutations';
 import { TwoFactorSetupDialog } from './setup-dialog';
-import type { TwoFactorAction } from '../../data/two-factor.mutations';
+import type { TwoFactorAction } from '../../data/two-factor/two-factor.mutations';
 import { pluralWord } from '@/lib/format/count';
 
 export function AccountTwoFactorSection({

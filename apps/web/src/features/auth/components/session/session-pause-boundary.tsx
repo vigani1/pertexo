@@ -11,7 +11,7 @@ import {
 import { useLocation, useRouter } from '@tanstack/react-router';
 import { useNotifications } from '@/components/ui/use-notifications';
 import type { ApiClient } from '@/lib/api/client';
-import { useSessionOwnerCheck } from '../../data/session-owner-check';
+import { useSessionOwnerCheck } from '../../data/session/session-owner-check';
 import type { SessionPause } from '../../model/session/pause';
 import { returnToSearch, allowlistedReturnPath } from '../../model/return-path';
 import { SessionPaused } from './session-paused';

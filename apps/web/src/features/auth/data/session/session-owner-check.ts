@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
-import { currentUserQueryOptions } from './auth.queries';
+import { currentUserQueryOptions } from '../auth.queries';
 import { checkSessionOwner, type SessionOwnerCheck } from './session-identity';
 
 /**

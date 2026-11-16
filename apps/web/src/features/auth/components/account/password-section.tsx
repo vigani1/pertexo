@@ -4,7 +4,7 @@ import { useFieldValues } from '@/components/ui/use-field-validation';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { isApiError } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { useAccountPasswordSave } from '../../data/account-security.mutations';
+import { useAccountPasswordSave } from '../../data/account-security/account-security.mutations';
 import {
   confirmationProblem,
   DEFAULT_MINIMUM_PASSWORD_LENGTH,

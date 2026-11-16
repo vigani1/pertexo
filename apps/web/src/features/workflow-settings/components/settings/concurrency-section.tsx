@@ -1,6 +1,6 @@
 import { useConcurrencyReadScope } from '../../data/concurrency.queries';
-import { OverflowPicker } from './concurrency/overflow';
-import { SkipHistory } from './concurrency/history';
+import { OverflowPicker } from './concurrency-overflow';
+import { SkipHistory } from './concurrency-history';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type {

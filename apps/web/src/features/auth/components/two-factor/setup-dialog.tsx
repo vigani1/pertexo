@@ -18,10 +18,10 @@ import { currentPasswordProblem } from '../../forms/field-rules';
 import {
   useTwoFactorChange,
   type TwoFactorAction,
-} from '../../data/two-factor.mutations';
+} from '../../data/two-factor/two-factor.mutations';
 import { AccountCommandFailure } from '../account/section';
 import { TwoFactorCodeForm } from './code-form';
-import { useTwoFactorVerification } from '../../data/two-factor-verification.mutations';
+import { useTwoFactorVerification } from '../../data/two-factor/two-factor-verification.mutations';
 import { RecoveryCodes } from './recovery-codes';
 
 type Stage =

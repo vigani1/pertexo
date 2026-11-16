@@ -13,8 +13,6 @@ export const CROWDED_FOLDERS = Object.freeze({
     'Catalog of named UI primitives; a flat inventory is its interface.',
   'apps/web/src/routes/workspace':
     'Peer workspace routes grouped by router scope.',
-  'apps/web/src/features/auth/data':
-    'Run-detail data inspectors stay separate from timeline presentation.',
   'apps/api/src/platform/http':
     'The HTTP adapter boundary: request decoding, response projection and framework composition are read together.',
   'packages/workflow-engine/src/compilation':
@@ -52,14 +50,8 @@ export const DEEP_FOLDERS = Object.freeze({
     'Run-detail data inspectors stay separate from timeline presentation.',
   'apps/web/src/features/workflow-runs/components/run-detail/timeline':
     'Run timeline entries and their status presentation form one subject.',
-  'apps/web/src/features/workspaces/data/mutations/lifecycle':
-    'Workspace lifecycle mutations share retirement and restoration cache effects.',
-  'apps/web/src/features/workspaces/data/mutations/members':
-    'Member mutations share directory and invitation cache effects.',
   'apps/web/src/features/federation/components/providers/fields':
     'Provider-specific configuration fields share the provider editor boundary.',
-  'apps/web/src/features/workflow-settings/components/settings/concurrency':
-    'Concurrency settings fields and their editing state form one control.',
   'apps/web/src/features/workflow-settings/components/triggers/schedules':
     'Schedule editing and its controls form one trigger subject.',
   'apps/web/src/features/workflow-settings/components/triggers/webhooks':

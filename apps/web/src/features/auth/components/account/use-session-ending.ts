@@ -4,7 +4,7 @@ import type { ApiClient } from '@/lib/api/client';
 import {
   useRevokeAccountSession,
   useRevokeOtherAccountSessions,
-} from '../../data/account-security.mutations';
+} from '../../data/account-security/account-security.mutations';
 import { pluralWord } from '@/lib/format/count';
 
 export type SessionEnding =

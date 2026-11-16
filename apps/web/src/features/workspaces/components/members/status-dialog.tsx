@@ -1,7 +1,7 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import { firstNameOf, withArticle } from '../../model/workspace-roles';
 import { ROLE_NAMES } from '../../model/role-words';
-import type { MemberStatusDirection } from '../../data/mutations/members/use-status-command';
+import type { MemberStatusDirection } from '../../data/mutations/use-status-command';
 import { MemberCommandDialog, type MemberCommandView } from './command-dialog';
 
 function suspensionCopy(

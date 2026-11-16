@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, type ReactNode } from 'react';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { AuthForm } from '../../forms/submission';
-import type { useTwoFactorVerification } from '../../data/two-factor-verification.mutations';
+import type { useTwoFactorVerification } from '../../data/two-factor/two-factor-verification.mutations';
 
 export function TwoFactorCodeForm({
   verification,

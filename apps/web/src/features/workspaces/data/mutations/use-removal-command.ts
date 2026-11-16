@@ -1,6 +1,6 @@
 import type { WorkspaceMember } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
-import { removeWorkspaceMember } from '../../workspaces.api';
+import { removeWorkspaceMember } from '../workspaces.api';
 import {
   useMemberCommand,
   type MemberCommandAttempt,

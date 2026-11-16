@@ -16,7 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import { isApiError, isSessionExpired } from '@/lib/api/error';
 import type { ApiClient } from '@/lib/api/client';
-import { useAccountLinkStart } from '../../data/account-security.mutations';
+import { useAccountLinkStart } from '../../data/account-security/account-security.mutations';
 import { currentPasswordProblem } from '../../forms/field-rules';
 import { PasswordField } from '../../forms/password-field';
 import { ProgressButton } from '@/components/ui/progress-button';

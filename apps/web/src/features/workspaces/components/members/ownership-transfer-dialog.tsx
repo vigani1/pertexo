@@ -5,7 +5,7 @@ import {
   returnToSearch,
 } from '@/features/auth/auth-routing.public';
 import { firstNameOf } from '../../model/workspace-roles';
-import { feedbackFor } from '../../data/mutations/members/use-member-command';
+import { feedbackFor } from '../../data/mutations/use-member-command';
 import { MemberCommandDialog, type MemberCommandView } from './command-dialog';
 import { FRESH_SIGN_IN_WINDOW_MILLIS } from '@pertexo/workflow-model';
 import { formatTimeSpan } from '@/lib/format/time';
