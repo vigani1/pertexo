@@ -31,6 +31,8 @@ export const STORAGE_INTEGRITY_ERRORS = Object.freeze({
     "A failure notification's stored intent, claim or checksum is corrupt or lost.",
   InboxReceiptUnavailableError:
     'An inbox receipt sits outside the workspace or is incomplete.',
+  InboxChecksumMismatchError:
+    "A redelivered inbox message's checksum differs from the one it was consumed with.",
   IdempotencyRecordCorruptError:
     'A stored command receipt no longer reads (refused as a conflict).',
   FolderSharingCorruptError: "A folder's stored sharing hierarchy is corrupt.",
@@ -42,4 +44,22 @@ export const STORAGE_INTEGRITY_ERRORS = Object.freeze({
     "The schedule claim's lease lapsed or moved to another worker.",
   WorkflowTriggerReconciliationMismatchError:
     "A trigger reconciliation's durable outbox identity is inconsistent.",
+});
+
+/**
+ * Functions outside the repositories that a repository may call although they
+ * throw: each only refuses a stored value that no longer reads, so the error
+ * is storage integrity, not a decision (validate-core-repository-throws.mjs).
+ */
+export const STORAGE_INTEGRITY_DECODERS = Object.freeze({
+  decodeStoredValue:
+    'The one decoder of stored JSON: a stored value that no longer parses.',
+  executableNodeSchema:
+    "A stored preview executable node that isn't a bounded JSON object.",
+  requireReadableReceipt:
+    'A stored command receipt no longer matches its shape (refused as a conflict).',
+  decodeAcceptanceReceipt:
+    "An invitation acceptance's stored receipt no longer reads.",
+  resolveScheduleObservation:
+    "A stored schedule recurrence the parser can't run, or a parser invariant broke.",
 });
