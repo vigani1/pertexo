@@ -1,7 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, relative, resolve } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { faultProject } from './fault-project.mjs';
@@ -55,47 +54,26 @@ function main([index, total]) {
   );
   const shard = assignFaultShards(files, durations, count)[selected - 1];
   console.log(JSON.stringify({ shard: selected, ...shard }));
-  const temporary = mkdtempSync(join(tmpdir(), 'pertexo-fault-times-'));
-  const output = join(temporary, 'results.json');
-  try {
-    const result = spawnSync(
-      'pnpm',
-      [
-        'exec',
-        'vitest',
-        'run',
-        '--config',
-        'vitest.resilience.config.ts',
-        ...shard.files,
-        '--reporter=default',
-        '--reporter=json',
-        '--outputFile.json=' + output,
-      ],
-      {
-        cwd: root,
-        env: { ...process.env, WORKER_FAULT_TESTS: 'true' },
-        stdio: 'inherit',
-      },
-    );
-    if (result.error) throw result.error;
-    process.exitCode = result.status ?? 1;
-    try {
-      const report = JSON.parse(readFileSync(output, 'utf8'));
-      const measured = Object.fromEntries(
-        report.testResults.map((file) => [
-          relative(root, file.name),
-          file.endTime - file.startTime,
-        ]),
-      );
-      console.log('Fault durations (milliseconds; paste into durations.json):');
-      console.log(JSON.stringify(measured, null, 2));
-    } catch (error) {
-      console.error('Could not read fault durations:', error);
-      process.exitCode = 1;
-    }
-  } finally {
-    rmSync(temporary, { recursive: true, force: true });
-  }
+  const result = spawnSync(
+    'pnpm',
+    [
+      'exec',
+      'vitest',
+      'run',
+      '--config',
+      'vitest.resilience.config.ts',
+      ...shard.files,
+      '--reporter=default',
+      '--reporter=' + resolve(import.meta.dirname, 'fault-durations.mjs'),
+    ],
+    {
+      cwd: root,
+      env: { ...process.env, WORKER_FAULT_TESTS: 'true' },
+      stdio: 'inherit',
+    },
+  );
+  if (result.error) throw result.error;
+  process.exitCode = result.status ?? 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
