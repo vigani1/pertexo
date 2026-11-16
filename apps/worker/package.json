@@ -39,7 +39,7 @@
     "@fastify/busboy": "3.2.5",
     "@nestjs/testing": "11.2.8",
     "@types/pg": "8.23.1",
-    "bullmq": "6.7.0",
+    "bullmq": "6.7.2",
     "drizzle-orm": "0.45.4",
     "ioredis": "6.0.0",
     "pg": "8.23.1",
