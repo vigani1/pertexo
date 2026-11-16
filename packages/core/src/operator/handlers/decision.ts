@@ -1,3 +1,4 @@
+// Disposable CI selection proof; this pull request is closed unmerged.
 import type { AuditMetadata } from '@pertexo/database/primitives';
 /**
  * What a command did: its outcome, its stored result, whether it waits on a
