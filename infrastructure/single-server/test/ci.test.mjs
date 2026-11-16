@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import { parse } from 'yaml';
 import { test } from 'node:test';
@@ -331,4 +334,44 @@ test('consumes the selector matrices and keeps every selected job behind the gat
   assert.ok(heavyJobs <= 20);
   assert.match(jobText(ci.jobs['ci-passed']), /success \| skipped/u);
   assert.match(jobText(ci.jobs['ci-passed']), /exit 1/u);
+});
+
+test('the classifier shell consumes paginated renamed-file responses', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'ci-selection-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const output = join(directory, 'output');
+  const step = ci.jobs.changes.steps.find(({ id }) => id === 'classify');
+  const shell = `
+    gh() {
+      case "$*" in *--slurp*--jq*) return 1 ;; esac
+      printf '%s' '[[{"filename":"docs/moved.md","previous_filename":"packages/core/src/change.ts"}],[{"filename":"docs/guide.md"}]]'
+    }
+    ${step.run}
+  `;
+  const result = spawnSync('bash', ['-c', shell], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      RUNNER_TEMP: directory,
+      GITHUB_OUTPUT: output,
+      EVENT_NAME: 'pull_request',
+      PULL_REQUEST: '1',
+      REPOSITORY: 'fixture/repo',
+    },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const values = Object.fromEntries(
+    readFileSync(output, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => {
+        const index = line.indexOf('=');
+        return [line.slice(0, index), JSON.parse(line.slice(index + 1))];
+      }),
+  );
+  assert.equal(values.code, true);
+  assert.deepEqual(
+    values.unit.include.map(({ group }) => group),
+    ['core', 'apps'],
+  );
 });
