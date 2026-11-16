@@ -1,3 +1,4 @@
+import { executionValueCaps } from '../shared/execution-value-caps.fixture.js';
 import { Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -138,4 +139,24 @@ describe('NodeAttemptRunStore', () => {
       expect(checkout).not.toHaveBeenCalled();
     });
   });
+  it.each(executionValueCaps())(
+    'refuses output over the %s cap before persistence',
+    async (_cap, output) => {
+      await withNoCheckoutStore(async (store, checkout) => {
+        const completion = store.complete({
+          lease,
+          outcome: { output, status: 'succeeded' },
+          signal: new AbortController().signal,
+        });
+        await expect(completion).rejects.toBeInstanceOf(
+          NodeAttemptOutputInvalidError,
+        );
+        await expect(completion).rejects.toHaveProperty(
+          'cause',
+          expect.any(StoredExecutionValueInvalidError),
+        );
+        expect(checkout).not.toHaveBeenCalled();
+      });
+    },
+  );
 });
