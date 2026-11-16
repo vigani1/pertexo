@@ -11,10 +11,7 @@ import {
 } from '../webhook-trigger.errors.js';
 
 import { withTriggerManagement } from '../../management.js';
-import {
-  authenticationChangeRotates,
-  provisionRefusal,
-} from './endpoint.js';
+import { authenticationChangeRotates, provisionRefusal } from './endpoint.js';
 import type {
   ConfigureWebhookAuthenticationInput,
   ProvisionWebhookInput,

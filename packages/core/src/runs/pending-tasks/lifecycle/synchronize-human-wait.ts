@@ -11,7 +11,10 @@ import {
   readRunClock,
   wakeHumanWaitRelations,
 } from './run-clock.repository.js';
-import { humanWaitClockRunning, humanWaitQuiescent } from './human-wait-state.js';
+import {
+  humanWaitClockRunning,
+  humanWaitQuiescent,
+} from './human-wait-state.js';
 
 export type HumanWaitState = Readonly<{
   human_wait_started_at: Date | null;

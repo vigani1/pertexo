@@ -49,9 +49,7 @@ export async function claimDueScheduleRows(
           interval_minutes: sql<number | null>`claim.interval_minutes`,
           misfire_policy: sql<'catch_up_once' | 'skip'>`claim.misfire_policy`,
           config_fingerprint: sql<string>`claim.config_fingerprint`,
-          anchor_at: sql<Date>`claim.anchor_at`.mapWith(
-            schedules.anchorAt,
-          ),
+          anchor_at: sql<Date>`claim.anchor_at`.mapWith(schedules.anchorAt),
           next_fire_at: sql<Date>`claim.next_fire_at`.mapWith(
             schedules.nextFireAt,
           ),
