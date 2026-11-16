@@ -25,7 +25,7 @@ import {
   scheduledOccurrence,
   transitionHasHumanWait,
   transitionMoments,
-} from './run-transition.js';
+} from './transition-plan.js';
 
 export async function persistCoordinatorRunTransition(
   client: PoolClient,

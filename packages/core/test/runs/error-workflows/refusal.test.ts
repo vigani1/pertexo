@@ -3,7 +3,7 @@ import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import {
   errorWorkflowRefusal,
   transitionStartsErrorWorkflow,
-} from '../../../src/runs/error-workflows/refusal.js';
+} from '../../../src/runs/error-workflows/error-workflow-admission.js';
 import { ErrorWorkflowVersionUnavailableError } from '../../../src/runs/error-workflows/error-workflow.errors.js';
 import {
   WorkflowAlreadyRunningError,

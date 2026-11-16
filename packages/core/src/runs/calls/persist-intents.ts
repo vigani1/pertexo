@@ -12,7 +12,7 @@ import {
   markCallWaiting,
   readCallInputAttempt,
 } from './call-intents.repository.js';
-import { callInputMatches, callInputRefusal } from './call-intent-rules.js';
+import { callInputMatches, callInputRefusal } from './call-intent.js';
 
 /** Intent, wait and wakeup are saved in the parent's checkpoint transaction. */
 export async function persistCallIntents(

@@ -3,7 +3,7 @@ import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import {
   callAdmissionRefusal,
   callParentWaiting,
-} from '../../../src/runs/calls/acceptance-rules.js';
+} from '../../../src/runs/calls/acceptance.js';
 import { WorkflowCallRefusedError } from '../../../src/runs/calls/workflow-call.errors.js';
 import {
   WorkspaceRunAdmissionDeniedError,

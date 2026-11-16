@@ -8,7 +8,7 @@ import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowCalls, workflowRuns } from '@pertexo/database/schema';
 import { activeCapacityAvailable } from '../admission-locks.repository.js';
 import { deferWorkflowRun } from '../../outbox/run-advance.repository.js';
-import { readHumanWaitFacts } from '../pending-tasks/lifecycle/human-wait.repository.js';
+import { readHumanWaitFacts } from '../pending-tasks/lifecycle/human-wait-facts.repository.js';
 
 type RunScope = Readonly<{ workspaceId: string; runId: string }>;
 

@@ -12,7 +12,7 @@ import {
   insertRefusedErrorWorkflowIntent,
   readErrorWorkflowPolicy,
 } from './intents.repository.js';
-import { transitionStartsErrorWorkflow } from './refusal.js';
+import { transitionStartsErrorWorkflow } from './error-workflow-admission.js';
 
 /** The terminal transition and its unique intent/outbox either all commit or none do. */
 export async function persistErrorWorkflowIntent(

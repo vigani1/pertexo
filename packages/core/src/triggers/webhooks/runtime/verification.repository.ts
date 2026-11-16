@@ -12,7 +12,7 @@ import {
 import { sql } from 'drizzle-orm';
 import type { Pool, PoolClient } from 'pg';
 
-import { endpointTakesDeliveries } from './endpoint-rules.js';
+import { endpointTakesDeliveries } from './endpoint.js';
 import { readTriggerConfig } from './webhook-state.repository.js';
 import type {
   StoredWebhookTriggerSecret,

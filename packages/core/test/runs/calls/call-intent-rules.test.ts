@@ -3,7 +3,7 @@ import type { WorkflowCallIntent } from '@pertexo/workflow-engine';
 import {
   callInputMatches,
   callInputRefusal,
-} from '../../../src/runs/calls/call-intent-rules.js';
+} from '../../../src/runs/calls/call-intent.js';
 import { prepareStoredExecutionValue } from '../../../src/shared/stored-execution.js';
 
 const inline = prepareStoredExecutionValue({ kind: 'inline', value: { a: 1 } });

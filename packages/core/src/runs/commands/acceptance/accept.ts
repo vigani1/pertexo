@@ -2,7 +2,7 @@ import { lockWorkspaceExecutionCounter } from '../../admission-locks.repository.
 import { utf8ByteLength } from '@pertexo/workflow-model';
 import { requireRunTableReferences } from '../../../data-tables/columns/table-references.js';
 import { requireWorkflowConcurrency } from './require-concurrency.js';
-import { variableRevisionForAcceptance } from './choose-variable-revision.js';
+import { variableRevisionForAcceptance } from './variable-revision.js';
 import { requireFormAdmission } from './require-form-admission.js';
 import { lockExecutionArtifactReferences } from '../../../artifacts/references/lock-references.js';
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -19,7 +19,7 @@ import type {
 } from './run-acceptance.types.js';
 import { IdempotencyRecordCorruptError } from '../../../shared/command-receipt.errors.js';
 import { readExistingAcceptance } from './read-replay.js';
-import { assertWorkspaceAcceptsNewRuns } from './check-workspace-standing.js';
+import { assertWorkspaceAcceptsNewRuns } from './assert-workspace-accepts-new-runs.js';
 import { throwWorkflowRunAdmissionError } from './run-admission.errors.js';
 import {
   claimAcceptance,

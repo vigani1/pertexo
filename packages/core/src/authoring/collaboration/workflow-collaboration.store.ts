@@ -1,6 +1,6 @@
 import type { AuthoringAccess } from '../workflows/access.js';
-import { createCollaborationEntry } from './enter-collaboration.js';
-import { collaborationCommands } from './write-comments.js';
+import { createCollaborationEntry } from './create-collaboration-entry.js';
+import { collaborationCommands } from './collaboration-commands.js';
 import { collaborationPresence } from './track-presence.js';
 import { collaborationReads } from './read-comments.js';
 
