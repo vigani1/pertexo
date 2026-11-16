@@ -12,7 +12,11 @@ export default defineConfig({
   testDir: './e2e',
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  use: { baseURL: webOrigin, trace: 'retain-on-failure' },
+  use: {
+    baseURL: webOrigin,
+    trace: 'retain-on-failure',
+    reducedMotion: 'reduce',
+  },
   projects: [
     {
       name: 'chromium',
