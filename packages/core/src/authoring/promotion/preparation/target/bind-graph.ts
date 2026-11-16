@@ -18,8 +18,8 @@ import { rebindPromotionConnections } from '../rebind-connections.js';
 import {
   rebindPromotionCalls,
   inspectPromotionCallDependencies,
-} from '../calls.repository.js';
-import { inspectPromotionRequirements } from '../requirements.repository.js';
+} from '../inspect-calls.js';
+import { inspectPromotionRequirements } from '../inspect-requirements.js';
 import type { Origin } from './target-workflows.repository.js';
 import type { TargetReviewState } from './target-review.types.js';
 

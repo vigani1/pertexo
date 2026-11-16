@@ -31,7 +31,7 @@ import { createArtifactUploadStore } from '../../../src/artifacts/uploads/artifa
 import { ArtifactMetadataNotFoundError } from '../../../src/artifacts/artifact.errors.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { connectionScope } from '../../../src/shared/resources/connection-scope.repository.js';
-import { inspectPromotionCallDependencies } from '../../../src/authoring/promotion/preparation/calls.repository.js';
+import { inspectPromotionCallDependencies } from '../../../src/authoring/promotion/preparation/inspect-calls.js';
 import { PromotionGraphBudget } from '../../../src/authoring/promotion/preparation/graph.js';
 import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';

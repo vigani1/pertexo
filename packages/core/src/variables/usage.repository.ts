@@ -1,4 +1,4 @@
-import { readFolderScope } from '../shared/folder-access-facts.repository.js';
+import type { readFolderScope } from '../shared/folder-access-facts.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowScopeSql } from '../shared/folder-scope.repository.js';
 import {
@@ -6,16 +6,11 @@ import {
   workflowDrafts,
   workflowVersions,
 } from '@pertexo/database/schema';
-import type { Role } from '@pertexo/policy';
 import { and, eq, exists, gt, gte, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import type {
-  VariableUsageInput,
-  VariableUsagePage,
-} from './workspace-variables.types.js';
-import { walkVariableUsage } from './walk-usage.js';
+import type { VariableUsageInput } from './workspace-variables.types.js';
 
 // A step reads one workflow, and one more to learn whether another follows.
 const WORKFLOWS_PER_STEP_AND_NEXT = 2;
@@ -23,19 +18,8 @@ const WORKFLOWS_PER_STEP_AND_NEXT = 2;
 type FolderScope = Awaited<ReturnType<typeof readFolderScope>>;
 type UsageCursor = VariableUsageInput['after'];
 
-export async function readVariableUsage(
-  client: PoolClient,
-  input: VariableUsageInput,
-  role: Role,
-): Promise<VariableUsagePage> {
-  const scope = await readFolderScope(client, input, role);
-  return walkVariableUsage(input, (after) =>
-    readUsageWorkflow(client, input.workspaceId, scope, after),
-  );
-}
-
 /** The next visible workflow, with its graphs. */
-async function readUsageWorkflow(
+export async function readUsageWorkflow(
   client: PoolClient,
   workspaceId: string,
   scope: FolderScope,
