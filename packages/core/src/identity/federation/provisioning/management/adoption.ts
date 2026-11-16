@@ -24,7 +24,7 @@ type AdoptionCandidate = Readonly<{
 }>;
 
 /** Whether a membership can be adopted, with the refusal in words the owner reads. */
-export function judgeAdoption<Member extends AdoptionCandidate>(
+function judgeAdoption<Member extends AdoptionCandidate>(
   member: Member | undefined,
 ):
   | Readonly<{ eligible: true; member: Member }>

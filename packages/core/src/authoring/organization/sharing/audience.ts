@@ -68,7 +68,7 @@ export async function reviewMoveAudience(
   return { items };
 }
 
-export async function readMoveSources(
+async function readMoveSources(
   client: PoolClient,
   {
     actor,

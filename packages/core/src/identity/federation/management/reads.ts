@@ -12,10 +12,7 @@ import { FederationConflictError } from './federation-management.errors.js';
 
 import { readOpenChallenge } from './reads.repository.js';
 
-export async function requireDomainControl(
-  client: PoolClient,
-  workspaceId: string,
-) {
+async function requireDomainControl(client: PoolClient, workspaceId: string) {
   const organization = await organizationForWorkspace(client, workspaceId);
   if (organization?.control_workspace_id !== workspaceId)
     throw new FederationConflictError(

@@ -14,7 +14,7 @@ import type {
 } from '../data-table-commands.types.js';
 
 /** Rows rewrite in batches of this many. */
-export const REWRITE_BATCH_ROWS = 64;
+const REWRITE_BATCH_ROWS = 64;
 
 /** Stores the new definition and moves the workspace's byte total by the change. */
 export async function saveTableSchema(

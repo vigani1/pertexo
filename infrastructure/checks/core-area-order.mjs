@@ -71,7 +71,7 @@ export const GUARDED_CORE_AREA_EDGES = Object.freeze({
     'Stored values, run retention and transaction timeouts the operator reads.',
 });
 
-export function isGuardedCoreAreaEdge(from, to) {
+function isGuardedCoreAreaEdge(from, to) {
   return from !== to && (GUARDED_TARGETS.has(to) || GUARDED_SOURCES.has(from));
 }
 
