@@ -190,7 +190,8 @@ jobs:
       needs.changes.outputs.unit != '' &&
       toJSON(fromJSON(needs.changes.outputs.unit).include) != '[]'
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    # Baseline web job: 10.8 min including build; retain a small budget.
+    timeout-minutes: ${{ matrix.group == 'web' && 12 || 16 }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.unit) }}
@@ -384,7 +385,8 @@ jobs:
       toJSON(fromJSON(needs.changes.outputs.browser).include) != '[]'
     # Keep browser OS dependencies stable across ubuntu-latest image rollouts.
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Measured before balancing: mocked <=11.6 min, live <=14.4 min.
+    timeout-minutes: ${{ startsWith(matrix.suite, 'mocked') && 13 || 16 }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.browser) }}
@@ -407,7 +409,7 @@ jobs:
         if: matrix.journeys == ''
         env:
           SHARD: ${{ matrix.shard }}
-        run: pnpm --filter @pertexo/web test:e2e --shard="$SHARD" --workers=3
+        run: node infrastructure/testing/run-mocked-shard.mjs "$SHARD"
       - name: Use the Docker Hub mirror
         if: matrix.journeys != ''
         uses: ./.github/actions/docker-mirror
