@@ -122,8 +122,9 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
   const reaches = (names) =>
     names.some((name) => affected.has(`@pertexo/${name}`));
   const code = all || affected.size > 0;
-  const check = ['static'];
-  if (all) check.push('deploy');
+  // Deployment checks read built packages from most workspaces and the docs
+  // runbooks, so like the static checks they run for every change.
+  const check = ['static', 'deploy'];
   if (reaches(['web'])) check.push('lint-web');
   if (all || [...affected].some((name) => name !== '@pertexo/web'))
     check.push('lint-rest');
