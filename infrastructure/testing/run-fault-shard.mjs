@@ -5,32 +5,8 @@ import { pathToFileURL } from 'node:url';
 
 import { faultProject } from './fault-project.mjs';
 
-/** Longest first, placing each file on the least loaded shard. */
-export function assignFaultShards(files, durations, count) {
-  const recorded = Object.values(durations).sort((a, b) => a - b);
-  const middle = Math.floor(recorded.length / 2);
-  const median =
-    recorded.length === 0
-      ? 0
-      : recorded.length % 2
-        ? recorded[middle]
-        : (recorded[middle - 1] + recorded[middle]) / 2;
-  const duration = (file) => durations[file] ?? median;
-  const shards = Array.from({ length: count }, () => ({
-    files: [],
-    milliseconds: 0,
-  }));
-  for (const file of [...files].sort(
-    (a, b) => duration(b) - duration(a) || a.localeCompare(b),
-  )) {
-    const shard = shards.reduce((least, next) =>
-      next.milliseconds < least.milliseconds ? next : least,
-    );
-    shard.files.push(file);
-    shard.milliseconds += duration(file);
-  }
-  return shards;
-}
+export { assignDurationShards as assignFaultShards } from './duration-shards.mjs';
+import { assignDurationShards } from './duration-shards.mjs';
 
 function main([index, total]) {
   faultProject();
@@ -52,7 +28,7 @@ function main([index, total]) {
   const durations = JSON.parse(
     readFileSync(join(directory, 'durations.json'), 'utf8'),
   );
-  const shard = assignFaultShards(files, durations, count)[selected - 1];
+  const shard = assignDurationShards(files, durations, count)[selected - 1];
   console.log(JSON.stringify({ shard: selected, ...shard }));
   const result = spawnSync(
     'pnpm',
