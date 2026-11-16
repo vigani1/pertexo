@@ -1,3 +1,4 @@
+import { MAX_TIMER_MS } from '@/lib/timer';
 import type { ScheduleStepConfig } from '@pertexo/contracts';
 import { use, useEffect, useEffectEvent, useState } from 'react';
 import { isApiError } from '@/lib/api/error';
@@ -8,7 +9,8 @@ import { SchedulePreviewScope } from '../model/schedule-preview-scope';
 
 /** Typing pauses this long before the rule is sent for a preview. */
 const PREVIEW_DELAY_MS = 500;
-const MAX_TIMER_MS = 2_147_483_647;
+const PREVIEW_PASS_MARGIN_MS = 1_000;
+const PREVIEW_TIMER_MINIMUM_MS = 1_000;
 
 export type SchedulePreview =
   | Readonly<{ status: 'unavailable' }>
@@ -79,12 +81,12 @@ export function useSchedulePreview(
   useEffect(() => {
     if (firstAt === undefined) return;
     // Once the first run time passes, ask again rather than show the past.
-    const wait = Date.parse(firstAt) - Date.now() + 1_000;
+    const wait = Date.parse(firstAt) - Date.now() + PREVIEW_PASS_MARGIN_MS;
     const timer = window.setTimeout(
       () => {
         setAttempt((value) => value + 1);
       },
-      Math.min(Math.max(wait, 1_000), MAX_TIMER_MS),
+      Math.min(Math.max(wait, PREVIEW_TIMER_MINIMUM_MS), MAX_TIMER_MS),
     );
     return () => {
       window.clearTimeout(timer);

@@ -1,3 +1,4 @@
+import { RunEventError } from './run-events.errors';
 import {
   workflowRunEventSchema,
   type WorkflowRunEvent,
@@ -29,11 +30,11 @@ export function decodeRunEvent(message: SseMessage): WorkflowRunEvent {
   try {
     value = JSON.parse(message.data) as unknown;
   } catch (cause) {
-    throw new Error('A run event contained invalid JSON.', { cause });
+    throw new RunEventError('invalid-json', { cause });
   }
   const event = workflowRunEventSchema.parse(value);
   if (message.id !== String(event.sequence) || message.event !== event.type)
-    throw new Error('A run event ID or type did not match its payload.');
+    throw new RunEventError('metadata-mismatch');
   return event;
 }
 
@@ -54,8 +55,7 @@ export function classifyRunEvent(
   event: WorkflowRunEvent,
 ): 'append' | 'duplicate' {
   if (event.sequence <= cursor) return 'duplicate';
-  if (event.sequence !== cursor + 1)
-    throw new Error('The run event stream skipped an event.');
+  if (event.sequence !== cursor + 1) throw new RunEventError('sequence-gap');
   return 'append';
 }
 

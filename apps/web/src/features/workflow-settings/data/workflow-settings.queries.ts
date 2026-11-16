@@ -1,3 +1,4 @@
+import { MAX_TIMER_MS } from '@/lib/timer';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
 import { getAllWorkflowVersions } from '@/features/workflow-versions/workflow-versions-queries.public';
@@ -77,7 +78,6 @@ export const workflowSettingsKeys = {
 };
 
 const initialPageParam: string | null = null;
-const MAX_TIMER_MS = 2_147_483_647;
 // Ask a moment after the first run time, once the scheduler has had it, but
 // no more than twice a minute while a due run waits for the scheduler.
 const SCHEDULE_PASS_MARGIN_MS = 1_000;

@@ -1,3 +1,5 @@
+import { WORKFLOW_FOLDER_LIMITS } from '@pertexo/contracts';
+import { formatCount } from '@/lib/format/count';
 import { isAdministrativeRole } from '@pertexo/policy';
 import { hasCapability } from '@pertexo/policy';
 import type {
@@ -13,7 +15,7 @@ export function validOrganizationSelection(
 ) {
   return (
     workflows.length >= 1 &&
-    workflows.length <= 50 &&
+    workflows.length <= WORKFLOW_FOLDER_LIMITS.bulkItems &&
     new Set(workflows.map(({ workflow }) => workflow.id)).size ===
       workflows.length
   );
@@ -50,7 +52,9 @@ export function organizationEditAttempt({
   tagIds: readonly string[];
 }>): WorkflowOrganizationInput {
   if (!validOrganizationSelection(workflows))
-    throw new Error('Select 1–50 distinct workflows.');
+    throw new Error(
+      `Select 1–${formatCount(WORKFLOW_FOLDER_LIMITS.bulkItems, 'distinct workflow')}.`,
+    );
   const items = workflows.map(({ workflow, organization }) => ({
     workflowId: workflow.id,
     expectedOrganizationRevision: organization.organizationRevision,

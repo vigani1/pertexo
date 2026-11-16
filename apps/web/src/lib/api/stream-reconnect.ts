@@ -3,18 +3,28 @@ import { TransientStreamDisconnect } from './stream-reconnect.errors';
 
 /** How long a quiet stream stays open before a drop counts as a fresh one. */
 const HEALTHY_STREAM_MS = 30_000;
+const RECONNECT_POLICY = Object.freeze({
+  retryAfterCapMs: 300_000,
+  ceilingMs: 10_000,
+  baseDelayMs: 500,
+  exponentCeiling: 4,
+  jitterMs: 250,
+});
 
 /**
  * A stream that delivered events, or stayed open a while, was healthy: its
  * drop starts a fresh count rather than adding to the drops before it.
  */
-export function streamWasHealthy({
-  delivered,
-  openedAt,
-}: Readonly<{ delivered: boolean; openedAt: number | undefined }>): boolean {
+export function streamWasHealthy(
+  {
+    delivered,
+    openedAt,
+  }: Readonly<{ delivered: boolean; openedAt: number | undefined }>,
+  now: () => number = Date.now,
+): boolean {
   return (
     delivered ||
-    (openedAt !== undefined && Date.now() - openedAt >= HEALTHY_STREAM_MS)
+    (openedAt !== undefined && now() - openedAt >= HEALTHY_STREAM_MS)
   );
 }
 
@@ -48,7 +58,7 @@ export function classifyStreamFailure(
         kind: 'retry',
         reason: 'rate-limited',
         delayMs: Math.min(
-          300_000,
+          RECONNECT_POLICY.retryAfterCapMs,
           error.retryAfterMs ?? reconnectDelay(failures),
         ),
       };
@@ -78,8 +88,11 @@ export function classifyStreamFailure(
 function reconnectDelay(failures: number): number {
   // Jitter keeps many tabs from reconnecting in step after an outage.
   return (
-    Math.min(10_000, 500 * 2 ** Math.min(failures, 4)) +
-    Math.floor(Math.random() * 250)
+    Math.min(
+      RECONNECT_POLICY.ceilingMs,
+      RECONNECT_POLICY.baseDelayMs *
+        2 ** Math.min(failures, RECONNECT_POLICY.exponentCeiling),
+    ) + Math.floor(Math.random() * RECONNECT_POLICY.jitterMs)
   );
 }
 
