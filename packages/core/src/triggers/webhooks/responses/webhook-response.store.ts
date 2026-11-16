@@ -1,3 +1,4 @@
+import { EXECUTING_RUN_STATUSES } from '../../../shared/run-records/run-statuses.js';
 import {
   withTenantScopedClient,
   rethrowQueryFailure,
@@ -61,7 +62,7 @@ function writeWebhookResponse(
         .catch(rethrowQueryFailure);
       if (
         run[0] === undefined ||
-        !['running', 'waiting'].includes(run[0].status)
+        !EXECUTING_RUN_STATUSES.some((status) => status === run[0]?.status)
       )
         throw new NodeAttemptReconciliationRequiredError();
       const attemptRecord = alias(nodeAttempts, 'attempt');

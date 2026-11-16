@@ -1,3 +1,4 @@
+import { EXECUTING_RUN_STATUSES } from '../../../shared/run-records/run-statuses.js';
 export type HumanWaitRun = Readonly<{
   status: string;
   cancel_requested_at: Date | null;
@@ -16,7 +17,7 @@ export type HumanWaitFacts = Readonly<{
 /** Only a live, uncancelled run within its deadline pauses or resumes its clock. */
 export function humanWaitClockRunning(run: HumanWaitRun): boolean {
   return (
-    ['running', 'waiting'].includes(run.status) &&
+    EXECUTING_RUN_STATUSES.some((status) => status === run.status) &&
     run.cancel_requested_at === null &&
     !run.deadline_expired
   );

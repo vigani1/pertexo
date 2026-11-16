@@ -1,3 +1,4 @@
+import { EXECUTING_RUN_STATUSES } from '../../shared/run-records/run-statuses.js';
 import { SECOND_INTERVAL } from '../../shared/sql-intervals.repository.js';
 import {
   and,
@@ -31,7 +32,7 @@ type PublicationColumns = Readonly<{
 const UNPUBLISHED_RUN_JOB_GRACE_SECONDS = 60;
 export const UNPUBLISHED_RUN_JOB_GRACE = sql`(${UNPUBLISHED_RUN_JOB_GRACE_SECONDS}*${SECOND_INTERVAL})`;
 export function stalledRunEligible(status: AnyPgColumn) {
-  return inArray(status, ['running', 'waiting']);
+  return inArray(status, EXECUTING_RUN_STATUSES);
 }
 export function stalledLeaseEligible(attempt: AttemptColumns, asOf: SQL) {
   return and(

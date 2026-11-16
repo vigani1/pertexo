@@ -1,3 +1,4 @@
+import { EXECUTING_RUN_STATUSES } from '../../../shared/run-records/run-statuses.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { and, eq, inArray, isNull, isNotNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -71,7 +72,7 @@ function completionRows(
     eq(n.status, 'succeeded'),
   );
   const completedAttempt = and(
-    inArray(n.status, ['running', 'waiting']),
+    inArray(n.status, EXECUTING_RUN_STATUSES),
     eq(a.status, 'succeeded'),
     isNull(n.controlKind),
   );
