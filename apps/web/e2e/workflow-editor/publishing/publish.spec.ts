@@ -184,6 +184,7 @@ for (const width of [375, 1280]) {
 test('animates active execution flow and disables the marker for reduced motion', async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   const graph = {
     nodes: [
       {
