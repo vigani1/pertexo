@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import { useLatestCommand } from '@/lib/api/commands/use-latest-command';
 import { useRef, useState } from 'react';
 import type { ArtifactMetadataResponse } from '@pertexo/contracts';
@@ -35,7 +36,11 @@ type UploadState = Readonly<{
 }>;
 
 /** File and signed capabilities live only as long as this local upload session. */
-export function useUpload(apiClient: ApiClient, workspaceId: string) {
+export function useUpload(
+  apiClient: ApiClient,
+  workspaceId: string,
+  now: () => number = readWallClock,
+) {
   const intent = useRef<Intent | undefined>(undefined);
   const requests = useLatestRequest();
   const [state, setState] = useState<UploadState>({ phase: 'empty' });
@@ -96,10 +101,7 @@ export function useUpload(apiClient: ApiClient, workspaceId: string) {
           ready(known);
           return;
         }
-        if (
-          known.expiresAt !== null &&
-          Date.parse(known.expiresAt) <= Date.now()
-        ) {
+        if (known.expiresAt !== null && Date.parse(known.expiresAt) <= now()) {
           intent.current = undefined;
           throw new UploadValidationError(
             'This upload expired. Choose the file again to start a fresh upload.',

@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import { MAX_TIMER_MS } from '@/lib/timer';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import type { ApiClient } from '@/lib/api/client';
@@ -86,10 +87,11 @@ const SCHEDULE_RECHECK_FLOOR_MS = 30_000;
 /** When to read a schedule's next runs again, or false with none due. */
 function nextScheduleRead(
   firstScheduledAt: string | undefined,
+  now: () => number,
 ): number | false {
   if (firstScheduledAt === undefined) return false;
   const untilPassed =
-    Date.parse(firstScheduledAt) - Date.now() + SCHEDULE_PASS_MARGIN_MS;
+    Date.parse(firstScheduledAt) - now() + SCHEDULE_PASS_MARGIN_MS;
   return Math.min(
     Math.max(untilPassed, SCHEDULE_RECHECK_FLOOR_MS),
     MAX_TIMER_MS,
@@ -140,12 +142,14 @@ export function scheduleNextRunsQueryOptions({
   workspaceId,
   workflowId,
   triggerId,
+  now = readWallClock,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
   workflowId: string;
   triggerId: string;
+  now?: () => number;
 }>) {
   return queryOptions({
     queryKey: workflowSettingsKeys.scheduleNextRuns(
@@ -163,7 +167,7 @@ export function scheduleNextRunsQueryOptions({
         signal,
       }),
     refetchInterval: (query) =>
-      nextScheduleRead(query.state.data?.items[0]?.scheduledAt),
+      nextScheduleRead(query.state.data?.items[0]?.scheduledAt, now),
   });
 }
 

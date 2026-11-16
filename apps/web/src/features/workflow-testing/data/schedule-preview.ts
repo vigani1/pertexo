@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import { MAX_TIMER_MS } from '@/lib/timer';
 import type { ScheduleStepConfig } from '@pertexo/contracts';
 import { use, useEffect, useEffectEvent, useState } from 'react';
@@ -34,6 +35,7 @@ function failureMessage(error: unknown): string {
  */
 export function useSchedulePreview(
   config: ScheduleStepConfig | undefined,
+  now: () => number = readWallClock,
 ): SchedulePreview {
   const scope = use(SchedulePreviewScope);
   const key =
@@ -81,7 +83,7 @@ export function useSchedulePreview(
   useEffect(() => {
     if (firstAt === undefined) return;
     // Once the first run time passes, ask again rather than show the past.
-    const wait = Date.parse(firstAt) - Date.now() + PREVIEW_PASS_MARGIN_MS;
+    const wait = Date.parse(firstAt) - now() + PREVIEW_PASS_MARGIN_MS;
     const timer = window.setTimeout(
       () => {
         setAttempt((value) => value + 1);
@@ -91,7 +93,7 @@ export function useSchedulePreview(
     return () => {
       window.clearTimeout(timer);
     };
-  }, [firstAt]);
+  }, [firstAt, now]);
 
   if (key === undefined) return { status: 'unavailable' };
   if (current === undefined) return { status: 'loading' };

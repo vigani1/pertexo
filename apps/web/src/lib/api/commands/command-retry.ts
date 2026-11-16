@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import { isApiError } from '../error';
 import { isUncertainOutcome } from '../error-copy';
 import { IDEMPOTENCY_KEY_RETENTION_HOURS } from '@pertexo/contracts';
@@ -14,16 +15,19 @@ export type CommandKey = Readonly<{
   createdAt: number;
 }>;
 
-export function newCommandKey(): CommandKey {
-  return { idempotencyKey: crypto.randomUUID(), createdAt: Date.now() };
+export function newCommandKey(now: () => number = readWallClock): CommandKey {
+  return { idempotencyKey: crypto.randomUUID(), createdAt: now() };
 }
 
 /**
  * Whether resending a command's key still reaches its receipt. Past the
  * window the server has forgotten the key, so a resend could run it twice.
  */
-export function canResend(command: Pick<CommandKey, 'createdAt'>): boolean {
-  return Date.now() < command.createdAt + COMMAND_RETRY_WINDOW_MS;
+export function canResend(
+  command: Pick<CommandKey, 'createdAt'>,
+  now: () => number = readWallClock,
+): boolean {
+  return now() < command.createdAt + COMMAND_RETRY_WINDOW_MS;
 }
 
 /** A server error can be returned after admission committed, so keep its key. */
