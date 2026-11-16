@@ -51,6 +51,8 @@ type NotificationsRequest = IdentityWorkspaceRequest &
 @UseInterceptors(domainErrors(inboxFailure))
 @Controller()
 export class NotificationsController {
+  private readonly now = Date.now;
+
   public constructor(
     private readonly service: WorkspaceInboxService,
     @Inject(INBOX_HINT_SOURCE) private readonly hints: InboxHintSource,
@@ -135,6 +137,7 @@ export class NotificationsController {
       subscription = await this.hints.subscribe(workspaceId);
       lifetime = createStreamAuthorizationLifetime(
         {
+          now: this.now,
           actor: caller.actor,
           routeWorkspaceId: workspaceId,
           capability: 'workspace:read',

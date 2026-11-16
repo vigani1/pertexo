@@ -15,6 +15,7 @@ type SseAuthorizationLifetimeInput = Pick<
   Readonly<{
     /** What the stream shows; run events by default. */
     capability?: AuthorizationCapability;
+    now?: () => number;
     allowedWorkspaceStatuses?: readonly WorkspaceStatus[];
     reauthorizeResource?: (signal: AbortSignal) => Promise<void>;
     sessionExpiresAt: Date;
@@ -38,20 +39,17 @@ export type StreamAuthorizationLifetime = Readonly<{
 /** Final portion of the verified lifetime reserved for completing fresh I/O. */
 const AUTHORIZATION_LOOKUP_BUDGET_MS = 1_000;
 
-function signalAbortedAfterSubscription(signal: AbortSignal): boolean {
-  return signal.aborted;
-}
-
 export function createStreamAuthorizationLifetime(
   input: SseAuthorizationLifetimeInput,
   authorization: WorkspaceAuthorizationSource,
   intervalMs: number,
   lifetimeController: AbortController,
 ): StreamAuthorizationLifetime {
+  const now = input.now ?? Date.now;
   const stopController = new AbortController();
   const watchdogSignal = AbortSignal.any([input.signal, stopController.signal]);
   let authorizationDeadline = Math.min(
-    Date.now() + intervalMs,
+    now() + intervalMs,
     input.sessionExpiresAt.getTime(),
   );
   let nextIdleRefreshAt =
@@ -77,8 +75,9 @@ export function createStreamAuthorizationLifetime(
   ): void => {
     clearDeadlineTimer();
     const previousDeadline = authorizationDeadline;
+    const currentTime = now();
     const nextDeadline = Math.min(
-      Date.now() + intervalMs,
+      currentTime + intervalMs,
       sessionExpiresAt.getTime(),
     );
     authorizationDeadline = nextDeadline;
@@ -90,7 +89,7 @@ export function createStreamAuthorizationLifetime(
       () => {
         revoke(new Error('SSE authorization lifetime expired'));
       },
-      Math.max(0, authorizationDeadline - Date.now()),
+      Math.max(0, authorizationDeadline - currentTime),
     );
   };
   const performAuthorization = async (signal: AbortSignal): Promise<void> => {
@@ -101,7 +100,7 @@ export function createStreamAuthorizationLifetime(
       session.userId !== input.actor.actorId ||
       session.sessionId !== input.actor.sessionId ||
       !Number.isFinite(session.expiresAt.getTime()) ||
-      session.expiresAt.getTime() <= Date.now();
+      session.expiresAt.getTime() <= now();
     if (invalidRefreshedSession) {
       throw new RunEventStreamUnauthorizedError(
         'SSE session is no longer authorized',
@@ -124,7 +123,7 @@ export function createStreamAuthorizationLifetime(
   };
   const reauthorize = (): Promise<void> => {
     if (pendingAuthorization !== undefined) return pendingAuthorization;
-    const remainingMs = Math.max(1, authorizationDeadline - Date.now());
+    const remainingMs = Math.max(1, authorizationDeadline - now());
     const operationSignal = AbortSignal.any([
       watchdogSignal,
       AbortSignal.timeout(remainingMs),
@@ -152,6 +151,7 @@ export function createStreamAuthorizationLifetime(
       const wait = waitUntilAuthorizationDeadline(
         nextIdleRefreshAt,
         watchdogSignal,
+        now,
       );
       const outcome = await wait.promise;
       wait.cancel();
@@ -214,16 +214,19 @@ export async function nextFrameOrAuthorizationLoss<T>(
       error: authorizationLost.reason,
     });
   };
+  // Subscribe before checking again so an intervening abort is observed.
   authorizationLost.addEventListener('abort', onAuthorizationLost, {
     once: true,
   });
-  if (signalAbortedAfterSubscription(authorizationLost)) onAuthorizationLost();
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Subscription can change the signal; TypeScript keeps the earlier narrowing.
+  if (authorizationLost.aborted) onAuthorizationLost();
   try {
     const outcome = await Promise.race([
       iterator.next().then((result) => ({ kind: 'frame' as const, result })),
       lost,
     ]);
-    return signalAbortedAfterSubscription(authorizationLost)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The awaited producer can abort authorization.
+    return authorizationLost.aborted
       ? {
           kind: 'authorization_lost',
           error: authorizationLost.reason,
@@ -260,6 +263,7 @@ async function raceAgainstAbort<T>(
 function waitUntilAuthorizationDeadline(
   deadline: number,
   signal: AbortSignal,
+  now: () => number,
 ): Readonly<{
   promise: Promise<
     Readonly<{ kind: 'aborted' }> | Readonly<{ kind: 'reauthorize' }>
@@ -282,12 +286,13 @@ function waitUntilAuthorizationDeadline(
     Readonly<{ kind: 'aborted' }> | Readonly<{ kind: 'reauthorize' }>
   >((resolve) => {
     resolveWait = resolve;
-    if (signalAbortedAfterSubscription(signal)) {
+    if (signal.aborted) {
       settled = true;
       resolve({ kind: 'aborted' });
       return;
     }
     signal.addEventListener('abort', onAbort, { once: true });
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Recheck after subscribing, despite TypeScript's earlier narrowing.
     if (signal.aborted) {
       onAbort();
       return;
@@ -299,7 +304,7 @@ function waitUntilAuthorizationDeadline(
         signal.removeEventListener('abort', onAbort);
         resolve({ kind: 'reauthorize' });
       },
-      Math.max(0, deadline - Date.now()),
+      Math.max(0, deadline - now()),
     );
   });
   return {
