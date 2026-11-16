@@ -110,8 +110,8 @@ user-facing copy beyond the safe messages of its errors.
   other.
 - The database's time is read once, by `readDatabaseClock`
   (`shared/database-clock.repository.ts`), after a flow's lock waits; a flow
-  that writes the reading back into a timestamp column takes
-  `readDatabaseClockText`, which keeps its microseconds.
+  that stores the reading back, hands it on as a cursor or compares it at
+  microsecond precision takes `readDatabaseClockText`.
 - An area imports the files another area's `index.ts` names directly, never
   through that `index.ts` (ADR 091).
 - Areas depend one way, in the layers `CORE_AREA_LAYERS` names
