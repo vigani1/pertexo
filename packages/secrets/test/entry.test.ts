@@ -28,6 +28,7 @@ describe(
         'NodeDnsResolver',
         'NodeHttpTransport',
         'SECURE_HTTP_ERROR_CODE',
+        'SECURE_HTTP_PROVIDER_SECURITY',
         'SECURITY_NOTICE_VALIDITY_MILLIS',
         'SYSTEM_MAIL_DELIVERY_BUDGET',
         'SYSTEM_MAIL_FAILURE_GUIDANCE',
