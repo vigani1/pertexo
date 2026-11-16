@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readWorkspaces, selectJobs } from './select-jobs.mjs';
+import { readFileSync } from 'node:fs';
+import { browserEntries, readWorkspaces, selectJobs } from './select-jobs.mjs';
 
 const workspaces = readWorkspaces();
 const select = (file, event) => selectJobs([file], workspaces, event);
@@ -144,4 +145,23 @@ test('fault tests run on pushes and on pull requests that change them or the ser
     'pnpm-lock.yaml',
   ])
     assert.equal(select(file).faults, false, file);
+});
+
+test('live jobs balance recorded work and keep every journey exactly once', () => {
+  const durations = JSON.parse(
+    readFileSync(
+      new URL('../testing/live-durations.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const jobs = browserEntries.filter(({ suite }) => suite.startsWith('live'));
+  const files = jobs.flatMap(({ journeys }) => journeys.split(' '));
+  assert.deepEqual([...files].sort(), Object.keys(durations).sort());
+  const totals = jobs.map(({ journeys }) =>
+    journeys.split(' ').reduce((sum, file) => sum + durations[file], 0),
+  );
+  assert.ok(
+    Math.max(...totals) - Math.min(...totals) < 15000,
+    totals.join(', '),
+  );
 });

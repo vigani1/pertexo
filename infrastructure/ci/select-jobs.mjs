@@ -1,3 +1,5 @@
+import { recordedMockedShards } from '../testing/mocked-shards.mjs';
+import { assignDurationShards } from '../testing/duration-shards.mjs';
 import { appendFileSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -31,24 +33,48 @@ const integrationGroups = {
   services: ['artifact-store', 'queue', 'ops', 'api', 'worker'],
   worker: ['worker'],
 };
+const liveDurations = JSON.parse(
+  readFileSync(
+    new URL('../testing/live-durations.json', import.meta.url),
+    'utf8',
+  ),
+);
+// Read the scenario catalog so adding a journey also puts it in CI.
+const editorScenarios = readFileSync(
+  new URL(
+    '../../apps/api/test/browser/editor/fixture/environment.ts',
+    import.meta.url,
+  ),
+  'utf8',
+);
+const journeys = [
+  ...[...editorScenarios.matchAll(/^ {4}'([a-z0-9-]+)',$/gmu)].map(
+    ([, name]) => name,
+  ),
+  'usage',
+  'security',
+  'organization-saml',
+  'workflow-concurrency',
+  'connection-health',
+  'oauth2',
+  'workflow-organization',
+];
 export const browserEntries = [
-  { suite: 'mocked-1', journeys: '', shard: '1/2' },
-  { suite: 'mocked-2', journeys: '', shard: '2/2' },
-  {
-    suite: 'live-1',
-    journeys:
-      'pinned-samples curated-templates schedule code approvals failure-routing promotion run-recovery task-timeouts portability organization-saml http-pagination run-values api-tokens two-factor',
-  },
-  {
-    suite: 'live-2',
-    journeys:
-      'collaboration workflow-organization variables transforms oauth2 forms expression-admission spreadsheets readonly duplication federation receipts input-cases connection-health first-use',
-  },
-  {
-    suite: 'live-3',
-    journeys:
-      'artifact-inputs product webhook-responses webhook-controlled-http nested-conflict callable security governance error-workflows form-uploads notifications organization-oidc email-attachments workflow-concurrency usage',
-  },
+  ...recordedMockedShards().map(({ milliseconds }, index) => ({
+    suite: `mocked-${index + 1}`,
+    journeys: '',
+    shard: `${index + 1}/2`,
+    milliseconds,
+  })),
+  ...assignDurationShards(journeys, liveDurations, 3)
+    .sort(
+      (a, b) =>
+        Number(b.files.includes('code')) - Number(a.files.includes('code')),
+    )
+    .map(({ files }, index) => ({
+      suite: `live-${index + 1}`,
+      journeys: files.join(' '),
+    })),
 ];
 // Fault tests stop real services and take about 15 minutes on four runners, so
 // a pull request runs them only when it changes those tests, their tooling or
