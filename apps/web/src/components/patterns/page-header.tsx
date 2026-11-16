@@ -1,3 +1,4 @@
+// Temporary CI selection proof: isolate a web component change.
 import type { ComponentProps } from 'react';
 import { cn } from '@/lib/class-names';
 
