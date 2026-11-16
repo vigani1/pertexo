@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import {
   RETRY_WINDOW_ENDED,
   canResend,
@@ -72,7 +73,7 @@ export function useWorkflowPublication({
   ensureSaved,
   isSavedDraftCurrent,
   onPublicationAccepted,
-  now = Date.now,
+  now = readWallClock,
 }: PublicationOptions) {
   const queryClient = useQueryClient();
   const [publishStage, setPublishStage] = useState<PublishStage>();

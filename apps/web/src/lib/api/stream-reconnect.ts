@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import { isApiError } from './error';
 import { TransientStreamDisconnect } from './stream-reconnect.errors';
 
@@ -20,7 +21,7 @@ export function streamWasHealthy(
     delivered,
     openedAt,
   }: Readonly<{ delivered: boolean; openedAt: number | undefined }>,
-  now: () => number = Date.now,
+  now: () => number = readWallClock,
 ): boolean {
   return (
     delivered ||

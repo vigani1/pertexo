@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import { TransientStreamDisconnect } from '@/lib/api/stream-reconnect.errors';
 import { streamWasHealthy, waitToReconnect } from '@/lib/api/stream-reconnect';
 import { runStreamRecovery } from '../model/live-stream';
@@ -49,7 +50,7 @@ export function useRunEvents({
   userId,
   workspaceId,
   runId,
-  now = Date.now,
+  now = readWallClock,
 }: RunEventsInput) {
   const queryClient = useQueryClient();
   // Reconnecting after a pause starts a fresh stream that backfills from the

@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import { useEffect, useState } from 'react';
 
 /** How often a clock on screen ticks, by what it shows. */
@@ -22,7 +23,7 @@ export function useNow({
   intervalMs,
   enabled = true,
   untilMs = Number.POSITIVE_INFINITY,
-  now: readNow = Date.now,
+  now: readNow = readWallClock,
 }: Readonly<{
   now?: () => number;
   intervalMs: number;
