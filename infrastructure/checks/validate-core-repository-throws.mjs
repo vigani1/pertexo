@@ -501,7 +501,11 @@ function integrityError(name, imported) {
       'AggregateError',
     ].includes(name)
   )
-    return !imported.has(name);
+    // A platform name is a platform error only when no import supplies it,
+    // under its own name or renamed (`import { TypeError as Refusal }`).
+    return ![...imported].some(
+      ([local, original]) => local === name || original === name,
+    );
   return Object.hasOwn(STORAGE_INTEGRITY_ERRORS, name);
 }
 
