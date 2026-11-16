@@ -205,3 +205,17 @@ test("core's AGENTS.md lists the areas from the bottom in the table's order", as
   const named = [...sentence.matchAll(/`([a-z-]+)`/gu)].map(([, area]) => area);
   assert.deepEqual(named, CORE_AREA_LAYERS.flat());
 });
+
+test('refuses guarded edges beyond the fixed review budget even when all are used', () => {
+  const guarded = Object.fromEntries(
+    Array.from({ length: 13 }, (_, index) => [
+      `area${index} -> connections`,
+      'reviewed',
+    ]),
+  );
+  const imports = Object.keys(guarded).map((edge) => {
+    const [from, to] = edge.split(' -> ');
+    return { from, to };
+  });
+  assert.match(guardedEdgeFindings(imports, guarded).join('\n'), /budget/u);
+});
