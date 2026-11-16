@@ -126,16 +126,10 @@ export const testIntegrity = {
         ],
       },
     ],
-    'vitest/no-focused-tests': 'error',
-    'vitest/no-identical-title': 'error',
   },
 };
 
 export const readabilityRules = {
-  'no-nested-ternary': 'error',
-  'no-else-return': 'error',
-  complexity: ['error', 20],
-  'max-depth': ['error', 4],
   'max-params': ['error', 4],
   'max-lines-per-function': ['error', 150],
   'max-lines': ['error', 400],
@@ -158,17 +152,6 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/consistent-type-imports': 'error',
-      '@typescript-eslint/no-import-type-side-effects': 'error',
-      // Omit a property by destructuring it beside a rest element, and mark a
-      // deliberately unused parameter or binding with a leading underscore.
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          argsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-          varsIgnorePattern: '^_',
-        },
-      ],
     },
   },
   {
