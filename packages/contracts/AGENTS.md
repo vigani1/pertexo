@@ -38,8 +38,8 @@ its types, never its runtime schemas (a lint rule enforces it).
 - A new endpoint: its schemas in `schemas/<area>/`, its route in
   `routes/<area>/` through `defineRoute`, its operation in the area's
   `openapi/` document, then `contracts:generate`.
-- A new problem code: in the area's `errors/` file, joined into
-  `API_PROBLEM_CODES` and `API_PROBLEM_MANIFEST` in `api-problem.ts`.
+- A new problem code: in the area's `errors/` file, composed into
+  `API_PROBLEM_MANIFEST` in `api-problem.ts`; its code list is derived.
 - A shared field schema: `schemas/shared/`.
 
 ## Defaults and config
@@ -73,8 +73,6 @@ its types, never its runtime schemas (a lint rule enforces it).
 - `errors/` files are named by area, not `.errors.ts`: they are problem-code
   vocabularies on the wire, not error classes. The one error class,
   `SamlHttpsOriginRequiredError`, is in `schemas/identity/federation/federation.errors.ts`.
-- `errors/api-problem.ts` is exempt from the line limit: it is the one
-  registry of problem codes, read whole (see `eslint.config.mjs`).
 - Generic throws that stay: `routes/define.ts` and `openapi/public.ts`
   (route and document assembly at module load, programmer errors);
   `schemas/execution/run-created-at.ts` (a timestamp its schema already admitted);

@@ -1,10 +1,4 @@
 /** Bounded public portability errors; uploaded content never forms a title. */
-export const WORKFLOW_PORTABILITY_PROBLEM_CODES = [
-  'workflow.portability_unavailable',
-  'workflow.portability_compatibility_conflict',
-  'workflow.portability_review_conflict',
-  'workflow.portability_invalid',
-] as const;
 
 export const WORKFLOW_PORTABILITY_PROBLEM_DETAILS = {
   'workflow.portability_unavailable': {

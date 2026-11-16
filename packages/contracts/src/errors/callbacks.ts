@@ -1,8 +1,3 @@
-export const CALLBACK_PROBLEM_CODES = [
-  'callback.already_received',
-  'callback.expired',
-  'callback.unavailable',
-] as const;
 export const callbackProblems = {
   'callback.already_received': {
     status: 409,

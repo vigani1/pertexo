@@ -1,18 +1,3 @@
-export const WORKFLOW_ORGANIZATION_PROBLEM_CODES = [
-  'workflow.tag_key_conflict',
-  'workflow.tag_limit_exceeded',
-  'workflow.tag_revision_conflict',
-  'workflow.tag_delete_overflow',
-  'workflow.organization_revision_conflict',
-  'workflow.folder_name_conflict',
-  'workflow.folder_limit_exceeded',
-  'workflow.folder_revision_conflict',
-  'workflow.folder_hierarchy_conflict',
-  'workflow.folder_not_empty',
-  'workflow.folder_not_visible',
-  'workflow.folder_audience_review_required',
-] as const;
-
 export const workflowOrganizationProblems = {
   'workflow.tag_key_conflict': {
     status: 409,
@@ -87,3 +72,7 @@ export const workflowOrganizationProblems = {
     exposeDetail: true,
   },
 } as const;
+
+export const WORKFLOW_ORGANIZATION_PROBLEM_CODES = Object.keys(
+  workflowOrganizationProblems,
+) as (keyof typeof workflowOrganizationProblems)[];
