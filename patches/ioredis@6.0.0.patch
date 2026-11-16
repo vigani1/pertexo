@@ -1,0 +1,26 @@
+diff --git a/built/DataHandler.js b/built/DataHandler.js
+index d4346fcb9cec3577bc0ed26b967ce2a07a7754ce..4a6397286a2c9d5f0134e37f0abaf530dc22a8b7 100644
+--- a/built/DataHandler.js
++++ b/built/DataHandler.js
+@@ -101,6 +101,8 @@ class DataHandler {
+             }
+         }
+         else {
++            // The next frame can already be monitor data in this decoder read.
++            if (item.command.name === "monitor") this.redis.setStatus("monitoring");
+             item.command.resolve(reply);
+         }
+     }
+diff --git a/built/redis/event_handler.js b/built/redis/event_handler.js
+index c82583a5838dcdf6d0785b403da464c8b58f8d37..9b43482ca0b263d30811b50eb0f22cdbcdba89b7 100644
+--- a/built/redis/event_handler.js
++++ b/built/redis/event_handler.js
+@@ -366,7 +366,7 @@ function readyHandler(self) {
+         self.setStatus("ready");
+         self.retryAttempts = 0;
+         if (self.options.monitor) {
+-            self.call("monitor").then(() => self.setStatus("monitoring"), (error) => self.emit("error", error));
++            self.call("monitor").catch((error) => self.emit("error", error));
+             const { sendCommand } = self;
+             self.sendCommand = function (command) {
+                 if (Command_1.default.checkFlag("VALID_IN_MONITOR_MODE", command.name)) {

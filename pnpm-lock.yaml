@@ -15,6 +15,9 @@ overrides:
 
 pnpmfileChecksum: sha256-eJcICcluYA/p07+lpI4PnX4cSEp45BOD3U2owla7AAg=
 
+patchedDependencies:
+  ioredis@6.0.0: 1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61
+
 importers:
 
   .:
@@ -142,7 +145,7 @@ importers:
         version: 5.12.8
       ioredis:
         specifier: 6.0.0
-        version: 6.0.0(supports-color@7.2.0)
+        version: 6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0)
       kysely:
         specifier: 0.29.8
         version: 0.29.8
@@ -466,13 +469,13 @@ importers:
         version: 8.23.1
       bullmq:
         specifier: 6.7.0
-        version: 6.7.0(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1)
+        version: 6.7.0(ioredis@6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0))(pg@8.23.1)
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(kysely@0.29.8)(pg@8.23.1)
       ioredis:
         specifier: 6.0.0
-        version: 6.0.0(supports-color@7.2.0)
+        version: 6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0)
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -783,10 +786,10 @@ importers:
         version: link:../workflow-model
       bullmq:
         specifier: 6.7.0
-        version: 6.7.0(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1)
+        version: 6.7.0(ioredis@6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0))(pg@8.23.1)
       ioredis:
         specifier: 6.0.0
-        version: 6.0.0(supports-color@7.2.0)
+        version: 6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -795,7 +798,7 @@ importers:
     dependencies:
       ioredis:
         specifier: 6.0.0
-        version: 6.0.0(supports-color@7.2.0)
+        version: 6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0)
 
   packages/secrets:
     dependencies:
@@ -7174,7 +7177,7 @@ snapshots:
 
   buffer-from@1.1.2: {}
 
-  bullmq@6.7.0(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1):
+  bullmq@6.7.0(ioredis@6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0))(pg@8.23.1):
     dependencies:
       cron-parser: 5.10.3
       msgpackr: 2.1.3
@@ -7182,7 +7185,7 @@ snapshots:
       semver: 7.8.5
       tslib: 2.9.1
     optionalDependencies:
-      ioredis: 6.0.0(supports-color@7.2.0)
+      ioredis: 6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0)
       pg: 8.23.1
 
   call-bind-apply-helpers@1.0.2:
@@ -7869,7 +7872,7 @@ snapshots:
 
   inline-style-parser@0.2.7: {}
 
-  ioredis@6.0.0(supports-color@7.2.0):
+  ioredis@6.0.0(patch_hash=1835bc8ec8035a12f5fdafd089cf9fc0d3ddba37d8ed67974af2b4361f4b3f61)(supports-color@7.2.0):
     dependencies:
       '@ioredis/commands': 2.0.0
       cluster-key-slot: 1.1.1
