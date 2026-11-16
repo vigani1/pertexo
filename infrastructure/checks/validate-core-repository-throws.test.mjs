@@ -311,6 +311,16 @@ for (const [name, files, refused, chain] of [
     true,
   ],
   [
+    'refuses a core error with a platform name imported under another name',
+    {
+      'a.ts':
+        "import { TypeError as Refusal } from './subject.errors.js'; export function guard() { throw new Refusal(); }",
+      'subject.errors.ts': 'export class TypeError extends Error {}',
+      'example.repository.ts': "import { guard } from './a.js'; guard();",
+    },
+    true,
+  ],
+  [
     'follows imported wrappers',
     {
       'a.ts':
