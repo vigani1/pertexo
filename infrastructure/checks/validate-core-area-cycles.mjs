@@ -10,7 +10,11 @@ import {
   repositoryRoot,
 } from './workspace-sources.mjs';
 import { loadsModule } from './module-declarations.mjs';
-import { coreAreaDependencyAllowed, isCoreArea } from './core-area-order.mjs';
+import {
+  coreAreaDependencyAllowed,
+  GUARDED_CORE_AREA_EDGES,
+  isCoreArea,
+} from './core-area-order.mjs';
 
 const coreSource = 'packages/core/src/';
 
@@ -171,6 +175,20 @@ export function areaOrderFindings(imports) {
   return [...findings];
 }
 
+/** A listed guarded edge no import uses only widens what the order allows. */
+export function guardedEdgeFindings(
+  imports,
+  guarded = GUARDED_CORE_AREA_EDGES,
+) {
+  const used = new Set(imports.map((i) => `${i.from} -> ${i.to}`));
+  return Object.keys(guarded)
+    .filter((edge) => !used.has(edge))
+    .map(
+      (edge) =>
+        `GUARDED_CORE_AREA_EDGES lists ${edge}, which no core import uses; remove it.`,
+    );
+}
+
 export async function collectAreaImports(root = repositoryRoot) {
   const imports = [];
   for (const file of await listSourceFiles('packages/core', root))
@@ -224,7 +242,11 @@ if (
   if (process.argv.includes('--map')) console.log(describeAreaGraph(imports));
   else
     report(
-      [...areaCycleFindings(imports), ...areaOrderFindings(imports)],
+      [
+        ...areaCycleFindings(imports),
+        ...areaOrderFindings(imports),
+        ...guardedEdgeFindings(imports),
+      ],
       'Core areas import only the layers below theirs, with no cycle, type-only imports included.',
     );
 }

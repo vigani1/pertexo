@@ -6,6 +6,7 @@ import {
   areaOrderFindings,
   collectAreaImports,
   findAreaImports,
+  guardedEdgeFindings,
   stronglyConnectedGroups,
   areaGraph,
 } from './validate-core-area-cycles.mjs';
@@ -148,6 +149,45 @@ test('refuses a type-only import up the area order and an area with no layer', (
     ),
     [],
   );
+});
+
+test('refuses an unlisted import into a guarded area and out of the operator', () => {
+  const into = findAreaImports(
+    file('runs', 'a.ts'),
+    "import { x } from '../connections/runtime/b.js';",
+  );
+  assert.match(
+    areaOrderFindings(into).join('\n'),
+    /runs may not import connections/u,
+  );
+  const out = findAreaImports(
+    file('operator', 'a.ts'),
+    "import { x } from '../authoring/b.js';",
+  );
+  assert.match(
+    areaOrderFindings(out).join('\n'),
+    /operator may not import authoring/u,
+  );
+});
+
+test('lets a listed guarded edge through, and refuses a listed edge nobody uses', () => {
+  const listed = findAreaImports(
+    file('attempts', 'a.ts'),
+    "import { x } from '../connections/runtime/b.js';",
+  );
+  assert.deepEqual(areaOrderFindings(listed), []);
+  assert.deepEqual(
+    guardedEdgeFindings(listed, { 'attempts -> connections': 'reason' }),
+    [],
+  );
+  assert.match(
+    guardedEdgeFindings([], { 'attempts -> connections': 'reason' })[0],
+    /lists attempts -> connections, which no core import uses/u,
+  );
+});
+
+test("core's guarded edges are all in use", async () => {
+  assert.deepEqual(guardedEdgeFindings(await collectAreaImports()), []);
 });
 
 test("core's real imports follow the area order", async () => {
