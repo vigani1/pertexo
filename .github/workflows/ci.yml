@@ -82,6 +82,7 @@ jobs:
       pull-requests: read
     outputs:
       code: ${{ steps.classify.outputs.code }}
+      faults: ${{ steps.classify.outputs.faults }}
     steps:
       - name: Classify the change
         id: classify
@@ -92,11 +93,15 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           code=true
+          faults=true
           if [ "$EVENT_NAME" = pull_request ]; then
             files=$(gh api --paginate "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" --jq '.[].filename')
+            faults=false
+            if printf '%s\n' "$files" | grep -qE '^apps/worker/test/(recovery|support/recovery)/|^apps/worker/vitest.resilience.config.ts$|^infrastructure/testing/(run-fault-shard|fault-project|test-stack)[^/]*$|^\.github/(workflows/ci.yml|actions/(start-services|setup|docker-mirror)/)|^compose.yaml$|^infrastructure/(postgres|redis|images)/'; then faults=true; fi
             if ! printf '%s\n' "$files" | grep -qvE '^docs/|\.md$'; then code=false; fi
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "faults=$faults" >> "$GITHUB_OUTPUT"
 
   docs:
     needs: changes
@@ -338,15 +343,22 @@ jobs:
   # store, so nothing else shares their compose project. About 50 minutes, so it runs
   # on main and nightly and no pull request waits for it.
   faults:
-    if: github.event_name != 'pull_request'
+    name: faults (${{ matrix.shard }})
+    needs: changes
+    if: needs.changes.outputs.faults == 'true'
     runs-on: ubuntu-latest
-    # A stuck run makes a fault test wait out its full recovery limit.
-    timeout-minutes: 90
+    # LPT predicts 12.3 minutes per shard, plus build and service setup.
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       # These kill Postgres on purpose and check what survives, so it stays real.
       POSTGRES_DURABILITY: 'on'
       COMPOSE_PROJECT_NAME:
-        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-integration
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-fault-${{
+        matrix.shard }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -361,7 +373,8 @@ jobs:
       - name: Migrate
         run: pnpm db:migrate
       - name: Fault tests
-        run: pnpm --filter @pertexo/worker test:fault
+        run:
+          node infrastructure/testing/run-fault-shard.mjs ${{ matrix.shard }} 4
       - name: Service logs
         if: failure()
         run: docker compose logs --no-color --timestamps
