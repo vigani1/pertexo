@@ -15,7 +15,7 @@ import {
   workflowTriggerPausePeriods,
 } from '@pertexo/database/schema';
 import { lockWorkflowAuthoringAuthority } from '../../workflows/authority.js';
-import { command } from './command.repository.js';
+import { command } from './settings-command.js';
 import type {
   AutoPauseCommandResult,
   ResumeWorkflowInput,

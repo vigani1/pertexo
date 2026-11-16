@@ -3,10 +3,10 @@ import { WorkflowPromotionError } from './workflow-promotion.errors.js';
 import type { PromotionScope } from './workflow-promotion.types.js';
 import {
   readPromotionLink,
-  requirePromotionAuthority,
   lockPromotionWorkspaces,
   readWorkspaceNaming,
 } from './authority.repository.js';
+import { requirePromotionAuthority } from './require-authority.js';
 
 export async function linkedPromotionTarget(
   inWorkspace: WorkspaceScopeRunner,

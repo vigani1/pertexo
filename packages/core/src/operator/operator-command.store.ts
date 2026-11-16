@@ -11,10 +11,9 @@ import { operatorCommands } from '@pertexo/database/schema';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { z } from 'zod';
-
 import { transactionTimeoutsShape } from '../shared/transaction-timeouts.schemas.js';
-
 import { readStuckWork } from '../runs/stalled/stuck-work.repository.js';
+import { decodeStuckWorkCursor } from '../runs/stalled/stuck-work-cursor.js';
 import { commandRecord } from './command-record.js';
 import type {
   GetOperatorCommandInput,
@@ -71,7 +70,8 @@ export function createOperatorCommandStore(
     },
     close: () => lease.close(),
     /** Reads across workspaces: an operator doesn't yet know which one is stuck. */
-    listStuckWork: (cursor?: string) => readStuckWork(drizzle(pool), cursor),
+    listStuckWork: async (cursor?: string) =>
+      readStuckWork(drizzle(pool), decodeStuckWorkCursor(cursor)),
     getCommand: (input: GetOperatorCommandInput) => readCommand(context, input),
     redispatchFailedOutbox: (input: RedispatchFailedOutboxInput) =>
       redispatch(context, input),
