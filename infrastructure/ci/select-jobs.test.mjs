@@ -17,10 +17,10 @@ test('documentation keeps the static and deployment floor without test jobs', ()
     assert.deepEqual(result[job].include, []);
 });
 
-test('web source and web tests run all web tests and live journeys', () => {
+test('shared web source and tests retain web units and all browser journeys', () => {
   for (const file of [
-    'apps/web/src/component.tsx',
-    'apps/web/test/component.test.tsx',
+    'apps/web/src/lib/class-names.ts',
+    'apps/web/test/lib/clock.test.ts',
   ]) {
     const result = select(file);
     assert.deepEqual(result.check.part, ['static', 'deploy', 'lint-web']);
