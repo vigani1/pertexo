@@ -18,7 +18,7 @@ import type {
 } from './workspace-variables.types.js';
 import { replaceWorkspaceVariables } from './replace.js';
 import { readWorkspaceVariables } from './set.repository.js';
-import { readVariableUsage } from './usage.repository.js';
+import { readVariableUsage } from './read-usage.js';
 
 export type WorkspaceVariablesStore = ReturnType<
   typeof createWorkspaceVariablesStore
