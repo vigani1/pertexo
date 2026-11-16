@@ -1,3 +1,4 @@
+import { requireWorkspaceAuthority } from '../../shared/workspace-access.errors.js';
 import {
   acquireDatabasePool,
   type DatabaseConfig,
@@ -53,11 +54,13 @@ export function createFailureNotificationMailAuthorizer(
           lease.pool,
           { workspaceId: addressed.workspaceId, actorId: memberId },
           async (client) => {
-            await lockWorkspaceAuthority(
-              client,
-              addressed.workspaceId,
-              memberId,
-              rolesForCapability('workspace:read'),
+            requireWorkspaceAuthority(
+              await lockWorkspaceAuthority(
+                client,
+                addressed.workspaceId,
+                memberId,
+                rolesForCapability('workspace:read'),
+              ),
             );
             const db = drizzle(client);
             const [current] = await db

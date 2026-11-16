@@ -1,3 +1,5 @@
+import { requireWorkspaceAuthority } from '../../../../shared/workspace-access.errors.js';
+import { authorizeOrganizationContext } from '../../management/authorize-organization.js';
 import {
   setOrganizationContext,
   claimCommand,
@@ -31,7 +33,6 @@ import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
 
 import {
   organizationForWorkspace,
-  authorizeOrganizationContext,
   recordFederationAudit,
 } from '../../management/authority.repository.js';
 
@@ -150,7 +151,7 @@ export function readDirectoryAdoption(
           actorId: scope.actorId,
           roles: rolesForCapability('member:read'),
           allowedStatuses: BROWSABLE_WORKSPACE_STATUSES,
-        }),
+        }).then(requireWorkspaceAuthority),
       );
       const { organization, canManage } = await readManagedOrganization(
         client,
@@ -205,7 +206,7 @@ export function runDirectoryCommand<
       const role = await withWorkspaceScope(client, input, (scoped) =>
         lockWorkspaceAuthority(scoped, input.workspaceId, input.actorId, [
           'owner',
-        ]),
+        ]).then(requireWorkspaceAuthority),
       );
       if (role !== 'owner') throw new DirectoryError('forbidden');
       const identity = {

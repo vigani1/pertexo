@@ -1,7 +1,6 @@
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
 import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
-import { withRetainedRunRead } from '../../access.js';
 import {
   ordinaryRunSql,
   expiredRunSql,
@@ -17,7 +16,6 @@ import {
   runAdmissionBlockers,
 } from '../admission.repository.js';
 import { and, desc, eq, lt, or, sql, type SQL } from 'drizzle-orm';
-import type { Pool } from 'pg';
 import {
   readWorkflowRunFailedSteps,
   type WorkflowRunFailedStep,
@@ -63,38 +61,32 @@ export type WorkflowRunListPage = Readonly<{
 }>;
 
 /** One newest-first page, read in a workspace-scoped snapshot. */
-export async function readWorkflowRunListPage(
-  pool: Pool,
+export async function readWorkflowRunListPageRows(
+  transaction: ResourceTransaction,
   input: ListWorkflowRunsDatabaseInput,
 ): Promise<WorkflowRunListPage> {
-  return withRetainedRunRead(pool, input, async (transaction) =>
-    listWorkflowRunsInTransaction(transaction, {
-      limit: input.limit,
-      ...(input.runValueKey === undefined
-        ? {}
-        : {
-            runValueKey: input.runValueKey,
-            ...(input.runValue === undefined
-              ? {}
-              : { runValue: input.runValue }),
-          }),
-      ...(input.workflowId === undefined
-        ? {}
-        : { workflowId: input.workflowId }),
-      ...(input.workflowNamePrefix === undefined
-        ? {}
-        : { workflowNamePrefix: input.workflowNamePrefix }),
-      includeWorkflowName: input.includeWorkflowName ?? false,
-      ...(input.status === undefined ? {} : { status: input.status }),
-      ...(input.createdAtFrom === undefined
-        ? {}
-        : { createdAtFrom: input.createdAtFrom }),
-      ...(input.createdAtBefore === undefined
-        ? {}
-        : { createdAtBefore: input.createdAtBefore }),
-      ...(input.after === undefined ? {} : { after: input.after }),
-    }),
-  );
+  return listWorkflowRunsInTransaction(transaction, {
+    limit: input.limit,
+    ...(input.runValueKey === undefined
+      ? {}
+      : {
+          runValueKey: input.runValueKey,
+          ...(input.runValue === undefined ? {} : { runValue: input.runValue }),
+        }),
+    ...(input.workflowId === undefined ? {} : { workflowId: input.workflowId }),
+    ...(input.workflowNamePrefix === undefined
+      ? {}
+      : { workflowNamePrefix: input.workflowNamePrefix }),
+    includeWorkflowName: input.includeWorkflowName ?? false,
+    ...(input.status === undefined ? {} : { status: input.status }),
+    ...(input.createdAtFrom === undefined
+      ? {}
+      : { createdAtFrom: input.createdAtFrom }),
+    ...(input.createdAtBefore === undefined
+      ? {}
+      : { createdAtBefore: input.createdAtBefore }),
+    ...(input.after === undefined ? {} : { after: input.after }),
+  });
 }
 
 async function listWorkflowRunsInTransaction(

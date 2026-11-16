@@ -5,7 +5,6 @@ import ts from 'typescript';
 import { followThrowingExports } from './core-repository-exports.mjs';
 
 import {
-  TEMPORARY_TRANSITIVE_FINDINGS,
   STORAGE_INTEGRITY_DECODERS,
   STORAGE_INTEGRITY_ERRORS,
 } from './core-repository-throws.mjs';
@@ -261,11 +260,7 @@ export async function collectCoreFindings(root = repositoryRoot) {
     ...repositoryThrowFindings(throwsByFile),
     ...repositoryHopFindings(hops),
     ...staleExemptionFindings([...texts.values()]),
-  ].filter(
-    (finding) =>
-      root !== repositoryRoot ||
-      !TEMPORARY_TRANSITIVE_FINDINGS.includes(finding),
-  );
+  ];
 }
 
 /** Propagate monotonically: cycles terminate because each declaration is added once. */

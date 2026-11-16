@@ -3,7 +3,6 @@ import {
   noticeMailBatches,
   systemMailDeliveries,
 } from '@pertexo/database/schema';
-import { rolesForCapability } from '@pertexo/policy';
 import {
   nextNoticeDue,
   nextPersonNoticeDue,
@@ -13,7 +12,6 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
 import { createNoticeMailBatch } from './batches.repository.js';
 import type {
   NoticeMailPerson,
@@ -29,12 +27,6 @@ export async function preparePerson(
   person: NoticeMailPerson,
   seal: NoticeMailSealer,
 ): Promise<number> {
-  await lockWorkspaceAuthority(
-    client,
-    person.workspace_id,
-    person.user_id,
-    rolesForCapability('workspace:read'),
-  );
   const to = await recipient(client, person.workspace_id, person.user_id);
   if (!to?.email_verified) return 0;
   const current = await settings(client, person.workspace_id, person.user_id, {

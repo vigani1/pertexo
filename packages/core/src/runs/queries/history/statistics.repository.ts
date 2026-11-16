@@ -1,6 +1,4 @@
 import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
-import { withRetainedRunRead } from '../../access.js';
-import type { Pool } from 'pg';
 import type { RunStatus } from '@pertexo/workflow-engine';
 import { emptyRunCounts } from '../counts.js';
 import {
@@ -19,7 +17,6 @@ const WINDOW_HOURS = Object.freeze({ '1h': 1, '6h': 6, '24h': 24, '7d': 168 });
 type Window = '1h' | '6h' | '24h' | '7d';
 const STATISTICS_WORKFLOWS_MAX = 50;
 /** The read's cost ceiling: it never holds a pooled connection longer. */
-const WORKFLOW_RUN_STATISTICS_STATEMENT_TIMEOUT_MILLIS = 2_000;
 
 interface Input {
   workspaceId: string;
@@ -61,16 +58,11 @@ export type WorkflowRunStatisticsRecord = Readonly<{
   }>;
 }>;
 
-export async function readWorkflowRunStatistics(
-  pool: Pool,
+export async function readWorkflowRunStatisticsRows(
+  transaction: ResourceTransaction,
   input: WorkflowRunStatisticsDatabaseInput,
 ): Promise<WorkflowRunStatisticsRecord> {
-  return withRetainedRunRead(
-    pool,
-    input,
-    (transaction) => readInTransaction(transaction, input),
-    WORKFLOW_RUN_STATISTICS_STATEMENT_TIMEOUT_MILLIS,
-  );
+  return readInTransaction(transaction, input);
 }
 
 async function readInTransaction(

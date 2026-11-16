@@ -11,7 +11,6 @@ import { alias, QueryBuilder } from 'drizzle-orm/pg-core';
 import { connections, connectionShares } from '@pertexo/database/schema';
 import type { PoolClient } from 'pg';
 import { hasCapability, rolesForCapability, type Role } from '@pertexo/policy';
-import { WorkspaceAccessDeniedError } from '../workspace-access.errors.js';
 import { readWorkspaceAuthority } from '../workspace-authority.js';
 import type { ResourceActor } from '../folder-access.types.js';
 import { RESOURCE_ADMINISTRATORS } from '../folder-policy.js';
@@ -46,16 +45,11 @@ export async function readConnectionScope(
   actor: ResourceActor,
   capability: ConnectionCapability,
 ): Promise<ConnectionScope> {
-  let role: Role | null = null;
-  try {
-    role = await readWorkspaceAuthority(client, actor.workspaceId, {
-      actorId: actor.actorId,
-      roles: rolesForCapability(capability),
-    });
-  } catch (error) {
-    if (!(error instanceof WorkspaceAccessDeniedError)) throw error;
-  }
-  return connectionScope(actor, role, capability);
+  const role = await readWorkspaceAuthority(client, actor.workspaceId, {
+    actorId: actor.actorId,
+    roles: rolesForCapability(capability),
+  });
+  return connectionScope(actor, role ?? null, capability);
 }
 
 /** Filter discovery before paging, and admission before saving a new binding. */

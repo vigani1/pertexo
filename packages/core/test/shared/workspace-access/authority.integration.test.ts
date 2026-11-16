@@ -94,7 +94,11 @@ describe('the role it hands the operation', () => {
           { mode, ...anyMember },
           operation,
         ),
-      ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          error instanceof WorkspaceAccessDeniedError &&
+          error.message === 'Workspace access is unavailable',
+      );
       expect(operation).not.toHaveBeenCalled();
     },
   );
@@ -115,7 +119,11 @@ describe('the role it hands the operation', () => {
           },
           operation,
         ),
-      ).rejects.toBeInstanceOf(WorkspaceAccessDeniedError);
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          error instanceof WorkspaceAccessDeniedError &&
+          error.message === 'Workspace access is unavailable',
+      );
       expect(operation).not.toHaveBeenCalled();
     },
   );

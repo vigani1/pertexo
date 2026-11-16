@@ -1,3 +1,4 @@
+import { requireWorkspaceAuthority } from '../../../shared/workspace-access.errors.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/policy';
@@ -62,11 +63,13 @@ async function loadInputRequest(
   client: PoolClient,
   target: Extract<FormUploadTarget, { kind: 'input_request' }>,
 ): Promise<LoadedUploadTarget> {
-  const role = await lockWorkspaceAuthority(
-    client,
-    target.workspaceId,
-    target.actorId,
-    rolesForCapability('run:read'),
+  const role = requireWorkspaceAuthority(
+    await lockWorkspaceAuthority(
+      client,
+      target.workspaceId,
+      target.actorId,
+      rolesForCapability('run:read'),
+    ),
   );
   const row = requireVisibleTask(
     await readTaskUploadTarget(client, target, {

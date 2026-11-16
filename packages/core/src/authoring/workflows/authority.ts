@@ -36,6 +36,8 @@ export async function lockWorkflowAuthoringAuthority(
     const role = await (
       browsing ? lockBrowsableWorkspaceAuthority : lockWorkspaceAuthority
     )(client, workspaceId, actorId, roles);
+    if (role === undefined)
+      throw new WorkflowNotFoundError('Workflow is not visible');
     if (resource !== undefined) {
       const access = await readFolderScope(
         client,

@@ -49,6 +49,8 @@ it('reads bounded upload eligibility without retained task details and keeps its
       f.deciderId,
       rolesForCapability('run:read'),
     );
+    expect(role).toBeDefined();
+    if (role === undefined) throw new Error('Fixture lost authority');
     return readTaskUploadTarget(client, f.scope, {
       role,
       resources: await readFolderScope(client, f.scope, role),

@@ -1,3 +1,5 @@
+import { authorizeOrganizationContext } from './authorize-organization.js';
+import { requireWorkspaceAuthority } from '../../../shared/workspace-access.errors.js';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 
 import type { Pool } from 'pg';
@@ -29,10 +31,7 @@ import type { FederationScope } from './federation-management.types.js';
 
 import type { OrganizationRow } from './identity-organizations.repository.js';
 
-import {
-  organizationForWorkspace,
-  authorizeOrganizationContext,
-} from './authority.repository.js';
+import { organizationForWorkspace } from './authority.repository.js';
 
 export function requireFederationOwner(
   role: Role,
@@ -53,11 +52,13 @@ export async function lockFederationWorkspace(
   await lockWorkspaceRow(client, scope.workspaceId);
   await withWorkspaceScope(client, scope, async (scoped) => {
     requireFederationOwner(
-      await lockWorkspaceAuthority(
-        scoped,
-        scope.workspaceId,
-        scope.actorId,
-        ADMINISTRATIVE_ROLES,
+      requireWorkspaceAuthority(
+        await lockWorkspaceAuthority(
+          scoped,
+          scope.workspaceId,
+          scope.actorId,
+          ADMINISTRATIVE_ROLES,
+        ),
       ),
       'change',
     );

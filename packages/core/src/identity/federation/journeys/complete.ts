@@ -1,3 +1,4 @@
+import { requireWorkspaceAuthority } from '../../../shared/workspace-access.errors.js';
 import type { CompleteFederationJourney } from './federation-journey.types.js';
 import {
   setOrganizationContext,
@@ -145,7 +146,7 @@ async function completeProviderTest(
         attempt.provider.controlWorkspaceId,
         attempt.ownerUserId ?? '',
         ['owner'],
-      ),
+      ).then(requireWorkspaceAuthority),
   );
   await recordProviderCheck(client, attempt);
   await withWorkspaceScope(
