@@ -6,7 +6,6 @@ import {
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
 import {
-  triggerSchedules,
   triggerSchedules as schedules,
   triggerScheduleOccurrences as occurrences,
   workflows,
@@ -51,14 +50,14 @@ export async function claimDueScheduleRows(
           misfire_policy: sql<'catch_up_once' | 'skip'>`claim.misfire_policy`,
           config_fingerprint: sql<string>`claim.config_fingerprint`,
           anchor_at: sql<Date>`claim.anchor_at`.mapWith(
-            triggerSchedules.anchorAt,
+            schedules.anchorAt,
           ),
           next_fire_at: sql<Date>`claim.next_fire_at`.mapWith(
-            triggerSchedules.nextFireAt,
+            schedules.nextFireAt,
           ),
           lease_token: sql<string>`claim.lease_token`,
           observed_at: sql<Date>`claim.observed_at`.mapWith(
-            triggerSchedules.createdAt,
+            schedules.createdAt,
           ),
         })
         .from(
