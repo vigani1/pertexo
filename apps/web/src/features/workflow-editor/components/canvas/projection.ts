@@ -97,7 +97,7 @@ export function useCanvasProjection({
       return projected;
     },
     // selectionResync only forces fresh node objects for React Flow.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
     [
       definitions,
       dragPositions,

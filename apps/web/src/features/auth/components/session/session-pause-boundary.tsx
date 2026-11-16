@@ -82,7 +82,7 @@ export function SessionPauseBoundary({
   const reason = paused ? state.reason : undefined;
   // Another tab changed the session: ask at once who is signed in now.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- The check sets state only after its request answers.
+    // oxlint-disable-next-line react/set-state-in-effect -- The check sets state only after its request answers.
     if (reason === 'checking') void check(false);
   }, [check, reason]);
   // Coming back from the sign-in tab resumes without another click.
