@@ -39,11 +39,20 @@ const pending = oauth2ConnectionResponseSchema.parse(
   }),
 );
 afterEach(() => vi.restoreAllMocks());
-it.each(['focus', 'notification'] as const)(
+it.each(['focus', 'notification', 'notification-during-focus'] as const)(
   'recovers the consent completion read after %s without starting consent again',
   async (trigger) => {
     let failing = true;
     let starts = 0;
+    let releaseRead: (() => void) | undefined;
+    let readStarted: (() => void) | undefined;
+    const startedRead = new Promise<void>((resolve) => {
+      readStarted = resolve;
+    });
+    const heldRead = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    let holdRead = trigger === 'notification-during-focus';
     vi.spyOn(window, 'open').mockReturnValue(null);
     mockServer.use(
       http.post(`${base}/${connectionId}/oauth2/authorization`, () => {
@@ -54,8 +63,14 @@ it.each(['focus', 'notification'] as const)(
           expiresAt: '2027-01-01T00:00:00.000Z',
         });
       }),
-      http.get(`${base}/${connectionId}`, () =>
-        failing
+      http.get(`${base}/${connectionId}`, async () => {
+        if (holdRead) {
+          holdRead = false;
+          readStarted?.();
+          await heldRead;
+          return HttpResponse.json(pending);
+        }
+        return failing
           ? new HttpResponse(null, { status: 503 })
           : HttpResponse.json({
               ...pending,
@@ -65,8 +80,8 @@ it.each(['focus', 'notification'] as const)(
                 accessTokenExpiresAt: null,
                 renewable: false,
               },
-            }),
-      ),
+            });
+      }),
     );
     renderInRouter(
       <OAuth2OverviewActions
@@ -90,6 +105,37 @@ it.each(['focus', 'notification'] as const)(
     await screen.findByText('Your browser blocked the window.');
     const channel = new BroadcastChannel('pertexo.connections.oauth2');
     try {
+      if (trigger === 'notification-during-focus') {
+        failing = false;
+        await act(async () => {
+          window.dispatchEvent(new Event('focus'));
+          await startedRead;
+        });
+        const observer = new BroadcastChannel('pertexo.connections.oauth2');
+        try {
+          await act(async () => {
+            const delivered = new Promise<void>((resolve) => {
+              observer.onmessage = () => {
+                resolve();
+              };
+            });
+            channel.postMessage({
+              result: 'connected',
+              connectionId,
+              workspaceId,
+            });
+            await delivered;
+            releaseRead?.();
+          });
+          expect(
+            await screen.findByText('Connected Billing API'),
+          ).toBeVisible();
+          expect(starts).toBe(1);
+          return;
+        } finally {
+          observer.close();
+        }
+      }
       await act(async () => {
         if (trigger === 'focus') window.dispatchEvent(new Event('focus'));
         else

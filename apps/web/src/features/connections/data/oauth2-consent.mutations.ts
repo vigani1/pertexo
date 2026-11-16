@@ -44,6 +44,7 @@ export function useOAuth2Consent(
   const resultScope = useConnectionResultScope(scope);
   const [checking, setChecking] = useState(false);
   const checkBusy = useRef(false);
+  const checkRequested = useRef(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -59,65 +60,54 @@ export function useOAuth2Consent(
   }, [onConnected]);
   const connectionId = connection?.id;
 
-  const refresh = useCallback(async () => {
-    if (connectionId === undefined || checkBusy.current) return;
-    const owner = resultScope();
-    checkBusy.current = true;
-    setChecking(true);
-    try {
-      const fresh = await getConnection(
-        scope.apiClient,
-        scope.workspaceId,
-        connectionId,
-      );
-      if (!mounted.current) return;
-      await owner.store(fresh);
-      const grant = grantTimeOf(fresh);
-      if (grant === undefined || grant === grantBefore.current) {
-        setState({ kind: 'waiting' });
+  const refresh = useCallback(
+    async function refresh() {
+      if (connectionId === undefined) return;
+      if (checkBusy.current) {
+        // A completion message may arrive while a focus read still sees the old grant.
+        checkRequested.current = true;
         return;
       }
-      setState({ kind: 'idle' });
-      notifyConnected.current(fresh);
-    } catch (error) {
-      if (mounted.current) setState({ kind: 'check-failed', error });
-    } finally {
-      checkBusy.current = false;
-      if (mounted.current) setChecking(false);
-    }
-  }, [connectionId, scope.apiClient, scope.workspaceId, resultScope]);
+      const owner = resultScope();
+      checkBusy.current = true;
+      setChecking(true);
+      try {
+        const fresh = await getConnection(
+          scope.apiClient,
+          scope.workspaceId,
+          connectionId,
+        );
+        if (!mounted.current) return;
+        await owner.store(fresh);
+        const grant = grantTimeOf(fresh);
+        if (grant === undefined || grant === grantBefore.current) {
+          setState({ kind: 'waiting' });
+          return;
+        }
+        checkRequested.current = false;
+        setState({ kind: 'idle' });
+        notifyConnected.current(fresh);
+      } catch (error) {
+        if (mounted.current) setState({ kind: 'check-failed', error });
+      } finally {
+        checkBusy.current = false;
+        if (mounted.current) {
+          setChecking(false);
+          if (checkRequested.current) {
+            checkRequested.current = false;
+            void refresh();
+          }
+        }
+      }
+    },
+    [connectionId, scope.apiClient, scope.workspaceId, resultScope],
+  );
 
   const listening =
     state.kind === 'waiting' ||
     state.kind === 'blocked' ||
     state.kind === 'check-failed';
-  useEffect(() => {
-    if (!listening) return undefined;
-    const channel = new BroadcastChannel(OAUTH2_CHANNEL);
-    channel.onmessage = (event: MessageEvent<unknown>) => {
-      const landing = oauth2CallbackLandingSchema.safeParse(event.data);
-      if (!landing.success) return;
-      // Naming no connection, it can only be the consent this tab is waiting on.
-      if (!('connectionId' in landing.data)) {
-        setState({ kind: 'failed', message: landingMessage(landing.data) });
-        return;
-      }
-      if (landing.data.connectionId !== connectionId) return;
-      if (landing.data.result === 'connected') {
-        void refresh();
-        return;
-      }
-      setState({ kind: 'failed', message: landingMessage(landing.data) });
-    };
-    const onFocus = (): void => {
-      void refresh();
-    };
-    window.addEventListener('focus', onFocus);
-    return () => {
-      channel.close();
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [connectionId, listening, refresh]);
+  useConsentNotifications(connectionId, listening, refresh, setState);
 
   const connect = useCallback(() => {
     if (connection === undefined) return;
@@ -176,4 +166,39 @@ export function useOAuth2Consent(
       void refresh();
     },
   } as const;
+}
+
+function useConsentNotifications(
+  connectionId: string | undefined,
+  listening: boolean,
+  refresh: () => Promise<void>,
+  setState: (state: OAuth2ConsentState) => void,
+) {
+  useEffect(() => {
+    if (!listening) return undefined;
+    const channel = new BroadcastChannel(OAUTH2_CHANNEL);
+    channel.onmessage = (event: MessageEvent<unknown>) => {
+      const landing = oauth2CallbackLandingSchema.safeParse(event.data);
+      if (!landing.success) return;
+      // Naming no connection, it can only be the consent this tab is waiting on.
+      if (!('connectionId' in landing.data)) {
+        setState({ kind: 'failed', message: landingMessage(landing.data) });
+        return;
+      }
+      if (landing.data.connectionId !== connectionId) return;
+      if (landing.data.result === 'connected') {
+        void refresh();
+        return;
+      }
+      setState({ kind: 'failed', message: landingMessage(landing.data) });
+    };
+    const onFocus = (): void => {
+      void refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      channel.close();
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [connectionId, listening, refresh, setState]);
 }
