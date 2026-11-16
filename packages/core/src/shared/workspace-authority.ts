@@ -5,15 +5,14 @@ import {
   type Role,
 } from '@pertexo/policy';
 import { findWorkspaceAuthority } from './authority.repository.js';
-import { WorkspaceAccessDeniedError } from './workspace-access.errors.js';
 
 export function lockWorkspaceAuthority(
   client: PoolClient,
   workspaceId: string,
   actorId: string,
   roles: readonly Role[],
-): Promise<Role> {
-  return requireAuthority(client, workspaceId, {
+): Promise<Role | undefined> {
+  return findWorkspaceAuthority(client, workspaceId, {
     actorId,
     roles,
     locking: true,
@@ -33,8 +32,8 @@ export function lockWorkspaceAuthorityInStatuses(
     roles: readonly Role[];
     allowedStatuses: readonly string[];
   }>,
-): Promise<Role> {
-  return requireAuthority(client, workspaceId, {
+): Promise<Role | undefined> {
+  return findWorkspaceAuthority(client, workspaceId, {
     actorId,
     roles,
     locking: true,
@@ -48,8 +47,8 @@ export function lockBrowsableWorkspaceAuthority(
   workspaceId: string,
   actorId: string,
   roles: readonly Role[],
-): Promise<Role> {
-  return requireAuthority(client, workspaceId, {
+): Promise<Role | undefined> {
+  return findWorkspaceAuthority(client, workspaceId, {
     actorId,
     roles,
     locking: true,
@@ -70,20 +69,11 @@ export function readWorkspaceAuthority(
     roles: readonly Role[];
     allowedStatuses?: readonly string[] | undefined;
   }>,
-): Promise<Role> {
-  return requireAuthority(client, workspaceId, {
+): Promise<Role | undefined> {
+  return findWorkspaceAuthority(client, workspaceId, {
     actorId,
     roles,
     locking: false,
     allowedStatuses,
   });
-}
-
-async function requireAuthority(
-  ...args: Parameters<typeof findWorkspaceAuthority>
-): Promise<Role> {
-  const role = await findWorkspaceAuthority(...args);
-  if (role === undefined)
-    throw new WorkspaceAccessDeniedError('Workspace access is unavailable');
-  return role;
 }

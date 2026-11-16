@@ -5,7 +5,6 @@ import {
   nodeAttempts,
   workflowRuns,
 } from '@pertexo/database/schema';
-import { withResourceRunRead } from '../../access.js';
 import {
   retainedTestRunSql,
   runRetentionIntervalSql,
@@ -17,7 +16,6 @@ import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import { sql, and, eq, desc, exists, inArray } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { workflowGraphStepSql } from '../execution/graph-step.repository.js';
-import type { Pool } from 'pg';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { UNSUCCESSFUL_RUN_STATUSES } from '@pertexo/workflow-model';
 import { parseStoredExecutionValue } from '../../../shared/stored-execution.js';
@@ -66,45 +64,39 @@ function toRunData(stored: unknown): WorkflowRunData {
 }
 
 /** The input a run started with; `undefined` when the run is not visible. */
-export async function readWorkflowRunInput(
-  pool: Pool,
+export async function readWorkflowRunInputRows(
+  transaction: WorkspaceTransaction,
   input: ReadWorkflowRunInputInput,
 ): Promise<WorkflowRunData | undefined> {
-  return withResourceRunRead(pool, input, (transaction) =>
-    runInputInTransaction(transaction, input.runId),
-  );
+  return runInputInTransaction(transaction, input.runId);
 }
 
 /**
  * The input a node run's latest attempt received, as recorded (ADR 052);
  * `undefined` unless it belongs to the run.
  */
-export async function readWorkflowNodeRunInput(
-  pool: Pool,
+export async function readWorkflowNodeRunInputRows(
+  transaction: WorkspaceTransaction,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<WorkflowRunData | undefined> {
-  return withResourceRunRead(pool, input, (transaction) =>
-    nodeRunValueInTransaction(
-      transaction,
-      input.runId,
-      input.nodeRunId,
-      'input',
-    ),
+  return nodeRunValueInTransaction(
+    transaction,
+    input.runId,
+    input.nodeRunId,
+    'input',
   );
 }
 
 /** A node run's current output; `undefined` unless it belongs to the run. */
-export async function readWorkflowNodeRunOutput(
-  pool: Pool,
+export async function readWorkflowNodeRunOutputRows(
+  transaction: WorkspaceTransaction,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<WorkflowRunData | undefined> {
-  return withResourceRunRead(pool, input, (transaction) =>
-    nodeRunValueInTransaction(
-      transaction,
-      input.runId,
-      input.nodeRunId,
-      'output',
-    ),
+  return nodeRunValueInTransaction(
+    transaction,
+    input.runId,
+    input.nodeRunId,
+    'output',
   );
 }
 
@@ -241,78 +233,74 @@ export async function readWorkflowRunFailedSteps(
 }
 
 /** Retained non-secret configuration uses the same authorization and logical detail window as run data. */
-export async function readWorkflowRunVariables(
-  pool: Pool,
+export async function readWorkflowRunVariablesRows(
+  transaction: WorkspaceTransaction,
   input: ReadWorkflowRunInputInput,
 ): Promise<WorkspaceVariableSnapshot | null | undefined> {
-  return withResourceRunRead(pool, input, async (transaction) => {
-    const run = alias(workflowRuns, 'run');
-    const [row] = await transaction.db
-      .select({
-        revision: run.variableSetRevision,
-        retained: sql<boolean>`(${run.detailsPurgedAt} IS NULL AND (${run.completedAt} IS NULL OR ${run.completedAt}>clock_timestamp()-${RUN_DETAILS_RETENTION_SQL}) AND ${retainedTestRunSql('run', 'clock_timestamp()')})`,
-      })
-      .from(run)
-      .where(
-        and(
-          eq(run.workspaceId, transaction.workspaceId),
-          eq(run.id, input.runId),
-        ),
-      );
-
-    if (row === undefined) return undefined;
-    if (!row.retained) return null;
-    return {
-      revision: row.revision ?? 0,
-      values: await readVariableSetValues(
-        transaction.db,
-        transaction.workspaceId,
-        row.revision,
+  const run = alias(workflowRuns, 'run');
+  const [row] = await transaction.db
+    .select({
+      revision: run.variableSetRevision,
+      retained: sql<boolean>`(${run.detailsPurgedAt} IS NULL AND (${run.completedAt} IS NULL OR ${run.completedAt}>clock_timestamp()-${RUN_DETAILS_RETENTION_SQL}) AND ${retainedTestRunSql('run', 'clock_timestamp()')})`,
+    })
+    .from(run)
+    .where(
+      and(
+        eq(run.workspaceId, transaction.workspaceId),
+        eq(run.id, input.runId),
       ),
-    };
-  });
+    );
+
+  if (row === undefined) return undefined;
+  if (!row.retained) return null;
+  return {
+    revision: row.revision ?? 0,
+    values: await readVariableSetValues(
+      transaction.db,
+      transaction.workspaceId,
+      row.revision,
+    ),
+  };
 }
 
 /** Private diagnostics follow the current attempt and the logical detail window. */
-export async function readWorkflowNodeRunDiagnostics(
-  pool: Pool,
+export async function readWorkflowNodeRunDiagnosticsRows(
+  transaction: WorkspaceTransaction,
   input: ReadWorkflowNodeRunOutputInput,
 ): Promise<CodeDiagnostics | null | undefined> {
-  return withResourceRunRead(pool, input, async (transaction) => {
-    const node = alias(nodeRuns, 'node');
-    const run = alias(workflowRuns, 'run');
-    const attempt = alias(nodeAttempts, 'attempt');
-    const [row] = await transaction.db
-      .select({
-        diagnostics: sql<unknown>`case when ${run.detailsPurgedAt} is null and (${run.completedAt} is null or ${run.completedAt}>statement_timestamp()-${RUN_DETAILS_RETENTION_SQL}) and ${retainedTestRunSql('run')} then ${attempt.codeDiagnostics} else null end`,
-      })
-      .from(node)
-      .innerJoin(
-        run,
-        and(
-          eq(run.workspaceId, node.workspaceId),
-          eq(run.id, node.workflowRunId),
-        ),
-      )
-      .leftJoin(
-        attempt,
-        and(
-          eq(attempt.workspaceId, node.workspaceId),
-          eq(attempt.nodeRunId, node.id),
-          eq(attempt.id, node.currentAttemptId),
-        ),
-      )
-      .where(
-        and(
-          eq(node.workspaceId, transaction.workspaceId),
-          eq(node.workflowRunId, input.runId),
-          eq(node.id, input.nodeRunId),
-        ),
-      )
-      .limit(1);
-    if (row === undefined) return undefined;
-    return row.diagnostics === null
-      ? null
-      : decodeStoredValue(() => codeDiagnosticsSchema.parse(row.diagnostics));
-  });
+  const node = alias(nodeRuns, 'node');
+  const run = alias(workflowRuns, 'run');
+  const attempt = alias(nodeAttempts, 'attempt');
+  const [row] = await transaction.db
+    .select({
+      diagnostics: sql<unknown>`case when ${run.detailsPurgedAt} is null and (${run.completedAt} is null or ${run.completedAt}>statement_timestamp()-${RUN_DETAILS_RETENTION_SQL}) and ${retainedTestRunSql('run')} then ${attempt.codeDiagnostics} else null end`,
+    })
+    .from(node)
+    .innerJoin(
+      run,
+      and(
+        eq(run.workspaceId, node.workspaceId),
+        eq(run.id, node.workflowRunId),
+      ),
+    )
+    .leftJoin(
+      attempt,
+      and(
+        eq(attempt.workspaceId, node.workspaceId),
+        eq(attempt.nodeRunId, node.id),
+        eq(attempt.id, node.currentAttemptId),
+      ),
+    )
+    .where(
+      and(
+        eq(node.workspaceId, transaction.workspaceId),
+        eq(node.workflowRunId, input.runId),
+        eq(node.id, input.nodeRunId),
+      ),
+    )
+    .limit(1);
+  if (row === undefined) return undefined;
+  return row.diagnostics === null
+    ? null
+    : decodeStoredValue(() => codeDiagnosticsSchema.parse(row.diagnostics));
 }

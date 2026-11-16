@@ -1,11 +1,9 @@
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { noticeMailBatches, noticeMailItems } from '@pertexo/database/schema';
-import { rolesForCapability } from '@pertexo/policy';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
 import type { NoticeMailPerson } from './notice-mail.types.js';
 import { mailCutoff } from './items.js';
 import { recipient, settings } from './recipients.repository.js';
@@ -18,12 +16,7 @@ export async function authorizeBatch(
   deliveryId: string,
 ): Promise<boolean> {
   const { workspace_id: workspaceId, user_id: actorId } = person;
-  await lockWorkspaceAuthority(
-    client,
-    workspaceId,
-    actorId,
-    rolesForCapability('workspace:read'),
-  );
+
   const db = drizzle(client);
   const [batch] = await db
     .select()

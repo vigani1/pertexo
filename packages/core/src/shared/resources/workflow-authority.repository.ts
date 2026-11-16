@@ -1,5 +1,4 @@
 import type { PoolClient } from 'pg';
-import { WorkspaceAccessDeniedError } from '../workspace-access.errors.js';
 import {
   BROWSABLE_WORKSPACE_STATUSES,
   rolesForCapability,
@@ -34,29 +33,23 @@ export async function authorizeWorkflowResource(
     roles?: readonly Role[] | undefined;
   }>,
 ): Promise<boolean> {
-  try {
-    const role = locking
-      ? await (
-          browsing ? lockBrowsableWorkspaceAuthority : lockWorkspaceAuthority
-        )(client, input.workspaceId, input.actorId, roles)
-      : await readWorkspaceAuthority(client, input.workspaceId, {
-          actorId: input.actorId,
-          roles,
-          ...(browsing
-            ? { allowedStatuses: BROWSABLE_WORKSPACE_STATUSES }
-            : {}),
-        });
-    return await workflowAccessible(
-      client,
-      await readFolderScope(client, input, role),
-      {
-        workspaceId: input.workspaceId,
-        workflowId: input.workflowId,
-        capability,
-      },
-    );
-  } catch (error) {
-    if (error instanceof WorkspaceAccessDeniedError) return false;
-    throw error;
-  }
+  const role = locking
+    ? await (
+        browsing ? lockBrowsableWorkspaceAuthority : lockWorkspaceAuthority
+      )(client, input.workspaceId, input.actorId, roles)
+    : await readWorkspaceAuthority(client, input.workspaceId, {
+        actorId: input.actorId,
+        roles,
+        ...(browsing ? { allowedStatuses: BROWSABLE_WORKSPACE_STATUSES } : {}),
+      });
+  if (role === undefined) return false;
+  return await workflowAccessible(
+    client,
+    await readFolderScope(client, input, role),
+    {
+      workspaceId: input.workspaceId,
+      workflowId: input.workflowId,
+      capability,
+    },
+  );
 }

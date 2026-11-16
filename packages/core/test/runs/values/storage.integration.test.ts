@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { ExecutionCapabilityExpiredError } from '../../../src/attempts/node-attempt.errors.js';
 import { RunValuesLimitError } from '../../../src/runs/values/run-values.errors.js';
 import { copyRecoveryRunValues } from '../../../src/runs/values/copy-recovery-values.js';
-import { readWorkflowRunListPage } from '../../../src/runs/queries/history/list.repository.js';
+import { readWorkflowRunListPage } from '../../../src/runs/queries/history/read-list.js';
 import {
   withWorkspaceTransaction,
   withWorkspaceReadTransaction,

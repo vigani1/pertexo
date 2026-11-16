@@ -1,3 +1,4 @@
+import { requireWorkspaceAuthority } from './workspace-access.errors.js';
 import { lockWorkspaceRow, readWorkspaceRole } from './authority.repository.js';
 import {
   lockWorkspaceAuthorityInStatuses,
@@ -102,11 +103,13 @@ export function withWorkspaceAccess<T>(
       pool,
       scope,
       async (client) => {
-        const role = await readWorkspaceAuthority(client, workspaceId, {
-          actorId,
-          roles,
-          allowedStatuses: statuses,
-        });
+        const role = requireWorkspaceAuthority(
+          await readWorkspaceAuthority(client, workspaceId, {
+            actorId,
+            roles,
+            allowedStatuses: statuses,
+          }),
+        );
         return run(client, role);
       },
       options,
@@ -117,11 +120,13 @@ export function withWorkspaceAccess<T>(
     async (client) => {
       if (access.mode === 'exclusive')
         await lockWorkspaceRow(client, workspaceId);
-      const role = await lockWorkspaceAuthorityInStatuses(client, workspaceId, {
-        actorId,
-        roles,
-        allowedStatuses: statuses,
-      });
+      const role = requireWorkspaceAuthority(
+        await lockWorkspaceAuthorityInStatuses(client, workspaceId, {
+          actorId,
+          roles,
+          allowedStatuses: statuses,
+        }),
+      );
       return run(client, role);
     },
     options,

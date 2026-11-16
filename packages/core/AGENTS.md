@@ -51,9 +51,9 @@ user-facing copy beyond the safe messages of its errors.
   (`requireWorkflowRun` in `runs/workflow-run.errors.ts`). A refusal the
   statement itself detects comes back as a tagged result, never a throw (a
   duplicate name, a key clash, a capacity trigger: `insertConnection`,
-  `insertRowValues`, `insertPendingUpload`). Every repository throws only
-  storage integrity errors (below), and calls no core function that throws
-  any other: `validate-core-repository-throws.mjs` refuses both.
+  `insertRowValues`, `insertPendingUpload`). Every repository raises only
+  storage integrity errors (below) among domain errors, and calls no core
+  function that raises another domain error: `validate-core-repository-throws.mjs` refuses both.
 - A query, lock or SQL fragment (`clock_timestamp()`, an increment, an
   interval): the `<subject>.repository.ts` beside the operation, or the
   flow's `.store.ts` when that file is its facade.
@@ -148,7 +148,11 @@ user-facing copy beyond the safe messages of its errors.
   `STORAGE_INTEGRITY_DECODERS` there (`decodeStoredValue`,
   `requireReadableReceipt`), whose only refusal is a stored value that no
   longer reads. The check refuses an entry in either list that core no longer
-  uses.
+  uses. Platform failures, including cancellation (`DOMException` with
+  `AbortError`), are not domain decisions and may propagate.
+- The stored execution-value codec refuses malformed descriptors and payloads
+  in both read and write directions. Its bounded JSON format is an integrity
+  backstop; operations validate external values before repository writes.
 - `connections/testing.ts`, `lifecycle/testing.ts` and
   `tenant-access/testing.ts` collect an area's test flows for `src/testing.ts`.
 - `shared/stored-execution.ts` writes JSON text lengths, listed as not limits.

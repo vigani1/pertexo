@@ -1,9 +1,7 @@
 import type { RunStatus, RecoveryNode } from '@pertexo/workflow-engine';
 import { nodeRuns, workflowRuns, workflows } from '@pertexo/database/schema';
-import { withResourceWorkflowRead } from '../../access.js';
 import { ordinaryRunSql } from '../../../shared/run-records/run-retention.repository.js';
 import { and, eq, sql, desc, isNull } from 'drizzle-orm';
-import type { Pool } from 'pg';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 
 /** How many of a workflow's newest runs step history looks at (ADR 051). */
@@ -106,45 +104,42 @@ async function workflowExists(
  * ended, its latest status, and how long its successful runs took.
  * `undefined` when the workflow isn't in the workspace.
  */
-export async function readWorkflowStepHealth(
-  pool: Pool,
+export async function readWorkflowStepHealthRows(
+  transaction: WorkspaceTransaction,
   input: ReadWorkflowStepHealthInput,
 ): Promise<WorkflowStepHealthPage | undefined> {
-  return withResourceWorkflowRead(pool, input, async (transaction) => {
-    if (!(await workflowExists(transaction, input.workflowId)))
-      return undefined;
-    const recent = recentRuns(transaction, input.workflowId);
-    const [summary] = await transaction.db
-      .with(recent)
-      .select({
-        runs_considered: sql<number>`count(*)::int`,
-        oldest_run_at: sql<Date | null>`min(${recent.created_at})`.mapWith(
-          workflowRuns.createdAt,
-        ),
-      })
-      .from(recent);
-    if (summary === undefined)
-      throw new Error('Step history aggregate returned no row');
-    const steps = await readStepHealth(transaction, recent);
-    return Object.freeze({
-      runsConsidered: summary.runs_considered,
-      oldestRunAt: summary.oldest_run_at,
-      items: Object.freeze(
-        steps.map((row) => {
-          return Object.freeze({
-            nodeId: row.node_id,
-            runs: row.runs,
-            succeeded: row.succeeded,
-            failed: row.failed,
-            skipped: row.skipped,
-            lastStatus: row.last_status,
-            lastRanAt: row.last_ran_at,
-            medianDurationMs: row.median_ms,
-            p95DurationMs: row.p95_ms,
-          });
-        }),
+  if (!(await workflowExists(transaction, input.workflowId))) return undefined;
+  const recent = recentRuns(transaction, input.workflowId);
+  const [summary] = await transaction.db
+    .with(recent)
+    .select({
+      runs_considered: sql<number>`count(*)::int`,
+      oldest_run_at: sql<Date | null>`min(${recent.created_at})`.mapWith(
+        workflowRuns.createdAt,
       ),
-    });
+    })
+    .from(recent);
+  if (summary === undefined)
+    throw new Error('Step history aggregate returned no row');
+  const steps = await readStepHealth(transaction, recent);
+  return Object.freeze({
+    runsConsidered: summary.runs_considered,
+    oldestRunAt: summary.oldest_run_at,
+    items: Object.freeze(
+      steps.map((row) => {
+        return Object.freeze({
+          nodeId: row.node_id,
+          runs: row.runs,
+          succeeded: row.succeeded,
+          failed: row.failed,
+          skipped: row.skipped,
+          lastStatus: row.last_status,
+          lastRanAt: row.last_ran_at,
+          medianDurationMs: row.median_ms,
+          p95DurationMs: row.p95_ms,
+        });
+      }),
+    ),
   });
 }
 
@@ -153,64 +148,61 @@ export async function readWorkflowStepHealth(
  * the run it belongs to. `undefined` when the workflow isn't in the
  * workspace; empty when the step never ran there.
  */
-export async function readWorkflowStepRuns(
-  pool: Pool,
+export async function readWorkflowStepRunsRows(
+  transaction: WorkspaceTransaction,
   input: ReadWorkflowStepRunsInput,
 ): Promise<readonly WorkflowStepRunRecord[] | undefined> {
-  return withResourceWorkflowRead(pool, input, async (transaction) => {
-    if (!(await workflowExists(transaction, input.workflowId)))
-      return undefined;
-    const recent = recentRuns(transaction, input.workflowId);
-    const result = await transaction.db
-      .with(recent)
-      .select({
-        run_id: recent.id,
-        run_status: recent.status,
-        run_created_at: recent.created_at,
-        workflow_version_id: recent.workflow_version_id,
-        node_run_id: nodeRuns.id,
-        invocation_key: nodeRuns.invocationKey,
-        status: nodeRuns.status,
-        attempts: sql<number>`coalesce(${nodeRuns.currentAttemptNumber},0)`,
-        started_at: nodeRuns.startedAt,
-        completed_at: nodeRuns.completedAt,
-        safe_error_code: nodeRuns.safeErrorCode,
-      })
-      .from(recent)
-      .innerJoin(
-        nodeRuns,
-        and(
-          eq(nodeRuns.workspaceId, transaction.workspaceId),
-          eq(nodeRuns.workflowRunId, recent.id),
-          eq(nodeRuns.nodeId, input.nodeId),
-        ),
-      )
-      .where(isNull(nodeRuns.reusedSourceRunId))
-      .orderBy(
-        desc(recent.created_at),
-        desc(recent.id),
-        desc(nodeRuns.createdAt),
-        desc(nodeRuns.id),
-      )
-      .limit(input.limit);
-    return Object.freeze(
-      result.map((row) => {
-        return Object.freeze({
-          runId: row.run_id,
-          runStatus: row.run_status,
-          runCreatedAt: row.run_created_at,
-          workflowVersionId: row.workflow_version_id,
-          nodeRunId: row.node_run_id,
-          invocationKey: row.invocation_key,
-          status: row.status,
-          attempts: row.attempts,
-          startedAt: row.started_at,
-          completedAt: row.completed_at,
-          safeErrorCode: row.safe_error_code,
-        });
-      }),
-    );
-  });
+  if (!(await workflowExists(transaction, input.workflowId))) return undefined;
+  const recent = recentRuns(transaction, input.workflowId);
+  const result = await transaction.db
+    .with(recent)
+    .select({
+      run_id: recent.id,
+      run_status: recent.status,
+      run_created_at: recent.created_at,
+      workflow_version_id: recent.workflow_version_id,
+      node_run_id: nodeRuns.id,
+      invocation_key: nodeRuns.invocationKey,
+      status: nodeRuns.status,
+      attempts: sql<number>`coalesce(${nodeRuns.currentAttemptNumber},0)`,
+      started_at: nodeRuns.startedAt,
+      completed_at: nodeRuns.completedAt,
+      safe_error_code: nodeRuns.safeErrorCode,
+    })
+    .from(recent)
+    .innerJoin(
+      nodeRuns,
+      and(
+        eq(nodeRuns.workspaceId, transaction.workspaceId),
+        eq(nodeRuns.workflowRunId, recent.id),
+        eq(nodeRuns.nodeId, input.nodeId),
+      ),
+    )
+    .where(isNull(nodeRuns.reusedSourceRunId))
+    .orderBy(
+      desc(recent.created_at),
+      desc(recent.id),
+      desc(nodeRuns.createdAt),
+      desc(nodeRuns.id),
+    )
+    .limit(input.limit);
+  return Object.freeze(
+    result.map((row) => {
+      return Object.freeze({
+        runId: row.run_id,
+        runStatus: row.run_status,
+        runCreatedAt: row.run_created_at,
+        workflowVersionId: row.workflow_version_id,
+        nodeRunId: row.node_run_id,
+        invocationKey: row.invocation_key,
+        status: row.status,
+        attempts: row.attempts,
+        startedAt: row.started_at,
+        completedAt: row.completed_at,
+        safeErrorCode: row.safe_error_code,
+      });
+    }),
+  );
 }
 
 function readStepHealth(

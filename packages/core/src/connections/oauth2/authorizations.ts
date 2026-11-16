@@ -1,3 +1,4 @@
+import { requireWorkspaceAuthority } from '../../shared/workspace-access.errors.js';
 import { rolesForCapability } from '@pertexo/policy';
 
 import type { Pool, PoolClient } from 'pg';
@@ -123,11 +124,13 @@ export async function consumeOAuth2Authorization(
         connectionId: row.connectionId,
       } as const;
       try {
-        await lockWorkspaceAuthority(
-          client,
-          input.workspaceId,
-          row.startedBy,
-          rolesForCapability('connection:manage'),
+        requireWorkspaceAuthority(
+          await lockWorkspaceAuthority(
+            client,
+            input.workspaceId,
+            row.startedBy,
+            rolesForCapability('connection:manage'),
+          ),
         );
       } catch (error: unknown) {
         if (error instanceof WorkspaceAccessDeniedError) return refused;

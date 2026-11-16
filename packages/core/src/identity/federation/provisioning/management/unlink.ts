@@ -1,3 +1,5 @@
+import { requireWorkspaceAuthority } from '../../../../shared/workspace-access.errors.js';
+import { authorizeOrganizationContext } from '../../management/authorize-organization.js';
 import {
   claimCommand,
   completeCommand,
@@ -15,10 +17,7 @@ import { lockWorkspaceRow } from '../../../../shared/authority.repository.js';
 
 import { lockWorkspaceAuthority } from '../../../../shared/workspace-authority.js';
 
-import {
-  authorizeOrganizationContext,
-  recordFederationAudit,
-} from '../../management/authority.repository.js';
+import { recordFederationAudit } from '../../management/authority.repository.js';
 
 import { advanceOrganization } from '../../management/commands.repository.js';
 
@@ -58,7 +57,7 @@ export async function unlinkDirectoryWorkspace(
     await withWorkspaceScope(client, input, (scoped) =>
       lockWorkspaceAuthority(scoped, input.workspaceId, input.actorId, [
         'owner',
-      ]),
+      ]).then(requireWorkspaceAuthority),
     );
     const identity = {
       workspaceId: input.workspaceId,

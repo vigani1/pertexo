@@ -1,3 +1,6 @@
+import { rolesForCapability } from '@pertexo/policy';
+import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
+import { requireWorkspaceAuthority } from '../../shared/workspace-access.errors.js';
 import {
   acquireDatabasePool,
   type DatabaseConfig,
@@ -74,7 +77,17 @@ export function createNoticeMailStore(
             count += await withTenantScopedClient(
               lease.pool,
               asPerson(person),
-              (client) => preparePerson(client, person, seal),
+              async (client) => {
+                requireWorkspaceAuthority(
+                  await lockWorkspaceAuthority(
+                    client,
+                    person.workspace_id,
+                    person.user_id,
+                    rolesForCapability('workspace:read'),
+                  ),
+                );
+                return preparePerson(client, person, seal);
+              },
               {
                 statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS,
                 ...(signal === undefined ? {} : { signal }),
@@ -109,7 +122,17 @@ export function createNoticeMailStore(
         return await withTenantScopedClient(
           lease.pool,
           asPerson(person),
-          (client) => authorizeBatch(client, person, deliveryId),
+          async (client) => {
+            requireWorkspaceAuthority(
+              await lockWorkspaceAuthority(
+                client,
+                person.workspace_id,
+                person.user_id,
+                rolesForCapability('workspace:read'),
+              ),
+            );
+            return authorizeBatch(client, person, deliveryId);
+          },
           { statementTimeoutMillis: STATEMENT_TIMEOUT_MILLIS },
         );
       } catch (error) {
