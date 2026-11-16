@@ -24,6 +24,16 @@ export type SavedDraft = Readonly<{
   revision: number;
 }>;
 
+type DraftValidationInput = Readonly<{
+  now?: () => number;
+  apiClient: ApiClient;
+  workspaceId: string;
+  workflowId: string;
+  owner: RefObject<symbol | undefined>;
+  ensureSaved: () => Promise<SavedDraft>;
+  isSavedDraftCurrent: (saved: SavedDraft) => boolean;
+}>;
+
 /**
  * Saved-snapshot validation, coalescing and server-directed cooldowns.
  * Publication's owner remains authoritative for all async completions.
@@ -36,15 +46,7 @@ export function useWorkflowDraftValidation({
   ensureSaved,
   isSavedDraftCurrent,
   now: readNow = Date.now,
-}: Readonly<{
-  now?: () => number;
-  apiClient: ApiClient;
-  workspaceId: string;
-  workflowId: string;
-  owner: RefObject<symbol | undefined>;
-  ensureSaved: () => Promise<SavedDraft>;
-  isSavedDraftCurrent: (saved: SavedDraft) => boolean;
-}>) {
+}: DraftValidationInput) {
   const [refusal, setRefusal] = useState<ValidationResult>();
   const [validation, setValidation] = useState<ValidationResult>();
   // The check in flight, if any: it clears only its own marker, so a check

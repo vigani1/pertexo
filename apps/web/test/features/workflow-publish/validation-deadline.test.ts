@@ -22,7 +22,7 @@ it('enforces the retry floor just before its deadline and releases just after it
       now: () => now,
     }),
   );
-  act(() =>
+  act(() => {
     hook.result.current.recordValidationCooldown(
       new ApiError({
         kind: 'problem',
@@ -30,13 +30,15 @@ it('enforces the retry floor just before its deadline and releases just after it
         status: 429,
         retryAfterMs: 1_000,
       }),
-    ),
-  );
+    );
+  });
   expect(hook.result.current.validationBlockedUntil).toBe(105_000);
   now = 104_999;
-  expect(() => hook.result.current.assertValidationAvailable()).toThrow(
-    /temporarily unavailable/u,
-  );
+  expect(() => {
+    hook.result.current.assertValidationAvailable();
+  }).toThrow(/temporarily unavailable/u);
   now = 105_001;
-  expect(() => hook.result.current.assertValidationAvailable()).not.toThrow();
+  expect(() => {
+    hook.result.current.assertValidationAvailable();
+  }).not.toThrow();
 });
