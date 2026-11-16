@@ -1,5 +1,5 @@
+import { TransientStreamDisconnect } from '@/lib/api/stream-reconnect.errors';
 import {
-  TransientStreamDisconnect,
   streamWasHealthy,
   waitToReconnect,
 } from '@/lib/api/stream-reconnect';

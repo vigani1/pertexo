@@ -1,7 +1,7 @@
+import { TransientStreamDisconnect } from '@/lib/api/stream-reconnect.errors';
 import type { ApiClient } from '@/lib/api/client';
 import { decodeSseMessages, type SseMessage } from '@/lib/api/sse';
 import {
-  TransientStreamDisconnect,
   classifyStreamFailure,
   streamWasHealthy,
   waitToReconnect,
