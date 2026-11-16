@@ -409,6 +409,7 @@ jobs:
         if: matrix.journeys == ''
         env:
           SHARD: ${{ matrix.shard }}
+          BROWSER_SPECS: ${{ matrix.specs }}
         run: node infrastructure/testing/run-mocked-shard.mjs "$SHARD"
       - name: Use the Docker Hub mirror
         if: matrix.journeys != ''
