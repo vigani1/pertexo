@@ -5,7 +5,9 @@ const index = Number(process.argv[2]?.split('/')[0]);
 const shards = recordedMockedShards();
 if (!Number.isInteger(index) || index < 1 || index > shards.length)
   throw new Error(`usage: run-mocked-shard.mjs <1-${shards.length}>`);
-const shard = shards[index - 1];
+const shard = process.env.BROWSER_SPECS
+  ? { files: JSON.parse(process.env.BROWSER_SPECS) }
+  : shards[index - 1];
 console.log(JSON.stringify({ shard: index, ...shard }));
 const patterns = mockedFilePatterns(shard.files);
 const result = spawnSync(
