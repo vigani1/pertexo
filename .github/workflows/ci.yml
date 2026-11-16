@@ -155,6 +155,22 @@ jobs:
             pertexo-ci-${{ github.run_id }}-${{ github.run_attempt
             }}-observability
         run: pnpm observability:check
+      - name: Restore ESLint cache
+        if: matrix.part == 'lint-web' || matrix.part == 'lint-rest'
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: |
+            .eslintcache
+            apps/*/.eslintcache
+            packages/*/.eslintcache
+          key:
+            eslint-${{ runner.os }}-${{ matrix.part }}-${{
+            hashFiles('pnpm-lock.yaml', '**/eslint.config.mjs',
+            '**/.oxlintrc.json',
+            'infrastructure/checks/browser-entry-dependencies.mjs') }}-${{
+            github.sha }}
+          restore-keys: |
+            eslint-${{ runner.os }}-${{ matrix.part }}-${{ hashFiles('pnpm-lock.yaml', '**/eslint.config.mjs', '**/.oxlintrc.json', 'infrastructure/checks/browser-entry-dependencies.mjs') }}-
       - name: Lint the web app
         if: matrix.part == 'lint-web'
         env:
