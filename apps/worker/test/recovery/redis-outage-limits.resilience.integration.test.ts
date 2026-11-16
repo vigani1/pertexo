@@ -18,7 +18,7 @@ const ADDRESS_LIMIT = 10;
  */
 describeFaults('sign-in while Redis is stopped', () => {
   let stack: Stack;
-  let wrongPassword: number;
+  let wrongPassword: Readonly<{ status: number; code: unknown }>;
   let rightPassword: readonly number[];
   let overLimit: Response;
   let email: string;
@@ -44,7 +44,11 @@ describeFaults('sign-in while Redis is stopped', () => {
 
     await stopService('redis');
 
-    wrongPassword = (await signIn('not-the-password')).status;
+    const refused = await signIn('not-the-password');
+    wrongPassword = {
+      status: refused.status,
+      code: ((await refused.json()) as { code?: unknown }).code,
+    };
     const attempts: number[] = [];
     for (let attempt = 1; attempt < ADDRESS_LIMIT + 2; attempt += 1)
       attempts.push((await signIn(PASSWORD)).status);
@@ -58,7 +62,11 @@ describeFaults('sign-in while Redis is stopped', () => {
   }, SCENARIO_LIMIT_MS);
 
   it('still tells a wrong password apart', () => {
-    expect(wrongPassword).toBe(401);
+    // Refused credentials answer 400, so a 401 always means an ended session.
+    expect(wrongPassword).toEqual({
+      status: 400,
+      code: 'auth.invalid_credentials',
+    });
   });
 
   it('lets a right password in, up to the limit and no further', () => {
