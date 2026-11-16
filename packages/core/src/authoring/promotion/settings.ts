@@ -2,32 +2,23 @@ import {
   readWorkspaceNaming,
   lockPromotionWorkspaces,
   readPromotionLink,
-  requirePromotionAuthority,
 } from './authority.repository.js';
-
+import { requirePromotionAuthority } from './require-authority.js';
 import {
   readActiveMemberRole,
   savePromotionTarget,
 } from './settings.repository.js';
-
 import { z } from 'zod';
-
 import { decodeStoredReceipt } from '../../shared/receipts.js';
-
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
-
 import type {
   WorkflowPromotionTargetResult,
   WorkflowPromotionSettings,
 } from '@pertexo/contracts';
-
 import { hasCapability } from '@pertexo/policy';
-
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
-
 import { WorkflowPromotionError } from './workflow-promotion.errors.js';
-
 import type {
   PromotionContext,
   PromotionScope,

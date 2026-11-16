@@ -1,43 +1,46 @@
-import type {
-  WorkflowActor,
-  WorkflowRef,
-} from '../../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { decodeStoredValue } from '../../../shared/stored-values.js';
 import {
   workflowDrafts,
   workflowVersions,
   workflows,
 } from '@pertexo/database/schema';
-
 import {
   draftProjection,
   projectDraft,
 } from '../representation/workflow-representations.repository.js';
-
-import {
-  parseWorkflowGraphDraft,
-  sameWorkflowNotes,
-} from '@pertexo/workflow-model';
-import { compilePublicationGraph } from '../../publication/compile-publication.js';
-
 import type { WorkflowDefinitionCatalog } from '@pertexo/workflow-model/server';
 import type { PoolClient } from 'pg';
 import type { FolderScope } from '../../../shared/folder-access.types.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 
-import type { AuthoringCatalogs } from '../catalogs.js';
-
-export async function validateDraft(
+export async function readDraft(
   client: PoolClient,
   scope: FolderScope,
-  { signal, ...workflow }: WorkflowActor,
-  catalogs: AuthoringCatalogs,
+  workflow: WorkflowRef,
+  definitionCatalog: WorkflowDefinitionCatalog,
 ) {
-  const { workspaceId, workflowId } = workflow;
   if (!(await workflowAccessible(client, scope, workflow))) return null;
+  const [row] = await drizzle(client)
+    .select(draftProjection)
+    .from(workflowDrafts)
+    .where(
+      and(
+        eq(workflowDrafts.workspaceId, workflow.workspaceId),
+        eq(workflowDrafts.workflowId, workflow.workflowId),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  return row === undefined ? null : projectDraft(row, definitionCatalog);
+}
+
+export async function readDraftRow(
+  client: PoolClient,
+  workspaceId: string,
+  workflowId: string,
+) {
   const [row] = await drizzle(client)
     .select(draftProjection)
     .from(workflowDrafts)
@@ -48,15 +51,14 @@ export async function validateDraft(
       ),
     )
     .catch(rethrowQueryFailure);
-  if (row === undefined) return null;
-  const draft = projectDraft(row, catalogs.definitionCatalog);
-  const inspected = await compilePublicationGraph(
-    client,
-    { ...workflow, signal },
-    draft.graphJson,
-    catalogs,
-  );
-  const { validation } = inspected;
+  return row;
+}
+
+export async function readPublishedVersionRow(
+  client: PoolClient,
+  workspaceId: string,
+  workflowId: string,
+) {
   const [live] = await drizzle(client)
     .select({
       versionId: workflowVersions.id,
@@ -77,41 +79,5 @@ export async function validateDraft(
       and(eq(workflows.workspaceId, workspaceId), eq(workflows.id, workflowId)),
     )
     .catch(rethrowQueryFailure);
-  const currentPublication =
-    live === undefined
-      ? null
-      : Object.freeze({
-          versionId: live.versionId,
-          versionNumber: live.versionNumber,
-          matchesDraft:
-            validation.ok &&
-            draft.compatibility.compatible &&
-            inspected.kind === 'ready' &&
-            inspected.publication.checksum === live.checksum &&
-            sameWorkflowNotes(
-              draft.graphJson,
-              decodeStoredValue(() => parseWorkflowGraphDraft(live.graphJson)),
-            ),
-        });
-  return Object.freeze({ draft, validation, currentPublication });
-}
-
-export async function readDraft(
-  client: PoolClient,
-  scope: FolderScope,
-  workflow: WorkflowRef,
-  definitionCatalog: WorkflowDefinitionCatalog,
-) {
-  if (!(await workflowAccessible(client, scope, workflow))) return null;
-  const [row] = await drizzle(client)
-    .select(draftProjection)
-    .from(workflowDrafts)
-    .where(
-      and(
-        eq(workflowDrafts.workspaceId, workflow.workspaceId),
-        eq(workflowDrafts.workflowId, workflow.workflowId),
-      ),
-    )
-    .catch(rethrowQueryFailure);
-  return row === undefined ? null : projectDraft(row, definitionCatalog);
+  return live;
 }

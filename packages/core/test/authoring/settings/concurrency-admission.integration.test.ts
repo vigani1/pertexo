@@ -28,7 +28,7 @@ import {
   withConcurrencyControls,
   reapConcurrencyReceipts,
 } from './concurrency-admission.fixtures.js';
-import { readWorkflowRunReadRecord } from '../../../src/runs/commands/workflow-run-records.repository.js';
+import { readWorkflowRunReadRecord } from '../../../src/runs/commands/read-run-record.js';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createWorkflowRunDatabase } from '../../../src/runs/workflow-run.store.js';
 import { Pool } from 'pg';

@@ -1,16 +1,14 @@
 import type { Role } from '@pertexo/policy';
-
 import type { PoolClient } from 'pg';
-
 import { runOrganizationCommand } from '../../run-command.js';
-
 import type { createOrganizationSession } from '../../session.js';
 import type {
   Command,
   WorkflowFolderCommandResult,
 } from '../workflow-folder.types.js';
 import { folderResult } from '../folder-receipts.schemas.js';
-import { type FolderRow, folderRecord } from '../hierarchy.repository.js';
+import type { FolderRow } from '../hierarchy.repository.js';
+import { folderRecord } from '../hierarchy.js';
 
 export function folderCommand(
   session: ReturnType<typeof createOrganizationSession>,

@@ -9,8 +9,8 @@ export {
   unlinkMethodAndRevokeSessions,
 } from './security.repository.js';
 export { SignUpAvailability, type SignUpMode } from './sign-up.js';
-export { SocialSignInCommands } from './federation/social/sign-in.repository.js';
-export { OrganizationSignInCommands } from './federation/journeys/organization-sign-in.repository.js';
+export { SocialSignInCommands } from './federation/social/social-sign-in-commands.js';
+export { OrganizationSignInCommands } from './federation/journeys/organization-sign-in-commands.js';
 export {
   authorizeCredentialSignIn,
   identityEmailChangeEligibility,

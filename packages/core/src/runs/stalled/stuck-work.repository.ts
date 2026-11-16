@@ -17,8 +17,8 @@ import {
   UNPUBLISHED_RUN_JOB_GRACE,
 } from './stalled-eligibility.repository.js';
 import {
-  decodeStuckWorkCursor,
   encodeStuckWorkCursor,
+  type StuckWorkCursor,
 } from './stuck-work-cursor.js';
 import { readStuckCandidates } from './stuck-candidates.repository.js';
 import type { StuckRun, StuckWork } from './stalled-work.types.js';
@@ -26,9 +26,8 @@ import type { StuckRun, StuckWork } from './stalled-work.types.js';
 /** Bounded candidate pages, including empty pages whose history needs continuation. */
 export async function readStuckWork(
   db: Pick<NodePgDatabase, 'select' | 'execute'>,
-  cursor?: string,
+  after?: StuckWorkCursor,
 ): Promise<StuckWork> {
-  const after = decodeStuckWorkCursor(cursor);
   const asOf = after?.asOf ?? (await readDatabaseClockText(db));
   const leases = await readStuckCandidates(db, 'leases', asOf, after?.leases);
   const deliveries = await readStuckCandidates(

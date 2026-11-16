@@ -6,11 +6,11 @@ import {
   withTenantScopedClient,
   withTenantScopedReadClient,
 } from '@pertexo/database/primitives';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { lockEventCoordination } from '../coordination/keys.repository.js';
 import { readCoordinatedEventHistory } from '../coordination/history.repository.js';
-import { prepareFormEvent } from './prepare.repository.js';
+import { prepareFormEvent } from './prepare-event.js';
 import {
   createEventCoordinationPreparation,
   closeEventCoordinationStore,
@@ -24,7 +24,6 @@ import {
   ACTIVE_WORKSPACE_STATUSES,
   BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
-import type { PoolClient } from 'pg';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.types.js';
 import { withWorkflowAccess } from '../../shared/workflow-access.js';
 import { FormUnavailableError } from './form.errors.js';

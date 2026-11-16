@@ -34,7 +34,8 @@ import type {
   SaveWorkflowDraftInput,
   TransitionWorkflowLifecycleInput,
 } from './workflow-commands.types.js';
-import { readDraft, validateDraft } from './reads/drafts.repository.js';
+import { readDraft } from './reads/drafts.repository.js';
+import { validateDraft } from './reads/validate-draft.js';
 import { readVersion } from './reads/versions.repository.js';
 import { listVersions } from './reads/list-versions.js';
 import { listWorkflows, readWorkflow } from './reads/workflows.repository.js';

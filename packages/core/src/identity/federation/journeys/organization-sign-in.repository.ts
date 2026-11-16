@@ -10,127 +10,19 @@ import { and, asc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 
-import {
-  rethrowQueryFailure,
-  isUniqueConstraintFailure,
-} from '@pertexo/database/primitives';
-
+import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { UNPURGED_WORKSPACE_STATUSES } from '@pertexo/policy';
+
 import { FEDERATION_LIMITS } from '@pertexo/workflow-model';
 
 import type { Pool, PoolClient } from 'pg';
 
-import type { FederationDiscovery } from '@pertexo/contracts';
-
-import {
-  startFederationJourney,
-  testOrganizationProvider,
-} from './organization-sign-in.js';
-
-import { withPlatformTransaction } from '@pertexo/database/platform';
-
-import type { FederationScope } from '../management/federation-management.types.js';
-
-import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';
-
-import {
-  readFederationProvider,
-  findFederationAttempt,
-} from './federation-journeys.repository.js';
-
-import { completeFederationJourney } from './complete.js';
-
-import type { CompleteFederationJourney } from './federation-journey.types.js';
-
-import type {
-  StartFederationJourney,
-  FederationCompletion,
-} from './federation-journey.types.js';
-
+import type { StartFederationJourney } from './federation-journey.types.js';
 import { MINUTE_INTERVAL } from '../../../shared/sql-intervals.repository.js';
 
 // An organization sign-in must come back from its provider within this.
 const JOURNEY_LIFETIME_MINUTES = 5;
 const JOURNEY_LIFETIME = sql`${JOURNEY_LIFETIME_MINUTES}*${MINUTE_INTERVAL}`;
-
-/**
- * Sign-in has no member behind it, so all but the owner's provider test stay
- * off `withWorkspaceAccess`. `start` learns the workspace from the provider and
- * only a test has an owner; `complete` spans every linked workspace.
- */
-export class OrganizationSignInCommands {
-  constructor(
-    private readonly input: Readonly<{ pool: Pool; sessionTtlSeconds: number }>,
-  ) {}
-  async discover(domain: string): Promise<FederationDiscovery> {
-    const rows = await drizzle(this.input.pool)
-      .select({
-        require_sso: authDomains.requireSso,
-        id: authProviders.id,
-        name: authProviders.name,
-        kind: authProviders.kind,
-      })
-      .from(authDomains)
-      .innerJoin(
-        authOrganizations,
-        eq(authOrganizations.id, authDomains.organizationId),
-      )
-      .innerJoin(
-        workspaces,
-        eq(workspaces.id, authOrganizations.controlWorkspaceId),
-      )
-      .leftJoin(
-        authProviders,
-        and(
-          eq(authProviders.organizationId, authDomains.organizationId),
-          eq(authProviders.enabled, true),
-        ),
-      )
-      .where(
-        and(
-          eq(authDomains.domain, domain),
-          inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
-          isNotNull(authDomains.verifiedAt),
-        ),
-      )
-      .orderBy(asc(authProviders.name), asc(authProviders.id))
-      .limit(FEDERATION_LIMITS.providers)
-      .catch(rethrowQueryFailure);
-    return {
-      required: rows[0]?.require_sso ?? false,
-      providers: rows.flatMap(({ id, name, kind }) => {
-        const providerUnavailable =
-          id === null || name === null || kind === null;
-        return providerUnavailable ? [] : [{ id, name, kind }];
-      }),
-    };
-  }
-  provider(providerId: string, domain: string) {
-    return readFederationProvider(this.input.pool, providerId, domain);
-  }
-  testProvider(
-    input: FederationScope & Readonly<{ providerId: string; domainId: string }>,
-  ) {
-    return testOrganizationProvider(this.input.pool, input);
-  }
-  start(input: StartFederationJourney): Promise<void> {
-    return startFederationJourney(this.input.pool, input);
-  }
-  find(stateDigest: Buffer, browserDigest: Buffer) {
-    return findFederationAttempt(this.input.pool, stateDigest, browserDigest);
-  }
-  complete(input: CompleteFederationJourney): Promise<FederationCompletion> {
-    return withPlatformTransaction(this.input.pool, (client) =>
-      completeFederationJourney(client, input, this.input.sessionTtlSeconds),
-    ).catch((error: unknown) => {
-      const proofRefused =
-        error instanceof SignInProofRejectedError ||
-        isUniqueConstraintFailure(error);
-      if (proofRefused) return { kind: 'failed' } as const;
-      throw error;
-    });
-  }
-}
 
 /** The organization's verified domain name, if the domain is its and verified. */
 export async function readVerifiedDomain(
@@ -252,4 +144,42 @@ export async function insertFederationAttempt(
     .returning({ id: authFederationAttempts.id })
     .catch(rethrowQueryFailure);
   return inserted.length === 1;
+}
+
+/** The verified domain's requirement and its enabled providers, by name. */
+export async function readDomainDiscovery(pool: Pool, domain: string) {
+  const rows = await drizzle(pool)
+    .select({
+      require_sso: authDomains.requireSso,
+      id: authProviders.id,
+      name: authProviders.name,
+      kind: authProviders.kind,
+    })
+    .from(authDomains)
+    .innerJoin(
+      authOrganizations,
+      eq(authOrganizations.id, authDomains.organizationId),
+    )
+    .innerJoin(
+      workspaces,
+      eq(workspaces.id, authOrganizations.controlWorkspaceId),
+    )
+    .leftJoin(
+      authProviders,
+      and(
+        eq(authProviders.organizationId, authDomains.organizationId),
+        eq(authProviders.enabled, true),
+      ),
+    )
+    .where(
+      and(
+        eq(authDomains.domain, domain),
+        inArray(workspaces.status, UNPURGED_WORKSPACE_STATUSES),
+        isNotNull(authDomains.verifiedAt),
+      ),
+    )
+    .orderBy(asc(authProviders.name), asc(authProviders.id))
+    .limit(FEDERATION_LIMITS.providers)
+    .catch(rethrowQueryFailure);
+  return rows;
 }

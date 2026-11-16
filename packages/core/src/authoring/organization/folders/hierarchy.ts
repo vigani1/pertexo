@@ -1,3 +1,4 @@
+import type { WorkflowFolderRecord } from './workflow-folder.types.js';
 import type { PoolClient } from 'pg';
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 import { WorkflowFolderConflictError } from '../workflow-organization.errors.js';
@@ -46,4 +47,15 @@ export async function requireFreeName(
 ): Promise<void> {
   if (!(await folderNameIsFree(client, workspaceId, input)))
     throw new WorkflowFolderConflictError('name');
+}
+
+export async function folderRecord(
+  client: PoolClient,
+  workspaceId: string,
+  row: FolderRow,
+): Promise<WorkflowFolderRecord> {
+  return {
+    ...row,
+    depth: await folderDepth(client, workspaceId, row.id),
+  };
 }

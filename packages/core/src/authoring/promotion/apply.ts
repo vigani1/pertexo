@@ -16,10 +16,8 @@ import {
 } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import {
-  requirePromotionAuthority,
-  lockPromotionWorkspaces,
-} from './authority.repository.js';
+import { lockPromotionWorkspaces } from './authority.repository.js';
+import { requirePromotionAuthority } from './require-authority.js';
 import { WorkflowPromotionError } from './workflow-promotion.errors.js';
 import type {
   ApplyPromotionInput,

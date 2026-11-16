@@ -9,7 +9,6 @@ import {
   type WorkflowRunRow,
 } from '../queries/workflow-runs.repository.js';
 import type { RunValues } from '@pertexo/node-sdk';
-import { runValuesInTransaction } from '../values/read-run-values.js';
 import { retainedTestRunSql } from '../../shared/run-records/run-retention.repository.js';
 import type { WorkflowRecoverySummary } from '../recovery/workflow-recovery.types.js';
 import { workflowRuns } from '@pertexo/database/schema';
@@ -60,11 +59,12 @@ export async function readWorkflowRunRecord(
   return row === undefined ? undefined : Object.freeze(row);
 }
 
-export async function readWorkflowRunReadRecord(
+/** The retained run's read record, without its values. */
+export async function readWorkflowRunRow(
   transaction: WorkspaceTransaction,
   runId: string,
   { includeWorkflowName }: Readonly<{ includeWorkflowName: boolean }>,
-): Promise<WorkflowRunReadRecord | undefined> {
+): Promise<Omit<WorkflowRunReadRecord, 'runValues'> | undefined> {
   const [row] = await workflowRunReadQuery(transaction, {
     includeWorkflowName,
   })
@@ -77,13 +77,10 @@ export async function readWorkflowRunReadRecord(
     )
     .limit(1);
   if (row === undefined) return undefined;
-  return Object.freeze({
-    ...toWorkflowRunReadRecord({
-      ...row.run,
-      workflow_name: row.workflowName,
-      admission_blockers: runAdmissionBlockers(row),
-    }),
-    runValues: await runValuesInTransaction(transaction, runId),
+  return toWorkflowRunReadRecord({
+    ...row.run,
+    workflow_name: row.workflowName,
+    admission_blockers: runAdmissionBlockers(row),
   });
 }
 

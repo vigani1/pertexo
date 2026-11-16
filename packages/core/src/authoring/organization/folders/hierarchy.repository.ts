@@ -5,9 +5,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { workflowFolders } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
-import type { WorkflowFolderRecord } from './workflow-folder.types.js';
 import { nameKey } from './folder-receipts.schemas.js';
-import { folderDepth } from './hierarchy.js';
 
 export const folderProjection = {
   id: workflowFolders.id,
@@ -100,15 +98,4 @@ export async function folderNameIsFree(
     .catch(rethrowQueryFailure);
   if (taken.length !== 0) return false;
   return true;
-}
-
-export async function folderRecord(
-  client: PoolClient,
-  workspaceId: string,
-  row: FolderRow,
-): Promise<WorkflowFolderRecord> {
-  return {
-    ...row,
-    depth: await folderDepth(client, workspaceId, row.id),
-  };
 }
