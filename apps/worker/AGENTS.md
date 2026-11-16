@@ -36,6 +36,11 @@ environment only in `config/`.
   `<subject>.runtime.ts`.
 - A live resource: `<subject>.runtime.ts`, opened and closed by its runtime.
 - An error: its class in the subject's `.errors.ts`.
+- An outbound provider call: the caller takes the provider HTTP client as a
+  dependency, and its composition builds it with `createNodeProviderHttpClient`
+  (`providers/http-client.ts`, which joins secrets' secure client to
+  integrations through `SECURE_HTTP_PROVIDER_SECURITY`); it never builds its
+  own client.
 
 ## Defaults and config
 

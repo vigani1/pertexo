@@ -62,6 +62,10 @@ their owners and lets the server refuse.
   component takes the screen's own reaction as an `onAccepted` callback and
   reads `pending` and `failure` from the hook. A command whose late answer
   must be ignored once a newer one starts uses `useLatestCommand`.
+- The words for a failure: the feature maps its own error codes to copy in
+  `model/` (`workflow-promotions/model/promotion-failures.ts`) and falls back
+  to `describeReadError` or `describeCommandError` (`lib/api/error-copy.ts`)
+  for failures every feature shares.
 - A rule or calculation: a plain function in `model/`, not a hook, with a
   unit test of the function. A page or component reads as layout; a hook
   holding a page's state goes in `hooks/`.
