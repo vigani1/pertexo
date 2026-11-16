@@ -52,8 +52,8 @@ user-facing copy beyond the safe messages of its errors.
   statement itself detects comes back as a tagged result, never a throw (a
   duplicate name, a key clash, a capacity trigger: `insertConnection`,
   `insertRowValues`, `insertPendingUpload`). Every repository throws only
-  storage integrity errors (below); `validate-core-repository-throws.mjs`
-  refuses any other throw.
+  storage integrity errors (below), and calls no core function that throws
+  any other: `validate-core-repository-throws.mjs` refuses both.
 - A query, lock or SQL fragment (`clock_timestamp()`, an increment, an
   interval): the `<subject>.repository.ts` beside the operation, or the
   flow's `.store.ts` when that file is its facade.
@@ -144,7 +144,11 @@ user-facing copy beyond the safe messages of its errors.
   or fence, a stored pointer or receipt that is corrupt. They are a generic
   `Error` or one of `STORAGE_INTEGRITY_ERRORS`
   (`infrastructure/checks/core-repository-throws.mjs`), each with its
-  reason.
+  reason. A repository may call the few stored-value decoders in
+  `STORAGE_INTEGRITY_DECODERS` there (`decodeStoredValue`,
+  `requireReadableReceipt`), whose only refusal is a stored value that no
+  longer reads. The check refuses an entry in either list that core no longer
+  uses.
 - `connections/testing.ts`, `lifecycle/testing.ts` and
   `tenant-access/testing.ts` collect an area's test flows for `src/testing.ts`.
 - `shared/stored-execution.ts` writes JSON text lengths, listed as not limits.

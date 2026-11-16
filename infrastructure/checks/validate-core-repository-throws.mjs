@@ -1,8 +1,12 @@
+import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
-import { STORAGE_INTEGRITY_ERRORS } from './core-repository-throws.mjs';
+import {
+  STORAGE_INTEGRITY_DECODERS,
+  STORAGE_INTEGRITY_ERRORS,
+} from './core-repository-throws.mjs';
 import {
   listSourceFiles,
   readSource,
@@ -10,39 +14,49 @@ import {
   repositoryRoot,
 } from './workspace-sources.mjs';
 
+const CORE_SOURCE = /^packages\/core\/src\/.+\.ts$/u;
 const REPOSITORY = /^packages\/core\/src\/.+\.repository\.ts$/u;
+const QUERY_ROLE = /\.(?:repository|store)\.ts$/u;
 
 /**
- * The throws in a core repository that aren't storage integrity assertions:
- * `throw new X(…)` for any X that isn't `Error` or a listed integrity error,
- * and `throw` of a call (`throw conflict()`), whose error the check can't
- * name. Rethrowing a caught value (`throw error`) is not counted.
+ * The domain errors a core source raises: `throw new X(…)`, `throw x()`,
+ * `throw x` and `Promise.reject(…)` of any of those, looking through
+ * parentheses and type assertions. `Error` and a listed integrity error are
+ * allowed, unless `Error` is another class imported under that name.
+ * Rethrowing a caught value (`throw error` from a `catch` binding or a
+ * rejection handler's parameter) is not counted; a thrown variable is named by
+ * the class it was built from.
  */
-export function findDomainThrows(file, text) {
-  if (!REPOSITORY.test(file)) return [];
+export function findThrownErrors(file, text) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const imported = importedNames(source);
   const found = [];
-  const visit = (node) => {
-    if (ts.isThrowStatement(node) && node.expression !== undefined) {
-      const thrown = node.expression;
-      const name = ts.isNewExpression(thrown)
-        ? thrown.expression.getText(source)
-        : ts.isCallExpression(thrown)
-          ? `${thrown.expression.getText(source)}()`
-          : undefined;
-      if (
-        name !== undefined &&
-        name !== 'Error' &&
-        !Object.hasOwn(STORAGE_INTEGRITY_ERRORS, name)
-      ) {
-        const { line } = source.getLineAndCharacterOfPosition(node.getStart());
-        found.push({ file, line: line + 1, name });
-      }
+  const record = (node, expression) => {
+    const name = thrownName(unwrap(expression), source, imported);
+    if (name !== undefined && !integrityError(name, imported)) {
+      const { line } = source.getLineAndCharacterOfPosition(node.getStart());
+      found.push({ file, line: line + 1, name, node });
     }
+  };
+  const visit = (node) => {
+    if (ts.isThrowStatement(node) && node.expression !== undefined)
+      record(node, node.expression);
+    else if (isPromiseReject(node) && node.arguments[0] !== undefined)
+      record(node, node.arguments[0]);
     ts.forEachChild(node, visit);
   };
   visit(source);
   return found;
+}
+
+/** The domain throws written in a core repository. */
+export function findDomainThrows(file, text) {
+  if (!REPOSITORY.test(file)) return [];
+  return findThrownErrors(file, text).map(({ file, line, name }) => ({
+    file,
+    line,
+    name,
+  }));
 }
 
 /**
@@ -59,6 +73,74 @@ export function repositoryThrowFindings(throwsByFile) {
     );
 }
 
+/**
+ * Functions of a non-repository core module that raise a domain error, so a
+ * repository calling one would decide one hop away. A listed integrity decoder
+ * is allowed.
+ */
+export function throwingFunctions(file, text) {
+  const throwing = new Set();
+  for (const thrown of findThrownErrors(file, text)) {
+    let node = thrown.node;
+    while (!ts.isSourceFile(node.parent)) node = node.parent;
+    const name = declaredName(node);
+    if (name !== undefined && !Object.hasOwn(STORAGE_INTEGRITY_DECODERS, name))
+      throwing.add(name);
+  }
+  return throwing;
+}
+
+/** Value imports in a repository of throwing functions from core operations. */
+export function repositoryHops(file, text, throwingByModule) {
+  if (!REPOSITORY.test(file)) return [];
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const hops = [];
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    const clause = statement.importClause;
+    const specifier = statement.moduleSpecifier.text;
+    if (clause === undefined || clause.isTypeOnly || !specifier.startsWith('.'))
+      continue;
+    const target = path.posix
+      .join(path.posix.dirname(file), specifier)
+      .replace(/\.js$/u, '.ts');
+    const throwing = throwingByModule.get(target);
+    const bindings = clause.namedBindings;
+    if (throwing === undefined || bindings === undefined) continue;
+    if (!ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements) {
+      const name = (element.propertyName ?? element.name).text;
+      if (!element.isTypeOnly && throwing.has(name))
+        hops.push({ file, target, name });
+    }
+  }
+  return hops;
+}
+
+export function repositoryHopFindings(hops) {
+  return hops.map(
+    ({ file, target, name }) =>
+      `${file}: imports ${name} from ${target}, which throws a domain error, so the repository decides one hop away. Call it from the operation instead, or list it in STORAGE_INTEGRITY_DECODERS if it only refuses a corrupt stored value.`,
+  );
+}
+
+/** An exemption nobody uses only widens what the check lets through. */
+export function staleExemptionFindings(texts) {
+  const all = texts.join('\n');
+  const findings = [];
+  for (const name of Object.keys(STORAGE_INTEGRITY_ERRORS))
+    if (!new RegExp(String.raw`new ${name}\(`, 'u').test(all))
+      findings.push(
+        `STORAGE_INTEGRITY_ERRORS lists ${name}, which core never throws; remove it.`,
+      );
+  for (const name of Object.keys(STORAGE_INTEGRITY_DECODERS))
+    if (!new RegExp(String.raw`(?:function|const) ${name}\b`, 'u').test(all))
+      findings.push(
+        `STORAGE_INTEGRITY_DECODERS lists ${name}, which core doesn't define; remove it.`,
+      );
+  return findings;
+}
+
 export async function collectRepositoryThrows(root = repositoryRoot) {
   const throwsByFile = new Map();
   for (const file of await listSourceFiles('packages/core', root))
@@ -70,12 +152,140 @@ export async function collectRepositoryThrows(root = repositoryRoot) {
   return throwsByFile;
 }
 
+export async function collectCoreFindings(root = repositoryRoot) {
+  const texts = new Map();
+  for (const file of await listSourceFiles('packages/core', root))
+    if (CORE_SOURCE.test(file)) texts.set(file, await readSource(file, root));
+  const throwingByModule = new Map();
+  for (const [file, text] of texts)
+    if (!QUERY_ROLE.test(file))
+      throwingByModule.set(file, throwingFunctions(file, text));
+  const throwsByFile = new Map();
+  const hops = [];
+  for (const [file, text] of texts)
+    if (REPOSITORY.test(file)) {
+      throwsByFile.set(file, findDomainThrows(file, text));
+      hops.push(...repositoryHops(file, text, throwingByModule));
+    }
+  return [
+    ...repositoryThrowFindings(throwsByFile),
+    ...repositoryHopFindings(hops),
+    ...staleExemptionFindings([...texts.values()]),
+  ];
+}
+
+function unwrap(expression) {
+  let current = expression;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current) ||
+    ts.isTypeAssertionExpression(current)
+  )
+    current = current.expression;
+  return current;
+}
+
+function thrownName(expression, source, imported) {
+  if (ts.isNewExpression(expression))
+    return resolved(expression.expression.getText(source), imported);
+  if (ts.isCallExpression(expression))
+    return `${expression.expression.getText(source)}()`;
+  if (ts.isIdentifier(expression)) {
+    if (caughtBinding(expression)) return undefined;
+    const built = builtFrom(expression, source);
+    return built === undefined ? expression.text : resolved(built, imported);
+  }
+  return undefined;
+}
+
+/**
+ * `catch (error) { throw error; }` and `.catch((error) => { throw error; })`
+ * rethrow what something else raised: the thrown name is a catch binding or a
+ * parameter of an enclosing function.
+ */
+function caughtBinding(identifier) {
+  const binds = (declaration) =>
+    declaration !== undefined &&
+    ts.isIdentifier(declaration.name) &&
+    declaration.name.text === identifier.text;
+  for (let node = identifier.parent; node !== undefined; node = node.parent) {
+    if (ts.isCatchClause(node) && binds(node.variableDeclaration)) return true;
+    if (ts.isFunctionLike(node) && node.parameters.some(binds)) return true;
+  }
+  return false;
+}
+
+/** The class a thrown variable was built from (`const e = new X(); throw e;`). */
+function builtFrom(identifier, source) {
+  let match;
+  const visit = (node) => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === identifier.text &&
+      node.initializer !== undefined
+    ) {
+      const value = unwrap(node.initializer);
+      if (ts.isNewExpression(value)) match = value.expression.getText(source);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return match;
+}
+
+function isPromiseReject(node) {
+  return (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    node.expression.expression.getText() === 'Promise' &&
+    node.expression.name.text === 'reject'
+  );
+}
+
+/** Local names that a renamed import binds, mapped to the exported name. */
+function importedNames(source) {
+  const names = new Map();
+  for (const statement of source.statements) {
+    const bindings = ts.isImportDeclaration(statement)
+      ? statement.importClause?.namedBindings
+      : undefined;
+    if (bindings !== undefined && ts.isNamedImports(bindings))
+      for (const element of bindings.elements)
+        if (element.propertyName !== undefined)
+          names.set(element.name.text, element.propertyName.text);
+  }
+  return names;
+}
+
+function resolved(name, imported) {
+  return imported.get(name) ?? name;
+}
+
+function integrityError(name, imported) {
+  if (name === 'Error') return !imported.has('Error');
+  return Object.hasOwn(STORAGE_INTEGRITY_ERRORS, name);
+}
+
+function declaredName(statement) {
+  if (ts.isFunctionDeclaration(statement)) return statement.name?.text;
+  if (ts.isVariableStatement(statement)) {
+    const [declaration] = statement.declarationList.declarations;
+    return declaration !== undefined && ts.isIdentifier(declaration.name)
+      ? declaration.name.text
+      : undefined;
+  }
+  return undefined;
+}
+
 if (
   process.argv[1] !== undefined &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   report(
-    repositoryThrowFindings(await collectRepositoryThrows()),
-    'Core repositories throw only storage integrity errors.',
+    await collectCoreFindings(),
+    'Core repositories throw only storage integrity errors, and call nothing that throws for them.',
   );
 }
