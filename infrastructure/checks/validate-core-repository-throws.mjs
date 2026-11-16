@@ -472,9 +472,19 @@ function importedNames(source) {
       : undefined;
     if (bindings !== undefined && ts.isNamedImports(bindings))
       for (const element of bindings.elements)
-        if (element.propertyName !== undefined)
-          names.set(element.name.text, element.propertyName.text);
+        names.set(
+          element.name.text,
+          (element.propertyName ?? element.name).text,
+        );
+    if (ts.isImportDeclaration(statement) && statement.importClause?.name)
+      names.set(
+        statement.importClause.name.text,
+        statement.importClause.name.text,
+      );
   }
+  for (const statement of source.statements)
+    if (ts.isClassDeclaration(statement) && statement.name !== undefined)
+      names.set(statement.name.text, statement.name.text);
   return names;
 }
 
@@ -483,7 +493,20 @@ function resolved(name, imported) {
 }
 
 function integrityError(name, imported) {
-  if (name === 'Error') return !imported.has('Error');
+  if (
+    [
+      'Error',
+      'DOMException',
+      'TypeError',
+      'RangeError',
+      'SyntaxError',
+      'ReferenceError',
+      'URIError',
+      'EvalError',
+      'AggregateError',
+    ].includes(name)
+  )
+    return !imported.has(name);
   return Object.hasOwn(STORAGE_INTEGRITY_ERRORS, name);
 }
 
