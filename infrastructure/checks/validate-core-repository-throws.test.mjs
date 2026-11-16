@@ -270,3 +270,95 @@ test('only genuine rejection parameters are rethrows', () => {
     ).length > 0,
   );
 });
+
+for (const [name, files, refused, chain] of [
+  [
+    'follows imported wrappers',
+    {
+      'a.ts':
+        "import { refuse } from './b.js'; export function guard() { refuse(); }",
+      'b.ts':
+        'export function refuse() { throw new ArtifactFinalizeConflictError(); }',
+      'example.repository.ts': "import { guard } from './a.js'; guard();",
+    },
+    true,
+    /guard.*refuse/u,
+  ],
+  [
+    'refuses sequence and property error constructions',
+    {
+      'example.repository.ts':
+        'throw (0, new WorkflowRunNotFoundError()); throw { error: new WorkflowRunNotFoundError() }.error;',
+    },
+    true,
+  ],
+  [
+    'allows a pure default export',
+    {
+      'a.ts': 'export default (): number => 1;',
+      'example.repository.ts': "import read from './a.js'; read();",
+    },
+    false,
+  ],
+  [
+    'allows parenthesized rejection rethrows',
+    {
+      'example.repository.ts':
+        'Promise.resolve().catch(((error) => { throw error; })); (Promise.resolve().then)(undefined, (((error) => { throw error; }) as Handler));',
+    },
+    false,
+  ],
+  [
+    'follows three imported hops',
+    {
+      'a.ts': "import { b } from './b.js'; export function a() { b(); }",
+      'b.ts': "import { c } from './c.js'; export function b() { c(); }",
+      'c.ts': 'export function c() { throw new WorkflowRunNotFoundError(); }',
+      'example.repository.ts': "import { a } from './a.js'; a();",
+    },
+    true,
+    /a.*b.*c/u,
+  ],
+  [
+    'stops at an integrity decoder',
+    {
+      'a.ts':
+        "import { c } from './c.js'; export function decodeStoredValue() { c(); }",
+      'c.ts': 'export function c() { throw new WorkflowRunNotFoundError(); }',
+      'example.repository.ts':
+        "import { decodeStoredValue } from './a.js'; decodeStoredValue();",
+    },
+    false,
+  ],
+  [
+    'refuses returned error constructions',
+    {
+      'example.repository.ts':
+        'export function read() { return new WorkflowRunNotFoundError(); }',
+    },
+    true,
+  ],
+  [
+    'terminates mutual recursion and follows its refusal',
+    {
+      'a.ts': "import { b } from './b.js'; export function a() { b(); }",
+      'b.ts':
+        "import { a } from './a.js'; export function b() { a(); throw new WorkflowRunNotFoundError(); }",
+      'example.repository.ts': "import { a } from './a.js'; a();",
+    },
+    true,
+  ],
+])
+  test(name, async (t) => {
+    const root = await mkdtemp(path.join(tmpdir(), 'core-throws-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const area = path.join(root, 'packages/core/src/runs');
+    await mkdir(area, { recursive: true });
+    for (const [file, text] of Object.entries(files))
+      await writeFile(path.join(area, file), text);
+    const findings = (await collectCoreFindings(root)).filter((finding) =>
+      finding.includes('example.repository.ts'),
+    );
+    assert.equal(findings.length > 0, refused);
+    if (chain) assert.match(findings.join('\n'), chain);
+  });
