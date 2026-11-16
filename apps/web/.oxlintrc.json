@@ -1,0 +1,156 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import",
+    "react",
+    "vitest",
+    "jsx-a11y",
+    "promise",
+    "node",
+    "react-perf",
+    "jsdoc"
+  ],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/coverage/**",
+    "**/node_modules/**",
+    "playwright-report/**",
+    "test-results/**"
+  ],
+  "rules": {},
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+      "rules": {
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-var": "error",
+        "no-with": "off",
+        "prefer-const": "error",
+        "prefer-rest-params": "error",
+        "prefer-spread": "error"
+      }
+    },
+    {
+      "files": [
+        "packages/workflow-engine/**/*.{ts,tsx}",
+        "packages/workflow-model/**/*.{ts,tsx}",
+        "packages/policy/**/*.{ts,tsx}",
+        "packages/node-sdk/**/*.{ts,tsx}",
+        "packages/nodes-core/**/*.{ts,tsx}",
+        "packages/integrations/**/*.{ts,tsx}",
+        "packages/secrets/**/*.{ts,tsx}",
+        "packages/node-catalog/**/*.{ts,tsx}",
+        "packages/templates/**/*.{ts,tsx}",
+        "packages/contracts/**/*.{ts,tsx}",
+        "packages/database/**/*.{ts,tsx}",
+        "packages/core/**/*.{ts,tsx}",
+        "packages/artifact-store/**/*.{ts,tsx}",
+        "packages/queue/**/*.{ts,tsx}",
+        "packages/observability/**/*.{ts,tsx}",
+        "packages/rate-limit/**/*.{ts,tsx}",
+        "packages/execution/**/*.{ts,tsx}",
+        "apps/api/**/*.{ts,tsx}",
+        "apps/worker/**/*.{ts,tsx}",
+        "apps/code-runner/**/*.{ts,tsx}",
+        "apps/cli/**/*.{ts,tsx}",
+        "apps/ops/**/*.{ts,tsx}",
+        "apps/web/src/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "no-nested-ternary": "error",
+        "no-else-return": "error",
+        "complexity": ["error", 20],
+        "max-depth": ["error", 4]
+      }
+    },
+    {
+      "files": ["apps/*/test/**/*.{ts,tsx}", "packages/*/test/**/*.{ts,tsx}"],
+      "rules": {
+        "vitest/no-focused-tests": "error",
+        "vitest/no-identical-title": "error"
+      },
+      "plugins": ["vitest"]
+    },
+    {
+      "files": ["src/**/*.{ts,tsx}"],
+      "rules": {
+        "no-nested-ternary": "error",
+        "no-else-return": "error",
+        "complexity": ["error", 20],
+        "max-depth": ["error", 4]
+      }
+    },
+    {
+      "files": ["test/**/*.{ts,tsx}"],
+      "rules": {
+        "vitest/no-focused-tests": "error",
+        "vitest/no-identical-title": "error"
+      },
+      "plugins": ["vitest"]
+    },
+    {
+      "files": ["test/**/*.{ts,tsx}", "e2e/**/*.ts", "e2e-live/**/*.ts"],
+      "rules": {
+        "complexity": ["error", 20]
+      }
+    },
+    {
+      "files": [
+        "test/**/*.{ts,tsx}",
+        "e2e/**/*.ts",
+        "e2e-live/**/*.ts",
+        "playwright*.config.ts"
+      ],
+      "rules": {
+        "no-nested-ternary": "error"
+      }
+    },
+    {
+      "files": ["**/*.{ts,tsx}"],
+      "rules": {
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn",
+        "react/static-components": "error",
+        "react/use-memo": "error",
+        "react/incompatible-library": "warn",
+        "react/globals": "error",
+        "react/set-state-in-effect": "error",
+        "react/error-boundaries": "error",
+        "react/set-state-in-render": "error",
+        "react/unsupported-syntax": "warn",
+        "react/only-export-components": [
+          "error",
+          {
+            "allowConstantExport": true,
+            "allowExportNames": ["buttonVariants"]
+          }
+        ]
+      },
+      "plugins": ["react"]
+    }
+  ],
+  "extends": ["../../.oxlintrc.json"]
+}

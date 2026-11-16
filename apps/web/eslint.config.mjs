@@ -1,5 +1,6 @@
 import { WEB_BROWSER_PACKAGE_ROOTS } from '../../infrastructure/checks/browser-entry-dependencies.mjs';
 import tseslint from 'typescript-eslint';
+import oxlint from 'eslint-plugin-oxlint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import rootConfig, {
@@ -171,4 +172,7 @@ export default tseslint.config(
       ],
     },
   },
+  ...(await oxlint.buildFromConfigFile(
+    new URL('.oxlintrc.json', import.meta.url).pathname,
+  )),
 );

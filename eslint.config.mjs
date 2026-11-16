@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import eslint from '@eslint/js';
+import oxlint from 'eslint-plugin-oxlint';
 import vitest from '@vitest/eslint-plugin';
 import tseslint from 'typescript-eslint';
 
@@ -844,4 +845,7 @@ export default tseslint.config(
       globals: nodeGlobals,
     },
   },
+  ...(await oxlint.buildFromConfigFile(
+    join(import.meta.dirname, '.oxlintrc.json'),
+  )),
 );
