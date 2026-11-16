@@ -84,3 +84,5 @@ environment only in `config/`.
   Redis: real deliveries through core.
 - `pnpm check`: package structure, naming, environment and dist-reference
   checks.
+
+Refresh test/recovery/durations.json from the shard logs when a shard runs 25% longer than the others.
