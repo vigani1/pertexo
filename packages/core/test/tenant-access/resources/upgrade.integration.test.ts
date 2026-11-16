@@ -7,7 +7,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { expect, it } from 'vitest';
-import { readFolderScope } from '../../../src/shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../../src/shared/access/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../../src/shared/resources/workflow-access.repository.js';
 
 it('keeps populated folders workspace-shared and isolates grant rows without FORCE after upgrading', async () => {

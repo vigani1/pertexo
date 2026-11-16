@@ -18,7 +18,7 @@ import {
   throttledReleaseAt,
 } from './release-timing.js';
 import { admitInSavepoint } from '../admission-savepoint.repository.js';
-import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import { openWebhookResponse } from '../webhooks/responses/admission.repository.js';
 import { createHash } from 'node:crypto';
 import {

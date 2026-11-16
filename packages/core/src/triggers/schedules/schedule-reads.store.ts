@@ -1,7 +1,7 @@
 import { TRIGGER_HISTORY_PAGE_LIMIT } from '../../shared/page-limits.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
-import { withWorkflowAccess } from '../../shared/workflow-access.js';
+import { withWorkflowAccess } from '../../shared/access/workflow-access.js';
 import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 import { scheduleCanFire } from './schedule-standing.js';
 import type {

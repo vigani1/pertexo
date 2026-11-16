@@ -11,7 +11,7 @@ import {
   authDirectoryMemberships,
 } from '@pertexo/database/schema';
 
-import { lockWorkspaceRow } from '../../shared/authority.repository.js';
+import { lockWorkspaceRow } from '../../shared/access/authority.repository.js';
 
 /*
  * The shared half of the existing-member commands (ADR 037 role change,

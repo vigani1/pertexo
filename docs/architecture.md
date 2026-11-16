@@ -59,7 +59,7 @@ Other packages use browser-safe roots and Node-only `/server` where applicable;
 observability's `/startup` loads before the libraries it instruments.
 
 A workspace flow opens its transaction through `withWorkspaceAccess` in
-`core/src/shared/workspace-access.ts`. It declares its capability, status list
+`core/src/shared/access/workspace-access.ts`. It declares its capability, status list
 and access mode once. Authority is checked inside that transaction, which hands
 the flow the role it found. API code owns HTTP parsing and safe problem
 projection; it does not own a second durable authorization policy.

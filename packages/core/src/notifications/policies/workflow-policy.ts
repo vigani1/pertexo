@@ -3,7 +3,7 @@ import { decodeStoredReceipt } from '../../shared/receipts.js';
 import { FailureNotificationDestinationError } from '../destinations/notification-destination.errors.js';
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 
 import {

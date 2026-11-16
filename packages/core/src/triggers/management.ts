@@ -2,7 +2,7 @@ import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 
 import { lockActiveTriggerWorkflow } from './reconciliation/activation.repository.js';
-import { withWorkflowAccess } from '../shared/workflow-access.js';
+import { withWorkflowAccess } from '../shared/access/workflow-access.js';
 
 /**
  * A configuration change: authority, then the workflow's row, then any configuration

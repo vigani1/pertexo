@@ -1,7 +1,7 @@
 import type { workflowCalls } from '@pertexo/database/schema';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { WorkflowRunReadCapacityError } from '../../workflow-run.errors.js';
-import type { ResourceTransaction } from '../../../shared/folder-access.types.js';
+import type { ResourceTransaction } from '../../../shared/access/folder-access.types.js';
 import { CALL_ROWS, callRows } from './calls.repository.js';
 
 type CallRow = Awaited<ReturnType<typeof callRows>>[number];

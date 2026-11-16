@@ -1,4 +1,4 @@
-import { requireWorkspaceAuthority } from '../../shared/workspace-access.errors.js';
+import { requireWorkspaceAuthority } from '../../shared/access/workspace-access.errors.js';
 import {
   acquireDatabasePool,
   type DatabaseConfig,
@@ -13,8 +13,8 @@ import {
 import { rolesForCapability } from '@pertexo/policy';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+import { lockWorkspaceAuthority } from '../../shared/access/workspace-authority.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
 import { destinationConfigSql } from '../destinations/notification-destinations.repository.js';
 import { readSystemMailRecipient } from './system-mail-recipient.repository.js';
 

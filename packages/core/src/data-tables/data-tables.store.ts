@@ -13,7 +13,7 @@ import type { PoolClient } from 'pg';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
-} from '../shared/workspace-access.js';
+} from '../shared/access/workspace-access.js';
 import type {
   ConfigureTablesInput,
   CreateTableInput,

@@ -36,7 +36,7 @@ import {
   IdentityConflictError,
   type WorkspaceMemberRoleCommandConflictError,
 } from '../../src/tenant-access/tenant-access.errors.js';
-import { WorkspaceAccessDeniedError } from '../../src/shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../src/shared/access/workspace-access.errors.js';
 import { IdempotencyRequestConflictError } from '../../src/shared/command-receipt.errors.js';
 import {
   auditEvents,

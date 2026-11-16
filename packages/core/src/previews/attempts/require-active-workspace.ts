@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import { PreviewAttemptStateError } from '../preview.errors.js';
 
 /** Workspace precedes preview locks, serializing new work against deletion. */

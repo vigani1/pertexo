@@ -10,8 +10,8 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
+import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js';
 import type { ReadNoticeSubscriptionInput } from './notice-preferences.types.js';
 
 /** Whether the workflow or connection exists and, for a workflow, this person can see it. */

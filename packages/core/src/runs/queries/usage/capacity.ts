@@ -1,10 +1,10 @@
 import { BROWSABLE_WORKSPACE_STATUSES, hasCapability } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
-import { WorkspaceAccessDeniedError } from '../../../shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../../shared/access/workspace-access.errors.js';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
-} from '../../../shared/workspace-access.js';
+} from '../../../shared/access/workspace-access.js';
 import { capacityQuery, type PolicyState } from './capacity.repository.js';
 
 /** A usage read's statement budget: capacity and trends scan bounded ranges. */

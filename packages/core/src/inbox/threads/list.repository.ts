@@ -3,8 +3,8 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import type { WorkspaceActor } from '../../shared/workspace-access.js';
-import type { FolderScope } from '../../shared/folder-access.types.js';
+import type { WorkspaceActor } from '../../shared/access/workspace-access.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
 import type {
   ListThreadsInput,
   WorkspaceInboxSummary,

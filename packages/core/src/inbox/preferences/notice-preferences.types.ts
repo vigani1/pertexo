@@ -4,7 +4,7 @@ import type {
   NoticeSubscriptionRequest,
   NoticeSubjectParams,
 } from '@pertexo/contracts';
-import type { WorkspaceActor } from '../../shared/workspace-access.js';
+import type { WorkspaceActor } from '../../shared/access/workspace-access.js';
 
 export type NoticeSubject = Pick<
   NoticeSubjectParams,

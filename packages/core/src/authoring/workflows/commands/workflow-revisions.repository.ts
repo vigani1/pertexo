@@ -8,7 +8,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
-import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../../shared/access/workflow-actor.types.js';
 import { workflowProjection } from '../representation/workflow-representations.repository.js';
 
 /** Renames an active workflow at its expected name revision; undefined when it moved. */

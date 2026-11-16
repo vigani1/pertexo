@@ -3,7 +3,7 @@ import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { Pool } from 'pg';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { lockWorkspace } from '../../../src/authoring/settings/auto-pause/lock-settings.js';
-import { withWorkspaceAccess } from '../../../src/shared/workspace-access.js';
+import { withWorkspaceAccess } from '../../../src/shared/access/workspace-access.js';
 import {
   actorId,
   apiUrl,

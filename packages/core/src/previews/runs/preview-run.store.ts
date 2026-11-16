@@ -6,8 +6,8 @@ import { databaseSchema } from '@pertexo/database/schema';
 import { ACTIVE_WORKSPACE_STATUSES, type Role } from '@pertexo/policy';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
-import { withWorkspaceAccess } from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+import { withWorkspaceAccess } from '../../shared/access/workspace-access.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
 import { PreviewAdmissionDeniedError } from '../preview.errors.js';
 import { acceptPreviewRun } from './accept.js';
 import type {

@@ -29,11 +29,11 @@ import {
   workflowTags,
   workflows,
 } from '@pertexo/database/schema';
-import type { FolderScope } from '../../shared/folder-access.types.js';
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { withWorkspaceAccess } from '../../shared/workspace-access.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
+import { withWorkspaceAccess } from '../../shared/access/workspace-access.js';
 import { readAsNotVisible } from '../workflows/access.js';
-import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
+import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js';
 import { workflowActions } from '../../shared/resources/workflow-access.repository.js';
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type { WorkflowRecord } from '../workflows/representation/workflow-record.types.js';

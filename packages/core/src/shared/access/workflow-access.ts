@@ -11,7 +11,7 @@ import type {
   FolderScope,
   WorkflowResourceCapability,
 } from './folder-access.types.js';
-import { workflowAccessible } from './resources/workflow-access.repository.js';
+import { workflowAccessible } from '../resources/workflow-access.repository.js';
 
 /**
  * A member reaching one workflow. The role comes from `capability`, the folder from

@@ -10,7 +10,7 @@ import type { DirectoryCredentialResult } from '@pertexo/contracts';
 
 import { generatePersistedId } from '@pertexo/database/platform';
 
-import { withWorkspaceAccess } from '../../../../shared/workspace-access.js';
+import { withWorkspaceAccess } from '../../../../shared/access/workspace-access.js';
 
 import { organizationForWorkspace } from '../../management/authority.repository.js';
 

@@ -1,4 +1,4 @@
-import { requireWorkspaceAuthority } from '../../../shared/workspace-access.errors.js';
+import { requireWorkspaceAuthority } from '../../../shared/access/workspace-access.errors.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { PoolClient } from 'pg';
 import { rolesForCapability } from '@pertexo/policy';
@@ -9,8 +9,8 @@ import {
 import { readFormVersion } from '../read-form-version.js';
 import { authorizeForm } from '../authorize-form.js';
 import { FormUnavailableError } from '../form.errors.js';
-import { lockWorkspaceAuthority } from '../../../shared/workspace-authority.js';
-import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { lockWorkspaceAuthority } from '../../../shared/access/workspace-authority.js';
+import { readFolderScope } from '../../../shared/access/folder-access-facts.repository.js';
 import { readTaskUploadTarget } from '../../../runs/pending-tasks/responses/pending-task-records.repository.js';
 import {
   PendingTaskDecisionError,

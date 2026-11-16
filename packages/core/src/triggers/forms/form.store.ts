@@ -1,7 +1,7 @@
-import type { FolderScope } from '../../shared/folder-access.types.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
 import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 import type { SealedConnectionSecret } from '@pertexo/secrets/server';
-import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import {
   withTenantScopedClient,
   withTenantScopedReadClient,
@@ -25,7 +25,7 @@ import {
   BROWSABLE_WORKSPACE_STATUSES,
 } from '@pertexo/policy';
 import type { InitialCheckpointFactory } from '../../runs/commands/initial-checkpoint.types.js';
-import { withWorkflowAccess } from '../../shared/workflow-access.js';
+import { withWorkflowAccess } from '../../shared/access/workflow-access.js';
 import { FormUnavailableError } from './form.errors.js';
 import type {
   CoordinatedEventHistory,

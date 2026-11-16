@@ -1,4 +1,4 @@
-import { requireWorkspaceAuthority } from '../../../shared/workspace-access.errors.js';
+import { requireWorkspaceAuthority } from '../../../shared/access/workspace-access.errors.js';
 import type { CompleteFederationJourney } from './federation-journey.types.js';
 import {
   setOrganizationContext,
@@ -12,7 +12,7 @@ import {
 } from '../provisioning/directory-sign-in.js';
 import { bindVerifiedAccount } from '../accounts/link.repository.js';
 import type { PoolClient } from 'pg';
-import { lockWorkspaceAuthority } from '../../../shared/workspace-authority.js';
+import { lockWorkspaceAuthority } from '../../../shared/access/workspace-authority.js';
 import { recordIdentitySecurityFact } from '../../facts.repository.js';
 import { resolveVerifiedSignInUser } from '../accounts/resolve.repository.js';
 import { SignInProofRejectedError } from '../accounts/sign-in-proof.errors.js';

@@ -3,9 +3,9 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { artifacts } from '@pertexo/database/schema';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
-import { readTransactionFolderScope } from '../../shared/folder-access-facts.repository.js';
-import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
-import type { ResourceActor } from '../../shared/folder-access.types.js';
+import { readTransactionFolderScope } from '../../shared/access/folder-access-facts.repository.js';
+import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js';
+import type { ResourceActor } from '../../shared/access/folder-access.types.js';
 import { ARTIFACT_UPLOAD_PURPOSE } from '../artifact.js';
 import { artifactReferenceOwnersSql } from './owners.repository.js';
 

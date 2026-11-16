@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/access/workspace-access.errors.js';
 import {
   admin,
   store,

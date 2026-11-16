@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../../shared/access/workflow-actor.types.js';
 import { decodeStoredReceipt } from '../../../shared/receipts.js';
 import { z } from 'zod';
 import {
@@ -15,9 +15,9 @@ import {
   workflowVersions,
   workflowErrorPolicies,
 } from '@pertexo/database/schema';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
-import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
+import { workflowScopeSql } from '../../../shared/access/folder-scope.repository.js';
 import type { PoolClient } from 'pg';
 import { isWorkflowErrorTarget } from '@pertexo/workflow-model';
 import type {

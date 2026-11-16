@@ -14,8 +14,8 @@ import {
 } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 
-import { withWorkspaceAccess } from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+import { withWorkspaceAccess } from '../../shared/access/workspace-access.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
 import { ARTIFACT_UPLOAD_PURPOSE, type ArtifactRecord } from '../artifact.js';
 import { artifactMetadataMatches } from '../metadata.js';
 import { visibleArtifactIds } from '../references/access.repository.js';

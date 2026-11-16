@@ -1,7 +1,7 @@
 import { setOrganizationContext } from '@pertexo/database/primitives';
 import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { WorkspaceAccessDeniedError } from '../../../../src/shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../../../src/shared/access/workspace-access.errors.js';
 import { useIdentityCommandDatabase } from '../../command.support.js';
 import {
   createDirectoryCredential,

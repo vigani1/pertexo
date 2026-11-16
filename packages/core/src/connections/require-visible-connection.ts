@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
 import type { Role } from '@pertexo/policy';
-import type { ResourceActor } from '../shared/folder-access.types.js';
+import type { ResourceActor } from '../shared/access/folder-access.types.js';
 import type { ConnectionCapability } from '../shared/resources/connection-scope.repository.js';
 import { ConnectionNotFoundError } from './connection.errors.js';
 import { connectionVisible } from './connections.repository.js';

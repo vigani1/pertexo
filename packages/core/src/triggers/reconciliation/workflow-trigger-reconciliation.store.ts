@@ -1,4 +1,4 @@
-import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { reconciliationFailureReason } from '../trigger-failure.js';
 import { and, eq, inArray, not, sql } from 'drizzle-orm';

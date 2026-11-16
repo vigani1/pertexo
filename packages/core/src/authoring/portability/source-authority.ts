@@ -8,7 +8,7 @@ import {
 } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
 
 import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 

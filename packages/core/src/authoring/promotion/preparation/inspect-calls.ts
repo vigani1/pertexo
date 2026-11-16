@@ -5,7 +5,7 @@ import {
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { ConnectionScope } from '../../../shared/resources/connection-scope.repository.js';
 
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 
 import type { PoolClient } from 'pg';
 import {

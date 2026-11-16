@@ -1,4 +1,4 @@
-import type { FolderScope } from '../../shared/folder-access.types.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
 
 import type { WorkflowPromotionResult } from '@pertexo/contracts';
 
@@ -12,7 +12,7 @@ import { auditEvents, workflows } from '@pertexo/database/schema';
 
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 
-import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
+import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js';
 
 import type { PoolClient } from 'pg';
 

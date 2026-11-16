@@ -4,7 +4,7 @@ import {
   InvalidWorkflowGraphError,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
-import type { ResourceActor } from '../folder-access.types.js';
+import type { ResourceActor } from '../access/folder-access.types.js';
 import { countReadableWorkflows } from './workflow-call-bindings.repository.js';
 
 /** Only direct bindings are admitted; immutable child versions delegate their own closure. */

@@ -1,4 +1,4 @@
-import type { WorkflowRef } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowRef } from '../../../shared/access/workflow-actor.types.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { workflowDrafts, workflows } from '@pertexo/database/schema';
 import { and, eq } from 'drizzle-orm';

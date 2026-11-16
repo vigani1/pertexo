@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
 import { workflowTestStepChoices } from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine/server';
-import type { WorkflowActor } from '../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import { readDatabaseClock } from '../../shared/database-clock.repository.js';

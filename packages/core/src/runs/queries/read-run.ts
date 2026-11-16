@@ -11,7 +11,7 @@ import {
 } from './history/read-calls.js';
 import { readNodes } from './run.repository.js';
 import type { Pool } from 'pg';
-import type { ResourceTransaction } from '../../shared/folder-access.types.js';
+import type { ResourceTransaction } from '../../shared/access/folder-access.types.js';
 import { WorkflowRunReadCapacityError } from '../workflow-run.errors.js';
 import type { WorkflowRunReadRecord } from '../commands/workflow-run-records.repository.js';
 import { readWorkflowRunReadRecord } from '../commands/read-run-record.js';

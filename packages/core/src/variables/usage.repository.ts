@@ -1,6 +1,6 @@
-import type { readFolderScope } from '../shared/folder-access-facts.repository.js';
+import type { readFolderScope } from '../shared/access/folder-access-facts.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { workflowScopeSql } from '../shared/folder-scope.repository.js';
+import { workflowScopeSql } from '../shared/access/folder-scope.repository.js';
 import {
   workflows,
   workflowDrafts,

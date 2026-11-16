@@ -12,7 +12,7 @@ import type { PoolClient } from 'pg';
 import {
   withWorkspaceAccess,
   type WorkspaceActor,
-} from '../shared/workspace-access.js';
+} from '../shared/access/workspace-access.js';
 import { decodeAuditCursor } from './audit/cursor.js';
 import { streamAuditExport } from './audit/export.js';
 import { readAuditPage } from './audit/page.js';

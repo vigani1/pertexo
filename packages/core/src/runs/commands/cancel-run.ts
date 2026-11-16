@@ -3,7 +3,7 @@ import {
   appendLockedRunEvents,
   RUN_EVENT_TYPE,
 } from '../../shared/run-records/run-events.repository.js';
-import { lockWorkspaceRunAdmission } from '../../shared/workspace-fence.repository.js';
+import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { requestWorkflowRunCancellation } from './request-cancellation.js';
 import { WorkflowRunNotFoundError } from '../workflow-run.errors.js';

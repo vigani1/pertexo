@@ -4,7 +4,7 @@ import { folderAudienceFingerprint } from './audience-digests.js';
 
 import type { PoolClient } from 'pg';
 
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 
 import type {
   AudienceReview,
@@ -13,12 +13,12 @@ import type {
   WorkflowMoveReviewItem,
 } from '@pertexo/contracts';
 
-import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../../shared/access/folder-access-facts.repository.js';
 
 import {
   RESOURCE_ADMINISTRATORS,
   removesFolderRestriction,
-} from '../../../shared/folder-policy.js';
+} from '../../../shared/access/folder-policy.js';
 
 import { WorkflowNotFoundError } from '../../workflows/workflow-authoring.errors.js';
 

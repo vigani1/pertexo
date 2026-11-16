@@ -1,6 +1,6 @@
 import type { Role } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
-import { lockWorkspaceRow } from '../../../shared/authority.repository.js';
+import { lockWorkspaceRow } from '../../../shared/access/authority.repository.js';
 import { WorkspaceInvitationCommandConflictError } from '../../tenant-access.errors.js';
 import { isActiveMemberManager } from '../../members/manager.js';
 import { lockActorMembership } from './state.repository.js';

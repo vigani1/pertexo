@@ -1,6 +1,6 @@
 import type { WorkspaceScopeRunner } from '@pertexo/database/primitives';
 
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
 
 import type { PromotionScope } from './workflow-promotion.types.js';
 

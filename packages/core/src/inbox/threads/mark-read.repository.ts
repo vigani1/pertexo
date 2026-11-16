@@ -5,7 +5,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PoolClient } from 'pg';
 
-import type { FolderScope } from '../../shared/folder-access.types.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
 import type {
   MarkAllReadInput,
   MarkThreadReadInput,

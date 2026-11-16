@@ -1,5 +1,5 @@
 import type { ConnectionSharingRequest } from '@pertexo/contracts';
-import type { ResourceActor } from '../../shared/folder-access.types.js';
+import type { ResourceActor } from '../../shared/access/folder-access.types.js';
 
 export type ReadConnectionSharingInput = ResourceActor &
   Readonly<{ connectionId: string }>;

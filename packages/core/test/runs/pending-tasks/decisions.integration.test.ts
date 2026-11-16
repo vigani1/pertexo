@@ -10,7 +10,7 @@ import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { readPendingTaskFacts } from '../../../src/runs/pending-tasks/lifecycle/resolve-task-facts.js';
 import { describe, it, expect } from 'vitest';
 import { pendingTaskDetailSchema } from '@pertexo/contracts';
-import { WorkspaceAccessDeniedError } from '../../../src/shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../../src/shared/access/workspace-access.errors.js';
 import { createPendingTaskStore } from '../../../src/runs/pending-tasks/responses/pending-task.store.js';
 import {
   PendingTaskDecisionError,

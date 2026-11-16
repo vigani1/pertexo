@@ -1,6 +1,6 @@
 import { rolesForCapability } from '@pertexo/policy';
-import { lockWorkspaceAuthority } from '../../shared/workspace-authority.js';
-import { requireWorkspaceAuthority } from '../../shared/workspace-access.errors.js';
+import { lockWorkspaceAuthority } from '../../shared/access/workspace-authority.js';
+import { requireWorkspaceAuthority } from '../../shared/access/workspace-access.errors.js';
 import {
   acquireDatabasePool,
   type DatabaseConfig,
@@ -14,7 +14,7 @@ import { noticeMailBatches } from '@pertexo/database/schema';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
 import { authorizeBatch } from './authorize.repository.js';
 import { createPersonBackoff } from './backoff.js';
 import { readMailCandidates } from './candidates.repository.js';

@@ -1,5 +1,5 @@
 import { setOrganizationContext } from '@pertexo/database/primitives';
-import { readFolderScope } from '../../../../src/shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../../../src/shared/access/folder-access-facts.repository.js';
 import { withTenantScopedReadClient } from '@pertexo/database/primitives';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';

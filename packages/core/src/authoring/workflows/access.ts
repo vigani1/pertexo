@@ -1,18 +1,18 @@
 import type {
   WorkflowActor,
   WorkflowRef,
-} from '../../shared/workflow-actor.types.js';
-import { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+} from '../../shared/access/workflow-actor.types.js';
+import { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
 import type {
   FolderScope,
   WorkflowResourceCapability,
-} from '../../shared/folder-access.types.js';
+} from '../../shared/access/folder-access.types.js';
 import {
   withWorkspaceAccess,
   type WorkspaceAccess,
   type WorkspaceActor,
-} from '../../shared/workspace-access.js';
-import { WorkspaceAccessDeniedError } from '../../shared/workspace-access.errors.js';
+} from '../../shared/access/workspace-access.js';
+import { WorkspaceAccessDeniedError } from '../../shared/access/workspace-access.errors.js';
 import { workflowAccessible } from '../../shared/resources/workflow-access.repository.js';
 import {
   ACTIVE_WORKSPACE_STATUSES,

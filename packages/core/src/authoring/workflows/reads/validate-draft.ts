@@ -1,4 +1,4 @@
-import type { WorkflowActor } from '../../../shared/workflow-actor.types.js';
+import type { WorkflowActor } from '../../../shared/access/workflow-actor.types.js';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { projectDraft } from '../representation/workflow-representations.repository.js';
 import {
@@ -7,7 +7,7 @@ import {
 } from '@pertexo/workflow-model';
 import { compilePublicationGraph } from '../../publication/compile-publication.js';
 import type { PoolClient } from 'pg';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 import type { AuthoringCatalogs } from '../catalogs.js';
 import { readDraftRow, readPublishedVersionRow } from './drafts.repository.js';

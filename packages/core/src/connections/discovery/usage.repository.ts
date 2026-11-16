@@ -12,11 +12,11 @@ import {
   workflows as workflow,
 } from '@pertexo/database/schema';
 
-import type { FolderScope } from '../../shared/folder-access.types.js';
+import type { FolderScope } from '../../shared/access/folder-access.types.js';
 
-import type { readFolderScope } from '../../shared/folder-access-facts.repository.js';
+import type { readFolderScope } from '../../shared/access/folder-access-facts.repository.js';
 
-import { workflowScopeSql } from '../../shared/folder-scope.repository.js';
+import { workflowScopeSql } from '../../shared/access/folder-scope.repository.js';
 
 import type {
   ConnectionUsageRecord,

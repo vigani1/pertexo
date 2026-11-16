@@ -11,7 +11,7 @@ import type { WorkflowPromotionPreviewRequest } from '@pertexo/contracts';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
-import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../../shared/access/folder-access-facts.repository.js';
 import { workflowAccessible } from '../../../shared/resources/workflow-access.repository.js';
 import type { PoolClient } from 'pg';
 import { isDataTableDefinition, type DataTableConfig } from '@pertexo/node-sdk';

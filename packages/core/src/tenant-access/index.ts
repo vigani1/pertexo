@@ -11,7 +11,7 @@ export {
   createIdentityWorkspaceStore,
   type IdentityWorkspaceStore,
 } from './identity-workspace.store.js';
-export { WorkspaceAccessDeniedError } from '../shared/workspace-access.errors.js';
+export { WorkspaceAccessDeniedError } from '../shared/access/workspace-access.errors.js';
 export {
   IdentityConflictError,
   InvitationAcceptanceConflictError,

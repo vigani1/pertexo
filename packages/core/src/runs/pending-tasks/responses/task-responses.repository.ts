@@ -9,8 +9,8 @@ import {
   users,
 } from '@pertexo/database/schema';
 import { and, eq, sql } from 'drizzle-orm';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
+import { workflowScopeSql } from '../../../shared/access/folder-scope.repository.js';
 import type { PoolClient } from 'pg';
 import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';
 

@@ -1,7 +1,7 @@
 import {
   enterRunAdmissionProtocol,
   lockWorkspaceRunAdmission,
-} from '../../shared/workspace-fence.repository.js';
+} from '../../shared/access/workspace-fence.repository.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import type { Pool, PoolClient } from 'pg';

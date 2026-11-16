@@ -6,8 +6,8 @@ import type { PoolClient } from 'pg';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
-import type { FolderScope } from '../../../shared/folder-access.types.js';
-import { workflowScopeSql } from '../../../shared/folder-scope.repository.js';
+import type { FolderScope } from '../../../shared/access/folder-access.types.js';
+import { workflowScopeSql } from '../../../shared/access/folder-scope.repository.js';
 import { ordinaryRunSql } from '../../../shared/run-records/run-retention.repository.js';
 
 type Summary = NonNullable<WorkflowSummary['listSummary']>;

@@ -2,7 +2,7 @@ import { TRIGGER_HISTORY_PAGE_LIMIT } from '../../shared/page-limits.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import type { Pool, PoolClient } from 'pg';
 import { withWorkspaceTransaction } from '@pertexo/database/primitives';
-import { withWorkflowAccess } from '../../shared/workflow-access.js';
+import { withWorkflowAccess } from '../../shared/access/workflow-access.js';
 import { WebhookTriggerNotFoundError } from './webhook-trigger.errors.js';
 import type {
   ListWebhookDeliveriesInput,

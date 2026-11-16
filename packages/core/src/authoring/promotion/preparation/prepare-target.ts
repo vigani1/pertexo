@@ -1,6 +1,6 @@
 import { PROMOTION_LIMITS, canonicalJson } from '@pertexo/workflow-model';
 import { connectionScope } from '../../../shared/resources/connection-scope.repository.js';
-import { readFolderScope } from '../../../shared/folder-access-facts.repository.js';
+import { readFolderScope } from '../../../shared/access/folder-access-facts.repository.js';
 import type { PoolClient } from 'pg';
 import type { WorkflowPromotionRequirement } from '@pertexo/contracts';
 import { workflowDefinitionCatalogFingerprint } from '@pertexo/workflow-model/server';
