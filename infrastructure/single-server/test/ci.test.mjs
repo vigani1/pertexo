@@ -4,6 +4,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { parse } from 'yaml';
 import { test } from 'node:test';
 import { it } from 'node:test';
+import { selectJobs, readWorkspaces } from '../../ci/select-jobs.mjs';
+const fullSelection = selectJobs([], readWorkspaces(), 'push');
 
 // CI can't be run from here, so these read the workflow files for the promises the
 // operator depends on. What only a real run can prove is listed in the batch notes.
@@ -171,7 +173,7 @@ test('keeps the S3 mock store where its volume is mounted, at /data, as root', (
 
 // A leg dropped from a matrix takes its tests with it while every other leg stays green.
 test('the gate requires a split suite, and every one of its shards exists', () => {
-  const shards = ci.jobs.browser.strategy.matrix.include.flatMap(
+  const shards = fullSelection.browser.include.flatMap(
     ({ shard }) => shard ?? [],
   );
   assert.ok(shards.length > 1);
@@ -183,9 +185,7 @@ test('the gate requires a split suite, and every one of its shards exists', () =
     assert.ok(neededBy('ci-passed').has(name), name);
   // The worker suite's shards run inside one job: see run-worker-suite.mjs.
   assert.ok(
-    ci.jobs.integration.strategy.matrix.include.some(
-      ({ group }) => group === 'worker',
-    ),
+    fullSelection.integration.include.some(({ group }) => group === 'worker'),
   );
   assert.match(jobText(ci.jobs.integration), /run-worker-suite\.mjs/u);
 });
@@ -254,7 +254,7 @@ test('keeps the fast deployment checks in the required check job', () => {
 // The checks run as parallel parts; splitting them must not drop one.
 test('runs every static check across the parallel check parts', () => {
   const check = ci.jobs.check;
-  assert.deepEqual(check.strategy.matrix.part, [
+  assert.deepEqual(fullSelection.check.part, [
     'static',
     'deploy',
     'lint-web',
@@ -306,4 +306,29 @@ test('runs the drill on main, on the schedule, and only on pull requests that to
     'infrastructure/development/check-cache.mjs',
   ])
     assert.ok(!touches(file), file);
+});
+
+test('consumes the selector matrices and keeps every selected job behind the gate', () => {
+  for (const name of ['check', 'unit', 'integration', 'browser']) {
+    assert.equal(
+      ci.jobs[name].strategy.matrix,
+      `\${{ fromJSON(needs.changes.outputs.${name}) }}`,
+    );
+    assert.ok(neededBy('ci-passed').has(name));
+    assert.equal(
+      ci.jobs.changes.outputs[name],
+      `\${{ steps.classify.outputs.${name} }}`,
+    );
+  }
+  assert.equal(ci.jobs.check.if, undefined);
+  const heavyJobs =
+    fullSelection.check.part.length +
+    fullSelection.unit.include.length +
+    fullSelection.integration.include.length +
+    fullSelection.browser.include.length +
+    4;
+  // Image, security and the two self-host legs can overlap these matrices.
+  assert.ok(heavyJobs <= 20);
+  assert.match(jobText(ci.jobs['ci-passed']), /success \| skipped/u);
+  assert.match(jobText(ci.jobs['ci-passed']), /exit 1/u);
 });
