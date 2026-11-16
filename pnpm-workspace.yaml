@@ -20,3 +20,6 @@ allowBuilds:
   msgpackr-extract: false
   msw: false
   protobufjs: false
+
+patchedDependencies:
+  ioredis@6.0.0: patches/ioredis@6.0.0.patch

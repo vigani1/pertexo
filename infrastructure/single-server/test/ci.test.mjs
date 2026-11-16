@@ -269,7 +269,8 @@ test('runs every static check across the parallel check parts', () => {
     'pnpm build',
     'pnpm observability:check',
     'pnpm lint:infrastructure',
-    'pnpm --filter @pertexo/web exec eslint .',
+    'pnpm --filter @pertexo/web lint',
+    'pnpm exec oxlint',
     "--filter '!@pertexo/web'",
     'pnpm typecheck',
     'pnpm dependencies:check',
@@ -278,6 +279,11 @@ test('runs every static check across the parallel check parts', () => {
     'pnpm architecture:check',
   ])
     assert.ok(text.includes(command), command);
+  // The web part runs the web package's lint script: both linters, every rule.
+  const webLint = JSON.parse(readFileSync('apps/web/package.json', 'utf8'))
+    .scripts.lint;
+  for (const linter of ['oxlint', 'eslint'])
+    assert.ok(webLint.includes(linter), linter);
 });
 
 // The drill takes about 22 minutes a leg: a pull request that didn't touch what it
