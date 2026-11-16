@@ -833,10 +833,6 @@ export default tseslint.config(
       'packages/workflow-model/src/index.ts',
       // At the limit already; the move split its test-door import in two.
       'apps/worker/test/support/workflow-lifecycle.integration.support.ts',
-      // The one registry of problem codes: each code's status, title,
-      // severity and detail exposure, read whole by the problem filter and
-      // the OpenAPI writer.
-      'packages/contracts/src/errors/api-problem.ts',
     ],
     rules: { 'max-lines': 'off' },
   },
