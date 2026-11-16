@@ -37,3 +37,12 @@ test('a feature change selects its own reach and cross-feature tests', () => {
     ['usage', 'shared'],
   );
 });
+
+test('committed reach is freshly derived from specs, routes and imported helpers', async () => {
+  const { reachFreshnessErrors } = await import('./derive-browser-reach.mjs');
+  assert.deepEqual(reachFreshnessErrors(browserReach), []);
+  assert.match(
+    reachFreshnessErrors({ ...browserReach, 'e2e/usage.spec.ts': [] })[0],
+    /run node infrastructure\/testing\/derive-browser-reach.mjs/u,
+  );
+});
