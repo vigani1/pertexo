@@ -6,10 +6,10 @@ const workspaces = readWorkspaces();
 const select = (file, event) => selectJobs([file], workspaces, event);
 const groups = (matrix) => matrix.include.map(({ group }) => group);
 
-test('documentation keeps the static floor without test jobs', () => {
+test('documentation keeps the static and deployment floor without test jobs', () => {
   const result = select('docs/guide.md');
   assert.equal(result.code, false);
-  assert.deepEqual(result.check.part, ['static']);
+  assert.deepEqual(result.check.part, ['static', 'deploy']);
   for (const job of ['unit', 'integration', 'browser'])
     assert.deepEqual(result[job].include, []);
 });
@@ -20,7 +20,7 @@ test('web source and web tests run all web tests and live journeys', () => {
     'apps/web/test/component.test.tsx',
   ]) {
     const result = select(file);
-    assert.deepEqual(result.check.part, ['static', 'lint-web']);
+    assert.deepEqual(result.check.part, ['static', 'deploy', 'lint-web']);
     assert.deepEqual(result.unit.include, [
       { group: 'web', filter: '--filter @pertexo/web' },
     ]);
@@ -57,7 +57,7 @@ for (const name of ['core', 'database'])
       result.browser.include.map(({ suite }) => suite),
       ['live-1', 'live-2', 'live-3'],
     );
-    assert.deepEqual(result.check.part, ['static', 'lint-rest']);
+    assert.deepEqual(result.check.part, ['static', 'deploy', 'lint-rest']);
   });
 
 for (const file of [
