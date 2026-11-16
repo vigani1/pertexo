@@ -2,6 +2,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
+import { followThrowingExports } from './core-repository-exports.mjs';
 
 import {
   STORAGE_INTEGRITY_DECODERS,
@@ -32,10 +33,11 @@ export function findThrownErrors(file, text) {
   const imported = importedNames(source);
   const found = [];
   const record = (node, expression) => {
-    const name = thrownName(unwrap(expression), source, imported);
-    if (name !== undefined && !integrityError(name, imported)) {
-      const { line } = source.getLineAndCharacterOfPosition(node.getStart());
-      found.push({ file, line: line + 1, name, node });
+    for (const name of thrownNames(unwrap(expression), source, imported)) {
+      if (name !== undefined && !integrityError(name, imported)) {
+        const { line } = source.getLineAndCharacterOfPosition(node.getStart());
+        found.push({ file, line: line + 1, name, node });
+      }
     }
   };
   const visit = (node) => {
@@ -83,6 +85,12 @@ export function throwingFunctions(file, text) {
   for (const thrown of findThrownErrors(file, text)) {
     let node = thrown.node;
     while (!ts.isSourceFile(node.parent)) node = node.parent;
+    if (
+      node.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+      )
+    )
+      throwing.add('default');
     const name = declaredName(node);
     if (name !== undefined && !Object.hasOwn(STORAGE_INTEGRITY_DECODERS, name))
       throwing.add(name);
@@ -106,7 +114,16 @@ export function repositoryHops(file, text, throwingByModule) {
       .replace(/\.js$/u, '.ts');
     const throwing = throwingByModule.get(target);
     const bindings = clause.namedBindings;
-    if (throwing === undefined || bindings === undefined) continue;
+    if (throwing === undefined) continue;
+    if (throwing.has('*'))
+      hops.push({ file, target, name: '*', unsupported: true });
+    if (clause.name !== undefined && throwing.has('default'))
+      hops.push({ file, target, name: 'default' });
+    if (bindings === undefined) continue;
+    if (ts.isNamespaceImport(bindings)) {
+      for (const name of throwing) hops.push({ file, target, name });
+      continue;
+    }
     if (!ts.isNamedImports(bindings)) continue;
     for (const element of bindings.elements) {
       const name = (element.propertyName ?? element.name).text;
@@ -114,13 +131,28 @@ export function repositoryHops(file, text, throwingByModule) {
         hops.push({ file, target, name });
     }
   }
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    )
+      hops.push({
+        file,
+        target: 'dynamic import',
+        name: 'unresolved runtime module',
+        unsupported: true,
+      });
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
   return hops;
 }
 
 export function repositoryHopFindings(hops) {
-  return hops.map(
-    ({ file, target, name }) =>
-      `${file}: imports ${name} from ${target}, which throws a domain error, so the repository decides one hop away. Call it from the operation instead, or list it in STORAGE_INTEGRITY_DECODERS if it only refuses a corrupt stored value.`,
+  return hops.map(({ file, target, name, unsupported }) =>
+    unsupported
+      ? `${file}: ${target} cannot be resolved soundly in a repository; load it in the operation instead.`
+      : `${file}: imports ${name} from ${target}, which throws a domain error, so the repository decides one hop away. Call it from the operation instead, or list it in STORAGE_INTEGRITY_DECODERS if it only refuses a corrupt stored value.`,
   );
 }
 
@@ -160,6 +192,7 @@ export async function collectCoreFindings(root = repositoryRoot) {
   for (const [file, text] of texts)
     if (!QUERY_ROLE.test(file))
       throwingByModule.set(file, throwingFunctions(file, text));
+  followThrowingExports(texts, throwingByModule);
   const throwsByFile = new Map();
   const hops = [];
   for (const [file, text] of texts)
@@ -187,6 +220,28 @@ function unwrap(expression) {
   return current;
 }
 
+function thrownNames(expression, source, imported) {
+  const value = unwrap(expression);
+  if (ts.isConditionalExpression(value))
+    return [
+      ...thrownNames(value.whenTrue, source, imported),
+      ...thrownNames(value.whenFalse, source, imported),
+    ];
+  if (
+    ts.isBinaryExpression(value) &&
+    [
+      ts.SyntaxKind.BarBarToken,
+      ts.SyntaxKind.QuestionQuestionToken,
+      ts.SyntaxKind.AmpersandAmpersandToken,
+    ].includes(value.operatorToken.kind)
+  )
+    return [
+      ...thrownNames(value.left, source, imported),
+      ...thrownNames(value.right, source, imported),
+    ];
+  return [thrownName(value, source, imported)];
+}
+
 function thrownName(expression, source, imported) {
   if (ts.isNewExpression(expression))
     return resolved(expression.expression.getText(source), imported);
@@ -203,7 +258,7 @@ function thrownName(expression, source, imported) {
 /**
  * `catch (error) { throw error; }` and `.catch((error) => { throw error; })`
  * rethrow what something else raised: the thrown name is a catch binding or a
- * parameter of an enclosing function.
+ * rejection-handler parameter. Ordinary function parameters are not rethrows.
  */
 function caughtBinding(identifier) {
   const binds = (declaration) =>
@@ -212,7 +267,21 @@ function caughtBinding(identifier) {
     declaration.name.text === identifier.text;
   for (let node = identifier.parent; node !== undefined; node = node.parent) {
     if (ts.isCatchClause(node) && binds(node.variableDeclaration)) return true;
-    if (ts.isFunctionLike(node) && node.parameters.some(binds)) return true;
+    if (ts.isFunctionLike(node)) {
+      const parameter = node.parameters.find(binds);
+      if (parameter !== undefined) {
+        const call = node.parent;
+        return (
+          parameter.initializer === undefined &&
+          ts.isCallExpression(call) &&
+          ts.isPropertyAccessExpression(call.expression) &&
+          ((call.expression.name.text === 'catch' &&
+            call.arguments[0] === node) ||
+            (call.expression.name.text === 'then' &&
+              call.arguments[1] === node))
+        );
+      }
+    }
   }
   return false;
 }
@@ -270,7 +339,8 @@ function integrityError(name, imported) {
 }
 
 function declaredName(statement) {
-  if (ts.isFunctionDeclaration(statement)) return statement.name?.text;
+  if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement))
+    return statement.name?.text;
   if (ts.isVariableStatement(statement)) {
     const [declaration] = statement.declarationList.declarations;
     return declaration !== undefined && ts.isIdentifier(declaration.name)

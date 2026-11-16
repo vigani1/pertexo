@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import {
   collectCoreFindings,
@@ -151,4 +154,119 @@ test('an exemption core never uses is refused', () => {
 
 test("core's repositories throw and reach no domain errors", async () => {
   assert.deepEqual(await collectCoreFindings(), []);
+});
+
+for (const [shape, text] of [
+  [
+    'default parameter',
+    'function refuse(error = new WorkflowRunNotFoundError()) { throw error; }',
+  ],
+  ['ordinary parameter', 'function refuse(error) { throw error; }'],
+  [
+    'conditional first branch',
+    'throw missing ? new WorkflowRunNotFoundError() : new Error();',
+  ],
+  [
+    'conditional second branch',
+    'throw missing ? new Error() : new WorkflowRunNotFoundError();',
+  ],
+  ['logical fallback', 'throw error || new WorkflowRunNotFoundError();'],
+  ['nullish fallback', 'throw error ?? new WorkflowRunNotFoundError();'],
+  [
+    'conditional rejection',
+    'Promise.reject(missing ? new Error() : new WorkflowRunNotFoundError());',
+  ],
+  [
+    'logical rejection',
+    'Promise.reject(error || new WorkflowRunNotFoundError());',
+  ],
+  [
+    'nullish rejection',
+    'Promise.reject(error ?? new WorkflowRunNotFoundError());',
+  ],
+])
+  test(`refuses ${shape}`, () => assert.ok(names(text).length > 0));
+
+for (const [shape, text] of [
+  [
+    'namespace import',
+    "import * as g from './require-run.js'; g.requireRun();",
+  ],
+  [
+    'dynamic import',
+    "const g = await import('./require-run.js'); g.requireRun();",
+  ],
+  [
+    'unresolved dynamic import',
+    'const g = await import(moduleName); g.requireRun();',
+  ],
+])
+  test(`refuses ${shape} reaching operations`, () => {
+    const modules = new Map([
+      ['packages/core/src/runs/require-run.ts', new Set(['requireRun'])],
+    ]);
+    assert.ok(repositoryHops(REPOSITORY, text, modules).length > 0);
+  });
+
+test('indexes throwing methods of exported classes', () => {
+  assert.ok(
+    throwingFunctions(
+      'guard.ts',
+      'export class Guard { requireRun() { throw new WorkflowRunNotFoundError(); } }',
+    ).has('Guard'),
+  );
+});
+
+for (const forwarding of [
+  "export { requireRun } from './require-run.js';",
+  "export * from './require-run.js';",
+  "export { requireRun as refuse } from './require-run.js';",
+])
+  test(`follows re-export: ${forwarding}`, async (t) => {
+    const root = await mkdtemp(path.join(tmpdir(), 'core-throws-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const area = path.join(root, 'packages/core/src/runs');
+    await mkdir(area, { recursive: true });
+    await writeFile(
+      path.join(area, 'require-run.ts'),
+      'export function requireRun() { throw new WorkflowRunNotFoundError(); }',
+    );
+    await writeFile(path.join(area, 'forward.ts'), forwarding);
+    const name = forwarding.includes('as refuse') ? 'refuse' : 'requireRun';
+    await writeFile(
+      path.join(area, 'example.repository.ts'),
+      `import { ${name} } from './forward.js'; ${name}();`,
+    );
+    assert.ok(
+      (await collectCoreFindings(root)).some((finding) =>
+        finding.includes('example.repository.ts'),
+      ),
+    );
+  });
+
+test('a default-imported throwing class cannot enter a repository', () => {
+  const target = 'packages/core/src/runs/guard.ts';
+  const throwing = throwingFunctions(
+    target,
+    'export default class Guard { requireRun() { throw new WorkflowRunNotFoundError(); } }',
+  );
+  assert.ok(
+    repositoryHops(
+      REPOSITORY,
+      "import Guard from './guard.js'; new Guard().requireRun();",
+      new Map([[target, throwing]]),
+    ).length > 0,
+  );
+});
+
+test('only genuine rejection parameters are rethrows', () => {
+  assert.deepEqual(
+    names('work().then(undefined, (error) => { throw error; });'),
+    [],
+  );
+  assert.ok(
+    names(
+      'work().catch((error = new WorkflowRunNotFoundError()) => { throw error; });',
+    ).length > 0,
+  );
 });
