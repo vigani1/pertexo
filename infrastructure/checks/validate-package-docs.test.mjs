@@ -9,14 +9,23 @@ import {
   validatePackageDoc,
 } from './validate-package-docs.mjs';
 
-const linked = 'Follow the [root rules](../../AGENTS.md); this adds to them.';
+const headings = [
+  'Purpose and boundary',
+  'Layout',
+  'Where new code goes',
+  'Defaults and config',
+  'Rules',
+  'Exceptions',
+  'What guards it',
+];
+const linked = `Follow the [root rules](../../AGENTS.md); this adds to them.\n${headings.map((heading) => `## ${heading}`).join('\n')}`;
 
 test('accepts an AGENTS.md that links the root rules', () => {
   assert.deepEqual(validatePackageDoc('packages/example', linked), []);
   assert.deepEqual(
     validatePackageDoc(
       'packages/example',
-      'See [where code lives](../../AGENTS.md#where-code-lives).',
+      linked.replace('../../AGENTS.md', '../../AGENTS.md#where-code-lives'),
     ),
     [],
   );
@@ -44,5 +53,18 @@ test('reads each workspace’s AGENTS.md from disk', async () => {
     ]);
   } finally {
     await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('refuses every missing shared heading', () => {
+  for (const missing of headings) {
+    const text = `Follow [root rules](../../AGENTS.md).\n${headings
+      .filter((heading) => heading !== missing)
+      .map((heading) => `## ${heading}`)
+      .join('\n')}`;
+    assert.match(
+      validatePackageDoc('packages/example', text).join(),
+      new RegExp(missing),
+    );
   }
 });

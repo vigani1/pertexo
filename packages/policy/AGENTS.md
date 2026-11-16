@@ -40,8 +40,9 @@ One entry, `src/index.ts`, and one file per policy at the root:
 
 ## Defaults and config
 
-No configuration. Its one limit, `MAX_AUTO_PAUSE_THRESHOLD`, lives in
-`auto-pause-policy.ts`.
+No configuration. `MAX_AUTO_PAUSE_THRESHOLD` lives in
+`auto-pause-policy.ts`; instance run, artifact and webhook defaults live in
+`instance-limits-policy.ts`.
 
 ## Rules
 
@@ -52,8 +53,8 @@ No configuration. Its one limit, `MAX_AUTO_PAUSE_THRESHOLD`, lives in
 
 ## Exceptions
 
-- The four policy files sit at the `src` root with no sub-area: the package
-  is one small area, and a folder for four files would add navigation only.
+- The policy files sit at the `src` root with no sub-area: the package
+  is one small area, and a folder for them would add navigation only.
   Their reasons are in `ROOT_CONCEPTS`
   (`infrastructure/checks/validate-package-roots.mjs`).
 

@@ -67,12 +67,12 @@ and `@pertexo/policy` for the shapes it stores.
 
 ## Rules
 
-- Applications import only `/platform`, plus `/testing` from tests (a check
-  enforces it).
+- Entry access follows the [root rules](../../AGENTS.md#code-conventions).
 - Every workspace query runs in a transaction that set its tenant context;
   `tenant-access/transactions/scope.ts` verifies the context before and after.
 - Transaction-local settings only: the check refuses session `set` outside
-  the migration runner's marked statements.
+  the migration runner's marked statements and the connection-level readiness
+  check in `platform/pool/connection-check.ts`.
 
 ## Exceptions
 
