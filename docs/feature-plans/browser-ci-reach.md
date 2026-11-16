@@ -10,7 +10,9 @@ The existing longest-first duration assignment balances selected work over at mo
 two mocked jobs and three live jobs. Small selections use fewer jobs. The selector
 passes explicit mocked file lists to the runner; full runs still discover disk
 inventory. Mocked tests request reduced motion, with assertions unchanged and
-three workers retained.
+three workers retained. API browser-journey commands enable Vitest's filesystem
+module cache to reuse transformations between fresh processes; fixtures remain
+owned by each journey.
 
 Validation: selector and inventory regressions, a planted wrong-feature mutation,
 focused mocked profiles, full static checks, full PR CI and a disposable feature PR.
