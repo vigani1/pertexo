@@ -7,6 +7,8 @@ import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
 import { validateWorkflow } from '../workflow-publish.api';
 import { commandErrorMessage } from '@/lib/workflows/command-errors';
 
+const VALIDATION_RETRY_FLOOR_SECONDS = 5;
+
 export type ValidationResult = Readonly<{
   report: WorkflowValidateResponse;
   publicationRefused?: true;
@@ -33,7 +35,9 @@ export function useWorkflowDraftValidation({
   owner,
   ensureSaved,
   isSavedDraftCurrent,
+  now: readNow = Date.now,
 }: Readonly<{
+  now?: () => number;
   apiClient: ApiClient;
   workspaceId: string;
   workflowId: string;
@@ -140,14 +144,14 @@ export function useWorkflowDraftValidation({
   }
 
   function assertValidationAvailable() {
-    if (validationDeadline.current > Date.now())
+    if (validationDeadline.current > readNow())
       throw new UserFacingError(
         'Checking is temporarily unavailable. Wait before trying again.',
       );
   }
 
   function recordValidationCooldown(error: unknown) {
-    const deadline = validationRetryDeadline(error);
+    const deadline = validationRetryDeadline(error, readNow);
     if (deadline !== undefined) {
       validationDeadline.current = Math.max(
         validationDeadline.current,
@@ -223,12 +227,15 @@ function publicationRefusal(
 
 type CheckedDraft = SavedDraft & Readonly<{ report: WorkflowValidateResponse }>;
 
-function validationRetryDeadline(error: unknown): number | undefined {
+function validationRetryDeadline(
+  error: unknown,
+  now: () => number = Date.now,
+): number | undefined {
   const seconds = retryAfterSeconds(error);
   const unavailable =
     isApiError(error) &&
     error.problem?.code === 'workflow.validation_unavailable';
   return seconds !== undefined || unavailable
-    ? Date.now() + Math.max(5, seconds ?? 1) * 1000
+    ? now() + Math.max(VALIDATION_RETRY_FLOOR_SECONDS, seconds ?? 1) * 1000
     : undefined;
 }

@@ -48,6 +48,13 @@ describe('organization editing presentation model', () => {
       }),
     ).toThrow();
   });
+  it('accepts 50 distinct workflows and refuses 51', () => {
+    const rows = Array.from({ length: 51 }, (_, index) =>
+      row(`${String(index).padStart(8, '0')}-aaaa-4aaa-8aaa-aaaaaaaaaaaa`),
+    );
+    expect(validOrganizationSelection(rows.slice(0, 50))).toBe(true);
+    expect(validOrganizationSelection(rows)).toBe(false);
+  });
   it('normalizes replacement IDs and owns the ordered selection', () => {
     const workflows = [row(secondWorkflowId, 8), row(workflowId, 4)];
     const tagIds = [thirdWorkflowId, secondWorkflowId, secondWorkflowId];

@@ -17,6 +17,7 @@ const WRITTEN_LIMIT = new RegExp(
     // "4,096 UTF-8 bytes", not the 8 of "UTF-8".
     String.raw`(?<![\w-])\d[\d,]*\s(?:UTF-8\s)?(?:bytes|characters)\b`,
     String.raw`\b(?:up to|at most|at least|no more than|within|after|for|waited|older than|longer than|valid for|expires? in|lasts?)\s${COUNT}\s(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?|characters|entries|items|files|steps|cases|rows|people)\b`,
+    String.raw`\b${COUNT}\s*[–−-]\s*${COUNT}\s(?:distinct\s)?(?:workflows|items|files|steps|rows|entries)\b`,
     // "From 1 hour to 30 days": a range states both bounds.
     String.raw`\bfrom\s${COUNT}\s${SPAN}\s(?:to|through|and)\s${COUNT}\s${SPAN}`,
     // "Try again in 15 minutes", "the last 30 days", "7 days if you leave
