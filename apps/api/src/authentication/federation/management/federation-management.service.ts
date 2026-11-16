@@ -48,6 +48,7 @@ export class FederationManagementService {
       publicOrigin: string;
       secureCookies: boolean;
     }>,
+    private readonly now: () => number = () => Date.now(),
   ) {
     this.secret = secret;
     this.publicOrigin = publicOrigin;
@@ -135,7 +136,7 @@ export class FederationManagementService {
   private validateSaml(configuration: SamlConfiguration) {
     this.requireSamlTransport();
     try {
-      validateSamlCertificates(configuration);
+      validateSamlCertificates(configuration, this.now);
     } catch {
       throwApplicationError(
         applicationError('request.invalid', {

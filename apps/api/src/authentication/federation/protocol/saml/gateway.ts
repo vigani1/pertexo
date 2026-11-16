@@ -21,10 +21,12 @@ export interface SamlProofGateway {
     response: string,
   ): Promise<OrganizationIdentity>;
 }
-export function createSamlProofGateway(): SamlProofGateway {
+export function createSamlProofGateway(
+  now: () => number = () => Date.now(),
+): SamlProofGateway {
   return {
     authorize: (provider, proof) =>
-      configureSaml(provider, proof).getAuthorizeUrlAsync(
+      configureSaml(provider, proof, now).getAuthorizeUrlAsync(
         proof.state,
         undefined,
         {},
@@ -37,16 +39,16 @@ export function createSamlProofGateway(): SamlProofGateway {
         audience: proof.entityId,
         callbackUrl: proof.redirectUri,
       };
-      const assertionId = verifyResponseSemantics(xml, expected);
-      const verified = await configureSaml(provider, proof)
+      const assertionId = verifyResponseSemantics(xml, expected, now);
+      const verified = await configureSaml(provider, proof, now)
         .validatePostResponseAsync({ SAMLResponse: response })
         .catch(() =>
           invalidSaml(
             libraryRefusalReason(
               xml,
-              expected,
-              assertionId,
+              { ...expected, assertionId },
               provider.configuration,
+              now,
             ),
           ),
         );
@@ -58,9 +60,9 @@ export function createSamlProofGateway(): SamlProofGateway {
         return invalidSaml();
       return verifiedAssertionIdentity(
         verified.profile.getAssertionXml(),
-        expected,
-        assertionId,
+        { ...expected, assertionId },
         provider.configuration,
+        now,
       );
     },
   };

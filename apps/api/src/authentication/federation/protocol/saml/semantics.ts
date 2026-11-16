@@ -38,18 +38,17 @@ function time(element: Element, name: string): number {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : invalidSaml();
 }
-function fresh(element: Element) {
-  const issue = time(element, 'IssueInstant'),
-    now = Date.now();
+function fresh(element: Element, now: number) {
+  const issue = time(element, 'IssueInstant');
   if (issue > now + skew || issue + maximumAge + skew <= now)
     return invalidSaml('saml_time');
 }
-function notExpired(element: Element) {
-  if (time(element, 'NotOnOrAfter') <= Date.now() - skew)
+function notExpired(element: Element, now: number) {
+  if (time(element, 'NotOnOrAfter') <= now - skew)
     return invalidSaml('saml_time');
   if (
     element.hasAttribute('NotBefore') &&
-    time(element, 'NotBefore') > Date.now() + skew
+    time(element, 'NotBefore') > now + skew
   )
     return invalidSaml('saml_time');
 }
@@ -57,6 +56,7 @@ function notExpired(element: Element) {
 export function verifyResponseSemantics(
   xml: string,
   expected: SamlExpected,
+  now: () => number = () => Date.now(),
 ): string {
   const document = parseXml(xml),
     response = root(document, P, 'Response');
@@ -80,7 +80,7 @@ export function verifyResponseSemantics(
     ) !== `${SAML}:status:Success`
   )
     return invalidSaml('saml_status');
-  fresh(response);
+  fresh(response, now());
   const assertion = onlyChild(response, A, 'Assertion', 'saml_assertion_count');
   if (
     document.getElementsByTagNameNS(A, 'Assertion').length !== 1 ||
@@ -111,15 +111,15 @@ function attribute(assertion: Element, name: string): string | undefined {
 /** Read identity only from the assertion returned by the SDK after signature verification. */
 export function verifiedAssertionIdentity(
   xml: string,
-  expected: SamlExpected,
-  assertionId: string,
+  expected: SamlExpected & Readonly<{ assertionId: string }>,
   configuration: SamlConfiguration,
+  now: () => number = () => Date.now(),
 ) {
   return assertionIdentity(
     root(parseXml(xml), A, 'Assertion'),
     expected,
-    assertionId,
     configuration,
+    now,
   );
 }
 
@@ -131,9 +131,9 @@ export function verifiedAssertionIdentity(
  */
 export function libraryRefusalReason(
   xml: string,
-  expected: SamlExpected,
-  assertionId: string,
+  expected: SamlExpected & Readonly<{ assertionId: string }>,
   configuration: SamlConfiguration,
+  now: () => number = () => Date.now(),
 ): FederationFailureReason {
   const assertion = onlyChild(
     root(parseXml(xml), P, 'Response'),
@@ -141,7 +141,7 @@ export function libraryRefusalReason(
     'Assertion',
   );
   try {
-    assertionIdentity(assertion, expected, assertionId, configuration);
+    assertionIdentity(assertion, expected, configuration, now);
     return 'saml_signature_invalid';
   } catch (error: unknown) {
     return federationFailureReason(error);
@@ -150,21 +150,22 @@ export function libraryRefusalReason(
 
 function assertionIdentity(
   assertion: Element,
-  expected: SamlExpected,
-  assertionId: string,
+  expected: SamlExpected & Readonly<{ assertionId: string }>,
   configuration: SamlConfiguration,
+  now: () => number = () => Date.now(),
 ) {
   if (
-    requiredAttribute(assertion, 'ID') !== assertionId ||
+    requiredAttribute(assertion, 'ID') !== expected.assertionId ||
     requiredAttribute(assertion, 'Version') !== '2.0'
   )
     return invalidSaml();
   if (plainText(onlyChild(assertion, A, 'Issuer')) !== expected.issuer)
     return invalidSaml('saml_issuer');
-  fresh(assertion);
+  const currentTime = now();
+  fresh(assertion, currentTime);
   const conditions = onlyChild(assertion, A, 'Conditions');
-  notExpired(conditions);
-  if (time(conditions, 'NotBefore') > Date.now() + skew)
+  notExpired(conditions, currentTime);
+  if (time(conditions, 'NotBefore') > currentTime + skew)
     return invalidSaml('saml_time');
   const restrictions = children(conditions, A, 'AudienceRestriction');
   if (
@@ -193,13 +194,13 @@ function assertionIdentity(
     requiredAttribute(data, 'InResponseTo') !== expected.requestId
   )
     return invalidSaml('saml_subject_confirmation');
-  notExpired(data);
+  notExpired(data, currentTime);
   const authentication = onlyChild(assertion, A, 'AuthnStatement');
-  if (time(authentication, 'AuthnInstant') > Date.now() + skew)
+  if (time(authentication, 'AuthnInstant') > currentTime + skew)
     return invalidSaml('saml_time');
   if (
     authentication.hasAttribute('SessionNotOnOrAfter') &&
-    time(authentication, 'SessionNotOnOrAfter') <= Date.now() - skew
+    time(authentication, 'SessionNotOnOrAfter') <= currentTime - skew
   )
     return invalidSaml('saml_time');
   return organizationIdentity(

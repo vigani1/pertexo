@@ -61,6 +61,7 @@ export function createTrustedSessionPlugin(
     accountUrl: string;
     organizationProtocols: readonly ('oidc' | 'saml')[];
   }>,
+  now: () => number = () => Date.now(),
 ) {
   return {
     id: 'pertexo-trusted-session-boundary',
@@ -86,8 +87,8 @@ export function createTrustedSessionPlugin(
             return Promise.resolve();
           }),
         },
-        ...nativeRouteGuards(pool),
-        twoFactorRouteGuard(pool, securityNotices.transactions),
+        ...nativeRouteGuards(pool, now),
+        twoFactorRouteGuard(pool, securityNotices.transactions, now),
       ],
       after: [
         {
@@ -322,7 +323,7 @@ function internalSessionEndpoints(pool: Pool) {
  * Native linking stays closed until Pertexo's purpose-bound protocol owns it,
  * and a native email change needs a session created in the last five minutes.
  */
-function nativeRouteGuards(pool: Pool): BeforeHooks {
+function nativeRouteGuards(pool: Pool, now: () => number): BeforeHooks {
   return [
     {
       matcher: (context) =>
@@ -381,7 +382,7 @@ function nativeRouteGuards(pool: Pool): BeforeHooks {
                 : 'Add another sign-in method before changing your email address.',
           });
         if (
-          Date.now() - session.session.createdAt.getTime() >=
+          now() - session.session.createdAt.getTime() >=
           FRESH_SIGN_IN_WINDOW_MILLIS
         )
           throw new APIError('FORBIDDEN', {
