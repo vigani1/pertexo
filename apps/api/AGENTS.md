@@ -56,6 +56,11 @@ environment only in `platform/config/`.
   verb-named operation file.
 - A domain error that callers see: its class in the area's `.errors.ts`, and
   its problem mapping in `problems/`.
+- An outbound provider call: the caller takes the provider HTTP client as a
+  dependency, and its composition builds it with `createNodeProviderHttpClient`
+  (`platform/connections/http-client.ts`, which joins secrets' secure client
+  to integrations through `SECURE_HTTP_PROVIDER_SECURITY`); it never builds
+  its own client.
 
 ## Defaults and config
 

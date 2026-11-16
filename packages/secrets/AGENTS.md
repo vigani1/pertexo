@@ -27,7 +27,9 @@ and never returns a response body before redaction.
 - `callbacks/`: signed callback keys and their verification.
 - `outbound-http/`: the client (`secure-http-client.ts`), its public types
   (`secure-http.types.ts`), request parsing (`parse-secure-request.ts`) and
-  errors (`secure-http.errors.ts`); `execution/` routing, responses and
+  errors (`secure-http.errors.ts`), and how a provider client reads its
+  failures (`provider-security.ts`, which each app passes to integrations);
+  `execution/` routing, responses and
   cancellation; `redaction/` response
   and stream redaction; `transport/` the socket and address policy.
 
