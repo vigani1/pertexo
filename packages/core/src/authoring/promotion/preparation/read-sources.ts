@@ -106,4 +106,4 @@ export async function readPromotionSources(
 }
 
 /** Distinct connections one promotion review reads. */
-export const REVIEWED_CONNECTION_MAX = 1000;
+const REVIEWED_CONNECTION_MAX = 1000;

@@ -53,7 +53,7 @@ export async function readReviewDraft(
   return { draft, tag };
 }
 
-export async function readReviewedCandidate(
+async function readReviewedCandidate(
   client: PoolClient,
   dependencies: ReviewDependencies,
   input: ReviewScope & { reviewId: string },

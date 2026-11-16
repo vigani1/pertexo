@@ -113,7 +113,7 @@ export async function mutateStepSample(
   });
 }
 
-export async function assertSampleQuota(
+async function assertSampleQuota(
   client: PoolClient,
   input: SampleCommand,
   {
@@ -132,7 +132,7 @@ export async function assertSampleQuota(
   if (sampleQuotaExceeded) throw new WorkflowStepSampleError('limit_reached');
 }
 
-export async function persistCapturedSample(
+async function persistCapturedSample(
   client: PoolClient,
   input: SampleCommand,
   {
@@ -163,8 +163,8 @@ export async function persistCapturedSample(
   });
 }
 
-export const resultSchema = z
+const resultSchema = z
   .object({ sampleId: z.uuid(), removed: z.boolean() })
   .strict();
 
-export const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;
+const SAMPLE_RETAINED_BYTES = 16 * 1024 * 1024;

@@ -108,7 +108,7 @@ export async function prepareTargetWorkflow(
   };
 }
 
-export function targetChangedDirectly(
+function targetChangedDirectly(
   origin: Origin | null,
   target: TargetWorkflowRow | undefined,
   targetGraph: ReturnType<typeof parseWorkflowGraphDraft> | null,
@@ -123,7 +123,7 @@ export function targetChangedDirectly(
   );
 }
 
-export function targetWorkflowReview(
+function targetWorkflowReview(
   source: PromotionSource,
   origin: Origin | null,
   {

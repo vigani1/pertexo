@@ -16,7 +16,7 @@ import {
   countUpdatableWorkflows,
 } from './receipt.repository.js';
 
-export async function readPromotionReceipt(
+async function readPromotionReceipt(
   client: PoolClient,
   workspaceId: string,
   {
