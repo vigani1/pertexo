@@ -195,6 +195,9 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
   };
 }
 
+const MOCKED_SPECS_PER_JOB = 20;
+const LIVE_JOURNEYS_PER_JOB = 8;
+
 function browserMatrix(selected) {
   if (selected === undefined) return browserEntries;
   const mocked = selected.filter((name) => name.startsWith('e2e/'));
@@ -207,8 +210,11 @@ function browserMatrix(selected) {
       'utf8',
     ),
   );
-  const mockedCount = Math.min(2, Math.ceil(mocked.length / 20));
-  const liveCount = Math.min(3, Math.ceil(live.length / 8));
+  const mockedCount = Math.min(
+    2,
+    Math.ceil(mocked.length / MOCKED_SPECS_PER_JOB),
+  );
+  const liveCount = Math.min(3, Math.ceil(live.length / LIVE_JOURNEYS_PER_JOB));
   return [
     ...assignDurationShards(mocked, durations, mockedCount).map(
       ({ files }, index) => ({
