@@ -32,6 +32,7 @@ export class StreamRunEventsService {
     >,
     private readonly authorization: WorkspaceAuthorizationSource,
     private readonly streamer: WorkflowRunEventStreamer,
+    private readonly now: () => number = Date.now,
   ) {}
 
   public async execute(
@@ -52,6 +53,7 @@ export class StreamRunEventsService {
     if (run === undefined) throw new WorkflowRunNotFoundError();
     return authorizedStreamFrames(this.streamer, input, {
       authorization: this.authorization,
+      now: this.now,
       intervalMs: SSE_REAUTHORIZATION_INTERVAL_MS,
       canRead: (identity) => this.persistence.canRead(identity),
     });
@@ -65,9 +67,11 @@ async function* authorizedStreamFrames(
     authorization,
     intervalMs,
     canRead,
+    now,
   }: Readonly<{
     authorization: WorkspaceAuthorizationSource;
     intervalMs: number;
+    now: () => number;
     canRead: WorkflowRunPersistence['canRead'];
   }>,
 ): AsyncGenerator<WorkflowRunEventFrame> {
@@ -94,6 +98,7 @@ async function* authorizedStreamFrames(
     authorizationLifetime = createStreamAuthorizationLifetime(
       {
         ...input,
+        now,
         signal: lifetimeSignal,
         reauthorizeResource: async (signal) => {
           if (

@@ -1,7 +1,7 @@
 import { AUTH_COOKIE_PREFIX } from './auth-cookies.js';
 import type { AuthenticationDiagnostics } from './diagnostics.js';
 import { createPasswordResetPlugin } from './password-reset.js';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 
 import { APIError } from 'better-auth/api';
 import { authorizeCredentialSignIn } from '@pertexo/core/identity';
@@ -285,7 +285,11 @@ function cookiePolicy({
 }>) {
   return {
     // The pinned Kysely adapter supports joins; its emulation catch writes raw errors to console.
-    database: { generateId: () => randomUUID(), validateSchema, joins: true },
+    database: {
+      generateId: generatePersistedId,
+      validateSchema,
+      joins: true,
+    },
     cookiePrefix: AUTH_COOKIE_PREFIX,
     // A `__Secure-` name prefix would rename `pertexo_session`, which the
     // guards, the CSRF bridge and session lookup read by name; HTTPS

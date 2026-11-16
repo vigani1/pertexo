@@ -1,6 +1,6 @@
 import { isAuthenticationSessionAllowed } from '@pertexo/core/identity';
 import { randomSecretToken } from '../../identity/secret-token.js';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 import { setSessionCookie } from 'better-auth/cookies';
 import { APIError } from 'better-auth/api';
 import type { Pool } from 'pg';
@@ -13,7 +13,7 @@ export function prepareReplacement(
   sourceSessionId: string,
 ) {
   return {
-    id: randomUUID(),
+    id: generatePersistedId(),
     token: randomSecretToken(),
     expiresAt: new Date(
       Date.now() + context.context.sessionConfig.expiresIn * 1000,

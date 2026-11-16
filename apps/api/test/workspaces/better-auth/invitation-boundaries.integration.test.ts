@@ -16,6 +16,28 @@ describe.runIf(betterAuthIntegrationEnabled)(
   () => {
     const api = invitationApi('invite_boundaries');
 
+    it('stores invitations and delivery attempts with UUIDv7 identities', async () => {
+      const { owner, workspaceId } = await api.team();
+      const invitation = await api.invite(
+        workspaceId,
+        owner.browser,
+        `${randomUUID()}@example.test`,
+      );
+      const rows = await api
+        .database()
+        .query<{ id: string; delivery_id: string }>(
+          'select i.id, d.id as delivery_id from app.workspace_invitations i join app.workspace_invitation_delivery_attempts d on d.invitation_id=i.id where i.id=$1',
+          [invitation.id],
+        );
+      expect(rows.rows).toHaveLength(1);
+      expect(rows.rows[0]?.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+      );
+      expect(rows.rows[0]?.delivery_id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+      );
+    });
+
     it.each(['suspended', 'deleted'])(
       'refuses a %s creator after authentication while creation waits, including exact-key replay',
       async (status) => {

@@ -24,6 +24,61 @@ import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
 import { StreamRunEventsService } from '../../../src/workflow-runs/workflow-runs.service.js';
 
 describe('workflow run SSE transport', () => {
+  it.each([-1, 1])(
+    'uses the lifecycle clock %i ms around session expiry',
+    async (offset) => {
+      const expiry = Date.now() + 60_000;
+      let currentTime = expiry - 2_000;
+      const lifetime = createStreamAuthorizationLifetime(
+        {
+          actor: createActorContext({
+            actorId,
+            workspaceId,
+            sessionId,
+            requestId: 'injected-expiry',
+          }),
+          routeWorkspaceId: workspaceId,
+          now: () => currentTime,
+          sessionExpiresAt: new Date(expiry),
+          reauthorizeSession: () =>
+            Promise.resolve({
+              userId: actorId,
+              sessionId,
+              expiresAt: new Date(expiry),
+            }),
+          abortStream: () => undefined,
+          signal: new AbortController().signal,
+        },
+        {
+          findAccess: () =>
+            Promise.resolve({
+              actorId,
+              workspaceId,
+              role: 'viewer',
+              membershipStatus: 'active',
+              workspaceStatus: 'active',
+            }),
+        },
+        5_000,
+        new AbortController(),
+      );
+      try {
+        currentTime = expiry + offset;
+        if (offset < 0) {
+          await expect(lifetime.reauthorize()).resolves.toBeUndefined();
+          expect(lifetime.authorizationLost.aborted).toBe(false);
+        } else {
+          await expect(lifetime.reauthorize()).rejects.toThrow(
+            'SSE session is no longer authorized',
+          );
+          expect(lifetime.authorizationLost.aborted).toBe(true);
+        }
+      } finally {
+        await lifetime.stop();
+      }
+    },
+  );
+
   it.each([
     { label: 'more than five seconds', remainingMs: 60_000, advanceMs: 4_000 },
     { label: 'exactly one second', remainingMs: 1_000, advanceMs: 0 },

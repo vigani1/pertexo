@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { canonicalEmail } from '@pertexo/core/identity';
-import { randomUUID } from 'node:crypto';
+import { generatePersistedId } from '@pertexo/database/platform';
 import {
   applicationError,
   throwApplicationError,
@@ -82,8 +82,8 @@ export class WorkspaceInvitationManagementService {
   ): Promise<WorkspaceInvitationCommandResponse> {
     const { request } = input;
     const protector = this.requireTokenProtection();
-    const invitationId = randomUUID();
-    const deliveryAttemptId = randomUUID();
+    const invitationId = generatePersistedId();
+    const deliveryAttemptId = generatePersistedId();
     const token = this.issueToken(input.routeWorkspaceId, invitationId);
     const result = await this.persistence.createWorkspaceInvitation({
       workspaceId: input.routeWorkspaceId,
@@ -138,7 +138,7 @@ export class WorkspaceInvitationManagementService {
       result = await this.persistence.revokeWorkspaceInvitation(common);
     } else {
       const protector = this.requireTokenProtection();
-      const deliveryAttemptId = randomUUID();
+      const deliveryAttemptId = generatePersistedId();
       const token = this.issueToken(input.routeWorkspaceId, input.invitationId);
       result = await this.persistence.resendWorkspaceInvitation({
         ...common,
