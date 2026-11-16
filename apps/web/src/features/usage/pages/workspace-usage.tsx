@@ -1,3 +1,4 @@
+// Disposable CI reach proof: the Usage feature owns this page.
 import { isWorkspaceBrowsable } from '@/features/workspaces/public';
 import { Link } from '@tanstack/react-router';
 import { ChartLineIcon } from 'lucide-react';
