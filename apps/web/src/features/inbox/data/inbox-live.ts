@@ -1,3 +1,4 @@
+import { readWallClock } from '@/lib/wall-clock';
 import { TransientStreamDisconnect } from '@/lib/api/stream-reconnect.errors';
 import type { ApiClient } from '@/lib/api/client';
 import { decodeSseMessages, type SseMessage } from '@/lib/api/sse';
@@ -39,7 +40,7 @@ export function useInboxLive({
   userId,
   workspaceId,
   enabled,
-  now = Date.now,
+  now = readWallClock,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
