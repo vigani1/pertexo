@@ -375,3 +375,10 @@ test('the classifier shell consumes paginated renamed-file responses', (t) => {
     ['core', 'apps'],
   );
 });
+
+it('passes the selector’s explicit mocked spec list into the browser runner', () => {
+  const step = ci.jobs.browser.steps.find(
+    ({ name }) => name === 'Browser tests against the mocked API',
+  );
+  assert.equal(step.env.BROWSER_SPECS, '${{ matrix.specs }}');
+});
