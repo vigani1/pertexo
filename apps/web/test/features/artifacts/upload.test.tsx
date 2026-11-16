@@ -1,3 +1,8 @@
+import { useUpload } from '@/features/artifacts/data/artifact-upload.mutations';
+import { mockServer } from '../../support/mock-server';
+import { http, HttpResponse } from 'msw';
+import { path } from './upload.fixture';
+import { act, renderHook } from '@testing-library/react';
 import { describeUpload } from '@/features/artifacts/model/artifact-upload';
 import { UploadFile } from '@/features/artifacts/artifacts-views.public';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -241,3 +246,31 @@ it('explains a lower server storage limit without retrying an unchanged oversize
   ).toHaveTextContent('Split it into smaller files');
   expect(calls.counts()).toEqual({ puts: 0, finalizes: 0 });
 });
+
+it.each([-1, 1])(
+  'checks upload expiry with the supplied clock at offset %i',
+  async (offset) => {
+    const calls = setup({ lostPut: true });
+    const expiry = '2030-01-01T12:00:00Z';
+    mockServer.use(
+      http.get(`${path}/${artifactId}`, () =>
+        HttpResponse.json({ ...calls.metadata('pending'), expiresAt: expiry }),
+      ),
+    );
+    const { result } = renderHook(() =>
+      useUpload(
+        scope.apiClient,
+        scope.workspaceId,
+        () => Date.parse(expiry) + offset,
+      ),
+    );
+    await act(async () => {
+      await result.current.select(file());
+    });
+    await act(async () => {
+      await result.current.retry();
+    });
+    if (offset < 0) expect(result.current.state.phase).toBe('available');
+    else expect(result.current.state.error).toContain('expired');
+  },
+);

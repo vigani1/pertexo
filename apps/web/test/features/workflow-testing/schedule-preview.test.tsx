@@ -181,3 +181,25 @@ describe('draft schedule preview', () => {
     expect(result.current).toEqual({ status: 'unavailable' });
   });
 });
+
+it('refreshes just after the injected next-run time and margin', async () => {
+  vi.useFakeTimers();
+  try {
+    const first = Date.parse('2030-01-01T12:00:00Z');
+    const { sent, wrapper } = server(() =>
+      times(new Date(first).toISOString()),
+    );
+    const now = () => first - 2000;
+    renderHook(() => useSchedulePreview(daily, now), {
+      wrapper,
+    });
+    await settle(500);
+    await settle(2999);
+    expect(sent).toHaveLength(1);
+    await settle(2);
+    await settle(500);
+    expect(sent).toHaveLength(2);
+  } finally {
+    vi.useRealTimers();
+  }
+});
