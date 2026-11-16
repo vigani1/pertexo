@@ -22,3 +22,5 @@ export function parseUsageTrendsSearch(
   const result = usageTrendPeriodSchema.safeParse(value.period);
   return { period: result.success ? result.data : '30d' };
 }
+
+// CI-E proof: changing this feature must retain its importing unit tests.
