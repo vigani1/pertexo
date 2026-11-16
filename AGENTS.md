@@ -204,7 +204,8 @@ live here.
   separating a responsibility, and a deliberate catalog of named peers (UI
   primitives) can be larger. Prefer at most four directories below `src`;
   review five or more. Neither number justifies a move without a better
-  grouping.
+  grouping; `infrastructure/checks/validate-folder-layout.mjs` enforces the
+  thresholds and reviewed exceptions.
 - **Tests:** in the workspace `test/` tree (browser `e2e/`, `e2e-live/`),
   mirroring the owning area, named by topic or a finished behavioural sentence.
   `.test.ts` is discovered, `.integration.test.ts` is the integration lane,
