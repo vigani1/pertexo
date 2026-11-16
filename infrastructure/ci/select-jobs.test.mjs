@@ -5,6 +5,8 @@ import { readWorkspaces, selectJobs } from './select-jobs.mjs';
 const workspaces = readWorkspaces();
 const select = (file, event) => selectJobs([file], workspaces, event);
 const groups = (matrix) => matrix.include.map(({ group }) => group);
+// Fault tests follow their own paths rule, tested below.
+const testJobs = ({ faults: _faults, ...jobs }) => jobs;
 
 test('documentation keeps the static floor without test jobs', () => {
   const result = select('docs/guide.md');
@@ -71,12 +73,18 @@ for (const file of [
   'tsconfig.json',
 ])
   test(`${file} runs everything`, () => {
-    assert.deepEqual(select(file), select('anything', 'push'));
+    assert.deepEqual(
+      testJobs(select(file)),
+      testJobs(select('anything', 'push')),
+    );
   });
 
 test('pushes and schedules run everything even for docs', () => {
   for (const event of ['push', 'schedule'])
-    assert.deepEqual(select('docs/guide.md', event), select('pnpm-lock.yaml'));
+    assert.deepEqual(
+      testJobs(select('docs/guide.md', event)),
+      testJobs(select('pnpm-lock.yaml')),
+    );
 });
 
 test('reverse dependency selection is transitive even in reverse order', () => {
@@ -115,4 +123,25 @@ test('every workspace is mapped and a new unmapped workspace fails explicitly', 
       ),
     /no CI job mapping/,
   );
+});
+
+test('fault tests run on pushes and on pull requests that change them or the services they stop', () => {
+  assert.equal(select('apps/web/src/component.tsx', 'push').faults, true);
+  for (const file of [
+    'apps/worker/test/recovery/redis-blip.resilience.integration.test.ts',
+    'apps/worker/test/support/recovery/services.ts',
+    'apps/worker/vitest.resilience.config.ts',
+    'infrastructure/testing/run-fault-shard.mjs',
+    '.github/workflows/ci.yml',
+    'compose.yaml',
+    'infrastructure/postgres/init.sql',
+  ])
+    assert.equal(select(file).faults, true, file);
+  for (const file of [
+    'apps/web/src/component.tsx',
+    'packages/core/src/change.ts',
+    'apps/worker/src/runtime.ts',
+    'pnpm-lock.yaml',
+  ])
+    assert.equal(select(file).faults, false, file);
 });

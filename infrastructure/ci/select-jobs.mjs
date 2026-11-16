@@ -50,6 +50,11 @@ export const browserEntries = [
       'artifact-inputs product webhook-responses webhook-controlled-http nested-conflict callable security governance error-workflows form-uploads notifications organization-oidc email-attachments workflow-concurrency usage',
   },
 ];
+// Fault tests stop real services and take about 15 minutes on four runners, so
+// a pull request runs them only when it changes those tests, their tooling or
+// the services they stop. Pushes and the schedule always run them.
+const FAULT_PATHS =
+  /^apps\/worker\/test\/(recovery|support\/recovery)\/|^apps\/worker\/vitest\.resilience\.config\.ts$|^infrastructure\/testing\/(run-fault-shard|fault-project|fault-durations|test-stack)[^/]*$|^\.github\/(workflows\/ci\.yml|actions\/(start-services|setup|docker-mirror)\/)|^compose\.yaml$|^infrastructure\/(postgres|redis|images)\//u;
 const liveWorkspaces = ['web', 'api', 'worker', 'cli', 'ops', 'code-runner'];
 
 export function readWorkspaces(root = '.') {
@@ -124,6 +129,8 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
     check.push('lint-rest');
   return {
     code,
+    faults:
+      event !== 'pull_request' || files.some((file) => FAULT_PATHS.test(file)),
     check: { part: check },
     unit: {
       include: Object.entries(unitGroups).flatMap(([group, names]) => {
