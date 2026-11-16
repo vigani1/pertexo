@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { parse } from 'yaml';
 
+import { browserEntries } from '../ci/select-jobs.mjs';
 import { journeyCommand } from './run-browser-journeys.mjs';
 import { shardCommand, workerSuitePhases } from './run-worker-suite.mjs';
 import { runSideBySide, slotEnvironment } from './side-by-side.mjs';
@@ -78,9 +79,9 @@ test('runs each kind of journey under its own switch', () => {
 
 // Named once each and spelled whole: a list wrapped at a hyphen once ran `webhook-`.
 test('CI runs every journey exactly once, under its whole name', () => {
-  const ci = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
-  const named = ci.jobs.browser.strategy.matrix.include.flatMap(
-    ({ journeys }) => journeys.split(/\s+/u).filter(Boolean),
+  // The selector owns the browser matrix; the workflow reads it from there.
+  const named = browserEntries.flatMap(({ journeys }) =>
+    journeys.split(/\s+/u).filter(Boolean),
   );
   assert.equal(new Set(named).size, named.length);
   const cases = readFileSync(
@@ -110,9 +111,7 @@ test('CI runs every journey exactly once, under its whole name', () => {
 test('CI runs the journeys Code steps need where their Python is installed', () => {
   const ci = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
   const browser = ci.jobs.browser;
-  const live = browser.strategy.matrix.include.filter(({ suite }) =>
-    suite.startsWith('live'),
-  );
+  const live = browserEntries.filter(({ suite }) => suite.startsWith('live'));
   const python = browser.steps.find(({ uses }) =>
     uses?.startsWith('actions/setup-python'),
   );
