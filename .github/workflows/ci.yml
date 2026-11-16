@@ -189,7 +189,9 @@ jobs:
         run: pnpm architecture:check
 
   unit:
-    name: unit (${{ matrix.group }})
+    name:
+      unit (${{ matrix.group }}${{ matrix.shard && format('-{0}', matrix.shard)
+      || '' }})
     needs: changes
     if:
       needs.changes.outputs.unit != '' &&
@@ -212,7 +214,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.15.1'
+      - name: Web unit tests
+        if: matrix.group == 'web'
+        env:
+          WEB_UNIT_RELATED: ${{ matrix.related }}
+        run: node infrastructure/testing/run-web-unit.mjs '${{ matrix.shard }}'
       - name: Unit tests
+        if: matrix.group != 'web'
         run:
           pnpm ${{ matrix.filter }} --workspace-concurrency=1 run --if-present
           test
