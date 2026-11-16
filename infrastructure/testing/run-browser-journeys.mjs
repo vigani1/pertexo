@@ -15,7 +15,14 @@ import {
 
 /** What one journey runs. Each has its own switch, so nothing runs by accident. */
 export function journeyCommand(journey) {
-  const api = ['--filter', '@pertexo/api', 'exec', 'vitest', 'run'];
+  const api = [
+    '--filter',
+    '@pertexo/api',
+    'exec',
+    'vitest',
+    'run',
+    '--experimental.fsModuleCache',
+  ];
   const config = ['--config', 'vitest.integration.config.ts'];
   const inApi = (file, switches) => ({
     args: [...api, ...config, file],

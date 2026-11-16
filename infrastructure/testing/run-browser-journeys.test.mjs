@@ -165,3 +165,14 @@ test('explicit worker selections keep their requested files and shard arguments'
     [0, 1, 2].map((shard) => shardCommand(shard, 3, selection)),
   );
 });
+
+test('API browser journeys reuse transformed modules between fresh Vitest processes', () => {
+  const journeys = browserEntries.flatMap(({ journeys }) =>
+    journeys.split(/\s+/u).filter(Boolean),
+  );
+  for (const journey of journeys) {
+    const { args } = journeyCommand(journey);
+    if (args.includes('@pertexo/api'))
+      assert.ok(args.includes('--experimental.fsModuleCache'), journey);
+  }
+});
