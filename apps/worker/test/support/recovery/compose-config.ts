@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseEnv, promisify } from 'node:util';
 
-import { repositoryRoot } from './environment.js';
+import { composeProject, repositoryRoot } from './environment.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -40,6 +40,8 @@ async function resolve(
     'docker',
     [
       'compose',
+      '--project-name',
+      composeProject,
       '--env-file',
       '/dev/null',
       '-f',

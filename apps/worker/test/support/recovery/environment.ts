@@ -1,3 +1,4 @@
+import { faultProject } from '../../../../../infrastructure/testing/fault-project.mjs';
 import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -7,6 +8,8 @@ import { describe } from 'vitest';
 // project, so they run on their own CI runner rather than beside other suites.
 export const describeFaults =
   process.env.WORKER_FAULT_TESTS === 'true' ? describe : describe.skip;
+
+export const composeProject = faultProject();
 
 export const repositoryRoot = fileURLToPath(
   new URL('../../../../../', import.meta.url),
