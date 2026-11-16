@@ -13,7 +13,15 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
-import { test } from 'node:test';
+import { before, test } from 'node:test';
+
+import {
+  backupImage,
+  IMAGE_PULL_TIMEOUT_MS,
+  pullImage,
+} from './support/backup-image.mjs';
+
+before(() => pullImage(backupImage), { timeout: IMAGE_PULL_TIMEOUT_MS });
 
 test(
   'an unavailable image fails the real waiting transport request within 15 seconds',
@@ -85,24 +93,13 @@ test(
     const directory = await mkdtemp(
       join(tmpdir(), 'pertexo-j2-transfer-4300-'),
     );
-    const image = execFileSync(
-      'docker',
-      [
-        'compose',
-        '-f',
-        'infrastructure/single-server/backup/compose.yaml',
-        'config',
-        '--images',
-      ],
-      { encoding: 'utf8' },
-    ).trim();
     const helper = spawn(
       'bash',
       [
         'infrastructure/single-server/backup/rclone-requests.sh',
         directory,
         'none',
-        image,
+        backupImage,
       ],
       { stdio: 'ignore' },
     );

@@ -5,7 +5,15 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { test } from 'node:test';
+import { before, test } from 'node:test';
+
+import {
+  backupImage,
+  IMAGE_PULL_TIMEOUT_MS,
+  pullImage,
+} from './support/backup-image.mjs';
+
+before(() => pullImage(backupImage), { timeout: IMAGE_PULL_TIMEOUT_MS });
 
 function docker(args) {
   return execFileSync('docker', args, { encoding: 'utf8', timeout: 30000 });
@@ -45,20 +53,13 @@ test(
           stdio: 'pipe',
         },
       );
-      const image = docker([
-        'compose',
-        '-f',
-        'infrastructure/single-server/backup/compose.yaml',
-        'config',
-        '--images',
-      ]).trim();
       child = spawn(
         'bash',
         [
           'infrastructure/single-server/backup/rclone-requests.sh',
           directory,
           'bridge',
-          image,
+          backupImage,
         ],
         { stdio: 'ignore' },
       );

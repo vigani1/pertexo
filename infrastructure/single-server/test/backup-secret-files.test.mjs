@@ -11,21 +11,25 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { test } from 'node:test';
+import { before, test } from 'node:test';
+
+import {
+  backupImage,
+  IMAGE_PULL_TIMEOUT_MS,
+  pullImage,
+} from './support/backup-image.mjs';
 
 const runtimeImage =
   'node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9';
-const image = execFileSync(
-  'docker',
-  [
-    'compose',
-    '-f',
-    'infrastructure/single-server/backup/compose.yaml',
-    'config',
-    '--images',
-  ],
-  { encoding: 'utf8' },
-).trim();
+const image = backupImage;
+
+before(
+  () => {
+    pullImage(image);
+    pullImage(runtimeImage);
+  },
+  { timeout: 2 * IMAGE_PULL_TIMEOUT_MS },
+);
 
 test(
   'private file configuration protects crypt and S3 secrets on every helper path',
