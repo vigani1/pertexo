@@ -40,3 +40,4 @@ export type {} from './command-fingerprints.js';
 export type {} from './workspace-authority.js';
 export type {} from './resources/require-workflow-call-targets.js';
 export type {} from './resources/require-connection-bindings.js';
+export type {} from './run-records/run-statuses.js';

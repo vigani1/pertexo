@@ -1,3 +1,4 @@
+import { EXECUTING_RUN_STATUSES } from '../../shared/run-records/run-statuses.js';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import {
   WorkspaceRunAdmissionDeniedError,
@@ -16,7 +17,7 @@ export type CallParentState = Readonly<{
 /** A parent takes its child only while it waits on this call and nothing else runs. */
 export function callParentWaiting(parent: CallParentState): boolean {
   return (
-    ['running', 'waiting'].includes(parent.status) &&
+    EXECUTING_RUN_STATUSES.some((status) => status === parent.status) &&
     parent.cancel_requested_at === null &&
     !(parent.deadline_expired ?? false) &&
     parent.has_wait &&

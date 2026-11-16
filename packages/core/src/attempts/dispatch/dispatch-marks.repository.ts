@@ -1,3 +1,4 @@
+import { EXECUTING_RUN_STATUSES } from '../../shared/run-records/run-statuses.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   nodeRuns,
@@ -16,8 +17,6 @@ import { runAbortReason } from '../control.repository.js';
 import type { MarkDispatchedInput } from '../node-attempt.js';
 
 type Lease = MarkDispatchedInput['lease'];
-
-export const DISPATCHABLE_RUN_STATUSES = ['running', 'waiting'] as const;
 
 const node = alias(nodeRuns, 'node');
 const run = workflowRuns;
@@ -109,7 +108,7 @@ export async function markLeasedAttemptDispatched(
         eq(node.invocationKey, lease.invocationKey),
         eq(node.currentAttemptId, nodeAttempts.id),
         eq(run.workflowVersionId, lease.workflowVersionId),
-        inArray(run.status, DISPATCHABLE_RUN_STATUSES),
+        inArray(run.status, EXECUTING_RUN_STATUSES),
         isNull(runAbortReason),
       ),
     )

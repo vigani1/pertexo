@@ -1,3 +1,4 @@
+import { EXECUTING_RUN_STATUSES } from '../../shared/run-records/run-statuses.js';
 import { entitlementInEffect } from '../../runs/queries/entitlement-effect.repository.js';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
@@ -86,7 +87,7 @@ export function capacityWarningCandidates(db: Pick<NodePgDatabase, 'select'>) {
       and(
         eq(admission.workspaceId, workspaces.id),
         isNull(workflowRuns.humanWaitStartedAt),
-        notInArray(workflowRuns.status, ['running', 'waiting']),
+        notInArray(workflowRuns.status, [...EXECUTING_RUN_STATUSES]),
       ),
     )
     .as('reserved');

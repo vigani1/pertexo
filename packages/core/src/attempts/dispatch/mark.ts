@@ -1,8 +1,8 @@
+import { EXECUTING_RUN_STATUSES } from '../../shared/run-records/run-statuses.js';
 import { lockCapabilityExecution } from './fence.js';
 import { withTenantScopedClient } from '@pertexo/database/primitives';
 import { publishesSlackBinding } from './slack-binding.js';
 import {
-  DISPATCHABLE_RUN_STATUSES,
   lockLeasedNodeBinding,
   markLeasedAttemptDispatched,
   readPublishedExecutable,
@@ -78,7 +78,7 @@ async function assertRunDispatchControl(
   const control = await readRunDispatchControl(client, lease);
   if (
     control === undefined ||
-    !DISPATCHABLE_RUN_STATUSES.some((status) => status === control.status)
+    !EXECUTING_RUN_STATUSES.some((status) => status === control.status)
   )
     throw new NodeAttemptReconciliationRequiredError();
   if (control.reason !== null)
