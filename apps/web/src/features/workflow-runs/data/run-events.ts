@@ -18,6 +18,8 @@ import {
 } from '../model/timeline/run-events';
 import type { LiveConnectionStatus } from '../model/live-updates';
 
+const RUN_EVENTS_REFRESH_DEBOUNCE_MS = 250;
+
 type ConnectionStatus = LiveConnectionStatus;
 
 type RunEventState = Readonly<{
@@ -114,7 +116,7 @@ export function useRunEvents({
       refreshTimer = window.setTimeout(() => {
         refreshTimer = undefined;
         void queryClient.invalidateQueries({ queryKey: query.queryKey });
-      }, 250);
+      }, RUN_EVENTS_REFRESH_DEBOUNCE_MS);
     };
 
     const refreshSnapshot = async () => {

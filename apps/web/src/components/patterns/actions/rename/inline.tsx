@@ -5,6 +5,8 @@ import { StatusGlyph } from '@/components/ui/status';
 import type { RenameFormProps } from './inline-rename.types';
 import { RenameInPlace } from './in-place';
 
+const RENAME_CONFIRMATION_MS = 2_400;
+
 /**
  * A name with a pencil that opens the rename in place. `children` is how
  * the name reads when not editing; render only `children` for people who
@@ -29,7 +31,7 @@ export function InlineRename({
     if (!knotted) return;
     const timer = window.setTimeout(() => {
       setKnotted(false);
-    }, 2_400);
+    }, RENAME_CONFIRMATION_MS);
     return () => {
       window.clearTimeout(timer);
     };

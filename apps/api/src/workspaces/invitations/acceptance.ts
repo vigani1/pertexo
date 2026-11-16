@@ -1,6 +1,5 @@
 import { canonicalEmail } from '@pertexo/core/identity';
 import { z } from 'zod';
-import { randomUUID } from 'node:crypto';
 import { generatePersistedId } from '@pertexo/database/platform';
 
 import { InvitationAcceptanceConflictError } from '@pertexo/core/tenant-access';
@@ -81,7 +80,7 @@ export class InvitationAcceptanceService {
           ].join(':');
     const intentId =
       recoverySeed === undefined
-        ? randomUUID()
+        ? generatePersistedId()
         : deterministicUuid(`${recoverySeed}:intent`, this.crypto);
     const bindingSecret =
       recoverySeed === undefined
