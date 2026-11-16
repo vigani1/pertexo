@@ -209,3 +209,23 @@ test('a feature used by another feature retains that feature’s browser coverag
     .flatMap(({ specs }) => JSON.parse(specs));
   assert.ok(specs.includes('e2e/approvals/setup.spec.ts'));
 });
+
+test('Home changes retain journeys that create a workspace through the ordinary UI', () => {
+  const jobs = select('apps/web/src/features/overview/pages/home.tsx').browser
+    .include;
+  const journeys = jobs
+    .flatMap(({ journeys }) => journeys.split(' '))
+    .filter(Boolean);
+  assert.ok(journeys.includes('api-tokens'));
+  assert.ok(journeys.includes('collaboration'));
+});
+
+test('Usage changes retain the webhook journey that opens the Usage page', () => {
+  const jobs = select('apps/web/src/features/usage/pages/workspace-usage.tsx')
+    .browser.include;
+  assert.ok(
+    jobs
+      .flatMap(({ journeys }) => journeys.split(' '))
+      .includes('webhook-responses'),
+  );
+});
