@@ -17,7 +17,7 @@ test('documentation keeps the static and deployment floor without test jobs', ()
     assert.deepEqual(result[job].include, []);
 });
 
-test('shared web source and tests retain web units and all browser journeys', () => {
+test('shared web source and tests use related units and retain all browser journeys', () => {
   for (const file of [
     'apps/web/src/lib/class-names.ts',
     'apps/web/test/lib/clock.test.ts',
@@ -25,7 +25,11 @@ test('shared web source and tests retain web units and all browser journeys', ()
     const result = select(file);
     assert.deepEqual(result.check.part, ['static', 'deploy', 'lint-web']);
     assert.deepEqual(result.unit.include, [
-      { group: 'web', filter: '--filter @pertexo/web' },
+      {
+        group: 'web',
+        filter: '--filter @pertexo/web',
+        related: JSON.stringify([file.slice('apps/web/'.length)]),
+      },
     ]);
     assert.deepEqual(result.integration.include, []);
     assert.equal(result.browser.include.length, 5);
