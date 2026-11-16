@@ -57,6 +57,7 @@ export function createTwoFactorPlugin() {
 export function twoFactorRouteGuard(
   pool: Pool,
   transactions?: AuthenticationTransactions,
+  now: () => number = () => Date.now(),
 ) {
   return {
     matcher: (context: { path?: string | undefined }) =>
@@ -91,7 +92,7 @@ export function twoFactorRouteGuard(
       requireDoubleSubmitCsrf(context.headers);
       if (
         management &&
-        Date.now() - session.session.createdAt.getTime() >=
+        now() - session.session.createdAt.getTime() >=
           context.context.sessionConfig.freshAge * 1000
       )
         throw new APIError('FORBIDDEN', {

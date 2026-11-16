@@ -28,7 +28,9 @@ export function samlTransportAvailable(
 
 export function validateSamlCertificates(
   configuration: SamlConfiguration,
+  now: () => number = () => Date.now(),
 ): string[] {
+  const currentTime = now();
   const certificates = configuration.certificates
     .map((value) => {
       const certificate = new X509Certificate(value),
@@ -43,8 +45,8 @@ export function validateSamlCertificates(
     })
     .filter(
       (certificate) =>
-        Date.parse(certificate.validFrom) <= Date.now() &&
-        Date.parse(certificate.validTo) > Date.now(),
+        Date.parse(certificate.validFrom) <= currentTime &&
+        Date.parse(certificate.validTo) > currentTime,
     );
   if (certificates.length === 0) return invalidSaml('saml_certificate');
   return certificates.map((certificate) => certificate.toString());
@@ -52,6 +54,7 @@ export function validateSamlCertificates(
 export function configureSaml(
   provider: SamlProviderMaterial,
   proof: SamlProof,
+  now: () => number = () => Date.now(),
 ): SAML {
   const registeredAt = proof.createdAt.toISOString();
   // This SDK seam checks correlation only. The durable journey is consumed once
@@ -63,7 +66,7 @@ export function configureSaml(
     callbackUrl: proof.redirectUri,
     entryPoint: provider.configuration.signInUrl,
     idpIssuer: provider.issuer,
-    idpCert: validateSamlCertificates(provider.configuration),
+    idpCert: validateSamlCertificates(provider.configuration, now),
     audience: proof.entityId,
     wantAssertionsSigned: true,
     wantAuthnResponseSigned: true,
