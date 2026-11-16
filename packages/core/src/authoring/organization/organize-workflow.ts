@@ -11,7 +11,7 @@ import {
   persistPlacement,
   readOrganizationRevision,
 } from './workflow-placements.repository.js';
-import { lifecycleAllowsChange } from './placement-rules.js';
+import { lifecycleAllowsChange } from './placement.js';
 
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import type { OrganizationActor } from './session.js';

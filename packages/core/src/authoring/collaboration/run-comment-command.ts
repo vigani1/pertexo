@@ -4,7 +4,7 @@ import type { PoolClient } from 'pg';
 import type { WorkflowCommentCommandResult } from '@pertexo/contracts';
 import { claimCommand, completeCommand } from '@pertexo/database/primitives';
 import { appendAuditFact } from '../../governance/audit/facts.js';
-import type { EnterCollaboration } from './enter-collaboration.js';
+import type { EnterCollaboration } from './create-collaboration-entry.js';
 import type { CollaborationCommand } from './workflow-collaboration.types.js';
 
 /** The command output retained for exact retries. */

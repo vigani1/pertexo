@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { endpointTakesDeliveries } from '../../../src/triggers/webhooks/runtime/endpoint-rules.js';
+import { endpointTakesDeliveries } from '../../../src/triggers/webhooks/runtime/endpoint.js';
 
 const open = {
   endpointStatus: 'active',

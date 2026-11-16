@@ -9,7 +9,7 @@ import {
   WebhookWorkflowPausedError,
 } from '../webhook-trigger.errors.js';
 import type { WebhookVerificationReference } from './webhook-runtime.types.js';
-import { endpointTakesDeliveries } from './endpoint-rules.js';
+import { endpointTakesDeliveries } from './endpoint.js';
 import {
   lockEndpointEligibility,
   readExecutableProjection,

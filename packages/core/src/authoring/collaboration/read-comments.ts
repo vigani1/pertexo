@@ -6,7 +6,7 @@ import type {
 import { WorkflowNotFoundError } from '../workflows/workflow-authoring.errors.js';
 import { readWorkspacePeople } from '../../tenant-access/members/discovery.repository.js';
 import { projectCommentThread } from './comment-threads.repository.js';
-import type { EnterCollaboration } from './enter-collaboration.js';
+import type { EnterCollaboration } from './create-collaboration-entry.js';
 import type {
   ListCommentsInput,
   ReadPeopleInput,

@@ -3,7 +3,7 @@ import { timedOutOutput } from '../../../src/runs/pending-tasks/lifecycle/expiry
 import {
   humanWaitClockRunning,
   humanWaitQuiescent,
-} from '../../../src/runs/pending-tasks/lifecycle/human-wait.js';
+} from '../../../src/runs/pending-tasks/lifecycle/human-wait-state.js';
 
 const expired = {
   context: {},

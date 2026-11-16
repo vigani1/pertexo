@@ -32,7 +32,7 @@ import {
   refuseErrorWorkflow,
   type ErrorWorkflowRefusalCode,
 } from './intents.repository.js';
-import { errorWorkflowRefusal } from './refusal.js';
+import { errorWorkflowRefusal } from './error-workflow-admission.js';
 
 export async function acceptErrorWorkflow(
   client: PoolClient,

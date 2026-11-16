@@ -5,7 +5,7 @@ import {
   recordsInboxFailureDay,
   transitionHasHumanWait,
   transitionMoments,
-} from '../../../src/runs/advance/persist/run-transition.js';
+} from '../../../src/runs/advance/persist/transition-plan.js';
 import type { CoordinatorCommitRow } from '../../../src/runs/advance/load/load-run.js';
 
 const plan = (

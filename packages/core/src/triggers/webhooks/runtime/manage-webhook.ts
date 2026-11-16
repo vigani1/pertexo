@@ -14,7 +14,7 @@ import { withTriggerManagement } from '../../management.js';
 import {
   authenticationChangeRotates,
   provisionRefusal,
-} from './endpoint-rules.js';
+} from './endpoint.js';
 import type {
   ConfigureWebhookAuthenticationInput,
   ProvisionWebhookInput,

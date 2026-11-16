@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lifecycleAllowsChange } from '../../../src/authoring/organization/placement-rules.js';
+import { lifecycleAllowsChange } from '../../../src/authoring/organization/placement.js';
 
 describe('organizing an archived workflow', () => {
   it('lets anyone organize an active workflow', () => {
