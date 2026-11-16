@@ -496,6 +496,19 @@ describe('generic webhook database seam', () => {
       idempotencyKey: 'provision',
       requestHash: hash('provision'),
     });
+    await expect(
+      webhook.provision({
+        workspaceId,
+        workflowId,
+        actorId,
+        triggerId,
+        endpointId,
+        endpointKeyHash: endpointHash,
+        secret: secret(),
+        idempotencyKey: 'provision',
+        requestHash: hash('different provision'),
+      }),
+    ).rejects.toMatchObject({ name: 'WebhookTriggerIdempotencyConflictError' });
     expect(health).toMatchObject({ status: 'active', endpointReady: true });
     expect(JSON.stringify(health)).not.toMatch(
       /hash|cipher|secret|nonce|authTag/u,

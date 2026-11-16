@@ -19,11 +19,8 @@ import type {
   RotateWebhookSecretInput,
   WebhookCommandResult,
 } from './webhook-runtime.types.js';
-import {
-  claimWebhookCommand,
-  completeWebhookCommand,
-  insertSecret,
-} from './receipts.repository.js';
+import { claimWebhookCommand, completeWebhookCommand } from './command.js';
+import { insertSecret } from './receipts.repository.js';
 import { oneHealth } from './webhook-state.js';
 
 import {
