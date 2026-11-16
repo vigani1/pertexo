@@ -70,7 +70,7 @@ and never returns a response body before redaction.
 - `outbound-http/transport/address-policy.ts`, `redaction/decoded-body-view.ts`,
   `response-charset.ts` and `sensitive-representations.ts` parse formats, so
   their numbers are listed as not limits in
-  `infrastructure/checks/validate-backend-limits.mjs`.
+  `infrastructure/checks/backend-limit-exemptions.mjs`.
 
 ## What guards it
 

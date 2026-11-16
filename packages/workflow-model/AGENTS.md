@@ -70,8 +70,8 @@ encoding), `jsonata` and `zod`.
 
 ## Rules
 
-- Everything in `index.ts` stays browser-safe; `pnpm check`'s browser-entry
-  check refuses Node imports reaching it.
+- Entry safety follows the [root rules](../../AGENTS.md#code-conventions);
+  the browser-entry check guards `index.ts`.
 - Untrusted expressions run only through `JsonataEvaluator`, in a child
   process with `EXPRESSION_POLICY`'s limits; authoring validation runs only
   in `WorkflowAuthoringValidator`'s threads.

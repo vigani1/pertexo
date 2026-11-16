@@ -79,7 +79,9 @@ The one named way for each shared job:
 - **Retries:** step retries `decideRetry` (`workflow-engine/attempt/retries.ts`);
   transport redelivery in the queue's job defaults (`queue/jobs/defaults.ts`);
   provider `Retry-After` through `parseRetryAfterMillis` (`integrations/http/retry-after.ts`).
-- **Outbound HTTP:** the secure client in `@pertexo/secrets/server`.
+- **Outbound HTTP:** provider and step calls use the secure client in
+  `@pertexo/secrets/server`; the CLI's API client and the browser's transport
+  are separate trust boundaries.
 
 **Crowding:**
 

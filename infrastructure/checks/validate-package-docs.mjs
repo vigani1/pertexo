@@ -20,7 +20,26 @@ export function validatePackageDoc(workspace, text) {
     return [
       `${workspace}/AGENTS.md: link the root rules as [root rules](../../AGENTS.md).`,
     ];
-  return [];
+  const headings = new Set(
+    text
+      .split('\n')
+      .filter((line) => line.startsWith('## '))
+      .map((line) => line.slice(3).trim()),
+  );
+  return [
+    'Purpose and boundary',
+    'Layout',
+    'Where new code goes',
+    'Defaults and config',
+    'Rules',
+    'Exceptions',
+    'What guards it',
+  ]
+    .filter((heading) => !headings.has(heading))
+    .map(
+      (heading) =>
+        `${workspace}/AGENTS.md: add the shared heading "${heading}".`,
+    );
 }
 
 export async function inspectPackageDocs(root = repositoryRoot) {
