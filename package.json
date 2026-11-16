@@ -26,6 +26,8 @@
           "infrastructure/testing/oauth2-stand-in.d.mts",
           "infrastructure/testing/worker-databases.d.mts",
           "infrastructure/testing/test-stack.d.mts",
+          "infrastructure/testing/fault-project.d.mts",
+          "infrastructure/testing/fault-durations.mjs",
           "infrastructure/testing/live-failure-artifacts.d.mts",
           "infrastructure/testing/test-stack-setup.mjs",
           "infrastructure/testing/redis-stack-setup.mjs",
