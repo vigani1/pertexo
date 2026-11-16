@@ -97,7 +97,7 @@ jobs:
           if [ "$EVENT_NAME" = pull_request ]; then
             files=$(gh api --paginate "repos/$REPOSITORY/pulls/$PULL_REQUEST/files" --jq '.[].filename')
             faults=false
-            if printf '%s\n' "$files" | grep -qE '^apps/worker/test/(recovery|support/recovery)/|^apps/worker/vitest.resilience.config.ts$|^infrastructure/testing/(run-fault-shard|fault-project|test-stack)[^/]*$|^\.github/(workflows/ci.yml|actions/(start-services|setup|docker-mirror)/)|^compose.yaml$|^infrastructure/(postgres|redis|images)/'; then faults=true; fi
+            if printf '%s\n' "$files" | grep -qE '^apps/worker/test/(recovery|support/recovery)/|^apps/worker/vitest.resilience.config.ts$|^infrastructure/testing/(run-fault-shard|fault-project|fault-durations|test-stack)[^/]*$|^\.github/(workflows/ci.yml|actions/(start-services|setup|docker-mirror)/)|^compose.yaml$|^infrastructure/(postgres|redis|images)/'; then faults=true; fi
             if ! printf '%s\n' "$files" | grep -qvE '^docs/|\.md$'; then code=false; fi
           fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
