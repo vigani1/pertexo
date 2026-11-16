@@ -13,6 +13,7 @@ import { loadsModule } from './module-declarations.mjs';
 import {
   coreAreaDependencyAllowed,
   GUARDED_CORE_AREA_EDGES,
+  GUARDED_CORE_AREA_EDGE_BUDGET,
   isCoreArea,
 } from './core-area-order.mjs';
 
@@ -181,12 +182,21 @@ export function guardedEdgeFindings(
   guarded = GUARDED_CORE_AREA_EDGES,
 ) {
   const used = new Set(imports.map((i) => `${i.from} -> ${i.to}`));
-  return Object.keys(guarded)
-    .filter((edge) => !used.has(edge))
-    .map(
-      (edge) =>
-        `GUARDED_CORE_AREA_EDGES lists ${edge}, which no core import uses; remove it.`,
-    );
+  const budgetFindings =
+    Object.keys(guarded).length > GUARDED_CORE_AREA_EDGE_BUDGET
+      ? [
+          `GUARDED_CORE_AREA_EDGES exceeds its fixed budget of ${GUARDED_CORE_AREA_EDGE_BUDGET}; any increase requires a reviewed budget change.`,
+        ]
+      : [];
+  return [
+    ...budgetFindings,
+    ...Object.keys(guarded)
+      .filter((edge) => !used.has(edge))
+      .map(
+        (edge) =>
+          `GUARDED_CORE_AREA_EDGES lists ${edge}, which no core import uses; remove it.`,
+      ),
+  ];
 }
 
 export async function collectAreaImports(root = repositoryRoot) {

@@ -39,13 +39,16 @@ const CUT_CORE_AREA_EDGES = Object.freeze(
  * an import into one that holds credentials or session and member authority,
  * and every import out of the operator, which may otherwise reach almost every
  * product area. Each such edge is listed by name with its reason; the list
- * only shrinks, and an entry no import uses is refused
+ * has a fixed entry budget; increasing that budget needs an explicit reviewed
+ * change. An entry no import uses is refused
  * (validate-core-area-cycles.mjs).
  */
 const GUARDED_TARGETS = Object.freeze(
   new Set(['connections', 'identity', 'tenant-access']),
 );
 const GUARDED_SOURCES = Object.freeze(new Set(['operator']));
+
+export const GUARDED_CORE_AREA_EDGE_BUDGET = 12;
 
 export const GUARDED_CORE_AREA_EDGES = Object.freeze({
   'attempts -> connections':
