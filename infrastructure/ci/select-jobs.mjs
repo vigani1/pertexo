@@ -1,3 +1,4 @@
+import { relatedWebFiles } from '../testing/web-unit-selection.mjs';
 import { selectBrowserReach } from '../testing/browser-reach.mjs';
 import { recordedMockedShards } from '../testing/mocked-shards.mjs';
 import { assignDurationShards } from '../testing/duration-shards.mjs';
@@ -161,6 +162,7 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
           (file) => !file.startsWith('docs/') && !file.endsWith('.md'),
         ),
       );
+  const related = all ? undefined : relatedWebFiles(files, event);
   return {
     code,
     faults:
@@ -169,6 +171,14 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
     unit: {
       include: Object.entries(unitGroups).flatMap(([group, names]) => {
         const selected = names.filter((name) => reaches([name]));
+        if (group === 'web' && selected.length && related)
+          return [
+            {
+              group,
+              filter: '--filter @pertexo/web',
+              related: JSON.stringify(related),
+            },
+          ];
         return selected.length
           ? [
               {
