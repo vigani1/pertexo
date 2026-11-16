@@ -1,3 +1,4 @@
+import { WEB_UNIT_SHARD_COUNT } from '../testing/web-unit-shards.mjs';
 import { relatedWebFiles } from '../testing/web-unit-selection.mjs';
 import { selectBrowserReach } from '../testing/browser-reach.mjs';
 import { recordedMockedShards } from '../testing/mocked-shards.mjs';
@@ -171,14 +172,20 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
     unit: {
       include: Object.entries(unitGroups).flatMap(([group, names]) => {
         const selected = names.filter((name) => reaches([name]));
-        if (group === 'web' && selected.length && related)
-          return [
-            {
-              group,
-              filter: '--filter @pertexo/web',
-              related: JSON.stringify(related),
-            },
-          ];
+        if (group === 'web' && selected.length)
+          return related
+            ? [
+                {
+                  group,
+                  filter: '--filter @pertexo/web',
+                  related: JSON.stringify(related),
+                },
+              ]
+            : Array.from({ length: WEB_UNIT_SHARD_COUNT }, (_, index) => ({
+                group,
+                filter: '--filter @pertexo/web',
+                shard: index + 1,
+              }));
         return selected.length
           ? [
               {
