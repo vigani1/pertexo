@@ -12,7 +12,7 @@ import { SESSION_AUTHORITY } from '../../src/workspaces/index.js';
 import { RequestContextStore } from '../../src/platform/http/index.js';
 
 // Nest dynamic modules require a class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 class FakeIdentityModule {}
 Module({
   providers: [

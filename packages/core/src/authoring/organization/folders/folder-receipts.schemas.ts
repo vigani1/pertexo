@@ -7,7 +7,7 @@ const uuid = z.uuid().overwrite((value) => value.toLowerCase());
 const revision = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
 // C0 controls and DEL, which a stored folder name never holds.
-// eslint-disable-next-line no-control-regex
+// oxlint-disable-next-line eslint/no-control-regex
 const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/u;
 
 const canonicalName = z

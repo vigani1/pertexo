@@ -82,7 +82,7 @@ export async function startWebhookPeer(transport) {
     done();
   });
   // Nest requires a module class token.
-  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+  // oxlint-disable-next-line typescript/no-extraneous-class
   class ProbeModule {}
   const application = await NestFactory.create(
     {

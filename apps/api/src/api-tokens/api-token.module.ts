@@ -18,7 +18,7 @@ export type ApiTokenDependencies = Readonly<{
 }>;
 @Module({})
 // Nest dynamic modules require a class container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class ApiTokenModule {
   public static register(
     identity: DynamicModule,

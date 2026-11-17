@@ -26,7 +26,7 @@ const RATE_LIMIT_METRICS = Symbol('RATE_LIMIT_METRICS');
 
 @Module({})
 // Nest requires a class as the dynamic module identity.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class RateLimitModule {
   public static register(rateLimit: ApiRateLimit): DynamicModule {
     return {

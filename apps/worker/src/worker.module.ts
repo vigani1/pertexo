@@ -82,7 +82,7 @@ export type WorkerModuleDependencies = Readonly<{
 
 @Module({})
 // Nest requires a class as the root module passed to the application factory.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class WorkerModule {
   public static register(
     config: WorkerConfig,

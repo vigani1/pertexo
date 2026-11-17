@@ -98,7 +98,7 @@ function closeStore(store: ArtifactStore, original: unknown): void {
 
 @Module({})
 // Nest dynamic modules require a class container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class ArtifactRuntimeModule {
   public static register(
     runtime: ApiArtifactRuntime,

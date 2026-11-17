@@ -3,7 +3,7 @@ import { FederationManagementController } from './federation-management.controll
 import { FederationManagementService } from './federation-management.service.js';
 @Module({})
 // Nest dynamic modules require a class container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class FederationManagementModule {
   static register(
     service: FederationManagementService,

@@ -12,7 +12,7 @@ import { INBOX_HINT_SOURCE, NOTIFICATION_AUTHORIZATION } from './tokens.js';
 
 @Module({})
 // Nest dynamic modules require a class container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class NotificationsModule {
   public static register(
     service: WorkspaceInboxService,

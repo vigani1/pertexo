@@ -262,7 +262,7 @@ function productionTelemetry(): ConnectionTelemetry {
 
 @Module({})
 // Nest dynamic modules require a class container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class ConnectionRuntimeModule {
   public static register(
     runtime: ApiConnectionRuntime,

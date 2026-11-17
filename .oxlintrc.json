@@ -477,6 +477,8 @@
   ],
   "extends": ["./.oxlint-type-aware.json"],
   "options": {
-    "typeAware": true
+    "typeAware": true,
+    "respectEslintDisableDirectives": false,
+    "reportUnusedDisableDirectives": "error"
   }
 }

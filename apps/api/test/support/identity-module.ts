@@ -7,7 +7,7 @@ import {
 import { RequestContextStore } from '../../src/platform/http/index.js';
 import { ApiTokenAuthentication } from '../../src/authentication/automation/authority.js';
 // Nest dynamic modules require a class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class FakeIdentityModule {}
 const sessions = {
   authenticate: () =>

@@ -6,7 +6,7 @@ import { PENDING_TASKS } from './pending-tasks.tokens.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 @Module({})
 // Nest dynamic modules require a class container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class PendingTasksModule {
   static register(
     store: PendingTaskOperations,

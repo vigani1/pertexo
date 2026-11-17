@@ -103,7 +103,7 @@ describe('Coordinator durable wakeup invariants', () => {
                 }),
           );
       if (failures.length > 0) {
-        // eslint-disable-next-line no-unsafe-finally -- Both scanners have settled and cleanup failures must remain visible.
+        // oxlint-disable-next-line eslint/no-unsafe-finally -- Both scanners have settled and cleanup failures must remain visible.
         throw new AggregateError(failures, 'Wakeup scanner cleanup failed');
       }
     }

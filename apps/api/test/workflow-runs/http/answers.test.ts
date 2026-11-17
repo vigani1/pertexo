@@ -47,7 +47,7 @@ const persistence = {
 const unused = { execute: vi.fn() };
 const workspace = `/v1/workspaces/${workspaceId}`;
 // Nest dynamic modules require a class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 class RunAnswersUnderTest {}
 let harness: Awaited<ReturnType<typeof routeHarness>>;
 

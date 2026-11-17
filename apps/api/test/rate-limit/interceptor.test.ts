@@ -19,7 +19,7 @@ const workspaceId = '22222222-2222-4222-8222-222222222222';
 const connectionId = '33333333-3333-4333-8333-333333333333';
 
 // Nest metadata lookup requires a controller class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 class TestController {}
 
 const providerTestHandler = (): void => undefined;

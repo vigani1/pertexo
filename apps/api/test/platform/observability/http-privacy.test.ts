@@ -165,7 +165,7 @@ it('exports matched API templates and host-only clients without sensitive reques
       throw new Error('Missing failure handler');
     Get(':subject/fail')(PrivacyController.prototype, 'fail', failDescriptor);
     // Nest module registration requires a class container.
-    // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+    // oxlint-disable-next-line typescript/no-extraneous-class
     class PrivacyModule {}
     Module({ controllers: [PrivacyController] })(PrivacyModule);
     app = await NestFactory.create(PrivacyModule, new FastifyAdapter(), {

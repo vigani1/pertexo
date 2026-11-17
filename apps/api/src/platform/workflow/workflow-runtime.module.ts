@@ -177,7 +177,7 @@ export async function createApiWorkflowRuntime(
 
 @Module({})
 // Nest dynamic modules require a class container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class WorkflowRuntimeModule {
   public static register(
     runtime: ApiWorkflowRuntime,
