@@ -1,3 +1,4 @@
+import { relatedWebUnitShardCount } from '../testing/related-web-unit-shards.mjs';
 import { WEB_UNIT_SHARD_COUNT } from '../testing/web-unit-shards.mjs';
 import { relatedWebFiles } from '../testing/web-unit-selection.mjs';
 import { selectBrowserReach } from '../testing/browser-reach.mjs';
@@ -164,6 +165,7 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
         ),
       );
   const related = all ? undefined : relatedWebFiles(files, event);
+  const relatedShards = related ? relatedWebUnitShardCount(related) : 1;
   return {
     code,
     faults:
@@ -174,13 +176,12 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
         const selected = names.filter((name) => reaches([name]));
         if (group === 'web' && selected.length)
           return related
-            ? [
-                {
-                  group,
-                  filter: '--filter @pertexo/web',
-                  related: JSON.stringify(related),
-                },
-              ]
+            ? Array.from({ length: relatedShards }, (_, index) => ({
+                group,
+                filter: '--filter @pertexo/web',
+                related: JSON.stringify(related),
+                ...(relatedShards > 1 ? { shard: index + 1 } : {}),
+              }))
             : Array.from({ length: WEB_UNIT_SHARD_COUNT }, (_, index) => ({
                 group,
                 filter: '--filter @pertexo/web',

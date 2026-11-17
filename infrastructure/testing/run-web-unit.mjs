@@ -1,5 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { recordedWebUnitShards } from './web-unit-shards.mjs';
+import {
+  WEB_UNIT_SHARD_COUNT,
+  recordedWebUnitShards,
+} from './web-unit-shards.mjs';
 
 const related = process.env.WEB_UNIT_RELATED;
 const shard = process.argv[2];
@@ -17,7 +20,13 @@ const result = spawnSync(
     'exec',
     'vitest',
     ...(related
-      ? ['related', ...files, '--run', '--passWithNoTests']
+      ? [
+          'related',
+          ...files,
+          '--run',
+          '--passWithNoTests',
+          ...(shard ? ['--shard', `${shard}/${WEB_UNIT_SHARD_COUNT}`] : []),
+        ]
       : ['run', ...files]),
   ],
   { stdio: 'inherit', env: { ...process.env, TZ: 'Europe/Belgrade' } },
