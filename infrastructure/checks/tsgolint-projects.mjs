@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
@@ -15,16 +15,22 @@ payload.source_overrides = {
   ...payload.source_overrides,
   ...projectOverrides(root),
 };
-const result = spawnSync(
+const result = spawn(
   process.execPath,
   [
     require.resolve('oxlint-tsgolint/bin/tsgolint.js'),
     ...process.argv.slice(2),
   ],
-  { input: JSON.stringify(payload), stdio: ['pipe', 'inherit', 'inherit'] },
+  { stdio: ['pipe', 'inherit', 'inherit'] },
 );
-if (result.error) throw result.error;
-process.exitCode = result.status ?? 1;
+result.on('error', (error) => {
+  throw error;
+});
+result.on('exit', (code) => {
+  process.exitCode = code ?? 1;
+});
+// Explicitly end the backend input before waiting for its inherited output.
+result.stdin.end(JSON.stringify(payload));
 
 function projectOverrides(directory) {
   const overrides = {};
