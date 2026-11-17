@@ -474,5 +474,9 @@
       },
       "plugins": ["vitest"]
     }
-  ]
+  ],
+  "extends": ["./.oxlint-type-aware.json"],
+  "options": {
+    "typeAware": true
+  }
 }
