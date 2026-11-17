@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
-import { browserEntries, readWorkspaces, selectJobs } from './select-jobs.mjs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  SOURCE_READS,
+  browserEntries,
+  readWorkspaces,
+  selectJobs,
+} from './select-jobs.mjs';
 
 const workspaces = readWorkspaces();
 const select = (file, event) => selectJobs([file], workspaces, event);
@@ -262,4 +268,50 @@ test('full and large related runs have two shards while a changed test keeps one
         .map(({ shard }) => shard),
       [1, 2],
     );
+});
+
+test('a change to an app selects the tests that read its source as text', () => {
+  const filters = select('apps/api/src/webhooks/ingress/telemetry.ts')
+    .unit.include.map(({ filter }) => filter)
+    .join(' ');
+  assert.ok(filters.includes('--filter @pertexo/observability'));
+});
+
+// Selection and the narrow web build trust declared dependencies, so a
+// workspace that reaches another one without declaring it can skip the tests or
+// the build it needs.
+test('workspaces reach each other only through declared dependencies or listed source reads', () => {
+  const byDirectory = Object.fromEntries(
+    workspaces.map(({ path, name }) => [path.split('/')[1], name]),
+  );
+  const undeclared = [];
+  for (const { path, name, dependencies } of workspaces) {
+    const allowed = new Set([
+      name,
+      ...dependencies,
+      ...(SOURCE_READS[name] ?? []),
+    ]);
+    for (const folder of ['src', 'test', 'e2e', 'e2e-live']) {
+      const root = join(path, folder);
+      if (!existsSync(root)) continue;
+      for (const file of readdirSync(root, { recursive: true })) {
+        if (!/\.(?:ts|tsx|mts|mjs)$/u.test(file)) continue;
+        const text = readFileSync(join(root, file), 'utf8');
+        const reached = [
+          ...[
+            ...text.matchAll(
+              /['"](?:\.\.\/)+(?:packages|apps)\/([a-z0-9-]+)\//gu,
+            ),
+          ].map(([, directory]) => byDirectory[directory]),
+          ...[...text.matchAll(/from ['"](@pertexo\/[a-z0-9-]+)/gu)].map(
+            ([, imported]) => imported,
+          ),
+        ];
+        for (const target of reached)
+          if (target && !allowed.has(target))
+            undeclared.push(`${path}/${folder}/${file} -> ${target}`);
+      }
+    }
+  }
+  assert.deepEqual([...new Set(undeclared)], []);
 });
