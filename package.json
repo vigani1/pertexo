@@ -151,6 +151,7 @@
     "eslint-plugin-oxlint": "1.93.0",
     "knip": "5.88.1",
     "oxlint": "1.93.0",
+    "oxlint-tsgolint": "7.0.2007",
     "pg": "8.23.1",
     "prettier": "3.9.10",
     "tsx": "4.23.15",

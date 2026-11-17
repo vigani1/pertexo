@@ -1,0 +1,120 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "overrides": [
+    {
+      "files": [
+        "**/src/**/*.{ts,tsx,mts,cts}",
+        "**/test/**/*.{ts,tsx,mts,cts}",
+        "**/e2e/**/*.ts",
+        "**/e2e-live/**/*.ts"
+      ],
+      "rules": {
+        "typescript/await-thenable": [2],
+        "typescript/no-array-delete": [2],
+        "typescript/no-base-to-string": [2],
+        "typescript/no-confusing-void-expression": [2],
+        "typescript/no-deprecated": [2],
+        "typescript/no-duplicate-type-constituents": [2],
+        "typescript/no-floating-promises": [2],
+        "typescript/no-for-in-array": [2],
+        "typescript/no-generated-empty-object-type": [2],
+        "typescript/no-implied-eval": [2],
+        "typescript/no-meaningless-void-operator": [2],
+        "typescript/no-misused-spread": [2],
+        "typescript/no-mixed-enums": [2],
+        "typescript/no-redundant-type-constituents": [2],
+        "typescript/no-unnecessary-boolean-literal-compare": [2],
+        "typescript/no-unnecessary-condition": [2],
+        "typescript/no-unnecessary-template-expression": [2],
+        "typescript/no-unnecessary-type-arguments": [2],
+        "typescript/no-unnecessary-type-conversion": [2],
+        "typescript/no-unnecessary-type-parameters": [2],
+        "typescript/no-unsafe-argument": [2],
+        "typescript/no-unsafe-assignment": [2],
+        "typescript/no-unsafe-call": [2],
+        "typescript/no-unsafe-enum-assignment": [2],
+        "typescript/no-unsafe-enum-comparison": [2],
+        "typescript/no-unsafe-member-access": [2],
+        "typescript/no-unsafe-return": [2],
+        "typescript/no-unsafe-unary-minus": [2],
+        "typescript/no-useless-default-assignment": [2],
+        "typescript/only-throw-error": [2],
+        "typescript/prefer-promise-reject-errors": [2],
+        "typescript/prefer-reduce-type-parameter": [2],
+        "typescript/prefer-return-this-type": [2],
+        "typescript/related-getter-setter-pairs": [2],
+        "typescript/restrict-plus-operands": [
+          2,
+          {
+            "allowAny": false,
+            "allowBoolean": false,
+            "allowNullish": false,
+            "allowNumberAndString": false,
+            "allowRegExp": false
+          }
+        ],
+        "typescript/restrict-template-expressions": [
+          2,
+          {
+            "allowAny": false,
+            "allowBoolean": false,
+            "allowNever": false,
+            "allowNullish": false,
+            "allowNumber": false,
+            "allowRegExp": false
+          }
+        ],
+        "typescript/return-await": [2, "error-handling-correctness-only"],
+        "typescript/unbound-method": [2],
+        "typescript/use-unknown-in-catch-callback-variable": [2],
+        "typescript/dot-notation": [
+          2,
+          {
+            "allowIndexSignaturePropertyAccess": false,
+            "allowKeywords": true,
+            "allowPattern": "",
+            "allowPrivateClassPropertyAccess": false,
+            "allowProtectedClassPropertyAccess": false
+          }
+        ],
+        "typescript/non-nullable-type-assertion-style": [2],
+        "typescript/prefer-find": [2],
+        "typescript/prefer-includes": [2],
+        "typescript/prefer-nullish-coalescing": [2],
+        "typescript/prefer-regexp-exec": [2],
+        "typescript/prefer-string-starts-ends-with": [2]
+      }
+    },
+    {
+      "files": [
+        "packages/workflow-engine/**/*.{ts,tsx}",
+        "packages/workflow-model/**/*.{ts,tsx}",
+        "packages/policy/**/*.{ts,tsx}",
+        "packages/node-sdk/**/*.{ts,tsx}",
+        "packages/nodes-core/**/*.{ts,tsx}",
+        "packages/integrations/**/*.{ts,tsx}",
+        "packages/secrets/**/*.{ts,tsx}",
+        "packages/node-catalog/**/*.{ts,tsx}",
+        "packages/templates/**/*.{ts,tsx}",
+        "packages/contracts/**/*.{ts,tsx}",
+        "packages/database/**/*.{ts,tsx}",
+        "packages/core/**/*.{ts,tsx}",
+        "packages/artifact-store/**/*.{ts,tsx}",
+        "packages/queue/**/*.{ts,tsx}",
+        "packages/observability/**/*.{ts,tsx}",
+        "packages/rate-limit/**/*.{ts,tsx}",
+        "packages/execution/**/*.{ts,tsx}",
+        "apps/api/**/*.{ts,tsx}",
+        "apps/worker/**/*.{ts,tsx}",
+        "apps/code-runner/**/*.{ts,tsx}",
+        "apps/cli/**/*.{ts,tsx}",
+        "apps/ops/**/*.{ts,tsx}",
+        "apps/web/src/**/*.{ts,tsx}",
+        "src/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "typescript/switch-exhaustiveness-check": "error"
+      }
+    }
+  ]
+}
