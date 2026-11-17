@@ -1,17 +1,23 @@
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+
+import { parse } from 'yaml';
 
 import {
   describeBoundedChildFailure,
   runBoundedChildProcess,
 } from '../support/bounded-child-process.mjs';
 
-const COLLECTOR_IMAGE =
-  'otel/opentelemetry-collector-contrib:0.164.0@sha256:340c9ca6a36617084c6661bdc4f0fe92b7cda5a805d61673ec8db375fddc522b';
-const PROMETHEUS_IMAGE =
-  'prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06';
+// The monitoring stack's compose file owns these pins, so Dependabot's bump of
+// that one file also moves the qualification run.
+const { services: MONITORING_SERVICES } = parse(
+  readFileSync(new URL('compose.yaml', import.meta.url), 'utf8'),
+);
+const COLLECTOR_IMAGE = MONITORING_SERVICES['otel-collector'].image;
+const PROMETHEUS_IMAGE = MONITORING_SERVICES.prometheus.image;
 const COMMAND_TIMEOUT_MILLISECONDS = 30_000;
 const QUALIFICATION_TIMEOUT_MILLISECONDS = 45_000;
 
