@@ -157,7 +157,7 @@ jobs:
         run: pnpm observability:check
       # No ESLint cache here: the rules ESLint still runs are type-aware, and a
       # per-file cache would keep a stale pass for an unchanged file whose types
-      # changed elsewhere. Local runs keep the cache; CI is the authority.
+      # changed elsewhere. Local and CI runs both inspect every selected file.
       - name: Lint the web app
         if: matrix.part == 'lint-web'
         env:
@@ -171,7 +171,7 @@ jobs:
           pnpm exec node infrastructure/checks/lint.mjs --ignore-pattern
           apps/web . && pnpm lint:infrastructure && pnpm --recursive
           --workspace-concurrency=1 --filter '!@pertexo/web' exec eslint
-          --cache --cache-strategy content .
+          --no-cache .
       - name: Typecheck
         if: matrix.part == 'static'
         run: pnpm typecheck
