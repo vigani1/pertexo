@@ -1,0 +1,202 @@
+name: Test overlap
+
+# Started by hand only. It runs each test file of the large suites alone, with
+# coverage, records the source lines each one reaches, and finds files whose
+# reach other files already have. README.md, "Finding tests that overlap",
+# explains how to read the result. Playwright suites are not measured.
+on:
+  workflow_dispatch:
+    inputs:
+      workspaces:
+        description:
+          Space-separated workspaces to measure (core, api, worker, web)
+        type: string
+        default: core api worker web
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-overlap-${{ github.ref }}
+  cancel-in-progress: false
+
+# The same disposable stack as CI's integration job; a static CI test keeps
+# these equal to ci.yml's.
+env:
+  POSTGRES_DB: pertexo
+  POSTGRES_DURABILITY: 'off'
+  POSTGRES_PORT: '5432'
+  POSTGRES_SUPERUSER: postgres
+  POSTGRES_SUPERUSER_PASSWORD: pertexo-local-superuser
+  POSTGRES_OWNER_USER: pertexo_owner
+  POSTGRES_MIGRATION_USER: pertexo_migration
+  POSTGRES_MIGRATION_PASSWORD: pertexo-local-migration
+  POSTGRES_APP_USER: pertexo_app
+  POSTGRES_APP_PASSWORD: pertexo-local-app
+  POSTGRES_MAINTENANCE_USER: pertexo_maintenance
+  POSTGRES_MAINTENANCE_PASSWORD: pertexo-local-maintenance
+  DATABASE_ADMIN_URL: postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres
+  DATABASE_MIGRATION_URL: postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
+  DATABASE_URL: postgresql://pertexo_app:pertexo-local-app@127.0.0.1:5432/pertexo
+  DATABASE_MAINTENANCE_URL: postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo
+  REDIS_PASSWORD: pertexo-local-redis
+  REDIS_PORT: '6379'
+  REDIS_URL: redis://:pertexo-local-redis@127.0.0.1:6379/0
+  ARTIFACT_STORE_PORT: '9090'
+  ARTIFACT_STORE_ENDPOINT: http://127.0.0.1:9090
+  ARTIFACT_STORE_REGION: us-east-1
+  ARTIFACT_STORE_ACCESS_KEY_ID: pertexo-local-access-key
+  ARTIFACT_STORE_SECRET_ACCESS_KEY: pertexo-local-secret-key
+  ARTIFACT_STORE_BUCKET: pertexo-artifacts
+  ARTIFACT_STORE_FORCE_PATH_STYLE: 'true'
+  ARTIFACT_STORE_INTEGRATION: 'true'
+  POSTGRES_IMAGE: postgres:18@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280
+  REDIS_IMAGE: redis:8.10.2-alpine@sha256:9f8d2d789b9a1d1e3f283f979aa9cbf393373806472e1ccd460e2f9c869b833b
+  S3MOCK_IMAGE: adobe/s3mock:5.2.3@sha256:ab01a6946750f451ca215a47e91030695b260e4003b8a5a6201d25029b8fca92
+  API_SSE_INTEGRATION: 'true'
+  API_IDENTITY_INTEGRATION: 'true'
+  API_ARTIFACT_INTEGRATION: 'true'
+  API_WEBHOOK_INTEGRATION: 'true'
+  REDIS_RATE_LIMIT_INTEGRATION: 'true'
+  QUEUE_INTEGRATION: 'true'
+  WORKER_TRANSPORT_INTEGRATION: 'true'
+  WORKER_TRIGGER_INTEGRATION: 'true'
+  # Each file runs alone, so the flag-gated organization files CI runs in a
+  # step of their own can run beside the rest.
+  EDITOR_BROWSER_OWNED_FIXTURE: 'true'
+  F07_ORGANIZATION_OWNED_FIXTURE: 'true'
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - name: Turn the input into one job per shard
+        id: plan
+        env:
+          WORKSPACES: ${{ inputs.workspaces }}
+          # Shards per lane, sized so each job takes about 30 to 45 minutes:
+          # integration files run one at a time (they share one stack), and
+          # every file pays for its own Vitest start and coverage conversion.
+          SHARDS: >-
+            {"core":{"unit":1,"integration":4},
+            "api":{"unit":2,"integration":3},
+            "worker":{"unit":1,"integration":3}, "web":{"unit":3}}
+        run: |
+          set -euo pipefail
+          matrix="$(jq -cn --arg list "$WORKSPACES" --argjson shards "$SHARDS" '
+            [$list | split(" ") | map(select(. != "")) | unique | .[] as $workspace
+              | ($shards[$workspace] // error("No overlap plan for \($workspace)"))
+              | to_entries[] | .key as $lane | .value as $total
+              | range(1; $total + 1)
+              | {workspace: $workspace, lane: $lane, shard: ., total: $total}]')"
+          test "$matrix" != '[]'
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+
+  measure:
+    name:
+      measure (${{ matrix.workspace }} ${{ matrix.lane }} ${{ matrix.shard
+      }}/${{ matrix.total }})
+    needs: plan
+    runs-on: ubuntu-latest
+    # Planned for 30 to 45 minutes; the limit catches hangs.
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      # Tests that own their fixtures expect CI's project suffixes.
+      COMPOSE_PROJECT_NAME:
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{
+        matrix.workspace == 'core' && 'database' || 'integration' }}
+      CONNECTION_HEALTH_COMPOSE_PROJECT:
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{
+        matrix.workspace == 'core' && 'database' || 'integration' }}
+      WORKFLOW_CONCURRENCY_COMPOSE_PROJECT:
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{
+        matrix.workspace == 'core' && 'database' || 'integration' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Use the Docker Hub mirror
+        if: matrix.lane == 'integration'
+        uses: ./.github/actions/docker-mirror
+      - name: Build with source maps
+        # Packages load each other from dist; the maps lead reach back to src.
+        run: pnpm exec tsc --build --pretty false --sourceMap
+      - name: Start services
+        if: matrix.lane == 'integration'
+        uses: ./.github/actions/start-services
+      - name: Migrate
+        if: matrix.lane == 'integration'
+        run: pnpm db:migrate
+      - name: Record owned-fixture manifest
+        if: matrix.lane == 'integration'
+        uses: ./.github/actions/record-fixture-manifest
+      - name: Run each test file alone with coverage
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+          LANE: ${{ matrix.lane }}
+          SHARD: ${{ matrix.shard }}/${{ matrix.total }}
+          # Unit files run three at a time; integration files share one stack.
+          CONCURRENCY: ${{ matrix.lane == 'unit' && 3 || 1 }}
+        run:
+          node infrastructure/testing/overlap/run-file-coverage.mjs "$WORKSPACE"
+          --lane "$LANE" --shard "$SHARD" --concurrency "$CONCURRENCY"
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name:
+            overlap-${{ matrix.workspace }}-${{ matrix.lane }}-${{ matrix.shard
+            }}
+          path: reports/overlap/
+          if-no-files-found: error
+      - name: Service logs
+        if: failure() && matrix.lane == 'integration'
+        run: docker compose logs --no-color --timestamps
+      - name: Stop services
+        if: always() && matrix.lane == 'integration'
+        run: docker compose down -v --remove-orphans
+
+  summary:
+    needs: measure
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Download the reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: overlap-*
+          path: reports/overlap
+          merge-multiple: true
+      - name: Combine and analyze
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          reports=(reports/overlap/*.json)
+          if [ "${#reports[@]}" -eq 0 ]; then
+            echo 'No shard finished; see the measure jobs.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          node infrastructure/testing/overlap/analyze-overlap.mjs \
+            --out reports/overlap-summary/summary "${reports[@]}"
+          cat reports/overlap-summary/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the summary
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: overlap-summary
+          path: reports/overlap-summary/
+          if-no-files-found: error

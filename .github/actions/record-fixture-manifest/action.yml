@@ -1,0 +1,19 @@
+name: Record the owned-fixture manifest
+description:
+  Name the Compose project and the PostgreSQL and Redis containers the started
+  services run in, as EDITOR_BROWSER_OWNERSHIP_MANIFEST, so tests that own their
+  fixtures can prove they act on this job's disposable stack.
+runs:
+  using: composite
+  steps:
+    - name: Record the manifest
+      shell: bash
+      run: |
+        set -euo pipefail
+        postgres_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q postgres)")
+        redis_id=$(docker inspect --format '{{.Id}}' "$(docker compose ps -q redis)")
+        manifest=$(jq -cn \
+          --arg project "$COMPOSE_PROJECT_NAME" --arg postgres "$postgres_id" --arg redis "$redis_id" \
+          --argjson postgresPort "$POSTGRES_PORT" --argjson redisPort "$REDIS_PORT" \
+          '{project:$project,postgres:{id:$postgres,port:$postgresPort},redis:{id:$redis,port:$redisPort}}')
+        echo "EDITOR_BROWSER_OWNERSHIP_MANIFEST=$manifest" >> "$GITHUB_ENV"
