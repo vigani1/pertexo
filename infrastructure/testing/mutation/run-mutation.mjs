@@ -32,15 +32,21 @@ const NOT_MUTATED = [
 ];
 const MUTATED = 'src/**/*.{ts,tsx}';
 const TEMPORARY_VITEST_CONFIG = 'vitest.mutation.config.ts';
-// The unit lane: the workspace's own Vitest config without the integration
-// lane, which needs live services.
-const UNIT_LANE_CONFIG = `import { configDefaults, mergeConfig } from 'vitest/config';
-import base from './vitest.config.ts';
-
-export default mergeConfig(base, {
-  test: { exclude: [...configDefaults.exclude, 'dist/**', '.stryker-tmp/**', '**/*.integration.test.ts'] },
-});
-`;
+// Stryker counts coverage inside every statement, so instrumented code runs
+// several times slower than in the normal suite.
+const INSTRUMENTED_TEST_TIMEOUT_MILLISECONDS = 60_000;
+// Test files that fail on unmutated code under Stryker, so its first run would
+// stop the whole workspace. They are left out of the measurement, which means
+// pruning never judges them: they stay as they are.
+const NOT_MEASURED = {
+  // A checkpoint at the authoring limits has a 60 s budget that instrumented
+  // code exceeds.
+  'workflow-engine': ['test/checkpoint/capacity.test.ts'],
+  // Asserts wall-clock time for redacting a 10 MiB response.
+  secrets: ['test/outbound-http/response-redaction-performance.test.ts'],
+  // Reads emitter source text, which Stryker rewrites in place.
+  observability: ['test/operations-assets.test.ts'],
+};
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -81,7 +87,7 @@ run('pnpm', [
 ]);
 
 const vitestConfig = join(workspaceDirectory, TEMPORARY_VITEST_CONFIG);
-writeFileSync(vitestConfig, UNIT_LANE_CONFIG);
+writeFileSync(vitestConfig, unitLaneConfig(NOT_MEASURED[workspace] ?? []));
 try {
   process.chdir(workspaceDirectory);
   const stryker = new Stryker({
@@ -110,6 +116,27 @@ try {
   rmSync(vitestConfig, { force: true });
 }
 console.log(`Wrote ${reportFile}`);
+
+// The unit lane: the workspace's own Vitest config without the integration
+// lane, which needs live services.
+function unitLaneConfig(notMeasured) {
+  const exclude = [
+    'dist/**',
+    '.stryker-tmp/**',
+    '**/*.integration.test.ts',
+    ...notMeasured,
+  ];
+  return `import { configDefaults, mergeConfig } from 'vitest/config';
+import base from './vitest.config.ts';
+
+export default mergeConfig(base, {
+  test: {
+    testTimeout: ${INSTRUMENTED_TEST_TIMEOUT_MILLISECONDS},
+    exclude: [...configDefaults.exclude, ${exclude.map((p) => JSON.stringify(p)).join(', ')}],
+  },
+});
+`;
+}
 
 function findWorkspace(name) {
   if (!/^[a-z0-9-]+$/u.test(name ?? ''))
