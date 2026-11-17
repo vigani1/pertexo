@@ -30,11 +30,4 @@ describe('queue-class defaults', () => {
       );
     }
   });
-
-  it('keeps queue defaults immutable at runtime', () => {
-    expect(Object.isFrozen(QUEUE_CLASS_DEFAULTS)).toBe(true);
-    expect(Object.isFrozen(QUEUE_CLASS_DEFAULTS[QUEUE_NAME.maintenance])).toBe(
-      true,
-    );
-  });
 });

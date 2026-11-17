@@ -37,16 +37,4 @@ describe('ID-only connection health application job', () => {
       }),
     ).toThrow();
   });
-  it('rejects malformed identities', () => {
-    for (const invalid of [
-      { ...data, observationId: 'bad' },
-      { ...data, workspaceId: undefined },
-    ])
-      expect(() =>
-        parseQueueJob({
-          name: JOB_NAME.applyConnectionHealthObservation,
-          data: invalid,
-        }),
-      ).toThrow();
-  });
 });

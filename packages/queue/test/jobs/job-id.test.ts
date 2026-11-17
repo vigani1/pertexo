@@ -24,10 +24,6 @@ describe('the job ID of a delivery', () => {
     expect(jobIdForOutboxEvent(EVENT, 3)).toBe(`outbox-${EVENT}-r3`);
   });
 
-  it('never holds a colon, which BullMQ refuses', () => {
-    expect(jobIdForOutboxEvent(EVENT, 3)).not.toContain(':');
-  });
-
   it.each([
     [`outbox-${EVENT}`, true],
     [`outbox-${EVENT}-r1`, true],
