@@ -73,13 +73,14 @@ test('a failing scoped lint stops the hook with its exit code', (t) => {
 
 function createFixture(t, lintExit = 0) {
   // Git exports repository-local context to hooks; fixtures own a different repo.
-  const environment = { ...process.env };
   const localVariables = spawnSync('git', ['rev-parse', '--local-env-vars'], {
     encoding: 'utf8',
   });
   assert.equal(localVariables.status, 0, localVariables.stderr);
-  for (const name of localVariables.stdout.trim().split('\n'))
-    delete environment[name];
+  const localNames = new Set(localVariables.stdout.trim().split('\n'));
+  const environment = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !localNames.has(name)),
+  );
   const root = realpathSync(
     mkdtempSync(join(tmpdir(), 'pertexo-lint-changed-')),
   );
