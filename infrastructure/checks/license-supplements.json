@@ -12,9 +12,9 @@
   {
     "names": [],
     "prefix": "@msgpackr-extract/",
-    "versions": ["3.0.4"],
+    "versions": ["3.0.7"],
     "license": "MIT",
-    "source": "https://registry.npmjs.org/msgpackr-extract/-/msgpackr-extract-3.0.4.tgz",
+    "source": "https://registry.npmjs.org/msgpackr-extract/-/msgpackr-extract-3.0.7.tgz",
     "reason": "The published package omits its license file; retain the corresponding upstream text shared by its platform binaries.",
     "text": "MIT License\n\nCopyright (c) 2020 Kris Zyp\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
     "sha256": "d00470775464c789c7ac04cfba3bf1b79ef149790eb72556d1c51d8f50c8e7f3"
@@ -41,9 +41,9 @@
   {
     "names": [],
     "prefix": "@rolldown/binding-",
-    "versions": ["1.2.16"],
+    "versions": ["1.2.18"],
     "license": "MIT",
-    "source": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.16.tgz",
+    "source": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.18.tgz",
     "reason": "The published package omits its license file; retain the corresponding upstream text shared by its platform binaries.",
     "text": "MIT License\n\nCopyright (c) 2024-present VoidZero Inc. & Contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n\nend of terms and conditions\n\nThe licenses of externally maintained libraries from which parts of the Software is derived are listed [here](https://github.com/rolldown/rolldown/blob/main/THIRD-PARTY-LICENSE).\n",
     "sha256": "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734"
@@ -51,9 +51,9 @@
   {
     "names": [],
     "prefix": "@tailwindcss/oxide-",
-    "versions": ["4.3.4"],
+    "versions": ["4.3.5"],
     "license": "MIT",
-    "source": "https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.3.4.tgz",
+    "source": "https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.3.5.tgz",
     "reason": "The published package omits its license file; retain the corresponding upstream text shared by its platform binaries.",
     "text": "MIT License\n\nCopyright (c) Tailwind Labs, Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
     "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985"
@@ -131,7 +131,7 @@
   },
   {
     "names": ["@aws-sdk/credential-provider-http"],
-    "versions": ["3.972.83"],
+    "versions": ["3.972.85"],
     "license": "Apache-2.0",
     "source": "https://raw.githubusercontent.com/aws/aws-sdk-js-v3/4e78d2d18f200b1df8af68069230eeb885beac21/LICENSE",
     "reason": "The published package omits its full license text; preserve the upstream repository license retrieved for this version review.",
@@ -140,7 +140,7 @@
   },
   {
     "names": ["@aws-sdk/credential-provider-login"],
-    "versions": ["3.972.88"],
+    "versions": ["3.972.90"],
     "license": "Apache-2.0",
     "source": "https://raw.githubusercontent.com/aws/aws-sdk-js-v3/4e78d2d18f200b1df8af68069230eeb885beac21/LICENSE",
     "reason": "The published package omits its full license text; preserve the upstream repository license retrieved for this version review.",
@@ -149,7 +149,7 @@
   },
   {
     "names": ["@aws-sdk/nested-clients"],
-    "versions": ["3.998.0"],
+    "versions": ["3.998.2"],
     "license": "Apache-2.0",
     "source": "https://raw.githubusercontent.com/aws/aws-sdk-js-v3/4e78d2d18f200b1df8af68069230eeb885beac21/LICENSE",
     "reason": "The published package omits its full license text; preserve the upstream repository license retrieved for this version review.",
