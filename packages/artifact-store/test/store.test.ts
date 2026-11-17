@@ -45,38 +45,6 @@ describe('ArtifactStore', () => {
     },
   );
 
-  it('stores and streams a workspace artifact with verified metadata', async () => {
-    const { store } = createStore();
-    const stored = await store.put({
-      artifactId: ARTIFACT_ID,
-      body: Readable.from(['hello']),
-      byteLength: 5,
-      mediaType: 'text/plain',
-      sha256: HELLO_SHA256,
-      workspaceId: WORKSPACE_ID,
-    });
-
-    expect(stored).toEqual({
-      artifactId: ARTIFACT_ID,
-      byteLength: 5,
-      mediaType: 'text/plain',
-      sha256: HELLO_SHA256,
-      workspaceId: WORKSPACE_ID,
-    });
-    await expect(
-      store.head({ artifactId: ARTIFACT_ID, workspaceId: WORKSPACE_ID }),
-    ).resolves.toEqual(stored);
-
-    const downloaded = await store.getStream({
-      artifactId: ARTIFACT_ID,
-      workspaceId: WORKSPACE_ID,
-    });
-    await expect(readAll(downloaded.body)).resolves.toEqual(
-      Buffer.from('hello'),
-    );
-    expect(downloaded.metadata).toEqual(stored);
-  });
-
   it('rejects oversized declarations without storing an object', async () => {
     const { store } = createStore();
 

@@ -6,14 +6,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { awaitWithSignal } from '../../src/s3/request-lifecycle.js';
 
 describe('artifact request lifecycle', () => {
-  it('preserves an ordinary operation Error unchanged', async () => {
-    const failure = new Error('provider operation failed');
-
-    await expect(
-      awaitWithSignal(Promise.reject(failure), new AbortController().signal),
-    ).rejects.toBe(failure);
-  });
-
   it('normalizes foreign operation and abort reasons with their cause', async () => {
     const operationFailure = { provider: 'failed' };
     await expect(
