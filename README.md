@@ -215,9 +215,10 @@ summary has one row per workspace. In a workspace's summary:
   `infrastructure/testing/mutation/analyze-mutation.mjs` and stay on purpose.
 - **Survivors by file and line** are bugs no test caught: real gaps.
 - Tests that reach no mutated code and catch nothing are counted but not judged.
-  Stryker runs every test against a module-level (static) mutant, but only the
-  per-test coverage counts as reaching code. Tests that reach code only through
-  a built `dist` show up here too.
+  Tests that reach code only through a built `dist` show up here.
+- Module-level (static) mutants are skipped. Each one reruns the whole suite and
+  records no per-test coverage, so it cannot show which test protects what, and
+  they made the largest workspaces outlast a runner.
 - A few test files fail under Stryker on code it has not changed (wall-clock
   budgets, a test that reads source text Stryker rewrites). `NOT_MEASURED` in
   `run-mutation.mjs` leaves them out with a reason each, so pruning never judges

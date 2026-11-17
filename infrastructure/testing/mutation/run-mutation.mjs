@@ -105,6 +105,11 @@ try {
     // Without this Stryker stops at the first test that catches a mutant, and
     // `killedBy` cannot show which tests are redundant.
     disableBail: true,
+    // A static (module-level) mutant reruns the whole suite and records no
+    // per-test coverage, so it cannot show which test protects what. On the
+    // first full run these took most of the time and pushed contracts and
+    // workflow-model past their budget.
+    ignoreStatic: true,
     coverageAnalysis: 'perTest',
     concurrency,
     mutate: [
