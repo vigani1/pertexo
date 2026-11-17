@@ -1,3 +1,4 @@
+// CI-F disposable single-file reach and timing proof.
 import {
   usageTrendPeriodSchema,
   type UsageTrendPeriod,
