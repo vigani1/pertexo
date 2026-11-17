@@ -283,11 +283,14 @@ test('runs every static check across the parallel check parts', () => {
     'architecture:check'
   ];
   assert.ok(
-    staticChecks.includes('infrastructure/checks/tsgolint-projects.test.mjs'),
+    staticChecks.includes('infrastructure/checks/tsgolint-projects.test.mjs') &&
+      staticChecks.includes('infrastructure/checks/lint-changed.test.mjs'),
   );
   // The web part runs the web package's lint script: both linters, every rule.
   const webLint = JSON.parse(readFileSync('apps/web/package.json', 'utf8'))
     .scripts.lint;
+  assert.ok(webLint.includes('eslint --no-cache'));
+  assert.ok(text.includes('exec eslint --no-cache .'));
   for (const linter of ['node ../../infrastructure/checks/lint.mjs', 'eslint'])
     assert.ok(webLint.includes(linter), linter);
 });
