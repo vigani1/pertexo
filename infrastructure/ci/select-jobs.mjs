@@ -86,6 +86,15 @@ const FAULT_PATHS =
   /^apps\/worker\/test\/(recovery|support\/recovery)\/|^apps\/worker\/vitest\.resilience\.config\.ts$|^infrastructure\/testing\/(run-fault-shard|fault-project|fault-durations|test-stack)[^/]*$|^\.github\/(workflows\/ci\.yml|actions\/(start-services|setup|docker-mirror)\/)|^compose\.yaml$|^infrastructure\/(postgres|redis|images)\//u;
 const liveWorkspaces = ['web', 'api', 'worker', 'cli', 'ops', 'code-runner'];
 
+// Tests that read another workspace's source as text rather than importing it:
+// a change to a read workspace selects the reader's tests, without spreading to
+// the reader's own dependents. Every other cross-workspace reach must be a
+// declared dependency (select-jobs.test.mjs enforces both).
+export const SOURCE_READS = Object.freeze({
+  // operations-assets.test.ts checks dashboard metric names against app sources.
+  '@pertexo/observability': ['@pertexo/api', '@pertexo/worker'],
+});
+
 export function readWorkspaces(root = '.') {
   return ['apps', 'packages'].flatMap((area) =>
     readdirSync(join(root, area), { withFileTypes: true })
@@ -148,6 +157,8 @@ export function selectJobs(files, workspaces, event = 'pull_request') {
       }
     }
   }
+  for (const [reader, read] of Object.entries(SOURCE_READS))
+    if (read.some((name) => affected.has(name))) affected.add(reader);
   const reaches = (names) =>
     names.some((name) => affected.has(`@pertexo/${name}`));
   const code = all || affected.size > 0;
