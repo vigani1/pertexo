@@ -230,6 +230,50 @@ refuses a workspace with uncommitted changes. Use it only in a disposable
 checkout, never in the checkout you work in.
 `analyze-mutation.mjs reports/mutation/<workspace>.json` writes the summary.
 
+### Finding tests that overlap
+
+Mutation testing is too slow for the suites that need PostgreSQL, Redis or
+jsdom. The **Test overlap** GitHub workflow measures those instead: it runs each
+test file alone with coverage and records the source lines it reaches, then
+finds files whose reach other files already have. Start it by hand from the
+Actions tab (**Test overlap** → **Run workflow**); the `workspaces` input takes
+any of `core api worker web`, separated by spaces. It never runs on pull
+requests or pushes. It measures `core` (unit and integration lanes), `api`
+(both), `worker` (both, without `test/recovery`) and the web app's Vitest unit
+lane. Playwright suites are not measured.
+
+Each shard uploads `overlap-<workspace>-<lane>-<shard>` with its report; the
+last job combines them all, so reach crosses workspaces (an API test reaching
+`core` counts there), and uploads `overlap-summary` in Markdown and JSON. The
+run's job summary is the Markdown. To read it:
+
+- A file's **reach** is the source lines it executed inside functions, in every
+  workspace's `src`. Packages load each other from `dist`; the run builds with
+  source maps and maps that reach back to `src`. Module top level is left out,
+  since it runs on any import. Calls made while modules load still count, so
+  files importing the same modules share some reach.
+- **Reach no line another file does not reach**: removing one such file alone
+  loses no reached line.
+- **Reach lies inside one other file**: the container shown is an integration
+  file when there is one. A unit or mocked file inside an integration file of
+  the same flow is the main candidate to prune or fold in.
+- **Merge clusters** group files of one area (workspace, lane and first
+  directory below `test/`) whose reach overlaps by the threshold or more. Lines
+  are weighted by rarity, so lines nearly every file reaches count for little.
+  The summary prints how close each file's nearest neighbour is, the data the
+  threshold comes from.
+- Files marked _keep_ match the security, workspace isolation, permissions and
+  data-loss patterns of the mutation summary and stay on purpose.
+- Reach is not proof of checking. Every list names files to read, not files to
+  delete. Files that failed or ran no passing test are listed as not measured.
+
+`node infrastructure/testing/overlap/run-file-coverage.mjs <workspace> --lane unit|integration [--shard i/n] [--concurrency n] [--only <test file>]...`
+runs one lane locally into `reports/overlap/`; build with
+`pnpm exec tsc --build --sourceMap` first. Run integration lanes only against a
+disposable test stack.
+`analyze-overlap.mjs [--out <stem>] [--threshold 0..1] <report.json>...` writes
+the summary.
+
 `pnpm db:generate` generates incremental SQL from the Drizzle schema and its
 tracked snapshot. Retained SQL exceptions are documented in the architecture
 map. `pnpm db:migrate` applies the migration history. Databases from before the
