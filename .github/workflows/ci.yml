@@ -157,7 +157,7 @@ jobs:
         run: pnpm observability:check
       # No ESLint cache here: the rules ESLint still runs are type-aware, and a
       # per-file cache would keep a stale pass for an unchanged file whose types
-      # changed elsewhere. Local and CI runs both inspect every selected file.
+      # changed elsewhere. Local caches give fast feedback; CI always rechecks typed rules.
       - name: Lint the web app
         if: matrix.part == 'lint-web'
         env:
