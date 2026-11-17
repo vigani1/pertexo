@@ -1,3 +1,4 @@
+import { afterAll, afterEach, beforeAll } from 'vitest';
 import { workflowMoveReviewRequestSchema } from '@pertexo/contracts';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
@@ -104,3 +105,14 @@ export const mockServer = setupServer(
     HttpResponse.json({ items: [], nextCursor: null }),
   ),
 );
+
+// Each isolated test file owns its server and restores handlers after every test.
+beforeAll(() => {
+  mockServer.listen({ onUnhandledRequest: 'error' });
+});
+afterEach(() => {
+  mockServer.resetHandlers();
+});
+afterAll(() => {
+  mockServer.close();
+});

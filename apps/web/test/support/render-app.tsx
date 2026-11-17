@@ -1,3 +1,4 @@
+import './mock-server';
 import { synchronizeApplicationSession } from '@/app/session-sync';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
