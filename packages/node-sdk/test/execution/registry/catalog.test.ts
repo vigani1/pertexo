@@ -201,30 +201,18 @@ describe('node-sdk catalog contracts', () => {
     ).toThrow(/unknown policy/u);
   });
 
-  it('rejects a definition bound to an unknown executor', () => {
+  it('refuses a definition bound to an unknown executor with its named error', () => {
     const one = catalog();
-    expect(() =>
+    const create = () =>
       createNodeCatalog({
         definitions: [
           { ...manifest, executor: { key: 'test.other', version: 1 } },
         ],
         executors: one.executors,
         policies: one.policies,
-      }),
-    ).toThrow(/unknown executor/u);
-  });
-
-  it('refuses a catalog whose edges disagree with its named error', () => {
-    const one = catalog();
-    expect(() =>
-      createNodeCatalog({
-        definitions: [
-          { ...manifest, executor: { key: 'test.other', version: 1 } },
-        ],
-        executors: one.executors,
-        policies: one.policies,
-      }),
-    ).toThrow(NodeCatalogIntegrityError);
+      });
+    expect(create).toThrow(NodeCatalogIntegrityError);
+    expect(create).toThrow(/unknown executor/u);
   });
 
   it('validates configuration-selected output branches at catalog registration', () => {
