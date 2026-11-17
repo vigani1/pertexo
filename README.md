@@ -218,6 +218,10 @@ summary has one row per workspace. In a workspace's summary:
   Stryker runs every test against a module-level (static) mutant, but only the
   per-test coverage counts as reaching code. Tests that reach code only through
   a built `dist` show up here too.
+- A few test files fail under Stryker on code it has not changed (wall-clock
+  budgets, a test that reads source text Stryker rewrites). `NOT_MEASURED` in
+  `run-mutation.mjs` leaves them out with a reason each, so pruning never judges
+  them.
 
 `node infrastructure/testing/mutation/run-mutation.mjs <workspace> [--concurrency <n>] [--mutate <glob>]`
 runs one workspace locally. It rewrites the workspace's files while it runs and
