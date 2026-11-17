@@ -1,8 +1,7 @@
-import { subscribeSessionChanges } from '@/features/auth/auth-routing.public';
+import { subscribeSessionChanges } from '@/features/auth/model/session/sync';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, configure } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
-import { mockServer } from './support/mock-server';
+import { afterEach, beforeAll, beforeEach } from 'vitest';
 
 // Page tests render the whole app; on a busy machine the first paint can
 // take longer than testing-library's 1 s default. One budget for every file.
@@ -15,9 +14,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   stopSession?.();
-});
-beforeAll(() => {
-  mockServer.listen({ onUnhandledRequest: 'error' });
 });
 beforeAll(() => {
   if (typeof window !== 'undefined') {
@@ -41,8 +37,4 @@ beforeAll(() => {
 });
 afterEach(() => {
   cleanup();
-  mockServer.resetHandlers();
-});
-afterAll(() => {
-  mockServer.close();
 });
