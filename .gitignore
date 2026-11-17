@@ -13,3 +13,7 @@ test-results/
 .pertexo/
 
 .eslintcache
+
+# Mutation runs (infrastructure/testing/mutation)
+reports/
+.stryker-tmp/
