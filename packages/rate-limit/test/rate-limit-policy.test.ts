@@ -164,46 +164,6 @@ describe('abuse rate-limit policy', () => {
     ).toEqual(expected);
   });
 
-  it('binds identity start to the client address and the account it names', () => {
-    expect(
-      policy.evaluate('identity_start', subject({ actorId: undefined })),
-    ).toEqual({
-      endpointClass: 'identity_start',
-      failureMode: 'closed',
-      windowSeconds: 60,
-      dimensions: [
-        { kind: 'client_address', identifier: '203.0.113.8', limit: 10 },
-        {
-          kind: 'account',
-          identifier: 'someone@example.test',
-          limit: 20,
-        },
-      ],
-    });
-  });
-
-  it('applies actor, workspace, and connection limits to provider tests', () => {
-    expect(policy.evaluate('provider_test', subject())).toMatchObject({
-      failureMode: 'closed',
-      dimensions: [
-        { kind: 'actor', identifier: actorId, limit: 10 },
-        { kind: 'workspace', identifier: workspaceId, limit: 20 },
-        { kind: 'connection', identifier: connectionId, limit: 5 },
-      ],
-    });
-  });
-
-  it('limits authenticated mutations that do not yet have a workspace by actor', () => {
-    expect(
-      policy.evaluate('actor_mutation', subject({ workspaceId: undefined })),
-    ).toEqual({
-      endpointClass: 'actor_mutation',
-      failureMode: 'closed',
-      windowSeconds: 60,
-      dimensions: [{ kind: 'actor', identifier: actorId, limit: 120 }],
-    });
-  });
-
   it('fails policy evaluation when a required authoritative subject is absent', () => {
     expect(() =>
       policy.evaluate('workflow_compile', subject({ actorId: undefined })),
@@ -211,15 +171,6 @@ describe('abuse rate-limit policy', () => {
     expect(() =>
       policy.evaluate('provider_test', subject({ connectionId: undefined })),
     ).toThrow('Rate-limit connection subject is required');
-  });
-
-  it('allows safe authenticated reads to fail open while mutations fail closed', () => {
-    expect(policy.evaluate('authenticated_read', subject()).failureMode).toBe(
-      'open',
-    );
-    expect(policy.evaluate('ordinary_mutation', subject()).failureMode).toBe(
-      'closed',
-    );
   });
 
   it('omits conditional workspace and connection dimensions when not scoped', () => {

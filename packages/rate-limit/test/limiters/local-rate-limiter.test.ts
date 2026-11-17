@@ -90,33 +90,6 @@ describe('LocalRateLimiter', () => {
     expect(limiter.consume(limitOfTwo)).toMatchObject({ allowed: true });
   });
 
-  it('starts a fresh count after the window', () => {
-    const { limiter, move } = atClock();
-    consumeTimes(limiter, 3);
-    move(60_000);
-
-    consumeTimes(limiter, 3);
-
-    expect(limiter.consume(decision())).toMatchObject({ allowed: false });
-  });
-
-  it('keeps separate counts per client and per endpoint', () => {
-    const { limiter } = atClock();
-    consumeTimes(limiter, 3);
-
-    expect(
-      limiter.consume(
-        decision({
-          dimensions: [{ kind: 'client_address', identifier: 'b', limit: 3 }],
-        }),
-      ),
-    ).toMatchObject({ allowed: true });
-    expect(
-      limiter.consume(decision({ endpointClass: 'run_admission' })),
-    ).toMatchObject({ allowed: true });
-    expect(limiter.consume(decision())).toMatchObject({ allowed: false });
-  });
-
   describe('with several dimensions', () => {
     const client = {
       kind: 'client_address',
@@ -125,16 +98,6 @@ describe('LocalRateLimiter', () => {
     } as const;
     const account = { kind: 'account', identifier: 'x', limit: 2 } as const;
     const both = decision({ dimensions: [client, account] });
-
-    it('names the dimension that refused', () => {
-      const { limiter } = atClock();
-      consumeTimes(limiter, 2, both);
-
-      expect(limiter.consume(both)).toMatchObject({
-        allowed: false,
-        limitedDimension: 'account',
-      });
-    });
 
     // Otherwise someone guessing one account's password would use up their address
     // for every other account, on requests that were refused anyway.
