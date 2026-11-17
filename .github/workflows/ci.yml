@@ -403,8 +403,9 @@ jobs:
       toJSON(fromJSON(needs.changes.outputs.browser).include) != '[]'
     # Keep browser OS dependencies stable across ubuntu-latest image rollouts.
     runs-on: ubuntu-24.04
-    # Measured before balancing: mocked <=11.6 min, live <=14.4 min.
-    timeout-minutes: ${{ startsWith(matrix.suite, 'mocked') && 13 || 16 }}
+    # Full runs on main measured a mocked shard at 9.7 to 13.3 minutes with
+    # setup and live at up to 14.4; one budget for both.
+    timeout-minutes: 16
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.browser) }}
