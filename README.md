@@ -190,6 +190,41 @@ pnpm db:migrate && pnpm test:integration
 
 Loading `.env` instead points the tests at your development stack, on purpose.
 
+### Finding tests that catch nothing
+
+The **Mutation** GitHub workflow measures what each unit test protects. It
+plants small bugs (mutants) in a workspace's `src`, runs the workspace's unit
+tests against each one without stopping at the first failure, and records which
+tests catch which bugs. Start it by hand from the Actions tab (**Mutation** →
+**Run workflow**). The `workspaces` input lists the workspaces to measure,
+separated by spaces; it defaults to every pure-logic package plus `core`'s unit
+lane. The web app is left out because one run would take far longer than a
+runner allows. It never runs on pull requests or pushes.
+
+Each workspace becomes one job and uploads a `mutation-<workspace>` artifact
+holding Stryker's report and a summary in Markdown and JSON. The run's job
+summary has one row per workspace. In a workspace's summary:
+
+- **Caught** is the share of valid mutants some test caught.
+- **Cover mutated code but catch nothing** lists tests that ran against planted
+  bugs and passed every time: they protect nothing measured here.
+- **Every catch also caught by another test** lists redundant tests.
+- **Smallest set keeping every catch** is a greedy choice. Tests outside it are
+  pruning candidates, except tests marked _keep_. Those match the reviewed
+  security, workspace isolation, permissions and data-loss patterns in
+  `infrastructure/testing/mutation/analyze-mutation.mjs` and stay on purpose.
+- **Survivors by file and line** are bugs no test caught: real gaps.
+- Tests that reach no mutated code and catch nothing are counted but not judged.
+  Stryker runs every test against a module-level (static) mutant, but only the
+  per-test coverage counts as reaching code. Tests that reach code only through
+  a built `dist` show up here too.
+
+`node infrastructure/testing/mutation/run-mutation.mjs <workspace> [--concurrency <n>] [--mutate <glob>]`
+runs one workspace locally. It rewrites the workspace's files while it runs and
+refuses a workspace with uncommitted changes. Use it only in a disposable
+checkout, never in the checkout you work in.
+`analyze-mutation.mjs reports/mutation/<workspace>.json` writes the summary.
+
 `pnpm db:generate` generates incremental SQL from the Drizzle schema and its
 tracked snapshot. Retained SQL exceptions are documented in the architecture
 map. `pnpm db:migrate` applies the migration history. Databases from before the
