@@ -279,6 +279,12 @@ test('runs every static check across the parallel check parts', () => {
     'pnpm architecture:check',
   ])
     assert.ok(text.includes(command), command);
+  const staticChecks = JSON.parse(readFileSync('package.json', 'utf8')).scripts[
+    'architecture:check'
+  ];
+  assert.ok(
+    staticChecks.includes('infrastructure/checks/tsgolint-projects.test.mjs'),
+  );
   // The web part runs the web package's lint script: both linters, every rule.
   const webLint = JSON.parse(readFileSync('apps/web/package.json', 'utf8'))
     .scripts.lint;
