@@ -17,7 +17,7 @@ export const API_RESPONSE_SECURITY_HEADERS = Object.freeze({
 export function registerResponseSecurityHeaders(
   fastify: FastifyInstance,
 ): void {
-  fastify.addHook('onRequest', async (request, reply) => {
+  fastify.addHook('onRequest', (request, reply, done) => {
     reply.headers(API_RESPONSE_SECURITY_HEADERS);
     // Its query holds a code and state: nothing may cache it or see it as a referrer.
     if (request.url.split('?', 1)[0] === OAUTH2_CALLBACK_PATH)
@@ -25,5 +25,6 @@ export function registerResponseSecurityHeaders(
         'cache-control': 'no-store',
         'referrer-policy': 'no-referrer',
       });
+    done();
   });
 }
