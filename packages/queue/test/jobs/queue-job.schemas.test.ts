@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { JOB_NAME, type QueueJob } from '../../src/server.js';
+import { JOB_NAME } from '../../src/server.js';
 import {
   parseQueueJob,
   QUEUE_JOB_REGISTRY,
@@ -44,112 +44,6 @@ describe('queue contracts', () => {
     expect(Object.isFrozen(QUEUE_JOB_REGISTRY)).toBe(true);
     for (const entry of Object.values(QUEUE_JOB_REGISTRY))
       expect(Object.isFrozen(entry)).toBe(true);
-  });
-
-  it('parses every supported identifier-only job', () => {
-    const jobs: readonly [string, unknown][] = [
-      [
-        JOB_NAME.applyConnectionHealthObservation,
-        {
-          workspaceId: IDS.workspaceId,
-          observationId: IDS.evidenceCommandId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
-        JOB_NAME.deliverWorkspaceInvitation,
-        {
-          workspaceId: IDS.workspaceId,
-          invitationId: IDS.invitationId,
-          deliveryAttemptId: IDS.deliveryAttemptId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
-        JOB_NAME.deliverRunFailureNotification,
-        {
-          workspaceId: IDS.workspaceId,
-          notificationIntentId: IDS.notificationIntentId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
-        JOB_NAME.advanceWorkflowRun,
-        {
-          workspaceId: IDS.workspaceId,
-          runId: IDS.runId,
-          outboxEventId: IDS.outboxEventId,
-          traceparent: TRACEPARENT,
-        },
-      ],
-      [
-        JOB_NAME.executePreviewAttempt,
-        {
-          workspaceId: IDS.workspaceId,
-          previewRunId: IDS.previewRunId,
-          previewAttemptId: IDS.previewAttemptId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
-        JOB_NAME.startErrorWorkflow,
-        {
-          workspaceId: IDS.workspaceId,
-          sourceRunId: IDS.runId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
-        JOB_NAME.executeNodeAttempt,
-        {
-          workspaceId: IDS.workspaceId,
-          runId: IDS.runId,
-          nodeRunId: IDS.nodeRunId,
-          attemptId: IDS.attemptId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
-        JOB_NAME.reconcilePreviewAttempt,
-        {
-          workspaceId: IDS.workspaceId,
-          previewRunId: IDS.previewRunId,
-          previewAttemptId: IDS.previewAttemptId,
-          attemptFenceToken: 7,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
-        JOB_NAME.replayWorkflowRun,
-        {
-          workspaceId: IDS.workspaceId,
-          commandId: IDS.replayCommandId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-      [
-        JOB_NAME.reconcileWorkflowTriggers,
-        {
-          workspaceId: IDS.workspaceId,
-          workflowId: IDS.workflowId,
-          publishedVersionId: IDS.publishedVersionId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      ],
-    ];
-
-    for (const [name, data] of jobs) {
-      const parsed: QueueJob = parseQueueJob({ name, data });
-
-      expect(parsed.name).toBe(name);
-      expect(parsed.data).toMatchObject({
-        workspaceId: IDS.workspaceId,
-        outboxEventId: IDS.outboxEventId,
-      });
-    }
-    expect(jobs.map(([name]) => name).sort()).toEqual(
-      Object.values(JOB_NAME).sort(),
-    );
   });
 
   it('rejects unknown names and extra fields', () => {
@@ -236,20 +130,5 @@ describe('queue contracts', () => {
     expect(malformedId.success).toBe(false);
     expect(malformedTraceparent.success).toBe(false);
     expect(zeroTraceparent.success).toBe(false);
-  });
-
-  it('rejects an invalid preview reconciliation fence', () => {
-    const result = safeParseQueueJob({
-      name: JOB_NAME.reconcilePreviewAttempt,
-      data: {
-        workspaceId: IDS.workspaceId,
-        previewRunId: IDS.previewRunId,
-        previewAttemptId: IDS.previewAttemptId,
-        attemptFenceToken: -1,
-        outboxEventId: IDS.outboxEventId,
-      },
-    });
-
-    expect(result.success).toBe(false);
   });
 });

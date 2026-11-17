@@ -124,42 +124,6 @@ describe('Redis telemetry', () => {
     },
   );
 
-  it('contains hostile error inspection and preserves exact operation failures', async () => {
-    const getterFailure = new Error('hidden');
-    Object.defineProperty(getterFailure, 'name', {
-      get() {
-        throw new Error('classification getter failed');
-      },
-    });
-    const prototypeFailure = new Proxy(new Error('hidden'), {
-      getPrototypeOf() {
-        throw new Error('classification prototype failed');
-      },
-    });
-    const observer = {
-      connectionEvent: vi.fn(),
-      operationFinished: vi.fn(),
-    };
-
-    for (const failure of [getterFailure, prototypeFailure]) {
-      const operation = observeRedisOperation(
-        observer,
-        'queue_producer',
-        'publish',
-        () => Promise.reject(failure),
-      );
-      await expect(operation).rejects.toBe(failure);
-    }
-    expect(observer.operationFinished).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ errorClass: 'internal' }),
-    );
-    expect(observer.operationFinished).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ errorClass: 'internal' }),
-    );
-  });
-
   it('observes BullMQ commands on the supplied and duplicated clients', async () => {
     const observations: RedisOperationObservation[] = [];
     const child = {

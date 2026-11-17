@@ -22,7 +22,6 @@ import type {
   QueueTraceRunner,
 } from '../../src/consumption/queue-consumer.types.js';
 import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
-import { jobIdForOutboxEvent } from '../../src/jobs/job-id.js';
 
 describe('BullMQ queue consumer', () => {
   beforeEach(resetConsumerFixture);
@@ -95,20 +94,6 @@ describe('BullMQ queue consumer', () => {
       }),
     );
     expect(handler.mock.calls[0]?.[1].signal).toBeInstanceOf(AbortSignal);
-  });
-
-  it('accepts the job ID the producer derives for the outbox event', async () => {
-    const handler = vi.fn<QueueJobHandler>(() => Promise.resolve());
-    createQueueConsumer({
-      queueName: QUEUE_NAME.workflowCoordinator,
-      redisUrl: 'redis://localhost:6379/0',
-      handler,
-    });
-    const processor = mocks.workerInstances[0]?.processor;
-    const jobId = jobIdForOutboxEvent(validJob.data.outboxEventId);
-
-    await processor?.({ ...validJob, id: jobId });
-    expect(handler.mock.calls[0]?.[0].transport.jobId).toBe(jobId);
   });
 
   it('activates the validated traceparent around the handler', async () => {

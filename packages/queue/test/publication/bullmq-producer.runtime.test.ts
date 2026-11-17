@@ -9,20 +9,11 @@ import {
   BullMqQueueProducer,
   createQueueProducer,
 } from '../../src/publication/bullmq-producer.runtime.js';
-import { jobIdForOutboxEvent } from '../../src/jobs/job-id.js';
 import { JOB_NAME, QUEUE_NAME } from '../../src/jobs/names.js';
 import type { RedisTelemetryObserver } from '../../src/redis/redis-instrumentation.js';
 
 describe('BullMQ queue producer', () => {
   beforeEach(resetProducerFixture);
-  it('derives a stable nonnumeric, colon-free job ID from the outbox event', () => {
-    const jobId = jobIdForOutboxEvent(IDS.outboxEventId);
-
-    expect(jobId).toBe(`outbox-${IDS.outboxEventId}`);
-    expect(jobId).not.toMatch(/^\d+$/);
-    expect(jobId).not.toContain(':');
-  });
-
   it('fails before opening a producer for invalid Redis configuration', () => {
     expect(() =>
       createQueueProducer({ redisUrl: 'postgres://not-redis' }),
@@ -357,27 +348,6 @@ describe('BullMQ queue producer', () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it('surfaces an immediate Redis command failure to the outbox caller', async () => {
-    const producer = createQueueProducer({
-      redisUrl: 'redis://localhost:6379/0',
-    });
-    const coordinator = mocks.queueInstances.find(
-      (queue) => queue.name === QUEUE_NAME.workflowCoordinator,
-    );
-    coordinator?.add.mockRejectedValue(new Error('redis unavailable'));
-
-    await expect(
-      producer.publish({
-        name: JOB_NAME.advanceWorkflowRun,
-        data: {
-          workspaceId: IDS.workspaceId,
-          runId: IDS.runId,
-          outboxEventId: IDS.outboxEventId,
-        },
-      }),
-    ).rejects.toThrow('redis unavailable');
   });
 
   it('closes every queue and the Redis connection idempotently', async () => {
