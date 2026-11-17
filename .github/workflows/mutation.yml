@@ -1,0 +1,104 @@
+name: Mutation
+
+# Started by hand only. It plants small bugs (mutants) in each workspace's
+# source, runs the workspace's unit tests against every one, and records which
+# tests catch which bugs, to find tests that catch nothing and tests that only
+# repeat others. README.md, "Finding tests that catch nothing", explains how to
+# read the result.
+on:
+  workflow_dispatch:
+    inputs:
+      workspaces:
+        description: Space-separated Vitest workspaces to measure
+        type: string
+        default: >-
+          workflow-model workflow-engine contracts nodes-core node-sdk
+          integrations policy rate-limit queue templates node-catalog
+          observability secrets artifact-store core
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      workspaces: ${{ steps.plan.outputs.workspaces }}
+    steps:
+      - name: Turn the input into a matrix
+        id: plan
+        env:
+          WORKSPACES: ${{ inputs.workspaces }}
+        run: |
+          set -euo pipefail
+          workspaces="$(jq -cn --arg list "$WORKSPACES" '$list | split(" ") | map(select(. != "")) | unique')"
+          test "$workspaces" != '[]'
+          printf 'workspaces=%s\n' "$workspaces" >> "$GITHUB_OUTPUT"
+
+  mutate:
+    name: mutate (${{ matrix.workspace }})
+    needs: plan
+    runs-on: ubuntu-latest
+    # Each mutant reruns every test that reaches it, without stopping at the
+    # first catch. Core is the largest unit lane and gets the hosted-runner
+    # ceiling; the others get three hours. Tighten both after measured runs.
+    timeout-minutes: ${{ matrix.workspace == 'core' && 350 || 180 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: ${{ fromJSON(needs.plan.outputs.workspaces) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Plant mutants and run the unit tests
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+        run: node infrastructure/testing/mutation/run-mutation.mjs "$WORKSPACE"
+      - name: Summarize
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
+        run:
+          node infrastructure/testing/mutation/analyze-mutation.mjs
+          "reports/mutation/$WORKSPACE.json"
+      - name: Upload the report and summary
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-${{ matrix.workspace }}
+          path: reports/mutation/
+          if-no-files-found: error
+
+  summary:
+    needs: mutate
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Download the summaries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: mutation-*
+          path: reports/mutation
+          merge-multiple: true
+      - name: Write the combined summary
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          summaries=(reports/mutation/*.summary.json)
+          if [ "${#summaries[@]}" -eq 0 ]; then
+            echo 'No workspace finished; see the mutate jobs.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          node infrastructure/testing/mutation/analyze-mutation.mjs --combine "${summaries[@]}" >> "$GITHUB_STEP_SUMMARY"
