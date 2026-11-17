@@ -149,6 +149,7 @@ jobs:
           node --test infrastructure/single-server/test/*.test.mjs
           infrastructure/testing/*.test.mjs
           infrastructure/testing/mutation/*.test.mjs
+          infrastructure/testing/overlap/*.test.mjs
       - name: Validate observability configuration and alert rules
         if: matrix.part == 'static'
         env:
