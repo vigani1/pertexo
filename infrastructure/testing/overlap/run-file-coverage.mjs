@@ -1,0 +1,342 @@
+import { spawn } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, relative } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { parseArgs } from 'node:util';
+
+import { mapToSource, readSourceMap } from './source-lines.mjs';
+
+// Runs each test file of one Vitest lane alone, with V8 coverage, and writes
+// reports/overlap/<workspace>-<lane>[-<i>of<n>].json: for every test file, the
+// source lines it executed. One Vitest process per file keeps each set exact;
+// nothing carries over from another file.
+
+const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+
+const LANES = Object.freeze({
+  unit: 'vitest.config.ts',
+  integration: 'vitest.integration.config.ts',
+});
+
+// Mirrors what CI leaves out of each lane, so the measurement covers the same
+// files CI runs there. The unit lane never takes integration files (core's
+// unit config would), and the worker's recovery tests stop real services and
+// belong to the fault jobs.
+const NOT_IN_LANE = Object.freeze({
+  unit: [/\.integration\.test\.tsx?$/u],
+  integration: [],
+});
+const NOT_IN_WORKSPACE_LANE = Object.freeze({
+  // Browser journeys drive these; CI's services job leaves them out too.
+  'api:integration': [/^test\/browser\//u],
+  'worker:unit': [/^test\/recovery\//u],
+  'worker:integration': [/^test\/recovery\//u],
+});
+
+// What a workspace's own `test` script sets around Vitest.
+const WORKSPACE_ENVIRONMENT = Object.freeze({
+  web: { TZ: 'Europe/Belgrade' },
+});
+
+// A file that hangs must not hold a shard until the job's own limit.
+const FILE_TIMEOUT_MILLISECONDS = 15 * 60_000;
+const SOURCE_DIRECTORY = /^(?:apps|packages)\/[^/]+\/src\//u;
+const BUILT_DIRECTORY = /^(?:apps|packages)\/[^/]+\/dist\/.+\.js$/u;
+
+async function main() {
+  const { values, positionals } = parseArgs({
+    allowPositionals: true,
+    options: {
+      lane: { type: 'string' },
+      shard: { type: 'string' },
+      concurrency: { type: 'string', default: '1' },
+      // Narrows a run to named test files, for trying the runner on a slice.
+      only: { type: 'string', multiple: true },
+    },
+  });
+  const [workspace] = positionals;
+  const concurrency = Number(values.concurrency);
+  const shard = values.shard === undefined ? null : parseShard(values.shard);
+  if (
+    positionals.length !== 1 ||
+    !Object.hasOwn(LANES, values.lane ?? '') ||
+    !Number.isInteger(concurrency) ||
+    concurrency < 1
+  )
+    throw new Error(
+      'usage: run-file-coverage.mjs <workspace> --lane unit|integration [--shard i/n] [--concurrency n] [--only <test file>]...',
+    );
+  const lane = values.lane;
+  const directory = findWorkspace(workspace);
+  const config = join(directory, LANES[lane]);
+  const all = await listLaneFiles(workspace, lane, directory, config);
+  const narrowed = values.only
+    ? all.filter((file) => values.only.includes(file))
+    : all;
+  if (values.only && narrowed.length !== values.only.length)
+    throw new Error(
+      `Not in the ${lane} lane: ${values.only.filter((file) => !all.includes(file)).join(', ')}`,
+    );
+  const files = shard ? pickShard(narrowed, shard) : narrowed;
+  const scratch = mkdtempSync(join(tmpdir(), 'pertexo-overlap-'));
+  const records = {};
+  const failed = [];
+  try {
+    await eachLimited(files, concurrency, async (file, index) => {
+      const record = await measureFile(
+        { directory, config, environment: WORKSPACE_ENVIRONMENT[workspace] },
+        file,
+        scratch,
+      );
+      records[workspaceRelative(directory, file)] = record;
+      if (record.status === 'failed') failed.push(file);
+      console.log(
+        `[${String(index + 1)}/${String(files.length)}] ${file}: ${record.status}, ${String(countLines(record.reached))} lines, ${String(record.seconds)} s`,
+      );
+    });
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+  const output = join(
+    repositoryRoot,
+    'reports/overlap',
+    `${workspace}-${lane}${shard ? `-${String(shard.index)}of${String(shard.total)}` : ''}.json`,
+  );
+  mkdirSync(dirname(output), { recursive: true });
+  writeFileSync(
+    output,
+    `${JSON.stringify({ workspace, lane, shard, files: sortKeys(records) })}\n`,
+  );
+  console.log(`Wrote ${relative(repositoryRoot, output)}`);
+  if (failed.length > 0) {
+    console.error(`Failed test files:\n${failed.join('\n')}`);
+    process.exitCode = 1;
+  }
+}
+
+export function parseShard(text) {
+  const match = /^(\d+)\/(\d+)$/u.exec(text);
+  const index = Number(match?.[1]);
+  const total = Number(match?.[2]);
+  if (!match || index < 1 || index > total)
+    throw new Error(`--shard takes i/n with 1 <= i <= n, not ${text}`);
+  return { index, total };
+}
+
+/** Round-robin over the sorted list, so neighbouring files (often of similar
+ * weight) spread across shards. Every file lands in exactly one shard. */
+export function pickShard(files, { index, total }) {
+  return [...files]
+    .sort()
+    .filter((_, position) => position % total === index - 1);
+}
+
+function findWorkspace(name) {
+  for (const area of ['apps', 'packages']) {
+    const directory = join(repositoryRoot, area, name);
+    if (existsSync(join(directory, 'package.json'))) return directory;
+  }
+  throw new Error(`No workspace named ${name}`);
+}
+
+async function listLaneFiles(workspace, lane, directory, config) {
+  // Globbing only: no global setup runs, so listing needs no test stack.
+  const { createVitest } = await import('vitest/node');
+  const lister = await createVitest(
+    'test',
+    { root: directory, config, watch: false },
+    {},
+    {},
+  );
+  try {
+    const specifications = await lister.globTestSpecifications();
+    const excluded = [
+      ...NOT_IN_LANE[lane],
+      ...(NOT_IN_WORKSPACE_LANE[`${workspace}:${lane}`] ?? []),
+    ];
+    return [
+      ...new Set(
+        specifications.map(({ moduleId }) => relative(directory, moduleId)),
+      ),
+    ]
+      .filter((file) => !excluded.some((pattern) => pattern.test(file)))
+      .sort();
+  } finally {
+    await lister.close();
+  }
+}
+
+async function measureFile({ directory, config, environment }, file, scratch) {
+  const own = mkdtempSync(join(scratch, 'file-'));
+  const results = join(own, 'results.json');
+  const started = Date.now();
+  const exitCode = await runVitest(directory, environment, [
+    'exec',
+    'vitest',
+    'run',
+    '--config',
+    config,
+    // A filter matches by substring, so `a.test.ts` alone would also pick
+    // `a.test.tsx`; the reporter's list of files below proves only one ran.
+    join(directory, file),
+    '--reporter=default',
+    '--reporter=json',
+    `--outputFile.json=${results}`,
+    '--coverage.enabled',
+    '--coverage.provider=v8',
+    '--coverage.reporter=json',
+    '--coverage.reportOnFailure',
+    '--coverage.allowExternal',
+    '--coverage.clean',
+    `--coverage.reportsDirectory=${join(own, 'coverage')}`,
+  ]);
+  const seconds = Math.round((Date.now() - started) / 1000);
+  const tests = readTestCounts(results, join(directory, file));
+  const coverageFile = join(own, 'coverage/coverage-final.json');
+  const reached = existsSync(coverageFile)
+    ? reachedSourceLines(JSON.parse(readFileSync(coverageFile, 'utf8')))
+    : {};
+  rmSync(own, { recursive: true, force: true });
+  return {
+    status: fileStatus(exitCode, tests),
+    tests,
+    seconds,
+    reached,
+  };
+}
+
+function runVitest(directory, environment, args) {
+  return new Promise((resolve) => {
+    const child = spawn('pnpm', args, {
+      cwd: directory,
+      env: { ...process.env, ...environment },
+      stdio: ['ignore', 'inherit', 'inherit'],
+      timeout: FILE_TIMEOUT_MILLISECONDS,
+      killSignal: 'SIGKILL',
+    });
+    child.once('error', () => resolve(1));
+    child.once('close', (code) => resolve(code ?? 1));
+  });
+}
+
+function readTestCounts(results, expectedFile) {
+  const counts = { passed: 0, failed: 0, skipped: 0 };
+  if (!existsSync(results)) return counts;
+  const { testResults } = JSON.parse(readFileSync(results, 'utf8'));
+  const ran = testResults.map(({ name }) => name);
+  if (ran.length > 1 || (ran.length === 1 && ran[0] !== expectedFile))
+    throw new Error(
+      `Running ${expectedFile} alone also ran: ${ran.join(', ')}`,
+    );
+  for (const { assertionResults } of testResults)
+    for (const { status } of assertionResults)
+      if (status === 'passed') counts.passed++;
+      else if (status === 'failed') counts.failed++;
+      else counts.skipped++;
+  return counts;
+}
+
+export function fileStatus(exitCode, tests) {
+  if (exitCode !== 0 || tests.failed > 0) return 'failed';
+  return tests.passed > 0 ? 'passed' : 'skipped';
+}
+
+/**
+ * Turns Vitest's Istanbul JSON into `source file -> executed lines`. Only
+ * statements inside a function count: a module's top level runs whenever any
+ * test imports it, so it says nothing about what the test exercises. Built
+ * files (packages load each other from `dist`) map back to `src` through
+ * their source maps.
+ */
+export function reachedSourceLines(coverage, root = repositoryRoot) {
+  const reached = new Map();
+  const add = (file, line) => {
+    const lines = reached.get(file) ?? new Set();
+    reached.set(file, lines);
+    lines.add(line);
+  };
+  for (const [absolute, entry] of Object.entries(coverage)) {
+    const file = relative(root, absolute);
+    const isSource = SOURCE_DIRECTORY.test(file);
+    if (!isSource && !BUILT_DIRECTORY.test(file)) continue;
+    const executed = executedStatementsInFunctions(entry);
+    if (executed.length === 0) continue;
+    if (isSource) {
+      for (const { line } of executed) add(file, line);
+      continue;
+    }
+    const map = readSourceMap(absolute);
+    for (const position of executed) {
+      const original = mapToSource(map, position);
+      if (!original) continue;
+      const source = relative(root, original.file);
+      if (SOURCE_DIRECTORY.test(source)) add(source, original.line);
+    }
+  }
+  return Object.fromEntries(
+    [...reached.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, 'en'))
+      .map(([file, lines]) => [file, [...lines].sort((a, b) => a - b)]),
+  );
+}
+
+function executedStatementsInFunctions({ statementMap, s, fnMap }) {
+  const functions = Object.values(fnMap).map(({ loc }) => loc);
+  return Object.entries(statementMap)
+    .filter(([id]) => s[id] > 0)
+    .map(([, { start }]) => start)
+    .filter((start) =>
+      functions.some((loc) => within(start, loc.start, loc.end)),
+    );
+}
+
+function within(position, start, end) {
+  const after =
+    position.line > start.line ||
+    (position.line === start.line && position.column >= start.column);
+  const before =
+    position.line < end.line ||
+    (position.line === end.line && position.column <= end.column);
+  return after && before;
+}
+
+function workspaceRelative(directory, file) {
+  return relative(repositoryRoot, join(directory, file));
+}
+
+function countLines(reached) {
+  return Object.values(reached).reduce((sum, lines) => sum + lines.length, 0);
+}
+
+function sortKeys(object) {
+  return Object.fromEntries(
+    Object.entries(object).sort(([a], [b]) => a.localeCompare(b, 'en')),
+  );
+}
+
+async function eachLimited(items, limit, work) {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const index = next++;
+        await work(items[index], index);
+      }
+    }),
+  );
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  await main();
+}
