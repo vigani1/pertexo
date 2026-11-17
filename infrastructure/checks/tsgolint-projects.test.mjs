@@ -93,6 +93,13 @@ test('lint uses each source and test program without changing compiler files', (
     }),
   );
   const invoke = (paths, adapter = true) => {
+    const env = { ...process.env };
+    delete env.OXLINT_TSGOLINT_PATH;
+    if (adapter)
+      env.OXLINT_TSGOLINT_PATH = join(
+        directory,
+        'infrastructure/checks/tsgolint-projects.mjs',
+      );
     const result = spawnSync(
       oxlint,
       [
@@ -107,17 +114,7 @@ test('lint uses each source and test program without changing compiler files', (
       {
         cwd: directory,
         encoding: 'utf8',
-        env: {
-          ...process.env,
-          ...(adapter
-            ? {
-                OXLINT_TSGOLINT_PATH: join(
-                  directory,
-                  'infrastructure/checks/tsgolint-projects.mjs',
-                ),
-              }
-            : {}),
-        },
+        env,
       },
     );
     assert.equal(result.error, undefined);
