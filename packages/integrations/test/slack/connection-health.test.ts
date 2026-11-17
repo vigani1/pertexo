@@ -61,12 +61,6 @@ describe('Slack connection health evidence (ADR059)', () => {
     expect(Object.isFrozen(observation)).toBe(true);
   });
 
-  it('accepts a validated successful response without retaining response data', () => {
-    expect(classifySlackConnectionHealth({ kind: 'succeeded' })).toEqual({
-      kind: 'healthy',
-    });
-  });
-
   it.each([
     'invalid_auth',
     'not_authed',

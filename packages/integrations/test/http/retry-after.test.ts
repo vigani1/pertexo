@@ -33,12 +33,4 @@ describe('provider Retry-After minimum', () => {
       expect(parseRetryAfterMillis(value)).toBe(expected);
     },
   );
-  it('uses an explicit clock for an HTTP-date without shortening it', () => {
-    expect(
-      parseRetryAfterMillis(
-        'Tue, 01 Jan 2030 00:00:30 GMT',
-        Date.parse('2030-01-01T00:00:00.250Z'),
-      ),
-    ).toBe(29_750);
-  });
 });

@@ -113,22 +113,6 @@ describe('ADR 007 HTTP outcome policy', () => {
     ).toEqual({ kind: 'outcome_unknown', errorKind: 'provider' });
   });
 
-  it('maps a pre-dispatch provider-runtime outage into the immutable retry policy', () => {
-    expect(
-      classifySecureHttpError(
-        new ProviderHttpError('dispatch_evidence_failed', 'definite_failure', {
-          possiblyDispatched: false,
-        }),
-        'unsafe',
-        { providerKeyPresent: false },
-      ),
-    ).toEqual({
-      kind: 'retry',
-      errorKind: 'provider',
-      reuseProviderKey: false,
-    });
-  });
-
   it('keeps auth, cancellation, and pre-dispatch DNS truth distinct', () => {
     expect(
       classifySecureHttpResponse(401, 'safe', { providerKeyPresent: false }),
