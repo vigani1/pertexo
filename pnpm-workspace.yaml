@@ -13,6 +13,8 @@ overrides:
   'fast-uri@^4.0.0': 4.2.3
   'js-yaml@^4.0.0': 4.3.2
   source-map-js: 1.2.2
+  # Stryker's typed-rest-client pins qs 6.15.1, which has four moderate DoS advisories.
+  'typed-rest-client>qs': 6.17.1
 
 allowBuilds:
   core-js: false

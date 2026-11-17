@@ -12,6 +12,7 @@ overrides:
   fast-uri@^4.0.0: 4.2.3
   js-yaml@^4.0.0: 4.3.2
   source-map-js: 1.2.2
+  typed-rest-client>qs: 6.17.1
 
 pnpmfileChecksum: sha256-eJcICcluYA/p07+lpI4PnX4cSEp45BOD3U2owla7AAg=
 
@@ -5087,8 +5088,8 @@ packages:
   pure-rand@8.4.2:
     resolution: {integrity: sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng==}
 
-  qs@6.15.1:
-    resolution: {integrity: sha512-6YHEFRL9mfgcAvql/XhwTvf5jKcOiiupt2FiJxHkiX1z4j7WL8J/jRHYLluORvc1XxB5rV20KoeK00gVJamspg==}
+  qs@6.17.1:
+    resolution: {integrity: sha512-jd3COkaKVgGUW+ZHyEHCG9bH7RoaaiWuMgzsIBjUMVjLAaWGWpoUAVwljVvBHxRu/2qEHnadLGZrkutYUBPQJA==}
     engines: {node: '>=0.6'}
 
   queue-microtask@1.2.3:
@@ -10056,8 +10057,9 @@ snapshots:
 
   pure-rand@8.4.2: {}
 
-  qs@6.15.1:
+  qs@6.17.1:
     dependencies:
+      es-define-property: 1.0.1
       side-channel: 1.1.1
 
   queue-microtask@1.2.3: {}
@@ -10424,7 +10426,7 @@ snapshots:
     dependencies:
       des.js: 1.1.0
       js-md4: 0.3.2
-      qs: 6.15.1
+      qs: 6.17.1
       tunnel: 0.0.6
       underscore: 1.13.8
 
