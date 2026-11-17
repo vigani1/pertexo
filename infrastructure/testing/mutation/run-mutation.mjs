@@ -42,8 +42,12 @@ const NOT_MEASURED = {
   // A checkpoint at the authoring limits has a 60 s budget that instrumented
   // code exceeds.
   'workflow-engine': ['test/checkpoint/capacity.test.ts'],
-  // Asserts wall-clock time for redacting a 10 MiB response.
-  secrets: ['test/outbound-http/response-redaction-performance.test.ts'],
+  // Redacting a 10 MiB response: one file asserts wall-clock time, and in the
+  // other the client's own request deadline runs out on instrumented code.
+  secrets: [
+    'test/outbound-http/response-redaction-performance.test.ts',
+    'test/outbound-http/stream-redaction-rules.test.ts',
+  ],
   // Reads emitter source text, which Stryker rewrites in place.
   observability: ['test/operations-assets.test.ts'],
 };
