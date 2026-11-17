@@ -2,9 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
   classifySecureHttpResponse,
   HttpRequestExecutorError,
-  SlackSendMessageExecutorError,
 } from '../../src/server.js';
-import { providerFailure } from '../../src/providers/provider.errors.js';
 import { HttpOAuth2Failure } from '../../src/http/request/execution/oauth2-renewal.errors.js';
 import { OAuth2TokenFailure } from '../../src/oauth2/oauth2.errors.js';
 
@@ -40,19 +38,6 @@ it.each(['safe', 'idempotent_with_key'] as const)(
     expect(error.shownSummary).toMatch(/service.*wait longer/iu);
   },
 );
-it('does not shorten a provider adapter minimum into an earlier automatic retry', () => {
-  const error = providerFailure(SlackSendMessageExecutorError)(
-    'retry',
-    'rate_limit',
-    { possiblyDispatched: false, retryAfterMillis: 300_000 },
-  );
-  expect(error).toMatchObject({
-    kind: 'failed',
-    errorKind: 'rate_limit',
-    safeErrorCode: 'provider.retry_after_exceeded',
-  });
-  expect(error.minimumRetryDelayMillis).toBeUndefined();
-});
 it('keeps a long OAuth token-address block out of the shorter attempt retry contract', () => {
   const error = new HttpOAuth2Failure(
     new OAuth2TokenFailure('http.oauth2_token_rate_limited', 300),

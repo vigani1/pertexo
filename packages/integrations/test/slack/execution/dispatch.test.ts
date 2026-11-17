@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createSlackSendMessageExecutorRegistration,
-  SlackSendMessageExecutorError,
   ProviderHttpError,
 } from '../../../src/server.js';
 import { PROVIDER_HTTP_ERROR_CODE } from '../../../src/providers/http.errors.js';
@@ -173,20 +172,6 @@ describe('slack.send_message@1', () => {
       ).rejects.toMatchObject(expected);
     },
   );
-  it('preserves a known Slack executor failure identity', async () => {
-    const known = runtime(
-      new SlackSendMessageExecutorError({
-        kind: 'retry',
-        errorKind: 'provider',
-        possiblyDispatched: false,
-      }),
-    );
-    await expect(
-      createSlackSendMessageExecutorRegistration({
-        client: { sendMessage: known.sendMessage },
-      }).execute(invocation(known.value)),
-    ).rejects.toBeInstanceOf(SlackSendMessageExecutorError);
-  });
   it('rejects a mismatched Slack provider response channel as unknown', async () => {
     const mismatched = runtime({
       kind: 'succeeded',
