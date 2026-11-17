@@ -214,6 +214,21 @@ test('retries a lost runner in publishing as well as in CI', () => {
     assert.ok(retry.on.workflow_run.workflows.includes(name), name);
 });
 
+// The overlap run is measurement, not a gate: it must never hold up a pull
+// request, and its stack must be the one CI's integration tests run against.
+test('the overlap run starts only by hand, on the stack CI tests against', () => {
+  const overlap = parse(
+    readFileSync('.github/workflows/test-overlap.yml', 'utf8'),
+  );
+  assert.deepEqual(Object.keys(overlap.on), ['workflow_dispatch']);
+  for (const [name, value] of Object.entries(ci.env))
+    assert.equal(overlap.env[name], value, name);
+  const steps = JSON.stringify(overlap.jobs.measure.steps);
+  for (const action of ['start-services', 'record-fixture-manifest'])
+    assert.match(steps, new RegExp(`\\./\\.github/actions/${action}`, 'u'));
+  assert.doesNotMatch(JSON.stringify(ci.jobs), /test-overlap/u);
+});
+
 // ops-09, docs-deps-product-17
 it('a version tag publishes a release with notes and moves the stable tag', () => {
   const path = '.github/workflows/release.yml';
