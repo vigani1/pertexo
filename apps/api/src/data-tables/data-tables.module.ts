@@ -6,7 +6,7 @@ import { DATA_TABLES_STORE } from './data-tables.tokens.js';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 @Module({})
 // Nest dynamic modules require a class container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class DataTablesModule {
   static register(
     store: DataTablesStore,

@@ -19,7 +19,7 @@ const SHEET_STYLES = Object.freeze({ header: 1, quoted: 2 });
 const MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const CHUNK = 65_536;
 // XML can't hold these; Excel writes them, and carriage returns, as _xHHHH_.
-// eslint-disable-next-line no-control-regex
+// oxlint-disable-next-line eslint/no-control-regex
 const UNWRITABLE = /[\u0000-\u0008\u000b\u000c\u000d\u000e-\u001f￾￿]/gu;
 
 /**

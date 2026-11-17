@@ -76,7 +76,7 @@ describe('bounded JSON snapshot', () => {
       if (snapshot.ok)
         expect(JSON.stringify(snapshot.snapshot)).toBe(JSON.stringify(value));
     }
-    // eslint-disable-next-line no-sparse-arrays -- the value under test
+    // oxlint-disable-next-line eslint/no-sparse-arrays -- the value under test
     const sparse = [1, , 3];
     expect(
       snapshotBoundedJson(sparse, unbounded, { properties: 'written' }),

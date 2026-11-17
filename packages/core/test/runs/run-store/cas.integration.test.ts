@@ -155,7 +155,7 @@ describe('Coordinator CAS and transition invariants', () => {
                 }),
           );
       if (failures.length > 0) {
-        // eslint-disable-next-line no-unsafe-finally -- Every cleanup owner has settled and its failure must remain visible.
+        // oxlint-disable-next-line eslint/no-unsafe-finally -- Every cleanup owner has settled and its failure must remain visible.
         throw new AggregateError(
           failures,
           'Commit-loss fixture cleanup failed',

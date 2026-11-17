@@ -9,7 +9,7 @@ const FILE_SIZE = formatByteSize(FILE_PAGE_LIMITS.fileBytes);
 const split = 'Split the file into smaller files and run them separately.';
 
 /** Only closed reasons and numeric locations reach stored attempt summaries. */
-// eslint-disable-next-line complexity -- Keep the exhaustive diagnostic-to-copy table together; splitting it obscures missing cases.
+// oxlint-disable-next-line eslint/complexity -- Keep the exhaustive diagnostic-to-copy table together; splitting it obscures missing cases.
 export function describeFileInputFailure(
   diagnostic: FileInputDiagnostic,
 ): string {

@@ -138,6 +138,7 @@ export const readabilityRules = {
 };
 
 export const lintPolicy = tseslint.config(
+  { linterOptions: { reportUnusedDisableDirectives: 'error' } },
   {
     ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**'],
   },

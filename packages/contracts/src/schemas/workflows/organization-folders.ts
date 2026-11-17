@@ -26,7 +26,7 @@ export const workflowFolderNameSchema = storageTextSchema
   .min(1)
   .max(WORKFLOW_FOLDER_LIMITS.nameBytes)
   // ADR064 deliberately rejects the entire C0 range and DEL in wire names.
-  // eslint-disable-next-line no-control-regex
+  // oxlint-disable-next-line eslint/no-control-regex
   .regex(/^[^\u0000-\u001f\u007f]+$(?![\s\S])/u)
   .refine((name) => normalizeWorkflowFolderName(name) === name)
   .refine((name) => utf8ByteLength(name) <= WORKFLOW_FOLDER_LIMITS.nameBytes);

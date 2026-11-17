@@ -5,7 +5,7 @@ import { oxlintPolicy } from './infrastructure/checks/lint-rule-ownership.mjs';
 
 const config = {
   extends: [{ ...base, extends: [typed] }],
-  options: { typeAware: true },
+  options: base.options,
   jsPlugins: [
     {
       name: 'legacy',

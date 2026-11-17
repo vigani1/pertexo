@@ -10,7 +10,7 @@ const result = spawnSync(
     '-c',
     'oxlint.config.mjs',
     '--report-unused-disable-directives-severity',
-    'warn',
+    'error',
     ...process.argv.slice(2),
   ],
   {

@@ -20,7 +20,7 @@ const url = `/v1/workspaces/${workspaceId}/workflows/${workflowId}/publication-r
 const representationTag = `"draft.${'a'.repeat(43)}"`;
 const reviews = { request: vi.fn(), overview: vi.fn() };
 // Nest dynamic modules require a class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 class ReviewRoutesUnderTest {}
 let harness: Awaited<ReturnType<typeof routeHarness>>;
 

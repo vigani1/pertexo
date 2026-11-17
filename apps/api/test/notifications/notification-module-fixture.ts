@@ -31,7 +31,7 @@ const runId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 export const base = `/v1/workspaces/${workspaceId}/notifications`;
 
 export // Nest dynamic modules require a class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 class FakeIdentityModule {}
 
 export const thread = {

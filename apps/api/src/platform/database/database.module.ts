@@ -6,7 +6,7 @@ export const WORKSPACE_DATABASE = Symbol('WORKSPACE_DATABASE');
 
 @Module({})
 // Nest requires a class as the module identity passed through dynamic registration.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class DatabaseModule {
   public static register(database: WorkspaceDatabase): DynamicModule {
     const databaseProvider: Provider = {

@@ -12,7 +12,7 @@ export const sheetNameSchema = z
   .max(SHEET_NAME_MAX_LENGTH)
   .regex(
     // Excel refuses control characters in sheet names too.
-    // eslint-disable-next-line no-control-regex
+    // oxlint-disable-next-line eslint/no-control-regex
     /^(?!')(?!.*'$)[^\\/?*[\]:\u0000-\u001f\u007f]+$/u,
     'Sheet names cannot use \\ / ? * [ ] or :, or start or end with an apostrophe.',
   );

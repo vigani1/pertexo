@@ -56,7 +56,7 @@ if (descriptor === undefined) throw new Error('Fixture handler missing');
 Route(declaration)(QualifiedController.prototype, 'answer', descriptor);
 In()(QualifiedController.prototype, 'answer', 0);
 // Nest requires a class token for a test module.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 class QualifiedModule {}
 let harness: Awaited<ReturnType<typeof routeHarness>>;
 beforeAll(async () => {

@@ -280,7 +280,7 @@ describe('workflow input case application interface', () => {
   });
 });
 // Nest dynamic modules require a class token.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 class InputCaseRoutesUnderTest {}
 
 describe('workflow input case HTTP interface', () => {

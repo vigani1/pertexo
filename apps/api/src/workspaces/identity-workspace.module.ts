@@ -61,7 +61,7 @@ import {
 } from './telemetry.js';
 
 @Module({})
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class IdentityWorkspaceModule {
   public static register(
     dependencies: IdentityWorkspaceDependencies,

@@ -57,5 +57,5 @@ export class ApiShutdownCoordinator
   exports: [ApiDrainState, ApiShutdownCoordinator],
 })
 // Nest requires a class as the module container.
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
+// oxlint-disable-next-line typescript/no-extraneous-class
 export class ApiLifecycleModule {}

@@ -41,9 +41,9 @@ describe('bounded JSON size', () => {
     ['not_json', Number.NaN],
     ['not_plain', new Date(0)],
     // A trailing hole leaves fewer keys than items; a middle one breaks the key order.
-    // eslint-disable-next-line no-sparse-arrays -- the value under test
+    // oxlint-disable-next-line eslint/no-sparse-arrays -- the value under test
     ['sparse_array', [1, ,]],
-    // eslint-disable-next-line no-sparse-arrays -- the value under test
+    // oxlint-disable-next-line eslint/no-sparse-arrays -- the value under test
     ['array_extra_keys', [1, , 3]],
   ] as const)('refuses %s', (refusal, value) => {
     expect(measureBoundedJson(value, bounds)).toEqual({ ok: false, refusal });
