@@ -194,7 +194,7 @@ describe('secure HTTP client', () => {
           'api.example.test': [{ address: '8.8.8.8', family: 4 }],
         }),
         // Deliberately model an untrusted transport rejection.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors
         new FakeTransport(() => Promise.reject(error)),
       );
 

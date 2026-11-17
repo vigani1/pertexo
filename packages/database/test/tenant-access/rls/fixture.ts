@@ -153,9 +153,9 @@ export async function afterAllFixture2() {
   const failures: unknown[] = [];
   const cleanup: (() => Promise<void>)[] = [];
   // beforeAll can fail before these runtime owners are assigned.
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   if (database !== undefined) cleanup.push(() => database.close());
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   if (ownerPool !== undefined) cleanup.push(() => ownerPool.end());
   cleanup.push(() => databaseAdminPool.end());
   cleanup.push(() => fixture.drop());

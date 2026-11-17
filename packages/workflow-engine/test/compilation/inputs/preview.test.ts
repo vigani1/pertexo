@@ -132,7 +132,7 @@ describe('input resolution production operations', () => {
           executable,
           registry: {
             // Exercises classification of hostile non-Error Promise rejections.
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            // oxlint-disable-next-line typescript/prefer-promise-reject-errors
             execute: () => Promise.reject(rejection),
           },
         }),
@@ -149,7 +149,7 @@ describe('input resolution production operations', () => {
           executable: expressionExecutable,
           expressionEvaluator: {
             // Exercises classification of hostile non-Error Promise rejections.
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            // oxlint-disable-next-line typescript/prefer-promise-reject-errors
             evaluate: () => Promise.reject(rejection),
           },
           registry: {

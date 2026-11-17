@@ -159,7 +159,7 @@ function expectedCaseRevision(tag: string, caseId: string): number {
   if (parsed === undefined) throw new WorkflowHeaderError('invalid');
   if (parsed.caseId !== caseId.toLowerCase()) {
     // A validator for another representation is a failed precondition, not authority.
-    // eslint-disable-next-line @typescript-eslint/only-throw-error
+    // oxlint-disable-next-line typescript/only-throw-error
     throw applicationError('workflow.input_case_revision_conflict', {
       safeDetail:
         'The case representation has changed; reload it before confirming a new command.',

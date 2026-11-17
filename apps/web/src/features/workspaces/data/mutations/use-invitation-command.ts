@@ -107,7 +107,7 @@ type InvitationCommandInput = Readonly<{
   onPermissionLost: () => void;
 }>;
 
-// eslint-disable-next-line max-lines-per-function -- Link issuance keeps one exact retry lifetime; revocation has its own native mutation.
+// oxlint-disable-next-line max-lines-per-function -- Link issuance keeps one exact retry lifetime; revocation has its own native mutation.
 export function useInvitationCommand(input: InvitationCommandInput) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<State>({ kind: 'idle' });

@@ -58,7 +58,7 @@ const INVITATION_CSRF_HEADER = 'x-invitation-csrf-token';
 @Controller('v1/invitation-acceptance')
 export class InvitationAcceptanceController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
-  // eslint-disable-next-line max-params
+  // oxlint-disable-next-line legacy/max-params
   public constructor(
     private readonly acceptance: InvitationAcceptanceService,
     @Inject(SESSION_AUTHORITY)

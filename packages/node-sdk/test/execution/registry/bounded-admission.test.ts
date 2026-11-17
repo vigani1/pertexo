@@ -61,7 +61,7 @@ describe('node-sdk bounded JSON contracts', () => {
         {},
         {
           getPrototypeOf: () => {
-            // eslint-disable-next-line @typescript-eslint/only-throw-error -- hostile inputs may throw arbitrary JavaScript values.
+            // oxlint-disable-next-line typescript/only-throw-error -- hostile inputs may throw arbitrary JavaScript values.
             throw 17;
           },
         },

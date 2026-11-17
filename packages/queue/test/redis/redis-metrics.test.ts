@@ -112,7 +112,7 @@ describe('Redis telemetry', () => {
         'publish',
         () =>
           new Promise<never>((_resolve, reject) => {
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- Redis collaborators are typed as unknown at this boundary.
+            // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- Redis collaborators are typed as unknown at this boundary.
             reject(failure);
           }),
       );

@@ -553,7 +553,7 @@ describe('API bootstrap ownership and health', () => {
       expect(response.statusCode).not.toBe(503);
       expect(response.payload).not.toContain('redis endpoint unavailable');
       expect(
-        // eslint-disable-next-line @typescript-eslint/unbound-method
+        // oxlint-disable-next-line typescript/unbound-method
         selectedIdentityRuntime.dependencies.sessions.authenticate,
       ).toHaveBeenCalled();
     });

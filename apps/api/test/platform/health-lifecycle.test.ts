@@ -27,7 +27,7 @@ describe('API shutdown coordination', () => {
       expect(drain.isDraining()).toBe(true);
       events.push('late');
       // Rejections can originate in non-TypeScript dependencies.
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors
       return Promise.reject(undefined);
     });
 

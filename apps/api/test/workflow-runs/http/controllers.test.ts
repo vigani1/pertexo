@@ -69,7 +69,7 @@ describe('workflow runs controller', () => {
     );
     expect(fixture.start.execute).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        // oxlint-disable-next-line typescript/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
         actor: expect.objectContaining({ actorId, requestId: 'request-42' }),
         requestId: 'request-42',
         traceId: 'trace-42',
@@ -160,9 +160,9 @@ describe('workflow runs controller', () => {
         actor: authorizedWorkspace.actor,
         authorizedWorkspace,
         reauthorizeSession: reauthorizeIdentitySession,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        // oxlint-disable-next-line typescript/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
         abortStream: expect.any(Function),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        // oxlint-disable-next-line typescript/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
         signal: expect.any(AbortSignal),
       }),
     );

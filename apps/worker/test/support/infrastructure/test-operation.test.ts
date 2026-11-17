@@ -61,7 +61,7 @@ describe('runWithCleanup', () => {
   it('normalizes a sole non-Error rejection into a throwable Error', async () => {
     const result = await runWithCleanup(
       // Deliberately proves normalization of a hostile non-Error rejection.
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors
       () => Promise.reject(undefined),
       () => Promise.resolve(),
       'fixture',

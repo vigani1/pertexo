@@ -17,7 +17,7 @@ export async function acquireAbortablePoolClient(
   releaseLateClient: (client: PoolClient) => void,
 ): Promise<PoolClient> {
   // A caller can deliberately preserve a non-Error AbortSignal.reason.
-  // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+  // oxlint-disable-next-line typescript/prefer-promise-reject-errors
   if (signal?.aborted ?? false) return Promise.reject(abortReason());
   const pending = pool.connect();
   if (signal === undefined) return pending;
@@ -30,7 +30,7 @@ export async function acquireAbortablePoolClient(
       signal.removeEventListener('abort', onAbort);
       try {
         // Preserve the caller's exact cancellation identity, even if it is not Error.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors
         reject(abortReason());
       } catch (error: unknown) {
         reject(checkoutError(error, 'Pool checkout aborted'));

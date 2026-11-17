@@ -589,7 +589,7 @@ describe('ArtifactStore', () => {
           calls += 1;
           return calls === 1
             ? // Deliberately model an untrusted provider rejecting a primitive.
-              // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+              // oxlint-disable-next-line typescript/prefer-promise-reject-errors
               Promise.reject('provider-failed')
             : new Promise<string>(() => undefined);
         },

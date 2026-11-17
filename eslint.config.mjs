@@ -1,3 +1,4 @@
+import { remainingEslintPolicy } from './infrastructure/checks/lint-rule-ownership.mjs';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -136,7 +137,7 @@ export const readabilityRules = {
   '@typescript-eslint/switch-exhaustiveness-check': 'error',
 };
 
-export default tseslint.config(
+export const lintPolicy = tseslint.config(
   {
     ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**'],
   },
@@ -151,7 +152,14 @@ export default tseslint.config(
       },
     },
     rules: {
+      // Native Oxlint treats decorator metadata imports as type-only.
       '@typescript-eslint/consistent-type-imports': 'error',
+      // The native rule rejects promise-returning finally callbacks.
+      '@typescript-eslint/no-misused-promises': 'error',
+      // The shape projection narrows Zod's any-valued index to ZodType.
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      // The native rule proposes chains that change falsy-value semantics.
+      '@typescript-eslint/prefer-optional-chain': 'error',
     },
   },
   {
@@ -828,6 +836,10 @@ export default tseslint.config(
       globals: nodeGlobals,
     },
   },
+);
+
+export default tseslint.config(
+  ...remainingEslintPolicy(lintPolicy),
   ...(await oxlint.buildFromConfigFile(
     join(import.meta.dirname, '.oxlintrc.json'),
   )),

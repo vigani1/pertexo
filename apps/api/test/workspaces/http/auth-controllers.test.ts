@@ -23,7 +23,7 @@ describe('identity session controller', () => {
     );
 
     expect(revoke).toHaveBeenCalledWith('session-token-123456789012345678');
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+    // oxlint-disable-next-line typescript/unbound-method
     expect(vi.mocked(response.header)).toHaveBeenCalledWith('set-cookie', [
       'pertexo_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict',
       'pertexo_csrf=; Path=/; Max-Age=0; SameSite=Strict',

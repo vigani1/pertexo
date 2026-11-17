@@ -94,10 +94,10 @@ describe('worker application bootstrap', () => {
     for (const runtime of runtimes)
       expect(runtime.close).toHaveBeenCalledOnce();
     // Vitest inspects this mock identity; it never calls the unbound method.
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+    // oxlint-disable-next-line typescript/unbound-method
     expect(selected.workflowAutoPauseRuntime.close).toHaveBeenCalledOnce();
     // Vitest inspects this mock identity; it never calls the unbound method.
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+    // oxlint-disable-next-line typescript/unbound-method
     expect(selected.retentionRuntime.close).toHaveBeenCalledOnce();
   });
 
@@ -181,7 +181,7 @@ describe('worker application bootstrap', () => {
     expect(selected.queueClose).toHaveBeenCalledOnce();
     expect(databaseClose).toHaveBeenCalledOnce();
     // Vitest inspects this mock identity; it never calls the unbound method.
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+    // oxlint-disable-next-line typescript/unbound-method
     expect(selected.telemetry.shutdown).toHaveBeenCalledOnce();
   });
 

@@ -178,7 +178,7 @@ export class WorkerModule {
             STALLED_WORK_RUNTIME,
           ],
           // Nest pairs these parameters with the ordered inject array below.
-          // eslint-disable-next-line max-params
+          // oxlint-disable-next-line legacy/max-params
           useFactory: (
             shutdown: WorkerShutdownCoordinator,
             transport: OutboxDispatcherLifecycle,

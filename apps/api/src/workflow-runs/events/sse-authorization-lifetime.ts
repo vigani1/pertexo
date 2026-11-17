@@ -218,14 +218,14 @@ export async function nextFrameOrAuthorizationLoss<T>(
   authorizationLost.addEventListener('abort', onAuthorizationLost, {
     once: true,
   });
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Subscription can change the signal; TypeScript keeps the earlier narrowing.
+  // oxlint-disable-next-line typescript/no-unnecessary-condition -- Subscription can change the signal; TypeScript keeps the earlier narrowing.
   if (authorizationLost.aborted) onAuthorizationLost();
   try {
     const outcome = await Promise.race([
       iterator.next().then((result) => ({ kind: 'frame' as const, result })),
       lost,
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The awaited producer can abort authorization.
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- The awaited producer can abort authorization.
     return authorizationLost.aborted
       ? {
           kind: 'authorization_lost',
@@ -292,7 +292,7 @@ function waitUntilAuthorizationDeadline(
       return;
     }
     signal.addEventListener('abort', onAbort, { once: true });
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Recheck after subscribing, despite TypeScript's earlier narrowing.
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- Recheck after subscribing, despite TypeScript's earlier narrowing.
     if (signal.aborted) {
       onAbort();
       return;

@@ -2,12 +2,7 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "overrides": [
     {
-      "files": [
-        "**/src/**/*.{ts,tsx,mts,cts}",
-        "**/test/**/*.{ts,tsx,mts,cts}",
-        "**/e2e/**/*.ts",
-        "**/e2e-live/**/*.ts"
-      ],
+      "files": ["**/*.{ts,tsx,mts,cts}"],
       "rules": {
         "typescript/await-thenable": [2],
         "typescript/no-array-delete": [2],
@@ -82,38 +77,8 @@
         "typescript/prefer-includes": [2],
         "typescript/prefer-nullish-coalescing": [2],
         "typescript/prefer-regexp-exec": [2],
-        "typescript/prefer-string-starts-ends-with": [2]
-      }
-    },
-    {
-      "files": [
-        "packages/workflow-engine/**/*.{ts,tsx}",
-        "packages/workflow-model/**/*.{ts,tsx}",
-        "packages/policy/**/*.{ts,tsx}",
-        "packages/node-sdk/**/*.{ts,tsx}",
-        "packages/nodes-core/**/*.{ts,tsx}",
-        "packages/integrations/**/*.{ts,tsx}",
-        "packages/secrets/**/*.{ts,tsx}",
-        "packages/node-catalog/**/*.{ts,tsx}",
-        "packages/templates/**/*.{ts,tsx}",
-        "packages/contracts/**/*.{ts,tsx}",
-        "packages/database/**/*.{ts,tsx}",
-        "packages/core/**/*.{ts,tsx}",
-        "packages/artifact-store/**/*.{ts,tsx}",
-        "packages/queue/**/*.{ts,tsx}",
-        "packages/observability/**/*.{ts,tsx}",
-        "packages/rate-limit/**/*.{ts,tsx}",
-        "packages/execution/**/*.{ts,tsx}",
-        "apps/api/**/*.{ts,tsx}",
-        "apps/worker/**/*.{ts,tsx}",
-        "apps/code-runner/**/*.{ts,tsx}",
-        "apps/cli/**/*.{ts,tsx}",
-        "apps/ops/**/*.{ts,tsx}",
-        "apps/web/src/**/*.{ts,tsx}",
-        "src/**/*.{ts,tsx}"
-      ],
-      "rules": {
-        "typescript/switch-exhaustiveness-check": "error"
+        "typescript/prefer-string-starts-ends-with": [2],
+        "typescript/require-await": "error"
       }
     }
   ]

@@ -138,7 +138,7 @@ describe('connection envelope encryption', () => {
     ].map((value) => new Uint8Array(Buffer.from(value, 'base64url')));
     // The original method is retained so the spy can observe and then perform
     // the real zeroing without recursively invoking itself.
-    // eslint-disable-next-line @typescript-eslint/unbound-method
+    // oxlint-disable-next-line typescript/unbound-method
     const originalFill = Uint8Array.prototype.fill;
     const cleared: {
       before: Uint8Array;

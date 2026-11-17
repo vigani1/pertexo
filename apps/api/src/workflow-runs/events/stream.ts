@@ -202,7 +202,7 @@ function notificationWaiter<T>(
         cleanup();
         if (result.failed) {
           // Iterator adapters may reject with arbitrary values; preserve identity.
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          // oxlint-disable-next-line typescript/prefer-promise-reject-errors
           reject(result.error);
         } else resolve(result.value);
       };

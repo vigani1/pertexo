@@ -112,7 +112,7 @@ describe('connection telemetry', () => {
   it('preserves the exact business rejection when tracing also fails', async () => {
     const businessFailure = Object.freeze({ code: 'business-failure' });
     const work = vi.fn(() =>
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- The contract preserves hostile non-Error rejection identity.
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- The contract preserves hostile non-Error rejection identity.
       Promise.reject(businessFailure),
     );
     const telemetry = createConnectionTelemetry(

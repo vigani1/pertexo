@@ -159,14 +159,14 @@ const pg = vi.hoisted(() => {
       const outcome = FakePool.queryOutcomes.shift();
       if (outcome?.kind === 'reject') {
         // Deliberately exercise hostile non-Error adapter rejections.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors
         return Promise.reject(outcome.error);
       }
       if (outcome?.kind === 'resolve') return Promise.resolve(outcome.result);
       if (outcome?.kind === 'return') return outcome.promise;
       const error = FakePool.queryErrors.shift();
       // Exercise bounded telemetry for hostile non-Error adapter rejections.
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors
       if (error !== undefined) return Promise.reject(error);
       if (Array.isArray(values?.[0]) && (values[0] as unknown[]).length === 0)
         return Promise.resolve({ rows: [] });
@@ -177,12 +177,12 @@ const pg = vi.hoisted(() => {
       this.endCalls += 1;
       if (this.endOutcome?.kind === 'reject') {
         // Deliberately exercise hostile non-Error adapter rejections.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors
         return Promise.reject(this.endOutcome.error);
       }
       const failure = FakePool.endFailures.shift();
       // Deliberately exercise hostile non-Error adapter rejections.
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors
       if (failure !== undefined) return Promise.reject(failure.error);
       return Promise.resolve();
     }
@@ -295,7 +295,7 @@ export function telemetryClient(outcomes: ClientQueryOutcome[]) {
     }
     if (outcome.kind === 'reject') {
       // Preserve arbitrary asynchronous adapter behavior through instrumentation.
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors
       return Promise.reject(outcome.error);
     }
     if (outcome.kind === 'resolve') return Promise.resolve(outcome.result);

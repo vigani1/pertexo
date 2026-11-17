@@ -140,7 +140,7 @@
     "licenses:check": "node --test infrastructure/checks/third-party-notices.test.mjs && node infrastructure/checks/third-party-notices.mjs",
     "format:changed": "node infrastructure/development/format-changed.mjs",
     "observability:qualify-sdk": "node packages/observability/test/telemetry/qualify-collector.mjs",
-    "lint:oxlint": "oxlint --ignore-pattern apps/web . && pnpm --filter @pertexo/web exec oxlint ."
+    "lint:oxlint": "node infrastructure/checks/lint.mjs --ignore-pattern apps/web . && pnpm --filter @pertexo/web exec node ../../infrastructure/checks/lint.mjs ."
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

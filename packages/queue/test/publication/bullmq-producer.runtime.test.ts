@@ -313,7 +313,7 @@ describe('BullMQ queue producer', () => {
     // Redis client libraries can reject with a bare reply string.
     const reply = "READONLY You can't write against a read only replica";
     mocks.queueInstances[0]?.getJobCountByTypes.mockReturnValue(
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors
       Promise.reject(reply),
     );
     await expect(producer.observe()).rejects.toSatisfy(

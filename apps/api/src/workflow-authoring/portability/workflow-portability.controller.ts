@@ -33,7 +33,7 @@ export class WorkflowPortabilityController {
   ) {}
 
   // Nest binds handler arguments by decorator position, so they stay separate.
-  // eslint-disable-next-line max-params
+  // oxlint-disable-next-line legacy/max-params
   @Route(routes.export)
   public async export(
     @Req() request: WorkflowAuthoringRequest,
@@ -83,7 +83,7 @@ export class WorkflowPortabilityController {
   }
 
   // Nest binds handler arguments by decorator position, so they stay separate.
-  // eslint-disable-next-line max-params
+  // oxlint-disable-next-line legacy/max-params
   @Route(routes.import)
   public async import(
     @Req() request: WorkflowAuthoringRequest,

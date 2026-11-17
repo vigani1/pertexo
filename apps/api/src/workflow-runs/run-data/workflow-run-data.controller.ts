@@ -31,7 +31,7 @@ import {
 @Controller()
 export class WorkflowRunDataController {
   // Nest resolves these dependencies positionally; grouping them would change DI.
-  // eslint-disable-next-line max-params
+  // oxlint-disable-next-line legacy/max-params
   public constructor(
     private readonly getRunInput: GetWorkflowRunInputService,
     private readonly getRunVariables: GetWorkflowRunVariablesService,
