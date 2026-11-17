@@ -1,3 +1,5 @@
+import typedConfig from '../../.oxlint-type-aware.json' with { type: 'json' };
+
 // These rules have whole-repository parity through native rules or the
 // unchanged ESLint plugins. Keep policy values in the owning lint config.
 const movedRules = new Map([
@@ -30,18 +32,31 @@ const movedRules = new Map([
 ]);
 
 export function remainingEslintPolicy(policy) {
-  return policy.map((entry) => ({
-    ...entry,
-    ...(entry.rules
-      ? {
-          rules: Object.fromEntries(
-            Object.entries(entry.rules).filter(
-              ([name]) => !movedRules.has(name),
+  return [
+    ...policy.map((entry) => ({
+      ...entry,
+      ...(entry.rules
+        ? {
+            rules: Object.fromEntries(
+              Object.entries(entry.rules).filter(
+                ([name]) => !movedRules.has(name),
+              ),
             ),
-          ),
-        }
-      : {}),
-  }));
+          }
+        : {}),
+    })),
+    // Inherited JSON disables are not local to the web config. Apply the
+    // authoritative native typed scopes in each consuming workspace too.
+    ...typedConfig.overrides.map(({ files, rules }) => ({
+      files,
+      rules: Object.fromEntries(
+        Object.keys(rules).map((name) => [
+          name.replace('typescript/', '@typescript-eslint/'),
+          'off',
+        ]),
+      ),
+    })),
+  ];
 }
 
 export function oxlintPolicy(policy) {
