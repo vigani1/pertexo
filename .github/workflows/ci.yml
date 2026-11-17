@@ -197,8 +197,8 @@ jobs:
       needs.changes.outputs.unit != '' &&
       toJSON(fromJSON(needs.changes.outputs.unit).include) != '[]'
     runs-on: ubuntu-latest
-    # Baseline web job: 10.8 min including build; retain a small budget.
-    timeout-minutes: ${{ matrix.group == 'web' && 12 || 16 }}
+    # Two web shards plus dependency-only builds leave room inside six minutes.
+    timeout-minutes: ${{ matrix.group == 'web' && 6 || 16 }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.unit) }}
