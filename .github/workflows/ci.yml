@@ -197,8 +197,9 @@ jobs:
       needs.changes.outputs.unit != '' &&
       toJSON(fromJSON(needs.changes.outputs.unit).include) != '[]'
     runs-on: ubuntu-latest
-    # Two web shards plus dependency-only builds leave room inside six minutes.
-    timeout-minutes: ${{ matrix.group == 'web' && 6 || 16 }}
+    # A full web shard measured 4.5 to 6.0 minutes with setup on CI runners (run
+    # 43990947606 reached six after every file passed), so its budget is eight.
+    timeout-minutes: ${{ matrix.group == 'web' && 8 || 16 }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.unit) }}
