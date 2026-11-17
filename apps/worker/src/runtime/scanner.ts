@@ -75,7 +75,7 @@ export function createScannerRuntime(
         await definition.scan(signal);
         latestScanFailed = false;
       } catch (error: unknown) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The signal can change while the scan awaits I/O.
+        // oxlint-disable-next-line typescript/no-unnecessary-condition -- The signal can change while the scan awaits I/O.
         if (!signal.aborted) {
           latestScanFailed = true;
           reportDiagnostic(() => {
@@ -135,7 +135,7 @@ export function createScannerRuntime(
     checkReadiness: async (): Promise<void> => {
       if (signal.aborted) throw closed();
       await firstScan.promise;
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Close can begin while the first scan awaits I/O.
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- Close can begin while the first scan awaits I/O.
       if (signal.aborted) throw closed();
       if (latestScanFailed)
         throw new RuntimeNotReadyError(`${definition.name} latest scan failed`);

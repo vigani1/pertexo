@@ -40,7 +40,7 @@ import {
   type CuratedTemplate,
 } from '../model/templates/curated-setup';
 /** Owns source edits and the validity of the import preview. */
-// eslint-disable-next-line max-lines-per-function -- One form owns source edits and preview validity; async file and preview phases live separately.
+// oxlint-disable-next-line max-lines-per-function -- One form owns source edits and preview validity; async file and preview phases live separately.
 export function useImportDraft(
   apiClient: ApiClient,
   userId: string,

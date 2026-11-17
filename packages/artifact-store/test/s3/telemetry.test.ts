@@ -209,7 +209,7 @@ describe('object-store telemetry', () => {
       }
       const recording = recordingObserver();
       const client = new ObservedS3Client(
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- provider failures are unknown at this boundary.
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- provider failures are unknown at this boundary.
         { destroy: vi.fn(), send: () => Promise.reject(failure) },
         recording.observer,
       );
@@ -222,7 +222,7 @@ describe('object-store telemetry', () => {
 
       const presign = observePresign(
         recording.observer,
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- presigner failures are unknown at this boundary.
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- presigner failures are unknown at this boundary.
         () => Promise.reject(failure),
       );
       await expect(presign).rejects.toBe(failure);

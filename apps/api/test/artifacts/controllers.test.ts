@@ -133,7 +133,7 @@ describe('artifacts controller public seam', () => {
     );
     expect(fixture.beginUpload).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
+        // oxlint-disable-next-line typescript/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
         actor: expect.objectContaining({
           actorId,
           requestId: 'request-42',

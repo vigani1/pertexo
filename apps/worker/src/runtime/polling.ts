@@ -62,7 +62,7 @@ export function createPollingRuntime(
         if (definition.whenBusy?.hasMore())
           waitMillis = definition.whenBusy.pollMillis;
       } catch (error: unknown) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The signal can change while the cycle awaits I/O.
+        // oxlint-disable-next-line typescript/no-unnecessary-condition -- The signal can change while the cycle awaits I/O.
         if (signal.aborted) break;
         latestCycleFailed = true;
         reportDiagnostic(() => {

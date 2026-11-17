@@ -38,7 +38,7 @@ class WorkerDrainingError extends Error {
 @Injectable()
 export class WorkerReadiness {
   // Nest resolves these dependencies positionally; grouping them would change DI.
-  // eslint-disable-next-line max-params
+  // oxlint-disable-next-line legacy/max-params
   public constructor(
     @Inject(WORKSPACE_DATABASE)
     private readonly database: WorkspaceDatabase,

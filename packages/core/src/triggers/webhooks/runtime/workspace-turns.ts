@@ -26,7 +26,7 @@ export function createWorkspaceTurns({
         clearTimeout(timer);
         signal?.removeEventListener('abort', onAbort);
         line.waiting.delete(begin);
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- the caller's own abort reason, unchanged
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- the caller's own abort reason, unchanged
         reject(reason);
       };
       const onAbort = () => {

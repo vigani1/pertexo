@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 // five-second statement, so teardown allows that bounded backend to disappear.
 const DISCONNECT_TIMEOUT_MS = 10_000;
 
-/* eslint-disable @typescript-eslint/no-unnecessary-type-parameters -- node-postgres-style result projection */
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- node-postgres-style result projection */
 export interface DisposableDatabaseAdmin {
   end(): Promise<void>;
   query<Row extends Record<string, unknown> = Record<string, unknown>>(
@@ -13,7 +13,7 @@ export interface DisposableDatabaseAdmin {
     values?: unknown[],
   ): Promise<{ readonly rows: Row[] }>;
 }
-/* eslint-enable @typescript-eslint/no-unnecessary-type-parameters */
+/* oxlint-enable typescript/no-unnecessary-type-parameters */
 
 function quoteIdentifier(value: string): string {
   if (value.length === 0 || value.includes('\0'))

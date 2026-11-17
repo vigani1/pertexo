@@ -94,7 +94,7 @@ export async function writeInboxHintStream(
       // A slow client gets the newest hint once it catches up.
       if (destination.writableNeedDrain) {
         await drained(destination, signal);
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The client may leave while its output drains.
+        // oxlint-disable-next-line typescript/no-unnecessary-condition -- The client may leave while its output drains.
         if (signal.aborted || destination.destroyed) return;
       }
       const hint = next.result.value;

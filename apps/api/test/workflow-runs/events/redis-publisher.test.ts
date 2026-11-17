@@ -154,7 +154,7 @@ describe('Redis run event publisher', () => {
     async (_kind, failure, message) => {
       const fake = new FakeRedisPublisher();
       // Deliberately model an untrusted Redis adapter rejection.
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors
       fake.publishImplementation = () => Promise.reject(failure);
       const publisher = new RedisRunEventPublisher(
         { redisUrl: 'redis://localhost:6379' },

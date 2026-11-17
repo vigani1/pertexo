@@ -82,7 +82,7 @@ describe('run event SSE reconstruction', () => {
         [Symbol.asyncIterator]: () => ({
           next: () => {
             // Deliberately preserve arbitrary adapter rejection identity.
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            // oxlint-disable-next-line typescript/prefer-promise-reject-errors
             return Promise.reject(failure);
           },
           return: returnIterator,
@@ -276,7 +276,7 @@ describe('run event SSE reconstruction', () => {
         liveSource: { subscribe: () => Promise.resolve(subscription) },
         reader: {
           // Deliberately exercise a hostile non-Error adapter rejection.
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          // oxlint-disable-next-line typescript/prefer-promise-reject-errors
           readPage: () => Promise.reject(undefined),
         },
       },

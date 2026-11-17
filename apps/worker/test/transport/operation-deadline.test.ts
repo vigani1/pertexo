@@ -5,7 +5,7 @@ import {
   TransportOperationTimeoutError,
 } from '../../src/transport/outbox/operation-deadline.js';
 
-/* eslint-disable @typescript-eslint/prefer-promise-reject-errors -- hostile and legacy values are the contract under test */
+/* oxlint-disable typescript/prefer-promise-reject-errors -- hostile and legacy values are the contract under test */
 
 afterEach(() => {
   vi.useRealTimers();

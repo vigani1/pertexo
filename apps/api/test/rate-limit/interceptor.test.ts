@@ -101,7 +101,7 @@ describe('rate-limit interceptor', () => {
       expect.objectContaining({
         endpointClass: 'provider_test',
         // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        // oxlint-disable-next-line typescript/no-unsafe-assignment
         dimensions: expect.arrayContaining([
           { kind: 'actor', identifier: actorId, limit: 10 },
           { kind: 'workspace', identifier: workspaceId, limit: 20 },
@@ -302,7 +302,7 @@ describe('rate-limit interceptor', () => {
     expect(consume).toHaveBeenCalledWith(
       expect.objectContaining({
         // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        // oxlint-disable-next-line typescript/no-unsafe-assignment
         dimensions: expect.arrayContaining([
           { kind: 'workspace', identifier: workspaceId, limit: 20 },
         ]),
@@ -329,7 +329,7 @@ describe('rate-limit interceptor', () => {
     expect(consume).toHaveBeenCalledWith(
       expect.objectContaining({
         // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        // oxlint-disable-next-line typescript/no-unsafe-assignment
         dimensions: expect.arrayContaining([
           { kind: 'workspace', identifier: workspaceId, limit: 20 },
         ]),

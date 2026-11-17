@@ -10,7 +10,7 @@ import { registerEditorUser } from '../../support/ordinary-editor-session';
  */
 export const test = base.extend<
   // Playwright's way to declare that this adds no test-scoped fixtures.
-  // eslint-disable-next-line @typescript-eslint/no-generated-empty-object-type
+  // oxlint-disable-next-line typescript/no-generated-empty-object-type
   Record<never, never>,
   { productAccount: readonly Cookie[] }
 >({

@@ -1,8 +1,10 @@
+import { remainingEslintPolicy } from '../../infrastructure/checks/lint-rule-ownership.mjs';
 import { WEB_BROWSER_PACKAGE_ROOTS } from '../../infrastructure/checks/browser-entry-dependencies.mjs';
 import tseslint from 'typescript-eslint';
 import oxlint from 'eslint-plugin-oxlint';
 import reactHooks from 'eslint-plugin-react-hooks';
-import rootConfig, {
+import {
+  lintPolicy as rootPolicy,
   readabilityRules,
   testIntegrity,
 } from '../../eslint.config.mjs';
@@ -50,8 +52,8 @@ const sharedLayerPatterns = [
   },
 ];
 
-export default tseslint.config(
-  ...rootConfig,
+export const lintPolicy = tseslint.config(
+  ...rootPolicy,
   // Root globs do not match paths relative to this local configuration.
   { files: ['src/**/*.{ts,tsx}'], rules: readabilityRules },
   { files: ['test/**/*.{ts,tsx}'], ...testIntegrity },
@@ -152,6 +154,10 @@ export default tseslint.config(
       ],
     },
   },
+);
+
+export default tseslint.config(
+  ...remainingEslintPolicy(lintPolicy),
   ...(await oxlint.buildFromConfigFile(
     new URL('.oxlintrc.json', import.meta.url).pathname,
   )),

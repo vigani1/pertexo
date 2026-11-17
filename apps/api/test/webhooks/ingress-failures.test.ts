@@ -121,7 +121,7 @@ describe('webhook ingress failures', () => {
       ({ signal }: { signal: AbortSignal }) =>
         new Promise((_, reject) => {
           signal.addEventListener('abort', () => {
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- what the wait in line does with it
+            // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- what the wait in line does with it
             reject(signal.reason);
             sawAbort();
           });

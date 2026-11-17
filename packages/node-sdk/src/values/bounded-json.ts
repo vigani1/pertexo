@@ -6,7 +6,7 @@ import {
   type BoundedJsonLimits,
 } from './bounded-json.validation.js';
 
-// eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
+// oxlint-disable-next-line legacy/consistent-indexed-object-style
 interface JsonObject {
   readonly [key: string]: JsonValue;
 }

@@ -102,7 +102,7 @@ describe('catalog controller public seam', () => {
     for (const method of ['listNodeDefinitions', 'listIntegrations']) {
       // TypeScript declares PropertyDescriptor.value as any; the runtime assertion
       // immediately below closes that reflection boundary.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      // oxlint-disable-next-line typescript/no-unsafe-assignment
       const handler = Object.getOwnPropertyDescriptor(
         CatalogController.prototype,
         method,
@@ -110,7 +110,7 @@ describe('catalog controller public seam', () => {
       expect(handler).toBeTypeOf('function');
       expect(
         // Nest's Reflector target type uses any internally.
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        // oxlint-disable-next-line typescript/no-unsafe-argument
         reflector.getAllAndOverride(RATE_LIMIT_METADATA, [
           handler,
           CatalogController,
@@ -118,7 +118,7 @@ describe('catalog controller public seam', () => {
       ).toBe('authenticated_read');
       expect(
         // Nest's Reflector target type uses any internally.
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        // oxlint-disable-next-line typescript/no-unsafe-argument
         reflector.getAllAndMerge(GUARDS_METADATA, [handler, CatalogController]),
       ).toContain(SessionAuthenticationGuard);
     }

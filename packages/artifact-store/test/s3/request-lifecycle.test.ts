@@ -19,7 +19,7 @@ describe('artifact request lifecycle', () => {
     await expect(
       awaitWithSignal(
         // Deliberately model an untrusted provider rejection.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors
         Promise.reject(operationFailure),
         new AbortController().signal,
       ),

@@ -60,7 +60,7 @@ describe('secure HTTP client', () => {
         }),
         new FakeTransport(() => {
           // Deliberately model an untrusted transport rejection.
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          // oxlint-disable-next-line typescript/prefer-promise-reject-errors
           return Promise.reject(create());
         }),
       );

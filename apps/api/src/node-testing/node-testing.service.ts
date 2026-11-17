@@ -58,7 +58,7 @@ export type NodeTestServiceInput = Readonly<{
 
 export class TestWorkflowNodeService {
   // Variable reads retain their own workspace authority; preview acceptance rechecks it.
-  // eslint-disable-next-line max-params
+  // oxlint-disable-next-line legacy/max-params
   public constructor(
     private readonly persistence: Pick<
       NodeTestingPersistence,

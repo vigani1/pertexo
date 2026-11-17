@@ -58,6 +58,6 @@ export function isApplicationError(value: unknown): value is ApplicationError {
 
 export function throwApplicationError(error: ApplicationError): never {
   // The HTTP problem filter deliberately accepts frozen application-error values.
-  // eslint-disable-next-line @typescript-eslint/only-throw-error
+  // oxlint-disable-next-line typescript/only-throw-error
   throw error;
 }

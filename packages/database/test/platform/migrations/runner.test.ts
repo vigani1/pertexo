@@ -185,7 +185,7 @@ describe('migration runner resource ownership', () => {
       if (sql === 'reset role' || sql.startsWith('select pg_advisory_unlock'))
         return Promise.resolve({ rows: [] });
       // Deliberately exercise a hostile non-Error adapter rejection.
-      // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors
       return Promise.reject(undefined);
     };
     postgres.connect.mockResolvedValue({

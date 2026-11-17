@@ -1477,7 +1477,7 @@ describe('worker node runtime capabilities', () => {
             file.close = vi.fn(async () => {
               await closeFile();
               // Deliberately model a hostile adapter rejection.
-              // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+              // oxlint-disable-next-line typescript/prefer-promise-reject-errors
               return Promise.reject(undefined);
             });
             return file;
@@ -1589,7 +1589,7 @@ describe('worker node runtime capabilities', () => {
       {
         artifactPersistence: {
           // Deliberately exercise a hostile non-Error adapter rejection.
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          // oxlint-disable-next-line typescript/prefer-promise-reject-errors
           createPending: () => Promise.reject(undefined),
           finalize: vi.fn(),
         },

@@ -153,7 +153,7 @@ describe('secure HTTP streamed-body deadline/error mapping', () => {
         [Symbol.asyncIterator]: () => ({
           next: () => {
             // Deliberately model an untrusted stream rejection.
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+            // oxlint-disable-next-line typescript/prefer-promise-reject-errors
             return Promise.reject<IteratorResult<Uint8Array>>(create());
           },
         }),

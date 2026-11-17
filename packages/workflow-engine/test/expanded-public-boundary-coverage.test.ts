@@ -161,7 +161,7 @@ describe('expanded public workflow-engine boundaries', () => {
         {
           ownKeys: () => {
             // The boundary must remain total for hostile thrown values.
-            // eslint-disable-next-line @typescript-eslint/only-throw-error
+            // oxlint-disable-next-line typescript/only-throw-error
             throw throwable;
           },
         },

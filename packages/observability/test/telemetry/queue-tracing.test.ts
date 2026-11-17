@@ -16,7 +16,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createQueueTraceRunner } from '../../src/telemetry/queue-tracing.js';
 
-/* eslint-disable @typescript-eslint/unbound-method -- assertions target injected OTel boundary fakes */
+/* oxlint-disable typescript/unbound-method -- assertions target injected OTel boundary fakes */
 
 const TRACEPARENT = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 
@@ -141,7 +141,7 @@ describe('createQueueTraceRunner', () => {
         undefined,
         { jobName: 'hostile-rejection', queueName: 'maintenance' },
         // The runner deliberately preserves legacy non-Error rejection identity.
-        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        // oxlint-disable-next-line typescript/prefer-promise-reject-errors
         () => Promise.reject(rejection),
       ),
     ).rejects.toBe(rejection);
@@ -223,7 +223,7 @@ describe('createQueueTraceRunner', () => {
           undefined,
           { jobName: 'queue-non-error', queueName: 'maintenance' },
           // The runner deliberately preserves legacy non-Error rejection identity.
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+          // oxlint-disable-next-line typescript/prefer-promise-reject-errors
           () => Promise.reject(hostileNonError),
         ),
       ).rejects.toBe(hostileNonError);

@@ -86,7 +86,7 @@ export function useInboxLive({
           report('live');
           for await (const message of decodeSseMessages(stream.body)) {
             // The signal can change while the stream awaits its next chunk.
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            // oxlint-disable-next-line typescript/no-unnecessary-condition
             if (signal.aborted) return;
             // A ready event also closes the gap between loading and listening.
             if (isInboxHint(message)) {
@@ -97,7 +97,7 @@ export function useInboxLive({
           throw new TransientStreamDisconnect('The inbox stream closed.');
         } catch (error: unknown) {
           // Cancellation may arrive while opening or reading the stream awaits I/O.
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
           if (signal.aborted) return;
           if (streamWasHealthy({ delivered, openedAt }, now)) failures = 0;
           failures += 1;
