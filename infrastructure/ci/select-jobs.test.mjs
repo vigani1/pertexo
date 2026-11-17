@@ -18,10 +18,7 @@ test('documentation keeps the static and deployment floor without test jobs', ()
 });
 
 test('shared web source and tests use related units and retain all browser journeys', () => {
-  for (const file of [
-    'apps/web/src/lib/class-names.ts',
-    'apps/web/test/lib/clock.test.ts',
-  ]) {
+  for (const file of ['apps/web/test/lib/clock.test.ts']) {
     const result = select(file);
     assert.deepEqual(result.check.part, ['static', 'deploy', 'lint-web']);
     assert.deepEqual(result.unit.include, [
@@ -234,7 +231,7 @@ test('Usage changes retain the webhook journey that opens the Usage page', () =>
   );
 });
 
-test('full web unit runs have two shards while a feature PR has one related job', () => {
+test('full and large related runs have two shards while a changed test keeps one job', () => {
   for (const file of [
     'apps/web/test/setup.ts',
     'apps/web/vitest.config.ts',
@@ -250,7 +247,11 @@ test('full web unit runs have two shards while a feature PR has one related job'
   }
   const feature = select('apps/web/src/features/usage/model/usage-search.ts')
     .unit.include;
-  assert.equal(feature.length, 1);
+  assert.equal(feature.length, 2);
+  assert.deepEqual(
+    feature.map(({ shard }) => shard),
+    [1, 2],
+  );
   assert.deepEqual(JSON.parse(feature[0].related), [
     'src/features/usage/model/usage-search.ts',
   ]);
