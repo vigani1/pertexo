@@ -12,7 +12,9 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
-import { mapToSource, readSourceMap } from './source-lines.mjs';
+import { addChildCoverage } from './child-coverage.mjs';
+import { CHILD_COVERAGE_VARIABLE } from './child-coverage-preload.mjs';
+import { createReach } from './source-lines.mjs';
 
 // Runs each test file of one Vitest lane alone, with V8 coverage, and writes
 // reports/overlap/<workspace>-<lane>[-<i>of<n>].json: for every test file, the
@@ -48,8 +50,6 @@ const WORKSPACE_ENVIRONMENT = Object.freeze({
 
 // A file that hangs must not hold a shard until the job's own limit.
 const FILE_TIMEOUT_MILLISECONDS = 15 * 60_000;
-const SOURCE_DIRECTORY = /^(?:apps|packages)\/[^/]+\/src\//u;
-const BUILT_DIRECTORY = /^(?:apps|packages)\/[^/]+\/dist\/.+\.js$/u;
 
 async function main() {
   const { values, positionals } = parseArgs({
@@ -88,19 +88,26 @@ async function main() {
   const files = shard ? pickShard(narrowed, shard) : narrowed;
   const scratch = mkdtempSync(join(tmpdir(), 'pertexo-overlap-'));
   const records = {};
+  const measure = async (file, label) => {
+    const record = await measureFile(
+      { directory, config, environment: WORKSPACE_ENVIRONMENT[workspace] },
+      file,
+      scratch,
+    );
+    records[workspaceRelative(directory, file)] = record;
+    console.log(
+      `${label} ${file}: ${record.status}, ${String(countLines(record.reached))} lines, ${String(record.seconds)} s`,
+    );
+    return record;
+  };
   const failed = [];
   try {
     await eachLimited(files, concurrency, async (file, index) => {
-      const record = await measureFile(
-        { directory, config, environment: WORKSPACE_ENVIRONMENT[workspace] },
+      const record = await measure(
         file,
-        scratch,
+        `[${String(index + 1)}/${String(files.length)}]`,
       );
-      records[workspaceRelative(directory, file)] = record;
       if (record.status === 'failed') failed.push(file);
-      console.log(
-        `[${String(index + 1)}/${String(files.length)}] ${file}: ${record.status}, ${String(countLines(record.reached))} lines, ${String(record.seconds)} s`,
-      );
     });
   } finally {
     rmSync(scratch, { recursive: true, force: true });
@@ -177,39 +184,57 @@ async function listLaneFiles(workspace, lane, directory, config) {
 async function measureFile({ directory, config, environment }, file, scratch) {
   const own = mkdtempSync(join(scratch, 'file-'));
   const results = join(own, 'results.json');
+  const children = join(own, 'children');
   const started = Date.now();
-  const exitCode = await runVitest(directory, environment, [
-    'exec',
-    'vitest',
-    'run',
-    '--config',
-    config,
-    // A filter matches by substring, so `a.test.ts` alone would also pick
-    // `a.test.tsx`; the reporter's list of files below proves only one ran.
-    join(directory, file),
-    '--reporter=default',
-    '--reporter=json',
-    `--outputFile.json=${results}`,
-    '--coverage.enabled',
-    '--coverage.provider=v8',
-    '--coverage.reporter=json',
-    '--coverage.reportOnFailure',
-    '--coverage.allowExternal',
-    '--coverage.clean',
-    `--coverage.reportsDirectory=${join(own, 'coverage')}`,
-  ]);
+  const exitCode = await runVitest(
+    directory,
+    coveredEnvironment(environment, children),
+    [
+      'exec',
+      'vitest',
+      'run',
+      '--config',
+      config,
+      // A filter matches by substring, so `a.test.ts` alone would also pick
+      // `a.test.tsx`; the reporter's list of files below proves only one ran.
+      join(directory, file),
+      '--reporter=default',
+      '--reporter=json',
+      `--outputFile.json=${results}`,
+      '--coverage.enabled',
+      '--coverage.provider=v8',
+      '--coverage.reporter=json',
+      '--coverage.reportOnFailure',
+      '--coverage.allowExternal',
+      '--coverage.clean',
+      `--coverage.reportsDirectory=${join(own, 'coverage')}`,
+    ],
+  );
   const seconds = Math.round((Date.now() - started) / 1000);
   const tests = readTestCounts(results, join(directory, file));
   const coverageFile = join(own, 'coverage/coverage-final.json');
-  const reached = existsSync(coverageFile)
-    ? reachedSourceLines(JSON.parse(readFileSync(coverageFile, 'utf8')))
-    : {};
+  const reach = createReach(repositoryRoot);
+  if (existsSync(coverageFile))
+    addIstanbul(reach, JSON.parse(readFileSync(coverageFile, 'utf8')));
+  addChildCoverage(reach, children, repositoryRoot);
   rmSync(own, { recursive: true, force: true });
   return {
     status: fileStatus(exitCode, tests),
     tests,
     seconds,
-    reached,
+    reached: reach.lines(),
+  };
+}
+
+/** Lets the processes a test starts write their V8 coverage to `children`. */
+function coveredEnvironment(environment, children) {
+  const preload = new URL('./child-coverage-preload.mjs', import.meta.url).href;
+  return {
+    ...environment,
+    [CHILD_COVERAGE_VARIABLE]: children,
+    NODE_OPTIONS: [process.env.NODE_OPTIONS, `--import=${preload}`]
+      .filter(Boolean)
+      .join(' '),
   };
 }
 
@@ -257,35 +282,14 @@ export function fileStatus(exitCode, tests) {
  * their source maps.
  */
 export function reachedSourceLines(coverage, root = repositoryRoot) {
-  const reached = new Map();
-  const add = (file, line) => {
-    const lines = reached.get(file) ?? new Set();
-    reached.set(file, lines);
-    lines.add(line);
-  };
-  for (const [absolute, entry] of Object.entries(coverage)) {
-    const file = relative(root, absolute);
-    const isSource = SOURCE_DIRECTORY.test(file);
-    if (!isSource && !BUILT_DIRECTORY.test(file)) continue;
-    const executed = executedStatementsInFunctions(entry);
-    if (executed.length === 0) continue;
-    if (isSource) {
-      for (const { line } of executed) add(file, line);
-      continue;
-    }
-    const map = readSourceMap(absolute);
-    for (const position of executed) {
-      const original = mapToSource(map, position);
-      if (!original) continue;
-      const source = relative(root, original.file);
-      if (SOURCE_DIRECTORY.test(source)) add(source, original.line);
-    }
-  }
-  return Object.fromEntries(
-    [...reached.entries()]
-      .sort(([a], [b]) => a.localeCompare(b, 'en'))
-      .map(([file, lines]) => [file, [...lines].sort((a, b) => a - b)]),
-  );
+  const reach = createReach(root);
+  addIstanbul(reach, coverage);
+  return reach.lines();
+}
+
+function addIstanbul(reach, coverage) {
+  for (const [absolute, entry] of Object.entries(coverage))
+    reach.add(absolute, executedStatementsInFunctions(entry));
 }
 
 function executedStatementsInFunctions({ statementMap, s, fnMap }) {
