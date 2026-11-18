@@ -1,9 +1,11 @@
-import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { basename } from 'node:path';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-// Reads a Stryker JSON report (mutation-testing-report-schema) produced with
+// Reads Stryker JSON reports (mutation-testing-report-schema) produced with
 // `disableBail`, so each mutant's `killedBy` lists every test that caught it.
+// A workspace measured in slices has one report per slice, named
+// `<workspace>.<slice>.json`; they are merged before the analysis.
 
 /**
  * Tests that match one of these stay on purpose when pruning, even when other
@@ -101,6 +103,87 @@ export function analyzeReport(report, workspace) {
       minimalSet: minimalSet.map(view),
     },
   };
+}
+
+/**
+ * Merges the reports of one workspace's slices into one report. Each slice
+ * mutates other files but runs the same tests, and Stryker numbers tests and
+ * mutants per run: tests are matched by file, name and line, and mutant ids
+ * get their report's index so they stay distinct.
+ */
+export function mergeReports(reports) {
+  const files = {};
+  const testFiles = {};
+  const mergedTestIds = new Map();
+  reports.forEach((report, index) => {
+    const testIds = new Map();
+    const occurrences = new Map();
+    for (const [file, entry] of Object.entries(report.testFiles ?? {}))
+      for (const test of entry.tests) {
+        // Two tests may share a file, name and line (a table with a fixed
+        // name); their order is the same in every slice.
+        const place = JSON.stringify([
+          file,
+          test.name,
+          test.location?.start.line ?? null,
+        ]);
+        const occurrence = (occurrences.get(place) ?? 0) + 1;
+        occurrences.set(place, occurrence);
+        const key = `${place}#${occurrence}`;
+        let id = mergedTestIds.get(key);
+        if (id === undefined) {
+          id = String(mergedTestIds.size);
+          mergedTestIds.set(key, id);
+          (testFiles[file] ??= { tests: [] }).tests.push({ ...test, id });
+        }
+        testIds.set(test.id, id);
+      }
+    const mergedTestId = (id) => {
+      const merged = testIds.get(id);
+      if (merged === undefined)
+        throw new Error(`Report names unknown test ${id}`);
+      return merged;
+    };
+    for (const [file, entry] of Object.entries(report.files)) {
+      if (files[file]?.mutants.length && entry.mutants.length)
+        throw new Error(
+          `${file} is mutated in more than one report; slices must not overlap`,
+        );
+      if (files[file]?.mutants.length) continue;
+      files[file] = {
+        ...entry,
+        mutants: entry.mutants.map((mutant) => ({
+          ...mutant,
+          id: `${index}:${mutant.id}`,
+          ...(mutant.coveredBy
+            ? { coveredBy: mutant.coveredBy.map(mergedTestId) }
+            : {}),
+          ...(mutant.killedBy
+            ? { killedBy: mutant.killedBy.map(mergedTestId) }
+            : {}),
+        })),
+      };
+    }
+  });
+  return { files, testFiles };
+}
+
+/** `<workspace>.json`, or `<workspace>.<slice>.json` for one slice. */
+export function workspaceOfReport(path) {
+  const [workspace, slice, ...rest] = basename(path, '.json').split('.');
+  if (rest.length > 0 || slice === 'summary')
+    throw new Error(`Not a report name: ${path}`);
+  return workspace;
+}
+
+/** Groups report paths by workspace, in name order. */
+export function groupReports(paths) {
+  const groups = new Map();
+  for (const path of paths) {
+    const workspace = workspaceOfReport(path);
+    groups.set(workspace, [...(groups.get(workspace) ?? []), path]);
+  }
+  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, 'en'));
 }
 
 export function keepReasons(file, name) {
@@ -277,7 +360,7 @@ export function renderCombinedMarkdown(summaries) {
         `| ${workspace} | ${pkg.mutants} | ${formatShare(pkg.caughtShare)} | ${tests.length} | ${lists.catchNothing.length} | ${lists.allCaughtElsewhere.length} | ${lists.minimalSet.length} |`,
     ),
     '',
-    'Each workspace’s full summary is in its `mutation-<workspace>` artifact.',
+    'Each workspace’s full summary, its slices merged, is in the `mutation-summary` artifact.',
     '',
   ].join('\n');
 }
@@ -296,28 +379,46 @@ if (
 ) {
   const [first, ...rest] = process.argv.slice(2);
   if (first === '--combine') {
-    if (rest.length === 0)
+    // Merges each workspace's slices, writes its summary to the folder and
+    // prints one table across workspaces.
+    const [outDirectory, ...reports] = rest;
+    if (!outDirectory || reports.length === 0)
       throw new Error(
-        'usage: analyze-mutation.mjs --combine <summary.json>...',
+        'usage: analyze-mutation.mjs --combine <out-dir> <report.json>...',
       );
-    process.stdout.write(
-      renderCombinedMarkdown(
-        rest.map((path) => JSON.parse(readFileSync(path, 'utf8'))),
-      ),
+    mkdirSync(outDirectory, { recursive: true });
+    const summaries = groupReports(reports).map(([workspace, paths]) =>
+      writeSummary(paths, workspace, join(outDirectory, workspace)),
     );
+    process.stdout.write(renderCombinedMarkdown(summaries));
   } else {
-    if (!first?.endsWith('.json') || rest.length > 0)
-      throw new Error('usage: analyze-mutation.mjs <report.json>');
-    const summary = analyzeReport(
-      JSON.parse(readFileSync(first, 'utf8')),
-      basename(first, '.json'),
-    );
-    const stem = first.slice(0, -'.json'.length);
-    writeFileSync(
-      `${stem}.summary.json`,
-      `${JSON.stringify(summary, null, 2)}\n`,
-    );
-    writeFileSync(`${stem}.summary.md`, renderMarkdown(summary));
+    const reports = process.argv.slice(2);
+    const groups = groupReports(reports);
+    if (groups.length !== 1 || reports.some((path) => !path.endsWith('.json')))
+      throw new Error(
+        'usage: analyze-mutation.mjs <report.json>... (one workspace)',
+      );
+    const [[workspace]] = groups;
+    // One report keeps its own name (a slice's summary sits beside it);
+    // several write the workspace's merged summary.
+    const stem =
+      reports.length === 1
+        ? reports[0].slice(0, -'.json'.length)
+        : join(dirname(reports[0]), workspace);
+    writeSummary(reports, workspace, stem);
     console.log(`Wrote ${stem}.summary.json and ${stem}.summary.md`);
   }
+}
+
+function writeSummary(paths, workspace, stem) {
+  const summary = analyzeReport(
+    mergeReports(paths.map((path) => JSON.parse(readFileSync(path, 'utf8')))),
+    workspace,
+  );
+  writeFileSync(
+    `${stem}.summary.json`,
+    `${JSON.stringify(summary, null, 2)}\n`,
+  );
+  writeFileSync(`${stem}.summary.md`, renderMarkdown(summary));
+  return summary;
 }

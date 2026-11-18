@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { Stryker } from '@stryker-mutator/core';
 
-// Runs Stryker for one Vitest workspace and writes reports/mutation/<workspace>.json.
+// Runs Stryker for one Vitest workspace and writes reports/mutation/<workspace>.json,
+// or <workspace>.<slice>.json for a named slice of its source.
 // It works in place (imports reaching outside the package break in Stryker's
 // copied sandbox): Stryker rewrites the workspace's source, tests and Vitest
 // config while it runs and restores them afterwards. So it refuses a workspace
@@ -58,6 +59,8 @@ const { values, positionals } = parseArgs({
     concurrency: { type: 'string', default: String(availableParallelism()) },
     // Narrows the run to a slice, e.g. --mutate 'src/flow/**/*.ts'.
     mutate: { type: 'string', multiple: true },
+    // Names the slice, so each slice of a workspace writes its own report.
+    slice: { type: 'string' },
   },
 });
 const [workspace] = positionals;
@@ -65,10 +68,12 @@ const concurrency = Number(values.concurrency);
 if (
   positionals.length !== 1 ||
   !Number.isInteger(concurrency) ||
-  concurrency < 1
+  concurrency < 1 ||
+  (values.slice !== undefined &&
+    (!/^[a-z0-9-]+$/u.test(values.slice) || !values.mutate))
 )
   throw new Error(
-    'usage: run-mutation.mjs <workspace> [--concurrency <n>] [--mutate <glob>]...',
+    'usage: run-mutation.mjs <workspace> [--concurrency <n>] [--slice <name> --mutate <glob>...]',
   );
 
 const workspaceDirectory = findWorkspace(workspace);
@@ -76,7 +81,7 @@ requireCleanWorkspace(workspaceDirectory);
 const reportFile = join(
   repositoryRoot,
   'reports/mutation',
-  `${workspace}.json`,
+  values.slice ? `${workspace}.${values.slice}.json` : `${workspace}.json`,
 );
 mkdirSync(join(repositoryRoot, 'reports/mutation'), { recursive: true });
 
