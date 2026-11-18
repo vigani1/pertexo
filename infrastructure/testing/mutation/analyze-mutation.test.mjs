@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   analyzeReport,
+  groupReports,
   keepReasons,
+  mergeReports,
   renderCombinedMarkdown,
   renderMarkdown,
 } from './analyze-mutation.mjs';
@@ -391,4 +398,187 @@ test('the combined summary has one row per workspace, in name order', () => {
     '| alpha | 5 | 50.0% | 4 | 1 | 2 | 2 |',
     '| zeta | 5 | 50.0% | 4 | 1 | 2 | 2 |',
   ]);
+});
+
+// Two slices of one workspace. Stryker numbers tests and mutants per run, so
+// `alpha` is test 0 in the first slice and test 1 in the second, and both
+// slices have a mutant 0. `alpha` alone catches the first slice's mutant;
+// `beta` alone catches the second slice's mutant 1; both catch its mutant 0.
+function slices() {
+  const first = {
+    files: {
+      'src/a.ts': {
+        mutants: [mutant('0', 'Killed', { killedBy: ['0'], coveredBy: ['0'] })],
+      },
+    },
+    testFiles: {
+      'test/a.test.ts': {
+        tests: [
+          { id: '0', name: 'alpha', location: { start: { line: 3 } } },
+          { id: '1', name: 'beta', location: { start: { line: 9 } } },
+        ],
+      },
+    },
+  };
+  const second = {
+    files: {
+      'src/b.ts': {
+        mutants: [
+          mutant('0', 'Killed', {
+            killedBy: ['0', '1'],
+            coveredBy: ['0', '1'],
+          }),
+          mutant('1', 'Killed', { killedBy: ['0'], coveredBy: ['0'] }),
+          mutant('2', 'Survived', { coveredBy: ['1'] }),
+        ],
+      },
+    },
+    testFiles: {
+      'test/a.test.ts': {
+        tests: [
+          { id: '0', name: 'beta', location: { start: { line: 9 } } },
+          { id: '1', name: 'alpha', location: { start: { line: 3 } } },
+        ],
+      },
+    },
+  };
+  return [first, second];
+}
+
+const catches = (summary) =>
+  Object.fromEntries(
+    summary.tests.map((test) => [
+      test.name,
+      [test.covered, test.caught, test.caughtByNoOther],
+    ]),
+  );
+
+test('merged slices count every mutant once, however each run numbered them', () => {
+  const summary = analyzeReport(mergeReports(slices()), 'demo');
+  assert.deepEqual(
+    {
+      mutants: summary.package.mutants,
+      caught: summary.package.caught,
+      tests: summary.tests.length,
+    },
+    { mutants: 4, caught: 3, tests: 2 },
+  );
+});
+
+test('merged slices credit each catch to the test by name, not by run number', () => {
+  const summary = analyzeReport(mergeReports(slices()), 'demo');
+  assert.deepEqual(catches(summary), {
+    alpha: [3, 2, 1],
+    beta: [2, 2, 1],
+  });
+});
+
+test('a test needed in any slice stays in the merged smallest set', () => {
+  // Alone, the second slice needs only `beta`; the first slice needs `alpha`.
+  const [, second] = slices();
+  assert.deepEqual(
+    names(analyzeReport(mergeReports([second]), 'demo').lists.minimalSet),
+    ['beta'],
+  );
+  assert.deepEqual(
+    names(analyzeReport(mergeReports(slices()), 'demo').lists.minimalSet),
+    ['alpha', 'beta'],
+  );
+});
+
+test('merged slices tell apart same-named tests on one line by their order', () => {
+  const tests = (first, second) => ({
+    'test/a.test.ts': {
+      tests: [
+        { id: first, name: 'same', location: { start: { line: 4 } } },
+        { id: second, name: 'same', location: { start: { line: 4 } } },
+      ],
+    },
+  });
+  const merged = mergeReports([
+    {
+      files: {
+        'src/a.ts': { mutants: [mutant('0', 'Killed', { killedBy: ['x'] })] },
+      },
+      testFiles: tests('x', 'y'),
+    },
+    {
+      files: {
+        'src/b.ts': { mutants: [mutant('0', 'Killed', { killedBy: ['q'] })] },
+      },
+      testFiles: tests('p', 'q'),
+    },
+  ]);
+  const summary = analyzeReport(merged, 'demo');
+  assert.deepEqual(
+    summary.tests.map((test) => test.caught),
+    [1, 1],
+  );
+});
+
+test('refuses slices that mutate the same file', () => {
+  const [first] = slices();
+  assert.throws(
+    () => mergeReports([first, first]),
+    /src\/a\.ts is mutated in more than one report/u,
+  );
+});
+
+test('refuses a slice that names a test it does not list', () => {
+  const [first, second] = slices();
+  second.files['src/b.ts'].mutants.push(
+    mutant('3', 'Killed', { killedBy: ['ghost'] }),
+  );
+  assert.throws(() => mergeReports([first, second]), /unknown test ghost/u);
+});
+
+test('groups reports by workspace and refuses a summary as a report', () => {
+  assert.deepEqual(
+    groupReports([
+      'r/zeta.json',
+      'r/alpha.transition.json',
+      'r/alpha.rest.json',
+    ]),
+    [
+      ['alpha', ['r/alpha.transition.json', 'r/alpha.rest.json']],
+      ['zeta', ['r/zeta.json']],
+    ],
+  );
+  assert.throws(
+    () => groupReports(['r/alpha.summary.json']),
+    /Not a report name/u,
+  );
+});
+
+test('the combine command merges each workspace’s slices into one summary', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'mutation-merge-'));
+  const [first, second] = slices();
+  const reports = {
+    'demo.first.json': first,
+    'demo.second.json': second,
+    'other.json': report(),
+  };
+  for (const [name, content] of Object.entries(reports))
+    writeFileSync(join(directory, name), JSON.stringify(content));
+  const out = join(directory, 'summary');
+  const result = spawnSync(
+    process.execPath,
+    [
+      fileURLToPath(new URL('analyze-mutation.mjs', import.meta.url)),
+      '--combine',
+      out,
+      ...Object.keys(reports).map((name) => join(directory, name)),
+    ],
+    { encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(
+    result.stdout.split('\n').filter((line) => /^\| (demo|other) /u.test(line)),
+    [
+      '| demo | 4 | 75.0% | 2 | 0 | 0 | 2 |',
+      '| other | 5 | 50.0% | 4 | 1 | 2 | 2 |',
+    ],
+  );
+  const demo = JSON.parse(readFileSync(join(out, 'demo.summary.json'), 'utf8'));
+  assert.deepEqual(catches(demo), { alpha: [3, 2, 1], beta: [2, 2, 1] });
 });

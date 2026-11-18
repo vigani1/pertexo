@@ -15,6 +15,14 @@ on:
           workflow-model workflow-engine contracts nodes-core node-sdk
           integrations policy rate-limit queue templates node-catalog
           observability secrets artifact-store core
+      slices:
+        description: >-
+          Optional JSON splitting workspaces into named --mutate slices, one job
+          each, e.g. {"workflow-engine": {"transition":
+          ["src/transition/**/*.ts"], "rest": ["src/**/*.ts",
+          "!src/transition/**"]}}. Slices must not overlap.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -28,30 +36,50 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      workspaces: ${{ steps.plan.outputs.workspaces }}
+      jobs: ${{ steps.plan.outputs.jobs }}
     steps:
-      - name: Turn the input into a matrix
+      - name: Turn the inputs into a matrix
         id: plan
         env:
           WORKSPACES: ${{ inputs.workspaces }}
+          SLICES: ${{ inputs.slices }}
         run: |
           set -euo pipefail
-          workspaces="$(jq -cn --arg list "$WORKSPACES" '$list | split(" ") | map(select(. != "")) | unique')"
-          test "$workspaces" != '[]'
-          printf 'workspaces=%s\n' "$workspaces" >> "$GITHUB_OUTPUT"
+          slices="${SLICES:-}"
+          [ -n "$slices" ] || slices='{}'
+          # One job per workspace, or per slice of a sliced workspace.
+          jobs="$(jq -cn --arg list "$WORKSPACES" --argjson slices "$slices" '
+            ($list | split(" ") | map(select(. != "")) | unique) as $workspaces
+            | ($slices | keys - $workspaces) as $unknown
+            | if $unknown != [] then
+                error("slices name workspaces not in the list: \($unknown | join(" "))")
+              elif any($slices[]; length == 0 or any(.[]; length == 0)) then
+                error("every sliced workspace needs slices, and every slice globs")
+              else . end
+            | [$workspaces[] as $workspace
+                | if $slices[$workspace] then
+                    $slices[$workspace] | to_entries[]
+                    | {workspace: $workspace, slice: .key, mutate: .value,
+                       report: "\($workspace).\(.key)"}
+                  else
+                    {workspace: $workspace, slice: "", mutate: [], report: $workspace}
+                  end]')"
+          test "$jobs" != '[]'
+          printf 'jobs=%s\n' "$jobs" >> "$GITHUB_OUTPUT"
 
   mutate:
-    name: mutate (${{ matrix.workspace }})
+    name: mutate (${{ matrix.report }})
     needs: plan
     runs-on: ubuntu-latest
     # Each mutant reruns every test that reaches it, without stopping at the
     # first catch. Core is the largest unit lane and gets the hosted-runner
-    # ceiling; the others get three hours. Tighten both after measured runs.
+    # ceiling; the others get three hours. A workspace that outlasts its job
+    # is split into slices (README, "Finding tests that catch nothing").
     timeout-minutes: ${{ matrix.workspace == 'core' && 350 || 180 }}
     strategy:
       fail-fast: false
       matrix:
-        workspace: ${{ fromJSON(needs.plan.outputs.workspaces) }}
+        include: ${{ fromJSON(needs.plan.outputs.jobs) }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,22 +88,33 @@ jobs:
       - name: Plant mutants and run the unit tests
         env:
           WORKSPACE: ${{ matrix.workspace }}
-        run: node infrastructure/testing/mutation/run-mutation.mjs "$WORKSPACE"
+          SLICE: ${{ matrix.slice }}
+          MUTATE: ${{ toJSON(matrix.mutate) }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ -n "$SLICE" ]; then
+            args+=(--slice "$SLICE")
+            while IFS= read -r glob; do
+              args+=(--mutate "$glob")
+            done < <(jq -r '.[]' <<< "$MUTATE")
+          fi
+          node infrastructure/testing/mutation/run-mutation.mjs "$WORKSPACE" ${args[@]+"${args[@]}"}
       - name: Summarize
         env:
-          WORKSPACE: ${{ matrix.workspace }}
+          REPORT: ${{ matrix.report }}
         run:
           node infrastructure/testing/mutation/analyze-mutation.mjs
-          "reports/mutation/$WORKSPACE.json"
+          "reports/mutation/$REPORT.json"
       - name: Upload the report and summary
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mutation-${{ matrix.workspace }}
+          name: mutation-${{ matrix.report }}
           path: reports/mutation/
           if-no-files-found: error
 
   summary:
-    needs: mutate
+    needs: [plan, mutate]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -86,19 +125,38 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-      - name: Download the summaries
+      - name: Download the reports
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: mutation-*
           path: reports/mutation
           merge-multiple: true
-      - name: Write the combined summary
+      - name: Merge slices and write the combined summary
+        env:
+          JOBS: ${{ needs.plan.outputs.jobs }}
         run: |
           set -euo pipefail
           shopt -s nullglob
-          summaries=(reports/mutation/*.summary.json)
-          if [ "${#summaries[@]}" -eq 0 ]; then
+          # A workspace with a failed slice is merged from the slices that
+          # finished; name the missing ones so its numbers are read as partial.
+          missing="$(jq -r '.[].report' <<< "$JOBS" | while IFS= read -r report; do
+            [ -f "reports/mutation/$report.json" ] || printf '%s ' "$report"
+          done)"
+          if [ -n "$missing" ]; then
+            printf 'Missing reports (job failed or timed out): %s\n\n' "$missing" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          reports=()
+          for report in reports/mutation/*.json; do
+            [[ "$report" == *.summary.json ]] || reports+=("$report")
+          done
+          if [ "${#reports[@]}" -eq 0 ]; then
             echo 'No workspace finished; see the mutate jobs.' >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-          node infrastructure/testing/mutation/analyze-mutation.mjs --combine "${summaries[@]}" >> "$GITHUB_STEP_SUMMARY"
+          node infrastructure/testing/mutation/analyze-mutation.mjs --combine reports/summary "${reports[@]}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the merged summaries
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-summary
+          path: reports/summary/
+          if-no-files-found: error

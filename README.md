@@ -202,8 +202,41 @@ lane. The web app is left out because one run would take far longer than a
 runner allows. It never runs on pull requests or pushes.
 
 Each workspace becomes one job and uploads a `mutation-<workspace>` artifact
-holding Stryker's report and a summary in Markdown and JSON. The run's job
-summary has one row per workspace. In a workspace's summary:
+holding Stryker's report and a summary in Markdown and JSON. A workspace too
+large for one job is split with the `slices` input: JSON naming each slice's
+`--mutate` globs, relative to the workspace, one job per slice. The slices must
+not overlap; the last slice usually takes `src/**/*.ts` without the others. For
+the workflow engine, which outlasts one job:
+
+```json
+{
+  "workflow-engine": {
+    "transition": [
+      "src/transition/*.ts",
+      "!src/transition/{transition-state,observations,advance-workflow}.ts"
+    ],
+    "transition-advance": [
+      "src/transition/{transition-state,observations,advance-workflow}.ts",
+      "src/transition/scheduling/**/*.ts"
+    ],
+    "observation-coordinator": ["src/observation/coordinator*.ts"],
+    "observation-persisted": ["src/observation/persisted*.ts"],
+    "compilation": ["src/compilation/**/*.ts"],
+    "checkpoint": ["src/checkpoint/**/*.ts"],
+    "attempt": ["src/attempt/**/*.ts"],
+    "recovery": ["src/recovery/**/*.ts"],
+    "rest": [
+      "src/**/*.ts",
+      "!src/{transition,observation,compilation,checkpoint,attempt,recovery}/**"
+    ]
+  }
+}
+```
+
+Each slice uploads `mutation-<workspace>.<slice>`. The last job merges each
+workspace's slices into one summary, uploaded as `mutation-summary`, and names
+any slice that did not finish. The run's job summary has one row per workspace.
+In a workspace's summary:
 
 - **Caught** is the share of valid mutants some test caught.
 - **Cover mutated code but catch nothing** lists tests that ran against planted
@@ -224,11 +257,13 @@ summary has one row per workspace. In a workspace's summary:
   `run-mutation.mjs` leaves them out with a reason each, so pruning never judges
   them.
 
-`node infrastructure/testing/mutation/run-mutation.mjs <workspace> [--concurrency <n>] [--mutate <glob>]`
+`node infrastructure/testing/mutation/run-mutation.mjs <workspace> [--concurrency <n>] [--slice <name> --mutate <glob>...]`
 runs one workspace locally. It rewrites the workspace's files while it runs and
 refuses a workspace with uncommitted changes. Use it only in a disposable
 checkout, never in the checkout you work in.
-`analyze-mutation.mjs reports/mutation/<workspace>.json` writes the summary.
+`analyze-mutation.mjs reports/mutation/<workspace>.json` writes the summary;
+given every `<workspace>.<slice>.json` of a workspace, it writes their merged
+summary as `<workspace>.summary.md`.
 
 ### Finding tests that overlap
 
