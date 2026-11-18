@@ -42,7 +42,7 @@ async function chooseDuration(label: string) {
 }
 
 describe('workflow settings: run duration', () => {
-  it('saves a new maximum into the draft with its ETag and says to publish', async () => {
+  it('says a workflow with no setting has no time limit, then saves a new maximum into the draft with its ETag and says to publish', async () => {
     const saves: SavedDraft[] = [];
     let graph: unknown = emptyGraph;
     installQueries();
@@ -60,6 +60,19 @@ describe('workflow settings: run duration', () => {
       }),
     );
     await renderLoadedApp(settingsPath);
+    // backend-gaps-18: the page said 1 hour, while acceptance stores no
+    // deadline at all.
+    const unset = await screen.findByRole(
+      'region',
+      { name: 'Run duration' },
+      coldStart,
+    );
+    expect(
+      await within(unset).findByRole('combobox', {
+        name: 'Maximum run duration',
+      }),
+    ).toHaveTextContent(/no (?:time )?limit/iu);
+    expect(unset).not.toHaveTextContent('1 hour');
     const { section } = await chooseDuration('30 minutes');
     expect(
       await screen.findByText('Runs may take up to 30 minutes in the draft'),

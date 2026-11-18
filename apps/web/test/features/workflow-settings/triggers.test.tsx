@@ -1,28 +1,23 @@
 import { screen, waitFor, within } from '@testing-library/react';
-
 import userEvent from '@testing-library/user-event';
-
 import { HttpResponse, http } from 'msw';
-
 import { describe, expect, it } from 'vitest';
-
 import { coldStart } from '../../support/fixtures/run';
-
 import { mockServer } from '../../support/mock-server';
-
 import { renderLoadedApp } from '../../support/render-app';
-
 import {
   installQueries,
   problem,
+  schedule,
   secondWebhook,
   secondWebhookId,
   webhook,
   webhookId,
   workflowApi,
 } from './fixtures';
-
 import { acknowledgeCredentials, triggersPath } from './triggers/fixture';
+
+const fullAddress = `http://localhost:3000/hooks/${'e'.repeat(43)}`;
 
 describe('workflow triggers tab', () => {
   it('explains server-disabled webhooks without suggesting a role change and keeps schedules usable', async () => {
@@ -170,15 +165,55 @@ describe('workflow triggers tab', () => {
     );
     expect(await screen.findByText('e'.repeat(43))).toBeVisible();
     expect(screen.getByText('s'.repeat(43))).toBeVisible();
-    expect(
-      screen.getByText(`http://localhost:3000/hooks/${'e'.repeat(43)}`),
-    ).toBeVisible();
+    // The test environment serves the app from this origin, and /hooks is on
+    // the app's host: the dialog shows and copies the whole address.
+    const dialog = screen.getByRole('dialog', { name: 'Store these now' });
+    expect(within(dialog).getByText(fullAddress)).toBeVisible();
+    expect(dialog).not.toHaveTextContent('your Pertexo API address');
+    expect(dialog).not.toHaveTextContent('can’t show the full address');
+    await event.click(
+      within(dialog).getByRole('button', {
+        name: /copy (the )?(webhook )?(url|address)/iu,
+      }),
+    );
+    expect(await navigator.clipboard.readText()).toBe(fullAddress);
     await acknowledgeCredentials(event);
     await waitFor(() => {
       expect(screen.queryByText('s'.repeat(43))).not.toBeInTheDocument();
     });
     expect(await screen.findByText('Endpoint created')).toBeVisible();
     expect(keys).toEqual([expect.any(String)]);
+  });
+  it('shows the whole address for a secret URL with no secret beside it', async () => {
+    installQueries();
+    mockServer.use(
+      http.post(`${workflowApi}/triggers/${webhookId}/webhook/provision`, () =>
+        HttpResponse.json({
+          trigger: {
+            ...webhook,
+            endpointReady: true,
+            status: 'active',
+            authentication: { mode: 'secret_url', allowedOrigins: [] },
+          },
+          replayed: false,
+          endpointKey: 'e'.repeat(43),
+        }),
+      ),
+    );
+    await renderLoadedApp(triggersPath);
+    await userEvent
+      .setup()
+      .click(
+        await screen.findByRole(
+          'button',
+          { name: 'Create endpoint' },
+          coldStart,
+        ),
+      );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Store these now',
+    });
+    expect(within(dialog).getByText(fullAddress)).toBeVisible();
   });
   it('serializes webhook credentials until the current result is acknowledged', async () => {
     installQueries();
@@ -261,4 +296,58 @@ describe('workflow triggers tab', () => {
     ).toBeVisible();
     expect(secondCalls).toBe(1);
   });
+  it.each([
+    ['schedule.recurrence_invalid', /edit the schedule and publish again/i],
+    ['schedule.execution_incompatible', /publish it again/i],
+  ])(
+    'explains how to repair %s on the real schedule card, and a malformed webhook configuration without a raw error',
+    async (code, repair) => {
+      installQueries();
+      mockServer.use(
+        http.get(`${workflowApi}/triggers/schedules`, () =>
+          HttpResponse.json({
+            items: [
+              {
+                ...schedule,
+                recurrence:
+                  code === 'schedule.recurrence_invalid'
+                    ? null
+                    : schedule.recurrence,
+                healthStatus: 'unhealthy',
+                lastErrorCode: code,
+              },
+            ],
+          }),
+        ),
+        http.get(`${workflowApi}/triggers`, () =>
+          HttpResponse.json({
+            items: [
+              {
+                ...webhook,
+                status: 'error',
+                healthStatus: 'unhealthy',
+                lastErrorCode: 'trigger.configuration_invalid',
+              },
+            ],
+          }),
+        ),
+      );
+      await renderLoadedApp(triggersPath);
+      const card = await screen.findByRole('article', {
+        name: 'Schedule: Nightly check',
+      });
+      expect(await within(card).findByText(repair)).toBeVisible();
+      expect(
+        within(card).queryByText(/try again on its own/i),
+      ).not.toBeInTheDocument();
+      const webhookCard = await screen.findByRole('article', {
+        name: /Webhook:/,
+      });
+      expect(
+        await within(webhookCard).findByText(
+          /review the trigger settings and publish again/i,
+        ),
+      ).toBeVisible();
+    },
+  );
 });
