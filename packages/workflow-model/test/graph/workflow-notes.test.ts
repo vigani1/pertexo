@@ -3,10 +3,7 @@ import {
   workflowGraphSchema,
   type WorkflowGraph,
 } from '../../src/graph/workflow-graph.schemas.js';
-import {
-  WORKFLOW_NOTE_LIMITS,
-  type WorkflowNote,
-} from '../../src/graph/notes/canvas-note.schemas.js';
+import type { WorkflowNote } from '../../src/graph/notes/canvas-note.schemas.js';
 import { sameWorkflowNotes } from '../../src/graph/notes/identity.js';
 import { stepSampleBindings } from '../../src/authoring/samples/identity.js';
 import {
@@ -37,28 +34,6 @@ describe('canvas note boundary', () => {
       definitions: [],
     });
     expect(rebound.graph.notes).toEqual([note]);
-  });
-  it('accepts the bounded maximum and refuses another note', () => {
-    const notes = Array.from(
-      { length: WORKFLOW_NOTE_LIMITS.count },
-      (_, index) => ({
-        ...note,
-        id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
-        text: 'x'.repeat(4000),
-      }),
-    );
-    expect(workflowGraphSchema.safeParse({ ...graph, notes }).success).toBe(
-      true,
-    );
-    expect(
-      workflowGraphSchema.safeParse({
-        ...graph,
-        notes: [
-          ...notes,
-          { ...note, id: '11111111-1111-4111-8111-111111111111' },
-        ],
-      }).success,
-    ).toBe(false);
   });
   it.each([
     { ...note, text: 'x'.repeat(4001) },

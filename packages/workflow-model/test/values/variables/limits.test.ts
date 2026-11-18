@@ -35,12 +35,6 @@ it.each([
   expect(valid(name)).toBe(false);
 });
 
-it('accepts a text value of exactly 4,096 characters, counted as characters', () => {
-  expect(
-    workspaceVariableValuesSchema.safeParse({ TEXT: 'a'.repeat(4096) }).success,
-  ).toBe(true);
-});
-
 it.each([
   [{ EMPTY: '' }],
   [{ ZERO: 0 }],

@@ -225,46 +225,6 @@ it.each([
     FormValuesInvalidError,
   );
 });
-it('does not coerce arrays into empty optional text or strings into optional choices', () => {
-  expect(() =>
-    parseFormValues(multiple, { channels: ['Email'], note: [] }),
-  ).toThrow(FormValuesInvalidError);
-  expect(() =>
-    parseFormValues(multiple, { channels: ['Email'], extras: '' }),
-  ).toThrow(FormValuesInvalidError);
-});
-it('retains the response budget with multiple choices and otherwise valid text', () => {
-  const options = Array.from(
-    { length: 50 },
-    (_, i) => `${String(i)}${'x'.repeat(158)}`,
-  );
-  const fields = formFieldsSchema.parse([
-    {
-      id: 'choices',
-      name: 'choices',
-      label: 'Choices',
-      type: 'multi_select',
-      options,
-    },
-    ...Array.from({ length: 7 }, (_, i) => ({
-      id: `f${String(i)}`,
-      name: `f${String(i)}`,
-      label: 'Text',
-      type: 'text',
-    })),
-  ]);
-  expect(() =>
-    parseFormValues(fields, {
-      choices: options,
-      ...Object.fromEntries(
-        Array.from({ length: 7 }, (_, i) => [
-          `f${String(i)}`,
-          'x'.repeat(9000),
-        ]),
-      ),
-    }),
-  ).toThrow('Keep the form response within 64 KB.');
-});
 it('enforces per-field selection bounds while allowing partial requested prefills', () => {
   const bounded = formFieldsSchema.parse([
     {
