@@ -1,12 +1,11 @@
 import { HttpRateLimitAdmission } from '../../src/platform/rate-limit/admission.js';
-import type { CallHandler, ExecutionContext } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { firstValueFrom, of } from 'rxjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
   RateLimitInterceptor,
-  type RateLimitConsumer,
   type RateLimitMetricRecorder,
 } from '../../src/platform/rate-limit/interceptor.js';
 import {
@@ -75,115 +74,15 @@ function metrics(): RateLimitMetricRecorder {
   return { record: vi.fn() };
 }
 
+/**
+ * Refusing over budget before the controller runs, failing open for reads and
+ * closed for mutations while Redis is down, and the quota headers run on the
+ * real stack in connections/provider-test.integration.test.ts,
+ * headers.integration.test.ts and outage-budget.integration.test.ts. These
+ * cases stay because no real stack has a metrics sink that throws or a route
+ * without a classification.
+ */
 describe('rate-limit interceptor', () => {
-  it('rejects before controller work with a generic bounded problem', async () => {
-    const consume = vi.fn().mockResolvedValue({
-      allowed: false,
-      retryAfterSeconds: 7,
-      limitedDimension: 'connection',
-    });
-    const consumer: RateLimitConsumer = { consume };
-    const handle = vi.fn(() => of('called'));
-    const next: CallHandler = { handle };
-    const interceptor = new RateLimitInterceptor(
-      new Reflector(),
-      new HttpRateLimitAdmission(consumer, metrics()),
-    );
-
-    await expect(
-      interceptor.intercept(context(providerTestHandler), next),
-    ).rejects.toMatchObject({
-      code: 'request.rate_limited',
-      details: { retryAfterSeconds: 7 },
-    });
-    expect(handle).not.toHaveBeenCalled();
-    expect(consume).toHaveBeenCalledWith(
-      expect.objectContaining({
-        endpointClass: 'provider_test',
-        // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
-        // oxlint-disable-next-line typescript/no-unsafe-assignment
-        dimensions: expect.arrayContaining([
-          { kind: 'actor', identifier: actorId, limit: 10 },
-          { kind: 'workspace', identifier: workspaceId, limit: 20 },
-          { kind: 'connection', identifier: connectionId, limit: 5 },
-        ]),
-      }),
-    );
-  });
-
-  it('fails open only for endpoint classes whose policy permits it', async () => {
-    const consume = vi.fn().mockRejectedValue(new Error('redis unavailable'));
-    const consumer: RateLimitConsumer = { consume };
-    const handle = vi.fn(() => of('called'));
-    const next: CallHandler = { handle };
-    const recorder = metrics();
-    const interceptor = new RateLimitInterceptor(
-      new Reflector(),
-      new HttpRateLimitAdmission(consumer, recorder),
-    );
-
-    await expect(
-      firstValueFrom(
-        await interceptor.intercept(context(authenticatedReadHandler), next),
-      ),
-    ).resolves.toBe('called');
-    expect(recorder.record).toHaveBeenCalledWith({
-      endpointClass: 'authenticated_read',
-      failureMode: 'open',
-      outcome: 'backend_error',
-    });
-  });
-
-  it('keeps a protected mutation limited in this process when the backend is unavailable', async () => {
-    const consume = vi.fn().mockRejectedValue(new Error('redis unavailable'));
-    const handle = vi.fn(() => of('called'));
-    const recorder = metrics();
-    const interceptor = new RateLimitInterceptor(
-      new Reflector(),
-      new HttpRateLimitAdmission({ consume }, recorder),
-    );
-
-    let refusal: unknown;
-    for (
-      let request = 0;
-      refusal === undefined && request < 10_000;
-      request += 1
-    )
-      await interceptor
-        .intercept(context(providerTestHandler), { handle })
-        .catch((error: unknown) => {
-          refusal = error;
-        });
-    expect(refusal).toMatchObject({ code: 'request.rate_limited' });
-    expect(handle).toHaveBeenCalled();
-    expect(recorder.record).toHaveBeenCalledWith({
-      endpointClass: 'provider_test',
-      failureMode: 'closed',
-      outcome: 'backend_error',
-    });
-  });
-
-  it('passes allowed requests through and records the decision', async () => {
-    const consume = vi.fn().mockResolvedValue({ allowed: true });
-    const recorder = metrics();
-    const handle = vi.fn(() => of('called'));
-    const interceptor = new RateLimitInterceptor(
-      new Reflector(),
-      new HttpRateLimitAdmission({ consume }, recorder),
-    );
-
-    await expect(
-      firstValueFrom(
-        await interceptor.intercept(context(providerTestHandler), { handle }),
-      ),
-    ).resolves.toBe('called');
-    expect(recorder.record).toHaveBeenCalledWith({
-      endpointClass: 'provider_test',
-      failureMode: 'closed',
-      outcome: 'allowed',
-    });
-  });
-
   it('keeps an allowed decision authoritative when metric recording throws', async () => {
     const handle = vi.fn(() => of('called'));
     const interceptor = new RateLimitInterceptor(
@@ -278,62 +177,5 @@ describe('rate-limit interceptor', () => {
     ).rejects.toThrow(/missing rate-limit classification/u);
     expect(consume).not.toHaveBeenCalled();
     expect(recorder.record).not.toHaveBeenCalled();
-  });
-
-  it('prefers authorized workspace scope over route parameters', async () => {
-    const consume = vi.fn().mockResolvedValue({ allowed: true });
-    const interceptor = new RateLimitInterceptor(
-      new Reflector(),
-      new HttpRateLimitAdmission({ consume }, metrics()),
-    );
-
-    await interceptor.intercept(
-      context(providerTestHandler, {
-        authorizedWorkspace: { workspaceId },
-        params: {
-          workspaceId: '44444444-4444-4444-8444-444444444444',
-          connectionId,
-        },
-        identitySession: { userId: actorId },
-      }),
-      { handle: () => of('called') },
-    );
-
-    expect(consume).toHaveBeenCalledWith(
-      expect.objectContaining({
-        // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
-        // oxlint-disable-next-line typescript/no-unsafe-assignment
-        dimensions: expect.arrayContaining([
-          { kind: 'workspace', identifier: workspaceId, limit: 20 },
-        ]),
-      }),
-    );
-  });
-
-  it('ignores non-string trusted scope fields and falls back to route scope', async () => {
-    const consume = vi.fn().mockResolvedValue({ allowed: true });
-    const interceptor = new RateLimitInterceptor(
-      new Reflector(),
-      new HttpRateLimitAdmission({ consume }, metrics()),
-    );
-
-    await interceptor.intercept(
-      context(providerTestHandler, {
-        authorizedWorkspace: { workspaceId: 42 },
-        params: { workspaceId, connectionId },
-        identitySession: { userId: actorId },
-      }),
-      { handle: () => of('called') },
-    );
-
-    expect(consume).toHaveBeenCalledWith(
-      expect.objectContaining({
-        // Vitest's asymmetric matcher is intentionally dynamic at this boundary.
-        // oxlint-disable-next-line typescript/no-unsafe-assignment
-        dimensions: expect.arrayContaining([
-          { kind: 'workspace', identifier: workspaceId, limit: 20 },
-        ]),
-      }),
-    );
   });
 });
