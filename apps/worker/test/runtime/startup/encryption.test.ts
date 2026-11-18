@@ -57,6 +57,10 @@ async function record() {
     runtime.close();
   }
 }
+// bootstrap/encryption-verification.integration.test.ts refuses a wrong key
+// against a real stored credential. These cases stay: a repository whose close
+// fails, and the order of verification against pool construction, can't be
+// produced or seen from outside the process.
 describe('encryption verification before worker construction', () => {
   it('preserves verification and cleanup failures without starting Nest', async () => {
     const stored = await record();
@@ -85,33 +89,6 @@ describe('encryption verification before worker construction', () => {
     });
   });
 
-  it('refuses the wrong key before any regular pool or Nest background work starts', async () => {
-    const stored = await record();
-    const close = vi.fn(() => Promise.resolve());
-    const factories = {
-      callbackStore: emptyCallbackStore,
-      encryptionKeysRepository: () => ({
-        read: () => Readable.from([stored]),
-        close,
-      }),
-      databaseRuntime: vi.fn(() => {
-        throw new Error('Regular pools must not start');
-      }),
-      applicationContext: vi.fn(() =>
-        Promise.reject(new Error('Nest must not start')),
-      ),
-    };
-    await expect(
-      createWorkerApplication(
-        config(Buffer.alloc(32, 8).toString('base64')),
-        dependencies,
-        factories,
-      ),
-    ).rejects.toMatchObject({ code: 'unavailable_key_material' });
-    expect(close).toHaveBeenCalledOnce();
-    expect(factories.databaseRuntime).not.toHaveBeenCalled();
-    expect(factories.applicationContext).not.toHaveBeenCalled();
-  });
   it('closes successful verification before constructing ordinary runtime owners', async () => {
     const stored = await record();
     const events: string[] = [];

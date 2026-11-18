@@ -79,41 +79,17 @@ function createFixture() {
   };
 }
 
+// main-process.test.ts runs the compiled bootstrap: telemetry before the
+// instrumented imports, one shutdown owner, and rollback when creating the
+// application or the last startup step fails. These stay because a process
+// can't be made to fail at the other boundaries, or with throwing diagnostics.
 describe('worker main bootstrap', () => {
-  it('starts telemetry before instrumented imports and installs one shutdown owner', async () => {
-    const fixture = createFixture();
-
-    await expect(
-      bootstrapWorker({
-        config,
-        createShutdownOwner: fixture.createShutdownOwner,
-        createTelemetryLifecycle: () => fixture.telemetry,
-        loadModules: fixture.loadModules,
-      }),
-    ).resolves.toBeUndefined();
-
-    expect(fixture.events).toEqual([
-      'telemetry.start',
-      'modules.load',
-      'logger.create',
-      'application.create',
-      'owner.create',
-      'owner.install',
-      'logger.info',
-    ]);
-    expect(fixture.owner.close).not.toHaveBeenCalled();
-    expect(fixture.application.close).not.toHaveBeenCalled();
-    expect(fixture.telemetry.shutdown).not.toHaveBeenCalled();
-  });
-
   it.each([
     'telemetry',
     'modules',
     'logger',
-    'application',
     'owner-construction',
     'owner-install',
-    'startup-log',
   ] as const)(
     'preserves a %s startup failure and closes through the acquired owner',
     async (boundary) => {
@@ -129,18 +105,12 @@ describe('worker main bootstrap', () => {
         fixture.createStructuredLogger.mockImplementation(() => {
           throw failure;
         });
-      } else if (boundary === 'application') {
-        fixture.createWorkerApplication.mockRejectedValueOnce(failure);
       } else if (boundary === 'owner-construction') {
         fixture.createShutdownOwner.mockImplementationOnce(() => {
           throw failure;
         });
-      } else if (boundary === 'owner-install') {
-        fixture.owner.install.mockImplementationOnce(() => {
-          throw failure;
-        });
       } else {
-        fixture.logger.info.mockImplementationOnce(() => {
+        fixture.owner.install.mockImplementationOnce(() => {
           throw failure;
         });
       }
@@ -157,9 +127,8 @@ describe('worker main bootstrap', () => {
       const applicationAcquired = [
         'owner-construction',
         'owner-install',
-        'startup-log',
       ].includes(boundary);
-      const ownerAcquired = ['owner-install', 'startup-log'].includes(boundary);
+      const ownerAcquired = boundary === 'owner-install';
       expect(fixture.owner.close).toHaveBeenCalledTimes(ownerAcquired ? 1 : 0);
       expect(fixture.application.close).toHaveBeenCalledTimes(
         applicationAcquired && !ownerAcquired ? 1 : 0,

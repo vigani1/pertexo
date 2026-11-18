@@ -17,17 +17,28 @@ const telemetry = {
     report('telemetry.closed');
   },
 };
+// `application` fails creating the application; `started-log` fails after the
+// shutdown owner is installed, the last step of a bootstrap.
+const failAt = process.env.WORKER_FIXTURE_FAIL;
 const logger = {
   debug: () => undefined,
   error: (event) => report(event),
   fatal: (event) => report(event),
-  info: (event) => report(event),
+  info: (event) => {
+    if (failAt === 'started-log' && event === 'worker.started')
+      throw new Error('startup log failed');
+    report(event);
+  },
   trace: () => undefined,
   warn: () => undefined,
 };
+// `fails` stands for an application whose close fails and leaves a handle
+// (such as a Redis reconnect timer) holding the process open.
+const closeFails = process.env.WORKER_FIXTURE_CLOSE === 'fails';
 const application = {
   async close(signal) {
     report('application.closed', { signal });
+    if (closeFails) throw new Error('application close failed');
     clearInterval(keepAlive);
   },
 };
@@ -103,7 +114,10 @@ await bootstrapWorker({
   loadModules: () =>
     Promise.resolve({
       application: {
-        createWorkerApplication: () => Promise.resolve(application),
+        createWorkerApplication: () =>
+          failAt === 'application'
+            ? Promise.reject(new Error('application failed'))
+            : Promise.resolve(application),
       },
       logging: { createStructuredLogger: () => logger },
     }),
