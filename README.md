@@ -268,9 +268,9 @@ run's job summary is the Markdown. To read it:
   delete. Files that failed or ran no passing test are listed as not measured.
 
 `node infrastructure/testing/overlap/run-file-coverage.mjs <workspace> --lane unit|integration [--shard i/n] [--concurrency n] [--only <test file>]...`
-runs one lane locally into `reports/overlap/`; build with
-`pnpm exec tsc --build --sourceMap` first. Run integration lanes only against a
-disposable test stack.
+runs one lane locally into `reports/overlap/`; run `pnpm build:packages` and
+`node infrastructure/testing/overlap/emit-source-maps.mjs` first. Run
+integration lanes only against a disposable test stack.
 `analyze-overlap.mjs [--out <stem>] [--threshold 0..1] <report.json>...` writes
 the summary.
 

@@ -126,9 +126,13 @@ jobs:
       - name: Use the Docker Hub mirror
         if: matrix.lane == 'integration'
         uses: ./.github/actions/docker-mirror
-      - name: Build with source maps
+      - name: Build
+        run: pnpm build:packages
+      - name: Add source maps to the build
         # Packages load each other from dist; the maps lead reach back to src.
-        run: pnpm exec tsc --build --pretty false --sourceMap
+        # A separate pass keeps the recorded build the configured one, which
+        # the worker's build freshness check compares against.
+        run: node infrastructure/testing/overlap/emit-source-maps.mjs
       - name: Start services
         if: matrix.lane == 'integration'
         uses: ./.github/actions/start-services
