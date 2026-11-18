@@ -128,9 +128,41 @@ describe.runIf(betterAuthIntegrationEnabled)(
     it('stays shut to a token with only run:read, which still sees the run', async () => {
       const headers = await tokenWith(world.browser, ['run:read']);
 
-      expect((await api.send('GET', runRoot, { headers })).statusCode).toBe(
-        200,
-      );
+      const detail = await api.send('GET', runRoot, { headers });
+      expect(detail.statusCode).toBe(200);
+      // Workflow names are workflow data: a run:read token sees none, and
+      // can't learn one by filtering on it.
+      expect(detail.json()).toMatchObject({ run: { workflowName: null } });
+      const listed = await api.send('GET', `${world.base}/runs`, { headers });
+      expect(listed.json()).toMatchObject({
+        items: [expect.objectContaining({ id: runId, workflowName: null })],
+      });
+      const workflowName = (
+        await api.send('GET', `${world.base}/workflows/${world.workflowId}`, {
+          headers: world.headers,
+        })
+      ).json<{ workflow: { name: string } }>().workflow.name;
+      expect(
+        (
+          await api.send(
+            'GET',
+            `${world.base}/runs?workflowNamePrefix=${encodeURIComponent(workflowName.slice(0, 3))}`,
+            { headers },
+          )
+        ).statusCode,
+      ).toBe(404);
+      // The workspace's deployment token has run:read and workflow:read.
+      const named = world.headers;
+      expect(
+        (await api.send('GET', runRoot, { headers: named })).json(),
+      ).toMatchObject({ run: { workflowName } });
+      expect(
+        (
+          await api.send('GET', `${world.base}/runs`, { headers: named })
+        ).json(),
+      ).toMatchObject({
+        items: [expect.objectContaining({ id: runId, workflowName })],
+      });
       for (const path of dataPaths()) {
         const reply = await api.send('GET', path, { headers });
         expect(reply.statusCode, path).toBe(403);
