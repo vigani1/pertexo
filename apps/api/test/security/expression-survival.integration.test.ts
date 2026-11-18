@@ -15,6 +15,8 @@ import {
 import type { Stack } from './stack.js';
 
 const HOSTILE = '$join([1..10000000],",")';
+// Quadratic work on a small list: it always outlasts the time limit.
+const SLOW = '$distinct([1..50000])';
 const DELIVERIES = 3;
 
 /** One delivery's answer; a dead API shows up as a refused connection. */
@@ -104,7 +106,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       expect(someoneElse.status).toBe(200);
     }, 120_000);
 
-    it('fails the step with a clear error and the worker runs the next one', async () => {
+    it('fails the step with a clear error, retrying one that runs out of time, and the worker runs the next one', async () => {
       const hostile = await publishWorkflow(
         stack,
         browser,
@@ -150,10 +152,45 @@ describe.runIf(betterAuthIntegrationEnabled)(
         /heap out of memory|node:internal/iu,
       );
 
+      // An expression that runs out of time is tried again, then named, not its inputs.
+      const slow = await publishWorkflow(
+        stack,
+        browser,
+        workspaceId,
+        graphOf([
+          { id: 'start', key: 'core.manual' },
+          {
+            id: 'slow',
+            key: 'core.set',
+            inputMappings: {
+              slow: {
+                kind: 'expression',
+                language: 'jsonata',
+                expression: SLOW,
+              },
+            },
+          },
+        ]),
+      );
+      const slowRun = await startRun(slow.path);
+      const timedOut = await waitForRun(slowRun);
+      expect(timedOut.run.status).toBe('failed');
+      expect(
+        timedOut.nodes.find((node) => node.nodeId === 'slow'),
+      ).toMatchObject({ safeErrorCode: 'execution.expression_timed_out' });
+      const attempts = await stack.query<{ count: number }>(
+        `select count(*)::int as count
+           from app.node_attempts as attempt
+           join app.node_runs as node on node.id = attempt.node_run_id
+          where node.workflow_run_id = $1 and node.node_id = 'slow'`,
+        [slowRun],
+      );
+      expect(attempts.rows[0]?.count).toBe(3);
+
       const healthyRun = await startRun(healthy.path);
       expect((await waitForRun(healthyRun)).run.status).toBe('succeeded');
       expect(stack.worker?.alive, stack.worker?.describeExit()).toBe(true);
-    }, 180_000);
+    }, 300_000);
 
     async function startRun(workflowPath: string): Promise<string> {
       const started = await stack.send('POST', `${workflowPath}/runs`, {
@@ -168,7 +205,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
 
     async function waitForRun(runId: string) {
       const finished = ['succeeded', 'failed', 'canceled', 'outcome_unknown'];
-      const deadline = Date.now() + 60_000;
+      // Long enough for an expression's three timed-out attempts.
+      const deadline = Date.now() + 90_000;
       for (;;) {
         const reply = await stack.send(
           'GET',

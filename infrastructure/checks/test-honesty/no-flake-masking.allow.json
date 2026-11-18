@@ -32,7 +32,6 @@
   "apps/api/test/platform/observability/http-privacy.test.ts": 1,
   "apps/api/test/platform/startup-refusals.test.ts": 1,
   "apps/api/test/routes/route-table.test.ts": 1,
-  "apps/api/test/security/expression-retry.integration.test.ts": 3,
   "apps/api/test/security/expression-survival.integration.test.ts": 4,
   "apps/api/test/security/response-headers.integration.test.ts": 2,
   "apps/api/test/security/sign-in-lockout.integration.test.ts": 10,
