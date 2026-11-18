@@ -2,9 +2,7 @@ import type { WorkspaceLifecycleStore } from '@pertexo/core/lifecycle';
 import type {
   IdentityWorkspaceStore,
   WorkspaceInvitationRecord,
-  CreateWorkspaceInvitationInput,
   InvitationAcceptanceIntentRecord,
-  ResolveInvitationAcceptanceInput,
   UserRecord,
   WorkspaceRenameResult,
   SealedInvitationToken as StoredInvitationToken,
@@ -77,12 +75,8 @@ export type IdentityWorkspacePersistence = Pick<
 export type WorkspaceInvitationPersistenceRecord = WorkspaceInvitationRecord;
 export type SealedInvitationToken = StoredInvitationToken;
 
-export type WorkspaceInvitationCreatePersistenceInput =
-  CreateWorkspaceInvitationInput;
 export type InvitationAcceptanceIntentPersistenceRecord =
   InvitationAcceptanceIntentRecord;
-export type InvitationAcceptanceResolvePersistenceInput =
-  ResolveInvitationAcceptanceInput;
 
 export interface InvitationTokenProtector {
   seal(
