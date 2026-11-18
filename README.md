@@ -239,8 +239,9 @@ finds files whose reach other files already have. Start it by hand from the
 Actions tab (**Test overlap** → **Run workflow**); the `workspaces` input takes
 any of `core api worker web`, separated by spaces. It never runs on pull
 requests or pushes. It measures `core` (unit and integration lanes), `api`
-(both), `worker` (both, without `test/recovery`) and the web app's Vitest unit
-lane. Playwright suites are not measured.
+(both), `worker` (both, without `test/recovery`), and for `web` the Vitest unit
+lane and the mocked Playwright specs (the `e2e` lane). The live browser journeys
+are not measured.
 
 Each shard uploads `overlap-<workspace>-<lane>-<shard>` with its report; the
 last job combines them all, so reach crosses workspaces (an API test reaching
@@ -255,13 +256,20 @@ run's job summary is the Markdown. To read it:
 - Reach includes the processes a test starts (a compiled API or worker), which
   write their V8 coverage into the file's own directory. A process started from
   `src` through `tsx`, or killed with `SIGKILL`, adds nothing.
+- A mocked spec runs alone in Chromium against one build made with source maps
+  and no minification, and its reach is what every page it opened ran. Coverage
+  is taken before each navigation, since a document's counts go with it; work a
+  page does in the moment between the app starting a navigation and the next
+  document loading can be missed. Statements are counted by the Vitest lane's
+  rule, so the two lanes compare line for line.
 - A file that fails while sharing the CPU with others runs once more alone,
   since coverage makes some tests miss their own time limits.
 - **Reach no line another file does not reach**: removing one such file alone
   loses no reached line.
-- **Reach lies inside one other file**: the container shown is an integration
-  file when there is one. A unit or mocked file inside an integration file of
-  the same flow is the main candidate to prune or fold in.
+- **Reach lies inside one other file**: the container shown is a real-path file
+  (an integration file or a mocked Playwright spec) when there is one. A unit or
+  jsdom file inside a real-path file of the same flow is the main candidate to
+  prune or fold in.
 - **Merge clusters** group files of one area (workspace, lane and first
   directory below `test/`) whose reach overlaps by the threshold or more. Lines
   are weighted by rarity, so lines nearly every file reaches count for little.
@@ -276,8 +284,11 @@ run's job summary is the Markdown. To read it:
 runs one lane locally into `reports/overlap/`; run `pnpm build:packages` and
 `node infrastructure/testing/overlap/emit-source-maps.mjs` first. Run
 integration lanes only against a disposable test stack.
-`analyze-overlap.mjs [--out <stem>] [--threshold 0..1] <report.json>...` writes
-the summary.
+`run-spec-coverage.mjs [--shard i/n] [--concurrency n] [--only e2e/<spec>]...`
+does the same for the mocked specs: it builds the web app once, then runs each
+spec on the e2e config's port (4173, and the next ports for specs run beside
+it). `analyze-overlap.mjs [--out <stem>] [--threshold 0..1] <report.json>...`
+writes the summary.
 
 `pnpm db:generate` generates incremental SQL from the Drizzle schema and its
 tracked snapshot. Retained SQL exceptions are documented in the architecture
