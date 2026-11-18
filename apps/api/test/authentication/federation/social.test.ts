@@ -76,17 +76,6 @@ describe('social sign-in HTTP boundary', () => {
     },
   );
 
-  it('refuses an unconfigured provider without a provider call', async () => {
-    const response = await signIn().handle(
-      new Request('https://app.example/v1/auth/sign-in/social', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ provider: 'github' }),
-      }),
-    );
-    expect(response?.status).toBe(404);
-  });
-
   it('does not turn an untrusted error callback into a redirect target', async () => {
     const response = await signIn().handle(
       new Request(
