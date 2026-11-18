@@ -26,7 +26,6 @@
   "apps/web/test/lib/use-canvas-renderer.test.tsx": 1,
   "apps/web/test/routes/teardown.test.tsx": 1,
   "apps/worker/test/attempts/runtime-capabilities.test.ts": 2,
-  "packages/core/test/artifacts/upload-cancellation.test.ts": 2,
   "packages/core/test/notifications/destinations.test.ts": 2,
   "packages/core/test/operator/bounded-command-json.test.ts": 1,
   "packages/core/test/triggers/repository-construction.test.ts": 1,
