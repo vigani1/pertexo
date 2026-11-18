@@ -11,6 +11,7 @@ import {
   workspaceId,
   workspace,
 } from '../support';
+import { focusStep } from '../actions';
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
 }).items;
@@ -80,7 +81,7 @@ for (const theme of ['light', 'dark'] as const)
       await expect(
         page.getByRole('combobox', { name: 'Operation', exact: true }),
       ).toHaveText('Replace text');
-      await page.getByTestId('rf__node-format').focus();
+      await focusStep(page, 'format');
       await page.screenshot({
         path: info.outputPath(`utilities-${theme}-${String(width)}.png`),
         fullPage: true,

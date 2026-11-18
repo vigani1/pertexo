@@ -16,6 +16,7 @@ import {
   workflowId,
   workspaceId,
 } from '../support';
+import { focusStep } from '../actions';
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
 }).items;
@@ -131,7 +132,7 @@ for (const width of [375, 1280])
       },
     );
     await page.goto(editorUrl);
-    await page.getByTestId('rf__node-incoming').focus();
+    await focusStep(page, 'incoming');
     await page.keyboard.press('Enter');
     if (width < 1024)
       await page

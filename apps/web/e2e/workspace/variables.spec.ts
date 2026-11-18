@@ -8,6 +8,7 @@ import {
   workspace,
   workspaceId,
 } from '../workflow-editor/support';
+import { focusStep } from '../workflow-editor/actions';
 for (const width of [1280, 375])
   test(`typed variables retain an uncertain command and a conflicting draft at ${String(width)}px`, async ({
     page,
@@ -313,7 +314,7 @@ test('the mapping picker inserts a typed scalar reference without an expression'
     }),
   );
   await page.goto(editorUrl);
-  await page.getByTestId('rf__node-target').focus();
+  await focusStep(page, 'target');
   await page.keyboard.press('Enter');
   await page.getByRole('tab', { name: 'Inputs', exact: true }).click();
   await page.getByRole('button', { name: 'Insert data', exact: true }).click();

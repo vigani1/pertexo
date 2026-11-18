@@ -9,6 +9,7 @@ import {
   workspace,
   workspaceId,
 } from '../support';
+import { focusStep } from '../actions';
 
 const connectionId = '44444444-4444-4444-8444-444444444444';
 
@@ -92,7 +93,7 @@ test('shows a Slack step’s channel name beside its ID, and why when it can’t
     },
   );
   await page.goto(editorUrl);
-  await page.getByTestId('rf__node-post').focus();
+  await focusStep(page, 'post');
   await page.keyboard.press('Enter');
 
   const field = page.getByLabel('Channel ID', { exact: true });

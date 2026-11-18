@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { FOLDED_WORKFLOW_ACTIONS } from './support';
 export async function openWorkflowAction(page: Page, name: string) {
   const width = page.viewportSize()?.width ?? 1280;
@@ -24,4 +24,16 @@ export function blocksUnload(page: Page): Promise<boolean> {
     window.dispatchEvent(event);
     return event.defaultPrevented;
   });
+}
+
+/**
+ * Focuses a step's card, as a keyboard user reaches it. React Flow keeps a
+ * card hidden until it has measured it, and a hidden card can't take focus:
+ * focusing it then does nothing, and a key pressed next goes to the page.
+ */
+export async function focusStep(page: Page, nodeId: string) {
+  const step = page.getByTestId(`rf__node-${nodeId}`);
+  await expect(step).toBeVisible();
+  await step.focus();
+  await expect(step).toBeFocused();
 }

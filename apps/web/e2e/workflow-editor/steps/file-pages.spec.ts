@@ -14,6 +14,7 @@ import {
   workflowId,
   currentEtag,
 } from '../support';
+import { focusStep } from '../actions';
 
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
@@ -291,7 +292,7 @@ for (const theme of ['light', 'dark'] as const)
       await expect(
         page.getByText('Workflow created', { exact: true }),
       ).toBeVisible();
-      await page.getByTestId('rf__node-file').focus();
+      await focusStep(page, 'file');
       await page.keyboard.press('Enter');
       await page
         .getByLabel('Label', { exact: true })

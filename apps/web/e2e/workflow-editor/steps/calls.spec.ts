@@ -11,6 +11,7 @@ import {
   workflowSummary,
   workspaceId,
 } from '../support';
+import { focusStep } from '../actions';
 
 const childId = '11111111-1111-4111-8111-111111111111';
 const firstId = '22222222-2222-4222-8222-222222222222';
@@ -112,7 +113,7 @@ test('browses Call versions on demand while retaining an old exact pin', async (
     },
   );
   await page.goto(editorUrl);
-  await page.getByTestId('rf__node-call').focus();
+  await focusStep(page, 'call');
   await page.keyboard.press('Enter');
   await expect(
     page.getByRole('combobox', { name: 'Published version' }),

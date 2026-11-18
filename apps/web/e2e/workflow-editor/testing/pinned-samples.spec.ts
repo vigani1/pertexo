@@ -17,6 +17,7 @@ import {
   workflowId,
   workspaceId,
 } from '../support';
+import { focusStep } from '../actions';
 const sampleId = '11111111-1111-4111-8111-111111111111';
 const secondId = '22222222-2222-4222-8222-222222222222';
 const previewId = '33333333-3333-4333-8333-333333333333';
@@ -146,7 +147,7 @@ for (const width of [375, 1280]) {
       });
     });
     await page.goto(editorUrl);
-    await page.getByTestId('rf__node-sample').focus();
+    await focusStep(page, 'sample');
     await page.keyboard.press('Enter');
     if (width < 1024)
       await page
