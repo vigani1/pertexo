@@ -636,6 +636,84 @@ describe('Better Auth on PostgreSQL', () => {
           authenticationMailAssociatedData(row.purpose, row.id, row.expires_at),
         ),
       ).toContain('secret-link');
+
+      // Links live as long as Better Auth honours them; notices for a day.
+      await mailer.sendVerification({
+        recipient: 'secret-recipient@example.test',
+        displayName: 'Ada',
+        url: 'https://pertexo.test/verify-email?token=secret-verify',
+      });
+      await mailer.sendSecurityNotice({
+        purpose: 'two_factor_disabled',
+        recipient: 'secret-recipient@example.test',
+        displayName: 'Ada',
+        url: 'https://pertexo.test/account/security',
+      });
+      const lifetimes = await owner.query<{
+        id: string;
+        purpose: string;
+        expires_at: Date;
+        lifetime_seconds: number;
+        payload_ciphertext: string;
+        payload_nonce: string;
+        payload_tag: string;
+        payload_key_version: string;
+      }>(
+        `select distinct on (purpose) id,purpose,expires_at,
+                extract(epoch from expires_at-created_at)::double precision lifetime_seconds,
+                payload_ciphertext,payload_nonce,payload_tag,payload_key_version
+           from app.system_mail_deliveries
+          where purpose in ('password_reset','verification','two_factor_disabled')
+          order by purpose, created_at desc`,
+      );
+      const lifetime = Object.fromEntries(
+        lifetimes.rows.map((mail) => [mail.purpose, mail.lifetime_seconds]),
+      );
+      for (const [purpose, seconds] of [
+        ['password_reset', 3_600],
+        ['verification', 3_600],
+        ['two_factor_disabled', 86_400],
+      ] as const) {
+        expect(lifetime[purpose]).toBeGreaterThan(seconds - 60);
+        expect(lifetime[purpose]).toBeLessThan(seconds + 60);
+      }
+      const notice = lifetimes.rows.find(
+        (mail) => mail.purpose === 'two_factor_disabled',
+      );
+      if (notice === undefined) throw new Error('Security notice is missing');
+      expect(JSON.stringify(notice)).not.toContain('secret-recipient');
+      const noticeText = envelope.open(
+        {
+          ciphertext: notice.payload_ciphertext,
+          nonce: notice.payload_nonce,
+          tag: notice.payload_tag,
+          keyVersion: notice.payload_key_version,
+        },
+        authenticationMailAssociatedData(
+          notice.purpose,
+          notice.id,
+          notice.expires_at,
+        ),
+      );
+      expect(noticeText).toContain('contact your Pertexo operator immediately');
+      expect(noticeText).not.toContain('ignore this message');
+      expect(noticeText).not.toContain('backupCodes');
+
+      const count = async () =>
+        (
+          await owner.query<{ count: number }>(
+            'select count(*)::int count from app.system_mail_deliveries',
+          )
+        ).rows[0]?.count;
+      const before = await count();
+      expect(() =>
+        mailer.sendPasswordReset({
+          recipient: 'secret-recipient@example.test',
+          displayName: 'A'.repeat(32_769),
+          url: 'https://pertexo.test/reset-password?token=oversized',
+        }),
+      ).toThrow();
+      expect(await count()).toBe(before);
     } finally {
       await Promise.all([store.close(), owner.end()]);
     }
