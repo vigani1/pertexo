@@ -98,6 +98,81 @@ describe('compiled worker main process', () => {
     12_000,
   );
 
+  it('closes once for a burst of signals, and exits failed though a failed close holds the process open', async () => {
+    const fixture = start(fixturePath, {
+      ...process.env,
+      WORKER_FIXTURE_CLOSE: 'fails',
+    });
+    try {
+      await waitFor(fixture.child, fixture.output, 'worker.active');
+      expect(fixture.child.kill('SIGTERM')).toBe(true);
+      expect(fixture.child.kill('SIGINT')).toBe(true);
+      const result = await waitForExit(fixture.child, fixture.output);
+
+      expect(result).toEqual({ code: 1, signal: null });
+      expect(
+        fixture.output().match(/"event":"application.closed"/gu),
+      ).toHaveLength(1);
+      expect(fixture.output()).toContain(
+        '"event":"application.closed","signal":"SIGTERM"',
+      );
+      expect(fixture.output()).toContain('"event":"worker.shutdown_failed"');
+    } finally {
+      if (
+        fixture.child.exitCode === null &&
+        fixture.child.signalCode === null
+      ) {
+        fixture.child.kill('SIGKILL');
+      }
+    }
+  });
+  it('gives a signal back to the operating system once closing has settled', async () => {
+    const fixture = start(fixturePath, {
+      ...process.env,
+      WORKER_FIXTURE_CLOSE: 'fails',
+    });
+    try {
+      await waitFor(fixture.child, fixture.output, 'worker.active');
+      expect(fixture.child.kill('SIGTERM')).toBe(true);
+      await waitFor(fixture.child, fixture.output, 'worker.shutdown_failed');
+      // The worker no longer handles signals, so this one ends it at once
+      // instead of waiting out the exit grace.
+      expect(fixture.child.kill('SIGINT')).toBe(true);
+      const result = await waitForExit(fixture.child, fixture.output);
+
+      expect(result).toEqual({ code: null, signal: 'SIGINT' });
+    } finally {
+      if (
+        fixture.child.exitCode === null &&
+        fixture.child.signalCode === null
+      ) {
+        fixture.child.kill('SIGKILL');
+      }
+    }
+  });
+  it.each([
+    ['application creation', 'application', false],
+    ['startup log', 'started-log', true],
+  ] as const)(
+    'rolls back a bootstrap that fails at %s and shuts telemetry down',
+    async (_boundary, failAt, applicationAcquired) => {
+      const fixture = start(fixturePath, {
+        ...process.env,
+        WORKER_FIXTURE_FAIL: failAt,
+      });
+      const result = await waitForExit(fixture.child, fixture.output);
+
+      expect(result).toEqual({ code: 1, signal: null });
+      expect(fixture.output()).toContain('"event":"worker.bootstrap_failed"');
+      expect(fixture.output()).toContain('"event":"telemetry.closed"');
+      expect(fixture.output()).not.toContain('"event":"worker.active"');
+      // A bootstrap closes what it acquired, through the shutdown owner and
+      // without a signal the operating system never sent.
+      expect(
+        fixture.output().match(/\{"event":"application.closed"\}/gu) ?? [],
+      ).toHaveLength(applicationAcquired ? 1 : 0);
+    },
+  );
   it('executes the actual main guard and fixed invalid-config formatter', async () => {
     const fixture = start(entrypointPath, {
       ...process.env,
