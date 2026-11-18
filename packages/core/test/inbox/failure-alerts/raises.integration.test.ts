@@ -50,6 +50,8 @@ describe('which finished alerts raise the notice', () => {
     expect(await raisedNotice(alert.destinationId)).toMatchObject({
       noticeKind: 'failure_alert_attention',
       name: 'Slack',
+      // A destination's notice belongs to no one workflow.
+      workflowId: null,
       unread: true,
     });
   });
