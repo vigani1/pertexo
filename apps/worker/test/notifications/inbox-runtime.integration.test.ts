@@ -133,16 +133,11 @@ async function recordFailure() {
   return { workspaceId, workflowId, runId };
 }
 
-it('folds a pending failure into its thread and hints the workspace', async () => {
-  const { workspaceId, workflowId, runId } = await recordFailure();
-  const subscriber = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
-  const hints: string[] = [];
-  subscriber.on('message', (_channel: string, message: string) => {
-    hints.push(message);
-  });
-  await subscriber.subscribe(workspaceInboxChannel(workspaceId));
-  const diagnostics = { cycleFailed: vi.fn(), hintFailed: vi.fn() };
-  const runtime = createWorkspaceInboxRuntime(
+function inboxRuntime(
+  diagnostics: { cycleFailed: () => void; hintFailed: () => void },
+  hintRedisUrl = redisUrl,
+) {
+  return createWorkspaceInboxRuntime(
     createWorkspaceInboxFoldStore(
       maintenanceConfig(
         parseDatabaseConfig({
@@ -151,40 +146,67 @@ it('folds a pending failure into its thread and hints the workspace', async () =
         }),
       ),
     ),
-    new RedisWorkspaceInboxHintPublisher({ redisUrl }),
-    { foldBatchSize: 100, foldPollMillis: 100 },
+    new RedisWorkspaceInboxHintPublisher({ redisUrl: hintRedisUrl }),
+    // One change per fold and a poll far past the test: every hint that
+    // arrives came from folding back to back within the first cycle.
+    { foldBatchSize: 1, foldPollMillis: 60_000 },
     diagnostics,
   );
+}
+
+async function threadOf(workspaceId: string) {
+  const [thread] = (
+    await admin.query<{
+      workflow_id: string;
+      occurrence_count: string;
+      latest_run_id: string;
+      revision: string;
+    }>(
+      `select workflow_id,occurrence_count::text,latest_run_id,revision::text
+         from app.workspace_inbox_threads where workspace_id=$1`,
+      [workspaceId],
+    )
+  ).rows;
+  return thread;
+}
+
+it('folds a burst of pending failures into their threads and hints each workspace', async () => {
+  const first = await recordFailure();
+  const second = await recordFailure();
+  const subscriber = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
+  const hints = new Map<string, string[]>();
+  const channels = new Map([
+    [workspaceInboxChannel(first.workspaceId), first.workspaceId],
+    [workspaceInboxChannel(second.workspaceId), second.workspaceId],
+  ]);
+  subscriber.on('message', (channel: string, message: string) => {
+    const workspaceId = channels.get(channel) ?? channel;
+    hints.set(workspaceId, [...(hints.get(workspaceId) ?? []), message]);
+  });
+  await subscriber.subscribe(...channels.keys());
+  const diagnostics = { cycleFailed: vi.fn(), hintFailed: vi.fn() };
+  const runtime = inboxRuntime(diagnostics);
   try {
     runtime.start();
     await expect(runtime.checkReadiness()).resolves.toBeUndefined();
     await vi.waitFor(() => {
-      expect(hints).toHaveLength(1);
+      expect(hints.get(first.workspaceId)).toHaveLength(1);
+      expect(hints.get(second.workspaceId)).toHaveLength(1);
     });
-    const [thread] = (
-      await admin.query<{
-        workflow_id: string;
-        occurrence_count: string;
-        latest_run_id: string;
-        revision: string;
-      }>(
-        `select workflow_id,occurrence_count::text,latest_run_id,revision::text
-           from app.workspace_inbox_threads where workspace_id=$1`,
-        [workspaceId],
-      )
-    ).rows;
-    expect(thread).toMatchObject({
-      workflow_id: workflowId,
-      occurrence_count: '1',
-      latest_run_id: runId,
-    });
-    expect(parseWorkspaceInboxHint(hints[0] ?? '')).toEqual({
-      kind: 'changed',
-      revision: thread?.revision,
-    });
+    for (const { workspaceId, workflowId, runId } of [first, second]) {
+      const thread = await threadOf(workspaceId);
+      expect(thread).toMatchObject({
+        workflow_id: workflowId,
+        occurrence_count: '1',
+        latest_run_id: runId,
+      });
+      expect(
+        parseWorkspaceInboxHint(hints.get(workspaceId)?.[0] ?? ''),
+      ).toEqual({ kind: 'changed', revision: thread?.revision });
+    }
     const pending = await admin.query(
-      'select 1 from app.workspace_inbox_events where workspace_id=$1',
-      [workspaceId],
+      'select 1 from app.workspace_inbox_events where workspace_id = any($1)',
+      [[first.workspaceId, second.workspaceId]],
     );
     expect(pending.rowCount).toBe(0);
     expect(diagnostics.cycleFailed).not.toHaveBeenCalled();
@@ -192,5 +214,28 @@ it('folds a pending failure into its thread and hints the workspace', async () =
   } finally {
     await runtime.close();
     subscriber.disconnect();
+  }
+  await expect(runtime.checkReadiness()).rejects.toThrow(
+    'Workspace inbox runtime is closed',
+  );
+});
+
+it('keeps folding and stays ready when Redis cannot take the hint', async () => {
+  const { workspaceId, workflowId, runId } = await recordFailure();
+  const diagnostics = { cycleFailed: vi.fn(), hintFailed: vi.fn() };
+  // Nothing listens there, so the publish fails the way a Redis outage does.
+  const runtime = inboxRuntime(diagnostics, 'redis://127.0.0.1:1/0');
+  try {
+    runtime.start();
+    await expect(runtime.checkReadiness()).resolves.toBeUndefined();
+    expect(await threadOf(workspaceId)).toMatchObject({
+      workflow_id: workflowId,
+      occurrence_count: '1',
+      latest_run_id: runId,
+    });
+    expect(diagnostics.hintFailed).toHaveBeenCalledOnce();
+    expect(diagnostics.cycleFailed).not.toHaveBeenCalled();
+  } finally {
+    await runtime.close();
   }
 });

@@ -31,7 +31,6 @@
   "apps/web/test/features/workflows/organization/model/encodes-targets-and-binds-filters-without-an.test.ts": 1,
   "apps/worker/test/attempts/runtime-capabilities.test.ts": 6,
   "apps/worker/test/notifications/failure-handler.test.ts": 2,
-  "apps/worker/test/notifications/inbox-runtime.integration.test.ts": 1,
   "apps/worker/test/oauth2/lifecycle/stored.integration.test.ts": 1,
   "apps/worker/test/previews/preview-delivery.test.ts": 2,
   "apps/worker/test/previews/reconciliation.test.ts": 4,
