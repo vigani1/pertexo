@@ -73,8 +73,17 @@ function createFixture() {
   };
 }
 
+/**
+ * The real entry point serving on its configured port, and exiting after a
+ * taken port with its owners closed, runs in
+ * bootstrap/production-composition.integration.test.ts; the compiled
+ * file's listen-failure cleanup in main-process.test.ts. These cases stay:
+ * the start order has no output a test can read without the telemetry
+ * collector stack, and no real stack fails the telemetry SDK, the module
+ * import, the logger or the Nest build on demand.
+ */
 describe('API main bootstrap', () => {
-  it('starts telemetry before loading instrumented modules and listens once', async () => {
+  it('starts telemetry before loading the instrumented modules', async () => {
     const fixture = createFixture();
 
     await expect(
@@ -93,12 +102,6 @@ describe('API main bootstrap', () => {
       'application.listen',
       'logger.info',
     ]);
-    expect(fixture.application.listen).toHaveBeenCalledWith({
-      host: '127.0.0.1',
-      port: 4312,
-    });
-    expect(fixture.application.close).not.toHaveBeenCalled();
-    expect(fixture.telemetry.shutdown).not.toHaveBeenCalled();
   });
 
   it('cleans telemetry when startup fails before module loading', async () => {
@@ -120,7 +123,7 @@ describe('API main bootstrap', () => {
     expect(fixture.telemetry.shutdown).toHaveBeenCalledOnce();
   });
 
-  it.each(['modules', 'logger', 'application', 'listen'] as const)(
+  it.each(['modules', 'logger', 'application'] as const)(
     'preserves a %s failure and closes only acquired owners',
     async (boundary) => {
       const fixture = createFixture();
@@ -131,10 +134,8 @@ describe('API main bootstrap', () => {
         fixture.createStructuredLogger.mockImplementation(() => {
           throw failure;
         });
-      } else if (boundary === 'application') {
-        fixture.createApiApplication.mockRejectedValueOnce(failure);
       } else {
-        fixture.application.listen.mockRejectedValueOnce(failure);
+        fixture.createApiApplication.mockRejectedValueOnce(failure);
       }
 
       await expect(
@@ -145,9 +146,7 @@ describe('API main bootstrap', () => {
         }),
       ).rejects.toBe(failure);
 
-      expect(fixture.application.close).toHaveBeenCalledTimes(
-        boundary === 'listen' ? 1 : 0,
-      );
+      expect(fixture.application.close).not.toHaveBeenCalled();
       expect(fixture.telemetry.shutdown).toHaveBeenCalledOnce();
     },
   );
