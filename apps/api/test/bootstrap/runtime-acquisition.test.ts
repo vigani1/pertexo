@@ -64,6 +64,12 @@ function closes(close = vi.fn().mockResolvedValue(undefined)) {
   return { close };
 }
 
+/**
+ * The composition's success path, and closing it, run in
+ * bootstrap/production-composition.integration.test.ts and every real-API
+ * test. These cases stay because no real stack fails a constructor or a
+ * closer on demand, and the module has no seam for one.
+ */
 describe('API runtime acquisition', () => {
   beforeEach(() => {
     for (const factory of Object.values(created))
