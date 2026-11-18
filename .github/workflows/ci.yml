@@ -411,12 +411,20 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up workspace
         uses: ./.github/actions/setup
+      # The runner's cloud mirrors have stalled the browser packages for over 15
+      # minutes (Azure before, the EC2 us-east-2 mirror since 2026-11-17), while
+      # the main Ubuntu archive kept serving. Keep only the configured HTTPS
+      # mirrors, and refuse an empty list rather than let apt guess.
       - name: Use Ubuntu HTTPS mirrors for browser dependencies
-        run: >-
-          sudo sed -i '/^http:\/\/azure[.]archive[.]ubuntu[.]com\/ubuntu\//d'
-          /etc/apt/apt-mirrors.txt
+        run: |
+          sudo sed -i -E '/^http:\/\/[^/]*(azure|ec2)[.]archive[.]ubuntu[.]com\//d' /etc/apt/apt-mirrors.txt
+          cat /etc/apt/apt-mirrors.txt
+          grep -q . /etc/apt/apt-mirrors.txt
       - name: Install Playwright browsers
         if: matrix.journeys == ''
+        # Normally about a minute; a stalled mirror should fail here, not
+        # use up the whole job.
+        timeout-minutes: 8
         run: pnpm --filter @pertexo/web exec playwright install --with-deps
       - name: Browser tests against the mocked API
         if: matrix.journeys == ''
