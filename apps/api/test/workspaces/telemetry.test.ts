@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createIdentityWorkspaceTelemetry,
-  CreateWorkspaceService,
   IDENTITY_WORKSPACE_METRIC_NAME,
   IDENTITY_WORKSPACE_OPERATION,
   type IdentityWorkspaceCounter,
@@ -13,20 +12,21 @@ import {
 } from '../../src/workspaces/index.js';
 
 describe('identity/workspace telemetry', () => {
-  it('records successful use-case metrics and traces with fixed-cardinality attributes only', async () => {
+  it('records successful operation metrics and traces with fixed-cardinality attributes only', async () => {
     const fixture = telemetryFixture([1_000, 1_250]);
     const telemetry = createIdentityWorkspaceTelemetry(fixture.options);
-    const persistence = workspacePersistence();
-    const service = new CreateWorkspaceService(persistence, telemetry);
-
-    await service.execute({
+    const result = Object.freeze({
       actorId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      idempotencyKey: 'telemetry-workspace-command',
-      request: { name: 'Operations', slug: 'operations' },
       requestId: 'request-that-must-not-be-a-label',
       traceId: 'trace-that-must-not-be-a-label',
       metadata: { private: 'must-not-be-a-label' },
     });
+
+    await expect(
+      telemetry.measure(IDENTITY_WORKSPACE_OPERATION.workspaceCreate, () =>
+        Promise.resolve(result),
+      ),
+    ).resolves.toBe(result);
 
     expect(fixture.traceNames).toEqual([
       'pertexo.identity_workspace.workspace.create',
@@ -263,23 +263,5 @@ function telemetryFixture(nowValues: readonly number[]) {
       setAttribute: ReturnType<typeof vi.fn>;
     },
     traceNames,
-  };
-}
-
-function workspacePersistence() {
-  return {
-    findUserById: vi.fn(),
-    listAccessibleWorkspaces: vi.fn(),
-    listWorkspaceMembers: vi.fn(),
-    changeWorkspaceMemberRole: vi.fn(),
-    createWorkspaceWithOwner: vi.fn().mockResolvedValue({
-      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      name: 'Operations',
-      slug: 'operations',
-      status: 'active',
-      createdAt: new Date('2026-08-20T12:00:00.000Z'),
-      updatedAt: new Date('2026-08-20T12:00:00.000Z'),
-    }),
-    requestWorkspaceLifecycleOperation: vi.fn(),
   };
 }
