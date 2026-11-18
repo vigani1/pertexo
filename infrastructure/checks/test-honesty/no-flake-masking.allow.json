@@ -155,7 +155,6 @@
   "apps/worker/test/recovery/worker-sigterm.resilience.integration.test.ts": 2,
   "apps/worker/test/runs/calls/calls-controls.fixture.ts": 1,
   "apps/worker/test/runs/calls/execution.integration.test.ts": 1,
-  "apps/worker/test/runs/calls/progress.integration.test.ts": 1,
   "apps/worker/test/runs/consumer/callable-contracts.integration.test.ts": 2,
   "apps/worker/test/runs/consumer/corrupt-checkpoint.integration.test.ts": 2,
   "apps/worker/test/runs/consumer/failure-notification.integration.test.ts": 2,
