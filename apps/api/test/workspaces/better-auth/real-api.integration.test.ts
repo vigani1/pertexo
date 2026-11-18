@@ -211,6 +211,21 @@ describe.runIf(betterAuthIntegrationEnabled)(
         membershipCreated: true,
       });
       const member = browserFrom(completed);
+      const bindingCookie = bound.cookie.split('; ').at(-1) ?? '';
+      const receipt = await send('GET', '/v1/invitation-acceptance', {
+        browser: { ...member, cookie: `${member.cookie}; ${bindingCookie}` },
+      });
+      expect(receipt.json()).toMatchObject({
+        state: 'completed',
+        membershipCreated: true,
+      });
+      const otherReader = await send('GET', '/v1/invitation-acceptance', {
+        browser: { ...owner, cookie: `${owner.cookie}; ${bindingCookie}` },
+      });
+      expect(otherReader.json()).toEqual(
+        expect.objectContaining({ state: 'wrong_account' }),
+      );
+      expect(otherReader.payload).not.toContain('membershipCreated');
       expect(
         (await send('GET', '/v1/users/me', { browser: fresh })).statusCode,
       ).toBe(401);
@@ -330,6 +345,104 @@ describe.runIf(betterAuthIntegrationEnabled)(
       expect(workspaces.json()).toMatchObject({
         items: [{ id: workspaceId, role: 'viewer' }],
       });
+    });
+
+    it('keeps the invitation link private, rebinds a retried link the same way and refuses abandoned or unverified journeys', async () => {
+      const ownerEmail = `${randomUUID()}@example.test`;
+      const recipientEmail = `${randomUUID()}@example.test`;
+      await signUp(ownerEmail, '/login?verified=true');
+      await signUp(recipientEmail, '/login?verified=true');
+      const owner = await signIn(ownerEmail);
+      const created = await send('POST', '/v1/workspaces', {
+        browser: owner,
+        headers: { 'idempotency-key': randomUUID() },
+        payload: {
+          name: 'Invite links',
+          slug: `inv-${randomUUID().slice(0, 8)}`,
+        },
+      });
+      expect(created.statusCode, created.payload).toBe(201);
+      const workspaceId = created.json<{ id: string }>().id;
+      const invited = await send(
+        'POST',
+        `/v1/workspaces/${workspaceId}/invitations`,
+        {
+          browser: owner,
+          headers: { 'idempotency-key': randomUUID() },
+          payload: { email: recipientEmail.toUpperCase(), role: 'viewer' },
+        },
+      );
+      expect(invited.statusCode, invited.payload).toBe(202);
+      expect(invited.payload).not.toContain('wi1.');
+      const invitation = invited.json<{
+        invitation: { id: string; deliveryStatus: string };
+      }>().invitation;
+      expect(invitation.deliveryStatus).toBe('queued');
+      const stored = await api
+        .database()
+        .query<{ normalized_email: string }>(
+          'select normalized_email from app.workspace_invitations where id=$1',
+          [invitation.id],
+        );
+      expect(stored.rows).toEqual([{ normalized_email: recipientEmail }]);
+
+      const resolve = (token: string, binding?: string) =>
+        send('POST', '/v1/invitation-acceptance/resolve', {
+          headers: {
+            'content-type': 'application/json',
+            'x-pertexo-invitation-request': 'resolve',
+            ...(binding === undefined
+              ? {}
+              : { cookie: `pertexo_invitation_intent=${binding}` }),
+          },
+          payload: { token },
+        });
+      const malformed = await resolve('x'.repeat(48));
+      expect(malformed.statusCode, malformed.payload).toBeLessThan(300);
+      expect(malformed.json()).toEqual({ state: 'unavailable' });
+      expect(String(malformed.headers['set-cookie'] ?? '')).not.toContain(
+        'pertexo_invitation_intent=',
+      );
+
+      const token = await invitationToken(workspaceId, invitation.id);
+      const first = setCookie(
+        await resolve(token),
+        'pertexo_invitation_intent',
+      );
+      const rebound = await resolve(token, first);
+      const retried = await resolve(token, first);
+      expect(retried.json()).toEqual(rebound.json());
+      expect(retried.headers['set-cookie']).toEqual(
+        rebound.headers['set-cookie'],
+      );
+      expect(String(rebound.headers['set-cookie'])).toMatch(
+        /^pertexo_invitation_intent=wb1\..+; HttpOnly;.* SameSite=Lax; Max-Age=900$/u,
+      );
+      const current = setCookie(rebound, 'pertexo_invitation_intent');
+      expect(current).not.toBe(first);
+
+      const recipient = await signIn(recipientEmail);
+      const abandoned = await send('GET', '/v1/invitation-acceptance', {
+        browser: {
+          ...recipient,
+          cookie: `${recipient.cookie}; pertexo_invitation_intent=${first}`,
+        },
+      });
+      expect(abandoned.json()).toEqual({ state: 'unavailable' });
+
+      await api
+        .database()
+        .query('update app.users set email_verified=false where email=$1', [
+          recipientEmail,
+        ]);
+      const unverified = await verifySession(
+        {
+          ...recipient,
+          cookie: `${recipient.cookie}; pertexo_invitation_intent=${current}`,
+        },
+        rebound.json<{ csrfToken: string }>().csrfToken,
+      );
+      expectProblem(unverified, 400, 'request.invalid');
     });
 
     function verifySession(browser: Browser, csrfToken: string) {
