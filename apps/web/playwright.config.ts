@@ -23,13 +23,11 @@ const chromium = {
 // these specs, which still flaked on CI after reduced motion, each with the
 // cause found so far. Delete an entry once its cause is fixed.
 const stillFlaky = [
-  // Selecting a step right after the editor opens sometimes never opens
-  // its inspector: the Label field is never shown (CI, 320px and 1920px).
-  '**/workflow-editor/chrome/header.spec.ts',
+  // Focusing a step and pressing Enter right after creating the workflow
+  // sometimes never shows its Label field (CI, 9 of 1,483 jobs). Not
+  // reproduced locally in 365 runs at 4-8x CPU throttling, so the cause is
+  // still open.
   '**/workflow-editor/steps/file-pages.spec.ts',
-  // Inserting data by keyboard at 320px sometimes saves an empty data
-  // reference ("a" &  & "b"): the keyboard choice lands before the list is ready.
-  '**/workflow-editor/inspector/condition-and-insert-data.spec.ts',
 ];
 
 export default defineConfig({
