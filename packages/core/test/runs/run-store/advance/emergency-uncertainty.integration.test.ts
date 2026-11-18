@@ -13,6 +13,7 @@ const cases = [
     run: 'outcome_unknown',
     settledNode: 'outcome_unknown',
     historical: false,
+    wait: null,
   },
   {
     name: 'terminal unknown',
@@ -23,6 +24,7 @@ const cases = [
     run: 'outcome_unknown',
     settledNode: 'outcome_unknown',
     historical: false,
+    wait: null,
   },
   {
     name: 'known success',
@@ -33,6 +35,7 @@ const cases = [
     run: 'failed',
     settledNode: 'succeeded',
     historical: false,
+    wait: 'human_task',
   },
   {
     name: 'definite failure',
@@ -43,6 +46,7 @@ const cases = [
     run: 'failed',
     settledNode: 'failed',
     historical: false,
+    wait: 'workflow_call',
   },
   {
     name: 'known current success after historical unknown',
@@ -53,8 +57,11 @@ const cases = [
     run: 'failed',
     settledNode: 'succeeded',
     historical: true,
+    wait: 'for_each_barrier',
   },
 ] as const;
+// A failed run also carries a step waiting on a control, which settlement
+// closes physically with every logical-control field cleared.
 it.each(cases)(
   'preserves $name during emergency settlement',
   async (testCase) => {
@@ -91,11 +98,41 @@ it.each(cases)(
         "insert into app.node_attempts(id,workspace_id,node_run_id,attempt_number,status,side_effect_class,dispatch_marked_at,safe_error_code,completed_at) values($1,$2,$3,1,'outcome_unknown','unsafe',clock_timestamp(),'provider.outcome_unknown',clock_timestamp())",
         [randomUUID(), workspaceA, nodeId],
       );
+    const waitId = randomUUID();
+    if (testCase.wait !== null)
+      await query(
+        "insert into app.node_runs(id,workspace_id,workflow_run_id,node_id,invocation_key,status,side_effect_class,control_kind,resume_at) values($1,$2,$3,'wait','wait','waiting','safe',$4::varchar,case when $4::varchar='human_task' then clock_timestamp()+interval '1 day' else null end)",
+        [waitId, workspaceA, f.runId, testCase.wait],
+      );
     expect(await f.fail()).toBe(testCase.run);
     expect(
       (await query('select status from app.node_runs where id=$1', [nodeId]))
         .rows,
     ).toEqual([{ status: testCase.settledNode }]);
+    if (testCase.wait !== null) {
+      const waits = await query(
+        'select status,control_kind,wait_kind,resume_at,retry_due_at,due_wakeup_at,completed_at from app.node_runs where id=$1',
+        [waitId],
+      );
+      expect(waits.rows).toEqual([
+        {
+          status: 'canceled',
+          control_kind: null,
+          wait_kind: null,
+          resume_at: null,
+          retry_due_at: null,
+          due_wakeup_at: null,
+          completed_at: expect.any(Date) as unknown,
+        },
+      ]);
+      const run = await query(
+        'select status,completed_at from app.workflow_runs where id=$1',
+        [f.runId],
+      );
+      expect(run.rows).toEqual([
+        { status: 'failed', completed_at: expect.any(Date) as unknown },
+      ]);
+    }
     const notices = await query<{ context: unknown }>(
       'select context from app.run_failure_notification_intents where workflow_run_id=$1',
       [f.runId],
