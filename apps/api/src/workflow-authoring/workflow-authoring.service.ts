@@ -8,7 +8,6 @@ import {
   decodeWorkflowCursor,
   encodeVersionCursor,
   encodeWorkflowCursor,
-  InvalidWorkflowCursorError,
 } from './cursor.js';
 import {
   WORKFLOW_AUTHORING_OPERATION,
@@ -41,7 +40,6 @@ import {
   type AuthoringPersistence,
   authorize,
 } from './commands/authorization.js';
-export { InvalidWorkflowCursorError };
 export {
   type CreateWorkflowInput,
   CreateWorkflowService,

@@ -1,11 +1,6 @@
 export { IdentityWorkspaceModule } from './identity-workspace.module.js';
 export { SessionController } from './http/session.controller.js';
-export {
-  UserController,
-  WorkspaceDiscoveryController,
-  WorkspaceMembersController,
-  WorkspaceController,
-} from './http/workspaces.controller.js';
+export { UserController } from './http/workspaces.controller.js';
 export {
   CsrfProtectionGuard,
   SessionAuthenticationGuard,
@@ -25,7 +20,6 @@ export { WorkspaceInvitationManagementService } from './invitations/management.j
 export { InvitationAcceptanceController } from './invitations/acceptance.controller.js';
 export { WorkspaceMembershipLifecycleService } from './members/lifecycle.js';
 export { WorkspaceMembershipController } from './members/lifecycle.controller.js';
-export { UpdateUserProfileService } from './commands/user-profile.js';
 export { InvitationAcceptanceService } from './invitations/acceptance.js';
 export { RenameWorkspaceService } from './commands/rename.js';
 
