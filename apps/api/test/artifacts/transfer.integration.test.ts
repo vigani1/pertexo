@@ -21,6 +21,7 @@ import {
 } from './artifact-transfer.fixture.js';
 import { randomUUID } from 'node:crypto';
 import {
+  ARTIFACT_OBJECT_MAX_BYTES,
   artifactDownloadResponseSchema,
   artifactMetadataResponseSchema,
   artifactUploadResponseSchema,
@@ -173,6 +174,29 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
       throw new Error('concurrent begin did not return a capability');
     expect(bodies[0]?.artifact).not.toHaveProperty('storageKey');
     expect(bodies[0]?.artifact).not.toHaveProperty('purpose');
+    // A replay signs inside the first claim's deadline, never a new one.
+    const claimed = bodies.find(({ replayed }) => !replayed);
+    const replayedClaim = bodies.find(({ replayed }) => replayed);
+    expect(replayedClaim?.upload.expiresInSeconds).toBeLessThanOrEqual(
+      claimed?.upload.expiresInSeconds ?? 0,
+    );
+    // Nothing downloads before the bytes are verified.
+    expectProblem(
+      await fixture.application.inject({
+        method: 'GET',
+        url: `${base}/${artifactId}/download`,
+        headers: { cookie: owner.cookieHeader },
+      }),
+      404,
+      'resource.not_found',
+    );
+    const oversized = await fixture.application.inject({
+      method: 'POST',
+      url: uploadUrl,
+      headers: mutationHeaders(owner, `oversized-${randomUUID()}`),
+      payload: { ...metadata, byteLength: ARTIFACT_OBJECT_MAX_BYTES + 1 },
+    });
+    expectProblem(oversized, 413, 'artifact.too_large');
     expect(upload.method).toBe('PUT');
     expect(upload.expiresInSeconds).toBeGreaterThanOrEqual(60);
     expect(upload.expiresInSeconds).toBeLessThanOrEqual(900);
@@ -291,6 +315,7 @@ integrationDescribe('authenticated artifact transfer HTTP', () => {
     expect(download.headers['cache-control']).toBe('no-store');
     const capability = parseResponse(download, artifactDownloadResponseSchema);
     expect(capability.method).toBe('GET');
+    expect(capability.expiresInSeconds).toBe(60);
     expect(
       new URL(capability.url).searchParams.get('response-content-disposition'),
     ).toBe('attachment');
