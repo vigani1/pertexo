@@ -1,15 +1,9 @@
 import { screen, waitFor } from '@testing-library/react';
-
 import userEvent from '@testing-library/user-event';
-
 import { HttpResponse, http } from 'msw';
-
 import { describe, expect, it } from 'vitest';
-
 import { mockServer } from '../../support/mock-server';
-
 import { renderLoadedApp } from '../../support/render-app';
-
 import {
   base,
   connection,
@@ -19,10 +13,24 @@ import {
   lens,
   listOf,
   testedOk,
+  user,
   userId,
   workspace,
   workspaceId,
 } from './page/fixture';
+
+function ended() {
+  return HttpResponse.json(
+    {
+      type: 'about:blank',
+      title: 'Session ended',
+      status: 401,
+      code: 'auth.unauthenticated',
+      requestId: 'connection-pause',
+    },
+    { status: 401, headers: { 'content-type': 'application/problem+json' } },
+  );
+}
 
 describe('connections page', () => {
   it('shows run rejection, explicit recovery and bounded historical/archived usage pages in the same detail lens', async () => {
@@ -262,4 +270,104 @@ describe('connections page', () => {
     expect(screen.queryByText(/xoxb-/u)).not.toBeInTheDocument();
     expect(screen.queryByText(connectionId)).not.toBeInTheDocument();
   });
+  // The J6a session pause: a form in a sheet (a portal outside the page) is
+  // hidden with the page and comes back as it was.
+  it('keeps a half-made connection, sheet and all, across an ended session', async () => {
+    let signedIn = true;
+    mockServer.use(
+      ...identityHandlers(),
+      listOf(() => []),
+    );
+    mockServer.use(
+      http.get('http://pertexo.test/v1/users/me', () =>
+        signedIn ? HttpResponse.json(user) : ended(),
+      ),
+      http.post(base, () => ended()),
+    );
+    await renderLoadedApp(`/w/${workspaceId}/connections`);
+    const event = userEvent.setup();
+    await event.click(
+      await screen.findByRole('button', { name: 'Add connection' }),
+    );
+    await event.click(lens().getByRole('button', { name: 'Connect Slack' }));
+    await event.type(
+      lens().getByLabelText('Slack bot token'),
+      'xoxb-1234567890-kept',
+    );
+    await event.click(lens().getByRole('button', { name: 'Continue' }));
+    const name = lens().getByLabelText('Connection name');
+    await event.clear(name);
+    await event.type(name, 'Kept Slack');
+    signedIn = false;
+    await event.click(lens().getByRole('button', { name: 'Save and test' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Your session ended' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    signedIn = true;
+    await event.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByLabelText('Connection name')).toHaveValue(
+      'Kept Slack',
+    );
+    expect(lens().getByRole('button', { name: 'Save and test' })).toBeVisible();
+  });
+  it.each([null, '2026-11-03T20:00:00.000Z'])(
+    'shows actionable renewal recovery for a grant expiring at %s',
+    async (expiresAt) => {
+      const current = connection('External account B', {
+        providerKey: 'http',
+        authType: 'oauth2',
+        oauth2: {
+          redirectUri: 'http://pertexo.test/v1/connections/oauth2/callback',
+          settings: {
+            grantType: 'authorization_code',
+            authorizationUrl: 'https://service.example.test/authorize',
+            tokenUrl: 'https://service.example.test/token',
+            clientId: 'public-client-id',
+            scope: '',
+            clientAuthentication: 'basic',
+            pkce: 's256',
+            authorizationParameters: {},
+            tokenParameters: {},
+            requestHosts: { mode: 'any' },
+          },
+        },
+        grant: {
+          authorizedAt: '2026-11-03T18:00:00.000Z',
+          accessTokenExpiresAt: expiresAt,
+          renewable: false,
+        },
+      });
+      mockServer.use(
+        ...identityHandlers(),
+        listOf(() => [current]),
+        detailOf(() => current),
+      );
+      await renderLoadedApp(
+        `/w/${workspaceId}/connections?connection=${connectionId}`,
+      );
+      expect(
+        await screen.findByRole('heading', { name: 'External account B' }),
+      ).toBeVisible();
+      expect(
+        lens().getByText(
+          /revoke this app’s access at the service, then connect again/u,
+        ),
+      ).toBeVisible();
+      expect(
+        lens().getByRole('button', { name: /^Reconnect$/u }),
+      ).toBeVisible();
+      if (expiresAt === null)
+        expect(lens().getByText(/The service gave no expiry/u)).toBeVisible();
+      else
+        expect(
+          lens().getByText(/someone will need to reconnect/u),
+        ).toBeVisible();
+      expect(
+        lens().queryByText('Token renews automatically'),
+      ).not.toBeInTheDocument();
+    },
+  );
 });
