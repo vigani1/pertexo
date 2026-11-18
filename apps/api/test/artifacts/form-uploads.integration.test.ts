@@ -140,11 +140,17 @@ integrationDescribe('form uploads over HTTP and object storage', () => {
   it('takes a public responder’s file through a bound reservation, a direct PUT and a sniffed finalize', async () => {
     const form = await publicForm();
     const bytes = new TextEncoder().encode('%PDF-1.7\n% invoice\n');
-    const begun = await form.begin({
-      filename: 'March invoice.pdf',
-      byteLength: bytes.byteLength,
-      sha256: digest(bytes),
-    });
+    const beginKey = randomUUID();
+    const reserve = () =>
+      form.begin(
+        {
+          filename: 'March invoice.pdf',
+          byteLength: bytes.byteLength,
+          sha256: digest(bytes),
+        },
+        { 'idempotency-key': beginKey },
+      );
+    const begun = await reserve();
     expect(begun.statusCode, begun.payload).toBe(201);
     expect(begun.headers['referrer-policy']).toBe('no-referrer');
     const reservation = parseResponse(begun, formUploadResponseSchema);
@@ -164,8 +170,12 @@ integrationDescribe('form uploads over HTTP and object storage', () => {
       purpose: 'form-upload',
       status: 'available',
     });
-    // Repeating finalize is idempotent.
+    // Repeating finalize is idempotent and leaves storage alone; the
+    // reservation never signs another PUT once the file is usable.
+    const storage = fixture.readStorageCalls();
     expect((await form.finalize(reservation.upload.id)).statusCode).toBe(200);
+    expectProblem(await reserve(), 409, 'artifact.conflict');
+    expect(fixture.readStorageCalls()).toEqual(storage);
     expect((await form.submit(reservation.upload.id, null)).statusCode).toBe(
       400,
     );
@@ -217,6 +227,29 @@ integrationDescribe('form uploads over HTTP and object storage', () => {
       detail:
         'This file’s contents don’t match its .pdf name. Choose the original file.',
     });
+    expect((await fixture.readArtifact(begun.upload.id))?.status).toBe(
+      'pending',
+    );
+  });
+
+  it('keeps bytes that differ from the reservation unusable', async () => {
+    const form = await publicForm();
+    const promised = new TextEncoder().encode('%PDF-1.7\n% promised\n');
+    const sent = new TextEncoder().encode('%PDF-1.7\n% replaced\n');
+    const begun = parseResponse(
+      await form.begin({
+        filename: 'invoice.pdf',
+        byteLength: promised.byteLength,
+        sha256: digest(promised),
+      }),
+      formUploadResponseSchema,
+    );
+    await signedPut(begun.transfer, sent);
+    expectProblem(
+      await form.finalize(begun.upload.id),
+      409,
+      'artifact.conflict',
+    );
     expect((await fixture.readArtifact(begun.upload.id))?.status).toBe(
       'pending',
     );

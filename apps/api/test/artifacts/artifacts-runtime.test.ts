@@ -1,4 +1,3 @@
-import type { DatabaseRuntime } from '@pertexo/database/platform';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -54,27 +53,17 @@ function closable() {
   };
 }
 
+/**
+ * The composition's success path, and closing it, run in
+ * bootstrap/production-composition.integration.test.ts and every real-API
+ * test. These cases stay because no real stack fails a constructor or a
+ * closer on demand, and the module has no seam for one.
+ */
 describe('API artifact runtime', () => {
   beforeEach(() => {
     outside.store.mockReset().mockReturnValue(closable());
     outside.database.mockReset().mockReturnValue(closable());
     outside.formUploads.mockReset().mockReturnValue(closable());
-  });
-
-  it('forwards the shared database runtime to the repository factories', () => {
-    const sharedRuntime = {} as DatabaseRuntime;
-    createApiArtifactRuntime(config, databaseConfig, {
-      identityRuntime,
-      databaseRuntime: sharedRuntime,
-    });
-    expect(outside.database).toHaveBeenCalledExactlyOnceWith(
-      databaseConfig,
-      sharedRuntime,
-    );
-    expect(outside.formUploads).toHaveBeenCalledExactlyOnceWith(
-      databaseConfig,
-      sharedRuntime,
-    );
   });
 
   it('checks and closes its owned resources once', async () => {
