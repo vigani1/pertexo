@@ -7,7 +7,9 @@ import {
   createQueueProducer,
   JOB_NAME,
   QUEUE_NAME,
+  runEventChannel,
 } from '@pertexo/queue/server';
+import { Redis } from 'ioredis';
 import { invocationKey } from '@pertexo/workflow-engine/server';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -96,6 +98,13 @@ describeIntegration('Linear node execution resilience', () => {
     });
     const coordinatorOutboxes = [accepted.outboxEventId];
     const attemptOutboxes: string[] = [];
+    // Open run views learn of each committed transition through this channel.
+    const viewer = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
+    const liveMessages: string[] = [];
+    viewer.on('message', (_channel: string, message: string) => {
+      liveMessages.push(message);
+    });
+    await viewer.subscribe(runEventChannel(workspaceId, accepted.runId));
 
     try {
       await Promise.all([
@@ -137,6 +146,11 @@ describeIntegration('Linear node execution resilience', () => {
         throw new Error(
           `initial coordinator failed: ${initialTransition.failedReason ?? 'unknown'}`,
         );
+      await vi.waitFor(() => {
+        expect(
+          liveMessages.map((message): unknown => JSON.parse(message)),
+        ).toContainEqual({ kind: 'resync' });
+      });
 
       for (const expectedNodeId of ['manual', 'set', 'terminate'] as const) {
         const attempt = await waitForAttemptOutbox(
@@ -343,6 +357,7 @@ describeIntegration('Linear node execution resilience', () => {
         initialIterationBudget: 0,
       });
     } finally {
+      viewer.disconnect();
       await Promise.allSettled([
         producer.close(),
         attemptQueue.close(),
