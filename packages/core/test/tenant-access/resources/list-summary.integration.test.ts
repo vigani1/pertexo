@@ -50,11 +50,19 @@ it.each([() => builder, () => viewer])(
   },
 );
 
-it('bounds recent ordinary statuses to the latest 20 runs per workflow', async () => {
+it('bounds recent ordinary statuses to the latest 20 runs per workflow, past newer test runs', async () => {
   await queryAsOwner(
     `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,created_at,input_ref,input_ref_expires_at)
     select gen_random_uuid(),workspace_id,workflow_id,workflow_version_id,'manual','succeeded',clock_timestamp()+i*interval '1 second',input_ref,input_ref_expires_at
     from app.workflow_runs cross join generate_series(1,25) i where id=$1`,
+    [publicRun],
+    workspaceId,
+  );
+  // Newer test runs, which a workflow's recent history leaves out.
+  await queryAsOwner(
+    `insert into app.workflow_runs(id,workspace_id,workflow_id,workflow_version_id,trigger_type,status,created_at,input_ref,input_ref_expires_at)
+    select gen_random_uuid(),workspace_id,workflow_id,workflow_version_id,'test','failed',clock_timestamp()+interval '1 hour'+i*interval '1 millisecond',input_ref,input_ref_expires_at
+    from app.workflow_runs cross join generate_series(1,30) i where id=$1`,
     [publicRun],
     workspaceId,
   );
