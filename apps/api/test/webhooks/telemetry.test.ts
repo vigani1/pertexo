@@ -1,19 +1,26 @@
-import {
-  metrics,
-  SpanStatusCode,
-  trace,
-  type Context,
-  type Span,
-} from '@opentelemetry/api';
-import { ExportResultCode } from '@opentelemetry/core';
-import { NodeSDK } from '@opentelemetry/sdk-node';
+import { metrics, SpanStatusCode } from '@opentelemetry/api';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createWebhookIngressTelemetry } from '../../src/webhooks/ingress/telemetry.js';
+import {
+  startTelemetrySdk,
+  type TelemetrySdk,
+} from '../support/telemetry-sdk.js';
 
+/**
+ * A delivery that continues its sender's trace runs through the HTTP API in
+ * direct-webhook.integration.test.ts; a broken tracer in
+ * @pertexo/observability's measurement test. These cases use the real
+ * OpenTelemetry SDK, except the first: the SDK never refuses to create an
+ * instrument on demand, so that one replaces the outside library's meter.
+ */
 describe('webhook ingress telemetry', () => {
-  afterEach(() => {
+  let sdk: TelemetrySdk | undefined;
+
+  afterEach(async () => {
     vi.restoreAllMocks();
+    await sdk?.stop();
+    sdk = undefined;
   });
 
   it('falls back to no-op diagnostics when instruments cannot be created', async () => {
@@ -21,55 +28,14 @@ describe('webhook ingress telemetry', () => {
       throw new Error('meter unavailable');
     });
     const telemetry = createWebhookIngressTelemetry();
-    const work = vi.fn().mockResolvedValue('accepted');
 
-    await expect(telemetry.trace(undefined, work)).resolves.toBe('accepted');
+    await expect(
+      telemetry.trace(undefined, () => Promise.resolve('accepted')),
+    ).resolves.toBe('accepted');
     expect(telemetry.traceparent()).toBeUndefined();
     expect(() => {
       telemetry.delivery('accepted');
     }).not.toThrow();
-    expect(work).toHaveBeenCalledOnce();
-  });
-
-  it('continues a remote parent and exposes the child context for persistence', async () => {
-    const spans: ExportedSpan[] = [];
-    const sdk = new NodeSDK({
-      instrumentations: [],
-      traceExporter: {
-        export(batch, callback) {
-          spans.push(...(batch as ExportedSpan[]));
-          callback({ code: ExportResultCode.SUCCESS });
-        },
-        forceFlush: () => Promise.resolve(),
-        shutdown: () => Promise.resolve(),
-      },
-    });
-    sdk.start();
-    const parentTraceId = 'a'.repeat(32);
-    const parentSpanId = 'b'.repeat(16);
-    let persistedTraceparent: string | undefined;
-
-    try {
-      const telemetry = createWebhookIngressTelemetry();
-      await telemetry.trace(`00-${parentTraceId}-${parentSpanId}-01`, () => {
-        persistedTraceparent = telemetry.traceparent();
-        return Promise.resolve();
-      });
-    } finally {
-      await sdk.shutdown();
-    }
-
-    const span = spans.find(({ name }) => name === 'webhook.ingress');
-    if (span === undefined)
-      throw new Error('Webhook ingress span was not exported');
-    expect(span.parentSpanContext).toMatchObject({
-      isRemote: true,
-      spanId: parentSpanId,
-      traceId: parentTraceId,
-    });
-    expect(persistedTraceparent).toBe(
-      `00-${parentTraceId}-${span.spanContext().spanId}-01`,
-    );
   });
 
   it.each([
@@ -78,147 +44,50 @@ describe('webhook ingress telemetry', () => {
     'not-a-traceparent',
     undefined,
   ])(
-    'falls back to the active context for invalid or absent parent %s',
+    'starts a new trace for the invalid or absent parent %s',
     async (parent) => {
-      let selectedParent: Context | undefined;
-      vi.spyOn(trace, 'getTracer').mockReturnValue({
-        startActiveSpan: vi.fn((...args: unknown[]) => {
-          selectedParent = args[2] as Context;
-          const callback = args.at(-1) as (span: Span) => Promise<unknown>;
-          return callback(span());
-        }),
-      } as never);
+      sdk = startTelemetrySdk();
       const telemetry = createWebhookIngressTelemetry();
 
       await telemetry.trace(parent, () => Promise.resolve());
 
-      if (selectedParent === undefined)
-        throw new Error('Tracer did not receive a parent context');
-      expect(trace.getSpanContext(selectedParent)).toBeUndefined();
+      const [span] = sdk.spans();
+      expect(span?.name).toBe('webhook.ingress');
+      expect(span?.parentSpanContext).toBeUndefined();
     },
   );
 
-  it.each([
-    {
-      name: 'a synchronous tracer failure before its callback',
-      start: (_callback: (span: Span) => Promise<unknown>) => {
-        throw new Error('trace failed before callback');
-      },
-    },
-    {
-      name: 'a tracer rejection before its callback',
-      start: (_callback: (span: Span) => Promise<unknown>) => {
-        return Promise.reject(new Error('trace rejected before callback'));
-      },
-    },
-    {
-      name: 'a synchronous tracer failure after its callback',
-      start: (callback: (span: Span) => Promise<unknown>) => {
-        void callback(span());
-        throw new Error('trace failed after callback');
-      },
-    },
-    {
-      name: 'a tracer rejection after its callback',
-      start: (callback: (span: Span) => Promise<unknown>) => {
-        void callback(span());
-        return Promise.reject(new Error('trace rejected after callback'));
-      },
-    },
-  ] as const)('runs work exactly once through $name', async ({ start }) => {
-    useTracer(start);
+  it('exposes the child of a remote parent inside its trace', async () => {
+    sdk = startTelemetrySdk();
     const telemetry = createWebhookIngressTelemetry();
-    const result = Object.freeze({ status: 'accepted' });
-    const work = vi.fn().mockResolvedValue(result);
+    const parent = `00-${'a'.repeat(32)}-${'b'.repeat(16)}-01`;
 
-    await expect(telemetry.trace(undefined, work)).resolves.toBe(result);
-    expect(work).toHaveBeenCalledOnce();
+    const inside = await telemetry.trace(parent, () =>
+      Promise.resolve(telemetry.traceparent()),
+    );
+
+    const [span] = sdk.spans();
+    expect(span?.parentSpanContext).toMatchObject({
+      isRemote: true,
+      spanId: 'b'.repeat(16),
+      traceId: 'a'.repeat(32),
+    });
+    expect(inside).toBe(
+      `00-${'a'.repeat(32)}-${String(span?.spanContext().spanId)}-01`,
+    );
   });
 
-  it('returns one business promise and ends a duplicate callback span', async () => {
-    const firstSpan = span();
-    const duplicateSpan = span();
-    useTracer((callback) => {
-      const first = callback(firstSpan);
-      const second = callback(duplicateSpan);
-      expect(second).toBe(first);
-      return first;
-    });
-    const telemetry = createWebhookIngressTelemetry();
-    const work = vi.fn().mockResolvedValue('accepted');
-
-    await expect(telemetry.trace(undefined, work)).resolves.toBe('accepted');
-    expect(work).toHaveBeenCalledOnce();
-    expect(firstSpan.end.mock.calls).toHaveLength(1);
-    expect(duplicateSpan.end.mock.calls).toHaveLength(1);
-  });
-
-  it('contains span end failure after successful work', async () => {
-    const diagnosticSpan = span();
-    diagnosticSpan.end.mockImplementation(() => {
-      throw new Error('span end unavailable');
-    });
-    useTracer((callback) => callback(diagnosticSpan));
-    const telemetry = createWebhookIngressTelemetry();
-
-    await expect(
-      telemetry.trace(undefined, () => Promise.resolve('accepted')),
-    ).resolves.toBe('accepted');
-  });
-
-  it('preserves failed work when status and end diagnostics both fail', async () => {
-    const diagnosticSpan = span();
-    diagnosticSpan.setStatus.mockImplementation(() => {
-      throw new Error('span status unavailable');
-    });
-    diagnosticSpan.end.mockImplementation(() => {
-      throw new Error('span end unavailable');
-    });
-    useTracer((callback) => callback(diagnosticSpan));
+  it('marks the span failed and keeps the failure when acceptance fails', async () => {
+    sdk = startTelemetrySdk();
     const telemetry = createWebhookIngressTelemetry();
     const failure = new Error('acceptance failed');
 
     await expect(
       telemetry.trace(undefined, () => Promise.reject(failure)),
     ).rejects.toBe(failure);
-    expect(diagnosticSpan.setStatus.mock.calls).toEqual([
-      [
-        {
-          code: SpanStatusCode.ERROR,
-        },
-      ],
+
+    expect(sdk.spans().map(({ name, status }) => [name, status])).toEqual([
+      ['webhook.ingress', { code: SpanStatusCode.ERROR }],
     ]);
-    expect(diagnosticSpan.end.mock.calls).toHaveLength(1);
   });
 });
-
-function useTracer(
-  start: (callback: (span: Span) => Promise<unknown>) => unknown,
-): void {
-  vi.spyOn(trace, 'getTracer').mockReturnValue({
-    startActiveSpan: vi.fn((...args: unknown[]) => {
-      const callback = args.at(-1) as (span: Span) => Promise<unknown>;
-      return start(callback);
-    }),
-  } as never);
-}
-
-function span() {
-  return {
-    end: vi.fn(),
-    setStatus: vi.fn(),
-  } as unknown as Span & {
-    end: ReturnType<typeof vi.fn>;
-    setStatus: ReturnType<typeof vi.fn>;
-  };
-}
-
-interface ExportedSpan {
-  readonly name: string;
-  readonly parentSpanContext?: Readonly<{
-    isRemote?: boolean;
-    spanId: string;
-    traceId: string;
-  }>;
-  spanContext(): Readonly<{ spanId: string }>;
-}

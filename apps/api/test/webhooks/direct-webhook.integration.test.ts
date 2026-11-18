@@ -75,6 +75,7 @@ import { createStructuredLogger } from '@pertexo/observability/server';
 import Fastify from 'fastify';
 import { registerWebhookIngress } from '../../src/webhooks/ingress/register.js';
 import { apiProblemSchema } from '@pertexo/contracts';
+import { startTelemetrySdk } from '../support/telemetry-sdk.js';
 
 /** A signed POST that carries no Idempotency-Key, as a simple sender sends it. */
 async function sendWithoutKey(seeded: Seeded, body: string) {
@@ -1786,5 +1787,38 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
     expect(unavailable.statusCode, unavailable.body).toBe(409);
     expect(unavailable.headers['retry-after']).toBeUndefined();
     expect(unavailable.json()).toMatchObject({ code: 'workspace.conflict' });
+  });
+
+  it("continues a sender's trace in the ingress span", async () => {
+    const seeded = await seedWebhook(`trace-${randomUUID()}`);
+    const parentTraceId = 'a'.repeat(32);
+    const parentSpanId = 'b'.repeat(16);
+    const sdk = startTelemetrySdk();
+    const deliver = async (traceparent: string) => {
+      const accepted = await send(seeded.endpointKey, {
+        secret: seeded.originalSecret,
+        headers: { traceparent },
+      });
+      expect(accepted.status, JSON.stringify(accepted.body)).toBe(202);
+    };
+    try {
+      await deliver(`00-${parentTraceId}-${parentSpanId}-01`);
+      // An all-zero trace id is invalid, so the delivery starts its own trace.
+      await deliver(`00-${'0'.repeat(32)}-${parentSpanId}-01`);
+
+      const [continued, restarted] = sdk
+        .spans()
+        .filter(({ name }) => name === 'webhook.ingress');
+      expect(continued?.parentSpanContext).toMatchObject({
+        isRemote: true,
+        spanId: parentSpanId,
+        traceId: parentTraceId,
+      });
+      expect(restarted).toBeDefined();
+      expect(restarted?.parentSpanContext).toBeUndefined();
+      expect(restarted?.spanContext().traceId).not.toBe('0'.repeat(32));
+    } finally {
+      await sdk.stop();
+    }
   });
 });
