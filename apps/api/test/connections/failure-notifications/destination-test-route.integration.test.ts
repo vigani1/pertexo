@@ -24,6 +24,7 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
       'connection',
     );
     const slackCalls: string[] = [];
+    const slackMessages: string[] = [];
     let slackBody: Record<string, unknown> = { ok: true };
     const api = useBetterAuthRealApi('destination_test_route', {
       connections: {
@@ -38,6 +39,8 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
             execute: async (request) => {
               await request.beforeDispatch();
               slackCalls.push(new URL(request.url).pathname);
+              if (request.body instanceof Uint8Array)
+                slackMessages.push(new TextDecoder().decode(request.body));
               return {
                 status: 200,
                 headers: { 'content-type': 'application/json' },
@@ -230,30 +233,72 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         browser,
         workspaceId,
         destinationId,
-        send: () =>
+        send: (key: string = randomUUID(), expectedVersion = 1) =>
           api.send(
             'POST',
             `/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/test`,
             {
               browser,
+              headers: { 'Idempotency-Key': key },
+              payload: { expectedVersion, sideEffectDisclosureAccepted: true },
+            },
+          ),
+        appendVersion: (channelId: string) =>
+          api.send(
+            'POST',
+            `/v1/workspaces/${workspaceId}/failure-notification-destinations/${destinationId}/versions`,
+            {
+              browser,
               headers: { 'Idempotency-Key': randomUUID() },
               payload: {
                 expectedVersion: 1,
-                sideEffectDisclosureAccepted: true,
+                config: {
+                  kind: 'slack',
+                  connectionId: connectionResponseSchema.parse(
+                    connection.json(),
+                  ).id,
+                  channelId,
+                },
               },
             },
           ),
       };
     }
 
-    it('sends one real message to a real Slack destination and reports it', async () => {
+    it('sends one real message to the reviewed channel, replays it, and tests a new version afresh', async () => {
       slackBody = { ok: true };
       const before = slackCalls.length;
-      const { send } = await seedDestination();
-      const response = await send();
+      const { send, appendVersion } = await seedDestination();
+      const key = randomUUID();
+      const response = await send(key);
       expect(response.statusCode, response.payload).toBe(200);
       expect(response.json()).toMatchObject({ outcome: { ok: true } });
-      expect(slackCalls.slice(before)).toContain('/api/chat.postMessage');
+      expect(slackCalls.slice(before)).toEqual(['/api/chat.postMessage']);
+      const message = JSON.parse(slackMessages.at(-1) ?? '{}') as {
+        channel?: string;
+        text?: string;
+      };
+      expect(message.channel).toBe('C0123456789');
+      expect(message.text).toContain('No workflow failed');
+
+      const replay = await send(key);
+      expect(replay.statusCode, replay.payload).toBe(200);
+      expect(replay.json()).toEqual(response.json());
+      expect(slackCalls.slice(before)).toHaveLength(1);
+
+      const moved = await appendVersion('C0987654321');
+      expect(moved.statusCode, moved.payload).toBe(200);
+      const stale = await send(key, 2);
+      expect(stale.statusCode, stale.payload).toBe(409);
+      expect(stale.json()).toMatchObject({
+        code: 'request.idempotency_conflict',
+      });
+      const fresh = await send(randomUUID(), 2);
+      expect(fresh.statusCode, fresh.payload).toBe(200);
+      expect(
+        (JSON.parse(slackMessages.at(-1) ?? '{}') as { channel?: string })
+          .channel,
+      ).toBe('C0987654321');
     }, 60_000);
 
     it('reports the service refusing the message as that, not as a server failure', async () => {
