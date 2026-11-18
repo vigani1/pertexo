@@ -86,9 +86,8 @@ it('disables read retries until Retry-After has counted down', async () => {
     name: /Try again in|Retry/,
   });
   expect(retry).toBeDisabled();
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  // The countdown starts once the refusal has rendered; time moves after that.
+  await screen.findByRole('button', { name: /Try again in/ });
   now += 2_000;
   act(() => {
     document.dispatchEvent(new Event('visibilitychange'));
@@ -115,9 +114,8 @@ it('retries a failed first read and displays the recovered server result', async
       headers: { 'content-type': 'application/json' },
     }),
   );
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  // The countdown starts once the refusal has rendered; time moves after that.
+  await screen.findByRole('button', { name: /Try again in/ });
   now += 2_100;
   act(() => {
     document.dispatchEvent(new Event('visibilitychange'));

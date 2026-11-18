@@ -155,6 +155,7 @@ for (const width of [375, 1280] as const)
   }) => {
     await page.setViewportSize({ width, height: 900 });
     const imports = await newWorkspace(page);
+    const answered = homeReadsAnswered(page);
     await page.goto(`/w/${workspaceId}`);
     const section = page.getByRole('region', { name: 'Getting started' });
     await expect(section).toBeVisible();
@@ -167,7 +168,8 @@ for (const width of [375, 1280] as const)
     await expect(
       page.getByRole('region', { name: 'Getting started' }),
     ).toHaveCount(1);
-    await page.waitForTimeout(1_000);
+    await answered;
+    await nextPaint(page);
     const shift = await page.evaluate(
       () => (window as unknown as { __shift: number }).__shift,
     );
@@ -254,20 +256,42 @@ for (const width of [375, 1280] as const)
     });
   });
 
+const HOME_READS = [
+  `**/v1/workspaces/${workspaceId}/run-statistics?**`,
+  `**/v1/workspaces/${workspaceId}/connections?**`,
+  `**/v1/workspaces/${workspaceId}/runs?**`,
+  `**/v1/workspaces/${workspaceId}/workflows?**`,
+];
+
 /**
  * Each of Home's reads answers late and at its own time, the worst order
  * for a page that rearranges as facts arrive.
  */
 async function answerLate(page: Page) {
-  const late = (path: string, after: number) =>
-    page.route(path, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, after));
+  for (const [index, path] of HOME_READS.entries())
+    await page.route(path, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, (index + 1) * 300));
       await route.fallback();
     });
-  await late(`**/v1/workspaces/${workspaceId}/run-statistics?**`, 300);
-  await late(`**/v1/workspaces/${workspaceId}/connections?**`, 600);
-  await late(`**/v1/workspaces/${workspaceId}/runs?**`, 900);
-  await late(`**/v1/workspaces/${workspaceId}/workflows?**`, 1_200);
+}
+
+/** Resolves once every read Home makes has been answered. */
+function homeReadsAnswered(page: Page) {
+  return Promise.all(HOME_READS.map((path) => page.waitForResponse(path)));
+}
+
+/** Waits until the page has painted what it last rendered, with its shifts reported. */
+async function nextPaint(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      }),
+  );
 }
 
 for (const width of [375, 1280] as const)
@@ -277,13 +301,15 @@ for (const width of [375, 1280] as const)
     await page.setViewportSize({ width, height: 900 });
     await newWorkspace(page);
     await answerLate(page);
+    const answered = homeReadsAnswered(page);
     await page.goto(`/w/${workspaceId}`);
     await expect(
       page
         .getByRole('region', { name: 'Getting started' })
         .getByRole('button', { name: 'Try the example' }),
     ).toBeVisible();
-    await page.waitForTimeout(1_000);
+    await answered;
+    await nextPaint(page);
     const shift = await page.evaluate(
       () => (window as unknown as { __shift: number }).__shift,
     );
