@@ -3,7 +3,9 @@ name: Test overlap
 # Started by hand only. It runs each test file of the large suites alone, with
 # coverage, records the source lines each one reaches, and finds files whose
 # reach other files already have. README.md, "Finding tests that overlap",
-# explains how to read the result. Playwright suites are not measured.
+# explains how to read the result. The web app's mocked Playwright specs run
+# the same way in Chromium (the `e2e` lane); the live journeys are not
+# measured.
 on:
   workflow_dispatch:
     inputs:
@@ -80,10 +82,12 @@ jobs:
           # Shards per lane, sized so each job takes about 30 to 45 minutes:
           # integration files run one at a time (they share one stack), and
           # every file pays for its own Vitest start and coverage conversion.
+          # Mocked specs took about 15 s each locally, two at a time; three
+          # shards keep each e2e job well under an hour on these runners.
           SHARDS: >-
             {"core":{"unit":1,"integration":4},
             "api":{"unit":2,"integration":3},
-            "worker":{"unit":1,"integration":3}, "web":{"unit":3}}
+            "worker":{"unit":1,"integration":3}, "web":{"unit":3,"e2e":3}}
         run: |
           set -euo pipefail
           matrix="$(jq -cn --arg list "$WORKSPACES" --argjson shards "$SHARDS" '
@@ -100,7 +104,8 @@ jobs:
       measure (${{ matrix.workspace }} ${{ matrix.lane }} ${{ matrix.shard
       }}/${{ matrix.total }})
     needs: plan
-    runs-on: ubuntu-latest
+    # Browser OS dependencies stay on the image CI's browser job uses.
+    runs-on: ${{ matrix.lane == 'e2e' && 'ubuntu-24.04' || 'ubuntu-latest' }}
     # Planned for 30 to 45 minutes; the limit catches hangs.
     timeout-minutes: 90
     strategy:
@@ -142,7 +147,29 @@ jobs:
       - name: Record owned-fixture manifest
         if: matrix.lane == 'integration'
         uses: ./.github/actions/record-fixture-manifest
+      # The same two steps as CI's browser job; a static CI test keeps them
+      # equal.
+      - name: Use Ubuntu HTTPS mirrors for browser dependencies
+        if: matrix.lane == 'e2e'
+        run: |
+          sudo sed -i -E '/^http:\/\/[^/]*(azure|ec2)[.]archive[.]ubuntu[.]com\//d' /etc/apt/apt-mirrors.txt
+          cat /etc/apt/apt-mirrors.txt
+          grep -q . /etc/apt/apt-mirrors.txt
+      - name: Install Playwright browsers
+        if: matrix.lane == 'e2e'
+        # Normally about a minute; a stalled mirror should fail here, not
+        # use up the whole job.
+        timeout-minutes: 8
+        run: pnpm --filter @pertexo/web exec playwright install --with-deps
+      - name: Run each mocked spec alone with coverage
+        if: matrix.lane == 'e2e'
+        env:
+          SHARD: ${{ matrix.shard }}/${{ matrix.total }}
+        run:
+          node infrastructure/testing/overlap/run-spec-coverage.mjs --shard
+          "$SHARD" --concurrency 2
       - name: Run each test file alone with coverage
+        if: matrix.lane != 'e2e'
         env:
           WORKSPACE: ${{ matrix.workspace }}
           LANE: ${{ matrix.lane }}

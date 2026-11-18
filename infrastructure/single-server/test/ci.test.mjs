@@ -229,6 +229,32 @@ test('the overlap run starts only by hand, on the stack CI tests against', () =>
   assert.doesNotMatch(JSON.stringify(ci.jobs), /test-overlap/u);
 });
 
+// A stalled apt mirror once held CI's browser job for over 15 minutes; the
+// overlap run's mocked specs install browsers the same way.
+test("the overlap run's browser lane installs browsers as CI's browser job does", () => {
+  const overlap = parse(
+    readFileSync('.github/workflows/test-overlap.yml', 'utf8'),
+  );
+  const step = (job, name) => {
+    const found = job.steps.find((candidate) => candidate.name === name);
+    assert.ok(found, name);
+    return found;
+  };
+  for (const name of [
+    'Use Ubuntu HTTPS mirrors for browser dependencies',
+    'Install Playwright browsers',
+  ]) {
+    const ours = step(overlap.jobs.measure, name);
+    const theirs = step(ci.jobs.browser, name);
+    assert.equal(ours.run, theirs.run, name);
+    assert.equal(ours['timeout-minutes'], theirs['timeout-minutes'], name);
+  }
+  assert.match(
+    overlap.jobs.measure['runs-on'],
+    new RegExp(ci.jobs.browser['runs-on'], 'u'),
+  );
+});
+
 // ops-09, docs-deps-product-17
 it('a version tag publishes a release with notes and moves the stable tag', () => {
   const path = '.github/workflows/release.yml';
