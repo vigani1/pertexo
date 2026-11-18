@@ -126,7 +126,7 @@ describe('persisted workflow activation projection', () => {
     }
   });
 
-  it('returns every stored health state through the serving-role authoring list', async () => {
+  it('returns every stored health state through the serving-role authoring list and detail, whatever the lifecycle', async () => {
     const created = await authoring.createWorkflow({
       actorId,
       workspaceId,
@@ -152,6 +152,31 @@ describe('persisted workflow activation projection', () => {
       expect(
         result.items.find((item) => item.id === created.workflowId),
       ).toMatchObject({ activationStatus: status, lifecycleStatus: 'active' });
+      // Health is kept apart from the lifecycle, archived included.
+      for (const lifecycleStatus of ['active', 'archived'] as const) {
+        await queryAsOwner(
+          'update app.workflows set lifecycle_status=$1 where id=$2',
+          [lifecycleStatus, created.workflowId],
+          workspaceId,
+        );
+        expect(
+          await authoring.getWorkflow(workspaceId, created.workflowId, actorId),
+        ).toMatchObject({ activationStatus: status, lifecycleStatus });
+      }
+      await queryAsOwner(
+        "update app.workflows set lifecycle_status='active' where id=$1",
+        [created.workflowId],
+        workspaceId,
+      );
     }
+    for (const invalid of ['enabled', '', null, 1])
+      await expect(
+        queryAsOwner(
+          'update app.workflows set activation_status=$1 where id=$2',
+          [invalid, created.workflowId],
+          workspaceId,
+        ),
+        `activation ${String(invalid)}`,
+      ).rejects.toMatchObject({ code: invalid === null ? '23502' : '23514' });
   });
 });
