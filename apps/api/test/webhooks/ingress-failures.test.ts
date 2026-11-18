@@ -4,7 +4,6 @@ import {
   WebhookIntakeBusyError,
 } from '@pertexo/core/triggers';
 import type { StructuredLogger } from '@pertexo/observability/server';
-import { setTimeout as delay } from 'node:timers/promises';
 
 import { describe, expect, it, vi } from 'vitest';
 
@@ -109,9 +108,13 @@ describe('webhook ingress failures', () => {
 
   it('does not report an outage when a sender leaves while its delivery waits', async () => {
     const log = logger();
+    // Every way out of ingress records the delivery's outcome; the outage
+    // path records it just before it reports health and logs.
+    const recorded = Promise.withResolvers<string>();
     const { application, database, health } = setup({
       reference: undefined,
       logger: log,
+      telemetryOverrides: { delivery: recorded.resolve },
     });
     let sawAbort = (): void => undefined;
     const aborted = new Promise<void>((resolve) => {
@@ -142,7 +145,7 @@ describe('webhook ingress failures', () => {
     sender.abort();
     await expect(delivery).rejects.toThrow();
     await aborted;
-    await delay(20);
+    expect(await recorded.promise).toBe('unavailable');
     expect(log.error).not.toHaveBeenCalled();
     expect(health).not.toHaveBeenCalledWith('degraded');
   });
