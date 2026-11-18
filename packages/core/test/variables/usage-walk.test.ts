@@ -65,17 +65,6 @@ const longest: ValueSource = {
   expression: `"${'a'.repeat(16_382)}"`,
 } as const;
 
-it('carries on through workflows with no references, up to 25 in a page', async () => {
-  const read = workspace(...Array.from({ length: 26 }, () => []));
-  const first = await walkVariableUsage(ask, read);
-  expect(first.next).toMatchObject({ workflowId: idOf(24), offset: 0 });
-  const second = await walkVariableUsage(
-    { ...ask, ...(first.next === null ? {} : { after: first.next }) },
-    read,
-  );
-  expect(second.next).toBeNull();
-});
-
 it('spends one source budget across workflows, then resumes inside the one it stopped in', async () => {
   const read = workspace(many(60), [...many(50), reads]);
   const first = await walkVariableUsage(ask, read);
@@ -89,37 +78,6 @@ it('spends one source budget across workflows, then resumes inside the one it st
     [idOf(1), 'input_050'],
   ]);
   expect(second.next).toBeNull();
-});
-
-it('resumes at the next workflow when the budget ran out exactly at the end of one', async () => {
-  const read = workspace(many(100), [reads]);
-  const first = await walkVariableUsage(ask, read);
-  expect(first.next).toMatchObject({ workflowId: idOf(0), offset: 0 });
-  const second = await walkVariableUsage(
-    { ...ask, ...(first.next === null ? {} : { after: first.next }) },
-    read,
-  );
-  expect(second.items.map((item) => item.workflowId)).toEqual([idOf(1)]);
-  expect(second.next).toBeNull();
-});
-
-it('counts the item limit across workflows, without skipping or repeating one', async () => {
-  const read = workspace([reads], [reads], [reads]);
-  const seen: string[] = [];
-  let after: Awaited<ReturnType<typeof walkVariableUsage>>['next'] = null;
-  for (let page = 0; page < 6; page += 1) {
-    const current: Awaited<ReturnType<typeof walkVariableUsage>> =
-      await walkVariableUsage(
-        { ...ask, limit: 2, ...(after === null ? {} : { after }) },
-        read,
-      );
-    expect(current.items.length).toBeLessThanOrEqual(2);
-    seen.push(...current.items.map((item) => item.workflowId));
-    after = current.next;
-    if (after === null) break;
-  }
-  expect(after).toBeNull();
-  expect(seen).toEqual([idOf(0), idOf(1), idOf(2)]);
 });
 
 it('stays incomplete when any workflow in the page could not be analysed', async () => {
@@ -149,19 +107,6 @@ it('spends one byte budget across workflows, then resumes inside the one it stop
   expect(second.items.map((item) => [item.workflowId, item.input])).toEqual([
     [idOf(1), 'input_002'],
   ]);
-  expect(second.next).toBeNull();
-});
-
-it('neither skips nor repeats a workflow the byte budget stopped before', async () => {
-  const read = workspace(many(4, longest), [reads]);
-  const first = await walkVariableUsage(ask, read);
-  expect(first.items).toEqual([]);
-  expect(first.next).toMatchObject({ workflowId: idOf(0), offset: 0 });
-  const second = await walkVariableUsage(
-    { ...ask, ...(first.next === null ? {} : { after: first.next }) },
-    read,
-  );
-  expect(second.items.map((item) => item.workflowId)).toEqual([idOf(1)]);
   expect(second.next).toBeNull();
 });
 

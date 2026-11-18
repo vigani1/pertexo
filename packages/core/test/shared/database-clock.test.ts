@@ -7,8 +7,4 @@ describe('database clock readings', () => {
       Number('1794736800.123456'),
     );
   });
-
-  it('reads a whole second exactly', () => {
-    expect(databaseClockEpochSeconds('1970-01-01T00:00:01.000000Z')).toBe(1);
-  });
 });

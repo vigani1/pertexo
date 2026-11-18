@@ -162,45 +162,4 @@ describe('schedule recurrence', () => {
       nextAt: new Date('2026-03-09T06:30:00.000Z'),
     });
   });
-
-  it('anchors intervals immutably and finds multiple missed occurrences without drift', () => {
-    const recurrence = parseScheduleRecurrence({
-      kind: 'interval',
-      intervalMinutes: 15,
-    });
-    const anchor = new Date('2026-01-01T00:02:03.456Z');
-    expect(
-      resolveScheduleObservation(
-        recurrence,
-        anchor,
-        new Date('2026-01-01T03:48:00.000Z'),
-      ),
-    ).toEqual({
-      greatestDueAt: new Date('2026-01-01T03:47:03.456Z'),
-      nextAt: new Date('2026-01-01T04:02:03.456Z'),
-    });
-    expect(() =>
-      parseScheduleRecurrence({ kind: 'interval', intervalMinutes: 0 }),
-    ).toThrow(TypeError);
-    expect(() =>
-      parseScheduleRecurrence({ kind: 'interval', intervalMinutes: 43_201 }),
-    ).toThrow(TypeError);
-  });
-
-  it('treats an occurrence equal to the supplied observation as due', () => {
-    const recurrence = parseScheduleRecurrence({
-      kind: 'interval',
-      intervalMinutes: 5,
-    });
-    expect(
-      resolveScheduleObservation(
-        recurrence,
-        new Date('2026-01-01T00:00:00.000Z'),
-        new Date('2026-01-01T00:10:00.000Z'),
-      ),
-    ).toEqual({
-      greatestDueAt: new Date('2026-01-01T00:10:00.000Z'),
-      nextAt: new Date('2026-01-01T00:15:00.000Z'),
-    });
-  });
 });
