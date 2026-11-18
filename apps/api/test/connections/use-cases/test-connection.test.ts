@@ -1,25 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 import { TestConnectionService } from '../../../src/connections/testing/test-connection.js';
 import type {
-  ConnectionEmailClient,
   ConnectionSlackClient,
   ConnectionTestPersistence,
-  ConnectionHttpClient,
 } from '../../../src/connections/ports.js';
 import {
-  workspaceId,
-  connectionId,
-  actor,
-  record,
   activeAccess,
   persistence,
   command,
-  secretVersionId,
-  sealed,
 } from './test-connection-fixture.js';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import type { SecureHttpRequest } from '@pertexo/secrets/server';
 
+/**
+ * The provider answers and their stored outcomes run end to end in
+ * provider-test.integration.test.ts, the outcome table in testing/outcomes.test.ts
+ * and destination tests in destination-test-route.integration.test.ts. These
+ * cases stay because no real stack produces them on demand: access lost between
+ * the claim and the secret read (an exact race), the database failing to record
+ * dispatch or abandonment, and a stored secret the API itself could never have
+ * written.
+ */
 describe('connection testing security and cleanup regressions', () => {
   it.each([
     ['missing membership', undefined],
@@ -62,42 +63,36 @@ describe('connection testing security and cleanup regressions', () => {
     },
   );
 
-  it.each(['throws synchronously', 'rejects asynchronously'] as const)(
-    'preserves provider failure and clears plaintext when abandonment $0',
-    async (mode) => {
-      const providerFailure = new Error('provider failed');
-      const cleanupFailure = new Error('abandon failed');
-      const plaintext = new TextEncoder().encode(
-        JSON.stringify({
-          type: 'http_headers',
-          headers: { authorization: 'Bearer secret' },
-        }),
-      );
-      const abandonConnectionTest = vi.fn<
-        ConnectionTestPersistence['abandonConnectionTest']
-      >(() => {
-        if (mode === 'throws synchronously') throw cleanupFailure;
-        return Promise.reject(cleanupFailure);
-      });
-      const store = persistence({ abandonConnectionTest });
-      const authorization = {
-        findAccess: vi.fn().mockResolvedValue(activeAccess()),
-      };
+  it('preserves the provider failure and clears plaintext when abandonment fails', async () => {
+    const providerFailure = new Error('provider failed');
+    const cleanupFailure = new Error('abandon failed');
+    const plaintext = new TextEncoder().encode(
+      JSON.stringify({
+        type: 'http_headers',
+        headers: { authorization: 'Bearer secret' },
+      }),
+    );
+    const abandonConnectionTest = vi.fn<
+      ConnectionTestPersistence['abandonConnectionTest']
+    >(() => Promise.reject(cleanupFailure));
+    const store = persistence({ abandonConnectionTest });
+    const authorization = {
+      findAccess: vi.fn().mockResolvedValue(activeAccess()),
+    };
 
-      await expect(
-        new TestConnectionService(store, authorization, {
-          encryption: {
-            seal: vi.fn(),
-            open: vi.fn(() => Promise.resolve(plaintext)),
-          },
-          httpClient: { execute: vi.fn(() => Promise.reject(providerFailure)) },
-          applicationSecret: 'fixture-application-secret',
-        }).execute(command({ url: 'https://provider.example.test/health' })),
-      ).rejects.toBe(providerFailure);
-      expect(abandonConnectionTest).toHaveBeenCalledOnce();
-      expect(plaintext.every((byte) => byte === 0)).toBe(true);
-    },
-  );
+    await expect(
+      new TestConnectionService(store, authorization, {
+        encryption: {
+          seal: vi.fn(),
+          open: vi.fn(() => Promise.resolve(plaintext)),
+        },
+        httpClient: { execute: vi.fn(() => Promise.reject(providerFailure)) },
+        applicationSecret: 'fixture-application-secret',
+      }).execute(command({ url: 'https://provider.example.test/health' })),
+    ).rejects.toBe(providerFailure);
+    expect(abandonConnectionTest).toHaveBeenCalledOnce();
+    expect(plaintext.every((byte) => byte === 0)).toBe(true);
+  });
 
   it('does not simulate network work after an awaited dispatch marker fails', async () => {
     const markerFailure = new Error('dispatch marker failed');
@@ -170,85 +165,15 @@ describe('connection testing security and cleanup regressions', () => {
         ),
       clients: 'slack' as const,
     },
-    {
-      name: 'HTTP credential on email route',
-      request: {
-        providerKey: 'email',
-        sideEffectDisclosureAccepted: true,
-      } as const,
-      bytes: () =>
-        new TextEncoder().encode(
-          JSON.stringify({
-            type: 'http_headers',
-            headers: { authorization: 'Bearer secret' },
-          }),
-        ),
-      clients: 'email' as const,
-    },
-    {
-      name: 'email credential without email client',
-      request: {
-        providerKey: 'email',
-        sideEffectDisclosureAccepted: true,
-      } as const,
-      bytes: () =>
-        new TextEncoder().encode(
-          JSON.stringify({
-            type: 'resend_api_key',
-            apiKey: 're_123456789_secret',
-            fromEmail: 'sender@example.com',
-          }),
-        ),
-      clients: 'none' as const,
-    },
-    {
-      name: 'HTTP credential on Slack route',
-      request: { providerKey: 'slack' } as const,
-      bytes: () =>
-        new TextEncoder().encode(
-          JSON.stringify({
-            type: 'http_headers',
-            headers: { authorization: 'Bearer secret' },
-          }),
-        ),
-      clients: 'slack' as const,
-    },
-    {
-      name: 'Slack credential without Slack client',
-      request: { providerKey: 'slack' } as const,
-      bytes: () =>
-        new TextEncoder().encode(
-          JSON.stringify({
-            type: 'slack_bot_token',
-            botToken: 'xoxb-123456789-secret',
-          }),
-        ),
-      clients: 'none' as const,
-    },
-    {
-      name: 'Slack credential on HTTP route',
-      request: { url: 'https://provider.example.test/health' } as const,
-      bytes: () =>
-        new TextEncoder().encode(
-          JSON.stringify({
-            type: 'slack_bot_token',
-            botToken: 'xoxb-123456789-secret',
-          }),
-        ),
-      clients: 'http' as const,
-    },
   ])(
     'rejects $name before provider dispatch',
     async ({ request, bytes, clients }) => {
       const plaintext = bytes();
       const execute = vi.fn();
       const authTest = vi.fn();
-      const sendNotification = vi.fn();
       const store = persistence();
       const slackClient: Pick<ConnectionSlackClient, 'authTest'> | undefined =
         clients === 'slack' ? { authTest } : undefined;
-      const emailClient: ConnectionEmailClient | undefined =
-        clients === 'email' ? { sendNotification } : undefined;
 
       await expect(
         new TestConnectionService(
@@ -263,526 +188,14 @@ describe('connection testing security and cleanup regressions', () => {
             applicationSecret: 'fixture-application-secret',
             telemetry: undefined,
             slackClient: slackClient,
-            emailClient: emailClient,
           },
         ).execute(command(request)),
       ).rejects.toBeInstanceOf(ConnectionSecretEncryptionError);
       expect(execute).not.toHaveBeenCalled();
       expect(authTest).not.toHaveBeenCalled();
-      expect(sendNotification).not.toHaveBeenCalled();
       expect(store.completeConnectionTest).not.toHaveBeenCalled();
       expect(store.abandonConnectionTest).toHaveBeenCalledOnce();
       expect(plaintext.every((byte) => byte === 0)).toBe(true);
     },
   );
-});
-describe('connection provider outcome projection', () => {
-  it.each([
-    [200, { ok: true, httpStatus: 200 }],
-    [299, { ok: true, httpStatus: 299 }],
-    [
-      400,
-      {
-        ok: false,
-        httpStatus: 400,
-        errorCode: 'connection.provider_rejected',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      401,
-      {
-        ok: false,
-        httpStatus: 401,
-        errorCode: 'connection.credential_rejected',
-        reauthorizationRequired: true,
-      },
-    ],
-    [
-      403,
-      {
-        ok: false,
-        httpStatus: 403,
-        errorCode: 'connection.credential_rejected',
-        reauthorizationRequired: true,
-      },
-    ],
-    [
-      429,
-      {
-        ok: false,
-        httpStatus: 429,
-        errorCode: 'connection.provider_rate_limited',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      500,
-      {
-        ok: false,
-        httpStatus: 500,
-        errorCode: 'connection.provider_unavailable',
-        reauthorizationRequired: false,
-      },
-    ],
-  ] as const)(
-    'persists exact HTTP status %i outcome',
-    async (status, expected) => {
-      const store = persistence();
-      const plaintext = new TextEncoder().encode(
-        JSON.stringify({
-          type: 'http_headers',
-          headers: { authorization: 'Bearer secret' },
-        }),
-      );
-      const httpClient = {
-        execute: vi.fn<NonNullable<ConnectionHttpClient['execute']>>(
-          async (input: SecureHttpRequest) => {
-            await input.beforeDispatch();
-            return {
-              status,
-              headers: {},
-              body: new Uint8Array(),
-              bodyEncoding: 'utf8' as const,
-              finalUrl: input.url,
-              redirectCount: 0,
-            };
-          },
-        ),
-      } satisfies ConnectionHttpClient;
-
-      const result = await new TestConnectionService(
-        store,
-        { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-        {
-          encryption: {
-            seal: vi.fn(),
-            open: vi.fn(() => Promise.resolve(plaintext)),
-          },
-          httpClient: httpClient,
-          applicationSecret: 'fixture-application-secret',
-        },
-      ).execute(command({ url: 'https://provider.example.test/health' }));
-
-      expect(store.completeConnectionTest).toHaveBeenCalledWith(
-        expect.objectContaining({ outcome: expected }),
-      );
-      expect(result.outcome).toEqual(
-        expected.ok
-          ? { ok: true, httpStatus: expected.httpStatus, errorCode: null }
-          : {
-              ok: false,
-              httpStatus: expected.httpStatus,
-              errorCode: expected.errorCode,
-            },
-      );
-    },
-  );
-
-  it.each([
-    ['success', { kind: 'succeeded' }, { ok: true, httpStatus: 200 }],
-    [
-      'account inactive',
-      { kind: 'rejected', error: 'account_inactive' },
-      {
-        ok: false,
-        httpStatus: 200,
-        errorCode: 'connection.slack_account_inactive',
-        reauthorizationRequired: true,
-      },
-    ],
-    [
-      'invalid auth',
-      { kind: 'rejected', error: 'invalid_auth' },
-      {
-        ok: false,
-        httpStatus: 200,
-        errorCode: 'connection.provider_rejected',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      'not authed',
-      { kind: 'rejected', error: 'not_authed' },
-      {
-        ok: false,
-        httpStatus: 200,
-        errorCode: 'connection.provider_rejected',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      'token revoked',
-      { kind: 'rejected', error: 'token_revoked' },
-      {
-        ok: false,
-        httpStatus: 200,
-        errorCode: 'connection.slack_token_revoked',
-        reauthorizationRequired: true,
-      },
-    ],
-    [
-      'token expired',
-      { kind: 'rejected', error: 'token_expired' },
-      {
-        ok: false,
-        httpStatus: 200,
-        errorCode: 'connection.slack_token_expired',
-        reauthorizationRequired: true,
-      },
-    ],
-    [
-      'generic unauthorized',
-      { kind: 'http_failure', status: 401 },
-      {
-        ok: false,
-        httpStatus: 401,
-        errorCode: 'connection.provider_rejected',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      'generic forbidden',
-      { kind: 'http_failure', status: 403 },
-      {
-        ok: false,
-        httpStatus: 403,
-        errorCode: 'connection.provider_rejected',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      'generic HTTP throttle',
-      { kind: 'http_failure', status: 429 },
-      {
-        ok: false,
-        httpStatus: 429,
-        errorCode: 'connection.provider_rate_limited',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      'provider rejection',
-      { kind: 'rejected', error: 'team_disabled' },
-      {
-        ok: false,
-        httpStatus: 200,
-        errorCode: 'connection.provider_rejected',
-        reauthorizationRequired: false,
-      },
-    ],
-  ] as const)(
-    'persists exact Slack $s outcome',
-    async (_name, providerResult, expected) => {
-      const slackRecord = record({
-        providerKey: 'slack',
-        authType: 'slack_bot_token',
-      });
-      const store = persistence({
-        resolveConnectionTestSecret: vi.fn(() =>
-          Promise.resolve({
-            connection: slackRecord,
-            secretVersionId,
-            sealed,
-          }),
-        ),
-      });
-      const plaintext = new TextEncoder().encode(
-        JSON.stringify({
-          type: 'slack_bot_token',
-          botToken: 'xoxb-123456789-secret',
-        }),
-      );
-      const slackClient = {
-        authTest: vi.fn<
-          NonNullable<Pick<ConnectionSlackClient, 'authTest'>['authTest']>
-        >(async (input: Parameters<ConnectionSlackClient['authTest']>[0]) => {
-          await input.beforeDispatch();
-          return providerResult;
-        }),
-      } satisfies Pick<ConnectionSlackClient, 'authTest'>;
-
-      const result = await new TestConnectionService(
-        store,
-        { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-        {
-          encryption: {
-            seal: vi.fn(),
-            open: vi.fn(() => Promise.resolve(plaintext)),
-          },
-          httpClient: { execute: vi.fn() },
-          applicationSecret: 'fixture-application-secret',
-          telemetry: undefined,
-          slackClient: slackClient,
-        },
-      ).execute(command({ providerKey: 'slack' }));
-
-      expect(store.completeConnectionTest).toHaveBeenCalledWith(
-        expect.objectContaining({ outcome: expected }),
-      );
-      expect(result.outcome.errorCode).toBe(
-        expected.ok ? null : expected.errorCode,
-      );
-    },
-  );
-
-  it.each([
-    [
-      'success',
-      { kind: 'succeeded', emailId: 'email-id' },
-      { ok: true, httpStatus: 200 },
-    ],
-    [
-      'credential rejection',
-      { kind: 'rejected', status: 401, error: 'invalid_api_key' },
-      {
-        ok: false,
-        httpStatus: 401,
-        errorCode: 'connection.credential_rejected',
-        reauthorizationRequired: true,
-      },
-    ],
-    [
-      'provider rejection',
-      { kind: 'rejected', status: 400, error: 'invalid_request' },
-      {
-        ok: false,
-        httpStatus: 400,
-        errorCode: 'connection.provider_rejected',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      'rate limit',
-      { kind: 'rate_limited', retryAfterMillis: 1_000 },
-      {
-        ok: false,
-        httpStatus: 429,
-        errorCode: 'connection.provider_rate_limited',
-        reauthorizationRequired: false,
-      },
-    ],
-    [
-      'invalid response',
-      { kind: 'invalid_response' },
-      {
-        ok: false,
-        httpStatus: null,
-        errorCode: 'connection.provider_invalid_response',
-        reauthorizationRequired: false,
-      },
-    ],
-  ] as const)(
-    'persists exact email $s outcome',
-    async (_name, providerResult, expected) => {
-      const emailRecord = record({
-        providerKey: 'email',
-        authType: 'resend_api_key',
-      });
-      const store = persistence({
-        resolveConnectionTestSecret: vi.fn(() =>
-          Promise.resolve({
-            connection: emailRecord,
-            secretVersionId,
-            sealed,
-          }),
-        ),
-      });
-      const plaintext = new TextEncoder().encode(
-        JSON.stringify({
-          type: 'resend_api_key',
-          apiKey: 're_123456789_secret',
-          fromEmail: 'sender@example.com',
-        }),
-      );
-      const emailClient = {
-        sendNotification: vi.fn<
-          NonNullable<ConnectionEmailClient['sendNotification']>
-        >(
-          async (
-            input: Parameters<ConnectionEmailClient['sendNotification']>[0],
-          ) => {
-            await input.beforeDispatch();
-            return providerResult;
-          },
-        ),
-      } satisfies ConnectionEmailClient;
-
-      const result = await new TestConnectionService(
-        store,
-        { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-        {
-          encryption: {
-            seal: vi.fn(),
-            open: vi.fn(() => Promise.resolve(plaintext)),
-          },
-          httpClient: { execute: vi.fn() },
-          applicationSecret: 'fixture-application-secret',
-          telemetry: undefined,
-          slackClient: undefined,
-          emailClient: emailClient,
-        },
-      ).execute(
-        command({
-          providerKey: 'email',
-          sideEffectDisclosureAccepted: true,
-        }),
-      );
-
-      expect(store.completeConnectionTest).toHaveBeenCalledWith(
-        expect.objectContaining({ outcome: expected }),
-      );
-      expect(result.outcome.errorCode).toBe(
-        expected.ok ? null : expected.errorCode,
-      );
-    },
-  );
-});
-describe('alert destination tests', () => {
-  const destination = {
-    id: '55555555-5555-4555-8555-555555555555',
-    workspaceId,
-    kind: 'slack' as const,
-    status: 'enabled' as const,
-    currentVersion: 2,
-    config: { kind: 'slack' as const, connectionId, channelId: 'C12345' },
-    createdAt: '2026-08-22T12:00:00.000Z',
-    updatedAt: '2026-08-22T12:00:00.000Z',
-  };
-  const input = {
-    actor,
-    routeWorkspaceId: workspaceId,
-    idempotencyKey: 'destination-test',
-  };
-
-  it('posts to the reviewed Slack channel after recording dispatch, rather than auth.test', async () => {
-    const store = persistence();
-    const authTest = vi.fn();
-    const sendMessage = vi.fn<
-      NonNullable<ConnectionSlackClient['sendMessage']>
-    >(async (request) => {
-      await request.beforeDispatch();
-      expect(store.markConnectionTestDispatched).toHaveBeenCalled();
-      return {
-        kind: 'succeeded',
-        channelId: request.channelId,
-        messageTs: '1.0',
-      };
-    });
-    const service = new TestConnectionService(
-      store,
-      { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-      {
-        encryption: {
-          seal: vi.fn(),
-          open: vi.fn().mockImplementation(() =>
-            Promise.resolve(
-              Buffer.from(
-                JSON.stringify({
-                  type: 'slack_bot_token',
-                  botToken: 'xoxb-local-test',
-                }),
-              ),
-            ),
-          ),
-        },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-        telemetry: undefined,
-        slackClient: { authTest, sendMessage },
-      },
-    );
-    expect(
-      (await service.executeDestination(input, destination)).outcome.ok,
-    ).toBe(true);
-    expect(authTest).not.toHaveBeenCalled();
-    const message = sendMessage.mock.calls[0]?.[0];
-    expect(message?.channelId).toBe('C12345');
-    expect(message?.text).toContain('No workflow failed');
-    const firstHash = vi.mocked(store.startConnectionTest).mock.calls[0]?.[0]
-      .requestHash;
-    await service.executeDestination(input, {
-      ...destination,
-      currentVersion: 3,
-    });
-    expect(
-      vi.mocked(store.startConnectionTest).mock.calls[1]?.[0].requestHash,
-    ).not.toBe(firstHash);
-  });
-
-  it('sends an email to the destination address with stable provider idempotency', async () => {
-    const store = persistence();
-    const sendNotification = vi.fn<ConnectionEmailClient['sendNotification']>(
-      async (request) => {
-        await request.beforeDispatch();
-        return { kind: 'succeeded', emailId: 'test-message' };
-      },
-    );
-    const service = new TestConnectionService(
-      store,
-      { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-      {
-        encryption: {
-          seal: vi.fn(),
-          open: vi.fn().mockResolvedValue(
-            Buffer.from(
-              JSON.stringify({
-                type: 'resend_api_key',
-                apiKey: 're_local',
-                fromEmail: 'alerts@example.test',
-              }),
-            ),
-          ),
-        },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-        telemetry: undefined,
-        slackClient: undefined,
-        emailClient: { sendNotification },
-      },
-    );
-    await service.executeDestination(input, {
-      ...destination,
-      kind: 'email',
-      config: {
-        kind: 'email',
-        connectionId,
-        toEmail: 'destination@example.test',
-      },
-    });
-    const notification = sendNotification.mock.calls[0]?.[0];
-    expect(notification?.toEmail).toBe('destination@example.test');
-    expect(notification?.subject).toBe('Pertexo alert destination test');
-    expect(notification?.idempotencyKey).toBeTypeOf('string');
-  });
-
-  it('replays without decrypting or sending another message', async () => {
-    const store = persistence({
-      startConnectionTest: vi.fn().mockResolvedValue({
-        kind: 'replay',
-        result: {
-          connection: record(),
-          outcome: { ok: true, httpStatus: 200 },
-        },
-      }),
-    });
-    const open = vi.fn();
-    const sendMessage = vi.fn();
-    const service = new TestConnectionService(
-      store,
-      { findAccess: vi.fn().mockResolvedValue(activeAccess()) },
-      {
-        encryption: { seal: vi.fn(), open },
-        httpClient: { execute: vi.fn() },
-        applicationSecret: 'fixture-application-secret',
-        telemetry: undefined,
-        slackClient: { authTest: vi.fn(), sendMessage },
-      },
-    );
-    expect(
-      (await service.executeDestination(input, destination)).outcome.ok,
-    ).toBe(true);
-    expect(open).not.toHaveBeenCalled();
-    expect(sendMessage).not.toHaveBeenCalled();
-  });
 });

@@ -1,7 +1,4 @@
-import type {
-  DatabaseConfig,
-  DatabaseRuntime,
-} from '@pertexo/database/platform';
+import type { DatabaseConfig } from '@pertexo/database/platform';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiConnectionRuntime } from '../../src/platform/connections/connections-runtime.module.js';
@@ -55,6 +52,12 @@ const options = {
   applicationSecret: 'fixture-application-secret',
 };
 
+/**
+ * The composition's success path, and closing it, run in
+ * bootstrap/production-composition.integration.test.ts and every real-API
+ * test. These cases stay because no real stack fails a constructor or a
+ * closer on demand, and the module has no seam for one.
+ */
 describe('API connection runtime ownership', () => {
   beforeEach(() => {
     for (const service of Object.values(outside)) service.mockReset();
@@ -167,30 +170,6 @@ describe('API connection runtime ownership', () => {
       constructionFailure,
       cleanupFailure,
     ]);
-    expect(destinationClose).toHaveBeenCalledOnce();
-  });
-
-  it('passes a shared database runtime to both lease factories and closes each returned lease once', async () => {
-    const sharedRuntime = {} as DatabaseRuntime;
-    const databaseClose = vi.fn();
-    const destinationClose = vi.fn();
-    outside.database.mockReturnValue({ close: databaseClose });
-    outside.destination.mockReturnValue({ close: destinationClose });
-    const runtime = await createApiConnectionRuntime(config, databaseConfig, {
-      ...options,
-      runtime: sharedRuntime,
-    });
-
-    await runtime.close();
-    expect(outside.database).toHaveBeenCalledExactlyOnceWith(
-      databaseConfig,
-      sharedRuntime,
-    );
-    expect(outside.destination).toHaveBeenCalledExactlyOnceWith(
-      databaseConfig,
-      sharedRuntime,
-    );
-    expect(databaseClose).toHaveBeenCalledOnce();
     expect(destinationClose).toHaveBeenCalledOnce();
   });
 });
