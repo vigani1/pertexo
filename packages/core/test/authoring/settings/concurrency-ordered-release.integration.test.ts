@@ -26,7 +26,16 @@ import {
 // room for a loaded machine.
 const MAX_IDLE_MS = 2_000;
 
+// The run ahead either starts or ends without starting; either way its slot
+// passes on at once.
 const endings = [
+  {
+    ending: 'starts',
+    status: 'running',
+    event: null,
+    cancelRequested: false,
+    deadlineExpired: false,
+  },
   {
     ending: 'is canceled',
     status: 'canceled',
@@ -51,7 +60,7 @@ const endings = [
 ] as const;
 
 installExecutionAcceptanceFixture();
-describe('the run ahead leaving before it starts, under a workflow limit', () => {
+describe('the run ahead starting or leaving, under a workflow limit', () => {
   it.each(endings)(
     'starts the next granted run promptly when the run ahead $ending',
     async (ending) => {
@@ -87,6 +96,7 @@ describe('the run ahead leaving before it starts, under a workflow limit', () =>
           ),
         ).resolves.toEqual({ kind: 'deferred', revision: 0 });
         const deferred = await deferredDelivery(second.runId, secondEvent.id);
+        await expect(claimRuns()).resolves.toMatchObject({ events: [] });
 
         if (ending.cancelRequested)
           await apiDatabase.withWorkspace(workspaceA, ({ db }) =>
@@ -96,10 +106,12 @@ describe('the run ahead leaving before it starts, under a workflow limit', () =>
                where workspace_id=${workspaceA} and id=${first.runId}`),
           );
         if (ending.deadlineExpired) await waitForDeadline(first.runId);
-        // The run ahead ends without starting, through the coordinator.
+        // The run ahead starts, or ends without starting, through the coordinator.
         await expect(
           store.commitAdvancePlan(
-            endInput(firstEvent, first.request.initialCheckpoint, ending),
+            ending.event === null
+              ? startInput(firstEvent, first.request.initialCheckpoint)
+              : endInput(firstEvent, first.request.initialCheckpoint, ending),
           ),
         ).resolves.toMatchObject({ kind: 'committed', revision: 1 });
         await expect(runStatus(first.runId)).resolves.toBe(ending.status);
@@ -136,7 +148,7 @@ describe('the run ahead leaving before it starts, under a workflow limit', () =>
 function endInput(
   event: Parameters<typeof startInput>[0],
   initial: Parameters<typeof startInput>[1],
-  ending: (typeof endings)[number],
+  ending: Extract<(typeof endings)[number], { event: object }>,
 ) {
   const start = startInput(event, initial);
   return {
