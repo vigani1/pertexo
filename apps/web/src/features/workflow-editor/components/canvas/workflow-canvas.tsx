@@ -105,7 +105,7 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
       tabIndex={0}
       aria-label="Workflow canvas"
       role="region"
-      className="weave absolute inset-0 overflow-hidden -outline-offset-2"
+      className="weave absolute inset-0 overflow-clip -outline-offset-2"
       onKeyDown={(event) => {
         // React Flow blurs a step on Escape, which would leave focus on the
         // page; keep it on the canvas, as a click on empty canvas does.
@@ -156,8 +156,11 @@ export function WorkflowCanvas(props: WorkflowCanvasProps) {
           proOptions={{ hideAttribution: true }}
           // React Flow's own stylesheet sets the *-default variables and
           // isn't layered, so it outranks utilities; the plain variables it
-          // reads first are ours to set.
-          className="!bg-transparent [--xy-edge-stroke:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke:var(--primary)] [--xy-selection-background-color:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
+          // reads first are ours to set. Clip, not hide, here and on the
+          // container: a hidden overflow still scrolls when something brings
+          // a step into view, React Flow scrolls it back a frame later, and
+          // a press that began on one step ended on another.
+          className="!overflow-clip !bg-transparent [--xy-edge-stroke:color-mix(in_srgb,var(--muted-foreground)_35%,transparent)] [--xy-connectionline-stroke:var(--primary)] [--xy-selection-background-color:color-mix(in_srgb,var(--primary)_8%,transparent)] [--xy-selection-border:1px_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]"
         >
           <CanvasZoomLens
             onFit={() => {
