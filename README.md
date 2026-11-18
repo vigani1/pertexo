@@ -252,6 +252,9 @@ run's job summary is the Markdown. To read it:
   source maps and maps that reach back to `src`. Module top level is left out,
   since it runs on any import. Calls made while modules load still count, so
   files importing the same modules share some reach.
+- Reach includes the processes a test starts (a compiled API or worker), which
+  write their V8 coverage into the file's own directory. A process started from
+  `src` through `tsx`, or killed with `SIGKILL`, adds nothing.
 - **Reach no line another file does not reach**: removing one such file alone
   loses no reached line.
 - **Reach lies inside one other file**: the container shown is an integration
