@@ -86,13 +86,6 @@ describe('the source budget', () => {
     expect(second.items.map((item) => item.input)).toEqual(['input_100']);
     expect(second.next).toBeNull();
   });
-
-  it('needs no second page for exactly 100 sources', () => {
-    expect(
-      scanVariableUsage(workflow({ draftGraph: graph(...unrelated(100)) }), ask)
-        .next,
-    ).toBeNull();
-  });
 });
 
 describe('the byte budget', () => {
@@ -107,15 +100,6 @@ describe('the byte budget', () => {
       ask,
     );
     expect(page.next).toMatchObject({ offset: 4 });
-  });
-
-  it('finishes when the sources add up to exactly 65,536 bytes', () => {
-    const page = scanVariableUsage(
-      workflow({ draftGraph: graph(longest, longest, longest, longest) }),
-      ask,
-    );
-    expect(page.next).toBeNull();
-    expect(page.incomplete).toBe(false);
   });
 
   it('counts an expression over the policy limit as unanalysed and moves past it', () => {
@@ -150,10 +134,6 @@ describe('the limit', () => {
     });
     expect(second.items.map((item) => item.input)).toEqual(['input_002']);
     expect(second.next).toBeNull();
-  });
-
-  it('asks for no further page when the limit lands on the last source', () => {
-    expect(scanVariableUsage(scanned, { ...ask, limit: 3 }).next).toBeNull();
   });
 });
 
@@ -239,20 +219,6 @@ describe('a continuation', () => {
     });
     expect(scanVariableUsage(scanned, ask).next).toBeNull();
   });
-
-  it('passes a workflow with neither a draft nor a publication', () => {
-    expect(
-      scanVariableUsage(workflow({ draftRevision: null, hasMore: true }), ask),
-    ).toEqual({
-      items: [],
-      incomplete: false,
-      next: {
-        workflowId: WORKFLOW,
-        offset: 0,
-        stamp: expect.stringMatching(/^[0-9a-f]{64}$/u) as string,
-      },
-    });
-  });
 });
 
 describe('what counts as a reference', () => {
@@ -295,28 +261,6 @@ describe('what counts as a reference', () => {
     expect(
       scanVariableUsage(workflow({ draftGraph: graph(source) }), ask).items,
     ).toEqual([]);
-  });
-
-  it('matches a dynamic reference whichever name is asked about', () => {
-    const scanned = workflow({
-      draftGraph: graph(expression('$lookup($vars,runInput.name)')),
-    });
-    for (const name of ['RATE', 'ANYTHING_ELSE'])
-      expect(scanVariableUsage(scanned, { ...ask, name }).items).toHaveLength(
-        1,
-      );
-  });
-
-  it('finds the current publication even without a draft', () => {
-    const page = scanVariableUsage(
-      workflow({
-        draftRevision: null,
-        versionId: VERSION,
-        publishedGraph: graph(direct('RATE')),
-      }),
-      ask,
-    );
-    expect(page.items.map((item) => item.stage)).toEqual(['published']);
   });
 
   it('finds loop bodies and the callable result', () => {

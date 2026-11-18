@@ -1,60 +1,58 @@
 import { describe, expect, it } from 'vitest';
 import { planWorkspaceVariableReplacement } from '../../src/variables/replacement.js';
 
+const current = {
+  values: { A: 1, B: true },
+  descriptions: { A: 'Number', B: 'Flag' },
+};
+
 describe('workspace variable replacement', () => {
-  const current = {
-    values: { A: 1, B: true },
-    descriptions: { A: 'Number', B: 'Flag' },
-  };
-  it('retains descriptions only for retained names when metadata is omitted', () => {
-    expect(
-      planWorkspaceVariableReplacement(current, { values: { A: 1 } }),
-    ).toEqual({ descriptions: { A: 'Number' }, changedNames: ['B'] });
-  });
-  it('treats explicit undefined metadata as omitted', () => {
-    expect(
-      planWorkspaceVariableReplacement(current, {
-        values: current.values,
-        descriptions: undefined,
-      }),
-    ).toEqual({ descriptions: current.descriptions, changedNames: [] });
-  });
-  it('clears descriptions when an explicit empty map is supplied', () => {
-    expect(
-      planWorkspaceVariableReplacement(current, {
-        values: current.values,
-        descriptions: {},
-      }),
-    ).toEqual({ descriptions: {}, changedNames: ['A', 'B'] });
-  });
-  it('discards empty descriptions and descriptions for absent names', () => {
-    expect(
-      planWorkspaceVariableReplacement(current, {
-        values: { A: 1 },
-        descriptions: { A: '', GONE: 'Removed' },
-      }),
-    ).toEqual({ descriptions: {}, changedNames: ['A', 'B'] });
-  });
-  it('sorts added, removed, value-changed and description-changed names once', () => {
-    expect(
-      planWorkspaceVariableReplacement(current, {
-        values: { C: 'new', A: 2 },
-        descriptions: { A: 'Replaced' },
-      }).changedNames,
-    ).toEqual(['A', 'B', 'C']);
-  });
-  it('keeps an identical replacement a no-op', () => {
-    expect(planWorkspaceVariableReplacement(current, current)).toEqual({
-      descriptions: current.descriptions,
-      changedNames: [],
-    });
-  });
-  it('preserves exact scalar comparison semantics', () => {
-    expect(
-      planWorkspaceVariableReplacement(
-        { values: { ZERO: -0 }, descriptions: {} },
-        { values: { ZERO: 0 } },
-      ).changedNames,
-    ).toEqual(['ZERO']);
+  it.each([
+    [
+      'retains descriptions only for retained names when metadata is omitted',
+      current,
+      { values: { A: 1 } },
+      { descriptions: { A: 'Number' }, changedNames: ['B'] },
+    ],
+    [
+      'treats explicit undefined metadata as omitted',
+      current,
+      { values: current.values, descriptions: undefined },
+      { descriptions: current.descriptions, changedNames: [] },
+    ],
+    [
+      'clears descriptions when an explicit empty map is supplied',
+      current,
+      { values: current.values, descriptions: {} },
+      { descriptions: {}, changedNames: ['A', 'B'] },
+    ],
+    [
+      'discards empty descriptions and descriptions for absent names',
+      current,
+      { values: { A: 1 }, descriptions: { A: '', GONE: 'Removed' } },
+      { descriptions: {}, changedNames: ['A', 'B'] },
+    ],
+    [
+      'sorts added, removed, value-changed and description-changed names once',
+      current,
+      { values: { C: 'new', A: 2 }, descriptions: { A: 'Replaced' } },
+      { descriptions: { A: 'Replaced' }, changedNames: ['A', 'B', 'C'] },
+    ],
+    [
+      'keeps an identical replacement a no-op',
+      current,
+      current,
+      { descriptions: current.descriptions, changedNames: [] },
+    ],
+    [
+      'preserves exact scalar comparison semantics',
+      { values: { ZERO: -0 }, descriptions: {} },
+      { values: { ZERO: 0 } },
+      { descriptions: {}, changedNames: ['ZERO'] },
+    ],
+  ])('%s', (_case, before, replacement, expected) => {
+    expect(planWorkspaceVariableReplacement(before, replacement)).toEqual(
+      expected,
+    );
   });
 });

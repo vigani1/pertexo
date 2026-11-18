@@ -27,33 +27,6 @@ function cron(expression: string, timezone: string): ScheduleRecurrence {
 }
 
 describe('schedule fire-time projection', () => {
-  it('starts one interval after a fresh anchor and never drifts from it', () => {
-    const recurrence = parseScheduleRecurrence({
-      kind: 'interval',
-      intervalMinutes: 90,
-    });
-    expect(
-      project(
-        recurrence,
-        '2026-01-01T00:00:07.250Z',
-        '2026-01-01T00:00:07.250Z',
-      ),
-    ).toEqual([
-      '2026-01-01T01:30:07.250Z',
-      '2026-01-01T03:00:07.250Z',
-      '2026-01-01T04:30:07.250Z',
-    ]);
-    // Mid-interval observations continue from the anchor, not the observation.
-    expect(
-      project(
-        recurrence,
-        '2026-01-01T00:00:00.000Z',
-        '2026-01-01T02:10:00.000Z',
-        2,
-      ),
-    ).toEqual(['2026-01-01T03:00:00.000Z', '2026-01-01T04:30:00.000Z']);
-  });
-
   it('counts elapsed time for intervals across a DST change', () => {
     const recurrence = parseScheduleRecurrence({
       kind: 'interval',

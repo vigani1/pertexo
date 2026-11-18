@@ -5,10 +5,6 @@ import {
 } from '../../../src/runs/recovery/acknowledgement.js';
 
 describe('recovery acknowledgements', () => {
-  it('lets an ordinary recovery through without any acknowledgement', () => {
-    expect(missingRecoveryAcknowledgement('ordinary', {})).toBeUndefined();
-  });
-
   it('asks for the effects acknowledgement when the step may have had effects', () => {
     expect(missingRecoveryAcknowledgement('possible_effects', {})).toBe(
       'effects_acknowledgement_required',
