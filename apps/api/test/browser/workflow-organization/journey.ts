@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { liveJourneyEnvironment } from '../../../../../infrastructure/testing/live-failure-artifacts.mjs';
-import { createServer } from 'node:http';
+import { createControlListener } from '../harness/control-listener.js';
 
 import { dirname, join } from 'node:path';
 import { expect, it } from 'vitest';
@@ -86,7 +86,7 @@ export function registerWorkflowOrganizationJourney(
       expect(receipt.rows[0]?.count).toBeGreaterThanOrEqual(2);
       fixture.observed = true;
     }
-    const control = createServer((request, response) => {
+    const control = createControlListener((request, response) => {
       response.setHeader('cache-control', 'no-store');
       const url = new URL(request.url ?? '/', 'http://127.0.0.1');
       if (

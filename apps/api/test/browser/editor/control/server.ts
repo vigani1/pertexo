@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createControlListener } from '../../harness/control-listener.js';
 
 import { scenario } from '../fixture/environment.js';
 import { fixtureState } from '../fixture/state.js';
@@ -30,7 +30,7 @@ export function createEditorControlServer(
 
   // Separate loopback test-control listener for the local mail sink and
   // non-secret result IDs. This is never registered in the application API.
-  const mailServer = createServer((request, response) => {
+  const mailServer = createControlListener((request, response) => {
     if (scenario === 'federation' && identityProvider.handle(request, response))
       return;
     if (fixtureState.httpControl?.handle(request, response) === true) return;

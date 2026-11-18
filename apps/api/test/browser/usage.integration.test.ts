@@ -3,7 +3,7 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createWorkspaceInboxFoldStore } from '@pertexo/core/inbox';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { createServer } from 'node:http';
+import { createControlListener } from './harness/control-listener.js';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -172,7 +172,7 @@ describe.skipIf(!enabled)('real Usage browser, API and PostgreSQL', () => {
       artifacts: { chargedBytes: '11', chargedCount: 1 },
     });
 
-    const control = createServer((request, response) => {
+    const control = createControlListener((request, response) => {
       const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
       if (request.method === 'GET' && path === '/usage-seed') {
         response.setHeader('content-type', 'application/json');
