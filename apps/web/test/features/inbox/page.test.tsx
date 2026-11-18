@@ -23,6 +23,10 @@ import {
   workspace,
   workspaceId,
 } from './page/fixture';
+import {
+  identityHandlers,
+  workspace as destinationsWorkspace,
+} from '../failure-notifications/destinations/fixture';
 
 describe('workspace inbox', () => {
   it('lists failing workflows with how often and where they failed', async () => {
@@ -110,13 +114,13 @@ describe('workspace inbox', () => {
       await screen.findByRole('heading', { name: 'You’re caught up' }),
     ).toBeVisible();
   });
-  it('refreshes when the workspace reports a new failure', async () => {
+  it('refreshes when the workspace reports a new failure, and stays quiet because its list shows it', async () => {
     const state = {
       threads: [thread(importId, { unread: false })],
       revision: '7',
     };
-    const { stream } = inboxApi(state);
-    await renderLoadedApp(`/w/${workspaceId}/inbox`);
+    const { stream, unreadLists } = inboxApi(state);
+    const { queryClient } = await renderLoadedApp(`/w/${workspaceId}/inbox`);
 
     await screen.findByRole('link', { name: 'Nightly import' });
     state.threads = [
@@ -133,6 +137,50 @@ describe('workspace inbox', () => {
         spineInbox().getByRole('link', { name: 'Inbox, 1 unread' }),
       ).toBeVisible();
     });
+    await waitFor(() => {
+      expect(unreadLists.count).toBeGreaterThan(0);
+    });
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0);
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+  it('says plainly what is wrong with a failure alert destination and leads to it', async () => {
+    const destinationId = '12121212-1212-4212-8212-121212121212';
+    const notice = {
+      id: destinationId,
+      noticeKind: 'failure_alert_attention',
+      subjectId: destinationId,
+      workflowId: null,
+      name: 'Slack',
+      details: {},
+      limits: [],
+      occurrenceCount: 1,
+      firstOccurredAt: '2026-09-15T09:00:00.000000Z',
+      latestOccurredAt: '2026-09-15T09:30:00.000000Z',
+      revision: '7',
+      unread: true,
+    };
+    inboxApi({
+      threads: [notice as unknown as ReturnType<typeof thread>],
+      revision: '7',
+    });
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
+
+    const title = await screen.findByRole('link', {
+      name: /Failure alerts aren’t reaching Slack/u,
+    });
+    expect(title).toHaveAttribute(
+      'href',
+      `/w/${workspaceId}/settings/alerts?destination=${destinationId}`,
+    );
+    const row = title.closest<HTMLElement>('li') ?? document.body;
+    expect(
+      within(row).getByText(
+        'Check that it’s turned on and that its connection works, in Settings.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/dead.?letter|intent/iu)).toBeNull();
   });
   it('lets a viewer move between its notices and input requests', async () => {
     inboxApi({ threads: [], revision: '1' });
@@ -203,6 +251,17 @@ describe('workspace inbox', () => {
       await screen.findByRole('heading', { name: 'Everything finished' }),
     ).toBeVisible();
     expect(spineInbox().getByRole('link', { name: 'Inbox' })).toBeVisible();
+  });
+  // The inbox opens for anyone who can read the workspace (the API checks the
+  // same). When it can't open, the page names that, not an unrelated right.
+  it('explains a closed inbox by the right it checks', async () => {
+    mockServer.use(
+      ...identityHandlers({ ...destinationsWorkspace, capabilities: [] }),
+    );
+    await renderLoadedApp(`/w/${workspaceId}/inbox`);
+    expect(await screen.findByText('The inbox is unavailable')).toBeVisible();
+    expect(screen.getByText(/can’t open the inbox\./u)).toBeVisible();
+    expect(screen.queryByText(/get notified when workflows fail/u)).toBeNull();
   });
 });
 
