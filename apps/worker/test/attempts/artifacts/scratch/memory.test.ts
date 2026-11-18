@@ -18,6 +18,7 @@ function measure(size: number) {
     const space = await ArtifactScratchSpace.create(directory);
     let high = process.memoryUsage();
     const sample = () => {
+      globalThis.gc();
       const next = process.memoryUsage();
       for (const key of Object.keys(next)) high[key] = Math.max(high[key], next[key]);
     };
@@ -46,9 +47,19 @@ function measure(size: number) {
       await rm(directory,{recursive:true});
     }
   `;
+  // Each sample collects garbage first, so the peak is what scratch holds,
+  // not 64 KiB chunks already written and waiting for the collector: without
+  // it the same run peaked at 40-50 MiB here and 67.45 MiB once in CI, while
+  // the memory actually held never passed 30 MiB.
   const result = spawnSync(
     process.execPath,
-    ['--max-old-space-size=64', '--input-type=module', '--eval', script],
+    [
+      '--max-old-space-size=64',
+      '--expose-gc',
+      '--input-type=module',
+      '--eval',
+      script,
+    ],
     { encoding: 'utf8', timeout: 30000, maxBuffer: 65536 },
   );
   expect(result.error).toBeUndefined();
