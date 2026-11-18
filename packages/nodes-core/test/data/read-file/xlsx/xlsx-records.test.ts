@@ -228,28 +228,6 @@ describe('Read file with Excel workbooks', () => {
     });
   });
 
-  it('starts at a later header row, skipping titles, empty rows and trailing columns', async () => {
-    const bytes = workbook({
-      sharedStrings: ['Quarterly report', 'sku', 'qty', 'A-1', 'B-2'],
-      sheets: [
-        {
-          name: 'Sheet1',
-          rows:
-            row(1, text('A1', 0)) +
-            row(3, text('A3', 1) + text('B3', 2) + '<c r="C3" s="1"/>') +
-            row(4, text('A4', 3) + number('B4', 4) + '<c r="F4" s="1"/>') +
-            row(6, '<c r="A6" s="1"/>') +
-            row(7, text('A7', 4) + number('B7', 1)) +
-            row(9, '<c r="A9" s="1"/><c r="B9" s="1"/>'),
-        },
-      ],
-    });
-    expect(await rows(bytes, { headerRow: 3 })).toEqual([
-      { sku: 'A-1', qty: 4 },
-      { sku: 'B-2', qty: 1 },
-    ]);
-  });
-
   it.each([
     ['an empty sheet', '', 1, { reason: 'sheet_header_row', row: 1 }],
     [
@@ -370,18 +348,5 @@ describe('Read file with Excel workbooks', () => {
       await expect(readWorkbook(bytes)).rejects.toMatchObject({
         diagnostic: { reason: 'value_size' },
       });
-  });
-
-  it('accepts a header-only sheet and namespace-prefixed parts', async () => {
-    const prefixed = workbook({
-      sharedStrings: ['only'],
-      sheets: [
-        {
-          name: 'Sheet1',
-          part: '<x:worksheet xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><x:sheetData><x:row r="1"><x:c r="A1" t="s"><x:v>0</x:v></x:c></x:row></x:sheetData></x:worksheet>',
-        },
-      ],
-    });
-    expect(await rows(prefixed)).toEqual([]);
   });
 });

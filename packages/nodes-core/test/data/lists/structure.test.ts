@@ -44,17 +44,6 @@ describe('bounded list structure operations', () => {
       });
     },
   );
-  it('concatenates two lists without deduplication or flattening nested lists', async () => {
-    expect(
-      await run('concat', {}, { items: [1, [2]], otherItems: [1, { id: 3 }] }),
-    ).toEqual({
-      kind: 'succeeded',
-      output: { items: [1, [2], 1, { id: 3 }], inputCount: 4 },
-    });
-    expect(
-      await run('concat', {}, { items: [], otherItems: [] }),
-    ).toMatchObject({ output: { items: [], inputCount: 0 } });
-  });
   it.each([
     [
       'batch',

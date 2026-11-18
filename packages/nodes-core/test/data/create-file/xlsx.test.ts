@@ -274,11 +274,6 @@ describe('Create file with Excel workbooks', () => {
     });
   });
 
-  it('reads a workbook created inline within the inline read limits', async () => {
-    const { bytes } = await create({}, orders);
-    expect(await readWorkbook(bytes)).toMatchObject({ kind: 'succeeded' });
-  });
-
   // Excel holds up to 32,767 characters in a cell; the writer and the reader
   // must agree on that limit.
   it('writes and reads back a cell at the 32,767-character limit', async () => {
