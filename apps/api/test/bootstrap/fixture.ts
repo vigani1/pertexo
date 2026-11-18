@@ -1,15 +1,11 @@
-import type { NodeTestingPersistence } from '../../src/node-testing/ports.js';
 import { unusedWorkspacePersistence } from '../support/identity-workspace.fixture.js';
 import {
   stubFederationService,
   stubDirectoryStore,
 } from '../support/federation.js';
-import { nodeTestingSamples } from '../node-testing/node-testing.fixture.js';
 
-import type { WorkflowAuthoringStore } from '@pertexo/core/testing';
 import type { WorkspaceDatabase } from '@pertexo/database/testing';
 import type { TelemetryLifecycle } from '@pertexo/observability/server';
-import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import { vi } from 'vitest';
 import type { createApiApplication } from '../../src/app.js';
 import { IdentityError } from '../../src/identity/index.js';
@@ -18,14 +14,9 @@ import type { IdentityWorkspaceDependencies } from '../../src/workspaces/index.j
 import type { ApiIdentityRuntime } from '../../src/platform/identity/identity-runtime.module.js';
 
 import type { ApiArtifactRuntime } from '../../src/platform/artifacts/artifacts-runtime.module.js';
-import type { ApiIdentityConfig } from '../../src/platform/config/identity-config.js';
 import type { BetterAuthRuntime } from '../../src/authentication/index.js';
 
-import type { ApiWorkflowRuntime } from '../../src/platform/workflow/workflow-runtime.module.js';
-import {
-  createApiPlatformFixture,
-  createStubApiWorkflowRuntime,
-} from '../support/api-platform.fixture.js';
+import { createApiPlatformFixture } from '../support/api-platform.fixture.js';
 
 export const { config, database, logger, rateLimitConsumer, telemetry } =
   createApiPlatformFixture('0000_rls_probe.sql');
@@ -122,112 +113,6 @@ export function identityRuntime(
     } as unknown as BetterAuthRuntime,
     close,
   });
-}
-
-export function betterAuthIdentityConfig(
-  publicWebOrigin: string,
-): ApiIdentityConfig {
-  return {
-    publicWebOrigin,
-    session: { ttlMillis: 60_000, secureCookie: true, sameSite: 'lax' },
-    betterAuth: {
-      secret: 'bootstrap-better-auth-secret-at-least-32-characters',
-      mailMode: 'local',
-      signUpMode: 'open',
-      providers: { google: { clientId: 'google', clientSecret: 'secret' } },
-    },
-  };
-}
-
-/** An injected identity runtime whose Better Auth handler records dispatch. */
-export function betterAuthIdentityRuntime() {
-  const requests: string[] = [];
-  const betterAuth = {
-    auth: {
-      handler: (request: Request) => {
-        requests.push(`${request.method} ${request.url}`);
-        return Promise.resolve(Response.json({ ok: true }));
-      },
-    },
-    sessions: {},
-    signUp: { availableToEveryone: () => Promise.resolve(true) },
-    close: () => Promise.resolve(),
-  } as unknown as BetterAuthRuntime;
-  const runtime = {
-    ...identityRuntime(vi.fn().mockResolvedValue(undefined)),
-    betterAuth,
-  };
-  return { runtime, requests };
-}
-
-/** Stores no bootstrap route reaches. */
-const notUsed = {} as never;
-
-export function workflowAuthoringDatabase(
-  close = vi.fn().mockResolvedValue(undefined),
-): WorkflowAuthoringStore & NodeTestingPersistence {
-  return {
-    workflowTestSuites: {
-      prepare: vi.fn(),
-      start: vi.fn(),
-      list: vi.fn(),
-      get: vi.fn(),
-      report: vi.fn(),
-      cancel: vi.fn(),
-    },
-    workflowTests: {
-      prepare: vi.fn(),
-      start: vi.fn(),
-      list: vi.fn(),
-      get: vi.fn(),
-      cancel: vi.fn(),
-    },
-    stepSamples: nodeTestingSamples(),
-    acceptPreview: () => Promise.reject(new Error('not used')),
-    resolvePreviewReplay: () => Promise.resolve(null),
-    readPreview: () => Promise.resolve(null),
-    createWorkflow: () => Promise.reject(new Error('not used')),
-    listWorkflows: () => Promise.resolve({ items: [] }),
-    getWorkflow: () => Promise.resolve(null),
-    getWorkflowWithTemplateOrigin: () => Promise.reject(new Error('not used')),
-    getDraft: () => Promise.resolve(null),
-    validateDraft: () => Promise.resolve(null),
-    getVersion: () => Promise.resolve(null),
-    listVersions: () => Promise.resolve({ items: [] }),
-    saveDraft: () => Promise.reject(new Error('not used')),
-    publishWorkflow: () => Promise.reject(new Error('not used')),
-    restoreWorkflowVersion: () => Promise.reject(new Error('not used')),
-    duplicateWorkflow: () => Promise.reject(new Error('not used')),
-    exportWorkflow: () => Promise.reject(new Error('not used')),
-    previewWorkflowImport: () => Promise.reject(new Error('not used')),
-    importWorkflow: () => Promise.reject(new Error('not used')),
-    transitionWorkflowLifecycle: () => Promise.reject(new Error('not used')),
-    renameWorkflow: () => Promise.reject(new Error('not used')),
-    collaboration: notUsed,
-    promotions: notUsed,
-    publicationReviews: notUsed,
-    autoPause: notUsed,
-    concurrency: notUsed,
-    errorWorkflow: notUsed,
-    close,
-  };
-}
-
-/** The stub runtime with the real node-testing routes behind `persistence`. */
-export function nodeTestingWorkflowRuntime(
-  authorization: IdentityWorkspaceDependencies['authorization'],
-  persistence: NodeTestingPersistence,
-): ApiWorkflowRuntime {
-  const expressionEvaluator = new JsonataEvaluator();
-  return {
-    ...createStubApiWorkflowRuntime(authorization),
-    nodeTestingDependencies: {
-      persistence,
-      authorization,
-      expressionEvaluator,
-    },
-    close: () => expressionEvaluator.shutdown(),
-  };
 }
 
 export function artifactRuntime(): ApiArtifactRuntime {

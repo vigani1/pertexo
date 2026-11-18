@@ -99,6 +99,8 @@ describeIntegration('checking a draft before it is published', () => {
       checked = await validate();
     }
     expect(checked.statusCode, checked.body).toBe(200);
+    // The checked snapshot is the saved one.
+    expect(checked.headers.etag).toBe(saved.headers.etag);
     return {
       report: checked.json<{
         valid: boolean;

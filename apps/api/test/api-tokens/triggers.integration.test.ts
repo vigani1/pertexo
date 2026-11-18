@@ -179,6 +179,46 @@ describe.runIf(betterAuthIntegrationEnabled)(
                 })
               ).statusCode,
             ).toBe(200);
+          const nextRuns = await api.send('GET', `${endpoint}/next-runs`, {
+            headers: first,
+          });
+          expect(
+            nextRuns.json<{ items: { scheduledAt: string }[] }>().items,
+          ).toHaveLength(3);
+          expect(
+            (
+              await api.send('GET', `${endpoint}/next-runs?count=11`, {
+                headers: first,
+              })
+            ).statusCode,
+          ).toBe(400);
+          const single = await api.send('POST', `${base}/schedules/preview`, {
+            headers: first,
+            payload: {
+              config: { kind: 'interval', intervalMinutes: 1 },
+              count: 1,
+            },
+          });
+          expect(single.statusCode, single.payload).toBe(200);
+          const previewed = single.json<{
+            observedAt: string;
+            items: { scheduledAt: string }[];
+          }>();
+          expect(Object.keys(previewed).sort()).toEqual([
+            'items',
+            'observedAt',
+          ]);
+          expect(previewed.items.map((item) => Object.keys(item))).toEqual([
+            ['scheduledAt'],
+          ]);
+          expect(
+            (
+              await api.send('POST', `${base}/schedules/preview`, {
+                headers: first,
+                payload: { config: { kind: 'interval', intervalMinutes: 0 } },
+              })
+            ).statusCode,
+          ).toBe(400);
           const preview = await api.send('POST', `${base}/schedules/preview`, {
             headers: first,
             payload: {

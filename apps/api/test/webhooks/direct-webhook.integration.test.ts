@@ -1615,6 +1615,43 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
         ).rows[0]?.count;
       const receiptsBefore = await receipts();
 
+      const rotateSecret = url.replace(/[^/]+$/u, 'rotate-secret');
+      for (const target of [url, rotateSecret]) {
+        const body =
+          target === rotateSecret ? { endpointKey: 'a'.repeat(43) } : {};
+        for (const [requestUrl, requestHeaders, status] of [
+          [target, {}, 401],
+          [
+            target,
+            { cookie: session.cookieHeader, 'idempotency-key': randomUUID() },
+            403,
+          ],
+          [
+            target.replace(seeded.workspaceId, randomUUID()),
+            headers(randomUUID()),
+            404,
+          ],
+          [
+            target,
+            { cookie: session.cookieHeader, 'x-csrf-token': session.csrf },
+            400,
+          ],
+          [target, headers('first,second'), 400],
+        ] as const) {
+          const guarded = await application.inject({
+            method: 'POST',
+            url: requestUrl,
+            headers: requestHeaders,
+            payload: body,
+          });
+          expect(guarded.statusCode, `${requestUrl} ${guarded.body}`).toBe(
+            status,
+          );
+        }
+      }
+      expect(await endpointOf(seeded)).toEqual(endpoint);
+      expect(await receipts()).toBe(receiptsBefore);
+
       const refused = await application.inject({
         method: 'POST',
         url,
