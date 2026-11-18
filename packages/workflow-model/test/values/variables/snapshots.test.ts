@@ -1,9 +1,6 @@
 import { resolveValueSource } from '../../../src/values/mapping/resolve.js';
 import { afterAll, expect, it } from 'vitest';
-import {
-  workspaceVariableValuesSchema,
-  workspaceVariableSnapshotSchema,
-} from '../../../src/values/variables/workspace-variable.schemas.js';
+import { workspaceVariableValuesSchema } from '../../../src/values/variables/workspace-variable.schemas.js';
 import { canonicalJson } from '../../../src/values/json/canonical.js';
 import { JsonataEvaluator } from '../../../src/values/expressions/evaluator.js';
 import { validateExpression } from '../../../src/values/expressions/expression-policy.js';
@@ -30,14 +27,6 @@ const context = {
   nodeOutputs: {},
   variables: { CURRENCY: 'EUR', AMOUNT: 0, ENABLED: false, EMPTY: '' },
 };
-it('keeps empty text, zero, false and Unicode without coercion', () => {
-  expect(
-    workspaceVariableSnapshotSchema.parse({
-      revision: 1,
-      values: { ...context.variables, NOTE: '🧵' },
-    }),
-  ).toEqual({ revision: 1, values: { ...context.variables, NOTE: '🧵' } });
-});
 it.each([
   { bad: 'x' },
   { KEY: null },

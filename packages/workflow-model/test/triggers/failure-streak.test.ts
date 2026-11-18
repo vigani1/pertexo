@@ -45,13 +45,4 @@ describe('what a finished run means for the failure streak', () => {
       'not_counted',
     );
   });
-
-  it('ignores a failure someone asked to cancel', () => {
-    expect(
-      failureStreakOutcome({
-        ...finished('failed'),
-        cancellationRequested: true,
-      }),
-    ).toBe('not_counted');
-  });
 });

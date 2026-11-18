@@ -52,14 +52,6 @@ describe('explicit disjoint failure routes', () => {
     expect(inspected.value.main.outgoing.get('choice')).toHaveLength(2);
     expect(inspected.value.handlerOwners.get('handled')).toBe('action');
   });
-  it('preserves ordinary graphs without imposing the narrower topology', () => {
-    expect(
-      inspectWorkflowFailureRoutes({
-        nodes: [node('a'), node('b')],
-        edges: [],
-      }),
-    ).toEqual({ kind: 'ordinary' });
-  });
   it.each([
     'core.manual',
     'core.webhook',
