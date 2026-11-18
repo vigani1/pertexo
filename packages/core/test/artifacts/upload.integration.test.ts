@@ -604,6 +604,25 @@ describe('artifact upload database authority', () => {
       actor: actor(),
       identity: { artifactId: created.artifact.id, workspaceId },
     } as const;
+    const expectedMetadata = {
+      byteLength: 31,
+      mediaType: 'application/octet-stream',
+      sha256: '7'.repeat(64),
+    };
+    const early = new Error('request canceled before object verification');
+    let verified = false;
+    await expect(
+      database.finalizeUpload({
+        ...identity,
+        expectedMetadata,
+        signal: AbortSignal.abort(early),
+        verifyUpload: () => {
+          verified = true;
+          return Promise.resolve();
+        },
+      }),
+    ).rejects.toBe(early);
+    expect(verified).toBe(false);
 
     await expect(
       database.finalizeUpload({

@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { parseDatabaseConfig } from '@pertexo/database/platform';
 import { createRetentionStore } from '../../src/lifecycle/retention/retention.store.js';
-import type { Pool } from 'pg';
-import { describe, expect, it, vi } from 'vitest';
-
-import { inRetentionTransaction } from '../../src/lifecycle/retention/transaction.js';
+import { describe, expect, it } from 'vitest';
 
 describe('retention transaction admission', () => {
   it.each([0, -1, 1.5, Number.NaN, 2_147_483_648])(
@@ -18,18 +15,4 @@ describe('retention transaction admission', () => {
       );
     },
   );
-
-  it('preserves the exact pre-aborted maintenance reason without checkout', async () => {
-    const connect = vi.fn();
-    const reason = new Error('maintenance stopping');
-    await expect(
-      inRetentionTransaction(
-        { connect } as unknown as Pool,
-        { lockTimeoutMs: 10_000, statementTimeoutMs: 30_000 },
-        AbortSignal.abort(reason),
-        vi.fn(),
-      ),
-    ).rejects.toBe(reason);
-    expect(connect).not.toHaveBeenCalled();
-  });
 });

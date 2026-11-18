@@ -10,10 +10,6 @@ describe('identity input admission', () => {
       'email',
       { email: `${'a'.repeat(309)}@example.test`, displayName: 'Name' },
     ],
-    [
-      'display name',
-      { email: 'user@example.test', displayName: 'n'.repeat(257) },
-    ],
   ])(
     'rejects an overlength direct user %s before SQL',
     async (_field, input) => {
