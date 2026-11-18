@@ -1,13 +1,8 @@
 import { workflowRunKeys } from '@/features/workflow-runs/data/query-cache';
-
 import { act, screen, within } from '@testing-library/react';
-
 import userEvent from '@testing-library/user-event';
-
 import { HttpResponse, http } from 'msw';
-
 import { afterEach, describe, expect, it } from 'vitest';
-
 import {
   apiBase,
   coldStart,
@@ -16,11 +11,8 @@ import {
   fixtureStatistics,
   identityHandlers,
 } from '../../../support/fixtures/run';
-
 import { mockServer } from '../../../support/mock-server';
-
 import { renderLoadedApp } from '../../../support/render-app';
-
 import {
   artifactId,
   capabilities,
@@ -31,9 +23,12 @@ import {
   retryingRun,
   runId,
   secondsAgo,
+  stepEvent,
   workflowId,
   workspaceId,
 } from './route/fixture';
+
+const STALLED_WORDING = /stalled/iu;
 
 afterEach(() => {
   Reflect.deleteProperty(window, 'matchMedia');
@@ -183,6 +178,8 @@ describe('run page', () => {
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual(['Replay', 'Cancel run']);
+    // A healthy running run says nothing of stalling.
+    expect(screen.queryByText(STALLED_WORDING)).toBeNull();
     expect(
       within(actions).queryByRole('link', { name: 'Open workflow' }),
     ).not.toBeInTheDocument();
@@ -312,5 +309,79 @@ describe('run page', () => {
         name: 'Outcome unknown at Send receipt',
       }),
     ).toBeVisible();
+  });
+  // reliability-10: a stuck run reads "Running", as if its steps were progressing.
+  it('says when a running run has stalled', async () => {
+    installRun({
+      run: fixtureRun(runId, 'running', {
+        stalled: { since: secondsAgo(90) },
+      }),
+      nodes: [node('running')],
+    });
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
+    expect(
+      await screen.findByText(STALLED_WORDING, {}, coldStart),
+    ).toBeVisible();
+  });
+  it('shows the run input and a step’s file in its Data out', async () => {
+    mockServer.use(
+      http.get(`${apiBase}/artifacts/${artifactId}`, () =>
+        HttpResponse.json({
+          id: artifactId,
+          workspaceId,
+          byteLength: 2_048,
+          mediaType: 'text/csv',
+          sha256: 'a'.repeat(64),
+          status: 'available',
+          createdAt: '2026-09-14T10:00:00.000Z',
+          expiresAt: null,
+        }),
+      ),
+    );
+    installRun({
+      run: fixtureRun(runId, 'succeeded'),
+      nodes: [node('succeeded', { completedAt: secondsAgo(1) })],
+      events: [
+        stepEvent('node.started', 3, { attemptNumber: 1 }),
+        stepEvent('node.succeeded', 2, {
+          attemptNumber: 1,
+          outputRef: { kind: 'artifact', artifactId },
+        }),
+        { type: 'run.succeeded' },
+      ],
+      input: { kind: 'inline', value: { orderId: 'A-17' } },
+      output: { kind: 'artifact', artifactId },
+    });
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
+    expect(
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'Succeeded in 2s' },
+        coldStart,
+      ),
+    ).toBeVisible();
+
+    // The only step's input came from the run's; with nothing recorded, it
+    // shows as source data. It returned a file.
+    const lens = screen.getByRole('complementary', { name: 'Step details' });
+    const sources = await within(lens).findByRole('region', {
+      name: 'Where it came from',
+    });
+    const runInput = await within(sources).findByRole('group', {
+      name: 'Run input',
+    });
+    expect(await within(runInput).findByText(/A-17/u)).toBeVisible();
+    expect(await within(lens).findByText('CSV file')).toBeVisible();
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('tab', { name: 'Input & output' }));
+    const panel = screen.getByRole('tabpanel');
+    expect(
+      await within(panel).findByRole('group', { name: 'Run input' }),
+    ).toHaveTextContent(/orderId/u);
+    expect(
+      within(panel).getByRole('button', { name: /Send receipt/u }),
+    ).toHaveTextContent('file');
   });
 });

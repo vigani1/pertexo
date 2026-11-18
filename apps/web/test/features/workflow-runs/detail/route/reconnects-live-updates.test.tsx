@@ -1,4 +1,5 @@
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 import { coldStart } from '../../../../support/fixtures/run';
@@ -57,6 +58,24 @@ describe('run live updates', () => {
       expect(run.streamCount()).toBe(1);
     },
   );
+
+  it('says in words when live updates pause and reconnects on request', async () => {
+    const run = installRun({
+      run: retryingRun(),
+      nodes: [node('running')],
+      stream: () => problem(403, 'auth.forbidden'),
+    });
+    await renderLoadedApp(`/w/${workspaceId}/runs/${runId}`);
+    expect(
+      await screen.findByText('Updates paused', undefined, coldStart),
+    ).toBeVisible();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => {
+      expect(run.streamCount()).toBe(2);
+    });
+  });
 
   it.each([
     ['a 503 gateway answer', () => new HttpResponse(null, { status: 503 })],
