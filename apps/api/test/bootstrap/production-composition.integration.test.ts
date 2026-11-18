@@ -6,6 +6,7 @@ import pg from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createApiApplication } from '../../src/app.js';
+import { ApiDrainState } from '../../src/platform/health/drain-state.js';
 import { parseApiConfig } from '../../src/platform/config/api-config.js';
 import { betterAuthIntegrationEnabled } from '../support/better-auth/api/environment.js';
 import { apiBaseUrl, redisUrl } from '../support/better-auth/api/stack.js';
@@ -42,7 +43,8 @@ async function sessionsNamed(applicationName: string): Promise<number> {
 describe.runIf(betterAuthIntegrationEnabled)(
   'API production composition',
   () => {
-    it('serves, reports ready and releases its database sessions on close', async () => {
+    it('serves, reports ready, drains and releases its database sessions on close', async () => {
+      const signalListeners = process.listenerCount('SIGTERM');
       const applicationName = `api-composition-${randomUUID()}`;
       const url = new URL(apiBaseUrl);
       url.searchParams.set('application_name', applicationName);
@@ -55,6 +57,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
         BETTER_AUTH_SECRET: 'production-composition-secret-of-32-characters',
         AUTH_MAIL_MODE: 'local',
         PUBLIC_WEB_ORIGIN: 'https://app.integration.test',
+        // Every other real stack runs with none.
+        TRUST_PROXY_CIDRS: '127.0.0.1/32',
       });
       const telemetry = {
         enabled: false,
@@ -79,13 +83,63 @@ describe.runIf(betterAuthIntegrationEnabled)(
           url: '/v1/workspaces',
         });
         expect(anonymous.statusCode).toBe(401);
+        const workspace = '/v1/workspaces/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+        for (const url of [
+          '/v1/users/me',
+          '/v1/node-definitions',
+          '/v1/integrations',
+          `${workspace}/members`,
+          `${workspace}/workflows`,
+          `${workspace}/runs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`,
+          `${workspace}/notifications/summary`,
+          `${workspace}/previews/dddddddd-dddd-4ddd-8ddd-dddddddddddd`,
+          `${workspace}/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers`,
+          `${workspace}/workflows/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb/triggers/schedules`,
+        ])
+          expect(
+            (await application.inject({ method: 'GET', url })).statusCode,
+            url,
+          ).toBe(401);
+
+        const live = await application.inject({
+          method: 'GET',
+          url: '/health/live',
+        });
+        expect(live.statusCode).toBe(200);
+        expect(live.headers['content-type']).toContain('application/json');
+        expect(live.payload).toBe('{"status":"ok"}');
+        for (const url of [
+          '/v1/workspaces/workspace-a/nonexistent',
+          '/v1/workspaces/workspace-a/workflows/nonexistent/nested',
+        ]) {
+          const unknown = await application.inject({ method: 'GET', url });
+          expect(unknown.statusCode, url).toBe(404);
+          expect(unknown.headers['content-type']).toContain(
+            'application/problem+json',
+          );
+          expect(unknown.json()).toMatchObject({
+            status: 404,
+            code: 'resource.not_found',
+          });
+        }
         expect(await sessionsNamed(applicationName)).toBeGreaterThan(0);
+
+        application.get(ApiDrainState).beginDrain();
+        const draining = await application.inject({
+          method: 'GET',
+          url: '/health/ready',
+        });
+        expect(draining.statusCode).toBe(503);
+        expect(draining.json()).toEqual({ status: 'not_ready' });
+        expect(draining.headers['x-request-id']).toBeTypeOf('string');
 
         await application.close();
         closed = true;
         await expect
           .poll(() => sessionsNamed(applicationName), { timeout: 10_000 })
           .toBe(0);
+        expect(telemetry.shutdown).toHaveBeenCalledOnce();
+        expect(process.listenerCount('SIGTERM')).toBe(signalListeners);
       } finally {
         if (!closed) await application.close();
       }

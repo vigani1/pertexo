@@ -84,6 +84,15 @@ describe.skipIf(!betterAuthIntegrationEnabled)(
         404,
         'resource.not_found',
       );
+      // Better Auth answers only writes from the public web origin.
+      expectProblem(
+        await api.send('POST', '/v1/auth/sign-in/email', {
+          headers: { origin: 'https://api.elsewhere.test' },
+          payload: { email: 'nobody@example.test', password: 'not-a-password' },
+        }),
+        403,
+        'auth.forbidden',
+      );
       const native = await api.send(
         'GET',
         '/v1/auth/callback/google?state=forged&code=forged',

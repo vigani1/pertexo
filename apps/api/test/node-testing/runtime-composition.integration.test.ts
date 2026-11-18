@@ -54,6 +54,15 @@ describe.runIf(betterAuthIntegrationEnabled)(
       });
       expect(saved.statusCode, saved.payload).toBe(200);
       const key = randomUUID();
+      // Refused while parsing, before anything is reserved under the key the
+      // accepted test below uses.
+      const deep = await api.send('POST', `${draft}/nodes/http/test`, {
+        browser,
+        headers: { 'idempotency-key': key, 'content-type': 'application/json' },
+        payload: `{"mode":"validate","expectedRevision":2,"sampleInput":${'['.repeat(10_000)}null${']'.repeat(10_000)}}`,
+      });
+      expect(deep.statusCode, deep.payload).toBe(400);
+      expect(deep.json()).toMatchObject({ code: 'request.invalid' });
       const execute = () =>
         api.send('POST', `${draft}/nodes/http/test`, {
           browser,

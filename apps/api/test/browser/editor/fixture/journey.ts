@@ -107,6 +107,26 @@ async function prepareEditorPrerequisites(api: EditorBrowserApi) {
     expect(response.statusCode, `${path}: ${response.payload}`).toBe(200);
   }
 
+  expect(
+    (await api.send('GET', '/v1/integrations', { browser })).json(),
+  ).toMatchObject({
+    items: [
+      { providerKey: 'email', operationKey: 'send_notification' },
+      { providerKey: 'http', operationKey: 'request' },
+      { providerKey: 'slack', operationKey: 'send_message' },
+    ],
+  });
+  for (const route of ['node-definitions', 'integrations']) {
+    const refused = await api.send('GET', `/v1/${route}?arbitrary=value`, {
+      browser,
+    });
+    expect(refused.statusCode, refused.payload).toBe(400);
+    expect(refused.headers['content-type']).toContain(
+      'application/problem+json',
+    );
+    expect(refused.json()).toMatchObject({ code: 'request.invalid' });
+  }
+
   const createdWorkflow = await api.send('POST', `${workspacePath}/workflows`, {
     browser,
     headers: { 'Idempotency-Key': randomUUID() },
