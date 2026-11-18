@@ -1,3 +1,4 @@
+import { DISPLAY_NAME_MAX_CHARACTERS } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 import { enabled, invitationKeys } from './real-api/environment.js';
 import { createWorkspaceApiFixture } from './real-api/workspace-api-fixture.js';
@@ -1067,6 +1068,30 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
     const roleHeaders = mutationHeaders(cookies, {
       'idempotency-key': `member-role-${randomUUID()}`,
     });
+    const roleUrl = `/v1/workspaces/${primaryWorkspaceId}/members/${memberA.id}/role`;
+    expectProblem(
+      await caseFixture.application.inject({
+        method: 'POST',
+        url: roleUrl,
+        headers: {
+          cookie: cookies.cookieHeader,
+          'idempotency-key': `member-role-${randomUUID()}`,
+        },
+        payload: { role: 'operator', expectedRoleRevision: 1 },
+      }),
+      403,
+      'auth.forbidden',
+    );
+    expectProblem(
+      await caseFixture.application.inject({
+        method: 'POST',
+        url: roleUrl,
+        headers: mutationHeaders(cookies),
+        payload: { role: 'operator', expectedRoleRevision: 1, extra: true },
+      }),
+      400,
+      'request.invalid',
+    );
     try {
       const roleChange = await caseFixture.application.inject({
         method: 'POST',
@@ -1455,4 +1480,139 @@ describe.runIf(enabled)('Phase 1 real PostgreSQL API identity slice', () => {
       openStream?.request.destroy();
     }
   }, 20_000);
+
+  it('refuses malformed workspace, profile and member commands before any change, and trims accepted names', async () => {
+    const cookies = await login6();
+    const { application } = caseFixture;
+    const slug = `trim-${randomUUID().slice(0, 12)}`;
+    for (const key of ['', 'one,two'])
+      expectProblem(
+        await application.inject({
+          method: 'POST',
+          url: '/v1/workspaces',
+          headers: mutationHeaders(cookies, { 'idempotency-key': key }),
+          payload: { name: 'Refused', slug },
+        }),
+        400,
+        'request.invalid',
+      );
+    expectProblem(
+      await application.inject({
+        method: 'POST',
+        url: '/v1/workspaces',
+        headers: mutationHeaders(cookies),
+        payload: { name: '   ', slug },
+      }),
+      400,
+      'request.invalid',
+    );
+    const created = await application.inject({
+      method: 'POST',
+      url: '/v1/workspaces',
+      headers: mutationHeaders(cookies),
+      payload: { name: '  Operations  ', slug },
+    });
+    expect(created.statusCode, created.payload).toBe(201);
+    const workspace = created.json<{ id: string; name: string }>();
+    expect(workspace.name).toBe('Operations');
+    const root = `/v1/workspaces/${workspace.id}`;
+
+    expectProblem(
+      await application.inject({
+        method: 'POST',
+        url: '/v1/workspaces/not-a-uuid/deletion',
+        headers: mutationHeaders(cookies),
+        payload: { reason: 'retire it' },
+      }),
+      400,
+      'request.invalid',
+    );
+    expectProblem(
+      await application.inject({
+        method: 'PATCH',
+        url: root,
+        headers: mutationHeaders(cookies),
+        payload: { name: 'Forged', expectedRevision: 1, slug: 'forged-slug' },
+      }),
+      400,
+      'request.invalid',
+    );
+    for (const [path, body] of [
+      ['remove', { expectedRoleRevision: 0 }],
+      ['remove', { role: 'viewer' }],
+      ['suspend', {}],
+      ['suspend', { expectedRoleRevision: 1, status: 'active' }],
+      ['transfer-ownership', { expectedRoleRevision: 2 }],
+    ] as const)
+      expectProblem(
+        await application.inject({
+          method: 'POST',
+          url: `${root}/members/${randomUUID()}/${path}`,
+          headers: mutationHeaders(cookies),
+          payload: body,
+        }),
+        400,
+        'request.invalid',
+      );
+    const after = await application.inject({
+      method: 'GET',
+      url: '/v1/workspaces?limit=100',
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(
+      after
+        .json<{ items: { id: string; name: string }[] }>()
+        .items.find(({ id }) => id === workspace.id),
+    ).toMatchObject({ name: 'Operations' });
+
+    const profile = await application.inject({
+      method: 'GET',
+      url: '/v1/users/me',
+      headers: { cookie: cookies.cookieHeader },
+    });
+    expect(profile.headers['cache-control']).toBe('private, no-store');
+    const { revision, displayName } = profile.json<{
+      revision: number;
+      displayName: string;
+    }>();
+    for (const invalid of [
+      '',
+      'x'.repeat(DISPLAY_NAME_MAX_CHARACTERS + 1),
+      'Tab\tName',
+    ]) {
+      const refused = await application.inject({
+        method: 'PATCH',
+        url: '/v1/users/me',
+        headers: mutationHeaders(cookies),
+        payload: { displayName: invalid, expectedRevision: revision },
+      });
+      expectProblem(refused, 400, 'request.invalid');
+      expect(refused.json()).toHaveProperty('errors');
+    }
+    const renamed = await application.inject({
+      method: 'PATCH',
+      url: '/v1/users/me',
+      headers: mutationHeaders(cookies),
+      payload: { displayName: '  Grace Hopper ', expectedRevision: revision },
+    });
+    expect(renamed.statusCode, renamed.payload).toBe(200);
+    expect(renamed.headers['cache-control']).toBe('private, no-store');
+    expect(renamed.json()).toMatchObject({
+      profile: { displayName: 'Grace Hopper', revision: revision + 1 },
+      changed: true,
+      replayed: false,
+    });
+    expect(renamed.json()).not.toHaveProperty('profile.passwordHash');
+    // Put it back for anything that reads this person afterwards.
+    expect(
+      (
+        await application.inject({
+          method: 'PATCH',
+          url: '/v1/users/me',
+          headers: mutationHeaders(cookies),
+          payload: { displayName, expectedRevision: revision + 1 },
+        })
+      ).statusCode,
+    ).toBe(200);
+  });
 });
