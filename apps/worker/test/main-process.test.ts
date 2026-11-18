@@ -113,8 +113,10 @@ describe('compiled worker main process', () => {
       expect(
         fixture.output().match(/"event":"application.closed"/gu),
       ).toHaveLength(1);
-      expect(fixture.output()).toContain(
-        '"event":"application.closed","signal":"SIGTERM"',
+      // Two signals sent back to back may reach the process in either order,
+      // so the close names whichever arrived first.
+      expect(fixture.output()).toMatch(
+        /"event":"application.closed","signal":"SIG(?:TERM|INT)"/u,
       );
       expect(fixture.output()).toContain('"event":"worker.shutdown_failed"');
     } finally {
