@@ -50,41 +50,12 @@ function createsIdentityDatabase(database: IdentityWorkspaceStore) {
   );
 }
 
-/** Lets the real store be built and records how often its close runs. */
-function ownedClose(
-  factory:
-    | 'createIdentityWorkspaceStore'
-    | 'createApiTokenStore'
-    | 'createDirectoryStore',
-) {
-  // Each factory sits on one door; the spy only needs to see a method by name.
-  const stores = (factory === 'createDirectoryStore'
-    ? identityStores
-    : tenantAccessStores) as unknown as {
-    factory: (...arguments_: unknown[]) => { close(): Promise<void> };
-  };
-  const name = factory as 'factory';
-  const original = stores[name];
-  let close: ReturnType<typeof vi.fn> | undefined;
-  vi.spyOn(stores, name).mockImplementation((...arguments_: unknown[]) => {
-    const store = original(...arguments_);
-    const closeStore = vi.fn(() => store.close());
-    close = closeStore;
-    // The stores are frozen; shadow close on an object that inherits the rest.
-    return Object.defineProperty(
-      Object.create(store) as typeof store,
-      'close',
-      {
-        value: closeStore,
-      },
-    );
-  });
-  return () => {
-    if (close === undefined) throw new Error(`${factory} was never called`);
-    return close;
-  };
-}
-
+/**
+ * The composition's success path, and closing it, run in
+ * bootstrap/production-composition.integration.test.ts and every real-API
+ * test. These cases stay because no real stack fails a constructor or a
+ * closer on demand, and the module has no seam for one.
+ */
 describe('identity runtime composition', () => {
   const federationClose = vi.fn<() => Promise<void>>();
   afterEach(() => {
@@ -100,22 +71,6 @@ describe('identity runtime composition', () => {
         typeof identityStores.createFederationManagementStore
       >,
     );
-  });
-
-  it('owns and closes the production database resources when none are injected', async () => {
-    const closes = [
-      ownedClose('createIdentityWorkspaceStore'),
-      ownedClose('createApiTokenStore'),
-      ownedClose('createDirectoryStore'),
-    ];
-    const runtime = await createApiIdentityRuntime(
-      identityConfig,
-      databaseConfig,
-      { logger: silent },
-    );
-    await runtime.close();
-    for (const close of closes) expect(close()).toHaveBeenCalledOnce();
-    expect(federationClose).toHaveBeenCalledOnce();
   });
 
   it('closes its database once however often it is closed', async () => {
