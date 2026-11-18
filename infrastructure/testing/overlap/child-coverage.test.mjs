@@ -44,8 +44,8 @@ function temporary(t) {
   return root;
 }
 
-/** A built package file with its map, run once by a child process. */
-function runBuiltChild(root) {
+/** Writes a built package file with its map and returns its path. */
+function writeBuiltFile(root) {
   mkdirSync(join(root, 'packages/core/src'), { recursive: true });
   mkdirSync(join(root, 'packages/core/dist'), { recursive: true });
   const { outputText, sourceMapText } = ts.transpileModule(SOURCE, {
@@ -62,6 +62,12 @@ function runBuiltChild(root) {
   const built = join(root, 'packages/core/dist', 'rules.js');
   writeFileSync(built, outputText);
   writeFileSync(`${built}.map`, JSON.stringify(map));
+  return built;
+}
+
+/** A built package file with its map, run once by a child process. */
+function runBuiltChild(root) {
+  const built = writeBuiltFile(root);
   const coverage = join(root, 'children');
   const child = spawnSync(process.execPath, [built], {
     env: { NODE_V8_COVERAGE: coverage },
@@ -153,4 +159,46 @@ test('promisified execFile and exec still resolve stdout and stderr', () => {
     'shell',
     'string',
   ]);
+});
+
+// The test stacks stop the API and worker with SIGKILL, which skips the
+// coverage Node writes on exit.
+test('counts a child that is killed, even one given its own NODE_OPTIONS', (t) => {
+  const root = temporary(t);
+  const built = writeBuiltFile(root);
+  const coverage = join(root, 'children');
+  const script = `
+    import { spawn } from 'node:child_process';
+    import { existsSync, readdirSync } from 'node:fs';
+    const child = spawn(
+      process.execPath,
+      ['-e', 'require(process.argv[1]); setInterval(() => {}, 1000)', ${JSON.stringify(built)}],
+      { env: { NODE_OPTIONS: '--no-deprecation' }, stdio: 'inherit' },
+    );
+    const written = () => existsSync(process.argv[1]) && readdirSync(process.argv[1]).length > 0;
+    const deadline = Date.now() + 15_000;
+    while (!written() && Date.now() < deadline)
+      await new Promise((settle) => setTimeout(settle, 100));
+    child.kill('SIGKILL');
+    process.stdout.write(String(written()));
+  `;
+  const result = spawnSync(
+    process.execPath,
+    [`--import=${preload}`, '--input-type=module', '--eval', script, coverage],
+    {
+      env: {
+        PATH: process.env.PATH,
+        PERTEXO_OVERLAP_CHILD_COVERAGE: coverage,
+        VITEST_WORKER_ID: '1',
+      },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'true');
+  const reach = createReach(root);
+  addChildCoverage(reach, coverage, root);
+  assert.deepEqual(reach.lines(), {
+    'packages/core/src/rules.ts': [3, 4, 10],
+  });
 });
