@@ -41,22 +41,29 @@ test('the SAML journey has room on the port beside its web port', () => {
   for (const port of ports) assert.ok(!ports.includes(port + 1));
 });
 
-test('hands out every journey once, and a slow one holds up only its own stack', async () => {
-  const log = [];
-  const results = await runSideBySide(
-    ['slow', 'a', 'b'],
-    ['first', 'second'],
-    async (journey, slot) => {
-      log.push(`${journey}:${slot}`);
-      await new Promise((resolve) => {
-        setTimeout(resolve, journey === 'slow' ? 40 : 1);
-      });
-      return journey;
-    },
-  );
-  assert.deepEqual(results.sort(), ['a', 'b', 'slow']);
-  assert.deepEqual(log, ['slow:first', 'a:second', 'b:second']);
-});
+test(
+  'hands out every journey once, and a slow one holds up only its own stack',
+  {
+    // Were the slow journey to hold up every stack, the others would never run.
+    timeout: 5_000,
+  },
+  async () => {
+    const log = [];
+    const othersDone = Promise.withResolvers();
+    const results = await runSideBySide(
+      ['slow', 'a', 'b'],
+      ['first', 'second'],
+      async (journey, slot) => {
+        log.push(`${journey}:${slot}`);
+        if (journey === 'slow') await othersDone.promise;
+        if (journey === 'b') othersDone.resolve();
+        return journey;
+      },
+    );
+    assert.deepEqual(results.sort(), ['a', 'b', 'slow']);
+    assert.deepEqual(log, ['slow:first', 'a:second', 'b:second']);
+  },
+);
 
 test('a journey that fails still leaves the others to run', async () => {
   const results = await runSideBySide(['bad', 'good'], ['only'], (journey) =>
