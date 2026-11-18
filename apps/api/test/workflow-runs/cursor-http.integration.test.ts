@@ -48,6 +48,38 @@ describe.runIf(betterAuthIntegrationEnabled)('run continuation errors', () => {
       { browser: f.browser },
     );
     expect(valid.statusCode, valid.payload).toBe(200);
+    const runIds = (body: { items: { id: string }[] }) =>
+      body.items.map(({ id }) => id);
+    const page1 = runIds(first.json());
+    const page2 = runIds(valid.json());
+    expect(page2).toHaveLength(1);
+    expect(page2).not.toEqual(page1);
+    // Filters pass through paging as given; another filter set can't reuse
+    // the cursor (below).
+    const filtered = await api.send(
+      'GET',
+      `${f.root}/runs?workflowId=${f.workflowId}&status=queued&limit=1`,
+      { browser: f.browser },
+    );
+    expect(filtered.statusCode, filtered.payload).toBe(200);
+    const filteredAfter = filtered.json<{ nextCursor: string }>().nextCursor;
+    const filteredNext = await api.send(
+      'GET',
+      `${f.root}/runs?workflowId=${f.workflowId}&status=queued&limit=1&after=${filteredAfter}`,
+      { browser: f.browser },
+    );
+    expect(filteredNext.statusCode, filteredNext.payload).toBe(200);
+    expect(
+      new Set([...runIds(filtered.json()), ...runIds(filteredNext.json())])
+        .size,
+    ).toBe(2);
+    for (const query of ['status=succeeded', 'runValueKey=orderId&runValue=']) {
+      const none = await api.send('GET', `${f.root}/runs?${query}`, {
+        browser: f.browser,
+      });
+      expect(none.statusCode, `${query} ${none.payload}`).toBe(200);
+      expect(none.json()).toEqual({ items: [], nextCursor: null });
+    }
     const made = await api.send('POST', '/v1/workspaces', {
       browser: f.browser,
       headers: { 'idempotency-key': randomUUID() },
