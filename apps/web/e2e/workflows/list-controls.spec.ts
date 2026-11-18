@@ -77,12 +77,19 @@ for (const width of [1280, 390]) {
       page.getByRole('button', { name: 'Organize selected…' }),
     ).toHaveCount(0);
     const search = page.getByRole('searchbox', { name: 'Search workflows' });
+    // Each keystroke may read: wait for the read of the whole, trimmed query,
+    // not for the first empty result, which an early prefix also shows.
+    const searched = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).searchParams.get('query') === 'Daily intake',
+    );
     await search.pressSequentially('Daily intake ');
     await expect(search).toHaveValue('Daily intake ');
     await expect(page).toHaveURL(/query=Daily(?:%20|\+)intake(?:%20|\+)/u);
     await expect(
       page.getByText('No workflows match these filters'),
     ).toBeVisible();
+    await searched;
     expect(reads.at(-1)?.searchParams.get('query')).toBe('Daily intake');
     await page.reload();
     await expect(search).toHaveValue('Daily intake ');
