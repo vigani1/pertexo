@@ -44,6 +44,15 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const payload = { limit: null, expectedRevision: 1 };
       expectProblem(await api.send('GET', route), 401, 'auth.unauthenticated');
       expectProblem(
+        await api.send(
+          'GET',
+          route.replace(/workflows\/[^/]+\//u, 'workflows/bad/'),
+          { browser: owner },
+        ),
+        400,
+        'request.invalid',
+      );
+      expectProblem(
         await api.send('PUT', route, {
           headers: { cookie: owner.cookie, 'idempotency-key': 'without-csrf' },
           payload,
@@ -59,6 +68,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
         );
       for (const invalid of [
         { ...payload, limit: 0 },
+        { ...payload, limit: 10_001 },
+        { limit: 1, expectedRevision: 2_147_483_648 },
         { ...payload, expectedRevision: 0 },
         { ...payload, overflow: 'cancel' },
         { ...payload, queueLength: 10 },

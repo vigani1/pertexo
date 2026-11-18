@@ -134,7 +134,9 @@ describeIntegration(
       const renamed = await application.inject({
         method: 'POST',
         url: renamePath(workspaceId, ids.unpublished),
-        headers: mutationHeaders(builder),
+        headers: mutationHeaders(builder, {
+          traceparent: `00-${'4'.repeat(32)}-${'2'.repeat(16)}-01`,
+        }),
         payload: { name: 'Renamed by a builder', expectedNameRevision: 1 },
       });
       expect(renamed.statusCode, renamed.payload).toBe(200);
@@ -142,6 +144,18 @@ describeIntegration(
         replayed: false,
         workflow: { name: 'Renamed by a builder', nameRevision: 2 },
       });
+      expect(renamed.json()).not.toHaveProperty('workflow.createdBy');
+      // The request's trace reaches the audit fact it wrote.
+      expect(
+        await fixture.withOwner(async (client) => {
+          const result = await client.query<{ trace_id: string | null }>(
+            `select trace_id from app.audit_events
+              where target_id=$1 and action='workflow.renamed'`,
+            [ids.unpublished],
+          );
+          return result.rows.map(({ trace_id }) => trace_id);
+        }),
+      ).toEqual(['4'.repeat(32)]);
 
       await fixture.setWorkspaceStatus('suspended');
       try {

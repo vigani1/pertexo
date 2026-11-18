@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { afterEach, beforeEach, it, expect } from 'vitest';
 import {
   describeIntegration,
@@ -441,5 +443,165 @@ describeIntegration('authenticated workflow lifecycle HTTP commands', () => {
       audit: beforeRaceFacts.audit + 1,
       reconciliationOutbox: beforeRaceFacts.reconciliationOutbox + 1,
     });
+  });
+
+  it('serves reads, draft ETags and history to a viewer, refuses its writes, and pages workflows by opaque cursor', async () => {
+    const { application, ids, workspaceId } = fixture;
+    const viewer = await fixture.login('viewer');
+    const owner = await fixture.login('owner');
+    const base = `/v1/workspaces/${workspaceId}/workflows`;
+    const read = (url: string, cookies = viewer) =>
+      application.inject({
+        method: 'GET',
+        url,
+        headers: { cookie: cookies.cookieHeader },
+      });
+
+    const one = await read(`${base}/${ids.unpublished}`);
+    expect(one.statusCode, one.body).toBe(200);
+    expect(one.json()).toMatchObject({
+      workflow: { id: ids.unpublished, name: 'Unpublished lifecycle target' },
+    });
+    expect(one.json()).not.toHaveProperty('templateOrigin');
+    expect(one.json()).not.toHaveProperty('workflow.createdBy');
+    const withOrigin = await read(
+      `${base}/${ids.unpublished}?include=templateOrigin`,
+    );
+    expect(withOrigin.statusCode, withOrigin.body).toBe(200);
+    expect(withOrigin.json()).toMatchObject({ templateOrigin: null });
+
+    const draft = await read(`${base}/${ids.unpublished}/draft`);
+    expect(draft.statusCode, draft.body).toBe(200);
+    const etag = String(draft.headers.etag);
+    expect(etag).toMatch(/^"draft\./u);
+    const revision = draft.json<{ revision: number }>().revision;
+    const graph = draft.json<{ graph: unknown }>().graph;
+    const validated = await application.inject({
+      method: 'POST',
+      url: `${base}/${ids.unpublished}/validate`,
+      headers: mutationHeaders(viewer),
+      payload: {},
+    });
+    expect([200, 503], validated.body).toContain(validated.statusCode);
+
+    const versions = await read(`${base}/${ids.published}/versions`);
+    expect(versions.statusCode, versions.body).toBe(200);
+    const history = versions.json<{
+      items: Record<string, unknown>[];
+      nextCursor: string | null;
+    }>();
+    expect(history.items).toEqual([
+      expect.objectContaining({
+        id: ids.publishedVersion,
+        workflowId: ids.published,
+        versionNumber: 4,
+      }),
+    ]);
+    expect(history.items[0]).not.toHaveProperty('workspaceId');
+    expect(history.items[0]).not.toHaveProperty('publishedBy');
+    expect(history.nextCursor).toBeNull();
+    expect((await read(`${base}/${ids.unpublished}/versions`)).json()).toEqual({
+      items: [],
+      nextCursor: null,
+    });
+    expectProblem(
+      await read(`${base}/${randomUUID()}/draft`),
+      404,
+      'resource.not_found',
+    );
+    const exact = await read(
+      `${base}/${ids.published}/versions?versionId=${ids.publishedVersion}`,
+    );
+    expect(exact.json()).toMatchObject({
+      items: [{ id: ids.publishedVersion }],
+      nextCursor: null,
+    });
+
+    for (const [method, url, headers] of [
+      ['PUT', `${base}/${ids.unpublished}/draft`, { 'if-match': etag }],
+      ['POST', `${base}/${ids.unpublished}/publish`, { 'if-match': etag }],
+    ] as const)
+      expectProblem(
+        await application.inject({
+          method,
+          url,
+          headers: mutationHeaders(viewer, headers),
+          payload: method === 'PUT' ? { graph } : {},
+        }),
+        404,
+        'resource.not_found',
+      );
+
+    const stale = await application.inject({
+      method: 'PUT',
+      url: `${base}/${ids.unpublished}/draft`,
+      headers: mutationHeaders(owner, {
+        'if-match': '"draft.abcdefghijklmnopqrstuvwxyz0123456789_-abcde"',
+      }),
+      payload: { graph },
+    });
+    expectProblem(stale, 412, 'workflow.revision_conflict');
+    expect(stale.json()).toMatchObject({
+      currentRevision: revision,
+      currentEtag: etag,
+    });
+    const unchanged = await read(`${base}/${ids.unpublished}/draft`);
+    expect(unchanged.headers.etag).toBe(etag);
+
+    const created = await application.inject({
+      method: 'POST',
+      url: base,
+      headers: mutationHeaders(owner),
+      payload: { name: 'Third in the list' },
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    expect(created.json()).toMatchObject({
+      workflow: { name: 'Third in the list' },
+      draft: { revision: 1 },
+    });
+    expect(String(created.headers.etag)).toMatch(/^"draft\./u);
+
+    for (const order of ['created_asc', 'updated_desc'] as const) {
+      const seen: string[] = [];
+      let after: string | null = '';
+      while (after !== null) {
+        const page = await read(
+          `${base}?limit=1&order=${order}${after === '' ? '' : `&after=${encodeURIComponent(after)}`}`,
+        );
+        expect(page.statusCode, page.body).toBe(200);
+        const body = page.json<{
+          items: { id: string }[];
+          nextCursor: string | null;
+        }>();
+        expect(body.items.length).toBeLessThanOrEqual(1);
+        seen.push(...body.items.map(({ id }) => id));
+        if (body.nextCursor !== null) {
+          // A cursor is bound to the order that made it.
+          const other =
+            order === 'created_asc' ? 'updated_desc' : 'created_asc';
+          expectProblem(
+            await read(
+              `${base}?limit=1&order=${other}&after=${encodeURIComponent(body.nextCursor)}`,
+            ),
+            400,
+            'request.invalid',
+          );
+        }
+        after = body.nextCursor;
+      }
+      expect(new Set(seen).size).toBe(seen.length);
+      expect(seen).toEqual(
+        expect.arrayContaining([ids.unpublished, ids.published]),
+      );
+    }
+    const versionsCursor = Buffer.from(
+      JSON.stringify({ kind: 'versions', beforeVersionNumber: 2 }),
+    ).toString('base64url');
+    for (const after of ['not-a-cursor', versionsCursor])
+      expectProblem(
+        await read(`${base}?after=${after}`),
+        400,
+        'request.invalid',
+      );
   });
 });

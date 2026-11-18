@@ -96,6 +96,56 @@ integration('authenticated automatic pause HTTP controls (F26 slice 3)', () => {
         400,
         'request.invalid',
       );
+    for (const [setting, invalid] of [
+      [
+        'auto-pause',
+        { enabled: true, thresholdOverride: 2, expectedSettingsRevision: 1 },
+      ],
+      [
+        'auto-pause',
+        { enabled: true, thresholdOverride: 101, expectedSettingsRevision: 1 },
+      ],
+      [
+        'auto-pause',
+        {
+          enabled: true,
+          thresholdOverride: null,
+          expectedSettingsRevision: 1,
+          warning: true,
+        },
+      ],
+      ['error-workflow', { targetWorkflowId: null, expectedRevision: 0 }],
+      [
+        'error-workflow',
+        { targetWorkflowId: 'foreign-id', expectedRevision: 1 },
+      ],
+      [
+        'error-workflow',
+        {
+          targetWorkflowId: null,
+          expectedRevision: 1,
+          input: { password: 's' },
+        },
+      ],
+      [
+        'error-workflow',
+        {
+          targetWorkflowId: null,
+          expectedRevision: 1,
+          targetWorkflowName: 'x',
+        },
+      ],
+    ] as const)
+      expectProblem(
+        await fixture.application.inject({
+          method: 'PUT',
+          url: `${workflowPath()}/${setting}`,
+          payload: invalid,
+          headers: mutationHeaders(owner),
+        }),
+        400,
+        'request.invalid',
+      );
   });
 
   it('lets a builder resume once and replay exactly without clearing a later pause', async () => {
