@@ -65,7 +65,8 @@ function closes(close = vi.fn().mockResolvedValue(undefined)) {
 }
 
 /**
- * The composition's success path, and closing it, run in
+ * The composition's success path, closing it, and leaving identity features
+ * out without identity settings, run in
  * bootstrap/production-composition.integration.test.ts and every real-API
  * test. These cases stay because no real stack fails a constructor or a
  * closer on demand, and the module has no seam for one.
@@ -77,18 +78,6 @@ describe('API runtime acquisition', () => {
     created.identity.mockResolvedValue(closes());
     created.workflow.mockResolvedValue(closes());
     created.connection.mockResolvedValue(closes());
-  });
-
-  it('builds identity features only when identity is configured', async () => {
-    const runtimes = await acquireApiRuntimes(
-      { ...config, identity: undefined } as unknown as ApiConfig,
-      { logger: silentLogger },
-    );
-    expect(runtimes.identityRuntime).toBeUndefined();
-    expect(runtimes.workflowRuntime).toBeUndefined();
-    expect(runtimes.connectionRuntime).toBeUndefined();
-    expect(created.identity).not.toHaveBeenCalled();
-    expect(created.callback).toHaveBeenCalledOnce();
   });
 
   it('closes already-created runtimes when a later one fails', async () => {
