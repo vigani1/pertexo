@@ -193,9 +193,6 @@ importers:
       '@nestjs/testing':
         specifier: 11.2.9
         version: 11.2.9(@nestjs/common@11.2.9(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@11.2.9(@nestjs/common@11.2.9(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2))
-      '@opentelemetry/core':
-        specifier: 3.1.1
-        version: 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-metrics':
         specifier: 3.1.1
         version: 3.1.1(@opentelemetry/api@1.10.0)
