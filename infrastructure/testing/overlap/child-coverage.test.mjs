@@ -45,10 +45,10 @@ function temporary(t) {
 }
 
 /** Writes a built package file with its map and returns its path. */
-function writeBuiltFile(root) {
+function writeBuiltFile(root, source = SOURCE) {
   mkdirSync(join(root, 'packages/core/src'), { recursive: true });
   mkdirSync(join(root, 'packages/core/dist'), { recursive: true });
-  const { outputText, sourceMapText } = ts.transpileModule(SOURCE, {
+  const { outputText, sourceMapText } = ts.transpileModule(source, {
     fileName: 'rules.ts',
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -58,7 +58,7 @@ function writeBuiltFile(root) {
   });
   const map = JSON.parse(sourceMapText);
   map.sources = ['../src/rules.ts'];
-  writeFileSync(join(root, 'packages/core/src/rules.ts'), SOURCE);
+  writeFileSync(join(root, 'packages/core/src/rules.ts'), source);
   const built = join(root, 'packages/core/dist', 'rules.js');
   writeFileSync(built, outputText);
   writeFileSync(`${built}.map`, JSON.stringify(map));
@@ -66,8 +66,8 @@ function writeBuiltFile(root) {
 }
 
 /** A built package file with its map, run once by a child process. */
-function runBuiltChild(root) {
-  const built = writeBuiltFile(root);
+function runBuiltChild(root, source = SOURCE) {
+  const built = writeBuiltFile(root, source);
   const coverage = join(root, 'children');
   const child = spawnSync(process.execPath, [built], {
     env: { NODE_V8_COVERAGE: coverage },
@@ -84,6 +84,25 @@ test('adds the source lines a child process ran inside functions', (t) => {
   assert.deepEqual(reach.lines(), {
     'packages/core/src/rules.ts': [3, 4, 10],
   });
+});
+
+// Vitest counts by Istanbul's rule, so both lanes must place a declaration
+// on the same line.
+test('counts a declaration on the line of its value, as Istanbul does', (t) => {
+  const root = temporary(t);
+  const coverage = runBuiltChild(
+    root,
+    `function total(): number {
+  const sum: number =
+    1 + 2;
+  return sum;
+}
+total();
+`,
+  );
+  const reach = createReach(root);
+  addChildCoverage(reach, coverage, root);
+  assert.deepEqual(reach.lines(), { 'packages/core/src/rules.ts': [3, 4] });
 });
 
 test('adds nothing when no child process wrote coverage', (t) => {

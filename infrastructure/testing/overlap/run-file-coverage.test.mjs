@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 
 import { reachedSourceLines } from './run-file-coverage.mjs';
@@ -56,6 +56,40 @@ test('maps a built file back to its source through the source map', (t) => {
   );
   const reached = reachedSourceLines({ [built]: entry() }, root);
   assert.deepEqual(reached, { 'packages/core/src/rules.ts': [4, 6] });
+});
+
+test("follows a bundle's map through a package's built file to its source", (t) => {
+  const root = workspace(t);
+  const built = join(root, 'packages/core/dist', 'rules.js');
+  writeFileSync(built, 'x\n//# sourceMappingURL=rules.js.map\n');
+  writeFileSync(
+    `${built}.map`,
+    JSON.stringify({
+      version: 3,
+      sources: ['../src/rules.ts'],
+      names: [],
+      mappings: 'AAGA;EAEA',
+    }),
+  );
+  mkdirSync(join(root, 'apps/web/dist/assets'), { recursive: true });
+  const bundle = join(root, 'apps/web/dist/assets', 'index.js');
+  writeFileSync(bundle, 'x\n//# sourceMappingURL=index.js.map\n');
+  // Bundle line 1 -> the package's built line 2 col 2 (source line 6); bundle
+  // line 2 col 2 -> a dependency, which is left out.
+  writeFileSync(
+    `${bundle}.map`,
+    JSON.stringify({
+      version: 3,
+      sources: [
+        relative(dirname(bundle), built),
+        relative(dirname(bundle), join(root, 'node_modules/zod/index.js')),
+      ],
+      names: [],
+      mappings: 'AACE;ECAF',
+    }),
+  );
+  const reached = reachedSourceLines({ [bundle]: entry() }, root);
+  assert.deepEqual(reached, { 'packages/core/src/rules.ts': [6] });
 });
 
 test('drops a built line the source map does not cover', (t) => {

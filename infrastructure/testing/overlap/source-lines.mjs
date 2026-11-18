@@ -19,8 +19,8 @@ export function isBuiltFile(absolute, root) {
 /**
  * Collects `source file -> executed lines` from executed positions (1-based
  * line, 0-based column) in workspace `src` files or in built files, which
- * map back to `src` through their source maps. Everything else (tests,
- * tooling, dependencies) is left out.
+ * map back to `src` through their source maps, one or more in turn.
+ * Everything else (tests, tooling, dependencies) is left out.
  */
 export function createReach(root) {
   const reached = new Map();
@@ -30,6 +30,20 @@ export function createReach(root) {
     reached.set(file, lines);
     lines.add(line);
   };
+  const mapOf = (built) => {
+    const map = maps.get(built) ?? readSourceMap(built);
+    maps.set(built, map);
+    return map;
+  };
+  // A bundle (the web build) maps to the packages' built files it took in;
+  // those map on to their own `src`.
+  const follow = (built, position) => {
+    const original = mapToSource(mapOf(built), position);
+    if (!original) return null;
+    const file = relative(root, original.file);
+    if (SOURCE_DIRECTORY.test(file)) return original;
+    return BUILT_DIRECTORY.test(file) ? follow(original.file, original) : null;
+  };
   return {
     add(absolute, positions) {
       const file = relative(root, absolute);
@@ -37,14 +51,10 @@ export function createReach(root) {
         for (const { line } of positions) add(file, line);
         return;
       }
-      if (!BUILT_DIRECTORY.test(file) || positions.length === 0) return;
-      const map = maps.get(absolute) ?? readSourceMap(absolute);
-      maps.set(absolute, map);
+      if (!BUILT_DIRECTORY.test(file)) return;
       for (const position of positions) {
-        const original = mapToSource(map, position);
-        if (!original) continue;
-        const source = relative(root, original.file);
-        if (SOURCE_DIRECTORY.test(source)) add(source, original.line);
+        const original = follow(absolute, position);
+        if (original) add(relative(root, original.file), original.line);
       }
     },
     lines() {
@@ -71,8 +81,8 @@ function readSourceMap(builtFile) {
 }
 
 /**
- * The source file and 1-based line a generated position (Istanbul's: 1-based
- * line, 0-based column) came from, or null when that line has no mapping.
+ * The source position (1-based line, 0-based column) a generated position
+ * (Istanbul's, the same) came from, or null when that line has no mapping.
  */
 function mapToSource({ mapFile, payload, map }, { line, column }) {
   const entry = map.findEntry(line - 1, column);
@@ -82,6 +92,7 @@ function mapToSource({ mapFile, payload, map }, { line, column }) {
   return {
     file: sourcePath(mapFile, payload.sourceRoot, entry.originalSource),
     line: entry.originalLine + 1,
+    column: entry.originalColumn,
   };
 }
 

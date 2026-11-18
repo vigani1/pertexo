@@ -11,11 +11,11 @@ export function renderMarkdown(summary) {
     '',
     'Each test file ran alone; its reach is the source lines it executed inside functions (module top level is left out: it runs on any import). Reach is not proof of checking, so every list names candidates to read, not files to delete.',
     '',
-    '| Workspace | Lane | Files | Test lines | Measured | Reach nothing new | Their lines | Inside an integration file | Their lines | Clusters | Their lines |',
+    '| Workspace | Lane | Files | Test lines | Measured | Reach nothing new | Their lines | Inside a real-path file | Their lines | Clusters | Their lines |',
     '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
     ...groups.map(
       (group) =>
-        `| ${group.workspace} | ${group.lane} | ${group.files} | ${group.testLines} | ${group.measured} | ${group.noNewReach} (${formatShare(group.noNewReachShare)}) | ${group.noNewReachLines} | ${group.containedByIntegration} | ${group.containedByIntegrationLines} | ${group.clusters} | ${group.clusterLines} |`,
+        `| ${group.workspace} | ${group.lane} | ${group.files} | ${group.testLines} | ${group.measured} | ${group.noNewReach} (${formatShare(group.noNewReachShare)}) | ${group.noNewReachLines} | ${group.containedByRealPath} | ${group.containedByRealPathLines} | ${group.clusters} | ${group.clusterLines} |`,
     ),
     '',
     `Closest same-area neighbour, files per tenth of weighted overlap (0.0–0.1 … 1.0): ${summary.bestNeighbourOverlap.join(', ')}. Clusters join files at ${String(threshold)} or more.`,
@@ -28,7 +28,7 @@ export function renderMarkdown(summary) {
     ),
     ...section(
       'Reach lies inside one other file',
-      'The container shown is an integration file when there is one.',
+      'The container shown is a real-path file (an integration file or a Playwright spec) when there is one.',
       lists.contained,
       (test) =>
         `- ${describe(test)} ⊆ \`${test.container}\` (${test.containerLane}${test.sameReach ? ', same reach' : ''}; ${test.containers} container${test.containers === 1 ? '' : 's'})`,

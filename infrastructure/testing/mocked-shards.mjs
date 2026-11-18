@@ -2,10 +2,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { assignDurationShards } from './duration-shards.mjs';
 
 export function mockedShards(directory, durations, count) {
-  const files = readdirSync(directory, { recursive: true })
+  return assignDurationShards(mockedSpecFiles(directory), durations, count);
+}
+
+/** The mocked suite's spec files, as `e2e/<path>` below the web app. */
+export function mockedSpecFiles(directory) {
+  return readdirSync(directory, { recursive: true })
     .filter((file) => file.endsWith('.spec.ts'))
     .map((file) => `e2e/${file}`);
-  return assignDurationShards(files, durations, count);
 }
 
 export function recordedMockedShards() {
