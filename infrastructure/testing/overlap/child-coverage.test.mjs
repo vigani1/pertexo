@@ -123,3 +123,34 @@ test("Vitest's main process leaves its workers' environment alone", () => {
     'none',
   );
 });
+
+// Test helpers often run `docker` through promisify(execFile), which relies on
+// execFile's own promise form to resolve { stdout, stderr }.
+test('promisified execFile and exec still resolve stdout and stderr', () => {
+  const script = `
+    import { exec, execFile } from 'node:child_process';
+    import { promisify } from 'node:util';
+    const fromExecFile = await promisify(execFile)(process.execPath, ['-p', '"file"'], { encoding: 'utf8' });
+    const fromExec = await promisify(exec)(JSON.stringify(process.execPath) + ' -p \\'"shell"\\'');
+    process.stdout.write(JSON.stringify([fromExecFile.stdout.trim(), typeof fromExecFile.stderr, fromExec.stdout.trim(), typeof fromExec.stderr]));
+  `;
+  const result = spawnSync(
+    process.execPath,
+    [`--import=${preload}`, '--input-type=module', '--eval', script],
+    {
+      env: {
+        PATH: process.env.PATH,
+        PERTEXO_OVERLAP_CHILD_COVERAGE: '/tmp/children',
+        VITEST_WORKER_ID: '1',
+      },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    'file',
+    'string',
+    'shell',
+    'string',
+  ]);
+});
