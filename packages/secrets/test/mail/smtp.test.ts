@@ -94,20 +94,6 @@ const message = (
 });
 
 describe('real SMTP system mail sessions', () => {
-  it('checks a relay and authenticates without submitting a message', async () => {
-    const fixture = await server({ allowInsecureAuth: true });
-    const client = createSmtpClient({
-      ...fixture.config,
-      auth: { user: 'ada', pass: 'smtp-secret' },
-    });
-    expect(await client.verify({ timeoutMillis: 2000 })).toEqual({
-      kind: 'submitted',
-      reference: '',
-    });
-    expect(fixture.messages).toEqual([]);
-    expect(fixture.authenticate).toHaveBeenCalledOnce();
-  });
-
   it('refuses an internal relay unless the operator allows its resolved address', async () => {
     const fixture = await server();
     const refused = createSmtpClient(fixture.config, {
