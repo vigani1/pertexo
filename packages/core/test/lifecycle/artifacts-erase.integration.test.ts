@@ -9,28 +9,8 @@ afterAll(() => pool.end());
 const target = { artifactId: 'artifact', workspaceId: 'workspace' };
 
 describe('erasing an artifact from the store', () => {
-  it('reports it erased once the store no longer has it', async () => {
-    const store = {
-      delete: vi.fn().mockResolvedValue(undefined),
-      head: vi.fn().mockResolvedValue(null),
-    };
-
-    await expect(
-      eraseArtifact(pool, store, target, { timeoutMs: 1_000 }),
-    ).resolves.toBe(true);
-  });
-
-  it('reports it not erased while the store still has the bytes', async () => {
-    const store = {
-      delete: vi.fn().mockResolvedValue(undefined),
-      head: vi.fn().mockResolvedValue({ size: 1 }),
-    };
-
-    await expect(
-      eraseArtifact(pool, store, target, { timeoutMs: 1_000 }),
-    ).resolves.toBe(false);
-  });
-
+  // Whether an erasure finished, as the store answers it, is asserted where
+  // retention reclaims a file: retention-artifacts.integration.test.ts.
   const hanging = (input: Readonly<{ signal?: AbortSignal }>) =>
     new Promise<void>((_resolve, reject) => {
       input.signal?.addEventListener('abort', () => {
