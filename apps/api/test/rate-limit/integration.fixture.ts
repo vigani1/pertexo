@@ -15,34 +15,24 @@ export type RedisRateLimitFixture = Readonly<{
   sentinel: Redis;
 }>;
 
-export type RedisRateLimitFixtureDependencies = Readonly<{
-  createLimiter: (url: string) => RedisRateLimitRuntime;
-  createProxy: (url: string) => Promise<FixtureRedisProxy>;
-  createRedis: (url: string) => Redis;
-}>;
-
 export async function initializeRedisRateLimitFixture(
   url: string,
-  dependencies: RedisRateLimitFixtureDependencies = {
-    createLimiter: (proxiedUrl) =>
-      new RedisRateLimitRuntime(proxiedUrl, { operationTimeoutMs: 2_000 }),
-    createProxy: (fixtureUrl) => FixtureRedisProxy.create(fixtureUrl),
-    createRedis: createRedisClient,
-  },
 ): Promise<RedisRateLimitFixture> {
   let control: Redis | undefined;
   let sentinel: Redis | undefined;
   let proxy: FixtureRedisProxy | undefined;
   let limiter: RedisRateLimitRuntime | undefined;
   try {
-    control = dependencies.createRedis(url);
+    control = createRedisClient(url);
     await control.connect();
     await control.ping();
-    sentinel = dependencies.createRedis(url);
+    sentinel = createRedisClient(url);
     await sentinel.connect();
     await sentinel.ping();
-    proxy = await dependencies.createProxy(url);
-    limiter = dependencies.createLimiter(proxy.url);
+    proxy = await FixtureRedisProxy.create(url);
+    limiter = new RedisRateLimitRuntime(proxy.url, {
+      operationTimeoutMs: 2_000,
+    });
     return { control, limiter, proxy, sentinel };
   } catch (error: unknown) {
     const cleanupErrors = await cleanupRedisRateLimitFixture({
