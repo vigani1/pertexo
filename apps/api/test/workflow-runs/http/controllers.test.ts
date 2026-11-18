@@ -1,15 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  actorId,
-  guardActorId,
-  sessionId,
   workspaceId,
-  workflowId,
   runId,
   request,
   sseReply,
-  controller,
-  workflowVersionId,
   streamController,
 } from './controllers.fixture.js';
 import { ApiDrainState } from '../../../src/platform/health/drain-state.js';
@@ -23,249 +17,14 @@ const events = (lastEventId?: string) =>
     headers: lastEventId === undefined ? {} : { 'last-event-id': lastEventId },
   });
 
+/**
+ * What the run routes record and answer runs over real HTTP in
+ * http/run-commands.integration.test.ts, workspaces/real-api.integration.test.ts
+ * (stream access lost on a role change) and events/missing-hint.integration.test.ts
+ * (wire frames and Last-Event-ID). These cases stay because only a held
+ * response shows the cleanup budget and a throwing metrics sink or producer.
+ */
 describe('workflow runs controller', () => {
-  it('forwards a statistics window and breakdown only when asked for', async () => {
-    const fixture = controller();
-    await fixture.instance.getRunStatistics(
-      workspaceCallerFor(request(), workspaceId),
-      routeInput<typeof routes.statistics>({
-        params: { workspaceId },
-        query: { window: '7d', breakdown: 'workflow' },
-      }),
-    );
-    await fixture.instance.getRunStatistics(
-      workspaceCallerFor(request(), workspaceId),
-      routeInput<typeof routes.statistics>({
-        params: { workspaceId },
-        query: {},
-      }),
-    );
-    expect(fixture.statistics.execute).toHaveBeenNthCalledWith(1, {
-      actor: expect.objectContaining({ actorId, workspaceId }) as unknown,
-      routeWorkspaceId: workspaceId,
-      requestId: 'request-42',
-      traceId: 'trace-42',
-      window: '7d',
-      breakdown: 'workflow',
-    });
-    expect(fixture.statistics.execute.mock.calls[1]?.[0]).not.toHaveProperty(
-      'window',
-    );
-  });
-
-  it('uses session context without a guard and gives guarded context precedence', async () => {
-    const fixture = controller();
-    await fixture.instance.startRun(
-      request({ 'idempotency-key': 'session-context' }),
-      workspaceCallerFor(
-        request({ 'idempotency-key': 'session-context' }),
-        workspaceId,
-      ),
-      routeInput<typeof routes.start>({
-        params: { workspaceId, workflowId },
-        body: {},
-        idempotencyKey: 'session-context',
-      }),
-    );
-    expect(fixture.start.execute).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        // oxlint-disable-next-line typescript/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
-        actor: expect.objectContaining({ actorId, requestId: 'request-42' }),
-        requestId: 'request-42',
-        traceId: 'trace-42',
-      }),
-    );
-    expect(fixture.start.execute.mock.calls.at(-1)?.[0]).not.toHaveProperty(
-      'authorizedWorkspace',
-    );
-
-    const authorizedWorkspace = {
-      actor: Object.freeze({
-        actorId: guardActorId,
-        kind: 'user' as const,
-        workspaceId,
-        sessionId,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-      workspaceId,
-      role: 'owner' as const,
-      capability: 'run:start' as const,
-    };
-    await fixture.instance.startRun(
-      {
-        ...request({ 'idempotency-key': 'guard-context' }),
-        authorizedWorkspace,
-      },
-      workspaceCallerFor(
-        {
-          ...request({ 'idempotency-key': 'guard-context' }),
-          authorizedWorkspace,
-        },
-        workspaceId,
-      ),
-      routeInput<typeof routes.start>({
-        params: { workspaceId, workflowId },
-        body: {},
-        idempotencyKey: 'guard-context',
-      }),
-    );
-    expect(fixture.start.execute).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        actor: authorizedWorkspace.actor,
-        authorizedWorkspace,
-        requestId: 'guard-request',
-        traceId: 'guard-trace',
-      }),
-    );
-  });
-
-  it('passes controller-owned SSE reauthorization and authorization to the stream use case', async () => {
-    const fixture = controller();
-    const reply = sseReply();
-    const reauthorizeIdentitySession = vi.fn(
-      request().reauthorizeIdentitySession,
-    );
-    const authorizedWorkspace = {
-      actor: Object.freeze({
-        actorId: guardActorId,
-        kind: 'user' as const,
-        workspaceId,
-        sessionId,
-        requestId: 'guard-request',
-      }),
-      workspaceId,
-      role: 'viewer' as const,
-      capability: 'run:read' as const,
-    };
-    await fixture.instance.streamRunEvents(
-      {
-        ...request(),
-        authorizedWorkspace,
-        reauthorizeIdentitySession,
-      },
-      workspaceCallerFor(
-        {
-          ...request(),
-          authorizedWorkspace,
-          reauthorizeIdentitySession,
-        },
-        workspaceId,
-      ),
-      events(),
-      reply as never,
-    );
-    expect(fixture.stream.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actor: authorizedWorkspace.actor,
-        authorizedWorkspace,
-        reauthorizeSession: reauthorizeIdentitySession,
-        // oxlint-disable-next-line typescript/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
-        abortStream: expect.any(Function),
-        // oxlint-disable-next-line typescript/no-unsafe-assignment -- Vitest asymmetric matcher is intentionally untyped at this nested boundary.
-        signal: expect.any(AbortSignal),
-      }),
-    );
-  });
-
-  it('parses one start request and forwards idempotency and trace context', async () => {
-    const fixture = controller();
-    await fixture.instance.startRun(
-      request({
-        'idempotency-key': 'run-start-42',
-        traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
-      }),
-      workspaceCallerFor(
-        request({
-          'idempotency-key': 'run-start-42',
-          traceparent:
-            '00-11111111111111111111111111111111-2222222222222222-01',
-        }),
-        workspaceId,
-      ),
-      routeInput<typeof routes.start>({
-        params: { workspaceId, workflowId },
-        body: { input: { customerId: 'customer-42' } },
-        idempotencyKey: 'run-start-42',
-      }),
-    );
-
-    expect(fixture.start.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: workspaceId,
-        workflowId,
-        idempotencyKey: 'run-start-42',
-        input: { customerId: 'customer-42' },
-        requestId: 'request-42',
-        traceId: 'trace-42',
-      }),
-    );
-  });
-
-  it('parses an explicit replay request and forwards the source and version', async () => {
-    const fixture = controller();
-    await fixture.instance.replayRun(
-      request({
-        'idempotency-key': 'run-replay-42',
-        'x-csrf-token': 'csrf-token-42',
-        traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
-      }),
-      workspaceCallerFor(
-        request({
-          'idempotency-key': 'run-replay-42',
-          'x-csrf-token': 'csrf-token-42',
-          traceparent:
-            '00-11111111111111111111111111111111-2222222222222222-01',
-        }),
-        workspaceId,
-      ),
-      routeInput<typeof routes.replay>({
-        params: { workspaceId, runId },
-        body: {
-          workflowVersionId,
-          input: { customerId: 'customer-42' },
-          deadlineAt: '2026-08-21T18:00:00.000Z',
-        },
-        idempotencyKey: 'run-replay-42',
-      }),
-    );
-
-    expect(fixture.replay.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: workspaceId,
-        runId,
-        workflowVersionId,
-        input: { customerId: 'customer-42' },
-        deadlineAt: '2026-08-21T18:00:00.000Z',
-        idempotencyKey: 'run-replay-42',
-        requestId: 'request-42',
-        traceId: 'trace-42',
-      }),
-    );
-  });
-
-  it('parses Last-Event-ID and exposes each persisted event as an SSE message', async () => {
-    const fixture = controller();
-    const reply = sseReply();
-    await fixture.instance.streamRunEvents(
-      request({ 'last-event-id': '1' }),
-      workspaceCallerFor(request({ 'last-event-id': '1' }), workspaceId),
-      events('1'),
-      reply as never,
-    );
-
-    expect(fixture.stream.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: workspaceId,
-        runId,
-        lastEventId: 1,
-      }),
-    );
-    expect(reply.raw.chunks).toEqual([
-      'id: 2\nevent: run.started\ndata: {"sequence":2,"type":"run.started","createdAt":"2026-08-21T12:00:00.000Z","payload":{}}\n\n',
-    ]);
-  });
-
   it('records visibility only after the first successful emission for a sequence', async () => {
     const visibilityMetrics = { recordFirstEligibleFrame: vi.fn() };
     const stream = {
@@ -475,35 +234,5 @@ describe('workflow runs controller', () => {
     expect(reply.raw.destroyed).toBe(true);
     expect(removeCloseListener).toHaveBeenCalledOnce();
     expect(drainState.activeStreamCount()).toBe(0);
-  });
-
-  it('forwards durable cancellation actor, reason, and trace context', async () => {
-    const fixture = controller();
-    await fixture.instance.cancelRun(
-      request({
-        traceparent: '00-11111111111111111111111111111111-2222222222222222-01',
-      }),
-      workspaceCallerFor(
-        request({
-          traceparent:
-            '00-11111111111111111111111111111111-2222222222222222-01',
-        }),
-        workspaceId,
-      ),
-      routeInput<typeof routes.cancel>({
-        params: { workspaceId, runId },
-        body: { reason: 'operator request' },
-      }),
-    );
-
-    expect(fixture.cancel.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routeWorkspaceId: workspaceId,
-        runId,
-        reason: 'operator request',
-        requestId: 'request-42',
-        traceId: 'trace-42',
-      }),
-    );
   });
 });

@@ -206,8 +206,18 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
 
     let primary: StreamFailure = NO_STREAM_FAILURE;
     try {
-      await expect(iterator.next()).resolves.toMatchObject({
-        value: { id: 2, event: 'run.started' },
+      const backfilled = await iterator.next();
+      expect(backfilled.value).toMatchObject({
+        id: 2,
+        event: 'run.started',
+        visibilityPath: 'reconnect_backfill',
+      });
+      expect(
+        JSON.parse(backfilled.done === true ? '' : backfilled.value.data),
+      ).toMatchObject({
+        sequence: 2,
+        type: 'run.started',
+        payload: { source: 'database' },
       });
       await expect(iterator.next()).resolves.toMatchObject({
         value: { id: 3, event: 'node.ready' },
@@ -231,6 +241,44 @@ describe.runIf(enabled)('real PostgreSQL-authoritative run event SSE', () => {
         value: { id: 4, event: 'node.started' },
       });
       recordBenchmarkOperation(operationStartedAt);
+
+      // A repeated hint, another run's hint and another workspace's hint emit
+      // nothing; a hint past an unhinted event delivers both, in order.
+      await publisher.publish({ runId, sequence: fourthSequence, workspaceId });
+      await publisher.publish({
+        runId: randomUUID(),
+        sequence: fourthSequence + 1,
+        workspaceId,
+      });
+      await publisher.publish({
+        runId,
+        sequence: fourthSequence + 1,
+        workspaceId: randomUUID(),
+      });
+      const [unhinted, hinted] = await workerDatabase.withWorkspace(
+        workspaceId,
+        async (transaction) => [
+          await appendRunEvent(transaction, {
+            runId,
+            event: { type: 'node.succeeded', payload: { nodeId: 'first' } },
+          }),
+          await appendRunEvent(transaction, {
+            runId,
+            event: { type: 'node.ready', payload: { nodeId: 'second' } },
+          }),
+        ],
+      );
+      await publisher.publish({ runId, sequence: hinted, workspaceId });
+      await expect(iterator.next()).resolves.toMatchObject({
+        value: { id: unhinted, event: 'node.succeeded' },
+      });
+      await expect(iterator.next()).resolves.toMatchObject({
+        value: { id: hinted, event: 'node.ready' },
+      });
+      expect([unhinted, hinted]).toEqual([
+        fourthSequence + 1,
+        fourthSequence + 2,
+      ]);
       // A terminal commit without its Redis hint must become visible without reconnect.
       const next = iterator.next();
       await delay(100);
