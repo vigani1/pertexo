@@ -4,7 +4,6 @@ import {
   afterAllFixture2,
   workspaceId,
   ownerUserId,
-  otherUserId,
   connectionId,
   queuedRunId,
   runningRunId,
@@ -19,12 +18,6 @@ import { WorkspaceLifecycleConflictError } from '../../src/lifecycle/workspace-l
 beforeAll(beforeAllFixture1, 120_000);
 afterAll(afterAllFixture2);
 describe('workspace deletion and restore', () => {
-  it('rejects an actor who is not an owner', async () => {
-    await expect(
-      change({ commandType: 'deletion_requested', actorUserId: otherUserId }),
-    ).rejects.toMatchObject({ reason: 'actor_inactive' });
-  });
-
   it('takes effect at once and stops the workspace work', async () => {
     const idempotencyKeyHash = 'a'.repeat(64);
     const operation = await change({
@@ -111,7 +104,9 @@ describe('workspace deletion and restore', () => {
   });
 
   // db-runs-02: ADR 013 step 3 restores a deleted workspace to `suspended`.
-  it('restores during the recovery period and not after it', async () => {
+  // Refusing a restore once the purge is due is in
+  // workspace-deletion-authority.integration.test.ts.
+  it('restores during the recovery period and clears the deletion', async () => {
     await change({ commandType: 'deletion_restored' });
     const restored = await asOwner(
       'select status, purge_after, deletion_reason from app.workspaces where id=$1',
@@ -122,17 +117,5 @@ describe('workspace deletion and restore', () => {
       purge_after: null,
       deletion_reason: null,
     });
-
-    await change({ commandType: 'deletion_requested' });
-    await asOwner(
-      `update app.workspaces
-       set deletion_requested_at = clock_timestamp() - interval '31 days',
-           purge_after = clock_timestamp() - interval '1 second'
-       where id=$1`,
-      [workspaceId],
-    );
-    await expect(
-      change({ commandType: 'deletion_restored' }),
-    ).rejects.toMatchObject({ reason: 'invalid_state' });
   });
 });

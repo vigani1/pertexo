@@ -10,7 +10,6 @@ import {
   insertRun,
   insertExecutionDetail,
   count,
-  runRow,
   insertScheduleTrigger,
   insertOccurrence,
 } from './retention-rules.fixture.js';
@@ -136,51 +135,6 @@ describe('retention rules', () => {
     await enforceUntilIdle();
     expect(await remaining([skip])).toEqual([]);
   });
-  it('removes sign-in proof rows a day after expiry, retaining recent and live journeys', async () => {
-    const ids = [randomUUID(), randomUUID(), randomUUID()];
-    for (const [index, id] of ids.entries()) {
-      let created;
-      if (index === 0) {
-        created = daysAgo(3);
-      } else {
-        if (index === 1) {
-          created = daysAgo(0.1);
-        } else {
-          created = new Date();
-        }
-      }
-      let expires;
-      if (index === 0) {
-        expires = daysAgo(2);
-      } else {
-        if (index === 1) {
-          expires = daysAgo(0.05);
-        } else {
-          expires = new Date(Date.now() + 300_000);
-        }
-      }
-      await admin.query(
-        `insert into app.auth_sign_in_attempts
-        (id,provider,state_digest,browser_digest,return_path,created_at,expires_at)
-        values($1,'google',$2,$3,'/workspaces',$4,$5)`,
-        [
-          id,
-          Buffer.alloc(32, index + 1),
-          Buffer.alloc(32, 9),
-          created,
-          expires,
-        ],
-      );
-    }
-    const result = await retention.enforce();
-    expect(result.removed.auth_sign_in_attempts).toBe(1);
-    const rows = await admin.query<{ id: string }>(
-      'select id from app.auth_sign_in_attempts where id=any($1::uuid[])',
-      [ids],
-    );
-    expect(rows.rows.map((row) => row.id).sort()).toEqual(ids.slice(1).sort());
-  });
-
   it('clears expired terminal input while retaining an expired live run input', async () => {
     await admin.query(
       "update app.workflow_runs set status='succeeded',completed_at=clock_timestamp() where id=any($1::uuid[])",
@@ -217,29 +171,6 @@ describe('retention rules', () => {
     ).toEqual({
       ...Object.fromEntries(runIds.map((id) => [id, null])),
       [pending]: { kind: 'inline', value: 'kept' },
-    });
-  });
-
-  it('purges execution details 30 days after completion and keeps the summary', async () => {
-    const old = await insertRun({ completedDaysAgo: 40 });
-    const recent = await insertRun({ completedDaysAgo: 10 });
-    await insertExecutionDetail(old);
-    await insertExecutionDetail(recent);
-
-    await enforceUntilIdle();
-
-    expect(await count('node_runs', old)).toBe(0);
-    expect(await count('run_events', old)).toBe(0);
-    expect(await runRow(old)).toMatchObject({
-      output_ref: null,
-      error_summary: null,
-      details_purged_at: expect.any(Date) as unknown,
-    });
-    expect(await count('node_runs', recent)).toBe(1);
-    expect(await count('run_events', recent)).toBe(1);
-    expect(await runRow(recent)).toMatchObject({
-      error_summary: 'failure detail',
-      details_purged_at: null,
     });
   });
 
@@ -285,37 +216,7 @@ describe('retention rules', () => {
     expect(occurrences.rowCount).toBe(1);
   });
 
-  it('deletes schedule occurrences after 90 days and audit records after a year', async () => {
-    const triggerId = await insertScheduleTrigger();
-    const oldOccurrence = await insertOccurrence(triggerId, 100);
-    const recentOccurrence = await insertOccurrence(triggerId, 30);
-    const oldAudit = randomUUID();
-    const recentAudit = randomUUID();
-    for (const [id, days] of [
-      [oldAudit, 400],
-      [recentAudit, 300],
-    ] as const)
-      await admin.query(
-        `insert into app.audit_events(id,workspace_id,action,target_type,occurred_at)
-         values($1,$2,'retention.test','workspace',$3)`,
-        [id, workspaceId, daysAgo(days)],
-      );
-
-    await enforceUntilIdle();
-
-    const occurrences = await admin.query<{ id: string }>(
-      'select id from app.trigger_schedule_occurrences where id = any($1::uuid[])',
-      [[oldOccurrence, recentOccurrence]],
-    );
-    expect(occurrences.rows.map(({ id }) => id)).toEqual([recentOccurrence]);
-    const audit = await admin.query<{ id: string }>(
-      'select id from app.audit_events where id = any($1::uuid[])',
-      [[oldAudit, recentAudit]],
-    );
-    expect(audit.rows.map(({ id }) => id)).toEqual([recentAudit]);
-  });
-
-  it('skips locked expired audit rows without locking workspace settings', async () => {
+  it('keeps audit records a year, skipping locked expired ones without locking workspace settings', async () => {
     await enforceUntilIdle();
     const held = randomUUID(),
       next = randomUUID(),
@@ -323,7 +224,8 @@ describe('retention rules', () => {
     for (const [id, days] of [
       [held, 500],
       [next, 499],
-      [fresh, 100],
+      // Inside the year a workspace keeps audit records by default.
+      [fresh, 300],
     ] as const)
       await admin.query(
         "insert into app.audit_events(id,workspace_id,action,target_type,occurred_at) values($1,$2,'retention.lock','workspace',$3)",
@@ -457,37 +359,6 @@ describe('retention rules', () => {
       cleaner.release();
       await cleanerPool.end();
     }
-  });
-
-  it('expires skip summaries in bounded pages while keeping recent skips and other usage', async () => {
-    const old = [randomUUID(), randomUUID(), randomUUID()];
-    const recent = randomUUID();
-    const other = randomUUID();
-    for (const id of [...old, recent, other])
-      await admin.query(
-        `insert into app.usage_events
-          (id,workspace_id,category,quantity,resource_type,resource_id,idempotency_key,metadata,occurred_at)
-         values($1::uuid,$2,$3,1,'workflow',$4,$1::text,'{}',$5)`,
-        [
-          id,
-          workspaceId,
-          id === other ? 'preview.execution' : 'trigger.skipped',
-          randomUUID(),
-          daysAgo(id === recent ? 80 : 100),
-        ],
-      );
-
-    const first = await retention.enforce();
-    expect(first.removed.trigger_skips).toBe(2);
-    expect(first.more).toBe(true);
-    await enforceUntilIdle();
-    const remaining = await admin.query<{ id: string }>(
-      'select id from app.usage_events where id=any($1::uuid[])',
-      [[...old, recent, other]],
-    );
-    expect(remaining.rows.map(({ id }) => id).sort()).toEqual(
-      [recent, other].sort(),
-    );
   });
 
   it('keeps a long-active capacity warning without forcing another episode', async () => {

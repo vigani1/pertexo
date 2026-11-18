@@ -161,13 +161,24 @@ describe('retention artifact reclamation', () => {
     }
   });
 
-  it('deletes expired pending user uploads before releasing capacity', async () => {
+  it('deletes expired pending user uploads before releasing capacity, leaving files not yet due charged', async () => {
     const artifactId = randomUUID();
-    await insertExpiredPendingUserUpload(artifactId, 'd');
+    const [future, available] = [randomUUID(), randomUUID()];
+    for (const id of [artifactId, future, available])
+      await insertExpiredPendingUserUpload(id, 'd');
+    await withOwnerTransaction((client) =>
+      client.query(
+        `update app.artifacts set expires_at=clock_timestamp()+interval '1 day',
+           status=case when id=$3 then 'available' else 'pending' end,
+           finalized_at=case when id=$3 then clock_timestamp() else null end
+         where workspace_id=$1 and id=any($2::uuid[])`,
+        [workspaceId, [future, available], available],
+      ),
+    );
 
     await expect(readCapacity()).resolves.toEqual({
-      chargedBytes: 10,
-      chargedCount: 1,
+      chargedBytes: 30,
+      chargedCount: 3,
     });
     const artifacts = {
       delete: vi.fn((_input: ArtifactStoreInput) => {
@@ -187,6 +198,9 @@ describe('retention artifact reclamation', () => {
         status: 'completed',
         workspaceId,
       });
+      await expect(coordinator.processNext()).resolves.toEqual({
+        status: 'idle',
+      });
     } finally {
       await coordinator.close();
     }
@@ -202,9 +216,63 @@ describe('retention artifact reclamation', () => {
       workspaceId,
     });
     await expect(readCapacity()).resolves.toEqual({
-      chargedBytes: 0,
-      chargedCount: 0,
+      chargedBytes: 20,
+      chargedCount: 2,
     });
+    const rows = await withOwnerTransaction((client) =>
+      client.query<{ id: string; status: string }>(
+        'select id,status from app.artifacts where workspace_id=$1 order by id',
+        [workspaceId],
+      ),
+    );
+    expect(rows.rows).toEqual(
+      [
+        { id: future, status: 'pending' },
+        { id: available, status: 'available' },
+      ].sort((left, right) => left.id.localeCompare(right.id)),
+    );
+  });
+
+  it('reclaims unlocked due files while another transaction holds the oldest reservation', async () => {
+    const locked = randomUUID();
+    const other = randomUUID();
+    await insertExpiredPendingUserUpload(locked, 'a');
+    await insertExpiredPendingUserUpload(other, 'b');
+    const pool = new Pool({ connectionString: migrationUrl, max: 1 });
+    const client = await pool.connect();
+    const retention = createRunArtifactRetentionStore(
+      parseDatabaseConfig({ connectionString: maintenanceUrl, max: 2 }),
+      { delete: () => Promise.resolve(), head: () => Promise.resolve(null) },
+    );
+    try {
+      await client.query('begin');
+      await client.query('set local role pertexo_owner');
+      await client.query("select set_config('app.workspace_id',$1,true)", [
+        workspaceId,
+      ]);
+      await client.query(
+        'select id from app.artifacts where id=$1 for update',
+        [locked],
+      );
+      expect(await retention.processNext()).toMatchObject({
+        artifactId: other,
+        status: 'completed',
+      });
+      expect(await retention.processNext()).toEqual({ status: 'idle' });
+      await client.query('commit');
+      expect(await retention.processNext()).toMatchObject({
+        artifactId: locked,
+        status: 'completed',
+      });
+      expect(await readCapacity()).toEqual({
+        chargedCount: 0,
+        chargedBytes: 0,
+      });
+    } finally {
+      await client.query('rollback');
+      client.release();
+      await Promise.all([retention.close(), pool.end()]);
+    }
   });
 
   it.each(['node-output', 'http-response'] as const)(
