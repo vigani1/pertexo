@@ -65,9 +65,12 @@ setInterval(()=>{},1000);
           throw new Error('development command did not stop');
         }),
       ]);
-      await delay(100);
-      for (const pid of pids)
+      // The services exit after their parent closes; wait for each to go.
+      for (const pid of pids) {
+        const deadline = Date.now() + 3000;
+        while (running(pid) && Date.now() < deadline) await delay(20);
         assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+      }
     } finally {
       child.kill('SIGKILL');
       for (const pid of pids) killIfRunning(pid);
@@ -81,5 +84,14 @@ function killIfRunning(pid) {
     process.kill(pid, 'SIGKILL');
   } catch (error) {
     if (error.code !== 'ESRCH') throw error;
+  }
+}
+
+function running(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
   }
 }
