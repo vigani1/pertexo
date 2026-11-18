@@ -1,26 +1,15 @@
-import { workflowKeys } from '@/features/workflows/workflows-queries.public';
-
-import { ApiError } from '@/lib/api/error';
-
-import { screen, waitFor } from '@testing-library/react';
-
+import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
+import { workflowShapeQueryOptions } from '@/features/workflows/data/workflows.queries';
+import { createApiClient } from '@/lib/api/client';
+import { act, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-
 import { afterEach, describe, expect, it } from 'vitest';
-
+import { gatewayFailures } from '../../support/fixtures/gateway-failures';
 import { mockServer } from '../../support/mock-server';
-
-import {
-  fingerprint,
-  manifest,
-  mountList,
-  prepare,
-  retireHistories,
-} from './import-recovery/fixture';
-
+import { testFetch } from '../../support/render-app';
+import { mountList, prepare, retireHistories } from './import-recovery/fixture';
 import {
   api,
-  problem,
   userId,
   versionId,
   workflowId,
@@ -31,223 +20,79 @@ afterEach(() => {
   for (const retire of retireHistories.splice(0)) retire();
 });
 
-describe('Workflow list owns import recovery across dialog dismissal', () => {
-  it('starts another import only after confirmed recovery, clears setup without POST, and creates a fresh explicit key', async () => {
+describe('Retrying an import whose outcome is unknown', () => {
+  it('keeps a lost import through unrelated failures, an example choice and Close/reopen, and only replays its exact body and key on request', async () => {
     const attempts: { body: unknown; key: string | null }[] = [];
+    let accept = false;
     mockServer.use(
       http.post(`${api}/workflows/import`, async ({ request }) => {
         attempts.push({
           body: await request.json(),
           key: request.headers.get('idempotency-key'),
         });
-        return HttpResponse.json({ workflowId: versionId }, { status: 201 });
+        // The server accepted the first command, but its responses are lost
+        // until the test lets one through.
+        return accept
+          ? HttpResponse.json({ workflowId: versionId }, { status: 201 })
+          : HttpResponse.error();
       }),
-    );
-    const { event } = mountList();
-    await prepare(event);
-    await screen.findByRole('button', { name: 'Open imported workflow' });
-    await event.click(screen.getByRole('button', { name: 'Close' }));
-    await event.click(screen.getByRole('button', { name: 'Import workflow…' }));
-    await screen.findByRole('button', { name: 'Open imported workflow' });
-    expect(attempts).toHaveLength(1);
-    await event.click(
-      screen.getByRole('button', { name: 'Start another import' }),
-    );
-    await waitFor(() => {
-      expect(screen.getByLabelText('New workflow name')).toBeEnabled();
-    });
-    expect(screen.getByLabelText('New workflow name')).toHaveValue('');
-    expect(screen.getByLabelText('Workflow JSON file')).toHaveValue('');
-    expect(
-      screen.queryByLabelText('Complete imported graph'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/Compatible with this workspace/u),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Open imported workflow' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Start another import' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Import unpublished draft' }),
-    ).toBeDisabled();
-    expect(attempts).toHaveLength(1);
-    await event.upload(
-      screen.getByLabelText('Workflow JSON file'),
-      new File([JSON.stringify(manifest)], 'second.json', {
-        type: 'application/json',
-      }),
-    );
-    await screen.findByLabelText('Complete imported graph');
-    await event.type(
-      screen.getByLabelText('New workflow name'),
-      'Deliberate second draft',
-    );
-    await event.click(screen.getByRole('button', { name: 'Preview import' }));
-    await screen.findByText(/Compatible with this workspace/u);
-    expect(attempts).toHaveLength(1);
-    await event.click(
-      screen.getByRole('button', { name: 'Import unpublished draft' }),
-    );
-    await screen.findByRole('button', { name: 'Open imported workflow' });
-    expect(attempts).toHaveLength(2);
-    expect(attempts[1]?.key).toBeTruthy();
-    expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
-    expect(attempts[1]?.body).toEqual({
-      manifest,
-      bindings: [],
-      name: 'Deliberate second draft',
-      expectedCompatibilityFingerprint: fingerprint,
-    });
-    await event.click(
-      screen.getByRole('button', { name: 'Start another import' }),
-    );
-    await waitFor(() => {
-      expect(screen.getByLabelText('Workflow JSON file')).toHaveValue('');
-    });
-    expect(attempts).toHaveLength(2);
-  });
-  it.each(['sending', 'uncertain', 'refused'] as const)(
-    'offers no reset action while %s',
-    async (state) => {
-      let release!: () => void;
-      const held = new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      let posted = 0;
-      mockServer.use(
-        http.post(`${api}/workflows/import`, async () => {
-          posted += 1;
-          if (state === 'sending') {
-            await held;
-            return HttpResponse.json(
-              { workflowId: versionId },
-              { status: 201 },
-            );
-          }
-          return state === 'refused'
-            ? problem(403, 'auth.forbidden')
-            : HttpResponse.error();
-        }),
-      );
-      const { event } = mountList();
-      await prepare(event);
-      if (state === 'sending') {
-        await waitFor(() => {
-          expect(posted).toBe(1);
-        });
-        expect(
-          screen.getByRole('button', { name: 'Importing…' }),
-        ).toBeDisabled();
-      } else if (state === 'uncertain')
-        await screen.findByRole('button', { name: 'Retry exact import' });
-      else {
-        await screen.findByText(/Your role doesn’t allow/u);
-        expect(screen.getByLabelText('New workflow name')).toBeEnabled();
-      }
-      expect(
-        screen.queryByRole('button', { name: 'Start another import' }),
-      ).not.toBeInTheDocument();
-      expect(posted).toBe(1);
-      if (state === 'sending') {
-        release();
-        await screen.findByRole('button', { name: 'Open imported workflow' });
-      }
-    },
-  );
-  it('clears a new local draft after an authoritative read loses access following reset', async () => {
-    let posted = 0;
-    mockServer.use(
-      http.post(`${api}/workflows/import`, () => {
-        posted++;
-        return HttpResponse.json({ workflowId: versionId }, { status: 201 });
-      }),
+      http.get(`${api}/workflows/${workflowId}/draft`, () =>
+        HttpResponse.json(
+          {
+            type: 'urn:pertexo:problem:resource.not_found',
+            title: 'Not found',
+            status: 404,
+            code: 'resource.not_found',
+            requestId: 'optional-row-preview',
+          },
+          { status: 404 },
+        ),
+      ),
     );
     const { event, queryClient, onCreated } = mountList();
     await prepare(event);
-    await screen.findByRole('button', { name: 'Open imported workflow' });
-    await event.click(
-      screen.getByRole('button', { name: 'Start another import' }),
-    );
-    await event.upload(
-      screen.getByLabelText('Workflow JSON file'),
-      new File([JSON.stringify(manifest)], 'new.json', {
-        type: 'application/json',
-      }),
-    );
-    await screen.findByLabelText('Complete imported graph');
-    await event.type(
-      screen.getByLabelText('New workflow name'),
-      'Private next draft',
-    );
-    await queryClient
-      .query({
-        queryKey: workflowKeys.detail(userId, workspaceId, workflowId),
-        queryFn: () =>
-          Promise.reject(
-            new ApiError({ kind: 'problem', message: 'Denied', status: 403 }),
-          ),
-        retry: false,
-      })
-      .catch(() => undefined);
-    await screen.findByText(/Access changed/u);
-    expect(
-      screen.queryByLabelText('New workflow name'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Open imported workflow' }),
-    ).not.toBeInTheDocument();
-    expect(posted).toBe(1);
-    expect(onCreated).not.toHaveBeenCalled();
-  });
-  it('starts another local draft without depending on a separate session verification request', async () => {
-    let posted = 0;
-    mockServer.use(
-      http.post(`${api}/workflows/import`, () => {
-        posted++;
-        return HttpResponse.json({ workflowId: versionId }, { status: 201 });
-      }),
-    );
-    const { event } = mountList();
-    await prepare(event);
-    await screen.findByRole('button', { name: 'Open imported workflow' });
-    let checks = 0;
-    mockServer.use(
-      http.get('http://pertexo.test/v1/users/me', () => {
-        checks++;
-        return HttpResponse.error();
-      }),
-    );
-    await event.click(
-      screen.getByRole('button', { name: 'Start another import' }),
-    );
-    expect(screen.getByLabelText('New workflow name')).toHaveValue('');
-    expect(screen.getByLabelText('New workflow name')).toBeEnabled();
-    expect(
-      screen.queryByRole('button', { name: 'Open imported workflow' }),
-    ).not.toBeInTheDocument();
-    expect(checks).toBe(0);
-    expect(posted).toBe(1);
-  });
-  it('retains a lost accepted response through Close/reopen and only manually replays the exact body/key', async () => {
-    const attempts: { body: unknown; key: string | null }[] = [];
-    mockServer.use(
-      http.post(`${api}/workflows/import`, async ({ request }) => {
-        attempts.push({
-          body: await request.json(),
-          key: request.headers.get('idempotency-key'),
-        });
-        // The server accepted the first command, but its response was lost.
-        return attempts.length === 1
-          ? HttpResponse.error()
-          : HttpResponse.json({ workflowId: versionId }, { status: 201 });
-      }),
-    );
-    const { event, onCreated } = mountList();
-    await prepare(event);
     await screen.findByRole('button', { name: 'Retry exact import' });
+
+    // An unrelated workflow preview being unavailable keeps the pending import.
+    const options = workflowShapeQueryOptions(
+      createApiClient({ fetch: testFetch, readCsrfToken: () => undefined }),
+      userId,
+      workspaceId,
+      workflowId,
+    );
+    await act(async () => {
+      await expect(
+        queryClient.query({ ...options, retry: false }),
+      ).rejects.toMatchObject({ status: 404 });
+    });
+    expect(screen.getByLabelText('New workflow name')).toHaveValue(
+      'Frozen recovery draft',
+    );
+    await event.click(
+      screen.getByRole('button', { name: 'Retry exact import' }),
+    );
+    await screen.findByRole('button', { name: 'Retry exact import' });
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+
+    // Choosing an example reopens the unresolved file import instead.
+    await event.click(screen.getByRole('button', { name: 'Close' }));
+    const example = CURATED_WORKFLOW_TEMPLATES[0];
+    if (example === undefined) throw new Error('Expected a curated example');
+    await event.click(
+      screen.getByRole('button', { name: new RegExp(example.title, 'u') }),
+    );
+    await event.click(
+      await screen.findByRole('button', { name: 'Retry exact import' }),
+    );
+    await screen.findByRole('button', { name: 'Retry exact import' });
+    expect(attempts).toHaveLength(3);
+    expect(attempts[2]).toEqual(attempts[0]);
+    expect(screen.getByLabelText('New workflow name')).toHaveValue(
+      'Frozen recovery draft',
+    );
+
+    // Close and reopen keep it too, and nothing retries on its own.
     await event.click(screen.getByRole('button', { name: 'Close' }));
     await waitFor(() =>
       expect(
@@ -258,17 +103,139 @@ describe('Workflow list owns import recovery across dialog dismissal', () => {
     const retry = await screen.findByRole('button', {
       name: 'Retry exact import',
     });
-    expect(attempts).toHaveLength(1);
+    expect(attempts).toHaveLength(3);
     expect(screen.getByLabelText('New workflow name')).toBeDisabled();
+    accept = true;
     await event.click(retry);
     await screen.findByRole('button', { name: 'Open imported workflow' });
-    expect(attempts).toHaveLength(2);
-    expect(attempts[1]).toEqual(attempts[0]);
+    expect(attempts).toHaveLength(4);
+    expect(attempts[3]).toEqual(attempts[0]);
     expect(attempts[0]?.key).toBeTruthy();
     await event.click(
       screen.getByRole('button', { name: 'Open imported workflow' }),
     );
     expect(onCreated).toHaveBeenCalledWith(versionId);
-    expect(attempts).toHaveLength(2);
+    expect(attempts).toHaveLength(4);
   });
+
+  it.each(gatewayFailures)(
+    'imports one workflow when the person retries after a %s',
+    async (_status, gatewayFailure) => {
+      // The server keeps one workflow per idempotency key, like the API does.
+      const imported = new Map<string | null, unknown>();
+      const attempts: (string | null)[] = [];
+      mockServer.use(
+        http.post(`${api}/workflows/import`, async ({ request }) => {
+          const key = request.headers.get('idempotency-key');
+          attempts.push(key);
+          imported.set(key, await request.json());
+          return attempts.length === 1
+            ? gatewayFailure()
+            : HttpResponse.json({ workflowId: versionId }, { status: 201 });
+        }),
+      );
+      const { event, onCreated } = mountList();
+      await prepare(event);
+
+      await event.click(
+        await screen.findByRole('button', { name: 'Retry exact import' }),
+      );
+      await event.click(
+        await screen.findByRole('button', { name: 'Open imported workflow' }),
+      );
+
+      expect(onCreated).toHaveBeenCalledExactlyOnceWith(versionId);
+      expect(attempts).toHaveLength(2);
+      expect(attempts[0]).toBeTruthy();
+      expect(imported.size).toBe(1);
+      expect([...imported.values()][0]).toMatchObject({
+        name: 'Frozen recovery draft',
+      });
+    },
+  );
+
+  it.each([
+    {
+      status: 409,
+      code: 'workflow.portability_compatibility_conflict',
+      detail:
+        'The destination catalog changed. Preview this import again before creating its draft.',
+    },
+    {
+      status: 422,
+      code: 'workflow.portability_invalid',
+      detail:
+        'The imported content needs repair. Preview it again and review the compatibility findings.',
+    },
+  ])(
+    'explains a $status import refusal and previews again before sending a new reviewed import',
+    async ({ status, code, detail }) => {
+      const attempts: { body: unknown; key: string | null }[] = [];
+      mockServer.use(
+        http.post(`${api}/workflows/import`, async ({ request }) => {
+          attempts.push({
+            body: await request.json(),
+            key: request.headers.get('idempotency-key'),
+          });
+          return attempts.length === 1
+            ? HttpResponse.json(
+                {
+                  type: `urn:pertexo:problem:${code}`,
+                  title: 'Import changed',
+                  status,
+                  code,
+                  detail,
+                  requestId: 'import-catalog-changed',
+                },
+                {
+                  status,
+                  headers: { 'content-type': 'application/problem+json' },
+                },
+              )
+            : HttpResponse.json({ workflowId }, { status: 201 });
+        }),
+      );
+      const { event } = mountList();
+      let previews = 0;
+      mockServer.use(
+        http.post(`${api}/workflows/import/preview`, () => {
+          previews += 1;
+          return HttpResponse.json({
+            manifestDigest: 'b'.repeat(64),
+            compatibilityFingerprint: `wf-compat:sha256:${(previews === 1 ? 'a' : 'c').repeat(64)}`,
+            compatible: true,
+            issues: [],
+            truncated: false,
+            connectionSlots: [],
+          });
+        }),
+      );
+      await prepare(event);
+      expect(await screen.findByText(detail)).toBeVisible();
+      expect(screen.getByLabelText('New workflow name')).toHaveValue(
+        'Frozen recovery draft',
+      );
+      expect(
+        screen.getByRole('button', { name: 'Import unpublished draft' }),
+      ).toBeDisabled();
+      await event.click(screen.getByRole('button', { name: 'Preview again' }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: 'Import unpublished draft' }),
+        ).toBeEnabled();
+      });
+      await event.click(
+        screen.getByRole('button', { name: 'Import unpublished draft' }),
+      );
+      expect(
+        await screen.findByRole('button', { name: 'Open imported workflow' }),
+      ).toBeVisible();
+      expect(previews).toBe(2);
+      expect(attempts[1]?.body).toMatchObject({
+        name: 'Frozen recovery draft',
+        expectedCompatibilityFingerprint: `wf-compat:sha256:${'c'.repeat(64)}`,
+      });
+      expect(attempts[1]?.key).not.toBe(attempts[0]?.key);
+    },
+  );
 });
