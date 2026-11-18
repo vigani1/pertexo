@@ -67,7 +67,16 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
       expect(incoming?.parentCall).toMatchObject({
         parentRunId: accepted.runId,
       });
+      // The parent finishes while its observer awaits the child's persisted result.
       await settled(workers, accepted.runId, 'succeeded');
+      expect(
+        await fixture.workerQuery<{ status: string; output_ref: unknown }>(
+          'select status,output_ref from app.workflow_runs where id=$1',
+          [accepted.runId],
+        ),
+      ).toEqual([
+        { status: 'succeeded', output_ref: { kind: 'inline', value: 'Ada!' } },
+      ]);
       expect(
         await runs.readNodeRunOutput({
           actorId: fixture.actorId,
