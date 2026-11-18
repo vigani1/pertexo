@@ -108,12 +108,65 @@ test('names an integration container before a closer unit one', () => {
     ({ file }) => file === 'apps/api/test/a/one.test.ts',
   );
   assert.equal(one.container, 'apps/api/test/a/flow.integration.test.ts');
-  assert.equal(one.containerIsIntegration, true);
+  assert.equal(one.containerIsRealPath, true);
   assert.equal(one.containers, 2);
   assert.deepEqual(files(lists.contained), [
     'apps/api/test/a/two.test.ts',
     'apps/api/test/a/one.test.ts',
   ]);
+});
+
+// A jsdom file inside both a wider jsdom file and a Playwright spec.
+function webReports() {
+  return [
+    {
+      workspace: 'web',
+      lane: 'unit',
+      shard: null,
+      files: {
+        'apps/web/test/features/runs/list.test.tsx': passed({
+          'apps/web/src/runs.tsx': [1, 2],
+        }),
+        'apps/web/test/features/runs/page.test.tsx': passed({
+          'apps/web/src/runs.tsx': [1, 2, 3],
+        }),
+      },
+    },
+    {
+      workspace: 'web',
+      lane: 'e2e',
+      shard: { index: 1, total: 3 },
+      files: {
+        'apps/web/e2e/run-history.spec.ts': passed({
+          'apps/web/src/runs.tsx': [1, 2, 3, 4, 5],
+        }),
+      },
+    },
+  ];
+}
+
+test('names a Playwright spec before a closer jsdom file as the container', () => {
+  const { lists } = analyzeOverlap(webReports(), {
+    readSource: () => "it('x', () => {});\n",
+  });
+  const list = lists.contained.find(
+    ({ file }) => file === 'apps/web/test/features/runs/list.test.tsx',
+  );
+  assert.equal(list.container, 'apps/web/e2e/run-history.spec.ts');
+  assert.equal(list.containerLane, 'e2e');
+  assert.equal(list.containerIsRealPath, true);
+  assert.equal(list.containers, 2);
+});
+
+test('counts jsdom files inside a Playwright spec as inside a real-path file', () => {
+  const { groups } = analyzeOverlap(webReports(), {
+    readSource: () => "it('x', () => {});\nit('y', () => {});\n",
+  });
+  const unit = groups.find(({ lane }) => lane === 'unit');
+  assert.equal(unit.containedByRealPath, 2);
+  assert.equal(unit.containedByRealPathLines, 4);
+  const e2e = groups.find(({ lane }) => lane === 'e2e');
+  assert.equal(e2e.containedByRealPath, 0);
 });
 
 test('a file whose reach is only partly inside another is not contained', () => {
@@ -145,10 +198,10 @@ test('among unit containers, names the one with the smallest reach', () => {
     ({ file }) => file === 'apps/api/test/a/one.test.ts',
   );
   assert.equal(one.container, 'apps/api/test/a/two.test.ts');
-  assert.equal(one.containerIsIntegration, false);
+  assert.equal(one.containerIsRealPath, false);
   const unitGroup = groups.find(({ lane }) => lane === 'unit');
-  assert.equal(unitGroup.containedByIntegration, 0);
-  assert.equal(unitGroup.containedByIntegrationLines, 0);
+  assert.equal(unitGroup.containedByRealPath, 0);
+  assert.equal(unitGroup.containedByRealPathLines, 0);
 });
 
 test('a file reaching no line reaches nothing new and is inside no other', () => {
@@ -169,8 +222,8 @@ test('summarizes each workspace and lane', () => {
   assert.equal(unit.noNewReach, 2);
   assert.equal(unit.noNewReachShare, 2 / 3);
   assert.equal(unit.noNewReachLines, 4);
-  assert.equal(unit.containedByIntegration, 2);
-  assert.equal(unit.containedByIntegrationLines, 4);
+  assert.equal(unit.containedByRealPath, 2);
+  assert.equal(unit.containedByRealPathLines, 4);
 });
 
 test('the same test file in two reports is refused', () => {
@@ -238,7 +291,7 @@ test('clusters same-area files whose reach overlaps, never across areas', () => 
   assert.deepEqual(strict.lists.clusters, []);
 });
 
-test('an area is the workspace, the lane and the first directory under test', () => {
+test('an area is the workspace, the lane and the first directory under test or e2e', () => {
   assert.equal(
     areaOf({
       file: 'apps/web/test/features/runs/list.test.tsx',
@@ -254,6 +307,14 @@ test('an area is the workspace, the lane and the first directory under test', ()
       lane: 'unit',
     }),
     'web unit (top)',
+  );
+  assert.equal(
+    areaOf({
+      file: 'apps/web/e2e/workflow-editor/steps/for-each.spec.ts',
+      workspace: 'web',
+      lane: 'e2e',
+    }),
+    'web e2e workflow-editor',
   );
 });
 
