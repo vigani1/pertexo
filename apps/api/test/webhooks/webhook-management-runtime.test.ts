@@ -1,8 +1,4 @@
-import type {
-  DatabaseConfig,
-  DatabaseRuntime,
-} from '@pertexo/database/platform';
-import type * as Secrets from '@pertexo/secrets/server';
+import type { DatabaseConfig } from '@pertexo/database/platform';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createApiWebhookRuntime } from '../../src/platform/webhooks/webhooks-runtime.module.js';
@@ -38,50 +34,17 @@ function envelope(close: () => void) {
   return { encryption: {}, close };
 }
 
+/**
+ * The composition's success path, and closing it, run in
+ * bootstrap/production-composition.integration.test.ts and every real-API
+ * test. These cases stay because no real stack fails a constructor or a
+ * closer on demand, and the module has no seam for one.
+ */
 describe('API webhook runtime ownership', () => {
   beforeEach(() => {
     outside.database.mockReset().mockReturnValue({ close: vi.fn() });
     outside.testEvents.mockReset().mockReturnValue({ close: vi.fn() });
     outside.envelope.mockReset().mockReturnValue(envelope(vi.fn()));
-  });
-
-  it('composes the real local envelope without creating an AWS client', async () => {
-    const actual = await vi.importActual<typeof Secrets>(
-      '@pertexo/secrets/server',
-    );
-    outside.envelope.mockImplementation(
-      actual.createWebhookTriggerEnvelopeEncryption,
-    );
-    const databaseClose = vi.fn();
-    outside.database.mockReturnValue({ close: databaseClose });
-    const runtime = await createApiWebhookRuntime(
-      {
-        mode: 'self-managed',
-        encryption: {
-          current: {
-            version: '1',
-            key: Buffer.alloc(32, 4).toString('base64'),
-          },
-          previous: [],
-        },
-      },
-      databaseConfig,
-      options,
-    );
-    const context = {
-      workspaceId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      triggerId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      secretVersionId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-    };
-    const sealed = await runtime.ingress.encryption.seal(
-      new Uint8Array(32).fill(9),
-      context,
-    );
-    const opened = await runtime.ingress.encryption.open(sealed, context);
-    expect(opened).toEqual(new Uint8Array(32).fill(9));
-    opened.fill(0);
-    await runtime.close();
-    expect(databaseClose).toHaveBeenCalledOnce();
   });
 
   it('defers and aggregates every closer once in reverse acquisition order', async () => {
@@ -165,31 +128,6 @@ describe('API webhook runtime ownership', () => {
     await expect(
       createApiWebhookRuntime(config, databaseConfig, options),
     ).rejects.toThrow('encryption projection failed');
-    expect(envelopeClose).toHaveBeenCalledOnce();
-    expect(databaseClose).toHaveBeenCalledOnce();
-  });
-
-  it('passes the shared runtime to the database lease factories', async () => {
-    const sharedRuntime = {} as DatabaseRuntime;
-    const databaseClose = vi.fn();
-    const envelopeClose = vi.fn();
-    outside.database.mockReturnValue({ close: databaseClose });
-    outside.envelope.mockReturnValue(envelope(envelopeClose));
-    const runtime = await createApiWebhookRuntime(config, databaseConfig, {
-      ...options,
-      runtime: sharedRuntime,
-    });
-
-    await runtime.close();
-    expect(outside.database).toHaveBeenCalledExactlyOnceWith(
-      databaseConfig,
-      sharedRuntime,
-      { burstLimit: 600 },
-    );
-    expect(outside.testEvents).toHaveBeenCalledExactlyOnceWith(
-      databaseConfig,
-      sharedRuntime,
-    );
     expect(envelopeClose).toHaveBeenCalledOnce();
     expect(databaseClose).toHaveBeenCalledOnce();
   });
