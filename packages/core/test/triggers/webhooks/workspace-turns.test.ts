@@ -1,5 +1,3 @@
-import { setTimeout as delay } from 'node:timers/promises';
-
 import { describe, expect, it } from 'vitest';
 
 import { WebhookIntakeBusyError } from '../../../src/triggers/webhooks/webhook-trigger.errors.js';
@@ -17,21 +15,24 @@ describe('turns at one workspace', () => {
   it('runs no more than the allowed number at once, the rest in arrival order', async () => {
     const turns = createWorkspaceTurns({ atOnce: 2, maxWaitMillis: 5_000 });
     const started: number[] = [];
+    const began = Array.from({ length: 5 }, gate);
     const finish = Array.from({ length: 5 }, gate);
     const all = finish.map(({ opened }, at) =>
       turns.take('workspace', undefined, async () => {
         started.push(at);
+        began[at]?.open();
         await opened;
       }),
     );
-    await delay(0);
+    // Only a finishing turn starts a waiting one, so between finishes the
+    // started list cannot grow.
     expect(started).toEqual([0, 1]);
     finish[1]?.open();
-    await delay(0);
+    await began[2]?.opened;
     expect(started).toEqual([0, 1, 2]);
     finish[0]?.open();
     finish[2]?.open();
-    await delay(0);
+    await Promise.all([began[3]?.opened, began[4]?.opened]);
     expect(started).toEqual([0, 1, 2, 3, 4]);
     finish[3]?.open();
     finish[4]?.open();
@@ -62,7 +63,8 @@ describe('turns at one workspace', () => {
     ).rejects.toBeInstanceOf(WebhookIntakeBusyError);
     held.open();
     await first;
-    await delay(0);
+    // The line runs in arrival order: refused work still queued would run first.
+    await turns.take('workspace', undefined, () => Promise.resolve());
     expect(ran).toBe(false);
   });
 
@@ -81,7 +83,8 @@ describe('turns at one workspace', () => {
     await expect(waiting).rejects.toBe(left);
     held.open();
     await first;
-    await delay(0);
+    // The line runs in arrival order: abandoned work still queued would run first.
+    await turns.take('workspace', undefined, () => Promise.resolve());
     expect(ran).toBe(false);
   });
 

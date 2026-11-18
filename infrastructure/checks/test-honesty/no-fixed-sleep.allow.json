@@ -63,6 +63,5 @@
   "packages/core/test/runs/acceptance/admission-workspace-fairness.integration.test.ts": 1,
   "packages/core/test/runs/run-store/node-attempts.integration.test.ts": 1,
   "packages/core/test/triggers/webhooks/admission-deadlocks.integration.test.ts": 2,
-  "packages/core/test/triggers/webhooks/workspace-turns.test.ts": 5,
   "packages/database/test/platform/postgres/telemetry.integration.test.ts": 1
 }
