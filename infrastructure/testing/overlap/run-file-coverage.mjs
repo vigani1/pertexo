@@ -109,6 +109,15 @@ async function main() {
       );
       if (record.status === 'failed') failed.push(file);
     });
+    // Coverage makes some tests several times slower (a SAML signing test
+    // went from 1.4 s to 7.8 s), and with other files sharing the CPU a few
+    // then pass their own explicit time limits, which no configuration can
+    // raise. A file that failed beside others runs once more alone; one that
+    // fails alone too stays failed.
+    if (concurrency > 1)
+      for (const file of failed.splice(0))
+        if ((await measure(file, '[alone]')).status === 'failed')
+          failed.push(file);
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
