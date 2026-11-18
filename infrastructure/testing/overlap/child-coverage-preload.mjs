@@ -1,6 +1,7 @@
 import childProcess from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { promisify } from 'node:util';
+import { takeCoverage } from 'node:v8';
 
 // Loaded into the Vitest processes of one measured test file (through
 // NODE_OPTIONS). Every process a test starts gets NODE_V8_COVERAGE, so Node
@@ -10,10 +11,27 @@ import { promisify } from 'node:util';
 // explicit `env` too. Only Vitest's workers (the processes running the test
 // file) and their descendants do this; Vitest's main process starts the
 // workers, whose coverage Vitest itself measures.
+//
+// Node writes that coverage only on a normal exit, and the test stacks stop
+// the API and worker with SIGKILL. So the preload is also loaded into every
+// such child, even one given its own NODE_OPTIONS, and there writes what has
+// run so far every few seconds; the reach is the union of all those files.
+// Only the work in the last interval before a kill is missed.
 
 export const CHILD_COVERAGE_VARIABLE = 'PERTEXO_OVERLAP_CHILD_COVERAGE';
+const COVERED_CHILD_VARIABLE = 'PERTEXO_OVERLAP_COVERED_CHILD';
+const COVERAGE_WRITE_INTERVAL_MILLISECONDS = 2_000;
+const IMPORT_SELF = `--import=${import.meta.url}`;
 
 const directory = process.env[CHILD_COVERAGE_VARIABLE];
+
+// Vitest's own workers never carry the marker: there takeCoverage would reset
+// the counters Vitest's inspector-based coverage reads.
+if (
+  process.env[COVERED_CHILD_VARIABLE] === '1' &&
+  process.env.NODE_V8_COVERAGE !== undefined
+)
+  setInterval(takeCoverage, COVERAGE_WRITE_INTERVAL_MILLISECONDS).unref();
 
 // Where each function takes its options object: after the command (exec*) or
 // after the optional argument list (spawn*, execFile*, fork).
@@ -58,10 +76,22 @@ function coveredArguments(name, args) {
   const isOptions =
     given !== null && typeof given === 'object' && !Array.isArray(given);
   const options = isOptions ? given : {};
-  const env = { ...(options.env ?? process.env), NODE_V8_COVERAGE: directory };
+  const givenEnvironment = options.env ?? process.env;
+  const env = {
+    ...givenEnvironment,
+    NODE_V8_COVERAGE: directory,
+    [COVERED_CHILD_VARIABLE]: '1',
+    NODE_OPTIONS: withSelfImport(givenEnvironment.NODE_OPTIONS),
+  };
   if (isOptions) result[index] = { ...options, env };
   else if (given === undefined && index >= result.length)
     result[index] = { env };
   else result.splice(index, 0, { env });
   return result;
+}
+
+function withSelfImport(nodeOptions = '') {
+  return nodeOptions.includes(IMPORT_SELF)
+    ? nodeOptions
+    : `${nodeOptions} ${IMPORT_SELF}`.trim();
 }
