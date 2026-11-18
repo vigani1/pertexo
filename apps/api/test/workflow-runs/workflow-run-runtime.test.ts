@@ -81,6 +81,12 @@ function closes(close: () => unknown = vi.fn().mockResolvedValue(undefined)) {
   return { close };
 }
 
+/**
+ * The composition's success path, and closing it, run in
+ * bootstrap/production-composition.integration.test.ts and every real-API
+ * test. These cases stay because no real stack fails a constructor or a
+ * closer on demand, and the module has no seam for one.
+ */
 describe('API workflow runtime ownership', () => {
   beforeEach(() => {
     outside.authoring.mockReset().mockReturnValue(closes());
@@ -99,21 +105,6 @@ describe('API workflow runtime ownership', () => {
       validate: vi.fn().mockRejectedValue(new Error('not exercised')),
       shutdown: vi.fn().mockResolvedValue(undefined),
     });
-  });
-
-  it('builds case persistence from configuration and exposes it to authoring', async () => {
-    const caseClose = vi.fn().mockResolvedValue(undefined);
-    const cases = closes(caseClose);
-    outside.inputCases.mockReturnValue(cases);
-    const runtime = await createApiWorkflowRuntime(
-      databaseConfig,
-      identityRuntime,
-      options,
-    );
-    expect(outside.inputCases).toHaveBeenCalledWith(databaseConfig, {});
-    expect(runtime.dependencies.inputCasePersistence).toBe(cases);
-    await runtime.close();
-    expect(caseClose).toHaveBeenCalledOnce();
   });
 
   it('closes case persistence once even on shutdown failure', async () => {

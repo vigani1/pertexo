@@ -94,6 +94,29 @@ describe.runIf(betterAuthIntegrationEnabled)(
         ]);
         expect(visible).toContain(`id: ${String(sequence)}`);
         expect(visible).toContain('event: run.succeeded');
+
+        // A reconnect names the last frame it saw and is sent only what follows.
+        const resumed = await fetch(`${base}${f.root}/runs/${runId}/events`, {
+          headers: { cookie: f.browser.cookie, 'last-event-id': '1' },
+          signal: abort.signal,
+        });
+        expect(resumed.status).toBe(200);
+        assert(resumed.body !== null);
+        const resumedReader = resumed.body.getReader();
+        let replayed = '';
+        while (!replayed.includes('event: run.succeeded')) {
+          const chunk = await resumedReader.read();
+          expect(chunk.done).toBe(false);
+          replayed += decoder.decode(chunk.value);
+        }
+        await resumedReader.cancel().catch(() => undefined);
+        expect(replayed).not.toMatch(/^id: 1$/mu);
+        expect(replayed).toMatch(
+          new RegExp(
+            `^id: ${String(sequence)}\\nevent: run\\.succeeded\\ndata: \\{"sequence":${String(sequence)},"type":"run\\.succeeded"`,
+            'mu',
+          ),
+        );
       } finally {
         abort.abort();
         await reader.cancel().catch(() => undefined);

@@ -5,7 +5,6 @@ import {
   type LiveRunEventSubscription,
   type LiveRunEventSource,
   type PersistedRunEventReader,
-  type SseRunEventFrame,
   type PersistedRunEvent,
 } from '../../../src/workflow-runs/events/stream.js';
 import {
@@ -16,47 +15,18 @@ import {
   ControlledSubscription,
   source,
   nextFrame,
-  OTHER_WORKSPACE_ID,
-  OTHER_RUN_ID,
   ref,
-  nextWithTimeout,
 } from './stream.fixture.js';
 
+/**
+ * Backfill after Last-Event-ID, canonical frames, live wake-ups, repeated and
+ * foreign hints, gap repair and idle reconciliation run against PostgreSQL and
+ * Redis in stream.integration.test.ts and missing-hint.integration.test.ts.
+ * These cases stay because no real stack produces them on demand: adapter
+ * failures and their cleanup, the subscribe/read and abort races, a Redis
+ * resync, and persisted pages that break the reader's guarantees.
+ */
 describe('run event SSE reconstruction', () => {
-  it('reconciles repeatedly while hints stay idle and cancels the stream cleanly', async () => {
-    vi.useFakeTimers();
-    const reader = new MutableReader();
-    const subscription = new ControlledSubscription();
-    const abort = new AbortController();
-    const iterator = streamRunEventFrames(
-      {
-        lastEventId: 0,
-        runId: RUN_ID,
-        workspaceId: WORKSPACE_ID,
-        signal: abort.signal,
-      },
-      { reader, liveSource: source(subscription) },
-    )[Symbol.asyncIterator]();
-    try {
-      const pending = iterator.next();
-      await vi.advanceTimersByTimeAsync(60_000);
-      reader.events = [event(1)];
-      await vi.advanceTimersByTimeAsync(5_000);
-      const visible = await Promise.race([
-        pending,
-        Promise.resolve('visibility absent'),
-      ]);
-      expect(visible).toMatchObject({
-        value: { id: 1, event: 'run.progressed' },
-      });
-    } finally {
-      abort.abort();
-      await iterator.return(undefined);
-      vi.useRealTimers();
-    }
-    expect(subscription.closed).toBe(true);
-  });
-
   it.each([
     ['Error', new Error('iterator rejected')],
     ['string', 'iterator rejected'],
@@ -408,69 +378,6 @@ describe('run event SSE reconstruction', () => {
     expect(subscription.closed).toBe(true);
   });
 
-  it('backfills bounded pages after Last-Event-ID and emits canonical SSE frames', async () => {
-    const reader = new MutableReader();
-    reader.events = [event(1), event(2), event(3), event(4), event(5)];
-    const subscription = new ControlledSubscription();
-    const iterator = streamRunEventFrames(
-      {
-        lastEventId: 1,
-        runId: RUN_ID,
-        signal: new AbortController().signal,
-        workspaceId: WORKSPACE_ID,
-      },
-      { liveSource: source(subscription), reader },
-      { pageSize: 2 },
-    )[Symbol.asyncIterator]();
-
-    const frames: SseRunEventFrame[] = [];
-    for (let index = 0; index < 4; index += 1) {
-      frames.push(await nextFrame(iterator));
-    }
-
-    expect(frames.map((frame) => frame.id)).toEqual([2, 3, 4, 5]);
-    expect(frames[0]).toEqual({
-      data: JSON.stringify(event(2)),
-      event: 'run.progressed',
-      id: 2,
-      visibilityPath: 'reconnect_backfill',
-    });
-    expect(reader.calls).toEqual([1, 3]);
-    await iterator.return(undefined);
-  });
-
-  it('repairs gaps and suppresses duplicate live delivery from PostgreSQL', async () => {
-    const reader = new MutableReader();
-    reader.events = [event(1)];
-    const subscription = new ControlledSubscription();
-    const iterator = streamRunEventFrames(
-      {
-        lastEventId: 0,
-        runId: RUN_ID,
-        signal: new AbortController().signal,
-        workspaceId: WORKSPACE_ID,
-      },
-      { liveSource: source(subscription), reader },
-      { pageSize: 2 },
-    )[Symbol.asyncIterator]();
-
-    expect((await nextFrame(iterator)).id).toBe(1);
-    reader.events.push(event(2), event(3));
-    subscription.push(ref(3));
-    const liveFirst = await nextFrame(iterator);
-    const liveSecond = await nextFrame(iterator);
-    expect(liveFirst.id).toBe(2);
-    expect(liveFirst.visibilityPath).toBe('live_wakeup');
-    expect(liveSecond.id).toBe(3);
-    expect(liveSecond.visibilityPath).toBe('live_wakeup');
-
-    subscription.push(ref(2));
-    reader.events.push(event(4));
-    subscription.push(ref(4));
-    expect((await nextFrame(iterator)).id).toBe(4);
-    await iterator.return(undefined);
-  });
-
   it('backfills events committed during the subscribe/read race', async () => {
     const reader = new MutableReader();
     const subscription = new ControlledSubscription();
@@ -521,37 +428,6 @@ describe('run event SSE reconstruction', () => {
     expect(recoveredFirst.visibilityPath).toBe('recovery_backfill');
     expect(recoveredSecond.id).toBe(3);
     expect(recoveredSecond.visibilityPath).toBe('recovery_backfill');
-    await iterator.return(undefined);
-  });
-
-  it('ignores malformed and cross-run live references without leaking events', async () => {
-    const reader = new MutableReader();
-    const subscription = new ControlledSubscription();
-    const iterator = streamRunEventFrames(
-      {
-        lastEventId: 0,
-        runId: RUN_ID,
-        signal: new AbortController().signal,
-        workspaceId: WORKSPACE_ID,
-      },
-      { liveSource: source(subscription), reader },
-    )[Symbol.asyncIterator]();
-
-    const pending = nextWithTimeout(iterator);
-    await reader.waitForCallCount(1);
-    subscription.push({
-      kind: 'event',
-      runId: 'not-a-uuid',
-      sequence: -1,
-      workspaceId: WORKSPACE_ID,
-    });
-    subscription.push(ref(1, { runId: OTHER_RUN_ID }));
-    subscription.push(ref(1, { workspaceId: OTHER_WORKSPACE_ID }));
-    reader.events.push(event(1));
-    subscription.push(ref(1));
-
-    await expect(pending).resolves.toMatchObject({ value: { id: 1 } });
-    expect(reader.calls.filter((cursor) => cursor === 0)).toHaveLength(2);
     await iterator.return(undefined);
   });
 
@@ -656,32 +532,6 @@ describe('run event SSE reconstruction', () => {
       name: 'RunEventStreamInvariantError',
     });
     expect(subscription.closed).toBe(true);
-  });
-
-  it('reads one more page after an exact page boundary', async () => {
-    const reader = new MutableReader();
-    reader.events = [event(1), event(2)];
-    const subscription = new ControlledSubscription();
-    const controller = new AbortController();
-    const iterator = streamRunEventFrames(
-      {
-        lastEventId: 0,
-        runId: RUN_ID,
-        signal: controller.signal,
-        workspaceId: WORKSPACE_ID,
-      },
-      { liveSource: source(subscription), reader },
-      { pageSize: 2 },
-    )[Symbol.asyncIterator]();
-
-    expect((await nextFrame(iterator)).id).toBe(1);
-    expect((await nextFrame(iterator)).id).toBe(2);
-    const pending = iterator.next();
-    await vi.waitFor(() => {
-      expect(reader.calls).toEqual([0, 2]);
-    });
-    controller.abort();
-    await expect(pending).resolves.toEqual({ done: true, value: undefined });
   });
 
   it('does not emit a page that resolves after cancellation', async () => {

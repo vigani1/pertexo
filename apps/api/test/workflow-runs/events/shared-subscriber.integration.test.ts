@@ -98,10 +98,15 @@ describe.runIf(requested)(
       for (const close of closers.splice(0)) await close();
     });
 
-    const sourceOn = (through: string, subscribeTimeoutMs?: number) =>
+    const sourceOn = (
+      through: string,
+      subscribeTimeoutMs?: number,
+      bufferCapacity?: number,
+    ) =>
       new RedisRunEventSource({
         redisUrl: through,
         ...(subscribeTimeoutMs === undefined ? {} : { subscribeTimeoutMs }),
+        ...(bufferCapacity === undefined ? {} : { bufferCapacity }),
       });
 
     const open = async (
@@ -307,6 +312,54 @@ describe.runIf(requested)(
       await publish(runId, 12);
 
       await expect(stream.next()).resolves.toEqual(eventFor(runId, 12));
+    });
+    it('passes on a worker’s re-read hint, drops an oversize one, and turns a backlog into one re-read', async () => {
+      const runId = randomUUID();
+      const channel = runEventChannel(workspaceId, runId);
+      const stream = await open(sourceOn(proxy.url), runId);
+
+      await publisher.publish(channel, JSON.stringify({ kind: 'resync' }));
+      await expect(stream.next()).resolves.toEqual({ kind: 'resync' });
+      await publisher.publish(
+        channel,
+        `${JSON.stringify({ kind: 'resync' })}${'x'.repeat(513)}`,
+      );
+      await publish(runId, 13);
+      await expect(stream.next()).resolves.toEqual(eventFor(runId, 13));
+
+      // Two pages on one connection get each message together: one waits
+      // with reads already asked for, the other reads nothing and overflows.
+      const backlogged = randomUUID();
+      const narrow = sourceOn(proxy.url, undefined, 2);
+      const slow = await open(narrow, backlogged);
+      const witness = await open(narrow, backlogged);
+      const seen = Promise.all([
+        witness.next(),
+        witness.next(),
+        witness.next(),
+      ]);
+      for (const sequence of [1, 2, 3]) await publish(backlogged, sequence);
+      await expect(seen).resolves.toEqual(
+        [1, 2, 3].map((n) => eventFor(backlogged, n)),
+      );
+      await expect(slow.next()).resolves.toEqual({ kind: 'resync' });
+    });
+
+    it('answers readiness and refuses an abandoned page without keeping a connection', async () => {
+      const source = sourceOn(proxy.url);
+      await expect(source.checkReadiness()).resolves.toBeUndefined();
+      const gone = new AbortController();
+      gone.abort();
+      await expect(
+        source.subscribe({
+          workspaceId,
+          runId: randomUUID(),
+          signal: gone.signal,
+        }),
+      ).rejects.toBeInstanceOf(RedisRunEventSubscribeError);
+      await vi.waitFor(() => {
+        expect(proxy.connectionCount).toBe(0);
+      });
     });
   },
 );
