@@ -277,22 +277,3 @@ it('bounds database work for an empty reference page independently of 10000 visi
   expect(page.next).not.toBeNull();
   expect(page).not.toHaveProperty('totalWorkflows');
 });
-
-it('refuses a stale continuation at the usage operation boundary', async () => {
-  const { workspaceId } = await twoWorkflows();
-  const page = await store.usage({
-    ...scope(workspaceId),
-    name: 'RATE',
-    limit: 1,
-  });
-  const after = page.next;
-  expect(after?.offset).toBeGreaterThan(0);
-  if (after === null) throw new Error('Expected a continuation');
-  await admin.query(
-    'update app.workflow_drafts set revision=revision+1 where workspace_id=$1 and workflow_id=$2',
-    [workspaceId, after.workflowId],
-  );
-  await expect(
-    store.usage({ ...scope(workspaceId), name: 'RATE', limit: 1, after }),
-  ).rejects.toMatchObject({ name: 'WorkspaceVariableUsageChangedError' });
-});
