@@ -1,4 +1,3 @@
-import { canonicalOutboxPayloadChecksum } from '@pertexo/database/testing';
 import { JOB_NAME, type QueueDelivery } from '@pertexo/queue/server';
 import { WorkflowEngineError } from '@pertexo/workflow-engine/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -54,38 +53,11 @@ function handlerWith(
 
 const context = () => ({ signal: new AbortController().signal }) as never;
 
+// The real path (runs/consumer/linear-execution.integration.test.ts) shows a
+// committed advance and its resync. These cases stay because PostgreSQL won't
+// produce them on demand: core's delivery check refuses a missing run before
+// it can report not_found, and the engine refuses only damaged stored state.
 describe('coordinator handler', () => {
-  it('advances the delivered run and resyncs viewers after a commit', async () => {
-    const advance = vi.fn().mockResolvedValue({
-      kind: 'committed',
-      revision: 3,
-      admittedAttempts: [],
-      scheduleToStartSeconds: 2,
-    });
-    const { handler, resync, scheduleStarted } = handlerWith(advance);
-    const selectedContext = context();
-
-    await expect(handler.handle(delivery(), selectedContext)).resolves.toEqual({
-      kind: 'committed',
-      revision: 3,
-    });
-    expect(advance).toHaveBeenCalledWith({
-      workspaceId: WORKSPACE_ID,
-      runId: RUN_ID,
-      delivery: {
-        outboxEventId: OUTBOX_EVENT_ID,
-        payloadChecksum: canonicalOutboxPayloadChecksum(delivery().data),
-      },
-      traceparent: TRACEPARENT,
-      signal: (selectedContext as { signal: AbortSignal }).signal,
-    });
-    expect(scheduleStarted).toHaveBeenCalledWith(2);
-    expect(resync).toHaveBeenCalledWith({
-      workspaceId: WORKSPACE_ID,
-      runId: RUN_ID,
-    });
-  });
-
   it('omits absent trace context', async () => {
     const advance = vi
       .fn()
@@ -157,7 +129,7 @@ describe('coordinator handler', () => {
       admittedAttempts: [],
       scheduleToStartSeconds: 1,
     });
-    const { handler } = handlerWith(advance, {
+    const { handler, resync, scheduleStarted } = handlerWith(advance, {
       resyncFailure: new Error('redis unavailable'),
       telemetryFailure: new Error('meter unavailable'),
     });
@@ -165,6 +137,11 @@ describe('coordinator handler', () => {
     await expect(handler.handle(delivery(), context())).resolves.toEqual({
       kind: 'committed',
       revision: 2,
+    });
+    expect(scheduleStarted).toHaveBeenCalledWith(1);
+    expect(resync).toHaveBeenCalledWith({
+      workspaceId: WORKSPACE_ID,
+      runId: RUN_ID,
     });
   });
 });
