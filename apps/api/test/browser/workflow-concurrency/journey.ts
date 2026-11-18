@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { createServer } from 'node:http';
+import { createControlListener } from '../harness/control-listener.js';
 
 import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -171,7 +171,7 @@ export function registerWorkflowConcurrencyJourney(
       fixture.observed = true;
       return { observed: true };
     }
-    const control = createServer((request, response) => {
+    const control = createControlListener((request, response) => {
       const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
       if (request.method === 'GET' && path === '/concurrency-seed') {
         response.setHeader('content-type', 'application/json');

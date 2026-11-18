@@ -1,7 +1,8 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { createServer, type Server } from 'node:http';
+import type { Server } from 'node:http';
+import { createControlListener } from '../harness/control-listener.js';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -64,7 +65,7 @@ async function controlServer(stack: () => Stack): Promise<{
   origin: string;
   server: Server;
 }> {
-  const server = createServer((request, response) => {
+  const server = createControlListener((request, response) => {
     const url = new URL(request.url ?? '/', 'http://control');
     if (url.pathname === '/verification') {
       const email = url.searchParams.get('email') ?? '';
