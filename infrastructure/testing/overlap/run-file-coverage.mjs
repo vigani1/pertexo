@@ -48,6 +48,14 @@ const WORKSPACE_ENVIRONMENT = Object.freeze({
   web: { TZ: 'Europe/Belgrade' },
 });
 
+// V8's precise coverage, which Vitest turns on for the whole process, makes
+// compute-heavy code about five times slower: five in-process TypeScript
+// builds take 464 ms without it and 2,282 ms with call counts alone (this Mac,
+// Node 24). So a test that fits its lane's limit in CI (worker-build.test.ts:
+// 1.6 s of 5 s) can miss it here (5.1 s, alone). The run gives every lane
+// limit this much more time; a test's own explicit limit is left as it is.
+const COVERAGE_TIME_FACTOR = 5;
+
 // A file that hangs must not hold a shard until the job's own limit.
 const FILE_TIMEOUT_MILLISECONDS = 15 * 60_000;
 
@@ -77,7 +85,12 @@ async function main() {
   const lane = values.lane;
   const directory = findWorkspace(workspace);
   const config = join(directory, LANES[lane]);
-  const all = await listLaneFiles(workspace, lane, directory, config);
+  const { files: all, limits } = await readLane(
+    workspace,
+    lane,
+    directory,
+    config,
+  );
   const narrowed = values.only
     ? all.filter((file) => values.only.includes(file))
     : all;
@@ -90,7 +103,12 @@ async function main() {
   const records = {};
   const measure = async (file, label) => {
     const record = await measureFile(
-      { directory, config, environment: WORKSPACE_ENVIRONMENT[workspace] },
+      {
+        directory,
+        config,
+        limits,
+        environment: WORKSPACE_ENVIRONMENT[workspace],
+      },
       file,
       scratch,
     );
@@ -163,7 +181,8 @@ function findWorkspace(name) {
   throw new Error(`No workspace named ${name}`);
 }
 
-async function listLaneFiles(workspace, lane, directory, config) {
+/** The lane's test files, and its time limits scaled for coverage. */
+async function readLane(workspace, lane, directory, config) {
   // Globbing only: no global setup runs, so listing needs no test stack.
   const { createVitest } = await import('vitest/node');
   const lister = await createVitest(
@@ -178,19 +197,31 @@ async function listLaneFiles(workspace, lane, directory, config) {
       ...NOT_IN_LANE[lane],
       ...(NOT_IN_WORKSPACE_LANE[`${workspace}:${lane}`] ?? []),
     ];
-    return [
+    const files = [
       ...new Set(
         specifications.map(({ moduleId }) => relative(directory, moduleId)),
       ),
     ]
       .filter((file) => !excluded.some((pattern) => pattern.test(file)))
       .sort();
+    const { testTimeout, hookTimeout } = lister.config;
+    return {
+      files,
+      limits: {
+        testTimeout: testTimeout * COVERAGE_TIME_FACTOR,
+        hookTimeout: hookTimeout * COVERAGE_TIME_FACTOR,
+      },
+    };
   } finally {
     await lister.close();
   }
 }
 
-async function measureFile({ directory, config, environment }, file, scratch) {
+async function measureFile(
+  { directory, config, limits, environment },
+  file,
+  scratch,
+) {
   const own = mkdtempSync(join(scratch, 'file-'));
   const results = join(own, 'results.json');
   const children = join(own, 'children');
@@ -207,6 +238,8 @@ async function measureFile({ directory, config, environment }, file, scratch) {
       // A filter matches by substring, so `a.test.ts` alone would also pick
       // `a.test.tsx`; the reporter's list of files below proves only one ran.
       join(directory, file),
+      `--testTimeout=${String(limits.testTimeout)}`,
+      `--hookTimeout=${String(limits.hookTimeout)}`,
       '--reporter=default',
       '--reporter=json',
       `--outputFile.json=${results}`,

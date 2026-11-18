@@ -255,8 +255,10 @@ run's job summary is the Markdown. To read it:
 - Reach includes the processes a test starts (a compiled API or worker), which
   write their V8 coverage into the file's own directory. A process started from
   `src` through `tsx`, or killed with `SIGKILL`, adds nothing.
-- A file that fails while sharing the CPU with others runs once more alone,
-  since coverage makes some tests miss their own time limits.
+- Coverage makes compute-heavy code about five times slower, so the run gives
+  each lane's `testTimeout` and `hookTimeout` five times as long. A test's own
+  explicit limit can't be raised that way, so a file that fails while sharing
+  the CPU with others runs once more alone.
 - **Reach no line another file does not reach**: removing one such file alone
   loses no reached line.
 - **Reach lies inside one other file**: the container shown is an integration
