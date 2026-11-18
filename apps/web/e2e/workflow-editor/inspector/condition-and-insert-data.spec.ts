@@ -1,7 +1,13 @@
 import type { JsonValue } from '@pertexo/workflow-model';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
-import { expect, test, type Locator, type Page } from '../../support/fixtures';
+import {
+  expect,
+  test,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from '../../support/fixtures';
 import {
   addCsrfCookie,
   editorUrl,
@@ -172,18 +178,25 @@ const answerFor = (expression: string | undefined, fetched: JsonValue) =>
     context: { runInput: {}, nodeOutputs: { fetch: fetched } },
   });
 
+async function openJourney(page: Page, context: BrowserContext, width: number) {
+  await page.setViewportSize({ width, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await addCsrfCookie(context);
+  const remote = remoteDraft(journeyGraph());
+  await installJourney(page, remote);
+  await page.goto(editorUrl);
+  return remote;
+}
+
+// Two tests per width, not one journey: together they took most of a CI
+// runner's 30 s budget, and the slowest runs ran out of it while the last
+// save was still waiting for its debounce.
 for (const width of [1440, 320]) {
-  test(`builds Condition rules and inserts data by keyboard alone at ${String(width)}px`, async ({
+  test(`builds Condition rules by keyboard alone at ${String(width)}px`, async ({
     page,
     context,
   }) => {
-    await page.setViewportSize({ width, height: 800 });
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await addCsrfCookie(context);
-    const remote = remoteDraft(journeyGraph());
-    await installJourney(page, remote);
-
-    await page.goto(editorUrl);
+    const remote = await openJourney(page, context, width);
     await openStep(page, 'check', width);
     const rules = page.getByRole('region', { name: 'Condition', exact: true });
     await expect(rules.getByLabel('Field', { exact: true })).toBeVisible();
@@ -259,9 +272,13 @@ for (const width of [1440, 320]) {
     await enterOn(page, rules.getByRole('button', { name: 'Remove rule 2' }));
     await expect(rules.getByRole('button', { name: 'Add rule' })).toBeFocused();
     await expect.poll(() => conditionOf(remote)).not.toContain(') or (');
+  });
 
-    // Insert data, starting over from the saved draft.
-    await page.goto(editorUrl);
+  test(`inserts data by keyboard alone at ${String(width)}px`, async ({
+    page,
+    context,
+  }) => {
+    const remote = await openJourney(page, context, width);
     await openStep(page, 'send', width);
     // Tabs share one Tab stop: Tab to the open one, then arrow across.
     await tabTo(page, page.getByRole('tab', { name: 'Setup', exact: true }));
@@ -280,6 +297,7 @@ for (const width of [1440, 320]) {
     for (let moved = 0; moved < 6; moved += 1)
       await page.keyboard.press('ArrowRight');
     await enterOn(page, page.getByRole('button', { name: 'Insert data' }));
+    const picker = page.getByRole('dialog', { name: 'Insert data' });
     await expect(picker).toBeVisible();
     await expectPickerOnScreen(page, width);
     await expectNoSidewaysScroll(page);
