@@ -1,5 +1,6 @@
 import childProcess from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
+import { promisify } from 'node:util';
 
 // Loaded into the Vitest processes of one measured test file (through
 // NODE_OPTIONS). Every process a test starts gets NODE_V8_COVERAGE, so Node
@@ -30,9 +31,16 @@ const PATCHED = [
 if (directory !== undefined) {
   for (const name of PATCHED) {
     const original = childProcess[name];
-    childProcess[name] = function withChildCoverage(...args) {
+    const withChildCoverage = function (...args) {
       return original.apply(this, coveredArguments(name, args));
     };
+    // exec and execFile resolve { stdout, stderr } through their own promise
+    // form; without it promisify would resolve the stdout string alone.
+    const promised = original[promisify.custom];
+    if (promised !== undefined)
+      withChildCoverage[promisify.custom] = (...args) =>
+        promised(...coveredArguments(name, args));
+    childProcess[name] = withChildCoverage;
   }
   syncBuiltinESMExports();
 }
