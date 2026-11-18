@@ -16,6 +16,13 @@ import { renderMarkdown } from './render-overlap.mjs';
  */
 export const DEFAULT_CLUSTER_THRESHOLD = 0.6;
 
+// Lanes whose files drive the real path: integration files run against real
+// services, and the mocked Playwright specs drive the built app in a browser.
+// A file inside one of these is the main candidate to prune.
+const REAL_PATH_LANES = new Set(['integration', 'e2e']);
+
+const isRealPath = (test) => REAL_PATH_LANES.has(test.lane);
+
 export function analyzeOverlap(
   reports,
   { readSource, threshold = DEFAULT_CLUSTER_THRESHOLD },
@@ -69,7 +76,7 @@ export function analyzeOverlap(
           ...view(test),
           container: container.file,
           containerLane: container.lane,
-          containerIsIntegration: container.lane === 'integration',
+          containerIsRealPath: isRealPath(container),
           sameReach: container.ids.length === test.ids.length,
           containers,
         })),
@@ -135,8 +142,8 @@ function internLines(tests) {
 
 /**
  * Files whose whole reach lies inside one other file's. The container shown
- * is an integration file when there is one (the real path), then the one with
- * the smallest reach (the closest fit).
+ * is a real-path file when there is one, then the one with the smallest reach
+ * (the closest fit).
  */
 function findContainment(tests, { reachers }) {
   const byLine = new Map();
@@ -176,15 +183,15 @@ function findContainment(tests, { reachers }) {
 
 function preferContainer(a, b) {
   return (
-    Number(b.lane === 'integration') - Number(a.lane === 'integration') ||
+    Number(isRealPath(b)) - Number(isRealPath(a)) ||
     a.ids.length - b.ids.length ||
     a.file.localeCompare(b.file, 'en')
   );
 }
 
-/** The workspace, lane and first directory below `test/`. */
+/** The workspace, lane and first directory below `test/` or `e2e/`. */
 export function areaOf({ file, workspace, lane }) {
-  const below = file.split('/test/')[1] ?? file;
+  const below = file.split(/\/(?:test|e2e)\//u)[1] ?? file;
   const first = below.includes('/') ? below.split('/')[0] : '(top)';
   return `${workspace} ${lane} ${first}`;
 }
@@ -258,9 +265,10 @@ function summarizeGroups(all, contained, clusters) {
       const [workspace, lane] = key.split(' ');
       const measured = tests.filter((test) => test.status === 'passed');
       const noNew = measured.filter((test) => test.unique === 0);
-      const realPath = measured.filter(
-        (test) => contained.get(test.file)?.container.lane === 'integration',
-      );
+      const realPath = measured.filter((test) => {
+        const container = contained.get(test.file)?.container;
+        return container !== undefined && isRealPath(container);
+      });
       const own = clusters.filter(
         (cluster) =>
           cluster.members[0].workspace === workspace &&
@@ -277,8 +285,8 @@ function summarizeGroups(all, contained, clusters) {
           ? noNew.length / measured.length
           : null,
         noNewReachLines: sumLines(noNew),
-        containedByIntegration: realPath.length,
-        containedByIntegrationLines: sumLines(realPath),
+        containedByRealPath: realPath.length,
+        containedByRealPathLines: sumLines(realPath),
         clusters: own.length,
         clusterLines: own.reduce((sum, cluster) => sum + cluster.testLines, 0),
       };
