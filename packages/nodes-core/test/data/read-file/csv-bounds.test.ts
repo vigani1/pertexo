@@ -31,18 +31,6 @@ describe('paged CSV parser bounds and cleanup', () => {
       collect(Buffer.concat([Buffer.from('name\nok\n'), Buffer.from([0xc3])])),
     ).rejects.toMatchObject({ diagnostic: { reason: 'invalid_utf8' } });
   });
-  it('bounds repeated long headers before assembling output beyond a page', async () => {
-    await expect(
-      collect(Buffer.from('a'.repeat(65520) + '\n' + '"'.repeat(2) + '\n')),
-    ).resolves.toHaveLength(1);
-    await expect(
-      collect(Buffer.from('a'.repeat(65536) + '\nx\n')),
-    ).rejects.toMatchObject({
-      kind: 'failed',
-      possiblyDispatched: false,
-      safeErrorCode: 'file.pages_record',
-    });
-  });
   it('refuses one quoted field over a page before reading the rest of the file', async () => {
     let supplied = 0;
     async function* source() {

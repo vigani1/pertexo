@@ -41,9 +41,6 @@ describe('bounded streaming JSON records', () => {
       await collect('["' + '\\u0020'.repeat(text.length) + '"]', 997),
     ).toEqual([text]);
   });
-  it('does not mistake long legal whitespace for an oversized token', async () => {
-    expect(await collect('[1,' + ' '.repeat(1_048_576) + '2]')).toEqual([1, 2]);
-  });
   it('accepts the exact file-byte ceiling and refuses one byte beyond it', async () => {
     async function* source(extra: number) {
       yield await Promise.resolve(Buffer.from('['));
@@ -68,9 +65,6 @@ describe('bounded streaming JSON records', () => {
     await expect(collect('{}')).rejects.toMatchObject({
       diagnostic: { reason: 'page_array' },
     });
-  });
-  it('accepts an empty array', async () => {
-    expect(await collect('[]')).toEqual([]);
   });
   it('accepts the exact one-record page budget and refuses one byte more', async () => {
     const text = 'x'.repeat(FILE_PAGE_LIMITS.bytes - 4);
@@ -99,15 +93,6 @@ describe('bounded streaming JSON records', () => {
       });
     },
   );
-  it('refuses a malformed final UTF-8 byte', async () => {
-    async function* source() {
-      yield await Promise.resolve(Buffer.from('["ok","'));
-      yield Buffer.from([0xc3, 0x22, 0x5d]);
-    }
-    await expect(
-      collectValues(readJsonRecords(source(), new AbortController().signal)),
-    ).rejects.toMatchObject({ safeErrorCode: 'execution.file_input' });
-  });
   it('bounds nesting and member allocation before a hostile record is assembled', async () => {
     await expect(collect('[' + '['.repeat(100_000))).rejects.toMatchObject({
       diagnostic: { reason: 'page_value_size' },

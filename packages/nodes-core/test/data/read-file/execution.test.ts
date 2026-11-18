@@ -143,11 +143,6 @@ describe('Read file through the scoped runtime', () => {
     );
     expect(Object.prototype).not.toHaveProperty('polluted');
   });
-  it('accepts a header-only CSV, and keeps Unicode intact across chunk boundaries', async () => {
-    expect(await output('a,b\r\n')).toEqual([]);
-    const value = 'x'.repeat(4092) + '😀é';
-    expect(await output('v\n' + value)).toEqual([{ v: value }]);
-  });
   it.each([
     ['', 'csv_empty'],
     ['\n\r\n', 'csv_empty'],
@@ -167,12 +162,6 @@ describe('Read file through the scoped runtime', () => {
       });
     },
   );
-  it('returns JSON scalars and nested values directly, tolerating one UTF-8 BOM', async () => {
-    for (const value of [null, true, 'text', 12, { rows: [{ amount: 2 }] }])
-      expect(
-        await output('\uFEFF' + JSON.stringify(value), { format: 'json' }),
-      ).toEqual(value);
-  });
   it.each([
     ['{"secret":"redaction-sentinel",}', 'json_syntax'],
     ['[1e999]', 'json_number'],

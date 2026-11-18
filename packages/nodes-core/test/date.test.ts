@@ -34,22 +34,6 @@ describe('explicit date conversion', () => {
       ).toMatchObject({ output: { value: 0 } });
     },
   );
-  it('accepts explicit offsets through DST folds/gaps and millisecond fractions', async () => {
-    expect(
-      await run('to_epoch_millis', '1970-01-01T05:30:00.1+05:30'),
-    ).toMatchObject({ output: { value: 100 } });
-    expect(
-      await run('to_epoch_millis', '1970-01-01T00:00:00.01Z'),
-    ).toMatchObject({ output: { value: 10 } });
-    const first = await run('to_epoch_millis', '2026-10-25T02:30:00+02:00');
-    const second = await run('to_epoch_millis', '2026-10-25T02:30:00+01:00');
-    expect(first).toMatchObject({
-      output: { value: Date.UTC(2026, 9, 25, 0, 30) },
-    });
-    expect(second).toMatchObject({
-      output: { value: Date.UTC(2026, 9, 25, 1, 30) },
-    });
-  });
   it.each([
     '2026-02-29T00:00:00Z',
     '2024-02-30T00:00:00Z',

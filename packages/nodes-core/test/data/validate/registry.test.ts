@@ -12,7 +12,7 @@ import { evaluateCoreValidate } from '../../../src/index.js';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '../../../src/server.js';
 import { registry, config } from '../../support/validate.js';
 describe('core.validate registry execution', () => {
-  it('preserves cancellation and configuration errors at the executor ABI boundary', async () => {
+  it('preserves cancellation and configuration errors at the executor ABI boundary and through the registry', async () => {
     const executor = CORE_NODE_EXECUTOR_REGISTRATIONS.find(
       ({ executor }) => executor.key === CORE_VALIDATE_EXECUTOR.key,
     );
@@ -38,6 +38,15 @@ describe('core.validate registry execution', () => {
         signal: controller.signal,
       }),
     ).rejects.toBeInstanceOf(NodeExecutionAbortedError);
+    await expect(
+      registry.execute({
+        config: config([{ id: 'value', path: '$.value' }]),
+        definition: CORE_VALIDATE_DEFINITION,
+        executor: CORE_VALIDATE_EXECUTOR,
+        input: { value: true },
+        signal: controller.signal,
+      }),
+    ).rejects.toBeInstanceOf(NodeExecutionAbortedError);
   });
   it('matches the pure preview result through the public runtime registry', async () => {
     const parsed = config([
@@ -55,20 +64,6 @@ describe('core.validate registry execution', () => {
         signal: new AbortController().signal,
       }),
     ).resolves.toEqual({ kind: 'succeeded', output: expected });
-  });
-
-  it('does not run a canceled invocation and uses no dispatch runtime', async () => {
-    const controller = new AbortController();
-    controller.abort();
-    await expect(
-      registry.execute({
-        config: config([{ id: 'value', path: '$.value' }]),
-        definition: CORE_VALIDATE_DEFINITION,
-        executor: CORE_VALIDATE_EXECUTOR,
-        input: { value: true },
-        signal: controller.signal,
-      }),
-    ).rejects.toBeInstanceOf(NodeExecutionAbortedError);
   });
 
   it('rejects inconsistent runtime output contracts', () => {
