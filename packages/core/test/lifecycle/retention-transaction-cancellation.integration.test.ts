@@ -111,6 +111,20 @@ describe('retention transaction cancellation on the real PostgreSQL driver', () 
         'select * from public.retention_abort_proof',
       );
       expect(rows.rows).toEqual([]);
+      const stopping = new Error('maintenance stopping');
+      let ranAfterStop = false;
+      await expect(
+        inRetentionTransaction(
+          maintenance,
+          options,
+          AbortSignal.abort(stopping),
+          () => {
+            ranAfterStop = true;
+            return Promise.resolve();
+          },
+        ),
+      ).rejects.toBe(stopping);
+      expect(ranAfterStop).toBe(false);
       await inRetentionTransaction(
         maintenance,
         options,

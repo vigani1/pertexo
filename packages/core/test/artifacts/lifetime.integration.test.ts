@@ -196,9 +196,15 @@ describe.each(shapes)('artifact lifetime and cleanup (%s)', (shape) => {
   it('rejects unavailable identity and tampered metadata', async () => {
     const state = await fixture(shape);
     try {
+      await expect(
+        withTenantScopedClient(state.pool, { workspaceId }, (client) =>
+          lockArtifactReferences(client, workspaceId, state.reference, userId),
+        ),
+      ).resolves.toBeUndefined();
       for (const reference of [
         { ...state.reference, artifactId: randomUUID() },
         { ...state.reference, byteLength: 3 },
+        { ...state.reference, mediaType: 'text/plain' },
         { ...state.reference, sha256: 'b'.repeat(64) },
       ])
         await expect(
