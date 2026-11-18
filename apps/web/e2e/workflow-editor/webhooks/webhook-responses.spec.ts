@@ -10,6 +10,7 @@ import {
   installEditorRoutes,
   remoteDraft,
 } from '../support';
+import { focusStep } from '../actions';
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
 }).items;
@@ -52,7 +53,7 @@ for (const width of [375, 1280]) {
     });
     await installEditorRoutes(page, remote, { definitions });
     await page.goto(editorUrl);
-    await page.getByTestId('rf__node-incoming').focus();
+    await focusStep(page, 'incoming');
     await page.keyboard.press('Enter');
     if (width < 1024)
       await page
@@ -78,7 +79,7 @@ for (const width of [375, 1280]) {
     await page.screenshot({
       path: info.outputPath(`webhook-wait-${String(width)}.png`),
     });
-    await page.getByTestId('rf__node-respond').focus();
+    await focusStep(page, 'respond');
     await page.keyboard.press('Enter');
     await page.getByLabel('Response body', { exact: true }).click();
     await page.getByRole('option', { name: 'Plain text', exact: true }).click();

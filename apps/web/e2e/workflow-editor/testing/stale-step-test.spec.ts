@@ -8,6 +8,7 @@ import {
   workflowId,
   workspaceId,
 } from '../support';
+import { focusStep } from '../actions';
 
 for (const width of [1280, 375]) {
   test(`explains late step-test draft conflicts at ${String(width)}px`, async ({
@@ -42,7 +43,7 @@ for (const width of [1280, 375]) {
         }),
     );
     await page.goto(editorUrl);
-    await page.getByTestId('rf__node-sample').focus();
+    await focusStep(page, 'sample');
     await page.keyboard.press('Enter');
     if (width < 1024)
       await page

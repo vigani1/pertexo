@@ -10,6 +10,7 @@ import {
   workspace,
   type RemoteDraft,
 } from '../support';
+import { focusStep } from '../actions';
 
 const forEachDefinition = {
   ...definition,
@@ -216,7 +217,7 @@ test('builds a body from the keyboard: adds after its last step, maps the item, 
   await addCsrfCookie(context);
   await openEditor(page, remote);
 
-  await page.getByTestId('rf__node-loop').focus();
+  await focusStep(page, 'loop');
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Add step to body' }).focus();
   await page.keyboard.press('Enter');
@@ -238,7 +239,7 @@ test('builds a body from the keyboard: adds after its last step, maps the item, 
   });
   expect(remote.graph.nodes).toHaveLength(2);
 
-  await page.getByTestId('rf__node-check').focus();
+  await focusStep(page, 'check');
   await page.keyboard.press('Enter');
   await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
     'Check stock',
@@ -258,7 +259,7 @@ test('builds a body from the keyboard: adds after its last step, maps the item, 
     })
     .toEqual({ item: { kind: 'structured_input', port: 'item', path: '$' } });
 
-  await page.getByTestId('rf__node-check').focus();
+  await focusStep(page, 'check');
   await page.keyboard.press('Backspace');
   await expect(page.getByTestId('rf__node-check')).toBeHidden();
   await expect(page.getByText('Deleted “Check stock”')).toBeVisible();

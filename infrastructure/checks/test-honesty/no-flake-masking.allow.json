@@ -92,7 +92,6 @@
   "apps/web/e2e/workflow-editor/steps/email-attachments.spec.ts": 1,
   "apps/web/e2e/workflow-editor/steps/transforms.spec.ts": 1,
   "apps/web/e2e/workspace/polish-layout.spec.ts": 1,
-  "apps/web/playwright.config.ts": 1,
   "apps/web/playwright.live.config.ts": 1,
   "apps/web/test/features/workflow-editor/inspector/condition/building.test.tsx": 1,
   "apps/web/test/features/workflow-editor/inspector/condition/reopening.test.tsx": 1,

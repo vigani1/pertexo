@@ -9,6 +9,7 @@ import {
   installEditorRoutes,
   remoteDraft,
 } from '../support';
+import { focusStep } from '../actions';
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
 }).items;
@@ -98,7 +99,7 @@ for (const theme of ['light', 'dark'] as const)
       expect(saved()?.inputMappings).toEqual({
         data: { kind: 'literal', value: data },
       });
-      await page.getByTestId('rf__node-create').focus();
+      await focusStep(page, 'create');
       await page.keyboard.press('ControlOrMeta+z');
       await expect
         .poll(() => saved()?.config)

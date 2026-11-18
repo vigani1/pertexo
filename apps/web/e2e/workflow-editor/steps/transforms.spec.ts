@@ -18,6 +18,7 @@ import {
   workspaceId,
   type RemoteDraft,
 } from '../support';
+import { focusStep } from '../actions';
 
 const definitions = nodeDefinitionListResponseSchema.parse({
   items: platformBrowserNodeDefinitionCatalog().definitions,
@@ -71,7 +72,7 @@ test('authors the collection chain with real schemas, words and exact saved valu
     authored.graph.nodes.find((node) => node.id === authored.summaryId)?.config,
   ).toEqual({ valuePath: '$.amount', groupBy: '$.currency', missing: 'error' });
   await page.reload();
-  await page.getByTestId(`rf__node-${authored.sortId}`).focus();
+  await focusStep(page, authored.sortId);
   await page.keyboard.press('Enter');
   await page.getByRole('tab', { name: 'Setup', exact: true }).click();
   await page.getByLabel('Direction', { exact: true }).press('Enter');

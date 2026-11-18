@@ -8,6 +8,7 @@ import {
   manualDefinition,
   remoteDraft,
 } from '../support';
+import { focusStep } from '../actions';
 
 test('drops a connection on empty canvas to add a connected step there, undone in one step', async ({
   context,
@@ -66,7 +67,7 @@ test('adds a step after the selected one from the keyboard', async ({
     definitions: [manualDefinition, definition],
   });
   await page.goto(editorUrl);
-  await page.getByTestId('rf__node-target').focus();
+  await focusStep(page, 'target');
   await page.keyboard.press('Enter');
   const menu = page.getByRole('button', { name: 'Step actions' });
   await menu.focus();

@@ -19,20 +19,10 @@ const chromium = {
     : {}),
 };
 
-// A test that passes on a rerun is a flake to fix, so nothing retries except
-// these specs, which still flaked on CI after reduced motion, each with the
-// cause found so far. Delete an entry once its cause is fixed.
-const stillFlaky = [
-  // Focusing a step and pressing Enter right after creating the workflow
-  // sometimes never shows its Label field (CI, 9 of 1,483 jobs). Not
-  // reproduced locally in 365 runs at 4-8x CPU throttling, so the cause is
-  // still open.
-  '**/workflow-editor/steps/file-pages.spec.ts',
-];
-
 export default defineConfig({
   testDir: './e2e',
   forbidOnly: Boolean(process.env.CI),
+  // A test that passes on a rerun is a flake to fix, so nothing retries.
   retries: 0,
   use: {
     baseURL: webOrigin,
@@ -40,13 +30,7 @@ export default defineConfig({
     reducedMotion: 'reduce',
   },
   projects: [
-    { name: 'chromium', testIgnore: stillFlaky, use: chromium },
-    {
-      name: 'chromium-still-flaky',
-      testMatch: stillFlaky,
-      retries: process.env.CI ? 1 : 0,
-      use: chromium,
-    },
+    { name: 'chromium', use: chromium },
     {
       name: 'firefox-smoke',
       grep: criticalSmoke,
