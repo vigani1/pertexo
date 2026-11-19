@@ -36,28 +36,17 @@ jobs:
           - { project: ios-safari, shard: 2/2 }
           - { project: android-chrome, shard: 1/2 }
           - { project: android-chrome, shard: 2/2 }
+    # Playwright's own image for the pinned @playwright/test version: every
+    # browser and its system libraries are inside, so no apt mirror can stall
+    # the run. Bump it with @playwright/test.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
+      options: --user 1001 --ipc=host
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up workspace
         uses: ./.github/actions/setup
-      # The runner's cloud mirrors have stalled the browser packages (see the
-      # browser job in ci.yml); keep only the configured HTTPS mirrors.
-      - name: Use Ubuntu HTTPS mirrors for browser dependencies
-        run: |
-          sudo sed -i -E '/^http:\/\/[^/]*(azure|ec2)[.]archive[.]ubuntu[.]com\//d' /etc/apt/apt-mirrors.txt
-          grep -q . /etc/apt/apt-mirrors.txt
-      - name: Install the browser
-        timeout-minutes: 8
-        env:
-          PROJECT: ${{ matrix.project }}
-        run: |
-          case "$PROJECT" in
-            firefox) engine=firefox ;;
-            webkit|ios-safari) engine=webkit ;;
-            android-chrome) engine=chromium ;;
-          esac
-          pnpm --filter @pertexo/web exec playwright install --with-deps "$engine"
       - name: Build what the mocked suite imports
         run:
           pnpm --filter '@pertexo/node-catalog...' --filter
