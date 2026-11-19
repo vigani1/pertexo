@@ -1,5 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -157,7 +163,7 @@ function createAuthority(directory) {
   ]);
   chmodSync(path('edge.key'), 0o644);
   return {
-    certificate: execFileSync('cat', [path('authority.pem')]).toString(),
+    certificate: readFileSync(path('authority.pem'), 'utf8'),
   };
 }
 
