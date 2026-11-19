@@ -71,21 +71,21 @@ describe('the Code sandbox under attack on the production stack', () => {
         ])) === 'healthy',
       { what: `${service} to be healthy`, timeout: 180_000 },
     );
-  /** Resolves once a Python task process with at least `threads` threads runs in the runner. */
-  const pythonTaskRunning = (threads = 1) =>
+  /** Resolves once `tasks` Python task processes, each with `threads` threads, run in the runner. */
+  const pythonTaskRunning = (threads = 1, tasks = 1) =>
     waitFor(
       async () =>
         (await mustDocker(['top', await runner(), '-eo', 'pid,uid,nlwp,args']))
           .split('\n')
-          .some((line) => {
+          .filter((line) => {
             const [, uid, count, ...args] = line.trim().split(/\s+/u);
             return (
               /^200\d\d$/u.test(uid) &&
               Number(count) >= threads &&
               args.join(' ').includes('python3.15')
             );
-          }),
-      { what: 'a Python task in the runner', timeout: 60_000, every: 200 },
+          }).length >= tasks,
+      { what: 'Python tasks in the runner', timeout: 60_000, every: 200 },
     );
   const prepare = (workspaceId, code, options = {}) =>
     publishCodeWorkflow(client, workspaceId, { code, ...options });
@@ -623,6 +623,31 @@ const targets = { postgres: ['postgres', 5432], redis: ['redis', 6379], api: ['a
       assert.equal(result.status, 'succeeded', JSON.stringify(result));
     });
   });
+
+  // Reported, not fixed: a runner's slots are first come, first served, so one
+  // workspace that keeps every slot busy for the full time limit starves the
+  // others even through the step's retries. Fair shares per workspace would be
+  // a new scheduling subsystem; this records the outcome on every rerun.
+  it(
+    'one workspace holding every runner slot still leaves another workspace a slot',
+    { todo: 'reported: Code runner slots have no per-workspace share' },
+    async () => {
+      const workflow = await prepare(attacker, PYTHON_ATTACKS.cpuSpin, {
+        language: 'python',
+        timeoutSeconds: 30,
+      });
+      const hostile = [];
+      for (let slot = 0; slot < CONCURRENCY; slot++)
+        hostile.push(await startRun(client, workflow));
+      await pythonTaskRunning(1, CONCURRENCY);
+      const started = Date.now();
+      const result = await execute(neighbour, healthyWorkflows.javascript);
+      result.wallMillis = Date.now() - started;
+      record('resources', 'every slot held by another workspace', result);
+      for (const runId of hostile) await finish(attacker, runId);
+      assert.equal(result.status, 'succeeded', JSON.stringify(result));
+    },
+  );
 
   describe('leftovers', () => {
     for (const language of ['python', 'javascript'])
