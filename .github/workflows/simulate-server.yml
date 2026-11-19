@@ -1,0 +1,78 @@
+name: Simulate a real server
+
+# A self-hoster's server on a simulated public internet, on real Linux runners:
+# the production images deployed by deploy.sh, public names from CoreDNS,
+# certificates from Pebble over ACME, senders on their own network, a mail
+# relay and an S3 store that fail in the ways real ones do. One runner per
+# scenario. Started by hand or by pushing a throwaway sim/server/<n> branch;
+# never on pull requests, main or a schedule.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['sim/server/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simulate-server-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    name: simulate (${{ matrix.scenario }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          [
+            public-https,
+            outside-webhooks,
+            system-mail,
+            object-store,
+            host-restart,
+          ]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Build the images once
+        run:
+          .github/scripts/retry-once.sh node
+          infrastructure/single-server/test/drill/build-images.mjs
+      - name: Simulate
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+          SIMULATION_REPORT: ${{ runner.temp }}/report.json
+          # The runner is thrown away; keeping the stack lets the next step show its logs.
+          DRILL_KEEP: 'true'
+        run: |
+          node --test --test-reporter=spec \
+            "infrastructure/single-server/test/drill/$SCENARIO.test.mjs"
+      - name: Summarize what each scenario showed
+        if: always()
+        run: |
+          report="$RUNNER_TEMP/report.json"
+          if [ -f "$report" ]; then
+            { echo '```json'; cat "$report"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.scenario }}-report
+          path: ${{ runner.temp }}/report.json
+          if-no-files-found: ignore
+      - name: Show the logs on failure
+        if: failure()
+        run: |
+          for container in $(docker ps --all --quiet --filter label=com.docker.compose.project=pertexo-b1-singleserver) pertexo-sim-pebble pertexo-sim-dns; do
+            echo "::group::$(docker inspect --format '{{.Name}}' "$container" 2>/dev/null || echo "$container")"
+            docker logs --tail 200 "$container" 2>&1 || true
+            echo '::endgroup::'
+          done
