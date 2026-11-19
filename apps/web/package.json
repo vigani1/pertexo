@@ -50,6 +50,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
+    "@guidepup/virtual-screen-reader": "0.33.0",
     "@pertexo/workflow-engine": "workspace:*",
     "@playwright/test": "1.65.0",
     "@tailwindcss/vite": "4.3.5",
