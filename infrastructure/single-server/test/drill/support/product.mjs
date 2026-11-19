@@ -88,6 +88,11 @@ export async function publishWebhookWorkflow(client, workspaceId) {
     ],
     edges: [edge('first', 'hook', 'code'), edge('second', 'code', 'end')],
   });
+  return provisionWebhook(client, workflow);
+}
+
+/** The address and signing secret of a published workflow's webhook trigger. */
+export async function provisionWebhook(client, workflow) {
   const triggers = await client.get(`${workflow}/triggers`);
   const trigger = (triggers.json.items ?? triggers.json.triggers)[0];
   // The endpoint is still being set up for a few seconds after publishing.
@@ -106,9 +111,15 @@ export async function publishWebhookWorkflow(client, workspaceId) {
   return { endpointKey, signingSecret };
 }
 
-/** A signed delivery, as the Triggers page tells a sender to make it. */
-export async function sendWebhook(client, { endpointKey, signingSecret }) {
-  const eventId = randomUUID();
+/**
+ * A signed delivery, as the Triggers page tells a sender to make it, whatever
+ * the answer. A sender that retries sends the same `eventId` again.
+ */
+export function deliverWebhook(
+  client,
+  { endpointKey, signingSecret },
+  { eventId = randomUUID(), timeout } = {},
+) {
   const body = Buffer.from(JSON.stringify({ eventId }));
   const timestamp = String(Math.floor(Date.now() / 1_000));
   const signature = createHmac(
@@ -118,7 +129,7 @@ export async function sendWebhook(client, { endpointKey, signingSecret }) {
     .update(`${timestamp}.`)
     .update(body)
     .digest('hex');
-  const response = await client.anonymous(
+  return client.anonymous(
     'POST',
     `/hooks/${endpointKey}`,
     body,
@@ -128,7 +139,13 @@ export async function sendWebhook(client, { endpointKey, signingSecret }) {
       'x-pertexo-timestamp': timestamp,
       'x-pertexo-signature': `v1=${signature}`,
     },
+    timeout,
   );
+}
+
+/** A signed delivery that must start a run; returns the run's id. */
+export async function sendWebhook(client, webhook) {
+  const response = await deliverWebhook(client, webhook);
   assert.equal(response.status, 202, response.text);
   return response.json.runId;
 }
