@@ -4,6 +4,7 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
+  executeNodeAttempt,
   invocationKey,
 } from '../../../src/server.js';
 import {
@@ -293,5 +294,92 @@ describe('branching production operations', () => {
       ]),
     );
     expect(plan.attempts.map(({ nodeId }) => nodeId)).toEqual(['terminate']);
+  });
+  it('reads the inner Condition from the outer branch for a step inside two Conditions that both chose true', async () => {
+    const workflowVersionId = '00000000-0000-4000-8000-000000000007';
+    const [manual, set, terminate] = graph().nodes;
+    const condition = (id: string) => ({
+      ...set,
+      id,
+      definition: { key: 'core.condition', version: 1 },
+      inputMappings: { condition: { kind: 'literal' as const, value: true } },
+    });
+    const executable = buildWorkflowExecutable({
+      graph: {
+        settings: { maxRunDurationMs: 60_000 },
+        nodes: [
+          manual,
+          condition('outer'),
+          condition('inner'),
+          {
+            ...set,
+            id: 'approve',
+            inputMappings: {
+              decision: { kind: 'node_output', nodeId: 'inner', path: '$.why' },
+            },
+          },
+          { ...terminate, inputMappings: {} },
+        ],
+        edges: [
+          ['manual', 'out', 'outer'],
+          ['outer', 'true', 'inner'],
+          ['inner', 'true', 'approve'],
+          ['approve', 'out', 'terminate'],
+        ].map(([source = '', port = '', target = '']) => ({
+          id: `${source}-${target}`,
+          source: { nodeId: source, port },
+          target: { nodeId: target, port: 'in' },
+        })),
+      },
+      catalog: composeExecutableCatalog(nodeCatalog({ condition: true })),
+    });
+    const received: unknown[] = [];
+    const attempt = (innerScope: readonly string[]) =>
+      executeNodeAttempt({
+        runId: 'run-nested',
+        nodeRunId: 'node-run-approve',
+        attemptId: 'attempt-approve',
+        executable,
+        workflowVersionId,
+        invocationKey: invocationKey({
+          workflowVersionId,
+          nodeId: 'approve',
+          branchPath: ['outer:true', 'inner:true'],
+        }),
+        nodeId: 'approve',
+        branchPath: [
+          { nodeId: 'outer', outputPort: 'true' },
+          { nodeId: 'inner', outputPort: 'true' },
+        ],
+        runInput: {},
+        completedNodeOutputs: [
+          {
+            nodeId: 'inner',
+            invocationKey: invocationKey({
+              workflowVersionId,
+              nodeId: 'inner',
+              branchPath: innerScope,
+            }),
+            value: { selectedPort: 'true', why: 'within budget' },
+          },
+        ],
+        registry: {
+          execute: (request) => {
+            received.push(request.input);
+            return Promise.resolve({ kind: 'succeeded', output: {} });
+          },
+        },
+        signal: new AbortController().signal,
+      });
+
+    await expect(attempt(['outer:true'])).resolves.toMatchObject({
+      kind: 'succeeded',
+    });
+    expect(received).toEqual([{ decision: 'within budget' }]);
+    for (const wrongScope of [[], ['outer:true', 'inner:true']])
+      await expect(attempt(wrongScope)).rejects.toMatchObject({
+        code: 'attempt_invalid',
+      });
+    expect(received).toHaveLength(1);
   });
 });
