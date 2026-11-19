@@ -16,12 +16,11 @@ describe('bounded Code frames', () => {
   });
   it.each([
     [Buffer.from('123456789\n'), 5],
-    [Buffer.from('true\nfalse\n'), 128],
     [Buffer.from('{broken}\n'), 128],
     [Buffer.from([34, 255, 34, 10]), 128],
     [Buffer.from('true'), 128],
   ] as const)(
-    'refuses oversized, trailing, malformed, invalid UTF-8 or truncated data',
+    'refuses oversized, malformed, invalid UTF-8 or truncated data',
     async (bytes, maximum) => {
       const stream = new PassThrough();
       const result = readCodeFrame(stream, maximum, AbortSignal.timeout(1000));
@@ -30,6 +29,29 @@ describe('bounded Code frames', () => {
       stream.destroy();
     },
   );
+  it('reads frames that arrive together one at a time, in order', async () => {
+    const stream = new PassThrough();
+    stream.write('{"kind":"queued"}\n{"kind":"ready"}\n');
+    expect(await readCodeFrame(stream, 18, AbortSignal.timeout(1000))).toEqual({
+      kind: 'queued',
+    });
+    expect(stream.isPaused()).toBe(true);
+    expect(await readCodeFrame(stream, 17, AbortSignal.timeout(1000))).toEqual({
+      kind: 'ready',
+    });
+    stream.destroy();
+  });
+  it('bounds each frame of a shared chunk by its own bytes', async () => {
+    const stream = new PassThrough();
+    stream.write('{"kind":"ready"}\n"' + 'x'.repeat(64) + '"\n');
+    expect(await readCodeFrame(stream, 17, AbortSignal.timeout(1000))).toEqual({
+      kind: 'ready',
+    });
+    await expect(
+      readCodeFrame(stream, 17, AbortSignal.timeout(1000)),
+    ).rejects.toThrow('byte bound');
+    stream.destroy();
+  });
   it('accepts a highly fragmented maximum-size frame', async () => {
     const stream = new PassThrough();
     const wire = Buffer.from(JSON.stringify('x'.repeat(65533)) + '\n');

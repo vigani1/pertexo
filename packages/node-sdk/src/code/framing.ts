@@ -29,24 +29,23 @@ export function readCodeFrame(
       error(new Error('Code protocol aborted', { cause: signal.reason }));
     };
     const data = (chunk: Buffer) => {
+      const end = chunk.indexOf(10);
       const previous = bytes;
-      bytes += chunk.length;
+      bytes += end === -1 ? chunk.length : end + 1;
       if (bytes > maximum) {
         error(new Error('Code protocol exceeds its byte bound'));
         return;
       }
-      const end = chunk.indexOf(10);
       if (end === -1) {
         chunk.copy(body, previous);
-        return;
-      }
-      if (end !== chunk.length - 1) {
-        error(new Error('Code protocol has trailing data'));
         return;
       }
       chunk.copy(body, previous, 0, end);
       cleanup();
       stream.pause();
+      // A peer may send its next frame before this one is read (a runner's
+      // queued then ready greeting); it stays on the stream for the next read.
+      if (end < chunk.length - 1) stream.unshift(chunk.subarray(end + 1));
       try {
         resolve(
           JSON.parse(

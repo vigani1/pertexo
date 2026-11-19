@@ -192,6 +192,29 @@ describe('a busy Code runner', () => {
     ).toMatchObject({ kind: 'succeeded', output: 'ran after waiting' });
   });
 
+  it('runs the task when a slot frees before the client reads its queued greeting', async () => {
+    // Both greetings reach the client in one read, as they do when the slot
+    // frees while the worker is still busy.
+    const f = await fixture(queued);
+    f.server.on('connection', (socket) => {
+      void (async () => {
+        // Written in the same turn as the fixture's queued greeting.
+        void writeCodeFrame(socket, { ...queued, kind: 'ready' });
+        expect(
+          await readCodeFrame(socket, 3 * 1048576, AbortSignal.timeout(2000)),
+        ).toEqual(task);
+        await writeCodeFrame(socket, {
+          kind: 'succeeded',
+          output: { value: 2 },
+          diagnostics: { logs: [], truncated: false },
+        });
+      })();
+    });
+    expect(
+      await f.client.execute(task, AbortSignal.timeout(5000)),
+    ).toMatchObject({ kind: 'succeeded', output: { value: 2 } });
+  });
+
   it('stops waiting after the slot wait and says the runner stayed busy', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {
