@@ -1,5 +1,6 @@
 import type { NoticeTone } from '@/components/ui/notice';
 import type { StatusTone } from '@/components/ui/status';
+import { signInsLimitedFromNetwork } from './auth-failure';
 
 /** What an email link or provider callback told the sign-in page. */
 export type LoginLinkOutcome = Readonly<{
@@ -13,6 +14,8 @@ export type LoginLinkOutcome = Readonly<{
   verified?: true;
   socialError?: true;
   ssoError?: true;
+  /** A provider callback refused by the network's shared sign-in budget. */
+  signInLimited?: true;
 }>;
 
 export type LoginNotice = Readonly<{
@@ -80,6 +83,10 @@ const NOTICES: readonly (readonly [keyof LoginLinkOutcome, LoginNotice])[] = [
   [
     'verified',
     { tone: 'success', text: 'Email verified. You can sign in now.' },
+  ],
+  [
+    'signInLimited',
+    { tone: 'warning', text: signInsLimitedFromNetwork(undefined) },
   ],
   [
     'ssoError',

@@ -31,6 +31,15 @@ function isLostResponse(error: unknown): boolean {
 
 const TOO_MANY = 'Too many attempts. Wait a moment, then try again.';
 
+/**
+ * A sign-in through an identity provider refused by the budget everyone on
+ * one network address shares; the person typed nothing wrong.
+ */
+export function signInsLimitedFromNetwork(seconds: number | undefined): string {
+  const wait = seconds === undefined ? 'a minute' : `${String(seconds)} s`;
+  return `Too many sign-ins from this network right now. Try again in ${wait}.`;
+}
+
 /** The email and password were refused (rather than the request failing). */
 export function isCredentialMismatch(error: unknown): boolean {
   return nativeError(error)?.code === 'auth.invalid_credentials';
@@ -56,7 +65,8 @@ export function signInFailure(error: unknown): string {
 
 export function providerStartFailure(error: unknown, provider: string): string {
   const failure = nativeError(error);
-  if (failure?.status === 429) return TOO_MANY;
+  if (failure?.status === 429)
+    return signInsLimitedFromNetwork(rateLimitSeconds(error));
   if (failure?.status === 503)
     return `${provider} sign-in is unavailable right now. Try again in a moment, or use another method.`;
   if (isLostResponse(error))

@@ -12,6 +12,8 @@ import { Notice } from '@/components/ui/notice';
 import { useFieldValues } from '@/components/ui/use-field-validation';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
+import { retryAfterSeconds } from '@/lib/api/error-copy';
+import { signInsLimitedFromNetwork } from '@/features/auth/public';
 import {
   useDomainDiscovery,
   useOrganizationSignInStart,
@@ -60,8 +62,8 @@ export function OrganizationSignInForm({
         );
     } else if (outcome.kind === 'failed')
       setFailure(
-        isApiError(outcome.cause) && outcome.cause.status === 429
-          ? 'Too many attempts. Wait a moment and try again.'
+        isLimited(outcome.cause)
+          ? signInsLimitedFromNetwork(retryAfterSeconds(outcome.cause))
           : 'Organization sign-in could not be checked. Try again in a moment.',
       );
   }
@@ -77,7 +79,9 @@ export function OrganizationSignInForm({
     if (outcome.kind === 'done') navigateToProvider(outcome.value);
     else if (outcome.kind === 'failed')
       setFailure(
-        'Organization sign-in could not start. Try again, or contact your workspace owner.',
+        isLimited(outcome.cause)
+          ? signInsLimitedFromNetwork(retryAfterSeconds(outcome.cause))
+          : 'Organization sign-in could not start. Try again, or contact your workspace owner.',
       );
   }
   return (
@@ -137,4 +141,8 @@ export function OrganizationSignInForm({
       {failure === undefined ? null : <Notice tone="warning">{failure}</Notice>}
     </div>
   );
+}
+
+function isLimited(cause: unknown): boolean {
+  return isApiError(cause) && cause.status === 429;
 }
