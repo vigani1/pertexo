@@ -16,7 +16,12 @@ import { EmailRequestLens } from '../components/inbox/email-request-lens';
 import { InboxLens, RESEND_COOLDOWN_SECONDS } from '../components/inbox/lens';
 import { SignInLens } from '../components/sign-in-lens';
 import { LensLoading, LensUnavailable } from '../components/stage/lens-states';
-import { resendFailure } from '../model/auth-failure';
+import {
+  resendFailure,
+  signInsLimitedFromNetwork,
+} from '../model/auth-failure';
+import { isApiError } from '@/lib/api/error';
+import { retryAfterSeconds } from '@/lib/api/error-copy';
 import type { LoginNotice } from '../model/login-notice';
 import { resendVerification } from '../data/native-auth/native-auth-flows';
 import { useCountdown } from '@/lib/hooks/use-countdown';
@@ -140,8 +145,13 @@ export function LoginPage({
               label="Checking how you can sign in…"
             />
           }
-          error={({ retrying, retry }) => (
-            <LoginUnavailable retrying={retrying} retry={retry} />
+          error={({ error, retrying, retry }) => (
+            <LoginUnavailable
+              retrying={retrying}
+              retry={retry}
+              limited={isApiError(error) && error.status === 429}
+              waitSeconds={retryAfterSeconds(error)}
+            />
           )}
         >
           {(options) =>
@@ -184,7 +194,15 @@ export function LoginPage({
 function LoginUnavailable({
   retrying,
   retry,
-}: Readonly<{ retrying: boolean; retry: () => void }>) {
+  limited = false,
+  waitSeconds,
+}: Readonly<{
+  retrying: boolean;
+  retry: () => void;
+  /** The page's read was refused by its network's shared sign-in budget. */
+  limited?: boolean;
+  waitSeconds?: number | undefined;
+}>) {
   return (
     <LensUnavailable
       id="login-unavailable"
@@ -192,7 +210,9 @@ function LoginUnavailable({
       retrying={retrying}
       onRetry={retry}
     >
-      Sign-in isn’t available right now. Try again in a moment.
+      {limited
+        ? signInsLimitedFromNetwork(waitSeconds)
+        : 'Sign-in isn’t available right now. Try again in a moment.'}
     </LensUnavailable>
   );
 }

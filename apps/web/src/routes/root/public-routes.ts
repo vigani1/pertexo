@@ -77,6 +77,9 @@ export const loginRoute = createRoute({
     ...(search.error === 'migration_failed'
       ? { migrationFailed: true as const }
       : {}),
+    ...(search.error === 'sign_in_limited'
+      ? { signInLimited: true as const }
+      : {}),
     ...(flag(search.socialError) ? { socialError: true as const } : {}),
     ...(flag(search.ssoError) ? { ssoError: true as const } : {}),
     ...returnToSearch(allowlistedReturnPath(search.returnTo)),

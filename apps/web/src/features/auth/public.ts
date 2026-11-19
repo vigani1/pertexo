@@ -10,3 +10,4 @@ export {
   observeSessionChanges,
   reportSessionChange,
 } from './model/session/sync';
+export { signInsLimitedFromNetwork } from './model/auth-failure';
