@@ -21,7 +21,7 @@ import {
 import { useEditorStoreApi } from '../../../model/state/context';
 import { useHttpBodyDraft } from './use-draft';
 import { MultipartParts } from './parts';
-import { focusFormPart } from './focus';
+import { formPartFocusId } from './focus';
 import { useBodyConfirmation } from './confirmation';
 
 type Props = Readonly<{
@@ -106,11 +106,11 @@ function BodyInputs(props: BodyInputsProps) {
             change={model.change}
             onChangePart={model.changePart}
             onRemove={(part) => {
+              const index = model.parts.findIndex(
+                ({ inputKey }) => inputKey === part.inputKey,
+              );
               model.request({
                 apply: () => {
-                  const index = model.parts.findIndex(
-                    ({ inputKey }) => inputKey === part.inputKey,
-                  );
                   model.change(
                     {
                       mode: 'multipart',
@@ -120,12 +120,12 @@ function BodyInputs(props: BodyInputsProps) {
                     },
                     `remove:${crypto.randomUUID()}`,
                   );
-                  focusFormPart(
-                    model.node.id,
-                    model.parts[index + 1]?.inputKey ??
-                      model.parts[index - 1]?.inputKey,
-                  );
                 },
+                focusId: formPartFocusId(
+                  model.node.id,
+                  model.parts[index + 1]?.inputKey ??
+                    model.parts[index - 1]?.inputKey,
+                ),
                 destructive: populatedSource(part.source),
                 title: 'Remove this form part?',
                 description:
@@ -167,6 +167,7 @@ function BodyInputs(props: BodyInputsProps) {
           },
           locked: false,
         }}
+        finalFocus={model.finalFocus}
         title={model.pending?.title ?? 'Replace body'}
         description={model.pending?.description}
         onSubmit={() => {
@@ -210,7 +211,8 @@ function useBodyInputs({
   const requestNode = { ...node, inputMappings: httpRequestMappings(node) };
   const requestForm = requestInputsForm(rawForm);
   const signature = JSON.stringify(draft.text);
-  const { pending, request, confirm, dismiss } = useBodyConfirmation(signature);
+  const { pending, request, confirm, dismiss, finalFocus } =
+    useBodyConfirmation(signature);
   const parts = draft.text.mode === 'multipart' ? draft.text.parts : [];
   const bodyAllowed =
     node.config.method !== 'GET' && node.config.method !== 'HEAD';
@@ -300,6 +302,7 @@ function useBodyInputs({
     pending,
     confirm,
     dismiss,
+    finalFocus,
     store,
     value,
   } as const;
