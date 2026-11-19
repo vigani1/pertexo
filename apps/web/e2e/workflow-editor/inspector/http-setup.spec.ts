@@ -235,9 +235,15 @@ for (const theme of ['light', 'dark'] as const)
         .getByRole('button', { name: 'Remove part', exact: true })
         .click();
       await page.getByRole('button', { name: 'Remove', exact: true }).click();
+      // Typing waits for the dialog to finish closing, as people do: until
+      // then it is still placing focus, and a key pressed meanwhile is lost.
+      await expect(page.getByRole('dialog')).toHaveCount(0);
       await expect(first.getByLabel('Value', { exact: true })).toHaveValue(
         'first',
       );
+      await expect(
+        first.getByLabel('Field name', { exact: true }),
+      ).toBeFocused();
       await expect(
         first.getByRole('button', { name: 'Remove part', exact: true }),
       ).toBeDisabled();
@@ -270,6 +276,7 @@ for (const theme of ['light', 'dark'] as const)
       await publish
         .getByRole('button', { name: 'Cancel', exact: true })
         .click();
+      await expect(publish).toBeHidden();
       await expect(
         first.getByText(
           'Use a field name up to 128 UTF-8 bytes without control characters.',
