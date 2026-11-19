@@ -12,12 +12,16 @@ interface Line {
  * round trips, so one workspace's acceptances finish one at a time however many
  * start. Any beyond a few would only sit on pooled connections, blocked on that
  * row, while every other request in this process, for any workspace, queues
- * behind them. They wait here instead, holding no connection.
+ * behind them. They wait here instead, holding no connection. Each waiter
+ * still holds its request in memory, so a line longer than `maxWaiting` turns
+ * newcomers away at once: under a flood an endless line filled the API's
+ * memory until the kernel killed it.
  */
 export function createWorkspaceTurns({
   atOnce,
+  maxWaiting,
   maxWaitMillis,
-}: Readonly<{ atOnce: number; maxWaitMillis: number }>) {
+}: Readonly<{ atOnce: number; maxWaiting: number; maxWaitMillis: number }>) {
   const lines = new Map<string, Line>();
 
   function waitInLine(line: Line, signal: AbortSignal | undefined) {
@@ -73,6 +77,8 @@ export function createWorkspaceTurns({
       };
       lines.set(workspaceId, line);
       if (line.running < atOnce) line.running += 1;
+      else if (line.waiting.size >= maxWaiting)
+        throw new WebhookIntakeBusyError();
       else await waitInLine(line, signal);
       try {
         return await work();

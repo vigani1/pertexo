@@ -2292,7 +2292,11 @@ describe('generic webhook database seam', () => {
         )
       ).rows[0]?.count;
 
-    const turns = createWorkspaceTurns({ atOnce: 1, maxWaitMillis: 100 });
+    const turns = createWorkspaceTurns({
+      atOnce: 1,
+      maxWaiting: 10,
+      maxWaitMillis: 100,
+    });
     try {
       const held = await holdAdmissionRow(owner, workspaceId);
       const first = accept(turns, 'first-in-line');

@@ -13,7 +13,11 @@ function gate() {
 
 describe('turns at one workspace', () => {
   it('runs no more than the allowed number at once, the rest in arrival order', async () => {
-    const turns = createWorkspaceTurns({ atOnce: 2, maxWaitMillis: 5_000 });
+    const turns = createWorkspaceTurns({
+      atOnce: 2,
+      maxWaiting: 10,
+      maxWaitMillis: 5_000,
+    });
     const started: number[] = [];
     const began = Array.from({ length: 5 }, gate);
     const finish = Array.from({ length: 5 }, gate);
@@ -40,7 +44,11 @@ describe('turns at one workspace', () => {
   });
 
   it('lets another workspace go while one is full', async () => {
-    const turns = createWorkspaceTurns({ atOnce: 1, maxWaitMillis: 5_000 });
+    const turns = createWorkspaceTurns({
+      atOnce: 1,
+      maxWaiting: 10,
+      maxWaitMillis: 5_000,
+    });
     const held = gate();
     const full = turns.take('full', undefined, () => held.opened);
     await expect(
@@ -51,7 +59,11 @@ describe('turns at one workspace', () => {
   });
 
   it('refuses work that waited too long, without running it', async () => {
-    const turns = createWorkspaceTurns({ atOnce: 1, maxWaitMillis: 20 });
+    const turns = createWorkspaceTurns({
+      atOnce: 1,
+      maxWaiting: 10,
+      maxWaitMillis: 20,
+    });
     const held = gate();
     const first = turns.take('workspace', undefined, () => held.opened);
     let ran = false;
@@ -68,8 +80,51 @@ describe('turns at one workspace', () => {
     expect(ran).toBe(false);
   });
 
+  it('turns away at once, without running it, work that arrives behind a full line', async () => {
+    const turns = createWorkspaceTurns({
+      atOnce: 1,
+      maxWaiting: 2,
+      maxWaitMillis: 60_000,
+    });
+    const held = gate();
+    const first = turns.take('workspace', undefined, () => held.opened);
+    const waiting = [1, 2].map((at) =>
+      turns.take('workspace', undefined, () => Promise.resolve(at)),
+    );
+    let ran = false;
+    const refused = turns.take('workspace', undefined, () => {
+      ran = true;
+      return Promise.resolve(3);
+    });
+    // A whole wait would take a minute; a refusal at the door takes none.
+    const answer = await Promise.race([
+      refused.then(
+        () => 'ran',
+        (error: unknown) => error,
+      ),
+      new Promise((resolve) => {
+        setTimeout(() => {
+          resolve('still waiting');
+        }, 500);
+      }),
+    ]);
+    expect(answer).toBeInstanceOf(WebhookIntakeBusyError);
+    // Another workspace's line is its own.
+    await expect(
+      turns.take('other', undefined, () => Promise.resolve('served')),
+    ).resolves.toBe('served');
+    held.open();
+    await first;
+    await expect(Promise.all(waiting)).resolves.toEqual([1, 2]);
+    expect(ran).toBe(false);
+  });
+
   it('never runs the work of a sender who left, and answers with the reason given', async () => {
-    const turns = createWorkspaceTurns({ atOnce: 1, maxWaitMillis: 5_000 });
+    const turns = createWorkspaceTurns({
+      atOnce: 1,
+      maxWaiting: 10,
+      maxWaitMillis: 5_000,
+    });
     const held = gate();
     const first = turns.take('workspace', undefined, () => held.opened);
     const sender = new AbortController();
@@ -89,7 +144,11 @@ describe('turns at one workspace', () => {
   });
 
   it('passes the turn on when work fails, so a failure costs only itself', async () => {
-    const turns = createWorkspaceTurns({ atOnce: 1, maxWaitMillis: 5_000 });
+    const turns = createWorkspaceTurns({
+      atOnce: 1,
+      maxWaiting: 10,
+      maxWaitMillis: 5_000,
+    });
     const failure = new Error('rolled back');
     const failing = turns.take('workspace', undefined, () =>
       Promise.reject(failure),
@@ -102,7 +161,11 @@ describe('turns at one workspace', () => {
   });
 
   it('skips a waiter that gave up and serves the one behind it', async () => {
-    const turns = createWorkspaceTurns({ atOnce: 1, maxWaitMillis: 5_000 });
+    const turns = createWorkspaceTurns({
+      atOnce: 1,
+      maxWaiting: 10,
+      maxWaitMillis: 5_000,
+    });
     const held = gate();
     const first = turns.take('workspace', undefined, () => held.opened);
     const sender = new AbortController();
