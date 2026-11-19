@@ -19,6 +19,8 @@ overrides:
 allowBuilds:
   core-js: false
   esbuild: true
+  # Guidepup's optional screen recorder; the VoiceOver run records nothing.
+  ffmpeg-static: false
   msgpackr-extract: false
   msw: false
   protobufjs: false
