@@ -17,6 +17,11 @@ const task = (
     { code, timeoutSeconds, input, variables },
     AbortSignal.timeout(15_000),
   );
+// Reads a successful task's output; a failure shows the whole result.
+const succeeded = (result) => {
+  assert.equal(result.kind, 'succeeded', JSON.stringify(result));
+  return result.output;
+};
 try {
   const pythonTask = (code, timeoutSeconds = 3) =>
     client.execute(
@@ -30,11 +35,11 @@ try {
       AbortSignal.timeout(15000),
     );
   assert.deepEqual(
-    (
+    succeeded(
       await pythonTask(
         'import zoneinfo\nprint("private diagnostic")\nreturn {"total": input["amount"] * _vars["RATE"], "zone": zoneinfo.ZoneInfo("Europe/Paris").key}',
-      )
-    ).output,
+      ),
+    ),
     { total: 6, zone: 'Europe/Paris' },
   );
   for (const [name, code, expected] of [
@@ -86,8 +91,7 @@ try {
       expected,
       `Python ${name}: ${JSON.stringify(hostile)}`,
     );
-    assert.equal(healthy.kind, 'succeeded', `healthy beside Python ${name}`);
-    assert.equal(healthy.output, 3);
+    assert.equal(succeeded(healthy), 3, `healthy beside Python ${name}`);
   }
   console.log(
     'Python hostile imports, CPU, heap and native memory tasks left a healthy JavaScript task intact.',
@@ -162,15 +166,14 @@ try {
     ]);
     assert.equal(bad.kind, 'failed', name);
     assert.equal(bad.code, expected, name + ': ' + JSON.stringify(bad));
-    assert.equal(healthy.kind, 'succeeded', `${name}: concurrent task`);
-    assert.equal(healthy.output, 42, `${name}: concurrent output`);
+    assert.equal(succeeded(healthy), 42, `${name}: concurrent output`);
   }
   assert.deepEqual(
-    (
+    succeeded(
       await task(
         "return {process:typeof process,global:typeof global,fetch:typeof fetch,socket:typeof WebSocket,constructor:Function('return typeof process')(),loader:typeof require.cache};",
-      )
-    ).output,
+      ),
+    ),
     {
       process: 'undefined',
       global: 'undefined',
@@ -189,19 +192,19 @@ try {
     'succeeded',
   );
   assert.deepEqual(
-    (
+    succeeded(
       await task(
         "return {leak:typeof workspaceSecret,sum:require('lodash').sum([2,3])};",
-      )
-    ).output,
+      ),
+    ),
     { leak: 'undefined', sum: 5 },
   );
   assert.equal(
-    (
+    succeeded(
       await task(
         "Object.prototype.toJSON=()=> 'wrong'; Array.prototype.includes=()=>true; String.prototype.startsWith=()=>true; return {value:2};",
-      )
-    ).output.value,
+      ),
+    ).value,
     2,
   );
   assert.equal(
@@ -237,10 +240,10 @@ try {
     ),
   );
   assert.deepEqual(
-    parallel.map((result) => result.output),
+    parallel.map(succeeded),
     Array.from({ length: 12 }, (_, index) => index),
   );
-  assert.equal((await task('return input.amount*$vars.RATE;')).output, 6);
+  assert.equal(succeeded(await task('return input.amount*$vars.RATE;')), 6);
   console.log(
     'Hardened worker transport, hostile tasks, concurrent healthy tasks, cancellation and fresh-process isolation passed.',
   );
