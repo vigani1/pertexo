@@ -9,7 +9,8 @@ const webRequire = createRequire(
   new URL('../../../../../../apps/web/package.json', import.meta.url),
 );
 export const APP = `https://${PUBLIC_HOSTS.app}`;
-const FAILED_NOTICE = /Organization sign-in did not finish/u;
+const FAILED_NOTICE =
+  /Organization sign-in did not finish|Too many sign-ins from this network/u;
 
 let appAuthority;
 const flowReplies = new WeakMap();
@@ -157,7 +158,7 @@ export function tamperNextSamlResponse(
 
 /** What the login page says when the per-address sign-in budget is spent. */
 const LIMITED =
-  /isn’t available right now|could not start|could not be checked|Too many attempts/u;
+  /Too many sign-ins from this network|isn’t available right now|could not start|could not be checked|Too many attempts/u;
 /** Pertexo's sign-in budgets count requests per address over one minute. */
 const BUDGET_WINDOW_MILLIS = 61_000;
 const limited = [];
