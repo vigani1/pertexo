@@ -12,10 +12,7 @@ import {
   type AuthenticationCapabilitiesResponse,
 } from '@pertexo/contracts';
 
-import {
-  AbuseRateLimitPolicy,
-  type RateLimitEndpointClass,
-} from '@pertexo/rate-limit/server';
+import { AbuseRateLimitPolicy } from '@pertexo/rate-limit/server';
 import {
   admitRateLimit,
   type RateLimitConsumer,
@@ -30,6 +27,7 @@ import {
   normalizedNativeError,
 } from './transport/authentication-problems.js';
 import { AUTH_COOKIE_PREFIX } from './auth-cookies.js';
+import { signInBudget } from './transport/sign-in-budgets.js';
 import {
   tokenFreeAuthenticationBody,
   establishesPertexoSession,
@@ -38,11 +36,10 @@ import {
 
 type AuthenticationHandler = BetterAuthRuntime['auth']['handler'];
 
-type AuthenticationRateLimits = Readonly<
-  Record<'start' | 'callback', RateLimitEndpointClass>
->;
-
 const rateLimitPolicy = new AbuseRateLimitPolicy();
+
+/** Where a provider callback refused by its address's budget lands. */
+const SIGN_IN_LIMITED_LANDING = '/login?error=sign_in_limited';
 
 const BLOCKED_BROWSER_AUTH_PATHS = new Set([
   '/v1/auth/sign-out',
@@ -78,11 +75,7 @@ export function registerBetterAuthHandler(
 ): void {
   const origin = new URL(input.publicOrigin).origin;
   const metrics = createRateLimitMetricRecorder();
-  const config = {
-    rateLimit: { start: 'identity_start', callback: 'identity_callback' },
-  } as const;
   const options: RouteShorthandOptions = {
-    config,
     onSend: (_request, reply, payload, done) => {
       // Redirected pages must not receive callback proofs through Referer.
       reply
@@ -96,15 +89,11 @@ export function registerBetterAuthHandler(
       handler: input.handler,
       publicOrigin: origin,
       sessionCookie: input.sessionCookie,
-      admission: {
-        consumer: input.rateLimitConsumer,
-        metrics,
-        policies: config.rateLimit,
-      },
+      admission: { consumer: input.rateLimitConsumer, metrics },
     });
   fastify.post(
     '/v1/auth/federation/saml/callback',
-    { ...options, config, bodyLimit: SAML_LIMITS.formBytes },
+    { ...options, bodyLimit: SAML_LIMITS.formBytes },
     handler,
   );
   fastify.all('/v1/auth/*', options, handler);
@@ -117,39 +106,35 @@ export function registerAuthenticationCapabilities(
   rateLimitConsumer: RateLimitConsumer,
 ): void {
   const metrics = createRateLimitMetricRecorder();
-  fastify.get(
-    '/v1/auth/capabilities',
-    { config: { rateLimit: 'identity_callback' } },
-    async (request, reply) => {
-      const admitted = await admitRateLimit(
-        rateLimitConsumer,
-        metrics,
-        rateLimitPolicy.evaluate('identity_callback', {
-          clientAddress: request.ip,
-        }),
+  fastify.get('/v1/auth/capabilities', async (request, reply) => {
+    const admitted = await admitRateLimit(
+      rateLimitConsumer,
+      metrics,
+      rateLimitPolicy.evaluate('sign_in_page_read', {
+        clientAddress: request.ip,
+      }),
+    );
+    if (admitted.kind === 'limited') {
+      reply.header(
+        'retry-after',
+        String(Math.max(1, admitted.retryAfterSeconds)),
       );
-      if (admitted.kind === 'limited') {
-        reply.header(
-          'retry-after',
-          String(Math.max(1, admitted.retryAfterSeconds)),
-        );
-        sendProblem(reply, {
-          ...createRequestContext(request.id),
-          status: HttpStatus.TOO_MANY_REQUESTS,
-          code: 'request.rate_limited',
-          title: 'Too many authentication requests',
-        });
-        return;
-      }
-      reply.send(
-        authenticationCapabilitiesResponseSchema.parse({
-          ...capabilities,
-          // The first verified account closes an install, so this can't be fixed at start.
-          signUp: (await signUpAvailableToEveryone()) ? 'open' : 'invitation',
-        }),
-      );
-    },
-  );
+      sendProblem(reply, {
+        ...createRequestContext(request.id),
+        status: HttpStatus.TOO_MANY_REQUESTS,
+        code: 'request.rate_limited',
+        title: 'Too many authentication requests',
+      });
+      return;
+    }
+    reply.send(
+      authenticationCapabilitiesResponseSchema.parse({
+        ...capabilities,
+        // The first verified account closes an install, so this can't be fixed at start.
+        signUp: (await signUpAvailableToEveryone()) ? 'open' : 'invitation',
+      }),
+    );
+  });
 }
 
 type AuthenticationDispatch = Readonly<{
@@ -163,7 +148,6 @@ type AuthenticationDispatch = Readonly<{
   admission: Readonly<{
     consumer: RateLimitConsumer;
     metrics: RateLimitMetricRecorder;
-    policies: AuthenticationRateLimits;
   }>;
 }>;
 
@@ -199,10 +183,11 @@ async function dispatchBetterAuthRequest(
     });
     return;
   }
-  const endpointClass =
-    isUnsafeMethod(request.method) && !providerFormCallback
-      ? admission.policies.start
-      : admission.policies.callback;
+  const endpointClass = signInBudget(
+    request.method,
+    pathname,
+    providerFormCallback,
+  );
   const admitted = await admitRateLimit(
     admission.consumer,
     admission.metrics,
@@ -216,6 +201,16 @@ async function dispatchBetterAuthRequest(
       'retry-after',
       String(Math.max(1, admitted.retryAfterSeconds)),
     );
+    // A provider sends the browser here by navigation, so a problem body would
+    // be a bare page; the sign-in page says what happened instead.
+    if (endpointClass === 'federated_sign_in_callback') {
+      reply
+        .code(HttpStatus.SEE_OTHER)
+        .header('location', `${publicOrigin}${SIGN_IN_LIMITED_LANDING}`)
+        .header('x-request-id', requestId)
+        .send();
+      return;
+    }
     sendProblem(reply, {
       requestId,
       status: HttpStatus.TOO_MANY_REQUESTS,

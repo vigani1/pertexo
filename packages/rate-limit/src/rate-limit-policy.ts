@@ -12,6 +12,9 @@ export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'form_workspace_submission',
   'form_upload',
   'identity_start',
+  'sign_in_page_read',
+  'federated_sign_in_start',
+  'federated_sign_in_callback',
   'automation_authentication',
   'directory_provisioning',
   'identity_callback',
@@ -76,6 +79,23 @@ type EndpointRule = Readonly<{
   failureMode: RateLimitFailureMode;
   dimensions: readonly DimensionRule[];
 }>;
+
+/**
+ * How many people one address may sign in through an identity provider in a
+ * window. An office, school or VPN shows the server one address, and its
+ * people arrive together at the start of the day; this lets several hundred
+ * of them in within the first minute. Nothing is guessed on these routes (the
+ * provider authenticates, and a callback's state is a random single-use
+ * token), so the budget only stops one address flooding the provider and the
+ * attempt table. Password and two-factor guessing keep `identity_start`.
+ */
+const SHARED_ADDRESS_SIGN_INS_PER_WINDOW = 300;
+
+/**
+ * The login page's reads per sign-in: its capabilities, the organization
+ * domain's providers, and the refetches of a page left open.
+ */
+const SIGN_IN_PAGE_READS_PER_SIGN_IN = 4;
 
 const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
   callback_ingress: {
@@ -143,6 +163,37 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
       // lock everyone out. Per account, many addresses can't guess one password
       // or flood one mailbox, and the worst they cost is that one account's sign-in.
       { kind: 'account', subject: 'account', limit: 20, optional: true },
+    ],
+  },
+  sign_in_page_read: {
+    failureMode: 'closed',
+    dimensions: [
+      {
+        kind: 'client_address',
+        subject: 'clientAddress',
+        limit:
+          SHARED_ADDRESS_SIGN_INS_PER_WINDOW * SIGN_IN_PAGE_READS_PER_SIGN_IN,
+      },
+    ],
+  },
+  federated_sign_in_start: {
+    failureMode: 'closed',
+    dimensions: [
+      {
+        kind: 'client_address',
+        subject: 'clientAddress',
+        limit: SHARED_ADDRESS_SIGN_INS_PER_WINDOW,
+      },
+    ],
+  },
+  federated_sign_in_callback: {
+    failureMode: 'closed',
+    dimensions: [
+      {
+        kind: 'client_address',
+        subject: 'clientAddress',
+        limit: SHARED_ADDRESS_SIGN_INS_PER_WINDOW,
+      },
     ],
   },
   identity_callback: {

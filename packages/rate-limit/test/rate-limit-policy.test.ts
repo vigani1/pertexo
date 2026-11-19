@@ -62,6 +62,9 @@ describe('abuse rate-limit policy', () => {
           ['account', 20],
         ],
       ],
+      sign_in_page_read: ['closed', [['client_address', 1_200]]],
+      federated_sign_in_start: ['closed', [['client_address', 300]]],
+      federated_sign_in_callback: ['closed', [['client_address', 300]]],
       identity_callback: ['closed', [['client_address', 30]]],
       data_table_export: [
         'closed',
