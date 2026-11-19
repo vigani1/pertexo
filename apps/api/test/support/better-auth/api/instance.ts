@@ -29,7 +29,11 @@ import type {
   DatabaseCleanupFailure,
   ApiFixtureOptions,
 } from './contract.js';
-import { databaseCleanupFailure } from './cleanup.js';
+import {
+  cleanupFailureReport,
+  databaseCleanupFailure,
+  DISPOSABLE_DATABASE,
+} from './cleanup.js';
 import {
   apiConfig,
   fixtureIdentityConfiguration,
@@ -84,7 +88,7 @@ export function useBetterAuthRealApi(
     await creator.query(
       `create database "${databaseName}" owner pertexo_owner`,
     );
-    disposableDatabase = owner.acquire('disposable database', {}, async () => {
+    disposableDatabase = owner.acquire(DISPOSABLE_DATABASE, {}, async () => {
       try {
         const cleanup = new Pool({ connectionString: adminUrl, max: 1 });
         try {
@@ -201,31 +205,25 @@ export function useBetterAuthRealApi(
   }, 60_000);
 
   afterAll(async () => {
-    const report = { otherCleanupFailed: false };
+    let beforeClose: { error: unknown } | undefined;
+    let ownerClose: { error: unknown } | undefined;
     await Promise.resolve()
       .then(() => options.beforeClose?.())
-      .catch(() => {
+      .catch((error: unknown) => {
         // A caller could not confirm that its external clients stopped. Close
         // our listeners/pools, but do not drop the database under those clients.
         if (disposableDatabase !== undefined)
           owner.transfer(disposableDatabase);
-        report.otherCleanupFailed = true;
+        beforeClose = { error };
       });
     await owner.close().catch((error: unknown) => {
-      // This is the unchanged owner's aggregate, not arbitrary resource data.
-      if (
-        databaseCleanupLabel === undefined ||
-        !(error instanceof AggregateError) ||
-        error.errors.length > 1
-      )
-        report.otherCleanupFailed = true;
+      ownerClose = { error };
     });
-    const labels = [
-      ...(databaseCleanupLabel === undefined ? [] : [databaseCleanupLabel]),
-      ...(report.otherCleanupFailed ? ['other_cleanup_failure'] : []),
-    ];
-    // Vitest serializes nested errors, including their causes and properties.
-    // Keep originals inside the owner; only a fresh safe report crosses this boundary.
+    const labels = cleanupFailureReport({
+      databaseCleanup: databaseCleanupLabel,
+      beforeClose,
+      owner: ownerClose,
+    });
     if (labels.length > 0)
       throw new Error(
         `Better Auth fixture cleanup failed: ${labels.join(', ')}`,
