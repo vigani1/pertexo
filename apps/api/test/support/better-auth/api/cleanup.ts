@@ -1,3 +1,9 @@
+import {
+  describeCleanupFailure,
+  FixtureCleanupError,
+  formatCleanupFailure,
+  type FixtureCleanupFailure,
+} from '../../../browser/harness/resource-owner.js';
 import type { DatabaseCleanupFailure } from './contract.js';
 
 export function databaseCleanupFailure(error: unknown): DatabaseCleanupFailure {
@@ -23,4 +29,40 @@ export function databaseCleanupFailure(error: unknown): DatabaseCleanupFailure {
   return message === 'Query read timeout'
     ? 'database_query_read_timeout'
     : 'database_cleanup_failure';
+}
+
+export const DISPOSABLE_DATABASE = 'disposable database';
+
+/**
+ * The safe labels the fixture reports: the disposable database's own label,
+ * then each other failed resource by name, error class and known code.
+ * Vitest serializes nested errors with their causes and properties, so no
+ * original error crosses this boundary.
+ */
+export function cleanupFailureReport(
+  input: Readonly<{
+    databaseCleanup: DatabaseCleanupFailure | undefined;
+    beforeClose: { error: unknown } | undefined;
+    owner: { error: unknown } | undefined;
+  }>,
+): string[] {
+  const others = [
+    ...(input.beforeClose === undefined
+      ? []
+      : [describeCleanupFailure('before close', input.beforeClose.error)]),
+    ...(input.owner === undefined ? [] : ownerFailures(input.owner.error)),
+  ];
+  return [
+    ...(input.databaseCleanup === undefined ? [] : [input.databaseCleanup]),
+    ...others.map(formatCleanupFailure),
+  ];
+}
+
+function ownerFailures(error: unknown): FixtureCleanupFailure[] {
+  if (!(error instanceof FixtureCleanupError))
+    return [describeCleanupFailure('resource owner', error)];
+  // The database's failure is already reported by its specific label.
+  return error.failures.filter(
+    (failure) => failure.resource !== DISPOSABLE_DATABASE,
+  );
 }

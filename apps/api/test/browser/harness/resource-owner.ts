@@ -48,12 +48,68 @@ export class FixtureResourceOwner {
         failures.push({ name: resource.name, error });
       }
     }
-    if (failures.length > 0)
-      throw new AggregateError(
-        failures.map((failure) => failure.error),
-        `Fixture resource cleanup failed: ${failures.map((failure) => failure.name).join(', ')}`,
-      );
+    if (failures.length > 0) throw new FixtureCleanupError(failures);
   }
+}
+
+/** One failed resource, described without the error's message, cause or properties. */
+export type FixtureCleanupFailure = Readonly<{
+  resource: string;
+  errorClass: string;
+  code: string | undefined;
+}>;
+
+/**
+ * The owner's aggregate: the original errors stay in `errors` for callers that
+ * may hold them, and `failures` is the part safe to print or serialize.
+ */
+export class FixtureCleanupError extends AggregateError {
+  public readonly failures: readonly FixtureCleanupFailure[];
+
+  public constructor(
+    failures: readonly Readonly<{ name: string; error: unknown }>[],
+  ) {
+    const described = failures.map((failure) =>
+      describeCleanupFailure(failure.name, failure.error),
+    );
+    super(
+      failures.map((failure) => failure.error),
+      `Fixture resource cleanup failed: ${described.map(formatCleanupFailure).join(', ')}`,
+    );
+    this.name = 'FixtureCleanupError';
+    this.failures = described;
+  }
+}
+
+// Class names and codes are identifiers (ECONNRESET, 57P01, ERR_STREAM_DESTROYED);
+// anything else could be data, so it is not reported.
+const ERROR_CLASS = /^[A-Za-z_$][\w$]{0,63}$/u;
+const ERROR_CODE = /^[A-Z0-9_]{1,64}$/u;
+
+export function describeCleanupFailure(
+  resource: string,
+  error: unknown,
+): FixtureCleanupFailure {
+  if (!(error instanceof Error))
+    return {
+      resource,
+      errorClass: `non-error ${typeof error}`,
+      code: undefined,
+    };
+  const errorClass: unknown = error.constructor.name;
+  const code: unknown = Object.getOwnPropertyDescriptor(error, 'code')?.value;
+  return {
+    resource,
+    errorClass:
+      typeof errorClass === 'string' && ERROR_CLASS.test(errorClass)
+        ? errorClass
+        : 'unnamed error',
+    code: typeof code === 'string' && ERROR_CODE.test(code) ? code : undefined,
+  };
+}
+
+export function formatCleanupFailure(failure: FixtureCleanupFailure): string {
+  return `${failure.resource} (${failure.errorClass}${failure.code === undefined ? '' : ` ${failure.code}`})`;
 }
 
 export async function rethrowFixtureSetupFailure(
