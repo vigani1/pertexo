@@ -140,24 +140,20 @@ export function registerWebhookIngress(
   });
 }
 
+// measureOperation already runs the work exactly once, even when tracing
+// fails, and calls it inside the ingress span so the queued run carries the
+// sender's trace. Only a telemetry object that throws before measuring falls
+// back to untraced work.
 function traceAcceptance<T>(
   telemetry: WebhookIngressTelemetry,
   traceparent: string | undefined,
   work: () => Promise<T>,
 ): Promise<T> {
-  let acceptancePromise: Promise<T> | undefined;
-  const acceptOnce = (): Promise<T> => {
-    acceptancePromise ??= Promise.resolve().then(work);
-    return acceptancePromise;
-  };
-  let tracePromise: Promise<T> | undefined;
   try {
-    tracePromise = telemetry.trace(traceparent, acceptOnce);
+    return telemetry.trace(traceparent, work);
   } catch {
-    return acceptOnce();
+    return work();
   }
-  void Promise.resolve(tracePromise).catch(() => undefined);
-  return acceptancePromise ?? acceptOnce();
 }
 
 async function acceptWebhook(

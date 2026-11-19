@@ -65,7 +65,9 @@ function createConfiguredWebhookIngressTelemetry(): WebhookIngressTelemetry {
     },
     traceparent: () => {
       const spanContext = trace.getActiveSpan()?.spanContext();
-      if (spanContext === undefined) return undefined;
+      // Without a telemetry SDK the active span carries an all-zero context.
+      if (spanContext === undefined || !trace.isSpanContextValid(spanContext))
+        return undefined;
       return `00-${spanContext.traceId}-${spanContext.spanId}-${spanContext.traceFlags
         .toString(HEX)
         .padStart(TRACE_FLAGS_DIGITS, '0')}`;
