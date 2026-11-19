@@ -297,6 +297,45 @@ describe('workflow editor publishing', { timeout: 30_000 }, () => {
     expect(within(lens).getByText('Links between steps')).toBeVisible();
     expect(within(lens).getByText('1 added, 0 removed')).toBeVisible();
   });
+  it('keeps Publish usable while a save that lands with the dialog open is checked again', async () => {
+    let saves = 0;
+    let policyReads = 0;
+    let answerPolicy: (() => void) | undefined;
+    mockServer.use(
+      ...editorHandlers(() => {
+        saves += 1;
+      }),
+    );
+    mockServer.use(
+      validHandler(),
+      http.get(`${workflowApi}/publication-review`, async () => {
+        policyReads += 1;
+        // The policy for the newly saved draft is still on its way.
+        if (policyReads > 1)
+          await new Promise<void>((resolve) => {
+            answerPolicy = resolve;
+          });
+        return HttpResponse.json({ required: false, request: null });
+      }),
+    );
+    await renderLoadedApp(editorPath);
+    const event = userEvent.setup();
+    await findCanvas();
+    await event.click(addStepButton(/Set fields/u));
+    await event.click(screen.getByRole('button', { name: 'Publish v1' }));
+    const lens = await screen.findByRole('dialog', { name: /Publish/u });
+    await waitFor(
+      () => {
+        expect(saves).toBe(1);
+        expect(policyReads).toBe(2);
+      },
+      { timeout: 4_000 },
+    );
+    expect(
+      within(lens).getByRole('button', { name: 'Publish v1' }),
+    ).toBeEnabled();
+    answerPolicy?.();
+  });
   it('refuses to publish while a step has an unfinished edit, without asking the server', async () => {
     let publishes = 0;
     mockServer.use(

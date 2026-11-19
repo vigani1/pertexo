@@ -1,5 +1,5 @@
 import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
-import { queryOptions } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import {
   readPublicationReview,
   readReviewOverview,
@@ -29,6 +29,10 @@ export function reviewOverviewOptions(
     ],
     queryFn: ({ signal }) => readReviewOverview(scope, workflowId, signal),
     staleTime: QUERY_FRESHNESS.none,
+    // Each save asks again for the new revision. Until it answers, the last
+    // answer stands, so Publish doesn't go dead under a click; the server
+    // still decides whether publishing needs a review.
+    placeholderData: keepPreviousData,
   });
 }
 export function publicationReviewOptions(scope: ReviewScope, reviewId: string) {
