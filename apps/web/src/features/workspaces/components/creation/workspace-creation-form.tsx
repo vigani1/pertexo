@@ -4,7 +4,13 @@ import {
 } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
 import { workspaceCreateRequestSchema } from '@pertexo/contracts';
-import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type SyntheticEvent,
+} from 'react';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
@@ -120,9 +126,17 @@ export function WorkspaceCreationForm({
     validation.error('slug') ??
     (command.error?.field === 'slug' ? command.error.message : undefined);
   const slugVisible = editingSlug || slugError !== undefined;
+  // The fields are disabled while sending, which drops focus; a failed
+  // answer puts it back in the field to fix, or the name to send again.
+  const failedField =
+    command.error === undefined ? undefined : (command.error.field ?? 'name');
+  const focusFailedField = useEffectEvent((field: Field) => {
+    if (field === 'slug') slugRef.current?.focus();
+    else validation.focus('name');
+  });
   useEffect(() => {
-    if (command.error?.field === 'slug') slugRef.current?.focus();
-  }, [command.error]);
+    if (failedField !== undefined) focusFailedField(failedField);
+  }, [failedField, command.error?.message]);
   function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (command.created) {
