@@ -42,8 +42,10 @@ export function AddStepItem({
           ? `${step.description}. Needs a connection.`
           : step.description
       }
-      // Skipped rows keep a row's height, so the list doesn't jump as they draw.
-      className={`${stepRowClass} [contain-intrinsic-size:auto_2.25rem] [content-visibility:auto]`}
+      // Every row is drawn: rows skipped until they scroll in grew as they
+      // drew and moved the list under the pointer, so a press in Safari
+      // could land on another row.
+      className={stepRowClass}
       onDragStart={(event) => {
         event.dataTransfer.setData(STEP_DRAG_TYPE, choice.identity);
         event.dataTransfer.effectAllowed = 'copy';
