@@ -125,6 +125,12 @@ test('browses Call versions on demand while retaining an old exact pin', async (
     false,
   );
   expect(new Set(reads).size).toBe(2);
+  // The old pin is read directly, not by paging back to it.
+  expect(
+    reads.some(
+      (search) => new URLSearchParams(search).get('versionId') === firstId,
+    ),
+  ).toBe(true);
   await page.getByRole('button', { name: 'Load more versions' }).click();
   await expect(
     page.getByText(
@@ -139,6 +145,7 @@ test('browses Call versions on demand while retaining an old exact pin', async (
   await expect(
     page.getByRole('button', { name: 'Load more versions' }),
   ).toHaveCount(0);
+  expect(new URLSearchParams(reads.at(-1)).get('after')).toBe('older-page');
   await page.getByRole('combobox', { name: 'Published version' }).click();
   await expect(
     page.getByRole('option', { name: 'Version 1', exact: true }),

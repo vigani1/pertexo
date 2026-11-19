@@ -143,6 +143,9 @@ for (const width of [375, 1280]) {
     await expect(
       page.getByRole('option', { name: 'case-02', exact: true }),
     ).toHaveCount(0);
+    await expect(
+      page.getByRole('option', { name: 'default', exact: true }),
+    ).toBeVisible();
     await page
       .getByRole('option', { name: 'case-01', exact: true })
       .press('Enter');
