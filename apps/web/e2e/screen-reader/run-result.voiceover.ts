@@ -47,11 +47,17 @@ test('VoiceOver says a run finished and reads its steps', async ({
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await voiceOver.navigateToWebContent();
 
-  // The finish is spoken without moving: VoiceOver's last phrase becomes the
+  // The finish is spoken without moving: the page's status region says the
   // run's result once the page learns of it.
   finished = true;
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Succeeded in 2s' }),
+  ).toBeVisible({ timeout: 15_000 });
   await expect
-    .poll(() => voiceOver.lastSpokenPhrase(), { timeout: 30_000 })
+    .poll(
+      async () =>
+        `${(await voiceOver.spokenPhraseLog()).join(' | ')} | ${await voiceOver.lastSpokenPhrase()}`,
+    )
     .toMatch(/Succeeded in 2s/u);
 
   // The step list reads each step with its outcome.
@@ -60,8 +66,7 @@ test('VoiceOver says a run finished and reads its steps', async ({
     .getByRole('button')
     .first()
     .focus();
-  await voiceOver.next();
   await expect
-    .poll(async () => (await voiceOver.spokenPhraseLog()).join(' | '))
+    .poll(() => voiceOver.lastSpokenPhrase())
     .toMatch(/send: Succeeded, 2s/u);
 });
