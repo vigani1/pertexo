@@ -188,10 +188,11 @@ async function installCertificates({ mustExec }) {
   await mustExec(`
 set -e
 umask 022
+# A well-formed CA: strict verifiers (Python 3.13+) refuse one without key usage.
 mkdir -p drill-tls drill-backup-data
 chmod 777 drill-backup-data
 cd drill-tls
-openssl req -x509 -newkey rsa:2048 -nodes -days 2 -keyout ca.key -out ca.crt -subj /CN=pertexo-drill-ca 2>/dev/null
+openssl req -x509 -newkey rsa:2048 -nodes -days 2 -keyout ca.key -out ca.crt -subj /CN=pertexo-drill-ca -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign 2>/dev/null
 openssl req -newkey rsa:2048 -nodes -keyout site.key -out site.csr -subj /CN=drill.test 2>/dev/null
 printf 'subjectAltName=${names}\\n' > site.ext
 openssl x509 -req -in site.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 2 -out site.crt -extfile site.ext 2>/dev/null
