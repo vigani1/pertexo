@@ -50,9 +50,6 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
-    "@guidepup/guidepup": "0.40.0",
-    "@guidepup/playwright": "0.21.0",
-    "@guidepup/setup": "0.29.3",
     "@guidepup/virtual-screen-reader": "0.33.0",
     "@pertexo/workflow-engine": "workspace:*",
     "@playwright/test": "1.65.0",
