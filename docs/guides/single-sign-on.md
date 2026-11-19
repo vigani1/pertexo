@@ -63,6 +63,14 @@ It works across API instances. An invalid/expired callback returns to sign-in wi
 a generic error, without disclosing whether an account exists. Starting a newer
 attempt in the same browser replaces the browser binding; finish that newer one.
 
+Many people often reach Pertexo from one address: an office, a school or a VPN.
+Starting a sign-in at a provider and finishing it are limited to 300 a minute
+per address, and the sign-in page's own reads to 1,200, because the provider
+does the authenticating and nothing is guessed here. Password and two-factor
+attempts keep their tight limits per address and per account. Past the limit,
+the sign-in page says "Too many sign-ins from this network right now" and how
+long to wait.
+
 Better Auth continues to issue and verify the signed session cookie. Social
 proof tokens are not saved as workflow connections or OAuth access/refresh tokens.
 Linking, security audit, previous-session revocation and the new session commit

@@ -33,3 +33,28 @@ describe('the limits the automation guide publishes', () => {
     );
   });
 });
+
+describe('the limits the single sign-on guide publishes', () => {
+  it('states the policy’s per-address budgets for identity-provider sign-ins', async () => {
+    const guide = (
+      await readFile(
+        new URL('../../../docs/guides/single-sign-on.md', import.meta.url),
+        'utf8',
+      )
+    ).replace(/\s+/gu, ' ');
+    const perAddress = (endpoint: RateLimitEndpointClass) =>
+      new AbuseRateLimitPolicy()
+        .evaluate(endpoint, { clientAddress: '203.0.113.8' })
+        .dimensions.find((dimension) => dimension.kind === 'client_address')
+        ?.limit.toLocaleString('en-US');
+    const signIns = perAddress('federated_sign_in_start');
+
+    expect(perAddress('federated_sign_in_callback')).toBe(signIns);
+    expect(guide).toContain(
+      `limited to ${String(signIns)} a minute per address`,
+    );
+    expect(guide).toContain(
+      `reads to ${String(perAddress('sign_in_page_read'))}`,
+    );
+  });
+});

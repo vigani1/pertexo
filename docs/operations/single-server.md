@@ -411,8 +411,9 @@ For audited changes to stuck or uncertain work, use `run_ops` as described in
 Sign-in, run starts and the other API request classes with a local fallback stay
 available during a Redis outage. Their request counts start again in the fallback:
 it has no record of requests already counted by Redis. A sign-in subject that
-exhausted its Redis budget can receive another local budget (normally ten starts
-per client address per minute, also subject to the account limit). Once that local
+exhausted its Redis budget can receive another local budget (normally ten password
+or two-factor attempts per client address per minute, also subject to the account
+limit, and 300 identity-provider sign-ins per client address). Once that local
 budget is exhausted, the process keeps refusing requests while that counter is retained
 and until its window expires.
 
