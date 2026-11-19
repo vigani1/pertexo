@@ -1,5 +1,5 @@
 import { PencilIcon } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
 import type { RenameFormProps } from './inline-rename.types';
@@ -27,6 +27,9 @@ export function InlineRename({
   }>) {
   const [editing, setEditing] = useState(false);
   const [knotted, setKnotted] = useState(false);
+  // Saving or cancelling closes the field that held focus; focus goes back
+  // to the pencil that opened it rather than falling to the page.
+  const returnFocus = useRef(false);
   useEffect(() => {
     if (!knotted) return;
     const timer = window.setTimeout(() => {
@@ -43,6 +46,7 @@ export function InlineRename({
         textClassName={textClassName}
         onDraftChange={onDraftChange}
         onClose={(saved) => {
+          returnFocus.current = true;
           setEditing(false);
           setKnotted(saved);
           onDraftChange?.(undefined);
@@ -59,6 +63,11 @@ export function InlineRename({
         </span>
       ) : null}
       <Button
+        ref={(element) => {
+          if (element === null || !returnFocus.current) return;
+          returnFocus.current = false;
+          element.focus();
+        }}
         type="button"
         variant="ghost"
         size="icon-sm"
