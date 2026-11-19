@@ -59,6 +59,13 @@ for (const width of [1280, 375])
       (route) => route.fulfill({ json: { output: { kind: 'none' } } }),
     );
     await page.goto(`/w/${workspaceId}/runs/${firstRunId}`);
+    // product-ux-11: the run page's views have plain names.
+    await expect(page.getByRole('tablist').getByRole('tab')).toHaveText([
+      /^Timeline/u,
+      /^Diagram/u,
+      /^Events/u,
+      /^Input & output/u,
+    ]);
     const steps = page.getByRole('navigation', { name: 'Step history pages' });
     await expect(steps).toHaveText(/2,501–2,501 of 2,501/u);
     await expect(page.getByRole('button', { name: /^item/u })).toHaveCount(1);

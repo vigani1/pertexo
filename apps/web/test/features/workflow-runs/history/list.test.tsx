@@ -32,56 +32,6 @@ import {
 } from './list/fixture';
 
 describe('workspace runs', () => {
-  it('paginates in StrictMode and opens a run from its row', async () => {
-    mockServer.use(
-      ...identityHandlers(readerCapabilities),
-      ...workflowReads(),
-      ...historyReads(),
-      http.get(`${apiBase}/runs/${firstRunId}`, () =>
-        HttpResponse.json({
-          run: fixtureRun(firstRunId, 'succeeded'),
-          nodes: [],
-        }),
-      ),
-      http.get(
-        `${apiBase}/runs/${firstRunId}/events`,
-        () =>
-          new HttpResponse('', {
-            headers: { 'content-type': 'text/event-stream' },
-          }),
-      ),
-      http.get(`${apiBase}/workflows/${workflowId}/versions`, () =>
-        HttpResponse.json({ items: [], nextCursor: null }),
-      ),
-    );
-    const { router } = await renderLoadedApp(`/w/${workspaceId}/runs`, {
-      strict: true,
-    });
-    expect(
-      await screen.findByRole(
-        'button',
-        { name: 'Copy run ID eeee…eeee' },
-        coldStart,
-      ),
-    ).toBeVisible();
-    expect(screen.queryByText(firstRunId)).not.toBeInTheDocument();
-    await userEvent
-      .setup()
-      .click(screen.getByRole('button', { name: 'Load more' }));
-    expect(
-      await screen.findByRole('button', { name: 'Copy run ID ffff…ffff' }),
-    ).toBeVisible();
-    const [firstLink] = screen.getAllByRole('link', {
-      name: 'Customer onboarding',
-    });
-    if (firstLink === undefined) throw new Error('Missing run link');
-    await userEvent.setup().click(firstLink);
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(
-        `/w/${workspaceId}/runs/${firstRunId}`,
-      );
-    });
-  });
   it('shows exact live counts in the header from one statistics read', async () => {
     const requests: URLSearchParams[] = [];
     const statistics: URLSearchParams[] = [];

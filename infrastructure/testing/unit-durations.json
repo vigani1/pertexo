@@ -429,7 +429,6 @@
   "test/features/workflow-runs/detail/sent-attachments.test.tsx": 187,
   "test/features/workflow-runs/history/timeline/stays-unnamed-for-computed-outcomes-or-runs.test.ts": 14,
   "test/features/workflow-editor/notes/formatting.test.tsx": 1459,
-  "test/features/workflow-runs/plain-names.test.tsx": 1388,
   "test/features/workflow-testing/node-preview-lifecycle/stale-admission.test.tsx": 334,
   "test/features/forms/message-links.test.tsx": 149,
   "test/features/workflow-editor/model/expression-switch.test.ts": 12,
