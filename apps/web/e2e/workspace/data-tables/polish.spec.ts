@@ -71,16 +71,21 @@ for (const width of [360, 1440])
     await cancel.click();
     await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
     const csv = page.getByRole('dialog', { name: 'Import CSV', exact: true });
-    const transfer = await page.evaluateHandle(() => {
+    // Built and dropped inside the page: handing Firefox a DataTransfer
+    // made in one evaluate to another call crashes its content process.
+    await csv.locator('[data-slot="file-drop"]').evaluate((zone) => {
       const data = new DataTransfer();
       data.items.add(
         new File(['name\nAda'], 'orders.csv', { type: 'text/csv' }),
       );
-      return data;
+      zone.dispatchEvent(
+        new DragEvent('drop', {
+          dataTransfer: data,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
     });
-    await csv
-      .locator('[data-slot="file-drop"]')
-      .dispatchEvent('drop', { dataTransfer: transfer });
     await expect(csv.getByLabel('Or paste CSV')).toHaveValue('name\nAda');
     await expect(csv.getByText('orders.csv')).toBeVisible();
     await expect(csv.getByText('8 B')).toBeVisible();
