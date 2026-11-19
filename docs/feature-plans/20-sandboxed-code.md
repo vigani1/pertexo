@@ -50,8 +50,9 @@ and it can't reach the database, Redis, secrets, the network or other runs.
     anchor; it gets only its own limit settings.
 - The worker talks to it over a Unix socket on a volume shared only by the
   worker and the runner. The protocol uses bounded JSON messages: task in, one
-  result out, after a small ready/busy greeting. The worker checks hardened
-  mode before sending input; busy clients wait within the attempt budget.
+  result out, after a small ready/queued/busy greeting (queued is followed by
+  ready when a slot frees; busy means the queue is full). The worker checks
+  hardened mode before sending input.
   Task messages have a 3 MiB wire ceiling (two separately bounded input/variable
   values plus escaped code); result messages have a 2 MiB wire ceiling. Each
   protocol input/output stays within the SDK 1 MiB, depth-64, 10,000-member
@@ -129,8 +130,14 @@ Instance settings, with safe defaults the server admin can raise:
   No diagnostics enter safe failure summaries, notices, audit or email.
 - When Code steps are off, publishing a workflow with one is refused, and a run
   that reaches one fails with `code.disabled`.
-- When no slot is free, the attempt waits within its lease and otherwise
-  retries through the normal safe retry path.
+- When no slot is free, the runner queues the task, first come first served,
+  as n8n's task runners do; the attempt waits within its lease for up to
+  `CODE_LIMITS.slotWaitSeconds` (as long as the longest allowed task), and the
+  step's own time limit starts only when a slot takes it. A step still waiting
+  then fails with `code.runner_busy` and isn't retried. A runner that crashed
+  or can't be reached is `code.runner_unavailable`, retried on the normal safe
+  retry path. There is no per-workspace share: a self-hosted server has one
+  limit, and hosted customers each get their own instance.
 
 ## Implementation owners and qualification decisions
 
@@ -203,8 +210,8 @@ Sources: [Node permissions](https://nodejs.org/download/release/v24.19.0/docs/ap
 
 Closed safe codes for routing and summaries: `code.syntax_error`,
 `code.runtime_error`, `code.timeout`, `code.memory_limit`,
-`code.output_invalid`, `code.module_refused`, `code.disabled` and
-`code.runner_unavailable` (retryable). Failure routes (F09) handle them like
+`code.output_invalid`, `code.module_refused`, `code.disabled`,
+`code.runner_busy` and `code.runner_unavailable` (retryable). Failure routes (F09) handle them like
 other step failures. The user's own error message (bounded) and line/column
 are visible to run readers, but never appear in emails, notices or
 error-workflow summaries.
