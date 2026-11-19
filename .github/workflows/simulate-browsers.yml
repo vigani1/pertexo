@@ -5,11 +5,6 @@ name: Simulate browsers
 # it by hand, or push a throwaway sim/browsers/<n> branch.
 on:
   workflow_dispatch:
-    inputs:
-      voiceover:
-        description: Also try the real VoiceOver journeys on macOS
-        type: boolean
-        default: false
   push:
     branches: ['sim/browsers/**']
 
@@ -74,43 +69,5 @@ jobs:
         with:
           name:
             simulate-browsers-${{ matrix.project }}-${{ strategy.job-index }}
-          path: apps/web/test-results/
-          if-no-files-found: ignore
-
-  # A real screen reader: VoiceOver on macOS, driven by Guidepup through
-  # WebKit, on the sign-in and run-result journeys. Only on request: on the
-  # hosted macos-15 runner (2026-11-19) VoiceOver did not hear focus moves,
-  # and once stopped mid-journey ("VoiceOver not running"), so a failure here
-  # does not yet say anything about the app.
-  voiceover:
-    name: voiceover (macOS)
-    if: inputs.voiceover
-    runs-on: macos-15
-    timeout-minutes: 30
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up workspace
-        uses: ./.github/actions/setup
-      - name: Install WebKit
-        run: pnpm --filter @pertexo/web exec playwright install webkit
-      - name: Let VoiceOver be driven by AppleScript
-        run: |
-          pnpm --filter @pertexo/web exec guidepup setup --ci
-          # The VoiceOver preferences Guidepup mounts when it starts.
-          pnpm --filter @pertexo/web exec guidepup install
-      - name: Build what the mocked suite imports
-        run:
-          pnpm --filter '@pertexo/node-catalog...' --filter
-          '@pertexo/workflow-engine...' build
-      - name: VoiceOver journeys
-        run:
-          pnpm --filter @pertexo/web exec playwright test --config
-          playwright.voiceover.config.ts --reporter=list
-      - name: Upload VoiceOver traces
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: simulate-browsers-voiceover
           path: apps/web/test-results/
           if-no-files-found: ignore

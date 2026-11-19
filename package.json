@@ -54,14 +54,11 @@
           "oxlint.config.mjs",
           "playwright.live.config.ts",
           "playwright.browsers.config.ts",
-          "playwright.voiceover.config.ts",
-          "e2e/screen-reader/*.voiceover.ts",
           "e2e-live/**/*.spec.ts",
           "e2e-live/support/*.probe.ts",
           "e2e-live/support/*.lifetime-probe.ts"
         ],
         "ignoreDependencies": [
-          "@guidepup/setup",
           "@guidepup/virtual-screen-reader"
         ]
       },
