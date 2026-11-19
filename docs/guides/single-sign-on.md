@@ -101,7 +101,10 @@ configuration, never browser variables or workflow credentials.
    display name to `name`. The signed IdP is authoritative only for its verified
    domains. Explicitly unverified email is refused. Entra's absent
    `email_verified` claim is accepted for organization OIDC; social sign-in still
-   requires verified email.
+   requires verified email. authentik's default `email` scope mapping sends
+   `email_verified: false` for every user, so its sign-ins are refused until you
+   give the provider an `email` scope mapping that returns `true` for the
+   addresses authentik manages.
 5. **Test sign-in** for each verified domain. Use an identity on that domain.
    Testing preserves your current owner session and creates no account or
    membership. Before **Require SSO**, keep a verified password on the control
