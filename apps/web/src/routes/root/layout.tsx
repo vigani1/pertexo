@@ -2,6 +2,7 @@ import { HeadContent, Outlet, useRouteContext } from '@tanstack/react-router';
 import { SessionPauseBoundary } from '@/features/auth/auth-routing.public';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { NavigationProgress } from './navigation-progress';
+import { RouteAnnouncer } from './route-announcer';
 
 export function RootLayout() {
   const { sessionPause, apiClient } = useRouteContext({ from: '__root__' });
@@ -10,6 +11,7 @@ export function RootLayout() {
     <TooltipProvider delay={400}>
       <HeadContent />
       <NavigationProgress />
+      <RouteAnnouncer />
       <a
         href="#main"
         className="fixed top-4 left-4 z-60 -translate-y-16 rounded-md bg-action p-3 text-action-foreground opacity-0 transition-[transform,opacity] focus:translate-y-0 focus:opacity-100 motion-reduce:transition-none"
