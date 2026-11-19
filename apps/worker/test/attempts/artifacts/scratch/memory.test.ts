@@ -17,7 +17,15 @@ function measure(size: number) {
     const directory = await mkdtemp(path.join(tmpdir(), 'pertexo-scratch-load-'));
     const space = await ArtifactScratchSpace.create(directory);
     let high = process.memoryUsage();
-    const sample = () => {
+    // A timer picks unbiased moments; a full collection runs only once
+    // SAMPLE_BYTES more were written, so the count of collections follows the
+    // work, not how slow the machine is.
+    const SAMPLE_BYTES = 2 * 1024 * 1024;
+    let written = 0;
+    let sampledAt = -SAMPLE_BYTES;
+    const sample = (always = false) => {
+      if (!always && written - sampledAt < SAMPLE_BYTES) return;
+      sampledAt = written;
       globalThis.gc();
       const next = process.memoryUsage();
       for (const key of Object.keys(next)) high[key] = Math.max(high[key], next[key]);
@@ -30,14 +38,17 @@ function measure(size: number) {
     try {
       files = await Promise.all(Array.from({length: 32}, (_, index) => {
         function* chunks() {
-          for (let offset = 0; offset < size; offset += 65536)
-            yield Buffer.alloc(Math.min(65536, size-offset), index);
+          for (let offset = 0; offset < size; offset += 65536) {
+            const chunk = Buffer.alloc(Math.min(65536, size-offset), index);
+            written += chunk.length;
+            yield chunk;
+          }
         }
         return space.spool({attemptId:'attempt-'+index, maxBytes:size, body:Readable.from(chunks(), {objectMode:false, highWaterMark:65536}), signal:new AbortController().signal});
       }));
       let disk = 0;
       for (const name of await readdir(directory)) disk += (await stat(path.join(directory,name,'body'))).size;
-      sample();
+      sample(true);
       const elapsedMillis = performance.now()-started;
       console.log(JSON.stringify({size, concurrency:32, disk, high, elapsedMillis, eventLoopP99Millis:delay.percentile(99)/1e6}));
     } finally {
@@ -50,7 +61,9 @@ function measure(size: number) {
   // Each sample collects garbage first, so the peak is what scratch holds,
   // not 64 KiB chunks already written and waiting for the collector: without
   // it the same run peaked at 40-50 MiB here and 67.45 MiB once in CI, while
-  // the memory actually held never passed 30 MiB.
+  // the memory actually held never passed 30 MiB. A full collection on every
+  // 5 ms tick made the test three times slower on CI (4-5 s against its 5 s
+  // limit), so a tick collects only after 2 MiB more were written.
   const result = spawnSync(
     process.execPath,
     [
