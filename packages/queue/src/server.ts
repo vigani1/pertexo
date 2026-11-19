@@ -4,6 +4,7 @@ export {
 } from './jobs/queue-job.schemas.js';
 export type { QueueJob } from './jobs/queue-job.schemas.js';
 export { JOB_NAME, QUEUE_FOR_JOB, QUEUE_NAME } from './jobs/names.js';
+export { QUEUE_CLASS_DEFAULTS } from './jobs/defaults.js';
 export type { JobName } from './jobs/names.js';
 export { jobIdForOutboxEvent } from './jobs/job-id.js';
 export { unrecoverableQueueError } from './jobs/delivery-admission.js';
