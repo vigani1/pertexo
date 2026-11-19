@@ -22,8 +22,9 @@ export const CODE_LIMITS = Object.freeze({
   resultBytes: 2 * NODE_JSON_LIMITS.bytes,
   defaultTimeoutSeconds: 5,
   // How long a step waits for a busy runner's slot: as long as the longest
-  // task an administrator may allow, so a slot can free up, while the wait and
-  // that task still fit in a node attempt's queue time limit (15 minutes).
+  // task an administrator may allow, so a slot can free up. The wait and that
+  // task must fit in a node attempt's queue time limit; the worker's
+  // slot-wait-limit test holds the two together.
   slotWaitSeconds: CODE_SETTING_BOUNDS.maximumSeconds,
 });
 
