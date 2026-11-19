@@ -2,8 +2,12 @@ import { createServer, type Socket } from 'node:net';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { DEFAULT_CODE_SETTINGS, type CodeTask } from '@pertexo/node-sdk';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  CODE_LIMITS,
+  DEFAULT_CODE_SETTINGS,
+  type CodeTask,
+} from '@pertexo/node-sdk';
 import { readCodeFrame, writeCodeFrame } from '@pertexo/node-sdk/server';
 import { createCodeRunnerClient } from '../../../src/attempts/code/client.js';
 
@@ -157,5 +161,80 @@ describe('worker Code transport boundary', () => {
       cancel.abort();
     }, 20);
     await expect(result).rejects.toThrow();
+  });
+});
+
+describe('a busy Code runner', () => {
+  const queued = {
+    kind: 'queued',
+    mode: 'hardened',
+    settings: DEFAULT_CODE_SETTINGS,
+  } as const;
+
+  it('waits in the runner’s queue and runs the task once a slot frees', async () => {
+    const f = await fixture(queued);
+    f.server.on('connection', (socket) => {
+      void (async () => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await writeCodeFrame(socket, { ...queued, kind: 'ready' });
+        expect(
+          await readCodeFrame(socket, 3 * 1048576, AbortSignal.timeout(2000)),
+        ).toEqual(task);
+        await writeCodeFrame(socket, {
+          kind: 'succeeded',
+          output: 'ran after waiting',
+          diagnostics: { logs: [], truncated: false },
+        });
+      })();
+    });
+    expect(
+      await f.client.execute(task, AbortSignal.timeout(5000)),
+    ).toMatchObject({ kind: 'succeeded', output: 'ran after waiting' });
+  });
+
+  it('stops waiting after the slot wait and says the runner stayed busy', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const f = await fixture(queued);
+      const result = f.client.execute(task, new AbortController().signal);
+      // The slot wait starts once the client has read the runner's queued greeting.
+      while (vi.getTimerCount() === 0)
+        await new Promise((resolve) => setImmediate(resolve));
+      await vi.advanceTimersByTimeAsync(CODE_LIMITS.slotWaitSeconds * 1_000);
+      expect(await result).toEqual({
+        kind: 'failed',
+        code: 'code.runner_busy',
+        diagnostics: {
+          logs: [],
+          truncated: false,
+          error: {
+            message:
+              'Every Code runner slot stayed busy for 5 minutes, so this step stopped waiting.',
+          },
+        },
+      });
+      expect(Buffer.concat(f.received)).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('treats a runner that goes away while the task waits as unavailable, not busy', async () => {
+    const f = await fixture(queued);
+    f.server.on('connection', (socket) => {
+      setTimeout(() => socket.destroy(), 100);
+    });
+    expect(
+      await f.client.execute(task, AbortSignal.timeout(5000)),
+    ).toMatchObject({
+      kind: 'failed',
+      code: 'code.runner_unavailable',
+      diagnostics: {
+        error: {
+          message:
+            'The Code runner stopped or couldn’t be reached before it returned a result.',
+        },
+      },
+    });
   });
 });

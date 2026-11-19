@@ -21,9 +21,11 @@ export class NodeCodeFailure extends NodeExecutorFailure {
 }
 
 function errorKind(code: CodeErrorCode) {
-  if (code === 'code.timeout') return 'timeout';
-  // The runner is the service that runs the step: a crashed or busy one is the
-  // kind the engine's retry policy retries, which 'internal' never is.
+  // A busy runner already made the step wait its whole limit; retrying would
+  // only wait again, so it fails like a timeout.
+  if (code === 'code.timeout' || code === 'code.runner_busy') return 'timeout';
+  // The runner is the service that runs the step: a crashed or unreachable one
+  // is the kind the engine's retry policy retries, which 'internal' never is.
   if (code === 'code.runner_unavailable') return 'provider';
   const runtimeFailed =
     code === 'code.runtime_error' ||

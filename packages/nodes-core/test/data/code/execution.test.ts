@@ -105,6 +105,7 @@ describe('Code execution capability', () => {
     'code.module_refused',
     'code.disabled',
     'code.runner_unavailable',
+    'code.runner_busy',
   ] as const)(
     'preserves %s without disclosing user diagnostics as the error message',
     async (code) => {

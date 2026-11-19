@@ -84,7 +84,8 @@ describe('coordinator applies the published step retry settings', () => {
 });
 
 // docs/feature-plans/20-sandboxed-code.md: `code.runner_unavailable` is
-// retryable, and a busy runner "retries through the normal safe retry path".
+// retryable; a busy runner makes the step wait in its queue, and a step that
+// waited the whole slot wait (`code.runner_busy`) is not retried to wait again.
 describe('coordinator retries a Code step only when its runner was unavailable', () => {
   const codeFailure = (code: NodeCodeFailure['code']) => {
     const failure = new NodeCodeFailure(code, { logs: [], truncated: false });
@@ -97,13 +98,19 @@ describe('coordinator retries a Code step only when its runner was unavailable',
     };
   };
 
-  it('tries again after the Code runner crashed or stayed busy', async () => {
+  it('tries again after the Code runner crashed or couldn’t be reached', async () => {
     const run = await startedRun({});
     const plan = await run.fail(codeFailure('code.runner_unavailable'));
     expect(setInvocation(plan)).toMatchObject({
       status: 'waiting',
       waitKind: 'retry_backoff',
     });
+  });
+
+  it('fails at once when every runner slot stayed busy for the whole wait', async () => {
+    const run = await startedRun({});
+    const plan = await run.fail(codeFailure('code.runner_busy'));
+    expect(setInvocation(plan)).toMatchObject({ status: 'failed' });
   });
 
   it("fails at once when the step's own code ran out of time", async () => {
