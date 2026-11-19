@@ -296,6 +296,81 @@ describe('standalone callable contracts', () => {
       ),
     ).toThrow();
   });
+
+  it('fails only the run event of a success that also finished a step', () => {
+    const checkpoint = createCheckpoint({
+      workflowVersionId: VERSION_ID,
+      iterationBudget: 0,
+    });
+    const stepFinished = {
+      sequence: 1,
+      name: 'node.succeeded' as const,
+      occurredAt: '2026-10-11T00:00:00.000Z',
+      nodeId: 'last-step',
+      invocationKey: 'last-step-key',
+      attemptNumber: 1,
+    };
+    const plan = {
+      expectedRevision: 0,
+      expectedNextEventSequence: 1,
+      consumedThroughEventSequence: 0,
+      checkpoint: { ...checkpoint, runStatus: 'succeeded' as const },
+      events: [
+        stepFinished,
+        {
+          sequence: 2,
+          name: 'run.succeeded' as const,
+          occurredAt: '2026-10-11T00:00:00.000Z',
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    };
+
+    expect(
+      settleCallableResult(plan, { kind: 'valid', value: 'hello' }).events,
+    ).toEqual(plan.events);
+    expect(
+      settleCallableResult(plan, {
+        kind: 'invalid',
+        reasonCode: 'callable_result_invalid',
+      }).events,
+    ).toEqual([
+      stepFinished,
+      {
+        sequence: 2,
+        name: 'run.failed',
+        occurredAt: '2026-10-11T00:00:00.000Z',
+        reasonCode: 'callable_result_invalid',
+      },
+    ]);
+  });
+
+  it('refuses a success event whose checkpoint did not succeed', () => {
+    const checkpoint = createCheckpoint({
+      workflowVersionId: VERSION_ID,
+      iterationBudget: 0,
+    });
+    const stale = {
+      expectedRevision: 0,
+      expectedNextEventSequence: 1,
+      consumedThroughEventSequence: 0,
+      checkpoint: { ...checkpoint, runStatus: 'running' as const },
+      events: [
+        {
+          sequence: 1,
+          name: 'run.succeeded' as const,
+          occurredAt: '2026-10-11T00:00:00.000Z',
+        },
+      ],
+      nodeRunAdmissions: [],
+      attempts: [],
+    };
+
+    expect(() =>
+      settleCallableResult(stale, { kind: 'valid', value: 'hello' }),
+    ).toThrow(expect.objectContaining({ code: 'checkpoint_invalid' }));
+  });
 });
 
 describe('a callable result that reads a workspace variable', () => {
