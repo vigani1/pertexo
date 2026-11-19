@@ -1,0 +1,80 @@
+name: Simulate browsers
+
+# Runs the mocked browser suite in Firefox, WebKit and the phone profiles, and
+# the screen-reader journeys. Never on pull requests, main or a schedule: run
+# it by hand, or push a throwaway sim/browsers/<n> branch.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['sim/browsers/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simulate-browsers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mocked:
+    name: mocked (${{ matrix.project }} ${{ matrix.shard }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: firefox, shard: 1/4 }
+          - { project: firefox, shard: 2/4 }
+          - { project: firefox, shard: 3/4 }
+          - { project: firefox, shard: 4/4 }
+          - { project: webkit, shard: 1/4 }
+          - { project: webkit, shard: 2/4 }
+          - { project: webkit, shard: 3/4 }
+          - { project: webkit, shard: 4/4 }
+          - { project: ios-safari, shard: 1/2 }
+          - { project: ios-safari, shard: 2/2 }
+          - { project: android-chrome, shard: 1/2 }
+          - { project: android-chrome, shard: 2/2 }
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      # The runner's cloud mirrors have stalled the browser packages (see the
+      # browser job in ci.yml); keep only the configured HTTPS mirrors.
+      - name: Use Ubuntu HTTPS mirrors for browser dependencies
+        run: |
+          sudo sed -i -E '/^http:\/\/[^/]*(azure|ec2)[.]archive[.]ubuntu[.]com\//d' /etc/apt/apt-mirrors.txt
+          grep -q . /etc/apt/apt-mirrors.txt
+      - name: Install the browser
+        timeout-minutes: 8
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          case "$PROJECT" in
+            firefox) engine=firefox ;;
+            webkit|ios-safari) engine=webkit ;;
+            android-chrome) engine=chromium ;;
+          esac
+          pnpm --filter @pertexo/web exec playwright install --with-deps "$engine"
+      - name: Build what the mocked suite imports
+        run:
+          pnpm --filter '@pertexo/node-catalog...' --filter
+          '@pertexo/workflow-engine...' build
+      - name: Mocked suite
+        env:
+          PROJECT: ${{ matrix.project }}
+          SHARD: ${{ matrix.shard }}
+        run:
+          pnpm --filter @pertexo/web exec playwright test --config
+          playwright.browsers.config.ts --project "$PROJECT" --shard "$SHARD"
+          --workers=3 --reporter=list
+      - name: Upload browser traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name:
+            simulate-browsers-${{ matrix.project }}-${{ strategy.job-index }}
+          path: apps/web/test-results/
+          if-no-files-found: ignore
