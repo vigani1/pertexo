@@ -33,14 +33,24 @@ export function cardIdentity(data: WorkflowFlowNode['data']): Readonly<{
   };
 }
 
-export function nodeLabel(
-  title: string,
-  type: string,
-  issueCount: number,
+/**
+ * What a step card is called: its title, type and issues, and for a For
+ * each the body's unfinished parts. The card and the canvas wrapper that
+ * takes keyboard focus say the same.
+ */
+export function stepCardLabel(
+  node: Pick<WorkflowFlowNode, 'type' | 'data'>,
 ): string {
-  return issueCount > 0
-    ? `${title}, ${type}, ${formatCount(issueCount, 'issue')}`
-    : `${title}, ${type}`;
+  const { title, type } = cardIdentity(node.data);
+  const issues = node.data.issueCount;
+  const label =
+    issues > 0
+      ? `${title}, ${type}, ${formatCount(issues, 'issue')}`
+      : `${title}, ${type}`;
+  const bodyIssues = node.data.body?.issues.length ?? 0;
+  return node.type === 'forEach' && bodyIssues > 0
+    ? `${label}, body needs ${formatCount(bodyIssues, 'fix', 'fixes')}`
+    : label;
 }
 
 // React Flow clears the outline on the focused node, so its card wears it.

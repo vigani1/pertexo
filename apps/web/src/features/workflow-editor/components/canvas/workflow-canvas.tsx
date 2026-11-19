@@ -35,6 +35,7 @@ import { CanvasZoomLens } from './zoom-lens';
 import { ForEachNodeCard } from './cards/for-each';
 import { WorkflowEdge } from './workflow-edge';
 import { WorkflowNodeCard } from './cards/node';
+import { stepCardLabel } from './cards/style';
 import type { Position } from './projection';
 import type { CanvasOverlays } from './projection';
 import { useCanvasProjection } from './projection';
@@ -209,8 +210,16 @@ function useCanvasInteraction({
   const { nodes: noteNodes, onChanges: onNoteChanges } = useNoteProjection({
     editable,
   });
+  // React Flow's focusable wrapper takes the card's name, or a screen
+  // reader landing on a step hears only "node".
   const canvasNodes = useMemo(
-    () => [...noteNodes, ...projection.nodes],
+    () => [
+      ...noteNodes,
+      ...projection.nodes.map((node) => ({
+        ...node,
+        ariaLabel: stepCardLabel(node),
+      })),
+    ],
     [noteNodes, projection.nodes],
   );
   const onCanvasNodesChange = useCallback(
