@@ -52,11 +52,18 @@ export class FixtureResourceOwner {
   }
 }
 
-/** One failed resource, described without the error's message, cause or properties. */
-export type FixtureCleanupFailure = Readonly<{
-  resource: string;
+/** An error described without its message, cause or properties. */
+export type CleanupErrorShape = Readonly<{
   errorClass: string;
   code: string | undefined;
+  /** The shapes of an AggregateError's errors, since owners nest them. */
+  errors: readonly CleanupErrorShape[];
+}>;
+
+/** One failed resource, by its fixed name and its error's shape. */
+export type FixtureCleanupFailure = Readonly<{
+  resource: string;
+  error: CleanupErrorShape;
 }>;
 
 /**
@@ -85,31 +92,50 @@ export class FixtureCleanupError extends AggregateError {
 // anything else could be data, so it is not reported.
 const ERROR_CLASS = /^[A-Za-z_$][\w$]{0,63}$/u;
 const ERROR_CODE = /^[A-Z0-9_]{1,64}$/u;
+// Runtimes nest aggregates a level or two deep; the bound only stops cycles.
+const NESTED_AGGREGATE_DEPTH = 3;
 
 export function describeCleanupFailure(
   resource: string,
   error: unknown,
 ): FixtureCleanupFailure {
+  return { resource, error: errorShape(error, NESTED_AGGREGATE_DEPTH) };
+}
+
+function errorShape(error: unknown, depth: number): CleanupErrorShape {
   if (!(error instanceof Error))
     return {
-      resource,
       errorClass: `non-error ${typeof error}`,
       code: undefined,
+      errors: [],
     };
   const errorClass: unknown = error.constructor.name;
   const code: unknown = Object.getOwnPropertyDescriptor(error, 'code')?.value;
+  const nested: unknown =
+    error instanceof AggregateError && depth > 0 ? error.errors : [];
   return {
-    resource,
     errorClass:
       typeof errorClass === 'string' && ERROR_CLASS.test(errorClass)
         ? errorClass
         : 'unnamed error',
     code: typeof code === 'string' && ERROR_CODE.test(code) ? code : undefined,
+    errors: Array.isArray(nested)
+      ? nested.map((inner: unknown) => errorShape(inner, depth - 1))
+      : [],
   };
 }
 
 export function formatCleanupFailure(failure: FixtureCleanupFailure): string {
-  return `${failure.resource} (${failure.errorClass}${failure.code === undefined ? '' : ` ${failure.code}`})`;
+  return `${failure.resource} (${formatErrorShape(failure.error)})`;
+}
+
+function formatErrorShape(shape: CleanupErrorShape): string {
+  const code = shape.code === undefined ? '' : ` ${shape.code}`;
+  const nested =
+    shape.errors.length === 0
+      ? ''
+      : ` [${shape.errors.map(formatErrorShape).join('; ')}]`;
+  return `${shape.errorClass}${code}${nested}`;
 }
 
 export async function rethrowFixtureSetupFailure(

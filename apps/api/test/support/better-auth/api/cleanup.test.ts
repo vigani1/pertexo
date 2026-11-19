@@ -78,6 +78,29 @@ describe('Better Auth fixture cleanup report', () => {
     ).toEqual(['database_drop_deadline', 'connection runtime (Error)']);
   });
 
+  it("names the errors inside a runtime's own aggregate without their messages", async () => {
+    const error = await ownerFailure([
+      {
+        name: 'identity runtime',
+        error: new AggregateError(
+          [new PoolClosedError(SECRET), new Error(SECRET)],
+          SECRET,
+        ),
+      },
+    ]);
+
+    const report = cleanupFailureReport({
+      databaseCleanup: undefined,
+      beforeClose: undefined,
+      owner: { error },
+    });
+
+    expect(report).toEqual([
+      'identity runtime (AggregateError [PoolClosedError ERR_POOL_CLOSED; Error])',
+    ]);
+    expect(JSON.stringify(report)).not.toContain('s3cr3t');
+  });
+
   it('describes a thrown value that is not an error by its type', () => {
     expect(
       cleanupFailureReport({
