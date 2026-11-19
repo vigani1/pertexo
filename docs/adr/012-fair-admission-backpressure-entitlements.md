@@ -67,6 +67,9 @@ V1 endpoint classes and one-minute defaults are:
 | Endpoint class | Dimensions and limits | Backend failure |
 | --- | --- | --- |
 | `identity_start` | client address 10; account named in the request 20 | per-process fallback |
+| `sign_in_page_read` | client address 1,200 | per-process fallback |
+| `federated_sign_in_start` | client address 300 | per-process fallback |
+| `federated_sign_in_callback` | client address 300 | per-process fallback |
 | `identity_callback` | client address 30 | per-process fallback |
 | `authenticated_read` | actor 600; workspace 1,200 when scoped | fail open |
 | `ordinary_mutation` | actor 120; workspace 300 when scoped | per-process fallback |
@@ -91,6 +94,22 @@ provider, compilation, count, and queue operations have not begun. Identity
 routes use the effective client address and, where the request names one, the
 account. They used a per-origin counter until 2026-10-31, but every browser shares
 one origin, so a few addresses could lock everyone out of signing in.
+
+Since 2026-11-19 the budgets follow what is being guessed, as Okta, Auth0,
+Google Workspace and GitHub do. `identity_start` covers every route where a
+password, a two-factor code or an emailed token can be guessed, and keeps its
+tight per-address and per-account limits. Starting a sign-in at an identity
+provider (organization OIDC or SAML, or a social provider), its callback, and
+the login page's reads (its capabilities and an organization domain's
+providers) guess nothing: the provider authenticates, and a callback's state is
+a random single-use token. Each has its own budget with only a per-address
+ceiling sized for an office, school or VPN that shows the server one address:
+300 sign-ins a minute, and four page reads per sign-in. Before, one address got
+10 organization sign-in starts a minute and shared 30 page reads with the
+callbacks, so the eleventh person at an office was turned away. A refused start
+or page read answers 429 with `Retry-After`, and the page says too many sign-ins
+came from this network; a refused callback, reached by navigation, lands on the
+sign-in page with the same words.
 Forwarded addresses are accepted only when the application is configured to
 trust exactly one ingress hop, and deployed networking must restrict that hop to
 the load balancer. Direct deployments trust no forwarded headers. This ingress
