@@ -246,7 +246,9 @@ for (const screen of [
         name: 'Actions for Beta',
         exact: true,
       });
-      await expect(menu).toBeInViewport({ ratio: 1 });
+      // Wholly on screen. At a fractional pixel ratio (2.625 on a Pixel 7)
+      // Playwright's visible ratio for a whole menu reads 0.9999999.
+      await expect(menu).toBeInViewport({ ratio: 0.999 });
       await menu
         .getByRole('menuitem', { name: 'Add favorite', exact: true })
         .click();
