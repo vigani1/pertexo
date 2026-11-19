@@ -3,6 +3,7 @@ import {
   createWorkspaceFixture,
 } from '../../test/support/fixtures/identity';
 import { expect, test, type Page } from '../support/fixtures';
+import { allowClipboardWrites, readClipboard } from '../support/clipboard';
 import { API_TOKEN_SCOPES } from '@pertexo/policy';
 import type { ApiTokenMetadata } from '@pertexo/contracts';
 
@@ -128,11 +129,10 @@ for (const viewport of [
 ]) {
   test(`creates once and revokes through token Settings at ${String(viewport.width)}px`, async ({
     page,
+    browserName,
   }) => {
     await page.setViewportSize(viewport);
-    await page
-      .context()
-      .grantPermissions(['clipboard-read', 'clipboard-write']);
+    await allowClipboardWrites(page.context(), browserName);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const requests = await install(page);
     await page.goto(path);
@@ -156,9 +156,7 @@ for (const viewport of [
     await expect(
       page.getByRole('button', { name: 'Copied', exact: true }),
     ).toBeVisible();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      credential,
-    );
+    expect(await readClipboard(page)).toBe(credential);
     await page
       .getByRole('checkbox', { name: 'I’ve saved this token', exact: true })
       .check();

@@ -1,4 +1,5 @@
 import { test, expect } from '../support/fixtures';
+import { allowClipboardWrites, readClipboard } from '../support/clipboard';
 import { openStepSetup } from '../../test/support/browser/steps';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../packages/node-catalog/dist/index.js';
 import { nodeDefinitionListResponseSchema } from '@pertexo/contracts';
@@ -18,9 +19,10 @@ for (const width of [375, 1280])
   test(`retrieves and regenerates a public form link at ${String(width)}px`, async ({
     page,
     context,
+    browserName,
   }, info) => {
     await page.setViewportSize({ width, height: 850 });
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await allowClipboardWrites(context, browserName);
     await addCsrfCookie(context);
     const remote = remoteDraft({
       settings: {},
@@ -72,9 +74,7 @@ for (const width of [375, 1280])
       page.getByRole('img', { name: 'Public form QR code' }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Copy form link' }).click();
-    await expect
-      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-      .toBe(await link.inputValue());
+    await expect.poll(() => readClipboard(page)).toBe(await link.inputValue());
     await page
       .getByRole('button', { name: 'Regenerate link', exact: true })
       .click();

@@ -1,5 +1,6 @@
 import { openStepSetup } from '../../../test/support/browser/steps';
 import { expect, test } from '../../support/fixtures';
+import { copyToClipboard } from '../../support/clipboard';
 import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import { nodeDefinitionListResponseSchema } from '@pertexo/contracts';
@@ -50,15 +51,9 @@ for (const theme of ['light', 'dark'] as const)
         name: 'Columns, in output order',
       });
       // Pasting several names adds one column per line.
+      await copyToClipboard(page, 'paid\ncurrency\namount');
       await add.focus();
-      await page.evaluate(async () => {
-        const data = new DataTransfer();
-        data.setData('text/plain', 'paid\ncurrency\namount');
-        document.activeElement?.dispatchEvent(
-          new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
-        );
-        await Promise.resolve();
-      });
+      await page.keyboard.press('ControlOrMeta+V');
       await expect
         .poll(() => saved()?.config.columns)
         .toEqual(['paid', 'currency', 'amount']);
