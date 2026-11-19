@@ -5,6 +5,12 @@ import {
   createWorkspaceFixture,
 } from '../test/support/fixtures/identity';
 import { expect, test, type Page } from './support/fixtures';
+import {
+  clearSpoken,
+  expectFocusOn,
+  expectSpoken,
+  startScreenReader,
+} from './support/screen-reader';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -291,3 +297,30 @@ for (const width of [375, 1280])
       ).toBe(true);
     }
   });
+
+test('a screen-reader user reaches the inbox and marks a notice read by keyboard', async ({
+  page,
+}) => {
+  const state = await mockInbox(page);
+  await page.goto(`/w/${workspaceId}`);
+  const spine = page.getByRole('navigation', { name: 'Workspace' }).first();
+  await expect(spine).toBeVisible();
+  await startScreenReader(page);
+  await spine.getByRole('link', { name: 'Inbox, 2 unread' }).focus();
+  await expectSpoken(page, /^link, Inbox, 2 unread/u);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Inbox' })).toBeVisible();
+
+  const mark = page.getByRole('button', { name: 'Mark Nightly import read' });
+  await mark.focus();
+  await clearSpoken(page);
+  await page.keyboard.press('Enter');
+  await expect(
+    spine.getByRole('link', { name: 'Inbox, 1 unread' }),
+  ).toBeVisible();
+  expect(state.reads).toHaveLength(1);
+  // The button is gone; focus is on the notice's own link, which says it
+  // is no longer unread.
+  await expectFocusOn(page, 'link', 'Nightly import');
+  await expectSpoken(page, /^link, Nightly import/u);
+});

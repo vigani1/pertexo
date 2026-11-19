@@ -4,9 +4,9 @@ import type {
 } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import type { ComponentProps, MouseEvent, ReactNode } from 'react';
-import { ArrowRightIcon, CheckIcon } from 'lucide-react';
+import { ArrowRightIcon } from 'lucide-react';
 import { TaskDetailsLine } from '@/features/pending-tasks/pending-tasks-views.public';
-import { NoticeAction, NoticeFrame } from './thread-frame';
+import { MarkReadAction, NoticeAction, NoticeFrame } from './thread-frame';
 import { noticeLinkClass } from './notice-link';
 import { InboxThreadRow } from './row';
 const labels = {
@@ -193,19 +193,11 @@ export function NoticeThreadRow(
             <ArrowRightIcon aria-hidden="true" />
           </NoticeAction>
           {thread.unread ? (
-            <NoticeAction
-              label="Mark read"
-              name={`Mark ${title} read`}
-              render={
-                <button
-                  type="button"
-                  disabled={props.marking}
-                  onClick={props.onRead}
-                />
-              }
-            >
-              <CheckIcon aria-hidden="true" />
-            </NoticeAction>
+            <MarkReadAction
+              title={title}
+              marking={props.marking}
+              onRead={props.onRead}
+            />
           ) : null}
         </>
       }

@@ -1,9 +1,9 @@
 import type { WorkspaceInboxFailureThread } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { CheckIcon, HistoryIcon } from 'lucide-react';
+import { HistoryIcon } from 'lucide-react';
 import { describeInboxThread } from '../../model/inbox-thread.js';
 import { FailureLane } from './failure-lane';
-import { NoticeAction, NoticeFrame } from './thread-frame';
+import { MarkReadAction, NoticeAction, NoticeFrame } from './thread-frame';
 import { noticeLinkClass } from './notice-link';
 
 /**
@@ -71,15 +71,11 @@ export function InboxThreadRow({
             <HistoryIcon aria-hidden="true" />
           </NoticeAction>
           {thread.unread ? (
-            <NoticeAction
-              label="Mark read"
-              name={`Mark ${thread.workflowName} read`}
-              render={
-                <button type="button" disabled={marking} onClick={onRead} />
-              }
-            >
-              <CheckIcon aria-hidden="true" />
-            </NoticeAction>
+            <MarkReadAction
+              title={thread.workflowName}
+              marking={marking}
+              onRead={onRead}
+            />
           ) : null}
         </>
       }

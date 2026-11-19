@@ -1,3 +1,4 @@
+import { CheckIcon } from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
 import { StatusGlyph, type StatusTone } from '@/components/ui/status';
 import { statusToneText } from '@/components/ui/status-tone';
@@ -120,5 +121,37 @@ export function NoticeAction({
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/**
+ * Mark read. The button goes once the notice is read, so focus moves to the
+ * notice's own link, which stays, instead of falling to the page.
+ */
+export function MarkReadAction({
+  title,
+  marking,
+  onRead,
+}: Readonly<{ title: string; marking: boolean; onRead: () => void }>) {
+  return (
+    <NoticeAction
+      label="Mark read"
+      name={`Mark ${title} read`}
+      render={
+        <button
+          type="button"
+          disabled={marking}
+          onClick={(event) => {
+            event.currentTarget
+              .closest('li')
+              ?.querySelector<HTMLElement>('a[href]')
+              ?.focus();
+            onRead();
+          }}
+        />
+      }
+    >
+      <CheckIcon aria-hidden="true" />
+    </NoticeAction>
   );
 }
