@@ -1,17 +1,6 @@
 import { z } from 'zod';
 import { NODE_JSON_LIMITS } from '../values/bounded-json.validation.js';
 
-export const CODE_LIMITS = Object.freeze({
-  sourceBytes: 65_536,
-  logBytes: 65_536,
-  logLines: 200,
-  logLineCharacters: 2_048,
-  messageCharacters: 2_048,
-  taskBytes: 3 * NODE_JSON_LIMITS.bytes,
-  resultBytes: 2 * NODE_JSON_LIMITS.bytes,
-  defaultTimeoutSeconds: 5,
-});
-
 /** What an administrator may set for code steps. */
 export const CODE_SETTING_BOUNDS = Object.freeze({
   // npm's longest package name.
@@ -21,6 +10,21 @@ export const CODE_SETTING_BOUNDS = Object.freeze({
   maximumSeconds: 300,
   maximumConcurrency: 16,
   packages: 32,
+});
+
+export const CODE_LIMITS = Object.freeze({
+  sourceBytes: 65_536,
+  logBytes: 65_536,
+  logLines: 200,
+  logLineCharacters: 2_048,
+  messageCharacters: 2_048,
+  taskBytes: 3 * NODE_JSON_LIMITS.bytes,
+  resultBytes: 2 * NODE_JSON_LIMITS.bytes,
+  defaultTimeoutSeconds: 5,
+  // How long a step waits for a busy runner's slot: as long as the longest
+  // task an administrator may allow, so a slot can free up, while the wait and
+  // that task still fit in a node attempt's queue time limit (15 minutes).
+  slotWaitSeconds: CODE_SETTING_BOUNDS.maximumSeconds,
 });
 
 const packageName = z

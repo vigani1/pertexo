@@ -21,6 +21,7 @@ export const CODE_ERROR_CODES = Object.freeze([
   'code.module_refused',
   'code.disabled',
   'code.runner_unavailable',
+  'code.runner_busy',
 ] as const);
 export const codeErrorCodeSchema = z.enum(CODE_ERROR_CODES);
 export type CodeErrorCode = z.output<typeof codeErrorCodeSchema>;
@@ -99,7 +100,9 @@ export const codeResultSchema = z.discriminatedUnion('kind', [
 export type CodeResult = z.output<typeof codeResultSchema>;
 export const codeGreetingSchema = z
   .object({
-    kind: z.enum(['ready', 'busy']),
+    // queued: no slot is free yet, and a ready frame follows when one is;
+    // busy: the runner's queue is full too.
+    kind: z.enum(['ready', 'queued', 'busy']),
     mode: z.enum(['hardened', 'process']),
     settings: codeSettingsSchema,
   })
