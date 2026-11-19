@@ -10,41 +10,45 @@ import {
   workspaceId,
 } from './auth/fixture';
 
-test('signs in, lands in the only workspace, and signs out without runtime errors', async ({
-  page,
-}) => {
-  const errors: string[] = [];
-  const scripts: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('request', (request) => {
-    if (request.url().includes('/assets/') && request.url().endsWith('.js'))
-      scripts.push(request.url());
-  });
-  await mockIdentity(page, { authenticated: false });
+test(
+  'signs in, lands in the only workspace, and signs out without runtime errors',
+  { tag: '@every-browser' },
+  async ({ page }) => {
+    const errors: string[] = [];
+    const scripts: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('request', (request) => {
+      if (request.url().includes('/assets/') && request.url().endsWith('.js'))
+        scripts.push(request.url());
+    });
+    await mockIdentity(page, { authenticated: false });
 
-  await page.goto('/');
-  await expect(
-    page.getByRole('heading', { name: 'Sign in to continue' }),
-  ).toBeVisible();
-  await page.getByLabel('Email').fill('operator@example.test');
-  await page
-    .getByLabel('Password', { exact: true })
-    .fill('correct horse battery staple');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page).toHaveURL(`/w/${workspaceId}`);
-  expect(
-    scripts.some((url) =>
-      /(?:sign-up|password-reset|account-security)-page-[^/]+\.js$/u.test(url),
-    ),
-  ).toBe(false);
-  await page.getByRole('button', { name: /^Account menu for/u }).click();
-  await page.getByRole('menuitem', { name: 'Sign out' }).click();
-  await expect(page).toHaveURL(/\/login$/u);
-  await expect(
-    page.getByRole('heading', { name: 'Sign in to continue' }),
-  ).toBeVisible();
-  expect(errors).toEqual([]);
-});
+    await page.goto('/');
+    await expect(
+      page.getByRole('heading', { name: 'Sign in to continue' }),
+    ).toBeVisible();
+    await page.getByLabel('Email').fill('operator@example.test');
+    await page
+      .getByLabel('Password', { exact: true })
+      .fill('correct horse battery staple');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(`/w/${workspaceId}`);
+    expect(
+      scripts.some((url) =>
+        /(?:sign-up|password-reset|account-security)-page-[^/]+\.js$/u.test(
+          url,
+        ),
+      ),
+    ).toBe(false);
+    await page.getByRole('button', { name: /^Account menu for/u }).click();
+    await page.getByRole('menuitem', { name: 'Sign out' }).click();
+    await expect(page).toHaveURL(/\/login$/u);
+    await expect(
+      page.getByRole('heading', { name: 'Sign in to continue' }),
+    ).toBeVisible();
+    expect(errors).toEqual([]);
+  },
+);
 
 test('renders configured social providers as accessible Pertexo controls', async ({
   page,

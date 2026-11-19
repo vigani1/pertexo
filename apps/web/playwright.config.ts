@@ -12,8 +12,9 @@ const webOrigin = `http://127.0.0.1:${String(webPort)}`;
 const overlapCoverage = process.env.PERTEXO_OVERLAP_BROWSER_COVERAGE;
 const preview = `pnpm preview --port ${String(webPort)} --strictPort`;
 
-const criticalSmoke =
-  /signs in, lands in the only workspace, and signs out|keeps the mobile workspace bar and More sheet bounded and keyboard accessible|creates the first workspace from the keyboard-accessible empty state|keeps keyboard placement usable and the narrow editor horizontally bounded|two-factor setup and challenge at 375px/u;
+// The journeys Firefox and WebKit run on every change, tagged where they
+// live so a renamed title cannot drop one.
+const criticalSmoke = /@every-browser/u;
 
 const chromium = {
   ...devices['Desktop Chrome'],
