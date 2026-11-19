@@ -32,6 +32,7 @@ import {
   workflowLabel,
 } from '../../model/list/runs';
 import {
+  describeRunStatus,
   describeTrigger,
   isActiveRunStatus,
   runCoreState,
@@ -271,6 +272,16 @@ export function RunHeader({
         <PageHeaderTitle className="mt-2 text-3xl break-words [--display-width:78%] sm:text-display">
           {sentence}
         </PageHeaderTitle>
+        {/* The title follows every step; this says only where the run is,
+            so a screen reader hears it start, wait and finish. */}
+        <p role="status" className="sr-only">
+          {active
+            ? describeRunStatus({
+                status: run.status,
+                stopRequested: run.cancelRequestedAt !== null,
+              }).label
+            : sentence}
+        </p>
         <RunFacts
           run={run}
           nowMs={nowMs}
