@@ -8,8 +8,13 @@ import { CanvasActionsContext } from '../../../model/canvas/actions-context';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { BODY_PORTS } from '../../../model/graph/scopes';
 import { CardHeading, IssueBadge, Mark, NodeMarks } from './parts';
-import { cardClassName, cardIdentity, handleClass, nodeLabel } from './style';
-import { formatCount, pluralWord } from '@/lib/format/count';
+import {
+  cardClassName,
+  cardIdentity,
+  handleClass,
+  stepCardLabel,
+} from './style';
+import { pluralWord } from '@/lib/format/count';
 
 const noIssues: readonly BodyIssue[] = Object.freeze([]);
 const noBody = Object.freeze({
@@ -40,10 +45,7 @@ export function ForEachNodeCard({
   return (
     <article
       data-selected={selected}
-      aria-label={loopLabel(
-        nodeLabel(title, type, data.issueCount),
-        body.issues.length,
-      )}
+      aria-label={stepCardLabel({ type: 'forEach', data })}
       className={cardClassName(
         {
           hasIssues: data.issueCount > 0,
@@ -166,9 +168,4 @@ export function ForEachNodeCard({
       <IssueBadge count={data.issueCount} />
     </article>
   );
-}
-
-function loopLabel(label: string, bodyIssues: number): string {
-  if (bodyIssues === 0) return label;
-  return `${label}, body needs ${formatCount(bodyIssues, 'fix', 'fixes')}`;
 }

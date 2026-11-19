@@ -3,7 +3,12 @@ import { StatusGlyph } from '@/components/ui/status';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { CardHeading, IssueBadge, NodeMarks, PortRows } from './parts';
-import { cardClassName, cardIdentity, handleClass, nodeLabel } from './style';
+import {
+  cardClassName,
+  cardIdentity,
+  handleClass,
+  stepCardLabel,
+} from './style';
 
 /**
  * A step on the canvas: family tile, title and human type (with a summary
@@ -22,7 +27,7 @@ export function WorkflowNodeCard({
   return (
     <article
       data-selected={selected}
-      aria-label={nodeLabel(title, type, data.issueCount)}
+      aria-label={stepCardLabel({ type: 'workflow', data })}
       className={cardClassName({
         hasIssues: data.issueCount > 0,
         selected,

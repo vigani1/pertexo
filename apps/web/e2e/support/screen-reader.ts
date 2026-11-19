@@ -52,10 +52,8 @@ export async function clearSpoken(page: Page) {
 /** The screen reader says a phrase matching `phrase`, now or soon. */
 export async function expectSpoken(page: Page, phrase: RegExp) {
   await expect
-    .poll(async () => (await spoken(page)).find((said) => phrase.test(said)), {
-      message: `screen reader to say ${String(phrase)}`,
-    })
-    .toBeDefined();
+    .poll(() => spoken(page))
+    .toContainEqual(expect.stringMatching(phrase));
 }
 
 /**
