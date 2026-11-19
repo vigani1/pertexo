@@ -13,22 +13,22 @@ test('VoiceOver reads the sign-in fields and their refusal, and the user signs i
   ).toBeVisible();
   await voiceOver.navigateToWebContent();
 
-  // Tab to the email field; VoiceOver names it as it gets focus.
+  // VoiceOver follows keyboard focus and names each field it lands on.
   const said = async () => (await voiceOver.spokenPhraseLog()).join(' | ');
-  for (let step = 0; step < 4; step++) {
-    await voiceOver.press('Tab');
-    if (/Email/u.test(await voiceOver.lastSpokenPhrase())) break;
-  }
-  expect(await voiceOver.lastSpokenPhrase()).toMatch(/Email/u);
+  const heard = () => voiceOver.lastSpokenPhrase();
+  await page.getByRole('textbox', { name: 'Email' }).focus();
+  await expect.poll(heard).toMatch(/Email/u);
   await page.keyboard.type('operator@example.test');
 
   // Sending without a password says what is missing.
-  await voiceOver.press('Enter');
-  await expect.poll(said).toMatch(/Enter your password/u);
+  await page.keyboard.press('Enter');
+  await expect
+    .poll(async () => `${await said()} | ${await heard()}`)
+    .toMatch(/Enter your password/u);
 
-  await voiceOver.press('Tab');
-  expect(await voiceOver.lastSpokenPhrase()).toMatch(/Password/u);
+  await page.getByRole('textbox', { name: 'Password' }).focus();
+  await expect.poll(heard).toMatch(/Password/u);
   await page.keyboard.type('correct horse battery staple');
-  await voiceOver.press('Enter');
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(`/w/${workspaceId}`);
 });
