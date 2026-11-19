@@ -35,9 +35,13 @@ export function journeyCommand(journey) {
         USAGE_BROWSER_INTEGRATION: 'true',
       });
     case 'security':
-      return inApi('test/browser/security/real-web.integration.test.ts', {
-        SECURITY_BROWSER_INTEGRATION: 'true',
-      });
+      return {
+        ...inApi('test/browser/security/real-web.integration.test.ts', {
+          SECURITY_BROWSER_INTEGRATION: 'true',
+        }),
+        // It starts and removes an nginx container: see journeyPhases.
+        changesNetwork: true,
+      };
     case 'organization-saml':
       return inApi('test/browser/editor/federation/saml.integration.test.ts', {
         EDITOR_BROWSER_INTEGRATION: 'true',
@@ -80,6 +84,22 @@ export function journeyCommand(journey) {
   }
 }
 
+/**
+ * Starting or removing a container adds or drops a network interface on the
+ * runner, and Chromium answers by closing every open connection, loopback
+ * included, with ERR_NETWORK_CHANGED. So a journey that does so runs first,
+ * with no other browser beside it; the rest share the stacks.
+ */
+export function journeyPhases(journeys) {
+  const changesNetwork = (journey) =>
+    journeyCommand(journey).changesNetwork === true;
+  const shared = journeys.filter((journey) => !changesNetwork(journey));
+  return [
+    ...journeys.filter(changesNetwork).map((journey) => [journey]),
+    ...(shared.length > 0 ? [shared] : []),
+  ];
+}
+
 async function main([slotCount, ...journeys]) {
   const count = Number(slotCount);
   if (!Number.isInteger(count) || count < 1 || journeys.length === 0)
@@ -91,20 +111,24 @@ async function main([slotCount, ...journeys]) {
   await pullServices();
   const environments = await Promise.all(slots.map(startStack));
   try {
-    const results = await runSideBySide(
-      journeys,
-      environments,
-      async (journey, environment) => {
-        const result = await runLogged(
-          journey,
-          journeyCommand(journey),
-          environment,
-          directory,
-        );
-        report(result);
-        return result;
-      },
-    );
+    const results = [];
+    for (const phase of journeyPhases(journeys))
+      results.push(
+        ...(await runSideBySide(
+          phase,
+          environments,
+          async (journey, environment) => {
+            const result = await runLogged(
+              journey,
+              journeyCommand(journey),
+              environment,
+              directory,
+            );
+            report(result);
+            return result;
+          },
+        )),
+      );
     console.log(summary(results));
     if (results.some(({ passed }) => !passed)) process.exitCode = 1;
   } finally {
