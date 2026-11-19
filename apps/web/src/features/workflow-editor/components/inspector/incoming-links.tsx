@@ -2,7 +2,7 @@ import { connectionPorts } from '../../model/step-card';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { LinkIcon, XIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { findDefinition } from '../../model/graph/adapter';
@@ -34,6 +34,9 @@ export function IncomingLinks({
   onRemoveEdge: (edgeId: string) => void;
 }>) {
   const [wiring, setWiring] = useState(false);
+  // Link and Cancel close the form they sit in; focus goes back to the
+  // button that opened it rather than falling to the page.
+  const returnFocus = useRef(false);
   const [sourceId, setSourceId] = useState<string | null>(null);
   const [sourcePort, setSourcePort] = useState<string | null>(null);
   const [targetPort, setTargetPort] = useState<string | null>(null);
@@ -106,6 +109,11 @@ export function IncomingLinks({
       )}
       {editable && others.length > 0 && !wiring ? (
         <Button
+          ref={(element) => {
+            if (element === null || !returnFocus.current) return;
+            returnFocus.current = false;
+            element.focus();
+          }}
           type="button"
           size="sm"
           variant="outline"
@@ -133,7 +141,10 @@ export function IncomingLinks({
             setSourceId,
             setSourcePort,
             setTargetPort,
-            setWiring,
+            close: () => {
+              returnFocus.current = true;
+              setWiring(false);
+            },
             onConnect,
           }}
         />
@@ -160,7 +171,7 @@ type LinkStepFormProps = Readonly<{
     setSourceId: (value: string | null) => void;
     setSourcePort: (value: string | null) => void;
     setTargetPort: (value: string | null) => void;
-    setWiring: (value: boolean) => void;
+    close: () => void;
     onConnect: (link: Connection) => void;
   }>;
 }>;
@@ -172,7 +183,7 @@ function LinkStepForm({
 }: LinkStepFormProps) {
   const { others, titles, sourcePorts, targetPorts, sourceAvailable } = choices;
   const { sourceId, sourcePort, targetPort } = selection;
-  const { setSourceId, setSourcePort, setTargetPort, setWiring, onConnect } =
+  const { setSourceId, setSourcePort, setTargetPort, close, onConnect } =
     commands;
   const unavailable =
     (sourcePort !== null && !sourcePorts.includes(sourcePort)) ||
@@ -255,20 +266,13 @@ function LinkStepForm({
             });
             setSourceId(null);
             setSourcePort(null);
-            setWiring(false);
+            close();
           }}
         >
           <LinkIcon data-icon="inline-start" />
           Link
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            setWiring(false);
-          }}
-        >
+        <Button type="button" size="sm" variant="ghost" onClick={close}>
           Cancel
         </Button>
       </div>
