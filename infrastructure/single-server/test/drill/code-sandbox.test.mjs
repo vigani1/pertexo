@@ -624,14 +624,11 @@ const targets = { postgres: ['postgres', 5432], redis: ['redis', 6379], api: ['a
     });
   });
 
-  // Reported, not fixed: a runner's slots are first come, first served, so one
-  // workspace that keeps every slot busy for the full time limit starves the
-  // others even through the step's retries. Fair shares per workspace would be
-  // a new scheduling subsystem; this records the outcome on every rerun.
-  it(
-    'one workspace holding every runner slot still leaves another workspace a slot',
-    { todo: 'reported: Code runner slots have no per-workspace share' },
-    async () => {
+  // A busy runner makes a step wait for a slot, first come first served, the
+  // way n8n's task runners queue work; the wait doesn't eat the step's own
+  // time limit, and the step runs once a slot frees.
+  describe('a busy runner', () => {
+    it('one workspace holding every runner slot makes another workspace’s step wait, then run', async () => {
       const workflow = await prepare(attacker, PYTHON_ATTACKS.cpuSpin, {
         language: 'python',
         timeoutSeconds: 30,
@@ -643,11 +640,44 @@ const targets = { postgres: ['postgres', 5432], redis: ['redis', 6379], api: ['a
       const started = Date.now();
       const result = await execute(neighbour, healthyWorkflows.javascript);
       result.wallMillis = Date.now() - started;
-      record('resources', 'every slot held by another workspace', result);
-      for (const runId of hostile) await finish(attacker, runId);
+      record('busy runner', 'every slot held by another workspace', result);
+      for (const runId of hostile)
+        failsClearly(await finish(attacker, runId), 'code.timeout');
       assert.equal(result.status, 'succeeded', JSON.stringify(result));
-    },
-  );
+      assert.deepEqual(result.output, { healthy: {} });
+      assert.equal(result.attempts, 1, 'the step waited instead of retrying');
+      assert.ok(
+        result.wallMillis > HEALTHY_STEP_BUDGET_MILLIS,
+        `the step ran without waiting (${String(result.wallMillis)} ms)`,
+      );
+    });
+
+    it('three long steps in one workspace share two slots and all finish', async () => {
+      const timeoutSeconds = 20;
+      const workflow = await prepare(neighbour, PYTHON_ATTACKS.sleep, {
+        language: 'python',
+        timeoutSeconds,
+      });
+      const runs = [];
+      for (let step = 0; step <= CONCURRENCY; step++)
+        runs.push(await startRun(client, workflow));
+      const results = [];
+      for (const runId of runs) results.push(await finish(neighbour, runId));
+      record('busy runner', 'three long steps on two slots', results);
+      for (const result of results) {
+        assert.equal(result.status, 'succeeded', JSON.stringify(result));
+        assert.deepEqual(result.output, { slept: 15 });
+        assert.equal(result.attempts, 1, JSON.stringify(result));
+      }
+      // The step that waited ran longer than its own time limit in all: the
+      // wait didn't count against it.
+      const longest = Math.max(...results.map((result) => result.stepMillis));
+      assert.ok(
+        longest > timeoutSeconds * 1_000,
+        `no step waited for a slot (longest ${String(longest)} ms)`,
+      );
+    });
+  });
 
   describe('leftovers', () => {
     for (const language of ['python', 'javascript'])
