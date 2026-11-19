@@ -1,4 +1,5 @@
 import type { NodeManifest } from '@pertexo/node-sdk';
+import { NodeCodeFailure } from '@pertexo/node-sdk/server';
 import type { StepRetrySettings } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 
@@ -82,6 +83,36 @@ describe('coordinator applies the published step retry settings', () => {
   });
 });
 
+// docs/feature-plans/20-sandboxed-code.md: `code.runner_unavailable` is
+// retryable, and a busy runner "retries through the normal safe retry path".
+describe('coordinator retries a Code step only when its runner was unavailable', () => {
+  const codeFailure = (code: NodeCodeFailure['code']) => {
+    const failure = new NodeCodeFailure(code, { logs: [], truncated: false });
+    return {
+      attemptNumber: 1,
+      failureKind: failure.kind,
+      errorKind: failure.errorKind,
+      possiblyDispatched: failure.possiblyDispatched,
+      safeErrorCode: code,
+    };
+  };
+
+  it('tries again after the Code runner crashed or stayed busy', async () => {
+    const run = await startedRun({});
+    const plan = await run.fail(codeFailure('code.runner_unavailable'));
+    expect(setInvocation(plan)).toMatchObject({
+      status: 'waiting',
+      waitKind: 'retry_backoff',
+    });
+  });
+
+  it("fails at once when the step's own code ran out of time", async () => {
+    const run = await startedRun({});
+    const plan = await run.fail(codeFailure('code.timeout'));
+    expect(setInvocation(plan)).toMatchObject({ status: 'failed' });
+  });
+});
+
 async function startedRun({
   retryClass = 'safe',
   retry,
@@ -150,6 +181,8 @@ async function startedRun({
         attemptNumber: number;
         errorKind: string;
         possiblyDispatched?: boolean;
+        failureKind?: string;
+        safeErrorCode?: string;
       }>,
     ) {
       lastFailureAt = tick();
@@ -161,10 +194,11 @@ async function startedRun({
             invocationKey: setKey,
             attemptId: runId,
             attemptNumber: failure.attemptNumber,
-            failureKind: 'retry',
+            failureKind: failure.failureKind ?? 'retry',
             errorKind: failure.errorKind,
             possiblyDispatched: failure.possiblyDispatched ?? false,
-            safeErrorCode: `execution.${failure.errorKind}`,
+            safeErrorCode:
+              failure.safeErrorCode ?? `execution.${failure.errorKind}`,
           },
         ],
         lastFailureAt,
