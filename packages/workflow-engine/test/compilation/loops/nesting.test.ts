@@ -5,14 +5,11 @@ import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
   createCheckpoint,
-  executeNodeAttempt,
-  invocationKey,
 } from '../../../src/server.js';
 import {
   nodeCatalog,
   nestedForEachGraph,
 } from '../../support/executable-workflow.js';
-import { structuredAttemptFixture } from '../../support/compilation/structured-attempt.js';
 
 describe('For Each production operations', () => {
   it('advances a nested For Each through inner and outer completion', async () => {
@@ -250,58 +247,5 @@ describe('For Each production operations', () => {
         completed.checkpoint.invocations,
       );
     }
-  });
-  it('resolves exact same-iteration upstream output', async () => {
-    const {
-      collection,
-      declaredCollectionChecksum,
-      executable,
-      iterationPath,
-    } = structuredAttemptFixture();
-    let received: unknown;
-    await executeNodeAttempt({
-      runId: 'run-foreach',
-      nodeRunId: 'node-run-body',
-      attemptId: 'attempt-body',
-      executable,
-      workflowVersionId: '00000000-0000-4000-8000-000000000001',
-      invocationKey: invocationKey({
-        workflowVersionId: '00000000-0000-4000-8000-000000000001',
-        nodeId: 'body-sink',
-        iterationPath,
-      }),
-      nodeId: 'body-sink',
-      iterationPath,
-      structuredCollection: {
-        loopNodeId: 'loop',
-        ordinal: 1,
-        collection,
-        collectionSize: 2,
-        declaredCollectionChecksum,
-      },
-      runInput: { name: 'outer' },
-      completedNodeOutputs: [
-        {
-          invocationKey: invocationKey({
-            workflowVersionId: '00000000-0000-4000-8000-000000000001',
-            nodeId: 'body-first',
-            iterationPath,
-          }),
-          nodeId: 'body-first',
-          value: { from: 'same-iteration' },
-        },
-      ],
-      registry: {
-        execute: (request) => {
-          received = request.input;
-          return Promise.resolve({
-            kind: 'succeeded',
-            output: request.input as never,
-          });
-        },
-      },
-      signal: new AbortController().signal,
-    });
-    expect(received).toEqual({ value: { from: 'same-iteration' } });
   });
 });

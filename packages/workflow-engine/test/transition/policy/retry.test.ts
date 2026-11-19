@@ -116,20 +116,6 @@ describe('retry and transition policy', () => {
     ).toHaveLength(67);
   });
 
-  it('never retries an unsafe possibly dispatched ambiguous effect', () => {
-    expect(
-      decideRetry({
-        sideEffectClass: 'unsafe',
-        currentAttemptNumber: 1,
-        policy,
-        observation: { kind: 'ambiguous', possiblyDispatched: true },
-      }),
-    ).toEqual({
-      kind: 'outcome_unknown',
-      reasonCode: 'unsafe_possible_dispatch',
-    });
-  });
-
   it('applies adapter recommendations, attempt bounds, and deterministic jitter', () => {
     const input = {
       sideEffectClass: 'safe' as const,

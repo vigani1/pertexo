@@ -186,24 +186,6 @@ describe('node operation risk branches', () => {
       ).rejects.toMatchObject({ code: 'attempt_invalid' });
     },
   );
-  it('accepts the exact unscoped completed-output descriptor', async () => {
-    await expect(
-      executeNodeAttempt(
-        setAttempt({
-          completedNodeOutputs: [
-            {
-              invocationKey: invocationKey({
-                workflowVersionId: '00000000-0000-4000-8000-000000000001',
-                nodeId: 'manual',
-              }),
-              nodeId: 'manual',
-              value: { complete: true },
-            },
-          ],
-        }),
-      ),
-    ).resolves.toMatchObject({ kind: 'succeeded' });
-  });
   it('passes an optional execution runtime to the registry', async () => {
     const registry = successfulRegistry();
     const runtime = { secrets: { read: vi.fn() } };

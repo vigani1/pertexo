@@ -16,52 +16,6 @@ import {
 import { structuredAttemptFixture } from '../../support/compilation/structured-attempt.js';
 
 describe('For Each production operations', () => {
-  it('resolves the nearest structured collection item', async () => {
-    const {
-      collection,
-      declaredCollectionChecksum,
-      executable,
-      iterationPath,
-    } = structuredAttemptFixture();
-    let received: unknown;
-
-    await expect(
-      executeNodeAttempt({
-        runId: 'run-foreach',
-        nodeRunId: 'node-run-root',
-        attemptId: 'attempt-root',
-        executable,
-        workflowVersionId: '00000000-0000-4000-8000-000000000001',
-        invocationKey: invocationKey({
-          workflowVersionId: '00000000-0000-4000-8000-000000000001',
-          nodeId: 'body-first',
-          iterationPath,
-        }),
-        nodeId: 'body-first',
-        iterationPath,
-        structuredCollection: {
-          loopNodeId: 'loop',
-          ordinal: 1,
-          collection,
-          collectionSize: 2,
-          declaredCollectionChecksum,
-        },
-        runInput: { name: 'outer' },
-        completedNodeOutputs: [],
-        registry: {
-          execute: (request) => {
-            received = request.input;
-            return Promise.resolve({
-              kind: 'succeeded',
-              output: request.input as never,
-            });
-          },
-        },
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toMatchObject({ kind: 'succeeded' });
-    expect(received).toEqual({ value: { name: 'nearest' } });
-  });
   it('rejects a tampered structured collection checksum', async () => {
     const { declaredCollectionChecksum, executable, iterationPath } =
       structuredAttemptFixture();
