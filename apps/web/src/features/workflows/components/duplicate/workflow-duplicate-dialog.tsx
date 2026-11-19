@@ -113,7 +113,6 @@ export function WorkflowDuplicateDialog({
                 <Input
                   {...control}
                   ref={validation.register('name')}
-                  autoFocus
                   autoComplete="off"
                   maxLength={128}
                   value={name}

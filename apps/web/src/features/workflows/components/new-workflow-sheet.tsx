@@ -132,7 +132,6 @@ export function NewWorkflowSheet({
                   ref={validation.register('name')}
                   name="name"
                   autoComplete="off"
-                  autoFocus
                   maxLength={128}
                   disabled={command.pending}
                   value={name}
