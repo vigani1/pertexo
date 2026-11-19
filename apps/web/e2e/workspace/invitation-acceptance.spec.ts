@@ -1,4 +1,5 @@
-import { expect, test } from '../support/fixtures';
+import type { Route } from '@playwright/test';
+import { expect, test, type Page } from '../support/fixtures';
 
 import {
   csrfToken,
@@ -213,9 +214,7 @@ test('reopens the same email after a committed replacement loses its response an
   let resolveRequests = 0;
   await page.route('**/v1/invitation-acceptance/resolve', async (route) => {
     resolveRequests += 1;
-    expect(route.request().headers().cookie).toContain(
-      `pertexo_invitation_intent=${staleBinding}`,
-    );
+    expect(await intentCookie(page, route)).toBe(staleBinding);
     if (resolveRequests === 1) {
       await route.abort('connectionfailed');
       return;
@@ -278,9 +277,7 @@ test('reloads the committed journey when the replacement cookie arrives before a
     },
   ]);
   await page.route('**/v1/invitation-acceptance/resolve', async (route) => {
-    expect(route.request().headers().cookie).toContain(
-      `pertexo_invitation_intent=${staleBinding}`,
-    );
+    expect(await intentCookie(page, route)).toBe(staleBinding);
     await route.fulfill({
       status: 201,
       headers: {
@@ -291,9 +288,7 @@ test('reloads the committed journey when the replacement cookie arrives before a
     });
   });
   await page.route(/\/v1\/invitation-acceptance$/, async (route) => {
-    expect(route.request().headers().cookie).toContain(
-      `pertexo_invitation_intent=${recoveredBinding}`,
-    );
+    expect(await intentCookie(page, route)).toBe(recoveredBinding);
     await route.fulfill({
       json: {
         state: 'sign_in_required',
@@ -314,3 +309,17 @@ test('reloads the committed journey when the replacement cookie arrives before a
     page.getByRole('button', { name: 'Sign in to accept' }),
   ).toBeVisible();
 });
+
+/**
+ * The invitation cookie this request carries. WebKit leaves the Cookie
+ * header out of what a route sees, so there it is read from the cookie jar
+ * for the request's address; elsewhere from the header itself.
+ */
+async function intentCookie(page: Page, route: Route) {
+  const header = await route.request().headerValue('cookie');
+  if (page.context().browser()?.browserType().name() !== 'webkit')
+    return /(?:^|; )pertexo_invitation_intent=([^;]*)/u.exec(header ?? '')?.[1];
+  const cookies = await page.context().cookies(route.request().url());
+  return cookies.find(({ name }) => name === 'pertexo_invitation_intent')
+    ?.value;
+}
