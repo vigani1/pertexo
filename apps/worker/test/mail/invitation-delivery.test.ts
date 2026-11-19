@@ -27,6 +27,13 @@ const delivery = {
 
 function setup(
   result: Awaited<ReturnType<SystemMailClient['sendNotification']>>,
+  onFailure?: (
+    failure: Readonly<{
+      category: string;
+      status?: number;
+      instruction: string;
+    }>,
+  ) => void,
 ) {
   const store: WorkspaceInvitationDeliveryStore = {
     claim: vi.fn().mockResolvedValue({
@@ -62,6 +69,7 @@ function setup(
     fromEmail: 'invites@example.test',
     webOrigin: 'https://app.example.test',
     timeoutMillis: 5_000,
+    ...(onFailure === undefined ? {} : { onFailure }),
   });
   return { store, sendNotification, handler };
 }
@@ -195,6 +203,40 @@ describe('workspace invitation delivery', () => {
         failureCode: 'delivery.provider_rejected',
       }),
     );
+  });
+
+  // The queue's log redacts a thrown message, so this report is how an operator
+  // learns that the relay is refusing invitations, and why.
+  it('reports each attempt the relay refused with its safe category and what to do', async () => {
+    const reported: Readonly<{
+      category: string;
+      status?: number;
+      instruction: string;
+    }>[] = [];
+    const retried = setup(
+      { kind: 'retryable', failure: { category: 'tls' } },
+      (failure) => reported.push(failure),
+    );
+    await expect(retried.handler.handle(delivery, context)).rejects.toThrow(
+      'requires retry',
+    );
+    const refused = setup(
+      {
+        kind: 'failed',
+        failure: { category: 'recipient_rejected', status: 550 },
+      },
+      (failure) => reported.push(failure),
+    );
+    await refused.handler.handle(delivery, context);
+
+    expect(
+      reported.map(({ category, status }) => ({ category, status })),
+    ).toEqual([
+      { category: 'tls', status: undefined },
+      { category: 'recipient_rejected', status: 550 },
+    ]);
+    expect(reported[0]?.instruction).toMatch(/retry automatically/u);
+    expect(reported[1]?.instruction).toMatch(/Repair the setting/u);
   });
 
   it('retains the attempt when the real client parses a provider 5xx body', async () => {

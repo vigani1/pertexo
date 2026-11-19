@@ -5,10 +5,12 @@ import { createMailEnvelope } from '../config/mail-settings.js';
 import type { ApplicationKeyRing } from '@pertexo/secrets/server';
 import {
   systemMailFailureCode,
+  systemMailFailureInstruction,
   SYSTEM_MAIL_FAILURE_GUIDANCE,
 } from '@pertexo/secrets/server';
 import type { ApplicationSecretEnvelope } from '@pertexo/secrets/server';
 import type {
+  SystemMailFailure,
   SystemMailResult,
   SystemMailClient,
 } from '@pertexo/secrets/server';
@@ -43,6 +45,10 @@ export function createWorkspaceInvitationDeliveryHandler(
     fromEmail: string;
     webOrigin: string;
     timeoutMillis: number;
+    /** Each attempt the provider didn't accept, in safe words, as account mail reports it. */
+    onFailure?: (
+      failure: SystemMailFailure & Readonly<{ instruction: string }>,
+    ) => void;
   }>,
 ): WorkspaceInvitationDeliveryHandler {
   // Config parsed the web origin; it has no path.
@@ -119,6 +125,11 @@ export function createWorkspaceInvitationDeliveryHandler(
         dispatch.held = true;
       },
     });
+    if (result.kind !== 'submitted')
+      dependencies.onFailure?.({
+        ...result.failure,
+        instruction: systemMailFailureInstruction(result),
+      });
     if (!dependencies.email.deduplicates) {
       if (result.kind === 'unknown') {
         await dependencies.store.complete({
