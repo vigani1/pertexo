@@ -611,9 +611,13 @@ describe('Better Auth Fastify bridge', () => {
       },
       payload: { code: 'example' },
     });
-    expect(form.statusCode).toBe(429);
+    // A provider navigates the browser here, so the refusal lands on sign-in.
+    expect(form.statusCode).toBe(303);
+    expect(form.headers.location).toBe(
+      'https://pertexo.test/login?error=sign_in_limited',
+    );
     expect(consume.mock.calls[2]?.[0]).toMatchObject({
-      endpointClass: 'identity_callback',
+      endpointClass: 'federated_sign_in_callback',
       failureMode: 'closed',
     });
     const saml = await application.inject({
@@ -622,10 +626,10 @@ describe('Better Auth Fastify bridge', () => {
       headers: { origin: 'https://idp.example.test' },
       payload: { SAMLResponse: 'example', RelayState: 'example' },
     });
-    expect(saml.statusCode).toBe(429);
+    expect(saml.statusCode).toBe(303);
     expect(saml.headers['retry-after']).toBe('5');
     expect(consume.mock.calls[3]?.[0]).toMatchObject({
-      endpointClass: 'identity_callback',
+      endpointClass: 'federated_sign_in_callback',
       failureMode: 'closed',
     });
     expect(handler).not.toHaveBeenCalled();
