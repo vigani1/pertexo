@@ -35,8 +35,8 @@ export function cardIdentity(data: WorkflowFlowNode['data']): Readonly<{
 
 /**
  * What a step card is called: its title, type and issues, and for a For
- * each the body's unfinished parts. The card and the canvas wrapper that
- * takes keyboard focus say the same.
+ * each the body's unfinished parts. Only the canvas wrapper that takes
+ * keyboard focus carries it, so a screen reader says it once.
  */
 export function stepCardLabel(
   node: Pick<WorkflowFlowNode, 'type' | 'data'>,

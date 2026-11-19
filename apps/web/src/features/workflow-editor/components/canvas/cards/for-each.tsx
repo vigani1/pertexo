@@ -8,12 +8,7 @@ import { CanvasActionsContext } from '../../../model/canvas/actions-context';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { BODY_PORTS } from '../../../model/graph/scopes';
 import { CardHeading, IssueBadge, Mark, NodeMarks } from './parts';
-import {
-  cardClassName,
-  cardIdentity,
-  handleClass,
-  stepCardLabel,
-} from './style';
+import { cardClassName, cardIdentity, handleClass } from './style';
 import { pluralWord } from '@/lib/format/count';
 
 const noIssues: readonly BodyIssue[] = Object.freeze([]);
@@ -45,7 +40,6 @@ export function ForEachNodeCard({
   return (
     <article
       data-selected={selected}
-      aria-label={stepCardLabel({ type: 'forEach', data })}
       className={cardClassName(
         {
           hasIssues: data.issueCount > 0,
