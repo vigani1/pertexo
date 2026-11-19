@@ -11,12 +11,27 @@ import base from './playwright.config';
 const narrowScreen =
   /phone|narrow|mobile|small screen|\b[23]\d\dpx|\b[23]\d\d pixels|\b[23]\d\d×/iu;
 
+// Playwright's WebKit reports no download for a form POST answered with an
+// attachment, even to the same tab, where Firefox and Chromium do (checked
+// 2026-11-19 with a bare form), so the native exports that work this way
+// are left to the other engines here. Real Safari is not checked.
+const formPostDownload = /@form-post-download/u;
+
 export default defineConfig({
   ...base,
   projects: [
     { name: 'firefox', use: devices['Desktop Firefox'] },
-    { name: 'webkit', use: devices['Desktop Safari'] },
-    { name: 'ios-safari', grep: narrowScreen, use: devices['iPhone 15'] },
+    {
+      name: 'webkit',
+      grepInvert: formPostDownload,
+      use: devices['Desktop Safari'],
+    },
+    {
+      name: 'ios-safari',
+      grep: narrowScreen,
+      grepInvert: formPostDownload,
+      use: devices['iPhone 15'],
+    },
     { name: 'android-chrome', grep: narrowScreen, use: devices['Pixel 7'] },
   ],
 });
