@@ -1817,6 +1817,21 @@ describe.runIf(enabled)('direct webhook HTTP integration', () => {
       expect(restarted).toBeDefined();
       expect(restarted?.parentSpanContext).toBeUndefined();
       expect(restarted?.spanContext().traceId).not.toBe('0'.repeat(32));
+
+      // Each queued run carries the trace of the ingress span that accepted it.
+      const queued = await apiQuery<{ traceparent: string | null }>(
+        `select payload->>'traceparent' traceparent from app.outbox_events
+          where workspace_id=$1 and job_name='advance-workflow-run'`,
+        [seeded.workspaceId],
+      );
+      const traceparentOf = (span: typeof continued) => {
+        if (span === undefined) throw new Error('missing ingress span');
+        const { traceId, spanId, traceFlags } = span.spanContext();
+        return `00-${traceId}-${spanId}-${traceFlags.toString(16).padStart(2, '0')}`;
+      };
+      expect(queued.rows.map(({ traceparent }) => traceparent).sort()).toEqual(
+        [traceparentOf(continued), traceparentOf(restarted)].sort(),
+      );
     } finally {
       await sdk.stop();
     }

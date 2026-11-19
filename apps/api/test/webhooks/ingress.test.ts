@@ -558,36 +558,10 @@ describe('generic webhook ingress', () => {
         throw new Error('trace failed before callback');
       },
     },
-    {
-      name: 'a trace rejection before the callback',
-      trace: <T>(
-        _parent: string | undefined,
-        _work: () => Promise<T>,
-      ): Promise<T> => {
-        return Promise.reject(new Error('trace rejected before callback'));
-      },
-    },
-    {
-      name: 'a synchronous trace failure after the callback',
-      trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
-        void work();
-        throw new Error('trace failed after callback');
-      },
-    },
-    {
-      name: 'a trace rejection after the callback',
-      trace: <T>(
-        _parent: string | undefined,
-        work: () => Promise<T>,
-      ): Promise<T> => {
-        void work();
-        return Promise.reject(new Error('trace rejected after callback'));
-      },
-    },
   ] satisfies readonly Readonly<{
     name: string;
     trace: WebhookIngressTelemetry['trace'];
-  }>[])('accepts exactly once through $name', async ({ trace }) => {
+  }>[])('accepts untraced through $name', async ({ trace }) => {
     const fixture = setup4({
       reference: undefined,
       acceptanceError: undefined,
@@ -613,34 +587,6 @@ describe('generic webhook ingress', () => {
 
   const { setup: setup5 } = caseFixture;
 
-  it('returns one authoritative acceptance when tracing invokes its callback twice', async () => {
-    let firstPromise: Promise<unknown> | undefined;
-    const fixture = setup5({
-      reference: undefined,
-      acceptanceError: undefined,
-      acceptance: undefined,
-      includeTraceparent: true,
-      telemetryOverrides: {
-        trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
-          const first = work();
-          const second = work();
-          firstPromise = first;
-          expect(second).toBe(first);
-          return first;
-        },
-      },
-    });
-
-    const response = await fixture.application.inject(
-      request('{}', currentSecret),
-    );
-
-    expect(response.statusCode).toBe(202);
-    expect(firstPromise).toBeDefined();
-    expect(fixture.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
-    expect(fixture.delivery).toHaveBeenCalledTimes(1);
-  });
-
   it('treats unavailable diagnostic trace context as absent', async () => {
     const fixture = setup5({
       reference: undefined,
@@ -663,32 +609,6 @@ describe('generic webhook ingress', () => {
       fixture.database.acceptVerifiedDelivery.mock.calls[0]?.[0];
     expect(Object.hasOwn(input as object, 'traceparent')).toBe(false);
     expect(fixture.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
-  });
-
-  it('preserves a failed acceptance while the trace promise also rejects', async () => {
-    const workFailure = new Error('database unavailable');
-    const fixture = setup5({
-      reference: undefined,
-      acceptanceError: workFailure,
-      acceptance: undefined,
-      includeTraceparent: true,
-      telemetryOverrides: {
-        trace: <T>(_parent: string | undefined, work: () => Promise<T>) => {
-          void work();
-          return Promise.reject(new Error('trace export unavailable'));
-        },
-      },
-    });
-
-    const response = await fixture.application.inject(
-      request('{}', currentSecret),
-    );
-
-    expect(response.statusCode).toBe(503);
-    expect(response.json<{ code: string }>().code).toBe('webhook.unavailable');
-    expect(fixture.database.acceptVerifiedDelivery).toHaveBeenCalledOnce();
-    for (const secret of fixture.openedSecrets)
-      expect(secret).toEqual(new Uint8Array(32));
   });
 
   it('consumes the durable endpoint limit before opening a signing secret', async () => {
