@@ -141,65 +141,66 @@ test('edits, autosaves, and preserves both drafts during a two-tab conflict', as
   await expect(second).toHaveURL(`/w/${workspaceId}/workflows`);
 });
 
-test('keeps keyboard placement usable and the narrow editor horizontally bounded', async ({
-  context,
-  page,
-}) => {
-  const remote = remoteDraft();
-  await addCsrfCookie(context);
-  await installEditorRoutes(page, remote);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(editorUrl);
-  const panels = page.getByRole('navigation', { name: 'Editor panels' });
-  await expect(panels).toBeVisible();
-  const canvas = page.getByRole('region', { name: 'Workflow canvas' });
-  await expect(canvas).toBeVisible();
-  await panels.getByRole('button', { name: 'Add step' }).focus();
-  await page.keyboard.press('Enter');
-  const add = addStep(page, /Set fields/u);
-  await expect(add).toBeVisible();
-  await add.focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByText('Unsaved')).toBeVisible();
-  await expect(page.getByText(/^Saved/u)).toBeVisible({ timeout: 4_000 });
-  const canvasBox = await canvas.boundingBox();
-  expect(canvasBox?.width).toBeGreaterThan(360);
-  expect(canvasBox?.height).toBeGreaterThan(500);
-  await page.locator('.react-flow__node').click();
-  await panels.getByRole('button', { name: 'Step', exact: true }).click();
-  await page.getByLabel('Label', { exact: true }).fill('Mobile scratch');
-  await panels.getByRole('button', { name: 'Canvas' }).click();
-  await panels.getByRole('button', { name: 'Step', exact: true }).click();
-  await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
-    'Mobile scratch',
-  );
-  // A tap outside the panel puts it away, like any sheet, and keeps its edit.
-  const stepPanel = page.getByRole('complementary', { name: 'Step panel' });
-  const outside = await page.evaluate(() => {
-    for (let y = 0; y < innerHeight; y += 8)
-      for (let x = 0; x < innerWidth; x += 8)
-        if (
-          document.elementFromPoint(x, y)?.getAttribute('data-slot') ===
-          'panel-dismiss'
-        )
-          return { x, y };
-    return null;
-  });
-  expect(outside).not.toBeNull();
-  await page.mouse.click(outside?.x ?? 0, outside?.y ?? 0);
-  await expect(stepPanel).toBeHidden();
-  // A double tap on the step brings its panel back, its edit still there.
-  await page.locator('.react-flow__node').dblclick();
-  await expect(stepPanel).toBeVisible();
-  await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
-    'Mobile scratch',
-  );
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
-});
+test(
+  'keeps keyboard placement usable and the narrow editor horizontally bounded',
+  { tag: '@every-browser' },
+  async ({ context, page }) => {
+    const remote = remoteDraft();
+    await addCsrfCookie(context);
+    await installEditorRoutes(page, remote);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(editorUrl);
+    const panels = page.getByRole('navigation', { name: 'Editor panels' });
+    await expect(panels).toBeVisible();
+    const canvas = page.getByRole('region', { name: 'Workflow canvas' });
+    await expect(canvas).toBeVisible();
+    await panels.getByRole('button', { name: 'Add step' }).focus();
+    await page.keyboard.press('Enter');
+    const add = addStep(page, /Set fields/u);
+    await expect(add).toBeVisible();
+    await add.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('Unsaved')).toBeVisible();
+    await expect(page.getByText(/^Saved/u)).toBeVisible({ timeout: 4_000 });
+    const canvasBox = await canvas.boundingBox();
+    expect(canvasBox?.width).toBeGreaterThan(360);
+    expect(canvasBox?.height).toBeGreaterThan(500);
+    await page.locator('.react-flow__node').click();
+    await panels.getByRole('button', { name: 'Step', exact: true }).click();
+    await page.getByLabel('Label', { exact: true }).fill('Mobile scratch');
+    await panels.getByRole('button', { name: 'Canvas' }).click();
+    await panels.getByRole('button', { name: 'Step', exact: true }).click();
+    await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
+      'Mobile scratch',
+    );
+    // A tap outside the panel puts it away, like any sheet, and keeps its edit.
+    const stepPanel = page.getByRole('complementary', { name: 'Step panel' });
+    const outside = await page.evaluate(() => {
+      for (let y = 0; y < innerHeight; y += 8)
+        for (let x = 0; x < innerWidth; x += 8)
+          if (
+            document.elementFromPoint(x, y)?.getAttribute('data-slot') ===
+            'panel-dismiss'
+          )
+            return { x, y };
+      return null;
+    });
+    expect(outside).not.toBeNull();
+    await page.mouse.click(outside?.x ?? 0, outside?.y ?? 0);
+    await expect(stepPanel).toBeHidden();
+    // A double tap on the step brings its panel back, its edit still there.
+    await page.locator('.react-flow__node').dblclick();
+    await expect(stepPanel).toBeVisible();
+    await expect(page.getByLabel('Label', { exact: true })).toHaveValue(
+      'Mobile scratch',
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  },
+);
 
 test('shows keyboard focus on step cards, links and step panel tabs', async ({
   context,
