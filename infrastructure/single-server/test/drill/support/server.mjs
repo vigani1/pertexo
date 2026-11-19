@@ -41,9 +41,10 @@ const network = `${project}_private`;
 /**
  * A fresh Linux server with a non-root `pertexo` login and the built operator checkout:
  * what the runbook starts from. Its files live on a Docker volume so the daemon sees
- * ordinary Linux ownership and modes, on any host OS.
+ * ordinary Linux ownership and modes, on any host OS. A simulation can replace the
+ * Caddyfile overlay and adjust the overlaid Compose file through `overlays`.
  */
-export async function createServer() {
+export async function createServer(overlays = {}) {
   await requireImages();
   await destroyServer();
   await mustDocker(['volume', 'create', volume]);
@@ -167,7 +168,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-cer
   };
   await installCertificates(server);
   server.ca = await mustExec('cat drill-tls/ca.crt');
-  server.releases = await installRepository(server);
+  server.releases = await installRepository(server, overlays);
   for (const release of Object.values(server.releases))
     await tagRelease(
       release,
@@ -202,7 +203,10 @@ chmod 644 site.key
 }
 
 /** Clones this working tree the way a server does, with three linear releases. */
-async function installRepository(server) {
+async function installRepository(
+  server,
+  { caddyfile = overlayCaddyfile, compose: adjustCompose = (text) => text },
+) {
   const { mustExec, root } = server;
   await mustExec('mkdir -p tree && git init --quiet --bare -b main origin.git');
   const listing = await must(
@@ -247,7 +251,7 @@ async function installRepository(server) {
   const read = (name) =>
     readFileSync(`${repositoryRoot}${singleServer}/${name}`, 'utf8');
   const settings = { project, httpPort, httpsPort };
-  const compose = overlayCompose(read('compose.yaml'), settings);
+  const compose = adjustCompose(overlayCompose(read('compose.yaml'), settings));
   const write = (name, content) =>
     mustExec(`cat > tree/${singleServer}/${name}`, { input: content });
   await write('compose.yaml', compose);
@@ -268,7 +272,7 @@ async function installRepository(server) {
         `backup_network=${network}`,
       ),
     );
-  await write('Caddyfile', overlayCaddyfile(read('Caddyfile')));
+  await write('Caddyfile', caddyfile(read('Caddyfile')));
   const commit = (message) =>
     mustExec(
       `cd tree && git add -A && git -c user.name=drill -c user.email=drill@drill.test commit --quiet --allow-empty -m ${message} && git rev-parse HEAD`,
