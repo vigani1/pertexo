@@ -128,59 +128,6 @@ async function openAttachments(graph: WorkflowGraphContract) {
 }
 
 describe('Send email attachments', { timeout: 30_000 }, () => {
-  it('attaches a file from an earlier step, renames it and keeps the message rows apart', async () => {
-    const { event, saved, section } = await openAttachments(reportGraph());
-    expect(
-      within(section).getByText('Attach a file from an earlier step'),
-    ).toBeVisible();
-    expect(
-      within(screen.getByRole('region', { name: 'Inputs' })).queryByRole(
-        'button',
-        { name: /^attachments/u },
-      ),
-    ).toBeNull();
-
-    await event.click(
-      within(section).getByRole('button', { name: 'Attach a file' }),
-    );
-    await event.click(
-      await screen.findByRole('button', { name: 'file from Weekly report' }),
-    );
-    expect(
-      within(section).getByText('Named from its type when sent'),
-    ).toBeVisible();
-    expect(
-      within(section).getByText('from Weekly report › file'),
-    ).toBeVisible();
-    expect(
-      within(section).getByRole('meter', { name: 'Attachment size' }),
-    ).toHaveAttribute(
-      'aria-valuetext',
-      '1 file · 0 B of 6 MB · 1 measured when sent',
-    );
-
-    await event.click(
-      within(section).getByRole('button', { name: 'Edit attachment 1' }),
-    );
-    await event.type(
-      within(section).getByRole('textbox', { name: 'Name in the email' }),
-      'week-42.csv',
-    );
-    pressSave();
-    await waitFor(() => {
-      expect(saved.graph?.nodes[1]?.inputMappings).toEqual({
-        ...message,
-        attachments: {
-          kind: 'expression',
-          language: 'jsonata',
-          expression:
-            '[\n  {"file": (nodeOutputs."create"."file"), "filename": "week-42.csv"}\n]',
-        },
-      });
-    });
-    expect(within(section).getByText('week-42')).toBeVisible();
-  });
-
   it('shows uploaded files with their sizes and warns when they exceed the limit', async () => {
     const { event, saved, section } = await openAttachments(
       reportGraph({

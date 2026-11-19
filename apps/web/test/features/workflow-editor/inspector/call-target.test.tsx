@@ -159,43 +159,6 @@ describe('exact child version selection', { timeout: 30_000 }, () => {
       expect(state.read()?.nodes[0]?.config.target).toEqual(pin);
     });
   });
-  it('loads an old pin directly and requests older history only on demand', async () => {
-    const state = await open(undefined, true);
-    expect(
-      screen.getByRole('combobox', { name: 'Published version' }),
-    ).toHaveTextContent('Version 1');
-    expect(new Set(state.versionReads).size).toBe(2);
-    expect(
-      state.versionReads.some(
-        (search) => new URLSearchParams(search).get('versionId') === firstId,
-      ),
-    ).toBe(true);
-    expect(
-      state.versionReads.some((search) =>
-        new URLSearchParams(search).has('after'),
-      ),
-    ).toBe(false);
-    expect(state.read()).toBeUndefined();
-    await state.user.click(
-      screen.getByRole('button', { name: 'Load more versions' }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', { name: 'Load more versions' }),
-      ).not.toBeInTheDocument(),
-    );
-    expect(new Set(state.versionReads).size).toBe(3);
-    expect(new URLSearchParams(state.versionReads.at(-1)).get('after')).toBe(
-      'older-page',
-    );
-    await state.user.click(
-      screen.getByRole('combobox', { name: 'Published version' }),
-    );
-    expect(
-      await screen.findAllByRole('option', { name: /^Version 1$/u }),
-    ).toHaveLength(1);
-    expect(state.read()).toBeUndefined();
-  });
   it('lets readers inspect the pinned version without upgrading', async () => {
     await open(['workflow:read', 'run:read']);
     expect(

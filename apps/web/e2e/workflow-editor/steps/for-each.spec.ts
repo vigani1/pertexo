@@ -26,6 +26,7 @@ type BodyGraph = Readonly<{
     inputMappings: Readonly<Record<string, unknown>>;
   }>[];
   edges: readonly Readonly<{
+    id: string;
     source: Readonly<{ nodeId: string }>;
     target: Readonly<{ nodeId: string }>;
   }>[];
@@ -234,9 +235,15 @@ test('builds a body from the keyboard: adds after its last step, maps the item, 
   await expect
     .poll(() => savedBody(remote)?.nodes.length, { timeout: 4_000 })
     .toBe(3);
+  const added = savedBody(remote)?.nodes[2];
   expect(savedBody(remote)?.edges.at(-1)).toMatchObject({
-    source: { nodeId: 'reserve' },
+    source: { nodeId: 'reserve', port: 'out' },
+    target: { nodeId: added?.id, port: 'in' },
   });
+  // Placed right of the last step.
+  expect(added?.position.x).toBeGreaterThan(
+    savedBody(remote)?.nodes[1]?.position.x ?? Infinity,
+  );
   expect(remote.graph.nodes).toHaveLength(2);
 
   await focusStep(page, 'check');
@@ -263,6 +270,12 @@ test('builds a body from the keyboard: adds after its last step, maps the item, 
   await page.keyboard.press('Backspace');
   await expect(page.getByTestId('rf__node-check')).toBeHidden();
   await expect(page.getByText('Deleted “Check stock”')).toBeVisible();
+  await expect
+    .poll(() => savedBody(remote)?.nodes.map((node) => node.id))
+    .not.toContain('check');
+  expect(savedBody(remote)?.edges.map((edge) => edge.id)).not.toContain(
+    'check-reserve',
+  );
   // The notification's Undo comes after the command bar's in the page.
   await page.getByRole('button', { name: 'Undo' }).last().click();
   await expect(page.getByTestId('rf__node-check')).toBeVisible();
@@ -271,6 +284,9 @@ test('builds a body from the keyboard: adds after its last step, maps the item, 
       timeout: 4_000,
     })
     .toEqual(expect.arrayContaining(['check', 'reserve']));
+  await expect
+    .poll(() => savedBody(remote)?.edges.map((edge) => edge.id))
+    .toContain('check-reserve');
 });
 
 test('adds a first body step from the container and never connects across the body’s edge', async ({
@@ -309,6 +325,8 @@ test('adds a first body step from the container and never connects across the bo
   await expect
     .poll(() => savedBody(remote)?.nodes.length, { timeout: 4_000 })
     .toBe(1);
+  expect(savedBody(remote)?.nodes[0]?.position).toEqual({ x: 0, y: 0 });
+  expect(remote.graph.nodes).toHaveLength(2);
   const inner = savedBody(remote)?.nodes[0]?.id ?? '';
 
   // A connection from outside the body to a step inside it is refused.

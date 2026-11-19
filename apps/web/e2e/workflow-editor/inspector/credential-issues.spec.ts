@@ -66,6 +66,14 @@ for (const width of [390, 1280]) {
         name: /Fix:.*(?:Slack|Ops bot)/u,
       });
       await expect(fix).toContainText('Fix');
+      await expect(fix).toHaveAccessibleName(
+        {
+          missing: 'Fix: Choose a Slack connection for this step.',
+          revoked: 'Fix: Ops bot was revoked. Choose another Slack connection.',
+          reauthorization_required:
+            'Fix: Ops bot needs reauthorizing. Reconnect it or choose another Slack connection.',
+        }[status],
+      );
       await fix.click();
       const picker = page.getByLabel('Slack connection');
       await expect(picker).toBeVisible();

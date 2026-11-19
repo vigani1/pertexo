@@ -45,6 +45,7 @@ for (const theme of ['light', 'dark'] as const)
       await expect(
         form.getByRole('textbox', { name: 'Note', exact: true }),
       ).toBeFocused();
+      await expect(form.getByRole('combobox', { name: 'Color' })).toBeVisible();
       await form
         .getByRole('textbox', { name: 'Note', exact: true })
         .fill('# Orders\n\nKeep **one** per order.\n\n- Capture\n- Validate');
@@ -79,6 +80,9 @@ for (const theme of ['light', 'dark'] as const)
         await note
           .getByRole('button', { name: 'Edit note', exact: true })
           .click();
+      await expect(
+        page.getByRole('dialog', { name: 'Edit note' }),
+      ).toBeVisible();
       await page
         .getByRole('dialog')
         .getByRole('combobox', { name: 'Color' })
