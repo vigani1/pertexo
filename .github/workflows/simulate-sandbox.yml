@@ -1,0 +1,64 @@
+name: Simulate the Code sandbox
+
+# Attacks the Code sandbox on a real Linux runner: the production images,
+# deployed by deploy.sh with the production compose settings, then hostile
+# Code steps from one workspace while another workspace keeps working.
+# Started by hand or by pushing a throwaway sim/sandbox/<n> branch; never on
+# pull requests, main or a schedule.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['sim/sandbox/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simulate-sandbox-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  attack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Build the images once
+        run:
+          .github/scripts/retry-once.sh node
+          infrastructure/single-server/test/drill/build-images.mjs
+      - name: Attack the sandbox
+        env:
+          SIMULATION_REPORT: ${{ runner.temp }}/code-sandbox-report.json
+          # The runner is thrown away; keeping the stack lets the next step show its logs.
+          DRILL_KEEP: 'true'
+        run:
+          node --test --test-reporter=spec
+          infrastructure/single-server/test/drill/code-sandbox.test.mjs
+      - name: Summarize every attempt
+        if: always()
+        run: |
+          report="$RUNNER_TEMP/code-sandbox-report.json"
+          if [ -f "$report" ]; then
+            { echo '```json'; cat "$report"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: code-sandbox-report
+          path: ${{ runner.temp }}/code-sandbox-report.json
+          if-no-files-found: ignore
+      - name: Show the stack's logs on failure
+        if: failure()
+        run: |
+          for container in $(docker ps --all --quiet --filter label=com.docker.compose.project=pertexo-b1-singleserver); do
+            echo "::group::$(docker inspect --format '{{.Name}}' "$container")"
+            docker logs --tail 200 "$container" 2>&1 || true
+            echo '::endgroup::'
+          done
