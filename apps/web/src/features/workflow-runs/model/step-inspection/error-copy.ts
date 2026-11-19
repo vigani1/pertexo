@@ -1,6 +1,8 @@
 import { formatCount } from '@/lib/format/count';
+import { formatTimeSpan } from '@/lib/format/time';
 import {
   ARTIFACT_INPUT_MAX_BYTES,
+  CODE_LIMITS,
   DATA_TABLE_LIMITS,
   formatByteSize,
   STORED_EXECUTION_VALUE_LIMITS,
@@ -311,6 +313,16 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   'code.module_refused': {
     sentence: 'The code imported a module that isn’t allowed.',
     advice: 'Use only the modules the Code step offers, then replay the run.',
+  },
+  'code.runner_busy': {
+    sentence: `Every Code runner slot stayed busy for ${formatTimeSpan(CODE_LIMITS.slotWaitSeconds)}, so this step stopped waiting. The code didn’t run.`,
+    advice:
+      'Replay the run when fewer Code steps are running, or ask your administrator to let more Code steps run at once.',
+  },
+  'code.runner_unavailable': {
+    sentence: 'The Code runner stopped or couldn’t be reached.',
+    advice:
+      'The step runs again if its retries allow. If this keeps happening, ask your administrator to check the Code runner, then replay the run.',
   },
 };
 

@@ -47,6 +47,8 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
   'code.memory_limit': 'the code used too much memory',
   'code.output_invalid': 'the code returned an unusable value',
   'code.module_refused': 'the code used a module that isn’t allowed',
+  'code.runner_busy': 'the Code runner stayed busy',
+  'code.runner_unavailable': 'the Code runner was unavailable',
 };
 
 /**
