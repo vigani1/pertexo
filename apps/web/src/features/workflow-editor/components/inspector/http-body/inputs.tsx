@@ -1,5 +1,5 @@
 import { useScratchForm } from '../use-draft-field';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
 import type { FileUploadScope } from '@/features/artifacts/artifacts-views.public';
@@ -22,6 +22,7 @@ import { useEditorStoreApi } from '../../../model/state/context';
 import { useHttpBodyDraft } from './use-draft';
 import { MultipartParts } from './parts';
 import { focusFormPart } from './focus';
+import { useBodyConfirmation } from './confirmation';
 
 type Props = Readonly<{
   node: WorkflowNode;
@@ -162,7 +163,7 @@ function BodyInputs(props: BodyInputsProps) {
         state={{
           open: model.pending !== undefined,
           onOpenChange: (open) => {
-            if (!open) model.setConfirmation(undefined);
+            if (!open) model.dismiss();
           },
           locked: false,
         }}
@@ -170,12 +171,11 @@ function BodyInputs(props: BodyInputsProps) {
         description={model.pending?.description}
         onSubmit={() => {
           const current = findStep(model.store.getState().graph, model.node.id);
-          if (
+          model.confirm(
             current !== undefined &&
-            JSON.stringify(bodyValue(current)) === JSON.stringify(model.value)
-          )
-            model.pending?.apply();
-          model.setConfirmation(undefined);
+              JSON.stringify(bodyValue(current)) ===
+                JSON.stringify(model.value),
+          );
         }}
         actions={{
           cancel: { kind: 'close', label: 'Cancel', variant: 'ghost' },
@@ -209,39 +209,11 @@ function useBodyInputs({
   const { form: rawForm, hasScratch: rawScratch } = useScratchForm(form);
   const requestNode = { ...node, inputMappings: httpRequestMappings(node) };
   const requestForm = requestInputsForm(rawForm);
-  const [confirmation, setConfirmation] = useState<
-    | Readonly<{
-        signature: string;
-        title: string;
-        description: string;
-        confirmLabel: string;
-        apply: () => void;
-      }>
-    | undefined
-  >();
   const signature = JSON.stringify(draft.text);
-  const pending =
-    confirmation?.signature === signature ? confirmation : undefined;
+  const { pending, request, confirm, dismiss } = useBodyConfirmation(signature);
   const parts = draft.text.mode === 'multipart' ? draft.text.parts : [];
   const bodyAllowed =
     node.config.method !== 'GET' && node.config.method !== 'HEAD';
-  function request({
-    apply,
-    destructive,
-    title,
-    description,
-    confirmLabel = 'Replace',
-  }: Readonly<{
-    apply: () => void;
-    destructive: boolean;
-    title: string;
-    description: string;
-    confirmLabel?: string | undefined;
-  }>) {
-    if (destructive)
-      setConfirmation({ signature, title, description, confirmLabel, apply });
-    else apply();
-  }
   function mode(next: 'raw' | 'multipart') {
     if (next === draft.text.mode) return;
     const nextDraft: HttpBodyDraft =
@@ -326,7 +298,8 @@ function useBodyInputs({
     request,
     links,
     pending,
-    setConfirmation,
+    confirm,
+    dismiss,
     store,
     value,
   } as const;
