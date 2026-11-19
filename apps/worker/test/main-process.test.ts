@@ -98,14 +98,16 @@ describe('compiled worker main process', () => {
     12_000,
   );
 
-  it('closes once for a burst of signals, and exits failed though a failed close holds the process open', async () => {
+  it('closes once when a second signal arrives while closing, and exits failed though a failed close holds the process open', async () => {
     const fixture = start(fixturePath, {
       ...process.env,
-      WORKER_FIXTURE_CLOSE: 'fails',
+      WORKER_FIXTURE_CLOSE: 'fails-after-second-signal',
     });
     try {
       await waitFor(fixture.child, fixture.output, 'worker.active');
       expect(fixture.child.kill('SIGTERM')).toBe(true);
+      // The close is now under way and waits for this second signal.
+      await waitFor(fixture.child, fixture.output, 'application.closed');
       expect(fixture.child.kill('SIGINT')).toBe(true);
       const result = await waitForExit(fixture.child, fixture.output);
 
@@ -113,10 +115,8 @@ describe('compiled worker main process', () => {
       expect(
         fixture.output().match(/"event":"application.closed"/gu),
       ).toHaveLength(1);
-      // Two signals sent back to back may reach the process in either order,
-      // so the close names whichever arrived first.
-      expect(fixture.output()).toMatch(
-        /"event":"application.closed","signal":"SIG(?:TERM|INT)"/u,
+      expect(fixture.output()).toContain(
+        '"event":"application.closed","signal":"SIGTERM"',
       );
       expect(fixture.output()).toContain('"event":"worker.shutdown_failed"');
     } finally {
