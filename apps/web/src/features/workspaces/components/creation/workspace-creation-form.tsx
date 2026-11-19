@@ -205,6 +205,9 @@ export function WorkspaceCreationForm({
                 onChange={(event) => {
                   setSlug(event.target.value);
                   slugEdited.current = true;
+                  // A field shown for the server's refusal stays open once
+                  // edited; the refusal clears as soon as they type.
+                  setEditingSlug(true);
                   command.clearError();
                   validation.change(
                     'slug',
