@@ -1,3 +1,5 @@
+import { nodeDefinitionListResponseSchema } from '@pertexo/contracts';
+import { platformBrowserNodeDefinitionCatalog } from '../../../../../packages/node-catalog/dist/index.js';
 import { expect, test } from '../../support/fixtures';
 import { mappingGraph } from '../graph';
 import {
@@ -96,4 +98,33 @@ test('adds a step after the selected one from the keyboard', async ({
   expect(remote.graph.edges[1]).toMatchObject({
     source: { nodeId: 'target', port: 'out' },
   });
+});
+
+test('keeps the step list the same length while it is scrolled through', async ({
+  context,
+  page,
+}) => {
+  const definitions = nodeDefinitionListResponseSchema.parse({
+    items: platformBrowserNodeDefinitionCatalog().definitions,
+  }).items;
+  await addCsrfCookie(context);
+  await installEditorRoutes(page, remoteDraft(), { definitions });
+  await page.goto(editorUrl);
+  const list = page
+    .getByRole('complementary', { name: 'Add a step' })
+    .getByRole('button', { name: /^Manual start\b/u })
+    .locator('xpath=ancestor::*[contains(@class, "overflow-y-auto")][1]');
+  await expect(list).toBeVisible();
+  // Rows drawn only as they scroll in must arrive at the size they were
+  // given, or the rows under the pointer move: in Safari a press then
+  // lands on another row and adds nothing.
+  const before = await list.evaluate((element) => element.scrollHeight);
+  await list.evaluate(async (element) => {
+    for (let top = 0; top <= element.scrollHeight; top += 120) {
+      element.scrollTop = top;
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    }
+  });
+  expect(await list.evaluate((element) => element.scrollHeight)).toBe(before);
 });
