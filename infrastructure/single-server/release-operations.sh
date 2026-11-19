@@ -73,6 +73,15 @@ wait_for_app() {
   done
   app_reaches_api
 }
+# A new server's first certificate failing looks like a broken release: the probe
+# sees only a TLS error. Name the real cause while the services still run.
+explain_unreachable_app() {
+  local reason
+  reason=$(app_reaches_api 2>&1 >/dev/null) && return 0
+  if grep -q -i -E 'ssl|tls|certificate' <<<"$reason"; then
+    echo "HTTPS isn't working: Caddy has no certificate for the public address. Check that DNS points to this server and that ports 80 and 443 are open from outside, read 'compose logs proxy', then deploy again." >&2
+  fi
+}
 
 operation_lock() {
   # Deploy's backup inherits this descriptor, retaining one lock through capture

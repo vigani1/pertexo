@@ -68,6 +68,7 @@ if ! verify_encryption; then
   echo 'Encryption verification failed: serving remains stopped; correct the configured keys' >&2; exit 1
 fi
 if ! compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}" || ! wait_for_app; then
+  explain_unreachable_app
   compose stop worker
   compose stop "${runtime_services[@]}"
   if [[ $no_migration == true && -n "$previous" && "$previous" != "$commit" ]]; then
@@ -77,6 +78,10 @@ if ! compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}" 
     compose up -d --no-deps --wait --wait-timeout 180 "${runtime_services[@]}"
     wait_for_app
     echo "Unhealthy release returned to $previous" >&2
+  elif [[ -z "$previous" ]]; then
+    echo 'First release unhealthy: serving remains stopped; fix the cause above and deploy again' >&2
+  elif [[ $no_migration == true ]]; then
+    echo 'Unhealthy release: serving remains stopped; fix the cause above and deploy again' >&2
   else
     echo 'Unhealthy release: fix forward; serving remains stopped' >&2
   fi
