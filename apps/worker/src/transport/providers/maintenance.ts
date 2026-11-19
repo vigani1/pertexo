@@ -144,6 +144,13 @@ export async function createOwnedMaintenanceRuntime(
         fromEmail: invitationConfig.fromEmail,
         webOrigin: invitationConfig.webOrigin,
         timeoutMillis: invitationConfig.timeoutMillis,
+        // The same event account mail logs: thrown retry messages are redacted.
+        onFailure: (failure) => {
+          dependencies.logger?.error('system_mail.delivery_failed', {
+            purpose: 'workspace_invitation',
+            ...failure,
+          });
+        },
       });
     }
     return await factories.runtime({
