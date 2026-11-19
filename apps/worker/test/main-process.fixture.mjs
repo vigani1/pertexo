@@ -34,10 +34,21 @@ const logger = {
 };
 // `fails` stands for an application whose close fails and leaves a handle
 // (such as a Redis reconnect timer) holding the process open.
-const closeFails = process.env.WORKER_FIXTURE_CLOSE === 'fails';
+// `fails-after-second-signal` holds the close open until a second signal
+// arrives, so a test can send that signal while closing is still under way.
+const closeMode = process.env.WORKER_FIXTURE_CLOSE;
+const closeFails =
+  closeMode === 'fails' || closeMode === 'fails-after-second-signal';
+const secondSignal =
+  closeMode === 'fails-after-second-signal'
+    ? new Promise((resolve) => {
+        process.once('SIGINT', resolve);
+      })
+    : Promise.resolve();
 const application = {
   async close(signal) {
     report('application.closed', { signal });
+    await secondSignal;
     if (closeFails) throw new Error('application close failed');
     clearInterval(keepAlive);
   },
