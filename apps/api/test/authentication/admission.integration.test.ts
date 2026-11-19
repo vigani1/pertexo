@@ -1,6 +1,7 @@
 import { origin } from '../support/better-auth/api/environment.js';
 import { connect } from 'node:net';
 import { performance } from 'node:perf_hooks';
+import { AbuseRateLimitPolicy } from '@pertexo/rate-limit/server';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   betterAuthIntegrationEnabled,
@@ -16,7 +17,15 @@ describe.runIf(betterAuthIntegrationEnabled)(
       listener = await api.listen();
     });
     it('bounds the exact public capabilities route by client address', async () => {
-      for (let index = 0; index < 30; index += 1) {
+      // The login page's reads have their own budget, sized for an office
+      // behind one address; the policy owns the number.
+      const budget = new AbuseRateLimitPolicy()
+        .evaluate('sign_in_page_read', { clientAddress: '198.51.100.41' })
+        .dimensions.find(
+          (dimension) => dimension.kind === 'client_address',
+        )?.limit;
+      if (budget === undefined) throw new Error('No per-address budget');
+      for (let index = 0; index < budget; index += 1) {
         const response = await api.send('GET', '/v1/auth/capabilities', {
           remoteAddress: '198.51.100.41',
         });
