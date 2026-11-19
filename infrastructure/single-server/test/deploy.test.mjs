@@ -185,6 +185,7 @@ if 'infrastructure/single-server/read-pending-migrations.mjs' in args:
 if 'logs' in args: print(os.environ['FIXTURE_MIGRATION_LOG'])
 if '--exit-code-from' in args and os.environ.get('FIXTURE_MIGRATION_FAIL')=='true': sys.exit(1)
 if '--no-deps' in args and '--wait' in args and os.environ.get('SERVICE_VERSION')=='${newCommit}' and os.environ.get('FIXTURE_UNHEALTHY')=='true': sys.exit(1)
+if 'exec' in args and any('PUBLIC_WEB_ORIGIN' in arg for arg in args) and 'FIXTURE_APP_ERROR' in os.environ: print(os.environ['FIXTURE_APP_ERROR'],file=sys.stderr);sys.exit(1)
 `,
     { mode: 0o755 },
   );
@@ -891,6 +892,49 @@ test('fresh install migrates without backup configuration or store access', (t) 
     newCommit,
   );
   assert.equal(existsSync(join(f.state, 'last-backup')), false);
+});
+
+// S3's real-server simulation: with the certificate authority unreachable, the
+// first deploy said only "Unhealthy release: fix forward" after an OpenSSL line.
+test('a first deploy without an HTTPS certificate names the certificate, not a fix forward', (t) => {
+  const f = fixture(t);
+  rmSync(join(f.state, 'current'));
+  writeFileSync(join(f.directory, '.env.production'), applicationSettings, {
+    mode: 0o600,
+  });
+  // The app is polled every two seconds; the wait itself isn't under test.
+  writeFileSync(join(f.directory, 'bin', 'sleep'), '#!/bin/sh\nexit 0\n', {
+    mode: 0o755,
+  });
+  const result = f.run({
+    FIXTURE_PENDING_MIGRATIONS: '0001_example.sql',
+    FIXTURE_MIGRATION_LOG: 'Applied migrations: 0001_example.sql',
+    FIXTURE_APP_ERROR:
+      'C0B2E6F4:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error',
+  });
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Caddy has no certificate for the public address/u,
+  );
+  assert.match(
+    result.stderr,
+    /First release unhealthy: serving remains stopped/u,
+  );
+  assert.doesNotMatch(result.stderr, /fix forward/u);
+  assert.equal(existsSync(join(f.state, 'current')), false);
+});
+
+test('an unhealthy redeploy of the serving release asks for the cause, not a fix forward', (t) => {
+  const f = fixture(t);
+  writeFileSync(join(f.state, 'current'), newCommit + '\n');
+  const result = f.run({ FIXTURE_UNHEALTHY: 'true' });
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /Unhealthy release: serving remains stopped; fix the cause above/u,
+  );
+  assert.doesNotMatch(result.stderr, /fix forward|Caddy has no certificate/u);
 });
 
 test('retry after failed migration retains the completed recovery point', (t) => {
