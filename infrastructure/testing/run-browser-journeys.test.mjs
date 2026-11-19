@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { parse } from 'yaml';
 
 import { browserEntries } from '../ci/select-jobs.mjs';
-import { journeyCommand } from './run-browser-journeys.mjs';
+import { journeyCommand, journeyPhases } from './run-browser-journeys.mjs';
 import { shardCommand, workerSuitePhases } from './run-worker-suite.mjs';
 import { runSideBySide, slotEnvironment } from './side-by-side.mjs';
 
@@ -73,6 +73,19 @@ test('a journey that fails still leaves the others to run', async () => {
     'bad',
     'good',
   ]);
+});
+
+// Its nginx container changing the runner's network failed api-tokens beside it
+// with ERR_NETWORK_CHANGED three times on main.
+test('the journey that starts containers runs before the others, with none beside it', () => {
+  assert.deepEqual(journeyPhases(['forms', 'security', 'api-tokens']), [
+    ['security'],
+    ['forms', 'api-tokens'],
+  ]);
+  assert.deepEqual(journeyPhases(['forms', 'api-tokens']), [
+    ['forms', 'api-tokens'],
+  ]);
+  assert.deepEqual(journeyPhases(['security']), [['security']]);
 });
 
 test('runs each kind of journey under its own switch', () => {
