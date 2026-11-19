@@ -26,6 +26,7 @@ type FixtureDefinitionKey =
   | 'core.terminate'
   | 'core.webhook'
   | 'core.wait'
+  | 'test.http'
   | 'test.unrelated';
 
 const branchPorts = Array.from(
@@ -136,6 +137,12 @@ const fixtureDefinitions: Readonly<
     inputs: [],
     outputs: ['out'],
   },
+  'test.http': {
+    capabilities: ['external_http'],
+    family: 'action',
+    inputs: ['in'],
+    outputs: ['out'],
+  },
   'test.unrelated': {
     capabilities: [],
     family: 'transform',
@@ -188,6 +195,7 @@ export function nodeCatalog(input?: {
   readonly schedule?: boolean;
   readonly webhook?: boolean;
   readonly wait?: boolean;
+  readonly http?: boolean;
   readonly extraPolicyVersion?: number;
 }): NodeCatalog {
   const definitions = [
@@ -245,6 +253,7 @@ function optionalDefinitions(
     ['approval', 'core.approval'],
     ['inputRequest', 'core.request_input'],
     ['forEach', 'core.foreach'],
+    ['http', 'test.http'],
     ['unrelated', 'test.unrelated'],
   ] as const;
   return choices.flatMap(([option, key]) =>
