@@ -195,8 +195,12 @@ for (const theme of ['light', 'dark'] as const)
       await expect(
         page.getByText('4 of 5 rows from the last test.'),
       ).toBeVisible();
-      // The frame keeps its size from placeholder to rows.
-      expect((await grid.boundingBox())?.height).toBe(before?.height);
+      // The frame keeps its size from placeholder to rows. Firefox lays
+      // out in fractions of a pixel, so the same size can differ by 0.0001.
+      expect((await grid.boundingBox())?.height).toBeCloseTo(
+        before?.height ?? Number.NaN,
+        2,
+      );
       await page.screenshot({
         path: info.outputPath(`read-rows-${theme}-${String(width)}.png`),
         fullPage: true,
