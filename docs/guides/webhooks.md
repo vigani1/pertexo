@@ -137,12 +137,13 @@ don't disclose whether an endpoint exists.
 
 A burst waits rather than failing: one workspace takes in roughly 10 to 15 deliveries
 a second on a small machine, and a delivery can wait up to 20 seconds for its turn.
+Up to 80 deliveries wait per workspace; one more is refused at once.
 Refusals start no run and carry `Retry-After`, so retrying is always safe with an
 `Idempotency-Key`:
 
 | Answer | Means |
 | --- | --- |
-| `429 webhook.rate_limited` | This endpoint or workspace is over its limit, or the burst outlasted the wait. |
+| `429 webhook.rate_limited` | This endpoint or workspace is over its limit, or the burst outlasted the wait or the line. |
 | `503 webhook.unavailable` | The database is busy or away. Without `Retry-After`, something unexpected failed; the request ID finds it in the logs. |
 
 For a workflow-controlled response, see [Respond to webhook](webhook-responses.md).
