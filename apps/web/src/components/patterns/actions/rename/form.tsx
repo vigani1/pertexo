@@ -54,7 +54,6 @@ export function RenameForm({
             {...control}
             ref={rename.validation.register('name')}
             autoComplete="off"
-            autoFocus
             maxLength={128}
             value={rename.draft}
             disabled={rename.locked}

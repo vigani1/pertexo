@@ -91,7 +91,6 @@ export function RotateSecretDialog({
               name="currentEndpoint"
               type="password"
               autoComplete="off"
-              autoFocus
               disabled={pending}
               value={pasted}
               onChange={(event) => {
