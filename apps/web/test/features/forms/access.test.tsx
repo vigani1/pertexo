@@ -43,31 +43,6 @@ function mount(editable = true) {
     </QueryClientProvider>,
   );
 }
-it('shows an existing link with copy and QR after reopening', async () => {
-  mockServer.use(
-    http.get(path, () =>
-      HttpResponse.json({
-        access: 'public',
-        publicId: id,
-        revision: 2,
-        capability,
-      }),
-    ),
-  );
-  const view = mount();
-  expect(await screen.findByLabelText('Public form link')).toHaveValue(
-    `${window.location.origin}/forms/${id}#${capability}`,
-  );
-  expect(screen.getByRole('button', { name: 'Copy form link' })).toBeVisible();
-  expect(
-    screen.getByRole('img', { name: 'Public form QR code' }),
-  ).toBeVisible();
-  view.unmount();
-  mount();
-  expect(await screen.findByLabelText('Public form link')).toHaveValue(
-    `${window.location.origin}/forms/${id}#${capability}`,
-  );
-});
 it('explains a legacy link and confirms the consequence before regenerating', async () => {
   let token: string | null = null;
   let writes = 0;

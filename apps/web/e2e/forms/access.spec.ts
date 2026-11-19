@@ -65,6 +65,9 @@ for (const width of [375, 1280])
     await openStepSetup(page, { nodeId: 'form', width });
     const link = page.getByLabel('Public form link', { exact: true });
     await expect(link).toHaveValue(new RegExp(`#${capability}$`, 'u'));
+    await expect(link).toHaveValue(
+      `${new URL(page.url()).origin}/forms/${publicId}#${capability}`,
+    );
     await expect(
       page.getByRole('img', { name: 'Public form QR code' }),
     ).toBeVisible();
