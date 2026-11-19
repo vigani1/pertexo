@@ -191,6 +191,8 @@ await output(
     ]),
 );
 const previous = ['AUTH_MAIL_PREVIOUS_KEYS', 'INVITATION_TOKEN_PREVIOUS_KEYS'];
+// The operator's optional collector; both servers export their traces there.
+const telemetry = ['OTEL_EXPORTER_OTLP_ENDPOINT'];
 const providers = ['GOOGLE', 'GITHUB', 'MICROSOFT', 'APPLE'].flatMap(
   (provider) => [
     `AUTH_${provider}_CLIENT_ID`,
@@ -201,6 +203,7 @@ await output(
   'api.env',
   optionalValues([
     ...previous,
+    ...telemetry,
     ...providers,
     'AUTH_MICROSOFT_TENANT_ID',
     'AUTH_FEDERATION_KEY',
@@ -225,7 +228,12 @@ const mailNames =
     : ['AUTH_MAIL_EMAIL_API_KEY', 'INVITATION_EMAIL_API_KEY'];
 await output(
   'worker.env',
-  optionalValues([...previous, 'SYSTEM_MAIL_TRANSPORT', ...mailNames]) +
+  optionalValues([
+    ...previous,
+    ...telemetry,
+    'SYSTEM_MAIL_TRANSPORT',
+    ...mailNames,
+  ]) +
     encryptionLines +
     callbackLines,
 );

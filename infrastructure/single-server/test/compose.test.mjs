@@ -28,6 +28,9 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
   test(`resolved Compose isolates credentials for ${mode} and ${transport}`, (t) => {
     const directory = mkdtempSync(join(tmpdir(), 'pertexo-compose-'));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
+    // The runbook's optional collector, set in half the cases: both servers must see it.
+    const collector =
+      transport === 'smtp' ? 'http://collector.example.test:4318' : undefined;
     const generated = parseEnv(
       execFileSync(
         process.execPath,
@@ -55,6 +58,9 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       AUTH_GITHUB_CLIENT_ID: 'fixture-github-client',
       AUTH_GITHUB_CLIENT_SECRET: 'fixture-github-secret',
       SYSTEM_MAIL_TRANSPORT: transport,
+      ...(collector === undefined
+        ? {}
+        : { OTEL_EXPORTER_OTLP_ENDPOINT: collector }),
       ...(transport === 'smtp'
         ? {
             SYSTEM_MAIL_SMTP_HOST: 'smtp.example.test',
@@ -342,12 +348,13 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       );
     }
     assert.equal(api.nodeEnv, 'production');
+    assert.equal(api.observability.otlpHttpEndpoint, collector);
     assert.equal(
       parseWorkerConfig({
         ...config.services.worker.environment,
         WORKER_INSTANCE_ID: 'fixture',
       }).observability.otlpHttpEndpoint,
-      undefined,
+      collector,
     );
     assert.equal(
       config.services.worker.environment.AUTH_MAIL_KEY,
