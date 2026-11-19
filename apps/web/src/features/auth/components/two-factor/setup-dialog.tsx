@@ -1,5 +1,5 @@
 import { DialogFooter } from '@/components/ui/dialog';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { encode } from 'uqr';
 import type { ApiClient } from '@/lib/api/client';
 import { isApiError } from '@/lib/api/error';
@@ -110,11 +110,17 @@ export function TwoFactorSetupDialog({
     },
   });
   const busy = change.pending || verification.pending || closing;
+  // The code field goes once the code is verified; the codes step takes
+  // focus on its title, so a screen reader starts reading there.
+  const title = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (stage.kind === 'codes') title.current?.focus();
+  }, [stage.kind]);
   const fields = useFieldValues(
     { password: currentPasswordProblem },
     { password: '' },
   );
-  const { title, description } = ACTION_COPY[action];
+  const copy = ACTION_COPY[action];
   async function submit() {
     if (busy) return;
     const values = fields.validate();
@@ -138,10 +144,10 @@ export function TwoFactorSetupDialog({
       }}
     >
       <DialogContent aria-busy={busy || undefined}>
-        <DialogTitle>
-          {stage.kind === 'codes' ? 'Save your recovery codes' : title}
+        <DialogTitle ref={title} tabIndex={-1} className="outline-none">
+          {stage.kind === 'codes' ? 'Save your recovery codes' : copy.title}
         </DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
+        <DialogDescription>{copy.description}</DialogDescription>
         <SetupStage
           stage={stage}
           password={

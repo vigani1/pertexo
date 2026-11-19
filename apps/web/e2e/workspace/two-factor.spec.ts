@@ -1,5 +1,10 @@
 import { createUserFixture } from '../../test/support/fixtures/identity';
 import { test, expect, type Page } from '../support/fixtures';
+import {
+  expectFocusOn,
+  expectSpoken,
+  startScreenReader,
+} from '../support/screen-reader';
 const profile = createUserFixture({
   email: 'factor@example.test',
   displayName: 'Factor owner',
@@ -172,3 +177,58 @@ async function mockTwoFactor(page: Page) {
     },
   };
 }
+
+test('a screen-reader user turns on two-factor sign-in from the keyboard', async ({
+  page,
+}) => {
+  await mockTwoFactor(page);
+  await page.goto('/account/security');
+  const tab = page.getByRole('tab', { name: 'Sign-in & security' });
+  await expect(tab).toBeVisible();
+  await startScreenReader(page);
+  await tab.focus();
+  await page.keyboard.press('Enter');
+  const turnOn = page.getByRole('button', {
+    name: 'Turn on two-factor sign-in',
+  });
+  await turnOn.focus();
+  await page.keyboard.press('Enter');
+
+  // The dialog names itself and puts the user in the password field.
+  const dialog = page.getByRole('dialog');
+  await expectFocusOn(page, 'textbox', 'Current password');
+  await page.keyboard.type('correct horse battery staple');
+  await page.keyboard.press('Enter');
+
+  // The QR code has a text alternative and the code field is next.
+  await expect(
+    dialog.getByRole('img', { name: /Scan this QR code/u }),
+  ).toBeVisible();
+  const code = dialog.getByRole('textbox', { name: 'Authenticator code' });
+  await code.focus();
+  await page.keyboard.type('123456');
+  await page.keyboard.press('Enter');
+
+  // The codes step takes focus on its title, so reading starts there; the
+  // codes are a named list, and Done waits for the confirmation.
+  await expectFocusOn(page, 'heading', 'Save your recovery codes');
+  await expectSpoken(page, /^heading, Save your recovery codes/u);
+  await expect(
+    dialog.getByRole('list', { name: 'Recovery codes' }),
+  ).toBeVisible();
+  const saved = dialog.getByRole('checkbox', {
+    name: 'I’ve saved these codes',
+  });
+  await saved.focus();
+  await page.keyboard.press('Space');
+  await expect(saved).toBeChecked();
+  await page.keyboard.press('Tab');
+  await expectFocusOn(page, 'button', 'Done');
+  await page.keyboard.press('Enter');
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByText('On · 10 recovery codes remaining'),
+  ).toBeVisible();
+  // Focus stays in the two-factor section it came from.
+  await expectFocusOn(page, 'button', 'Get new recovery codes');
+});
