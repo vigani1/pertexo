@@ -5,6 +5,15 @@ import { expect, test } from '../support/fixtures';
 // A missing screen is a failure at once, not a timeout, which test.fail wouldn't accept.
 test.use({ actionTimeout: 5_000 });
 
+// The landing tries to close its tab. Browsers refuse that for a tab the
+// person opened, so it stays and says how consent went; Playwright's Firefox
+// lets any script close its page, so the refusal is put back here.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.close = () => undefined;
+  });
+});
+
 const landing = (query: string) => `/connections/oauth2/finished?${query}`;
 const named = `workspaceId=${workspaceId}&connectionId=${connectionId}`;
 
