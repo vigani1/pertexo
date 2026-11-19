@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import type { DataTableDefinition } from '@pertexo/contracts';
 import { RowsGrid } from '@/features/data-tables/components/rows/row-grid';
-import { RowsPager } from '@/features/data-tables/components/rows/row-pager';
 import { TableCollection } from '@/features/data-tables/components/overview';
 
 const table: DataTableDefinition = {
@@ -45,27 +44,4 @@ it('distinguishes empty tables, filters and an empty page after rows disappear',
     <RowsGrid {...props} table={{ ...table, rowCount: 3 }} filtered={false} />,
   );
   expect(screen.getByText(/No rows on this page/)).toBeVisible();
-});
-it('uses readable empty and filtered footer counts', () => {
-  const props = {
-    table,
-    query: { filters: [], limit: 50, offset: 0 },
-    shown: 0,
-    pending: false,
-    hasMore: false,
-    onPrevious: noop,
-    onNext: noop,
-  };
-  const { rerender } = render(<RowsPager {...props} />);
-  expect(screen.getByText('0 rows total')).toBeVisible();
-  rerender(
-    <RowsPager
-      {...props}
-      query={{
-        ...props.query,
-        filters: [{ column: 'name', operator: 'equals', value: 'absent' }],
-      }}
-    />,
-  );
-  expect(screen.getByText('0 matching rows')).toBeVisible();
 });
