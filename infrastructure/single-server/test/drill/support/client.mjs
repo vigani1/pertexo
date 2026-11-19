@@ -113,9 +113,10 @@ export function createClient({ origin, connect, ca }) {
         headers: withIdempotency(options?.headers),
       }),
     /** A caller with no session, like a webhook sender or a presigned transfer. */
-    anonymous: (method, target, body, headers) =>
+    anonymous: (method, target, body, headers, timeout) =>
       call(method, target, {
         anonymous: true,
+        timeout,
         body:
           body === undefined || Buffer.isBuffer(body)
             ? body
