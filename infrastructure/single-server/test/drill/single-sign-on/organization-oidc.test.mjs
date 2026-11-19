@@ -30,6 +30,9 @@ import { closeWorld, openWorld, providerLogs } from './support/world.mjs';
 const DOMAIN = 'alpha-corp.test';
 const password = 'provider-password-7';
 const record = createReport();
+/** People behind one office address, and how many sign in at once. */
+const OFFICE_SIZE = 40;
+const OFFICE_LANES = 4;
 
 describe('organization sign-in with OIDC providers', () => {
   let world;
@@ -370,52 +373,60 @@ describe('organization sign-in with OIDC providers', () => {
     });
   }
 
-  // Everyone at an office reaches the server from one address. Reported, not
-  // fixed: the per-address sign-in budgets are a security policy for the owner.
-  it(
-    'lets a dozen people at one office address sign in within a minute',
-    {
-      todo: 'reported: one address gets 10 organization sign-in starts a minute and 30 sign-in page reads, shared with callbacks',
-    },
-    async () => {
-      const office = Array.from({ length: 12 }, (_, index) => `office${index}`);
-      for (const username of office)
-        await realm.createUser({
-          username,
-          email: `${username}@${DOMAIN}`,
-          firstName: username,
-          password,
-        });
-      // Start from a fresh budget window, as the first arrivals of a morning do.
-      await waitForFreshSignInBudget();
-      const started = Date.now();
-      const outcomes = [];
-      for (const username of office) {
-        const person = await openPerson(world.browser);
-        const landed = await signInWithOrganization(person.page, {
-          domain: DOMAIN,
-          provider: 'Alpha Keycloak',
-          atProvider: keycloakSignIn(username),
-          retry: false,
-        });
-        outcomes.push({
-          username,
-          signedIn: landed.signedIn,
-          shown: landed.notice,
-        });
-        await person.close();
-      }
-      const seconds = Math.round((Date.now() - started) / 1000);
-      record('a dozen people from one office address', {
-        seconds,
-        signedIn: outcomes.filter((outcome) => outcome.signedIn).length,
-        turnedAway: outcomes.filter((outcome) => !outcome.signedIn),
+  // Everyone at an office reaches the server from one address, and they arrive
+  // together. Forty people in four lanes sign in through Keycloak with no
+  // retries: the login page, the SSO start and the callback each have a budget
+  // sized for an office, while password and two-factor guessing keep theirs.
+  it('lets forty people at one office address sign in within a minute', async () => {
+    const office = Array.from(
+      { length: OFFICE_SIZE },
+      (_, index) => `office${index}`,
+    );
+    for (const username of office)
+      await realm.createUser({
+        username,
+        email: `${username}@${DOMAIN}`,
+        firstName: username,
+        password,
       });
-      assert.ok(seconds <= 60, `took ${seconds}s`);
-      assert.deepEqual(
-        outcomes.filter((outcome) => !outcome.signedIn),
-        [],
-      );
-    },
-  );
+    // Start from a fresh budget window, as the first arrivals of a morning do.
+    await waitForFreshSignInBudget();
+    const started = Date.now();
+    const outcomes = [];
+    const queue = [...office];
+    const lane = async () => {
+      for (let username = queue.shift(); username; username = queue.shift()) {
+        const person = await openPerson(world.browser);
+        try {
+          const landed = await signInWithOrganization(person.page, {
+            domain: DOMAIN,
+            provider: 'Alpha Keycloak',
+            atProvider: keycloakSignIn(username),
+            retry: false,
+          });
+          outcomes.push({
+            username,
+            signedIn: landed.signedIn,
+            shown: landed.notice,
+          });
+        } finally {
+          await person.close();
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: OFFICE_LANES }, lane));
+    const seconds = Math.round((Date.now() - started) / 1000);
+    record('forty people from one office address', {
+      seconds,
+      lanes: OFFICE_LANES,
+      signedIn: outcomes.filter((outcome) => outcome.signedIn).length,
+      turnedAway: outcomes.filter((outcome) => !outcome.signedIn),
+    });
+    assert.deepEqual(
+      outcomes.filter((outcome) => !outcome.signedIn),
+      [],
+    );
+    assert.equal(outcomes.length, OFFICE_SIZE);
+    assert.ok(seconds <= 60, `took ${seconds}s`);
+  });
 });
