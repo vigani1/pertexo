@@ -1,5 +1,5 @@
 import { createUserFixture } from '../../test/support/fixtures/identity';
-import { test, expect } from '../support/fixtures';
+import { test, expect, type Page } from '../support/fixtures';
 const profile = createUserFixture({
   email: 'factor@example.test',
   displayName: 'Factor owner',
@@ -16,84 +16,7 @@ for (const width of [1280, 375]) {
     { tag: width === 375 ? '@every-browser' : [] },
     async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
-      let authenticated = true;
-      let enabled = false;
-      await page.context().addCookies([
-        {
-          name: 'pertexo_csrf',
-          value: 'csrf-token-browser-two-factor-12345678901234567890',
-          url: 'http://127.0.0.1:4173',
-        },
-      ]);
-      await page.route('**/v1/users/me', (route) =>
-        authenticated
-          ? route.fulfill({ json: profile })
-          : route.fulfill({
-              status: 401,
-              contentType: 'application/problem+json',
-              json: {
-                type: 'https://pertexo.test/problems/auth.unauthenticated',
-                title: 'Authentication required',
-                status: 401,
-                code: 'auth.unauthenticated',
-                requestId: 'browser-two-factor-request',
-              },
-            }),
-      );
-      await page.route('**/v1/workspaces?**', (route) =>
-        route.fulfill({ json: { items: [], nextCursor: null } }),
-      );
-      await page.route('**/v1/auth/capabilities', (route) =>
-        route.fulfill({
-          json: {
-            password: {
-              enabled: true,
-              minimumLength: 12,
-              verificationRequired: true,
-            },
-            socialProviders: [],
-            signUp: 'open',
-          },
-        }),
-      );
-      await page.route('**/v1/auth/account-security', (route) =>
-        route.fulfill({
-          json: {
-            email: profile.email,
-            emailVerified: true,
-            availableProviders: [],
-            methods: [
-              {
-                id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-                kind: 'password',
-                provider: null,
-              },
-            ],
-            twoFactor: { enabled, recoveryCodesRemaining: enabled ? 10 : null },
-          },
-        }),
-      );
-      await page.route('**/v1/auth/two-factor/enable', (route) => {
-        expect(route.request().headers()['x-csrf-token']).toBeTruthy();
-        return route.fulfill({
-          json: {
-            totpURI:
-              'otpauth://totp/Pertexo:test?secret=JBSWY3DPEHPK3PXP&issuer=Pertexo',
-            backupCodes: codes,
-          },
-        });
-      });
-      await page.route('**/v1/auth/two-factor/verify-totp', (route) => {
-        expect(route.request().postDataJSON()).toEqual({ code: '123456' });
-        enabled = true;
-        authenticated = true;
-        return route.fulfill({ json: { user: profile } });
-      });
-      await page.route('**/v1/auth/sign-in/email', (route) =>
-        route.fulfill({
-          json: { twoFactorRedirect: true, twoFactorMethods: ['totp'] },
-        }),
-      );
+      const account = await mockTwoFactor(page);
       await page.goto('/account/security');
       await page.getByRole('tab', { name: 'Sign-in & security' }).click();
       await page
@@ -132,7 +55,7 @@ for (const width of [1280, 375]) {
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
-      authenticated = false;
+      account.signOut();
       await page.goto('/login');
       await page.getByLabel('Email', { exact: true }).fill(profile.email);
       await page
@@ -158,4 +81,94 @@ for (const width of [1280, 375]) {
       await expect(page).toHaveURL('/workspaces');
     },
   );
+}
+
+/**
+ * A signed-in account without two-factor sign-in, whose server accepts the
+ * code 123456; signing out sends the next sign-in to the code challenge.
+ */
+async function mockTwoFactor(page: Page) {
+  let authenticated = true;
+  let enabled = false;
+  await page.context().addCookies([
+    {
+      name: 'pertexo_csrf',
+      value: 'csrf-token-browser-two-factor-12345678901234567890',
+      url: 'http://127.0.0.1:4173',
+    },
+  ]);
+  await page.route('**/v1/users/me', (route) =>
+    authenticated
+      ? route.fulfill({ json: profile })
+      : route.fulfill({
+          status: 401,
+          contentType: 'application/problem+json',
+          json: {
+            type: 'https://pertexo.test/problems/auth.unauthenticated',
+            title: 'Authentication required',
+            status: 401,
+            code: 'auth.unauthenticated',
+            requestId: 'browser-two-factor-request',
+          },
+        }),
+  );
+  await page.route('**/v1/workspaces?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route('**/v1/auth/capabilities', (route) =>
+    route.fulfill({
+      json: {
+        password: {
+          enabled: true,
+          minimumLength: 12,
+          verificationRequired: true,
+        },
+        socialProviders: [],
+        signUp: 'open',
+      },
+    }),
+  );
+  await page.route('**/v1/auth/account-security', (route) =>
+    route.fulfill({
+      json: {
+        email: profile.email,
+        emailVerified: true,
+        availableProviders: [],
+        methods: [
+          {
+            id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            kind: 'password',
+            provider: null,
+          },
+        ],
+        twoFactor: { enabled, recoveryCodesRemaining: enabled ? 10 : null },
+      },
+    }),
+  );
+  await page.route('**/v1/auth/two-factor/enable', (route) => {
+    expect(route.request().headers()['x-csrf-token']).toBeTruthy();
+    return route.fulfill({
+      json: {
+        totpURI:
+          'otpauth://totp/Pertexo:test?secret=JBSWY3DPEHPK3PXP&issuer=Pertexo',
+        backupCodes: codes,
+      },
+    });
+  });
+  await page.route('**/v1/auth/two-factor/verify-totp', (route) => {
+    expect(route.request().postDataJSON()).toEqual({ code: '123456' });
+    enabled = true;
+    authenticated = true;
+    return route.fulfill({ json: { user: profile } });
+  });
+  await page.route('**/v1/auth/sign-in/email', (route) =>
+    route.fulfill({
+      json: { twoFactorRedirect: true, twoFactorMethods: ['totp'] },
+    }),
+  );
+  return {
+    signOut: () => {
+      authenticated = false;
+    },
+  };
 }
