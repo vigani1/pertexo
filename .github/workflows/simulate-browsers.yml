@@ -5,6 +5,11 @@ name: Simulate browsers
 # it by hand, or push a throwaway sim/browsers/<n> branch.
 on:
   workflow_dispatch:
+    inputs:
+      voiceover:
+        description: Also try the real VoiceOver journeys on macOS
+        type: boolean
+        default: false
   push:
     branches: ['sim/browsers/**']
 
@@ -73,9 +78,13 @@ jobs:
           if-no-files-found: ignore
 
   # A real screen reader: VoiceOver on macOS, driven by Guidepup through
-  # WebKit, on the sign-in and run-result journeys.
+  # WebKit, on the sign-in and run-result journeys. Only on request: on the
+  # hosted macos-15 runner (2026-11-19) VoiceOver did not hear focus moves,
+  # and once stopped mid-journey ("VoiceOver not running"), so a failure here
+  # does not yet say anything about the app.
   voiceover:
     name: voiceover (macOS)
+    if: inputs.voiceover
     runs-on: macos-15
     timeout-minutes: 30
     steps:
