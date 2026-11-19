@@ -169,3 +169,78 @@ export async function downloadFile(client, workspaceId, artifactId) {
   assert.equal(file.status, 200, file.text);
   return file.bytes;
 }
+
+/**
+ * Publishes a manual workflow whose only work is one Code step, the way someone
+ * builds it in the editor, and returns the workflow's address.
+ */
+export async function publishCodeWorkflow(
+  client,
+  workspaceId,
+  { code, language, timeoutSeconds },
+) {
+  const workspace = `/v1/workspaces/${workspaceId}`;
+  const created = await client.post(`${workspace}/workflows`, {
+    name: `Code ${randomUUID().slice(0, 8)}`,
+  });
+  assert.equal(created.status, 201, created.text);
+  const workflow = `${workspace}/workflows/${created.json.workflow.id}`;
+  const draft = await client.get(`${workflow}/draft`);
+  const config = {
+    code,
+    ...(language === undefined ? {} : { language }),
+    ...(timeoutSeconds === undefined ? {} : { timeoutSeconds }),
+  };
+  const graph = {
+    settings: {},
+    nodes: [node('start', 'core.manual'), node('code', 'core.code', config)],
+    edges: [edge('first', 'start', 'code')],
+  };
+  const saved = await client.put(
+    `${workflow}/draft`,
+    { graph },
+    { headers: { 'if-match': draft.headers.etag } },
+  );
+  assert.equal(saved.status, 200, saved.text);
+  const key = randomUUID();
+  await waitFor(
+    async () => {
+      const response = await client.post(`${workflow}/publish`, undefined, {
+        headers: { 'if-match': saved.headers.etag, 'idempotency-key': key },
+      });
+      return response.status < 300;
+    },
+    { what: 'the Code workflow to publish', timeout: 60_000, every: 2_000 },
+  );
+  return workflow;
+}
+
+/** Starts a published workflow by hand and returns the new run's id. */
+export async function startRun(client, workflow, input = null) {
+  const started = await client.post(`${workflow}/runs`, { input });
+  assert.equal(started.status, 202, started.text);
+  return started.json.run.id;
+}
+
+/** Waits for a run to end and returns it with its steps. */
+export const waitForEndedRun = (client, workspaceId, runId, timeout) =>
+  waitFor(
+    async () => {
+      const read = await readRun(client, workspaceId, runId);
+      return ['queued', 'running', 'waiting'].includes(read?.run?.status)
+        ? undefined
+        : read;
+    },
+    { what: `run ${runId} to end`, timeout: timeout ?? 180_000, every: 500 },
+  );
+
+/** What the run page shows about one step: its output or its private diagnostics. */
+export async function readStepResult(client, workspaceId, runId, step) {
+  const base = `/v1/workspaces/${workspaceId}/runs/${runId}/node-runs/${step.id}`;
+  const output = await client.get(`${base}/output`);
+  const diagnostics = await client.get(`${base}/diagnostics`);
+  return {
+    output: output.json?.output,
+    diagnostics: diagnostics.json?.diagnostics ?? null,
+  };
+}
