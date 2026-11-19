@@ -106,10 +106,7 @@ function SectionSwitcher({
     .find((destination) => isOpen(destination));
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger
-        className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-surface-ink/[0.025] px-3.5 py-2.5 text-left text-sm outline-none transition-colors hover:bg-surface-ink/[0.05] focus-ring @3xl:hidden"
-        aria-label={`Settings section: ${current?.label ?? 'General'}. Choose another`}
-      >
+      <SheetTrigger className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-border bg-surface-ink/[0.025] px-3.5 py-2.5 text-left text-sm outline-none transition-colors hover:bg-surface-ink/[0.05] focus-ring @3xl:hidden">
         <span
           aria-hidden="true"
           className="size-2 shrink-0 rounded-full bg-action shadow-[0_0_0_3px_color-mix(in_srgb,var(--action)_22%,transparent)]"
@@ -119,6 +116,9 @@ function SectionSwitcher({
           <span className="font-medium text-foreground">
             {current?.label ?? 'General'}
           </span>
+          {/* The name starts with what it shows, so voice control finds
+              it by the words on screen (WCAG 2.5.3). */}
+          <span className="sr-only">, choose another section</span>
         </span>
         <ChevronsUpDownIcon
           aria-hidden="true"

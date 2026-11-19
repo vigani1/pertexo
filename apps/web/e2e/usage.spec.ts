@@ -225,10 +225,11 @@ test('Usage keeps exact capacity, fixed activity windows, drilldowns and mobile 
     path: temporaryTestPath('pertexo-usage-mocked-mobile.png'),
     fullPage: true,
   });
-  // On a phone, Settings' sections sit behind one button naming the open one.
+  // On a phone, Settings' sections sit behind one button naming the open
+  // one, by the words it shows.
   const sections = page
     .getByRole('navigation', { name: 'Settings' })
-    .getByRole('button', { name: /^Settings section: Usage/u });
+    .getByRole('button', { name: /^Settings · Usage\b/u });
   await sections.click();
   await expect(
     page

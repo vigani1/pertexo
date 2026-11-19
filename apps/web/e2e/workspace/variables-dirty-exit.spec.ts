@@ -56,10 +56,7 @@ for (const width of [375, 1280]) {
     await expect(value).toHaveValue('75');
     if (width === 375)
       await page
-        .getByRole('button', {
-          name: 'Settings section: Variables. Choose another',
-          exact: true,
-        })
+        .getByRole('button', { name: /^Settings · Variables\b/u })
         .click();
     await page
       .getByRole('link', { name: 'Usage', exact: true })
