@@ -3,6 +3,11 @@ import {
   createWorkspaceFixture,
 } from '../../test/support/fixtures/identity';
 import { expect, test, type Page } from '../support/fixtures';
+import {
+  expectFocusOn,
+  expectSpoken,
+  startScreenReader,
+} from '../support/screen-reader';
 
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -188,4 +193,28 @@ test('keeps a valid unbroken workspace name inside its card at 320 pixels', asyn
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test('a screen-reader user renames the workspace and hears it saved', async ({
+  page,
+}) => {
+  await page
+    .context()
+    .addCookies([
+      { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
+    ]);
+  await installRoutes(page);
+  await page.goto(`/w/${workspaceId}/settings`);
+  const rename = page.getByRole('button', { name: 'Rename workspace' });
+  await expect(rename).toBeVisible();
+  await startScreenReader(page);
+  await rename.focus();
+  await page.keyboard.press('Enter');
+  await expectFocusOn(page, 'textbox', 'Workspace name');
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type('Incident Operations');
+  await page.keyboard.press('Enter');
+  // The rename is said, and focus goes back to the button that opened it.
+  await expectSpoken(page, /^polite: Renamed to Incident Operations$/u);
+  await expectFocusOn(page, 'button', 'Rename workspace');
 });
