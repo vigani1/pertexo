@@ -9,7 +9,7 @@ import {
   type BodyValidation,
 } from '../../../model/inspector/http-body';
 import { FormPart } from './part';
-import { focusFormPart } from './focus';
+import { changeAndFocusFormPart, formPartFocusId } from './focus';
 import { FILE_LIMIT_COPY } from '../../../model/inspector/file-limit-copy';
 
 export function MultipartParts({
@@ -78,11 +78,15 @@ export function MultipartParts({
                 if (moved === undefined || other === undefined) return;
                 next[index] = other;
                 next[target] = moved;
-                change(
-                  { mode: 'multipart', parts: next },
-                  `move:${crypto.randomUUID()}`,
+                changeAndFocusFormPart(
+                  () => {
+                    change(
+                      { mode: 'multipart', parts: next },
+                      `move:${crypto.randomUUID()}`,
+                    );
+                  },
+                  formPartFocusId(nodeId, part.inputKey),
                 );
-                focusFormPart(nodeId, part.inputKey);
               },
               onRemove: () => {
                 onRemove(part);
@@ -105,11 +109,15 @@ export function MultipartParts({
             disabled={!editable || parts.length >= HTTP_MULTIPART_MAX_PARTS}
             onClick={() => {
               const added = newFormPart(kind);
-              change(
-                { mode: 'multipart', parts: [...parts, added] },
-                `add:${crypto.randomUUID()}`,
+              changeAndFocusFormPart(
+                () => {
+                  change(
+                    { mode: 'multipart', parts: [...parts, added] },
+                    `add:${crypto.randomUUID()}`,
+                  );
+                },
+                formPartFocusId(nodeId, added.inputKey),
               );
-              focusFormPart(nodeId, added.inputKey);
             }}
           >
             {kind === 'text' ? 'Add text part' : 'Add file part'}

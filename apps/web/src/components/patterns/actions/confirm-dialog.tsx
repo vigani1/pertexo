@@ -30,6 +30,8 @@ type ConfirmDialogProps = Readonly<{
   /** Return the command promise; the caller owns its visible failure and success effects. */
   onSubmit: () => unknown;
   submitDisabled?: boolean;
+  /** Where focus goes when the dialog closes; the opener by default. */
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus'];
 }> &
   (
     | Readonly<{ actions: DialogActionsProps; footer?: never }>
@@ -47,6 +49,7 @@ export function ConfirmDialog({
   actions,
   onSubmit,
   submitDisabled = false,
+  finalFocus,
 }: ConfirmDialogProps) {
   return (
     <Dialog
@@ -56,7 +59,10 @@ export function ConfirmDialog({
       }}
     >
       {trigger === undefined ? null : <DialogTrigger render={trigger} />}
-      <DialogContent className="flex flex-col overflow-hidden">
+      <DialogContent
+        className="flex flex-col overflow-hidden"
+        finalFocus={finalFocus}
+      >
         <DialogTitle className="shrink-0">{title}</DialogTitle>
         {description === undefined ? null : (
           <DialogDescription className="shrink-0">

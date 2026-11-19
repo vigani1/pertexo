@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { changeAndFocusFormPart } from './focus';
 
 type BodyChange = Readonly<{
   apply: () => void;
+  /** The control that takes focus once the change is applied. */
+  focusId?: string | undefined;
   destructive: boolean;
   title: string;
   description: string;
@@ -14,6 +17,7 @@ type Confirmation = Readonly<{
   description: string;
   confirmLabel: string;
   apply: () => void;
+  focusId: string | undefined;
 }>;
 
 /**
@@ -23,19 +27,32 @@ type Confirmation = Readonly<{
  */
 export function useBodyConfirmation(signature: string) {
   const [confirmation, setConfirmation] = useState<Confirmation>();
+  // A confirmed change that moves focus hands it to the closing dialog:
+  // focus set while the dialog is open would be taken back as it closes.
+  const [focusAfterClose, setFocusAfterClose] = useState<string>();
   const pending =
     confirmation?.signature === signature ? confirmation : undefined;
 
   function request({
     apply,
+    focusId,
     destructive,
     title,
     description,
     confirmLabel = 'Replace',
   }: BodyChange) {
-    if (destructive)
-      setConfirmation({ signature, title, description, confirmLabel, apply });
-    else apply();
+    if (destructive) {
+      setFocusAfterClose(undefined);
+      setConfirmation({
+        signature,
+        title,
+        description,
+        confirmLabel,
+        apply,
+        focusId,
+      });
+    } else if (focusId === undefined) apply();
+    else changeAndFocusFormPart(apply, focusId);
   }
 
   return {
@@ -43,11 +60,18 @@ export function useBodyConfirmation(signature: string) {
     request,
     /** Applies the pending change, unless the body moved on meanwhile. */
     confirm: (stillCurrent: boolean) => {
-      if (stillCurrent) pending?.apply();
+      if (stillCurrent && pending !== undefined) {
+        pending.apply();
+        setFocusAfterClose(pending.focusId);
+      }
       setConfirmation(undefined);
     },
     dismiss: () => {
       setConfirmation(undefined);
     },
+    finalFocus:
+      focusAfterClose === undefined
+        ? undefined
+        : () => document.getElementById(focusAfterClose) ?? true,
   } as const;
 }
