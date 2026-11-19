@@ -1,0 +1,87 @@
+name: Simulate single sign-on
+
+# Organization sign-in and directory provisioning against real identity-provider
+# software (Keycloak and authentik) on real Linux runners: the production images
+# deployed by deploy.sh, the providers on their own network with public names
+# and certificates, and a browser driving each sign-in. One runner per scenario
+# file. Started by hand or by pushing a throwaway sim/sso/<n> branch; never on
+# pull requests, main or a schedule.
+on:
+  workflow_dispatch:
+  push:
+    branches: ['sim/sso/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simulate-sso-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    name: simulate (${{ matrix.scenario }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          [
+            organization-oidc,
+            organization-saml,
+            directory-provisioning,
+            organization-isolation,
+          ]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Use the Docker Hub mirror
+        uses: ./.github/actions/docker-mirror
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Install the browser
+        timeout-minutes: 8
+        run:
+          pnpm --filter @pertexo/web exec playwright install --with-deps
+          chromium
+      - name: Build the images once
+        run:
+          .github/scripts/retry-once.sh node
+          infrastructure/single-server/test/drill/build-images.mjs
+      - name: Simulate
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+          SIMULATION_REPORT: ${{ runner.temp }}/report.json
+          SIMULATION_SCREENSHOTS: ${{ runner.temp }}/screenshots
+          # The runner is thrown away; keeping the stack lets the next step show its logs.
+          DRILL_KEEP: 'true'
+        run: |
+          mkdir -p "$SIMULATION_SCREENSHOTS"
+          node --test --test-reporter=spec \
+            "infrastructure/single-server/test/drill/single-sign-on/$SCENARIO.test.mjs"
+      - name: Summarize what each scenario showed
+        if: always()
+        run: |
+          report="$RUNNER_TEMP/report.json"
+          if [ -f "$report" ]; then
+            { echo '```json'; cat "$report"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.scenario }}-report
+          path: |
+            ${{ runner.temp }}/report.json
+            ${{ runner.temp }}/screenshots
+          if-no-files-found: ignore
+      - name: Show the logs on failure
+        if: failure()
+        run: |
+          for container in $(docker ps --all --quiet --filter label=com.docker.compose.project=pertexo-b1-singleserver) pertexo-sim-keycloak pertexo-sim-authentik pertexo-sim-authentik-worker pertexo-sim-idp-edge pertexo-sim-dns; do
+            echo "::group::$(docker inspect --format '{{.Name}}' "$container" 2>/dev/null || echo "$container")"
+            # Health probes would push everything else out of the window.
+            docker logs "$container" 2>&1 | grep -v -e '/health/' -e 'health_' | tail -300 || true
+            echo '::endgroup::'
+          done
