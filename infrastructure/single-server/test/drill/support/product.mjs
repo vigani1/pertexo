@@ -4,7 +4,7 @@ import { waitFor } from './process.mjs';
 
 // What a person does with the product, through its public HTTP surface. Only
 // outcomes matter here, so the same steps run against any install.
-const node = (id, key, config = {}, inputMappings = {}) => ({
+export const node = (id, key, config = {}, inputMappings = {}) => ({
   id,
   definition: { key, version: 1 },
   position: { x: 0, y: 0 },
@@ -13,7 +13,7 @@ const node = (id, key, config = {}, inputMappings = {}) => ({
   inputMappings,
   connectionRefs: {},
 });
-const edge = (id, source, target) => ({
+export const edge = (id, source, target) => ({
   id,
   source: { nodeId: source, port: 'out' },
   target: { nodeId: target, port: 'in' },
@@ -35,17 +35,47 @@ export async function createWorkspace(client) {
   return (created.json.workspace ?? created.json).id;
 }
 
-/** A published workflow: webhook, then a Code step, then the end. */
-export async function publishWebhookWorkflow(client, workspaceId) {
+/**
+ * Creates a workflow from `nodes` and `edges`, saves the draft and publishes it,
+ * the way someone builds it in the editor. Returns the workflow's address.
+ */
+export async function publishWorkflow(
+  client,
+  workspaceId,
+  { name, nodes, edges },
+) {
   const workspace = `/v1/workspaces/${workspaceId}`;
   const created = await client.post(`${workspace}/workflows`, {
-    name: `Drill ${randomUUID().slice(0, 8)}`,
+    name: `${name} ${randomUUID().slice(0, 8)}`,
   });
   assert.equal(created.status, 201, created.text);
   const workflow = `${workspace}/workflows/${created.json.workflow.id}`;
   const draft = await client.get(`${workflow}/draft`);
-  const graph = {
-    settings: {},
+  const saved = await client.put(
+    `${workflow}/draft`,
+    { graph: { settings: {}, nodes, edges } },
+    { headers: { 'if-match': draft.headers.etag } },
+  );
+  assert.equal(saved.status, 200, saved.text);
+  const key = randomUUID();
+  await waitFor(
+    async () => {
+      const response = await client.post(`${workflow}/publish`, undefined, {
+        headers: { 'if-match': saved.headers.etag, 'idempotency-key': key },
+      });
+      if (response.status < 300) return true;
+      // A refusal says why; keep it for the timeout message.
+      throw new Error(`${response.status} ${response.text}`);
+    },
+    { what: `${name} to publish`, timeout: 60_000, every: 2_000 },
+  );
+  return workflow;
+}
+
+/** A published workflow: webhook, then a Code step, then the end. */
+export async function publishWebhookWorkflow(client, workspaceId) {
+  const workflow = await publishWorkflow(client, workspaceId, {
+    name: 'Drill',
     nodes: [
       node('hook', 'core.webhook'),
       node('code', 'core.code', { code: 'return { answer: 40 + 2 };' }),
@@ -57,24 +87,7 @@ export async function publishWebhookWorkflow(client, workspaceId) {
       ),
     ],
     edges: [edge('first', 'hook', 'code'), edge('second', 'code', 'end')],
-  };
-  const saved = await client.put(
-    `${workflow}/draft`,
-    { graph },
-    { headers: { 'if-match': draft.headers.etag } },
-  );
-  assert.equal(saved.status, 200, saved.text);
-  const key = randomUUID();
-  const published = await waitFor(
-    async () => {
-      const response = await client.post(`${workflow}/publish`, undefined, {
-        headers: { 'if-match': saved.headers.etag, 'idempotency-key': key },
-      });
-      return response.status < 300 ? response : undefined;
-    },
-    { what: 'the workflow to publish', timeout: 60_000, every: 2_000 },
-  );
-  assert.ok(published);
+  });
   const triggers = await client.get(`${workflow}/triggers`);
   const trigger = (triggers.json.items ?? triggers.json.triggers)[0];
   // The endpoint is still being set up for a few seconds after publishing.
@@ -174,46 +187,23 @@ export async function downloadFile(client, workspaceId, artifactId) {
  * Publishes a manual workflow whose only work is one Code step, the way someone
  * builds it in the editor, and returns the workflow's address.
  */
-export async function publishCodeWorkflow(
+export const publishCodeWorkflow = (
   client,
   workspaceId,
   { code, language, timeoutSeconds },
-) {
-  const workspace = `/v1/workspaces/${workspaceId}`;
-  const created = await client.post(`${workspace}/workflows`, {
-    name: `Code ${randomUUID().slice(0, 8)}`,
-  });
-  assert.equal(created.status, 201, created.text);
-  const workflow = `${workspace}/workflows/${created.json.workflow.id}`;
-  const draft = await client.get(`${workflow}/draft`);
-  const config = {
-    code,
-    ...(language === undefined ? {} : { language }),
-    ...(timeoutSeconds === undefined ? {} : { timeoutSeconds }),
-  };
-  const graph = {
-    settings: {},
-    nodes: [node('start', 'core.manual'), node('code', 'core.code', config)],
+) =>
+  publishWorkflow(client, workspaceId, {
+    name: 'Code',
+    nodes: [
+      node('start', 'core.manual'),
+      node('code', 'core.code', {
+        code,
+        ...(language === undefined ? {} : { language }),
+        ...(timeoutSeconds === undefined ? {} : { timeoutSeconds }),
+      }),
+    ],
     edges: [edge('first', 'start', 'code')],
-  };
-  const saved = await client.put(
-    `${workflow}/draft`,
-    { graph },
-    { headers: { 'if-match': draft.headers.etag } },
-  );
-  assert.equal(saved.status, 200, saved.text);
-  const key = randomUUID();
-  await waitFor(
-    async () => {
-      const response = await client.post(`${workflow}/publish`, undefined, {
-        headers: { 'if-match': saved.headers.etag, 'idempotency-key': key },
-      });
-      return response.status < 300;
-    },
-    { what: 'the Code workflow to publish', timeout: 60_000, every: 2_000 },
-  );
-  return workflow;
-}
+  });
 
 /** Starts a published workflow by hand and returns the new run's id. */
 export async function startRun(client, workflow, input = null) {
