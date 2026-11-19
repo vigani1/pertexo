@@ -128,3 +128,27 @@ it('explains interruption without blaming the code and offers Rerun', () => {
     'the Code step was interrupted',
   );
 });
+
+it('says a busy Code runner made the step wait, and what to do, without blaming the code', () => {
+  const copy = describeStepError('code.runner_busy');
+  expect(copy.sentence).toBe(
+    'Every Code runner slot stayed busy for 5 minutes, so this step stopped waiting. The code didn’t run.',
+  );
+  expect(copy.advice).toBe(
+    'Replay the run when fewer Code steps are running, or ask your administrator to let more Code steps run at once.',
+  );
+  expect(shortStepError('code.runner_busy')).toBe(
+    'the Code runner stayed busy',
+  );
+});
+
+it('says a crashed Code runner is retried and who can check it', () => {
+  const copy = describeStepError('code.runner_unavailable');
+  expect(copy.sentence).toBe('The Code runner stopped or couldn’t be reached.');
+  expect(copy.advice).toBe(
+    'The step runs again if its retries allow. If this keeps happening, ask your administrator to check the Code runner, then replay the run.',
+  );
+  expect(shortStepError('code.runner_unavailable')).toBe(
+    'the Code runner was unavailable',
+  );
+});
