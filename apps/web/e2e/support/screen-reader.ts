@@ -40,7 +40,7 @@ export async function startScreenReader(page: Page) {
 }
 
 /** Everything the screen reader has said since it started or was cleared. */
-export function spoken(page: Page): Promise<string[]> {
+function spoken(page: Page): Promise<string[]> {
   return page.evaluate(() => window.screenReader?.spokenPhraseLog() ?? []);
 }
 
