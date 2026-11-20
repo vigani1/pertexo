@@ -64,8 +64,9 @@ it('keeps the types stamped on columns equal to the area contracts', () => {
   expectTypeOf<StoredFolderFact['accessMode']>().toEqualTypeOf<
     FolderFact['accessMode']
   >();
+  // Plan 54 persists polling before its published trigger health contract ships.
   expectTypeOf<StoredTriggerHealth['kind']>().toEqualTypeOf<
-    WorkflowTriggerHealth['kind']
+    WorkflowTriggerHealth['kind'] | 'polling'
   >();
   expectTypeOf<StoredTriggerHealth['healthStatus']>().toEqualTypeOf<
     WorkflowTriggerHealth['healthStatus']
