@@ -35,7 +35,9 @@ it('upgrades an adopted baseline through the real later migrations, preserving d
     const runsBefore = (
       await admin.query('select * from app.workflow_runs order by id')
     ).rows;
-    const before = (await admin.query('select * from app.workflows')).rows;
+    const before = (
+      await admin.query<Record<string, unknown>>('select * from app.workflows')
+    ).rows;
     const history = JSON.parse(
       await readFile(
         new URL(
