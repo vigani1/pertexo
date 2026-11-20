@@ -53,7 +53,9 @@ export async function fetchHttpPollItems(
   );
   const signal = AbortSignal.any([input.signal, deadline]);
   const beforePollDispatch = () =>
-    Promise.resolve().then(() => signal.throwIfAborted());
+    Promise.resolve().then(() => {
+      signal.throwIfAborted();
+    });
   try {
     signal.throwIfAborted();
     if (
