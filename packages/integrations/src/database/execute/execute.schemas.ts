@@ -4,6 +4,9 @@ import { z } from 'zod';
 
 const SQL_MAX_CHARACTERS = 32_768;
 const POSTGRES_IDENTIFIER_CHARACTERS = 63;
+const MAX_CONFLICT_COLUMNS = 32;
+const MAX_CONFLICT_COLUMN_TEXT =
+  MAX_CONFLICT_COLUMNS * (POSTGRES_IDENTIFIER_CHARACTERS + '\r\n'.length);
 const MAX_BOUND_PARAMETERS = 1_000;
 const MAX_WRITE_ROWS = 100;
 const POSTGRES_OPERATIONS = {
@@ -53,39 +56,66 @@ const relation = {
   table: identifier.meta({ title: 'Table' }),
 };
 
-export const databaseConfigSchema = z
-  .discriminatedUnion('operation', [
-    z.strictObject({
-      ...common,
-      operation: operation('query'),
-      sql: z.string().trim().min(1).max(SQL_MAX_CHARACTERS).meta({
-        title: 'SQL',
-        contentMediaType: 'application/sql',
-        description: 'Use $1, $2 and so on for values mapped to Parameters.',
-        default: 'select 1 as value',
+const conflictColumnText = z.string().min(1).max(MAX_CONFLICT_COLUMN_TEXT);
+const conflictColumnList = z
+  .array(identifier)
+  .min(1)
+  .max(MAX_CONFLICT_COLUMNS)
+  .refine((columns) => new Set(columns).size === columns.length);
+
+function splitConflictColumns(value: string): string[] {
+  return value.split(/\r?\n/u);
+}
+
+export const databaseConfigSchema = databaseConfig(
+  conflictColumnText
+    .refine(
+      (value) =>
+        conflictColumnList.safeParse(splitConflictColumns(value)).success,
+      `Enter up to ${MAX_CONFLICT_COLUMNS} distinct, valid column names, one per line.`,
+    )
+    .meta({
+      title: 'Conflict columns',
+      contentMediaType: 'text/plain',
+      description:
+        'Separate column names with newlines. Use the exact names from the table.',
+    }),
+);
+
+export const databaseExecutionConfigSchema = databaseConfig(
+  conflictColumnText.transform(splitConflictColumns).pipe(conflictColumnList),
+);
+
+function databaseConfig<Keys extends z.ZodType>(keys: Keys) {
+  return z
+    .discriminatedUnion('operation', [
+      z.strictObject({
+        ...common,
+        operation: operation('query'),
+        sql: z.string().trim().min(1).max(SQL_MAX_CHARACTERS).meta({
+          title: 'SQL',
+          contentMediaType: 'application/sql',
+          description: 'Use $1, $2 and so on for values mapped to Parameters.',
+          default: 'select 1 as value',
+        }),
       }),
-    }),
-    z.strictObject({ ...relation, operation: operation('insert') }),
-    z.strictObject({
-      ...relation,
-      operation: operation('update'),
-      key: identifier.meta({ title: 'Key column' }),
-    }),
-    z.strictObject({
-      ...relation,
-      operation: operation('upsert'),
-      keys: z.string().min(1).max(SQL_MAX_CHARACTERS).meta({
-        title: 'Conflict columns',
-        contentMediaType: 'text/plain',
-        description:
-          'Separate column names with newlines. Use the exact names from the table.',
+      z.strictObject({ ...relation, operation: operation('insert') }),
+      z.strictObject({
+        ...relation,
+        operation: operation('update'),
+        key: identifier.meta({ title: 'Key column' }),
       }),
-    }),
-  ])
-  .meta({
-    title: 'Database operation',
-    default: { operation: 'query', sql: 'select 1 as value' },
-  });
+      z.strictObject({
+        ...relation,
+        operation: operation('upsert'),
+        keys,
+      }),
+    ])
+    .meta({
+      title: 'Database operation',
+      default: { operation: 'query', sql: 'select 1 as value' },
+    });
+}
 
 export const databaseInputSchema = z.strictObject({
   parameters: z
@@ -110,5 +140,5 @@ export const databaseOutputSchema = z.strictObject({
   rowCount: z.number().int().nonnegative(),
 });
 
-export type DatabaseConfig = z.output<typeof databaseConfigSchema>;
+export type DatabaseConfig = z.output<typeof databaseExecutionConfigSchema>;
 export type DatabaseInput = z.output<typeof databaseInputSchema>;
