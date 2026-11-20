@@ -73,14 +73,14 @@ export async function executePagination(input: PaginationExecutionInput) {
   async function* records(): AsyncGenerator<EncodedFilePageRecord> {
     for (let page = 1; page <= pagination.maxPages; page += 1) {
       request.signal?.throwIfAborted();
-      const response = await fetchPage(
-        input,
+      const response = await fetchPage(input, {
         url,
-        first.origin,
+        origin: first.origin,
         page,
-        pagination.mode === 'next_link' &&
+        link:
+          pagination.mode === 'next_link' &&
           pagination.source.kind === 'link_header',
-      );
+      });
       const found = resolveJsonPath(response.body.value, pagination.itemsPath);
       if (found.kind !== 'value' || !Array.isArray(found.value))
         throw new HttpPaginationFailure('http.pagination_invalid_page', page);

@@ -21,10 +21,17 @@ export async function fetchPage(
       headers: Readonly<Record<string, string>>,
     ): void;
   }>,
-  url: string,
-  origin: string,
-  page: number,
-  link: boolean,
+  {
+    url,
+    origin,
+    page,
+    link,
+  }: Readonly<{
+    url: string;
+    origin: string;
+    page: number;
+    link: boolean;
+  }>,
 ) {
   const { request } = input;
   try {
