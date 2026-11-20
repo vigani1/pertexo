@@ -72,7 +72,7 @@ export const databaseConfigSchema = databaseConfig(
     .refine(
       (value) =>
         conflictColumnList.safeParse(splitConflictColumns(value)).success,
-      `Enter up to ${MAX_CONFLICT_COLUMNS} distinct, valid column names, one per line.`,
+      `Enter up to ${String(MAX_CONFLICT_COLUMNS)} distinct, valid column names, one per line.`,
     )
     .meta({
       title: 'Conflict columns',
