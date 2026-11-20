@@ -103,6 +103,12 @@ jobs:
           name: ${{ matrix.scenario }}-report
           path: ${{ runner.temp }}/report.json
           if-no-files-found: ignore
+      - name: Show the API's memory while it turned work away
+        if: always()
+        run: |
+          for container in $(docker ps --all --quiet --filter label=com.docker.compose.project=pertexo-b1-singleserver --filter label=com.docker.compose.service=api); do
+            docker logs "$container" 2>&1 | grep 'http.server_busy' | tail -60 || true
+          done
       - name: Show the logs on failure
         if: failure()
         run: |
