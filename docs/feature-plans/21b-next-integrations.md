@@ -1,12 +1,9 @@
 # F21b — What comes after OAuth2 and SMTP
 
-Status: proposed order; not implementation-authorized. Finding:
-docs-deps-product-04 (batch J7). Parent: [F21](21-integrations-and-polling.md),
-whose slice 1 ("rank journeys, choose one provider") this plan answers. Each
-slice below still needs its own short plan and the owner's approval.
-Integrations keep their place in the [roadmap](../product-roadmap.md): after
-single-server reliability qualification. Nothing was built or measured for
-this plan.
+Status: PostgreSQL slice in progress under [F53](53-database-step.md).
+Finding: docs-deps-product-04 (batch J7). Parent:
+[F21](21-integrations-and-polling.md). Integrations keep their place in the
+[roadmap](../product-roadmap.md) after single-server reliability qualification.
 
 ## Where we are
 
