@@ -9,8 +9,14 @@ import { ConditionSetup } from '../condition/setup';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { BracesIcon, ListIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { HTTP_POLL_TRIGGER } from '@pertexo/workflow-model';
-import { pollingGuidance } from '@/lib/polling-guidance';
+import {
+  DATABASE_POLL_TRIGGER,
+  isPollingTriggerDefinition,
+} from '@pertexo/workflow-model';
+import {
+  databasePollingGuidance,
+  pollingGuidance,
+} from '@/lib/polling-guidance';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import {
@@ -64,6 +70,10 @@ function CatalogSetupTab({
   onOpenInputs,
 }: SetupTabProps) {
   const { connections } = useInspectorSession();
+  const guidance =
+    node.definition.key === DATABASE_POLL_TRIGGER.key
+      ? databasePollingGuidance
+      : pollingGuidance;
   const fields = useMemo(
     () => withStepChoices(schemaFields(definition?.configSchema), node, graph),
     [definition?.configSchema, node, graph],
@@ -101,12 +111,11 @@ function CatalogSetupTab({
           form={form}
         />
       ))}
-      {node.definition.key === HTTP_POLL_TRIGGER.key ? (
+      {isPollingTriggerDefinition(node.definition) ? (
         <div className="space-y-1 text-sm text-muted-foreground">
-          <p>{pollingGuidance.baseline}</p>
+          <p>{guidance.baseline}</p>
           <p>
-            {pollingGuidance.keys} {pollingGuidance.retention}{' '}
-            {pollingGuidance.interval}
+            {guidance.keys} {guidance.retention} {guidance.interval}
           </p>
         </div>
       ) : null}

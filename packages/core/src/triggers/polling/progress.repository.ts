@@ -1,6 +1,9 @@
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import type { HttpPollFailureCode } from '@pertexo/workflow-model';
+import {
+  isPollAuthenticationFailure,
+  type PollFailureCode,
+} from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   triggerPolls as polls,
@@ -141,7 +144,7 @@ export async function completePoll(
     | { kind: 'success' }
     | {
         kind: 'failure';
-        code: HttpPollFailureCode;
+        code: PollFailureCode;
         count: number;
         pauseRevision: bigint;
       },
@@ -166,8 +169,9 @@ export async function completePoll(
     .returning({ id: polls.triggerId });
   if (rows.length === 0) return false;
   const errorCode = outcome.kind === 'failure' ? outcome.code : null;
-  const failedHealth =
-    errorCode === 'http.poll_authentication' ? 'unhealthy' : 'degraded';
+  const failedHealth = isPollAuthenticationFailure(errorCode)
+    ? 'unhealthy'
+    : 'degraded';
   await transaction.db
     .update(triggers)
     .set({

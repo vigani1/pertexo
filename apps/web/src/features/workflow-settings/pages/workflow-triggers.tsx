@@ -13,7 +13,10 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { HTTP_POLL_TRIGGER } from '@pertexo/workflow-model';
+import {
+  DATABASE_POLL_TRIGGER,
+  HTTP_POLL_TRIGGER,
+} from '@pertexo/workflow-model';
 import { PollingSection } from '../components/triggers/polling-section';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
@@ -199,9 +202,23 @@ function TriggersSession({
     workspace,
     workflowId,
   });
-  const { versions, summary, form, onFailure, polling, publicationKnown } =
-    publication;
+  const {
+    versions,
+    summary,
+    form,
+    onFailure,
+    polling,
+    publicationKnown,
+    kinds,
+  } = publication;
   const pollItems = shownData(summary)?.pollingTriggers ?? [];
+  const databasePolling = kinds?.includes(DATABASE_POLL_TRIGGER.key) ?? false;
+  const httpPolling = kinds?.includes(HTTP_POLL_TRIGGER.key) ?? false;
+  const pollingTitle = databasePolling
+    ? httpPolling
+      ? 'Polling triggers'
+      : 'Database Row'
+    : 'HTTP Polling';
   const webhookItems = shownData(webhooks)?.items;
   const scheduleItems = shownData(schedules)?.items;
   const stepName = (
@@ -288,8 +305,9 @@ function TriggersSession({
       </SettingsSection>
       {polling ? (
         <PollingSection
+          title={pollingTitle}
           triggers={pollItems}
-          stepNameFor={(trigger) => stepName(trigger, 'HTTP Polling')}
+          stepNameFor={(trigger) => stepName(trigger, pollingTitle)}
         />
       ) : null}
       <SettingsSection
@@ -346,6 +364,7 @@ function useTriggerPublication({
       (versions.isSuccess && !versions.isFetching && kinds !== undefined));
   const polling =
     (kinds?.includes(HTTP_POLL_TRIGGER.key) ?? false) ||
+    (kinds?.includes(DATABASE_POLL_TRIGGER.key) ?? false) ||
     (shownData(summary)?.pollingTriggers?.length ?? 0) > 0;
   return {
     versions,

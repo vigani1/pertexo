@@ -12,13 +12,15 @@ export type PostgresSession = Readonly<{
     schema: string,
     table: string,
     columns: readonly string[],
-  ): Promise<void>;
+  ): Promise<readonly string[]>;
+  requireUniqueKey(schema: string, table: string, key: string): Promise<void>;
   query(text: string, values?: readonly unknown[]): Promise<PostgresResult>;
 }>;
 export type PostgresExecution = Readonly<{
   timeoutMillis: number;
   maxRows: number;
   signal?: AbortSignal;
+  readOnly?: true;
   beforeDispatch(): Promise<void>;
 }>;
 export type PostgresOutcome =

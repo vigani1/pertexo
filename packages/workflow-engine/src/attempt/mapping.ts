@@ -7,7 +7,6 @@ import type { CallbackBindings } from '@pertexo/workflow-model';
 
 import {
   isWorkflowTriggerDefinition,
-  HTTP_POLL_TRIGGER,
   workspaceVariableValuesSchema,
   type WorkspaceVariableValues,
 } from '@pertexo/workflow-model';
@@ -63,12 +62,7 @@ export async function resolveMappedNodeInput(
     callbacks?: CallbackBindings | undefined;
   }>,
 ): Promise<JsonValue> {
-  if (
-    isWorkflowTriggerDefinition(node.definition) ||
-    (node.definition.key === HTTP_POLL_TRIGGER.key &&
-      node.definition.version === HTTP_POLL_TRIGGER.version)
-  )
-    return runInput;
+  if (isWorkflowTriggerDefinition(node.definition)) return runInput;
   const mapped = Object.create(null) as Record<string, JsonValue>;
   // Mappings resolve independently; their authored order is the input's.
   for (const key of Object.keys(node.inputMappings)) {

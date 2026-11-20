@@ -26,7 +26,7 @@ import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
 import type { SecureHttpAddressPolicy } from '@pertexo/secrets/server';
 import type { ProviderConnectionFactory } from '../providers/connections.runtime.js';
-import { createHttpPollFetcher } from './fetch-http-poll.js';
+import { createPollFetcher } from './fetch-poll.js';
 import { createTriggerReconciliationHandler } from './handle-trigger-delivery.js';
 import { createTriggerRuntimeTelemetry } from './telemetry.js';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
@@ -104,7 +104,7 @@ export async function createTriggerRuntime(
       options.databaseRuntime,
     );
     scanner = factories.scanner(options.maintenanceDatabase, options.database, {
-      fetchPoll: createHttpPollFetcher(
+      fetchPoll: createPollFetcher(
         options.httpRequest ?? { allowedPrivateNetworks: [] },
         options.leaseOwner,
         options.providerConnections,

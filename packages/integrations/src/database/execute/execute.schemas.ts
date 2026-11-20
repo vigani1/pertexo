@@ -1,9 +1,12 @@
 import { POSTGRES_LIMITS } from '@pertexo/contracts';
 import { labelledChoice } from '@pertexo/node-sdk';
+import {
+  postgresIdentifierSchema as identifier,
+  POSTGRES_IDENTIFIER_CHARACTERS,
+} from '@pertexo/workflow-model';
 import { z } from 'zod';
 
 const SQL_MAX_CHARACTERS = 32_768;
-const POSTGRES_IDENTIFIER_CHARACTERS = 63;
 const MAX_CONFLICT_COLUMNS = 32;
 const MAX_CONFLICT_COLUMN_TEXT =
   MAX_CONFLICT_COLUMNS * (POSTGRES_IDENTIFIER_CHARACTERS + '\r\n'.length);
@@ -23,11 +26,6 @@ const operation = <Value extends keyof typeof POSTGRES_OPERATIONS>(
     .extract([value])
     .meta({ const: value, title: POSTGRES_OPERATIONS[value] });
 
-const identifier = z
-  .string()
-  .min(1)
-  .max(POSTGRES_IDENTIFIER_CHARACTERS)
-  .regex(/^[^\0]+$/u);
 const common = {
   timeoutMillis: z
     .number()

@@ -2,6 +2,7 @@ export { validateRegisteredCuratedTemplateSetup } from './curated-template-polic
 export { platformPortableDefinitionPolicy } from './portable-definition-policy.js';
 
 import {
+  databasePollExecutor,
   httpPollExecutor,
   createDatabaseExecutorRegistration,
   createHttpRequestExecutorRegistration,
@@ -39,6 +40,7 @@ export function createPlatformNodeRegistry(
   const { httpRequest, slackSendMessage, emailSendNotification } = dependencies;
   const executors: readonly NodeExecutorRegistration[] = [
     ...CORE_NODE_EXECUTOR_REGISTRATIONS,
+    databasePollExecutor,
     httpPollExecutor,
     createDatabaseExecutorRegistration(dependencies.database),
     createHttpRequestExecutorRegistration({

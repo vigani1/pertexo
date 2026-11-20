@@ -2,10 +2,9 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import { z } from 'zod';
 import {
-  HttpPollFailure,
-  httpPollConfigSchema,
+  PollFailure,
+  materializedPollConfigSchema,
   POLL_MAX_ITEMS,
   POLL_MAX_SEEN_KEYS,
 } from '@pertexo/workflow-model';
@@ -39,10 +38,6 @@ import {
   recordPollKeys,
 } from './progress.repository.js';
 
-const materializedPollConfig = httpPollConfigSchema.extend({
-  connectionId: z.uuid().optional(),
-});
-
 const SECONDS_PER_MINUTE = 60;
 
 export async function processPollClaim(
@@ -66,8 +61,8 @@ export async function processPollClaim(
       readPollObservation(transaction, claim),
     );
     if (observation === undefined) throw new PollClaimLostError();
-    const { connectionId, ...config } = decodeStoredValue(() =>
-      materializedPollConfig.parse(observation.config),
+    const config = decodeStoredValue(() =>
+      materializedPollConfigSchema.parse(observation.config),
     );
     const seenKeys =
       observation.seenKeys?.map((key) => key.toString('hex')) ?? [];
@@ -86,7 +81,6 @@ export async function processPollClaim(
       workspaceId: claim.workspace_id,
       triggerId: claim.trigger_id,
       config,
-      ...(connectionId === undefined ? {} : { connectionId }),
       seenKeys,
       maxItems: POLL_MAX_ITEMS,
       maxPages: POLL_MAX_PAGES,
@@ -94,12 +88,12 @@ export async function processPollClaim(
     }).catch((error: unknown) => {
       input.signal?.throwIfAborted();
       if (leaseSignal.aborted) throw new PollClaimLostError();
-      if (error instanceof HttpPollFailure) return error;
+      if (error instanceof PollFailure) return error;
       throw error;
     });
     input.signal?.throwIfAborted();
     if (leaseSignal.aborted) throw new PollClaimLostError();
-    if (fetched instanceof HttpPollFailure)
+    if (fetched instanceof PollFailure)
       return await inWorkspace((transaction) =>
         recordPollFailure(transaction, claim, observation, {
           code: fetched.code,
