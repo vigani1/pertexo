@@ -27,7 +27,6 @@ import {
   type OAuth2Draft,
   type OAuth2Field,
 } from './oauth2-draft';
-import { pluralWord } from '@/lib/format/count';
 
 /** What a form fills in: a provider's own credential, or HTTP's other way in. */
 export type CredentialKind = ConnectionChoice | 'oauth2';
@@ -129,7 +128,9 @@ function fromEmailError(fromEmail: string): string | undefined {
     : 'That isn’t a complete email address, like alerts@yourdomain.com.';
 }
 
-function filledRows(headers: readonly HeaderRow[]): readonly HeaderRow[] {
+export function filledRows(
+  headers: readonly HeaderRow[],
+): readonly HeaderRow[] {
   return headers.filter(
     (row) => row.name.trim() !== '' || row.value.trim() !== '',
   );
@@ -351,48 +352,4 @@ export function credentialServerErrors(
     }
   }
   return errors;
-}
-
-function maskSecret(secret: string, knownPrefix: string): string {
-  const prefix = secret.startsWith(knownPrefix) ? knownPrefix : '';
-  return `${prefix}••••••••${secret.slice(-4)}`;
-}
-
-export type SavedCredential = Readonly<{ term: string; value: string }>;
-
-/**
- * The credential as the add flow's summary shows it once saved: masked to
- * its known prefix and last four characters, header names without values.
- */
-export function describeSavedCredential(
-  draft: CredentialDraft,
-): SavedCredential {
-  switch (draft.provider) {
-    case 'smtp':
-      return {
-        term: 'SMTP',
-        value: `${draft.host}:${draft.port} · sends from ${draft.fromEmail}`,
-      };
-    case 'signing':
-      return { term: 'Key', value: 'Stored encrypted' };
-    case 'slack':
-      return {
-        term: 'Token',
-        value: maskSecret(draft.botToken.trim(), 'xoxb-'),
-      };
-    case 'email':
-      return {
-        term: 'API key',
-        value: `${maskSecret(draft.apiKey.trim(), 're_')} · sends from ${draft.fromEmail.trim()}`,
-      };
-    case 'http': {
-      const names = filledRows(draft.headers).map((row) => row.name.trim());
-      return {
-        term: pluralWord(names.length, 'Header'),
-        value: names.join(', '),
-      };
-    }
-    case 'oauth2':
-      return { term: 'Client ID', value: draft.clientId.trim() };
-  }
 }

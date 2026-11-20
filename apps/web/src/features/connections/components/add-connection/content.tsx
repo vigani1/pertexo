@@ -7,10 +7,8 @@ import type { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { connectionCommandError } from '../../model/connection-errors';
 import { isOAuth2Connection } from '../../model/oauth2-copy';
 import type { ConnectionChoice } from '../../model/connection-providers';
-import type {
-  CredentialDraft,
-  SavedCredential,
-} from '../../model/credential-draft';
+import type { CredentialDraft } from '../../model/credential-draft';
+import type { SavedCredential } from '../../model/saved-credential';
 import type { useConnectionTest } from '../../data/connection-test.mutations';
 import type { ConnectionTest } from '../../data/connection-test.mutations';
 import { CredentialFields } from '../credential/fields';

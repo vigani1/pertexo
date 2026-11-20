@@ -10,7 +10,7 @@ import {
   PROVIDERS,
   type ConnectionChoice,
 } from '../../model/connection-providers';
-import type { SavedCredential } from '../../model/credential-draft';
+import type { SavedCredential } from '../../model/saved-credential';
 import type { ConnectionTest } from '../../data/connection-test.mutations';
 import { ConnectionTestPanel } from '../connection-test/panel';
 
