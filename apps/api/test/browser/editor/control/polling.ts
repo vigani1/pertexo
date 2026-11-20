@@ -1,3 +1,4 @@
+import { Client } from 'pg';
 import { z } from 'zod';
 import { scenario } from '../fixture/environment.js';
 import { recheckOwnership } from '../fixture/lifecycle.js';
@@ -42,6 +43,39 @@ export function handleEditorPollDue({
     response.writeHead(result.rowCount === 1 ? 204 : 409).end();
   })().catch(() => {
     response.writeHead(500).end('Could not bring forward the owned poll');
+  });
+  return true;
+}
+
+/** Insert the next row on the disposable destination seeded for this journey. */
+export function handleEditorPollInsert({
+  context,
+  request,
+  response,
+  url,
+}: EditorControlRequest) {
+  const credential = context.postgresDestination;
+  if (
+    scenario !== 'http-polling' ||
+    request.method !== 'POST' ||
+    url.pathname !== '/postgres-poll-row' ||
+    credential === undefined
+  )
+    return false;
+  void (async () => {
+    await recheckOwnership();
+    const client = new Client(credential);
+    await client.connect();
+    try {
+      await client.query(
+        "insert into public.poll_rows values ('new-item', 2, 'ready')",
+      );
+    } finally {
+      await client.end();
+    }
+    response.writeHead(204).end();
+  })().catch(() => {
+    response.writeHead(500).end('Could not add a row to the owned destination');
   });
   return true;
 }

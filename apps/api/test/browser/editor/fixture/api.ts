@@ -49,6 +49,7 @@ import type { EditorBrowserApi } from './contract.js';
 
 export const httpMaster =
   controlledHttpScenario ||
+  scenario === 'http-polling' ||
   scenario === 'forms' ||
   scenario === 'form-uploads' ||
   scenario === 'curated-templates' ||

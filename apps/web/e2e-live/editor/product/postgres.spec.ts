@@ -72,7 +72,7 @@ test('creates a PostgreSQL connection, runs a Database query and reads its rows'
     workspaceId,
     'Read PostgreSQL rows',
   );
-  await addSingleStep(page, path, /^Database\b/u, 'Read report');
+  await addSingleStep(page, path, /^Database(?! Row)/u, 'Read report');
   await page
     .getByLabel('SQL', { exact: true })
     .fill(

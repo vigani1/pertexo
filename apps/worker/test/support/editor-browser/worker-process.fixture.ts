@@ -311,6 +311,7 @@ async function constructRuntimes(
   );
   resources.attempts = attempts;
   assertSetupActive();
+  const providerConnections = controlledCapabilities?.factories.connections;
   const triggers: TriggerRuntime[] = [];
   resources.triggers = triggers;
   if (
@@ -331,6 +332,7 @@ async function constructRuntimes(
         leaseOwner: `editor-schedule-${scanner}:${randomUUID()}`,
         onTimeWindowSeconds: 300,
         pollIntervalMillis: 250,
+        ...(providerConnections === undefined ? {} : { providerConnections }),
         ...(pollingCase
           ? {
               httpRequest: {

@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { expect } from '@playwright/test';
+import { expect, type Page, type APIRequestContext } from '@playwright/test';
 import {
+  postgresCredentialSchema,
   workflowRunListResponseSchema,
   workflowNodeRunInputResponseSchema,
   workflowSummaryResponseSchema,
@@ -18,29 +20,65 @@ import {
   readEditorDraft,
   waitForRun,
 } from '../support/authoring/single-step';
+import { readCsrfToken } from '../../test/support/browser/csrf';
 import { mapBrowserInput } from '../../test/support/browser/inputs';
 
-test('publishes an HTTP feed trigger and passes only the new item to the next step', async ({
-  page,
-  request,
-}) => {
+const pollingSources = ['HTTP Polling', 'Database Row'] as const;
+
+for (const source of pollingSources)
+  test(`publishes ${source} and passes only the new item to the next step`, async ({
+    page,
+    request,
+  }) => {
+    await verifyPollingJourney({ page, request }, source);
+  });
+
+async function verifyPollingJourney(
+  { page, request }: Readonly<{ page: Page; request: APIRequestContext }>,
+  source: (typeof pollingSources)[number],
+) {
   const mailOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
   if (mailOrigin === undefined) throw new Error('Use the owned API fixture');
+  const database = source === 'Database Row';
   const items = [{ id: 'baseline', status: 'already present' }];
-  const feed = createServer((_req, response) => {
-    response.writeHead(200, { 'content-type': 'application/json' });
-    response.end(JSON.stringify(items));
-  });
-  await new Promise<void>((resolve, reject) => {
-    feed.once('error', reject);
-    feed.listen(0, '127.0.0.1', resolve);
-  });
+  const feed = database
+    ? undefined
+    : createServer((_req, response) => {
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify(items));
+      });
+  if (feed !== undefined)
+    await new Promise<void>((resolve, reject) => {
+      feed.once('error', reject);
+      feed.listen(0, '127.0.0.1', resolve);
+    });
   try {
-    const address = feed.address();
-    if (address === null || typeof address === 'string')
-      throw new Error('The test feed has no TCP address');
     await registerEditorUser(page, request, mailOrigin, 'Polling owner');
-    const workspaceId = await createEditorWorkspace(page, 'Polling feed');
+    const workspaceId = await createEditorWorkspace(page, source);
+    if (database) {
+      const material = await request.get(
+        new URL('/postgres-credential', mailOrigin).href,
+      );
+      expect(material.status()).toBe(200);
+      const credential = postgresCredentialSchema.parse(await material.json());
+      const connection = await page.request.post(
+        `/v1/workspaces/${workspaceId}/connections`,
+        {
+          data: {
+            providerKey: 'postgres',
+            name: 'Polling PostgreSQL',
+            credential,
+          },
+          headers: {
+            'Idempotency-Key': randomUUID(),
+            'x-csrf-token': await readCsrfToken(page, {
+              missingMessage: 'Owned CSRF cookie missing',
+            }),
+          },
+        },
+      );
+      expect(connection.status()).toBe(201);
+    }
     const path = await createEditorWorkflow(
       page,
       workspaceId,
@@ -50,18 +88,40 @@ test('publishes an HTTP feed trigger and passes only the new item to the next st
     const triggerId = await addSingleStep(
       page,
       path,
-      /HTTP Polling/u,
+      new RegExp(source, 'u'),
       'Watch feed',
     );
-    await page
-      .getByLabel('Feed URL', { exact: true })
-      .fill(`http://127.0.0.1:${String(address.port)}/items`);
-    await expect(page.getByLabel('Items path', { exact: true })).toHaveValue(
-      '$',
-    );
-    await expect(page.getByLabel('Item key path', { exact: true })).toHaveValue(
-      '$.id',
-    );
+    if (database) {
+      await expect(page.getByLabel('Schema', { exact: true })).toHaveValue(
+        'public',
+      );
+      await page.getByLabel('Table', { exact: true }).fill('poll_rows');
+      await page
+        .getByLabel('Ordering column', { exact: true })
+        .fill('revision');
+      await page.getByLabel('Key column', { exact: true }).fill('id');
+      await page.getByLabel('PostgreSQL connection', { exact: true }).click();
+      await page
+        .getByRole('option', { name: 'Polling PostgreSQL', exact: true })
+        .click();
+    } else {
+      const address = feed?.address();
+      if (
+        address === undefined ||
+        address === null ||
+        typeof address === 'string'
+      )
+        throw new Error('The test feed has no TCP address');
+      await page
+        .getByLabel('Feed URL', { exact: true })
+        .fill(`http://127.0.0.1:${String(address.port)}/items`);
+      await expect(page.getByLabel('Items path', { exact: true })).toHaveValue(
+        '$',
+      );
+      await expect(
+        page.getByLabel('Item key path', { exact: true }),
+      ).toHaveValue('$.id');
+    }
     await expect(
       page.getByLabel('Check every (minutes)', { exact: true }),
     ).toHaveValue(String(TRIGGER_INTERVAL_MINUTES.minimum));
@@ -123,7 +183,7 @@ test('publishes an HTTP feed trigger and passes only the new item to the next st
         lastErrorCode: null,
       });
     const card = page
-      .getByRole('region', { name: 'HTTP Polling', exact: true })
+      .getByRole('region', { name: source, exact: true })
       .getByRole('article');
     await expect(card.getByText('Healthy', { exact: true })).toBeVisible({
       timeout: 30_000,
@@ -142,8 +202,18 @@ test('publishes an HTTP feed trigger and passes only the new item to the next st
     }
 
     expect(await runs()).toEqual([]);
-    const added = { id: 'new-item', status: 'ready' };
-    items.unshift(added);
+    const added = {
+      id: 'new-item',
+      status: 'ready',
+      ...(database ? { revision: 2 } : {}),
+    };
+    if (database)
+      expect(
+        (
+          await request.post(new URL('/postgres-poll-row', mailOrigin).href)
+        ).status(),
+      ).toBe(204);
+    else items.unshift(added);
     const due = new URL('/polling-due', mailOrigin);
     due.search = new URLSearchParams({
       workspaceId,
@@ -183,11 +253,12 @@ test('publishes an HTTP feed trigger and passes only the new item to the next st
       dataIn.getByText(`“${added.id}”`, { exact: true }),
     ).toBeVisible();
   } finally {
-    await new Promise<void>((resolve, reject) =>
-      feed.close((error) => {
-        if (error) reject(error);
-        else resolve();
-      }),
-    );
+    if (feed !== undefined)
+      await new Promise<void>((resolve, reject) =>
+        feed.close((error) => {
+          if (error) reject(error);
+          else resolve();
+        }),
+      );
   }
-});
+}

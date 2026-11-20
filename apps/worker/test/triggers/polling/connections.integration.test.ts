@@ -14,7 +14,7 @@ import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-
 import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { pollingFixture } from '../../../../../packages/core/test/triggers/polling/polling.fixture.js';
 import { createTriggerRuntime } from '../../../src/triggers/trigger.runtime.js';
-import { createHttpPollFetcher } from '../../../src/triggers/fetch-http-poll.js';
+import { createPollFetcher } from '../../../src/triggers/fetch-poll.js';
 import { createProviderConnectionRuntime } from '../../../src/providers/connections.runtime.js';
 import { json, server } from '../../integrations/support/pagination.js';
 
@@ -100,7 +100,7 @@ async function providerConnections() {
 }
 
 it('sends a stored header and checks that its secret is current before requesting the next page', async () => {
-  const fetchPoll = createHttpPollFetcher(
+  const fetchPoll = createPollFetcher(
     addressPolicy,
     'poll-worker',
     await providerConnections(),
@@ -240,7 +240,7 @@ it('renews a stored OAuth2 credential after a rejected token and uses the replac
 });
 
 it('resumes the existing position after repairing the credential and admits only new items', async () => {
-  const fetchPoll = createHttpPollFetcher(
+  const fetchPoll = createPollFetcher(
     addressPolicy,
     'poll-worker',
     await providerConnections(),
