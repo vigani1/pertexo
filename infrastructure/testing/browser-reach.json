@@ -3738,6 +3738,7 @@
     "failure-notifications",
     "federation",
     "forms",
+    "inbox",
     "overview",
     "pending-tasks",
     "trigger-events",
