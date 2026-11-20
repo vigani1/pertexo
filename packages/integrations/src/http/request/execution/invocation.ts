@@ -1,3 +1,4 @@
+import { HTTP_REQUEST_CREDENTIAL_PURPOSE } from './credentials.js';
 import {
   type NodeVerifiedByteSource,
   type NodeExecutionInvocation,
@@ -139,7 +140,7 @@ export async function resolveRequestConnection(
   try {
     return await connections.resolveHttpCredential({
       connectionId,
-      purpose: 'http.request.execute',
+      purpose: HTTP_REQUEST_CREDENTIAL_PURPOSE,
       signal: invocation.signal,
     });
   } catch (error: unknown) {

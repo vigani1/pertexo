@@ -1,25 +1,34 @@
-import type { ResolvedHttpCredential } from '@pertexo/node-sdk/server';
-import type { HttpRequestExecutorDependencies } from '../request.executor.js';
+import { HTTP_REQUEST_CREDENTIAL_PURPOSE } from './credentials.js';
+import type {
+  NodeConnectionRuntime,
+  ResolvedHttpCredential,
+} from '@pertexo/node-sdk/server';
+import type { ProviderHttpClient } from '../../../providers/http-client.js';
 import { createOAuth2RenewalClient } from './oauth2-renewal.js';
 import { failedConfiguration } from '../request.errors.js';
-import { type RequestContext, credentialFailure } from './invocation.js';
+type RequestCredentialScope = Readonly<{
+  connections: NodeConnectionRuntime | undefined;
+  connectionId: string | undefined;
+  signal: AbortSignal;
+  onCredentialError(error: unknown): Error;
+}>;
 
 export function requestClient(
-  dependencies: HttpRequestExecutorDependencies,
-  context: RequestContext,
+  client: Pick<ProviderHttpClient, 'executeStreaming'>,
+  scope: RequestCredentialScope,
   resolved: ResolvedHttpCredential | undefined,
 ) {
   return resolved?.authType === 'oauth2'
-    ? oauth2Client(dependencies, context, resolved)
-    : dependencies.httpClient;
+    ? oauth2Client(client, scope, resolved)
+    : client;
 }
 /** A token that renews itself and goes only where its connection allows. */
 function oauth2Client(
-  dependencies: HttpRequestExecutorDependencies,
-  context: RequestContext,
+  client: Pick<ProviderHttpClient, 'executeStreaming'>,
+  scope: RequestCredentialScope,
   credential: Extract<ResolvedHttpCredential, { authType: 'oauth2' }>,
 ) {
-  const { connections, connectionId, invocation } = context;
+  const { connections, connectionId, signal, onCredentialError } = scope;
   if (
     connectionId === undefined ||
     connections?.rejectAccessToken === undefined ||
@@ -28,24 +37,24 @@ function oauth2Client(
     throw failedConfiguration();
   const { rejectAccessToken, resolveHttpCredential } = connections;
   return createOAuth2RenewalClient({
-    client: dependencies.httpClient,
+    client,
     credential,
     reject: (tokenVersionId) =>
       rejectAccessToken({
         connectionId,
         tokenVersionId,
-        signal: invocation.signal,
+        signal,
       }),
     renew: async () => {
       let renewed;
       try {
         renewed = await resolveHttpCredential({
           connectionId,
-          purpose: 'http.request.execute',
-          signal: invocation.signal,
+          purpose: HTTP_REQUEST_CREDENTIAL_PURPOSE,
+          signal,
         });
       } catch (error: unknown) {
-        throw credentialFailure(error, context);
+        throw onCredentialError(error);
       }
       if (renewed.authType !== 'oauth2') throw failedConfiguration();
       return renewed;

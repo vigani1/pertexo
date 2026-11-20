@@ -27,7 +27,10 @@ import {
   type RateLimitDecision,
 } from '@pertexo/rate-limit/server';
 
-import type { NodeExecutionCapabilityContext } from '../attempts/execution/capabilities.js';
+type ProviderConnectionScope = Readonly<{
+  workspaceId: string;
+  workerId: string;
+}>;
 
 export type ProviderRateLimiter = Readonly<{
   consume(decision: RateLimitDecision): Promise<DistributedRateLimitResult>;
@@ -106,7 +109,7 @@ export function createProviderConnectionRuntimeFactory(
   encryption: Pick<ConnectionEnvelopeEncryption, 'open'>,
   providerRateLimiter: ProviderRateLimiter,
   tokens?: Pick<OAuth2TokenService, 'accessToken' | 'rejectToken'>,
-): (context: NodeExecutionCapabilityContext) => NodeConnectionRuntime {
+): (context: ProviderConnectionScope) => NodeConnectionRuntime {
   return (context) => {
     const admit = async (
       input: Readonly<{ connectionId: string; signal: AbortSignal }>,

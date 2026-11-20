@@ -25,6 +25,10 @@ export function triggerRuntimeProvider(
       return createTriggerRuntime({
         ...config.triggerRuntime,
         database: config.database,
+        httpRequest: config.httpRequest,
+        ...(config.connectionEncryption === undefined
+          ? {}
+          : { connectionEncryption: config.connectionEncryption }),
         maintenanceDatabase: config.retention.maintenanceDatabase,
         ...(dependencies.databaseRuntime === undefined
           ? {}

@@ -656,6 +656,7 @@ export const lintPolicy = tseslint.config(
       'packages/workflow-model/src/server.ts',
       'packages/workflow-model/src/graph/definition-catalog.ts',
       'packages/workflow-model/src/graph/draft-representation.ts',
+      'packages/workflow-model/src/triggers/poll-key.ts',
       'packages/workflow-model/src/graph/integration-usage.ts',
       'packages/workflow-model/src/graph/publish-workflow-graph.ts',
       'packages/workflow-model/src/triggers/event-coordination/key.ts',

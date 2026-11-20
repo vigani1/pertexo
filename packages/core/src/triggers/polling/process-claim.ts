@@ -2,6 +2,7 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
+import { z } from 'zod';
 import { httpPollConfigSchema } from '@pertexo/workflow-model';
 import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import {
@@ -38,6 +39,10 @@ import {
   recordPollKeys,
 } from './progress.repository.js';
 
+const materializedPollConfig = httpPollConfigSchema.extend({
+  connectionId: z.uuid().optional(),
+});
+
 const SECONDS_PER_MINUTE = 60;
 
 export async function processPollClaim(
@@ -61,8 +66,8 @@ export async function processPollClaim(
       readPollObservation(transaction, claim),
     );
     if (observation === undefined) throw new PollClaimLostError();
-    const config = decodeStoredValue(() =>
-      httpPollConfigSchema.parse(observation.config),
+    const { connectionId, ...config } = decodeStoredValue(() =>
+      materializedPollConfig.parse(observation.config),
     );
     const seenKeys =
       observation.seenKeys?.map((key) => key.toString('hex')) ?? [];
@@ -80,6 +85,7 @@ export async function processPollClaim(
       workspaceId: claim.workspace_id,
       triggerId: claim.trigger_id,
       config,
+      ...(connectionId === undefined ? {} : { connectionId }),
       seenKeys,
       maxItems: POLL_MAX_ITEMS,
       maxPages: POLL_MAX_PAGES,

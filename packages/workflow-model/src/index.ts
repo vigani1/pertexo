@@ -293,6 +293,7 @@ export { TRIGGER_INTERVAL_MINUTES } from './triggers/interval.js';
 export {
   httpPollConfigSchema,
   HTTP_POLL_TRIGGER,
+  HTTP_POLL_CONNECTION_SLOT,
   type HttpPollConfig,
 } from './triggers/polling.schemas.js';
 export {

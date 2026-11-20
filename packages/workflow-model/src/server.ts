@@ -21,7 +21,12 @@ export {
 export type { CallbackReference } from './flow/callbacks/references.js';
 
 // Triggers
-export { resolveEventCoordinationKey } from './triggers/event-coordination/key.js';
+export {
+  canonicalEventKey,
+  resolveEventCoordinationKey,
+} from './triggers/event-coordination/key.js';
+
+export { hashPollItemKey } from './triggers/poll-key.js';
 
 // Values
 export { JsonataEvaluator } from './values/expressions/evaluator.js';

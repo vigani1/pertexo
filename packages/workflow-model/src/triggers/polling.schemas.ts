@@ -4,6 +4,8 @@ import { TRIGGER_INTERVAL_MINUTES } from './interval.js';
 
 export const HTTP_POLL_TRIGGER = { key: 'http.poll', version: 1 } as const;
 
+export const HTTP_POLL_CONNECTION_SLOT = 'http_headers';
+
 const pollingPath = z
   .string()
   .refine((path) => parseJsonPath(path) !== undefined);
