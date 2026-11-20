@@ -37,6 +37,7 @@ const BEFORE: Readonly<Record<string, unknown>> = {
   'core.wait': { durationSeconds: 60 },
   'email.send_notification': { timeoutMillis: 10_000 },
   'slack.send_message': { timeoutMillis: 10_000 },
+  'http.poll': { intervalMinutes: 1, itemsPath: '$', itemKeyPath: '$.id' },
   'http.request': {
     method: 'GET',
     headers: {},
