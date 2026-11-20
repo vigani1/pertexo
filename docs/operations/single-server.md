@@ -117,6 +117,21 @@ gets `503` with `Retry-After`. The J1 per-service caps above do not hold this ho
 and the file store at 256 MiB were killed, and Caddy at 32 MiB restarted under a
 flood. Do not cap those services that tightly.
 
+The worker does not get `MALLOC_ARENA_MAX`, because it would not help. At its
+busiest on the minimum server (webhooks that fetch a 40 KiB page and transform
+it in JavaScript or Python, a flaky API with retries, about 60 runs in flight),
+its RSS held at 410–454 MiB of its 512 MiB cap over four hours, against 200 MiB
+idle. Of that, the V8 heap was 140–200 MiB, external buffers 5–15 MiB and code
+and libraries 62 MiB. glibc's allocations held about 165 MiB, against 27 MiB
+idle. These are live allocations, not freed memory held back: with
+`MALLOC_ARENA_MAX=2` they moved from 12 arenas into the main heap and one arena,
+and RSS stayed at 399–438 MiB over three hours. Nothing grew within an hour. The
+margin is thin, though: in one of four hours without the setting, the kernel
+killed the worker at its cap and it restarted, and the step it was running
+failed as interrupted. `WORKER_MAX_RSS_BYTES` equals the cap, so the worker's
+own drain never acts first. The Code runner's manager stayed at 82–117 MiB of
+its 1,872 MiB ceiling.
+
 Migration 0122 lowers autovacuum's size-dependent vacuum/insert factor to
 `0.02` and analyze factor to `0.01` for `workflow_runs`, `node_runs`,
 `node_attempts`, `run_checkpoints`, `run_events`, `outbox_events` and
