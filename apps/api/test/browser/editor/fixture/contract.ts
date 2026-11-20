@@ -1,3 +1,4 @@
+import type { PostgresCredential } from '@pertexo/contracts';
 import type { createBrowserIdentityProvider } from '../federation/provider.js';
 
 import type { useBetterAuthRealApi } from '../../../support/better-auth/real-api.support.js';
@@ -10,5 +11,6 @@ export interface EditorBrowserJourneyContext {
   readonly fixture: ReturnType<typeof createEditorBrowserFixture>;
   readonly api: EditorBrowserApi;
   readonly apiOrigin: string;
+  readonly postgresDestination?: PostgresCredential;
   readonly identityProvider: ReturnType<typeof createBrowserIdentityProvider>;
 }

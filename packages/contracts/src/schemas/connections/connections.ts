@@ -1,3 +1,4 @@
+import { postgresCredentialSchema } from './postgres.js';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import {
@@ -55,6 +56,13 @@ const connectionPageLimitSchema = z.coerce
 export const connectionCreateRequestSchema = z.discriminatedUnion(
   'providerKey',
   [
+    z
+      .strictObject({
+        providerKey: z.literal('postgres'),
+        name: connectionNameSchema,
+        credential: postgresCredentialSchema,
+      })
+      .readonly(),
     z
       .object({
         providerKey: z.literal('signing'),
@@ -136,6 +144,7 @@ const emailConnectionTestRequestSchema = z
   .readonly();
 
 export const connectionTestRequestSchema = z.union([
+  z.strictObject({ providerKey: z.literal('postgres') }).readonly(),
   z
     .object({ providerKey: z.literal('signing') })
     .strict()
@@ -160,6 +169,7 @@ export const connectionResponseSchema = responseSchema(
           'slack_bot_token',
           'resend_api_key',
           'smtp',
+          'postgres',
         ]),
       })
       .strict()

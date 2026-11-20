@@ -16,6 +16,8 @@ export function describeSavedCredential(
   draft: CredentialDraft,
 ): SavedCredential {
   switch (draft.provider) {
+    case 'postgres':
+      return { term: 'Database', value: draft.database };
     case 'smtp':
       return {
         term: 'SMTP',

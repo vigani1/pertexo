@@ -163,3 +163,5 @@ export {
 export { SystemMailConfigurationError } from './mail/mail.errors.js';
 
 export { ApplicationKeyConfigurationError } from './encryption/encryption.errors.js';
+
+export { createSecurePostgresClient } from './postgres/postgres.runtime.js';

@@ -21,6 +21,7 @@ import {
   HourglassIcon,
   ListChecksIcon,
   MailIcon,
+  DatabaseIcon,
   OctagonXIcon,
   RepeatIcon,
   SplitIcon,
@@ -85,4 +86,5 @@ export const stepIcons: Readonly<Partial<Record<string, LucideIcon>>> =
     'http.request': GlobeIcon,
     'slack.send_message': HashIcon,
     'email.send_notification': MailIcon,
+    'database.execute': DatabaseIcon,
   });

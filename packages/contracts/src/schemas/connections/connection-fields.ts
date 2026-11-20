@@ -14,6 +14,7 @@ const connectionProviderKeySchema = z.enum([
   'slack',
   'email',
   'signing',
+  'postgres',
 ]);
 const connectionAuthTypeSchema = z.enum([
   'hmac_key',
@@ -21,6 +22,7 @@ const connectionAuthTypeSchema = z.enum([
   'slack_bot_token',
   'resend_api_key',
   'smtp',
+  'postgres',
   'oauth2',
 ]);
 export const connectionStatusSchema = z.enum([

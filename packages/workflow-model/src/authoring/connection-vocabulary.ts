@@ -13,6 +13,7 @@ export const CONNECTION_AUTH_TYPE = {
   slackBotToken: 'slack_bot_token',
   resendApiKey: 'resend_api_key',
   smtp: 'smtp',
+  postgres: 'postgres',
   oauth2: 'oauth2',
 } as const;
 

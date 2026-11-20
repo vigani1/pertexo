@@ -56,6 +56,19 @@ const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
   test: 'Check that the service accepts it.',
 };
 
+function stepDescription(
+  step: AddStep,
+  provider: ConnectionChoice | undefined,
+) {
+  if (step === 'credential') {
+    if (provider === 'smtp')
+      return 'Enter the settings supplied by your SMTP operator.';
+    if (provider === 'postgres')
+      return 'Enter the PostgreSQL server and login details.';
+  }
+  return DESCRIPTIONS[step];
+}
+
 /**
  * The add lens: credential, name, then a test that runs straight away. The
  * connection is saved before its test, so a failed test can still be kept.
@@ -87,9 +100,7 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
               : PROVIDERS[model.provider].connectTitle}
           </SheetTitle>
           <SheetDescription>
-            {model.step === 'credential' && model.provider === 'smtp'
-              ? 'Enter the settings supplied by your SMTP operator.'
-              : DESCRIPTIONS[model.step]}
+            {stepDescription(model.step, model.provider)}
           </SheetDescription>
           <StepIndicator step={model.step} />
         </SheetHeader>

@@ -64,13 +64,29 @@ describe('a new step’s setup', () => {
 
   it.each(
     catalog
-      .filter(({ definition }) => !humanTasks.has(definition.key))
+      .filter(
+        ({ definition }) =>
+          !humanTasks.has(definition.key) &&
+          definition.key !== 'database.execute',
+      )
       .map((definition) => [definition.definition.key, definition] as const),
   )('starts %s the way it did before', (key, definition) => {
     // Validate used to start with an empty rule list, which its own schema
     // refuses (at least one rule); it now starts empty until "Add rule".
     const expected = key === 'core.validate' ? {} : (BEFORE[key] ?? {});
     expect(startingConfig(definition, [])).toEqual(expected);
+  });
+
+  it('starts Database with a runnable query', () => {
+    const database = catalog.find(
+      ({ definition }) => definition.key === 'database.execute',
+    );
+    if (database === undefined)
+      throw new Error('No Database step in the catalog');
+    expect(startingConfig(database, [])).toEqual({
+      operation: 'query',
+      sql: 'select 1 as value',
+    });
   });
 
   it('gives each new step its own copy', () => {

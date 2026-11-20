@@ -6,6 +6,7 @@ import {
   HTTP_HEADER_LIMITS,
   isSupportedHttpFieldValue,
 } from '../shared/http-field-value.js';
+import { postgresCredentialSchema } from './postgres.js';
 import { oauth2CredentialSchema } from './oauth2-connections.js';
 import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
@@ -211,5 +212,6 @@ export const connectionCredentialSchema = z.discriminatedUnion('type', [
   slackBotTokenCredentialSchema,
   resendApiKeyCredentialSchema,
   smtpCredentialSchema,
+  postgresCredentialSchema,
   oauth2CredentialSchema,
 ]);

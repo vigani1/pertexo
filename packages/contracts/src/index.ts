@@ -383,3 +383,17 @@ export {
   codeErrorCodeSchema,
   type CodeErrorCode,
 } from '@pertexo/node-sdk';
+
+export {
+  postgresCredentialSchema,
+  POSTGRES_DEFAULT_PORT,
+  POSTGRES_LIMITS,
+  POSTGRES_FAILURE_CODES,
+  type PostgresCredential,
+  type PostgresClient,
+  type PostgresExecution,
+  type PostgresOutcome,
+  type PostgresFailureCode,
+  type PostgresResult,
+  type PostgresSession,
+} from './schemas/connections/postgres.js';

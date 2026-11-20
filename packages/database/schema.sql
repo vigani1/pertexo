@@ -2894,7 +2894,7 @@ CREATE TABLE app.connections (
     access_mode character varying(16) DEFAULT 'workspace'::character varying NOT NULL,
     sharing_revision bigint DEFAULT 1 NOT NULL,
     CONSTRAINT connections_access_mode_valid CHECK (((access_mode)::text = ANY ((ARRAY['workspace'::character varying, 'restricted'::character varying])::text[]))),
-    CONSTRAINT connections_auth_type_valid CHECK (((auth_type)::text = ANY (ARRAY[('hmac_key'::character varying)::text, ('http_headers'::character varying)::text, ('slack_bot_token'::character varying)::text, ('resend_api_key'::character varying)::text, ('smtp'::character varying)::text, ('oauth2'::character varying)::text]))),
+    CONSTRAINT connections_auth_type_valid CHECK (((auth_type)::text = ANY (ARRAY[('hmac_key'::character varying)::text, ('http_headers'::character varying)::text, ('slack_bot_token'::character varying)::text, ('resend_api_key'::character varying)::text, ('smtp'::character varying)::text, ('postgres'::character varying)::text, ('oauth2'::character varying)::text]))),
     CONSTRAINT connections_error_code_format CHECK (((last_error_code IS NULL) OR ((last_error_code)::text ~ '^[a-z][a-z0-9._:-]{0,127}$'::text))),
     CONSTRAINT connections_health_revision_positive CHECK ((health_revision > 0)),
     CONSTRAINT connections_health_transition_source_valid CHECK (((((last_health_transition_at IS NULL) AND (last_health_transition_source IS NULL)) OR ((last_health_transition_at IS NOT NULL) AND ((last_health_transition_source)::text = ANY (ARRAY[('run'::character varying)::text, ('test'::character varying)::text, ('rotation'::character varying)::text, ('revoke'::character varying)::text])))) IS TRUE)),

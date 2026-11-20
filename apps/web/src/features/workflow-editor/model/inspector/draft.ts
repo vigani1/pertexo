@@ -26,6 +26,7 @@ export type SchemaFieldSpec = Readonly<{
   unit?: FieldUnit;
   /** Text stored as an item path, typed as a field name. */
   format?: 'json-path';
+  multiline?: true;
   /** The object property this field sits in, one level down. */
   parent?: Readonly<{ key: string; label: string }>;
 }>;
@@ -136,7 +137,15 @@ function scalarField(
   required: boolean,
 ): SchemaFieldSpec | undefined {
   if (!isRecord(candidate)) return undefined;
-  const { type, title, description, minimum, maximum, format } = candidate;
+  const {
+    type,
+    title,
+    description,
+    minimum,
+    maximum,
+    format,
+    contentMediaType,
+  } = candidate;
   if (
     type !== 'string' &&
     type !== 'number' &&
@@ -157,6 +166,11 @@ function scalarField(
     ...(typeof minimum === 'number' ? { minimum } : {}),
     ...(typeof maximum === 'number' ? { maximum } : {}),
     ...(unit === undefined ? {} : { unit }),
+    ...(type === 'string' &&
+    (contentMediaType === 'application/sql' ||
+      contentMediaType === 'text/plain')
+      ? { multiline: true as const }
+      : {}),
     ...(type === 'string' && format === 'json-path'
       ? { format: 'json-path' as const }
       : {}),

@@ -4,6 +4,7 @@ import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import {
   PROVIDER_RETRY_FAILURE,
   HTTP_RESPONSE_FAILURES,
+  POSTGRES_FAILURE_CODES,
 } from '@pertexo/integrations';
 import {
   NodeAttemptStateCorruptError,
@@ -32,6 +33,7 @@ import { FILE_SCRATCH_ERROR_CODE } from '../artifacts/scratch/space.js';
 import { FILE_TRANSFER_ERROR_CODE } from '../artifacts/scratch/progress.js';
 
 const executorSummaryCodes = new Set<string>([
+  ...POSTGRES_FAILURE_CODES.map((code) => `database.${code}`),
   ...Object.values(FILE_PAGES_ERROR_CODE),
   ...Object.values(CALLBACK_ERROR_CODE),
   ...Object.values(RUN_VALUES_ERROR_CODE),

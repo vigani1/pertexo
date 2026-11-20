@@ -16,6 +16,7 @@ import {
   handleEditorPortabilitySeed,
   handleEditorVerificationLink,
   handleEditorNoticeMail,
+  handleEditorPostgresCredential,
   handleEditorEmailDeliveries,
 } from './reads.js';
 import {
@@ -35,6 +36,8 @@ export function createEditorControlServer(
       return;
     if (fixtureState.httpControl?.handle(request, response) === true) return;
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+    if (handleEditorPostgresCredential({ context, request, response, url }))
+      return;
     if (handleEditorCallbackResume({ context, request, response, url })) return;
     if (handleEditorTaskExpiry({ context, request, response, url })) return;
 
