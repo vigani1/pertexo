@@ -71,7 +71,8 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
 }>;
 
 export type WorkerNodeRuntimeCapabilities = Readonly<{
-  factories: NodeExecutionCapabilityFactories;
+  factories: Omit<NodeExecutionCapabilityFactories, 'connections'> &
+    Readonly<{ connections?: ProviderConnectionFactory }>;
   checkReadiness(): Promise<void>;
   checkObjectStore(): Promise<void>;
   close(): Promise<void>;
@@ -97,7 +98,7 @@ export interface CapabilityAssembly {
     runValues?: NonNullable<NodeExecutionCapabilityFactories['runValues']>;
     dataTables?: NonNullable<NodeExecutionCapabilityFactories['dataTables']>;
     code?: NonNullable<NodeExecutionCapabilityFactories['code']>;
-    connections?: NonNullable<NodeExecutionCapabilityFactories['connections']>;
+    connections?: ProviderConnectionFactory;
     artifacts?: NonNullable<NodeExecutionCapabilityFactories['artifacts']>;
     webhookResponse?: NonNullable<
       NodeExecutionCapabilityFactories['webhookResponse']
