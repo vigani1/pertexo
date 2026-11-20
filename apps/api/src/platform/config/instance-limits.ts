@@ -5,11 +5,12 @@ import {
 } from '@pertexo/policy';
 
 /**
- * Requests the API holds at once before it answers 503. Each costs about
- * 0.24 MiB while it waits (S5, minimum server): 256 on a ~370 MiB base stays
- * well under the API's 512 MiB cap.
+ * Requests the API holds at once before it answers 503. On the minimum server
+ * each held webhook delivery cost about 0.38 MiB (S9 flood: 385 MiB anon at
+ * 54 connections, 481 MiB at 304), and at 256 the API still reached its
+ * 512 MiB cap; 128 keeps it near 435 MiB.
  */
-const DEFAULT_IN_FLIGHT_REQUEST_LIMIT = 256;
+const DEFAULT_IN_FLIGHT_REQUEST_LIMIT = 128;
 
 /** Startup combines each concern's defaults before applying operator settings. */
 export const DEFAULT_INSTANCE_LIMITS = Object.freeze({

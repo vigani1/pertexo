@@ -214,7 +214,7 @@ describe('parseApiConfig', () => {
         artifactCountLimit: 10_000,
       },
       webhookEndpointBurstLimit: 600,
-      inFlightRequestLimit: 256,
+      inFlightRequestLimit: 128,
       codeSettings: DEFAULT_CODE_SETTINGS,
       database: {
         connectionString:
@@ -268,7 +268,7 @@ describe('parseApiConfig', () => {
         artifactCountLimit: 10_000,
       },
       webhookEndpointBurstLimit: 600,
-      inFlightRequestLimit: 256,
+      inFlightRequestLimit: 128,
       codeSettings: DEFAULT_CODE_SETTINGS,
       database: {
         connectionString:
