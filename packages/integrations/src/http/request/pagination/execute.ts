@@ -1,7 +1,6 @@
 import { HttpPaginationFailure } from './pagination.errors.js';
 import timers from 'node:timers/promises';
 import {
-  canonicalizeBoundedJson,
   encodeFilePageRecord,
   writeFilePages,
   type EncodedFilePageRecord,
@@ -10,62 +9,16 @@ import {
 } from '@pertexo/node-sdk/server';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import { inspectJsonValue, resolveJsonPath } from '@pertexo/workflow-model';
-import { inspectProviderHttpError } from '../../../providers/http.errors.js';
 import type {
   ProviderHttpClient,
   ProviderHttpRequest,
-  ProviderHttpStreamingBody,
 } from '../../../providers/http-client.js';
 import type { HttpPagination } from './pagination.schemas.js';
 import { hasNextPage, nextPage, setPaginationParameter } from './navigation.js';
-import { JSON_MEDIA_TYPE } from '../../content-type.js';
+import { fetchPage, type Page } from './fetch-page.js';
 
 // Each page's items join one JSON array: drop each page's two brackets.
 const JSON_ARRAY_BRACKET_BYTES = 2;
-
-type Page = Readonly<{ value: JsonValue; url: string; link?: string }>;
-async function readPage(
-  stream: ProviderHttpStreamingBody,
-  page: number,
-): Promise<Page> {
-  if (
-    stream.navigation === undefined ||
-    !JSON_MEDIA_TYPE.test(stream.headers['content-type'] ?? '')
-  )
-    throw new HttpPaginationFailure('http.pagination_invalid_page', page);
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    for await (const chunk of stream.body) {
-      chunks.push(new Uint8Array(chunk));
-      size += chunk.byteLength;
-    }
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    try {
-      const value: unknown = JSON.parse(
-        new TextDecoder('utf-8', { fatal: true }).decode(bytes),
-      );
-      return {
-        value: canonicalizeBoundedJson(value),
-        url: stream.navigation.url,
-        ...(stream.navigation.link === undefined
-          ? {}
-          : { link: stream.navigation.link }),
-      };
-    } catch {
-      throw new HttpPaginationFailure('http.pagination_invalid_page', page);
-    } finally {
-      bytes.fill(0);
-    }
-  } finally {
-    for (const chunk of chunks) chunk.fill(0);
-  }
-}
 
 type PaginationExecutionInput = Readonly<{
   client: Pick<ProviderHttpClient, 'executeStreaming'>;
@@ -120,7 +73,14 @@ export async function executePagination(input: PaginationExecutionInput) {
   async function* records(): AsyncGenerator<EncodedFilePageRecord> {
     for (let page = 1; page <= pagination.maxPages; page += 1) {
       request.signal?.throwIfAborted();
-      const response = await fetchPage(input, url, first.origin, page);
+      const response = await fetchPage(
+        input,
+        url,
+        first.origin,
+        page,
+        pagination.mode === 'next_link' &&
+          pagination.source.kind === 'link_header',
+      );
       const found = resolveJsonPath(response.body.value, pagination.itemsPath);
       if (found.kind !== 'value' || !Array.isArray(found.value))
         throw new HttpPaginationFailure('http.pagination_invalid_page', page);
@@ -191,46 +151,6 @@ export async function executePagination(input: PaginationExecutionInput) {
   }
   if (metadata === undefined) throw new Error('Pagination result missing');
   return { items, ...metadata };
-}
-
-async function fetchPage(
-  input: PaginationExecutionInput,
-  url: string,
-  origin: string,
-  page: number,
-) {
-  const { pagination, request } = input;
-  try {
-    return await input.client.executeStreaming(
-      {
-        ...request,
-        url,
-        maxResponseBytes: input.inlineBytes,
-        navigation: {
-          origin,
-          link:
-            pagination.mode === 'next_link' &&
-            pagination.source.kind === 'link_header',
-        },
-      },
-      async (stream) => {
-        input.checkResponse(stream.status, stream.headers);
-        return readPage(stream, page);
-      },
-    );
-  } catch (error) {
-    const code = inspectProviderHttpError(error)?.code;
-    if (code === 'pagination_origin_changed')
-      throw new HttpPaginationFailure('http.pagination_origin_changed', page);
-    if (code === 'pagination_navigation_invalid')
-      throw new HttpPaginationFailure(
-        'http.pagination_invalid_navigation',
-        page,
-      );
-    if (code === 'response_too_large' || code === 'response_encoding_rejected')
-      throw new HttpPaginationFailure('http.pagination_invalid_page', page);
-    throw error;
-  }
 }
 
 function exceedsInlinePageEnvelope({
