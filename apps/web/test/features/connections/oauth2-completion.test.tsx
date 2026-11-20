@@ -39,7 +39,12 @@ const pending = oauth2ConnectionResponseSchema.parse(
   }),
 );
 afterEach(() => vi.restoreAllMocks());
-it.each(['focus', 'notification', 'notification-during-focus'] as const)(
+it.each([
+  'focus',
+  'notification',
+  'notification-during-focus',
+  'notification-before-focus-render',
+] as const)(
   'recovers the consent completion read after %s without starting consent again',
   async (trigger) => {
     let failing = true;
@@ -52,7 +57,10 @@ it.each(['focus', 'notification', 'notification-during-focus'] as const)(
     const heldRead = new Promise<void>((resolve) => {
       releaseRead = resolve;
     });
-    let holdRead = trigger === 'notification-during-focus';
+    const overlapsFocus =
+      trigger === 'notification-during-focus' ||
+      trigger === 'notification-before-focus-render';
+    let holdRead = overlapsFocus;
     vi.spyOn(window, 'open').mockReturnValue(null);
     mockServer.use(
       http.post(`${base}/${connectionId}/oauth2/authorization`, () => {
@@ -105,25 +113,34 @@ it.each(['focus', 'notification', 'notification-during-focus'] as const)(
     await screen.findByText('Your browser blocked the window.');
     const channel = new BroadcastChannel('pertexo.connections.oauth2');
     try {
-      if (trigger === 'notification-during-focus') {
+      if (overlapsFocus) {
         failing = false;
-        await act(async () => {
-          window.dispatchEvent(new Event('focus'));
-          await startedRead;
-        });
+        if (trigger === 'notification-during-focus') {
+          await act(async () => {
+            window.dispatchEvent(new Event('focus'));
+            await startedRead;
+          });
+        }
         const observer = new BroadcastChannel('pertexo.connections.oauth2');
         try {
-          await act(async () => {
-            const delivered = new Promise<void>((resolve) => {
-              observer.onmessage = () => {
-                resolve();
-              };
-            });
+          const delivered = new Promise<void>((resolve) => {
+            observer.onmessage = () => {
+              resolve();
+            };
+          });
+          act(() => {
             channel.postMessage({
               result: 'connected',
               connectionId,
               workspaceId,
             });
+            // Focus can start a read and rerender before delivery of the queued
+            // completion. The first read still sees the old connection.
+            if (trigger === 'notification-before-focus-render')
+              window.dispatchEvent(new Event('focus'));
+          });
+          await act(async () => {
+            await startedRead;
             await delivered;
             releaseRead?.();
           });
