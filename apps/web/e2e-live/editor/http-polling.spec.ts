@@ -163,7 +163,6 @@ async function verifyPollingJourney(
       .toHaveProperty('feedItem');
 
     const version = await publishSingleStep(page, path);
-    await page.goto(`${workflowUrl}/triggers`);
     await expect
       .poll(
         async () => {
@@ -182,6 +181,7 @@ async function verifyPollingJourney(
         healthStatus: 'healthy',
         lastErrorCode: null,
       });
+    await page.goto(`${workflowUrl}/triggers`);
     const card = page
       .getByRole('region', { name: source, exact: true })
       .getByRole('article');
