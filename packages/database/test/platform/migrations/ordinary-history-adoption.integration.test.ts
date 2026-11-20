@@ -64,7 +64,11 @@ it('upgrades an adopted baseline through the real later migrations, preserving d
       await copyFile(join(MIGRATIONS_DIRECTORY, name), join(directory, name));
     await expect(migrateDatabase(config, directory)).resolves.toEqual(later);
     expect((await admin.query('select * from app.workflows')).rows).toEqual(
-      before,
+      before.map((workflow) => ({
+        ...workflow,
+        trigger_pause_poll_error_code: null,
+        trigger_pause_poll_trigger_id: null,
+      })),
     );
     expect(
       (await admin.query('select * from app.workflow_runs order by id')).rows,
