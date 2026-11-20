@@ -15,42 +15,41 @@ resuming the current publication keeps its place.
 
 | Setting | Meaning |
 | --- | --- |
-| URL | Absolute GET URL for a stable newest-first JSON feed. |
+| URL | Absolute GET URL for a JSON feed. Newest-first feeds start the oldest fetched new item first. |
 | Interval | Whole minutes, using the schedule interval range of one minute through 30 days. First observation is due on activation. |
 | Items path | Existing JSON path syntax selecting an array, including the root array. |
 | Item key path | Existing JSON path syntax relative to each item. Selects an immutable, unique, non-empty string or finite number. String and number keys are distinct. |
 | Connection | Optional workspace HTTP header or OAuth2 connection, with the same supported connection types and target checks as HTTP Request. |
 
 The feed may return one JSON page or use a same-origin HTTP `Link` header with
-`rel="next"`. During traversal it must provide a stable view of the range
-from its head to the last committed item. Items must stay visible until picked
-up, including during capacity deferrals or pauses. Show a specific health
-reason when the position is missing, a limit is reached, a key is invalid or
-credentials need attention. If the position is gone permanently, publishing
-again starts fresh from the current feed.
+`rel="next"`. Poll often enough to keep new items within the fetched head.
+Items beyond the page or item caps can be missed, and a poll stops at a page
+of already seen items. New items beyond that page can also be missed. An
+evicted key can start a run again if it reappears.
+The Triggers tab shows safe reasons for invalid data, denied navigation and
+credentials that need attention.
 
 ## Implementation slices
 
-### Trigger definition and publication
+Each slice is a separate PR that passes its package tests and the repository
+checks. Slice 1 exercises the scanner with a fake fetch adapter. Slice 2 wires
+HTTP into the worker. Slice 3 registers the trigger for publication and
+ships it with pause behavior, trigger health and editor support.
 
-- **Workflow model and catalog.** Add `http.poll@1` to
-  `WORKFLOW_TRIGGER_DEFINITIONS` in
-  `packages/workflow-model/src/graph/triggers.ts`. Put the shared config
-  schema and named interval limits in `workflow-model/src/triggers/polling.schemas.ts`,
-  deriving the interval range from the existing schedule bounds after moving
-  their ownership to a shared browser-safe definition. Register the trigger
-  definition and trigger output executor through
-  `packages/integrations/src/http/polling/` and
-  `packages/node-catalog/src/{catalog,server}.ts`, following
-  `nodes-core/src/triggers/schedule/schedule.definition.ts`. The executor
-  exposes accepted input. The scanner owns remote fetching.
+### 1. Database, claim and scanner
+
+- **Shared types.** Define the config schema and named interval limits in
+  `workflow-model/src/triggers/polling.schemas.ts`, deriving the interval
+  range from the existing schedule bounds after moving their ownership to a
+  shared browser-safe definition. Carry the persisted polling kind and run
+  source through the shared types and schemas used by admission and reads,
+  including `packages/contracts/src/schemas/execution/runs.ts`.
 - **Core.** Extend `workflowTriggerProjection` in
   `triggers/reconciliation/projection.ts` and
   `reconcileActiveWorkflowTriggers`, `retirePreviousResources` and
   `applyResourceDispositions` in `materialization.repository.ts`. Materialize
   an active trigger with a pending baseline and a due time from the database.
-  Replaying
-  reconciliation of the same version preserves its cursor. Retire an old
+  Replaying reconciliation of the same version preserves its seen-set. Retire an old
   version with the existing resource lifecycle. Carry the new materialized
   kind and the `polling` run source through persisted run admission, trigger
   root selection and the shared run-input codec. Use the ordinary published
@@ -59,31 +58,60 @@ again starts fresh from the current feed.
 - **Database.** Define the workspace-scoped polling row under
   `packages/database/src/schema/triggers/` and export it from `schema.ts`.
   Add its migration, row security, composite foreign key, due index and
-  retirement/purge handling. Extend the run source constraint in
+  retirement/purge handling. Use a nullable `bytea[]` on the poll row to
+  distinguish a pending baseline from a completed empty baseline. Store one
+  32-byte hash per key in insertion order. Core owns `POLL_MAX_SEEN_KEYS`
+  (1,000, ten times `POLL_MAX_ITEMS`) and evicts oldest recorded keys on
+  append. Reobserving a seen key leaves its age unchanged. A bounded array
+  keeps leasing and progress on one row and uses the same cleanup lifecycle.
+  Extend the run source constraint in
   `schema/runs/workflow-runs.ts`. Extend the maintenance-only claiming seam used by
   `app.claim_due_trigger_schedules` with a bounded polling claim projection.
   Use the same database-time lease owner, token, expiry and `SKIP LOCKED`
   rules. Return only the claim identity and timing across workspaces. Read
-  cursor and config under tenant scope. Keep schedule claims, occurrence
+  the seen-set and config under tenant scope. Keep schedule claims, occurrence
   history and next-run projections on their existing paths.
+- **Core scanner.** Extend the scan in `schedule-scanner.store.ts`, reusing
+  the claim and retirement protocol in `schedules/scanning/claims.repository.ts`
+  and `schedules/retire.ts`. Keep a bounded budget for each kind and claim
+  polling work only as it can be started within the lease. Add
+  `triggers/polling/process-claim.ts` for fetch and admission. Follow the
+  actorless tenant transaction precedent in `processScheduleClaim`. Use
+  `lockWorkspaceRunAdmission`, then the current workflow/publication and
+  poll-row locks. Verify publication, pause and live lease at every commit.
+  Claim expiry or cancellation only retires the live token. A stale worker
+  cannot write progress or health.
+- **Core admission.** Compare the bounded fetched items against the claimed
+  seen-set. Keep the first occurrence of each key. On baseline, record every
+  distinct fetched key in reverse feed order in one fenced transaction and
+  start zero runs. On later polls, process unseen candidates in reverse feed
+  order. Commit
+  the run, outbox and seen-set append together for each item. Use the
+  deterministic command identity and request fingerprint of the published
+  trigger and typed key. Check the existing request-only acceptance replay
+  before preparing a new checkpoint, so a retained receipt covers an
+  evicted key even if its payload has changed. On replay, record the key
+  without another run or outbox event. Run quota or concurrency deferral
+  stops the batch and leaves that item and the remaining candidates unseen.
+  Use the existing capacity deferral/backoff semantics.
 
-### Fetch and admission
+### 2. HTTP fetch adapter and worker wiring
 
 - **Integrations.** Extract the secure single-page fetch and bounded JSON
   decode from `fetchPage` and `readPage` in
   `http/request/pagination/execute.ts`; keep `executePagination` using the
   same implementation. Reuse the next-link handling in
   `pagination/navigation.ts` and `pagination/link.ts`. The polling adapter
-  accepts the current position, budget and abort signal and returns a
-  proven range with a position per item, a baseline, or a typed failure.
-  Retrieve only the head on baseline, and walk at most `POLL_MAX_PAGES`
-  (five) and inspect at most `POLL_MAX_ITEMS` (100) after baseline.
-  Apply the item cap to the baseline page as well. Count all fetched items
-  against the cap and fail if a fetched page exceeds the remaining item budget. At an exact cap, succeed only if the boundary
-  or required end is already proven. Use the shared JSON path parser and the
-  typed canonical scalar key rules behind `resolveEventCoordinationKey`
-  without invoking the expression evaluator for a configured path. Reject
-  repeated keys within the candidate range as a feed contract violation. Enforce
+  accepts the seen-set, budget and abort signal and returns the ordered keyed
+  items or a typed failure. Walk at most `POLL_MAX_PAGES` (five) and inspect
+  at most `POLL_MAX_ITEMS` (100) on every poll, including baseline. Each
+  inspected item counts toward the cap, including repeated keys. Inspect
+  only the prefix that fits when a page crosses the item cap. Stop at a
+  reached cap or end of traversal, or after a nonempty page whose inspected
+  keys all belong to the claimed seen-set. The scanner owns the caps and
+  passes them to the adapter. Use the shared JSON path parser and the typed
+  canonical scalar key rules behind `resolveEventCoordinationKey` without
+  invoking the expression evaluator for a configured path. Enforce
   the existing key, JSON and response byte limits. Share connection material
   handling and the OAuth2 renewal path in
   `http/request/execution/request-client.ts` and `oauth2-renewal.ts`.
@@ -99,30 +127,17 @@ again starts fresh from the current feed.
   Share provider rate limiting, OAuth2 token service and the current-secret
   check before every dispatch. Compose the polling adapter independently of
   run-attempt state. Thread through the existing scan cancellation and cleanup.
-- **Core scanner.** Extend the scan in `schedule-scanner.store.ts`, reusing
-  the claim and retirement protocol in `schedules/scanning/claims.repository.ts`
-  and `schedules/retire.ts`. Keep a bounded budget for each kind and claim
-  polling work only as it can be started within the lease. Add
-  `triggers/polling/process-claim.ts` for fetch and admission. Follow the
-  actorless tenant transaction precedent in `processScheduleClaim`. Use
-  `lockWorkspaceRunAdmission`, then `lockEventCoordination`, then current
-  workflow/publication and poll-row locks. Verify the lease at each commit.
-  Claim expiry or cancellation only retires the live token. A stale worker
-  cannot write progress or health. On a successful prefix followed by a
-  crash, a replacement claim reads that prefix and starts at its successor.
-- **Core coordination.** Share `loadEventWindow`, `chargeEventWindow` and
-  `decideEventCoordination` with the existing deduplication path. Use the
-  published trigger identity in the policy fingerprint and the standard
-  deduplication window. A charged live key in that scope was admitted.
-  Share the window and outbox transaction with per-item position advancement.
-  Use a deterministic admission command identity for the same published
-  trigger and typed item key. A full key budget, run quota or concurrency
-  limit defers at the first unaccepted item. Preserve the position and use
-  the existing capacity deferral/backoff semantics. Polling creates no
-  pending debounce or throttle events.
 
-### Pause, contracts and the editor
+### 3. Publication, pause, contracts and the editor
 
+- **Workflow model and catalog.** Add `http.poll@1` to
+  `WORKFLOW_TRIGGER_DEFINITIONS` in
+  `packages/workflow-model/src/graph/triggers.ts`. Register the trigger
+  definition and trigger output executor through
+  `packages/integrations/src/http/polling/` and
+  `packages/node-catalog/src/{catalog,server}.ts`, following
+  `nodes-core/src/triggers/schedule/schedule.definition.ts`. The executor
+  exposes accepted input. The scanner owns remote fetching.
 - **Core pause.** Extract the pause-state write and audit from
   `triggers/pause/fold.repository.ts` for use by the poll failure operation.
   Preserve the completed-run fold. Store poll failure evidence on the
@@ -137,10 +152,10 @@ again starts fresh from the current feed.
   `createWorkflowAutoPauseStore` in
   `authoring/settings/auto-pause/workflow-auto-pause.store.ts` for resume.
   Compare the stored pause revision when updating the streak so resumed polls
-  start a new streak without resetting their position.
-- **Contracts and API.** Extend the published trigger, run source and
-  auto-pause schemas in `packages/contracts/src/schemas/`, including
-  `execution/runs.ts` and `workflows/auto-pause.ts`. Model pause evidence
+  start a new streak without resetting their seen-set.
+- **Contracts and API.** Extend the published trigger and auto-pause
+  schemas in `packages/contracts/src/schemas/`, including
+  `workflows/auto-pause.ts`. Model pause evidence
   as distinct run and poll cases while preserving the existing completed-run
   response. Carry poll status and safe reasons through the existing trigger
   health and workflow activation reads, including `readHealth` in
@@ -154,37 +169,57 @@ again starts fresh from the current feed.
   model with a polling card for baseline, next check and health.
   Update `components/settings/auto-pause-section.tsx` to link to the polling
   trigger when the pause has poll evidence. Explain publication's baseline
-  behavior in the setup and repair flow.
+  behavior in the setup and repair flow. In setup, explain stable unique
+  keys, the seen-set retention limit and how to choose an interval that
+  keeps new items within the fetched head.
 
 ## Acceptance tests
 
-- With real workspace transactions and a fake HTTP feed, interrupt after
+### Slice 1
+
+- With real workspace transactions and a fake fetch adapter, interrupt after
   fetch before admission and after the first committed item of a multi-item
   poll. Rescan and assert one run and one outbox delivery record per admitted
-  item and the expected persisted position. Force a rollback during item
-  admission and assert that run, key charge, outbox and position roll back
+  item and the expected persisted seen-set. Force a rollback during item
+  admission and assert that the run, outbox and seen-set append roll back
   together.
-- Force run quota, concurrency and key-budget deferrals in a multi-item
-  poll. Assert that the cursor never passes the first unaccepted item, later
-  items have no runs, and a later poll accepts the remainder in order.
+- Force run quota and concurrency deferrals. Assert that the deferred item
+  and subsequent candidates stay unseen and have no runs, and a later poll
+  accepts the remainder in reverse feed order.
 - Exercise overlapping claims with an expired lease, publication change and
   pause during fetch. Assert that stale fetches write neither progress nor
   health. Verify that a workspace cannot read or update another's poll state.
-- Baseline a nonempty feed and an empty feed, publish a new version, replay
-  reconciliation and resume after a pause. Check that baseline produces zero
-  runs, same-version resume retains progress, and first publication of a new
-  version takes a new baseline.
-- Prove the page and item caps against a fake paginated feed, including
-  exact-cap completion, a missing boundary, malformed items and a denied
-  navigation target. Assert a safe health result and unchanged cursor when
-  the range cannot be proven. Run the HTTP Request pagination suite against
+- Baseline a nonempty feed and an empty feed, publish a new version and replay
+  reconciliation. Check that baseline produces zero runs, reconciliation of
+  the same publication keeps the seen-set and a new version takes a new
+  baseline.
+- Fill the seen-set, confirm oldest keys are evicted and confirm reobserving
+  a retained key does not refresh its age. Replay an evicted key while its
+  acceptance receipt remains, with a changed payload, and assert that it
+  is recorded again with no second run or outbox event. Verify that it can
+  start again after both the seen key and receipt are gone.
+- Keep the existing schedule scanner, occurrence and next-run tests green.
+
+### Slice 2
+
+- Exercise page and item caps against a fake paginated feed, including an
+  exact cap, a page larger than the remaining budget, a paginated baseline
+  and early termination on a page of seen keys. Assert no request beyond the
+  cap, no admission for items beyond the inspected head and one candidate
+  per repeated key. Verify that a deleted previously seen item and reordered
+  items in the fetched head allow new runs while retained keys stay deduped.
+- Verify that malformed items and denied navigation produce safe failures
+  with unchanged seen state. Run the HTTP Request pagination suite against
   the shared page fetch.
+
+### Slice 3
+
 - Simulate terminal auth loss and repeated non-auth failures. Verify
   immediate auth pause, threshold pause for other failures, audited evidence,
   and resume through the normal workflow command without a fabricated run.
-  Verify that credential repair, a successful fetch, and a separate run-based
-  pause each preserve their expected behavior.
+  Verify that resume preserves the seen-set, and that credential repair, a
+  successful fetch and a separate run-based pause each preserve their
+  expected behavior.
 - Publish HTTP Polling through the editor against the test feed, verify its
   health in the Triggers tab, add an item, and inspect the downstream step's
-  input. Keep the existing schedule scanner, occurrence and next-run tests
-  green.
+  input.
