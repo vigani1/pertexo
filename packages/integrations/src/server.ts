@@ -96,3 +96,5 @@ export { HTTP_PAGINATION_FAILURES } from './http/request/pagination/pagination.e
 export { HTTP_OAUTH2_FAILURES } from './http/request/execution/oauth2-renewal.errors.js';
 
 export type { SmtpEmailClient } from './email/smtp.js';
+
+export { createDatabaseExecutorRegistration } from './database/execute/execute.executor.js';

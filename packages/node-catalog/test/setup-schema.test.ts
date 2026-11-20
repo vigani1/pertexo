@@ -92,6 +92,7 @@ describe('step setup in the catalog schema', () => {
       'core.number',
       'core.text',
       'core.xml',
+      'database.execute',
     ]);
     for (const { step, key, variants } of unions)
       for (const variant of variants) {

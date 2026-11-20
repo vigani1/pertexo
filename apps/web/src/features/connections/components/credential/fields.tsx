@@ -1,3 +1,4 @@
+import { PostgresFields } from './postgres-fields';
 import { SmtpFields } from './smtp-fields';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -76,6 +77,8 @@ function CredentialInput({
 /** The provider's credential inputs. Secrets stay masked and local. */
 export function CredentialFields(props: FieldsProps) {
   const { draft } = props;
+  if (draft.provider === 'postgres')
+    return <PostgresFields {...props} draft={draft} />;
   if (draft.provider === 'smtp') return <SmtpFields {...props} draft={draft} />;
   if (draft.provider === 'oauth2')
     return (

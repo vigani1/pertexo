@@ -33,10 +33,12 @@ import {
 } from '../../model/connection-providers';
 import {
   credentialDraftHasSecret,
-  describeSavedCredential,
   toCreateRequest,
-  type SavedCredential,
 } from '../../model/credential-draft';
+import {
+  describeSavedCredential,
+  type SavedCredential,
+} from '../../model/saved-credential';
 import { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { useConnectionTest } from '../../data/connection-test.mutations';
 import { useCredentialForm } from '../credential/use-form';
@@ -53,6 +55,19 @@ const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
   connect: 'Sign in so Pertexo can get its token.',
   test: 'Check that the service accepts it.',
 };
+
+function stepDescription(
+  step: AddStep,
+  provider: ConnectionChoice | undefined,
+) {
+  if (step === 'credential') {
+    if (provider === 'smtp')
+      return 'Enter the settings supplied by your SMTP operator.';
+    if (provider === 'postgres')
+      return 'Enter the PostgreSQL server and login details.';
+  }
+  return DESCRIPTIONS[step];
+}
 
 /**
  * The add lens: credential, name, then a test that runs straight away. The
@@ -85,9 +100,7 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
               : PROVIDERS[model.provider].connectTitle}
           </SheetTitle>
           <SheetDescription>
-            {model.step === 'credential' && model.provider === 'smtp'
-              ? 'Enter the settings supplied by your SMTP operator.'
-              : DESCRIPTIONS[model.step]}
+            {stepDescription(model.step, model.provider)}
           </SheetDescription>
           <StepIndicator step={model.step} />
         </SheetHeader>

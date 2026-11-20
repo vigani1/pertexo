@@ -6427,7 +6427,8 @@
                         "http",
                         "slack",
                         "email",
-                        "signing"
+                        "signing",
+                        "postgres"
                       ]
                     },
                     "name": {
@@ -6442,7 +6443,8 @@
                         "http_headers",
                         "slack_bot_token",
                         "resend_api_key",
-                        "smtp"
+                        "smtp",
+                        "postgres"
                       ]
                     },
                     "status": {
@@ -7712,7 +7714,8 @@
                   "http",
                   "slack",
                   "email",
-                  "signing"
+                  "signing",
+                  "postgres"
                 ]
               },
               "name": {
@@ -7727,7 +7730,8 @@
                   "http_headers",
                   "slack_bot_token",
                   "resend_api_key",
-                  "smtp"
+                  "smtp",
+                  "postgres"
                 ]
               },
               "status": {

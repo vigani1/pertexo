@@ -79,3 +79,5 @@ export {
   dropDisconnectedDatabase,
 } from './testing/postgres/disposable-database.js';
 export { createDatabaseWithInheritedAppSetting } from './testing/postgres/inherited-app-setting.js';
+
+export { createPostgresDestination } from './testing/postgres/destination.js';

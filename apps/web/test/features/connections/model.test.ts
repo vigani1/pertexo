@@ -7,10 +7,10 @@ import {
 import { parseConnectionsSearch } from '@/features/connections/model/connections-search';
 import {
   credentialErrors,
-  describeSavedCredential,
   toCreateRequest,
   type CredentialDraft,
 } from '@/features/connections/model/credential-draft';
+import { describeSavedCredential } from '@/features/connections/model/saved-credential';
 
 const now = Date.parse('2026-09-24T12:00:00.000Z');
 

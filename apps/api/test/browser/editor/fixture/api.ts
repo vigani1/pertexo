@@ -22,6 +22,7 @@ import { createEditorWebhookRuntime } from '../webhook-runtime.js';
 
 import { createStructuredLogger } from '@pertexo/observability/server';
 import {
+  parseAllowedPrivateNetworks,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
 } from '@pertexo/secrets/server';
@@ -134,6 +135,15 @@ export function useEditorApiFixture(context: {
         region: 'us-east-1',
       },
       services: () => ({
+        ...(scenario === 'product'
+          ? {
+              smtpPolicy: {
+                allowedPrivateNetworks:
+                  parseAllowedPrivateNetworks('127.0.0.1/32'),
+                allowPlaintext: false,
+              },
+            }
+          : {}),
         // Discovery/authorization/persistence are real. This pure-node gate
         // neither provisions credentials nor permits outbound provider calls.
         encryption:

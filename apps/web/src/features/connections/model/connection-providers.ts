@@ -7,6 +7,7 @@ export type ProviderKey = ConnectionResponse['providerKey'];
 export type ConnectionChoice = ProviderKey | 'smtp';
 
 export const CONNECTION_CHOICES = [
+  'postgres',
   'slack',
   'http',
   'email',
@@ -28,6 +29,13 @@ type ProviderCopy = Readonly<{
 }>;
 
 export const PROVIDERS: Readonly<Record<ConnectionChoice, ProviderCopy>> = {
+  postgres: {
+    name: 'PostgreSQL',
+    purpose: 'Query a database and write rows',
+    credential: 'database login',
+    connectTitle: 'Connect PostgreSQL',
+    usedBy: 'Database steps',
+  },
   signing: {
     name: 'Signing key',
     purpose: 'Create HMAC signatures locally',
@@ -73,6 +81,7 @@ const PROVIDER_BY_CREDENTIAL: Readonly<
   http_headers: 'http',
   resend_api_key: 'email',
   smtp: 'email',
+  postgres: 'postgres',
   oauth2: 'http',
 };
 
@@ -126,6 +135,7 @@ const NAME_NOUNS: Readonly<Record<ConnectionChoice, string>> = {
   http: 'API',
   email: 'email',
   smtp: 'SMTP',
+  postgres: 'PostgreSQL',
 };
 
 /** A starting name from the workspace and provider, e.g. "Northwind Ops Slack". */

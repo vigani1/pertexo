@@ -1,3 +1,5 @@
+import { testResendConnection } from './resend.js';
+import { testPostgresConnection } from './postgres.js';
 import * as smtp from './smtp.js';
 import { ProviderHttpError } from '@pertexo/integrations/server';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
@@ -23,7 +25,6 @@ import type {
   ConnectionTestPersistence,
 } from '../ports.js';
 import {
-  connectionTestProviderKey,
   encryptionSignal,
   hashRequest,
   toTestResponse,
@@ -39,7 +40,6 @@ import type { ConnectionTestResponse } from '../connection-request.js';
 import { decodeCredential } from './credentials.js';
 import {
   slackTestOutcome,
-  resendTestOutcome,
   responseOutcome,
   secureErrorOutcome,
   SUCCEEDED_TEST,
@@ -288,7 +288,7 @@ export class TestConnectionService {
 
   private async testProvider(
     destination: FailureNotificationDestinationResponse | undefined,
-    expectedProviderKey: 'email' | 'http' | 'slack' | 'signing',
+    expectedProviderKey: 'email' | 'http' | 'postgres' | 'slack' | 'signing',
     {
       request,
       credential,
@@ -303,6 +303,15 @@ export class TestConnectionService {
       beforeDispatch: () => Promise<void>;
     }>,
   ): Promise<ConnectionTestOutcome> {
+    if (credential.type === 'postgres')
+      return testPostgresConnection(
+        credential,
+        this.smtpPolicy?.allowedPrivateNetworks ?? [],
+        {
+          signal,
+          beforeDispatch,
+        },
+      );
     smtp.assertEmailTestProfile(credential.type, request, destination);
     if (credential.type === 'smtp')
       return smtp.testSmtpConnection(credential, this.smtpPolicy, {
@@ -318,30 +327,12 @@ export class TestConnectionService {
         this.emailClient === undefined
       )
         throw new ConnectionSecretEncryptionError();
-      const result = await this.emailClient.sendNotification({
-        apiKey: credential.apiKey,
-        fromEmail: credential.fromEmail,
-        toEmail:
-          destination?.config.kind === 'email'
-            ? destination.config.toEmail
-            : 'delivered@resend.dev',
-        subject:
-          destination === undefined
-            ? 'Pertexo Resend connection test'
-            : 'Pertexo alert destination test',
-        text:
-          destination === undefined
-            ? 'This message verifies a Pertexo Resend sending connection.'
-            : 'This is a test of your Pertexo alert destination. No workflow failed.',
-        idempotencyKey: connectionTestProviderKey(
-          input.connectionId,
-          input.idempotencyKey,
-        ),
-        timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
+      return testResendConnection(this.emailClient, credential, {
+        destination,
+        command: input,
         signal,
         beforeDispatch,
       });
-      return resendTestOutcome(result);
     }
     if (expectedProviderKey === 'slack') {
       if (

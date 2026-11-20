@@ -160,6 +160,7 @@ const connectionWords: Readonly<Record<string, string>> = {
   resend_api_key: 'Email · Resend',
   hmac_key: 'Signing key',
   http_headers: 'HTTP',
+  postgres: 'PostgreSQL',
 };
 
 /** The connections a step can't run without; optional ones, such as auth for a public API, are left out. */

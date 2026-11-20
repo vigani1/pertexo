@@ -1,5 +1,5 @@
 {
-  "id": "57d351a8-c5ab-41bf-a19a-9aa71c54aace",
+  "id": "715d6392-f722-4f53-93e7-3677e793b61b",
   "prevId": "a247db2d-cdba-4863-879a-7270145804e6",
   "version": "7",
   "dialect": "postgresql",
@@ -4521,7 +4521,7 @@
         },
         "workflow_triggers_kind_valid": {
           "name": "workflow_triggers_kind_valid",
-          "value": "((kind)::text = ANY (ARRAY[('webhook'::character varying)::text, ('schedule'::character varying)::text, ('polling'::character varying)::text]))"
+          "value": "((kind)::text = ANY (ARRAY[('webhook'::character varying)::text, ('schedule'::character varying)::text]))"
         },
         "workflow_triggers_status_valid": {
           "name": "workflow_triggers_status_valid",
@@ -5798,7 +5798,7 @@
       "checkConstraints": {
         "connections_auth_type_valid": {
           "name": "connections_auth_type_valid",
-          "value": "((auth_type)::text = ANY (ARRAY[('hmac_key'::character varying)::text, ('http_headers'::character varying)::text, ('slack_bot_token'::character varying)::text, ('resend_api_key'::character varying)::text, ('smtp'::character varying)::text, ('oauth2'::character varying)::text]))"
+          "value": "((auth_type)::text = ANY (ARRAY[('hmac_key'::character varying)::text, ('http_headers'::character varying)::text, ('slack_bot_token'::character varying)::text, ('resend_api_key'::character varying)::text, ('smtp'::character varying)::text, ('postgres'::character varying)::text, ('oauth2'::character varying)::text]))"
         },
         "connections_error_code_format": {
           "name": "connections_error_code_format",
@@ -17666,7 +17666,7 @@
         },
         "workflow_runs_trigger_type_valid": {
           "name": "workflow_runs_trigger_type_valid",
-          "value": "((trigger_type)::text = ANY (ARRAY[('test'::character varying)::text,('form'::character varying)::text, ('workflow_error'::character varying)::text, ('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('polling'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))"
+          "value": "((trigger_type)::text = ANY (ARRAY[('test'::character varying)::text,('form'::character varying)::text, ('workflow_error'::character varying)::text, ('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))"
         }
       },
       "isRLSEnabled": false
@@ -20820,131 +20820,6 @@
         "workflow_forms_access_valid": {
           "name": "workflow_forms_access_valid",
           "value": "((access='members' AND capability_hash IS NULL) OR (access='public' AND capability_hash ~ '^[0-9a-f]{64}$')) IS TRUE"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "app.trigger_polls": {
-      "name": "trigger_polls",
-      "schema": "app",
-      "columns": {
-        "trigger_id": {
-          "name": "trigger_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "seen_keys": {
-          "name": "seen_keys",
-          "type": "bytea[]",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "next_poll_at": {
-          "name": "next_poll_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "statement_timestamp()"
-        },
-        "retired_at": {
-          "name": "retired_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lease_owner": {
-          "name": "lease_owner",
-          "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lease_token": {
-          "name": "lease_token",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lease_acquired_at": {
-          "name": "lease_acquired_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lease_expires_at": {
-          "name": "lease_expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "statement_timestamp()"
-        }
-      },
-      "indexes": {
-        "trigger_polls_due_idx": {
-          "name": "trigger_polls_due_idx",
-          "columns": [
-            {
-              "expression": "next_poll_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "trigger_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "(retired_at IS NULL)",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "trigger_polls_trigger_fk": {
-          "name": "trigger_polls_trigger_fk",
-          "tableFrom": "trigger_polls",
-          "tableTo": "workflow_triggers",
-          "schemaTo": "app",
-          "columnsFrom": ["workspace_id", "trigger_id"],
-          "columnsTo": ["workspace_id", "id"],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "trigger_polls_pkey": {
-          "name": "trigger_polls_pkey",
-          "columns": ["workspace_id", "trigger_id"]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "trigger_polls_lease_valid": {
-          "name": "trigger_polls_lease_valid",
-          "value": "((((lease_owner IS NULL) AND (lease_token IS NULL) AND (lease_acquired_at IS NULL) AND (lease_expires_at IS NULL)) OR ((lease_owner IS NOT NULL) AND (lease_token IS NOT NULL) AND (lease_acquired_at IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (lease_expires_at > lease_acquired_at) AND (lease_expires_at <= (lease_acquired_at + '00:05:00'::interval)))) IS TRUE)"
         }
       },
       "isRLSEnabled": false

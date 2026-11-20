@@ -1,3 +1,11 @@
+import {
+  emptyPostgresDraft,
+  postgresCredential,
+  postgresDraftErrors,
+  POSTGRES_FIELDS,
+  type PostgresDraft,
+  type PostgresField,
+} from './postgres-draft';
 import { SIGNING_KEY_MAX_BYTES } from '@pertexo/node-sdk';
 import { formatCount } from '@/lib/format/count';
 import {
@@ -27,7 +35,6 @@ import {
   type OAuth2Draft,
   type OAuth2Field,
 } from './oauth2-draft';
-import { pluralWord } from '@/lib/format/count';
 
 /** What a form fills in: a provider's own credential, or HTTP's other way in. */
 export type CredentialKind = ConnectionChoice | 'oauth2';
@@ -40,11 +47,13 @@ export type CredentialDraft =
   | Readonly<{ provider: 'slack'; botToken: string }>
   | Readonly<{ provider: 'http'; headers: readonly HeaderRow[] }>
   | Readonly<{ provider: 'email'; apiKey: string; fromEmail: string }>
+  | PostgresDraft
   | OAuth2Draft
   | SmtpDraft;
 
 export type CredentialField =
   | SmtpField
+  | PostgresField
   | OAuth2Field
   | 'signingKey'
   | 'botToken'
@@ -62,6 +71,7 @@ const SLACK_TOKEN_FORMAT =
 /** Whether anything secret has been typed or pasted into the draft. */
 export function credentialDraftHasSecret(draft: CredentialDraft): boolean {
   switch (draft.provider) {
+    case 'postgres':
     case 'smtp':
       return draft.password !== '';
     case 'signing':
@@ -82,6 +92,8 @@ export function emptyCredentialDraft(
   createId: () => string,
 ): CredentialDraft {
   switch (provider) {
+    case 'postgres':
+      return emptyPostgresDraft();
     case 'smtp':
       return emptySmtpDraft();
     case 'signing':
@@ -129,7 +141,9 @@ function fromEmailError(fromEmail: string): string | undefined {
     : 'That isn’t a complete email address, like alerts@yourdomain.com.';
 }
 
-function filledRows(headers: readonly HeaderRow[]): readonly HeaderRow[] {
+export function filledRows(
+  headers: readonly HeaderRow[],
+): readonly HeaderRow[] {
   return headers.filter(
     (row) => row.name.trim() !== '' || row.value.trim() !== '',
   );
@@ -219,6 +233,8 @@ export function credentialErrors(
   draft: CredentialDraft,
 ): FieldErrors<CredentialField> {
   switch (draft.provider) {
+    case 'postgres':
+      return postgresDraftErrors(draft);
     case 'smtp':
       return smtpDraftErrors(draft);
     case 'signing':
@@ -258,6 +274,8 @@ export function toConnectionCredential(
   draft: CredentialDraft,
 ): ConnectionCredential {
   switch (draft.provider) {
+    case 'postgres':
+      return postgresCredential(draft);
     case 'smtp':
       return smtpCredential(draft);
     case 'signing':
@@ -295,6 +313,8 @@ export function toCreateRequest(
 ): ConnectionCreateRequest {
   const credential = toConnectionCredential(draft);
   switch (credential.type) {
+    case 'postgres':
+      return { providerKey: 'postgres', name, credential };
     case 'hmac_key':
       return { providerKey: 'signing', name, credential };
     case 'slack_bot_token':
@@ -320,6 +340,13 @@ export function credentialServerErrors(
     if (path[0] !== 'credential') continue;
     const field = path[1];
     switch (draft.provider) {
+      case 'postgres': {
+        const postgresField = POSTGRES_FIELDS.find(
+          (candidate) => candidate === field,
+        );
+        if (postgresField !== undefined) errors[postgresField] = issue.message;
+        break;
+      }
       case 'smtp': {
         const smtpField = SMTP_FIELDS.find((candidate) => candidate === field);
         if (smtpField !== undefined) errors[smtpField] = issue.message;
@@ -351,48 +378,4 @@ export function credentialServerErrors(
     }
   }
   return errors;
-}
-
-function maskSecret(secret: string, knownPrefix: string): string {
-  const prefix = secret.startsWith(knownPrefix) ? knownPrefix : '';
-  return `${prefix}••••••••${secret.slice(-4)}`;
-}
-
-export type SavedCredential = Readonly<{ term: string; value: string }>;
-
-/**
- * The credential as the add flow's summary shows it once saved: masked to
- * its known prefix and last four characters, header names without values.
- */
-export function describeSavedCredential(
-  draft: CredentialDraft,
-): SavedCredential {
-  switch (draft.provider) {
-    case 'smtp':
-      return {
-        term: 'SMTP',
-        value: `${draft.host}:${draft.port} · sends from ${draft.fromEmail}`,
-      };
-    case 'signing':
-      return { term: 'Key', value: 'Stored encrypted' };
-    case 'slack':
-      return {
-        term: 'Token',
-        value: maskSecret(draft.botToken.trim(), 'xoxb-'),
-      };
-    case 'email':
-      return {
-        term: 'API key',
-        value: `${maskSecret(draft.apiKey.trim(), 're_')} · sends from ${draft.fromEmail.trim()}`,
-      };
-    case 'http': {
-      const names = filledRows(draft.headers).map((row) => row.name.trim());
-      return {
-        term: pluralWord(names.length, 'Header'),
-        value: names.join(', '),
-      };
-    }
-    case 'oauth2':
-      return { term: 'Client ID', value: draft.clientId.trim() };
-  }
 }

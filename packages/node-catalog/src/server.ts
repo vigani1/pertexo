@@ -2,6 +2,7 @@ export { validateRegisteredCuratedTemplateSetup } from './curated-template-polic
 export { platformPortableDefinitionPolicy } from './portable-definition-policy.js';
 
 import {
+  createDatabaseExecutorRegistration,
   createHttpRequestExecutorRegistration,
   type HttpRequestExecutorDependencies,
   createSlackSendMessageExecutorRegistration,
@@ -21,6 +22,7 @@ import {
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
 
 export type PlatformNodeRegistryDependencies = Readonly<{
+  database?: Parameters<typeof createDatabaseExecutorRegistration>[0];
   httpRequest: HttpRequestExecutorDependencies;
   httpRequestTelemetry?: HttpRequestExecutorDependencies['telemetry'];
   slackSendMessage: SlackSendMessageExecutorDependencies;
@@ -36,6 +38,7 @@ export function createPlatformNodeRegistry(
   const { httpRequest, slackSendMessage, emailSendNotification } = dependencies;
   const executors: readonly NodeExecutorRegistration[] = [
     ...CORE_NODE_EXECUTOR_REGISTRATIONS,
+    createDatabaseExecutorRegistration(dependencies.database),
     createHttpRequestExecutorRegistration({
       ...httpRequest,
       ...(dependencies.httpRequestTelemetry === undefined

@@ -1,3 +1,4 @@
+import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
 import { withArtifactReadOutage } from '../artifact-read-retry.js';
 
 import { createPlatformNodeRegistry } from '../../../../src/providers/node-registry.js';
@@ -74,26 +75,34 @@ function controlledEditorDependencies(
 ) {
   const { controlledCapabilities, controlledHttpClient, state } = context;
   return {
-    registry: createPlatformNodeRegistry({
-      httpRequest: { httpClient: controlledHttpClient },
-      // Never allow unused provider executors to fall back to real networking.
-      slackSendMessage: {
-        client: state.curatedTarget?.slackClient ?? {
-          sendMessage: () =>
-            Promise.reject(
-              new Error('Provider outside controlled HTTP fixture'),
-            ),
+    registry: createPlatformNodeRegistry(
+      {
+        httpRequest: { httpClient: controlledHttpClient },
+        // Never allow unused provider executors to fall back to real networking.
+        slackSendMessage: {
+          client: state.curatedTarget?.slackClient ?? {
+            sendMessage: () =>
+              Promise.reject(
+                new Error('Provider outside controlled HTTP fixture'),
+              ),
+          },
+        },
+        emailSendNotification: {
+          client: state.resendMailbox?.client ?? {
+            sendNotification: () =>
+              Promise.reject(
+                new Error('Provider outside controlled HTTP fixture'),
+              ),
+          },
         },
       },
-      emailSendNotification: {
-        client: state.resendMailbox?.client ?? {
-          sendNotification: () =>
-            Promise.reject(
-              new Error('Provider outside controlled HTTP fixture'),
-            ),
-        },
-      },
-    }),
+      process.env.EDITOR_BROWSER_CASE === 'product'
+        ? {
+            allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
+            allowPlaintext: false,
+          }
+        : undefined,
+    ),
     runtimeCapabilities: {
       ...(artifactInputs
         ? withArtifactReadOutage(controlledCapabilities.factories)
