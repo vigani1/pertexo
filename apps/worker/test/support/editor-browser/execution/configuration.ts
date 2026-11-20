@@ -5,6 +5,7 @@ import {
   controlledHttp,
   curatedTemplates,
   emailAttachments,
+  pollingCase,
 } from './environment.js';
 
 export async function configureEditorWorker(context: EditorWorkerSetup) {
@@ -70,7 +71,10 @@ function parseEditorWorkerConfiguration(
             .parse(raw.callbackConfig),
         }
       : {}),
-    ...(!controlledHttp && !curatedTemplates && !emailAttachments
+    ...(!controlledHttp &&
+    !curatedTemplates &&
+    !emailAttachments &&
+    !pollingCase
       ? {}
       : editorHttpConfiguration(raw)),
   };
