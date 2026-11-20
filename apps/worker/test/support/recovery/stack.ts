@@ -182,7 +182,6 @@ export async function startStack(
     } finally {
       await admin.end();
     }
-    await redisCommand(redisDatabase, 'FLUSHDB');
     await redisNamespace.close();
   };
 

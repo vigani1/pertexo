@@ -1,3 +1,11 @@
+import {
+  emptyPostgresDraft,
+  postgresCredential,
+  postgresDraftErrors,
+  POSTGRES_FIELDS,
+  type PostgresDraft,
+  type PostgresField,
+} from './postgres-draft';
 import { SIGNING_KEY_MAX_BYTES } from '@pertexo/node-sdk';
 import { formatCount } from '@/lib/format/count';
 import {
@@ -39,11 +47,13 @@ export type CredentialDraft =
   | Readonly<{ provider: 'slack'; botToken: string }>
   | Readonly<{ provider: 'http'; headers: readonly HeaderRow[] }>
   | Readonly<{ provider: 'email'; apiKey: string; fromEmail: string }>
+  | PostgresDraft
   | OAuth2Draft
   | SmtpDraft;
 
 export type CredentialField =
   | SmtpField
+  | PostgresField
   | OAuth2Field
   | 'signingKey'
   | 'botToken'
@@ -61,6 +71,7 @@ const SLACK_TOKEN_FORMAT =
 /** Whether anything secret has been typed or pasted into the draft. */
 export function credentialDraftHasSecret(draft: CredentialDraft): boolean {
   switch (draft.provider) {
+    case 'postgres':
     case 'smtp':
       return draft.password !== '';
     case 'signing':
@@ -81,6 +92,8 @@ export function emptyCredentialDraft(
   createId: () => string,
 ): CredentialDraft {
   switch (provider) {
+    case 'postgres':
+      return emptyPostgresDraft();
     case 'smtp':
       return emptySmtpDraft();
     case 'signing':
@@ -220,6 +233,8 @@ export function credentialErrors(
   draft: CredentialDraft,
 ): FieldErrors<CredentialField> {
   switch (draft.provider) {
+    case 'postgres':
+      return postgresDraftErrors(draft);
     case 'smtp':
       return smtpDraftErrors(draft);
     case 'signing':
@@ -259,6 +274,8 @@ export function toConnectionCredential(
   draft: CredentialDraft,
 ): ConnectionCredential {
   switch (draft.provider) {
+    case 'postgres':
+      return postgresCredential(draft);
     case 'smtp':
       return smtpCredential(draft);
     case 'signing':
@@ -296,6 +313,8 @@ export function toCreateRequest(
 ): ConnectionCreateRequest {
   const credential = toConnectionCredential(draft);
   switch (credential.type) {
+    case 'postgres':
+      return { providerKey: 'postgres', name, credential };
     case 'hmac_key':
       return { providerKey: 'signing', name, credential };
     case 'slack_bot_token':
@@ -321,6 +340,13 @@ export function credentialServerErrors(
     if (path[0] !== 'credential') continue;
     const field = path[1];
     switch (draft.provider) {
+      case 'postgres': {
+        const postgresField = POSTGRES_FIELDS.find(
+          (candidate) => candidate === field,
+        );
+        if (postgresField !== undefined) errors[postgresField] = issue.message;
+        break;
+      }
       case 'smtp': {
         const smtpField = SMTP_FIELDS.find((candidate) => candidate === field);
         if (smtpField !== undefined) errors[smtpField] = issue.message;

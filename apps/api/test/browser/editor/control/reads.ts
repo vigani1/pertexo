@@ -112,3 +112,21 @@ export function handleEditorNoticeMail(input: EditorControlRequest): boolean {
   }
   return false;
 }
+
+export function handleEditorPostgresCredential(
+  input: EditorControlRequest,
+): boolean {
+  const { request, response, url, context } = input;
+  if (
+    request.method !== 'GET' ||
+    url.pathname !== '/postgres-credential' ||
+    context.postgresDestination === undefined
+  )
+    return false;
+  response.writeHead(200, {
+    'content-type': 'application/json',
+    'cache-control': 'no-store',
+  });
+  response.end(JSON.stringify(context.postgresDestination));
+  return true;
+}

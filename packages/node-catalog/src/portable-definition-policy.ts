@@ -12,6 +12,7 @@ import { PortableConnectionSlotPolicyError } from './node-catalog.errors.js';
 const CONNECTION_SLOT_POLICIES: Readonly<
   Record<string, Readonly<{ providerKey: string; authType: string }>>
 > = Object.freeze({
+  postgres: { providerKey: 'postgres', authType: 'postgres' },
   hmac_key: { providerKey: 'signing', authType: 'hmac_key' },
   http_headers: { providerKey: 'http', authType: 'http_headers' },
   slack_bot_token: { providerKey: 'slack', authType: 'slack_bot_token' },

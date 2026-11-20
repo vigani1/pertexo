@@ -24,6 +24,7 @@ import { TestThread } from './thread';
 type TestField = 'url' | 'acknowledged';
 
 const INTRO: Readonly<Record<ProviderKey, string>> = {
+  postgres: 'Pertexo connects and runs a simple read-only query.',
   signing:
     'Pertexo checks it can open this key locally. Nothing is sent to another service.',
   slack: 'Pertexo asks Slack whether the token works. Nothing is posted.',
@@ -34,6 +35,7 @@ const INTRO: Readonly<Record<ProviderKey, string>> = {
 
 const RUN_LABEL: Readonly<Record<ProviderKey, string>> = {
   signing: 'Check key access',
+  postgres: 'Test connection',
   slack: 'Test connection',
   http: 'Call this address',
   email: 'Send test email',
@@ -114,6 +116,7 @@ export function ConnectionTestPanel({
   function request(): ConnectionTestRequest | undefined {
     if (authType === 'smtp') return { providerKey: 'email', transport: 'smtp' };
     if (provider === 'signing') return { providerKey: 'signing' };
+    if (provider === 'postgres') return { providerKey: 'postgres' };
     if (provider === 'slack') return { providerKey: 'slack' };
     if (provider === 'http')
       return validation.submit({ url: urlError(url) })

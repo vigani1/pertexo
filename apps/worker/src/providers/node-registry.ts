@@ -1,5 +1,8 @@
 import { createSmtpEmailClient } from './smtp-email.js';
-import type { createSmtpClient } from '@pertexo/secrets/server';
+import {
+  createSecurePostgresClient,
+  type createSmtpClient,
+} from '@pertexo/secrets/server';
 import {
   createPlatformNodeRegistry as assemblePlatformNodeRegistry,
   type PlatformNodeRegistryDependencies,
@@ -20,6 +23,9 @@ export function createPlatformNodeRegistry(
 ) {
   return assemblePlatformNodeRegistry({
     ...dependencies,
+    database:
+      dependencies.database ??
+      createSecurePostgresClient(smtpPolicy.allowedPrivateNetworks),
     httpRequest: dependencies.httpRequest ?? {
       httpClient: createNodeProviderHttpClient(),
     },

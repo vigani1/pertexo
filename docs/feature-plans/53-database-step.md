@@ -7,7 +7,14 @@ Status: in progress. First slice of [F21b](21b-next-integrations.md).
 Create a PostgreSQL connection in the workspace, test it, and select it on a
 Database step. Choose Run query, Insert rows, Update rows or Upsert rows in
 the editor. Downstream steps can map the returned rows as items or use the
-row count.
+row count. Map query values as an ordered Parameters array and writes as a
+Rows array keyed by column name. An update row includes the configured key.
+The entire write batch commits or rolls back together.
+
+Custom query and row operations follow the PostgreSQL integrations in
+[n8n](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres),
+[Zapier](https://zapier.com/apps/postgresql/integrations) and
+[Make](https://www.make.com/en/integrations/postgres).
 
 ## Decisions
 
@@ -27,7 +34,8 @@ row count.
   releases its socket and session state when it finishes. Bound statement
   time and the number and encoded size of returned rows. Return specific
   safe failures and retry transient connection, timeout and serialization
-  failures. Keep credentials out of logs and run data.
+  failures. Treat a lost commit acknowledgement as an unknown outcome.
+  Keep credentials out of logs and run data.
 
 ## What changes
 

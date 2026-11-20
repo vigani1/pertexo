@@ -81,6 +81,7 @@ async function assertSecretCurrent(
     input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
     input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey &&
     input.expectedAuthType !== CONNECTION_AUTH_TYPE.smtp &&
+    input.expectedAuthType !== CONNECTION_AUTH_TYPE.postgres &&
     input.expectedAuthType !== CONNECTION_AUTH_TYPE.oauth2;
   if (unsupportedAuthType) throw new ProviderCredentialInvalidError();
   try {

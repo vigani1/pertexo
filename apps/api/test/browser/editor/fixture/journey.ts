@@ -1,3 +1,5 @@
+import { createPostgresDestination } from '@pertexo/database/testing';
+import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { liveJourneyEnvironment } from '../../../../../../infrastructure/testing/live-failure-artifacts.mjs';
 import { randomUUID } from 'node:crypto';
@@ -49,10 +51,28 @@ export function registerEditorBrowserJourney(
     `executes the owned real-browser scenario: ${scenario}`,
     async () => {
       const apiOrigin = await prepareEditorPrerequisites(api);
-      const context = { fixture, api, apiOrigin, identityProvider };
-      const mailServer = createEditorControlServer(context);
-      await runEditorBrowserJourney(context, mailServer);
-      await verifyEditorBrowserOutcome(context);
+      const destination =
+        scenario === 'product'
+          ? await createPostgresDestination(
+              testStackSetting('DATABASE_ADMIN_URL'),
+            )
+          : undefined;
+      try {
+        const context = {
+          fixture,
+          api,
+          apiOrigin,
+          identityProvider,
+          ...(destination === undefined
+            ? {}
+            : { postgresDestination: destination.credential }),
+        };
+        const mailServer = createEditorControlServer(context);
+        await runEditorBrowserJourney(context, mailServer);
+        await verifyEditorBrowserOutcome(context);
+      } finally {
+        await destination?.close();
+      }
     },
     journeyTimeoutMillis(),
   );
@@ -113,6 +133,7 @@ async function prepareEditorPrerequisites(api: EditorBrowserApi) {
     items: [
       { providerKey: 'email', operationKey: 'send_notification' },
       { providerKey: 'http', operationKey: 'request' },
+      { providerKey: 'postgres', operationKey: 'execute' },
       { providerKey: 'slack', operationKey: 'send_message' },
     ],
   });
