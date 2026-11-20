@@ -3,6 +3,7 @@ import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
 import { writeFile, chmod, cp } from 'node:fs/promises';
 import { requireCompatibleRelease } from '../encryption/require-compatible-release.mjs';
 import { validateApplicationConfiguration } from './preflight.mjs';
+import { serviceMemoryLimits } from './service-memory.mjs';
 
 // Use the application boundaries; configuration errors must fail before stopping a release.
 const environments = applicationEnvironments(process.env);
@@ -154,9 +155,22 @@ await output(
   }),
 );
 const codeLimits = codeContainerLimits(apiConfig.codeSettings);
+const memory = serviceMemoryLimits(environment);
 await output(
   'hosts.env',
-  `APP_HOST=${app}\nFILES_HOST=${files}\nCODE_RUNNER_CONTAINER_MEMORY_MB=${codeLimits.memoryMiB}\nCODE_RUNNER_CONTAINER_CPUS=${codeLimits.cpus}\nCODE_RUNNER_CONTAINER_PIDS=${codeLimits.pids}\nCODE_RUNNER_MANAGER_HEAP_MB=${codeLimits.managerHeapMiB}\n`,
+  [
+    `APP_HOST=${app}`,
+    `FILES_HOST=${files}`,
+    `CODE_RUNNER_CONTAINER_MEMORY_MB=${codeLimits.memoryMiB}`,
+    `CODE_RUNNER_CONTAINER_CPUS=${codeLimits.cpus}`,
+    `CODE_RUNNER_CONTAINER_PIDS=${codeLimits.pids}`,
+    `CODE_RUNNER_MANAGER_HEAP_MB=${codeLimits.managerHeapMiB}`,
+    `API_CONTAINER_MEMORY_MB=${memory.api.memoryMiB}`,
+    `API_HEAP_MB=${memory.api.heapMiB}`,
+    `WORKER_CONTAINER_MEMORY_MB=${memory.worker.memoryMiB}`,
+    `WORKER_HEAP_MB=${memory.worker.heapMiB}`,
+    `WORKER_MAX_RSS_BYTES=${memory.worker.maximumRssBytes}`,
+  ].join('\n') + '\n',
 );
 
 function optionalValues(names, source = environment) {

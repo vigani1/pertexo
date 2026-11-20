@@ -128,6 +128,8 @@ resolve_application_configuration() {
   if ! APP_HOST=configuration.invalid FILES_HOST=files.configuration.invalid \
     CODE_RUNNER_CONTAINER_MEMORY_MB=128 CODE_RUNNER_CONTAINER_CPUS=1 \
     CODE_RUNNER_CONTAINER_PIDS=128 CODE_RUNNER_MANAGER_HEAP_MB=32 \
+    API_CONTAINER_MEMORY_MB=512 API_HEAP_MB=256 WORKER_CONTAINER_MEMORY_MB=768 \
+    WORKER_HEAP_MB=256 WORKER_MAX_RSS_BYTES=671088640 \
     docker compose --project-name pertexo-beta --env-file "$config" --env-file "$hosts_file" \
       -f "$release/infrastructure/single-server/compose.yaml" config --no-env-resolution --format json > "$resolved_configuration" 2> "$resolved_configuration.errors"; then
     rm -f "$resolved_configuration" "$resolved_configuration.errors"
@@ -170,7 +172,7 @@ preflight_settings() {
   while IFS= read -r name; do
     # These values are derived by storage/prepare.mjs, never supplied by operators.
     case "$name" in
-      SERVICE_VERSION|APP_HOST|FILES_HOST|CODE_RUNNER_CONTAINER_*|CODE_RUNNER_MANAGER_HEAP_MB) continue ;;
+      SERVICE_VERSION|APP_HOST|FILES_HOST|CODE_RUNNER_CONTAINER_*|CODE_RUNNER_MANAGER_HEAP_MB|*_CONTAINER_MEMORY_MB|*_HEAP_MB|WORKER_MAX_RSS_BYTES) continue ;;
     esac
     if [[ -z $(config_value "$name") ]]; then
       printf '%s: set a non-empty value in %s before deploying.\n' "$name" "$config" >&2

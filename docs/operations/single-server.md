@@ -27,7 +27,24 @@ The supported minimum is **4 GiB and 2 vCPUs**, qualified on ARM64 Linux under
 Docker cgroups with the example's **64 MiB Code heap and one Code slot**. The API
 has a 512 MiB container cap and the worker 768 MiB, with no additional swap
 allowance and a 256 MiB V8 heap each. The worker drains and restarts itself
-at 640 MiB, before the kernel would kill it. The Code container ceiling for this preset is 1,872 MiB; it is not
+at 640 MiB, before the kernel would kill it.
+
+On a bigger server, give the API and the worker more memory with
+`API_MEMORY_MB` and `WORKER_MEMORY_MB` in `.env.production`, then deploy.
+Deployment preparation derives the rest, so the values can't disagree: the
+API's heap is half its memory; the worker's heap is a third, and it drains at
+a sixth below its cap (at least 128 MiB). Neither may go below 512. Starting
+points (only the minimum is qualified by measurement; check free memory under
+load):
+
+| Server | `API_MEMORY_MB` | `WORKER_MEMORY_MB` |
+| --- | ---: | ---: |
+| 4 GiB, 2 vCPUs (minimum) | 512 (default) | 768 (default) |
+| 8 GiB, 4 vCPUs | 1024 | 1536 |
+| 16 GiB, 8 vCPUs | 2048 | 3072 |
+
+More memory gives each service headroom; it doesn't make it do more at once.
+For more throughput, raise the run limits and Code slots as well. The Code container ceiling for this preset is 1,872 MiB; it is not
 reserved while idle. Existing installs retaining the 128 MiB / two-slot Code
 preset need a larger memory budget: that runner ceiling alone is 2,912 MiB.
 

@@ -86,6 +86,10 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
             ]),
           }),
       POSTGRES_SHARED_BUFFERS: mode === 'kms' ? '' : '256MB',
+      // One mode keeps the defaults; the other gives a bigger server's memory.
+      ...(mode === 'kms'
+        ? {}
+        : { API_MEMORY_MB: '1024', WORKER_MEMORY_MB: '2048' }),
       SERVICE_VERSION: 'b'.repeat(40),
       BETA_STATE_DIR: directory,
     };
@@ -129,10 +133,14 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
         .length > 0,
       true,
     );
-    for (const [service, memoryMiB] of [
-      ['api', 512],
-      ['worker', 768],
-    ]) {
+    // Defaults: the qualified minimum server. Otherwise each heap and the
+    // worker's drain budget follow the memory the operator gave the service.
+    const memory =
+      mode === 'kms'
+        ? { api: [512, 256], worker: [768, 256], drainMiB: 640 }
+        : { api: [1024, 512], worker: [2048, 682], drainMiB: 1707 };
+    for (const service of ['api', 'worker']) {
+      const [memoryMiB, heapMiB] = memory[service];
       assert.equal(
         Number(config.services[service].mem_limit),
         memoryMiB * 1024 * 1024,
@@ -143,7 +151,7 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       );
       assert.equal(
         config.services[service].environment.NODE_OPTIONS,
-        '--max-old-space-size=256',
+        `--max-old-space-size=${String(heapMiB)}`,
       );
     }
     const api = parseApiConfig(config.services.api.environment);
@@ -190,7 +198,10 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
     });
     // The worker's own drain must act before the kernel does: a budget equal
     // to the cap meant the kernel always got there first.
-    assert.equal(worker.resourceSafety.maximumRssBytes, 640 * 1024 * 1024);
+    assert.equal(
+      worker.resourceSafety.maximumRssBytes,
+      memory.drainMiB * 1024 * 1024,
+    );
     assert.ok(
       Number(config.services.worker.mem_limit) -
         worker.resourceSafety.maximumRssBytes >=
