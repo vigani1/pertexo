@@ -184,29 +184,26 @@ it('rejects cross-origin next links without dispatch or changes to seen state', 
   expect(await poll.admitted()).toEqual([]);
 });
 
-it(
-  'releases the claim when the scan is canceled while reading a feed page',
-  async () => {
-    const streaming = Promise.withResolvers<void>();
-    const origin = await server((_url, _request, response) => {
-      response.setHeader('content-type', 'application/json');
-      response.write('[');
-      streaming.resolve();
-    });
-    const { triggerId } = await poll.publish(true, `${origin}/items`);
-    const controller = new AbortController();
-    const canceled = expect(
-      poll.scanner(runtime.fetchPoll)({ signal: controller.signal }),
-    ).rejects.toMatchObject({ name: 'AbortError' });
-    await streaming.promise;
-    controller.abort();
-    await canceled;
-    expect(await poll.read(triggerId)).toMatchObject({
-      hashes: null,
-      leased: false,
-      due: true,
-    });
-    expect(await poll.admitted()).toEqual([]);
-  },
-  HTTP_REQUEST_LIMITS.defaultTimeoutMillis / 2,
-);
+it('releases the claim when the scan is canceled while reading a feed page', async () => {
+  const streaming = Promise.withResolvers<undefined>();
+  const origin = await server((_url, _request, response) => {
+    response.setHeader('content-type', 'application/json');
+    response.write('[');
+    streaming.resolve(undefined);
+  });
+  const { triggerId } = await poll.publish(true, `${origin}/items`);
+  const controller = new AbortController();
+  const canceled = expect(
+    poll.scanner(runtime.fetchPoll)({ signal: controller.signal }),
+  ).rejects.toMatchObject({ name: 'AbortError' });
+  await streaming.promise;
+  controller.abort();
+  await canceled;
+  expect(await poll.read(triggerId)).toMatchObject({
+    hashes: null,
+    leased: false,
+    due: true,
+  });
+  expect(await poll.admitted()).toEqual([]);
+}, // The scan must abort before the HTTP deadline can end the request.
+5_000);
