@@ -4,6 +4,7 @@ import {
   canonicalOutboxPayloadChecksum,
   withTenantScopedClient,
 } from '@pertexo/database/primitives';
+import { HTTP_POLL_CONNECTION_SLOT } from '@pertexo/workflow-model';
 import { Pool } from 'pg';
 import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { createScheduleTriggerTestEnvironment } from '../../support/schedule-triggers.js';
@@ -21,7 +22,11 @@ export function pollingFixture() {
   let versionNumber = 1;
   const scanners: ReturnType<typeof createScheduleTriggerScanner>[] = [];
 
-  async function publish(reconcileNow = true) {
+  async function publish(
+    reconcileNow = true,
+    url = 'https://feed.example.test/items',
+    connectionId?: string,
+  ) {
     const publishedVersionId = randomUUID();
     const triggerId = randomUUID();
     const outboxEventId = randomUUID();
@@ -30,8 +35,13 @@ export function pollingFixture() {
         {
           id: 'poll',
           definition: { key: 'http.poll', version: 1 },
+          ...(connectionId === undefined
+            ? {}
+            : {
+                connectionRefs: { [HTTP_POLL_CONNECTION_SLOT]: connectionId },
+              }),
           config: {
-            url: 'https://feed.example.test/items',
+            url,
             intervalMinutes: 1,
             itemsPath: '$',
             itemKeyPath: '$.key',
@@ -155,6 +165,8 @@ export function pollingFixture() {
   return {
     deliveries,
     app,
+    config,
+    actorId: fixture.actorId,
     publish,
     scanner,
     read,
