@@ -13,10 +13,6 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/ui/empty';
-import {
-  DATABASE_POLL_TRIGGER,
-  HTTP_POLL_TRIGGER,
-} from '@pertexo/workflow-model';
 import { PollingSection } from '../components/triggers/polling-section';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
@@ -26,7 +22,10 @@ import { settingsReadFailure } from '../components/settings-read-failure';
 import { SchedulesSection } from '../components/triggers/schedules/section';
 import { WebhooksSection } from '../components/triggers/webhooks/section';
 import { triggerStepName } from '../model/triggers/steps';
-import { publishedTriggerKinds } from '../model/triggers/published';
+import {
+  publishedPollingTitle,
+  publishedTriggerKinds,
+} from '../model/triggers/published';
 import {
   triggerPublicationQueryOptions,
   scheduleTriggersQueryOptions,
@@ -202,23 +201,9 @@ function TriggersSession({
     workspace,
     workflowId,
   });
-  const {
-    versions,
-    summary,
-    form,
-    onFailure,
-    polling,
-    publicationKnown,
-    kinds,
-  } = publication;
+  const { versions, summary, form, onFailure, pollingTitle, publicationKnown } =
+    publication;
   const pollItems = shownData(summary)?.pollingTriggers ?? [];
-  const databasePolling = kinds?.includes(DATABASE_POLL_TRIGGER.key) ?? false;
-  const httpPolling = kinds?.includes(HTTP_POLL_TRIGGER.key) ?? false;
-  const pollingTitle = databasePolling
-    ? httpPolling
-      ? 'Polling triggers'
-      : 'Database Row'
-    : 'HTTP Polling';
   const webhookItems = shownData(webhooks)?.items;
   const scheduleItems = shownData(schedules)?.items;
   const stepName = (
@@ -240,7 +225,7 @@ function TriggersSession({
     scheduleCount: scheduleItems?.length,
     form,
     onFailure,
-    polling,
+    polling: pollingTitle !== undefined,
   });
   if (publicationKnown && needsFirstTrigger)
     return (
@@ -303,13 +288,13 @@ function TriggersSession({
           </p>
         )}
       </SettingsSection>
-      {polling ? (
+      {pollingTitle === undefined ? null : (
         <PollingSection
           title={pollingTitle}
           triggers={pollItems}
           stepNameFor={(trigger) => stepName(trigger, pollingTitle)}
         />
-      ) : null}
+      )}
       <SettingsSection
         title="Schedules"
         description="Start runs on a timetable. Times follow each schedule’s time zone."
@@ -362,17 +347,17 @@ function useTriggerPublication({
     !summary.isFetching &&
     (summary.data.publishedVersionId === null ||
       (versions.isSuccess && !versions.isFetching && kinds !== undefined));
-  const polling =
-    (kinds?.includes(HTTP_POLL_TRIGGER.key) ?? false) ||
-    (kinds?.includes(DATABASE_POLL_TRIGGER.key) ?? false) ||
-    (shownData(summary)?.pollingTriggers?.length ?? 0) > 0;
+  const pollingTitle = publishedPollingTitle(
+    kinds,
+    shownData(summary)?.pollingTriggers?.length,
+  );
   return {
     versions,
     summary,
     kinds,
     form,
     onFailure,
-    polling,
+    pollingTitle,
     publicationKnown,
   };
 }

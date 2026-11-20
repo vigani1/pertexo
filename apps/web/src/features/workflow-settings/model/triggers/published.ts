@@ -1,3 +1,7 @@
+import {
+  DATABASE_POLL_TRIGGER,
+  HTTP_POLL_TRIGGER,
+} from '@pertexo/workflow-model';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import {
   workflowTriggerKinds,
@@ -15,6 +19,17 @@ export function publishedTriggerKinds(
   return published === undefined
     ? undefined
     : workflowTriggerKinds(published.graph);
+}
+
+export function publishedPollingTitle(
+  kinds: readonly TriggerKind[] | undefined,
+  pollCount: number | undefined,
+): string | undefined {
+  const http = kinds?.includes(HTTP_POLL_TRIGGER.key) ?? false;
+  if (kinds?.includes(DATABASE_POLL_TRIGGER.key))
+    return http ? 'Polling triggers' : 'Database Row';
+  if (http || (pollCount ?? 0) > 0) return 'HTTP Polling';
+  return undefined;
 }
 
 /**

@@ -43,12 +43,11 @@ function PausedStateNotice({
     settings.pauseEvidence?.kind === 'poll'
       ? settings.pauseEvidence
       : undefined;
-  const failures =
-    poll === undefined
-      ? 'failed triggered runs'
-      : poll.errorCode.startsWith('database.')
-        ? 'failed database checks'
-        : 'failed feed checks';
+  let failures = 'failed triggered runs';
+  if (poll !== undefined)
+    failures = poll.errorCode.startsWith('database.')
+      ? 'failed database checks'
+      : 'failed feed checks';
   return (
     <Notice
       tone="warning"
