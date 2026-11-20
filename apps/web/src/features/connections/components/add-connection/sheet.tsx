@@ -33,10 +33,12 @@ import {
 } from '../../model/connection-providers';
 import {
   credentialDraftHasSecret,
-  describeSavedCredential,
   toCreateRequest,
-  type SavedCredential,
 } from '../../model/credential-draft';
+import {
+  describeSavedCredential,
+  type SavedCredential,
+} from '../../model/saved-credential';
 import { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { useConnectionTest } from '../../data/connection-test.mutations';
 import { useCredentialForm } from '../credential/use-form';
