@@ -4,8 +4,10 @@ name: Simulate load
 # host, made as one cgroup) on real Linux runners: an hour of a small team's
 # mixed traffic, and separately a ramp past capacity until something gives.
 # The sizing input `j1` instead applies the J1 qualification's per-service caps.
-# Started by hand or by pushing a throwaway sim/load/<n> or sim/load-shed/<n>
-# branch; never on pull requests, main or a schedule.
+# A third scenario keeps the worker at its busiest everyday work and reads its
+# own memory figures. Started by hand or by pushing a throwaway sim/load/<n>,
+# sim/load-shed/<n> or sim/worker-memory/<n> branch (the last runs only the
+# worker scenario); never on pull requests, main or a schedule.
 on:
   workflow_dispatch:
     inputs:
@@ -18,8 +20,11 @@ on:
       sizing:
         description: host (one 4 GiB cgroup) or j1 (per-service caps)
         default: host
+      scenario:
+        description: all, steady, overload or worker-memory
+        default: all
   push:
-    branches: ['sim/load/**', 'sim/load-shed/**']
+    branches: ['sim/load/**', 'sim/load-shed/**', 'sim/worker-memory/**']
 
 permissions:
   contents: read
@@ -37,7 +42,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: [steady, overload]
+        scenario: >-
+          ${{ fromJSON(
+            inputs.scenario && inputs.scenario != 'all' && format('["{0}"]',
+          inputs.scenario)
+            || startsWith(github.ref_name, 'sim/worker-memory/') &&
+          '["worker-memory"]'
+            || '["steady", "overload", "worker-memory"]') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -133,6 +133,52 @@ export async function publishTeamWorkflows(client, workspaceId) {
   };
 }
 
+// Code that reads every item of a fetched page, as a real transform does.
+const TRANSFORM = {
+  javascript:
+    'const text = JSON.stringify(input); let total = 0; for (const match of text.matchAll(/"price":([0-9.]+)/g)) total += Number(match[1]); return { bytes: text.length, total };',
+  python:
+    'import json, re\ntext = json.dumps(input)\nreturn {"bytes": len(text), "total": sum(float(price) for price in re.findall(r\'"price": ([0-9.]+)\', text))}',
+};
+
+/**
+ * The worker's heaviest everyday work: a webhook fetches a page of about
+ * 40 KiB from an outside API and Code transforms it, in JavaScript or Python.
+ */
+export async function publishFetchAndTransformHooks(client, workspaceId) {
+  const hooks = {};
+  for (const language of ['javascript', 'python'])
+    hooks[language] = await provisionWebhook(
+      client,
+      await publishWorkflow(client, workspaceId, {
+        name: `Fetch and transform (${language})`,
+        nodes: [
+          node('hook', 'core.webhook'),
+          {
+            ...node('fetch', 'http.request', {
+              method: 'GET',
+              url: `${TARGET_ORIGIN}/page`,
+              headers: {},
+              ...HTTP_LIMITS,
+            }),
+            retry: HTTP_RETRY,
+          },
+          node(
+            'transform',
+            'core.code',
+            { code: TRANSFORM[language], language },
+            { page: { kind: 'node_output', nodeId: 'fetch', path: '$' } },
+          ),
+        ],
+        edges: [
+          edge('first', 'hook', 'fetch'),
+          edge('second', 'fetch', 'transform'),
+        ],
+      }),
+    );
+  return hooks;
+}
+
 /** The cheapest webhook workflow: nothing but the run itself. */
 export async function publishLightHook(client, workspaceId) {
   return provisionWebhook(

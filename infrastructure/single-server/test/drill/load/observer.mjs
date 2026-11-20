@@ -1,5 +1,6 @@
 import { docker, mustDocker } from '../support/process.mjs';
 import { project } from '../support/server.mjs';
+import { nodeProcessMemory } from './process-memory.mjs';
 import { SERVING_SERVICES, hostMemory, sql, sqlJson } from './stack.mjs';
 import { sleep } from './traffic.mjs';
 
@@ -28,8 +29,11 @@ const bytes = (text) => {
   return match ? Number(match[1]) * (UNITS[match[2]] ?? 1) : null;
 };
 
-/** Samples the stack every `every` ms until stopped; returns the samples. */
-export function startSampler(server, { every = 15_000 } = {}) {
+/**
+ * Samples the stack every `every` ms until stopped; returns the samples. With
+ * `processes`, also reads those Node services' own memory figures.
+ */
+export function startSampler(server, { every = 15_000, processes = [] } = {}) {
   const samples = [];
   let stopped = false;
   const loop = (async () => {
@@ -43,7 +47,15 @@ export function startSampler(server, { every = 15_000 } = {}) {
           redisState(server),
           insideNodeServices(server),
         ]);
-        samples.push({ at: started, memory, host, database, redis, inside });
+        const sample = { at: started, memory, host, database, redis, inside };
+        // After the container figures, so its own brief work never shows in them.
+        if (processes.length > 0) sample.process = {};
+        for (const service of processes)
+          sample.process[service] = await nodeProcessMemory(
+            server,
+            service,
+          ).catch((error) => ({ error: String(error.message).slice(0, 300) }));
+        samples.push(sample);
       } catch (error) {
         samples.push({ at: started, error: String(error.message) });
       }
@@ -84,7 +96,7 @@ async function serviceUsage() {
 const MEMORY_STAT_FIELDS = ['anon', 'file', 'kernel', 'sock', 'shmem'];
 async function insideNodeServices(server) {
   const inside = {};
-  for (const service of ['api', 'worker']) {
+  for (const service of ['api', 'worker', 'code-runner']) {
     const result = await docker([
       'exec',
       await server.containerOf(service),
@@ -362,11 +374,19 @@ export async function restartsAndKills(sinceMillis) {
   };
 }
 
-/** Least-squares slope of a service's memory, in MiB per hour, after `from`. */
-export function memoryTrend(samples, service, from = 0) {
+/**
+ * Least-squares slope of a service's memory, in MiB per hour, after `from`:
+ * its container's by default, or what `read` takes from each sample.
+ */
+export function memoryTrend(
+  samples,
+  service,
+  from = 0,
+  read = (sample) => sample.memory?.[service]?.mib,
+) {
   const points = samples
-    .filter((sample) => sample.at >= from && sample.memory?.[service])
-    .map((sample) => [sample.at / 3_600_000, sample.memory[service].mib]);
+    .filter((sample) => sample.at >= from && Number.isFinite(read(sample)))
+    .map((sample) => [sample.at / 3_600_000, read(sample)]);
   if (points.length < 3) return null;
   const meanX = points.reduce((sum, [x]) => sum + x, 0) / points.length;
   const meanY = points.reduce((sum, [, y]) => sum + y, 0) / points.length;
@@ -412,6 +432,12 @@ export function summarizeSamples(samples, since) {
       row.inside ??= {};
       const kept = row.inside[service];
       if (!kept || stat.anonMib > kept.anonMib) row.inside[service] = stat;
+    }
+    for (const [service, stat] of Object.entries(sample.process ?? {})) {
+      if (stat.error) continue;
+      row.process ??= {};
+      const kept = row.process[service];
+      if (!kept || stat.rssMib > kept.rssMib) row.process[service] = stat;
     }
     if (sample.host) {
       row.hostMib = Math.max(row.hostMib ?? 0, sample.host.currentMib);
