@@ -24,6 +24,8 @@ it('sends no connected request when the poll lease expires during the secret che
     },
     {
       connections: {
+        resolve: () =>
+          Promise.reject(new Error('Expected HTTP credential resolution')),
         resolveHttpCredential: () =>
           Promise.resolve({
             connectionId,
