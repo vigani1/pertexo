@@ -10,7 +10,7 @@ it.each([
   ['a column name over the identifier limit', 'a'.repeat(64)],
   [
     'too many columns',
-    Array.from({ length: 33 }, (_, i) => `column_${i}`).join('\n'),
+    Array.from({ length: 33 }, (_, i) => `column_${String(i)}`).join('\n'),
   ],
 ])(
   'rejects upsert conflict columns with %s during setup validation',
