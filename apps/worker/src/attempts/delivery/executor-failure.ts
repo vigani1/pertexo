@@ -4,8 +4,8 @@ import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import {
   PROVIDER_RETRY_FAILURE,
   HTTP_RESPONSE_FAILURES,
-  POSTGRES_FAILURE_CODES,
 } from '@pertexo/integrations';
+import { POSTGRES_FAILURE_CODES } from '@pertexo/workflow-model';
 import {
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,

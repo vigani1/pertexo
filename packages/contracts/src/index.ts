@@ -391,7 +391,5 @@ export {
   postgresCredentialSchema,
   POSTGRES_DEFAULT_PORT,
   POSTGRES_LIMITS,
-  POSTGRES_FAILURE_CODES,
   type PostgresCredential,
-  type PostgresFailureCode,
 } from './schemas/connections/postgres.js';

@@ -1,7 +1,5 @@
-import type {
-  PostgresCredential,
-  PostgresFailureCode,
-} from '@pertexo/contracts';
+import type { PostgresCredential } from '@pertexo/contracts';
+import type { PostgresFailureCode } from '@pertexo/workflow-model';
 
 export type PostgresResult = Readonly<{
   rows: Record<string, unknown>[];
