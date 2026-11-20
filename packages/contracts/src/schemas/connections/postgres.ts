@@ -58,8 +58,3 @@ export const POSTGRES_LIMITS = Object.freeze({
   maxRows: 1_000,
   resultBytes: 131_072,
 });
-
-export {
-  POSTGRES_FAILURE_CODES,
-  type PostgresFailureCode,
-} from '@pertexo/workflow-model';

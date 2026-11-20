@@ -1,4 +1,4 @@
-import type { PostgresFailureCode } from '@pertexo/contracts';
+import type { PostgresFailureCode } from '@pertexo/workflow-model';
 import {
   NodeExecutorFailure,
   type NodeExecutorFailureKind,
