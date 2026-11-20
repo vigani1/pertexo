@@ -15,6 +15,7 @@ import type { StructuredLogger } from '@pertexo/observability/server';
 import { WORKSPACE_DATABASE } from '../database/database.module.js';
 import { RateLimitExempt } from '../rate-limit/metadata.js';
 import { ApiDrainState } from './drain-state.js';
+import { HEALTH_PATHS } from './health-paths.js';
 
 type ReadyResponse = Readonly<{
   status: 'ready';
@@ -42,7 +43,7 @@ class NotReadyFilter implements ExceptionFilter<ServiceUnavailableException> {
   }
 }
 
-@Controller('health')
+@Controller()
 @RateLimitExempt()
 @UseFilters(NotReadyFilter)
 export class ReadyController {
@@ -58,7 +59,7 @@ export class ReadyController {
     private readonly logger?: Pick<StructuredLogger, 'warn'>,
   ) {}
 
-  @Get('ready')
+  @Get(HEALTH_PATHS.ready)
   public async ready(): Promise<ReadyResponse> {
     if (this.drainState.isDraining()) {
       throw new ServiceUnavailableException({ status: 'not_ready' });
