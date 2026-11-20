@@ -1,5 +1,6 @@
 import { registerAuditDownloadResponse } from './governance/audit-download-response.js';
 import { registerReceiveShutdown } from './platform/http/receive-shutdown.js';
+import { registerInFlightLimit } from './platform/http/in-flight-limit.js';
 import { registerCallbackIngress } from './webhooks/callbacks/ingress.js';
 import { registerDirectoryTransport } from './authentication/federation/provisioning/transport/register-directory-transport.js';
 import type { WorkspaceDatabase } from '@pertexo/database/platform';
@@ -78,6 +79,11 @@ export async function assembleApiApplication(
       config.trustedProxyCidrs.length === 0
         ? false
         : [...config.trustedProxyCidrs],
+  });
+  // First, so a request past the bound costs no body parsing or route work.
+  registerInFlightLimit(fastifyAdapter.getInstance(), {
+    limit: config.inFlightRequestLimit,
+    logger: dependencies.logger,
   });
   registerReceiveShutdown(
     fastifyAdapter.getInstance(),

@@ -78,6 +78,7 @@ Generated from the problem manifest; run `pnpm contracts:generate`. Branch on th
 | `run.not_cancelable` | 409 | Run cannot be canceled |
 | `run.outcome_unknown` | 409 | Run outcome is unknown |
 | `run.recovery_unavailable` | 409 | Recovery unavailable |
+| `server.busy` | 503 | Server busy |
 | `trigger.coordination_unavailable` | 503 | Event coordination temporarily unavailable |
 | `user.profile_revision_conflict` | 412 | Profile revision conflict |
 | `variables.changed` | 409 | Workspace variables changed |

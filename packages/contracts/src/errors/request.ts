@@ -59,6 +59,13 @@ export const requestProblems = {
     severity: 'warn',
     exposeDetail: true,
   },
+  // The API holds as many requests as it safely can and turns the rest away.
+  'server.busy': {
+    status: 503,
+    title: 'Server busy',
+    severity: 'warn',
+    exposeDetail: false,
+  },
   'request.aborted': {
     status: 499,
     title: 'Request closed by the client',

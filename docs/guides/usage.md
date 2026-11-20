@@ -50,6 +50,14 @@ API at startup, and the error names the setting.
 | `WORKSPACE_FILE_LIMIT` | 10,000 | Stored files. Past it, new files are refused. |
 | `WEBHOOK_ENDPOINT_BURST_LIMIT` | 600 | POSTs a minute to one webhook endpoint. Past it, senders get 429. |
 
+One more setting applies to the whole API process rather than per workspace:
+`API_IN_FLIGHT_REQUEST_LIMIT` (default 256, at most 10,000) is how many requests
+the API holds at once. Past it, the API answers `503` with the `server.busy`
+problem and `Retry-After` before reading the request's body, so a flood can't
+push it past its memory cap. Health checks are never turned away. See
+[the single-server guide](../operations/single-server.md) for how the default was
+sized.
+
 The defaults suit a server with about 4 CPU cores and 8 GB of memory. On a small
 one (2 cores, 4 GB) start with `WORKSPACE_ACTIVE_RUN_LIMIT=5`,
 `WORKSPACE_QUEUED_RUN_LIMIT=1000` and `WEBHOOK_ENDPOINT_BURST_LIMIT=120`, and raise

@@ -98,6 +98,10 @@ const instanceLimitsSchema = z.object({
     DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
     INSTANCE_LIMIT_MAXIMUMS.webhookEndpointBurstLimit,
   ),
+  API_IN_FLIGHT_REQUEST_LIMIT: instanceLimit(
+    DEFAULT_INSTANCE_LIMITS.inFlightRequestLimit,
+    INSTANCE_LIMIT_MAXIMUMS.inFlightRequestLimit,
+  ),
 });
 
 /** An operator's typo: naming the setting tells them what to fix, and it holds no secret. */
@@ -159,6 +163,8 @@ export type ApiConfig = Readonly<{
   callbacks?: CallbackKeyConfig;
   capacity: InstanceCapacity;
   webhookEndpointBurstLimit: number;
+  /** Requests held at once; past it the API answers 503 server.busy. */
+  inFlightRequestLimit: number;
   codeSettings: CodeSettings;
   artifacts?: ArtifactStoreConfig;
   connections?:
@@ -248,6 +254,7 @@ export function parseApiConfig(
       artifactCountLimit: limits.WORKSPACE_FILE_LIMIT,
     }),
     webhookEndpointBurstLimit: limits.WEBHOOK_ENDPOINT_BURST_LIMIT,
+    inFlightRequestLimit: limits.API_IN_FLIGHT_REQUEST_LIMIT,
     codeSettings: parseCodeSettings(environment),
     ...(artifacts === undefined ? {} : { artifacts }),
     ...(connections === undefined ? {} : { connections }),

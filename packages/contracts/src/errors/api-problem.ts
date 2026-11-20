@@ -186,6 +186,7 @@ const apiProblemDetails = {
   'webhook.unavailable': webhooksProblems['webhook.unavailable'],
   'request.temporarily_unavailable':
     requestProblems['request.temporarily_unavailable'],
+  'server.busy': requestProblems['server.busy'],
   'request.aborted': requestProblems['request.aborted'],
   'internal.unexpected': requestProblems['internal.unexpected'],
 } as const satisfies Record<
