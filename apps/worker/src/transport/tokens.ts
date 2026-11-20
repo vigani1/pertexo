@@ -1,4 +1,4 @@
-import type { ProviderConnectionFactory } from '../providers/connections.runtime.js';
+import type { ProviderConnectionRuntime } from '../providers/connections.runtime.js';
 import type { DatabaseRuntime } from '@pertexo/database/platform';
 import type { StructuredLogger } from '@pertexo/observability/server';
 
@@ -14,5 +14,5 @@ export type TransportModuleDependencies = Readonly<{
   databaseRuntime?: DatabaseRuntime;
   dispatcherDatabaseRuntime?: DatabaseRuntime;
   logger?: StructuredLogger;
-  providerConnections?: ProviderConnectionFactory;
+  providerConnectionRuntime?: ProviderConnectionRuntime;
 }>;

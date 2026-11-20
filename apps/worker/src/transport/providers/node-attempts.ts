@@ -90,7 +90,7 @@ async function composeNodeAttemptRuntime(
   config: WorkerConfig,
   observer: QueueConsumerObserver,
   {
-    dependencies: { databaseRuntime, providerConnections },
+    dependencies: { databaseRuntime, providerConnectionRuntime },
     preview,
     factories,
   }: Readonly<{
@@ -102,6 +102,7 @@ async function composeNodeAttemptRuntime(
     factories: NodeAttemptRuntimeProviderFactories;
   }>,
 ): Promise<NodeAttemptRuntime> {
+  const providerConnections = providerConnectionRuntime?.connections;
   return factories.createRuntime({
     artifactStore: config.artifactStore,
     ...(config.callbacks === undefined ? {} : { callbacks: config.callbacks }),

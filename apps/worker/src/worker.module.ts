@@ -1,4 +1,3 @@
-import type { ProviderConnectionRuntime } from './providers/connections.runtime.js';
 import { createFailureNotificationMailAuthorizer } from '@pertexo/core/notifications';
 import { reportUnavailableMailKey } from './mail/report-unavailable-mail-key.js';
 import { createSystemMailClient } from './mail/system-mail-client.js';
@@ -7,10 +6,7 @@ import 'reflect-metadata';
 
 import { Module } from '@nestjs/common';
 import type { DynamicModule, Provider } from '@nestjs/common';
-import type {
-  DatabaseRuntime,
-  WorkspaceDatabase,
-} from '@pertexo/database/platform';
+import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import { createSystemMailDeliveryStore } from '@pertexo/secrets/server';
 import {
   createNoticeMailStore,
@@ -67,6 +63,7 @@ import {
   MAINTENANCE_RUNTIME,
   NODE_ATTEMPT_RUNTIME,
   TRIGGER_RUNTIME,
+  type TransportModuleDependencies,
 } from './transport/tokens.js';
 import type { NodeAttemptRuntime } from './attempts/delivery/node-attempt.runtime.js';
 import type { MaintenanceRuntime } from './maintenance/maintenance.runtime.js';
@@ -74,13 +71,11 @@ import type { CoordinatorRuntime } from './runs/coordinator.runtime.js';
 import type { TriggerRuntime } from './triggers/trigger.runtime.js';
 import { OutboxDispatcherLifecycle } from './transport/lifecycle.js';
 
-export type WorkerModuleDependencies = Readonly<{
-  databaseRuntime?: DatabaseRuntime;
-  providerConnectionRuntime?: ProviderConnectionRuntime;
-  dispatcherDatabaseRuntime?: DatabaseRuntime;
-  logger: StructuredLogger;
-  telemetry: TelemetryLifecycle;
-}>;
+export type WorkerModuleDependencies = TransportModuleDependencies &
+  Readonly<{
+    logger: StructuredLogger;
+    telemetry: TelemetryLifecycle;
+  }>;
 
 @Module({})
 // Nest requires a class as the root module passed to the application factory.
@@ -99,15 +94,7 @@ export class WorkerModule {
             ? {}
             : { runtime: dependencies.databaseRuntime },
         ),
-        TransportModule.register(config, {
-          ...dependencies,
-          ...(dependencies.providerConnectionRuntime === undefined
-            ? {}
-            : {
-                providerConnections:
-                  dependencies.providerConnectionRuntime.connections,
-              }),
-        }),
+        TransportModule.register(config, dependencies),
         ObservabilityModule.register(
           dependencies.logger,
           dependencies.telemetry,
