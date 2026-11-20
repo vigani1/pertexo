@@ -150,6 +150,15 @@ killed the worker and the step it was running failed as interrupted, because
 first. The worker now has 768 MiB and drains at 640 MiB. The Code runner's manager stayed at 82–117 MiB of
 its 1,872 MiB ceiling.
 
+A five-hour soak at the same load with the 768 MiB cap showed worker RSS growth
+slowing from 15.3 MiB/h in the first hour to 1.6 MiB/h in the middle three hours
+and 0.8 MiB/h in the final hour, based on five-minute readings. Peak RSS was
+496.2 MiB. Across the full sample set after warm-up, V8 heap used grew by
+0.4 MiB/h and memory outside the heap and external buffers by 0.6 MiB/h. The
+worker stayed below its 640 MiB drain threshold and kept the same PID. The run
+queue cleared in 38 seconds after traffic stopped.
+[Five-hour worker memory soak](https://github.com/vigani1/pertexo/actions/runs/44791740273)
+
 Migration 0122 lowers autovacuum's size-dependent vacuum/insert factor to
 `0.02` and analyze factor to `0.01` for `workflow_runs`, `node_runs`,
 `node_attempts`, `run_checkpoints`, `run_events`, `outbox_events` and
