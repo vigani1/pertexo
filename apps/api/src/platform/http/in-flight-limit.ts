@@ -86,9 +86,23 @@ function createShedWarning(
       logger.warn('http.server_busy', {
         inFlightLimit: limit,
         shedSinceLastWarning: shedSinceWarning,
+        memoryMib: memoryMib(),
       });
       warnedAt = at;
       shedSinceWarning = 0;
     },
+  };
+}
+
+const BYTES_PER_MIB = 1_024 * 1_024;
+
+/** How full the process is when it turns work away, for the operator. */
+function memoryMib(): Readonly<Record<string, number>> {
+  const usage = process.memoryUsage();
+  return {
+    rss: Math.round(usage.rss / BYTES_PER_MIB),
+    heapUsed: Math.round(usage.heapUsed / BYTES_PER_MIB),
+    heapTotal: Math.round(usage.heapTotal / BYTES_PER_MIB),
+    external: Math.round(usage.external / BYTES_PER_MIB),
   };
 }
