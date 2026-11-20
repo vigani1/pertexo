@@ -50,6 +50,7 @@ describe(
         'createConnectionEnvelopeEncryption',
         'createEncryptionKeyRepository',
         'createNodeSecureHttpClient',
+        'createSecurePostgresClient',
         'createSmtpClient',
         'createSystemMailDeliveryHandler',
         'createSystemMailDeliveryStore',
