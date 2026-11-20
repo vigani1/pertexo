@@ -5,7 +5,7 @@ const MIB = 1_024 * 1_024;
  * The defaults are what the minimum server (4 GiB, 2 vCPUs) is qualified
  * with; less than the minimum was never measured to hold.
  */
-export const SERVICE_MEMORY_SETTINGS = Object.freeze({
+const SERVICE_MEMORY_SETTINGS = Object.freeze({
   API_MEMORY_MB: { default: 512, minimum: 512 },
   WORKER_MEMORY_MB: { default: 768, minimum: 512 },
 });
