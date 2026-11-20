@@ -16,6 +16,8 @@ export function triggerRuntimeProvider(
   config: WorkerConfig,
   dependencies: TransportModuleDependencies,
 ): Provider {
+  const providerConnections =
+    dependencies.providerConnectionRuntime?.connections;
   return {
     provide: TRIGGER_RUNTIME,
     inject: [QUEUE_CONSUMER_OBSERVER],
@@ -26,9 +28,9 @@ export function triggerRuntimeProvider(
         ...config.triggerRuntime,
         database: config.database,
         httpRequest: config.httpRequest,
-        ...(dependencies.providerConnections === undefined
+        ...(providerConnections === undefined
           ? {}
-          : { providerConnections: dependencies.providerConnections }),
+          : { providerConnections: providerConnections }),
         maintenanceDatabase: config.retention.maintenanceDatabase,
         ...(dependencies.databaseRuntime === undefined
           ? {}

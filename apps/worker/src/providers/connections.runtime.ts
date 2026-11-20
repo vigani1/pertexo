@@ -114,8 +114,12 @@ export async function createProviderConnectionRuntime(
     try {
       await close();
     } catch (cleanupError: unknown) {
+      const failures =
+        cleanupError instanceof AggregateError
+          ? (cleanupError.errors as unknown[])
+          : [cleanupError];
       throw new AggregateError(
-        [error, cleanupError],
+        [error, ...failures],
         'Worker provider connection construction and cleanup failed',
       );
     }
