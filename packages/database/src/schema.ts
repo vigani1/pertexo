@@ -152,6 +152,7 @@ import {
   webhookEndpointIngressLimits,
   webhookTriggerReplayRecords,
 } from './schema/triggers/deliveries.js';
+import { triggerPolls } from './schema/triggers/polls.js';
 import {
   triggerSchedules,
   triggerScheduleOccurrences,
@@ -230,6 +231,7 @@ export {
   webhookTriggerDeliveries,
   webhookTriggerReplayRecords,
 } from './schema/triggers/deliveries.js';
+export { triggerPolls };
 export {
   triggerSchedules,
   triggerScheduleOccurrences,
@@ -345,6 +347,7 @@ export const databaseSchema = {
   runCheckpoints,
   runEvents,
   transportSecurityAuditFacts,
+  triggerPolls,
   triggerScheduleOccurrences,
   triggerSchedules,
   usageEvents,
@@ -541,5 +544,3 @@ export type {
 } from './schema/stored-shapes.js';
 
 export { workspaceInboxFailureDays } from './schema/inbox/failure-days.js';
-
-export { triggerPolls } from './schema/triggers/polls.js';
