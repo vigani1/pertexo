@@ -33,14 +33,9 @@ export function rowStatement(
       };
     }
     case 'upsert': {
-      const keys = config.keys.split(/\r?\n/u).filter((key) => key !== '');
+      const { keys } = config;
+      if (keys.some((key) => !columns.includes(key))) return undefined;
       const keySet = new Set(keys);
-      if (
-        keys.length === 0 ||
-        keys.length !== keySet.size ||
-        keys.some((key) => !columns.includes(key))
-      )
-        return undefined;
       const conflict = keys.map(quoteIdentifier).join(', ');
       const updated = columns
         .filter((column) => !keySet.has(column))
