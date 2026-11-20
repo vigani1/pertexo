@@ -15321,6 +15321,13 @@ GRANT DELETE ON TABLE app.trigger_polls TO pertexo_maintenance;
 
 
 --
+-- Name: COLUMN trigger_polls.ctid; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT SELECT(ctid) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
 -- Name: COLUMN trigger_polls.trigger_id; Type: ACL; Schema: app; Owner: pertexo_owner
 --
 

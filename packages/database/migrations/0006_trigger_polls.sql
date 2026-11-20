@@ -28,7 +28,8 @@ CREATE POLICY trigger_polls_workspace_scope ON app.trigger_polls TO {{app_role}}
 GRANT SELECT, INSERT ON app.trigger_polls TO {{app_role}};
 GRANT UPDATE (seen_keys, next_poll_at, retired_at, lease_owner, lease_token,
   lease_acquired_at, lease_expires_at, updated_at) ON app.trigger_polls TO {{app_role}};
-GRANT SELECT (workspace_id, trigger_id, next_poll_at, retired_at, lease_token, lease_expires_at),
+-- Paged workspace purge reads ctid without access to the seen-set.
+GRANT SELECT (ctid, workspace_id, trigger_id, next_poll_at, retired_at, lease_token, lease_expires_at),
   UPDATE (lease_owner, lease_token, lease_acquired_at, lease_expires_at, updated_at),
   DELETE ON app.trigger_polls TO {{maintenance_role}};
 
