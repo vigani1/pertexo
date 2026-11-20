@@ -2,7 +2,7 @@ import { canonicalizeBoundedJson } from '@pertexo/node-sdk/server';
 import { isIP } from 'node:net';
 import { checkServerIdentity } from 'node:tls';
 import pg from 'pg';
-import type { PostgresClient } from '@pertexo/contracts';
+import type { SecurePostgresClient } from './secure-postgres-client.types.js';
 import { NodeDnsResolver } from '../outbound-http/transport/node.js';
 import type { SecureHttpResolver } from '../outbound-http/secure-http.types.js';
 import {
@@ -19,7 +19,7 @@ import {
 export function createSecurePostgresClient(
   networks: readonly AllowedPrivateNetwork[] = [],
   resolver: SecureHttpResolver = new NodeDnsResolver(),
-): PostgresClient {
+): SecurePostgresClient {
   return {
     async execute(credential, options, run) {
       let client: pg.Client | undefined;

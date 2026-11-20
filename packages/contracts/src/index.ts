@@ -390,10 +390,5 @@ export {
   POSTGRES_LIMITS,
   POSTGRES_FAILURE_CODES,
   type PostgresCredential,
-  type PostgresClient,
-  type PostgresExecution,
-  type PostgresOutcome,
   type PostgresFailureCode,
-  type PostgresResult,
-  type PostgresSession,
 } from './schemas/connections/postgres.js';

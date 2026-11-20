@@ -1,4 +1,5 @@
-import type { PostgresFailureCode, PostgresOutcome } from '@pertexo/contracts';
+import type { PostgresFailureCode } from '@pertexo/contracts';
+import type { PostgresOutcome } from './secure-postgres-client.types.js';
 
 export class PostgresError extends Error {
   constructor(public readonly code: PostgresFailureCode) {

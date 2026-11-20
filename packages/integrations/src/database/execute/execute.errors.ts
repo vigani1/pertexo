@@ -1,10 +1,12 @@
-import type { PostgresFailureCode, PostgresOutcome } from '@pertexo/contracts';
+import type { PostgresFailureCode } from '@pertexo/contracts';
 import {
   NodeExecutorFailure,
   type NodeExecutorFailureKind,
   type NodeExecutorErrorKind,
 } from '@pertexo/node-sdk/server';
 import { providerFailure } from '../../providers/provider.errors.js';
+
+import type { PostgresOutcome } from '../postgres-client.js';
 
 const MESSAGES = {
   address_blocked:
