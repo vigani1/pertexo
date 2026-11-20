@@ -89,6 +89,20 @@ packages or more Code slots need fresh capacity measurements and extra headroom.
 The 40 GB disk starting size is for a small fresh install, not a measured storage
 capacity guarantee. Keep the disk and backup-age alerts enabled.
 
+The load simulation (`.github/workflows/simulate-load.yml`) checks the minimum
+under sustained traffic: the production settings in one 4 GiB, 2 vCPU cgroup on
+an x86-64 Linux runner. An hour of three workspaces' webhooks with bursts,
+schedules, waits, approvals, callbacks, Code, a flaky HTTP API, uploads and three
+people reading the run history ran about 2,000 runs and 16,600 requests without
+an error. Run start latency was 35 ms median and 591 ms at p95, the cgroup peaked
+at 1.6 GiB and API and worker memory stayed flat. Past capacity, one workspace
+takes in about 10 webhook deliveries a second; faster senders get `429` with
+`Retry-After`. Above about 40 a second the API can exceed its 512 MiB cap and be
+restarted, which answers requests in flight with `502` but loses no accepted
+run. The J1 per-service caps above do not hold this hour: PostgreSQL at 256 MiB
+and the file store at 256 MiB were killed, and Caddy at 32 MiB restarted under a
+flood. Do not cap those services that tightly.
+
 Migration 0122 lowers autovacuum's size-dependent vacuum/insert factor to
 `0.02` and analyze factor to `0.01` for `workflow_runs`, `node_runs`,
 `node_attempts`, `run_checkpoints`, `run_events`, `outbox_events` and
