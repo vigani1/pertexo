@@ -203,7 +203,6 @@ function TriggersSession({
   });
   const { versions, summary, form, onFailure, pollingTitle, publicationKnown } =
     publication;
-  const pollItems = shownData(summary)?.pollingTriggers ?? [];
   const webhookItems = shownData(webhooks)?.items;
   const scheduleItems = shownData(schedules)?.items;
   const stepName = (
@@ -291,7 +290,7 @@ function TriggersSession({
       {pollingTitle === undefined ? null : (
         <PollingSection
           title={pollingTitle}
-          triggers={pollItems}
+          triggers={shownData(summary)?.pollingTriggers ?? []}
           stepNameFor={(trigger) => stepName(trigger, pollingTitle)}
         />
       )}
