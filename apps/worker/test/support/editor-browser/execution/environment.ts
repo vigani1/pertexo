@@ -6,6 +6,8 @@ export const codeCase = ['code', 'pinned-samples'].includes(
 
 export const scheduleCase = process.env.EDITOR_BROWSER_CASE === 'schedule';
 
+export const pollingCase = process.env.EDITOR_BROWSER_CASE === 'http-polling';
+
 export const errorWorkflowCase =
   process.env.EDITOR_BROWSER_CASE === 'error-workflows';
 

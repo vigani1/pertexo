@@ -4,6 +4,7 @@ import type { createArtifactDestination } from '../../attempts/artifacts/http-de
 import { createEditorPreview } from './previews.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
+import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 
@@ -31,6 +32,7 @@ import type {
 } from './execution/editor-execution.types.js';
 import {
   scheduleCase,
+  pollingCase,
   errorWorkflowCase,
   webhookResponseCase,
   previewCase,
@@ -313,6 +315,7 @@ async function constructRuntimes(
   resources.triggers = triggers;
   if (
     scheduleCase ||
+    pollingCase ||
     controlledHttp ||
     curatedTemplates ||
     errorWorkflowCase ||
@@ -328,6 +331,14 @@ async function constructRuntimes(
         leaseOwner: `editor-schedule-${scanner}:${randomUUID()}`,
         onTimeWindowSeconds: 300,
         pollIntervalMillis: 250,
+        ...(pollingCase
+          ? {
+              httpRequest: {
+                allowedPrivateNetworks:
+                  parseAllowedPrivateNetworks('127.0.0.1/32'),
+              },
+            }
+          : {}),
       });
       triggers.push(trigger);
       assertSetupActive();

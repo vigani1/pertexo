@@ -1,3 +1,4 @@
+import { handleEditorPollDue } from './polling.js';
 import { createControlListener } from '../../harness/control-listener.js';
 
 import { scenario } from '../fixture/environment.js';
@@ -23,6 +24,11 @@ import {
   handleEditorBrowserReceipt,
   handleEditorEvidenceReceipt,
 } from './receipts.js';
+
+const triggerTimingCommands = [
+  handleEditorScheduleRestart,
+  handleEditorPollDue,
+];
 
 export function createEditorControlServer(
   context: EditorBrowserJourneyContext,
@@ -51,7 +57,11 @@ export function createEditorControlServer(
     if (handleEditorVerificationLink({ context, request, response, url }))
       return;
     if (handleEditorReadonlySetup({ context, request, response, url })) return;
-    if (handleEditorScheduleRestart({ context, request, response, url }))
+    if (
+      triggerTimingCommands.some((handle) =>
+        handle({ context, request, response, url }),
+      )
+    )
       return;
     if (handleEditorEvidenceReceipt({ context, request, response, url }))
       return;
