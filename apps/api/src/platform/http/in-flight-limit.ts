@@ -8,7 +8,7 @@ import { HEALTH_PATHS } from '../health/health-paths.js';
 import { parseRequestId } from './request-context.js';
 
 /** How long a turned-away caller waits before trying again. */
-export const SERVER_BUSY_RETRY_AFTER_SECONDS = 1;
+const SERVER_BUSY_RETRY_AFTER_SECONDS = 1;
 /** At most one warning per this long while the API turns requests away. */
 const SHED_WARNING_INTERVAL_MILLIS = 60_000;
 

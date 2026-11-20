@@ -9,7 +9,7 @@ import {
  * 0.24 MiB while it waits (S5, minimum server): 256 on a ~370 MiB base stays
  * well under the API's 512 MiB cap.
  */
-export const DEFAULT_IN_FLIGHT_REQUEST_LIMIT = 256;
+const DEFAULT_IN_FLIGHT_REQUEST_LIMIT = 256;
 
 /** Startup combines each concern's defaults before applying operator settings. */
 export const DEFAULT_INSTANCE_LIMITS = Object.freeze({
