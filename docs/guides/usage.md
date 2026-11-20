@@ -51,7 +51,7 @@ API at startup, and the error names the setting.
 | `WEBHOOK_ENDPOINT_BURST_LIMIT` | 600 | POSTs a minute to one webhook endpoint. Past it, senders get 429. |
 
 One more setting applies to the whole API process rather than per workspace:
-`API_IN_FLIGHT_REQUEST_LIMIT` (default 256, at most 10,000) is how many requests
+`API_IN_FLIGHT_REQUEST_LIMIT` (default 128, at most 10,000) is how many requests
 the API holds at once. Past it, the API answers `503` with the `server.busy`
 problem and `Retry-After` before reading the request's body, so a flood can't
 push it past its memory cap. Health checks are never turned away. See
