@@ -27,7 +27,7 @@ import {
 } from './traffic.mjs';
 
 // Pushes the minimum-size stack past what it was sized for until something
-// gives: webhook deliveries ramp from 2 to 80 a second into one workspace while
+// gives: webhook deliveries ramp from 2 to 160 a second into one workspace while
 // another workspace's team keeps working. Then the flood stops. A safe failure
 // refuses clearly with Retry-After, loses and duplicates nothing, keeps the
 // other workspace working and recovers on its own. Rerun on Linux with Docker:
@@ -35,11 +35,18 @@ import {
 //   node --test infrastructure/single-server/test/drill/load/overload.test.mjs
 
 const STAGE_MINUTES = Number(process.env.OVERLOAD_STAGE_MINUTES ?? 3);
-const RATES_PER_SECOND = [2, 5, 10, 20, 40, 80];
-// Each endpoint takes 600 deliveries a minute; eight let the ramp reach 80 a second.
-const FLOOD_ENDPOINTS = 8;
+const RATES_PER_SECOND = [2, 5, 10, 20, 40, 80, 160];
+// The rates a minimum server must survive by turning work away, not by dying.
+const SHEDDING_RATES = [40, 80, 160];
+// Each endpoint takes 600 deliveries a minute; sixteen let the ramp reach 160 a second.
+const FLOOD_ENDPOINTS = 16;
 // More unanswered deliveries than this and the driver, not the server, would limit.
-const DRIVER_IN_FLIGHT = 400;
+const DRIVER_IN_FLIGHT = 2_000;
+// What senders may hear under a flood: accepted, or turned away with Retry-After.
+const FLOOD_ANSWERS = new Set(['202', '429', '503']);
+// The share of the other workspace's reads that must still succeed while the
+// API turns the flood away, measured on the minimum server.
+const READ_SHARE_FLOOR = 0.5;
 const DELIVERY_TIMEOUT_MILLIS = 30_000;
 const DRAIN_MILLIS = 40 * 60_000;
 const RECOVERY_DELIVERIES = 20;
@@ -166,6 +173,16 @@ describe('the minimum-size stack pushed past its capacity', () => {
         'teamStartP95Millis', (${startP95(team, stageStarted)}),
         'queuedRuns', (select count(*) from app.workflow_runs where status = 'queued'))`,
     );
+    const memory = sampler.samples.filter(
+      (sample) => sample.at >= stageStarted && sample.memory?.api,
+    );
+    const succeeded =
+      reads.length -
+      count(
+        reads,
+        (request) =>
+          typeof request.status !== 'number' || request.status >= 400,
+      );
     const stage = {
       ratePerSecond: rate,
       sent: floodRequests.length,
@@ -183,15 +200,20 @@ describe('the minimum-size stack pushed past its capacity', () => {
         reads.map((request) => request.millis),
         0.95,
       ),
-      readsFailed: count(
-        reads,
-        (request) =>
-          typeof request.status !== 'number' || request.status >= 400,
+      readsFailed: reads.length - succeeded,
+      readsSucceededShare:
+        reads.length === 0 ? 1 : round2(succeeded / reads.length),
+      apiPeakMib: Math.max(0, ...memory.map((sample) => sample.memory.api.mib)),
+      apiAnonPeakMib: Math.max(
+        0,
+        ...memory.map((sample) => sample.inside?.api?.anonMib ?? 0),
       ),
       ...database,
     };
     return stage;
   }
+
+  const round2 = (value) => Math.round(value * 100) / 100;
 
   const startP95 = (workspaceId, since) =>
     `select round(percentile_cont(0.95) within group (order by extract(epoch from started_at - created_at) * 1000))
@@ -226,35 +248,65 @@ describe('the minimum-size stack pushed past its capacity', () => {
     });
   });
 
-  // Reported, not fixed: past about 20 deliveries a second the API holds every
-  // request in flight, mostly before the workspace's line (waiting on the
-  // database pool), at about 0.24 MiB each with no bound across the process.
-  // The kernel kills it at its 512 MiB cap and everything in flight gets a 502.
-  // Shedding load across the whole API is a new mechanism with new answers;
-  // these record the outcome on every rerun.
-  const REPORTED = {
-    todo: 'reported: the API is killed at its memory cap under a webhook flood',
-  };
+  // Each request the API holds costs about 0.24 MiB while it waits, mostly for
+  // a database connection. Without a bound across the process, a flood above
+  // about 40 a second got the API killed at its 512 MiB cap and everything in
+  // flight answered 502. Past its bound the API now answers 503 at once.
+  it('answers every flood sender at 40, 80 and 160 a second with 202, 429 or 503', () => {
+    const shedding = stages.filter((stage) =>
+      SHEDDING_RATES.includes(stage.ratePerSecond),
+    );
+    assert.deepEqual(
+      shedding.map((stage) => stage.ratePerSecond),
+      SHEDDING_RATES,
+      'every shedding stage ran',
+    );
+    const unexpected = Object.fromEntries(
+      shedding.map((stage) => [
+        stage.ratePerSecond,
+        Object.fromEntries(
+          Object.entries(stage.statuses).filter(
+            ([status]) => !FLOOD_ANSWERS.has(status),
+          ),
+        ),
+      ]),
+    );
+    record('unexpected flood answers', unexpected);
+    assert.deepEqual(
+      unexpected,
+      Object.fromEntries(SHEDDING_RATES.map((rate) => [rate, {}])),
+    );
+  });
 
-  it(
-    'refuses only clearly: 429 or 503 with Retry-After, never a 500 or a dropped connection',
-    REPORTED,
-    () => {
-      const unsafe = {};
-      for (const request of ledger.requests) {
-        const refused = request.status === 429 || request.status === 503;
-        const fine =
-          (typeof request.status === 'number' && request.status < 400) ||
-          (refused && request.retryAfter !== undefined);
-        if (!fine) {
-          const key = `${request.kind} ${request.status} ${request.problem ?? request.error ?? ''}`;
-          unsafe[key] = (unsafe[key] ?? 0) + 1;
-        }
+  it('keeps the other workspace reading while the flood is turned away', () => {
+    const shares = Object.fromEntries(
+      stages
+        .filter((stage) => SHEDDING_RATES.includes(stage.ratePerSecond))
+        .map((stage) => [stage.ratePerSecond, stage.readsSucceededShare]),
+    );
+    record('reads succeeded share', shares);
+    for (const [rate, share] of Object.entries(shares))
+      assert.ok(
+        share >= READ_SHARE_FLOOR,
+        `at ${rate}/s only ${share} of the team's reads succeeded`,
+      );
+  });
+
+  it('refuses only clearly: 429 or 503 with Retry-After, never a 500 or a dropped connection', () => {
+    const unsafe = {};
+    for (const request of ledger.requests) {
+      const refused = request.status === 429 || request.status === 503;
+      const fine =
+        (typeof request.status === 'number' && request.status < 400) ||
+        (refused && request.retryAfter !== undefined);
+      if (!fine) {
+        const key = `${request.kind} ${request.status} ${request.problem ?? request.error ?? ''}`;
+        unsafe[key] = (unsafe[key] ?? 0) + 1;
       }
-      record('unsafe answers', unsafe);
-      assert.deepEqual(unsafe, {});
-    },
-  );
+    }
+    record('unsafe answers', unsafe);
+    assert.deepEqual(unsafe, {});
+  });
 
   it('loses, duplicates and strands no accepted run', async () => {
     assert.ok(ledger, 'the load ran');
@@ -272,7 +324,7 @@ describe('the minimum-size stack pushed past its capacity', () => {
     assert.deepEqual(runs.failures, {}, JSON.stringify(runs.outcomes));
   });
 
-  it('kills and restarts nothing', REPORTED, async () => {
+  it('kills and restarts nothing', async () => {
     const health = await restartsAndKills(started);
     record('restarts and kills', health);
     assert.deepEqual(health.restarts, {});

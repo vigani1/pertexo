@@ -4,8 +4,8 @@ name: Simulate load
 # host, made as one cgroup) on real Linux runners: an hour of a small team's
 # mixed traffic, and separately a ramp past capacity until something gives.
 # The sizing input `j1` instead applies the J1 qualification's per-service caps.
-# Started by hand or by pushing a throwaway sim/load/<n> branch; never on pull
-# requests, main or a schedule.
+# Started by hand or by pushing a throwaway sim/load/<n> or sim/load-shed/<n>
+# branch; never on pull requests, main or a schedule.
 on:
   workflow_dispatch:
     inputs:
@@ -19,7 +19,7 @@ on:
         description: host (one 4 GiB cgroup) or j1 (per-service caps)
         default: host
   push:
-    branches: ['sim/load/**']
+    branches: ['sim/load/**', 'sim/load-shed/**']
 
 permissions:
   contents: read
