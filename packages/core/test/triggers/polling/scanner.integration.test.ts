@@ -70,6 +70,18 @@ it('baselines distinct keys in reverse feed order and preserves progress when re
   expect(await poll.admitted()).toEqual([]);
 });
 
+it('baselines an empty feed without starting runs and admits the first later item', async () => {
+  const { triggerId } = await emptyBaseline();
+  expect(await poll.admitted()).toEqual([]);
+
+  await poll.scanner(fakeFeed('first'))();
+
+  expect(await poll.admitted()).toEqual(admitted('first'));
+  expect(await poll.read(triggerId)).toMatchObject({
+    hashes: [digest('first')],
+  });
+});
+
 it('refetches after cancellation before admission and admits each item once in reverse feed order', async () => {
   const { triggerId } = await emptyBaseline();
   const controller = new AbortController();
