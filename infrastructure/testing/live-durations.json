@@ -18,6 +18,7 @@
   "forms": 79000,
   "governance": 50000,
   "http-pagination": 35000,
+  "http-polling": 31000,
   "input-cases": 61000,
   "nested-conflict": 60000,
   "notifications": 64000,

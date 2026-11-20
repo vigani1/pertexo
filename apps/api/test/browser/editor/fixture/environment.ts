@@ -31,6 +31,7 @@ export const scenario = z
     'federation',
     'two-factor',
     'http-pagination',
+    'http-polling',
     'organization-oidc',
     'notifications',
     'transforms',
@@ -112,6 +113,7 @@ export function editorJourneyPath(selected: typeof scenario): string {
 const EDITOR_JOURNEY_PATHS = {
   'run-values': 'editor/run-values/journey.spec.ts',
   'http-pagination': 'editor/http-pagination.spec.ts',
+  'http-polling': 'editor/http-polling.spec.ts',
   'two-factor': 'authentication/two-factor.spec.ts',
   federation: 'editor/federation/sign-in.spec.ts',
   'organization-oidc': 'editor/federation/organization.spec.ts',

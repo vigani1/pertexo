@@ -56,6 +56,7 @@ const editorOutcomeChecks: Record<
   'run-values': verifyEditorRunValuesOutcome,
   'two-factor': verifyEditorTwoFactorOutcome,
   'http-pagination': verifyEditorTwoFactorOutcome,
+  'http-polling': () => undefined,
   federation: verifyEditorFederationOutcome,
   code: verifyEditorCodeOutcome,
   'webhook-responses': verifyEditorWebhookResponsesOutcome,
