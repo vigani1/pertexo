@@ -74,23 +74,22 @@ export async function nodeProcessMemory(server, service) {
   };
 }
 
-/** The container's Node process as the host sees it: PID 1, or init's child. */
+/**
+ * The service's own Node process as the host sees it. Node names its main
+ * thread, so `comm` won't do, and the Code runner's sandboxes run node too:
+ * the service is the process running its built entry point.
+ */
 async function nodePid(container) {
-  const first = Number(
-    await mustDocker(['inspect', '--format', '{{.State.Pid}}', container]),
-  );
-  const comm = async (pid) =>
-    (await readFile(`/proc/${pid}/comm`, 'utf8')).trim();
-  if ((await comm(first)) === 'node') return first;
-  const children = (
-    await readFile(`/proc/${first}/task/${first}/children`, 'utf8')
-  )
-    .trim()
-    .split(/\s+/u)
-    .map(Number);
-  for (const child of children)
-    if ((await comm(child)) === 'node') return child;
-  throw new Error(`no node process in ${container}: ${children.join(' ')}`);
+  const listed = await mustDocker(['top', container, '-eo', 'pid,args']);
+  const row = listed
+    .split('\n')
+    .map((line) =>
+      /^\s*(\d+)\s+node\s+apps\/[\w-]+\/dist\/main\.js$/u.exec(line),
+    )
+    .find(Boolean);
+  if (!row)
+    throw new Error(`no service node process in ${container}:\n${listed}`);
+  return Number(row[1]);
 }
 
 /** The memory limit Docker enforces on the service's container, in MiB. */

@@ -36,9 +36,11 @@ import {
 
 const MINUTES = Number(process.env.LOAD_MINUTES ?? 45);
 const WORKSPACES = 3;
-// Per workspace; together about 3.5 runs a second, 2.5 of them with Code.
+// Per workspace; together 3 runs a second, 2 of them with Code: about what the
+// minimum server's worker carries (2.7 a second measured), so it stays at its
+// busiest with a short queue.
 const EVERY = {
-  fetchJavascript: 2_000,
+  fetchJavascript: 3_000,
   fetchPython: 6_000,
   flakyHttp: 3_000,
   code: 6_000,
