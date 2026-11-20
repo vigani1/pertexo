@@ -129,14 +129,17 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
         .length > 0,
       true,
     );
-    for (const service of ['api', 'worker']) {
+    for (const [service, memoryMiB] of [
+      ['api', 512],
+      ['worker', 768],
+    ]) {
       assert.equal(
         Number(config.services[service].mem_limit),
-        512 * 1024 * 1024,
+        memoryMiB * 1024 * 1024,
       );
       assert.equal(
         Number(config.services[service].memswap_limit),
-        512 * 1024 * 1024,
+        memoryMiB * 1024 * 1024,
       );
       assert.equal(
         config.services[service].environment.NODE_OPTIONS,
@@ -185,13 +188,13 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
     });
-    assert.equal(
-      worker.resourceSafety.maximumRssBytes,
-      Number(config.services.worker.mem_limit),
-    );
-    assert.equal(
-      config.services.worker.environment.NODE_OPTIONS,
-      `--max-old-space-size=${String(worker.resourceSafety.maximumRssBytes / (2 * 1024 * 1024))}`,
+    // The worker's own drain must act before the kernel does: a budget equal
+    // to the cap meant the kernel always got there first.
+    assert.equal(worker.resourceSafety.maximumRssBytes, 640 * 1024 * 1024);
+    assert.ok(
+      Number(config.services.worker.mem_limit) -
+        worker.resourceSafety.maximumRssBytes >=
+        128 * 1024 * 1024,
     );
     const scratchPath = '/var/lib/pertexo/artifact-scratch';
     assert.equal(worker.artifactScratchDirectory, scratchPath);
