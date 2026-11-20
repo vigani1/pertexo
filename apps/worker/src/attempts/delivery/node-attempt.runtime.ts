@@ -1,3 +1,4 @@
+import type { ProviderConnectionFactory } from '../../providers/connections.runtime.js';
 import type { createSmtpClient } from '@pertexo/secrets/server';
 import type { CallbackKeyConfig } from '@pertexo/secrets/server';
 import type { WorkerCodeRunnerConfig } from '../code/client.js';
@@ -96,6 +97,7 @@ export type NodeAttemptRuntimeOptions = Readonly<{
   artifactStore?: ArtifactStoreConfig;
   artifactScratchDirectory?: string;
   connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
+  providerConnections?: ProviderConnectionFactory;
   database: DatabaseConfig;
   databaseRuntime?: DatabaseRuntime;
   heartbeatIntervalMillis: number;
@@ -201,9 +203,14 @@ async function createProductionNodeAttemptRuntime(
 
   const capabilityRuntime = await factories.capabilities(
     capabilityRuntimeOptions(options),
-    options.databaseRuntime === undefined
-      ? {}
-      : { databaseRuntime: options.databaseRuntime },
+    {
+      ...(options.databaseRuntime === undefined
+        ? {}
+        : { databaseRuntime: options.databaseRuntime }),
+      ...(options.providerConnections === undefined
+        ? {}
+        : { providerConnections: options.providerConnections }),
+    },
   );
   own(
     'node runtime capabilities',

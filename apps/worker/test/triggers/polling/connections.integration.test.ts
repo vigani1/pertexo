@@ -14,7 +14,8 @@ import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-
 import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { pollingFixture } from '../../../../../packages/core/test/triggers/polling/polling.fixture.js';
 import { createTriggerRuntime } from '../../../src/triggers/trigger.runtime.js';
-import { createPollingHttpRuntime } from '../../../src/triggers/polling-http.runtime.js';
+import { createHttpPollFetcher } from '../../../src/triggers/fetch-http-poll.js';
+import { createProviderConnectionRuntime } from '../../../src/providers/connections.runtime.js';
 import { json, server } from '../../integrations/support/pagination.js';
 
 const connectionEncryption: ConnectionEnvelopeEncryptionConfig = {
@@ -83,18 +84,27 @@ async function connect(
   return { scope, secretVersionId };
 }
 
-it('sends a stored header and checks that its secret is current before requesting the next page', async () => {
-  const runtime = await createPollingHttpRuntime({
-    addressPolicy: {
-      allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
-    },
+const addressPolicy = {
+  allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
+};
+
+async function providerConnections() {
+  const runtime = await createProviderConnectionRuntime({
+    addressPolicy,
     connectionEncryption,
     database: poll.config,
     redisUrl: testStackSetting('REDIS_URL'),
-    workerId: 'poll-worker',
-    shutdownTimeoutMillis: 5_000,
   });
   onTestFinished(() => runtime.close());
+  return runtime.connections;
+}
+
+it('sends a stored header and checks that its secret is current before requesting the next page', async () => {
+  const fetchPoll = createHttpPollFetcher(
+    addressPolicy,
+    'poll-worker',
+    await providerConnections(),
+  );
   const credential = new TextEncoder().encode(
     JSON.stringify({
       type: 'http_headers',
@@ -125,7 +135,7 @@ it('sends a stored header and checks that its secret is current before requestin
     `${origin}/items`,
     scope.connectionId,
   );
-  await expect(poll.scanner(runtime.fetchPoll)()).rejects.toMatchObject({
+  await expect(poll.scanner(fetchPoll)()).rejects.toMatchObject({
     code: 'http.poll_authentication',
   });
   expect(requests).toEqual([
@@ -206,10 +216,8 @@ it('renews a stored OAuth2 credential after a rejected token and uses the replac
     {
       database: poll.config,
       maintenanceDatabase: maintenanceConfig(poll.config),
-      httpRequest: {
-        allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
-      },
-      connectionEncryption,
+      httpRequest: addressPolicy,
+      providerConnections: await providerConnections(),
       redisUrl: testStackSetting('REDIS_URL'),
       leaseOwner: 'poll-worker',
       leaseDurationSeconds: 30,

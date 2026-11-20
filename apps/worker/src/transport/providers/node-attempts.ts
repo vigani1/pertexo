@@ -78,7 +78,7 @@ export function nodeAttemptRuntimeProvider(
       // Ownership of both preview resources transfers at this call boundary;
       // createNodeAttemptRuntime closes them on every later failure and close.
       return composeNodeAttemptRuntime(config, observer, {
-        databaseRuntime: dependencies.databaseRuntime,
+        dependencies,
         preview: { invoker: previewInvoker, runStore: previewRunStore },
         factories: factories,
       });
@@ -90,11 +90,11 @@ async function composeNodeAttemptRuntime(
   config: WorkerConfig,
   observer: QueueConsumerObserver,
   {
-    databaseRuntime,
+    dependencies: { databaseRuntime, providerConnections },
     preview,
     factories,
   }: Readonly<{
-    databaseRuntime: TransportModuleDependencies['databaseRuntime'];
+    dependencies: TransportModuleDependencies;
     preview: Readonly<{
       invoker: ReturnType<typeof createPlatformPreviewNodeInvoker>;
       runStore: ReturnType<typeof createPreviewAttemptRunStore>;
@@ -107,9 +107,7 @@ async function composeNodeAttemptRuntime(
     ...(config.callbacks === undefined ? {} : { callbacks: config.callbacks }),
     artifactScratchDirectory: config.artifactScratchDirectory,
     codeRunner: config.codeRunner,
-    ...(config.connectionEncryption === undefined
-      ? {}
-      : { connectionEncryption: config.connectionEncryption }),
+    ...(providerConnections === undefined ? {} : { providerConnections }),
     database: config.database,
     ...(databaseRuntime === undefined ? {} : { databaseRuntime }),
     heartbeatIntervalMillis: config.nodeAttempt.heartbeatIntervalMillis,

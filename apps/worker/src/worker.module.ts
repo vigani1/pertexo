@@ -1,3 +1,4 @@
+import type { ProviderConnectionRuntime } from './providers/connections.runtime.js';
 import { createFailureNotificationMailAuthorizer } from '@pertexo/core/notifications';
 import { reportUnavailableMailKey } from './mail/report-unavailable-mail-key.js';
 import { createSystemMailClient } from './mail/system-mail-client.js';
@@ -75,6 +76,7 @@ import { OutboxDispatcherLifecycle } from './transport/lifecycle.js';
 
 export type WorkerModuleDependencies = Readonly<{
   databaseRuntime?: DatabaseRuntime;
+  providerConnectionRuntime?: ProviderConnectionRuntime;
   dispatcherDatabaseRuntime?: DatabaseRuntime;
   logger: StructuredLogger;
   telemetry: TelemetryLifecycle;
@@ -97,7 +99,15 @@ export class WorkerModule {
             ? {}
             : { runtime: dependencies.databaseRuntime },
         ),
-        TransportModule.register(config, dependencies),
+        TransportModule.register(config, {
+          ...dependencies,
+          ...(dependencies.providerConnectionRuntime === undefined
+            ? {}
+            : {
+                providerConnections:
+                  dependencies.providerConnectionRuntime.connections,
+              }),
+        }),
         ObservabilityModule.register(
           dependencies.logger,
           dependencies.telemetry,
@@ -207,6 +217,12 @@ export class WorkerModule {
                 dependencies.databaseRuntime?.close(),
               );
             shutdown.register('database', () => database.close());
+            const providerConnections = dependencies.providerConnectionRuntime;
+            if (providerConnections !== undefined)
+              shutdown.register(
+                'provider-connections',
+                providerConnections.close,
+              );
             shutdown.register('transport', () => transport.close());
             if (systemMail !== undefined)
               shutdown.register('authentication-mail', () =>

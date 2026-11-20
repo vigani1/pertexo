@@ -17,7 +17,7 @@ import {
 } from './capability-composition/run-values-and-tables.js';
 import { prepareCodeCapability } from './capability-composition/code.js';
 import { prepareWebhookResponseCapability } from './capability-composition/responses.js';
-import { prepareConnectionCapability } from './capability-composition/connections.js';
+import { createProviderConnectionRuntime } from '../../providers/connections.runtime.js';
 import { prepareArtifactCapability } from './capability-composition/artifacts.js';
 
 export {
@@ -54,12 +54,9 @@ export async function createWorkerNodeRuntimeCapabilities(
       ownedDataTables: undefined,
       ownedRunValues: undefined,
       ownedWebhookResponses: undefined,
-      encryptionRuntime: undefined,
-      oauth2Tokens: undefined,
-      ownedConnectionStore: undefined,
+      providerConnections: undefined,
       ownedArtifactDatabase: undefined,
       ownedArtifactStore: undefined,
-      ownedProviderRateLimiter: undefined,
     },
     factories: {},
     lifecycle: { terminal: false },
@@ -72,7 +69,22 @@ export async function createWorkerNodeRuntimeCapabilities(
     prepareDataTablesCapability(state);
     prepareCodeCapability(state);
     prepareWebhookResponseCapability(state);
-    if (connectionConfigured) prepareConnectionCapability(state);
+    if (dependencies.providerConnections !== undefined)
+      state.factories.connections = dependencies.providerConnections;
+    if (state.factories.connections === undefined && connectionConfigured) {
+      state.resources.providerConnections =
+        await createProviderConnectionRuntime(
+          {
+            ...options,
+            addressPolicy: {
+              allowedPrivateNetworks: options.allowedPrivateNetworks ?? [],
+            },
+          },
+          dependencies,
+        );
+      state.factories.connections =
+        state.resources.providerConnections.connections;
+    }
     if (artifactConfigured) await prepareArtifactCapability(state);
   } catch (error: unknown) {
     try {

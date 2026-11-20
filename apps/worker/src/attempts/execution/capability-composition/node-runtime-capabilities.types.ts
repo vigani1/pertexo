@@ -14,7 +14,6 @@ import type {
   ArtifactStore,
   ArtifactStoreConfig,
 } from '@pertexo/artifact-store/server';
-import type { WorkerConnectionResolutionStore } from '@pertexo/core/connections';
 
 import type {
   DatabaseConfig,
@@ -23,14 +22,15 @@ import type {
 } from '@pertexo/database/platform';
 import type {
   ConnectionEnvelopeEncryptionConfig,
-  ConnectionEnvelopeEncryptionRuntime,
   ConnectionEnvelopeEncryption,
 } from '@pertexo/secrets/server';
 import type { AllowedPrivateNetwork } from '@pertexo/secrets/server';
-import type { OAuth2TokenService } from '@pertexo/core/connections';
-import type { RedisRateLimitRuntime } from '@pertexo/rate-limit/server';
 import type { NodeExecutionCapabilityFactories } from '../capabilities.js';
 import type { createProviderConnectionRuntimeFactory } from '../../../providers/connections.js';
+import type {
+  ProviderConnectionFactory,
+  ProviderConnectionRuntime,
+} from '../../../providers/connections.runtime.js';
 import type { ProviderRateLimiter } from '../../../providers/connections.js';
 import type {
   ArtifactSpoolOperations,
@@ -66,6 +66,7 @@ export type WorkerNodeRuntimeCapabilityDependencies = Readonly<{
   now?: () => Date;
   spoolDirectory?: string;
   artifactSpoolOperations?: ArtifactSpoolOperations;
+  providerConnections?: ProviderConnectionFactory;
   providerRateLimiter?: ProviderRateLimiter;
 }>;
 
@@ -82,12 +83,9 @@ interface OwnedCapabilityResources {
   ownedDataTables: WorkerDataTablesStore | undefined;
   ownedRunValues: RunValuesStore | undefined;
   ownedWebhookResponses: WebhookResponseStore | undefined;
-  encryptionRuntime: ConnectionEnvelopeEncryptionRuntime | undefined;
-  oauth2Tokens: OAuth2TokenService | undefined;
-  ownedConnectionStore: WorkerConnectionResolutionStore | undefined;
+  providerConnections: ProviderConnectionRuntime | undefined;
   ownedArtifactDatabase: WorkspaceDatabase | undefined;
   ownedArtifactStore: ArtifactStore | undefined;
-  ownedProviderRateLimiter: RedisRateLimitRuntime | undefined;
 }
 
 export interface CapabilityAssembly {

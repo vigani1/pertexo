@@ -1,31 +1,24 @@
 import { beforeEach, expect, it, onTestFinished } from 'vitest';
-import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { pollingFixture } from '../../../../../packages/core/test/triggers/polling/polling.fixture.js';
 import { EVENT_COORDINATION_LIMITS } from '@pertexo/workflow-model';
 import { HTTP_REQUEST_LIMITS } from '@pertexo/integrations';
 import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
-import { createPollingHttpRuntime } from '../../../src/triggers/polling-http.runtime.js';
+import { createHttpPollFetcher } from '../../../src/triggers/fetch-http-poll.js';
 import { json, server } from '../../integrations/support/pagination.js';
 
 type Page = Readonly<{ items: unknown; next?: string }>;
 
 let poll: ReturnType<typeof pollingFixture>;
-let runtime: Awaited<ReturnType<typeof createPollingHttpRuntime>>;
+let fetchPoll: ReturnType<typeof createHttpPollFetcher>;
 
 beforeEach(async () => {
   poll = pollingFixture();
   onTestFinished(() => poll.close());
   await poll.initialize();
-  runtime = await createPollingHttpRuntime({
-    addressPolicy: {
-      allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
-    },
-    database: poll.config,
-    redisUrl: testStackSetting('REDIS_URL'),
-    workerId: 'poll-worker',
-    shutdownTimeoutMillis: 5_000,
-  });
-  onTestFinished(() => runtime.close());
+  fetchPoll = createHttpPollFetcher(
+    { allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32') },
+    'poll-worker',
+  );
 });
 
 const feed = (...keys: (string | number)[]) => keys.map((key) => ({ key }));
@@ -47,7 +40,7 @@ async function scenario(initial: Readonly<Record<string, Page>>) {
     json(response, page.items);
   });
   const { triggerId } = await poll.publish(true, `${origin}/items`);
-  const scan = poll.scanner(runtime.fetchPoll);
+  const scan = poll.scanner(fetchPoll);
   return {
     scan,
     requests,
@@ -195,7 +188,7 @@ it('releases the claim when the scan is canceled while reading a feed page', asy
   const { triggerId } = await poll.publish(true, `${origin}/items`);
   const controller = new AbortController();
   const canceled = expect(
-    poll.scanner(runtime.fetchPoll)({ signal: controller.signal }),
+    poll.scanner(fetchPoll)({ signal: controller.signal }),
   ).rejects.toMatchObject({ name: 'AbortError' });
   await streaming.promise;
   controller.abort();
