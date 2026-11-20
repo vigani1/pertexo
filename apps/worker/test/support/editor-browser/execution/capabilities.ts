@@ -20,6 +20,7 @@ import { createEditorResendMailbox } from '../notifications/resend-mailbox.js';
 import type { EditorWorkerExecution } from './editor-execution.types.js';
 import {
   codeCase,
+  pollingCase,
   webhookResponseCase,
   artifactInputs,
   controlledHttp,
@@ -33,7 +34,7 @@ export async function createEditorCapabilities(context: EditorWorkerExecution) {
   const { raw, database, namespace, resources, assertSetupActive } = context;
   let controlledCapabilities:
     Awaited<ReturnType<typeof createWorkerNodeRuntimeCapabilities>> | undefined;
-  if (controlledHttp || curatedTemplates || emailAttachments) {
+  if (controlledHttp || curatedTemplates || emailAttachments || pollingCase) {
     if (
       raw.connectionMasterKey === undefined ||
       (controlledHttp && raw.authorizationValue === undefined)
@@ -55,7 +56,7 @@ export async function createEditorCapabilities(context: EditorWorkerExecution) {
         return Promise.resolve();
       },
     };
-    await createControlledTransport(context);
+    if (!pollingCase) await createControlledTransport(context);
     assertSetupActive();
     const storesFiles = artifactInputs || emailAttachments;
     const scratch = storesFiles ? await createTestArtifactScratch() : undefined;

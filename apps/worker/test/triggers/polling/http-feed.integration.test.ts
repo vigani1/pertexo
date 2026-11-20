@@ -3,19 +3,19 @@ import { pollingFixture } from '../../../../../packages/core/test/triggers/polli
 import { EVENT_COORDINATION_LIMITS } from '@pertexo/workflow-model';
 import { HTTP_REQUEST_LIMITS } from '@pertexo/integrations';
 import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
-import { createHttpPollFetcher } from '../../../src/triggers/fetch-http-poll.js';
+import { createPollFetcher } from '../../../src/triggers/fetch-poll.js';
 import { json, server } from '../../integrations/support/pagination.js';
 
 type Page = Readonly<{ items: unknown; next?: string }>;
 
 let poll: ReturnType<typeof pollingFixture>;
-let fetchPoll: ReturnType<typeof createHttpPollFetcher>;
+let fetchPoll: ReturnType<typeof createPollFetcher>;
 
 beforeEach(async () => {
   poll = pollingFixture();
   onTestFinished(() => poll.close());
   await poll.initialize();
-  fetchPoll = createHttpPollFetcher(
+  fetchPoll = createPollFetcher(
     { allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32') },
     'poll-worker',
   );

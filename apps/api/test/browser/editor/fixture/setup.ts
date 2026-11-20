@@ -43,8 +43,11 @@ export function createEditorBrowserFixture() {
   // acquiring Redis or allowing the ordinary migrated UUID database fixture.
   beforeAll(async () => {
     await recheckOwnership();
-    if (scenario === 'curated-templates' && httpMaster !== undefined)
-      owner.acquire('curated synthetic master key', httpMaster, (key) => {
+    if (
+      (scenario === 'curated-templates' || scenario === 'http-polling') &&
+      httpMaster !== undefined
+    )
+      owner.acquire('synthetic master key', httpMaster, (key) => {
         assertHttpDependenciesDisposable(worker);
         key.fill(0);
       });

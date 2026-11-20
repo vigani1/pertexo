@@ -1,3 +1,4 @@
+import { Client } from 'pg';
 import { createPostgresDestination } from '@pertexo/database/testing';
 import { testStackSetting } from '../../../../../../infrastructure/testing/test-stack.mjs';
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -52,12 +53,26 @@ export function registerEditorBrowserJourney(
     async () => {
       const apiOrigin = await prepareEditorPrerequisites(api);
       const destination =
-        scenario === 'product'
+        scenario === 'product' || scenario === 'http-polling'
           ? await createPostgresDestination(
               testStackSetting('DATABASE_ADMIN_URL'),
             )
           : undefined;
       try {
+        if (scenario === 'http-polling' && destination !== undefined) {
+          const client = new Client(destination.credential);
+          await client.connect();
+          try {
+            await client.query(
+              'create table public.poll_rows (id text primary key, revision integer not null, status text not null)',
+            );
+            await client.query(
+              "insert into public.poll_rows values ('baseline', 1, 'already present')",
+            );
+          } finally {
+            await client.end();
+          }
+        }
         const context = {
           fixture,
           api,

@@ -1,4 +1,4 @@
-import { handleEditorPollDue } from './polling.js';
+import { handleEditorPollDue, handleEditorPollInsert } from './polling.js';
 import { createControlListener } from '../../harness/control-listener.js';
 
 import { scenario } from '../fixture/environment.js';
@@ -28,6 +28,7 @@ import {
 const triggerTimingCommands = [
   handleEditorScheduleRestart,
   handleEditorPollDue,
+  handleEditorPollInsert,
 ];
 
 export function createEditorControlServer(

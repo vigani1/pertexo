@@ -68,7 +68,8 @@ describe('a new step’s setup', () => {
       .filter(
         ({ definition }) =>
           !humanTasks.has(definition.key) &&
-          definition.key !== 'database.execute',
+          definition.key !== 'database.execute' &&
+          definition.key !== 'database.poll',
       )
       .map((definition) => [definition.definition.key, definition] as const),
   )('starts %s the way it did before', (key, definition) => {
@@ -87,6 +88,19 @@ describe('a new step’s setup', () => {
     expect(startingConfig(database, [])).toEqual({
       operation: 'query',
       sql: 'select 1 as value',
+    });
+  });
+
+  it('starts Database Row watching new rows in the public schema', () => {
+    const trigger = catalog.find(
+      ({ definition }) => definition.key === 'database.poll',
+    );
+    if (trigger === undefined)
+      throw new Error('No Database Row trigger in the catalog');
+    expect(startingConfig(trigger, [])).toEqual({
+      schema: 'public',
+      mode: 'new',
+      intervalMinutes: 1,
     });
   });
 
