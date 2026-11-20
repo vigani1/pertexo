@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { POSTGRES_FAILURE_CODES } from './postgres.errors.js';
+import { POSTGRES_FAILURE_CODES } from '../execution/postgres.errors.js';
 
 const httpPollFailureCodeSchema = z.enum([
   'http.poll_invalid_page',
