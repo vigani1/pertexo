@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import type { WorkflowAutoPauseSettings } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
@@ -87,8 +88,8 @@ function WorkflowRule({
         label="Auto-pause for this workflow"
         description={
           current.enabled
-            ? 'Schedules and webhooks pause after repeated failures.'
-            : 'This workflow keeps starting runs however often it fails.'
+            ? 'Triggered runs pause after repeated failures.'
+            : 'Repeated failures won’t pause this workflow.'
         }
       >
         {(control) => (
@@ -148,13 +149,13 @@ function ruleSummary(settings: WorkflowAutoPauseSettings) {
   if (!settings.enabled)
     return (
       <>
-        <b>Off.</b> This workflow keeps starting runs however often it fails.
+        <b>Off.</b> Repeated failures won’t pause this workflow.
       </>
     );
   return (
     <>
-      Schedules and webhooks <b>pause after {settings.effectiveThreshold}</b>{' '}
-      failures in a row
+      Triggers <b>pause after {settings.effectiveThreshold}</b> failures in a
+      row
       {settings.thresholdOverride === null ? ', the workspace default.' : '.'}
     </>
   );
@@ -175,7 +176,7 @@ export function AutoPauseSection(scope: Scope) {
   return (
     <SettingsSection
       title="Automatic pause"
-      description="When repeated failures should stop scheduled and webhook runs."
+      description="When repeated failures should pause workflow triggers."
     >
       <QueryView
         query={query}
@@ -213,12 +214,29 @@ export function AutoPauseSection(scope: Scope) {
                     work while triggers are paused.
                   </p>
                   <p>
+                    HTTP Polling also pauses after repeated failed checks.
+                    Confirmed authentication loss pauses triggers immediately.
+                  </p>
+                  <p>
                     A change applies from the next failure, without publishing.
                     It never resumes a workflow that has already paused.
                   </p>
                 </>
               }
             />
+            {settings.pauseEvidence?.kind !== 'poll' ? null : (
+              <Link
+                to="/w/$workspaceId/workflows/$workflowId/triggers"
+                params={{
+                  workspaceId: scope.workspace.id,
+                  workflowId: scope.workflowId,
+                }}
+                hash={settings.pauseEvidence.triggerId}
+                className="inline-link text-sm"
+              >
+                Polling trigger that caused the pause
+              </Link>
+            )}
             {canManageWorkspace ? null : (
               <p className="text-sm text-muted-foreground">
                 Workspace default: {String(settings.workspaceThreshold)}{' '}

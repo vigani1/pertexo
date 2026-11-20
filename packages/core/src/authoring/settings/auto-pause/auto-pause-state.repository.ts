@@ -27,6 +27,8 @@ export const workflowProjection = {
   triggerPauseReason: workflows.triggerPauseReason,
   triggerPauseFailures: workflows.triggerPauseFailures,
   triggerPauseLastRunId: workflows.triggerPauseLastRunId,
+  triggerPausePollTriggerId: workflows.triggerPausePollTriggerId,
+  triggerPausePollErrorCode: workflows.triggerPausePollErrorCode,
 };
 export type WorkspaceRow = NonNullable<
   Awaited<ReturnType<typeof lockWorkspaceSettings>>
@@ -100,5 +102,15 @@ export function workflowSettingsOf(
     pauseReason: workflow.triggerPauseReason,
     pausedFailures: workflow.triggerPauseFailures,
     pausedLastRunId: workflow.triggerPauseLastRunId,
+    ...(workflow.triggerPausePollTriggerId === null ||
+    workflow.triggerPausePollErrorCode === null
+      ? {}
+      : {
+          pauseEvidence: {
+            kind: 'poll',
+            triggerId: workflow.triggerPausePollTriggerId,
+            errorCode: workflow.triggerPausePollErrorCode,
+          },
+        }),
   };
 }

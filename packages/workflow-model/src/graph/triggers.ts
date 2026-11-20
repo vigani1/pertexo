@@ -1,9 +1,12 @@
+import { HTTP_POLL_TRIGGER } from '../triggers/polling.schemas.js';
+
 export const WORKFLOW_TRIGGER_DEFINITIONS = [
   { key: 'core.manual', version: 1 },
   { key: 'core.webhook', version: 1 },
   { key: 'core.schedule', version: 1 },
   { key: 'core.workflow_error', version: 1 },
   { key: 'core.form', version: 1 },
+  HTTP_POLL_TRIGGER,
 ] as const;
 
 export type WorkflowTriggerDefinition =

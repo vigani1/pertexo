@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workflows,
   workflowTriggers,
+  triggerPolls,
   webhookTriggerEndpoints as endpoints,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -92,10 +93,27 @@ export async function readHealth(
       healthStatus: workflowTriggers.healthStatus,
       lastErrorCode: workflowTriggers.lastErrorCode,
       reconciledAt: workflowTriggers.reconciledAt,
+      baselineEstablished: sql<boolean>`${triggerPolls.seenKeys} is not null`,
+      nextPollAt: triggerPolls.nextPollAt,
+      paused: sql<boolean>`${workflows.triggerPauseState} = 'paused'`,
       authentication: endpoints.authentication,
       endpointReady: sql<boolean>`(${endpoints.id} is not null and ${endpoints.status}='active')`,
     })
     .from(workflowTriggers)
+    .innerJoin(
+      workflows,
+      and(
+        eq(workflows.workspaceId, workflowTriggers.workspaceId),
+        eq(workflows.id, workflowTriggers.workflowId),
+      ),
+    )
+    .leftJoin(
+      triggerPolls,
+      and(
+        eq(triggerPolls.workspaceId, workflowTriggers.workspaceId),
+        eq(triggerPolls.triggerId, workflowTriggers.id),
+      ),
+    )
     .leftJoin(
       endpoints,
       and(
@@ -115,25 +133,40 @@ export async function readHealth(
     .orderBy(workflowTriggers.nodeId)
     .catch(rethrowQueryFailure);
   return Object.freeze(
-    rows.flatMap(({ authentication, kind, ...row }) =>
-      kind === 'polling'
-        ? []
-        : [
-            Object.freeze({
-              ...row,
-              kind,
-              ...(kind === 'webhook'
-                ? {
-                    authentication:
-                      authentication ??
-                      ({
-                        mode: 'signed',
-                        allowedOrigins: [],
-                      } satisfies WebhookAuthentication),
-                  }
-                : {}),
-            }),
-          ],
+    rows.map(
+      ({
+        authentication,
+        kind,
+        baselineEstablished,
+        nextPollAt,
+        paused,
+        endpointReady,
+        ...row
+      }) => {
+        if (kind === 'polling')
+          return Object.freeze({
+            ...row,
+            kind,
+            baselineEstablished,
+            nextPollAt,
+            paused,
+          });
+        return Object.freeze({
+          ...row,
+          kind,
+          endpointReady,
+          ...(kind === 'webhook'
+            ? {
+                authentication:
+                  authentication ??
+                  ({
+                    mode: 'signed',
+                    allowedOrigins: [],
+                  } satisfies WebhookAuthentication),
+              }
+            : {}),
+        });
+      },
     ),
   );
 }

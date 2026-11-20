@@ -73,7 +73,7 @@ describe('workflow automatic pause controls', () => {
     expect(threshold).toHaveValue('6');
     expect(bodies).toHaveLength(1);
     await within(section).findByText(
-      sentence('Schedules and webhooks pause after 12 failures in a row'),
+      sentence('Triggers pause after 12 failures in a row'),
     );
     await event.click(
       within(section).getByRole('button', { name: 'Save auto-pause rule' }),
@@ -93,7 +93,7 @@ describe('workflow automatic pause controls', () => {
       http.get(`${workflowApi}/auto-pause`, () => HttpResponse.json(paused)),
     );
     await renderLoadedApp(path);
-    await screen.findByText('Schedules and webhooks are paused');
+    await screen.findByText('Workflow triggers are paused');
     expect(
       screen.queryByRole('button', { name: 'Resume triggers' }),
     ).not.toBeInTheDocument();

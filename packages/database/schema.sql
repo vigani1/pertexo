@@ -3892,6 +3892,9 @@ CREATE TABLE app.trigger_polls (
     lease_acquired_at timestamp with time zone,
     lease_expires_at timestamp with time zone,
     updated_at timestamp with time zone DEFAULT statement_timestamp() NOT NULL,
+    consecutive_failures integer DEFAULT 0 NOT NULL,
+    failure_pause_revision bigint,
+    CONSTRAINT trigger_polls_failure_streak_valid CHECK (((consecutive_failures >= 0) AND ((consecutive_failures = 0) OR (failure_pause_revision IS NOT NULL)))),
     CONSTRAINT trigger_polls_lease_valid CHECK (((((lease_owner IS NULL) AND (lease_token IS NULL) AND (lease_acquired_at IS NULL) AND (lease_expires_at IS NULL)) OR ((lease_owner IS NOT NULL) AND (lease_token IS NOT NULL) AND (lease_acquired_at IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (lease_expires_at > lease_acquired_at) AND (lease_expires_at <= (lease_acquired_at + '00:05:00'::interval)))) IS TRUE))
 );
 
@@ -5066,6 +5069,8 @@ CREATE TABLE app.workflows (
     created_by uuid NOT NULL,
     created_at timestamp with time zone DEFAULT date_trunc('milliseconds'::text, clock_timestamp()) NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    trigger_pause_poll_trigger_id uuid,
+    trigger_pause_poll_error_code text,
     CONSTRAINT workflows_activation_status_valid CHECK (((activation_status)::text = ANY (ARRAY[('inactive'::character varying)::text, ('activating'::character varying)::text, ('active'::character varying)::text, ('deactivating'::character varying)::text, ('degraded'::character varying)::text, ('error'::character varying)::text]))),
     CONSTRAINT workflows_auto_pause_settings_revision_check CHECK ((auto_pause_settings_revision > 0)),
     CONSTRAINT workflows_auto_pause_threshold_valid CHECK (((auto_pause_threshold IS NULL) OR ((auto_pause_threshold >= 3) AND (auto_pause_threshold <= 100)))),
@@ -5074,7 +5079,7 @@ CREATE TABLE app.workflows (
     CONSTRAINT workflows_lifecycle_status_valid CHECK (((lifecycle_status)::text = ANY (ARRAY[('active'::character varying)::text, ('archived'::character varying)::text]))),
     CONSTRAINT workflows_name_nonempty CHECK (((length(btrim((name)::text)) >= 1) AND (length(btrim((name)::text)) <= 128))),
     CONSTRAINT workflows_name_revision_positive CHECK ((name_revision > 0)),
-    CONSTRAINT workflows_trigger_pause_valid CHECK ((((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (trigger_pause_last_run_id IS NOT NULL)))) IS TRUE))
+    CONSTRAINT workflows_trigger_pause_valid CHECK ((((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (((trigger_pause_last_run_id IS NOT NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR ((trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NOT NULL) AND (trigger_pause_poll_error_code IS NOT NULL)))))) IS TRUE))
 );
 
 
@@ -15405,6 +15410,20 @@ GRANT UPDATE(updated_at) ON TABLE app.trigger_polls TO pertexo_maintenance;
 
 
 --
+-- Name: COLUMN trigger_polls.consecutive_failures; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(consecutive_failures) ON TABLE app.trigger_polls TO pertexo_app;
+
+
+--
+-- Name: COLUMN trigger_polls.failure_pause_revision; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(failure_pause_revision) ON TABLE app.trigger_polls TO pertexo_app;
+
+
+--
 -- Name: TABLE trigger_schedule_occurrences; Type: ACL; Schema: app; Owner: pertexo_owner
 --
 
@@ -16875,6 +16894,22 @@ GRANT UPDATE(trigger_pause_revision) ON TABLE app.workflows TO pertexo_maintenan
 --
 
 GRANT UPDATE(updated_at) ON TABLE app.workflows TO pertexo_app;
+
+
+--
+-- Name: COLUMN workflows.trigger_pause_poll_trigger_id; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(trigger_pause_poll_trigger_id) ON TABLE app.workflows TO pertexo_app;
+GRANT UPDATE(trigger_pause_poll_trigger_id) ON TABLE app.workflows TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN workflows.trigger_pause_poll_error_code; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(trigger_pause_poll_error_code) ON TABLE app.workflows TO pertexo_app;
+GRANT UPDATE(trigger_pause_poll_error_code) ON TABLE app.workflows TO pertexo_maintenance;
 
 
 --

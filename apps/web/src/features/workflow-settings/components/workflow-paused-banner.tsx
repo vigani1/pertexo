@@ -19,12 +19,14 @@ import { StatusGlyph } from '@/components/ui/status';
 function PausedStateNotice({
   workspaceId,
   settings,
+  workflowId,
   canResume,
   pending,
   disabled,
   onResume,
 }: Readonly<{
   workspaceId: string;
+  workflowId: string;
   settings: WorkflowAutoPauseSettings | undefined;
   canResume: boolean;
   pending: boolean;
@@ -36,10 +38,16 @@ function PausedStateNotice({
     settings.pausedAt === null
       ? '.'
       : ` on ${formatDateTime(settings.pausedAt)}.`;
+  const poll =
+    settings.pauseEvidence?.kind === 'poll'
+      ? settings.pauseEvidence
+      : undefined;
+  const failures =
+    poll === undefined ? 'failed triggered runs' : 'failed feed checks';
   return (
     <Notice
       tone="warning"
-      title="Schedules and webhooks are paused"
+      title="Workflow triggers are paused"
       action={
         canResume ? (
           <ProgressButton
@@ -56,10 +64,28 @@ function PausedStateNotice({
       }
     >
       <p>
-        Paused after {String(settings.pausedFailures)} failed triggered runs in
-        a row{time} Manual runs and replays still work. Resume leaves triggers
-        you turned off unchanged.
+        {poll?.errorCode === 'http.poll_authentication' ? (
+          <>Paused when the feed could no longer authenticate{time}</>
+        ) : (
+          <>
+            Paused after {String(settings.pausedFailures)} {failures} in a row
+            {time}
+          </>
+        )}{' '}
+        Manual runs and replays still work.
       </p>
+      {poll === undefined ? null : (
+        <p className="mt-1">
+          <Link
+            to="/w/$workspaceId/workflows/$workflowId/triggers"
+            params={{ workspaceId, workflowId }}
+            hash={poll.triggerId}
+            className="inline-link"
+          >
+            Polling trigger that caused the pause
+          </Link>
+        </p>
+      )}
       {settings.pausedLastRunId === null ? null : (
         <p className="mt-1">
           <Link
@@ -224,6 +250,7 @@ export function WorkflowPausedBanner({
       <PausedStateNotice
         workspaceId={workspace.id}
         settings={settings}
+        workflowId={workflowId}
         canResume={canResume}
         pending={command.pending}
         disabled={query.isError}

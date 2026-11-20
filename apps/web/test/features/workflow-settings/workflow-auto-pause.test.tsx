@@ -70,7 +70,7 @@ describe('workflow automatic pause controls', () => {
       'This request was already used with different details. Try again.',
     );
     await within(section).findByText(
-      sentence('Schedules and webhooks pause after 12 failures in a row'),
+      sentence('Triggers pause after 12 failures in a row'),
     );
     expect(input).toHaveValue('6');
     expect(
@@ -228,7 +228,7 @@ describe('workflow automatic pause controls', () => {
     expect(bodies).toEqual([
       { enabled: false, thresholdOverride: null, expectedSettingsRevision: 1 },
     ]);
-    expect(screen.getByText('Schedules and webhooks are paused')).toBeVisible();
+    expect(screen.getByText('Workflow triggers are paused')).toBeVisible();
   });
   it('labels and links pause evidence accurately for both historical and current rows', async () => {
     installQueries();
@@ -263,7 +263,7 @@ describe('workflow automatic pause controls', () => {
     await renderLoadedApp(path);
     const event = userEvent.setup();
     expect(
-      await screen.findByText('Schedules and webhooks are paused'),
+      await screen.findByText('Workflow triggers are paused'),
     ).toBeVisible();
     await event.click(screen.getByRole('button', { name: 'Resume triggers' }));
     await screen.findByText('Workflow triggers resumed');
@@ -271,7 +271,7 @@ describe('workflow automatic pause controls', () => {
     expect(key).toMatch(/^[a-f0-9-]{36}$/u);
     await waitFor(() =>
       expect(
-        screen.queryByText('Schedules and webhooks are paused'),
+        screen.queryByText('Workflow triggers are paused'),
       ).not.toBeInTheDocument(),
     );
   });
@@ -324,4 +324,36 @@ describe('workflow automatic pause controls', () => {
       expectedSettingsRevision: 2,
     });
   });
+});
+
+it('links the poll that paused the workflow from Automatic pause', async () => {
+  installQueries();
+  const triggerId = '81a30608-cbcd-43bd-a9b0-daf8314d21b7';
+  mockServer.use(
+    http.get(`${workflowApi}/auto-pause`, () =>
+      HttpResponse.json({
+        ...paused,
+        pausedLastRunId: null,
+        pauseEvidence: {
+          kind: 'poll',
+          triggerId,
+          errorCode: 'http.poll_authentication',
+        },
+      }),
+    ),
+  );
+  await renderLoadedApp(path);
+  const section = within(
+    await screen.findByRole('region', { name: 'Automatic pause' }),
+  );
+  const link = await section.findByRole('link', {
+    name: 'Polling trigger that caused the pause',
+  });
+  expect(link).toHaveAttribute(
+    'href',
+    path.replace(/settings$/u, `triggers#${triggerId}`),
+  );
+  expect(
+    screen.queryByRole('link', { name: 'Run that triggered the pause' }),
+  ).toBeNull();
 });

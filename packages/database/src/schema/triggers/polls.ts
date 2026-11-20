@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   check,
+  integer,
   foreignKey,
   index,
   primaryKey,
@@ -17,6 +19,8 @@ export const triggerPolls = appSchema.table(
     triggerId: uuid('trigger_id').notNull(),
     workspaceId: uuid('workspace_id').notNull(),
     seenKeys: bytea('seen_keys').array(),
+    consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+    failurePauseRevision: bigint('failure_pause_revision', { mode: 'bigint' }),
     nextPollAt: timestamp('next_poll_at', { withTimezone: true })
       .notNull()
       .default(sql`statement_timestamp()`),
@@ -39,6 +43,10 @@ export const triggerPolls = appSchema.table(
     check(
       'trigger_polls_lease_valid',
       sql`((((lease_owner IS NULL) AND (lease_token IS NULL) AND (lease_acquired_at IS NULL) AND (lease_expires_at IS NULL)) OR ((lease_owner IS NOT NULL) AND (lease_token IS NOT NULL) AND (lease_acquired_at IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (lease_expires_at > lease_acquired_at) AND (lease_expires_at <= (lease_acquired_at + '00:05:00'::interval)))) IS TRUE)`,
+    ),
+    check(
+      'trigger_polls_failure_streak_valid',
+      sql`consecutive_failures >= 0 and (consecutive_failures = 0 or failure_pause_revision is not null)`,
     ),
     index('trigger_polls_due_idx')
       .on(table.nextPollAt, table.workspaceId, table.triggerId)

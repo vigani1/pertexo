@@ -1,11 +1,13 @@
 import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import type { HttpPollFailureCode } from '@pertexo/workflow-model';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   triggerPolls as polls,
   workflowTriggers as triggers,
   workflows as workflowRecords,
   workflowVersions,
+  workspaces,
 } from '@pertexo/database/schema';
 import type { PollClaim } from '../schedules/scanning/schedule-scanning.types.js';
 
@@ -44,6 +46,7 @@ export async function readPollObservation(
   const [row] = await transaction.db
     .select({
       config: triggers.desiredConfig,
+      workflowId: triggers.workflowId,
       seenKeys: polls.seenKeys,
       pauseRevision: workflows.triggerPauseRevision,
       observedAt: sql<Date>`clock_timestamp()`.mapWith(polls.nextPollAt),
@@ -66,6 +69,7 @@ export async function lockPollPublication(
   transaction: WorkspaceTransaction,
   claim: PollClaim,
   pauseRevision: bigint,
+  lock: 'share' | 'no key update' = 'share',
 ) {
   const [published] = await transaction.db
     .select({
@@ -76,9 +80,12 @@ export async function lockPollPublication(
       checksum: workflowVersions.checksum,
       executableJson: workflowVersions.executableJson,
       nodeId: triggers.nodeId,
+      autoPauseEnabled: workflows.autoPauseEnabled,
+      threshold: sql<number>`coalesce(${workflows.autoPauseThreshold}, ${workspaces.autoPauseThreshold})`,
     })
     .from(triggers)
     .innerJoin(workflows, currentWorkflow)
+    .innerJoin(workspaces, eq(workspaces.id, workflows.workspaceId))
     .innerJoin(
       workflowVersions,
       and(
@@ -92,15 +99,19 @@ export async function lockPollPublication(
         eq(workflows.triggerPauseRevision, pauseRevision),
       ),
     )
-    .for('share', { of: workflows });
+    .for(lock, { of: workflows });
   if (published === undefined) return undefined;
   const [poll] = await transaction.db
-    .select({ seenKeys: polls.seenKeys })
+    .select({
+      seenKeys: polls.seenKeys,
+      consecutiveFailures: polls.consecutiveFailures,
+      failurePauseRevision: polls.failurePauseRevision,
+    })
     .from(polls)
     .where(servingPoll(claim))
     .for('update');
   if (poll === undefined) return undefined;
-  return { published, seenKeys: poll.seenKeys };
+  return { published, ...poll };
 }
 
 export async function recordPollKeys(
@@ -126,11 +137,24 @@ export async function completePoll(
   transaction: WorkspaceTransaction,
   claim: PollClaim,
   delaySeconds: number,
-  healthy: boolean,
+  outcome:
+    | { kind: 'success' }
+    | {
+        kind: 'failure';
+        code: HttpPollFailureCode;
+        count: number;
+        pauseRevision: bigint;
+      },
 ) {
   const rows = await transaction.db
     .update(polls)
     .set({
+      ...(outcome.kind === 'success'
+        ? { consecutiveFailures: 0, failurePauseRevision: null }
+        : {
+            consecutiveFailures: outcome.count,
+            failurePauseRevision: outcome.pauseRevision,
+          }),
       nextPollAt: sql`statement_timestamp()+make_interval(secs=>${delaySeconds})`,
       leaseOwner: null,
       leaseToken: null,
@@ -141,20 +165,21 @@ export async function completePoll(
     .where(servingPoll(claim))
     .returning({ id: polls.triggerId });
   if (rows.length === 0) return false;
-  if (healthy) {
-    await transaction.db
-      .update(triggers)
-      .set({
-        healthStatus: 'healthy',
-        lastErrorCode: null,
-        updatedAt: sql`statement_timestamp()`,
-      })
-      .where(
-        and(
-          eq(triggers.workspaceId, claim.workspace_id),
-          eq(triggers.id, claim.trigger_id),
-        ),
-      );
-  }
+  const errorCode = outcome.kind === 'failure' ? outcome.code : null;
+  const failedHealth =
+    errorCode === 'http.poll_authentication' ? 'unhealthy' : 'degraded';
+  await transaction.db
+    .update(triggers)
+    .set({
+      healthStatus: errorCode === null ? 'healthy' : failedHealth,
+      lastErrorCode: errorCode,
+      updatedAt: sql`statement_timestamp()`,
+    })
+    .where(
+      and(
+        eq(triggers.workspaceId, claim.workspace_id),
+        eq(triggers.id, claim.trigger_id),
+      ),
+    );
   return true;
 }

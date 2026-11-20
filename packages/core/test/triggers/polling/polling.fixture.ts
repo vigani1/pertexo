@@ -8,6 +8,7 @@ import { HTTP_POLL_CONNECTION_SLOT } from '@pertexo/workflow-model';
 import { Pool } from 'pg';
 import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { createScheduleTriggerTestEnvironment } from '../../support/schedule-triggers.js';
+import { createWorkflowAutoPauseStore } from '../../../src/authoring/settings/auto-pause/workflow-auto-pause.store.js';
 import { workflowTriggerProjection } from '../../../src/triggers/reconciliation/projection.js';
 import { createScheduleTriggerScanner } from '../../../src/triggers/schedules/schedule-scanner.store.js';
 import type { FetchPoll } from '../../../src/triggers/polling/items.js';
@@ -19,6 +20,10 @@ export function pollingFixture() {
     connectionString: fixture.apiConnectionString,
   });
   const app = new Pool(config);
+  const controls = createWorkflowAutoPauseStore(
+    (workspaceId, actorId, operation) =>
+      withTenantScopedClient(app, { workspaceId, actorId }, operation),
+  );
   let versionNumber = 1;
   const scanners: ReturnType<typeof createScheduleTriggerScanner>[] = [];
 
@@ -131,12 +136,13 @@ export function pollingFixture() {
       hashes: string[] | null;
       retired: boolean;
       health: string;
+      lastErrorCode: string | null;
       due: boolean;
       leased: boolean;
     }>(
       `select case when seen_keys is not null then
                 array(select encode(entry,'hex') from unnest(seen_keys) as entry) end hashes,
-              retired_at is not null retired, health_status health,
+              retired_at is not null retired, health_status health, last_error_code "lastErrorCode",
               next_poll_at<=statement_timestamp() due, lease_token is not null leased
          from app.trigger_polls join app.workflow_triggers on id=trigger_id where trigger_id=$1`,
       [triggerId],
@@ -165,6 +171,7 @@ export function pollingFixture() {
   return {
     deliveries,
     app,
+    controls,
     config,
     actorId: fixture.actorId,
     publish,

@@ -1,3 +1,4 @@
+import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useLowEffectMutation,
@@ -26,6 +27,19 @@ export function useAutoPauseCommand(
         cache.invalidateQueries({
           queryKey: autoPauseKeys.workflowRoot(userId, workspaceId),
         }),
+        ...(command.kind === 'resume'
+          ? [
+              cache.invalidateQueries({
+                queryKey: workflowSummaryQueryOptions(
+                  apiClient,
+                  userId,
+                  workspaceId,
+                  workflowId,
+                ).queryKey,
+                exact: true,
+              }),
+            ]
+          : []),
         ...(command.kind === 'workspace'
           ? [
               cache.invalidateQueries({

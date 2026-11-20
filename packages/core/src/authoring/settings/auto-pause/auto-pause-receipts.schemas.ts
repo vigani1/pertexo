@@ -3,6 +3,7 @@ import {
   MIN_AUTO_PAUSE_THRESHOLD,
 } from '@pertexo/policy';
 import {
+  pollPauseEvidenceSchema,
   STORED_INTEGER_MAX,
   STORED_TIMESTAMP_FRACTION_DIGITS,
 } from '@pertexo/workflow-model';
@@ -37,6 +38,7 @@ export const workflowSettings = z
     pauseReason: z.literal('consecutive_failures').nullable(),
     pausedFailures: z.number().int().positive().nullable(),
     pausedLastRunId: z.uuid().nullable(),
+    pauseEvidence: pollPauseEvidenceSchema.optional(),
   })
   .strict();
 

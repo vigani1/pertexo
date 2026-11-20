@@ -45,6 +45,7 @@ const TRIGGERS: Readonly<
   Record<TriggerKind, Readonly<{ label: string; Icon: LucideIcon }>>
 > = {
   'core.webhook': { label: 'Webhook', Icon: WebhookIcon },
+  'http.poll': { label: 'HTTP Polling', Icon: CalendarClockIcon },
   'core.schedule': { label: 'Schedule', Icon: CalendarClockIcon },
   'core.manual': { label: 'Manual', Icon: MousePointerClickIcon },
   'core.form': { label: 'Form', Icon: ClipboardListIcon },

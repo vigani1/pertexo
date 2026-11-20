@@ -135,9 +135,7 @@ it('sends a stored header and checks that its secret is current before requestin
     `${origin}/items`,
     scope.connectionId,
   );
-  await expect(poll.scanner(fetchPoll)()).rejects.toMatchObject({
-    code: 'http.poll_authentication',
-  });
+  await expect(poll.scanner(fetchPoll)()).resolves.toMatchObject({ paused: 1 });
   expect(requests).toEqual([
     { path: '/items', authorization: 'Bearer header-test-token' },
   ]);
@@ -145,6 +143,8 @@ it('sends a stored header and checks that its secret is current before requestin
     hashes: null,
     leased: false,
     due: true,
+    health: 'unhealthy',
+    lastErrorCode: 'http.poll_authentication',
   });
   expect(await poll.admitted()).toEqual([]);
 });
@@ -237,4 +237,78 @@ it('renews a stored OAuth2 credential after a rejected token and uses the replac
   ]);
   expect((await poll.read(triggerId))?.hashes).toHaveLength(2);
   expect(await poll.admitted()).toEqual([]);
+});
+
+it('resumes the existing position after repairing the credential and admits only new items', async () => {
+  const fetchPoll = createHttpPollFetcher(
+    addressPolicy,
+    'poll-worker',
+    await providerConnections(),
+  );
+  const header = (token: string) =>
+    new TextEncoder().encode(
+      JSON.stringify({
+        type: 'http_headers',
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    );
+  const { scope, secretVersionId } = await connect(
+    { authType: 'http_headers' },
+    header('original'),
+  );
+  let token = 'original';
+  const items = [{ key: 'baseline' }];
+  const origin = await server((_url, request, response) => {
+    if (request.headers.authorization !== `Bearer ${token}`) {
+      response.writeHead(401).end();
+      return;
+    }
+    json(response, items);
+  });
+  const { triggerId } = await poll.publish(
+    true,
+    `${origin}/items`,
+    scope.connectionId,
+  );
+  const scan = poll.scanner(fetchPoll);
+  await scan();
+  const baseline = (await poll.read(triggerId))?.hashes;
+  token = 'replacement';
+  items.unshift({ key: 'new' });
+  await poll.makeDue(triggerId);
+  expect(await scan()).toMatchObject({ paused: 1 });
+
+  const replacementId = randomUUID();
+  await connections.rotateConnectionSecret({
+    ...scope,
+    secretVersionId: replacementId,
+    expectedCurrentSecretVersionId: secretVersionId,
+    sealed: await seal(scope.connectionId, replacementId, header(token)),
+    idempotencyKey: randomUUID(),
+    requestHash: 'd'.repeat(64),
+  });
+  const workflowScope = {
+    workspaceId: scope.workspaceId,
+    actorId: scope.actorId,
+    workflowId: poll.workflowId,
+  };
+  const paused = await poll.controls.readWorkflowSettings(workflowScope);
+  expect(paused.pauseEvidence).toEqual({
+    kind: 'poll',
+    triggerId,
+    errorCode: 'http.poll_authentication',
+  });
+  expect(await scan()).toMatchObject({ claimed: 0 });
+  await poll.controls.resumeWorkflow({
+    ...workflowScope,
+    expectedPauseRevision: paused.pauseRevision,
+    idempotencyKey: randomUUID(),
+  });
+  expect((await poll.read(triggerId))?.hashes).toEqual(baseline);
+  expect(await scan()).toMatchObject({ accepted: 1 });
+  expect(await poll.admitted()).toEqual([{ item: { key: 'new' }, outbox: 1 }]);
+  expect(await poll.read(triggerId)).toMatchObject({
+    health: 'healthy',
+    lastErrorCode: null,
+  });
 });

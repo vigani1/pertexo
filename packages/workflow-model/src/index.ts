@@ -294,6 +294,8 @@ export {
   httpPollConfigSchema,
   HTTP_POLL_TRIGGER,
   HTTP_POLL_CONNECTION_SLOT,
+  POLL_MAX_ITEMS,
+  POLL_MAX_SEEN_KEYS,
   type HttpPollConfig,
 } from './triggers/polling.schemas.js';
 export {
@@ -489,3 +491,15 @@ export {
 } from './workspaces/governance.js';
 export { WORKSPACE_TEXT_LIMITS } from './workspaces/workspace-text.js';
 export { requiresPublicationReviewer } from './workspaces/governance.js';
+
+export {
+  HttpPollFailure,
+  type HttpPollFailureCode,
+} from './triggers/polling.errors.js';
+
+export {
+  pollPauseEvidenceSchema,
+  triggerPauseEvidenceSchema,
+  type PollPauseEvidence,
+  type TriggerPauseEvidence,
+} from './triggers/pause-evidence.js';

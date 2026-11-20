@@ -171,7 +171,9 @@ ships it with pause behavior, trigger health and editor support.
   trigger when the pause has poll evidence. Explain publication's baseline
   behavior in the setup and repair flow. In setup, explain stable unique
   keys, the seen-set retention limit and how to choose an interval that
-  keeps new items within the fetched head.
+  keeps new items within the fetched head. Move the item and seen-set
+  limits to the browser-safe workflow model so setup and the scanner read
+  the same values.
 
 ## Acceptance tests
 

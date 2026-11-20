@@ -1,0 +1,9 @@
+ALTER TABLE "app"."workflows" DROP CONSTRAINT "workflows_trigger_pause_valid";--> statement-breakpoint
+ALTER TABLE "app"."workflows" ADD COLUMN "trigger_pause_poll_trigger_id" uuid;--> statement-breakpoint
+ALTER TABLE "app"."workflows" ADD COLUMN "trigger_pause_poll_error_code" text;--> statement-breakpoint
+ALTER TABLE "app"."trigger_polls" ADD COLUMN "consecutive_failures" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "app"."trigger_polls" ADD COLUMN "failure_pause_revision" bigint;--> statement-breakpoint
+ALTER TABLE "app"."workflows" ADD CONSTRAINT "workflows_trigger_pause_valid" CHECK (((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (((trigger_pause_last_run_id IS NOT NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR ((trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NOT NULL) AND (trigger_pause_poll_error_code IS NOT NULL)))))) IS TRUE);--> statement-breakpoint
+ALTER TABLE "app"."trigger_polls" ADD CONSTRAINT "trigger_polls_failure_streak_valid" CHECK (consecutive_failures >= 0 and (consecutive_failures = 0 or failure_pause_revision is not null));
+GRANT UPDATE (consecutive_failures, failure_pause_revision) ON app.trigger_polls TO {{app_role}};
+GRANT UPDATE (trigger_pause_poll_trigger_id, trigger_pause_poll_error_code) ON app.workflows TO {{app_role}}, {{maintenance_role}};

@@ -3,7 +3,12 @@ import {
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
 import { z } from 'zod';
-import { httpPollConfigSchema } from '@pertexo/workflow-model';
+import {
+  HttpPollFailure,
+  httpPollConfigSchema,
+  POLL_MAX_ITEMS,
+  POLL_MAX_SEEN_KEYS,
+} from '@pertexo/workflow-model';
 import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import {
   commandKeyHash,
@@ -24,13 +29,8 @@ import type {
   ScannerResources,
   ScanDueInput,
 } from '../schedules/scanning/schedule-scanning.types.js';
-import {
-  POLL_MAX_ITEMS,
-  POLL_MAX_PAGES,
-  POLL_MAX_SEEN_KEYS,
-  newPollItems,
-  type FetchPoll,
-} from './items.js';
+import { POLL_MAX_PAGES, newPollItems, type FetchPoll } from './items.js';
+import { recordPollFailure } from './record-failure.js';
 import { PollClaimLostError } from './poll.errors.js';
 import {
   completePoll,
@@ -50,7 +50,7 @@ export async function processPollClaim(
   claim: PollClaim,
   input: ScanDueInput,
   fetchPoll: FetchPoll,
-): Promise<'accepted' | 'deferred' | 'skipped'> {
+): Promise<'accepted' | 'deferred' | 'skipped' | 'paused'> {
   const inWorkspace = <T>(
     operation: (transaction: WorkspaceTransaction) => Promise<T>,
   ) =>
@@ -81,6 +81,7 @@ export async function processPollClaim(
       input.signal === undefined
         ? leaseSignal
         : AbortSignal.any([leaseSignal, input.signal]);
+    const intervalSeconds = config.intervalMinutes * SECONDS_PER_MINUTE;
     const fetched = await fetchPoll({
       workspaceId: claim.workspace_id,
       triggerId: claim.trigger_id,
@@ -93,10 +94,18 @@ export async function processPollClaim(
     }).catch((error: unknown) => {
       input.signal?.throwIfAborted();
       if (leaseSignal.aborted) throw new PollClaimLostError();
+      if (error instanceof HttpPollFailure) return error;
       throw error;
     });
     input.signal?.throwIfAborted();
     if (leaseSignal.aborted) throw new PollClaimLostError();
+    if (fetched instanceof HttpPollFailure)
+      return await inWorkspace((transaction) =>
+        recordPollFailure(transaction, claim, observation, {
+          code: fetched.code,
+          delaySeconds: intervalSeconds,
+        }),
+      );
     const candidates = newPollItems(fetched, seenKeys);
     const withLivePoll = <T>(
       operation: (
@@ -121,7 +130,6 @@ export async function processPollClaim(
         return operation(transaction, current);
       });
 
-    const intervalSeconds = config.intervalMinutes * SECONDS_PER_MINUTE;
     if (observation.seenKeys === null) {
       await withLivePoll(async (transaction) => {
         await storeKeys(
@@ -129,7 +137,7 @@ export async function processPollClaim(
           claim,
           candidates.map(({ hash }) => Buffer.from(hash, 'hex')),
         );
-        await finishPoll(transaction, claim, intervalSeconds, true);
+        await finishPoll(transaction, claim, intervalSeconds);
       });
       return 'skipped';
     }
@@ -161,13 +169,13 @@ export async function processPollClaim(
         throw error;
       const retrySeconds = admissionRetrySeconds(error.retryAfterSeconds);
       await withLivePoll((transaction) =>
-        finishPoll(transaction, claim, retrySeconds, false),
+        finishPoll(transaction, claim, retrySeconds),
       );
       return 'deferred';
     }
 
     await withLivePoll((transaction) =>
-      finishPoll(transaction, claim, intervalSeconds, true),
+      finishPoll(transaction, claim, intervalSeconds),
     );
     return candidates.length === 0 ? 'skipped' : 'accepted';
   } catch (error: unknown) {
@@ -190,9 +198,10 @@ async function finishPoll(
   transaction: WorkspaceTransaction,
   claim: PollClaim,
   delaySeconds: number,
-  healthy: boolean,
 ) {
-  if (!(await completePoll(transaction, claim, delaySeconds, healthy)))
+  if (
+    !(await completePoll(transaction, claim, delaySeconds, { kind: 'success' }))
+  )
     throw new PollClaimLostError();
 }
 

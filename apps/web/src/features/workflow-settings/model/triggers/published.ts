@@ -28,14 +28,21 @@ export function hasNoPublishedTriggers({
   scheduleCount,
   form,
   onFailure,
+  polling = false,
 }: Readonly<{
   editable: boolean;
   webhookCount: number | undefined;
   scheduleCount: number | undefined;
   form: boolean;
   onFailure: boolean;
+  polling?: boolean;
 }>): boolean {
   return (
-    editable && webhookCount === 0 && scheduleCount === 0 && !form && !onFailure
+    editable &&
+    webhookCount === 0 &&
+    scheduleCount === 0 &&
+    !form &&
+    !onFailure &&
+    !polling
   );
 }

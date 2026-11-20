@@ -1,5 +1,8 @@
 import { expect, it } from 'vitest';
-import { isWorkflowTriggerKey } from '../../src/graph/triggers.js';
+import {
+  isWorkflowTriggerDefinition,
+  isWorkflowTriggerKey,
+} from '../../src/graph/triggers.js';
 import {
   httpPollConfigSchema,
   HTTP_POLL_TRIGGER,
@@ -32,6 +35,10 @@ it.each([
   ).toBe(false);
 });
 
-it('keeps polling out of the authorable trigger definitions in slice 1', () => {
-  expect(isWorkflowTriggerKey(HTTP_POLL_TRIGGER.key)).toBe(false);
+it('recognizes HTTP Polling version one as a workflow trigger', () => {
+  expect(isWorkflowTriggerKey(HTTP_POLL_TRIGGER.key)).toBe(true);
+  expect(isWorkflowTriggerDefinition(HTTP_POLL_TRIGGER)).toBe(true);
+  expect(
+    isWorkflowTriggerDefinition({ ...HTTP_POLL_TRIGGER, version: 2 }),
+  ).toBe(false);
 });

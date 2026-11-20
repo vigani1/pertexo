@@ -1,3 +1,5 @@
+import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
+import { QUERY_POLLING } from '@/lib/api/query-timings';
 import { readWallClock } from '@/lib/wall-clock';
 import { MAX_TIMER_MS } from '@/lib/timer';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
@@ -272,5 +274,24 @@ export function failureNotificationPolicyQueryOptions(
     ),
     queryFn: ({ signal }) =>
       getFailureNotificationPolicy(apiClient, workspaceId, workflowId, signal),
+  });
+}
+
+export function triggerPublicationQueryOptions(
+  ...args: Parameters<typeof workflowSummaryQueryOptions>
+) {
+  const summary = workflowSummaryQueryOptions(...args);
+  return queryOptions({
+    ...summary,
+    refetchInterval: (query) => {
+      const polling = query.state.data?.pollingTriggers ?? [];
+      if (polling.some(({ healthStatus }) => healthStatus === 'pending'))
+        return QUERY_POLLING.settling;
+      if (polling.some(({ healthStatus }) => healthStatus !== 'disabled'))
+        return QUERY_POLLING.status;
+      return typeof summary.refetchInterval === 'function'
+        ? summary.refetchInterval(query)
+        : false;
+    },
   });
 }

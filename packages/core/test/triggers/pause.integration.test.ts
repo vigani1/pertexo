@@ -15,7 +15,7 @@ import { persistWorkflowTriggerOutcome } from '../../src/runs/advance/persist/tr
 
 type Status =
   'succeeded' | 'failed' | 'timed_out' | 'outcome_unknown' | 'canceled';
-type Trigger = 'schedule' | 'webhook' | 'manual' | 'api' | 'replay';
+type Trigger = 'schedule' | 'webhook' | 'polling' | 'manual' | 'api' | 'replay';
 
 const adminUrl = testStackSetting('DATABASE_ADMIN_URL');
 const fixture = createDisposableDatabaseFixture({
@@ -244,18 +244,19 @@ describe('workflow trigger pause (ADR 056)', () => {
     await expect(fold.checkReadiness()).resolves.toBeUndefined();
   });
 
-  it('records only schedule and webhook outcomes, in the worker’s own workspace', async () => {
+  it('records triggered outcomes in the worker’s own workspace', async () => {
     const { workspaceId, workflowId } = await seed();
     const other = await seed();
     await end(workspaceId, workflowId, 'failed', { trigger: 'schedule' });
     await end(workspaceId, workflowId, 'succeeded', { trigger: 'webhook' });
+    await end(workspaceId, workflowId, 'failed', { trigger: 'polling' });
     for (const trigger of ['manual', 'api', 'replay'] as const)
       await end(workspaceId, workflowId, 'failed', { trigger });
     await end(workspaceId, workflowId, 'failed', {
       cancellationRequested: true,
     });
     await end(workspaceId, workflowId, 'canceled');
-    expect(await pending(workspaceId)).toBe(2);
+    expect(await pending(workspaceId)).toBe(3);
     await expect(
       end(workspaceId, workflowId, 'failed', {
         contextWorkspaceId: other.workspaceId,

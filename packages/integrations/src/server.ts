@@ -103,3 +103,5 @@ export {
   HttpPollFailure,
   type HttpPollFailureCode,
 } from './http/polling/polling.errors.js';
+
+export { httpPollExecutor } from './http/polling/polling.executor.js';
