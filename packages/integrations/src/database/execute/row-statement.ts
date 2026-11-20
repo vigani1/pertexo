@@ -19,8 +19,8 @@ export function rowStatement(
     case 'insert':
       return { columns, text: `${insert} returning *`, values };
     case 'update': {
-      const key = row[config.key];
-      if (key === undefined) return undefined;
+      const key = entries.find(([name]) => name === config.key)?.[1];
+      if (key === null || key === undefined) return undefined;
       const changes = entries.filter(([name]) => name !== config.key);
       if (changes.length === 0) return undefined;
       const assignments = changes.map(
@@ -28,7 +28,7 @@ export function rowStatement(
       );
       return {
         columns,
-        text: `update ${table} set ${assignments.join(', ')} where ${quoteIdentifier(config.key)} is not distinct from ${parameter(changes.length + 1)} returning *`,
+        text: `update ${table} set ${assignments.join(', ')} where ${quoteIdentifier(config.key)} = ${parameter(changes.length + 1)} returning *`,
         values: [...changes.map(([, value]) => value), key],
       };
     }

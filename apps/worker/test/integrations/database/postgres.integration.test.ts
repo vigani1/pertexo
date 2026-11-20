@@ -197,6 +197,35 @@ describe('Database step against a separate PostgreSQL database and login', () =>
     expect(stored.output_ref).toEqual(upserted.output_ref);
   });
 
+  it('fails a null-key update and leaves both rows unchanged', async () => {
+    const nullable = { ...table, table: 'Contacts' };
+    const contacts = '"Odd Schema"."Contacts"';
+    const rows = [
+      { id: 1, email: null, name: 'First' },
+      { id: 2, email: null, name: 'Second' },
+    ];
+    await run({
+      operation: 'query',
+      sql: `create table ${contacts} (id int primary key, email text, name text)`,
+    });
+    const seeded = await run({ ...nullable, operation: 'insert' }, { rows });
+    expect(seeded.status).toBe('succeeded');
+
+    const result = await run(
+      { ...nullable, operation: 'update', key: 'email' },
+      { rows: [{ email: null, name: 'Changed' }] },
+    );
+    const stored = await run({
+      operation: 'query',
+      sql: `select * from ${contacts} order by id`,
+    });
+    expect.soft(result.status).toBe('failed');
+    expect.soft(result.safe_error_code).toBe('database.invalid_columns');
+    expect(stored.output_ref).toMatchObject({
+      value: { items: rows, rowCount: 2 },
+    });
+  });
+
   it.each([
     [
       'read_only',
