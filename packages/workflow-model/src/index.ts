@@ -291,7 +291,7 @@ export {
 export { FormValuesInvalidError } from './triggers/forms/forms.errors.js';
 export { TRIGGER_INTERVAL_MINUTES } from './triggers/interval.js';
 export {
-  HTTP_POLL_CONFIG_SCHEMA,
+  httpPollConfigSchema,
   HTTP_POLL_TRIGGER,
   type HttpPollConfig,
 } from './triggers/polling.schemas.js';
