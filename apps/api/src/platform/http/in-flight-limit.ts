@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { HttpStatus } from '@nestjs/common';
 import { API_PROBLEM_MANIFEST } from '@pertexo/contracts';
 import type { StructuredLogger } from '@pertexo/observability/server';
-import type { FastifyInstance } from 'fastify';
+import type { ServerResponse } from 'node:http';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import { HEALTH_PATHS } from '../health/health-paths.js';
 import { parseRequestId } from './request-context.js';
@@ -15,6 +16,8 @@ const SHED_WARNING_INTERVAL_MILLIS = 60_000;
 const BUSY = API_PROBLEM_MANIFEST['server.busy'];
 // An orchestrator restarts a busy-but-healthy API if its probes are refused.
 const EXEMPT_ROUTES = new Set<string>([HEALTH_PATHS.live, HEALTH_PATHS.ready]);
+/** How each held response gives its place back, once. */
+const RELEASES = new WeakMap<ServerResponse, () => void>();
 
 export type InFlightLimitOptions = Readonly<{
   limit: number;
@@ -59,12 +62,26 @@ export function registerInFlightLimit(
       return;
     }
     inFlight += 1;
-    // 'close' follows both a finished response and a socket closed mid-body.
-    reply.raw.once('close', () => {
+    let held = true;
+    const release = (): void => {
+      if (!held) return;
+      held = false;
       inFlight -= 1;
-    });
+    };
+    RELEASES.set(reply.raw, release);
+    // 'close' follows both a finished response and a socket closed mid-body.
+    reply.raw.once('close', release);
     done();
   });
+}
+
+/**
+ * Gives back the place an open event stream holds. The bound counts work the
+ * API is doing; a stream only waits for events for as long as a tab stays
+ * open, so holding a place would let open tabs turn everyone else away.
+ */
+export function releaseInFlightPlace(reply: FastifyReply): void {
+  RELEASES.get(reply.raw)?.();
 }
 
 function createShedWarning(
