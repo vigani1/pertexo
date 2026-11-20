@@ -38,7 +38,7 @@ export function createProviderBeforeDispatch(input: {
   readonly connectionId: string;
   readonly expectedAuthType: string;
   readonly expectedProviderKey: string;
-  readonly runtime?: Pick<NodeExecutionRuntime, 'beforeDispatch'>;
+  readonly runtime: Pick<NodeExecutionRuntime, 'beforeDispatch'>;
   readonly secretVersionId: string;
   readonly signal: AbortSignal;
 }): () => Promise<void> {
@@ -67,7 +67,7 @@ export function createProviderBeforeDispatch(input: {
       );
     }
     try {
-      await input.runtime?.beforeDispatch({
+      await input.runtime.beforeDispatch({
         connectionFence: {
           connectionId: input.connectionId,
           expectedProviderKey: input.expectedProviderKey,
