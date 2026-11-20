@@ -54,7 +54,7 @@ export function shownData<Data>(
  * The API turned the request away before doing any of it: it is holding as
  * many requests as it safely can.
  */
-export function isServerBusy(error: unknown): boolean {
+function isServerBusy(error: unknown): boolean {
   return isApiError(error) && error.problem?.code === 'server.busy';
 }
 
