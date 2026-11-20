@@ -51,7 +51,7 @@ const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
 
 interface PinnedNodeDefinition {
   readonly manifest: NodeManifest;
-  readonly executionConfigSchema: ZodType;
+  readonly configSchema: ZodType;
   readonly inputSchema: ZodType;
   readonly outputSchema: ZodType;
 }
@@ -176,8 +176,7 @@ function validateDefinitionRegistration(
   }
   return {
     manifest: parsed,
-    executionConfigSchema:
-      registration.executionConfigSchema ?? registration.configSchema,
+    configSchema: registration.configSchema,
     inputSchema: registration.inputSchema,
     outputSchema: registration.outputSchema,
   };
@@ -307,7 +306,7 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     let input: unknown;
     let connectionRefs: Readonly<Record<string, string>>;
     try {
-      config = definition.executionConfigSchema.parse(bounded.config);
+      config = definition.configSchema.parse(bounded.config);
     } catch (error) {
       throw mapSchemaError(error, 'config');
     }

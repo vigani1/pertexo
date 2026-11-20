@@ -1,7 +1,6 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import {
   databaseConfigSchema,
-  databaseExecutionConfigSchema,
   databaseInputSchema,
   databaseOutputSchema,
 } from './execute.schemas.js';
@@ -41,7 +40,6 @@ const manifest: NodeManifest = Object.freeze({
 export const DATABASE_DEFINITION_REGISTRATION = Object.freeze({
   manifest,
   configSchema: databaseConfigSchema,
-  executionConfigSchema: databaseExecutionConfigSchema,
   inputSchema: databaseInputSchema,
   outputSchema: databaseOutputSchema,
 });
