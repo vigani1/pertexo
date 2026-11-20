@@ -21,14 +21,8 @@ export function planRetirement(retirement: ClaimRetirement): RetirementPlan {
   if (retirement.kind === 'release') return { kind: 'release' };
   const retrySeconds =
     retirement.kind === 'defer'
-      ? retirement.retryAfterSeconds
+      ? admissionRetrySeconds(retirement.retryAfterSeconds)
       : RETIREMENT_RETRY_SECONDS.failed;
-  if (
-    !Number.isInteger(retrySeconds) ||
-    retrySeconds < 1 ||
-    retrySeconds > RETIREMENT_RETRY_SECONDS.maximum
-  )
-    throw new RangeError('Invalid schedule admission backoff');
   return {
     kind: 'retire',
     retrySeconds,
@@ -41,4 +35,14 @@ export function planRetirement(retirement: ClaimRetirement): RetirementPlan {
         ? 'unhealthy'
         : 'degraded',
   };
+}
+
+export function admissionRetrySeconds(retrySeconds: number): number {
+  if (
+    !Number.isInteger(retrySeconds) ||
+    retrySeconds < 1 ||
+    retrySeconds > RETIREMENT_RETRY_SECONDS.maximum
+  )
+    throw new RangeError('Invalid trigger admission backoff');
+  return retrySeconds;
 }

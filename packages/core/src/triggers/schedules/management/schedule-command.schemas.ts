@@ -1,13 +1,15 @@
 import { z } from 'zod';
 
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
+import {
+  TRIGGER_INTERVAL_MINUTES,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 
 /** What a stored schedule row can hold: its columns' widths and interval check. */
 const STORED_SCHEDULE = Object.freeze({
   errorCodeCharacters: 128,
   cronExpressionCharacters: 256,
   timezoneCharacters: 128,
-  intervalMinutes: 43_200,
 });
 
 export const scheduleTriggerSchema = z
@@ -50,8 +52,8 @@ export const scheduleTriggerSchema = z
           intervalMinutes: z
             .number()
             .int()
-            .min(1)
-            .max(STORED_SCHEDULE.intervalMinutes),
+            .min(TRIGGER_INTERVAL_MINUTES.minimum)
+            .max(TRIGGER_INTERVAL_MINUTES.maximum),
         }),
       ])
       .nullable(),

@@ -16,6 +16,9 @@ import { closeScheduleScannerLeases } from './scanning/scanner.runtime.js';
 import { processScheduleClaim } from './scanning/process-claim.js';
 import { ScanInterruptedError } from './schedule-trigger.errors.js';
 import { releaseClaims } from './retire.js';
+import { claimDuePoll } from './scanning/claims.repository.js';
+import { processPollClaim } from '../polling/process-claim.js';
+import type { FetchPoll } from '../polling/items.js';
 /**
  * Each claim stands alone: one that can't fire is retired and the rest still fire.
  * Its failure is thrown once the batch is done. Only a cancelled scan, or a database
@@ -24,6 +27,7 @@ import { releaseClaims } from './retire.js';
 async function scanDueSchedules(
   resources: ScannerResources,
   input: ScanDueInput,
+  fetchPoll: FetchPoll | undefined,
 ): Promise<ScanDueSchedulesResult> {
   const onTimeWindowSeconds = input.onTimeWindowSeconds;
   const batch = await claimDueSchedules(resources.claimPool, input);
@@ -57,8 +61,18 @@ async function scanDueSchedules(
   if (failures.length === 1) throw failures[0];
   if (failures.length > 1)
     throw new AggregateError(failures, 'Schedule scan failed');
+  let polled = 0;
+  if (fetchPoll !== undefined) {
+    for (; polled < input.limit; polled++) {
+      input.signal?.throwIfAborted();
+      const poll = await claimDuePoll(resources.claimPool, input);
+      if (poll === undefined) break;
+      const outcome = await processPollClaim(resources, poll, input, fetchPoll);
+      outcomes[outcome] += 1;
+    }
+  }
   return Object.freeze({
-    claimed: batch.claimed,
+    claimed: batch.claimed + polled,
     ...outcomes,
     maxLagSeconds,
   });
@@ -75,6 +89,7 @@ export function createScheduleTriggerScanner(
   runtimes: Readonly<{
     acceptance?: DatabaseRuntime;
     claim?: DatabaseRuntime;
+    fetchPoll?: FetchPoll;
   }> = {},
 ) {
   const claimLease = acquireDatabasePool(claimConfig, runtimes.claim, {
@@ -95,7 +110,8 @@ export function createScheduleTriggerScanner(
     claimPool: claimLease.pool,
   });
   return Object.freeze({
-    scanDue: (input: ScanDueInput) => scanDueSchedules(resources, input),
+    scanDue: (input: ScanDueInput) =>
+      scanDueSchedules(resources, input, runtimes.fetchPoll),
     close: () => closeScheduleScannerLeases(claimLease, acceptanceLease),
   });
 }

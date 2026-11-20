@@ -44,6 +44,11 @@ export const SQL_FUNCTION_ALLOWLIST = Object.freeze({
     reason:
       'Claim due notification rows only; core owns retry, delivery evidence, audit and outbox decisions.',
   },
+  'app.claim_due_trigger_polls(character varying,integer,integer)': {
+    category: 'queue claiming',
+    reason:
+      'Acquire bounded polling leases with skip-locked row ownership. Config and progress stay tenant scoped.',
+  },
   'app.claim_due_trigger_schedules(character varying,integer,integer)': {
     category: 'queue claiming',
     reason:

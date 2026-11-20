@@ -130,6 +130,7 @@ than being copied into a second definition.
 | `trigger_coordinated_events`                      | Accepted events awaiting deduplicate/debounce/throttle admission.                                       |
 | `trigger_event_windows`                           | Per-key coordination windows and counters.                                                              |
 | `trigger_schedule_occurrences`                    | Scheduled occurrence identity and admission outcome.                                                    |
+| `trigger_polls` | Published poll position, next observation time and lease. A null seen-set indicates a pending baseline. |
 | `trigger_schedules`                               | Schedule timing, lease and health storage.                                                              |
 | `usage_events`                                    | Bounded-category usage facts with category-specific retention.                                          |
 | `user_profile_command_receipts`                   | Actor-scoped profile command idempotency results.                                                       |

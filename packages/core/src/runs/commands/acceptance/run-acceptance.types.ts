@@ -1,3 +1,4 @@
+import type { WorkflowRunSource } from '@pertexo/workflow-model';
 import type { RunInputValidator } from '../initial-checkpoint.types.js';
 import type { RunStatus as EngineRunStatus } from '@pertexo/workflow-engine';
 import type { resolveWorkflowFailureNotificationPolicy } from '../../../notifications/policies/admission.repository.js';
@@ -9,16 +10,7 @@ export type AcceptWorkflowRunInput = Readonly<{
   operation: 'workflow.run.accept';
   requestHash: string;
   scope: string;
-  triggerType:
-    | 'test'
-    | 'api'
-    | 'manual'
-    | 'replay'
-    | 'schedule'
-    | 'webhook'
-    | 'workflow_call'
-    | 'workflow_error'
-    | 'form';
+  triggerType: WorkflowRunSource;
   workflowId: string;
   workflowVersionId: string;
   validateInput?: RunInputValidator | undefined;

@@ -201,3 +201,29 @@ export async function advanceClaimedSchedule(
       ),
     );
 }
+
+/** Claim one poll immediately before starting it so no fetch waits behind a lease. */
+export async function claimDuePoll(claimPool: Pool, input: ScanDueInput) {
+  const [claim] = await withPlatformTransaction(
+    claimPool,
+    (client) =>
+      drizzle(client)
+        .select({
+          trigger_id: sql<string>`claim.trigger_id`,
+          workspace_id: sql<string>`claim.workspace_id`,
+          lease_token: sql<string>`claim.lease_token`,
+          lease_expires_at: sql<Date>`claim.lease_expires_at`.mapWith(
+            schedules.leaseExpiresAt,
+          ),
+          observed_at: sql<Date>`claim.observed_at`.mapWith(
+            schedules.createdAt,
+          ),
+        })
+        .from(
+          sql`app.claim_due_trigger_polls(${input.leaseOwner},1,${input.leaseSeconds}) as claim`,
+        )
+        .catch(rethrowQueryFailure),
+    input.signal === undefined ? {} : { signal: input.signal },
+  );
+  return claim;
+}

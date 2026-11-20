@@ -10,6 +10,7 @@ import {
   apiTokens,
   webhookTriggerEndpoints,
   triggerSchedules,
+  triggerPolls,
   workflowTriggers,
   workflows,
   failureNotificationDestinations,
@@ -147,6 +148,23 @@ export async function applyDeletionSideEffects(
       updatedAt: sql`clock_timestamp()`,
     })
     .where(eq(triggerSchedules.workspaceId, workspaceId))
+    .catch(rethrowQueryFailure);
+  await db
+    .update(triggerPolls)
+    .set({
+      retiredAt: sql`statement_timestamp()`,
+      leaseOwner: null,
+      leaseToken: null,
+      leaseAcquiredAt: null,
+      leaseExpiresAt: null,
+      updatedAt: sql`statement_timestamp()`,
+    })
+    .where(
+      and(
+        eq(triggerPolls.workspaceId, workspaceId),
+        isNull(triggerPolls.retiredAt),
+      ),
+    )
     .catch(rethrowQueryFailure);
   await db
     .update(workflowTriggers)

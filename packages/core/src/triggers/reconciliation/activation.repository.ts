@@ -5,6 +5,7 @@ import {
   workflows,
   workflowTriggers,
   triggerSchedules,
+  triggerPolls,
 } from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import type { PoolClient } from 'pg';
@@ -64,16 +65,17 @@ export async function deactivateArchivedWorkflowTriggers(
       ),
     )
     .catch(rethrowQueryFailure);
-  const matching = db
-    .select({ one: sql`1` })
-    .from(workflowTriggers)
-    .where(
-      and(
-        eq(workflowTriggers.workspaceId, triggerSchedules.workspaceId),
-        eq(workflowTriggers.id, triggerSchedules.triggerId),
-        eq(workflowTriggers.workflowId, workflowId),
-      ),
-    );
+  const matching = (resource: typeof triggerSchedules | typeof triggerPolls) =>
+    db
+      .select({ one: sql`1` })
+      .from(workflowTriggers)
+      .where(
+        and(
+          eq(workflowTriggers.workspaceId, resource.workspaceId),
+          eq(workflowTriggers.id, resource.triggerId),
+          eq(workflowTriggers.workflowId, workflowId),
+        ),
+      );
   await db
     .update(triggerSchedules)
     .set({
@@ -83,6 +85,27 @@ export async function deactivateArchivedWorkflowTriggers(
       leaseExpiresAt: null,
       updatedAt: sql`clock_timestamp()`,
     })
-    .where(and(eq(triggerSchedules.workspaceId, workspaceId), exists(matching)))
+    .where(
+      and(
+        eq(triggerSchedules.workspaceId, workspaceId),
+        exists(matching(triggerSchedules)),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  await db
+    .update(triggerPolls)
+    .set({
+      leaseOwner: null,
+      leaseToken: null,
+      leaseAcquiredAt: null,
+      leaseExpiresAt: null,
+      updatedAt: sql`statement_timestamp()`,
+    })
+    .where(
+      and(
+        eq(triggerPolls.workspaceId, workspaceId),
+        exists(matching(triggerPolls)),
+      ),
+    )
     .catch(rethrowQueryFailure);
 }

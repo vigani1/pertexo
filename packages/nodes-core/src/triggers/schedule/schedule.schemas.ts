@@ -2,12 +2,12 @@ import { CronExpressionParser } from 'cron-parser';
 import { z } from 'zod';
 import {
   CRON_EXPRESSION_LIMITS,
+  TRIGGER_INTERVAL_MINUTES,
   cronHasUnsupportedOperators,
   TIME_ZONE_NAME_CHARACTERS,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 
-const CORE_SCHEDULE_MAX_INTERVAL_MINUTES = 43_200;
 const CRON_EXPRESSION_FIELDS = 5;
 const CORE_SCHEDULE_MISFIRE_POLICY_SCHEMA = z
   .enum(['catch_up_once', 'skip'])
@@ -76,8 +76,8 @@ export const CORE_SCHEDULE_CONFIG_SCHEMA = z.discriminatedUnion('kind', [
       intervalMinutes: z
         .number()
         .int()
-        .min(1)
-        .max(CORE_SCHEDULE_MAX_INTERVAL_MINUTES),
+        .min(TRIGGER_INTERVAL_MINUTES.minimum)
+        .max(TRIGGER_INTERVAL_MINUTES.maximum),
       misfirePolicy: CORE_SCHEDULE_MISFIRE_POLICY_SCHEMA,
     })
     .strict(),

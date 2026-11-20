@@ -44,6 +44,7 @@ const triggerLabels: Readonly<Record<RunTriggerType, string>> = {
   manual: 'Manual',
   replay: 'Replay',
   schedule: 'Schedule',
+  polling: 'HTTP Polling',
   webhook: 'Webhook',
   workflow_call: 'Workflow Call',
   workflow_error: 'Workflow failure',

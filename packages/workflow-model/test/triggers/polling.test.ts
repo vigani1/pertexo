@@ -1,0 +1,37 @@
+import { expect, it } from 'vitest';
+import { isWorkflowTriggerKey } from '../../src/graph/triggers.js';
+import {
+  HTTP_POLL_CONFIG_SCHEMA,
+  HTTP_POLL_TRIGGER,
+} from '../../src/triggers/polling.schemas.js';
+
+const config = {
+  url: 'https://example.test/feed',
+  intervalMinutes: 1,
+  itemsPath: '$',
+  itemKeyPath: '$.id',
+};
+
+it('accepts the schedule interval bounds and a root array path', () => {
+  expect(HTTP_POLL_CONFIG_SCHEMA.parse(config)).toEqual(config);
+  expect(
+    HTTP_POLL_CONFIG_SCHEMA.safeParse({ ...config, intervalMinutes: 43_200 })
+      .success,
+  ).toBe(true);
+});
+
+it.each([
+  { intervalMinutes: 0 },
+  { intervalMinutes: 1.5 },
+  { intervalMinutes: 43_201 },
+  { itemKeyPath: '$..id' },
+  { url: 'file:///local.json' },
+])('rejects invalid polling configuration %j', (invalid) => {
+  expect(
+    HTTP_POLL_CONFIG_SCHEMA.safeParse({ ...config, ...invalid }).success,
+  ).toBe(false);
+});
+
+it('keeps polling out of the authorable trigger definitions in slice 1', () => {
+  expect(isWorkflowTriggerKey(HTTP_POLL_TRIGGER.key)).toBe(false);
+});
