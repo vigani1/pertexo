@@ -8,7 +8,7 @@ const pollingPath = z
   .string()
   .refine((path) => parseJsonPath(path) !== undefined);
 
-export const HTTP_POLL_CONFIG_SCHEMA = z.strictObject({
+export const httpPollConfigSchema = z.strictObject({
   url: z.url({ protocol: /^https?$/u }),
   intervalMinutes: z
     .number()
@@ -19,4 +19,4 @@ export const HTTP_POLL_CONFIG_SCHEMA = z.strictObject({
   itemKeyPath: pollingPath,
 });
 
-export type HttpPollConfig = z.output<typeof HTTP_POLL_CONFIG_SCHEMA>;
+export type HttpPollConfig = z.output<typeof httpPollConfigSchema>;
