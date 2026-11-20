@@ -37,8 +37,9 @@ jobs:
   simulate:
     name: simulate (${{ matrix.scenario }})
     runs-on: ubuntu-24.04
-    # Setup about 15 minutes, the load, then up to 40 minutes of drain.
-    timeout-minutes: 150
+    # Allow about 15 minutes for setup and up to 40 for drain. Up to 90 minutes
+    # of load keeps the 150-minute budget; longer soaks get 355, under GitHub's 360.
+    timeout-minutes: ${{ fromJSON(inputs.minutes || '60') > 90 && 355 || 150 }}
     strategy:
       fail-fast: false
       matrix:
