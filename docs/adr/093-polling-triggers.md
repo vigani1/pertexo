@@ -21,14 +21,18 @@ has committed.
 `(workspace_id, trigger_id)`, with a composite foreign key to the materialized
 trigger, tenant row security and the existing trigger cleanup lifecycle. The
 row owns the position, next due time, lease and poll failure streak. The
-position starts uninitialized, then holds either an empty baseline or one
-bounded, opaque adapter position. HTTP stores a single 32-byte SHA-256 hash of
-the typed canonical key of the latest handled item. The position identifies a
-boundary in an ordered feed. ADR 084 key windows are the sole item deduplication
-mechanism.
+position starts uninitialized. A completed baseline gives it a bounded
+seen-set, including an empty set for an empty feed. Store the set as an ordered
+array of 32-byte SHA-256 hashes of typed canonical item keys on the poll row.
+`POLL_MAX_SEEN_KEYS` holds 1,000 keys, ten times the per-poll item cap. Append
+newly recorded keys and evict the oldest recorded keys when the array fills.
+The bounded array keeps reads and updates under the existing poll-row lock
+and avoids separate row cleanup. ADR 084 key windows remain optional
+business-key policies for webhook and form events. Polling uses the seen-set
+for item identity.
 
-**Start at the first successful observation.** On the first poll, record the
-current head or an empty feed and start zero runs. A new publication gets a new
+**Start at the first successful observation.** On the first poll, record
+every key in the fetched head and start zero runs. A new publication gets a new
 baseline. Retire the old claim and fence its commits against the current
 publication. Resume on the same publication keeps the position. This follows
 the new-items default in [Zapier](https://docs.zapier.com/integrations/reference/transfer)
@@ -38,23 +42,22 @@ and the current-time initialization of
 also persist a position and support explicit historical starts. Pertexo starts
 with zero historical items.
 
-**Fetch, admit, advance.** Claim in a short database transaction, then fetch
-outside it. HTTP reads from the newest end until it proves it reached the
-stored item or the end of a previously empty feed. Validate the bounded range
-before opening admission transactions. Process oldest first. Each tenant
-transaction holds the workspace admission fence and ADR 084 coordination lock,
-then checks current publication, pause state and the live lease token. Commit
-run admission, outbox, key-window charge and position together. A live charged
-key already proves acceptance in this trigger's scope. Stop at the first
-unaccepted item, including capacity or concurrency deferral. The next poll
-starts from the committed prefix.
+**Fetch, admit, record.** Claim in a short database transaction, then fetch
+outside it. Read the head within the page and item caps, stopping early at a
+nonempty page containing only keys in the seen-set read for the claim. Validate the
+fetched items within those caps before admission. Keep the first occurrence
+of each key and offer unseen items in reverse feed order. Each item transaction
+holds the workspace admission fence and checks the current publication,
+pause state and live lease token. Run admission, the outbox and the seen-set
+append commit together. Use a deterministic admission command identity per
+published trigger and item key to prevent a second run while the admission
+receipt is available. Stop at the first deferred item and leave it unseen
+for the next poll.
 
 A crash before admission leaves the item eligible on refetch. A crash inside
-admission rolls back all of its writes. A crash after commit leaves the item at
-or behind the committed position and the run in the outbox. A replacement lease
-fences late workers. These guarantees cover items the source continues to
-expose in stable order. An unreachable position or a fetch limit reached before
-proving the range produces a visible failure and holds the position.
+admission rolls back all of its writes. A crash after commit leaves both the
+item's seen key and the run's outbox event. A replacement lease fences late
+workers. Items still have to appear in a later fetched head to be retried.
 
 **Reuse the scanner and auto-pause.** Extend `createScheduleTriggerScanner` and
 `scanDueSchedules` in `schedules/schedule-scanner.store.ts` with polling claims,
@@ -75,7 +78,10 @@ database time, including after downtime.
 ## Consequences
 
 A poll can commit progress even when capacity is smaller than the fetched
-batch. A long outage or an incompatible feed can leave the committed position
-outside the accessible range, requiring intervention. Publication starts a
-new observation window, so users should expect items already visible at that
-baseline to be skipped.
+batch. Keys must be unique and stable. Feed order determines admission order
+within a poll. A newest-first feed starts the oldest candidate first. An unseen
+item beyond an all-seen page may be missed, including when a feed reorders.
+New items beyond the page or item cap can be missed. Poll often enough to keep
+new items within the fetched head. An evicted key can start a run again if it
+reappears after its admission receipt is gone. A new publication skips items
+visible in its new baseline.
