@@ -50,6 +50,16 @@ export function shownData<Data>(
   return readAccessLost(read) ? undefined : read.data;
 }
 
+/**
+ * The API turned the request away before doing any of it: it is holding as
+ * many requests as it safely can.
+ */
+export function isServerBusy(error: unknown): boolean {
+  return isApiError(error) && error.problem?.code === 'server.busy';
+}
+
+const SERVER_BUSY = 'The server is busy. Try again in a moment.';
+
 /** Whole seconds to wait before retrying a rate-limited request. */
 export function retryAfterSeconds(error: unknown): number | undefined {
   if (!isApiError(error) || error.retryAfterMs === undefined) return undefined;
@@ -67,6 +77,7 @@ export function describeReadError(error: unknown, resource: string): string {
     const storedDefinition = storedTableFailureReason(error);
     if (storedDefinition !== undefined) return storedDefinition;
     if (isSessionExpired(error)) return 'Your session ended. Sign in again.';
+    if (isServerBusy(error)) return SERVER_BUSY;
     if (error.status === 403)
       return `Your role no longer has access to ${resource.toLowerCase()} here.`;
     if (error.kind === 'network')
@@ -88,6 +99,7 @@ export function readFailureReason(error: unknown): string {
   if (isApiError(error)) {
     const storedDefinition = storedTableFailureReason(error);
     if (storedDefinition !== undefined) return storedDefinition;
+    if (isServerBusy(error)) return SERVER_BUSY;
     if (error.status === 403) return 'Your role no longer has access to this.';
     if (error.kind === 'network')
       return 'Pertexo couldn’t be reached. Check your connection and try again.';
@@ -118,6 +130,9 @@ export function describeCommandError(error: unknown, action: string): string {
   if (isApiError(error) && error.status === 429 && seconds !== undefined)
     return `Too many attempts. Try again in ${String(seconds)} s.`;
   const Action = `${action.charAt(0).toUpperCase()}${action.slice(1)}`;
+  // Turned away before any of it ran, so nothing changed.
+  if (isServerBusy(error))
+    return `The server is busy, so ${action} didn’t happen. Try again in a moment.`;
   if (isApiError(error) && error.status === 503)
     return `We couldn’t confirm whether ${action} went through. Check again before retrying.`;
   const reference = supportReference(error);
