@@ -139,7 +139,9 @@ services:
       start_period: 10s
   worker:
     <<: *runtime
-    mem_limit: &worker-memory 536870912 # 512 MiB, also the worker RSS safety budget
+    # At its busiest the worker holds 410-454 MiB (S10); 512 MiB let the kernel
+    # kill it mid-step once in four hours.
+    mem_limit: &worker-memory 805306368 # 768 MiB
     memswap_limit: *worker-memory
     env_file: ['${BETA_STATE_DIR}/worker.env']
     # The health check ends a stopped worker, and a process can't kill its own
@@ -154,9 +156,12 @@ services:
         node apps/worker/dist/main.js',
       ]
     environment:
-      # Half the measured 512 MiB ceiling leaves room for buffers and native memory.
+      # The heap peaked at 140-200 MiB at the worker's busiest; the rest of the
+      # cap is for native allocations (about 165 MiB) and buffers.
       NODE_OPTIONS: '--max-old-space-size=256'
-      WORKER_MAX_RSS_BYTES: *worker-memory
+      # 640 MiB: below the cap, so the worker drains and restarts on its own
+      # terms before the kernel kills it mid-step.
+      WORKER_MAX_RSS_BYTES: 671088640
       ARTIFACT_SCRATCH_DIRECTORY: /var/lib/pertexo/artifact-scratch
       <<: [*environment, *code-settings]
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}

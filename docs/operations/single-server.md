@@ -25,8 +25,9 @@ You need one server with at least:
 
 The supported minimum is **4 GiB and 2 vCPUs**, qualified on ARM64 Linux under
 Docker cgroups with the example's **64 MiB Code heap and one Code slot**. The API
-and worker each have a 512 MiB container cap, no additional swap allowance, and a
-256 MiB V8 heap. The Code container ceiling for this preset is 1,872 MiB; it is not
+has a 512 MiB container cap and the worker 768 MiB, with no additional swap
+allowance and a 256 MiB V8 heap each. The worker drains and restarts itself
+at 640 MiB, before the kernel would kill it. The Code container ceiling for this preset is 1,872 MiB; it is not
 reserved while idle. Existing installs retaining the 128 MiB / two-slot Code
 preset need a larger memory budget: that runner ceiling alone is 2,912 MiB.
 
@@ -125,11 +126,11 @@ idle. Of that, the V8 heap was 140–200 MiB, external buffers 5–15 MiB and co
 and libraries 62 MiB. glibc's allocations held about 165 MiB, against 27 MiB
 idle. These are live allocations, not freed memory held back: with
 `MALLOC_ARENA_MAX=2` they moved from 12 arenas into the main heap and one arena,
-and RSS stayed at 399–438 MiB over three hours. Nothing grew within an hour. The
-margin is thin, though: in one of four hours without the setting, the kernel
-killed the worker at its cap and it restarted, and the step it was running
-failed as interrupted. `WORKER_MAX_RSS_BYTES` equals the cap, so the worker's
-own drain never acts first. The Code runner's manager stayed at 82–117 MiB of
+and RSS stayed at 399–438 MiB over three hours. Nothing grew within an hour. That
+margin was too thin at the old 512 MiB cap: in one of four hours the kernel
+killed the worker and the step it was running failed as interrupted, because
+`WORKER_MAX_RSS_BYTES` equalled the cap and the worker's own drain never acted
+first. The worker now has 768 MiB and drains at 640 MiB. The Code runner's manager stayed at 82–117 MiB of
 its 1,872 MiB ceiling.
 
 Migration 0122 lowers autovacuum's size-dependent vacuum/insert factor to

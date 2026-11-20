@@ -52,10 +52,11 @@ const EVERY = {
 const NODE_SERVICES = ['worker', 'code-runner'];
 const DRAIN_MILLIS = 20 * 60_000;
 const WARM_UP_MILLIS = Math.min(10, MINUTES / 6) * 60_000;
-// At its busiest, past warm-up, the worker peaked at 426 to 454 MiB of its
-// 512 MiB cap in four hours (S10, 2026-11-20): about 160 MiB of V8 heap and
-// 165 MiB of live native allocations. 40 MiB free (92%) guards against more.
-const PEAK_SHARE_OF_CAP = 0.92;
+// At its busiest, past warm-up, the worker peaked at 426 to 454 MiB in four
+// hours (S10, 2026-11-20): about 160 MiB of V8 heap and 165 MiB of live native
+// allocations. Under 80% of its 768 MiB cap keeps it below its own 640 MiB
+// drain budget, so it never has to restart.
+const PEAK_SHARE_OF_CAP = 0.8;
 // 30 MiB an hour fills the worker's cap in about 17 hours.
 const LEAK_MIB_PER_HOUR = 30;
 // Reading a process's figures can miss now and then (a busy event loop).
@@ -66,11 +67,6 @@ const PROCESS_READ_SHARE = 0.9;
 const EXHAUSTED_FLAKY_CALLS = 3;
 const EXHAUSTED_FLAKY_CALL =
   'flakyHttp: failed: call failed execution.provider';
-// Reported, not fixed (S10): at full concurrency the worker's memory sits so
-// close to its cap that the kernel killed it once in four hours. Fixing it
-// means changing its cap or concurrency, the owner's decision.
-const WORKER_KILL_TODO =
-  'reported: the busiest worker can be killed at its 512 MiB cap (S10)';
 // A step running when the worker was killed fails as interrupted.
 const INTERRUPTED = /^[^:]+: failed: \S+ failed code\.interrupted$/u;
 
@@ -175,19 +171,13 @@ describe(`the worker under ${MINUTES} minutes of Code- and HTTP-heavy load`, () 
     );
   });
 
-  it(
-    'keeps the worker and the Code runner up: no restart and no kill',
-    {
-      todo: WORKER_KILL_TODO,
-    },
-    async () => {
-      const health = await restartsAndKills(started);
-      record('health', health);
-      assert.deepEqual(health.restarts, {});
-      assert.deepEqual(health.events, []);
-      assert.ok(!health.hostOomKills, `host OOM kills: ${health.hostOomKills}`);
-    },
-  );
+  it('keeps the worker and the Code runner up: no restart and no kill', async () => {
+    const health = await restartsAndKills(started);
+    record('health', health);
+    assert.deepEqual(health.restarts, {});
+    assert.deepEqual(health.events, []);
+    assert.ok(!health.hostOomKills, `host OOM kills: ${health.hostOomKills}`);
+  });
 
   it(`keeps the worker under ${PEAK_SHARE_OF_CAP * 100}% of its cap past warm-up, with no growth outside its heap`, async () => {
     const memory = {};
