@@ -1,3 +1,4 @@
+import { HttpPollFailure } from '@pertexo/workflow-model';
 import {
   ProviderCredentialInvalidError,
   ProviderExecutionRateLimitError,
@@ -7,25 +8,10 @@ import { inspectProviderHttpError } from '../../providers/http.errors.js';
 import { HttpPaginationFailure } from '../request/pagination/pagination.errors.js';
 import { HttpRequestExecutorError } from '../request/request.errors.js';
 
-export type HttpPollFailureCode =
-  | 'http.poll_invalid_page'
-  | 'http.poll_invalid_items'
-  | 'http.poll_invalid_key'
-  | 'http.poll_navigation_denied'
-  | 'http.poll_authentication'
-  | 'http.poll_rate_limited'
-  | 'http.poll_deadline_exceeded'
-  | 'http.poll_response_failed'
-  | 'http.poll_request_failed'
-  | OAuth2TokenFailure['code'];
-
-export class HttpPollFailure extends Error {
-  override readonly name = 'HttpPollFailure';
-
-  constructor(public readonly code: HttpPollFailureCode) {
-    super(`HTTP poll failed: ${code}`);
-  }
-}
+export {
+  HttpPollFailure,
+  type HttpPollFailureCode,
+} from '@pertexo/workflow-model';
 
 export function pollFailure(error: unknown): HttpPollFailure {
   if (error instanceof HttpPollFailure) return error;
@@ -36,7 +22,8 @@ export function pollFailure(error: unknown): HttpPollFailure {
         : 'http.poll_navigation_denied',
     );
   if (error instanceof OAuth2TokenFailure)
-    return new HttpPollFailure(error.code);
+    return new HttpPollFailure(oauthPollFailureCode(error));
+
   if (error instanceof ProviderExecutionRateLimitError)
     return new HttpPollFailure('http.poll_rate_limited');
   if (
@@ -56,4 +43,26 @@ export function pollFailure(error: unknown): HttpPollFailure {
   if (code === 'timed_out')
     return new HttpPollFailure('http.poll_deadline_exceeded');
   return new HttpPollFailure('http.poll_request_failed');
+}
+
+function oauthPollFailureCode({
+  code,
+}: OAuth2TokenFailure): HttpPollFailure['code'] {
+  switch (code) {
+    case 'http.oauth2_not_connected':
+    case 'http.oauth2_connection_revoked':
+    case 'http.oauth2_grant_revoked':
+    case 'http.oauth2_client_rejected':
+    case 'http.oauth2_token_expired':
+      return 'http.poll_authentication';
+    case 'http.oauth2_host_not_allowed':
+    case 'http.oauth2_token_address_blocked':
+      return 'http.poll_navigation_denied';
+    case 'http.oauth2_token_rate_limited':
+      return 'http.poll_rate_limited';
+    case 'http.oauth2_refresh_busy':
+    case 'http.oauth2_token_endpoint_unavailable':
+    case 'http.oauth2_token_response_invalid':
+      return 'http.poll_request_failed';
+  }
 }

@@ -7,6 +7,8 @@ import type {
   workflowVersions,
 } from '@pertexo/database/schema';
 
+import type { PollingTriggerRead } from '../../../triggers/reconciliation/trigger-reconciliation.types.js';
+
 // Trigger readiness and resource access are computed from joined authoring state.
 export type WorkflowRecord = Readonly<
   Pick<
@@ -24,6 +26,7 @@ export type WorkflowRecord = Readonly<
     | 'updatedAt'
   > & {
     webhookSetupRequired: boolean;
+    pollingTriggers?: readonly PollingTriggerRead[];
     listSummary?: WorkflowSummary['listSummary'];
     resourceAccess?: Readonly<{ canEdit: boolean; canPublish: boolean }>;
   }

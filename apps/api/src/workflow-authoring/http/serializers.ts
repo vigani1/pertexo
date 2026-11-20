@@ -176,6 +176,21 @@ export function workflowSummary(
     lifecycleRevision: workflow.lifecycleRevision,
     activationStatus: workflow.activationStatus,
     webhookSetupRequired: workflow.webhookSetupRequired,
+    ...(workflow.pollingTriggers === undefined
+      ? {}
+      : {
+          pollingTriggers: workflow.pollingTriggers.map((trigger) => ({
+            id: trigger.id,
+            kind: trigger.kind,
+            workflowVersionId: trigger.workflowVersionId,
+            nodeId: trigger.nodeId,
+            healthStatus: trigger.healthStatus,
+            lastErrorCode: trigger.lastErrorCode,
+            baselineEstablished: trigger.baselineEstablished,
+            paused: trigger.paused,
+            nextPollAt: trigger.nextPollAt?.toISOString() ?? null,
+          })),
+        }),
     ...(workflow.resourceAccess === undefined
       ? {}
       : { resourceAccess: workflow.resourceAccess }),

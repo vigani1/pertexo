@@ -13,7 +13,8 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { workflowSummaryQueryOptions } from '@/features/workflows/workflows-queries.public';
+import { HTTP_POLL_TRIGGER } from '@pertexo/workflow-model';
+import { PollingSection } from '../components/triggers/polling-section';
 import type { ApiClient } from '@/lib/api/client';
 import { cn } from '@/lib/class-names';
 import { SettingsSection } from '@/components/patterns/settings/section';
@@ -24,6 +25,7 @@ import { WebhooksSection } from '../components/triggers/webhooks/section';
 import { triggerStepName } from '../model/triggers/steps';
 import { publishedTriggerKinds } from '../model/triggers/published';
 import {
+  triggerPublicationQueryOptions,
   scheduleTriggersQueryOptions,
   webhookTriggersQueryOptions,
   workflowVersionsQueryOptions,
@@ -197,7 +199,9 @@ function TriggersSession({
     workspace,
     workflowId,
   });
-  const { versions, summary, form, onFailure, publicationKnown } = publication;
+  const { versions, summary, form, onFailure, polling, publicationKnown } =
+    publication;
+  const pollItems = shownData(summary)?.pollingTriggers ?? [];
   const webhookItems = shownData(webhooks)?.items;
   const scheduleItems = shownData(schedules)?.items;
   const stepName = (
@@ -219,6 +223,7 @@ function TriggersSession({
     scheduleCount: scheduleItems?.length,
     form,
     onFailure,
+    polling,
   });
   if (publicationKnown && needsFirstTrigger)
     return (
@@ -281,6 +286,12 @@ function TriggersSession({
           </p>
         )}
       </SettingsSection>
+      {polling ? (
+        <PollingSection
+          triggers={pollItems}
+          stepNameFor={(trigger) => stepName(trigger, 'HTTP Polling')}
+        />
+      ) : null}
       <SettingsSection
         title="Schedules"
         description="Start runs on a timetable. Times follow each schedule’s time zone."
@@ -312,7 +323,12 @@ function useTriggerPublication({
     workflowVersionsQueryOptions(apiClient, user.id, workspace.id, workflowId),
   );
   const summary = useQuery(
-    workflowSummaryQueryOptions(apiClient, user.id, workspace.id, workflowId),
+    triggerPublicationQueryOptions(
+      apiClient,
+      user.id,
+      workspace.id,
+      workflowId,
+    ),
   );
   // Form and failure triggers have nothing to manage here, but they still
   // start runs, so the page must not claim the version has no trigger.
@@ -328,7 +344,18 @@ function useTriggerPublication({
     !summary.isFetching &&
     (summary.data.publishedVersionId === null ||
       (versions.isSuccess && !versions.isFetching && kinds !== undefined));
-  return { versions, summary, kinds, form, onFailure, publicationKnown };
+  const polling =
+    (kinds?.includes(HTTP_POLL_TRIGGER.key) ?? false) ||
+    (shownData(summary)?.pollingTriggers?.length ?? 0) > 0;
+  return {
+    versions,
+    summary,
+    kinds,
+    form,
+    onFailure,
+    polling,
+    publicationKnown,
+  };
 }
 
 function PublicationDiscovery({

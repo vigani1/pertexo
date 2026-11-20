@@ -4,6 +4,7 @@ import {
   MIN_AUTO_PAUSE_THRESHOLD,
 } from '@pertexo/policy';
 import { z } from 'zod';
+import { triggerPauseEvidenceSchema } from '@pertexo/workflow-model';
 
 import { createApiProblemSchema } from '../../errors/api-problem.js';
 
@@ -58,6 +59,11 @@ export const workflowAutoPauseSettingsSchema = responseSchema(
         .positive()
         .max(Number.MAX_SAFE_INTEGER)
         .nullable(),
+      pauseEvidence: triggerPauseEvidenceSchema
+        .optional()
+        .describe(
+          'Typed evidence for a paused trigger. Completed-run responses may carry only pausedLastRunId.',
+        ),
       pausedLastRunId: z
         .uuid()
         .nullable()
@@ -65,7 +71,16 @@ export const workflowAutoPauseSettingsSchema = responseSchema(
           'Run that triggered the pause: the last counted failed triggered run; older rows hold the run that reached the failure threshold.',
         ),
     })
-    .strict(),
+    .strict()
+    .refine(
+      ({ pauseState, pausedLastRunId, pauseEvidence }) =>
+        pauseEvidence === undefined ||
+        (pauseState === 'paused' &&
+          (pauseEvidence.kind === 'run'
+            ? pausedLastRunId === pauseEvidence.runId
+            : pausedLastRunId === null)),
+      'Pause evidence must match the workflow’s pause state.',
+    ),
 );
 
 export const workspaceAutoPauseSettingsSchema = responseSchema(

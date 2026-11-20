@@ -57,6 +57,13 @@
       "when": 1795206108227,
       "tag": "0007_trigger_polls",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795210406399,
+      "tag": "0008_poll_pause",
+      "breakpoints": true
     }
   ]
 }

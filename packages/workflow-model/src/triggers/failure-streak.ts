@@ -8,6 +8,7 @@ const COUNTED_STREAK_TRIGGERS: ReadonlySet<string> = new Set([
   'schedule',
   'webhook',
   'form',
+  'polling',
 ]);
 
 /**

@@ -196,3 +196,37 @@ describe('automatic workflow pause contracts', () => {
       expect(API_PROBLEM_MANIFEST[code].status).toBe(409);
   });
 });
+
+it('carries tagged poll evidence without a run and rejects mixed pause evidence', () => {
+  const paused = {
+    ...settings,
+    pauseState: 'paused',
+    pausedAt: '2026-11-20T08:00:00.000Z',
+    pauseReason: 'consecutive_failures',
+    pausedFailures: 1,
+  };
+  const pollEvidence = {
+    kind: 'poll',
+    triggerId: '11111111-1111-4111-8111-111111111111',
+    errorCode: 'http.poll_authentication',
+  };
+  expect(
+    workflowAutoPauseSettingsSchema.parse({
+      ...paused,
+      pauseEvidence: pollEvidence,
+    }),
+  ).toEqual({ ...paused, pauseEvidence: pollEvidence });
+  expect(
+    workflowAutoPauseSettingsSchema.safeParse({
+      ...paused,
+      pausedLastRunId: '22222222-2222-4222-8222-222222222222',
+      pauseEvidence: pollEvidence,
+    }).success,
+  ).toBe(false);
+  expect(
+    workflowAutoPauseSettingsSchema.safeParse({
+      ...settings,
+      pauseEvidence: pollEvidence,
+    }).success,
+  ).toBe(false);
+});

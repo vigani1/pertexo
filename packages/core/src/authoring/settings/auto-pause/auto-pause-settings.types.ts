@@ -1,3 +1,4 @@
+import type { PollPauseEvidence } from '@pertexo/workflow-model';
 import type { PoolClient } from 'pg';
 
 export type WorkflowAutoPauseSettings = Readonly<{
@@ -12,6 +13,7 @@ export type WorkflowAutoPauseSettings = Readonly<{
   pauseReason: 'consecutive_failures' | null;
   pausedFailures: number | null;
   pausedLastRunId: string | null;
+  pauseEvidence?: PollPauseEvidence | undefined;
 }>;
 
 export type WorkspaceAutoPauseSettings = Readonly<{

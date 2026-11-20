@@ -1,3 +1,4 @@
+import { readHealth } from '../../../triggers/reconciliation/health.repository.js';
 import { DEFAULT_PAGE_LIMIT } from '../../../shared/page-limits.js';
 import { readListSummaries } from './list-summary.repository.js';
 import type { WorkflowRef } from '../../../shared/access/workflow-actor.types.js';
@@ -49,8 +50,25 @@ export async function readWorkflow(
     )
     .catch(rethrowQueryFailure);
   if (row === undefined) return null;
+  const pollingTriggers =
+    row.workflow.publishedVersionId === null
+      ? []
+      : (await readHealth(client, workspaceId, workflowId))
+          .filter((trigger) => trigger.kind === 'polling')
+          .filter(
+            (trigger) =>
+              trigger.workflowVersionId === row.workflow.publishedVersionId,
+          );
+  const pollFailed = pollingTriggers.some(
+    ({ lastErrorCode }) => lastErrorCode !== null,
+  );
   return {
     ...row.workflow,
+    activationStatus:
+      pollFailed && row.workflow.activationStatus === 'active'
+        ? ('degraded' as const)
+        : row.workflow.activationStatus,
+    ...(pollingTriggers.length === 0 ? {} : { pollingTriggers }),
     resourceAccess: workflowActions(access, row.resource_folder_id),
   };
 }

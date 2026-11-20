@@ -140,9 +140,7 @@ test('workflow auto-pause settings preserve conflict edits and fresh confirmatio
     `/w/${workspaceId}/runs/${String(paused.pausedLastRunId)}`,
   );
 
-  await expect(
-    page.getByText('Schedules and webhooks are paused'),
-  ).toBeVisible();
+  await expect(page.getByText('Workflow triggers are paused')).toBeVisible();
   const autoPause = page.getByRole('region', { name: 'Automatic pause' });
   await autoPause.getByRole('button', { name: 'Change' }).first().click();
   const threshold = page.getByRole('textbox', {
@@ -191,9 +189,7 @@ test('workflow auto-pause settings preserve conflict edits and fresh confirmatio
   });
   await page.getByRole('button', { name: 'Resume triggers' }).click();
   await expect(page.getByText('Workflow triggers resumed')).toBeVisible();
-  await expect(page.getByText('Schedules and webhooks are paused')).toHaveCount(
-    0,
-  );
+  await expect(page.getByText('Workflow triggers are paused')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -211,9 +207,7 @@ test('workflow auto-pause banner stays usable in the narrow Build view without p
   });
   await page.route('**/auto-pause', (route) => route.fulfill({ json: paused }));
   await page.goto(editorUrl);
-  await expect(
-    page.getByText('Schedules and webhooks are paused'),
-  ).toBeVisible();
+  await expect(page.getByText('Workflow triggers are paused')).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Resume triggers' }),
   ).toHaveCount(0);
@@ -221,7 +215,7 @@ test('workflow auto-pause banner stays usable in the narrow Build view without p
     page.getByText('A workflow editor can resume these triggers.'),
   ).toBeVisible();
   const bounds = await page
-    .getByText('Schedules and webhooks are paused')
+    .getByText('Workflow triggers are paused')
     .boundingBox();
   expect(bounds?.x).toBeGreaterThanOrEqual(0);
   expect((bounds?.x ?? 0) + (bounds?.width ?? 0)).toBeLessThanOrEqual(390);

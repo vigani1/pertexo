@@ -1,19 +1,34 @@
-import type { WebhookAuthentication } from '@pertexo/contracts';
+import type {
+  PollingTriggerHealth,
+  WebhookAuthentication,
+} from '@pertexo/contracts';
 import type { WorkflowTriggerStatus } from '@pertexo/workflow-model';
 
-export type WorkflowTriggerHealth = Readonly<{
-  id: string;
-  workflowId: string;
-  workflowVersionId: string;
-  nodeId: string;
-  kind: 'webhook' | 'schedule';
-  status: WorkflowTriggerStatus;
-  healthStatus: 'pending' | 'healthy' | 'degraded' | 'unhealthy' | 'disabled';
-  lastErrorCode: string | null;
-  endpointReady: boolean;
-  authentication?: WebhookAuthentication;
-  reconciledAt: Date | null;
-}>;
+export type PollingTriggerRead = Readonly<
+  Omit<PollingTriggerHealth, 'nextPollAt'> & {
+    nextPollAt: Date | null;
+    workflowId: string;
+    status: WorkflowTriggerStatus;
+    reconciledAt: Date | null;
+  }
+>;
+
+export type WorkflowTriggerHealth =
+  | PollingTriggerRead
+  | Readonly<{
+      id: string;
+      workflowId: string;
+      workflowVersionId: string;
+      nodeId: string;
+      kind: 'webhook' | 'schedule';
+      status: WorkflowTriggerStatus;
+      healthStatus:
+        'pending' | 'healthy' | 'degraded' | 'unhealthy' | 'disabled';
+      lastErrorCode: string | null;
+      endpointReady: boolean;
+      authentication?: WebhookAuthentication;
+      reconciledAt: Date | null;
+    }>;
 
 export type ReconcileWorkflowTriggersInput = Readonly<{
   workspaceId: string;

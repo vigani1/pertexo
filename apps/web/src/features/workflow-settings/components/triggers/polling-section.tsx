@@ -1,0 +1,105 @@
+import type { PollingTriggerHealth } from '@pertexo/contracts';
+import { SettingsSection } from '@/components/patterns/settings/section';
+import { Notice } from '@/components/ui/notice';
+import { formatDateTime } from '@/lib/format/time';
+import { pollingGuidance } from '@/lib/polling-guidance';
+
+const failureCopy: Record<string, string | undefined> = {
+  'http.poll_invalid_page': 'The feed did not return a readable JSON page.',
+  'http.poll_invalid_items': 'The items path must point to a JSON array.',
+  'http.poll_invalid_key':
+    'Every item needs a non-empty string or a finite number at its key path.',
+  'http.poll_navigation_denied':
+    'The feed URL or a next page was blocked. Keep all pages at the same origin.',
+  'http.poll_authentication':
+    'The feed could not be authenticated. Repair the connection or check the feed’s access settings, then resume triggers.',
+  'http.poll_rate_limited': 'The feed is limiting requests.',
+  'http.poll_deadline_exceeded': 'The feed took too long to respond.',
+  'http.poll_response_failed': 'The feed returned an unsuccessful response.',
+  'http.poll_request_failed': 'The feed could not be reached.',
+};
+
+export function PollingSection({
+  triggers,
+  stepNameFor,
+}: Readonly<{
+  triggers: readonly PollingTriggerHealth[];
+  stepNameFor: (trigger: PollingTriggerHealth) => string;
+}>) {
+  return (
+    <SettingsSection
+      title="HTTP Polling"
+      description="Start runs when a JSON feed returns new items."
+    >
+      {triggers.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Waiting for its first check
+        </p>
+      ) : (
+        triggers.map((trigger) => (
+          <PollingCard
+            key={trigger.id}
+            trigger={trigger}
+            name={stepNameFor(trigger)}
+          />
+        ))
+      )}
+    </SettingsSection>
+  );
+}
+
+function PollingCard({
+  trigger,
+  name,
+}: Readonly<{
+  trigger: PollingTriggerHealth;
+  name: string;
+}>) {
+  const reason =
+    trigger.lastErrorCode === null
+      ? null
+      : (failureCopy[trigger.lastErrorCode] ??
+        'The polling trigger could not be activated.');
+  const next =
+    trigger.paused || trigger.healthStatus === 'disabled'
+      ? null
+      : trigger.nextPollAt;
+  return (
+    <article
+      id={trigger.id}
+      className="space-y-2 rounded-lg border border-border p-4"
+    >
+      <h3 className="font-medium">{name}</h3>
+      <p className="text-sm text-muted-foreground">{pollStatus(trigger)}</p>
+      {next === null ? null : (
+        <p className="text-sm text-muted-foreground">
+          Next check <time dateTime={next}>{formatDateTime(next)}</time>
+        </p>
+      )}
+      {reason === null ? null : (
+        <Notice tone="warning">
+          <p>{reason}</p>
+          <p>
+            {trigger.baselineEstablished
+              ? 'Resuming keeps the items already recorded.'
+              : pollingGuidance.baseline}
+          </p>
+          <p>
+            {pollingGuidance.keys} {pollingGuidance.retention}{' '}
+            {pollingGuidance.interval}
+          </p>
+        </Notice>
+      )}
+    </article>
+  );
+}
+
+function pollStatus(trigger: PollingTriggerHealth): string {
+  if (trigger.healthStatus === 'disabled') return 'Disabled';
+  if (trigger.paused) return 'Paused';
+  if (trigger.healthStatus === 'healthy') return 'Healthy';
+  if (trigger.lastErrorCode !== null) return 'Check failed';
+  return trigger.baselineEstablished
+    ? 'Waiting for its next check'
+    : 'Waiting for its first check';
+}

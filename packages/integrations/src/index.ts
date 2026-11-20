@@ -81,3 +81,5 @@ export { smtpCredentialSchema } from '@pertexo/contracts';
 export { DATABASE_DEFINITION_REGISTRATION } from './database/execute/execute.definition.js';
 
 export { POSTGRES_FAILURE_CODES } from '@pertexo/contracts';
+
+export { HTTP_POLL_DEFINITION_REGISTRATION } from './http/polling/polling.definition.js';

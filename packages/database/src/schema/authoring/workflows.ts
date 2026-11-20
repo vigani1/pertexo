@@ -1,3 +1,4 @@
+import type { HttpPollFailureCode } from '@pertexo/workflow-model';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import type {
@@ -21,6 +22,7 @@ import {
   timestamp,
   type PgTableExtraConfigValue,
   unique,
+  text,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -87,6 +89,10 @@ export const workflows = appSchema.table(
     }).$type<'consecutive_failures'>(),
     triggerPauseFailures: integer('trigger_pause_failures'),
     triggerPauseLastRunId: uuid('trigger_pause_last_run_id'),
+    triggerPausePollTriggerId: uuid('trigger_pause_poll_trigger_id'),
+    triggerPausePollErrorCode: text(
+      'trigger_pause_poll_error_code',
+    ).$type<HttpPollFailureCode>(),
     triggerPauseRevision: bigint('trigger_pause_revision', { mode: 'bigint' })
       .default(sql`1`)
       .notNull(),
@@ -130,7 +136,7 @@ export const workflows = appSchema.table(
     check('workflows_name_revision_positive', sql`(name_revision > 0)`),
     check(
       'workflows_trigger_pause_valid',
-      sql`((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (trigger_pause_last_run_id IS NOT NULL)))) IS TRUE`,
+      sql`((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (((trigger_pause_last_run_id IS NOT NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR ((trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NOT NULL) AND (trigger_pause_poll_error_code IS NOT NULL)))))) IS TRUE`,
     ),
     unique('workflows_workspace_identity_unique').on(
       table.workspaceId,

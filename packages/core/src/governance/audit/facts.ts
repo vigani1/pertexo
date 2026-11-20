@@ -27,6 +27,7 @@ type AuditStoredOnlyKey =
   | 'detachedWorkflowCount'
   | 'domainId'
   | 'effectRisk'
+  | 'errorCode'
   | 'expiresAt'
   | 'failures'
   | 'lastRunId'
@@ -89,6 +90,7 @@ type AuditStoredOnlyKey =
   | 'threadId'
   | 'toName'
   | 'toNameRevision'
+  | 'triggerId'
   | 'version'
   | 'workflowName'
   | 'workflowVersionId';

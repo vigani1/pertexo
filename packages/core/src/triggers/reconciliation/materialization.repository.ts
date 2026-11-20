@@ -381,8 +381,8 @@ async function applyResourceDispositions(
     .update(workflowTriggers)
     .set({
       status: sql`${dispositions.disposition}`,
-      healthStatus: sql`case when ${workflowTriggers.kind}='polling' and ${workflowTriggers.healthStatus}<>'disabled' then ${workflowTriggers.healthStatus} else case ${dispositions.disposition} when 'active' then 'healthy' when 'disabled' then 'disabled' else 'pending' end end`,
-      lastErrorCode: null,
+      healthStatus: sql`case when ${workflowTriggers.kind}='polling' then case when ${workflowTriggers.healthStatus}='disabled' then 'pending' else ${workflowTriggers.healthStatus} end else case ${dispositions.disposition} when 'active' then 'healthy' when 'disabled' then 'disabled' else 'pending' end end`,
+      lastErrorCode: sql`case when ${workflowTriggers.kind}='polling' and ${workflowTriggers.healthStatus}<>'disabled' then ${workflowTriggers.lastErrorCode} else null end`,
       reconciledAt: sql`clock_timestamp()`,
       updatedAt: sql`clock_timestamp()`,
     })

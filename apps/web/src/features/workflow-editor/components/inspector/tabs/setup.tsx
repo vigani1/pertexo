@@ -9,6 +9,8 @@ import { ConditionSetup } from '../condition/setup';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { BracesIcon, ListIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { HTTP_POLL_TRIGGER } from '@pertexo/workflow-model';
+import { pollingGuidance } from '@/lib/polling-guidance';
 import { Button } from '@/components/ui/button';
 import { FieldGroup } from '@/components/ui/field';
 import {
@@ -99,6 +101,15 @@ function CatalogSetupTab({
           form={form}
         />
       ))}
+      {node.definition.key === HTTP_POLL_TRIGGER.key ? (
+        <div className="space-y-1 text-sm text-muted-foreground">
+          <p>{pollingGuidance.baseline}</p>
+          <p>
+            {pollingGuidance.keys} {pollingGuidance.retention}{' '}
+            {pollingGuidance.interval}
+          </p>
+        </div>
+      ) : null}
       <CatalogFields
         context={{
           node,

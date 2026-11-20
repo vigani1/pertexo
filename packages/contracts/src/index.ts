@@ -19,10 +19,13 @@ export * from './schemas/identity/workspaces.js';
 export * from './schemas/identity/invitation-acceptance.js';
 export * from './schemas/execution/node-testing.js';
 export * from './schemas/triggers/schedules.js';
+export * from './schemas/triggers/polling.js';
 export * from './schemas/shared/transport-headers.js';
 export * from './schemas/shared/secret-token.js';
 export * from './schemas/triggers/webhooks.js';
 export {
+  POLL_MAX_ITEMS,
+  POLL_MAX_SEEN_KEYS,
   webhookAuthenticationSchema,
   type WebhookAuthentication,
 } from '@pertexo/workflow-model';

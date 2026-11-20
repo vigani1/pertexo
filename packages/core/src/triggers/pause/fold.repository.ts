@@ -178,7 +178,12 @@ async function foldWorkflow(
     !ACTIVE_WORKSPACE_STATUSES.some((status) => status === workspace.status)
   )
     return null;
-  await writeTriggerPause(client, scope, evidence, threshold);
+  await writeTriggerPause(
+    client,
+    scope,
+    { kind: 'run', ...evidence },
+    threshold,
+  );
   return { ...scope, consecutiveFailures: evidence.failures };
 }
 

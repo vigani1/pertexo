@@ -194,6 +194,8 @@ async function resumePausedWorkflow(
           triggerPauseReason: null,
           triggerPauseFailures: null,
           triggerPauseLastRunId: null,
+          triggerPausePollTriggerId: null,
+          triggerPausePollErrorCode: null,
           triggerPauseRevision: sql`${workflows.triggerPauseRevision}+1`,
         })
         .where(

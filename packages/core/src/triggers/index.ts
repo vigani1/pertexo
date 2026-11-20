@@ -7,6 +7,7 @@ export type {} from './forms/form-versions.repository.js';
 export type {} from './pause/locks.repository.js';
 export type {} from './pause/retention.repository.js';
 export type {} from './reconciliation/projection.js';
+export type {} from './reconciliation/health.repository.js';
 
 export {
   createScheduleTriggerStore,

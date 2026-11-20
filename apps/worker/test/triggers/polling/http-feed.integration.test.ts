@@ -137,13 +137,14 @@ it.each([
         '/items': { items: feed('new'), next: '/2' },
         '/2': { items },
       }),
-    ).rejects.toMatchObject({ message: `HTTP poll failed: ${code}`, code });
+    ).resolves.toMatchObject({ skipped: 1 });
     expect(observation.requests).toEqual(['/items', '/2']);
     expect(await observation.state()).toMatchObject({
       hashes,
       leased: false,
-      due: true,
-      health: 'healthy',
+      due: false,
+      health: 'degraded',
+      lastErrorCode: code,
     });
     expect(await poll.admitted()).toEqual([]);
   },
@@ -163,16 +164,14 @@ it('rejects cross-origin next links without dispatch or changes to seen state', 
     observation.next({
       '/items': { items: feed('new'), next: `${otherOrigin}/private` },
     }),
-  ).rejects.toMatchObject({
-    code: 'http.poll_navigation_denied',
-    message: 'HTTP poll failed: http.poll_navigation_denied',
-  });
+  ).resolves.toMatchObject({ skipped: 1 });
   expect(deniedRequests).toEqual([]);
   expect(await observation.state()).toMatchObject({
     hashes,
     leased: false,
-    due: true,
-    health: 'healthy',
+    due: false,
+    health: 'degraded',
+    lastErrorCode: 'http.poll_navigation_denied',
   });
   expect(await poll.admitted()).toEqual([]);
 });

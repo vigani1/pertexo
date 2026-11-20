@@ -1,9 +1,8 @@
 import { hashPollItemKey } from '@pertexo/workflow-model/server';
+import { POLL_MAX_ITEMS } from '@pertexo/workflow-model';
 import type { JsonValue, HttpPollConfig } from '@pertexo/workflow-model';
 
-export const POLL_MAX_ITEMS = 100;
 export const POLL_MAX_PAGES = 5;
-export const POLL_MAX_SEEN_KEYS = 10 * POLL_MAX_ITEMS;
 
 export type PollItem = Readonly<{ key: string | number; item: JsonValue }>;
 export type FetchPoll = (

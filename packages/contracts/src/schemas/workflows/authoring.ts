@@ -1,3 +1,4 @@
+import { pollingTriggerHealthSchema } from '../triggers/polling.js';
 import { NODE_IDENTITY_KEY_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
@@ -170,6 +171,7 @@ export const workflowSummarySchema = z
     lifecycleRevision: workflowLifecycleRevisionSchema,
     activationStatus: workflowActivationStatusSchema,
     webhookSetupRequired: z.boolean(),
+    pollingTriggers: z.array(pollingTriggerHealthSchema).optional(),
     resourceAccess: z
       .object({ canEdit: z.boolean(), canPublish: z.boolean() })
       .strict()
