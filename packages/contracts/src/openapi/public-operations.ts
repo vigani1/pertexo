@@ -295,4 +295,5 @@ export const EVERY_TOKEN_ROUTE: readonly ApiProblemCode[] = [
   'request.rate_limited',
   'request.rate_limit_unavailable',
   'api_token.unavailable',
+  'server.busy',
 ];

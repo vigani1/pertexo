@@ -118,6 +118,7 @@ describe('API metrics', () => {
       'eligible_failure',
     ],
     ['server failure', 503, 'provider.unavailable', 'eligible_failure'],
+    ['a request turned away as busy', 503, 'server.busy', 'eligible_failure'],
   ] as const)('classifies %s as %s', (_name, status, code, expectedOutcome) => {
     const fixture = metricsFixture();
     fixture.invoke({
@@ -144,6 +145,20 @@ describe('API metrics', () => {
       expect(fixture.eligibleCount).not.toHaveBeenCalled();
     },
   );
+
+  it('labels a request turned away as busy by its problem code', () => {
+    const fixture = metricsFixture();
+    fixture.invoke({
+      route: '/hooks/:endpointId',
+      status: 503,
+      payload: JSON.stringify({ code: 'server.busy' }),
+    });
+
+    expect(fixture.requestCount).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ problem_code: 'server.busy' }),
+    );
+  });
 
   it('bounds unmatched routes and excludes them from availability', () => {
     const fixture = metricsFixture();

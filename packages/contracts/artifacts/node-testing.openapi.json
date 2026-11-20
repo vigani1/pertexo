@@ -5962,6 +5962,7 @@
               "webhook.workflow_paused",
               "webhook.unavailable",
               "request.temporarily_unavailable",
+              "server.busy",
               "request.aborted",
               "internal.unexpected"
             ]

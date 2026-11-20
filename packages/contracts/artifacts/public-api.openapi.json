@@ -143,7 +143,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -241,7 +242,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -329,7 +331,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -461,7 +464,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       },
       "put": {
@@ -614,6 +618,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "variables.changed"
         ]
@@ -783,6 +788,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "variables.usage_changed"
         ]
       }
@@ -915,7 +921,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       },
       "post": {
@@ -1068,6 +1075,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "data_table.conflict",
           "data_table.key_conflict",
@@ -1237,6 +1245,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "data_table.conflict"
         ]
@@ -1404,6 +1413,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "data_table.conflict",
           "data_table.quota_exceeded"
@@ -1559,7 +1569,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -1725,6 +1736,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "data_table.conflict",
           "data_table.key_conflict",
@@ -1894,6 +1906,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "data_table.conflict",
           "data_table.key_conflict",
@@ -2036,6 +2049,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workflow.lifecycle_conflict"
         ]
@@ -2176,6 +2190,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workflow.lifecycle_conflict"
         ]
@@ -2399,7 +2414,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       },
       "post": {
@@ -2518,6 +2534,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workflow.name_conflict"
         ]
@@ -2653,7 +2670,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -2781,7 +2799,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       },
       "put": {
@@ -2916,6 +2935,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.precondition_required",
           "workflow.revision_conflict",
           "workflow.invalid"
@@ -3045,6 +3065,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.precondition_required",
           "request.idempotency_conflict",
           "workflow.revision_conflict",
@@ -3189,7 +3210,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -3288,7 +3310,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       },
       "put": {
@@ -3425,6 +3448,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workflow.auto_pause_settings_conflict"
         ]
@@ -3565,6 +3589,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workflow.pause_conflict"
         ]
@@ -3694,7 +3719,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -3833,7 +3859,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -3974,6 +4001,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workflow.organization_revision_conflict"
         ]
@@ -4237,7 +4265,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -4364,6 +4393,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workflow.not_published",
           "workflow.already_running",
@@ -4468,7 +4498,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -4566,7 +4597,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -4675,7 +4707,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -4784,7 +4817,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -4896,6 +4930,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "run.not_cancelable"
         ]
       }
@@ -5037,6 +5072,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.precondition_required",
           "workflow.revision_conflict",
           "workflow.portability_review_conflict",
@@ -5150,6 +5186,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "workflow.portability_invalid",
           "workflow.portability_compatibility_conflict",
           "workflow.portability_unavailable"
@@ -5280,6 +5317,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workflow.portability_invalid",
           "workflow.portability_review_conflict",
@@ -5379,7 +5417,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -5503,7 +5542,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -5616,7 +5656,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -5717,7 +5758,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -5852,6 +5894,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict"
         ]
       }
@@ -5987,6 +6030,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict"
         ]
       }
@@ -6082,7 +6126,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -6206,7 +6251,8 @@
           "resource.not_found",
           "request.rate_limited",
           "request.rate_limit_unavailable",
-          "api_token.unavailable"
+          "api_token.unavailable",
+          "server.busy"
         ]
       }
     },
@@ -6341,6 +6387,7 @@
           "request.rate_limited",
           "request.rate_limit_unavailable",
           "api_token.unavailable",
+          "server.busy",
           "request.idempotency_conflict",
           "workspace.conflict",
           "webhook.setting_up"
@@ -7590,6 +7637,7 @@
               "webhook.workflow_paused",
               "webhook.unavailable",
               "request.temporarily_unavailable",
+              "server.busy",
               "request.aborted",
               "internal.unexpected"
             ]

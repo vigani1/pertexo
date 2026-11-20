@@ -38,6 +38,7 @@ export function createApiPlatformFixture(migrationHead: string) {
     capacity: DEFAULT_INSTANCE_LIMITS,
     webhookEndpointBurstLimit:
       DEFAULT_INSTANCE_LIMITS.webhookEndpointBurstLimit,
+    inFlightRequestLimit: DEFAULT_INSTANCE_LIMITS.inFlightRequestLimit,
     codeSettings: DEFAULT_CODE_SETTINGS,
     database: {
       connectionString:
