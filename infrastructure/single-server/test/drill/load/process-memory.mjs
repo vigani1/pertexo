@@ -62,7 +62,14 @@ export async function nodeProcessMemory(server, service) {
   const status = await readFile(`/proc/${pid}/status`, 'utf8');
   const threads = Number(/^Threads:\s+(\d+)/mu.exec(status)?.[1]);
   const mib = (value) => Math.round((value / MIB) * 10) / 10;
+  const { arenas, ...mapped } = mappedMemory(
+    await must('sudo', ['cat', `/proc/${pid}/smaps`], { timeout: 30_000 }),
+  );
   return {
+    arenas,
+    ...Object.fromEntries(
+      Object.entries(mapped).map(([key, value]) => [key, mib(value)]),
+    ),
     pid,
     threads,
     rssMib: mib(usage.rss),
@@ -72,6 +79,68 @@ export async function nodeProcessMemory(server, service) {
     arrayBuffersMib: mib(usage.arrayBuffers),
     outsideHeapMib: mib(usage.rss - usage.heapTotal - usage.external),
   };
+}
+
+// glibc gives each extra malloc arena its own heap: a mapping reserved at
+// 64 MiB, aligned to 64 MiB, whose used part is read-write and the rest
+// inaccessible. The main arena grows the program break ([heap]).
+const ARENA_HEAP_BYTES = 64n * BigInt(MIB);
+const KIB = 1024;
+
+/**
+ * Where the process's resident memory lies, in bytes: file-backed (code and
+ * libraries), glibc's main heap, its extra arenas (and how many), and other
+ * anonymous mappings (V8's heap and large allocations among them).
+ */
+function mappedMemory(smaps) {
+  const regions = [];
+  for (const line of smaps.split('\n')) {
+    const header = /^([0-9a-f]+)-([0-9a-f]+) (\S{4}) \S+ \S+ \S+\s*(.*)$/u.exec(
+      line,
+    );
+    if (header) {
+      regions.push({
+        start: BigInt(`0x${header[1]}`),
+        end: BigInt(`0x${header[2]}`),
+        perms: header[3],
+        path: header[4],
+        rss: 0,
+        anonymous: 0,
+      });
+      continue;
+    }
+    const field = /^(Rss|Anonymous):\s+(\d+) kB$/u.exec(line);
+    if (field && regions.length > 0)
+      regions.at(-1)[field[1] === 'Rss' ? 'rss' : 'anonymous'] =
+        Number(field[2]) * KIB;
+  }
+  const result = {
+    arenas: 0,
+    fileBackedRssMib: 0,
+    mainHeapMib: 0,
+    arenaMib: 0,
+    otherAnonymousMib: 0,
+  };
+  for (const [index, region] of regions.entries()) {
+    result.fileBackedRssMib += region.rss - region.anonymous;
+    if (region.anonymous === 0) continue;
+    const next = regions[index + 1];
+    const reserved =
+      next?.start === region.end && next.perms.startsWith('---')
+        ? next.end - region.start
+        : region.end - region.start;
+    if (region.path === '[heap]') result.mainHeapMib += region.anonymous;
+    else if (
+      region.path === '' &&
+      region.perms.startsWith('rw') &&
+      region.start % ARENA_HEAP_BYTES === 0n &&
+      reserved === ARENA_HEAP_BYTES
+    ) {
+      result.arenaMib += region.anonymous;
+      result.arenas++;
+    } else result.otherAnonymousMib += region.anonymous;
+  }
+  return result;
 }
 
 /**
