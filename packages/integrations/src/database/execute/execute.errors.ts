@@ -24,6 +24,7 @@ const MESSAGES = {
   row_limit: 'The database returned more rows than the step allows.',
   result_limit: 'The database result exceeds the step’s size limit.',
   invalid_columns: 'The table or mapped columns do not match the database.',
+  key_not_unique: 'The selected key column needs a non-null unique index.',
   canceled: 'The database operation was canceled.',
 } satisfies Record<PostgresFailureCode, string>;
 
@@ -75,6 +76,7 @@ function errorKind(code: PostgresFailureCode): NodeExecutorErrorKind {
     case 'address_blocked':
     case 'constraint_violation':
     case 'invalid_columns':
+    case 'key_not_unique':
     case 'query_failed':
     case 'read_only':
     case 'result_limit':

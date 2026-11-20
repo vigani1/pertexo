@@ -1,4 +1,4 @@
-import type { HttpPollFailureCode } from '@pertexo/workflow-model';
+import type { PollFailureCode } from '@pertexo/workflow-model';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import type {
@@ -92,7 +92,7 @@ export const workflows = appSchema.table(
     triggerPausePollTriggerId: uuid('trigger_pause_poll_trigger_id'),
     triggerPausePollErrorCode: text(
       'trigger_pause_poll_error_code',
-    ).$type<HttpPollFailureCode>(),
+    ).$type<PollFailureCode>(),
     triggerPauseRevision: bigint('trigger_pause_revision', { mode: 'bigint' })
       .default(sql`1`)
       .notNull(),

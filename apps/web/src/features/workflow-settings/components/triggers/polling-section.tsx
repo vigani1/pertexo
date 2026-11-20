@@ -2,9 +2,32 @@ import type { PollingTriggerHealth } from '@pertexo/contracts';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { Notice } from '@/components/ui/notice';
 import { formatDateTime } from '@/lib/format/time';
-import { pollingGuidance } from '@/lib/polling-guidance';
+import {
+  databasePollingGuidance,
+  pollingGuidance,
+} from '@/lib/polling-guidance';
 
 const failureCopy: Record<string, string | undefined> = {
+  'database.address_blocked':
+    'The outbound network policy blocked the database address.',
+  'database.tls_failed': 'Check the database TLS settings and certificate.',
+  'database.connection_refused': 'The database refused the connection.',
+  'database.connection_failed': 'Check that the database is reachable.',
+  'database.authentication_failed':
+    'Repair the PostgreSQL connection, then resume triggers.',
+  'database.timeout': 'The database took too long to respond.',
+  'database.invalid_columns':
+    'Check the schema, table and column names against PostgreSQL.',
+  'database.key_not_unique':
+    'Choose a non-null key column with a unique index.',
+  'database.poll_invalid_key':
+    'Check that each row has a usable key and ordering value.',
+  'database.result_limit': 'The fetched rows exceed the result size limit.',
+  'database.row_limit': 'The database returned too many rows.',
+  'database.query_failed':
+    'PostgreSQL could not read the configured rows. Check table access and the ordering column.',
+  'database.poll_rate_limited':
+    'The PostgreSQL connection is limiting requests.',
   'http.poll_invalid_page': 'The feed did not return a readable JSON page.',
   'http.poll_invalid_items': 'The items path must point to a JSON array.',
   'http.poll_invalid_key':
@@ -20,16 +43,18 @@ const failureCopy: Record<string, string | undefined> = {
 };
 
 export function PollingSection({
+  title,
   triggers,
   stepNameFor,
 }: Readonly<{
+  title: string;
   triggers: readonly PollingTriggerHealth[];
   stepNameFor: (trigger: PollingTriggerHealth) => string;
 }>) {
   return (
     <SettingsSection
-      title="HTTP Polling"
-      description="Start runs when a JSON feed returns new items."
+      title={title}
+      description="Check for changes and start a run for each new item."
     >
       {triggers.length === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -55,6 +80,9 @@ function PollingCard({
   trigger: PollingTriggerHealth;
   name: string;
 }>) {
+  const guidance = trigger.lastErrorCode?.startsWith('database.')
+    ? databasePollingGuidance
+    : pollingGuidance;
   const reason =
     trigger.lastErrorCode === null
       ? null
@@ -82,11 +110,10 @@ function PollingCard({
           <p>
             {trigger.baselineEstablished
               ? 'Resuming keeps the items already recorded.'
-              : pollingGuidance.baseline}
+              : guidance.baseline}
           </p>
           <p>
-            {pollingGuidance.keys} {pollingGuidance.retention}{' '}
-            {pollingGuidance.interval}
+            {guidance.keys} {guidance.retention} {guidance.interval}
           </p>
         </Notice>
       )}

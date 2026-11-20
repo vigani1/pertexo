@@ -2,6 +2,7 @@ import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import {
   CalendarClockIcon,
+  DatabaseIcon,
   ClipboardListIcon,
   TriangleAlertIcon,
   MousePointerClickIcon,
@@ -45,6 +46,7 @@ const TRIGGERS: Readonly<
   Record<TriggerKind, Readonly<{ label: string; Icon: LucideIcon }>>
 > = {
   'core.webhook': { label: 'Webhook', Icon: WebhookIcon },
+  'database.poll': { label: 'Database Row', Icon: DatabaseIcon },
   'http.poll': { label: 'HTTP Polling', Icon: CalendarClockIcon },
   'core.schedule': { label: 'Schedule', Icon: CalendarClockIcon },
   'core.manual': { label: 'Manual', Icon: MousePointerClickIcon },

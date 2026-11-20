@@ -1,3 +1,4 @@
+import { quoteIdentifier } from '../identifier.js';
 import {
   conflictColumns,
   type DatabaseConfig,
@@ -55,10 +56,6 @@ export function rowStatement(
       };
     }
   }
-}
-
-function quoteIdentifier(identifier: string): string {
-  return `"${identifier.replaceAll('"', '""')}"`;
 }
 
 function parameter(index: number): string {

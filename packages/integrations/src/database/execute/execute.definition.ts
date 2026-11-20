@@ -1,4 +1,5 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
+import { POSTGRES_CONNECTION_SLOT } from '@pertexo/workflow-model';
 import {
   databaseConfigSchema,
   databaseInputSchema,
@@ -11,7 +12,7 @@ export const DATABASE_EXECUTOR = Object.freeze({
 });
 const DATABASE_EXECUTOR_ABI = 2;
 
-export const POSTGRES_CONNECTION_SLOT = 'postgres';
+export { POSTGRES_CONNECTION_SLOT } from '@pertexo/workflow-model';
 
 const manifest: NodeManifest = Object.freeze({
   definition: DATABASE_EXECUTOR,

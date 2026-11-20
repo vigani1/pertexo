@@ -13,6 +13,7 @@ import {
 import { PostgresError, postgresFailure } from './postgres.errors.js';
 import {
   requirePostgresColumns,
+  requirePostgresUniqueKey,
   createPostgresResultReader,
 } from './postgres-session.js';
 
@@ -86,7 +87,11 @@ export function createSecurePostgresClient(
         stage = 'query';
         await Promise.race([
           interruption,
-          connection.query(credential.readOnly ? 'BEGIN READ ONLY' : 'BEGIN'),
+          connection.query(
+            options.readOnly || credential.readOnly
+              ? 'BEGIN READ ONLY'
+              : 'BEGIN',
+          ),
         ]);
         const sensitive = [credential.password];
         const result = await Promise.race([
@@ -94,6 +99,8 @@ export function createSecurePostgresClient(
           run({
             requireColumns: (schema, table, columns) =>
               requirePostgresColumns(connection, schema, table, columns),
+            requireUniqueKey: (schema, table, key) =>
+              requirePostgresUniqueKey(connection, schema, table, key),
             query: createPostgresResultReader(
               connection,
               options.maxRows,

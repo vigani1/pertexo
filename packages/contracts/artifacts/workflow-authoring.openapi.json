@@ -15198,7 +15198,25 @@
                       "http.poll_rate_limited",
                       "http.poll_deadline_exceeded",
                       "http.poll_response_failed",
-                      "http.poll_request_failed"
+                      "http.poll_request_failed",
+                      "database.address_blocked",
+                      "database.tls_failed",
+                      "database.connection_refused",
+                      "database.connection_failed",
+                      "database.authentication_failed",
+                      "database.timeout",
+                      "database.syntax_error",
+                      "database.constraint_violation",
+                      "database.read_only",
+                      "database.serialization",
+                      "database.query_failed",
+                      "database.row_limit",
+                      "database.result_limit",
+                      "database.invalid_columns",
+                      "database.key_not_unique",
+                      "database.canceled",
+                      "database.poll_invalid_key",
+                      "database.poll_rate_limited"
                     ]
                   }
                 },
@@ -15400,7 +15418,25 @@
                           "http.poll_rate_limited",
                           "http.poll_deadline_exceeded",
                           "http.poll_response_failed",
-                          "http.poll_request_failed"
+                          "http.poll_request_failed",
+                          "database.address_blocked",
+                          "database.tls_failed",
+                          "database.connection_refused",
+                          "database.connection_failed",
+                          "database.authentication_failed",
+                          "database.timeout",
+                          "database.syntax_error",
+                          "database.constraint_violation",
+                          "database.read_only",
+                          "database.serialization",
+                          "database.query_failed",
+                          "database.row_limit",
+                          "database.result_limit",
+                          "database.invalid_columns",
+                          "database.key_not_unique",
+                          "database.canceled",
+                          "database.poll_invalid_key",
+                          "database.poll_rate_limited"
                         ]
                       }
                     },

@@ -292,6 +292,15 @@ export { FormValuesInvalidError } from './triggers/forms/forms.errors.js';
 export { TRIGGER_INTERVAL_MINUTES } from './triggers/interval.js';
 export {
   httpPollConfigSchema,
+  databasePollConfigSchema,
+  materializedPollConfigSchema,
+  postgresIdentifierSchema,
+  POSTGRES_IDENTIFIER_CHARACTERS,
+  POSTGRES_CONNECTION_SLOT,
+  DATABASE_POLL_TRIGGER,
+  isPollingTriggerDefinition,
+  type DatabasePollConfig,
+  type MaterializedPollConfig,
   HTTP_POLL_TRIGGER,
   HTTP_POLL_CONNECTION_SLOT,
   POLL_MAX_ITEMS,
@@ -495,6 +504,9 @@ export { requiresPublicationReviewer } from './workspaces/governance.js';
 export {
   HttpPollFailure,
   type HttpPollFailureCode,
+  type PollFailureCode,
+  PollFailure,
+  isPollAuthenticationFailure,
 } from './triggers/polling.errors.js';
 
 export {
@@ -503,3 +515,7 @@ export {
   type PollPauseEvidence,
   type TriggerPauseEvidence,
 } from './triggers/pause-evidence.js';
+export {
+  POSTGRES_FAILURE_CODES,
+  type PostgresFailureCode,
+} from './triggers/postgres.errors.js';

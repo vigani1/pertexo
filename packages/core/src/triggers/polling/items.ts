@@ -1,6 +1,9 @@
 import { hashPollItemKey } from '@pertexo/workflow-model/server';
 import { POLL_MAX_ITEMS } from '@pertexo/workflow-model';
-import type { JsonValue, HttpPollConfig } from '@pertexo/workflow-model';
+import type {
+  JsonValue,
+  MaterializedPollConfig,
+} from '@pertexo/workflow-model';
 
 export const POLL_MAX_PAGES = 5;
 
@@ -9,8 +12,7 @@ export type FetchPoll = (
   input: Readonly<{
     workspaceId: string;
     triggerId: string;
-    config: HttpPollConfig;
-    connectionId?: string;
+    config: MaterializedPollConfig;
     seenKeys: readonly string[];
     maxItems: number;
     maxPages: number;

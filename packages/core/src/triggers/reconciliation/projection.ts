@@ -2,7 +2,10 @@ import type { WorkflowTriggerProjection } from './trigger-reconciliation.types.j
 import {
   CORE_WEBHOOK_CONFIG_SCHEMA,
   httpPollConfigSchema,
-  HTTP_POLL_TRIGGER,
+  DATABASE_POLL_TRIGGER,
+  POSTGRES_CONNECTION_SLOT,
+  databasePollConfigSchema,
+  isPollingTriggerDefinition,
   HTTP_POLL_CONNECTION_SLOT,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
@@ -13,21 +16,18 @@ import { CORE_SCHEDULE_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import { z } from 'zod';
 
 function triggerKind(
-  identity: string,
+  definition: Readonly<{ key: string; version: number }>,
 ): WorkflowTriggerProjection['kind'] | null {
+  const identity = `${definition.key}@${String(definition.version)}`;
   if (identity === 'core.webhook@1') return 'webhook';
   if (identity === 'core.schedule@1') return 'schedule';
-  if (
-    identity === `${HTTP_POLL_TRIGGER.key}@${String(HTTP_POLL_TRIGGER.version)}`
-  )
-    return 'polling';
+  if (isPollingTriggerDefinition(definition)) return 'polling';
   return null;
 }
 
 const triggerConfigSchemas = {
   webhook: CORE_WEBHOOK_CONFIG_SCHEMA,
   schedule: CORE_SCHEDULE_CONFIG_SCHEMA,
-  polling: httpPollConfigSchema,
 };
 
 const pollConnectionRefs = z
@@ -64,22 +64,16 @@ export function workflowTriggerProjection(
   return Object.freeze(
     graph.nodes
       .flatMap((node): WorkflowTriggerProjection[] => {
-        const identity = `${node.definition.key}@${String(node.definition.version)}`;
-        const kind = triggerKind(identity);
+        const kind = triggerKind(node.definition);
         if (kind === null) return [];
         // Graph disablement is execution-only. Published external trigger
         // identity remains materialized so deliveries/scans retain stable
         // ingress and occurrence semantics; stored trigger configuration has
         // its own independent enable/disable lifecycle.
-        const settings = triggerConfigSchemas[kind].parse(node.config);
-        const connectionId =
-          kind === 'polling'
-            ? pollConnectionRefs.parse(node.connectionRefs)?.[
-                HTTP_POLL_CONNECTION_SLOT
-              ]
-            : undefined;
         const config =
-          connectionId !== undefined ? { ...settings, connectionId } : settings;
+          kind === 'polling'
+            ? pollConfig(node)
+            : triggerConfigSchemas[kind].parse(node.config);
         const digest = createHash('sha256')
           .update(canonicalJson({ config, kind }))
           .digest('hex');
@@ -94,4 +88,22 @@ export function workflowTriggerProjection(
       })
       .sort((left, right) => left.nodeId.localeCompare(right.nodeId)),
   );
+}
+
+function pollConfig(node: z.output<typeof graphSchema>['nodes'][number]) {
+  if (node.definition.key === DATABASE_POLL_TRIGGER.key) {
+    const refs = z
+      .object({ [POSTGRES_CONNECTION_SLOT]: z.uuid() })
+      .parse(node.connectionRefs);
+    return {
+      ...databasePollConfigSchema.parse(node.config),
+      source: 'postgres',
+      connectionId: refs[POSTGRES_CONNECTION_SLOT],
+    };
+  }
+  const settings = httpPollConfigSchema.parse(node.config);
+  const connectionId = pollConnectionRefs.parse(node.connectionRefs)?.[
+    HTTP_POLL_CONNECTION_SLOT
+  ];
+  return connectionId === undefined ? settings : { ...settings, connectionId };
 }

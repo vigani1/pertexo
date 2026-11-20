@@ -1,6 +1,9 @@
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { MAX_AUTO_PAUSE_THRESHOLD } from '@pertexo/policy';
-import type { HttpPollFailureCode } from '@pertexo/workflow-model';
+import {
+  isPollAuthenticationFailure,
+  type PollFailureCode,
+} from '@pertexo/workflow-model';
 import {
   lockAutoPauseWorkflow,
   lockAutoPauseWorkspace,
@@ -18,7 +21,7 @@ export async function recordPollFailure(
   {
     code,
     delaySeconds,
-  }: Readonly<{ code: HttpPollFailureCode; delaySeconds: number }>,
+  }: Readonly<{ code: PollFailureCode; delaySeconds: number }>,
 ) {
   const workspaceId = claim.workspace_id;
   const { workflowId, pauseRevision } = observation;
@@ -43,7 +46,7 @@ export async function recordPollFailure(
   const count = Math.min(previous + 1, MAX_AUTO_PAUSE_THRESHOLD);
   const { autoPauseEnabled, threshold } = current.published;
   const shouldPause =
-    code === 'http.poll_authentication' ||
+    isPollAuthenticationFailure(code) ||
     (autoPauseEnabled && count >= threshold);
   // A repaired feed can be checked as soon as the workflow resumes.
   if (

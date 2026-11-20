@@ -113,12 +113,37 @@ export async function requirePostgresColumns(
   schema: string,
   table: string,
   columns: readonly string[],
-): Promise<void> {
-  const result = await client.query(
+): Promise<readonly string[]> {
+  const result = await client.query<{ column_name: string }>(
     `select column_name from information_schema.columns
-      where table_schema = $1 and table_name = $2 and column_name = any($3::text[])`,
-    [schema, table, columns],
+      where table_schema = $1 and table_name = $2`,
+    [schema, table],
   );
-  if (result.rowCount !== columns.length)
+  const actual = new Set(result.rows.map(({ column_name }) => column_name));
+  if (columns.some((column) => !actual.has(column)))
     throw new PostgresError('invalid_columns');
+  return [...actual];
+}
+
+export async function requirePostgresUniqueKey(
+  client: pg.Client,
+  schema: string,
+  table: string,
+  key: string,
+): Promise<void> {
+  const { rows } = await client.query<{ found: boolean }>(
+    `select exists (
+      select 1
+      from pg_catalog.pg_namespace n
+      join pg_catalog.pg_class t on t.relnamespace = n.oid
+      join pg_catalog.pg_attribute a on a.attrelid = t.oid
+      join pg_catalog.pg_index i on i.indrelid = t.oid and i.indkey[0] = a.attnum
+      where n.nspname = $1 and t.relname = $2 and a.attname = $3
+        and a.attnotnull and i.indisunique and i.indisvalid and i.indimmediate
+        and i.indnkeyatts = 1 and i.indpred is null
+        and (t.relkind = 'p' or (t.relkind = 'r' and not t.relhassubclass))
+    ) as found`,
+    [schema, table, key],
+  );
+  if (rows[0]?.found !== true) throw new PostgresError('key_not_unique');
 }

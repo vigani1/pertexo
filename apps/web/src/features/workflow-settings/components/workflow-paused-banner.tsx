@@ -1,3 +1,4 @@
+import { isPollAuthenticationFailure } from '@pertexo/workflow-model';
 import { Link } from '@tanstack/react-router';
 import type {
   AccessibleWorkspace,
@@ -43,7 +44,11 @@ function PausedStateNotice({
       ? settings.pauseEvidence
       : undefined;
   const failures =
-    poll === undefined ? 'failed triggered runs' : 'failed feed checks';
+    poll === undefined
+      ? 'failed triggered runs'
+      : poll.errorCode.startsWith('database.')
+        ? 'failed database checks'
+        : 'failed feed checks';
   return (
     <Notice
       tone="warning"
@@ -64,8 +69,14 @@ function PausedStateNotice({
       }
     >
       <p>
-        {poll?.errorCode === 'http.poll_authentication' ? (
-          <>Paused when the feed could no longer authenticate{time}</>
+        {poll !== undefined && isPollAuthenticationFailure(poll.errorCode) ? (
+          <>
+            Paused when the{' '}
+            {poll.errorCode === 'database.authentication_failed'
+              ? 'database'
+              : 'feed'}{' '}
+            could no longer authenticate{time}
+          </>
         ) : (
           <>
             Paused after {String(settings.pausedFailures)} {failures} in a row
