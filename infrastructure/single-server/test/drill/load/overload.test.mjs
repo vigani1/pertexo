@@ -251,10 +251,10 @@ describe('the minimum-size stack pushed past its capacity', () => {
     });
   });
 
-  // Each request the API holds costs about 0.24 MiB while it waits, mostly for
-  // a database connection. Without a bound across the process, a flood above
-  // about 40 a second got the API killed at its 512 MiB cap and everything in
-  // flight answered 502. Past its bound the API now answers 503 at once.
+  // Without a bound across the process, a flood above about 40 a second got
+  // the API killed at its 512 MiB cap and everything in flight answered 502.
+  // Past its bound the API now answers 503 at once, and its glibc arenas are
+  // capped so memory outside the heap stays down.
   it('answers every flood sender at 40, 80 and 160 a second with 202, 429 or 503', () => {
     const shedding = stages.filter((stage) =>
       SHEDDING_RATES.includes(stage.ratePerSecond),
