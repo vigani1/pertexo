@@ -1,5 +1,6 @@
 import pg from 'pg';
-import { POSTGRES_LIMITS, type PostgresResult } from '@pertexo/contracts';
+import { POSTGRES_LIMITS } from '@pertexo/contracts';
+import type { PostgresResult } from './secure-postgres-client.types.js';
 import type { ResponseRedactor } from '../outbound-http/redaction/response-redactor.js';
 import { prepareResponseRedactor } from '../outbound-http/redaction/response-redactor.js';
 import { PostgresError } from './postgres.errors.js';

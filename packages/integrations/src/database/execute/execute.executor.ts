@@ -1,9 +1,4 @@
-import {
-  POSTGRES_LIMITS,
-  postgresCredentialSchema,
-  type PostgresClient,
-  type PostgresSession,
-} from '@pertexo/contracts';
+import { POSTGRES_LIMITS, postgresCredentialSchema } from '@pertexo/contracts';
 import {
   withProviderCredential,
   type NodeExecutionInvocation,
@@ -12,6 +7,7 @@ import {
 import { createProviderBeforeDispatch } from '../../providers/provider-dispatch-fence.js';
 import { connectionLookupFailure } from '../../providers/provider.errors.js';
 import { registerProviderExecutor } from '../../providers/provider-executor.js';
+import type { PostgresClient, PostgresSession } from '../postgres-client.js';
 import {
   DATABASE_EXECUTOR,
   POSTGRES_CONNECTION_SLOT,
