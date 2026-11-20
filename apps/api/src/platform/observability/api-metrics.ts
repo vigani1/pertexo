@@ -2,6 +2,8 @@ import { context, trace, metrics, type Meter } from '@opentelemetry/api';
 import { API_PROBLEM_CODES } from '@pertexo/contracts';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
+import { HEALTH_PATHS } from '../health/health-paths.js';
+
 // HTTP statuses come in classes of a hundred: 2xx is 200 to 299.
 const STATUS_CLASS_WIDTH = 100;
 /** The longest route template a metric labels; longer ones read as unmatched. */
@@ -98,8 +100,8 @@ function parseProblemCode(payload: unknown): string {
 function eligible(route: string): boolean {
   return (
     route !== 'unmatched' &&
-    route !== '/health/live' &&
-    route !== '/health/ready'
+    route !== HEALTH_PATHS.live &&
+    route !== HEALTH_PATHS.ready
   );
 }
 
