@@ -14,7 +14,7 @@ import { PostgresError, postgresFailure } from './postgres.errors.js';
 import {
   requirePostgresColumns,
   createPostgresResultReader,
-} from './query.repository.js';
+} from './postgres-session.js';
 
 export function createSecurePostgresClient(
   networks: readonly AllowedPrivateNetwork[] = [],
