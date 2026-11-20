@@ -1,6 +1,6 @@
 # ADR 093: Polling triggers keep a durable position
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-20
 - **Related:** [ADR 014](014-schedule-timezone-dst-misfire.md),
   [ADR 048](048-schedule-fire-history-and-next-runs.md),
