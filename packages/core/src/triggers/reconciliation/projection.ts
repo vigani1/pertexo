@@ -1,7 +1,7 @@
 import type { WorkflowTriggerProjection } from './trigger-reconciliation.types.js';
 import {
   CORE_WEBHOOK_CONFIG_SCHEMA,
-  HTTP_POLL_CONFIG_SCHEMA,
+  httpPollConfigSchema,
   HTTP_POLL_TRIGGER,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
@@ -26,7 +26,7 @@ function triggerKind(
 const triggerConfigSchemas = {
   webhook: CORE_WEBHOOK_CONFIG_SCHEMA,
   schedule: CORE_SCHEDULE_CONFIG_SCHEMA,
-  polling: HTTP_POLL_CONFIG_SCHEMA,
+  polling: httpPollConfigSchema,
 };
 
 const graphSchema = z

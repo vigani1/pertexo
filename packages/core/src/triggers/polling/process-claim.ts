@@ -2,7 +2,7 @@ import {
   withWorkspaceTransaction,
   type WorkspaceTransaction,
 } from '@pertexo/database/primitives';
-import { HTTP_POLL_CONFIG_SCHEMA } from '@pertexo/workflow-model';
+import { httpPollConfigSchema } from '@pertexo/workflow-model';
 import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import {
   commandKeyHash,
@@ -62,7 +62,7 @@ export async function processPollClaim(
     );
     if (observation === undefined) throw new PollClaimLostError();
     const config = decodeStoredValue(() =>
-      HTTP_POLL_CONFIG_SCHEMA.parse(observation.config),
+      httpPollConfigSchema.parse(observation.config),
     );
     const seenKeys =
       observation.seenKeys?.map((key) => key.toString('hex')) ?? [];

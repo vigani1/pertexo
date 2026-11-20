@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { isWorkflowTriggerKey } from '../../src/graph/triggers.js';
 import {
-  HTTP_POLL_CONFIG_SCHEMA,
+  httpPollConfigSchema,
   HTTP_POLL_TRIGGER,
 } from '../../src/triggers/polling.schemas.js';
 
@@ -13,9 +13,9 @@ const config = {
 };
 
 it('accepts the schedule interval bounds and a root array path', () => {
-  expect(HTTP_POLL_CONFIG_SCHEMA.parse(config)).toEqual(config);
+  expect(httpPollConfigSchema.parse(config)).toEqual(config);
   expect(
-    HTTP_POLL_CONFIG_SCHEMA.safeParse({ ...config, intervalMinutes: 43_200 })
+    httpPollConfigSchema.safeParse({ ...config, intervalMinutes: 43_200 })
       .success,
   ).toBe(true);
 });
@@ -28,7 +28,7 @@ it.each([
   { url: 'file:///local.json' },
 ])('rejects invalid polling configuration %j', (invalid) => {
   expect(
-    HTTP_POLL_CONFIG_SCHEMA.safeParse({ ...config, ...invalid }).success,
+    httpPollConfigSchema.safeParse({ ...config, ...invalid }).success,
   ).toBe(false);
 });
 
