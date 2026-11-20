@@ -1,12 +1,14 @@
-// The outside service HTTP steps call during the load: a slow, flaky API, and
-// a receiver that calls a Wait back later, the way a payment or signing
-// provider does. Compose interpolates `$`, so the source must not contain one.
+// The outside service HTTP steps call during the load: a slow, flaky API, a
+// list API whose fresh pages a step fetches and Code transforms, and a receiver that calls a Wait back later, the way a payment
+// or signing provider does. Compose interpolates `$`, so the source must not contain one.
 export const FLAKY_FAILURE_SHARE = 0.15;
 export const FLAKY_SLOW_SHARE = 0.15;
+// About 40 KiB of JSON a page, under the HTTP step's 64 KiB response limit.
+const PAGE_ITEMS = 500;
 
 export const TARGET_SOURCE = `
 const http = require('node:http');
-const counts = { flaky: 0, served503: 0, slow: 0, callbacksAsked: 0, callbacksSent: 0, callbackStatuses: {} };
+const counts = { pages: 0, flaky: 0, served503: 0, slow: 0, callbacksAsked: 0, callbacksSent: 0, callbackStatuses: {} };
 const answer = (response, status, body) => {
   response.statusCode = status;
   response.setHeader('content-type', 'application/json');
@@ -27,6 +29,14 @@ function callBack(address, tries) {
 http.createServer((request, response) => {
   const url = new URL(request.url, 'http://target');
   if (url.pathname === '/counts') return answer(response, 200, counts);
+  if (url.pathname === '/page') {
+    counts.pages++;
+    const items = Array.from({ length: ${PAGE_ITEMS} }, (unused, index) => ({
+      id: index, sku: Math.random().toString(36).slice(2), price: Math.round(Math.random() * 10000) / 100,
+      note: Math.random().toString(36).repeat(2),
+    }));
+    return answer(response, 200, { items, next: null });
+  }
   if (url.pathname === '/flaky') {
     counts.flaky++;
     const roll = Math.random();
