@@ -184,6 +184,7 @@ it('rejects cross-origin next links without dispatch or changes to seen state', 
   expect(await poll.admitted()).toEqual([]);
 });
 
+// The scan must abort before the HTTP deadline can end the request.
 it('releases the claim when the scan is canceled while reading a feed page', async () => {
   const streaming = Promise.withResolvers<undefined>();
   const origin = await server((_url, _request, response) => {
@@ -205,5 +206,4 @@ it('releases the claim when the scan is canceled while reading a feed page', asy
     due: true,
   });
   expect(await poll.admitted()).toEqual([]);
-}, // The scan must abort before the HTTP deadline can end the request.
-5_000);
+}, 5_000);
