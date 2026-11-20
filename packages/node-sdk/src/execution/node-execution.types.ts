@@ -194,8 +194,6 @@ export interface NodeExecutorRegistration {
 export interface NodeDefinitionRegistration {
   readonly manifest: NodeManifest;
   readonly configSchema: ZodType;
-  /** Accepts the same stored config and decodes it for execution. */
-  readonly executionConfigSchema?: ZodType;
   readonly inputSchema: ZodType;
   readonly outputSchema: ZodType;
 }

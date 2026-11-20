@@ -1,4 +1,8 @@
-import type { DatabaseConfig, DatabaseInput } from './execute.schemas.js';
+import {
+  conflictColumns,
+  type DatabaseConfig,
+  type DatabaseInput,
+} from './execute.schemas.js';
 
 type WriteConfig = Exclude<DatabaseConfig, { operation: 'query' }>;
 
@@ -33,7 +37,7 @@ export function rowStatement(
       };
     }
     case 'upsert': {
-      const { keys } = config;
+      const keys = conflictColumns(config.keys);
       if (keys.some((key) => !columns.includes(key))) return undefined;
       const keySet = new Set(keys);
       const conflict = keys.map(quoteIdentifier).join(', ');
