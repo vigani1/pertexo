@@ -1,6 +1,8 @@
 import { beforeEach, expect, it, onTestFinished } from 'vitest';
 import { testStackSetting } from '../../../../../infrastructure/testing/test-stack.mjs';
 import { pollingFixture } from '../../../../../packages/core/test/triggers/polling/polling.fixture.js';
+import { EVENT_COORDINATION_LIMITS } from '@pertexo/workflow-model';
+import { HTTP_REQUEST_LIMITS } from '@pertexo/integrations';
 import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
 import { createPollingHttpRuntime } from '../../../src/triggers/polling-http.runtime.js';
 import { json, server } from '../../integrations/support/pagination.js';
@@ -117,6 +119,19 @@ it.each([
   { items: { key: 'private' }, code: 'http.poll_invalid_items' },
   { items: [{ key: true }], code: 'http.poll_invalid_key' },
   { items: [{ key: '' }], code: 'http.poll_invalid_key' },
+  {
+    items: [{ key: 'é'.repeat(EVENT_COORDINATION_LIMITS.keyBytes) }],
+    code: 'http.poll_invalid_key',
+  },
+  {
+    items: [
+      {
+        key: 'oversized-page',
+        payload: 'a'.repeat(HTTP_REQUEST_LIMITS.defaultInlineResponseBytes),
+      },
+    ],
+    code: 'http.poll_invalid_page',
+  },
 ])(
   'releases the poll without recording partial progress on $code',
   async ({ items, code }) => {
@@ -168,3 +183,30 @@ it('rejects cross-origin next links without dispatch or changes to seen state', 
   });
   expect(await poll.admitted()).toEqual([]);
 });
+
+it(
+  'releases the claim when the scan is canceled while reading a feed page',
+  async () => {
+    const streaming = Promise.withResolvers<void>();
+    const origin = await server((_url, _request, response) => {
+      response.setHeader('content-type', 'application/json');
+      response.write('[');
+      streaming.resolve();
+    });
+    const { triggerId } = await poll.publish(true, `${origin}/items`);
+    const controller = new AbortController();
+    const canceled = expect(
+      poll.scanner(runtime.fetchPoll)({ signal: controller.signal }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    await streaming.promise;
+    controller.abort();
+    await canceled;
+    expect(await poll.read(triggerId)).toMatchObject({
+      hashes: null,
+      leased: false,
+      due: true,
+    });
+    expect(await poll.admitted()).toEqual([]);
+  },
+  HTTP_REQUEST_LIMITS.defaultTimeoutMillis / 2,
+);
