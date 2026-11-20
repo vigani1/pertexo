@@ -97,9 +97,23 @@ people reading the run history ran about 2,000 runs and 16,600 requests without
 an error. Run start latency was 35 ms median and 591 ms at p95, the cgroup peaked
 at 1.6 GiB and API and worker memory stayed flat. Past capacity, one workspace
 takes in about 10 webhook deliveries a second; faster senders get `429` with
-`Retry-After`. Above about 40 a second the API can exceed its 512 MiB cap and be
-restarted, which answers requests in flight with `502` but loses no accepted
-run. The J1 per-service caps above do not hold this hour: PostgreSQL at 256 MiB
+`Retry-After`.
+
+The API holds at most `API_IN_FLIGHT_REQUEST_LIMIT` requests at once (default
+128; see [usage](../guides/usage.md)). Past that it answers `503` with the
+`server.busy` problem and `Retry-After: 1` before reading the body; the health
+checks are never turned away. Its compose service also sets
+`MALLOC_ARENA_MAX=2`: without it, glibc's per-thread malloc arenas grew the API's
+memory outside the V8 heap by about 170 MiB under a flood, to within 50 MiB of
+its 512 MiB cap. Keep both if you run the API outside this compose file. With
+them, floods of 40, 80 and 160 deliveries a second into one workspace killed and
+restarted nothing, senders heard only `202`, `429` or `503`, the API peaked at
+427 MiB and every accepted delivery became exactly one run. The bound is shared
+by every workspace, so another workspace's requests get in about as often as
+the flood's: 71% of its reads succeeded at 40 a second, 34% at 80 and 19% at
+160, with the rest told the server is busy. Waiting for a database connection
+is bounded too: after `DATABASE_CONNECTION_TIMEOUT_MILLIS` (5,000) a request
+gets `503` with `Retry-After`. The J1 per-service caps above do not hold this hour: PostgreSQL at 256 MiB
 and the file store at 256 MiB were killed, and Caddy at 32 MiB restarted under a
 flood. Do not cap those services that tightly.
 
