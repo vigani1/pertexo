@@ -403,6 +403,46 @@ END $$;
 ALTER FUNCTION app.claim_due_run_failure_notification_recoveries(p_limit integer) OWNER TO pertexo_owner;
 
 --
+-- Name: claim_due_trigger_polls(character varying, integer, integer); Type: FUNCTION; Schema: app; Owner: pertexo_owner
+--
+
+CREATE FUNCTION app.claim_due_trigger_polls(p_lease_owner character varying, p_limit integer, p_lease_seconds integer) RETURNS TABLE(trigger_id uuid, workspace_id uuid, lease_token uuid, lease_expires_at timestamp with time zone, observed_at timestamp with time zone)
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'app', 'pg_temp'
+    SET row_security TO 'on'
+    AS $$
+DECLARE v_observed_at timestamptz := clock_timestamp();
+BEGIN
+  IF p_lease_owner IS NULL OR length(p_lease_owner)<1 OR length(p_lease_owner)>128
+    OR p_limit IS NULL OR p_limit<1 OR p_limit>100
+    OR p_lease_seconds IS NULL OR p_lease_seconds<1 OR p_lease_seconds>300 THEN
+    RAISE EXCEPTION 'invalid polling claim bounds' USING ERRCODE='22023';
+  END IF;
+  RETURN QUERY WITH due AS (
+    SELECT poll.workspace_id, poll.trigger_id
+    FROM app.trigger_polls poll
+    JOIN app.workflow_triggers trigger ON trigger.workspace_id=poll.workspace_id AND trigger.id=poll.trigger_id
+    JOIN app.workflows workflow ON workflow.workspace_id=trigger.workspace_id AND workflow.id=trigger.workflow_id
+    JOIN app.workspaces workspace ON workspace.id=poll.workspace_id
+    WHERE poll.retired_at IS NULL AND poll.next_poll_at<=v_observed_at
+      AND (poll.lease_expires_at IS NULL OR poll.lease_expires_at<=v_observed_at)
+      AND trigger.status='active' AND workflow.published_version_id=trigger.workflow_version_id
+      AND workspace.status='active' AND workflow.lifecycle_status='active'
+      AND workflow.activation_status IN ('active','degraded') AND workflow.trigger_pause_state<>'paused'
+    ORDER BY poll.next_poll_at,poll.workspace_id,poll.trigger_id
+    LIMIT p_limit FOR UPDATE OF poll SKIP LOCKED
+  )
+  UPDATE app.trigger_polls poll
+  SET lease_owner=p_lease_owner,lease_token=gen_random_uuid(),lease_acquired_at=v_observed_at,
+    lease_expires_at=v_observed_at+make_interval(secs=>p_lease_seconds),updated_at=v_observed_at
+  FROM due WHERE poll.workspace_id=due.workspace_id AND poll.trigger_id=due.trigger_id
+  RETURNING poll.trigger_id,poll.workspace_id,poll.lease_token,poll.lease_expires_at,v_observed_at;
+END $$;
+
+
+ALTER FUNCTION app.claim_due_trigger_polls(p_lease_owner character varying, p_limit integer, p_lease_seconds integer) OWNER TO pertexo_owner;
+
+--
 -- Name: claim_due_trigger_schedules(character varying, integer, integer); Type: FUNCTION; Schema: app; Owner: pertexo_owner
 --
 
@@ -1482,9 +1522,17 @@ CREATE FUNCTION app.release_trigger_schedule_claim(p_trigger_id uuid, p_lease_to
     SET search_path TO 'pg_catalog', 'app', 'pg_temp'
     SET row_security TO 'on'
     AS $$
-  UPDATE app.trigger_schedules SET lease_owner=NULL,lease_token=NULL,lease_acquired_at=NULL,
-    lease_expires_at=NULL,updated_at=clock_timestamp()
-   WHERE trigger_id=p_trigger_id AND lease_token=p_lease_token RETURNING true
+  WITH schedule AS (
+    UPDATE app.trigger_schedules SET lease_owner=NULL,lease_token=NULL,lease_acquired_at=NULL,
+      lease_expires_at=NULL,updated_at=clock_timestamp()
+    WHERE trigger_id=p_trigger_id AND lease_token=p_lease_token RETURNING true AS released
+  ), poll AS (
+    UPDATE app.trigger_polls SET lease_owner=NULL,lease_token=NULL,lease_acquired_at=NULL,
+      lease_expires_at=NULL,updated_at=statement_timestamp()
+    WHERE trigger_id=p_trigger_id AND lease_token=p_lease_token AND NOT EXISTS (SELECT 1 FROM schedule)
+    RETURNING true AS released
+  )
+  SELECT released FROM schedule UNION ALL SELECT released FROM poll
 $$;
 
 
@@ -3830,6 +3878,27 @@ CREATE TABLE app.trigger_event_windows (
 ALTER TABLE app.trigger_event_windows OWNER TO pertexo_owner;
 
 --
+-- Name: trigger_polls; Type: TABLE; Schema: app; Owner: pertexo_owner
+--
+
+CREATE TABLE app.trigger_polls (
+    trigger_id uuid NOT NULL,
+    workspace_id uuid NOT NULL,
+    seen_keys bytea[],
+    next_poll_at timestamp with time zone DEFAULT statement_timestamp() NOT NULL,
+    retired_at timestamp with time zone,
+    lease_owner character varying(128),
+    lease_token uuid,
+    lease_acquired_at timestamp with time zone,
+    lease_expires_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT statement_timestamp() NOT NULL,
+    CONSTRAINT trigger_polls_lease_valid CHECK (((((lease_owner IS NULL) AND (lease_token IS NULL) AND (lease_acquired_at IS NULL) AND (lease_expires_at IS NULL)) OR ((lease_owner IS NOT NULL) AND (lease_token IS NOT NULL) AND (lease_acquired_at IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (lease_expires_at > lease_acquired_at) AND (lease_expires_at <= (lease_acquired_at + '00:05:00'::interval)))) IS TRUE))
+);
+
+
+ALTER TABLE app.trigger_polls OWNER TO pertexo_owner;
+
+--
 -- Name: trigger_schedule_occurrences; Type: TABLE; Schema: app; Owner: pertexo_owner
 --
 
@@ -4673,7 +4742,7 @@ CREATE TABLE app.workflow_runs (
     CONSTRAINT workflow_runs_recovery_summary_complete CHECK (((((recovery_target_node_run_id IS NULL) AND (recovery_target_node_id IS NULL) AND (recovery_reused_count IS NULL) AND (recovery_effect_risk IS NULL) AND (recovery_effects_acknowledged IS NULL)) OR (((trigger_type)::text = 'replay'::text) AND (recovery_target_node_run_id IS NOT NULL) AND (recovery_target_node_id IS NOT NULL) AND (recovery_reused_count IS NOT NULL) AND (recovery_reused_count >= 0) AND (recovery_reused_count <= 200) AND ((recovery_effect_risk)::text = ANY ((ARRAY['ordinary'::character varying, 'possible_effects'::character varying, 'unknown_outcome'::character varying])::text[])) AND (recovery_effects_acknowledged IS NOT NULL))) IS TRUE)),
     CONSTRAINT workflow_runs_replay_lineage_valid CHECK ((((trigger_type)::text = 'replay'::text) = ((replay_source_run_id IS NOT NULL) AND (replay_command_id IS NOT NULL)))),
     CONSTRAINT workflow_runs_status_valid CHECK (((status)::text = ANY (ARRAY[('queued'::character varying)::text, ('running'::character varying)::text, ('waiting'::character varying)::text, ('succeeded'::character varying)::text, ('failed'::character varying)::text, ('canceled'::character varying)::text, ('timed_out'::character varying)::text, ('outcome_unknown'::character varying)::text]))),
-    CONSTRAINT workflow_runs_trigger_type_valid CHECK (((trigger_type)::text = ANY (ARRAY[('test'::character varying)::text, ('form'::character varying)::text, ('workflow_error'::character varying)::text, ('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))),
+    CONSTRAINT workflow_runs_trigger_type_valid CHECK (((trigger_type)::text = ANY (ARRAY[('test'::character varying)::text, ('form'::character varying)::text, ('workflow_error'::character varying)::text, ('api'::character varying)::text, ('manual'::character varying)::text, ('replay'::character varying)::text, ('schedule'::character varying)::text, ('polling'::character varying)::text, ('webhook'::character varying)::text, ('workflow_call'::character varying)::text]))),
     CONSTRAINT workflow_runs_variable_set_retention CHECK (((details_purged_at IS NULL) OR (variable_set_revision IS NULL)))
 )
 WITH (autovacuum_vacuum_scale_factor='0.02', autovacuum_analyze_scale_factor='0.01', autovacuum_vacuum_insert_scale_factor='0.02');
@@ -4906,7 +4975,7 @@ CREATE TABLE app.workflow_triggers (
     CONSTRAINT workflow_triggers_config_strict CHECK ((jsonb_typeof(desired_config) = 'object'::text)),
     CONSTRAINT workflow_triggers_fingerprint_valid CHECK (((config_fingerprint)::text ~ '^trigger:sha256:[0-9a-f]{64}$'::text)),
     CONSTRAINT workflow_triggers_health_valid CHECK (((health_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('healthy'::character varying)::text, ('degraded'::character varying)::text, ('unhealthy'::character varying)::text, ('disabled'::character varying)::text]))),
-    CONSTRAINT workflow_triggers_kind_valid CHECK (((kind)::text = ANY (ARRAY[('webhook'::character varying)::text, ('schedule'::character varying)::text]))),
+    CONSTRAINT workflow_triggers_kind_valid CHECK (((kind)::text = ANY (ARRAY[('webhook'::character varying)::text, ('schedule'::character varying)::text, ('polling'::character varying)::text]))),
     CONSTRAINT workflow_triggers_status_valid CHECK (((status)::text = ANY (ARRAY[('desired'::character varying)::text, ('configuration_required'::character varying)::text, ('pending'::character varying)::text, ('active'::character varying)::text, ('degraded'::character varying)::text, ('disabled'::character varying)::text, ('error'::character varying)::text])))
 );
 
@@ -6418,6 +6487,14 @@ ALTER TABLE ONLY app.trigger_event_windows
 
 ALTER TABLE ONLY app.trigger_event_windows
     ADD CONSTRAINT trigger_event_windows_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: trigger_polls trigger_polls_pkey; Type: CONSTRAINT; Schema: app; Owner: pertexo_owner
+--
+
+ALTER TABLE ONLY app.trigger_polls
+    ADD CONSTRAINT trigger_polls_pkey PRIMARY KEY (workspace_id, trigger_id);
 
 
 --
@@ -8224,6 +8301,13 @@ CREATE INDEX trigger_coordinated_events_run ON app.trigger_coordinated_events US
 --
 
 CREATE INDEX trigger_event_windows_expiry ON app.trigger_event_windows USING btree (workspace_id, expires_at);
+
+
+--
+-- Name: trigger_polls_due_idx; Type: INDEX; Schema: app; Owner: pertexo_owner
+--
+
+CREATE INDEX trigger_polls_due_idx ON app.trigger_polls USING btree (next_poll_at, workspace_id, trigger_id) WHERE (retired_at IS NULL);
 
 
 --
@@ -10406,6 +10490,14 @@ ALTER TABLE ONLY app.trigger_event_windows
 
 
 --
+-- Name: trigger_polls trigger_polls_trigger_fk; Type: FK CONSTRAINT; Schema: app; Owner: pertexo_owner
+--
+
+ALTER TABLE ONLY app.trigger_polls
+    ADD CONSTRAINT trigger_polls_trigger_fk FOREIGN KEY (workspace_id, trigger_id) REFERENCES app.workflow_triggers(workspace_id, id) ON DELETE RESTRICT;
+
+
+--
 -- Name: trigger_schedule_occurrences trigger_schedule_occurrences_run_fk; Type: FK CONSTRAINT; Schema: app; Owner: pertexo_owner
 --
 
@@ -12027,6 +12119,19 @@ CREATE POLICY trigger_event_windows_workspace_scope ON app.trigger_event_windows
 
 
 --
+-- Name: trigger_polls; Type: ROW SECURITY; Schema: app; Owner: pertexo_owner
+--
+
+ALTER TABLE app.trigger_polls ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: trigger_polls trigger_polls_workspace_scope; Type: POLICY; Schema: app; Owner: pertexo_owner
+--
+
+CREATE POLICY trigger_polls_workspace_scope ON app.trigger_polls TO pertexo_app USING ((workspace_id = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid)) WITH CHECK ((workspace_id = (NULLIF(current_setting('app.workspace_id'::text, true), ''::text))::uuid));
+
+
+--
 -- Name: trigger_schedule_occurrences; Type: ROW SECURITY; Schema: app; Owner: pertexo_owner
 --
 
@@ -13051,6 +13156,14 @@ GRANT ALL ON FUNCTION app.claim_due_node_run_wakeups(p_limit integer) TO pertexo
 
 REVOKE ALL ON FUNCTION app.claim_due_run_failure_notification_recoveries(p_limit integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION app.claim_due_run_failure_notification_recoveries(p_limit integer) TO pertexo_maintenance;
+
+
+--
+-- Name: FUNCTION claim_due_trigger_polls(p_lease_owner character varying, p_limit integer, p_lease_seconds integer); Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+REVOKE ALL ON FUNCTION app.claim_due_trigger_polls(p_lease_owner character varying, p_limit integer, p_lease_seconds integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION app.claim_due_trigger_polls(p_lease_owner character varying, p_limit integer, p_lease_seconds integer) TO pertexo_maintenance;
 
 
 --
@@ -15197,6 +15310,91 @@ GRANT SELECT,DELETE ON TABLE app.trigger_coordinated_events TO pertexo_maintenan
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE app.trigger_event_windows TO pertexo_app;
 GRANT SELECT,DELETE ON TABLE app.trigger_event_windows TO pertexo_maintenance;
+
+
+--
+-- Name: TABLE trigger_polls; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT SELECT,INSERT ON TABLE app.trigger_polls TO pertexo_app;
+GRANT DELETE ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.trigger_id; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT SELECT(trigger_id) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.workspace_id; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT SELECT(workspace_id) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.seen_keys; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(seen_keys) ON TABLE app.trigger_polls TO pertexo_app;
+
+
+--
+-- Name: COLUMN trigger_polls.next_poll_at; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(next_poll_at) ON TABLE app.trigger_polls TO pertexo_app;
+GRANT SELECT(next_poll_at) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.retired_at; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(retired_at) ON TABLE app.trigger_polls TO pertexo_app;
+GRANT SELECT(retired_at) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.lease_owner; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(lease_owner) ON TABLE app.trigger_polls TO pertexo_app;
+GRANT UPDATE(lease_owner) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.lease_token; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(lease_token) ON TABLE app.trigger_polls TO pertexo_app;
+GRANT SELECT(lease_token),UPDATE(lease_token) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.lease_acquired_at; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(lease_acquired_at) ON TABLE app.trigger_polls TO pertexo_app;
+GRANT UPDATE(lease_acquired_at) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.lease_expires_at; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(lease_expires_at) ON TABLE app.trigger_polls TO pertexo_app;
+GRANT SELECT(lease_expires_at),UPDATE(lease_expires_at) ON TABLE app.trigger_polls TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN trigger_polls.updated_at; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(updated_at) ON TABLE app.trigger_polls TO pertexo_app;
+GRANT UPDATE(updated_at) ON TABLE app.trigger_polls TO pertexo_maintenance;
 
 
 --

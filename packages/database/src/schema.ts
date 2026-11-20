@@ -541,3 +541,5 @@ export type {
 } from './schema/stored-shapes.js';
 
 export { workspaceInboxFailureDays } from './schema/inbox/failure-days.js';
+
+export { triggerPolls } from './schema/triggers/polls.js';

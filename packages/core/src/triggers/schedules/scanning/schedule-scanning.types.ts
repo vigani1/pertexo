@@ -51,3 +51,11 @@ export type ClaimRetirement =
   | Readonly<{ kind: 'defer'; retryAfterSeconds: number }>
   | Readonly<{ kind: 'fail'; reason: ScheduleFailureReason }>
   | Readonly<{ kind: 'release' }>;
+
+export type PollClaim = Readonly<{
+  trigger_id: string;
+  workspace_id: string;
+  lease_token: string;
+  lease_expires_at: Date;
+  observed_at: Date;
+}>;

@@ -35,7 +35,7 @@ export type RecordReconciliationFailureInput = Readonly<{
 
 export type WorkflowTriggerProjection = Readonly<{
   nodeId: string;
-  kind: 'schedule' | 'webhook';
+  kind: 'schedule' | 'webhook' | 'polling';
   config: Readonly<Record<string, unknown>>;
   configFingerprint: string;
 }>;

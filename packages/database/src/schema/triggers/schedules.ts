@@ -1,5 +1,8 @@
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
-import { TIME_ZONE_NAME_CHARACTERS } from '@pertexo/workflow-model';
+import {
+  TIME_ZONE_NAME_CHARACTERS,
+  TRIGGER_INTERVAL_MINUTES,
+} from '@pertexo/workflow-model';
 import type { RecordedScheduleOccurrence } from '../stored-shapes.js';
 import type { ScheduleTriggerRecord } from '../stored-shapes.js';
 import { workflowTriggers } from '../authoring/workflows.js';
@@ -16,6 +19,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { triggerLeaseColumns } from './trigger-lease.js';
 import { appSchema } from '../namespace.js';
 
 const WIDTHS = Object.freeze({
@@ -29,7 +33,6 @@ const WIDTHS = Object.freeze({
   status: 16,
   healthStatus: 32,
   lastErrorCode: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
-  leaseOwner: 128,
   disposition: 16,
   skipReason: 32,
 });
@@ -74,16 +77,7 @@ export const triggerSchedules = appSchema.table(
       .notNull()
       .default(sql`'healthy'::character varying`),
     lastErrorCode: varchar('last_error_code', { length: WIDTHS.lastErrorCode }),
-    leaseOwner: varchar('lease_owner', { length: WIDTHS.leaseOwner }),
-    leaseToken: uuid('lease_token'),
-    leaseAcquiredAt: timestamp('lease_acquired_at', {
-      withTimezone: true,
-      mode: 'date',
-    }),
-    leaseExpiresAt: timestamp('lease_expires_at', {
-      withTimezone: true,
-      mode: 'date',
-    }),
+    ...triggerLeaseColumns(),
     admissionDeferredUntil: timestamp('admission_deferred_until', {
       withTimezone: true,
       mode: 'date',
@@ -124,7 +118,7 @@ export const triggerSchedules = appSchema.table(
     ),
     check(
       'trigger_schedules_recurrence_valid',
-      sql`(((((recurrence_kind)::text = 'cron'::text) AND (cron_expression IS NOT NULL) AND (timezone IS NOT NULL) AND (interval_minutes IS NULL)) OR (((recurrence_kind)::text = 'interval'::text) AND (cron_expression IS NULL) AND (timezone IS NULL) AND (interval_minutes IS NOT NULL) AND ((interval_minutes >= 1) AND (interval_minutes <= 43200)))) IS TRUE)`,
+      sql`(((((recurrence_kind)::text = 'cron'::text) AND (cron_expression IS NOT NULL) AND (timezone IS NOT NULL) AND (interval_minutes IS NULL)) OR (((recurrence_kind)::text = 'interval'::text) AND (cron_expression IS NULL) AND (timezone IS NULL) AND (interval_minutes IS NOT NULL) AND ((interval_minutes >= ${sql.raw(String(TRIGGER_INTERVAL_MINUTES.minimum))}) AND (interval_minutes <= ${sql.raw(String(TRIGGER_INTERVAL_MINUTES.maximum))})))) IS TRUE)`,
     ),
     check(
       'trigger_schedules_status_valid',

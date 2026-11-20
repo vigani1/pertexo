@@ -1,3 +1,4 @@
+import type { WorkflowRunSource } from '@pertexo/workflow-model';
 // The column types the schema stamps with `$type`, so tables need no area's code.
 // An area's contract still has its own fuller type until that area's pass; the
 // compile-time test in core/test/shared/stored-shapes.test.ts holds them equal.
@@ -13,7 +14,7 @@ export type { ConnectionAuthType, ConnectionStatus };
 export type FolderAccess = 'viewer' | 'editor';
 export type FolderFact = Readonly<{ accessMode: 'workspace' | 'restricted' }>;
 export type WorkflowTriggerHealth = Readonly<{
-  kind: 'webhook' | 'schedule';
+  kind: 'webhook' | 'schedule' | 'polling';
   healthStatus: 'pending' | 'healthy' | 'degraded' | 'unhealthy' | 'disabled';
 }>;
 type DirectoryEmail = Readonly<{
@@ -60,16 +61,7 @@ export type PreviewStatus =
   | 'timed_out'
   | 'outcome_unknown';
 export type AcceptanceInput = Readonly<{
-  triggerType:
-    | 'test'
-    | 'api'
-    | 'manual'
-    | 'replay'
-    | 'schedule'
-    | 'webhook'
-    | 'workflow_call'
-    | 'workflow_error'
-    | 'form';
+  triggerType: WorkflowRunSource;
 }>;
 export type GenericOperatorCommandResult = Readonly<{
   result: Readonly<Record<string, unknown>>;
