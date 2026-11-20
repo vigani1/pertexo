@@ -1,6 +1,8 @@
 import type { FastifyReply } from 'fastify';
 import { HttpStatus } from '@nestjs/common';
 
+import { releaseInFlightPlace } from './in-flight-limit.js';
+
 /**
  * Hands the raw response to a server-sent event stream: private, never
  * cached or buffered by a proxy, and flushed so the client sees it open.
@@ -16,4 +18,5 @@ export function prepareSseResponse(reply: FastifyReply): void {
   reply.raw.setHeader('X-Accel-Buffering', 'no');
   reply.hijack();
   reply.raw.flushHeaders();
+  releaseInFlightPlace(reply);
 }
