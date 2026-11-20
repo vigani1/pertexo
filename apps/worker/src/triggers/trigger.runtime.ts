@@ -24,11 +24,9 @@ import {
 } from '@pertexo/queue/server';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 
-import type {
-  ConnectionEnvelopeEncryptionConfig,
-  SecureHttpAddressPolicy,
-} from '@pertexo/secrets/server';
-import { createPollingHttpRuntime } from './polling-http.runtime.js';
+import type { SecureHttpAddressPolicy } from '@pertexo/secrets/server';
+import type { ProviderConnectionFactory } from '../providers/connections.runtime.js';
+import { createHttpPollFetcher } from './fetch-http-poll.js';
 import { createTriggerReconciliationHandler } from './handle-trigger-delivery.js';
 import { createTriggerRuntimeTelemetry } from './telemetry.js';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
@@ -47,7 +45,7 @@ export type TriggerRuntimeOptions = Readonly<{
   backgroundTaskShutdownTimeoutMillis?: number;
   database: DatabaseConfig;
   httpRequest?: SecureHttpAddressPolicy;
-  connectionEncryption?: ConnectionEnvelopeEncryptionConfig;
+  providerConnections?: ProviderConnectionFactory;
   maintenanceDatabase: DatabaseConfig;
   maintenanceDatabaseRuntime?: DatabaseRuntime;
   databaseRuntime?: DatabaseRuntime;
@@ -100,27 +98,17 @@ export async function createTriggerRuntime(
   let scanner: ScheduleTriggerScanner | undefined;
   let coordination: TriggerEventScanner | undefined;
   let consumer: QueueConsumer | undefined;
-  let polling: Awaited<ReturnType<typeof createPollingHttpRuntime>> | undefined;
   try {
     reconciliation = factories.reconciliation(
       options.database,
       options.databaseRuntime,
     );
-    polling = await createPollingHttpRuntime({
-      addressPolicy: options.httpRequest ?? { allowedPrivateNetworks: [] },
-      database: options.database,
-      ...(options.databaseRuntime === undefined
-        ? {}
-        : { databaseRuntime: options.databaseRuntime }),
-      ...(options.connectionEncryption === undefined
-        ? {}
-        : { connectionEncryption: options.connectionEncryption }),
-      redisUrl: options.redisUrl,
-      workerId: options.leaseOwner,
-      shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
-    });
     scanner = factories.scanner(options.maintenanceDatabase, options.database, {
-      fetchPoll: polling.fetchPoll,
+      fetchPoll: createHttpPollFetcher(
+        options.httpRequest ?? { allowedPrivateNetworks: [] },
+        options.leaseOwner,
+        options.providerConnections,
+      ),
       ...(options.databaseRuntime === undefined
         ? {}
         : { acceptance: options.databaseRuntime }),
@@ -159,7 +147,7 @@ export async function createTriggerRuntime(
     });
   } catch (error: unknown) {
     const cleanup = await closeOwners(
-      [coordination, scanner, reconciliation, polling],
+      [coordination, scanner, reconciliation],
       backgroundTaskShutdownTimeoutMillis,
     );
     if (cleanup.length > 0)
@@ -175,7 +163,7 @@ export async function createTriggerRuntime(
   return createScannerRuntime({
     name: 'Trigger',
     consumer,
-    owners: [coordination, scanner, reconciliation, polling],
+    owners: [coordination, scanner, reconciliation],
     pollIntervalMillis: options.pollIntervalMillis,
     shutdownTimeoutMillis: backgroundTaskShutdownTimeoutMillis,
     scan: async (signal) => {

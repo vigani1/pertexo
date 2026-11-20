@@ -18,8 +18,6 @@ export function closeCapabilityResources(
     state.closePromise = (async (): Promise<void> => {
       state.codeClient?.close();
       state.resources.callbackKeys?.close();
-      // A refresh already at the service has to reach the database before it closes.
-      await state.resources.oauth2Tokens?.drain();
       const closeOperations = [
         state.resources.ownedDataTables?.close.bind(
           state.resources.ownedDataTables,
@@ -33,20 +31,12 @@ export function closeCapabilityResources(
         state.resources.ownedWebhookResponses?.close.bind(
           state.resources.ownedWebhookResponses,
         ),
-        state.resources.ownedConnectionStore?.close.bind(
-          state.resources.ownedConnectionStore,
-        ),
+        state.resources.providerConnections?.close,
         state.resources.ownedArtifactDatabase?.close.bind(
           state.resources.ownedArtifactDatabase,
         ),
-        state.resources.encryptionRuntime?.close.bind(
-          state.resources.encryptionRuntime,
-        ),
         state.resources.ownedArtifactStore?.close.bind(
           state.resources.ownedArtifactStore,
-        ),
-        state.resources.ownedProviderRateLimiter?.close.bind(
-          state.resources.ownedProviderRateLimiter,
         ),
       ].filter((close): close is () => unknown => Boolean(close));
       const results = await Promise.allSettled(

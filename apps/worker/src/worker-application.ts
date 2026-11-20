@@ -1,3 +1,7 @@
+import {
+  createProviderConnectionRuntime,
+  type ProviderConnectionRuntime,
+} from './providers/connections.runtime.js';
 import { reportUnavailableMailKey } from './mail/report-unavailable-mail-key.js';
 import { verifyWorkerCallbacks } from './runtime/startup/verify-callbacks.js';
 import type { createCallbackStore } from '@pertexo/core/runs';
@@ -63,6 +67,7 @@ export async function createWorkerApplication(
 ): Promise<INestApplicationContext> {
   let databaseRuntime: DatabaseRuntime | undefined;
   let dispatcherDatabaseRuntime: DatabaseRuntime | undefined;
+  let providerConnectionRuntime: ProviderConnectionRuntime | undefined;
   let application: INestApplicationContext;
   try {
     await verifyWorkerEncryption(
@@ -80,11 +85,24 @@ export async function createWorkerApplication(
       config.dispatcherDatabase,
       { role: 'dispatcher' },
     );
+    if (config.connectionEncryption !== undefined)
+      providerConnectionRuntime = await createProviderConnectionRuntime(
+        {
+          database: config.database,
+          connectionEncryption: config.connectionEncryption,
+          redisUrl: config.redisUrl,
+          addressPolicy: config.httpRequest,
+        },
+        { databaseRuntime },
+      );
     application = await factories.applicationContext(
       WorkerModule.register(config, {
         ...dependencies,
         databaseRuntime,
         dispatcherDatabaseRuntime,
+        ...(providerConnectionRuntime === undefined
+          ? {}
+          : { providerConnectionRuntime }),
       }),
       {
         abortOnError: false,
@@ -92,10 +110,10 @@ export async function createWorkerApplication(
       },
     );
   } catch (error: unknown) {
-    const cleanupErrors = await cleanupDatabaseRuntimes([
-      databaseRuntime,
-      dispatcherDatabaseRuntime,
-    ]);
+    const cleanupErrors = await cleanupStartupResources(
+      providerConnectionRuntime,
+      [databaseRuntime, dispatcherDatabaseRuntime],
+    );
     throwWorkerStartupFailure(error, cleanupErrors);
   }
 
@@ -175,13 +193,15 @@ export async function createWorkerApplication(
   return lifecycleApplication;
 }
 
-async function cleanupDatabaseRuntimes(
+async function cleanupStartupResources(
+  providerConnections: ProviderConnectionRuntime | undefined,
   runtimes: readonly (DatabaseRuntime | undefined)[],
 ): Promise<readonly unknown[]> {
+  const connections = await Promise.allSettled([providerConnections?.close()]);
   const results = await Promise.allSettled(
     runtimes.map((runtime) => Promise.resolve().then(() => runtime?.close())),
   );
-  return results.flatMap((result) =>
+  return [...connections, ...results].flatMap((result) =>
     result.status === 'rejected' ? [result.reason as unknown] : [],
   );
 }
