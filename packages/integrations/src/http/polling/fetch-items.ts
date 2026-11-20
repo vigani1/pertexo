@@ -52,6 +52,8 @@ export async function fetchHttpPollItems(
     HTTP_REQUEST_LIMITS.defaultTimeoutMillis,
   );
   const signal = AbortSignal.any([input.signal, deadline]);
+  const beforePollDispatch = () =>
+    Promise.resolve().then(() => signal.throwIfAborted());
   try {
     signal.throwIfAborted();
     if (
@@ -71,6 +73,7 @@ export async function fetchHttpPollItems(
             connectionId: resolved.connectionId,
             expectedProviderKey: 'http',
             expectedAuthType: resolved.authType,
+            runtime: { beforeDispatch: beforePollDispatch },
             secretVersionId: resolved.secretVersionId,
             signal,
           });
@@ -98,12 +101,7 @@ export async function fetchHttpPollItems(
             timeoutMillis: HTTP_REQUEST_LIMITS.defaultTimeoutMillis,
             maxRedirects: HTTP_REQUEST_LIMITS.defaultRedirects,
             maxResponseBytes: HTTP_REQUEST_LIMITS.defaultInlineResponseBytes,
-            beforeDispatch:
-              beforeDispatch ??
-              (() =>
-                Promise.resolve().then(() => {
-                  signal.throwIfAborted();
-                })),
+            beforeDispatch: beforeDispatch ?? beforePollDispatch,
           },
           inlineBytes: HTTP_REQUEST_LIMITS.defaultInlineResponseBytes,
           checkResponse,
