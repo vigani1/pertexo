@@ -2,7 +2,13 @@ import {
   oauth2CallbackLandingSchema,
   type ConnectionResponse,
 } from '@pertexo/contracts';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from 'react';
 
 import { getConnection } from './connections.api';
 import {
@@ -174,8 +180,12 @@ function useConsentNotifications(
   refresh: () => Promise<void>,
   setState: (state: OAuth2ConsentState) => void,
 ) {
+  const refreshConsent = useEffectEvent(() => {
+    void refresh();
+  });
   useEffect(() => {
     if (!listening) return undefined;
+    // Closing a channel on rerender drops any completion queued for it.
     const channel = new BroadcastChannel(OAUTH2_CHANNEL);
     channel.onmessage = (event: MessageEvent<unknown>) => {
       const landing = oauth2CallbackLandingSchema.safeParse(event.data);
@@ -187,18 +197,18 @@ function useConsentNotifications(
       }
       if (landing.data.connectionId !== connectionId) return;
       if (landing.data.result === 'connected') {
-        void refresh();
+        refreshConsent();
         return;
       }
       setState({ kind: 'failed', message: landingMessage(landing.data) });
     };
     const onFocus = (): void => {
-      void refresh();
+      refreshConsent();
     };
     window.addEventListener('focus', onFocus);
     return () => {
       channel.close();
       window.removeEventListener('focus', onFocus);
     };
-  }, [connectionId, listening, refresh, setState]);
+  }, [connectionId, listening, setState]);
 }
