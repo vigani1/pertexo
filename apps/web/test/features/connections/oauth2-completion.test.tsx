@@ -129,15 +129,15 @@ it.each([
             };
           });
           act(() => {
+            // Start the stale read, then post completion before React commits
+            // the focus-driven render.
+            if (trigger === 'notification-before-focus-render')
+              window.dispatchEvent(new Event('focus'));
             channel.postMessage({
               result: 'connected',
               connectionId,
               workspaceId,
             });
-            // Focus can start a read and rerender before delivery of the queued
-            // completion. The first read still sees the old connection.
-            if (trigger === 'notification-before-focus-render')
-              window.dispatchEvent(new Event('focus'));
           });
           await act(async () => {
             await startedRead;
