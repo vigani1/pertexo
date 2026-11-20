@@ -161,6 +161,10 @@ export {
 } from './flow/pending-tasks/timeout.js';
 
 // Execution
+export {
+  POSTGRES_FAILURE_CODES,
+  type PostgresFailureCode,
+} from './execution/postgres.errors.js';
 export { isSafeExecutorErrorCode } from './execution/attempt-failure.js';
 export {
   USAGE_TREND_PERIOD_DAYS,
@@ -515,7 +519,3 @@ export {
   type PollPauseEvidence,
   type TriggerPauseEvidence,
 } from './triggers/pause-evidence.js';
-export {
-  POSTGRES_FAILURE_CODES,
-  type PostgresFailureCode,
-} from './triggers/postgres.errors.js';
