@@ -4,6 +4,7 @@ import { responseSchema } from '../shared/response-schema.js';
 import {
   storageTextSchema,
   WORKFLOW_EXECUTION_LIMITS,
+  WORKFLOW_RUN_SOURCES,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import {
@@ -72,17 +73,7 @@ export const workflowNodeRunStatusSchema = z.enum([
   'timed_out',
   'outcome_unknown',
 ]);
-export const workflowRunTriggerTypeSchema = z.enum([
-  'test',
-  'api',
-  'manual',
-  'replay',
-  'schedule',
-  'webhook',
-  'workflow_call',
-  'workflow_error',
-  'form',
-]);
+export const workflowRunTriggerTypeSchema = z.enum(WORKFLOW_RUN_SOURCES);
 const workflowRunPageLimitSchema = z.coerce
   .number()
   .int()

@@ -22,6 +22,7 @@ const triggerIcons: Readonly<Record<RunTriggerType, LucideIcon>> = {
   manual: MousePointerClickIcon,
   replay: RotateCcwIcon,
   schedule: CalendarClockIcon,
+  polling: CalendarClockIcon,
   webhook: WebhookIcon,
   workflow_call: GitForkIcon,
   form: ListChecksIcon,

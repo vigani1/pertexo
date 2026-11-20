@@ -1,5 +1,6 @@
 import {
   CRON_EXPRESSION_LIMITS,
+  TRIGGER_INTERVAL_MINUTES,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
@@ -9,7 +10,6 @@ import { z } from 'zod';
 
 const SCHEDULES_BOUNDS = Object.freeze({
   timezoneCharacters: TIME_ZONE_NAME_CHARACTERS,
-  intervalMinutesMaximum: 43200,
   nodeIdCharacters: WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength,
   lastErrorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   scheduleTriggerListPageItems: 1000,
@@ -53,8 +53,8 @@ const scheduleRecurrenceSummarySchema = z.discriminatedUnion('kind', [
       intervalMinutes: z
         .number()
         .int()
-        .min(1)
-        .max(SCHEDULES_BOUNDS.intervalMinutesMaximum),
+        .min(TRIGGER_INTERVAL_MINUTES.minimum)
+        .max(TRIGGER_INTERVAL_MINUTES.maximum),
     })
     .strict(),
 ]);
@@ -186,8 +186,8 @@ export const scheduleStepConfigSchema = z.discriminatedUnion('kind', [
       intervalMinutes: z
         .number()
         .int()
-        .min(1)
-        .max(SCHEDULES_BOUNDS.intervalMinutesMaximum),
+        .min(TRIGGER_INTERVAL_MINUTES.minimum)
+        .max(TRIGGER_INTERVAL_MINUTES.maximum),
       misfirePolicy: scheduleStepMisfirePolicySchema,
     })
     .strict(),

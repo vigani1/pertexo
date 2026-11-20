@@ -115,20 +115,25 @@ export async function readHealth(
     .orderBy(workflowTriggers.nodeId)
     .catch(rethrowQueryFailure);
   return Object.freeze(
-    rows.map(({ authentication, ...row }) =>
-      Object.freeze({
-        ...row,
-        ...(row.kind === 'webhook'
-          ? {
-              authentication:
-                authentication ??
-                ({
-                  mode: 'signed',
-                  allowedOrigins: [],
-                } satisfies WebhookAuthentication),
-            }
-          : {}),
-      }),
+    rows.flatMap(({ authentication, kind, ...row }) =>
+      kind === 'polling'
+        ? []
+        : [
+            Object.freeze({
+              ...row,
+              kind,
+              ...(kind === 'webhook'
+                ? {
+                    authentication:
+                      authentication ??
+                      ({
+                        mode: 'signed',
+                        allowedOrigins: [],
+                      } satisfies WebhookAuthentication),
+                  }
+                : {}),
+            }),
+          ],
     ),
   );
 }

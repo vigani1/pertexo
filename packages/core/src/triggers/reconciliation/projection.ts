@@ -1,6 +1,8 @@
 import type { WorkflowTriggerProjection } from './trigger-reconciliation.types.js';
 import {
   CORE_WEBHOOK_CONFIG_SCHEMA,
+  HTTP_POLL_CONFIG_SCHEMA,
+  HTTP_POLL_TRIGGER,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
@@ -14,8 +16,18 @@ function triggerKind(
 ): WorkflowTriggerProjection['kind'] | null {
   if (identity === 'core.webhook@1') return 'webhook';
   if (identity === 'core.schedule@1') return 'schedule';
+  if (
+    identity === `${HTTP_POLL_TRIGGER.key}@${String(HTTP_POLL_TRIGGER.version)}`
+  )
+    return 'polling';
   return null;
 }
+
+const triggerConfigSchemas = {
+  webhook: CORE_WEBHOOK_CONFIG_SCHEMA,
+  schedule: CORE_SCHEDULE_CONFIG_SCHEMA,
+  polling: HTTP_POLL_CONFIG_SCHEMA,
+};
 
 const graphSchema = z
   .object({
@@ -52,10 +64,7 @@ export function workflowTriggerProjection(
         // identity remains materialized so deliveries/scans retain stable
         // ingress and occurrence semantics; stored trigger configuration has
         // its own independent enable/disable lifecycle.
-        const config: Readonly<Record<string, unknown>> =
-          kind === 'webhook'
-            ? CORE_WEBHOOK_CONFIG_SCHEMA.parse(node.config)
-            : CORE_SCHEDULE_CONFIG_SCHEMA.parse(node.config);
+        const config = triggerConfigSchemas[kind].parse(node.config);
         const digest = createHash('sha256')
           .update(canonicalJson({ config, kind }))
           .digest('hex');

@@ -9,11 +9,11 @@ export class WorkspaceRunAdmissionDeniedError extends Error {
 }
 
 /** When a caller over the run quota may try again. */
-const QUOTA_RETRY_AFTER_SECONDS = 5;
+const RUN_CAPACITY_RETRY_AFTER_SECONDS = 5;
 
 export class WorkspaceRunQuotaExceededError extends Error {
   public override readonly name = 'WorkspaceRunQuotaExceededError';
-  public readonly retryAfterSeconds = QUOTA_RETRY_AFTER_SECONDS;
+  public readonly retryAfterSeconds = RUN_CAPACITY_RETRY_AFTER_SECONDS;
 
   public constructor() {
     super('workspace.quota_exceeded');
@@ -22,6 +22,7 @@ export class WorkspaceRunQuotaExceededError extends Error {
 
 export class WorkflowAlreadyRunningError extends Error {
   override readonly name = 'WorkflowAlreadyRunningError';
+  readonly retryAfterSeconds = RUN_CAPACITY_RETRY_AFTER_SECONDS;
   constructor() {
     super('This workflow is already running. Try again shortly.');
   }

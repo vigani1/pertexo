@@ -1,3 +1,4 @@
+import { resolveMappedNodeInput } from '../../../src/attempt/mapping.js';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -239,4 +240,26 @@ describe('input resolution production operations', () => {
       '{"row":{"name":"Ada","qty":2,"city":"Berlin"},"upstream":{"total":9,"base":3},"literal":{"zeta":1,"alpha":2}}',
     );
   });
+});
+
+it('passes an admitted polling envelope directly to its trigger root', async () => {
+  const runInput = {
+    triggerId: '00000000-0000-4000-8000-000000000010',
+    nodeId: 'poll',
+    item: { id: 123 },
+  };
+  await expect(
+    resolveMappedNodeInput(
+      {
+        definition: { key: 'http.poll', version: 1 },
+        inputMappings: {},
+      },
+      {
+        runInput,
+        completedOutputs: {},
+        directUpstream: new Set(),
+        signal: new AbortController().signal,
+      },
+    ),
+  ).resolves.toEqual(runInput);
 });

@@ -50,6 +50,13 @@
       "when": 1795198864319,
       "tag": "0006_allow_postgres_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795206108227,
+      "tag": "0007_trigger_polls",
+      "breakpoints": true
     }
   ]
 }

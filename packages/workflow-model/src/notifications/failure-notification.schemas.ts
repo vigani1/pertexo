@@ -1,3 +1,4 @@
+import { WORKFLOW_RUN_SOURCES } from '../execution/run-source.js';
 import { UNSUCCESSFUL_RUN_STATUSES } from '../execution/run-status.js';
 import { z } from 'zod';
 import { EMAIL_ADDRESS_LIMITS } from '../values/email-address.js';
@@ -53,16 +54,7 @@ export const FailureNotificationContextSchema = z
     workflowVersionId: z.uuid(),
     terminalEventSequence: z.number().int().positive(),
     terminalStatus: z.enum(UNSUCCESSFUL_RUN_STATUSES),
-    triggerType: z.enum([
-      'api',
-      'manual',
-      'replay',
-      'schedule',
-      'webhook',
-      'workflow_call',
-      'workflow_error',
-      'form',
-    ]),
+    triggerType: z.enum(WORKFLOW_RUN_SOURCES).exclude(['test']),
     startedAt: z.iso.datetime(),
     completedAt: z.iso.datetime(),
     primaryFailure: z.union([

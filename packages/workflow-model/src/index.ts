@@ -208,6 +208,10 @@ export {
   type RunStatus,
   type UnsuccessfulRunStatus,
 } from './execution/run-status.js';
+export {
+  WORKFLOW_RUN_SOURCES,
+  type WorkflowRunSource,
+} from './execution/run-source.js';
 export { failureStreakOutcome } from './triggers/failure-streak.js';
 export {
   DEFAULT_STEP_RETRY_SETTINGS,
@@ -285,6 +289,12 @@ export {
   type FormValues,
 } from './triggers/forms/values.js';
 export { FormValuesInvalidError } from './triggers/forms/forms.errors.js';
+export { TRIGGER_INTERVAL_MINUTES } from './triggers/interval.js';
+export {
+  HTTP_POLL_CONFIG_SCHEMA,
+  HTTP_POLL_TRIGGER,
+  type HttpPollConfig,
+} from './triggers/polling.schemas.js';
 export {
   CRON_EXPRESSION_LIMITS,
   cronHasUnsupportedOperators,

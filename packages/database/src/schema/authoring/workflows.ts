@@ -336,7 +336,7 @@ export const workflowTriggers = appSchema.table(
     ),
     check(
       'workflow_triggers_kind_valid',
-      sql`((kind)::text = ANY (ARRAY[('webhook'::character varying)::text, ('schedule'::character varying)::text]))`,
+      sql`((kind)::text = ANY (ARRAY[('webhook'::character varying)::text, ('schedule'::character varying)::text, ('polling'::character varying)::text]))`,
     ),
     check(
       'workflow_triggers_status_valid',

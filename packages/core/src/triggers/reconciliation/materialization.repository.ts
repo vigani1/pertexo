@@ -4,6 +4,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   workflowTriggers,
+  triggerPolls as polls,
   webhookTriggerEndpoints as endpoints,
   triggerSchedules as schedules,
 } from '@pertexo/database/schema';
@@ -60,8 +61,37 @@ export async function reconcileActiveWorkflowTriggers(
       row,
       observedAt,
     });
+  await materializePolls(client, scope);
   await retirePreviousResources(client, scope);
   await applyResourceDispositions(client, scope);
+}
+
+async function materializePolls(
+  client: PoolClient,
+  { workspaceId, workflowId, versionId }: ReconciliationScope,
+): Promise<void> {
+  const db = drizzle(client);
+  const desired = await db
+    .select({
+      workspaceId: workflowTriggers.workspaceId,
+      triggerId: workflowTriggers.id,
+    })
+    .from(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.workspaceId, workspaceId),
+        eq(workflowTriggers.workflowId, workflowId),
+        eq(workflowTriggers.workflowVersionId, versionId),
+        eq(workflowTriggers.kind, 'polling'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (desired.length > 0)
+    await db
+      .insert(polls)
+      .values(desired)
+      .onConflictDoNothing()
+      .catch(rethrowQueryFailure);
 }
 
 async function retirePreviousResources(
@@ -112,6 +142,35 @@ async function retirePreviousResources(
         eq(schedules.workspaceId, workspaceId),
         exists(oldSchedule),
         isNull(schedules.retiredAt),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  const oldPoll = db
+    .select({ one: sql`1` })
+    .from(workflowTriggers)
+    .where(
+      and(
+        eq(workflowTriggers.id, polls.triggerId),
+        eq(workflowTriggers.workspaceId, polls.workspaceId),
+        eq(workflowTriggers.workflowId, workflowId),
+        ne(workflowTriggers.workflowVersionId, versionId),
+      ),
+    );
+  await db
+    .update(polls)
+    .set({
+      retiredAt: sql`statement_timestamp()`,
+      leaseOwner: null,
+      leaseToken: null,
+      leaseAcquiredAt: null,
+      leaseExpiresAt: null,
+      updatedAt: sql`statement_timestamp()`,
+    })
+    .where(
+      and(
+        eq(polls.workspaceId, workspaceId),
+        exists(oldPoll),
+        isNull(polls.retiredAt),
       ),
     )
     .catch(rethrowQueryFailure);
@@ -302,6 +361,7 @@ async function applyResourceDispositions(
         workspaceId: trigger.workspaceId,
         id: trigger.id,
         disposition: sql<WorkflowTriggerStatus>`case
+      when ${trigger.kind}='polling' then 'active'
       when ${trigger.kind}='schedule' and ${exists(scheduleWithStatus('enabled'))} then 'active'
       when ${trigger.kind}='webhook' and ${exists(endpointWithStatus('active'))} then 'active'
       when ${exists(scheduleWithStatus('disabled'))} or (${trigger.kind}='webhook' and ${exists(endpointWithStatus('disabled'))}) then 'disabled'
@@ -321,7 +381,7 @@ async function applyResourceDispositions(
     .update(workflowTriggers)
     .set({
       status: sql`${dispositions.disposition}`,
-      healthStatus: sql`case ${dispositions.disposition} when 'active' then 'healthy' when 'disabled' then 'disabled' else 'pending' end`,
+      healthStatus: sql`case when ${workflowTriggers.kind}='polling' and ${workflowTriggers.healthStatus}<>'disabled' then ${workflowTriggers.healthStatus} else case ${dispositions.disposition} when 'active' then 'healthy' when 'disabled' then 'disabled' else 'pending' end end`,
       lastErrorCode: null,
       reconciledAt: sql`clock_timestamp()`,
       updatedAt: sql`clock_timestamp()`,
