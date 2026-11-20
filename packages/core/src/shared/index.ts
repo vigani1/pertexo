@@ -22,6 +22,7 @@ export type {} from './run-records/run-retention.repository.js';
 export type {} from './run-records/execution-source.repository.js';
 export type {} from './run-records/run-events.repository.js';
 export type {} from './run-records/schedule-run-input.schemas.js';
+export type {} from './run-records/poll-run-input.js';
 export type {} from './run-records/execution-state.errors.js';
 export type {} from './access/workflow-actor.types.js';
 export type {} from './sql-intervals.repository.js';
