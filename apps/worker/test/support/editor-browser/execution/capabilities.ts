@@ -56,7 +56,7 @@ export async function createEditorCapabilities(context: EditorWorkerExecution) {
         return Promise.resolve();
       },
     };
-    if (!pollingCase) await createControlledTransport(context);
+    await createControlledTransport(context);
     assertSetupActive();
     const storesFiles = artifactInputs || emailAttachments;
     const scratch = storesFiles ? await createTestArtifactScratch() : undefined;
@@ -131,6 +131,7 @@ export async function createEditorCapabilities(context: EditorWorkerExecution) {
 
 /** The one controlled destination this case's provider calls reach. */
 async function createControlledTransport(context: EditorWorkerExecution) {
+  if (pollingCase) return;
   const { state, raw, resources, sendHttpEffects, sendEmailDeliveries } =
     context;
   if (curatedTemplates) {

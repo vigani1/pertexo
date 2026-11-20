@@ -1,10 +1,8 @@
-import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import type { createArtifactDestination } from '../../attempts/artifacts/http-destination.js';
 
 import { createEditorPreview } from './previews.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/outbox';
-import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 
@@ -14,10 +12,6 @@ import type { createCuratedTemplateQualificationTransports } from '../curated-te
 
 import type { createEditorControlledHttpTarget } from './controlled-http.js';
 import type { DeliveredEmail } from './notifications/resend-mailbox.js';
-import {
-  createTriggerRuntime,
-  type TriggerRuntime,
-} from '../../../src/triggers/trigger.runtime.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
 import { createTransportMetrics } from '@pertexo/observability/server';
 
@@ -32,14 +26,11 @@ import type {
 } from './execution/editor-execution.types.js';
 import {
   scheduleCase,
-  pollingCase,
   errorWorkflowCase,
-  webhookResponseCase,
   previewCase,
-  controlledHttp,
-  curatedTemplates,
   createEditorWorkerNamespace,
 } from './execution/environment.js';
+import { startEditorTriggers } from './execution/triggers.js';
 import { configureEditorWorker } from './execution/configuration.js';
 import { startEditorCoordinator } from './execution/coordinator.js';
 import { createEditorCapabilities } from './execution/capabilities.js';
@@ -311,41 +302,7 @@ async function constructRuntimes(
   );
   resources.attempts = attempts;
   assertSetupActive();
-  const providerConnections = controlledCapabilities?.factories.connections;
-  const triggers: TriggerRuntime[] = [];
-  resources.triggers = triggers;
-  if (
-    scheduleCase ||
-    pollingCase ||
-    controlledHttp ||
-    curatedTemplates ||
-    errorWorkflowCase ||
-    webhookResponseCase
-  ) {
-    for (const scanner of scheduleCase ? ['one', 'two'] : ['webhook']) {
-      const trigger = await createTriggerRuntime({
-        maintenanceDatabase: maintenanceConfig(database),
-        database,
-        redisUrl: namespace.redisUrl,
-        batchSize: 10,
-        leaseDurationSeconds: 5,
-        leaseOwner: `editor-schedule-${scanner}:${randomUUID()}`,
-        onTimeWindowSeconds: 300,
-        pollIntervalMillis: 250,
-        ...(providerConnections === undefined ? {} : { providerConnections }),
-        ...(pollingCase
-          ? {
-              httpRequest: {
-                allowedPrivateNetworks:
-                  parseAllowedPrivateNetworks('127.0.0.1/32'),
-              },
-            }
-          : {}),
-      });
-      triggers.push(trigger);
-      assertSetupActive();
-    }
-  }
+  const triggers = await startEditorTriggers(execution, controlledCapabilities);
   await Promise.all([
     coordinator.consumer.waitUntilReady(5_000),
     coordinator.checkReadiness(),
