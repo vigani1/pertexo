@@ -48,17 +48,23 @@ export async function resolveEventCoordinationKey(
       isTemporaryExpressionFailure(result.expression));
   if (evaluationUnavailable) return { kind: 'unavailable' };
   if (result.kind !== 'value') return { kind: 'invalid' };
-  const value = result.value;
+  const canonical = canonicalEventKey(result.value);
+  return canonical === undefined
+    ? { kind: 'invalid' }
+    : { kind: 'key', canonical };
+}
+
+export function canonicalEventKey(value: JsonValue): string | undefined {
   if (typeof value === 'string') {
     if (
       value.length === 0 ||
       utf8ByteLength(value) > EVENT_COORDINATION_LIMITS.keyBytes
     )
-      return { kind: 'invalid' };
+      return undefined;
   } else if (
     typeof value !== 'boolean' &&
     !(typeof value === 'number' && Number.isFinite(value))
   )
-    return { kind: 'invalid' };
-  return { kind: 'key', canonical: canonicalJson(value) };
+    return undefined;
+  return canonicalJson(value);
 }

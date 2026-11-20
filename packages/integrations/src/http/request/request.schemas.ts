@@ -300,6 +300,9 @@ export type HttpRequestInput = z.output<typeof httpRequestInputSchema>;
 export type HttpRequestOutput = z.output<typeof httpRequestOutputSchema>;
 
 export const HTTP_REQUEST_LIMITS = Object.freeze({
+  defaultInlineResponseBytes: F.defaultInlineResponseBytes,
+  defaultRedirects: F.defaultRedirects,
+  defaultTimeoutMillis: F.defaultTimeoutMillis,
   maxInlineResponseBytes: MAX_INLINE_RESPONSE_BYTES,
   maxInlineRequestBodyBytes: MAX_REQUEST_BODY_BYTES,
   maxRequestBodyBytes: FILE_PAGE_LIMITS.fileBytes,

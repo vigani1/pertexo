@@ -1,4 +1,3 @@
-import { httpHeadersCredentialSchema } from '@pertexo/contracts';
 import { executePagination } from './pagination/execute.js';
 import {
   type NodeExecutionInvocation,
@@ -47,7 +46,10 @@ import {
   prepareRequestBody,
   resolveRequestConnection,
 } from './execution/invocation.js';
-import { withProviderCredential } from '@pertexo/node-sdk/server';
+import {
+  credentialSensitiveValues,
+  withHttpCredentialHeaders,
+} from './execution/credentials.js';
 import { requestClient } from './execution/request-client.js';
 export type HttpRequestExecutorDependencies = Readonly<{
   httpClient: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>;
@@ -77,27 +79,7 @@ async function executeHttpRequest(
       credentialHeaders,
     });
   try {
-    // Every connection that carries a secret is opened, and so zeroed, here; one
-    // that isn't a header credential is refused as configuration.
-    if (resolved === undefined || resolved.authType === 'oauth2')
-      return await run();
-    return await withProviderCredential(
-      resolved,
-      {
-        connectionId: context.connectionId ?? '',
-        providerKey: 'http',
-        authTypes: ['http_headers'],
-        schema: httpHeadersCredentialSchema,
-        refuse: (reason) =>
-          reason === 'configuration'
-            ? failedConfiguration()
-            : new HttpRequestExecutorError(
-                Object.freeze({ kind: 'failed', errorKind: 'authentication' }),
-                { possiblyDispatched: false },
-              ),
-      },
-      (credential) => run(credential.headers),
-    );
+    return await withHttpCredentialHeaders(resolved, context.connectionId, run);
   } finally {
     await releaseHttpMaterial(prepared.body, {
       repeatable,
@@ -162,7 +144,16 @@ async function executeWithMaterial(
         dispatch.possiblyDispatched = true;
       },
     };
-    const client = requestClient(dependencies, context, resolved);
+    const client = requestClient(
+      dependencies.httpClient,
+      {
+        connections,
+        connectionId,
+        signal: invocation.signal,
+        onCredentialError: (error) => credentialFailure(error, context),
+      },
+      resolved,
+    );
     if (config.pagination !== undefined)
       return httpRequestOutputSchema.parse(
         await executePagination({
@@ -231,16 +222,6 @@ async function executeWithMaterial(
     body: response.body,
     finalOrigin: response.finalUrl,
     redirectCount: response.redirectCount,
-  });
-}
-
-/** A service can echo a token without its scheme, so both forms are secret. */
-function credentialSensitiveValues(
-  headers: Readonly<Record<string, string>>,
-): readonly string[] {
-  return Object.values(headers).flatMap((value) => {
-    const token = /^\S+\s+(\S{8,})$/u.exec(value)?.[1];
-    return token === undefined ? [value] : [value, token];
   });
 }
 

@@ -3,6 +3,7 @@ import {
   CORE_WEBHOOK_CONFIG_SCHEMA,
   httpPollConfigSchema,
   HTTP_POLL_TRIGGER,
+  HTTP_POLL_CONNECTION_SLOT,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
 } from '@pertexo/workflow-model';
 import { canonicalJson } from '@pertexo/workflow-model';
@@ -28,6 +29,12 @@ const triggerConfigSchemas = {
   schedule: CORE_SCHEDULE_CONFIG_SCHEMA,
   polling: httpPollConfigSchema,
 };
+
+const pollConnectionRefs = z
+  .object({
+    [HTTP_POLL_CONNECTION_SLOT]: z.uuid().optional(),
+  })
+  .optional();
 
 const graphSchema = z
   .object({
@@ -64,7 +71,15 @@ export function workflowTriggerProjection(
         // identity remains materialized so deliveries/scans retain stable
         // ingress and occurrence semantics; stored trigger configuration has
         // its own independent enable/disable lifecycle.
-        const config = triggerConfigSchemas[kind].parse(node.config);
+        const settings = triggerConfigSchemas[kind].parse(node.config);
+        const connectionId =
+          kind === 'polling'
+            ? pollConnectionRefs.parse(node.connectionRefs)?.[
+                HTTP_POLL_CONNECTION_SLOT
+              ]
+            : undefined;
+        const config =
+          connectionId !== undefined ? { ...settings, connectionId } : settings;
         const digest = createHash('sha256')
           .update(canonicalJson({ config, kind }))
           .digest('hex');

@@ -6,6 +6,10 @@ import type { HttpPagination } from './pagination.schemas.js';
 import { nextLink } from './link.js';
 import { HTTP_REQUEST_LIMITS } from '../request.schemas.js';
 
+type PageNavigation =
+  | Exclude<HttpPagination, { mode: 'next_link' }>
+  | Pick<Extract<HttpPagination, { mode: 'next_link' }>, 'mode' | 'source'>;
+
 function scalar(
   value: JsonValue | undefined,
   page: number,
@@ -51,7 +55,7 @@ export function hasNextPage(
 
 export function nextPage(
   input: Readonly<{
-    pagination: HttpPagination;
+    pagination: PageNavigation;
     first: URL;
     current: Readonly<{ value: JsonValue; url: string; link?: string }>;
     page: number;
