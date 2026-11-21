@@ -194,6 +194,7 @@ export function nodeRunDiagnosticsQueryOptions({
         workspaceId,
         runId,
         nodeRunId: step.nodeRunId,
+        attemptNumber: step.attemptNumber,
         signal,
       }),
     staleTime: QUERY_FRESHNESS.immutable,

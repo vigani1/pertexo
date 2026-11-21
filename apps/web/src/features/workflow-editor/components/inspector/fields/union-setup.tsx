@@ -17,6 +17,7 @@ import {
 import { useScratchForm } from '../use-draft-field';
 import { ChoiceSelect } from './choice-select';
 import { SchemaFieldList } from './schema-list';
+import { ModelOutputSchema } from './model-output-schema';
 import { SchemaFieldDescription } from './schema';
 
 /**
@@ -27,11 +28,25 @@ import { SchemaFieldDescription } from './schema';
 export function SchemaUnionSetup({
   union,
   config,
+  model = false,
   form: parentForm,
-}: Readonly<{ union: SchemaUnion; config: NodeConfig; form: NodeFormApi }>) {
+}: Readonly<{
+  union: SchemaUnion;
+  config: NodeConfig;
+  model?: boolean;
+  form: NodeFormApi;
+}>) {
   const { form, hasScratch } = useScratchForm(parentForm);
   const choice = config[union.key];
-  const fields = unionFields(union, choice);
+  const modelOutputSchema = model && choice === 'structured';
+  const fields = unionFields(union, choice).map((field) =>
+    model && field.key === 'model'
+      ? {
+          ...field,
+          description: 'Required. Use the model identifier from your provider.',
+        }
+      : field,
+  );
   const id = fieldControlId(form.nodeId, union.key);
   const hint = hasScratch
     ? `Fix the unfinished edit before choosing another ${union.label.toLowerCase()}.`
@@ -63,9 +78,13 @@ export function SchemaUnionSetup({
         config={config}
         form={form}
         jsonOnlySettings={
-          unionPropertyCount(union, choice) > coveredProperties(fields)
+          unionPropertyCount(union, choice) >
+          coveredProperties(fields) + Number(modelOutputSchema)
         }
       />
+      {modelOutputSchema ? (
+        <ModelOutputSchema config={config} form={form} />
+      ) : null}
     </>
   );
 }

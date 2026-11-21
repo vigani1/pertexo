@@ -31,6 +31,8 @@ const baseUrl = z
   }, 'Use an HTTP(S) API base URL without credentials, query or fragment')
   .meta({ title: 'API base URL' });
 
+const selfHostedEndpoints = ['ollama', 'vllm'] as const;
+
 const apiKey = z
   .string()
   .min(1)
@@ -55,7 +57,7 @@ export const modelCredentialSchema = z
     }),
     z.strictObject({
       ...credentialFields,
-      endpoint: endpoint.extract(['ollama', 'vllm']),
+      endpoint: endpoint.extract(selfHostedEndpoints),
       baseUrl,
     }),
   ])
@@ -110,9 +112,11 @@ export const MODEL_CONNECTION = {
   fields: z.strictObject({
     endpoint,
     apiKey,
-    baseUrl: baseUrl
-      .optional()
-      .meta({ title: 'API base URL', omitEmpty: true }),
+    baseUrl: baseUrl.optional().meta({
+      title: 'API base URL',
+      omitEmpty: true,
+      requiredWhen: { field: 'endpoint', values: selfHostedEndpoints },
+    }),
   }),
   auth: { resolve: modelAuth },
   test: {

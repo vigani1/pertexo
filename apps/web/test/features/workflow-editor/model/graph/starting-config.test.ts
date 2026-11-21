@@ -122,7 +122,11 @@ describe('a new step’s setup', () => {
 
     it(`starts ${definition.key} with valid defaults from its catalog schema`, () => {
       const config = startingConfig(item, []);
-      expect(config).toEqual(catalogDefaults(configSchema));
+      expect(config).toEqual(
+        definition.key === 'ai.model'
+          ? { mode: 'text', maxOutputTokens: 1_024, timeoutMillis: 30_000 }
+          : catalogDefaults(configSchema),
+      );
       // Drafts stay saveable while incomplete (ADR 053). A setting with no
       // default is the person's to enter; every value supplied must be valid.
       const parsed =

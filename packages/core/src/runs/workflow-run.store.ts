@@ -158,8 +158,9 @@ export function createWorkflowRunDatabase(
       readWorkflowRunVariables(pool, input),
     readInput: (input: ReadWorkflowRunInputInput) =>
       readWorkflowRunInput(pool, input),
-    readNodeRunDiagnostics: (input: ReadWorkflowNodeRunOutputInput) =>
-      readWorkflowNodeRunDiagnostics(pool, input),
+    readNodeRunDiagnostics: (
+      input: Parameters<typeof readWorkflowNodeRunDiagnostics>[1],
+    ) => readWorkflowNodeRunDiagnostics(pool, input),
     readNodeRunOutput: (input: ReadWorkflowNodeRunOutputInput) =>
       readWorkflowNodeRunOutput(pool, input),
     readNodeRunInput: (input: ReadWorkflowNodeRunOutputInput) =>

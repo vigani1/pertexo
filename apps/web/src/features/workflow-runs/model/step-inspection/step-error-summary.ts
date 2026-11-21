@@ -1,3 +1,4 @@
+import { MODEL_STEP_ERRORS } from './model-error-copy';
 import { CODE_INTERRUPTED_COPY } from './error-copy';
 import { OAUTH2_SHORT_REASONS } from './oauth2-error-copy';
 
@@ -59,6 +60,7 @@ const SHORT_REASONS: Readonly<Record<string, string>> = {
 export function shortStepError(code: string): string {
   // A step test reports the same failure kinds as preview.<kind>.
   return (
+    MODEL_STEP_ERRORS[code]?.sentence ??
     SHORT_REASONS[code] ??
     SHORT_REASONS[code.replace(/^preview\./u, 'execution.')] ??
     'stopped with an error'

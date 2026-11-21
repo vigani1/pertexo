@@ -1,3 +1,4 @@
+import { ModelUsageDetails } from '@/features/workflow-runs/workflow-runs-views.public';
 import { CodeDiagnostics } from '@/components/patterns/code/diagnostics';
 import type { PreviewRunSummary } from '@pertexo/contracts';
 import { SampleAvailability } from '../samples/availability';
@@ -326,6 +327,9 @@ function TestResult({
             {preview.safeErrorCode}
           </code>
         </p>
+      )}
+      {preview.modelUsage === undefined ? null : (
+        <ModelUsageDetails usage={preview.modelUsage} />
       )}
       {preview.codeDiagnostics === undefined ? null : (
         <CodeDiagnostics diagnostics={preview.codeDiagnostics} />

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { ModelUsageDetails } from '../model-usage';
 import { CodeDiagnostics } from '@/components/patterns/code/diagnostics';
 import {
   InlineFailedRead,
@@ -55,7 +56,7 @@ export function StepCodeDiagnostics({
         <InlineFailedRead text="Couldn’t load Code diagnostics." {...failed} />
       )}
     >
-      {(diagnostics) =>
+      {({ diagnostics }) =>
         diagnostics === null ? (
           <p className="text-xs text-muted-foreground">
             No Code diagnostics were kept for this attempt. Run details expire
@@ -63,6 +64,44 @@ export function StepCodeDiagnostics({
           </p>
         ) : (
           <CodeDiagnostics diagnostics={diagnostics} />
+        )
+      }
+    </QueryView>
+  );
+}
+
+export function StepModelUsage({
+  scope,
+  nodeRunId,
+  attemptNumber,
+}: Readonly<{
+  scope: RunDataScope;
+  nodeRunId: string;
+  attemptNumber: number;
+}>) {
+  const query = useQuery(
+    nodeRunDiagnosticsQueryOptions({
+      apiClient: scope.apiClient,
+      userId: scope.userId,
+      workspaceId: scope.workspace.id,
+      runId: scope.runId,
+      step: { nodeRunId, attemptNumber, status: 'settled' },
+    }),
+  );
+  return (
+    <QueryView
+      query={query}
+      resource="Model usage"
+      loading={<SkeletonLines label="Loading model usage" />}
+      error={(failed) => (
+        <InlineFailedRead text="Couldn’t load model usage." {...failed} />
+      )}
+    >
+      {({ modelUsage }) =>
+        modelUsage === undefined ? (
+          <p className="mt-1 text-muted-foreground">Model usage unavailable.</p>
+        ) : (
+          <ModelUsageDetails usage={modelUsage} />
         )
       }
     </QueryView>

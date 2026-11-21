@@ -5,6 +5,7 @@ import {
   isRecord,
 } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import { readSchemaUnion, withUnionChoice } from '../inspector/schema-union';
 import { propertyDefaults } from '../inspector/draft';
 import type { WorkflowNode } from './scopes';
 
@@ -38,7 +39,9 @@ export function startingConfig(
     };
   }
   const whole = definition.configSchema.default;
-  return isRecord(whole)
-    ? structuredClone(whole)
-    : propertyDefaults(definition.configSchema);
+  if (isRecord(whole)) return structuredClone(whole);
+  const union = readSchemaUnion(definition.configSchema);
+  if (key === 'ai.model' && union !== undefined)
+    return withUnionChoice(union, {}, 'text') ?? {};
+  return propertyDefaults(definition.configSchema);
 }

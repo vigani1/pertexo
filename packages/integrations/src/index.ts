@@ -78,4 +78,6 @@ export { SLACK_REJECTIONS } from './slack/rejection-policy.js';
 
 export { smtpCredentialSchema } from '@pertexo/contracts';
 
+export { prepareModelOutputSchema } from './ai/model/output-schema-shape.js';
+
 export { DATABASE_DEFINITION_REGISTRATION } from './database/execute/execute.definition.js';

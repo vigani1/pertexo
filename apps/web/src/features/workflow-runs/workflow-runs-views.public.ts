@@ -4,3 +4,4 @@ export { LiveRunCounts, RunCount } from './components/run-count';
 // Runs tab and the workflow's Runs tab.
 export { StepHealthList } from './components/step-history/health-list';
 export { StepHistoryPanel } from './components/step-history/panel';
+export { ModelUsageDetails } from './components/model-usage';

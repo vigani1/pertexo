@@ -16,6 +16,7 @@ import {
 import {
   credentialFields,
   isVisibleField,
+  isRequiredField,
   type ScalarValue,
   type SchemaCredentialDraft,
 } from '../../model/schema-credential';
@@ -148,6 +149,7 @@ function ScalarField({
               {...control}
               ref={validation.register(key)}
               name={key}
+              aria-required={isRequiredField(field, draft.values)}
               type={secret ? 'password' : plainInputType}
               autoComplete={secret ? 'new-password' : plainAutocomplete}
               inputMode={metadata.numericInput === true ? 'numeric' : undefined}

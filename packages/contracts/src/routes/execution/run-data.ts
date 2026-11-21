@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   workflowNodeRunDiagnosticsResponseSchema,
   workflowNodeRunInputResponseSchema,
@@ -103,12 +104,20 @@ export const workflowRunDataRoutes = {
     method: 'get',
     path: `${NODE_RUN}/diagnostics`,
     params: workflowNodeRunParamsSchema,
+    query: z.strictObject({
+      attempt: z.coerce
+        .number()
+        .int()
+        .positive()
+        .max(z.int32().maxValue)
+        .optional(),
+    }),
     access: session(read),
     rateLimit: 'authenticated_read',
     cacheControl: noStore,
     success: {
       status: 200,
-      description: 'Private Code diagnostics for the current step attempt',
+      description: 'Private diagnostics for the selected step attempt',
       body: named(
         'WorkflowNodeRunDiagnosticsResponse',
         workflowNodeRunDiagnosticsResponseSchema,
