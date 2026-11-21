@@ -5,6 +5,7 @@ import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { installPresenceRoutes } from '../../test/support/browser/mock-reads';
 import { unpausedWorkflowSettings } from '../../test/support/fixtures/auto-pause';
 import { defaultConcurrencySettings } from '../../test/support/fixtures/concurrency';
+import { browserConnectionDefinitions } from '../../test/support/fixtures/node-catalog';
 import {
   createUserFixture,
   createWorkspaceFixture,
@@ -203,7 +204,9 @@ export async function installEditorRoutes(
     route.fulfill({ json: { items: [accessibleWorkspace], nextCursor: null } }),
   );
   await page.route('**/v1/node-definitions', (route) =>
-    route.fulfill({ json: { items: definitions } }),
+    route.fulfill({
+      json: { items: definitions, connections: browserConnectionDefinitions },
+    }),
   );
   await page.route('**/v1/integrations', (route) =>
     route.fulfill({ json: { items: [] } }),

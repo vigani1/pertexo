@@ -101,9 +101,6 @@ test('authors, reloads and publishes the complete real-pin webhook HTTP recipe t
     },
     definitions: catalog.items,
   });
-  await page.route('**/v1/node-definitions', (route) =>
-    route.fulfill({ json: catalog }),
-  );
   await page.route(
     `**/v1/workspaces/${workspaceId}/workflows/${workflowId}/publication-review`,
     (route) => route.fulfill({ json: { required: false, request: null } }),
