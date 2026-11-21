@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
-import type { WorkflowGraph } from '@pertexo/workflow-model';
+import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { expect } from 'vitest';
 import type { Api } from './contract.js';
 
@@ -13,26 +13,26 @@ const inlineVersions = new Map(
 );
 
 export function qualificationGraph(graph: WorkflowGraph): WorkflowGraph {
-  return {
-    ...graph,
-    nodes: graph.nodes.map((node) => {
-      const version = inlineVersions.get(node.definition.key);
-      const definition =
-        version === undefined
-          ? node.definition
-          : { ...node.definition, version };
-      const structured =
-        node.structured === undefined
-          ? {}
-          : {
-              structured: {
-                ...node.structured,
-                body: qualificationGraph(node.structured.body),
-              },
-            };
-      return { ...node, ...structured, definition };
-    }),
-  };
+  return { ...graph, nodes: graph.nodes.map(qualifyNode) };
+}
+
+function qualifyNode(node: WorkflowNode): WorkflowNode {
+  const version = inlineVersions.get(node.definition.key);
+  const definition =
+    version === undefined ? node.definition : { ...node.definition, version };
+  const structured =
+    node.structured === undefined
+      ? {}
+      : {
+          structured: {
+            ...node.structured,
+            body: {
+              ...node.structured.body,
+              nodes: node.structured.body.nodes.map(qualifyNode),
+            },
+          },
+        };
+  return { ...node, ...structured, definition };
 }
 
 export const compareInlineExecution = qualificationFile !== undefined;
@@ -133,7 +133,10 @@ async function readExecution(api: Api, workspaceId: string, runId: string) {
     ids.set(invocation_key, scope);
   }
   for (const { id, invocation_key, attempt_number } of attempts.rows) {
-    ids.set(id, `${ids.get(invocation_key)}/attempt/${String(attempt_number)}`);
+    const invocation = ids.get(invocation_key);
+    if (invocation === undefined)
+      throw new Error('Curated attempt cannot be matched to an invocation');
+    ids.set(id, `${invocation}/attempt/${String(attempt_number)}`);
   }
   for (const [index, { sequence }] of events.rows.entries())
     expect(sequence).toBe(index + 1);

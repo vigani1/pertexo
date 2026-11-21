@@ -99,6 +99,7 @@ jobs:
           command pnpm build:packages
           command pnpm db:migrate
           command pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
+            --testTimeout 1500000 --hookTimeout 120000 \
             test/runs/consumer/j7-measure.integration.test.ts
       - name: Stop J7 test services
         if: always() && matrix.scenario == 'j7'

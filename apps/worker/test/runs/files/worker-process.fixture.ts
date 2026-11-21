@@ -1,4 +1,3 @@
-import { inlineStepsEnabled } from '../../support/coordinator/inline-setting.js';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -133,7 +132,6 @@ process.once('disconnect', () => {
 });
 try {
   const coordinator = await createCoordinatorRuntime({
-    inlineSteps: inlineStepsEnabled,
     database: config.database,
     databaseRuntime,
     maintenanceDatabase: config.dispatcherDatabase,
