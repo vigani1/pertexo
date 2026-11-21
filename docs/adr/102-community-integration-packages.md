@@ -47,13 +47,21 @@ the publisher and destination independently of the display name.
 
 Published graphs already pin a definition key and integer version. Format v1
 uses definition version 1 and a key formed from `community.` plus the unpadded
-lowercase Base32 SHA-256 of the release digest and operation slug, with
-domain-separated, unambiguous encoding. The executor uses a separately
-domain-separated key within the same size limit and the existing registration
-and ABI checks. A changed release, even one with the same SemVer, cannot
-resolve an old graph pin. The loader rejects two different digests for the
-same package and SemVer in one deployment. SemVer describes a release to
-humans. The digest pins bytes and the ABI describes the host execution contract.
+lowercase Base32 SHA-256 of the canonical validated operation contract, with
+domain-separated, unambiguous encoding. The contract covers the provider key,
+the exact origin, the operation slug, the method, path template, query and body
+mappings, input and output schema descriptors, output projection, side-effect
+class and the credential contract below. Presentation is excluded. A release
+that only rewords names, descriptions or help keeps every pin. A release that
+changes what an operation sends or returns produces a new key, which an old
+graph pin cannot resolve to. The executor uses a separately domain-separated
+key within the same size limit and the existing registration and ABI checks.
+The registry merges identical operation contracts contributed by retained
+releases into one registration that carries the current release's
+presentation, and rejects conflicting ones. The loader rejects two different
+digests for the same package and SemVer in one deployment. SemVer describes a
+release to humans. The file digest is the operator's integrity check and the
+contract key pins behaviour, the same split used for credentials below.
 
 Stored credentials use the stable provider key and an auth key derived from
 a domain-separated SHA-256 of the canonical validated credential contract,

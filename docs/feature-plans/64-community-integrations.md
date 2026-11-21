@@ -169,7 +169,9 @@ At most one approved release per integration is current for new authoring.
 Retained releases still supply descriptor and executor lookup by exact pin.
 Show the selected current release in the picker and retain old presentation
 for existing graphs. Keep a retired release approved until dependent
-workflows and in-flight runs have migrated or finished. Removing an approval
+workflows and in-flight runs have migrated or finished. A retired release whose
+operation contracts all reappear unchanged in the current release is no longer
+needed by any pin. Removing an approval
 withdraws all its pins, including for queued work. Surface the missing
 package/version in editing and admission where available. Workers refuse
 unresolved pins before credential access, including for queued or resumed
@@ -189,6 +191,8 @@ workspace audit on existing connection and workflow actions.
 
 **Prove it:** run one isolated Compose deployment through install, upgrade
 with retention, removal and restoration. Web shows the API's catalog.
+A release that only rewords presentation keeps the published graph running
+with no edit, and the editor shows the new wording.
 Publishing after explicitly replacing a step uses the new release while
 the previously published graph still runs against its original release.
 After removal, the old pin cannot dispatch, including when a different file
@@ -228,14 +232,20 @@ conformance with actionable field errors.
 ## Deferred
 
 Executable plugins, OAuth2 and query credentials for community packages,
-triggers, private-network destinations, automated install and updates,
-publisher signatures, hosted onboarding and a public index are out of v1.
+triggers, pagination, private-network destinations, automated install and
+updates, publisher signatures, hosted onboarding and a public index are out of
+v1. One literal origin per package also leaves out APIs with per-account hosts
+(a tenant subdomain such as `<account>.example.com`, or a self-hosted target).
+The seam is an origin template whose only variable is one validated DNS label
+from a connection field, under a registrable domain the operator approves. It
+would extend the approved-origin check, not replace it. Pagination can later
+reuse HTTP Request's existing pagination recipes through the same executor.
 A future index supplies release metadata and the same downloadable bytes.
 The reviewed local approval remains the install input. Giving third-party
 code connectivity or host credentials requires a separate capability and
 isolation design. The current Code runner has no provider network and does
 not hold connection secrets.
 
-The product owner decides whether Pertexo later operates a public publisher
-namespace or verification program and who handles takedowns. Local
-publication and installation can ship before that decision.
+Whether Pertexo later operates a public publisher namespace or verification
+program, and who handles takedowns, is decided when a public index is planned.
+Local publication and installation ship first and don't depend on it.
