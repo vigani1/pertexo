@@ -3,7 +3,7 @@ import {
   fieldLabel,
   toShownValue,
   unitDisplay,
-} from '@/features/workflow-editor/model/field-units';
+} from '@/lib/schema-fields/units';
 import {
   parseNumberField,
   schemaFields,
