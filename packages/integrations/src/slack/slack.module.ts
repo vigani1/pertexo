@@ -1,3 +1,5 @@
+import { SLACK_REJECTIONS } from './rejection-policy.js';
+import { createSlackClient } from './client.js';
 import { SLACK_BOT_TOKEN_CONNECTION } from './connections.definition.js';
 import { createSlackSendMessageExecutorRegistration } from './send-message/send-message.executor.js';
 import type { IntegrationModule } from '../providers/integration-module.js';
@@ -9,13 +11,22 @@ import {
 export const SLACK_MODULE = {
   key: 'slack',
   presentation: { name: 'Slack', icon: 'hash', group: 'action' },
+  executorSummaryCodes: [
+    ...Object.values(SLACK_REJECTIONS).map(({ code }) => code),
+  ],
   connections: [SLACK_BOT_TOKEN_CONNECTION],
   steps: [
     {
       registration: SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,
-      createExecutor: ({ slackSendMessage, slackSendMessageTelemetry }) =>
+      createExecutor: ({
+        fixedEndpointHttpClient,
+        slackSendMessage,
+        slackSendMessageTelemetry,
+      }) =>
         createSlackSendMessageExecutorRegistration({
-          ...slackSendMessage,
+          ...(slackSendMessage ?? {
+            client: createSlackClient(fixedEndpointHttpClient),
+          }),
           ...(slackSendMessageTelemetry === undefined
             ? {}
             : { telemetry: slackSendMessageTelemetry }),

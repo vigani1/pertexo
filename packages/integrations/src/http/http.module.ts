@@ -1,4 +1,4 @@
-import { HTTP_RESPONSE_FAILURES } from './request/request.errors.js';
+import { HTTP_RESPONSE_FAILURES } from './request/response.errors.js';
 import { HTTP_PAGINATION_FAILURES } from './request/pagination/pagination.errors.js';
 import { HTTP_OAUTH2_FAILURES } from './request/execution/oauth2-renewal.errors.js';
 import { PROVIDER_RETRY_FAILURE } from './retry-after.errors.js';
