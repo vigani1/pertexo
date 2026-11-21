@@ -61,6 +61,8 @@ export function overlayMinimumSize(text) {
       service.cpus = String(cpus);
     }
   }
+  compose.services.worker.environment.WORKFLOW_COORDINATOR_INLINE_STEPS =
+    process.env.WORKFLOW_COORDINATOR_INLINE_STEPS ?? 'false';
   compose.services['drill-target'] = {
     image: RUNTIME_IMAGE,
     restart: 'unless-stopped',
