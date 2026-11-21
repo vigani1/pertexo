@@ -1,9 +1,7 @@
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
 import { CORE_INLINE_DEFINITION_VERSION } from '@pertexo/workflow-model';
 
-export function inlineCoreManifest(
-  manifest: NodeDefinitionRegistration['manifest'],
-) {
+function inlineCoreManifest(manifest: NodeDefinitionRegistration['manifest']) {
   return Object.freeze({
     ...manifest,
     definition: Object.freeze({
@@ -18,18 +16,12 @@ export function inlineCoreManifest(
   });
 }
 
-export function inlineCoreDefinition(
-  registration: NodeDefinitionRegistration,
-): NodeDefinitionRegistration {
-  return Object.freeze({
-    ...registration,
-    manifest: inlineCoreManifest(registration.manifest),
-  });
-}
-
 export function withInlineVersion(registration: NodeDefinitionRegistration) {
   return [
     Object.freeze(registration),
-    inlineCoreDefinition(registration),
+    Object.freeze({
+      ...registration,
+      manifest: inlineCoreManifest(registration.manifest),
+    }),
   ] as const;
 }
