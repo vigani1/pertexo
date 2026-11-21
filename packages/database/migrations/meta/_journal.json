@@ -71,6 +71,13 @@
       "when": 1795228222877,
       "tag": "0009_connection_auth_key",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795301955718,
+      "tag": "0010_rename_attempt_diagnostics",
+      "breakpoints": true
     }
   ]
 }

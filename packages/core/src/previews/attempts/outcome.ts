@@ -47,7 +47,7 @@ export function sameStoredCompletion(
     attemptSafeErrorCode: string | null;
     runSafeErrorCode: string | null;
     errorSummary: string | null;
-    codeDiagnostics: unknown;
+    diagnostics: unknown;
   }>,
   outcome: CanonicalCompletionOutcome,
   diagnostics: AttemptDiagnostics | null,
@@ -57,7 +57,7 @@ export function sameStoredCompletion(
   return (
     statusesMatch &&
     sameStoredValues(row, outcome) &&
-    canonicalJson(row.codeDiagnostics) === canonicalJson(diagnostics)
+    canonicalJson(row.diagnostics) === canonicalJson(diagnostics)
   );
 }
 

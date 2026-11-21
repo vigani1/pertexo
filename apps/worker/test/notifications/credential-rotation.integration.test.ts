@@ -405,7 +405,7 @@ describeIntegration('failure alerts through a rotated credential', () => {
       const intentId = await failRun(accepted);
       await asAdmin(
         `with changed_attempts as (
-        update app.node_attempts a set error_summary=$3,code_diagnostics=$4::json
+        update app.node_attempts a set error_summary=$3,diagnostics=$4::json
           from app.node_runs n where a.workspace_id=$1 and n.workspace_id=$1 and a.node_run_id=n.id and n.workflow_run_id=$2
       ) update app.workflow_runs set error_summary=$5 where workspace_id=$1 and id=$2`,
         [

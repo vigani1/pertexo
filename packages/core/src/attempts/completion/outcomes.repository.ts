@@ -30,7 +30,7 @@ export async function saveAttemptCompletion(
       leaseOwner: null,
       leaseExpiresAt: null,
       ...attemptOutcomeFields(fields, serializedOutput),
-      codeDiagnostics:
+      diagnostics:
         diagnostics === null ? null : sql`${canonicalJson(diagnostics)}::jsonb`,
       completedAt: sql`clock_timestamp()`,
       updatedAt: sql`clock_timestamp()`,

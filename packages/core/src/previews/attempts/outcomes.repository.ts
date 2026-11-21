@@ -86,7 +86,7 @@ export async function lockStoredCompletion(
   const run = alias(previewRuns, 'run');
   const current = await drizzle(client)
     .select({
-      codeDiagnostics: attempt.codeDiagnostics,
+      diagnostics: attempt.diagnostics,
       errorSummary: attempt.errorSummary,
       attemptStatus: attempt.status,
       attemptOutputRef: attempt.outputRef,
@@ -140,7 +140,7 @@ export async function writePreviewTerminalAttempt(
         outcome.status === PREVIEW_STATUS.succeeded
           ? null
           : outcome.safeErrorCode,
-      codeDiagnostics:
+      diagnostics:
         diagnostics === null ? null : sql`${canonicalJson(diagnostics)}::jsonb`,
       errorSummary:
         outcome.status === PREVIEW_STATUS.succeeded

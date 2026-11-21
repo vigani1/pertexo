@@ -86,7 +86,7 @@ export async function lockCompletionAttempt(
       outputRef: attempt.outputRef,
       safeErrorCode: attempt.safeErrorCode,
       errorSummary: attempt.errorSummary,
-      codeDiagnostics: attempt.codeDiagnostics,
+      diagnostics: attempt.diagnostics,
       executorFailureKind: attempt.executorFailureKind,
       executorRetryAfterMillis: attempt.executorRetryAfterMillis,
       executorErrorKind: attempt.executorErrorKind,

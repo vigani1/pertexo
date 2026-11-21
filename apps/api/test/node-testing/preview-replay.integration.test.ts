@@ -120,7 +120,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       await api
         .database()
         .query(
-          `update app.preview_attempts set status='failed', safe_error_code='node.input_invalid', error_summary=$2, code_diagnostics=$3::json, started_at=$4, completed_at=$5 where preview_run_id=$1`,
+          `update app.preview_attempts set status='failed', safe_error_code='node.input_invalid', error_summary=$2, diagnostics=$3::json, started_at=$4, completed_at=$5 where preview_run_id=$1`,
           [id, summary, JSON.stringify(diagnostics), startedAt, completedAt],
         );
       const work = () =>

@@ -3177,10 +3177,10 @@ CREATE TABLE app.node_attempts (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     started_at timestamp with time zone,
     completed_at timestamp with time zone,
-    code_diagnostics jsonb,
+    diagnostics jsonb,
     executor_retry_after_millis integer,
     CONSTRAINT node_attempts_admission_kind_valid CHECK (((admission_kind)::text = ANY (ARRAY[('execute'::character varying)::text, ('retry'::character varying)::text, ('wait_resume'::character varying)::text]))),
-    CONSTRAINT node_attempts_code_diagnostics_bound CHECK (((code_diagnostics IS NULL) OR ((jsonb_typeof(code_diagnostics) = 'object'::text) AND (octet_length((code_diagnostics)::text) <= 1048576)))),
+    CONSTRAINT node_attempts_code_diagnostics_bound CHECK (((diagnostics IS NULL) OR ((jsonb_typeof(diagnostics) = 'object'::text) AND (octet_length((diagnostics)::text) <= 1048576)))),
     CONSTRAINT node_attempts_executor_error_kind_valid CHECK (((executor_error_kind IS NULL) OR ((executor_error_kind)::text = ANY (ARRAY[('authentication'::character varying)::text, ('canceled'::character varying)::text, ('configuration'::character varying)::text, ('internal'::character varying)::text, ('network'::character varying)::text, ('provider'::character varying)::text, ('rate_limit'::character varying)::text, ('timeout'::character varying)::text])))),
     CONSTRAINT node_attempts_executor_failure_complete CHECK ((((executor_failure_kind IS NULL) AND (executor_error_kind IS NULL) AND (executor_possibly_dispatched IS NULL) AND (retry_decision IS NULL)) OR ((executor_failure_kind IS NOT NULL) AND (executor_error_kind IS NOT NULL) AND (executor_possibly_dispatched IS NOT NULL) AND (retry_decision IS NOT NULL)))),
     CONSTRAINT node_attempts_executor_failure_kind_valid CHECK (((executor_failure_kind IS NULL) OR ((executor_failure_kind)::text = ANY (ARRAY[('failed'::character varying)::text, ('canceled'::character varying)::text, ('retry'::character varying)::text, ('outcome_unknown'::character varying)::text])))),
@@ -3539,9 +3539,9 @@ CREATE TABLE app.preview_attempts (
     updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
     started_at timestamp with time zone,
     completed_at timestamp with time zone,
-    code_diagnostics jsonb,
+    diagnostics jsonb,
     error_summary character varying(2048),
-    CONSTRAINT preview_attempts_code_diagnostics_bound CHECK (((code_diagnostics IS NULL) OR ((jsonb_typeof(code_diagnostics) = 'object'::text) AND (octet_length((code_diagnostics)::text) <= 1048576)))),
+    CONSTRAINT preview_attempts_code_diagnostics_bound CHECK (((diagnostics IS NULL) OR ((jsonb_typeof(diagnostics) = 'object'::text) AND (octet_length((diagnostics)::text) <= 1048576)))),
     CONSTRAINT preview_attempts_error_code_format CHECK (((safe_error_code IS NULL) OR ((safe_error_code)::text ~ '^[a-z][a-z0-9._:-]{0,127}$'::text))),
     CONSTRAINT preview_attempts_fence_nonnegative CHECK ((fence_token >= 0)),
     CONSTRAINT preview_attempts_lease_complete CHECK ((((lease_owner IS NULL) AND (lease_expires_at IS NULL)) OR ((lease_owner IS NOT NULL) AND (lease_expires_at IS NOT NULL)))),
@@ -14270,10 +14270,10 @@ GRANT UPDATE(completed_at) ON TABLE app.node_attempts TO pertexo_maintenance;
 
 
 --
--- Name: COLUMN node_attempts.code_diagnostics; Type: ACL; Schema: app; Owner: pertexo_owner
+-- Name: COLUMN node_attempts.diagnostics; Type: ACL; Schema: app; Owner: pertexo_owner
 --
 
-GRANT UPDATE(code_diagnostics) ON TABLE app.node_attempts TO pertexo_app;
+GRANT UPDATE(diagnostics) ON TABLE app.node_attempts TO pertexo_app;
 
 
 --
@@ -14851,10 +14851,10 @@ GRANT UPDATE(completed_at) ON TABLE app.preview_attempts TO pertexo_maintenance;
 
 
 --
--- Name: COLUMN preview_attempts.code_diagnostics; Type: ACL; Schema: app; Owner: pertexo_owner
+-- Name: COLUMN preview_attempts.diagnostics; Type: ACL; Schema: app; Owner: pertexo_owner
 --
 
-GRANT UPDATE(code_diagnostics) ON TABLE app.preview_attempts TO pertexo_app;
+GRANT UPDATE(diagnostics) ON TABLE app.preview_attempts TO pertexo_app;
 
 
 --
