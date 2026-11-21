@@ -28,6 +28,7 @@ export async function* boundedRedactedBody(
     deadline,
     redactor = prepareResponseRedactor(sensitiveValues, limit),
     charset,
+    rejectSensitiveResponse = false,
   }: Readonly<{
     limit: number;
     signal: AbortSignal;
@@ -35,6 +36,7 @@ export async function* boundedRedactedBody(
     deadline: number;
     redactor?: ResponseRedactor;
     charset?: string;
+    rejectSensitiveResponse?: boolean;
   }>,
 ): AsyncGenerator<Uint8Array> {
   let emittedBytes = 0;
@@ -66,7 +68,7 @@ export async function* boundedRedactedBody(
       assertBodyDeadline(signal, deadline);
       const redacted = redactor.redact(
         Buffer.from(pending.buffer, pending.byteOffset, pending.byteLength),
-        { covered, final: false },
+        { covered, final: false, rejectSensitiveResponse },
       );
       pending.fill(0);
       pending = redacted.remaining;
@@ -78,7 +80,7 @@ export async function* boundedRedactedBody(
     assertBodyDeadline(signal, deadline);
     const redacted = redactor.redact(
       Buffer.from(candidate.buffer, candidate.byteOffset, candidate.byteLength),
-      { covered, final: true },
+      { covered, final: true, rejectSensitiveResponse },
     );
     candidate.fill(0);
     pending = redacted.remaining;

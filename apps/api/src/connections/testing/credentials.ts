@@ -9,10 +9,31 @@ export function decodeCredential(
     const value: unknown = JSON.parse(
       new TextDecoder('utf-8', { fatal: true }).decode(plaintext),
     );
+    const credential = definition.schema.parse(value);
+    const { test } = definition;
+    const auth =
+      'resolve' in definition.auth
+        ? definition.auth.resolve(credential)
+        : definition.auth;
+    if (test.kind === 'http') {
+      const target =
+        typeof test.target === 'string'
+          ? { url: test.target, headers: {} }
+          : test.target.resolve(credential);
+      return {
+        credential,
+        recipe: {
+          ...test,
+          target: target.url,
+          headers: { ...test.headers, ...target.headers },
+        },
+        auth,
+      };
+    }
     return {
-      credential: definition.schema.parse(value),
-      recipe: definition.test,
-      auth: definition.auth,
+      credential,
+      recipe: test,
+      auth,
     };
   } catch {
     throw new ConnectionSecretEncryptionError();

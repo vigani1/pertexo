@@ -50,6 +50,7 @@ const requestSchema = z
     maxRedirects: z.number(),
     maxResponseBytes: z.number(),
     sensitiveValues: z.array(z.string()).optional(),
+    rejectSensitiveResponse: z.boolean().default(false),
     navigation: z
       .object({
         origin: z
@@ -206,6 +207,7 @@ export function parseRequest(
       maxRedirects: parsed.maxRedirects,
       maxResponseBytes: parsed.maxResponseBytes,
       sensitiveValues: parseSensitiveValues(parsed.sensitiveValues ?? []),
+      rejectSensitiveResponse: parsed.rejectSensitiveResponse,
       ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
       beforeDispatch: parsed.beforeDispatch,
     });
