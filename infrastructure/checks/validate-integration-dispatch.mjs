@@ -42,7 +42,6 @@ const dispatchFiles = [
 ];
 
 const protocolImports = new Set([
-  'CONNECTION_AUTH_TYPE', // HTTP header and OAuth2 credential tags.
   'OAuth2TokenFailure',
   'createProviderHttpClient',
 ]);
@@ -55,6 +54,8 @@ const existing = new Map([
     `${worker}providers/connections.ts`,
     [
       "expectedProviderKey: 'http'",
+      "resolved.connection.authType === 'http_headers'",
+      "resolved.connection.authType !== 'oauth2'",
       "authType: 'http_headers'",
       "authType: 'oauth2'",
       "providerKey: 'http'",
@@ -203,7 +204,11 @@ function registrationImport(node) {
   return bindings.elements.some((binding) => {
     const name = (binding.propertyName ?? binding.name).text;
     if (binding.isTypeOnly || protocolImports.has(name)) return false;
-    return integration || /(?:_POLL_TRIGGER|_CONNECTION_SLOT)$/u.test(name);
+    return (
+      integration ||
+      name === 'CONNECTION_AUTH_TYPE' ||
+      /(?:_POLL_TRIGGER|_CONNECTION_SLOT)$/u.test(name)
+    );
   });
 }
 
