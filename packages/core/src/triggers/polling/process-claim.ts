@@ -7,6 +7,7 @@ import {
   materializedPollConfigSchema,
   POLL_MAX_ITEMS,
   POLL_MAX_SEEN_KEYS,
+  workflowGraphSchema,
 } from '@pertexo/workflow-model';
 import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import {
@@ -30,7 +31,10 @@ import type {
 } from '../schedules/scanning/schedule-scanning.types.js';
 import { POLL_MAX_PAGES, newPollItems, type FetchPoll } from './items.js';
 import { recordPollFailure } from './record-failure.js';
-import { PollClaimLostError } from './poll.errors.js';
+import {
+  PollClaimLostError,
+  PollDefinitionMissingError,
+} from './poll.errors.js';
 import {
   completePoll,
   lockPollPublication,
@@ -64,6 +68,11 @@ export async function processPollClaim(
     const config = decodeStoredValue(() =>
       materializedPollConfigSchema.parse(observation.config),
     );
+    const graph = decodeStoredValue(() =>
+      workflowGraphSchema.parse(observation.graph),
+    );
+    const node = graph.nodes.find(({ id }) => id === observation.nodeId);
+    if (node === undefined) throw new PollDefinitionMissingError();
     const seenKeys =
       observation.seenKeys?.map((key) => key.toString('hex')) ?? [];
     const leaseSignal = AbortSignal.timeout(
@@ -80,6 +89,7 @@ export async function processPollClaim(
     const fetched = await fetchPoll({
       workspaceId: claim.workspace_id,
       triggerId: claim.trigger_id,
+      definition: node.definition,
       config,
       seenKeys,
       maxItems: POLL_MAX_ITEMS,

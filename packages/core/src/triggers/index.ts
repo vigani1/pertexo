@@ -93,3 +93,5 @@ export type {
   FormUpload,
   FormUploadTarget,
 } from './forms/uploads/form-upload.types.js';
+
+export type { FetchPoll } from './polling/items.js';

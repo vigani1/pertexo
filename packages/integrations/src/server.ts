@@ -97,19 +97,15 @@ export { HTTP_OAUTH2_FAILURES } from './http/request/execution/oauth2-renewal.er
 
 export type { SmtpEmailClient } from './email/smtp.js';
 
-export { fetchDatabasePollItems } from './database/polling/fetch-items.js';
-export { databasePollExecutor } from './database/polling/polling.executor.js';
-export { fetchHttpPollItems } from './http/polling/fetch-items.js';
 export {
   HttpPollFailure,
   type HttpPollFailureCode,
 } from './http/polling/polling.errors.js';
 
-export { httpPollExecutor } from './http/polling/polling.executor.js';
-
 export type {
   IntegrationExecutorDependencies,
   IntegrationModule,
+  IntegrationPollFetcher,
   IntegrationPresentation,
 } from './providers/integration-module.js';
 export { HTTP_MODULE } from './http/http.module.js';
