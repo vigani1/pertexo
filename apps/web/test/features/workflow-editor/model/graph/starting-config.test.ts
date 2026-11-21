@@ -1,3 +1,6 @@
+import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
+import { isRecord } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
 import { browserDefinitions } from '../../../../support/fixtures/node-catalog';
@@ -9,10 +12,53 @@ const number = {
   maximumFractionDigits: 2,
 };
 
-// How every new step started before its starting values moved into the
-// catalog schema (main at ce4c0f548). A new step must start the same way,
-// so a saved draft looks exactly as it did.
-const BEFORE: Readonly<Record<string, unknown>> = {
+const form = {
+  title: 'Send a request',
+  instructions: '',
+  fields: [
+    {
+      id: 'field-1',
+      name: 'message',
+      label: 'Message',
+      type: 'textarea',
+      help: '',
+      required: true,
+    },
+  ],
+};
+
+const approval = {
+  title: 'Approval needed',
+  instructions: '',
+  expiresAfterSeconds: 604_800,
+  audience: { roles: ['owner', 'admin'], memberIds: [] },
+};
+
+// Pin the steps already in the editor when the integration seam was fixed.
+const BEFORE = {
+  'core.approval': approval,
+  'core.call': {},
+  'core.concat': {},
+  'core.condition': {},
+  'core.foreach': {},
+  'core.form': form,
+  'core.manual': {},
+  'core.request_input': { ...approval, ...form, title: 'Input needed' },
+  'core.run_values': {},
+  'core.schedule': {},
+  'core.set': {},
+  'core.table_delete': {},
+  'core.table_find': {},
+  'core.table_insert': {},
+  'core.table_update': {},
+  'core.table_upsert': {},
+  'core.terminate': {},
+  // An empty rule list is invalid, so Validate waits for "Add rule".
+  'core.validate': {},
+  'core.webhook': {},
+  'core.workflow_error': {},
+  'database.execute': { operation: 'query', sql: 'select 1 as value' },
+  'database.poll': { schema: 'public', mode: 'new', intervalMinutes: 1 },
   'core.code': { code: 'return input;' },
   'core.respond_webhook': { bodyType: 'json' },
   'core.create_file': { format: 'csv', delimiter: ',', columns: [] },
@@ -55,54 +101,35 @@ const BEFORE: Readonly<Record<string, unknown>> = {
   'core.merge': { policy: { kind: 'all' } },
 };
 
+const LEGACY_STEP_KEYS: ReadonlySet<string> = new Set(Object.keys(BEFORE));
+
 describe('a new step’s setup', () => {
   const catalog = browserDefinitions();
-  const humanTasks = new Set([
-    'core.form',
-    'core.request_input',
-    'core.approval',
-  ]);
 
-  it.each(
-    catalog
-      .filter(
-        ({ definition }) =>
-          !humanTasks.has(definition.key) &&
-          definition.key !== 'database.execute' &&
-          definition.key !== 'database.poll',
-      )
-      .map((definition) => [definition.definition.key, definition] as const),
-  )('starts %s the way it did before', (key, definition) => {
-    // Validate used to start with an empty rule list, which its own schema
-    // refuses (at least one rule); it now starts empty until "Add rule".
-    const expected = key === 'core.validate' ? {} : (BEFORE[key] ?? {});
-    expect(startingConfig(definition, [])).toEqual(expected);
-  });
+  it.each(Object.entries(BEFORE))(
+    'starts %s the way it did before',
+    (key, expected) => {
+      const definition = catalog.find((item) => item.definition.key === key);
+      if (definition === undefined)
+        throw new Error(`No ${key} step in the catalog`);
+      expect(startingConfig(definition, [])).toEqual(expected);
+    },
+  );
 
-  it('starts Database with a runnable query', () => {
-    const database = catalog.find(
-      ({ definition }) => definition.key === 'database.execute',
-    );
-    if (database === undefined)
-      throw new Error('No Database step in the catalog');
-    expect(startingConfig(database, [])).toEqual({
-      operation: 'query',
-      sql: 'select 1 as value',
+  for (const item of catalog) {
+    const { definition, configSchema } = item;
+    if (LEGACY_STEP_KEYS.has(definition.key)) continue;
+
+    it(`starts ${definition.key} with valid defaults from its catalog schema`, () => {
+      const config = startingConfig(item, []);
+      expect(config).toEqual(catalogDefaults(configSchema));
+      expect(
+        resolvePlatformNodeDefinition(definition).configSchema.safeParse(
+          config,
+        ),
+      ).toMatchObject({ success: true });
     });
-  });
-
-  it('starts Database Row watching new rows in the public schema', () => {
-    const trigger = catalog.find(
-      ({ definition }) => definition.key === 'database.poll',
-    );
-    if (trigger === undefined)
-      throw new Error('No Database Row trigger in the catalog');
-    expect(startingConfig(trigger, [])).toEqual({
-      schema: 'public',
-      mode: 'new',
-      intervalMinutes: 1,
-    });
-  });
+  }
 
   it('gives each new step its own copy', () => {
     const date = catalog.find(
@@ -113,3 +140,16 @@ describe('a new step’s setup', () => {
     expect(startingConfig(date, [])).not.toBe(first);
   });
 });
+
+function catalogDefaults(schema: NodeDefinitionCatalogItem['configSchema']) {
+  if (schema.default !== undefined) return schema.default;
+
+  const properties = isRecord(schema.properties) ? schema.properties : {};
+  const defaults: Record<string, unknown> = {};
+  for (const [key, property] of Object.entries(properties)) {
+    if (isRecord(property) && 'default' in property) {
+      defaults[key] = property.default;
+    }
+  }
+  return defaults;
+}
