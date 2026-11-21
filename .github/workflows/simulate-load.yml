@@ -103,11 +103,18 @@ jobs:
           command pnpm build:packages
           command pnpm db:migrate
           runtime_image=$(node --input-type=module -e "import { RUNTIME_IMAGE } from './infrastructure/single-server/test/drill/support/images.mjs'; console.log(RUNTIME_IMAGE)")
-          docker run --rm --entrypoint sh "$runtime_image" -ec '
-            library=$(dpkg-query -L libjemalloc2 | grep "/libjemalloc.so.2$")
-            cat "$library"
-          ' > "$RUNNER_TEMP/libjemalloc.so.2"
-          LD_PRELOAD="$RUNNER_TEMP/libjemalloc.so.2" command pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
+          preload=$(node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          import { parse } from 'yaml';
+          const compose = parse(readFileSync('infrastructure/single-server/compose.yaml', 'utf8'), { merge: true });
+          console.log(compose.services.worker.environment.LD_PRELOAD);
+          JS
+          )
+          library=$(docker run --rm --entrypoint ldconfig "$runtime_image" -p |
+            awk -v name="$preload" '$1 == name { print $NF; exit }')
+          test -n "$library"
+          docker run --rm --entrypoint cat "$runtime_image" "$library" > "$RUNNER_TEMP/$preload"
+          LD_PRELOAD="$RUNNER_TEMP/$preload" command pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
             --testTimeout 1500000 --hookTimeout 120000 \
             test/runs/consumer/j7-measure.integration.test.ts
       - name: Stop J7 test services
