@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
+import { browserDefinitions } from '../../support/fixtures/node-catalog';
 import { GlobeIcon, HashIcon } from 'lucide-react';
 import { stepIcons } from '@/features/catalog/model/steps/registry';
 import {
@@ -13,7 +13,7 @@ import {
   stepGroups,
 } from '@/features/catalog/public';
 
-const { definitions } = platformBrowserNodeDefinitionCatalog();
+const definitions = browserDefinitions();
 const describeServedStep = catalogStepDescriptions(definitions);
 
 describe('step presentation registry', () => {
@@ -113,7 +113,7 @@ it('uses the supplied catalog family even for a known step', () => {
 });
 
 it('presents every actual catalog definition using its owned display vocabulary', () => {
-  for (const item of platformBrowserNodeDefinitionCatalog().definitions) {
+  for (const item of definitions) {
     expect(item.display, item.definition.key).toBeDefined();
     const shown = describeServedStep(item.definition, item.family);
     expect(shown).toMatchObject({ ...item.display, family: item.family });
