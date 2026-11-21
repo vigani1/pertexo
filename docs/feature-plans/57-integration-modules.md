@@ -1,7 +1,23 @@
 # F57 — Integration modules
 
-Status: accepted; slice 1 in progress. Decision: [ADR 095](../adr/095-integration-modules.md).
+Status: complete. Decision: [ADR 095](../adr/095-integration-modules.md).
 This is groundwork for community integrations. Installation is a later feature.
+
+## Result
+
+Slices 1–5 landed in #822, #824, #826, #828, #829, #832 and #834. The
+PostgreSQL step (#810) touched about 35 non-test files across seven packages
+in the original audit. The example provider took four hand-edited files.
+They were the module, the connection definition, one line in
+`integrations/src/modules.ts`, and the live spec. No generated files changed.
+
+The proof exposed two places that still needed edits. Both were fixed before
+counting the result. #832 moved the discovery list into
+`integrations/src/modules.ts`. #834 made the catalog tests check new steps and
+connections by rule.
+
+The example provider was used only for the proof. Its code and test results
+are in the closed [PR #835](https://github.com/vigani1/pertexo/pull/835).
 
 ## Cost of adding a provider
 
