@@ -1,7 +1,12 @@
+import type { SecretConnectionAuthType } from '@pertexo/workflow-model';
+import { hasCredentialType } from '../credential-type.js';
 import { requestInputError } from '../../platform/http/request-input.js';
 import { ConnectionNotFoundError } from '@pertexo/core/connections';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { OAuth2Credential } from '@pertexo/contracts';
+import {
+  oauth2CredentialSchema,
+  type OAuth2Credential,
+} from '@pertexo/contracts';
 import { refusedEndpoint } from '@pertexo/integrations/server';
 
 import type { WorkspaceAuthorizationSource } from '../../authorization/index.js';
@@ -181,7 +186,7 @@ export class CreateConnectionService {
       await authorizeConnectionOperation(input, this.authorization);
       const { request } = input;
       assertSmtpSecurity(request.credential, this.smtpPolicy);
-      if (request.credential.type === 'oauth2')
+      if (hasCredentialType(request.credential, oauth2CredentialSchema))
         assertOAuth2Endpoints(request.credential, this.oauth2);
       const requestHash = hashRequest(
         this.applicationSecret,
@@ -219,12 +224,14 @@ export class CreateConnectionService {
             secretVersionId,
             providerKey: request.providerKey,
             name: request.name,
-            ...(request.credential.type === 'oauth2'
+            ...(hasCredentialType(request.credential, oauth2CredentialSchema)
               ? {
                   authType: request.credential.type,
                   oauth2Settings: request.credential.settings,
                 }
-              : { authType: request.credential.type }),
+              : {
+                  authType: request.credential.type as SecretConnectionAuthType,
+                }),
             sealed,
             idempotencyKey: input.idempotencyKey,
             requestHash,
@@ -280,7 +287,7 @@ export class RotateConnectionSecretService {
       await authorizeConnectionOperation(input, this.authorization);
       const { request } = input;
       assertSmtpSecurity(request.credential, this.smtpPolicy);
-      if (request.credential.type === 'oauth2')
+      if (hasCredentialType(request.credential, oauth2CredentialSchema))
         assertOAuth2Endpoints(request.credential, this.oauth2);
       const secretVersionId = generatePersistedId();
       const requestHash = hashRequest(
@@ -323,12 +330,15 @@ export class RotateConnectionSecretService {
             ...(input.expectedProviderKey === undefined
               ? {}
               : { expectedProviderKey: input.expectedProviderKey }),
-            ...(request.credential.type === 'oauth2'
+            ...(hasCredentialType(request.credential, oauth2CredentialSchema)
               ? {
                   expectedAuthType: request.credential.type,
                   oauth2Settings: request.credential.settings,
                 }
-              : { expectedAuthType: request.credential.type }),
+              : {
+                  expectedAuthType: request.credential
+                    .type as SecretConnectionAuthType,
+                }),
             sealed,
             idempotencyKey: input.idempotencyKey,
             requestHash,

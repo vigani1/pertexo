@@ -12,13 +12,11 @@ const CONNECTION_FIELDS_BOUNDS = Object.freeze({
 
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();
-export const connectionProviderKeySchema = z.enum([
-  'http',
-  'slack',
-  'email',
-  'signing',
-  'postgres',
-]);
+export const connectionProviderKeySchema = z
+  .string()
+  .min(1)
+  .max(NODE_IDENTITY_KEY_MAX_CHARACTERS)
+  .regex(/^[a-z][a-z0-9_]*$/u);
 export const connectionStatusSchema = z.enum([
   'active',
   'reauthorization_required',

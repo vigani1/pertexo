@@ -8,7 +8,6 @@ import { Notice } from '@/components/ui/notice';
 import { RadioChoice } from '@/components/ui/radio-choice';
 import { SchemaTextControl } from '@/components/ui/schema-text-control';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
-import { CREDENTIAL_STEPS } from '../../model/connection-providers';
 import {
   credentialErrors,
   type CredentialDraft,
@@ -123,10 +122,9 @@ function ScalarField({
   const email = metadata.format === 'email';
   const plainInputType = email ? 'email' : 'text';
   const plainAutocomplete = email ? 'email' : 'off';
-  const help =
-    metadata.help === 'slack' || metadata.help === 'email'
-      ? CREDENTIAL_STEPS[metadata.help]
-      : undefined;
+  const help = Array.isArray(metadata.help)
+    ? metadata.help.filter((step): step is string => typeof step === 'string')
+    : undefined;
   return (
     <>
       <LabelledField

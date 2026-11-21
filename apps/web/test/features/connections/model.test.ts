@@ -61,9 +61,10 @@ describe('connection health in words', () => {
         lastErrorCode: 'connection.slack_token_revoked',
       },
     };
-    expect(describeConnectionHealth(connection, now).text).toBe(
-      'run credential rejected · Slack token revoked',
-    );
+    expect(
+      describeConnectionHealth(connection, now, definition('slack_bot_token'))
+        .text,
+    ).toBe('run credential rejected · Slack token revoked');
     expect(
       describeConnectionStatus(
         'active',
@@ -158,7 +159,7 @@ describe('connection health in words', () => {
           }),
         },
         now,
-        'slack',
+        definition('slack_bot_token'),
       ),
     ).toEqual({ text: 'last test failed · invalid token', tone: 'attention' });
     expect(
@@ -175,14 +176,14 @@ describe('connection health in words', () => {
 
   it('explains a failed test and what to do next', () => {
     expect(
-      describeTestOutcome('resend', {
+      describeTestOutcome(definition('resend_api_key'), {
         ok: false,
         httpStatus: 403,
         errorCode: 'connection.credential_rejected',
       }).title,
     ).toBe('Resend rejected the API key.');
     expect(
-      describeTestOutcome('http', {
+      describeTestOutcome(definition('http_headers'), {
         ok: false,
         httpStatus: null,
         errorCode: 'connection.test.timed_out',
@@ -193,7 +194,7 @@ describe('connection health in words', () => {
     });
     // A code the app doesn't know yet still reads as words, never the code.
     expect(
-      describeTestOutcome('http', {
+      describeTestOutcome(definition('http_headers'), {
         ok: false,
         httpStatus: null,
         errorCode: 'http.request_failed',
@@ -328,7 +329,7 @@ describe('connections URL state', () => {
       view: 'revoked',
     });
     expect(
-      parseConnectionsSearch({ add: 'ftp', connection: '1', view: 'all' }),
+      parseConnectionsSearch({ add: 'FTP!', connection: '1', view: 'all' }),
     ).toEqual({});
   });
 });
@@ -359,7 +360,7 @@ it('keeps signing key whitespace, enforces UTF-8 size and never shows key fragme
     credentialErrors(scalar('hmac_key', { signingKey: '' })),
   ).toHaveProperty('signingKey');
   expect(
-    describeTestOutcome('signing', {
+    describeTestOutcome(definition('hmac_key'), {
       ok: true,
       httpStatus: 200,
       errorCode: null,

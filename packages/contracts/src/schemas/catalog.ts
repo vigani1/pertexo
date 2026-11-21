@@ -150,11 +150,34 @@ const connectionFormDefinitionSchema = z
         variant: z.string().optional(),
         variantPrompt: z.string().optional(),
         requirement: z.string().optional(),
+        testCopy: z
+          .strictObject({
+            name: z.string().optional(),
+            introNote: z.string().optional(),
+            credential: z.string().optional(),
+            rejectionReason: z.string().optional(),
+            rejectionHelp: z.string().optional(),
+            consentDetail: z.string().optional(),
+            failureReasons: z.record(z.string(), z.string()).optional(),
+          })
+          .readonly()
+          .optional(),
+        maskedSummary: z
+          .strictObject({
+            field: z.string(),
+            label: z.string(),
+            prefix: z.string(),
+            senderField: z.string().optional(),
+          })
+          .readonly()
+          .optional(),
       })
       .readonly(),
     fields: schemaDocumentSchema,
     slot: identityKey,
-    test: identityKey,
+    test: z.enum(['http', 'oauth2', 'postgres', 'smtp', 'signing']),
+    testInput: z.enum(['url', 'provider', 'consent']),
+    testAutomatically: z.literal(true).optional(),
   })
   .readonly();
 

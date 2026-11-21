@@ -12,7 +12,7 @@ import {
   httpHeaderCredentialSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
-} from '../src/schemas/connections/connection-credentials.js';
+} from '../src/schemas/connections/credential-formats.js';
 import {
   slackChannelLookupQuerySchema,
   slackChannelLookupResponseSchema,
@@ -52,6 +52,37 @@ function issueMessages(value: unknown): readonly string[] {
 }
 
 describe('connection public contracts', () => {
+  it('accepts future connection keys in the wire envelope', () => {
+    const request = {
+      providerKey: 'future_provider',
+      name: 'Future provider',
+      credential: { type: 'future_auth', settings: { region: 'test' } },
+    };
+    expect(connectionCreateRequestSchema.parse(request)).toEqual(request);
+    expect(
+      connectionResponseSchema.parse({
+        ...connection,
+        providerKey: request.providerKey,
+        authType: request.credential.type,
+      }),
+    ).toMatchObject({
+      providerKey: request.providerKey,
+      authType: request.credential.type,
+    });
+    expect(
+      connectionTestRequestSchema.parse({ providerKey: request.providerKey }),
+    ).toEqual({ providerKey: request.providerKey });
+    const malformed = connectionCreateRequestSchema.safeParse({
+      ...request,
+      providerKey: 'Future.Provider',
+      credential: { type: 'future-auth' },
+    });
+    expect(malformed.error?.issues.map(({ path }) => path)).toEqual([
+      ['providerKey'],
+      ['credential', 'type'],
+    ]);
+  });
+
   it('normalizes credential names without admitting controlled or duplicate headers', () => {
     const parsed = connectionCreateRequestSchema.parse({
       providerKey: 'http',

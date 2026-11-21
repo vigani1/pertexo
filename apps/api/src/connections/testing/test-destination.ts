@@ -1,9 +1,12 @@
 import {
+  resendApiKeyCredentialSchema,
+  slackBotTokenCredentialSchema,
   type FailureNotificationDestinationResponse,
   type ParsedConnectionCredential,
 } from '@pertexo/contracts';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
+import { hasCredentialType } from '../credential-type.js';
 import type { ConnectionEmailClient, ConnectionSlackClient } from '../ports.js';
 import { testResendConnection } from './resend.js';
 import { testSlackConnection } from './slack.js';
@@ -16,14 +19,20 @@ export function testDestination(
   }>,
   destination: FailureNotificationDestinationResponse,
   credential: ParsedConnectionCredential,
-  command: TestConnectionCommand,
-  dispatch: Readonly<{
+  {
+    command,
+    ...dispatch
+  }: Readonly<{
+    command: TestConnectionCommand;
     signal: AbortSignal;
     beforeDispatch: () => Promise<void>;
   }>,
 ): Promise<ConnectionTestOutcome> {
   if (destination.config.kind === 'email') {
-    if (credential.type !== 'resend_api_key' || clients.email === undefined)
+    if (
+      !hasCredentialType(credential, resendApiKeyCredentialSchema) ||
+      clients.email === undefined
+    )
       throw new ConnectionSecretEncryptionError();
     return testResendConnection(clients.email, credential, {
       toEmail: destination.config.toEmail,
@@ -32,7 +41,10 @@ export function testDestination(
     });
   }
   if (destination.config.kind === 'slack') {
-    if (credential.type !== 'slack_bot_token' || clients.slack === undefined)
+    if (
+      !hasCredentialType(credential, slackBotTokenCredentialSchema) ||
+      clients.slack === undefined
+    )
       throw new ConnectionSecretEncryptionError();
     return testSlackConnection(clients.slack, credential.botToken, {
       channelId: destination.config.channelId,

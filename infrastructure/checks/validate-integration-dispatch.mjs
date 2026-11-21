@@ -46,10 +46,8 @@ const protocolImports = new Set([
   'createProviderHttpClient',
 ]);
 
-// Existing bounded wire variants and web presentation keys. Match the
-// containing syntax and consume each allowance once, so the same literal
-// added to another dispatch expression or list is refused.
-const existing = new Map([
+// Protocol-specific adapters and UI copy share these tags with integration keys.
+const protocolUses = new Map([
   [
     `${worker}providers/connections.ts`,
     [
@@ -65,83 +63,31 @@ const existing = new Map([
     `${worker}providers/node-registry.ts`,
     ['smtp: dependencies.smtp ?? createSmtpEmailClient(smtpPolicy)'],
   ],
-  [
-    `${web}connections/model/connection-providers.ts`,
-    [
-      "'smtp'",
-      "value === 'smtp'",
-      'CREDENTIAL_STEPS.slack',
-      'CREDENTIAL_STEPS.email',
-      "'slack'",
-      "'email'",
-      "key === 'smtp'",
-      "providerKey: 'email'",
-      "key === 'slack'",
-      "key === 'signing'",
-    ],
-  ],
+  [`${web}connections/model/connection-providers.ts`, ["test === 'smtp'"]],
   [
     `${web}connections/model/connection-health.ts`,
     [
-      ...copyKeys(
-        'REJECTED_CREDENTIAL',
-        'signing postgres slack http resend smtp',
-      ),
-      ...copyKeys(
-        'SUCCESS_TITLES',
-        'signing postgres slack http resend smtp oauth2',
-      ),
-      ...copyKeys('REJECTED_HELP', 'postgres signing slack http resend'),
-      "testKey === 'smtp'",
-      "testKey === 'http'",
-      ...Array(3).fill("testKey === 'oauth2'"),
+      ...copyKeys('REJECTED_CREDENTIAL', 'signing postgres http'),
+      ...copyKeys('SUCCESS_TITLES', 'signing postgres http smtp oauth2'),
+      ...copyKeys('REJECTED_HELP', 'postgres signing http'),
+      ...Array(4).fill("definition.test === 'http'"),
+      "definition.test === 'signing'",
+      "definition.test === 'postgres'",
+      "definition.test === 'oauth2'",
+      "protocol === 'smtp'",
+      "protocol === 'oauth2'",
     ],
   ],
   [
     `${web}connections/components/connection-test/panel.tsx`,
     [
-      ...copyKeys('INTRO', 'postgres signing slack http resend smtp oauth2'),
-      ...copyKeys('RUN_LABEL', 'signing postgres slack http resend oauth2'),
-      "testKey === 'http'",
-      "testKey === 'oauth2'",
-      "testKey === 'smtp'",
-      "providerKey: 'email'",
-      "testKey === 'signing'",
-      "testKey === 'postgres'",
-      "testKey === 'slack'",
-      "testKey !== 'resend'",
-      "providerKey: 'email'",
-      "authType === 'oauth2'",
-      "testKey === 'resend'",
+      ...copyKeys('INTRO', 'postgres signing http smtp oauth2'),
+      "test !== 'http'",
+      "definition.test === 'signing'",
+      "definition.test === 'oauth2'",
     ],
   ],
-  [
-    `${contracts}connection-credentials.ts`,
-    [
-      "z.literal('http_headers')",
-      "z.literal('slack_bot_token')",
-      "z.literal('resend_api_key')",
-      "z.literal('smtp')",
-    ],
-  ],
-  [
-    `${contracts}connection-fields.ts`,
-    copyKeys(
-      'connectionProviderKeySchema',
-      'http slack email signing postgres',
-    ),
-  ],
-  [
-    `${contracts}connections.ts`,
-    [
-      "z.literal('slack')",
-      "z.literal('email')",
-      "z.literal('postgres')",
-      "z.literal('signing')",
-      "z.literal('email')",
-      "z.literal('smtp')",
-    ],
-  ],
+  [`${contracts}connections.ts`, ["z.literal('smtp')"]],
 ]);
 
 function copyKeys(owner, keys) {
@@ -182,7 +128,7 @@ export function integrationKeys(sources) {
     walk(file, text, (node) => {
       if (
         ts.isPropertyAssignment(node) &&
-        ['key', 'authType', 'formTest'].includes(node.name.getText()) &&
+        ['key', 'authType'].includes(node.name.getText()) &&
         ts.isStringLiteralLike(node.initializer) &&
         (!file.endsWith('/connections.definition.ts') ||
           node.name.getText() !== 'key')
@@ -250,7 +196,7 @@ function literalUse(node, keys) {
 export function findIntegrationDispatch(file, text, keys) {
   if (!dispatchFiles.includes(file)) return [];
   const findings = [];
-  const permitted = [...(existing.get(file) ?? [])];
+  const permitted = [...(protocolUses.get(file) ?? [])];
   walk(file, text, (node, source) => {
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
       if (registrationImport(node)) record(node, source);

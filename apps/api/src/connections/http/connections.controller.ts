@@ -1,3 +1,4 @@
+import { admitConnectionTestRequest } from '../testing/admit-test-request.js';
 import {
   admitConnectionCreate,
   admitConnectionRotation,
@@ -140,7 +141,7 @@ export class ConnectionsController {
       this.testConnection.execute({
         ...serviceCaller(caller),
         connectionId: params.connectionId,
-        request: body,
+        request: admitConnectionTestRequest(body),
         idempotencyKey,
         signal,
       }),

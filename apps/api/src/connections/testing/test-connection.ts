@@ -1,3 +1,4 @@
+import { hasCredentialType } from '../credential-type.js';
 import { testHttpConnection } from './http.js';
 import { requestInputError } from '../../platform/http/request-input.js';
 import { testDestination } from './test-destination.js';
@@ -43,7 +44,11 @@ import { decodeCredential } from './credentials.js';
 import { secureErrorOutcome, SUCCEEDED_TEST } from './outcomes.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
 import { oauth2TestActor, testOAuth2Connection } from './oauth2.js';
-import { CONNECTION_TEST_TIMEOUT_MILLIS } from '@pertexo/contracts';
+import {
+  CONNECTION_TEST_TIMEOUT_MILLIS,
+  postgresCredentialSchema,
+  smtpCredentialSchema,
+} from '@pertexo/contracts';
 
 const CONNECTION_TEST_MAXIMUM_REDIRECTS = 3;
 const CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES = 65_536;
@@ -306,7 +311,10 @@ export class TestConnectionService {
       beforeDispatch: () => Promise<void>;
     }>,
   ): Promise<ConnectionTestOutcome> {
-    if (recipe.kind === 'postgres' && credential.type === 'postgres')
+    if (
+      recipe.kind === 'postgres' &&
+      hasCredentialType(credential, postgresCredentialSchema)
+    )
       return testPostgresConnection(
         credential,
         this.smtpPolicy?.allowedPrivateNetworks ?? [],
@@ -315,7 +323,10 @@ export class TestConnectionService {
           beforeDispatch,
         },
       );
-    if (recipe.kind === 'smtp' && credential.type === 'smtp') {
+    if (
+      recipe.kind === 'smtp' &&
+      hasCredentialType(credential, smtpCredentialSchema)
+    ) {
       smtp.assertSmtpTestProfile(request, destination);
       return smtp.testSmtpConnection(credential, this.smtpPolicy, {
         command: input,
@@ -336,8 +347,7 @@ export class TestConnectionService {
         { email: this.emailClient, slack: this.slackClient },
         destination,
         credential,
-        input,
-        { signal, beforeDispatch },
+        { command: input, signal, beforeDispatch },
       );
     if (
       recipe.kind === 'signing' &&

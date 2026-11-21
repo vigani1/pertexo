@@ -65,7 +65,7 @@ function ConnectionState({
       definitions,
       connection.providerKey,
       connection.authType,
-    )?.test,
+    ),
   );
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

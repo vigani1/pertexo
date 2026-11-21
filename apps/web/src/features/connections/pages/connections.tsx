@@ -1,3 +1,5 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
+import { connectionDefinition } from '../model/connection-providers';
 import { useConnectionReadScope } from '../data/connection-read-scope';
 import {
   isWorkspaceBrowsable,
@@ -182,6 +184,7 @@ function ConnectionsSession({
   const scope = { apiClient, userId: user.id, workspaceId: workspace.id };
   const items = connections.data?.pages.flatMap((page) => page.items) ?? [];
   const counts = countByStatus(items);
+  const definitions = useConnectionDefinitions();
 
   if (!canBrowse)
     return (
@@ -287,7 +290,12 @@ function ConnectionsSession({
         <AddConnectionSheet
           scope={scope}
           workspaceName={workspace.name}
-          request={search.add}
+          request={
+            search.add === 'any' ||
+            connectionDefinition(definitions, search.add) !== undefined
+              ? search.add
+              : undefined
+          }
           onClose={() => {
             onSearchChange(withoutLens);
           }}

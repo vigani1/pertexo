@@ -380,6 +380,8 @@ describe('connection routes', () => {
     { url: 'http://provider.example.test/health' },
     { url: `https://provider.example.test/${'😀'.repeat(700)}` },
     { providerKey: 'email' },
+    { providerKey: 'future_provider' },
+    { providerKey: 'slack', sideEffectDisclosureAccepted: true },
     { providerKey: 'email', sideEffectDisclosureAccepted: false },
   ])('refuses test request %# before claiming any work', async (body) => {
     const reply = await command('POST', `${one}/test`, body);

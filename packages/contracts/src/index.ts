@@ -6,14 +6,13 @@ export * from './schemas/catalog.js';
 export * from './schemas/connections/connections.js';
 export {
   CONNECTION_CREDENTIALS_BOUNDS,
-  connectionCredentialSchema,
-  type ParsedConnectionCredential,
   emailMailboxSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
   slackBotTokenCredentialSchema,
   smtpCredentialSchema,
-} from './schemas/connections/connection-credentials.js';
+} from './schemas/connections/credential-formats.js';
+export type { ParsedConnectionCredential } from './schemas/connections/connection-credentials.js';
 export * from './schemas/connections/connection-sharing.js';
 export * from './schemas/connections/slack-channel-lookup.js';
 export * from './schemas/connections/oauth2-connections.js';

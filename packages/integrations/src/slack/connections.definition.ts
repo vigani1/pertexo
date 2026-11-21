@@ -28,7 +28,17 @@ export const slackResponseSchema = z
 const slackFields = {
   botToken: slackBotTokenCredentialSchema.unwrap().shape.botToken.meta({
     title: 'Slack bot token',
-    help: 'slack',
+    help: [
+      'Open api.slack.com/apps and pick your app, or create one for Pertexo.',
+      'Under OAuth & Permissions, add the chat:write scope and install the app.',
+      'Copy the Bot User OAuth Token. It starts with xoxb-.',
+      'In Slack, invite the bot to each channel it should post in.',
+    ],
+    blankError: 'Paste the bot token from your Slack app.',
+    invalidError:
+      'Slack bot tokens start with xoxb- and use only letters, numbers and dashes.',
+    serverError:
+      'Slack bot tokens start with xoxb- and use only letters, numbers and dashes.',
     trim: true,
     placeholder: 'xoxb-…',
     secret: true,
@@ -48,6 +58,21 @@ export const SLACK_BOT_TOKEN_CONNECTION = {
     savedCredential: 'bot token',
     usedBy: 'Send Slack message steps and Slack alerts',
     nameSuffix: 'Slack',
+    maskedSummary: { field: 'botToken', label: 'Token', prefix: 'xoxb-' },
+    testCopy: {
+      credential: 'token',
+      introNote: ' Nothing is posted.',
+      rejectionHelp:
+        'Copy the Bot User OAuth Token again and check the app is still installed in your workspace.',
+      failureReasons: {
+        [SLACK_REJECTIONS.account_inactive.health.reasonCode]:
+          'Slack account inactive',
+        [SLACK_REJECTIONS.token_expired.health.reasonCode]:
+          'Slack token expired',
+        [SLACK_REJECTIONS.token_revoked.health.reasonCode]:
+          'Slack token revoked',
+      },
+    },
   },
   schema: slackBotTokenCredentialSchema
     .unwrap()
@@ -57,7 +82,7 @@ export const SLACK_BOT_TOKEN_CONNECTION = {
   auth: { kind: 'bearer', field: 'botToken' },
   test: {
     kind: 'http',
-    formTest: 'slack',
+    automatic: true,
     method: 'POST',
     target: 'https://slack.com/api/auth.test',
     headers: {

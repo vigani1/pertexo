@@ -1,5 +1,5 @@
 import type {
-  ConnectionAuthType,
+  SecretConnectionAuthType,
   ConnectionStatus,
   ConnectionTestOutcome,
 } from '@pertexo/workflow-model';
@@ -76,7 +76,7 @@ export type RequestMetadata = Readonly<{
 
 /** Only an OAuth2 connection has settings, and it always has them. */
 type ConnectionAuthChoice =
-  | Readonly<{ authType: Exclude<ConnectionAuthType, 'oauth2'> }>
+  | Readonly<{ authType: SecretConnectionAuthType; oauth2Settings?: never }>
   | Readonly<{ authType: 'oauth2'; oauth2Settings: unknown }>;
 
 export type CreateConnectionInput = RequestMetadata &
@@ -110,7 +110,10 @@ export type FindConnectionRotateReplayInput = Readonly<{
 
 export type RotateConnectionSecretInput = RequestMetadata &
   (
-    | Readonly<{ expectedAuthType?: Exclude<ConnectionAuthType, 'oauth2'> }>
+    | Readonly<{
+        expectedAuthType?: SecretConnectionAuthType;
+        oauth2Settings?: never;
+      }>
     | Readonly<{ expectedAuthType: 'oauth2'; oauth2Settings: unknown }>
   ) &
   Readonly<{

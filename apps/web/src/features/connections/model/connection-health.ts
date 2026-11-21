@@ -1,4 +1,5 @@
 import type {
+  ConnectionFormDefinition,
   ConnectionResponse,
   ConnectionTestResponse,
 } from '@pertexo/contracts';
@@ -67,9 +68,6 @@ const FAILURE_REASONS: Readonly<Record<string, string>> = {
     Object.entries(SMTP_FAILURES).map(([code, copy]) => [code, copy.title]),
   ),
   'connection.credential_rejected': 'credential rejected',
-  'connection.slack_account_inactive': 'Slack account inactive',
-  'connection.slack_token_expired': 'Slack token expired',
-  'connection.slack_token_revoked': 'Slack token revoked',
   'connection.provider_rate_limited': 'rate limited',
   'connection.provider_unavailable': 'service unavailable',
   'connection.provider_rejected': 'request refused',
@@ -85,14 +83,19 @@ const FAILURE_REASONS: Readonly<Record<string, string>> = {
   'connection.test.canceled': 'canceled',
 };
 
-const REJECTED_CREDENTIAL: Readonly<Partial<Record<string, string>>> = {
+const REJECTED_CREDENTIAL = {
   signing: 'key unavailable',
   postgres: 'credentials rejected',
-  slack: 'invalid token',
   http: 'headers rejected',
-  resend: 'invalid API key',
-  smtp: 'invalid API key',
-};
+} as const;
+
+export function testNouns(definition: ConnectionFormDefinition) {
+  const { presentation } = definition;
+  return {
+    name: presentation.testCopy?.name ?? presentation.name,
+    credential: presentation.testCopy?.credential ?? presentation.credential,
+  };
+}
 
 /**
  * A code Pertexo doesn't know yet, in words: its last part without
@@ -108,12 +111,29 @@ function unmappedFailure(errorCode: string): string {
 
 /** A few words for why the last test failed, never the raw code. */
 function describeTestFailure(
-  testKey: string | undefined,
+  definition: ConnectionFormDefinition | undefined,
   errorCode: string,
 ): string {
-  if (testKey !== undefined && errorCode === 'connection.credential_rejected')
-    return REJECTED_CREDENTIAL[testKey] ?? 'credential rejected';
-  return FAILURE_REASONS[errorCode] ?? unmappedFailure(errorCode);
+  const copy = definition?.presentation.testCopy;
+  if (
+    definition !== undefined &&
+    errorCode === 'connection.credential_rejected'
+  ) {
+    if (copy?.rejectionReason !== undefined) return copy.rejectionReason;
+    if (definition.test === 'http' && definition.testInput !== 'url')
+      return `invalid ${definition.testInput === 'consent' ? definition.presentation.credential : testNouns(definition).credential}`;
+    if (
+      definition.test === 'http' ||
+      definition.test === 'signing' ||
+      definition.test === 'postgres'
+    )
+      return REJECTED_CREDENTIAL[definition.test];
+  }
+  return (
+    copy?.failureReasons?.[errorCode] ??
+    FAILURE_REASONS[errorCode] ??
+    unmappedFailure(errorCode)
+  );
 }
 
 export type HealthSentence = Readonly<{
@@ -128,7 +148,7 @@ export function describeConnectionHealth(
     'providerKey' | 'status' | 'health' | 'updatedAt'
   >,
   now = Date.now(),
-  testKey?: string,
+  definition?: ConnectionFormDefinition,
 ): HealthSentence {
   const { health } = connection;
   if (connection.status === 'revoked')
@@ -144,7 +164,7 @@ export function describeConnectionHealth(
     return { text: oauth2Status, tone: 'attention' };
   if (health.lastErrorCode !== null)
     return {
-      text: `${connection.status === 'reauthorization_required' && health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(testKey, health.lastErrorCode)}`,
+      text: `${connection.status === 'reauthorization_required' && health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(definition, health.lastErrorCode)}`,
       tone: 'attention',
     };
   const newerRunEvidence =
@@ -170,9 +190,7 @@ export type TestOutcomeCopy = Readonly<{ title: string; detail: string }>;
 const SUCCESS_TITLES: Readonly<Partial<Record<string, string>>> = {
   signing: 'The signing key can be opened.',
   postgres: 'PostgreSQL answered the test query.',
-  slack: 'Slack accepted the token.',
   http: 'The API answered.',
-  resend: 'Resend accepted the test email.',
   smtp: 'SMTP connection works.',
   oauth2: 'The API answered.',
 };
@@ -186,20 +204,10 @@ const REJECTED_HELP: Readonly<Partial<Record<string, TestOutcomeCopy>>> = {
     title: 'The signing key is unavailable.',
     detail: 'Replace the key and check the instance encryption settings.',
   },
-  slack: {
-    title: 'Slack rejected the token.',
-    detail:
-      'Copy the Bot User OAuth Token again and check the app is still installed in your workspace.',
-  },
   http: {
     title: 'The API refused these headers.',
     detail:
       'It answered 401 or 403. Check the header names and values, then replace the credential.',
-  },
-  resend: {
-    title: 'Resend rejected the API key.',
-    detail:
-      'Create a new sending key in Resend and check the from address uses a verified domain.',
   },
 };
 
@@ -230,29 +238,57 @@ function failureDetail(errorCode: string): string {
 
 /** The sentence under the test thread: what happened and what to do next. */
 export function describeTestOutcome(
-  testKey: string,
+  definition: ConnectionFormDefinition | undefined,
   outcome: ConnectionTestResponse['outcome'],
 ): TestOutcomeCopy {
-  if (!outcome.ok && testKey === 'smtp') {
+  const protocol = definition?.test;
+  const usesUrl = definition?.testInput === 'url';
+  if (!outcome.ok && protocol === 'smtp') {
     const smtpFailure = SMTP_FAILURES[outcome.errorCode];
     if (smtpFailure !== undefined) return smtpFailure;
   }
   if (outcome.ok)
     return {
-      title: SUCCESS_TITLES[testKey] ?? 'Connection test passed.',
-      detail:
-        testKey === 'http' || testKey === 'oauth2'
-          ? `It answered ${String(outcome.httpStatus)}, so the ${testKey === 'oauth2' ? 'token works' : 'headers work'}.`
-          : 'This connection is ready to use.',
+      title: testSuccessTitle(definition),
+      detail: usesUrl
+        ? `It answered ${String(outcome.httpStatus)}, so the ${protocol === 'oauth2' ? 'token works' : 'headers work'}.`
+        : 'This connection is ready to use.',
     };
   if (outcome.errorCode === 'connection.credential_rejected') {
-    const help =
-      testKey === 'oauth2' ? OAUTH2_REJECTED_HELP : REJECTED_HELP[testKey];
+    const help = rejectedHelp(definition);
     if (help !== undefined) return help;
   }
-  const reason = describeTestFailure(testKey, outcome.errorCode);
+  const reason = describeTestFailure(definition, outcome.errorCode);
   return {
     title: `The test failed: ${reason}.`,
     detail: failureDetail(outcome.errorCode),
   };
+}
+
+function testSuccessTitle(
+  definition: ConnectionFormDefinition | undefined,
+): string {
+  if (definition === undefined) return 'Connection test passed.';
+  if (definition.test === 'http' && definition.testInput !== 'url') {
+    const { name, credential } = testNouns(definition);
+    return `${name} accepted the ${definition.testInput === 'consent' ? 'test email' : credential}.`;
+  }
+  return SUCCESS_TITLES[definition.test] ?? 'Connection test passed.';
+}
+
+function rejectedHelp(
+  definition: ConnectionFormDefinition | undefined,
+): TestOutcomeCopy | undefined {
+  if (definition === undefined) return undefined;
+  if (definition.test === 'oauth2') return OAUTH2_REJECTED_HELP;
+  if (definition.test === 'http' && definition.testInput !== 'url') {
+    const { name, credential } = testNouns(definition);
+    return {
+      title: `${name} rejected the ${definition.testInput === 'consent' ? definition.presentation.credential : credential}.`,
+      detail:
+        definition.presentation.testCopy?.rejectionHelp ??
+        'Check the credential and the service’s settings, then test again.',
+    };
+  }
+  return REJECTED_HELP[definition.test];
 }

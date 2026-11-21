@@ -34,9 +34,6 @@ export type CredentialField = string;
 
 export const MAX_HEADER_ROWS = 32;
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
-const SLACK_TOKEN_FORMAT =
-  'Slack bot tokens start with xoxb- and use only letters, numbers and dashes.';
-
 export function credentialDraftHasSecret(draft: CredentialDraft): boolean {
   if (draft.provider === 'http')
     return draft.headers.some((row) => row.value.trim() !== '');
@@ -55,7 +52,7 @@ export function emptyCredentialDraft(
   definition: ConnectionFormDefinition,
   createId: () => string,
 ): CredentialDraft {
-  if (definition.test === 'http') {
+  if (definition.test === 'http' && definition.testInput === 'url') {
     return {
       provider: 'http',
       headers: [{ id: createId(), name: 'Authorization', value: '' }],
@@ -162,43 +159,36 @@ export function credentialErrors(
       ? rowErrors
       : contractHeaderErrors(draft.headers);
   }
-  const parsed = parseScalarCredential(draft);
-  if (parsed.success) return {};
-  const errors: Partial<Record<CredentialField, string>> = {};
-  for (const issue of parsed.error.issues) {
-    const field = issue.path[0];
-    if (typeof field === 'string')
-      errors[field] = scalarError(draft, field, issue.message);
-  }
-  return errors;
+  const { errors } = parseScalarCredential(draft);
+  return Object.fromEntries(
+    credentialFields(draft.definition).flatMap(({ key, metadata }) => {
+      const message = errors[key];
+      if (message === undefined) return [];
+      const blank = String(draft.values[key] ?? '').trim() === '';
+      const copy = blank
+        ? (metadata.blankError ?? metadata.invalidError)
+        : metadata.invalidError;
+      return [
+        [
+          key,
+          typeof copy === 'string'
+            ? copy
+            : protocolFieldError(draft, key, message),
+        ],
+      ];
+    }),
+  );
 }
 
-function scalarError(
+function protocolFieldError(
   draft: SchemaCredentialDraft,
   field: string,
   message: string,
 ): string {
-  const blank = String(draft.values[field] ?? '').trim() === '';
-  switch (draft.definition.test) {
-    case 'signing':
-      return `Enter valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}. Whitespace is preserved.`;
-    case 'slack':
-      return blank
-        ? 'Paste the bot token from your Slack app.'
-        : SLACK_TOKEN_FORMAT;
-    case 'resend':
-      if (field === 'apiKey')
-        return blank
-          ? 'Paste an API key from Resend.'
-          : 'Resend API keys start with re_.';
-      return blank
-        ? 'Enter the address emails come from, like alerts@yourdomain.com.'
-        : 'That isn’t a complete email address, like alerts@yourdomain.com.';
-    case 'smtp':
-      return SMTP_MESSAGES[field] ?? message;
-    default:
-      return message;
-  }
+  if (draft.definition.test === 'signing')
+    return `Enter valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}. Whitespace is preserved.`;
+  if (draft.definition.test === 'smtp') return SMTP_MESSAGES[field] ?? message;
+  return message;
 }
 
 const SMTP_MESSAGES: Readonly<Record<string, string>> = {
@@ -227,7 +217,9 @@ export function toConnectionCredential(
     };
   }
   const parsed = parseScalarCredential(draft);
-  return parsed.success ? parsed.data : undefined;
+  return Object.keys(parsed.errors).length === 0
+    ? parsed.credential
+    : undefined;
 }
 
 export function toCreateRequest(
@@ -269,16 +261,10 @@ function serverScalarError(
   field: string,
   message: string,
 ) {
-  switch (draft.definition.test) {
-    case 'signing':
-      return `Use valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}.`;
-    case 'slack':
-      return SLACK_TOKEN_FORMAT;
-    case 'resend':
-      return field === 'apiKey'
-        ? 'Resend didn’t accept this API key format.'
-        : 'Use a complete email address, like alerts@yourdomain.com.';
-    default:
-      return message;
-  }
+  if (draft.definition.test === 'signing')
+    return `Use valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}.`;
+  const copy = credentialFields(draft.definition).find(
+    ({ key }) => key === field,
+  )?.metadata.serverError;
+  return typeof copy === 'string' ? copy : message;
 }

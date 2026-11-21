@@ -18,27 +18,25 @@ export function describeSavedCredential(
   switch (draft.provider) {
     case 'schema': {
       const read = (field: string) => String(draft.values[field] ?? '');
-      switch (draft.definition.test) {
-        case 'postgres':
-          return { term: 'Database', value: read('database') };
-        case 'smtp':
-          return {
-            term: 'SMTP',
-            value: `${read('host')}:${read('port')} · sends from ${read('fromEmail')}`,
-          };
-        case 'slack':
-          return {
-            term: 'Token',
-            value: maskSecret(read('botToken').trim(), 'xoxb-'),
-          };
-        case 'resend':
-          return {
-            term: 'API key',
-            value: `${maskSecret(read('apiKey').trim(), 're_')} · sends from ${read('fromEmail').trim()}`,
-          };
-        default:
-          return { term: 'Key', value: 'Stored encrypted' };
+      const masked = draft.definition.presentation.maskedSummary;
+      if (masked !== undefined) {
+        const secret = maskSecret(read(masked.field).trim(), masked.prefix);
+        return {
+          term: masked.label,
+          value:
+            masked.senderField === undefined
+              ? secret
+              : `${secret} · sends from ${read(masked.senderField).trim()}`,
+        };
       }
+      if (draft.definition.test === 'postgres')
+        return { term: 'Database', value: read('database') };
+      if (draft.definition.test === 'smtp')
+        return {
+          term: 'SMTP',
+          value: `${read('host')}:${read('port')} · sends from ${read('fromEmail')}`,
+        };
+      return { term: 'Key', value: 'Stored encrypted' };
     }
     case 'http': {
       const names = filledRows(draft.headers).map((row) => row.name.trim());

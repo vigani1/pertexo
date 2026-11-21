@@ -86,3 +86,44 @@ it('preserves the PostgreSQL defaults and shows the CA field only with Verify fu
   await userEvent.click(lens().getByRole('radio', { name: 'Verify full' }));
   expect(lens().getByLabelText('CA certificate (optional)')).toHaveValue('');
 });
+
+it.each([
+  {
+    choice: 'slack',
+    steps: [
+      'Open api.slack.com/apps and pick your app, or create one for Pertexo.',
+      'Under OAuth & Permissions, add the chat:write scope and install the app.',
+      'Copy the Bot User OAuth Token. It starts with xoxb-.',
+      'In Slack, invite the bot to each channel it should post in.',
+    ],
+  },
+  {
+    choice: 'email',
+    steps: [
+      'Open resend.com/api-keys and create an API key.',
+      'Give it Sending access. Full access isn’t needed.',
+      'Copy the key. It starts with re_ and is only shown once.',
+      'Use a from address on a domain you verified in Resend.',
+    ],
+  },
+])('preserves credential setup help for $choice', async ({ choice, steps }) => {
+  mockServer.use(
+    ...identityHandlers(),
+    listOf(() => []),
+  );
+  await renderLoadedApp(`/w/${workspaceId}/connections?add=${choice}`);
+  await userEvent.click(await lens().findByText('Where do I find this?'));
+  for (const step of steps) expect(lens().getByText(step)).toBeVisible();
+});
+
+it('ignores a deep link to a choice missing from the catalog', async () => {
+  mockServer.use(
+    ...identityHandlers(),
+    listOf(() => []),
+  );
+  await renderLoadedApp(`/w/${workspaceId}/connections?add=future_provider`);
+  expect(
+    await screen.findByRole('button', { name: 'Connect Slack' }),
+  ).toBeVisible();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
