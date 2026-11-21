@@ -4,9 +4,14 @@ export { platformPortableDefinitionPolicy } from './portable-definition-policy.j
 import type { IntegrationExecutorDependencies } from '@pertexo/integrations/server';
 import {
   createNodeRegistry,
+  createInlineNodeRegistry,
+  type InlineNodeRegistry,
   type NodeRegistry,
 } from '@pertexo/node-sdk/server';
-import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
+import {
+  CORE_NODE_CATALOG,
+  CORE_NODE_DEFINITION_REGISTRATIONS,
+} from '@pertexo/nodes-core';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
 import { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js';
 import { PLATFORM_NODE_CATALOG } from './catalog.js';
@@ -42,4 +47,17 @@ export function resolvePlatformPollFetcher(definition: {
   if (fetchPoll === undefined)
     throw new PlatformNodeDefinitionUnavailableError();
   return fetchPoll;
+}
+
+/** The coordinator can run trusted kernels without constructing provider clients. */
+export function createPlatformInlineRegistry(): InlineNodeRegistry {
+  return createInlineNodeRegistry({
+    catalog: CORE_NODE_CATALOG,
+    definitions: [],
+    executors: [],
+    core: {
+      definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
+      executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
+    },
+  });
 }

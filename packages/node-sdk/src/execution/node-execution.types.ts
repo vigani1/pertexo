@@ -1,3 +1,4 @@
+import type { inlineExecutorFailureSchema } from './node-failure.schemas.js';
 import type { NodeCallbackRuntime } from '../callbacks/node-callback.types.js';
 import type { NodeRunValuesRuntime } from '../run-values/run-value.schemas.js';
 import type { NodeVerifiedByteSource } from '../artifacts/verified-source.js';
@@ -9,7 +10,7 @@ import type {
 import type { NodeWebhookResponseRuntime } from './webhooks.js';
 import type { NodeArtifactReference } from '../artifacts/reference.js';
 export type { NodeArtifactReference } from '../artifacts/reference.js';
-import type { ZodType } from 'zod';
+import type { z, ZodType } from 'zod';
 
 import type {
   DefinitionIdentity,
@@ -191,6 +192,31 @@ export interface NodeExecutorRegistration {
   ) => Promise<unknown>;
 }
 
+export interface InlineNodeInvocation {
+  readonly config: JsonValue;
+  readonly input: JsonValue;
+  /** The host's epoch-millisecond snapshot. */
+  readonly now: number;
+}
+
+export type InlineNodeResult =
+  | Readonly<{ kind: 'succeeded'; output: JsonValue }>
+  | Readonly<{
+      kind: 'failed';
+      failure: Readonly<z.output<typeof inlineExecutorFailureSchema>>;
+    }>;
+
+export interface CoreNodeExecutorRegistration extends NodeExecutorRegistration {
+  readonly executeInline?: (
+    invocation: InlineNodeInvocation,
+  ) => InlineNodeResult;
+}
+
+export interface InlineNodeRequest extends InlineNodeInvocation {
+  readonly definition: DefinitionIdentity;
+  readonly executor: ExecutorIdentity;
+}
+
 export interface NodeDefinitionRegistration {
   readonly manifest: NodeManifest;
   readonly configSchema: ZodType;
@@ -206,7 +232,10 @@ interface NodeRegistrations {
 export interface NodeRegistryOptions extends NodeRegistrations {
   readonly catalog: NodeCatalog;
   /** Supplied by the host from the built-in core registration lists. */
-  readonly core?: NodeRegistrations;
+  readonly core?: Omit<NodeRegistrations, 'executors'> &
+    Readonly<{
+      executors: readonly CoreNodeExecutorRegistration[];
+    }>;
 }
 
 export interface NodeExecutionRequest {

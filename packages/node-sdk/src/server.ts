@@ -1,4 +1,9 @@
-export { createNodeRegistry, type NodeRegistry } from './execution/registry.js';
+export {
+  createNodeRegistry,
+  createInlineNodeRegistry,
+  type NodeRegistry,
+  type InlineNodeRegistry,
+} from './execution/registry.js';
 export { DISPATCH_AWARE_EXECUTOR_ABI_VERSION } from './execution/executor-binding.js';
 
 export {
@@ -12,6 +17,10 @@ export {
   type NodeExecutionKind,
   type NodeExecutionRequest,
   type NodeExecutionResult,
+  type CoreNodeExecutorRegistration,
+  type InlineNodeInvocation,
+  type InlineNodeRequest,
+  type InlineNodeResult,
   type NodeExecutionRuntime,
   type NodeExecutorRegistration,
   type NodeRegistryOptions,

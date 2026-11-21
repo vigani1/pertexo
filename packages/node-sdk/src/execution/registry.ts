@@ -1,13 +1,18 @@
 import { z, type ZodType } from 'zod';
+import { inlineExecutorFailureSchema } from './node-failure.schemas.js';
 import { ARTIFACT_INPUT_CAPABILITY } from '../artifacts/reference.js';
-import { assertAttemptOnlyManifest } from '../definitions/execution-class.js';
+import {
+  pinRegistrations,
+  type PinnedNodeDefinition,
+  type PinnedNodeExecutor,
+} from './registry-pins.js';
 
 import type {
-  NodeDefinitionRegistration,
+  InlineNodeRequest,
+  InlineNodeResult,
   NodeExecutionRequest,
   NodeExecutionResult,
   NodeExecutionRuntime,
-  NodeExecutorRegistration,
   NodeRegistryOptions,
 } from './node-execution.types.js';
 import {
@@ -33,41 +38,15 @@ import {
   definitionIdentitySchema,
   type ExecutorIdentity,
   executorIdentitySchema,
-  type ExecutorManifest,
   type NodeManifest,
-  nodeManifestSchema,
-  type PolicyReference,
-  type NodeCatalog,
-  generateSchemaDocument,
-  parseNodeCatalog,
   TERMINATES_RUN_CAPABILITY,
 } from '../definitions/catalog.js';
 import { identityToken, sameIdentity } from '../definitions/identity.js';
-import {
-  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
-  validateInlineFallback,
-} from './executor-binding.js';
+import { DISPATCH_AWARE_EXECUTOR_ABI_VERSION } from './executor-binding.js';
 
-const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
-  1,
-  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
-]);
-
-interface PinnedNodeDefinition {
-  readonly manifest: NodeManifest;
-  readonly configSchema: ZodType;
-  readonly inputSchema: ZodType;
-  readonly outputSchema: ZodType;
-}
-
-interface PinnedNodeExecutor {
-  readonly manifest: ExecutorManifest;
-  readonly execute: NodeExecutorRegistration['execute'];
-}
-
-interface PinnedRegistrations {
-  readonly definitionMap: ReadonlyMap<string, PinnedNodeDefinition>;
-  readonly executorMap: ReadonlyMap<string, PinnedNodeExecutor>;
+export interface InlineNodeRegistry {
+  readonly canExecuteInline: (definition: DefinitionIdentity) => boolean;
+  readonly executeInline: (request: InlineNodeRequest) => InlineNodeResult;
 }
 
 export interface NodeRegistry {
@@ -86,51 +65,6 @@ const connectionRefsSchema = z
   .refine((value) => Object.keys(value).length <= MAX_CONNECTION_REFERENCES)
   .transform((value) => Object.freeze({ ...value }));
 
-function stableComparable(value: unknown): unknown {
-  if (value === null || typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.map(stableComparable);
-  return Object.fromEntries(
-    Object.entries(value)
-      .sort(([left], [right]) => {
-        if (left < right) return -1;
-        if (left > right) return 1;
-        return 0;
-      })
-      .map(([key, item]) => [key, stableComparable(item)]),
-  );
-}
-
-function runtimeSchemaComparable(value: unknown): unknown {
-  if (value === null || typeof value !== 'object' || Array.isArray(value))
-    return stableComparable(value);
-  const structuralProjection = { ...(value as Record<string, unknown>) };
-  delete structuralProjection['x-pertexo-runtime-only-semantics'];
-  return stableComparable(structuralProjection);
-}
-
-function sameManifest(left: NodeManifest, right: NodeManifest): boolean {
-  const comparable = ({ execution = 'attempt', ...fields }: NodeManifest) =>
-    JSON.stringify(stableComparable({ ...fields, execution }));
-  return comparable(left) === comparable(right);
-}
-
-function validateUnique(
-  label: string,
-  identities: readonly (
-    DefinitionIdentity | ExecutorIdentity | PolicyReference
-  )[],
-): void {
-  const seen = new Set<string>();
-  for (const identity of identities) {
-    const token = identityToken(identity);
-    if (seen.has(token))
-      throw new NodeRegistryCompatibilityError(
-        `duplicate ${label} identity ${identity.key}@${String(identity.version)}`,
-      );
-    seen.add(token);
-  }
-}
-
 function mapSchemaError(
   error: unknown,
   kind: 'config' | 'input' | 'output',
@@ -140,118 +74,30 @@ function mapSchemaError(
   return new NodeOutputValidationError(error);
 }
 
+function parseExecutionValue(
+  schema: ZodType,
+  value: unknown,
+  kind: 'config' | 'input' | 'output',
+): unknown {
+  try {
+    return schema.parse(value);
+  } catch (error) {
+    throw mapSchemaError(error, kind);
+  }
+}
+
+function parseExecutionOutput(schema: ZodType, value: unknown) {
+  try {
+    return canonicalizeBoundedJson(
+      schema.parse(canonicalizeBoundedJson(value)),
+    );
+  } catch (error) {
+    throw mapSchemaError(error, 'output');
+  }
+}
+
 function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted) throw new NodeExecutionAbortedError();
-}
-
-function safeNodeCatalogFailureCause(error: unknown): string {
-  try {
-    if (!(error instanceof Error)) return 'unknown';
-    return typeof error.message === 'string' ? error.message : 'unknown';
-  } catch {
-    return 'unknown';
-  }
-}
-
-function validateDefinitionRegistration(
-  registration: NodeDefinitionRegistration,
-  catalogManifest: NodeManifest,
-): PinnedNodeDefinition {
-  const parsed = nodeManifestSchema.parse(registration.manifest);
-  if (!sameManifest(catalogManifest, parsed))
-    throw new NodeRegistryCompatibilityError(
-      `definition ${parsed.definition.key}@${String(parsed.definition.version)} does not match the catalog`,
-    );
-  const schemaDocuments = [
-    ['config', parsed.configSchema, registration.configSchema],
-    ['input', parsed.inputSchema, registration.inputSchema],
-    ['output', parsed.outputSchema, registration.outputSchema],
-  ] as const;
-  for (const [label, documented, runtime] of schemaDocuments) {
-    const generated = generateSchemaDocument(runtime);
-    if (
-      JSON.stringify(runtimeSchemaComparable(documented)) !==
-      JSON.stringify(runtimeSchemaComparable(generated))
-    )
-      throw new NodeRegistryCompatibilityError(
-        `${label} JSON Schema projection does not match the registered Zod schema projection`,
-      );
-  }
-  return {
-    manifest: parsed,
-    configSchema: registration.configSchema,
-    inputSchema: registration.inputSchema,
-    outputSchema: registration.outputSchema,
-  };
-}
-
-/**
- * Pair every catalog definition with its runtime schemas and every catalog
- * executor with its implementation. The catalog owns the executor metadata;
- * registrations outside the catalog are not served.
- */
-function pinRegistrations(
-  catalog: NodeCatalog,
-  options: NodeRegistryOptions,
-): PinnedRegistrations {
-  const registeredDefinitions = [
-    ...(options.core?.definitions ?? []),
-    ...options.definitions,
-  ];
-  const registeredExecutors = [
-    ...(options.core?.executors ?? []),
-    ...options.executors,
-  ];
-  validateUnique(
-    'definition',
-    registeredDefinitions.map(({ manifest }) => manifest.definition),
-  );
-  validateUnique(
-    'executor',
-    registeredExecutors.map(({ executor }) => executor),
-  );
-  const definitions = new Map(
-    registeredDefinitions.map((registration) => [
-      identityToken(registration.manifest.definition),
-      registration,
-    ]),
-  );
-  const executors = new Map(
-    registeredExecutors.map((registration) => [
-      identityToken(executorIdentitySchema.parse(registration.executor)),
-      registration,
-    ]),
-  );
-  const definitionMap = new Map<string, PinnedNodeDefinition>();
-  for (const manifest of catalog.definitions) {
-    const token = identityToken(manifest.definition);
-    const registration = definitions.get(token);
-    if (registration === undefined)
-      throw new NodeRegistryCompatibilityError(
-        `catalog definition ${manifest.definition.key}@${String(manifest.definition.version)} has no server schema registration`,
-      );
-    const pinned = validateDefinitionRegistration(registration, manifest);
-    validateInlineFallback(manifest, options.core?.executors);
-    definitionMap.set(token, pinned);
-  }
-  const executorMap = new Map<string, PinnedNodeExecutor>();
-  for (const manifest of catalog.executors) {
-    const label = `${manifest.executor.key}@${String(manifest.executor.version)}`;
-    if (!SUPPORTED_EXECUTOR_ABI_VERSIONS.has(manifest.abiVersion))
-      throw new NodeRegistryCompatibilityError(
-        `executor ${label} uses unsupported ABI ${String(manifest.abiVersion)}`,
-      );
-    const registration = executors.get(identityToken(manifest.executor));
-    if (registration === undefined)
-      throw new NodeRegistryCompatibilityError(
-        `catalog executor ${label} has no implementation`,
-      );
-    executorMap.set(identityToken(manifest.executor), {
-      manifest,
-      execute: registration.execute,
-    });
-  }
-  return { definitionMap, executorMap };
 }
 
 function assertDefinitionExecutorBinding(
@@ -265,17 +111,21 @@ function assertDefinitionExecutorBinding(
 }
 
 export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
-  let catalog: NodeCatalog;
-  try {
-    catalog = parseNodeCatalog(options.catalog);
-  } catch (error) {
-    throw new NodeRegistryCompatibilityError('invalid node catalog', {
-      cause: safeNodeCatalogFailureCause(error),
-    });
-  }
-  for (const { manifest } of options.definitions)
-    assertAttemptOnlyManifest(manifest);
-  const { definitionMap, executorMap } = pinRegistrations(catalog, options);
+  const { dispatchMode, execute } = pinNodeRegistry(options);
+  return Object.freeze({ dispatchMode, execute });
+}
+
+export function createInlineNodeRegistry(
+  options: NodeRegistryOptions,
+): InlineNodeRegistry {
+  const { canExecuteInline, executeInline } = pinNodeRegistry(options);
+  return Object.freeze({ canExecuteInline, executeInline });
+}
+
+function pinNodeRegistry(
+  options: NodeRegistryOptions,
+): NodeRegistry & InlineNodeRegistry {
+  const { definitionMap, executorMap } = pinRegistrations(options);
   const resolveDefinition = (
     definition: DefinitionIdentity,
   ): PinnedNodeDefinition => {
@@ -314,19 +164,17 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     });
     if (!isJsonObject(bounded))
       throw new InvalidBoundedJsonError('execution envelope is not an object');
-    let config: unknown;
-    let input: unknown;
+    const config = parseExecutionValue(
+      definition.configSchema,
+      bounded.config,
+      'config',
+    );
+    const input = parseExecutionValue(
+      definition.inputSchema,
+      bounded.input,
+      'input',
+    );
     let connectionRefs: Readonly<Record<string, string>>;
-    try {
-      config = definition.configSchema.parse(bounded.config);
-    } catch (error) {
-      throw mapSchemaError(error, 'config');
-    }
-    try {
-      input = definition.inputSchema.parse(bounded.input);
-    } catch (error) {
-      throw mapSchemaError(error, 'input');
-    }
     try {
       connectionRefs = connectionRefsSchema.parse(bounded.connectionRefs);
     } catch (error) {
@@ -378,21 +226,72 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
     });
     if (dispatchAware && dispatchState.value !== 'committed')
       throw new NodeDispatchEvidenceError('dispatch_evidence_missing');
-    let output: unknown;
-    try {
-      output = definition.outputSchema.parse(canonicalizeBoundedJson(result));
-    } catch (error) {
-      throw mapSchemaError(error, 'output');
-    }
     return {
       kind: definition.manifest.capabilities.includes(TERMINATES_RUN_CAPABILITY)
         ? 'terminal_success'
         : 'succeeded',
-      output: canonicalizeBoundedJson(output),
+      output: parseExecutionOutput(definition.outputSchema, result),
     };
   };
   return Object.freeze({
     dispatchMode,
     execute,
+    ...bindInlineExecution(options, definitionMap, resolveDefinition),
+  });
+}
+
+function bindInlineExecution(
+  options: NodeRegistryOptions,
+  definitionMap: ReadonlyMap<string, PinnedNodeDefinition>,
+  resolveDefinition: (identity: DefinitionIdentity) => PinnedNodeDefinition,
+): InlineNodeRegistry {
+  const inlineBindings = new Map(
+    options.core?.executors.map(({ executor, executeInline }) => [
+      identityToken(executor),
+      executeInline,
+    ]),
+  );
+  return Object.freeze({
+    canExecuteInline: (identity: DefinitionIdentity) =>
+      definitionMap.get(identityToken(identity))?.manifest.execution ===
+      'inline',
+    executeInline(request: InlineNodeRequest): InlineNodeResult {
+      const definition = resolveDefinition(request.definition);
+      assertDefinitionExecutorBinding(definition.manifest, request.executor);
+      const kernel = inlineBindings.get(identityToken(request.executor));
+      if (definition.manifest.execution !== 'inline' || kernel === undefined)
+        throw new NodeRegistryCompatibilityError(
+          'definition has no inline executor',
+        );
+      const bounded = canonicalizeBoundedJson({
+        config: request.config,
+        input: request.input,
+      });
+      if (!isJsonObject(bounded))
+        throw new InvalidBoundedJsonError(
+          'execution envelope is not an object',
+        );
+      const invocation = Object.freeze({
+        config: canonicalizeBoundedJson(
+          parseExecutionValue(
+            definition.configSchema,
+            bounded.config,
+            'config',
+          ),
+        ),
+        input: canonicalizeBoundedJson(
+          parseExecutionValue(definition.inputSchema, bounded.input, 'input'),
+        ),
+        now: request.now,
+      });
+      const result = kernel(invocation);
+      if (result.kind === 'succeeded')
+        return {
+          kind: 'succeeded',
+          output: parseExecutionOutput(definition.outputSchema, result.output),
+        };
+      const failure = inlineExecutorFailureSchema.parse(result.failure);
+      return { kind: 'failed', failure };
+    },
   });
 }

@@ -91,3 +91,8 @@ export const nodeExecutorFailureSchema = z
     serviceResponse: serviceResponseSchema.optional(),
   })
   .strict();
+
+export const inlineExecutorFailureSchema = nodeExecutorFailureSchema.omit({
+  possiblyDispatched: true,
+  serviceResponse: true,
+});
