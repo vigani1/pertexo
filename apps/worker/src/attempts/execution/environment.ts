@@ -1,3 +1,4 @@
+import type { ModelUsage } from '@pertexo/node-sdk';
 import type { CodeDiagnostics, JsonValue } from '@pertexo/node-sdk/server';
 import {
   NodeAttemptConnectionFenceError,
@@ -27,6 +28,7 @@ export type NodeExecutionEnvironment = Readonly<{
   dispatchAbortReason(): 'canceled' | 'timed_out' | undefined;
   connectionHealthObservation(): NodeConnectionHealthObservation | undefined;
   codeDiagnostics(): CodeDiagnostics | undefined;
+  modelUsage(): ModelUsage | undefined;
 }>;
 
 export function createNodeExecutionEnvironment(
@@ -64,12 +66,16 @@ export function createNodeExecutionEnvironment(
     code,
   } = bindExecutionCapabilities(input, capabilityContext);
   let diagnostics: CodeDiagnostics | undefined;
+  let usage: ModelUsage | undefined;
   const runtime: NodeExecutionRuntime = Object.freeze({
     ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
     ...(code === undefined ? {} : { code }),
     ...(callbacks === undefined ? {} : { callbacks }),
     ...(dataTables === undefined ? {} : { dataTables }),
     ...(runValues === undefined ? {} : { runValues }),
+    observeModelUsage: (value: ModelUsage) => {
+      usage = value;
+    },
     observeCodeDiagnostics: (value: CodeDiagnostics) => {
       if (dispatchState === 'marked') diagnostics ??= value;
     },
@@ -145,6 +151,7 @@ export function createNodeExecutionEnvironment(
       ? () => undefined
       : healthCapture.read,
     codeDiagnostics: () => diagnostics,
+    modelUsage: () => usage,
   });
 }
 

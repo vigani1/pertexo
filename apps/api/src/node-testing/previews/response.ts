@@ -31,6 +31,7 @@ type PreviewAcceptanceView = Pick<
   | 'safeErrorCode'
   | 'errorSummary'
   | 'codeDiagnostics'
+  | 'modelUsage'
 >;
 
 type PreviewOutputView =
@@ -94,6 +95,7 @@ export function previewIdentityResponse(
     | 'mayCauseExternalSideEffect'
     | 'dryRun'
     | 'codeDiagnostics'
+    | 'modelUsage'
     | 'pinnedSampleId'
     | 'createdAt'
     | 'expiresAt'
@@ -108,6 +110,7 @@ export function previewIdentityResponse(
   | 'status'
   | 'disclosure'
   | 'codeDiagnostics'
+  | 'modelUsage'
   | 'pinnedSampleId'
   | 'createdAt'
   | 'expiresAt'
@@ -125,6 +128,9 @@ export function previewIdentityResponse(
       mayCauseExternalSideEffect: preview.mayCauseExternalSideEffect,
       dryRun: preview.dryRun,
     },
+    ...(preview.modelUsage === undefined
+      ? {}
+      : { modelUsage: preview.modelUsage }),
     ...(preview.codeDiagnostics === undefined
       ? {}
       : { codeDiagnostics: preview.codeDiagnostics }),

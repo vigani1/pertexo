@@ -1,5 +1,8 @@
 import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import {
+  storedAttemptDiagnostics,
+  type AttemptDiagnostics,
+} from '@pertexo/node-sdk';
 import {
   canonicalPreviewOutcome,
   sameStoredCompletion,
@@ -48,7 +51,7 @@ async function exactDuplicateCompletion(
   }: Readonly<{
     outcome: CanonicalCompletionOutcome;
     receipt: 'completed' | 'open';
-    diagnostics: CodeDiagnostics | undefined;
+    diagnostics: AttemptDiagnostics | null;
   }>,
 ): Promise<PreviewCompletionResult> {
   const row = await lockStoredCompletion(client, scope);
@@ -68,7 +71,7 @@ export async function completePreviewAttempt(
     delivery: input.delivery,
     workerId: input.workerId,
   };
-  const diagnostics = input.codeDiagnostics;
+  const diagnostics = storedAttemptDiagnostics(input);
   const outcome = canonicalPreviewOutcome(input.outcome);
   return auditingDeliveryMismatch(
     pool,

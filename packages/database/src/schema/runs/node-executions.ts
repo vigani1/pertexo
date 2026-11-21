@@ -24,7 +24,7 @@ import {
 import { sql } from 'drizzle-orm';
 import { appSchema } from '../namespace.js';
 import { workflowRuns } from './workflow-runs.js';
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { AttemptDiagnostics } from '@pertexo/node-sdk';
 
 const WIDTHS = Object.freeze({
   // Wider than the graph's 64-character node id, which every id is validated to
@@ -272,7 +272,7 @@ export const nodeAttempts = appSchema.table(
       mode: 'date',
     }),
     outputRef: json('output_ref').$type<StoredExecutionValue>(),
-    codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
+    codeDiagnostics: jsonb('code_diagnostics').$type<AttemptDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     errorSummary: varchar('error_summary', { length: WIDTHS.errorSummary }),
     executorRetryAfterMillis: integer('executor_retry_after_millis'),

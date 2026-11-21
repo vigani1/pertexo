@@ -17,6 +17,7 @@ import {
 import { messages } from './messages.js';
 import { modelFailure } from './model/model.errors.js';
 import { MODEL_LIMITS } from './model/model.schemas.js';
+import type { trackModelUsage } from './model-usage.js';
 import type { ModelRequest } from './model-request.js';
 
 const repeatable = { providerKeyPresent: false };
@@ -34,6 +35,7 @@ export function createModelClient(
         signal: AbortSignal;
         timeoutMillis: number;
         earlierDispatch: boolean;
+        usage: ReturnType<typeof trackModelUsage>;
         beforeDispatch(): Promise<void>;
       }>,
     ) {
@@ -43,6 +45,7 @@ export function createModelClient(
         signal,
         timeoutMillis,
         earlierDispatch,
+        usage,
       } = context;
       const adapter =
         request.endpoint === 'anthropic' ? messages : chatCompletions;
@@ -73,17 +76,23 @@ export function createModelClient(
             beforeDispatch: async () => {
               await beforeDispatch();
               dispatched = true;
+              usage.dispatched();
             },
           },
           async ({ status, body: stream }) => {
-            if (status < 200 || status >= 300) return undefined;
             const decoder = new TextDecoder('utf-8', { fatal: true });
             let text = '';
-            for await (const chunk of stream)
-              text += decoder.decode(chunk, { stream: true });
-            return parseJson(text + decoder.decode());
+            try {
+              for await (const chunk of stream)
+                text += decoder.decode(chunk, { stream: true });
+              return parseJson(text + decoder.decode());
+            } catch (error: unknown) {
+              if (status >= 200 && status < 300) throw error;
+              return undefined;
+            }
           },
         );
+        usage.received(adapter.usage(response.body));
         const outcome = classifySecureHttpResponse(response.status, 'safe', {
           ...repeatable,
           headers: response.headers,

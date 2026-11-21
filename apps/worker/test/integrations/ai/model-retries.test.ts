@@ -26,8 +26,17 @@ it.each([429, 503])(
     expect(fake.calls).toHaveLength(1);
     if (!(failure instanceof NodeExecutorFailure))
       throw new Error('Missing executor failure');
-    const { status: _status, ...observation } =
-      executorFailureCompletion(failure);
+    const {
+      status: _status,
+      modelUsage,
+      ...observation
+    } = executorFailureCompletion(failure);
+    expect(modelUsage).toEqual({
+      kind: 'incomplete',
+      model: 'fake',
+      inputTokens: null,
+      outputTokens: null,
+    });
 
     const workflowVersionId = randomUUID();
     const signal = new AbortController().signal;

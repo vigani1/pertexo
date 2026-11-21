@@ -1,4 +1,4 @@
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { CodeDiagnostics, ModelUsage } from '@pertexo/node-sdk';
 
 import type {
   PreviewDryRun,
@@ -64,6 +64,7 @@ export type AcceptedPreviewRun = Readonly<{
 // Projection decodes output and joins optional attempt diagnostics.
 export type PreviewRunRecord = Readonly<{
   codeDiagnostics?: CodeDiagnostics;
+  modelUsage?: ModelUsage;
   errorSummary?: string;
   id: string;
   workspaceId: string;

@@ -1,4 +1,4 @@
-import { codeCompletionFields } from '../code/diagnostics.js';
+import { completionDiagnosticFields } from './completion-diagnostics.js';
 
 import {
   NodeAttemptOutputInvalidError,
@@ -45,7 +45,7 @@ export async function completeControlOutcome(
       : 'execution.deadline_exceeded';
   const completed = await dependencies.runStore.complete({
     ...connectionHealthCompletionFields(environment),
-    ...codeCompletionFields(environment),
+    ...completionDiagnosticFields(environment),
     lease,
     outcome: {
       status: outcomeUnknown ? 'outcome_unknown' : reason,
@@ -116,7 +116,7 @@ export async function persistPreparedOutcome(
   try {
     const completed = await dependencies.runStore.complete({
       ...connectionHealthCompletionFields(environment),
-      ...codeCompletionFields(environment),
+      ...completionDiagnosticFields(environment, outcome.modelUsage),
       lease,
       outcome:
         prepared.suspensionDurationSeconds === undefined
@@ -134,7 +134,7 @@ export async function persistPreparedOutcome(
     if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
     const completed = await dependencies.runStore.complete({
       ...connectionHealthCompletionFields(environment),
-      ...codeCompletionFields(environment),
+      ...completionDiagnosticFields(environment, outcome.modelUsage),
       lease,
       outcome: {
         status: 'failed',

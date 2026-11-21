@@ -1,3 +1,4 @@
+import { modelUsageReader } from './model-usage.js';
 import { z } from 'zod';
 import type { ModelRequest } from './model-request.js';
 
@@ -24,6 +25,7 @@ export const chatCompletions = {
         : {}),
     };
   },
+  usage: modelUsageReader('prompt_tokens', 'completion_tokens'),
   completion(value: unknown) {
     const result = envelope.safeParse(value);
     if (!result.success) return { kind: 'invalid_response' } as const;

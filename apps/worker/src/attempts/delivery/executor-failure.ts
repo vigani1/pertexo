@@ -21,6 +21,7 @@ import {
 import {
   FILE_INPUT_ERROR_CODE,
   RUN_VALUES_ERROR_CODE,
+  type ModelUsage,
 } from '@pertexo/node-sdk';
 import {
   UTILITY_ERROR_CODE,
@@ -47,7 +48,9 @@ export function executorFailureCompletion(
 ): Extract<
   Parameters<NodeAttemptRunStore['complete']>[0]['outcome'],
   { status: 'executor_failure' }
-> {
+> &
+  Readonly<{ modelUsage?: ModelUsage }> {
+  const { modelUsage } = error;
   const summary = describeMappingFailure(error) ?? error.shownSummary;
   const safeErrorCode = error.safeErrorCode ?? `execution.${error.errorKind}`;
   if (
@@ -59,6 +62,7 @@ export function executorFailureCompletion(
   return {
     status: 'executor_failure',
     failureKind: error.kind,
+    ...(modelUsage === undefined ? {} : { modelUsage }),
     ...(error.minimumRetryDelayMillis === undefined
       ? {}
       : { minimumRetryDelayMillis: error.minimumRetryDelayMillis }),

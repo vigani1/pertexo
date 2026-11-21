@@ -95,6 +95,26 @@ describe('node test route', () => {
     expect(persistence.getDraft).not.toHaveBeenCalled();
   });
 
+  it('returns typed model usage for a preview attempt', async () => {
+    const modelUsage = {
+      kind: 'complete',
+      model: 'fake',
+      inputTokens: 12,
+      outputTokens: 0,
+    } as const;
+    persistence.readPreview.mockResolvedValueOnce({
+      ...nodeTestingPreview(),
+      status: 'succeeded',
+      modelUsage,
+    });
+    const reply = await harness.send(
+      'GET',
+      `/v1/workspaces/${workspaceId}/previews/${previewRunId}`,
+    );
+    expect(reply.statusCode, reply.payload).toBe(200);
+    expect(reply.json()).toMatchObject({ preview: { modelUsage } });
+  });
+
   it('reads one preview for the signed-in actor', async () => {
     persistence.readPreview.mockResolvedValueOnce(nodeTestingPreview());
     const reply = await harness.send(

@@ -1,4 +1,4 @@
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { AttemptDiagnostics } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -128,7 +128,7 @@ export async function writePreviewTerminalAttempt(
     diagnostics,
   }: Readonly<{
     outcome: CanonicalCompletionOutcome;
-    diagnostics: CodeDiagnostics | undefined;
+    diagnostics: AttemptDiagnostics | null;
   }>,
 ): Promise<boolean> {
   const terminal = await drizzle(client)
@@ -141,9 +141,7 @@ export async function writePreviewTerminalAttempt(
           ? null
           : outcome.safeErrorCode,
       codeDiagnostics:
-        diagnostics === undefined
-          ? null
-          : sql`${canonicalJson(diagnostics)}::jsonb`,
+        diagnostics === null ? null : sql`${canonicalJson(diagnostics)}::jsonb`,
       errorSummary:
         outcome.status === PREVIEW_STATUS.succeeded
           ? null

@@ -24,6 +24,27 @@ import { usageCapacitySnapshot } from './usage/capacity.fixture.js';
 
 describe('workflow runs real Nest HTTP stack', () => {
   afterEach(cleanWorkflowRunsRealNestHTTPStack);
+
+  it('returns typed model usage for a run attempt', async () => {
+    const { application, fixture } = await start();
+    const modelUsage = {
+      kind: 'incomplete',
+      model: 'fake',
+      inputTokens: 12,
+      outputTokens: null,
+    } as const;
+    fixture.readNodeRunDiagnostics.mockResolvedValue({
+      kind: 'model_usage',
+      modelUsage,
+    });
+    const response = await application.inject({
+      method: 'GET',
+      url: `/v1/workspaces/${workspaceId}/runs/${runId}/node-runs/${runId}/diagnostics`,
+      headers: authHeaders,
+    });
+    expect(response.statusCode, response.payload).toBe(200);
+    expect(response.json()).toEqual({ diagnostics: null, modelUsage });
+  });
   it('protects recovery preview and acceptance with current capabilities and CSRF', async () => {
     const { application, fixture } = await start('viewer');
     for (const method of ['GET', 'POST'] as const) {

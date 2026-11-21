@@ -1,4 +1,4 @@
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { CodeDiagnostics, ModelUsage } from '@pertexo/node-sdk';
 import type { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import type {
   PreviewDryRun,
@@ -16,6 +16,7 @@ export type ResolvePreviewReplayInput = Readonly<{
 // Projection joins preview runs, attempts and stored acceptance receipts.
 export type PreviewReplayRecord = Readonly<{
   codeDiagnostics?: CodeDiagnostics;
+  modelUsage?: ModelUsage;
   id: string;
   workspaceId: string;
   workflowId: string;

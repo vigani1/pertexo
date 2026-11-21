@@ -77,6 +77,53 @@ describe('Coordinator node-attempt persistence invariants', () => {
     },
   );
 
+  it('records model usage with the attempt and reuses its completion receipt', async () => {
+    const lease = await claimDispatchAttempt(`model-usage-${randomUUID()}`, {
+      sideEffectClass: 'safe',
+    });
+    const modelUsage = {
+      kind: 'complete',
+      model: 'fake',
+      inputTokens: 12,
+      outputTokens: 2,
+    } as const;
+    const input = {
+      lease,
+      outcome: { status: 'succeeded', output: { text: 'answer' } } as const,
+      signal: new AbortController().signal,
+      modelUsage,
+    };
+    await expect(nodeAttemptStore.complete(input)).resolves.toMatchObject({
+      kind: 'committed',
+    });
+    await expect(nodeAttemptStore.complete(input)).resolves.toMatchObject({
+      kind: 'duplicate',
+      outboxEventId: null,
+    });
+    await expect(
+      nodeAttemptStore.complete({
+        ...input,
+        modelUsage: { ...modelUsage, outputTokens: 4 },
+      }),
+    ).rejects.toBeInstanceOf(NodeAttemptStateCorruptError);
+    const pool = new Pool({
+      connectionString: databaseUrl(apiBaseUrl),
+      max: 1,
+    });
+    try {
+      await expect(
+        readWorkflowNodeRunDiagnostics(pool, {
+          actorId,
+          workspaceId: workspaceA,
+          runId: lease.runId,
+          nodeRunId: lease.nodeRunId,
+        }),
+      ).resolves.toEqual({ kind: 'model_usage', modelUsage });
+    } finally {
+      await pool.end();
+    }
+  });
+
   it('commits private Code diagnostics with completion, compares duplicates and hides expired or foreign data', async () => {
     const lease = await claimDispatchAttempt(
       `code-diagnostic-${randomUUID()}`,

@@ -1,9 +1,12 @@
-import { boundedNodeJsonRecordSchema, labelledChoice } from '@pertexo/node-sdk';
+import {
+  boundedNodeJsonRecordSchema,
+  labelledChoice,
+  MODEL_IDENTIFIER_MAX_CHARACTERS,
+} from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { compileModelOutputSchema } from './output-schema.js';
 
 export const MODEL_LIMITS = {
-  modelCharacters: 512,
   requestBytes: 64 * 1_024,
   responseBytes: 128 * 1_024,
   defaultOutputTokens: 1_024,
@@ -23,7 +26,7 @@ const common = {
   model: z
     .string()
     .min(1)
-    .max(MODEL_LIMITS.modelCharacters)
+    .max(MODEL_IDENTIFIER_MAX_CHARACTERS)
     .refine((value) => value.trim() !== '')
     .meta({ title: 'Model identifier' }),
   timeoutMillis: z

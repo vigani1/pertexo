@@ -10,13 +10,16 @@ import {
   isValidStoredExecutionOutput,
   PreviewAttemptStateError,
 } from '@pertexo/core/previews';
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { AttemptDiagnosticFields } from '@pertexo/node-sdk';
 import type { NodeExecutionRuntime } from '@pertexo/node-sdk/server';
 import { NodeDispatchEvidenceError } from '@pertexo/node-sdk/server';
 import type { QueueDelivery, QueueHandlerContext } from '@pertexo/queue/server';
 import type { NodeExecutionCapabilityFactories } from '../attempts/execution/capabilities.js';
 import { nodeExecutionOptionalFields } from '../attempts/execution/runtime-fields.js';
-import { parsePreviewFailure, previewDiagnostics } from './completion.js';
+import {
+  capturePreviewDiagnostics,
+  parsePreviewFailure,
+} from './completion.js';
 import { startPreviewAttemptSupervisor } from './supervisor.js';
 import type { PreviewTelemetry, PreviewTerminalStatus } from './telemetry.js';
 export type { PreviewAttemptRunStore } from '@pertexo/core/previews';
@@ -101,13 +104,13 @@ async function completeOutcome(
     delivery,
     dispatched,
     completionSignal,
-    codeDiagnostics,
+    diagnostics,
   }: Readonly<{
     outcome: PreviewInvocationOutcome;
     delivery: { outboxEventId: string; payloadChecksum: string };
     dispatched: boolean;
     completionSignal: AbortSignal;
-    codeDiagnostics?: CodeDiagnostics | undefined;
+    diagnostics: AttemptDiagnosticFields;
   }>,
 ): Promise<PreviewAttemptHandlerResult> {
   let terminalOutcome: PreviewTerminalOutcome;
@@ -136,7 +139,7 @@ async function completeOutcome(
     delivery,
     lease,
     outcome: terminalOutcome,
-    ...previewDiagnostics(codeDiagnostics),
+    ...diagnostics,
     signal: completionSignal,
     workerId: dependencies.workerId,
   });
@@ -191,7 +194,7 @@ function committedTerminal(
 type PreviewExecutionEnvironment = Readonly<{
   runtime: NodeExecutionRuntime;
   wasDispatched(): boolean;
-  codeDiagnostics(): CodeDiagnostics | undefined;
+  diagnostics(): AttemptDiagnosticFields;
 }>;
 
 function createPreviewExecutionEnvironment(
@@ -229,17 +232,14 @@ function createPreviewExecutionEnvironment(
     variables: lease.variables ?? {},
     previouslyDispatched: false,
   });
-  let diagnostics: CodeDiagnostics | undefined;
+  const { read: diagnostics, ...observers } = capturePreviewDiagnostics();
   let dispatchState: 'not_started' | 'marking' | 'marked' = 'not_started';
   const runtime: NodeExecutionRuntime = Object.freeze({
     deadlineAt: lease.executionDeadlineAt,
     ...(code === undefined ? {} : { code }),
     ...(dataTables === undefined ? {} : { dataTables }),
     ...(runValues === undefined ? {} : { runValues }),
-    observeCodeDiagnostics: (value: CodeDiagnostics) => {
-      // Safe previews need only the attempt fence to retain private diagnostics.
-      diagnostics ??= value;
-    },
+    ...observers,
     workspaceId: lease.workspaceId,
     runId: lease.previewRunId,
     nodeRunId: lease.previewRunId,
@@ -256,8 +256,7 @@ function createPreviewExecutionEnvironment(
       if (dispatchState !== 'not_started')
         throw new PreviewAttemptHandlerStateError('duplicate_dispatch');
       executionSignal.throwIfAborted();
-      // Reserve the sole dispatch permission before awaiting durable authority.
-      // A failed marker is uncertain and never reopens the provider-I/O gate.
+      // A failed durable marker never reopens the provider-I/O gate.
       dispatchState = 'marking';
       try {
         await dependencies.runStore.markDispatched({
@@ -291,7 +290,7 @@ function createPreviewExecutionEnvironment(
   return Object.freeze({
     runtime,
     wasDispatched: () => dispatchState === 'marked',
-    codeDiagnostics: () => diagnostics,
+    diagnostics,
   });
 }
 
@@ -376,6 +375,7 @@ export function createPreviewAttemptHandler(
               delivery: claimDelivery,
               lease,
               outcome: deadlineOutcome,
+              ...environment.diagnostics(),
               signal: context.signal,
               workerId: dependencies.workerId,
             }),
@@ -390,7 +390,7 @@ export function createPreviewAttemptHandler(
           delivery: claimDelivery,
           dispatched: dispatched,
           completionSignal: context.signal,
-          codeDiagnostics: environment.codeDiagnostics(),
+          diagnostics: environment.diagnostics(),
         });
       } finally {
         await supervisor.stop();

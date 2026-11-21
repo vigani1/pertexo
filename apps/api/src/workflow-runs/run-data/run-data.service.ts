@@ -215,6 +215,8 @@ export class GetWorkflowNodeRunDiagnosticsService {
       nodeRunId: input.nodeRunId,
     });
     if (diagnostics === undefined) throw new WorkflowRunNotFoundError();
+    if (diagnostics !== null && 'kind' in diagnostics)
+      return { diagnostics: null, modelUsage: diagnostics.modelUsage };
     return { diagnostics };
   }
 }

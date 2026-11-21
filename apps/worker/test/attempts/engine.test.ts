@@ -47,19 +47,19 @@ describe('node attempt execution engine', () => {
       },
     });
     expect(prepared.upstreamNodeOutputs).toEqual([]);
-    await expect(
-      prepared.execute({
-        runInput: { different: true },
-        completedNodeOutputs: [],
-        control: { kind: 'none' },
-        registry: { execute },
-        onInputResolved,
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toMatchObject({
+    const result = await prepared.execute({
+      runInput: { different: true },
+      completedNodeOutputs: [],
+      control: { kind: 'none' },
+      registry: { execute },
+      onInputResolved,
+      signal: new AbortController().signal,
+    });
+    expect(result).toMatchObject({
       kind: 'terminal_success',
       output: { sample: 'frozen' },
     });
+    expect(result).not.toHaveProperty('modelUsage');
     expect(execute).not.toHaveBeenCalled();
     expect(onInputResolved).not.toHaveBeenCalled();
   });
