@@ -155,7 +155,7 @@ describe('model catalog admission', () => {
 
   it.each([
     { type: 'array', items: { type: 'string' } },
-    { type: 'object', properties: { value: { $ref: '#/properties/other' } } },
+    { type: 'object', properties: { value: { $ref: '#' } } },
     {
       type: 'object',
       properties: { value: { type: 'string', pattern: '.*' } },
