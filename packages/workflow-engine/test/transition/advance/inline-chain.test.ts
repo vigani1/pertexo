@@ -419,7 +419,12 @@ describe('bounded coordinator inline advances', () => {
       }),
     );
   });
-  it('applies the retry policy and gives a due inline retry its own attempt number', async () => {
+  it.each([true, false])(
+    'preserves a delayed retry when resumed with inline=%s',
+    verifyDelayedRetry,
+  );
+
+  async function verifyDelayedRetry(inlineRetry: boolean) {
     let now = Date.parse(occurredAt);
     const fixture = await start(
       1,
@@ -465,7 +470,7 @@ describe('bounded coordinator inline advances', () => {
       ...fixture.base,
       occurredAt: retry.dueAt,
       checkpoint: first.checkpoint,
-      inline: fixture.inline,
+      ...(inlineRetry ? { inline: fixture.inline } : {}),
       observations: [
         {
           kind: 'due_at',
@@ -474,11 +479,32 @@ describe('bounded coordinator inline advances', () => {
         },
       ],
     });
-    expect(next.inlineAttempts).toMatchObject([
-      { kind: 'succeeded', attemptNumber: 2, output: { value: 11 } },
+    if (inlineRetry) {
+      expect(next.inlineAttempts).toMatchObject([
+        { kind: 'succeeded', attemptNumber: 2, output: { value: 11 } },
+      ]);
+      expect(next.attempts).toEqual([]);
+      expect(next.checkpoint.runStatus).toBe('succeeded');
+      return;
+    }
+
+    expect(next.inlineAttempts).toBeUndefined();
+    expect(next.attempts).toMatchObject([
+      { nodeId: 'step-1', attemptNumber: 2, admissionKind: 'retry' },
     ]);
-    expect(next.checkpoint.runStatus).toBe('succeeded');
-  });
+    const pending = await advanceWorkflow({
+      ...fixture.base,
+      occurredAt: retry.dueAt,
+      checkpoint: next.checkpoint,
+    });
+    expect(pending.attempts).toEqual([]);
+    expect(pending.checkpoint.invocations).toContainEqual(
+      expect.objectContaining({
+        invocationKey: retry.invocationKey,
+        attemptNumber: 2,
+      }),
+    );
+  }
 
   it('settles a run deadline crossed by a synchronous kernel as a timeout', async () => {
     let now = Date.parse(occurredAt);

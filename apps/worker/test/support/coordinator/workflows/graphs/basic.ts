@@ -1,3 +1,4 @@
+import { CORE_INLINE_DEFINITION_VERSION } from '@pertexo/workflow-model';
 import { edgesFromTuples, manualNode, setNode } from '../nodes.js';
 
 /** Manual, then Set, then Terminate: the linear proof workflow. */
@@ -117,7 +118,10 @@ export function parallelGraph() {
       setNode('right', 10),
       {
         id: 'merge',
-        definition: { key: 'core.merge', version: 1 },
+        definition: {
+          key: 'core.merge',
+          version: CORE_INLINE_DEFINITION_VERSION,
+        },
         position: { x: 30, y: 0 },
         configVersion: 1,
         config: {

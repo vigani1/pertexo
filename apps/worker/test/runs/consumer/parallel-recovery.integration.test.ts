@@ -79,10 +79,44 @@ describeIntegration('Parallel and Merge Redis-loss recovery', () => {
       await recovery.continueAfter(4);
       await recovery.executeNext('right');
       await recovery.continueAfter(5);
-      await recovery.executeNext('merge');
-      await recovery.continueAfter(6);
+      if (!coordinatorFixture.inlineSteps) {
+        await recovery.executeNext('merge');
+        await recovery.continueAfter(6);
+      }
       await recovery.executeNext('terminate');
-      await recovery.continueAfter(7);
+      await recovery.continueAfter(coordinatorFixture.inlineSteps ? 6 : 7);
+
+      expect(
+        await workerQuery<{
+          delivered: boolean;
+          fence_token: string;
+          output_ref: unknown;
+        }>(
+          `select node.output_ref, attempt.fence_token,
+                exists (select from app.outbox_events outbox
+                  where outbox.workspace_id=node.workspace_id and outbox.aggregate_id=attempt.id
+                    and outbox.job_name='execute-node-attempt') as delivered
+           from app.node_runs node
+           join app.node_attempts attempt on attempt.id=node.current_attempt_id
+          where node.workspace_id=$1 and node.workflow_run_id=$2 and node.node_id='merge'`,
+          [workspaceId, accepted.runId],
+        ),
+      ).toEqual([
+        expect.objectContaining({
+          delivered: !coordinatorFixture.inlineSteps,
+          fence_token: coordinatorFixture.inlineSteps ? '0' : '1',
+          output_ref: {
+            kind: 'inline',
+            value: {
+              branches: {
+                'branch-01': { value: 'left' },
+                'branch-02': { value: 'right' },
+              },
+              selectedBranchIds: ['branch-01', 'branch-02'],
+            },
+          },
+        }),
+      ]);
 
       const terminal = await workerQuery<{
         attempts: string;

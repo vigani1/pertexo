@@ -83,8 +83,11 @@ async function readExecution(api: Api, workspaceId: string, runId: string) {
     }>(
       `select id, invocation_key, to_jsonb(node) - array[
          'id','workspace_id','workflow_run_id','created_at','updated_at','started_at',
-         'completed_at','provider_idempotency_key','resume_at','retry_due_at','due_wakeup_at'
-       ] as logical from app.node_runs node
+         'completed_at','provider_idempotency_key','provider_dispatch_binding',
+         'resume_at','retry_due_at','due_wakeup_at'
+       ] || jsonb_build_object(
+         'provider_dispatch_kind', split_part(node.provider_dispatch_binding, ':', 1)
+       ) as logical from app.node_runs node
        where workspace_id=$1 and workflow_run_id=$2 order by invocation_key`,
       params,
     ),
@@ -108,14 +111,17 @@ async function readExecution(api: Api, workspaceId: string, runId: string) {
          'id','workspace_id','node_run_id','created_at','updated_at','started_at',
          'completed_at','lease_owner','lease_expires_at','dispatch_marked_at',
          'fence_token','provider_idempotency_key'
-       ] as logical from app.node_attempts attempt
+       ] || jsonb_build_object('dispatched', attempt.dispatch_marked_at is not null)
+         as logical from app.node_attempts attempt
        join app.node_runs node on node.id=attempt.node_run_id and node.workspace_id=attempt.workspace_id
        where node.workspace_id=$1 and node.workflow_run_id=$2
        order by node.invocation_key, attempt.attempt_number`,
       params,
     ),
     database.query<{ sequence: number; type: string; payload: unknown }>(
-      `select sequence, type, payload from app.run_events
+      `select sequence, type, payload - array[
+         'occurredAt','startedAt','completedAt','dueAt','retryDueAt','durationMillis','fenceToken'
+       ] as payload from app.run_events
        where workspace_id=$1 and workflow_run_id=$2 order by sequence`,
       params,
     ),
@@ -165,23 +171,11 @@ async function readExecution(api: Api, workspaceId: string, runId: string) {
   };
 }
 
-const timingFields = new Set([
-  'occurredAt',
-  'startedAt',
-  'completedAt',
-  'dueAt',
-  'retryDueAt',
-  'durationMillis',
-  'fenceToken',
-]);
-
 function normalize(value: unknown, ids: ReadonlyMap<string, string>): unknown {
   if (typeof value === 'string') return ids.get(value) ?? value;
   if (Array.isArray(value)) return value.map((item) => normalize(item, ids));
   if (value === null || typeof value !== 'object') return value;
   return Object.fromEntries(
-    Object.entries(value)
-      .filter(([key]) => !timingFields.has(key))
-      .map(([key, item]) => [key, normalize(item, ids)]),
+    Object.entries(value).map(([key, item]) => [key, normalize(item, ids)]),
   );
 }
