@@ -184,6 +184,10 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
         `--max-old-space-size=${String(heapMiB)}`,
       );
     }
+    assert.equal(
+      config.services.api.environment.LD_PRELOAD,
+      'libjemalloc.so.2',
+    );
     const api = parseApiConfig(config.services.api.environment);
     assert.deepEqual(api.identity.betterAuth.providers.google, {
       clientId: environment.AUTH_GOOGLE_CLIENT_ID,

@@ -66,7 +66,7 @@ COPY --from=build /workspace/THIRD_PARTY_NOTICES.txt /workspace/THIRD_PARTY_NOTI
 ENV NODE_ENV=production
 WORKDIR /workspace
 RUN apt-get update && apt-get install --yes --no-install-recommends \
-    libssl3 zlib1g libffi8 libbz2-1.0 liblzma5 tzdata \
+    libssl3 zlib1g libffi8 libbz2-1.0 liblzma5 tzdata libjemalloc2=5.3.0-1 \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=python-build --chown=0:0 /opt/pertexo-python /opt/pertexo-python
 # Debian's PCRE2 and Perl security fixes postdate the pinned Node base.
