@@ -1,6 +1,10 @@
 import { NodeAttemptHandlerStateError } from '../delivery/handler-state.errors.js';
 import { testStepDisposition } from '@pertexo/workflow-engine/server';
-import { compareOrdinal, WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import {
+  compareOrdinal,
+  isCoreMergeDefinition,
+  WORKFLOW_FAILURE_PORT,
+} from '@pertexo/workflow-model';
 import {
   hasCallbackMapping,
   inspectExpression,
@@ -67,8 +71,7 @@ function deriveUpstreamNodeOutputs(
   lease: NodeAttemptLease,
 ): PreparedNodeAttempt['upstreamNodeOutputs'] {
   // A Merge takes whichever branch arrived; it has no fixed upstream set.
-  if (node.definition.key === 'core.merge' && node.definition.version === 1)
-    return Object.freeze([]);
+  if (isCoreMergeDefinition(node.definition)) return Object.freeze([]);
   const sourceIds = new Set(
     graph.edges
       .filter(

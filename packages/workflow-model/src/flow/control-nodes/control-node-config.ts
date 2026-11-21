@@ -1,3 +1,7 @@
+import {
+  isCoreMergeDefinition,
+  isCoreSwitchDefinition,
+} from './control-node-definitions.js';
 import { mergeConfigSchema, type MergeConfig } from './merge.js';
 import { parallelConfigSchema, type ParallelConfig } from './parallel.js';
 import { switchConfigSchema, type SwitchConfig } from './switch.js';
@@ -23,27 +27,26 @@ export function inspectControlNodeConfig(
     config: unknown;
   }>,
 ): ControlNodeConfigInspection {
-  if (node.definition.version !== 1) return { kind: 'none' };
-  switch (node.definition.key) {
-    case 'core.switch': {
-      const parsed = switchConfigSchema.safeParse(node.config);
-      return parsed.success
-        ? { kind: 'valid', value: { kind: 'switch', config: parsed.data } }
-        : { kind: 'invalid', message: 'Switch config is invalid' };
-    }
-    case 'core.parallel': {
-      const parsed = parallelConfigSchema.safeParse(node.config);
-      return parsed.success
-        ? { kind: 'valid', value: { kind: 'parallel', config: parsed.data } }
-        : { kind: 'invalid', message: 'Parallel config is invalid' };
-    }
-    case 'core.merge': {
-      const parsed = mergeConfigSchema.safeParse(node.config);
-      return parsed.success
-        ? { kind: 'valid', value: { kind: 'merge', config: parsed.data } }
-        : { kind: 'invalid', message: 'Merge config is invalid' };
-    }
-    default:
-      return { kind: 'none' };
+  if (isCoreSwitchDefinition(node.definition)) {
+    const parsed = switchConfigSchema.safeParse(node.config);
+    return parsed.success
+      ? { kind: 'valid', value: { kind: 'switch', config: parsed.data } }
+      : { kind: 'invalid', message: 'Switch config is invalid' };
   }
+  if (isCoreMergeDefinition(node.definition)) {
+    const parsed = mergeConfigSchema.safeParse(node.config);
+    return parsed.success
+      ? { kind: 'valid', value: { kind: 'merge', config: parsed.data } }
+      : { kind: 'invalid', message: 'Merge config is invalid' };
+  }
+  if (
+    node.definition.key === 'core.parallel' &&
+    node.definition.version === 1
+  ) {
+    const parsed = parallelConfigSchema.safeParse(node.config);
+    return parsed.success
+      ? { kind: 'valid', value: { kind: 'parallel', config: parsed.data } }
+      : { kind: 'invalid', message: 'Parallel config is invalid' };
+  }
+  return { kind: 'none' };
 }

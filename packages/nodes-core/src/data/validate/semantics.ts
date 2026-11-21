@@ -1,14 +1,17 @@
-import { type JsonValue, resolveJsonPath } from '@pertexo/workflow-model';
+import type { JsonValue } from '@pertexo/workflow-model';
+import { CORE_VALIDATE_MAX_ISSUES } from './validate-limits.js';
+import { resolveJsonPath } from '@pertexo/workflow-model/pure';
 
-import { coreValidateIssueMessageByCode } from './issue-metadata.js';
 import {
-  CORE_VALIDATE_ISSUE_CODES,
-  CORE_VALIDATE_MAX_ISSUES,
-  type CoreValidateConfig,
-  type CoreValidateInput,
-  type CoreValidateIssue,
-  type CoreValidateOutput,
-  type CoreValidateRule,
+  coreValidateIssueMessageByCode,
+  coreValidateIssueCodes as CORE_VALIDATE_ISSUE_CODES,
+} from './issue-metadata.js';
+import type {
+  CoreValidateConfig,
+  CoreValidateInput,
+  CoreValidateIssue,
+  CoreValidateOutput,
+  CoreValidateRule,
 } from './validate.schemas.js';
 import { CoreValidateExecutionAbortedError } from './validate.errors.js';
 

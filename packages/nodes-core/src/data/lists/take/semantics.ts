@@ -3,7 +3,7 @@ import { checkCanceled } from '../selection.js';
 export function takeItems(
   config: CoreTakeConfig,
   input: CoreTakeInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   checkCanceled(signal);
   const items = input.items.slice(0, config.count);

@@ -1,7 +1,5 @@
-import {
-  isCoreMergeDefinition,
-  isCoreParallelDefinition,
-} from '../../control-nodes/core-definition-identities.js';
+import { isCoreMergeDefinition } from '@pertexo/workflow-model';
+import { isCoreParallelDefinition } from '../../control-nodes/core-definition-identities.js';
 import { configuredPairedParallelId } from '../../control-nodes/control-output-ports.js';
 import type { SchedulerState } from './policy.js';
 

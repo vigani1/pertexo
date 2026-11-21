@@ -10,7 +10,7 @@ interface SortEntry {
 export function sortItems(
   config: CoreSortConfig,
   input: CoreSortInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   const entries: SortEntry[] = [];
   for (const { item, value, ordinal } of projectItems(

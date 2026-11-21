@@ -13,8 +13,12 @@ export { CORE_NODE_EXECUTOR_REGISTRATIONS } from './catalog/executor-registratio
 export function createCoreNodeRegistry(): NodeRegistry {
   return createNodeRegistry({
     catalog: CORE_NODE_CATALOG,
-    definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
-    executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
+    definitions: [],
+    executors: [],
+    core: {
+      definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
+      executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
+    },
   });
 }
 

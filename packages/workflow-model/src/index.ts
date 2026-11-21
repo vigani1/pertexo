@@ -90,6 +90,12 @@ export {
 } from './flow/callbacks/callback-wait.js';
 export { remapCallbackReferences } from './flow/callbacks/references.js';
 export {
+  CORE_INLINE_DEFINITION_VERSION,
+  isCoreConditionDefinition,
+  isCoreMergeDefinition,
+  isCoreSwitchDefinition,
+} from './flow/control-nodes/control-node-definitions.js';
+export {
   inspectControlNodeConfig,
   type ControlNodeConfig,
 } from './flow/control-nodes/control-node-config.js';

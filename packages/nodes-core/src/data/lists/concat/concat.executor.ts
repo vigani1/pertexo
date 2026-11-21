@@ -1,3 +1,5 @@
+import { inlineCoreExecutor } from '../../../catalog/inline-registration.js';
+import { inlineConcat } from './concat-kernel.js';
 import type {
   NodeExecutionInvocation,
   NodeExecutorRegistration,
@@ -15,4 +17,8 @@ export const coreConcatExecutor: NodeExecutorRegistration = Object.freeze({
         invocation.signal,
       ),
     ),
+});
+
+export const coreConcatInlineExecutor = inlineCoreExecutor(coreConcatExecutor, {
+  executeInline: inlineConcat,
 });

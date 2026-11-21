@@ -11,7 +11,8 @@ import {
 } from './issue-metadata.js';
 
 export const CORE_VALIDATE_MAX_RULES = 64;
-export const CORE_VALIDATE_MAX_ISSUES = 16;
+import { CORE_VALIDATE_MAX_ISSUES } from './validate-limits.js';
+export { CORE_VALIDATE_MAX_ISSUES } from './validate-limits.js';
 const CORE_VALIDATE_MAX_PATH_BYTES = 512;
 const CORE_VALIDATE_MAX_PATH_SEGMENTS = 64;
 const CORE_VALIDATE_MAX_ENUM_VALUES = 32;
@@ -28,7 +29,7 @@ export const CORE_VALIDATE_VALUE_TYPES = Object.freeze([
 ] as const);
 const CORE_VALIDATE_VALUE_TYPE_SCHEMA = z.enum(CORE_VALIDATE_VALUE_TYPES);
 
-export const CORE_VALIDATE_ISSUE_CODES = coreValidateIssueCodes;
+export { coreValidateIssueCodes as CORE_VALIDATE_ISSUE_CODES };
 export const CORE_VALIDATE_ISSUE_CODE_VALUES = coreValidateIssueCodeValues;
 const CORE_VALIDATE_ISSUE_CODE_SCHEMA = z.enum(CORE_VALIDATE_ISSUE_CODE_VALUES);
 

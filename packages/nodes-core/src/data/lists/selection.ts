@@ -1,15 +1,12 @@
-import {
-  parseJsonPath,
-  resolveJsonPath,
-  type JsonValue,
-} from '@pertexo/workflow-model';
+import type { JsonValue } from '@pertexo/workflow-model';
+import { parseJsonPath, resolveJsonPath } from '@pertexo/workflow-model/pure';
 import {
   NodeExecutionAbortedError,
   NodeInputValidationError,
-} from '@pertexo/node-sdk/server';
+} from '@pertexo/node-sdk/pure';
 
-export function checkCanceled(signal: AbortSignal): void {
-  if (signal.aborted) throw new NodeExecutionAbortedError();
+export function checkCanceled(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new NodeExecutionAbortedError();
 }
 export function invalidInput(reason: string): never {
   throw new NodeInputValidationError(reason);
@@ -17,7 +14,7 @@ export function invalidInput(reason: string): never {
 export function* projectItems(
   items: readonly JsonValue[],
   path: string,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   // The registry admitted this path through collectionPathSchema.
   const segments = parseJsonPath(path) as readonly (string | number)[];

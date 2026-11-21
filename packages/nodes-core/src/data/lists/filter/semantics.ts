@@ -36,7 +36,7 @@ function matches(
 export function filterItems(
   config: CoreFilterConfig,
   input: CoreFilterInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   if (
     config.operator !== 'exists' &&

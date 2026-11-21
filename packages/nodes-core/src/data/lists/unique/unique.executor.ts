@@ -1,3 +1,5 @@
+import { inlineCoreExecutor } from '../../../catalog/inline-registration.js';
+import { inlineUnique } from './unique-kernel.js';
 import type {
   NodeExecutionInvocation,
   NodeExecutorRegistration,
@@ -15,4 +17,8 @@ export const coreUniqueExecutor: NodeExecutorRegistration = Object.freeze({
         invocation.signal,
       ),
     ),
+});
+
+export const coreUniqueInlineExecutor = inlineCoreExecutor(coreUniqueExecutor, {
+  executeInline: inlineUnique,
 });
