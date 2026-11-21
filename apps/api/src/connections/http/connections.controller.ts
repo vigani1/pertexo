@@ -1,3 +1,7 @@
+import {
+  admitConnectionCreate,
+  admitConnectionRotation,
+} from '../management/admit-credential.js';
 import { Controller, Req, UseInterceptors } from '@nestjs/common';
 import {
   connectionRoutes as routes,
@@ -71,7 +75,7 @@ export class ConnectionsController {
     return withRequestOperationSignal(request, (signal) =>
       this.createConnection.execute({
         ...serviceCaller(caller),
-        request: body,
+        request: admitConnectionCreate(body),
         idempotencyKey,
         signal,
       }),
@@ -85,11 +89,13 @@ export class ConnectionsController {
     @In()
     { params, body, idempotencyKey }: RouteInput<typeof routes.rotateSecret>,
   ) {
+    const { expectedProviderKey, ...admitted } = admitConnectionRotation(body);
     return withRequestOperationSignal(request, (signal) =>
       this.rotateSecret.execute({
         ...serviceCaller(caller),
         connectionId: params.connectionId,
-        request: body,
+        request: admitted,
+        expectedProviderKey,
         idempotencyKey,
         signal,
       }),

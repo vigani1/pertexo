@@ -1,31 +1,19 @@
-import { postgresCredentialSchema } from '@pertexo/contracts';
+import type { findConnectionDefinition } from '@pertexo/node-catalog';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 
-import {
-  signingKeyCredentialSchema,
-  httpHeadersCredentialSchema,
-  resendApiKeyCredentialSchema,
-  smtpCredentialSchema,
-  slackBotTokenCredentialSchema,
-} from '../connection-request.js';
-
-export function decodeCredential(plaintext: Uint8Array) {
+export function decodeCredential(
+  plaintext: Uint8Array,
+  definition: NonNullable<ReturnType<typeof findConnectionDefinition>>,
+) {
   try {
     const value: unknown = JSON.parse(
       new TextDecoder('utf-8', { fatal: true }).decode(plaintext),
     );
-    if (value !== null && typeof value === 'object' && 'type' in value) {
-      if (value.type === 'hmac_key')
-        return signingKeyCredentialSchema.parse(value);
-      if (value.type === 'slack_bot_token')
-        return slackBotTokenCredentialSchema.parse(value);
-      if (value.type === 'postgres')
-        return postgresCredentialSchema.parse(value);
-      if (value.type === 'smtp') return smtpCredentialSchema.parse(value);
-      if (value.type === 'resend_api_key')
-        return resendApiKeyCredentialSchema.parse(value);
-    }
-    return httpHeadersCredentialSchema.parse(value);
+    return {
+      credential: definition.schema.parse(value),
+      recipe: definition.test,
+      auth: definition.auth,
+    };
   } catch {
     throw new ConnectionSecretEncryptionError();
   }

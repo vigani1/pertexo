@@ -1,3 +1,4 @@
+import { RESEND_API_KEY_CONNECTION } from './connections.definition.js';
 import type {
   NodeArtifactRuntime,
   NodeVerifiedByteSource,
@@ -15,7 +16,7 @@ import {
   type ResendAttachment,
 } from './attachments/encode.js';
 
-export const RESEND_API_ENDPOINT = 'https://api.resend.com/emails' as const;
+export const RESEND_API_ENDPOINT = RESEND_API_KEY_CONNECTION.test.target;
 
 const successSchema = z.object({ id: z.uuid() }).strip();
 const RESEND_ERROR_NAME_CHARACTERS = 128;

@@ -116,3 +116,6 @@ export { HTTP_MODULE } from './http/http.module.js';
 export { SLACK_MODULE } from './slack/slack.module.js';
 export { DATABASE_MODULE } from './database/database.module.js';
 export { EMAIL_MODULE } from './email/email.module.js';
+export { SIGNING_MODULE } from './signing/signing.module.js';
+
+export type { ConnectionDefinition } from './providers/connection-definition.js';

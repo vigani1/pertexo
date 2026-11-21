@@ -87,6 +87,7 @@ export async function inspectImport(
       actorId: input.actorId,
       manifest: input.manifest,
       bindings: input.bindings,
+      catalog,
     })),
   );
   const hard = issues.filter(

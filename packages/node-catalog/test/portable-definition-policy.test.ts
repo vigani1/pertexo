@@ -42,6 +42,7 @@ describe('registered portable definition policy', () => {
         slot: 'http_headers',
         providerKey: 'http',
         authType: 'http_headers',
+        acceptedAuthTypes: ['http_headers', 'oauth2'],
         optional: true,
       },
     ]);
@@ -152,6 +153,7 @@ describe('registered portable definition policy', () => {
         slot: 'resend_api_key',
         providerKey: 'email',
         authType: 'resend_api_key',
+        acceptedAuthTypes: ['resend_api_key', 'smtp'],
         optional: false,
       },
     ]);
@@ -162,6 +164,7 @@ describe('registered portable definition policy', () => {
         slot: 'slack_bot_token',
         providerKey: 'slack',
         authType: 'slack_bot_token',
+        acceptedAuthTypes: ['slack_bot_token'],
         optional: false,
       },
     ]);

@@ -1,6 +1,7 @@
 import {
   type PortableConnectionBinding,
   type WorkflowPortableManifest,
+  type WorkflowPortabilityCatalog,
   connectionFitsSlot,
 } from '@pertexo/workflow-model';
 import { and, asc, eq, inArray } from 'drizzle-orm';
@@ -37,10 +38,12 @@ export async function inspectPortableConnections(
     actorId,
     manifest,
     bindings,
+    catalog,
   }: Readonly<{
     actorId: string;
     manifest: WorkflowPortableManifest;
     bindings: readonly PortableConnectionBinding[];
+    catalog: WorkflowPortabilityCatalog;
   }>,
 ) {
   const ids = [
@@ -81,14 +84,24 @@ export async function inspectPortableConnections(
       slot,
     ]),
   );
+  const policies = catalog.definitions.flatMap(({ slots }) => slots);
   return bindings.flatMap((binding) => {
     const row = rows.get(binding.connectionId);
     const slot = slots.get(`${binding.nodeId}\u0000${binding.slot}`);
+    const policy =
+      slot === undefined
+        ? undefined
+        : policies.find(
+            (candidate) =>
+              candidate.slot === slot.slot &&
+              candidate.providerKey === slot.providerKey &&
+              candidate.authType === slot.authType,
+          );
     const connectionUnavailable =
       row === undefined ||
       slot === undefined ||
       row.status !== 'active' ||
-      !connectionFitsSlot(row, slot);
+      !connectionFitsSlot(row, policy ?? slot);
     if (connectionUnavailable)
       return [
         {

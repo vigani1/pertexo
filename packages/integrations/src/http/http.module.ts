@@ -1,3 +1,7 @@
+import {
+  HTTP_HEADERS_CONNECTION,
+  OAUTH2_CONNECTION,
+} from './connections.definition.js';
 import type { IntegrationModule } from '../providers/integration-module.js';
 import {
   HTTP_REQUEST_DEFINITION_REGISTRATION,
@@ -9,6 +13,7 @@ import { HTTP_POLL_DEFINITION_REGISTRATION } from './polling/polling.definition.
 export const HTTP_MODULE = {
   key: 'http',
   presentation: { name: 'HTTP request', icon: 'globe', group: 'action' },
+  connections: [HTTP_HEADERS_CONNECTION, OAUTH2_CONNECTION],
   steps: [
     { registration: HTTP_REQUEST_DEFINITION_REGISTRATION },
     {

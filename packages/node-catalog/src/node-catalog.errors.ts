@@ -19,7 +19,20 @@ export class PortableConnectionSlotPolicyError extends Error {
 export class IntegrationRegistryError extends Error {
   public override readonly name = 'IntegrationRegistryError';
 
-  public constructor(kind: 'module' | 'step', key: string) {
-    super(`Duplicate integration ${kind} key: ${key}`);
+  public constructor(
+    kind:
+      | 'module'
+      | 'step'
+      | 'connection'
+      | 'slot'
+      | 'slot reference'
+      | 'secret default',
+    key: string,
+  ) {
+    super(
+      kind === 'slot reference' || kind === 'secret default'
+        ? `Invalid integration ${kind}: ${key}`
+        : `Duplicate integration ${kind} key: ${key}`,
+    );
   }
 }

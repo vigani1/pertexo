@@ -10,3 +10,9 @@ export {
   type PlatformNodeDefinition,
 } from './catalog.js';
 export { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js';
+
+export {
+  connectionFormCatalog,
+  findConnectionDefinition,
+  isRegisteredProvider,
+} from './integration-modules.js';

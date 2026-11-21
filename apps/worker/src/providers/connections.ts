@@ -1,7 +1,5 @@
-import {
-  CONNECTION_AUTH_TYPE,
-  connectionFitsSlot,
-} from '@pertexo/workflow-model';
+import { CONNECTION_AUTH_TYPE } from '@pertexo/workflow-model';
+import { findConnectionDefinition } from '@pertexo/node-catalog';
 import {
   ConnectionOAuth2NotConnectedError,
   ConnectionOAuth2RevokedError,
@@ -176,11 +174,13 @@ export function createProviderConnectionRuntimeFactory(
             throw new ProviderCredentialInvalidError();
           throw error;
         }
+        const definition = findConnectionDefinition(
+          resolved.connection.authType,
+          resolved.connection.providerKey,
+        );
         if (
-          !connectionFitsSlot(resolved.connection, {
-            providerKey: input.expectedProviderKey,
-            authType: input.expectedAuthType,
-          })
+          definition?.slot.key !== input.expectedAuthType ||
+          definition.providerKey !== input.expectedProviderKey
         )
           throw new ProviderCredentialInvalidError();
         return openSecret(encryption, context.workspaceId, input, resolved);

@@ -10,7 +10,7 @@ import { postgresCredentialSchema } from './postgres.js';
 import { oauth2CredentialSchema } from './oauth2-connections.js';
 import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
-const CONNECTION_CREDENTIALS_BOUNDS = Object.freeze({
+export const CONNECTION_CREDENTIALS_BOUNDS = Object.freeze({
   botTokenMinimumCharacters: 10,
   botTokenCharacters: 512,
   apiKeyMinimumCharacters: 8,
@@ -215,3 +215,7 @@ export const connectionCredentialSchema = z.discriminatedUnion('type', [
   postgresCredentialSchema,
   oauth2CredentialSchema,
 ]);
+
+export type ParsedConnectionCredential = z.output<
+  typeof connectionCredentialSchema
+>;

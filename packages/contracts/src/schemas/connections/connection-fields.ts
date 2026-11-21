@@ -9,7 +9,7 @@ const CONNECTION_FIELDS_BOUNDS = Object.freeze({
 
 export const connectionIdentifierSchema = z.uuid();
 export const connectionSecretVersionIdentifierSchema = z.uuid();
-const connectionProviderKeySchema = z.enum([
+export const connectionProviderKeySchema = z.enum([
   'http',
   'slack',
   'email',

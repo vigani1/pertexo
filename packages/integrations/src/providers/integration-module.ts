@@ -1,3 +1,4 @@
+import type { ConnectionDefinition } from './connection-definition.js';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { NodeCatalog } from '@pertexo/node-sdk';
 import type { NodeDefinitionRegistration } from '@pertexo/node-sdk/server';
@@ -13,5 +14,6 @@ export interface IntegrationModule {
     registration: NodeDefinitionRegistration;
     presentation?: Partial<IntegrationPresentation>;
   }>[];
+  readonly connections?: readonly ConnectionDefinition[];
   readonly policies?: NodeCatalog['policies'];
 }
