@@ -1,3 +1,5 @@
+import { testStepDisposition } from '../testing/policy.js';
+import { selectReadyAdmissions } from './plan.js';
 import {
   NodeExecutorFailure,
   type InlineNodeRegistry,
@@ -109,3 +111,46 @@ export type PreparedInlineInvocation = Extract<
   Awaited<ReturnType<typeof prepareInlineInvocation>>,
   { kind: 'prepared' }
 >;
+
+type InlineFrontier =
+  | Readonly<{ kind: 'inline'; candidate: Candidate }>
+  | Readonly<{ kind: 'delivery'; attemptKeys: readonly string[] }>;
+
+export function inlineFrontier(chain: Chain): InlineFrontier {
+  const { input, state } = chain;
+  const keys = selectReadyAdmissions(
+    state,
+    input.maximumAdmissions,
+    input.hasExecutionSlot ?? true,
+  );
+  const [first] = keys;
+  const candidate =
+    first === undefined ? undefined : inlineCandidate(chain, first);
+  if (candidate !== undefined) return { kind: 'inline', candidate };
+  // Deliver attempt-class work at this frontier. Its outcomes wake any pure
+  // siblings left ready while the frontier is outstanding.
+  return {
+    kind: 'delivery',
+    attemptKeys: keys.filter(
+      (key) => inlineCandidate(chain, key) === undefined,
+    ),
+  };
+}
+
+function inlineCandidate(
+  { input, options, state, nodes }: Chain,
+  key: string,
+): Candidate | undefined {
+  const invocation = state.invocations.get(key);
+  const node =
+    invocation === undefined ? undefined : nodes.get(invocation.nodeId);
+  if (
+    node === undefined ||
+    invocation === undefined ||
+    !options.registry.canExecuteInline(node.definition) ||
+    (input.test !== undefined &&
+      testStepDisposition(node, input.test).kind !== 'execute')
+  )
+    return undefined;
+  return { invocation, node };
+}
