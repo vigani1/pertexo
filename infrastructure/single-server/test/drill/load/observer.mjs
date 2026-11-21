@@ -149,6 +149,16 @@ const databaseState = (server) =>
       'runs', (select json_object_agg(status, count) from (select status, count(*) from app.workflow_runs group by status) s),
       'bytes', pg_database_size(current_database()),
       'connections', (select count(*) from pg_stat_activity where datname = current_database()),
+      'lockWaits', (select coalesce(json_object_agg(operation, count), '{}') from (
+        select case
+          when query like '%lock_workspace_run_admission%' then 'workspace fence'
+          when query like '%workflow_run_active_capacity_available%' then 'active capacity'
+          when query like '%insert into%workflow_runs%' then 'insert run'
+          when query like '%update%workflow_runs%' then 'update run'
+          else wait_event end as operation, count(*)
+        from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock'
+        group by 1
+      ) waits),
       'tables', (select json_object_agg(relname, json_build_object(
         'live', n_live_tup, 'dead', n_dead_tup,
         'autovacuums', autovacuum_count, 'autoanalyzes', autoanalyze_count,
@@ -429,6 +439,14 @@ export function summarizeSamples(samples, since) {
       .filter(([key]) => !key.endsWith(':active'))
       .reduce((sum, [, size]) => sum + size, 0);
     row.bullWaitingMax = Math.max(row.bullWaitingMax ?? 0, bullDepth);
+    row.coordinatorWaitingMax = Math.max(
+      row.coordinatorWaitingMax ?? 0,
+      sample.redis.queues['workflow-coordinator:wait'] ?? 0,
+    );
+    row.lockWaitSamples ??= {};
+    for (const [operation, count] of Object.entries(sample.database.lockWaits))
+      row.lockWaitSamples[operation] =
+        (row.lockWaitSamples[operation] ?? 0) + count;
     for (const [service, stat] of Object.entries(sample.inside ?? {})) {
       row.inside ??= {};
       const kept = row.inside[service];

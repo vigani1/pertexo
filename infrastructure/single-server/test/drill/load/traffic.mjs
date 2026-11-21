@@ -7,6 +7,7 @@ import {
   provisionWebhook,
   publishWorkflow,
 } from '../support/product.mjs';
+import { QUALIFICATION_SET_NODE_ID } from './inline-qualification.mjs';
 import { TARGET_ORIGIN } from './stack.mjs';
 
 // What people and outside systems do to the product during the load, through
@@ -31,19 +32,27 @@ const CALLBACK_DELAY_MILLIS = 5_000;
 const WAIT_SECONDS = 60;
 const INLINE_SET_VERSION = 2;
 
+function setAfter() {
+  const step = node(
+    QUALIFICATION_SET_NODE_ID,
+    'core.set',
+    {},
+    {
+      value: { kind: 'literal', value: 1 },
+    },
+  );
+  return {
+    ...step,
+    definition: { ...step.definition, version: INLINE_SET_VERSION },
+  };
+}
+
 /** The workflows a small team runs, published in one workspace. */
 export async function publishTeamWorkflows(client, workspaceId) {
   const publish = (name, nodes, edges) =>
     publishWorkflow(client, workspaceId, {
       name,
-      nodes: nodes.map((step) =>
-        step.definition.key === 'core.set'
-          ? {
-              ...step,
-              definition: { ...step.definition, version: INLINE_SET_VERSION },
-            }
-          : step,
-      ),
+      nodes,
       edges,
     });
   const hook = async (name, nodes, edges) =>
@@ -88,9 +97,9 @@ export async function publishTeamWorkflows(client, workspaceId) {
       'Timed wait',
       [
         node('wait', 'core.wait', { durationSeconds: WAIT_SECONDS }),
-        node('after', 'core.set', {}, { value: { kind: 'literal', value: 1 } }),
+        setAfter(),
       ],
-      [edge('second', 'wait', 'after')],
+      [edge('second', 'wait', QUALIFICATION_SET_NODE_ID)],
     ),
     approval: await manual(
       'Approval',
@@ -99,9 +108,9 @@ export async function publishTeamWorkflows(client, workspaceId) {
           title: 'Load approval',
           allowStarterToDecide: true,
         }),
-        node('after', 'core.set', {}, { value: { kind: 'literal', value: 1 } }),
+        setAfter(),
       ],
-      [port('second', 'approve', 'approved', 'after')],
+      [port('second', 'approve', 'approved', QUALIFICATION_SET_NODE_ID)],
     ),
     callback: await manual(
       'Callback',
@@ -138,9 +147,9 @@ export async function publishTeamWorkflows(client, workspaceId) {
           intervalMinutes: 1,
           misfirePolicy: 'catch_up_once',
         }),
-        node('after', 'core.set', {}, { value: { kind: 'literal', value: 1 } }),
+        setAfter(),
       ],
-      [edge('first', 'tick', 'after')],
+      [edge('first', 'tick', QUALIFICATION_SET_NODE_ID)],
     ),
   };
 }
@@ -155,7 +164,7 @@ const TRANSFORM = {
 
 /**
  * The worker's heaviest everyday work: a webhook fetches a page of about
- * 40 KiB from an outside API and Code transforms it, in JavaScript or Python.
+ * 40 KiB from an outside API, Code transforms it, and a pure step follows.
  */
 export async function publishFetchAndTransformHooks(client, workspaceId) {
   const hooks = {};
@@ -181,10 +190,12 @@ export async function publishFetchAndTransformHooks(client, workspaceId) {
             { code: TRANSFORM[language], language },
             { page: { kind: 'node_output', nodeId: 'fetch', path: '$' } },
           ),
+          setAfter(),
         ],
         edges: [
           edge('first', 'hook', 'fetch'),
           edge('second', 'fetch', 'transform'),
+          edge('third', 'transform', QUALIFICATION_SET_NODE_ID),
         ],
       }),
     );
@@ -197,11 +208,8 @@ export async function publishLightHook(client, workspaceId) {
     client,
     await publishWorkflow(client, workspaceId, {
       name: 'Webhook only',
-      nodes: [
-        node('hook', 'core.webhook'),
-        node('after', 'core.set', {}, { value: { kind: 'literal', value: 1 } }),
-      ],
-      edges: [edge('first', 'hook', 'after')],
+      nodes: [node('hook', 'core.webhook'), setAfter()],
+      edges: [edge('first', 'hook', QUALIFICATION_SET_NODE_ID)],
     }),
   );
 }

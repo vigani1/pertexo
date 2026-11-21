@@ -232,3 +232,30 @@ slower. The inline-on worker-memory job exceeded the 30 MiB/h growth limit
 and recorded one failed provider call. These load comparisons use one run
 per mode on separate hosted runners. **The load gate failed, so inline
 execution stays off by default.**
+
+### Follow-up diagnostics
+
+The original overload flood used a v1 Set step. The worker-memory
+traffic used only Webhook, HTTP and Code steps. In both scenarios, the
+coordinator setting could vary without the hot path executing an inline
+kernel. The steady mix did exercise versioned Set steps. The revised
+load fixtures pin the flood's Set to v2 and add the same Set after
+both fetch-and-Code workflows. Every load job checks the attempt fence
+tokens after drain to confirm which execution path actually ran.
+
+The original worker-memory report shows a step change in glibc arena RSS
+from 148 MiB at minute 45 to 197 MiB at minute 50. The arena count stayed
+at 13 and the V8 heap-used trend was 0.5 MiB/h. With the setting off,
+arena RSS stayed near 147–148 MiB from minute 5 onward. The arena
+measurements locate the growth in native memory. They do not distinguish
+live allocations from freed memory held by the allocator. The one failed
+provider call was a retry exhaustion in the intentionally flaky HTTP
+scenario. [Original inline-on report](https://github.com/vigani1/pertexo/actions/runs/44898908274)
+and [original inline-off report](https://github.com/vigani1/pertexo/actions/runs/44898961824).
+
+PostgreSQL takes `FOR SHARE` on the workspace and entitlement rows for
+both admission and coordinator advances. In the coordinator crash test,
+the store accepted another run in the same workspace while the child was
+paused inside its second inline invocation. The load report now includes
+sampled PostgreSQL lock waits and coordinator queue depth to track
+contention outside that direct shared-lock interaction.

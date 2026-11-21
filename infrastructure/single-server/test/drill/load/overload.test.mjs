@@ -3,6 +3,7 @@ import { after, before, describe, it } from 'node:test';
 import { createWorkspace } from '../support/product.mjs';
 import { createReport } from '../support/simulation-report.mjs';
 import { destroyServer } from '../support/server.mjs';
+import { verifySetExecution } from './inline-qualification.mjs';
 import {
   checkRuns,
   percentile,
@@ -325,6 +326,10 @@ describe('the minimum-size stack pushed past its capacity', () => {
     });
     assert.deepEqual(runs.stranded, []);
     assert.deepEqual(runs.failures, {}, JSON.stringify(runs.outcomes));
+  });
+
+  it('executes Set in the selected mode', async () => {
+    await verifySetExecution(server, record);
   });
 
   it('kills and restarts nothing', async () => {
