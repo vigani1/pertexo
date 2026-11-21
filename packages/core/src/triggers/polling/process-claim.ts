@@ -7,7 +7,6 @@ import {
   materializedPollConfigSchema,
   POLL_MAX_ITEMS,
   POLL_MAX_SEEN_KEYS,
-  workflowGraphSchema,
 } from '@pertexo/workflow-model';
 import { lockWorkspaceRunAdmission } from '../../shared/access/workspace-fence.repository.js';
 import {
@@ -22,6 +21,7 @@ import {
   WorkflowAlreadyRunningError,
   WorkspaceRunQuotaExceededError,
 } from '../../runs/commands/acceptance/run-admission.errors.js';
+import { triggerGraphSchema } from '../reconciliation/projection.js';
 import { releaseClaims } from '../schedules/retire.js';
 import { admissionRetrySeconds } from '../schedules/retirement-plan.js';
 import type {
@@ -69,7 +69,7 @@ export async function processPollClaim(
       materializedPollConfigSchema.parse(observation.config),
     );
     const graph = decodeStoredValue(() =>
-      workflowGraphSchema.parse(observation.graph),
+      triggerGraphSchema.parse(observation.graph),
     );
     const node = graph.nodes.find(({ id }) => id === observation.nodeId);
     if (node === undefined) throw new PollDefinitionMissingError();
