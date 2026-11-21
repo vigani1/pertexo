@@ -143,20 +143,20 @@ gets `503` with `Retry-After`. The J1 per-service caps above do not hold this ho
 and the file store at 256 MiB were killed, and Caddy at 32 MiB restarted under a
 flood. Do not cap those services that tightly.
 
-The worker does not get `MALLOC_ARENA_MAX`, because it would not help. At its
-busiest on the minimum server (webhooks that fetch a 40 KiB page and transform
-it in JavaScript or Python, a flaky API with retries, about 60 runs in flight),
-its RSS held at 410–454 MiB of its 512 MiB cap over four hours, against 200 MiB
-idle. Of that, the V8 heap was 140–200 MiB, external buffers 5–15 MiB and code
-and libraries 62 MiB. glibc's allocations held about 165 MiB, against 27 MiB
-idle. These are live allocations, not freed memory held back: with
-`MALLOC_ARENA_MAX=2` they moved from 12 arenas into the main heap and one arena,
-and RSS stayed at 399–438 MiB over three hours. Nothing grew within an hour. That
-margin was too thin at the old 512 MiB cap: in one of four hours the kernel
-killed the worker and the step it was running failed as interrupted, because
-`WORKER_MAX_RSS_BYTES` equalled the cap and the worker's own drain never acted
-first. The worker now has 768 MiB and drains at 640 MiB. The Code runner's manager stayed at 82–117 MiB of
-its 1,872 MiB ceiling.
+The worker also preloads the same jemalloc library through Compose. At the
+minimum host size the worker has a 768 MiB cap and drains at 640 MiB. The
+allocator change keeps freed pages from building up under mixed Code, HTTP
+and pure-step work. Limiting glibc to two arenas moved the growth into its main
+heap. A trim after drain on the stock glibc build returned 214 MiB of RSS while
+the committed V8 heap stayed at 172 MiB. The trim ran only in the load drill.
+[Stock glibc trim](https://github.com/vigani1/pertexo/actions/runs/44912691479).
+
+Before inline qualification, a four-hour run of the worker's Code and HTTP
+mix held at 410–454 MiB RSS. The 512 MiB container cap used at the time gave
+too little headroom. In one of four hours the kernel killed the worker before
+its drain threshold could take effect, and the step it was running failed as
+interrupted. The Code runner's manager stayed at 82–117 MiB of its 1,872 MiB
+ceiling.
 
 A five-hour soak at the same load with the 768 MiB cap showed worker RSS growth
 slowing from 15.3 MiB/h in the first hour to 1.6 MiB/h in the middle three hours
