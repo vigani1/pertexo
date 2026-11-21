@@ -101,8 +101,8 @@ export const connections = appSchema.table(
   },
   (table): PgTableExtraConfigValue[] => [
     check(
-      'connections_auth_type_valid',
-      sql`((auth_type)::text = ANY (ARRAY[('hmac_key'::character varying)::text, ('http_headers'::character varying)::text, ('slack_bot_token'::character varying)::text, ('resend_api_key'::character varying)::text, ('smtp'::character varying)::text, ('postgres'::character varying)::text, ('oauth2'::character varying)::text]))`,
+      'connections_auth_type_format',
+      sql`((auth_type)::text ~ '^[a-z][a-z0-9_]*$'::text)`,
     ),
     check(
       'connections_error_code_format',

@@ -64,6 +64,13 @@
       "when": 1795210406399,
       "tag": "0008_poll_pause",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795228222877,
+      "tag": "0009_connection_auth_key",
+      "breakpoints": true
     }
   ]
 }
