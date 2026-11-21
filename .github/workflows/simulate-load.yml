@@ -153,7 +153,10 @@ jobs:
         run: |
           { echo '### Kernel OOM log'; echo '```'
             sudo dmesg --ctime | grep -iE 'out of memory|oom-kill|killed process' | tail -40 || true
-            echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$LOAD_HOST_CGROUP_PATH" ]; then
+              cat "$LOAD_HOST_CGROUP_PATH/memory.events.local"
+            fi
+            echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Summarize what the load showed
         if: always()
         run: |
