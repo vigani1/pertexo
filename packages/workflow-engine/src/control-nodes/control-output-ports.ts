@@ -1,4 +1,5 @@
 import {
+  isCoreConditionDefinition,
   pendingTaskOutputPorts,
   workflowControlOutputKind,
   type ControlNodeConfig,
@@ -18,11 +19,7 @@ export function configuredBranchOutputPorts(
   if (taskPorts !== undefined)
     return taskPorts.length > 1 ? taskPorts : undefined;
   if (workflowControlOutputKind(node.definition) !== 'branch') return undefined;
-  if (
-    node.definition?.key === 'core.condition' &&
-    node.definition.version === 1
-  )
-    return ['false', 'true'];
+  if (isCoreConditionDefinition(node.definition)) return ['false', 'true'];
   if (node.control?.kind !== 'switch') return undefined;
   return [...node.control.config.cases.map(({ id }) => id), 'default'];
 }

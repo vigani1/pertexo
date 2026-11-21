@@ -2,6 +2,7 @@ import { expect } from 'vitest';
 import { z } from 'zod';
 import type { Pool } from 'pg';
 import { workflowGraphSchema } from '@pertexo/contracts';
+import { CORE_INLINE_DEFINITION_VERSION } from '@pertexo/workflow-model';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import {
   composeExecutableCatalog,
@@ -52,11 +53,15 @@ async function readVersion(
     checksum: row.checksum,
     catalog: composeExecutableCatalog(PLATFORM_NODE_CATALOG),
   });
-  expect(
-    executable.envelope.graph.nodes.every(
-      (node) => node.definition.version === 1 && node.executor.version === 1,
-    ),
-  ).toBe(true);
+  for (const node of executable.envelope.graph.nodes) {
+    const latest = PLATFORM_NODE_CATALOG.definitions.findLast(
+      ({ definition }) => definition.key === node.definition.key,
+    );
+    if (latest === undefined)
+      throw new Error('Authored transform definition missing from the catalog');
+    expect(node.definition).toEqual(latest.definition);
+    expect(node.executor).toEqual(latest.executor);
+  }
   return workflowGraphSchema.parse(row.graph_json);
 }
 
@@ -183,7 +188,7 @@ export async function verifyTransformEvidence(
   expect(dateGraph.nodes).toHaveLength(1);
   expect(dateGraph.nodes[0]).toMatchObject({
     id: date.dateId,
-    definition: { key: 'core.date', version: 1 },
+    definition: { key: 'core.date', version: CORE_INLINE_DEFINITION_VERSION },
     config: { operation: 'convert_timezone', timeZone: 'Europe/Paris' },
     inputMappings: {
       value: {

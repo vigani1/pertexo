@@ -1,3 +1,4 @@
+import { isCoreMergeDefinition } from '@pertexo/workflow-model';
 import { isHumanTaskDefinition } from '@pertexo/workflow-model';
 import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
 
@@ -12,7 +13,7 @@ import {
   configuredBranchOutputPorts,
   configuredParallelOutputPorts,
 } from '../control-nodes/control-output-ports.js';
-import { isCoreMergeDefinition } from '../control-nodes/core-definition-identities.js';
+
 import {
   exactKeys,
   operationError,

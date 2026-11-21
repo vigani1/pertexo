@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
+import { CORE_INLINE_DEFINITION_VERSION } from '@pertexo/workflow-model';
+import { acceptFixtureRun } from '../../support/coordinator/runs/accept.js';
+import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
+import { linearNodeFacts, logicalNodeFact } from './linear-node-facts.js';
+import { linearGraph } from '../../support/coordinator/workflows/graphs/basic.js';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
@@ -17,7 +23,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
 import { coordinatorFixture } from '../../support/coordinator/consumer.js';
 import {
-  acceptRun,
   waitForAttemptOutbox,
   waitForCoordinatorOutbox,
 } from '../../support/coordinator/runs.js';
@@ -34,17 +39,49 @@ const {
   waitFor,
   workerQuery,
   workerUrl,
-  workflowVersionId,
   workspaceId,
 } = coordinatorFixture;
 const describeIntegration = enabled ? describe : describe.skip;
 
 describeIntegration('Linear node execution resilience', () => {
-  beforeAll(setup, 60_000);
+  const workflowId = randomUUID();
+  const workflowVersionId = randomUUID();
+  beforeAll(async () => {
+    await setup();
+    const graph = linearGraph();
+    await insertCompiledWorkflow(coordinatorFixture.ownerQuery, {
+      actorId: coordinatorFixture.actorId,
+      workspaceId,
+      identity: { workflowId, workflowVersionId },
+      graph: {
+        ...graph,
+        nodes: graph.nodes.map((node) =>
+          node.definition.key === 'core.set'
+            ? {
+                ...node,
+                definition: {
+                  key: node.definition.key,
+                  version: CORE_INLINE_DEFINITION_VERSION,
+                },
+              }
+            : node,
+        ),
+      },
+      name: 'Linear execution parity',
+      catalog: PLATFORM_NODE_CATALOG,
+    });
+  }, 60_000);
   afterAll(restoreServicesAndClose);
 
-  it('executes Manual through Set/Map to Terminate across durable coordinator continuations', async () => {
-    const accepted = await acceptRun();
+  it.each([false, true])('preserves run history (inline=%s)', verifyHistory);
+
+  async function verifyHistory(inlineSteps: boolean) {
+    const accepted = await acceptFixtureRun({
+      workflowId,
+      workflowVersionId,
+      iterationBudget: 0,
+      runInput: { name: 'Ada' },
+    });
     const database = parseDatabaseConfig({
       connectionString: databaseUrl(workerUrl),
       max: 6,
@@ -67,7 +104,7 @@ describeIntegration('Linear node execution resilience', () => {
       }),
       database,
       maximumAdmissions: 1,
-      inlineSteps: coordinatorFixture.inlineSteps,
+      inlineSteps,
       redisUrl,
     });
     const attempts = await testNodeAttemptRuntime(
@@ -153,7 +190,10 @@ describeIntegration('Linear node execution resilience', () => {
         ).toContainEqual({ kind: 'resync' });
       });
 
-      for (const expectedNodeId of ['manual', 'set', 'terminate'] as const) {
+      const deliveredNodes = inlineSteps
+        ? ['manual', 'terminate']
+        : ['manual', 'set', 'terminate'];
+      for (const expectedNodeId of deliveredNodes) {
         const attempt = await waitForAttemptOutbox(
           accepted.runId,
           attemptOutboxes,
@@ -249,7 +289,8 @@ describeIntegration('Linear node execution resilience', () => {
           ),
         (rows) => rows[0]?.status === 'succeeded',
       );
-      expect(terminal[0]?.revision).toBe(4);
+      const revision = inlineSteps ? 3 : 4;
+      expect(terminal[0]?.revision).toBe(revision);
       expect(terminal[0]?.event_types).toEqual([
         'run.queued',
         'run.started',
@@ -270,12 +311,21 @@ describeIntegration('Linear node execution resilience', () => {
       const nodeFacts = await workerQuery<{
         attempt_id: string;
         attempt_status: string;
+        delivered: boolean;
+        fence_token: string;
+        dispatch_marked_at: string | null;
         node_id: string;
         node_status: string;
         output_ref: unknown;
       }>(
         `select node.node_id,node.status node_status,node.output_ref,
-                  attempt.id attempt_id,attempt.status attempt_status
+                  attempt.id attempt_id,attempt.status attempt_status,attempt.fence_token,
+                  attempt.dispatch_marked_at,
+                  exists (
+                    select from app.outbox_events outbox
+                    where outbox.workspace_id=node.workspace_id and outbox.aggregate_id=attempt.id
+                      and outbox.job_name='execute-node-attempt'
+                  ) as delivered
            from app.node_runs node
            join app.node_attempts attempt
              on attempt.workspace_id=node.workspace_id
@@ -284,50 +334,18 @@ describeIntegration('Linear node execution resilience', () => {
            order by case node.node_id when 'manual' then 1 when 'set' then 2 else 3 end`,
         [workspaceId, accepted.runId],
       );
-      expect(
-        nodeFacts.map((fact) => ({
-          attempt_status: fact.attempt_status,
-          node_id: fact.node_id,
-          node_status: fact.node_status,
-          output_ref: fact.output_ref,
-        })),
-      ).toEqual([
-        {
-          attempt_status: 'succeeded',
-          node_id: 'manual',
-          node_status: 'succeeded',
-          output_ref: {
-            kind: 'inline',
-            value: { name: 'Ada' },
-          },
-        },
-        {
-          attempt_status: 'succeeded',
-          node_id: 'set',
-          node_status: 'succeeded',
-          output_ref: {
-            kind: 'inline',
-            value: {
-              fromRun: 'Ada',
-              literal: 1,
-            },
-          },
-        },
-        {
-          attempt_status: 'succeeded',
-          node_id: 'terminate',
-          node_status: 'succeeded',
-          output_ref: {
-            kind: 'inline',
-            value: {
-              result: {
-                fromRun: 'Ada',
-                literal: 1,
-              },
-            },
-          },
-        },
-      ]);
+      expect(nodeFacts.map(logicalNodeFact)).toEqual(linearNodeFacts);
+      expect(nodeFacts.filter(({ delivered }) => !delivered)).toEqual(
+        inlineSteps
+          ? [
+              expect.objectContaining({
+                node_id: 'set',
+                fence_token: '0',
+                dispatch_marked_at: null,
+              }),
+            ]
+          : [],
+      );
       for (const fact of nodeFacts)
         expect(fact.attempt_id).toMatch(
           /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
@@ -337,7 +355,7 @@ describeIntegration('Linear node execution resilience', () => {
       );
       expect(terminal[0]?.scheduler_state).toEqual({
         workflowVersionId,
-        revision: 4,
+        revision,
         runStatus: 'succeeded',
         nextEventSequence: 13,
         readySet: [],
@@ -366,5 +384,5 @@ describeIntegration('Linear node execution resilience', () => {
         coordinator.close(),
       ]);
     }
-  });
+  }
 });

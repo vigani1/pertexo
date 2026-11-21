@@ -1,3 +1,8 @@
+import {
+  inlineCoreExecutor,
+  attemptStepRefusal,
+} from '../../../catalog/inline-registration.js';
+import { inlineSummarize } from './summarize-kernel.js';
 import type {
   NodeExecutionInvocation,
   NodeExecutorRegistration,
@@ -10,12 +15,24 @@ import type {
 import { summarizeItems } from './semantics.js';
 export const coreSummarizeExecutor: NodeExecutorRegistration = Object.freeze({
   executor: CORE_SUMMARIZE_EXECUTOR,
-  execute: (invocation: NodeExecutionInvocation<unknown, unknown>) =>
-    Promise.resolve(
-      summarizeItems(
-        invocation.config as CoreSummarizeConfig,
-        invocation.input as CoreSummarizeInput,
-        invocation.signal,
-      ),
-    ),
+  execute: (invocation: NodeExecutionInvocation<unknown, unknown>) => {
+    try {
+      return Promise.resolve(
+        summarizeItems(
+          invocation.config as CoreSummarizeConfig,
+          invocation.input as CoreSummarizeInput,
+          invocation.signal,
+        ),
+      );
+    } catch (error) {
+      throw attemptStepRefusal(error);
+    }
+  },
 });
+
+export const coreSummarizeInlineExecutor = inlineCoreExecutor(
+  coreSummarizeExecutor,
+  {
+    executeInline: inlineSummarize,
+  },
+);

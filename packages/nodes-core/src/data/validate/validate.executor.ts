@@ -1,3 +1,5 @@
+import { inlineCoreExecutor } from '../../catalog/inline-registration.js';
+import { inlineValidate } from './validate-kernel.js';
 import {
   NodeExecutionAbortedError,
   type NodeExecutionInvocation,
@@ -32,3 +34,10 @@ export const coreValidateExecutor: NodeExecutorRegistration = Object.freeze({
     }
   },
 });
+
+export const coreValidateInlineExecutor = inlineCoreExecutor(
+  coreValidateExecutor,
+  {
+    executeInline: inlineValidate,
+  },
+);

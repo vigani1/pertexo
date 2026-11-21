@@ -1,7 +1,14 @@
+import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
 import type { WorkflowGraph, WorkflowNode } from '@pertexo/workflow-model';
 import { describe } from 'vitest';
 
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
+
+const inlinePins = new Map(
+  PLATFORM_NODE_CATALOG.definitions
+    .filter(({ execution }) => execution === 'inline')
+    .map(({ definition }) => [definition.key, definition.version]),
+);
 
 export const node = (
   id: string,
@@ -10,7 +17,10 @@ export const node = (
   inputMappings: WorkflowNode['inputMappings'] = {},
 ): WorkflowNode => ({
   id,
-  definition: { key, version: 1 },
+  definition: {
+    key,
+    version: id === 'result' ? 1 : (inlinePins.get(key) ?? 1),
+  },
   config,
   configVersion: 1,
   position: { x: 0, y: 0 },

@@ -1,9 +1,7 @@
-import {
-  CORE_SWITCH_CONFIG_SCHEMA,
-  CORE_SWITCH_DEFINITION,
-} from '@pertexo/nodes-core';
+import { CORE_SWITCH_CONFIG_SCHEMA } from '@pertexo/nodes-core';
 import {
   canonicalJson,
+  isCoreSwitchDefinition,
   type GraphValidationIssue,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
@@ -28,11 +26,7 @@ export function switchCaseIssues(
           graph: node.structured.body,
           path: `${path}.structured.body`,
         });
-      if (
-        node.definition.key !== CORE_SWITCH_DEFINITION.key ||
-        node.definition.version !== CORE_SWITCH_DEFINITION.version
-      )
-        continue;
+      if (!isCoreSwitchDefinition(node.definition)) continue;
       const parsed = CORE_SWITCH_CONFIG_SCHEMA.safeParse(node.config);
       if (!parsed.success) continue;
       const seen = new Set<string>();

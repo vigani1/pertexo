@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../support/coordinator/inline-setting.js';
 import { maintenanceConfig } from '../../../../infrastructure/testing/worker-databases.mjs';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -272,6 +273,7 @@ async function construct(
   resources.capabilities = capabilities;
   active();
   const coordinator = await createCoordinatorRuntime({
+    inlineSteps: inlineStepsEnabled,
     maintenanceDatabase: parseDatabaseConfig({
       connectionString: raw.dispatcherUrl,
       max: 2,

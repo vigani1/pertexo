@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { isBuiltin } from 'node:module';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,7 +46,7 @@ function sourceFile(file) {
 }
 
 function visit(node, inspect) {
-  inspect(node);
+  if (inspect(node) === false) return;
   ts.forEachChild(node, (child) => visit(child, inspect));
 }
 
@@ -59,24 +59,31 @@ function importTarget(specifier, file, root) {
   } else {
     const [, area, entry = ''] =
       /^@pertexo\/([^/]+)(.*)$/u.exec(specifier) ?? [];
-    if (area === undefined || forbiddenAreas.has(area))
+    if (area === undefined || forbiddenAreas.has(area) || entry !== '/pure')
       throw new Error(`forbidden package ${specifier}`);
     const packageRoot = join(root, 'packages', area);
     const { exports } = JSON.parse(
       readFileSync(join(packageRoot, 'package.json'), 'utf8'),
     );
     const exported = exports?.[`.${entry}`];
-    const declaration =
-      typeof exported === 'string' ? exported : exported?.types;
-    if (declaration === undefined)
-      throw new Error(`unknown workspace entry ${specifier}`);
-    candidate = join(packageRoot, declaration.replace(/^\.\/dist\//u, 'src/'));
+    if (
+      exported?.types !== './dist/pure.d.ts' ||
+      exported.default !== './dist/pure.js' ||
+      Object.keys(exported).length !== 2
+    )
+      throw new Error(`invalid pure entry ${specifier}`);
+    candidate = join(packageRoot, 'src/pure.ts');
   }
   const target = realpathSync(
     candidate.replace(/(?:\.d)?\.js$/u, '.ts').replace(/\.d\.ts$/u, '.ts'),
   );
   const [scope, area] = relative(root, target).split('/');
-  if (scope !== 'packages' || forbiddenAreas.has(area))
+  const [, importer] = relative(root, file).split('/');
+  if (
+    scope !== 'packages' ||
+    forbiddenAreas.has(area) ||
+    (specifier.startsWith('.') && area !== importer)
+  )
     throw new Error(`forbidden source path ${specifier}`);
   return target;
 }
@@ -100,6 +107,7 @@ export function checkInlineClosure(root, entries) {
         throw new Error(`${relative(root, file)}: ${reason}`);
       };
       if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+        if (node.isTypeOnly || node.importClause?.isTypeOnly) return false;
         if (node.moduleSpecifier === undefined) return;
         let target;
         try {
@@ -107,7 +115,8 @@ export function checkInlineClosure(root, entries) {
         } catch (error) {
           reject(error.message);
         }
-        if (!node.importClause?.isTypeOnly && !node.isTypeOnly) check(target);
+        check(target);
+        return false;
       }
       if (
         ts.isImportEqualsDeclaration(node) ||
@@ -144,6 +153,13 @@ export function checkCoreInlineBindings(root) {
   root = realpathSync(root);
   const coreSource = join(root, 'packages/nodes-core/src');
   const entries = new Set();
+  for (const area of readdirSync(join(root, 'packages'))) {
+    const manifestPath = join(root, 'packages', area, 'package.json');
+    if (!existsSync(manifestPath)) continue;
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    if (manifest.exports?.['./pure'] === undefined) continue;
+    entries.add(importTarget(`@pertexo/${area}/pure`, manifestPath, root));
+  }
   for (const name of readdirSync(coreSource, { recursive: true })) {
     if (!name.endsWith('.ts')) continue;
     const file = join(coreSource, name);

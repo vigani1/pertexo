@@ -1,3 +1,7 @@
+import {
+  isCoreConditionDefinition,
+  isCoreSwitchDefinition,
+} from '../flow/control-nodes/control-node-definitions.js';
 import { isRecord } from '../values/json/object.js';
 import { isCallbackWaitNode } from '../flow/callbacks/callback-wait.js';
 import {
@@ -15,13 +19,13 @@ export function workflowControlOutputKind(
   definition: Readonly<{ key: string; version: number }> | undefined,
   config?: Readonly<Record<string, unknown>>,
 ): WorkflowControlOutputKind | undefined {
-  if (definition?.version !== 1) return undefined;
   if (
-    definition.key === 'core.condition' ||
-    definition.key === 'core.switch' ||
-    definition.key === 'core.approval'
+    isCoreConditionDefinition(definition) ||
+    isCoreSwitchDefinition(definition)
   )
     return 'branch';
+  if (definition?.version !== 1) return undefined;
+  if (definition.key === 'core.approval') return 'branch';
   if (
     definition.key === 'core.request_input' ||
     isCallbackWaitNode({

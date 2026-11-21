@@ -9,6 +9,7 @@ import {
 } from '@pertexo/database/testing';
 import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 
+import { inlineStepsEnabled } from '../coordinator/inline-setting.js';
 import { dropDisconnectedDatabase } from '../infrastructure/disposable-database.js';
 import { createRedisTestNamespace } from '../infrastructure/redis-test-namespace.js';
 
@@ -161,6 +162,7 @@ export async function startStack(
   const createWorker = (instance: string): ServiceProcess =>
     new ServiceProcess(entrypoint('worker'), {
       ...shared,
+      WORKFLOW_COORDINATOR_INLINE_STEPS: String(inlineStepsEnabled),
       ...options.workerEnvironment,
       WORKER_INSTANCE_ID: instance,
       PGAPPNAME: instance,

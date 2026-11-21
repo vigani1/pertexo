@@ -67,6 +67,7 @@ process.stdin.destroy();
 if (!started) process.exit(0);
 try {
   coordinator = await createCoordinatorRuntime({
+    inlineSteps: process.env.WORKFLOW_COORDINATOR_INLINE_STEPS === 'true',
     maintenanceDatabase: parseDatabaseConfig({
       connectionString: maintenanceDatabaseUrl,
       max: 2,

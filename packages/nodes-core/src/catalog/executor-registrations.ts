@@ -9,27 +9,66 @@ import { coreFormExecutor } from '../triggers/form/form.executor.js';
 import { coreApprovalExecutor } from '../flow/approval/approval.executor.js';
 import { coreWorkflowErrorExecutor } from '../triggers/workflow-error/workflow-error.executor.js';
 import { coreReadFileExecutor } from '../data/read-file/read-file.executor.js';
-import { coreConcatExecutor } from '../data/lists/concat/concat.executor.js';
-import { coreTakeExecutor } from '../data/lists/take/take.executor.js';
-import { coreBatchExecutor } from '../data/lists/batch/batch.executor.js';
-import { coreFilterExecutor } from '../data/lists/filter/filter.executor.js';
-import { coreSortExecutor } from '../data/lists/sort/sort.executor.js';
-import { coreUniqueExecutor } from '../data/lists/unique/unique.executor.js';
-import { coreSummarizeExecutor } from '../data/lists/summarize/summarize.executor.js';
-import { coreDateExecutor } from '../data/date/date.executor.js';
+import {
+  coreConcatExecutor,
+  coreConcatInlineExecutor,
+} from '../data/lists/concat/concat.executor.js';
+import {
+  coreTakeExecutor,
+  coreTakeInlineExecutor,
+} from '../data/lists/take/take.executor.js';
+import {
+  coreBatchExecutor,
+  coreBatchInlineExecutor,
+} from '../data/lists/batch/batch.executor.js';
+import {
+  coreFilterExecutor,
+  coreFilterInlineExecutor,
+} from '../data/lists/filter/filter.executor.js';
+import {
+  coreSortExecutor,
+  coreSortInlineExecutor,
+} from '../data/lists/sort/sort.executor.js';
+import {
+  coreUniqueExecutor,
+  coreUniqueInlineExecutor,
+} from '../data/lists/unique/unique.executor.js';
+import {
+  coreSummarizeExecutor,
+  coreSummarizeInlineExecutor,
+} from '../data/lists/summarize/summarize.executor.js';
+import {
+  coreDateExecutor,
+  coreDateInlineExecutor,
+} from '../data/date/date.executor.js';
 import type { NodeExecutorRegistration } from '@pertexo/node-sdk/server';
 
 import { coreCallExecutor } from '../flow/call/call.executor.js';
-import { coreConditionExecutor } from '../flow/condition/condition.executor.js';
+import {
+  coreConditionExecutor,
+  coreConditionInlineExecutor,
+} from '../flow/condition/condition.executor.js';
 import { coreForEachExecutor } from '../flow/for-each/for-each.executor.js';
 import { coreManualExecutor } from '../triggers/manual/manual.executor.js';
-import { coreMergeExecutor } from '../flow/merge/merge.executor.js';
+import {
+  coreMergeExecutor,
+  coreMergeInlineExecutor,
+} from '../flow/merge/merge.executor.js';
 import { coreParallelExecutor } from '../flow/parallel/parallel.executor.js';
 import { coreScheduleExecutor } from '../triggers/schedule/schedule.executor.js';
-import { coreSetExecutor } from '../data/set/set.executor.js';
-import { coreSwitchExecutor } from '../flow/switch/switch.executor.js';
+import {
+  coreSetExecutor,
+  coreSetInlineExecutor,
+} from '../data/set/set.executor.js';
+import {
+  coreSwitchExecutor,
+  coreSwitchInlineExecutor,
+} from '../flow/switch/switch.executor.js';
 import { coreTerminateExecutor } from '../flow/terminate/terminate.executor.js';
-import { coreValidateExecutor } from '../data/validate/validate.executor.js';
+import {
+  coreValidateExecutor,
+  coreValidateInlineExecutor,
+} from '../data/validate/validate.executor.js';
 import { coreWaitExecutor } from '../flow/wait/wait.executor.js';
 import { coreWebhookExecutor } from '../triggers/webhook/webhook.executor.js';
 
@@ -48,24 +87,37 @@ export const CORE_NODE_EXECUTOR_REGISTRATIONS: readonly NodeExecutorRegistration
     coreWorkflowErrorExecutor,
     coreReadFileExecutor,
     coreConcatExecutor,
+    coreConcatInlineExecutor,
     coreTakeExecutor,
+    coreTakeInlineExecutor,
     coreBatchExecutor,
+    coreBatchInlineExecutor,
     coreFilterExecutor,
+    coreFilterInlineExecutor,
     coreSortExecutor,
+    coreSortInlineExecutor,
     coreUniqueExecutor,
+    coreUniqueInlineExecutor,
     coreSummarizeExecutor,
+    coreSummarizeInlineExecutor,
     coreDateExecutor,
+    coreDateInlineExecutor,
     coreCallExecutor,
     coreScheduleExecutor,
     coreWebhookExecutor,
     coreWaitExecutor,
     coreForEachExecutor,
     coreMergeExecutor,
+    coreMergeInlineExecutor,
     coreParallelExecutor,
     coreSwitchExecutor,
+    coreSwitchInlineExecutor,
     coreConditionExecutor,
+    coreConditionInlineExecutor,
     coreManualExecutor,
     coreSetExecutor,
+    coreSetInlineExecutor,
     coreTerminateExecutor,
     coreValidateExecutor,
+    coreValidateInlineExecutor,
   ]);

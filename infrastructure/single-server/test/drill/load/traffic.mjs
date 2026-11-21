@@ -29,11 +29,23 @@ const HTTP_LIMITS = {
 };
 const CALLBACK_DELAY_MILLIS = 5_000;
 const WAIT_SECONDS = 60;
+const INLINE_SET_VERSION = 2;
 
 /** The workflows a small team runs, published in one workspace. */
 export async function publishTeamWorkflows(client, workspaceId) {
   const publish = (name, nodes, edges) =>
-    publishWorkflow(client, workspaceId, { name, nodes, edges });
+    publishWorkflow(client, workspaceId, {
+      name,
+      nodes: nodes.map((step) =>
+        step.definition.key === 'core.set'
+          ? {
+              ...step,
+              definition: { ...step.definition, version: INLINE_SET_VERSION },
+            }
+          : step,
+      ),
+      edges,
+    });
   const hook = async (name, nodes, edges) =>
     provisionWebhook(client, await publish(name, nodes, edges));
   const manual = (name, nodes, edges) =>

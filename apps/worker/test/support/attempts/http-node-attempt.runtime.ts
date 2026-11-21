@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../coordinator/inline-setting.js';
 import { createTestArtifactScratch } from '../infrastructure/artifact-scratch.js';
 import { randomUUID } from 'node:crypto';
 import {
@@ -170,6 +171,7 @@ export async function createHttpNodeAttemptProofRuntime(
     const coordinator = own(
       'coordinator runtime',
       await createCoordinatorRuntime({
+        inlineSteps: inlineStepsEnabled,
         maintenanceDatabase: parseDatabaseConfig({
           connectionString: databaseUrl(operatorUrl),
           max: 2,

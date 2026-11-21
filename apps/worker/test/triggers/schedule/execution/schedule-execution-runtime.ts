@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../../../support/coordinator/inline-setting.js';
 import { maintenanceConfig } from '../../../../../../infrastructure/testing/worker-databases.mjs';
 import {
   createOutboxDispatcherDatabase,
@@ -68,6 +69,7 @@ export async function startScheduleQualification(
   await runtime.consumer.waitUntilReady(5_000);
   const coordinator = registerResource(
     await createCoordinatorRuntime({
+      inlineSteps: inlineStepsEnabled,
       maintenanceDatabase: dispatcherConfig,
       database: workerConfig,
       maximumAdmissions: 10,

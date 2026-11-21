@@ -1,3 +1,4 @@
+import { isCoreConditionDefinition } from '../control-nodes/control-node-definitions.js';
 import { isCallbackWaitNode } from '../callbacks/callback-wait.js';
 import { isWorkflowTriggerKey } from '../../graph/triggers.js';
 import type { WorkflowEdge } from '../../graph/workflow-graph.schemas.js';
@@ -73,9 +74,9 @@ function nodePreventsDecisionTree(node: DecisionTreeNode): boolean {
     node.structured !== undefined ||
     (['core.condition', 'core.approval'].includes(node.definition.key) &&
       (node.disabled ?? false)) ||
-    (['core.condition', 'core.approval', 'core.terminate'].includes(
-      node.definition.key,
-    ) &&
+    (node.definition.key === 'core.condition' &&
+      !isCoreConditionDefinition(node.definition)) ||
+    (['core.approval', 'core.terminate'].includes(node.definition.key) &&
       node.definition.version !== 1)
   );
 }

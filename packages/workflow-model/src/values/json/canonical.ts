@@ -1,4 +1,4 @@
-import { encodeJson } from '@pertexo/node-sdk';
+import { encodeJson } from '@pertexo/node-sdk/pure';
 import { utf8ByteLength } from '../text.js';
 import { InvalidJsonValueError } from './json.errors.js';
 export type JsonPrimitive = string | number | boolean | null;

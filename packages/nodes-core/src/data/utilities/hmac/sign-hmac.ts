@@ -7,7 +7,8 @@ import {
   type NodeExecutionInvocation,
   withProviderCredential,
 } from '@pertexo/node-sdk/server';
-import { refuseUtility, UTILITY_ERROR_CODE } from '../utility-result.js';
+import { refuseUtility } from '../utility-execution.errors.js';
+import { UTILITY_ERROR_CODE } from '../utility-result.js';
 import type { HmacConfig } from './hmac.schemas.js';
 
 export async function signHmac(

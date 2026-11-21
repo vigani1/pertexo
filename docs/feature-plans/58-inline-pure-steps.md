@@ -1,6 +1,6 @@
 # F58 — Inline pure steps
 
-Status: accepted; slice 1 implemented. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
+Status: accepted. Inline execution stays off by default after the [load qualification](step-transaction-cost.md#load-qualification) missed its gate. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
 F58 implements option C from [Cost of a pure step](step-transaction-cost.md).
 Implementation follows the integration module rollout in F57.
 
@@ -113,6 +113,13 @@ Implementation follows the integration module rollout in F57.
    proof against those versions before changing the default. Confirm
    that disabling the setting with work already queued preserves both
    pending retries and existing attempt deliveries.
+
+The editor's step picker selects the highest catalog version for a new step.
+Imported templates and existing draft nodes keep the versions they carry.
+Publication preserves those pins. The proof republishes fixture drafts after
+selecting the inline versions so both executions use identical pins. XML and
+HTML use the attempt path because their parser dependencies are outside
+the reviewed import closure.
 
 For Each keeps its current iteration batches. Reuse
 `deriveLoopBodyReadiness` and `advanceLoopIterations` in

@@ -9,7 +9,10 @@ its validation, control steps, triggers, values and expressions, execution
 lifecycle words, and the limits each of them carries. The browser, the API,
 the worker, `core`, `contracts` and `workflow-engine` read it.
 
-Two entries. `@pertexo/workflow-model` is safe in the browser: schemas,
+The `/pure` entry exposes only deterministic helpers used by the inline
+kernels. The import-closure check walks it independently of its callers.
+
+`@pertexo/workflow-model` is safe in the browser: schemas,
 types, limits and pure decisions. `@pertexo/workflow-model/server` is Node
 only: authoring validation in worker threads, expression evaluation in child
 processes, and graph fingerprints that use `node:crypto`. Consumers import

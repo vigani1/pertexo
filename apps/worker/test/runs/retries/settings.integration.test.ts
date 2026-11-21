@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../../support/coordinator/inline-setting.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { initialCheckpointFactory } from '@pertexo/core/runs';
@@ -85,6 +86,7 @@ function graph(
       await runWithCleanup(
         async () => {
           const coordinator = await createCoordinatorRuntime({
+            inlineSteps: inlineStepsEnabled,
             database: config(fixture.workerUrl, 4),
             maintenanceDatabase: config(fixture.dispatcherUrl),
             maximumAdmissions: 10,

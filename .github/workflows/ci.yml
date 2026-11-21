@@ -239,13 +239,13 @@ jobs:
       needs.changes.outputs.integration != '' &&
       toJSON(fromJSON(needs.changes.outputs.integration).include) != '[]'
     runs-on: ubuntu-latest
-    # The worker leg runs three suite shards on one runner (run-worker-suite.mjs): up
-    # to 12.5 minutes plus the build when the runner is busy. The services leg runs its
-    # suites and then storage and backup qualification: 10 to 13 minutes. The limit
-    # catches hangs.
+    # The worker leg runs three suite shards on one runner. The longest shard
+    # took 14 minutes, with additional time for setup and cold recovery on a
+    # busy runner. The services leg runs its suites and storage and backup
+    # qualification in 10 to 13 minutes.
     timeout-minutes:
-      ${{ (matrix.group == 'worker' || matrix.group == 'services') && 20 || 15
-      }}
+      ${{ matrix.group == 'worker' && 24 || matrix.group == 'services' && 20 ||
+      15 }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.integration) }}
@@ -320,24 +320,16 @@ jobs:
             pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             test/workflow-authoring/organization/
           # Last: these stop and restart Redis.
-          WORKER_TRANSPORT_RESILIENCE=true \
+          WORKER_TRANSPORT_RESILIENCE=true WORKFLOW_COORDINATOR_INLINE_STEPS=true \
             pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
           API_SSE_RESILIENCE_INTEGRATION=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
-      - name: Worker integration tests
+      - name: Worker integration tests with inline execution
         if: matrix.group == 'worker'
-        # Its files share Redis databases by number, so three shards run side by side,
-        # each with a whole stack of its own.
-        run: |
-          set -euo pipefail
-          node infrastructure/testing/run-worker-suite.mjs 3
-          WORKFLOW_COORDINATOR_INLINE_STEPS=true \
-            node infrastructure/testing/run-worker-suite.mjs 1 \
-              test/runs/consumer/linear-execution.integration.test.ts \
-              test/runs/consumer/recovery.integration.test.ts \
-              test/runs/consumer/parallel-recovery.integration.test.ts \
-              test/runs/consumer/redelivery.integration.test.ts \
-              test/runs/consumer/retry-wait.integration.test.ts
+        env:
+          WORKFLOW_COORDINATOR_INLINE_STEPS: 'true'
+        # Each shard owns its database and numbered Redis namespaces.
+        run: node infrastructure/testing/run-worker-suite.mjs 3
       - name: Qualify pinned beta storage
         if: matrix.group == 'services'
         run: node infrastructure/single-server/storage/qualify.mjs
@@ -384,6 +376,8 @@ jobs:
       - name: Migrate
         run: pnpm db:migrate
       - name: Fault tests
+        env:
+          WORKFLOW_COORDINATOR_INLINE_STEPS: 'true'
         run:
           node infrastructure/testing/run-fault-shard.mjs ${{ matrix.shard }}
           ${{ strategy.job-total }}

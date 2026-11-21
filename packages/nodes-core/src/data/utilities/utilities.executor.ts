@@ -1,3 +1,9 @@
+import { inlineNumber } from './number/number-kernel.js';
+import { inlineText } from './text/text-kernel.js';
+import {
+  attemptStepRefusal,
+  inlineCoreExecutor,
+} from '../../catalog/inline-registration.js';
 import {
   NodeExecutorFailure,
   type NodeExecutionInvocation,
@@ -36,7 +42,8 @@ function utilityExecutor(
             errorKind: 'canceled',
             possiblyDispatched: false,
           });
-        if (error instanceof NodeExecutorFailure) throw error;
+        const refusal = attemptStepRefusal(error);
+        if (refusal instanceof NodeExecutorFailure) throw refusal;
         // Bad input has its own refusal above, so this is a defect of ours;
         // telling the user to check their data would only mislead them.
         throw new NodeExecutorFailure({
@@ -48,16 +55,17 @@ function utilityExecutor(
     },
   });
 }
+const textExecutor = utilityExecutor('core.text', (i) =>
+  transformText(i.config as TextConfig, i.input as TextInput, i.signal),
+);
+const numberExecutor = utilityExecutor('core.number', (i) =>
+  formatNumber(i.config as NumberConfig, (i.input as { value: number }).value),
+);
 export const UTILITY_EXECUTORS = Object.freeze([
-  utilityExecutor('core.text', (i) =>
-    transformText(i.config as TextConfig, i.input as TextInput, i.signal),
-  ),
-  utilityExecutor('core.number', (i) =>
-    formatNumber(
-      i.config as NumberConfig,
-      (i.input as { value: number }).value,
-    ),
-  ),
+  textExecutor,
+  inlineCoreExecutor(textExecutor, { executeInline: inlineText }),
+  numberExecutor,
+  inlineCoreExecutor(numberExecutor, { executeInline: inlineNumber }),
   utilityExecutor('core.crypto', (i) =>
     transformCrypto(
       i.config as CryptoConfig,

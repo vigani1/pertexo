@@ -60,7 +60,7 @@ describe('step setup in the catalog schema', () => {
     const ajv = new Ajv2020({ strict: false, validateFormats: false });
     let checked = 0;
     for (const { definition, configSchema } of definitions) {
-      const id = `urn:pertexo:${definition.key}`;
+      const id = `urn:pertexo:${definition.key}:${String(definition.version)}`;
       const { $schema: _, ...schema } = configSchema;
       ajv.addSchema({ ...schema, $id: id });
       for (const { pointer, value } of defaultsIn(schema)) {
@@ -85,7 +85,7 @@ describe('step setup in the catalog schema', () => {
       const key = discriminator(variants);
       return key === undefined ? [] : [{ step: definition.key, key, variants }];
     });
-    expect(unions.map(({ step }) => step).sort()).toEqual([
+    expect([...new Set(unions.map(({ step }) => step))].sort()).toEqual([
       'core.crypto',
       'core.date',
       'core.html',

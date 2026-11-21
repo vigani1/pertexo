@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../../support/coordinator/inline-setting.js';
 import { node, literal } from '../../support/coordinator/workflows/graph.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWorkflowRunDatabase } from '@pertexo/core/runs';
@@ -80,6 +81,7 @@ qualified('business values through the real worker', () => {
         [workflowId, workflowVersionId],
       );
       const coordinator = await createCoordinatorRuntime({
+        inlineSteps: inlineStepsEnabled,
         maintenanceDatabase: config(fixture.dispatcherUrl, 2),
         database: config(fixture.workerUrl, 6),
         maximumAdmissions: 10,

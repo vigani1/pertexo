@@ -121,6 +121,7 @@ The one named way for each shared job:
   - The database has `/schema` and `/primitives` for `core` and `secrets` alone,
     `/platform` for pools and startup, and `/testing` for fixtures. Applications may
     import only `/platform`, plus `/testing` from tests (a check enforces it).
+  - `@pertexo/node-sdk/pure` and `@pertexo/workflow-model/pure` expose kernel helpers behind the inline import-closure check.
   - `@pertexo/observability/startup`: instrumentation must load before the
     dependencies it instruments.
 

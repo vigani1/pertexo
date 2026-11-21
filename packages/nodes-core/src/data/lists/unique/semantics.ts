@@ -1,11 +1,12 @@
-import { canonicalJson, type JsonValue } from '@pertexo/workflow-model';
+import type { JsonValue } from '@pertexo/workflow-model';
+import { canonicalJson } from '@pertexo/workflow-model/pure';
 import type { CoreUniqueConfig, CoreUniqueInput } from './unique.schemas.js';
 import { invalidInput, projectItems } from '../selection.js';
 
 export function uniqueItems(
   config: CoreUniqueConfig,
   input: CoreUniqueInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   const seen = new Set<string>(),
     items: JsonValue[] = [];

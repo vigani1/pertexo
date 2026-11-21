@@ -153,3 +153,82 @@ files. Everything else was the same commit and stack. Machine load was 3–12.
 - The 10-step burst of 200 runs took 82 s and 122 s before and 80 s and 66 s
   after (25–36 node runs/s after, 20–29 before). At this load the wall
   times overlap too much to quote a gain, but every per-step cost fell.
+
+## Measured after C
+
+J7 ran on a GitHub-hosted Ubuntu 24.04 runner with PostgreSQL 18 and Redis
+8.10 in Docker at `92e62820849513edc229e2f5da055f8e1fdf75dc`.
+Each mode used the same published pins for Manual → 1 or 10 pure steps →
+Terminate. The body cycled Set, Condition and Text. Three paired repetitions
+alternated which mode went first. Each burst started 200 runs, eight at a
+time, with an active limit of 200. All 2,400 measured runs succeeded.
+[J7 job and raw report](https://github.com/vigani1/pertexo/actions/runs/44898908274/job/136830392083)
+
+Counters subtract observer-only transactions and the idle rate. The
+statement count uses top-level client statements from non-superuser roles.
+Queue hops count durable coordinator and attempt delivery intents. Marginal
+cost is (10-step per run − 1-step per run) ÷ 9 for each pair. Each cell lists
+the three repetitions in order.
+
+| Cost | 1 pure step, off | 1 pure step, on | 10 pure steps, off | 10 pure steps, on | Marginal step, off | Marginal step, on |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Transactions per run | 35.03, 34.61, 34.55 | 24.16, 24.28, 24.35 | 126.79, 126.01, 125.47 | 25.12, 24.61, 25.64 | 10.20, 10.16, 10.10 | 0.11, 0.04, 0.14 |
+| Client statements per run | 327.73, 328.13, 326.66 | 242.70, 244.16, 244.68 | 1,093.11, 1,092.35, 1,091.91 | 262.56, 261.84, 262.47 | 85.04, 84.91, 85.03 | 2.21, 1.96, 1.98 |
+| Redis commands per run | 344.94, 356.27, 346.03 | 238.14, 246.24, 253.91 | 1,216.54, 1,205.85, 1,210.55 | 254.76, 245.80, 254.26 | 96.85, 94.40, 96.06 | 1.85, −0.05, 0.04 |
+| Queue hops per run | 7, 7, 7 | 5, 5, 5 | 25, 25, 25 | 5, 5, 5 | 2, 2, 2 | 0, 0, 0 |
+| Attempt deliveries per run | 3, 3, 3 | 2, 2, 2 | 12, 12, 12 | 2, 2, 2 | 1, 1, 1 | 0, 0, 0 |
+| PostgreSQL CPU (ms/run) | 124.72, 110.80, 113.72 | 88.91, 83.44, 87.02 | 406.04, 379.12, 369.05 | 106.32, 104.07, 110.14 | 31.26, 29.81, 28.37 | 1.94, 2.29, 2.57 |
+| Worker CPU (ms/run) | 161.38, 148.44, 144.27 | 116.49, 110.21, 107.72 | 510.81, 506.72, 487.37 | 124.30, 121.49, 120.06 | 38.83, 39.81, 38.12 | 0.87, 1.25, 1.37 |
+
+| Burst wall time (200 runs) | Inline off | Inline on |
+| --- | ---: | ---: |
+| 1 pure step | 31.38, 29.09, 29.01 s | 23.10, 21.98, 21.78 s |
+| 10 pure steps | 102.58, 96.65, 94.77 s | 24.66, 24.33, 24.12 s |
+
+The 10-step medians came in under the targets of about 90 transactions,
+360 Redis commands and 25–30 seconds. The fresh post-B baseline averaged
+about 10.15 marginal transactions per step. The 330-transaction estimate
+predates B. The small negative Redis marginal in one inline pair is within
+the idle-correction noise.
+
+### Load qualification
+
+The steady and worker-memory scenarios each ran for 60 minutes. The
+overload scenario increased traffic through the existing staged ramp.
+All six jobs used the 4 GiB, 2 vCPU sizing at the same commit as J7. The
+steady workload published its Set steps with v2 pins in both modes.
+[Inline-on runs](https://github.com/vigani1/pertexo/actions/runs/44898908274),
+[matched inline-off runs](https://github.com/vigani1/pertexo/actions/runs/44898961824),
+[historical S5](https://github.com/vigani1/pertexo/actions/runs/44643610658),
+[historical S10](https://github.com/vigani1/pertexo/actions/runs/44773678244)
+
+| Scenario and metric | S5 or S10 | Inline off | Inline on |
+| --- | ---: | ---: | ---: |
+| Steady runs stored | 1,991 | 2,009 | 1,994 |
+| Steady run start p95 | 683 ms | 608 ms | 619 ms |
+| Steady drain | 13.78 s | 14.99 s | 24.88 s |
+| Steady host memory peak | 1,847 MiB | 1,778 MiB | 1,745 MiB |
+| Steady host CPU peak | unavailable | 154.8% | 169.4% |
+| Overload runs stored | 5,866 | 7,823 | 6,869 |
+| Overload slow admission begins | 20 requests/s | 20 requests/s | 10 requests/s |
+| Overload first impact on other workspace | 40 requests/s | 40 requests/s | 40 requests/s |
+| Overload recovery start p95 | 475 ms | 859 ms | 890 ms |
+| Overload drain | 273.63 s | 503.78 s | 557.85 s |
+| Overload host memory peak | 1,746 MiB | 1,751 MiB | 1,697 MiB |
+| Overload host CPU peak | unavailable | 200.8% | 201.0% |
+| Worker-memory runs stored | 10,969 | 11,020 | 10,999 |
+| Worker-memory drain | 9.17 s | 11.39 s | 7.91 s |
+| Worker-memory host memory peak | 2,607 MiB | 2,654 MiB | 2,673 MiB |
+| Worker-memory host CPU peak | unavailable | 200.1% | 199.4% |
+| Worker RSS peak | 457.2 MiB | 472.8 MiB | 519.4 MiB |
+| Worker container memory growth | 21.1 MiB/h | 23.3 MiB/h | 63.5 MiB/h |
+
+Host CPU percentages use 100% for one core. All six jobs recorded zero
+lost, duplicated or stranded runs, zero container restarts and zero host
+OOM kills. Both steady and overload jobs passed their assertions. Inline-on
+steady drained 9.89 seconds slower than the matched baseline. Inline-on
+overload slowed admission at an earlier stage and drained 54.08 seconds
+slower. The inline-on worker-memory job exceeded the 30 MiB/h growth limit
+and recorded one failed provider call. These load comparisons use one run
+per mode on separate hosted runners. **The load gate failed, so inline
+execution stays off by default.**

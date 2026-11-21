@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../support/coordinator/inline-setting.js';
 import {
   describeIntegration,
   validateConfigInput,
@@ -208,6 +209,7 @@ describeIntegration('core.validate persisted workflow execution', () => {
       max: 4,
     });
     const coordinator = await createCoordinatorRuntime({
+      inlineSteps: inlineStepsEnabled,
       maintenanceDatabase: parseDatabaseConfig({
         connectionString: databaseUrl(dispatcherUrl),
         max: 2,

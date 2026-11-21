@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../../support/coordinator/inline-setting.js';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import {
@@ -60,6 +61,7 @@ qualified(
       const errors: unknown[] = [];
       try {
         const coordinator = await createCoordinatorRuntime({
+          inlineSteps: inlineStepsEnabled,
           maintenanceDatabase: config(fixture.dispatcherUrl, 2),
           database: config(fixture.workerUrl, 6),
           maximumAdmissions: 10,

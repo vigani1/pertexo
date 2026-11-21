@@ -1,4 +1,5 @@
-import { mkdtempSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -100,6 +101,60 @@ export function journeyPhases(journeys) {
   ];
 }
 
+async function compareCuratedExecutions(environment, directory) {
+  const command = journeyCommand('curated-templates');
+  const results = [];
+  const snapshots = [];
+  for (const inline of [false, true]) {
+    const label = inline ? 'curated-inline' : 'curated-attempt';
+    const snapshot = join(directory, `${label}.json`);
+    const result = await runLogged(
+      label,
+      {
+        ...command,
+        env: {
+          ...command.env,
+          WORKFLOW_COORDINATOR_INLINE_STEPS: String(inline),
+          CURATED_INLINE_EQUIVALENCE_FILE: snapshot,
+        },
+      },
+      environment,
+      directory,
+    );
+    report(result);
+    results.push(result);
+    if (!result.passed) return results;
+    snapshots.push(JSON.parse(readFileSync(snapshot, 'utf8')));
+  }
+  compareExecutionSnapshots(snapshots[1], snapshots[0]);
+  return results;
+}
+
+function compareExecutionSnapshots(inline, delivered) {
+  assert.deepStrictEqual(
+    inline.map(({ name }) => name),
+    delivered.map(({ name }) => name),
+  );
+  for (const [index, snapshot] of inline.entries()) {
+    const expected = delivered[index];
+    assert.deepStrictEqual(snapshot.run, expected.run, `${snapshot.name} run`);
+    for (const field of ['nodes', 'attempts', 'events']) {
+      assert.equal(
+        snapshot[field].length,
+        expected[field].length,
+        `${snapshot.name} ${field} count`,
+      );
+      for (const [i, record] of snapshot[field].entries()) {
+        assert.deepStrictEqual(
+          record,
+          expected[field][i],
+          `${snapshot.name} ${field} record ${i + 1}`,
+        );
+      }
+    }
+  }
+}
+
 async function main([slotCount, ...journeys]) {
   const count = Number(slotCount);
   if (!Number.isInteger(count) || count < 1 || journeys.length === 0)
@@ -118,6 +173,8 @@ async function main([slotCount, ...journeys]) {
           phase,
           environments,
           async (journey, environment) => {
+            if (journey === 'curated-templates')
+              return compareCuratedExecutions(environment, directory);
             const result = await runLogged(
               journey,
               journeyCommand(journey),
@@ -125,12 +182,13 @@ async function main([slotCount, ...journeys]) {
               directory,
             );
             report(result);
-            return result;
+            return [result];
           },
         )),
       );
-    console.log(summary(results));
-    if (results.some(({ passed }) => !passed)) process.exitCode = 1;
+    const completed = results.flat();
+    console.log(summary(completed));
+    if (completed.some(({ passed }) => !passed)) process.exitCode = 1;
   } finally {
     await stopStacks(environments);
   }

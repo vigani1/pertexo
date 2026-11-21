@@ -36,6 +36,7 @@ export async function createRoutingBase() {
   const catalog = composeExecutableCatalog(PLATFORM_NODE_CATALOG);
   const registry = createPlatformNodeRegistry();
   const coordinatorConfig = {
+    inlineSteps: fixture.inlineSteps,
     maintenanceDatabase: config(fixture.dispatcherUrl, 2),
     database: config(fixture.workerUrl, 6),
     maximumAdmissions: 10,

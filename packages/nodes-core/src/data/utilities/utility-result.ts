@@ -1,16 +1,15 @@
-import { COLLECTION_MAX_ITEMS } from '../lists/collection.schemas.js';
+import { COLLECTION_MAX_ITEMS } from '../lists/collection-limits.js';
 import {
   STORED_EXECUTION_VALUE_LIMITS,
   storedExecutionJsonStringBytes,
   StoredExecutionValueInvalidError,
   formatByteSize,
   formatCount,
-} from '@pertexo/node-sdk';
-import {
-  canonicalizeBoundedJson,
-  NodeExecutorFailure,
-  type JsonValue,
-} from '@pertexo/node-sdk/server';
+} from '@pertexo/node-sdk/pure';
+import { canonicalizeBoundedJson } from '@pertexo/node-sdk/pure';
+
+import type { JsonValue } from '@pertexo/node-sdk/server';
+import { CoreStepRefusal } from '../../catalog/core-step.errors.js';
 
 export const UTILITY_ERROR_CODE = Object.freeze({
   invalid_data: 'utility.invalid_data',
@@ -38,13 +37,7 @@ export function refuseUtility(
   code: keyof typeof UTILITY_ERROR_CODE,
   summary: string,
 ): never {
-  throw new NodeExecutorFailure({
-    kind: 'failed',
-    errorKind: 'configuration',
-    possiblyDispatched: false,
-    safeErrorCode: UTILITY_ERROR_CODE[code],
-    errorSummary: summary,
-  });
+  throw new CoreStepRefusal(UTILITY_ERROR_CODE[code], summary);
 }
 
 export function boundedUtilityResult(value: unknown): JsonValue {
