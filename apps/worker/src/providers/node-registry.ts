@@ -26,9 +26,7 @@ export function createPlatformNodeRegistry(
     database:
       dependencies.database ??
       createSecurePostgresClient(smtpPolicy.allowedPrivateNetworks),
-    httpRequest: dependencies.httpRequest ?? {
-      httpClient: createNodeProviderHttpClient(),
-    },
+    httpClient: dependencies.httpClient ?? createNodeProviderHttpClient(),
     slackSendMessage: dependencies.slackSendMessage ?? {
       client: createSlackClient(createNodeProviderHttpClient()),
     },

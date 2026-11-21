@@ -8,11 +8,9 @@ export function createPlatformNodeRegistry(
 ) {
   return assemble({
     ...dependencies,
-    httpRequest: dependencies.httpRequest ?? {
-      httpClient: {
-        executeStreaming: vi.fn(),
-        redactText: vi.fn((value: string) => value),
-      },
+    httpClient: dependencies.httpClient ?? {
+      executeStreaming: vi.fn(),
+      redactText: vi.fn((value: string) => value),
     },
     slackSendMessage: dependencies.slackSendMessage ?? {
       client: { sendMessage: vi.fn() },

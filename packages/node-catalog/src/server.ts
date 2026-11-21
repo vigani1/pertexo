@@ -27,3 +27,7 @@ export function createPlatformNodeRegistry(
     executors: INTEGRATION_MODULE_REGISTRY.createExecutors(dependencies),
   });
 }
+
+/** Whether an integration declares this code safe for persisted summaries. */
+export const isIntegrationExecutorSummaryCode =
+  INTEGRATION_MODULE_REGISTRY.acceptsExecutorSummary;

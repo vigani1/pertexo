@@ -1,10 +1,7 @@
+import { isIntegrationExecutorSummaryCode } from '@pertexo/node-catalog/server';
 import { SUMMARY_RESULT_FAILURE } from '@pertexo/nodes-core';
 import { SLACK_REJECTIONS } from '@pertexo/integrations';
 import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
-import {
-  PROVIDER_RETRY_FAILURE,
-  HTTP_RESPONSE_FAILURES,
-} from '@pertexo/integrations';
 import { POSTGRES_FAILURE_CODES } from '@pertexo/workflow-model';
 import {
   NodeAttemptStateCorruptError,
@@ -24,11 +21,7 @@ import {
   UTILITY_ERROR_CODE,
   FILE_CREATION_ERROR_CODE,
 } from '@pertexo/nodes-core/server';
-import {
-  EMAIL_ATTACHMENT_ERROR_CODES,
-  HTTP_PAGINATION_FAILURES,
-  HTTP_OAUTH2_FAILURES,
-} from '@pertexo/integrations/server';
+import { EMAIL_ATTACHMENT_ERROR_CODES } from '@pertexo/integrations/server';
 import { FILE_SCRATCH_ERROR_CODE } from '../artifacts/scratch/space.js';
 import { FILE_TRANSFER_ERROR_CODE } from '../artifacts/scratch/progress.js';
 
@@ -42,12 +35,8 @@ const executorSummaryCodes = new Set<string>([
   ...Object.values(EMAIL_ATTACHMENT_ERROR_CODES),
   ...Object.values(FILE_SCRATCH_ERROR_CODE),
   ...Object.values(FILE_TRANSFER_ERROR_CODE),
-  ...Object.keys(HTTP_PAGINATION_FAILURES),
-  ...Object.keys(HTTP_OAUTH2_FAILURES),
-  ...Object.keys(HTTP_RESPONSE_FAILURES),
   ...Object.values(SLACK_REJECTIONS).map(({ code }) => code),
   FILE_INPUT_ERROR_CODE,
-  PROVIDER_RETRY_FAILURE.code,
   SUMMARY_RESULT_FAILURE.code,
 ]);
 
@@ -59,7 +48,8 @@ export function executorFailureCompletion(
   const safeErrorCode = error.safeErrorCode ?? `execution.${error.errorKind}`;
   if (
     error.errorSummary !== undefined &&
-    !executorSummaryCodes.has(safeErrorCode)
+    !executorSummaryCodes.has(safeErrorCode) &&
+    !isIntegrationExecutorSummaryCode(safeErrorCode)
   )
     throw new NodeAttemptStateCorruptError();
   return {
