@@ -1,6 +1,6 @@
 # F58 — Inline pure steps
 
-Status: proposed. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
+Status: accepted; slice 1 in progress. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
 F58 implements option C from [Cost of a pure step](step-transaction-cost.md).
 Implementation follows the integration module rollout in F57.
 
