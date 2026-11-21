@@ -36,7 +36,7 @@ const pollConnectionRefs = z
   })
   .optional();
 
-const graphSchema = z
+export const triggerGraphSchema = z
   .object({
     nodes: z.array(
       z
@@ -60,7 +60,7 @@ const graphSchema = z
 export function workflowTriggerProjection(
   graphInput: unknown,
 ): readonly WorkflowTriggerProjection[] {
-  const graph = graphSchema.parse(graphInput);
+  const graph = triggerGraphSchema.parse(graphInput);
   return Object.freeze(
     graph.nodes
       .flatMap((node): WorkflowTriggerProjection[] => {
@@ -90,7 +90,9 @@ export function workflowTriggerProjection(
   );
 }
 
-function pollConfig(node: z.output<typeof graphSchema>['nodes'][number]) {
+function pollConfig(
+  node: z.output<typeof triggerGraphSchema>['nodes'][number],
+) {
   if (node.definition.key === DATABASE_POLL_TRIGGER.key) {
     const refs = z
       .object({ [POSTGRES_CONNECTION_SLOT]: z.uuid() })
