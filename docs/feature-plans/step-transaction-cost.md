@@ -583,3 +583,35 @@ paired J7 harness completed all 2,400 runs. The table gives medians and
 | Worker CPU, ms | 36.30 [34.49–36.59] | 1.81 [1.17–1.91] |
 
 [J7 workflow and raw report](https://github.com/vigani1/pertexo/actions/runs/44941896208).
+
+### Fixed-build overload
+
+All three inline-on overload jobs passed. Drain took 143.92–164.97 seconds
+with inline on and 316.95–388.92 seconds off. Slow admission began at 20 or
+40 requests/s in both modes. At 20 requests/s, one paired on result was
+roughly flat, one improved and one slowed. The ranges overlap across the
+three pairs. The other workspace first saw an impact at 40–80 requests/s
+in both modes.
+
+| Metric | Inline off | Inline on |
+| --- | ---: | ---: |
+| Drain, s | 381.25 [316.95–388.92] | 162.25 [143.92–164.97] |
+| Slow admission begins, requests/s | 40 [20–40] | 20 [20–40] |
+| Flood request p95 at 10 requests/s, ms | 366 [349–599] | 96 [81–139] |
+| Flood request p95 at 20 requests/s, ms | 1,532 [1,192–7,571] | 4,575 [1,610–5,243] |
+| Other workspace reads succeeded at 40 requests/s | 97% [65–100%] | 98% [98–100%] |
+| API working set peak, MiB | 383.3 [364.6–422.6] | 412.0 [396.5–412.8] |
+| Host memory peak, MiB | 1,720 [1,597–1,741] | 1,736 [1,684–1,736] |
+| Host CPU peak, percent of a core | 202.1 [201.0–203.7] | 200.3 [200.2–200.5] |
+
+There were zero lost, duplicated or stranded runs, OOM kills and restarts
+in the six overload jobs. One off control failed the response assertions
+after Caddy logged one upstream TCP reset and returned HTTP 502 at 80
+requests/s. The report is included in the baseline above.
+
+Off reports [1](https://github.com/vigani1/pertexo/actions/runs/44941880222),
+[2](https://github.com/vigani1/pertexo/actions/runs/44941885617) and
+[3](https://github.com/vigani1/pertexo/actions/runs/44941891432).
+On reports [1](https://github.com/vigani1/pertexo/actions/runs/44941883025),
+[2](https://github.com/vigani1/pertexo/actions/runs/44941889000) and
+[3](https://github.com/vigani1/pertexo/actions/runs/44941893860).
