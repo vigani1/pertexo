@@ -198,10 +198,15 @@ export interface NodeDefinitionRegistration {
   readonly outputSchema: ZodType;
 }
 
-export interface NodeRegistryOptions {
-  readonly catalog: NodeCatalog;
+interface NodeRegistrations {
   readonly definitions: readonly NodeDefinitionRegistration[];
   readonly executors: readonly NodeExecutorRegistration[];
+}
+
+export interface NodeRegistryOptions extends NodeRegistrations {
+  readonly catalog: NodeCatalog;
+  /** Supplied by the host from the built-in core registration lists. */
+  readonly core?: NodeRegistrations;
 }
 
 export interface NodeExecutionRequest {
