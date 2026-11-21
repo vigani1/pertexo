@@ -13,16 +13,16 @@ import path from 'node:path';
 import { WorkerEnvironmentValueError } from '../../src/config/worker-configuration.errors.js';
 
 describe('parseWorkerConfig', () => {
-  it('requires opt-in to run inline steps', () => {
+  it('runs inline steps by default and accepts an explicit opt-out', () => {
     expect(parseWorkerConfig(requiredEnvironment).coordinator.inlineSteps).toBe(
-      false,
+      true,
     );
     expect(
       parseWorkerConfig({
         ...requiredEnvironment,
-        WORKFLOW_COORDINATOR_INLINE_STEPS: 'true',
+        WORKFLOW_COORDINATOR_INLINE_STEPS: 'false',
       }).coordinator.inlineSteps,
-    ).toBe(true);
+    ).toBe(false);
     expect(() =>
       parseWorkerConfig({
         ...requiredEnvironment,
@@ -187,7 +187,7 @@ describe('parseWorkerConfig', () => {
       coordinator: {
         dueWakeupBatchSize: 25,
         dueWakeupPollIntervalMillis: 1_000,
-        inlineSteps: false,
+        inlineSteps: true,
         maximumAdmissions: 32,
       },
       workspaceInbox: {

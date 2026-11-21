@@ -92,6 +92,9 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
             ]),
           }),
       POSTGRES_SHARED_BUFFERS: mode === 'kms' ? '' : '256MB',
+      ...(mode === 'self-managed'
+        ? { WORKFLOW_COORDINATOR_INLINE_STEPS: 'false' }
+        : {}),
       // One mode keeps the defaults; the other gives a bigger server's memory.
       ...(mode === 'kms'
         ? {}
@@ -231,6 +234,11 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       ...config.services.worker.environment,
       WORKER_INSTANCE_ID: 'fixture',
     });
+    assert.equal(
+      config.services.worker.environment.WORKFLOW_COORDINATOR_INLINE_STEPS,
+      environment.WORKFLOW_COORDINATOR_INLINE_STEPS,
+    );
+    assert.equal(worker.coordinator.inlineSteps, mode === 'kms');
     // The worker's own drain must act before the kernel does: a budget equal
     // to the cap meant the kernel always got there first.
     assert.equal(

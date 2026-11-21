@@ -1,6 +1,9 @@
 # F58 — Inline pure steps
 
-Status: accepted. Inline execution stays off by default after the [capped worker requalification](step-transaction-cost.md#capped-worker-requalification) missed the load gate. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
+Status: accepted. Inline execution defaults on after the
+[fixed-build qualification](step-transaction-cost.md#fixed-build-steady-and-rollout-gate)
+passed. Set `WORKFLOW_COORDINATOR_INLINE_STEPS=false` to use attempt delivery
+for newly selected pure work. See [ADR 096](../adr/096-inline-pure-steps.md).
 F58 implements option C from [Cost of a pure step](step-transaction-cost.md).
 Implementation follows the integration module rollout in F57.
 
@@ -16,7 +19,7 @@ Implementation follows the integration module rollout in F57.
    the core registration source and F57's integration module source.
    Check origin before merging registrations. Keep all shipping versions on
    the attempt path.
-2. **Run a chain behind an off-by-default server setting.**
+2. **Run a chain behind a server setting.**
    - **SDK and worker.** Add a synchronous inline invocation and result tag
      in `packages/node-sdk/src/execution/node-execution.types.ts`. Type
      inline registration to accept only bounded config, mapped input and the
@@ -212,8 +215,8 @@ the raw reports. The target for the 10-step workflow is about 90
 transactions and 360 Redis commands per run, and a 200-run burst in
 25–30 seconds. The historical estimates compare to about 330, 1,200
 and 78 seconds. Measure a fresh post-B off baseline and report its
-actual deltas and variance. Keep the default off until the targets are
-demonstrated.
+actual deltas and variance. The rollout started with the setting off and
+changed the default after qualification.
 
 Run the existing `.github/workflows/simulate-load.yml` on GitHub runners
 in both modes. Use the S5 steady and overload scenarios and the S10

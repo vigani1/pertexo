@@ -147,7 +147,7 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
     ),
     WORKFLOW_COORDINATOR_INLINE_STEPS: z
       .enum(['true', 'false'])
-      .default('false')
+      .default('true')
       .transform((value) => value === 'true'),
     WORKFLOW_COORDINATOR_MAX_ADMISSIONS: boundedSetting(
       WORKER_SETTING_BOUNDS.WORKFLOW_COORDINATOR_MAX_ADMISSIONS,

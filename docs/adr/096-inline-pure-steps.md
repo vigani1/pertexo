@@ -124,10 +124,14 @@ version and retains the old definition and executor. Resolve class using the
 published node's existing definition pin. Preserve legacy projection hashes
 and existing workflow versions. Already-admitted attempts finish on their
 original path. Roll out readers and both executor bindings to all workers
-before publishing inline versions. Start with coordinator execution disabled.
-The setting gates newly selected work. An inline version ships with an
-attempt binding for the same pure implementation, so fallback and rollback
-of the setting never change workflow outputs or move a queued attempt.
+before publishing inline versions. The rollout started with coordinator
+execution disabled. After the
+[fixed-build qualification](../feature-plans/step-transaction-cost.md#fixed-build-steady-and-rollout-gate),
+`WORKFLOW_COORDINATOR_INLINE_STEPS` defaults to `true`. Set it to `false`
+to select attempt delivery for newly admitted pure work.
+An inline version ships with an attempt binding for the same pure
+implementation. Fallback and rollback preserve workflow outputs and leave
+queued attempts on their original path.
 
 ## Consequences
 
