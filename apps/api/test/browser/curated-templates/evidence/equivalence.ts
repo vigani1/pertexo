@@ -58,7 +58,9 @@ export async function recordCuratedExecution(
     );
   await writeFile(
     qualificationFile,
-    JSON.stringify(snapshots.map(({ logical }) => logical)),
+    JSON.stringify(
+      snapshots.map(({ name, logical }) => ({ name, ...logical })),
+    ),
   );
 }
 
@@ -111,8 +113,7 @@ async function readExecution(api: Api, workspaceId: string, runId: string) {
          'id','workspace_id','node_run_id','created_at','updated_at','started_at',
          'completed_at','lease_owner','lease_expires_at','dispatch_marked_at',
          'fence_token','provider_idempotency_key'
-       ] || jsonb_build_object('dispatched', attempt.dispatch_marked_at is not null)
-         as logical from app.node_attempts attempt
+       ] as logical from app.node_attempts attempt
        join app.node_runs node on node.id=attempt.node_run_id and node.workspace_id=attempt.workspace_id
        where node.workspace_id=$1 and node.workflow_run_id=$2
        order by node.invocation_key, attempt.attempt_number`,
@@ -146,6 +147,7 @@ async function readExecution(api: Api, workspaceId: string, runId: string) {
   }
   for (const [index, { sequence }] of events.rows.entries())
     expect(sequence).toBe(index + 1);
+  // A delivered attempt can record dispatch before invoking a pure executor.
   const inlineAttempts = attempts.rows.filter(({ delivered }) => !delivered);
   for (const attempt of inlineAttempts)
     expect(attempt).toMatchObject({

@@ -126,8 +126,33 @@ async function compareCuratedExecutions(environment, directory) {
     if (!result.passed) return results;
     snapshots.push(JSON.parse(readFileSync(snapshot, 'utf8')));
   }
-  assert.deepStrictEqual(snapshots[1], snapshots[0]);
+  compareExecutionSnapshots(snapshots[1], snapshots[0]);
   return results;
+}
+
+function compareExecutionSnapshots(inline, delivered) {
+  assert.deepStrictEqual(
+    inline.map(({ name }) => name),
+    delivered.map(({ name }) => name),
+  );
+  for (const [index, snapshot] of inline.entries()) {
+    const expected = delivered[index];
+    assert.deepStrictEqual(snapshot.run, expected.run, `${snapshot.name} run`);
+    for (const field of ['nodes', 'attempts', 'events']) {
+      assert.equal(
+        snapshot[field].length,
+        expected[field].length,
+        `${snapshot.name} ${field} count`,
+      );
+      for (const [i, record] of snapshot[field].entries()) {
+        assert.deepStrictEqual(
+          record,
+          expected[field][i],
+          `${snapshot.name} ${field} record ${i + 1}`,
+        );
+      }
+    }
+  }
 }
 
 async function main([slotCount, ...journeys]) {
