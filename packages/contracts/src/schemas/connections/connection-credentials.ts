@@ -1,211 +1,24 @@
 import { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
-import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
-  HTTP_HEADER_LIMITS,
-  isSupportedHttpFieldValue,
-} from '../shared/http-field-value.js';
+  httpHeadersCredentialSchema,
+  resendApiKeyCredentialSchema,
+  slackBotTokenCredentialSchema,
+  smtpCredentialSchema,
+} from './credential-formats.js';
 import { postgresCredentialSchema } from './postgres.js';
 import { oauth2CredentialSchema } from './oauth2-connections.js';
-import { EMAIL_ADDRESS_LIMITS } from '@pertexo/workflow-model';
 
-export const CONNECTION_CREDENTIALS_BOUNDS = Object.freeze({
-  botTokenMinimumCharacters: 10,
-  botTokenCharacters: 512,
-  apiKeyMinimumCharacters: 8,
-  apiKeyCharacters: 512,
-  hostCharacters: 253,
-  portMaximum: 65535,
-  usernameCharacters: 1024,
-  passwordCharacters: 4096,
-});
+export {
+  CONNECTION_CREDENTIALS_BOUNDS,
+  emailMailboxSchema,
+  httpHeaderCredentialSchema,
+  httpHeadersCredentialSchema,
+  resendApiKeyCredentialSchema,
+  slackBotTokenCredentialSchema,
+  smtpCredentialSchema,
+} from './credential-formats.js';
 
-const httpHeaderNameSchema = z
-  .string()
-  .min(1)
-  .max(HTTP_HEADER_LIMITS.nameCharacters)
-  .regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u);
-const httpHeaderValueSchema = z
-  .string()
-  .min(1)
-  .max(HTTP_HEADER_LIMITS.valueCharacters)
-  .refine(isSupportedHttpFieldValue, {
-    message: 'header value contains a byte unsupported by HTTP transport',
-  });
-const prohibitedConnectionHeaders = new Set([
-  'accept-encoding',
-  'connection',
-  'content-length',
-  'host',
-  'idempotency-key',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade',
-]);
-const unsafeMailboxCharacters = [
-  '(',
-  ')',
-  ',',
-  ':',
-  ';',
-  '<',
-  '>',
-  '[',
-  ']',
-  '"',
-  '\\',
-] as const;
-export const httpHeaderCredentialSchema = z
-  .record(httpHeaderNameSchema, httpHeaderValueSchema)
-  .superRefine((headers, context) => {
-    const names = Object.keys(headers);
-    if (
-      names.length < 1 ||
-      names.length > HTTP_HEADER_LIMITS.credentialHeaders
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: `between one and ${String(HTTP_HEADER_LIMITS.credentialHeaders)} credential headers are required`,
-      });
-    }
-    const normalized = new Set<string>();
-    let bytes = 0;
-    for (const [name, value] of Object.entries(headers)) {
-      const canonicalName = name.toLowerCase();
-      bytes += utf8ByteLength(`${canonicalName}:${value}\r\n`);
-      if (normalized.has(canonicalName)) {
-        context.addIssue({
-          code: 'custom',
-          path: [name],
-          message: 'credential header names are case-insensitively unique',
-        });
-      }
-      if (prohibitedConnectionHeaders.has(canonicalName)) {
-        context.addIssue({
-          code: 'custom',
-          path: [name],
-          message: 'this transport-controlled header cannot be a credential',
-        });
-      }
-      normalized.add(canonicalName);
-    }
-    if (bytes > HTTP_HEADER_LIMITS.credentialHeaderBytes) {
-      context.addIssue({
-        code: 'custom',
-        message: 'credential headers exceed the total byte limit',
-      });
-    }
-  })
-  .transform((headers) =>
-    Object.freeze(
-      Object.fromEntries(
-        Object.entries(headers)
-          .map(([name, value]) => [name.toLowerCase(), value] as const)
-          .sort(([left], [right]) => left.localeCompare(right)),
-      ),
-    ),
-  );
-export const httpHeadersCredentialSchema = z
-  .object({
-    type: z.literal('http_headers'),
-    headers: httpHeaderCredentialSchema,
-  })
-  .strict()
-  .readonly();
-export const slackBotTokenCredentialSchema = z
-  .object({
-    type: z.literal('slack_bot_token'),
-    botToken: z
-      .string()
-      .min(CONNECTION_CREDENTIALS_BOUNDS.botTokenMinimumCharacters)
-      .max(CONNECTION_CREDENTIALS_BOUNDS.botTokenCharacters)
-      .regex(/^xoxb-[A-Za-z0-9-]+$/u),
-  })
-  .strict()
-  .readonly();
-const mailboxLocalPart =
-  /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u;
-const mailboxDomainLabel = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
-
-/** A bare sender or recipient address a mail provider accepts; its domain is lowercased. */
-export const emailMailboxSchema = z
-  .string()
-  .min(EMAIL_ADDRESS_LIMITS.minimumCharacters)
-  .max(EMAIL_ADDRESS_LIMITS.newAddressCharacters)
-  .refine((value) => /^[\x21-\x7e]+$/u.test(value))
-  .refine((value) => {
-    if (unsafeMailboxCharacters.some((character) => value.includes(character)))
-      return false;
-    const at = value.indexOf('@');
-    if (at < 1 || at !== value.lastIndexOf('@')) return false;
-    const local = value.slice(0, at);
-    const domain = value.slice(at + 1);
-    if (
-      local.length > EMAIL_ADDRESS_LIMITS.localPartCharacters ||
-      domain.length > EMAIL_ADDRESS_LIMITS.domainCharacters ||
-      !mailboxLocalPart.test(local)
-    )
-      return false;
-    const labels = domain.split('.');
-    return (
-      labels.length >= EMAIL_ADDRESS_LIMITS.minimumDomainLabels &&
-      labels.every((label) => mailboxDomainLabel.test(label))
-    );
-  })
-  .overwrite((value) => {
-    const at = value.indexOf('@');
-    return `${value.slice(0, at)}@${value.slice(at + 1).toLowerCase()}`;
-  });
-export const resendApiKeyCredentialSchema = z
-  .object({
-    type: z.literal('resend_api_key'),
-    apiKey: z
-      .string()
-      .min(CONNECTION_CREDENTIALS_BOUNDS.apiKeyMinimumCharacters)
-      .max(CONNECTION_CREDENTIALS_BOUNDS.apiKeyCharacters)
-      .regex(/^re_[A-Za-z0-9_-]+$/u),
-    fromEmail: emailMailboxSchema,
-  })
-  .strict()
-  .readonly();
-export const smtpCredentialSchema = z
-  .object({
-    type: z.literal('smtp'),
-    host: z.union([
-      z.ipv4(),
-      z.ipv6(),
-      z.hostname().max(CONNECTION_CREDENTIALS_BOUNDS.hostCharacters),
-    ]),
-    port: z
-      .number()
-      .int()
-      .min(1)
-      .max(CONNECTION_CREDENTIALS_BOUNDS.portMaximum),
-    security: z.enum(['implicit', 'starttls', 'none']),
-    username: z
-      .string()
-      .min(1)
-      .max(CONNECTION_CREDENTIALS_BOUNDS.usernameCharacters)
-      .regex(/^[^\r\n\0]+$/u),
-    password: z
-      .string()
-      .min(1)
-      .max(CONNECTION_CREDENTIALS_BOUNDS.passwordCharacters),
-    fromEmail: emailMailboxSchema,
-    fromName: z
-      .string()
-      .min(1)
-      .max(RESOURCE_NAME_MAX_LENGTH)
-      .regex(/^[^\r\n\0]+$/u)
-      .optional(),
-  })
-  .strict()
-  .readonly();
 export const connectionCredentialSchema = z.discriminatedUnion('type', [
   signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
