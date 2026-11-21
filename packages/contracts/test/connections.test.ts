@@ -61,7 +61,7 @@ describe('connection public contracts', () => {
         headers: { Authorization: 'Bearer opaque', 'X-API-Key': 'key' },
       },
     });
-    expect(parsed.credential).toMatchObject({
+    expect(httpHeadersCredentialSchema.parse(parsed.credential)).toMatchObject({
       headers: { authorization: 'Bearer opaque', 'x-api-key': 'key' },
     });
     expect(httpHeaderCredentialSchema.safeParse({}).success).toBe(false);

@@ -38,9 +38,15 @@ export const CONNECTION_EVENT_TYPE = {
  */
 export function connectionFitsSlot(
   connection: Readonly<{ providerKey: string; authType: string }>,
-  slot: Readonly<{ providerKey: string; authType: string }>,
+  slot: Readonly<{
+    providerKey: string;
+    authType: string;
+    acceptedAuthTypes?: readonly string[];
+  }>,
 ): boolean {
   if (connection.providerKey !== slot.providerKey) return false;
+  if (slot.acceptedAuthTypes !== undefined)
+    return slot.acceptedAuthTypes.includes(connection.authType);
   return (
     connection.authType === slot.authType ||
     (slot.authType === CONNECTION_AUTH_TYPE.httpHeaders &&

@@ -1,9 +1,9 @@
-import { postgresCredentialSchema } from './postgres.js';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
 import {
-  signingKeyCredentialSchema,
   NODE_FAILURE_FIELD_LIMITS,
+  NODE_IDENTITY_KEY_MAX_CHARACTERS,
+  boundedNodeJsonRecordSchema,
 } from '@pertexo/node-sdk';
 export { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
@@ -15,17 +15,8 @@ import {
   connectionResponseFields,
   connectionSecretVersionIdentifierSchema,
 } from './connection-fields.js';
-import {
-  oauth2ConnectionResponseSchema,
-  oauth2CredentialSchema,
-} from './oauth2-connections.js';
-import {
-  httpHeadersCredentialSchema,
-  slackBotTokenCredentialSchema,
-  resendApiKeyCredentialSchema,
-  smtpCredentialSchema,
-  connectionCredentialSchema,
-} from './connection-credentials.js';
+import { oauth2ConnectionResponseSchema } from './oauth2-connections.js';
+import type { connectionCredentialSchema } from './connection-credentials.js';
 
 const CONNECTIONS_BOUNDS = Object.freeze({
   connectionCursorCharacters: 512,
@@ -38,7 +29,10 @@ const CONNECTIONS_BOUNDS = Object.freeze({
   errorCodeCharacters: NODE_FAILURE_FIELD_LIMITS.safeErrorCodeCharacters,
   urlBytes: 2048,
 });
-export { connectionStatusSchema } from './connection-fields.js';
+export {
+  connectionProviderKeySchema,
+  connectionStatusSchema,
+} from './connection-fields.js';
 
 /** How long testing a connection waits for the provider before it gives up. */
 export const CONNECTION_TEST_TIMEOUT_MILLIS = 15_000;
@@ -53,63 +47,24 @@ const connectionPageLimitSchema = z.coerce
   .min(1)
   .max(CONNECTIONS_BOUNDS.connectionPageLimitMaximum);
 
-export const connectionCreateRequestSchema = z.discriminatedUnion(
-  'providerKey',
-  [
-    z
-      .strictObject({
-        providerKey: z.literal('postgres'),
-        name: connectionNameSchema,
-        credential: postgresCredentialSchema,
-      })
-      .readonly(),
-    z
-      .object({
-        providerKey: z.literal('signing'),
-        name: connectionNameSchema,
-        credential: signingKeyCredentialSchema,
-      })
-      .strict()
-      .readonly(),
-    z
-      .object({
-        providerKey: z.literal('http'),
-        name: connectionNameSchema,
-        credential: z.discriminatedUnion('type', [
-          httpHeadersCredentialSchema,
-          oauth2CredentialSchema,
-        ]),
-      })
-      .strict()
-      .readonly(),
-    z
-      .object({
-        providerKey: z.literal('email'),
-        name: connectionNameSchema,
-        credential: z.discriminatedUnion('type', [
-          resendApiKeyCredentialSchema,
-          smtpCredentialSchema,
-        ]),
-      })
-      .strict()
-      .readonly(),
-    z
-      .object({
-        providerKey: z.literal('slack'),
-        name: connectionNameSchema,
-        credential: slackBotTokenCredentialSchema,
-      })
-      .strict()
-      .readonly(),
-  ],
+const connectionCredentialEnvelopeSchema = z.intersection(
+  z.object({ type: z.string().min(1).max(NODE_IDENTITY_KEY_MAX_CHARACTERS) }),
+  boundedNodeJsonRecordSchema,
 );
 
-export const connectionRotateSecretRequestSchema = z
-  .object({
-    expectedSecretVersionId: connectionSecretVersionIdentifierSchema,
-    credential: connectionCredentialSchema,
+export const connectionCreateRequestSchema = z
+  .strictObject({
+    providerKey: z.string().min(1).max(NODE_IDENTITY_KEY_MAX_CHARACTERS),
+    name: connectionNameSchema,
+    credential: connectionCredentialEnvelopeSchema,
   })
-  .strict()
+  .readonly();
+
+export const connectionRotateSecretRequestSchema = z
+  .strictObject({
+    expectedSecretVersionId: connectionSecretVersionIdentifierSchema,
+    credential: connectionCredentialEnvelopeSchema,
+  })
   .readonly();
 
 const httpConnectionTestRequestSchema = z
@@ -264,12 +219,15 @@ export const connectionIdParamSchema = z
   .object({ workspaceId: z.uuid(), connectionId: connectionIdentifierSchema })
   .strict();
 
-export type ConnectionCreateRequest = z.input<
-  typeof connectionCreateRequestSchema
->;
-export type ConnectionRotateSecretRequest = z.input<
-  typeof connectionRotateSecretRequestSchema
->;
+export type ConnectionCreateRequest = Readonly<{
+  providerKey: string;
+  name: string;
+  credential: z.input<typeof connectionCredentialSchema>;
+}>;
+export type ConnectionRotateSecretRequest = Readonly<{
+  expectedSecretVersionId: string;
+  credential: z.input<typeof connectionCredentialSchema>;
+}>;
 export type ConnectionTestRequest = z.input<typeof connectionTestRequestSchema>;
 export type ConnectionResponse = z.output<typeof connectionResponseSchema>;
 export type ConnectionListResponse = z.output<

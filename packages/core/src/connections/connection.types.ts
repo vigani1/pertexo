@@ -118,6 +118,7 @@ export type RotateConnectionSecretInput = RequestMetadata &
     actorId: string;
     connectionId: string;
     secretVersionId: string;
+    expectedProviderKey?: string;
     expectedCurrentSecretVersionId: string;
     sealed: SealedConnectionSecretRecord;
     idempotencyKey: string;

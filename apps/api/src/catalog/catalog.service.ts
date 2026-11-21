@@ -3,6 +3,7 @@ import { compareOrdinal } from '@pertexo/workflow-model';
 import type { IntegrationListResponse } from '@pertexo/contracts';
 import {
   platformBrowserNodeDefinitionCatalog,
+  connectionFormCatalog,
   type PlatformNodeDefinitionBrowserCatalog,
   type PlatformNodeDefinitionBrowserProjection,
 } from '@pertexo/node-catalog';
@@ -21,6 +22,7 @@ export class ListNodeDefinitionsService {
     return {
       items: this.catalog.definitions,
       codeSettings: this.codeSettings,
+      connections: connectionFormCatalog,
     };
   }
 }

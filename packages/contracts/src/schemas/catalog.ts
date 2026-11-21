@@ -106,10 +106,70 @@ export const nodeDefinitionCatalogItemSchema = z
   .strict()
   .readonly();
 
+const oauth2PresetSchema = z
+  .strictObject({
+    key: identityKey,
+    label: z.string(),
+    values: z
+      .strictObject({
+        grantType: z.literal('authorization_code'),
+        authorizationUrl: z.url(),
+        tokenUrl: z.url(),
+        scope: z.string(),
+        clientAuthentication: z.enum(['basic', 'body']),
+        pkce: z.enum(['s256', 'none']),
+        authorizationParameters: z.string(),
+        tokenParameters: z.string(),
+        hostMode: z.enum(['any', 'listed']),
+        hosts: z.string(),
+      })
+      .readonly(),
+  })
+  .readonly();
+
+const connectionFormDefinitionSchema = z
+  .strictObject({
+    providerKey: identityKey,
+    authType: identityKey,
+    icon: identityKey,
+    presets: z
+      .array(oauth2PresetSchema)
+      .max(CATALOG_LIMITS.integrations)
+      .readonly()
+      .optional(),
+    presentation: z
+      .strictObject({
+        choice: identityKey,
+        pickerOrder: z.number().int().nonnegative().optional(),
+        name: z.string(),
+        purpose: z.string(),
+        credential: z.string(),
+        savedCredential: z.string(),
+        usedBy: z.string(),
+        nameSuffix: z.string(),
+        variant: z.string().optional(),
+        variantPrompt: z.string().optional(),
+        requirement: z.string().optional(),
+      })
+      .readonly(),
+    fields: schemaDocumentSchema,
+    slot: identityKey,
+    test: identityKey,
+  })
+  .readonly();
+
+export type ConnectionFormDefinition = z.output<
+  typeof connectionFormDefinitionSchema
+>;
+
 export const nodeDefinitionListResponseSchema = responseSchema(
   z
     .object({
       codeSettings: codeSettingsSchema.optional(),
+      connections: z
+        .array(connectionFormDefinitionSchema)
+        .max(CATALOG_LIMITS.integrations)
+        .optional(),
       items: z
         .array(nodeDefinitionCatalogItemSchema)
         .max(CATALOG_LIMITS.definitions),

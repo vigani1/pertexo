@@ -1,10 +1,12 @@
+import { testHeaderConnection } from './headers.js';
+import { testSlackConnection } from './slack.js';
 import { testResendConnection } from './resend.js';
 import { testPostgresConnection } from './postgres.js';
 import * as smtp from './smtp.js';
 import { ProviderHttpError } from '@pertexo/integrations/server';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
 import { randomUUID } from 'node:crypto';
-import { CONNECTION_AUTH_TYPE } from '@pertexo/workflow-model';
+import { findConnectionDefinition } from '@pertexo/node-catalog';
 import type { ConnectionTestOutcome } from '@pertexo/workflow-model';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import {
@@ -38,12 +40,7 @@ import {
 import type { connectionTestRequestSchema as requestSchema } from '../connection-request.js';
 import type { ConnectionTestResponse } from '../connection-request.js';
 import { decodeCredential } from './credentials.js';
-import {
-  slackTestOutcome,
-  responseOutcome,
-  secureErrorOutcome,
-  SUCCEEDED_TEST,
-} from './outcomes.js';
+import { secureErrorOutcome, SUCCEEDED_TEST } from './outcomes.js';
 import { oauth2RedirectUri } from '../oauth2/start-authorization.js';
 import { oauth2TestActor, testOAuth2Connection } from './oauth2.js';
 import { CONNECTION_TEST_TIMEOUT_MILLIS } from '@pertexo/contracts';
@@ -205,8 +202,15 @@ export class TestConnectionService {
         let outcome: ConnectionTestOutcome;
         try {
           // The token service opens its own client secret when it needs it.
-          if (resolved.connection.authType === CONNECTION_AUTH_TYPE.oauth2) {
+          const definition = findConnectionDefinition(
+            resolved.connection.authType,
+            resolved.connection.providerKey,
+          );
+          if (definition === undefined)
+            throw new ConnectionSecretEncryptionError();
+          if (definition.test.kind === 'oauth2') {
             outcome = await this.testOAuth2(input, request, {
+              method: definition.test.method,
               connection: resolved.connection,
               signal: requestSignal,
               beforeDispatch,
@@ -222,17 +226,13 @@ export class TestConnectionService {
               requestSignal,
             );
             requestSignal.throwIfAborted();
-            outcome = await this.testProvider(
-              destination,
-              expectedProviderKey,
-              {
-                request,
-                credential: decodeCredential(plaintext),
-                input,
-                signal: requestSignal,
-                beforeDispatch,
-              },
-            );
+            outcome = await this.testProvider(destination, {
+              request,
+              ...decodeCredential(plaintext, definition),
+              input,
+              signal: requestSignal,
+              beforeDispatch,
+            });
           }
         } catch (error: unknown) {
           if (!(
@@ -270,7 +270,7 @@ export class TestConnectionService {
     request: ParsedConnectionTestRequest,
     call: Pick<
       Parameters<typeof testOAuth2Connection>[1],
-      'connection' | 'signal' | 'beforeDispatch'
+      'connection' | 'method' | 'signal' | 'beforeDispatch'
     >,
   ): Promise<ConnectionTestOutcome> {
     if (this.oauth2 === undefined || !('url' in request))
@@ -288,22 +288,25 @@ export class TestConnectionService {
 
   private async testProvider(
     destination: FailureNotificationDestinationResponse | undefined,
-    expectedProviderKey: 'email' | 'http' | 'postgres' | 'slack' | 'signing',
     {
       request,
       credential,
+      recipe,
+      auth,
       input,
       signal,
       beforeDispatch,
     }: Readonly<{
       request: ParsedConnectionTestRequest;
-      credential: DecodedConnectionCredential;
+      credential: DecodedConnectionCredential['credential'];
+      recipe: DecodedConnectionCredential['recipe'];
+      auth: DecodedConnectionCredential['auth'];
       input: TestConnectionCommand;
       signal: AbortSignal;
       beforeDispatch: () => Promise<void>;
     }>,
   ): Promise<ConnectionTestOutcome> {
-    if (credential.type === 'postgres')
+    if (recipe.kind === 'postgres' && credential.type === 'postgres')
       return testPostgresConnection(
         credential,
         this.smtpPolicy?.allowedPrivateNetworks ?? [],
@@ -312,8 +315,15 @@ export class TestConnectionService {
           beforeDispatch,
         },
       );
-    smtp.assertEmailTestProfile(credential.type, request, destination);
-    if (credential.type === 'smtp')
+    smtp.assertEmailTestProfile(
+      {
+        smtp: recipe.kind === 'smtp',
+        requiresConsent: 'requiresConsent' in recipe,
+      },
+      request,
+      destination,
+    );
+    if (recipe.kind === 'smtp' && credential.type === 'smtp')
       return smtp.testSmtpConnection(credential, this.smtpPolicy, {
         command: input,
         destination,
@@ -321,7 +331,7 @@ export class TestConnectionService {
         signal,
         beforeDispatch,
       });
-    if (expectedProviderKey === 'email') {
+    if (recipe.kind === 'resend') {
       if (
         credential.type !== 'resend_api_key' ||
         this.emailClient === undefined
@@ -334,34 +344,20 @@ export class TestConnectionService {
         beforeDispatch,
       });
     }
-    if (expectedProviderKey === 'slack') {
+    if (recipe.kind === 'slack') {
       if (
         credential.type !== 'slack_bot_token' ||
         this.slackClient === undefined
       )
         throw new ConnectionSecretEncryptionError();
-      if (destination?.config.kind === 'slack') {
-        if (this.slackClient.sendMessage === undefined)
-          throw new ConnectionSecretEncryptionError();
-        const result = await this.slackClient.sendMessage({
-          botToken: credential.botToken,
-          channelId: destination.config.channelId,
-          text: 'This is a test of your Pertexo alert destination. No workflow failed.',
-          timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
-          signal,
-          beforeDispatch,
-        });
-        return slackTestOutcome(result);
-      }
-      const result = await this.slackClient.authTest({
-        botToken: credential.botToken,
-        timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
+      return testSlackConnection(this.slackClient, credential.botToken, {
+        destination,
         signal,
         beforeDispatch,
       });
-      return slackTestOutcome(result);
     }
     if (
+      recipe.kind === 'signing' &&
       credential.type === 'hmac_key' &&
       'providerKey' in request &&
       request.providerKey === 'signing'
@@ -369,23 +365,17 @@ export class TestConnectionService {
       await beforeDispatch();
       return SUCCEEDED_TEST;
     }
-    if (credential.type !== 'http_headers' || !('url' in request))
+    if (auth.kind !== 'header_map' || recipe.kind !== 'http')
       throw new ConnectionSecretEncryptionError();
-    const response = await this.httpClient.execute({
-      url: request.url,
-      method: 'GET',
-      headers: credential.headers,
+    return testHeaderConnection(this.httpClient, {
+      request,
+      credential,
+      method: recipe.method,
       timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
       maxRedirects: CONNECTION_TEST_MAXIMUM_REDIRECTS,
       maxResponseBytes: CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES,
-      sensitiveValues: Object.values(credential.headers),
       signal,
       beforeDispatch,
     });
-    try {
-      return responseOutcome(response.status);
-    } finally {
-      response.body.fill(0);
-    }
   }
 }

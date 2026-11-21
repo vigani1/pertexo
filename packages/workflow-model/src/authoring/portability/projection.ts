@@ -26,6 +26,7 @@ export type PortableConnectionSlotPolicy = Readonly<{
   slot: string;
   providerKey: string;
   authType: string;
+  acceptedAuthTypes?: readonly string[];
   /** A step that runs without this connection, such as HTTP to a public API. */
   optional?: boolean;
 }>;

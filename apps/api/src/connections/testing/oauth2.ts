@@ -39,6 +39,7 @@ export async function testOAuth2Connection(
     actor: OAuth2GrantLossActor;
     connection: ConnectionRecord;
     url: string;
+    method: 'GET';
     timeoutMillis: number;
     maxRedirects: number;
     maxResponseBytes: number;
@@ -69,7 +70,7 @@ export async function testOAuth2Connection(
     const response = await client.executeStreaming(
       {
         url,
-        method: 'GET',
+        method: input.method,
         timeoutMillis: input.timeoutMillis,
         maxRedirects: input.maxRedirects,
         maxResponseBytes: input.maxResponseBytes,

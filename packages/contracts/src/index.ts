@@ -5,6 +5,9 @@ export * from './schemas/execution/artifact-transfer.js';
 export * from './schemas/catalog.js';
 export * from './schemas/connections/connections.js';
 export {
+  CONNECTION_CREDENTIALS_BOUNDS,
+  connectionCredentialSchema,
+  type ParsedConnectionCredential,
   emailMailboxSchema,
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,

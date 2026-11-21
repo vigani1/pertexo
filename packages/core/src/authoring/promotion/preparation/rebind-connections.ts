@@ -54,7 +54,14 @@ export async function rebindPromotionConnections(
       ? []
       : await shareLockTargetConnections(client, workspaceId, scope, names);
   const bindings: PortableConnectionBinding[] = [];
+  const policies = catalog.definitions.flatMap(({ slots }) => slots);
   for (const slot of manifest.connectionSlots) {
+    const policy = policies.find(
+      (candidate) =>
+        candidate.slot === slot.slot &&
+        candidate.providerKey === slot.providerKey &&
+        candidate.authType === slot.authType,
+    );
     const sourceId = sourceNodes.get(slot.nodeId)?.connectionRefs[slot.slot];
     const connection = sources.connections.find(
       (candidate) => candidate.id === sourceId,
@@ -66,7 +73,7 @@ export async function rebindPromotionConnections(
           providerKey: connection.provider_key,
           authType: connection.auth_type,
         },
-        slot,
+        policy ?? slot,
       )
         ? []
         : targets.filter(

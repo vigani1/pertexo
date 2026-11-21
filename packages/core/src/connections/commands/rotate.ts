@@ -83,7 +83,11 @@ export async function rotateConnectionSecret(
     throw new ConnectionNotFoundError('Connection is not visible');
   if (connection.status === CONNECTION_STATUS.revoked)
     throw new ConnectionUnavailableError('Connection is revoked');
-  if (connection.authType !== authType)
+  if (
+    connection.authType !== authType ||
+    (input.expectedProviderKey !== undefined &&
+      connection.providerKey !== input.expectedProviderKey)
+  )
     throw new ConnectionUnavailableError(
       'Connection authentication type cannot be changed by rotation',
       'authentication_type',

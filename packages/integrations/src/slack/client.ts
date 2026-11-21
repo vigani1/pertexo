@@ -1,3 +1,4 @@
+import { SLACK_BOT_TOKEN_CONNECTION } from './connections.definition.js';
 import { z } from 'zod';
 import { parseRetryAfterMillis } from '../http/retry-after.js';
 
@@ -12,7 +13,7 @@ import {
 } from './send-message/send-message.schemas.js';
 
 export const SLACK_API_ENDPOINTS = Object.freeze({
-  authTest: 'https://slack.com/api/auth.test',
+  authTest: SLACK_BOT_TOKEN_CONNECTION.test.target,
   conversationsInfo: 'https://slack.com/api/conversations.info',
   sendMessage: 'https://slack.com/api/chat.postMessage',
 });

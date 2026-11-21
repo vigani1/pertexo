@@ -1,17 +1,11 @@
 import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
 
 export {
-  connectionCreateRequestSchema,
   connectionListResponseSchema,
   connectionResponseSchema,
-  connectionRotateSecretRequestSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
-  signingKeyCredentialSchema,
-  httpHeadersCredentialSchema,
   slackBotTokenCredentialSchema,
-  resendApiKeyCredentialSchema,
-  smtpCredentialSchema,
   type ConnectionResponse,
   type ConnectionListResponse,
   type ConnectionTestResponse,

@@ -193,6 +193,140 @@ describe('connection routes', () => {
     expect(forwarded(services.rotate).signal).toBeInstanceOf(AbortSignal);
   });
 
+  it.each([
+    {
+      providerKey: 'slack',
+      credential: { type: 'slack_bot_token', botToken: 'xoxb-1234567890' },
+    },
+    {
+      providerKey: 'email',
+      credential: {
+        type: 'resend_api_key',
+        apiKey: 're_1234567890',
+        fromEmail: 'ops@example.test',
+      },
+    },
+    {
+      providerKey: 'http',
+      credential: {
+        type: 'http_headers',
+        headers: { authorization: 'Bearer fixture' },
+      },
+    },
+    {
+      providerKey: 'postgres',
+      credential: {
+        type: 'postgres',
+        host: 'database.example.test',
+        port: 5432,
+        database: 'app',
+        user: 'workflow',
+        password: 'fixture-password',
+        tls: 'require',
+      },
+    },
+    {
+      providerKey: 'email',
+      credential: {
+        type: 'smtp',
+        host: 'smtp.example.test',
+        port: 587,
+        security: 'starttls',
+        username: 'ops',
+        password: 'fixture-password',
+        fromEmail: 'ops@example.test',
+      },
+    },
+    {
+      providerKey: 'signing',
+      credential: { type: 'hmac_key', signingKey: ' exact fixture key ' },
+    },
+    {
+      providerKey: 'http',
+      credential: {
+        type: 'oauth2',
+        settings: {
+          grantType: 'client_credentials',
+          tokenUrl: 'https://auth.example.test/token',
+          clientId: 'workflows',
+          scope: '',
+          clientAuthentication: 'basic',
+          tokenParameters: {},
+          requestHosts: { mode: 'any' },
+        },
+        clientSecret: 'fixture-secret',
+      },
+    },
+  ])(
+    'admits creation and rotation for $credential.type without returning its fields',
+    async ({ providerKey, credential }) => {
+      const create = await command('POST', connections, {
+        providerKey,
+        name: 'Operations API',
+        credential,
+      });
+      expect(create.statusCode, create.payload).toBe(201);
+      expect(forwarded(services.create)).toMatchObject({
+        request: { providerKey, credential },
+      });
+      expect(create.json()).not.toHaveProperty('credential');
+      const rotate = await command('PUT', `${one}/secret`, {
+        ...rotation,
+        credential,
+      });
+      expect(rotate.statusCode, rotate.payload).toBe(200);
+      expect(forwarded(services.rotate)).toMatchObject({
+        request: { credential },
+        expectedProviderKey: providerKey,
+      });
+      expect(rotate.json()).not.toHaveProperty('credential');
+    },
+  );
+
+  it.each([
+    [
+      'ftp',
+      { type: 'http_headers', headers: { authorization: 'fixture' } },
+      '/providerKey',
+    ],
+    [
+      'slack',
+      { type: 'http_headers', headers: { authorization: 'fixture' } },
+      '/credential/type',
+    ],
+    [
+      'slack',
+      { type: 'slack_bot_token', botToken: 'invalid-token-format' },
+      '/credential/botToken',
+    ],
+  ] as const)(
+    'keeps the input pointer for an inadmissible %s credential',
+    async (providerKey, credential, path) => {
+      const response = await command('POST', connections, {
+        ...created,
+        providerKey,
+        credential,
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({
+        errors: [expect.objectContaining({ path })],
+      });
+      expect(services.create.execute).not.toHaveBeenCalled();
+    },
+  );
+
+  it('refuses an unknown rotation credential before the command runs', async () => {
+    const response = await command('PUT', `${one}/secret`, {
+      ...rotation,
+      credential: { type: 'unknown' },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      errors: [expect.objectContaining({ path: '/credential/type' })],
+    });
+    expect(services.rotate.execute).not.toHaveBeenCalled();
+  });
+
   it('refuses a credential header that would redirect the request', async () => {
     const reply = await command('POST', connections, {
       ...created,

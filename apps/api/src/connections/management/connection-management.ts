@@ -1,4 +1,3 @@
-import type { z } from 'zod';
 import { requestInputError } from '../../platform/http/request-input.js';
 import { ConnectionNotFoundError } from '@pertexo/core/connections';
 import { generatePersistedId } from '@pertexo/database/platform';
@@ -30,22 +29,26 @@ import {
   type ConnectionTelemetry,
 } from '../telemetry.js';
 import type {
-  connectionCreateRequestSchema,
-  connectionRotateSecretRequestSchema,
-} from '../connection-request.js';
+  admitConnectionCreate,
+  admitConnectionRotation,
+} from './admit-credential.js';
 import type { ConnectionResponse } from '../connection-request.js';
 import { OAuth2ConnectionsUnavailableError } from './connection-management.errors.js';
 
 export type CreateConnectionCommand = ConnectionCommandInput &
   Readonly<{
-    request: z.output<typeof connectionCreateRequestSchema>;
+    request: ReturnType<typeof admitConnectionCreate>;
     idempotencyKey: string;
   }>;
 
 export type RotateConnectionSecretCommand = ConnectionCommandInput &
   Readonly<{
     connectionId: string;
-    request: z.output<typeof connectionRotateSecretRequestSchema>;
+    request: Omit<
+      ReturnType<typeof admitConnectionRotation>,
+      'expectedProviderKey'
+    >;
+    expectedProviderKey?: string;
     idempotencyKey: string;
   }>;
 
@@ -317,6 +320,9 @@ export class RotateConnectionSecretService {
             connectionId: input.connectionId,
             secretVersionId,
             expectedCurrentSecretVersionId: request.expectedSecretVersionId,
+            ...(input.expectedProviderKey === undefined
+              ? {}
+              : { expectedProviderKey: input.expectedProviderKey }),
             ...(request.credential.type === 'oauth2'
               ? {
                   expectedAuthType: request.credential.type,

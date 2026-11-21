@@ -30,8 +30,8 @@ configuration.
 
 - A new integration: register its module in `integration-modules.ts` and,
   if it executes, wire its executor in `server.ts`.
-- A new connection slot: `CONNECTION_SLOT_POLICIES` in
-  `portable-definition-policy.ts`.
+- A new connection slot: declare it with its owning integration connection.
+  `portable-definition-policy.ts` derives the portable slots from the registry.
 - A new browser field: `PlatformNodeDefinitionBrowserProjection` and its
   projection in `browser-catalog.ts`.
 
