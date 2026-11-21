@@ -1,5 +1,5 @@
 import { isRecord } from '@pertexo/workflow-model';
-import { fieldLabel } from '../field-units';
+import { fieldLabel } from '@/lib/schema-fields/units';
 import {
   propertyDefaults,
   schemaFields,
