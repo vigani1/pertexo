@@ -66,9 +66,11 @@ export function connectionNameError(name: string): string | undefined {
 }
 
 export function suggestConnectionName(
-  noun: string,
+  definition: ConnectionFormDefinition | undefined,
   workspaceName: string,
 ): string {
+  if (definition === undefined) return '';
+  const noun = definition.presentation.nameSuffix;
   return `${workspaceName.slice(0, RESOURCE_NAME_MAX_LENGTH - 1 - noun.length).trim()} ${noun}`;
 }
 
