@@ -1,6 +1,6 @@
 # F58 — Inline pure steps
 
-Status: accepted. The versioned kernels and coordinator path ship with inline execution off by default. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
+Status: accepted. Inline execution stays off by default after the [load qualification](step-transaction-cost.md#load-qualification) missed its gate. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
 F58 implements option C from [Cost of a pure step](step-transaction-cost.md).
 Implementation follows the integration module rollout in F57.
 
@@ -118,7 +118,7 @@ The editor's step picker selects the highest catalog version for a new step.
 Imported templates and existing draft nodes keep the versions they carry.
 Publication preserves those pins. The proof republishes fixture drafts after
 selecting the inline versions so both executions use identical pins. XML and
-HTML remain on the attempt path because their parser dependencies are outside
+HTML use the attempt path because their parser dependencies are outside
 the reviewed import closure.
 
 For Each keeps its current iteration batches. Reuse
