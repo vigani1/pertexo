@@ -6,7 +6,7 @@ import {
 } from '@pertexo/node-catalog';
 
 const original = resolvePlatformNodeDefinition({ key: 'core.set', version: 1 });
-export const inlineDefinition = { key: 'core.set', version: 2 };
+export const inlineDefinition = { key: 'core.set', version: 3 };
 const manifest = {
   ...original.manifest,
   definition: inlineDefinition,

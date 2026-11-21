@@ -6,8 +6,7 @@ import { afterAll } from 'vitest';
 
 import { createRedisTestNamespace } from '../../infrastructure/redis-test-namespace.js';
 
-export const inlineSteps =
-  process.env.WORKFLOW_COORDINATOR_INLINE_STEPS === 'true';
+export { inlineStepsEnabled as inlineSteps } from '../inline-setting.js';
 
 export const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 

@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../../support/coordinator/inline-setting.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { arch, cpus, platform } from 'node:os';
@@ -152,6 +153,7 @@ describeMeasurement('Real dispatcher step latency (opt-in measurement)', () => {
       const runs = createWorkflowRunDatabase(config(fixture.apiUrl, 4));
       owners.push(() => runs.close());
       const coordinator = await createCoordinatorRuntime({
+        inlineSteps: inlineStepsEnabled,
         maintenanceDatabase: config(fixture.dispatcherUrl, 2),
         database: config(fixture.workerUrl, 6),
         maximumAdmissions: 10,

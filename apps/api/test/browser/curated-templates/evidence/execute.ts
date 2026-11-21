@@ -1,3 +1,8 @@
+import {
+  compareInlineExecution,
+  qualificationGraph,
+  recordCuratedExecution,
+} from './equivalence.js';
 import { randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 import type { z } from 'zod';
@@ -45,10 +50,24 @@ export async function executeCuratedTemplateGraphs(
   async function publish(id: string) {
     const draft = await api.send('GET', `${path(id)}/draft`, { browser });
     expect(draft.statusCode).toBe(200);
+    let etag = draft.headers.etag;
+    if (compareInlineExecution) {
+      const graph = workflowDraftResponseSchema.parse(draft.json()).graph;
+      const qualified = qualificationGraph(graph);
+      if (JSON.stringify(graph) !== JSON.stringify(qualified)) {
+        const saved = await api.send('PUT', `${path(id)}/draft`, {
+          browser,
+          headers: { 'If-Match': String(etag) },
+          payload: { graph: qualified },
+        });
+        expect(saved.statusCode).toBe(200);
+        etag = saved.headers.etag;
+      }
+    }
     const response = await api.send('POST', `${path(id)}/publish`, {
       browser,
       headers: {
-        'If-Match': String(draft.headers.etag),
+        'If-Match': String(etag),
         'Idempotency-Key': randomUUID(),
       },
     });
@@ -317,7 +336,8 @@ export async function executeCuratedTemplateGraphs(
     node_id: 'greeting',
     status: 'succeeded',
   });
-  return {
+  const runs = {
+    greeted: greeted.runId,
     accepted: accepted.runId,
     rejected: rejected.runId,
     missing: missing.runId,
@@ -328,4 +348,6 @@ export async function executeCuratedTemplateGraphs(
     skipped: skipped.runId,
     providerFailure: providerFailure.runId,
   };
+  await recordCuratedExecution(api, workspaceId, runs);
+  return runs;
 }

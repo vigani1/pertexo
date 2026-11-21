@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from './coordinator/inline-setting.js';
 import type { WorkflowExecutionReader } from '@pertexo/core/runs';
 import type { RunEventNotificationPublisher } from '@pertexo/queue/server';
 import type { NodeExecutionRegistry } from '@pertexo/workflow-engine/server';
@@ -72,7 +73,11 @@ export function testCoordinatorRuntime(
 ) {
   const { logger } = services;
   return createCoordinatorRuntime(
-    { ...options, ...(logger === undefined ? {} : { logger }) },
+    {
+      inlineSteps: inlineStepsEnabled,
+      ...options,
+      ...(logger === undefined ? {} : { logger }),
+    },
     {
       ...factories,
       ...supplied({
@@ -110,7 +115,11 @@ export function testTriggerRuntime(
 ) {
   const { logger } = services;
   return createTriggerRuntime(
-    { ...options, ...(logger === undefined ? {} : { logger }) },
+    {
+      inlineSteps: inlineStepsEnabled,
+      ...options,
+      ...(logger === undefined ? {} : { logger }),
+    },
     {
       ...factories,
       ...supplied({
