@@ -15,6 +15,7 @@ import {
 import { createApiClient } from '@/lib/api/client';
 import { NotificationsProvider } from '@/components/ui/toast';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { ConnectionDefinitions } from '@/features/catalog/catalog-views.public';
 import { NewWorkflowSheet } from '@/features/workflows/components/new-workflow-sheet';
 import { ReplaceCredentialForm } from '@/features/connections/components/detail/replace-credential-form';
 import { AddConnectionSheet } from '@/features/connections/components/add-connection/sheet';
@@ -24,6 +25,7 @@ import {
   destination,
   workspaceId,
 } from './failure-notifications/destinations/fixture';
+import { browserConnectionDefinitions } from '../support/fixtures/node-catalog';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -105,7 +107,11 @@ it.each(['workflow', 'credential', 'destination', 'connection'] as const)(
     const routeTree = createRootRoute({
       component: () => (
         <QueryClientProvider client={cache}>
-          <NotificationsProvider>{view}</NotificationsProvider>
+          <NotificationsProvider>
+            <ConnectionDefinitions items={browserConnectionDefinitions}>
+              {view}
+            </ConnectionDefinitions>
+          </NotificationsProvider>
         </QueryClientProvider>
       ),
     });
