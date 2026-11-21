@@ -1,4 +1,7 @@
-import { RESEND_API_KEY_CONNECTION } from './connections.definition.js';
+import {
+  RESEND_API_KEY_CONNECTION,
+  resendSuccessSchema,
+} from './connections.definition.js';
 import type {
   NodeArtifactRuntime,
   NodeVerifiedByteSource,
@@ -18,7 +21,6 @@ import {
 
 export const RESEND_API_ENDPOINT = RESEND_API_KEY_CONNECTION.test.target;
 
-const successSchema = z.object({ id: z.uuid() }).strip();
 const RESEND_ERROR_NAME_CHARACTERS = 128;
 const errorTypeSchema = z
   .string()
@@ -126,7 +128,7 @@ export function createResendClient(
                 });
           }
           if (response.status >= 200 && response.status <= 299) {
-            const parsed = successSchema.safeParse(decoded);
+            const parsed = resendSuccessSchema.safeParse(decoded);
             return parsed.success
               ? Object.freeze({
                   kind: 'succeeded' as const,

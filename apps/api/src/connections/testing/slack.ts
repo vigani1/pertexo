@@ -1,7 +1,4 @@
-import {
-  CONNECTION_TEST_TIMEOUT_MILLIS,
-  type FailureNotificationDestinationResponse,
-} from '@pertexo/contracts';
+import { CONNECTION_TEST_TIMEOUT_MILLIS } from '@pertexo/contracts';
 import { ConnectionSecretEncryptionError } from '@pertexo/secrets/server';
 import type { ConnectionSlackClient } from '../ports.js';
 import { slackTestOutcome } from './outcomes.js';
@@ -10,11 +7,11 @@ export async function testSlackConnection(
   client: Pick<ConnectionSlackClient, 'authTest' | 'sendMessage'>,
   botToken: string,
   {
-    destination,
+    channelId,
     signal,
     beforeDispatch,
   }: Readonly<{
-    destination: FailureNotificationDestinationResponse | undefined;
+    channelId: string;
     signal: AbortSignal;
     beforeDispatch: () => Promise<void>;
   }>,
@@ -25,16 +22,13 @@ export async function testSlackConnection(
     signal,
     beforeDispatch,
   };
-  if (destination?.config.kind === 'slack') {
-    if (client.sendMessage === undefined)
-      throw new ConnectionSecretEncryptionError();
-    return slackTestOutcome(
-      await client.sendMessage({
-        ...call,
-        channelId: destination.config.channelId,
-        text: 'This is a test of your Pertexo alert destination. No workflow failed.',
-      }),
-    );
-  }
-  return slackTestOutcome(await client.authTest(call));
+  if (client.sendMessage === undefined)
+    throw new ConnectionSecretEncryptionError();
+  return slackTestOutcome(
+    await client.sendMessage({
+      ...call,
+      channelId,
+      text: 'This is a test of your Pertexo alert destination. No workflow failed.',
+    }),
+  );
 }

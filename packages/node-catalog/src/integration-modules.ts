@@ -155,7 +155,10 @@ export const connectionFormCatalog = Object.freeze(
       icon: entry.icon,
       fields,
       slot: entry.slot.key,
-      test: entry.test.kind,
+      test:
+        entry.test.kind === 'http'
+          ? (entry.test.formTest ?? entry.test.kind)
+          : entry.test.kind,
     });
   }),
 );

@@ -82,10 +82,13 @@ export function resendTestOutcome(
   }
 }
 
-export function responseOutcome(status: number): ConnectionTestOutcome {
+export function responseOutcome(
+  status: number,
+  credentialRejection = true,
+): ConnectionTestOutcome {
   if (status >= 200 && status <= 299)
     return Object.freeze({ ok: true, httpStatus: status });
-  if (status === 401 || status === 403)
+  if (credentialRejection && (status === 401 || status === 403))
     return Object.freeze({
       ok: false,
       httpStatus: status,

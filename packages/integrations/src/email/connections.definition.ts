@@ -14,6 +14,8 @@ import { labelledChoice } from '@pertexo/node-sdk';
 const SMTP_DEFAULT_PORT = 587;
 const RESEND_EMAIL_INPUT_CHARACTERS = 512;
 
+export const resendSuccessSchema = z.object({ id: z.uuid() }).strip();
+
 const resendFields = {
   apiKey: resendApiKeyCredentialSchema.unwrap().shape.apiKey.meta({
     title: 'Resend API key',
@@ -57,10 +59,31 @@ export const RESEND_API_KEY_CONNECTION = {
   fields: z.strictObject(resendFields),
   auth: { kind: 'bearer', field: 'apiKey' },
   test: {
-    kind: 'resend',
+    kind: 'http',
+    formTest: 'resend',
     method: 'POST',
     target: 'https://api.resend.com/emails',
     requiresConsent: true,
+    consentMessage:
+      'This connection uses Resend. Accept its test email before testing.',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json; charset=utf-8',
+    },
+    body: {
+      fields: {
+        to: ['delivered@resend.dev'],
+        subject: 'Pertexo Resend connection test',
+        text: 'This message verifies a Pertexo Resend sending connection.',
+      },
+      credentialFields: { from: 'fromEmail' },
+      idempotencyHeader: 'idempotency-key',
+    },
+    success: {
+      status: '2xx',
+      reportStatus: 200,
+      json: { schema: resendSuccessSchema },
+    },
   },
   slot: { key: 'resend_api_key', primary: true },
 } as const satisfies ConnectionDefinition;

@@ -27,7 +27,12 @@ export const HTTP_HEADERS_CONNECTION = {
       .meta({ title: 'Headers' }),
   }),
   auth: { kind: 'header_map', field: 'headers' },
-  test: { kind: 'http', method: 'GET', target: 'entered_url' },
+  test: {
+    kind: 'http',
+    method: 'GET',
+    target: 'entered_url',
+    success: { status: '2xx' },
+  },
   slot: { key: 'http_headers', primary: true },
 } as const satisfies ConnectionDefinition;
 
