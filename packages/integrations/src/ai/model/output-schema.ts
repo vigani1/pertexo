@@ -112,8 +112,14 @@ function prepareSchema(
     ...(additionalProperties === undefined ? {} : { additionalProperties }),
   };
   if (properties === undefined) return object;
-  if (!isSchemaObject(properties)) return undefined;
+  const preparedProperties = prepareProperties(properties);
+  return preparedProperties === undefined
+    ? undefined
+    : { ...object, ...preparedProperties };
+}
 
+function prepareProperties(properties: SchemaJson): SchemaDocument | undefined {
+  if (!isSchemaObject(properties)) return undefined;
   const fields: Record<string, SchemaDocument> = {};
   let prototypeField: SchemaDocument | undefined;
   for (const [key, child] of Object.entries(properties)) {
@@ -123,14 +129,11 @@ function prepareSchema(
     else fields[key] = field;
   }
   return {
-    ...object,
     properties: fields,
     // Ajv skips this exact key in properties. A fixed pattern lets it validate
     // the key without compiling any regex supplied by a workflow.
     ...(prototypeField === undefined
       ? {}
-      : {
-          patternProperties: { '^__proto__(?![\\s\\S])': prototypeField },
-        }),
+      : { patternProperties: { '^__proto__(?![\\s\\S])': prototypeField } }),
   };
 }
