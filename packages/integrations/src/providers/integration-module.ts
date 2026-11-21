@@ -19,7 +19,8 @@ export type IntegrationExecutorDependencies = Readonly<{
   fixedEndpointHttpClient: Pick<ProviderHttpClient, 'execute'>;
   slackSendMessage?: SlackSendMessageExecutorDependencies;
   slackSendMessageTelemetry?: SlackSendMessageExecutorDependencies['telemetry'];
-  emailSendNotification: EmailSendNotificationExecutorDependencies;
+  smtp?: EmailSendNotificationExecutorDependencies['smtp'];
+  emailSendNotification?: EmailSendNotificationExecutorDependencies;
   emailSendNotificationTelemetry?: EmailSendNotificationExecutorDependencies['telemetry'];
 }>;
 
