@@ -88,29 +88,21 @@ async function loadLockedRunState(
   { workspaceId, runId }: Readonly<{ workspaceId: string; runId: string }>,
   selected: Awaited<ReturnType<typeof lockRunForAdvance>>[number],
 ): Promise<LoadedRunAdvance> {
-  let row: LockedCoordinatorRow & CoordinatorCommitRow = selected.run;
+  const initial = selected.run;
   const stored = coordinatorCheckpointFieldsSchema.safeParse(
-    row.scheduler_state,
+    initial.scheduler_state,
   );
   if (!stored.success) throw new CoordinatorRunStateCorruptError();
-  const taskOutcomes = row.has_unconsumed_tasks
+  const taskOutcomes = initial.has_unconsumed_tasks
     ? await readPendingTaskFacts(client, workspaceId, runId)
     : [];
   const calls = await readCallFacts(client, workspaceId, runId);
-  row = { ...row, has_human_child: calls.hasHumanChild };
-  const hasHumanWait =
-    row.human_wait_started_at !== null ||
-    row.has_unconsumed_tasks ||
-    calls.hasHumanChild;
-  if (hasHumanWait)
-    row = {
-      ...row,
-      ...(await synchronizeHumanWait(client, workspaceId, {
-        runId,
-        phase: 'loading',
-      })),
-    };
-  row = await reacquireSlotAfterTimedWait(client, { workspaceId, runId }, row);
+  const { row, reacquiredExecutionSlot } = await reconcileWaitingSlot(
+    client,
+    { workspaceId, runId },
+    initial,
+    calls.hasHumanChild,
+  );
   // A run's version is immutable; one that is gone went with its run.
   const version = projectExecutionSource(selected.version ?? undefined);
   if (version === null) return Object.freeze({ kind: 'not_found' });
@@ -192,6 +184,9 @@ async function loadLockedRunState(
     pendingFailures,
     state: Object.freeze({
       hasExecutionSlot: holdsExecutionSlot(row, calls.hasExecutionSlot),
+      ...(reacquiredExecutionSlot
+        ? { reacquiredExecutionSlot: true as const }
+        : {}),
       callOutcomes: calls.callOutcomes,
       taskOutcomes,
       runId,
@@ -223,6 +218,36 @@ async function loadLockedRunState(
         }),
     }),
   });
+}
+
+async function reconcileWaitingSlot(
+  client: PoolClient,
+  scope: Readonly<{ workspaceId: string; runId: string }>,
+  initial: LockedCoordinatorRow,
+  hasHumanChild: boolean,
+) {
+  let row = { ...initial, has_human_child: hasHumanChild };
+  if (
+    row.human_wait_started_at !== null ||
+    row.has_unconsumed_tasks ||
+    hasHumanChild
+  )
+    row = {
+      ...row,
+      ...(await synchronizeHumanWait(client, scope.workspaceId, {
+        runId: scope.runId,
+        phase: 'loading',
+      })),
+    };
+  row = await reacquireSlotAfterTimedWait(client, scope, row);
+  return {
+    row,
+    reacquiredExecutionSlot:
+      (initial.human_wait_started_at !== null &&
+        row.human_wait_started_at === null) ||
+      (initial.timed_wait_started_at !== null &&
+        row.timed_wait_started_at === null),
+  };
 }
 
 // The loader owns these fields; the engine parses the full scheduler afterwards.

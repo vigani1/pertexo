@@ -77,7 +77,10 @@ Implementation follows the integration module rollout in F57.
      running kernels, and co-locate claim and completion in that
      transaction. Preserve the queued-run capacity check and deferred
      receipt handling in `persist/commit.ts`'s `saveRunTransition`
-     before any inline records become durable. Extend the bounded reads in
+     before any inline records become durable. An advance that reacquires a
+     parked run's slot enqueues a continuation in the same commit. The
+     continuation executes inline work after that capacity lock is released.
+     Extend the bounded reads in
      `load/load-run.ts` and `load/completion.repository.ts`. Include the
      transaction-local outputs when `resolveRunResult` evaluates a final
      callable value.

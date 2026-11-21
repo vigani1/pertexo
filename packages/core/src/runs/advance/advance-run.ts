@@ -84,6 +84,9 @@ export async function advanceRun(
               newAttemptId: generatePersistedId,
               canStore: canStoreInlineValue,
               readValues: state.readInlineValues,
+              ...(state.reacquiredExecutionSlot
+                ? { deferUntilNextAdvance: true }
+                : {}),
               ...(state.deadlineAt === undefined
                 ? {}
                 : { deadlineAt: state.deadlineAt }),
