@@ -1,3 +1,5 @@
+import { createHttpRequestExecutorRegistration } from './request/request.executor.js';
+import { httpPollExecutor } from './polling/polling.executor.js';
 import type { IntegrationModule } from '../providers/integration-module.js';
 import {
   HTTP_REQUEST_DEFINITION_REGISTRATION,
@@ -10,9 +12,19 @@ export const HTTP_MODULE = {
   key: 'http',
   presentation: { name: 'HTTP request', icon: 'globe', group: 'action' },
   steps: [
-    { registration: HTTP_REQUEST_DEFINITION_REGISTRATION },
+    {
+      registration: HTTP_REQUEST_DEFINITION_REGISTRATION,
+      createExecutor: ({ httpRequest, httpRequestTelemetry }) =>
+        createHttpRequestExecutorRegistration({
+          ...httpRequest,
+          ...(httpRequestTelemetry === undefined
+            ? {}
+            : { telemetry: httpRequestTelemetry }),
+        }),
+    },
     {
       registration: HTTP_POLL_DEFINITION_REGISTRATION,
+      createExecutor: () => httpPollExecutor,
       presentation: { icon: 'webhook', group: 'trigger' },
     },
   ],

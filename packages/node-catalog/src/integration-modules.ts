@@ -4,6 +4,7 @@ import {
   EMAIL_MODULE,
   HTTP_MODULE,
   SLACK_MODULE,
+  type IntegrationExecutorDependencies,
   type IntegrationModule,
   type IntegrationPresentation,
 } from '@pertexo/integrations/server';
@@ -26,39 +27,50 @@ export function registerIntegrationModules(
     if (moduleKeys.has(module.key))
       throw new IntegrationRegistryError('module', module.key);
     moduleKeys.add(module.key);
-    return module.steps.map(({ registration, presentation }) => {
-      const { key, version } = registration.manifest.definition;
-      const identity = `${key}@${String(version)}`;
-      const owner = stepOwners.get(key);
-      if (
-        (owner !== undefined && owner !== module.key) ||
-        presentations.has(identity)
-      )
-        throw new IntegrationRegistryError('step', key);
-      stepOwners.set(key, module.key);
-      presentations.set(
-        identity,
-        Object.freeze({
-          ...module.presentation,
-          name: registration.manifest.display?.name ?? module.presentation.name,
-          ...presentation,
-        }),
-      );
-      return registration;
-    });
+    return module.steps.map(
+      ({ registration, presentation, createExecutor }) => {
+        const { key, version } = registration.manifest.definition;
+        const identity = `${key}@${String(version)}`;
+        const owner = stepOwners.get(key);
+        if (
+          (owner !== undefined && owner !== module.key) ||
+          presentations.has(identity)
+        )
+          throw new IntegrationRegistryError('step', key);
+        stepOwners.set(key, module.key);
+        presentations.set(
+          identity,
+          Object.freeze({
+            ...module.presentation,
+            name:
+              registration.manifest.display?.name ?? module.presentation.name,
+            ...presentation,
+          }),
+        );
+        return { registration, createExecutor };
+      },
+    );
   });
   // Polling triggers precede integration actions in the published catalog.
   const triggers = entries.filter(
-    ({ manifest }) => manifest.family === 'trigger',
+    ({ registration: { manifest } }) => manifest.family === 'trigger',
   );
   triggers.sort((left, right) =>
-    compareOrdinal(left.manifest.definition.key, right.manifest.definition.key),
+    compareOrdinal(
+      left.registration.manifest.definition.key,
+      right.registration.manifest.definition.key,
+    ),
   );
+  const orderedSteps = [
+    ...triggers,
+    ...entries.filter(
+      ({ registration: { manifest } }) => manifest.family !== 'trigger',
+    ),
+  ];
   return {
-    registrations: [
-      ...triggers,
-      ...entries.filter(({ manifest }) => manifest.family !== 'trigger'),
-    ],
+    registrations: orderedSteps.map(({ registration }) => registration),
+    createExecutors: (dependencies: IntegrationExecutorDependencies) =>
+      orderedSteps.map(({ createExecutor }) => createExecutor(dependencies)),
     policies: modules.flatMap(({ policies }) => policies ?? []),
     presentationFor: ({ key, version }: { key: string; version: number }) =>
       presentations.get(`${key}@${String(version)}`),
