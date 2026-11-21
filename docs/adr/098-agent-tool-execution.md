@@ -1,6 +1,6 @@
 # ADR 098 — The workflow engine owns agent tool continuations
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-21
 - **Feature:** [F61](../feature-plans/61-ai-agent-step.md)
 - **Related:** [ADR 094](094-model-steps.md), [F08](../feature-plans/08-subworkflows.md),

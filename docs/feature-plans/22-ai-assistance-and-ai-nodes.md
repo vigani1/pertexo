@@ -33,7 +33,7 @@ Finish the AI track before starting new integrations. Each numbered plan
 specifies independently shippable slices and local proving fixtures. None
 requires the owner's real accounts.
 
-1. [F56 slices 3–4 — Model usage, connection tests and editor](56-ai-model-step.md)
+1. [F56 slices 3–4 — Model usage records and editor](56-ai-model-step.md)
    complete the current implementation.
 2. [F59 — Classify](59-ai-classify-step.md) adds validated category routing.
 3. [F60 — MCP](60-mcp.md) exposes selected published versions and adds a
