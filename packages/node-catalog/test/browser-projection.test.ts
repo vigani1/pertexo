@@ -1,8 +1,12 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { selectOutputVariant } from '@pertexo/node-sdk';
 import { isRecord } from '@pertexo/workflow-model';
 
-import { platformBrowserNodeDefinitionCatalog } from '../src/index.js';
+import {
+  PLATFORM_NODE_CATALOG,
+  platformBrowserNodeDefinitionCatalog,
+} from '../src/index.js';
 
 function expectDeepFrozen(value: unknown): void {
   if (value === null || typeof value !== 'object') return;
@@ -11,6 +15,18 @@ function expectDeepFrozen(value: unknown): void {
 }
 
 describe('browser-safe platform catalog projection', () => {
+  it('preserves the legacy browser projection of every shipping definition', () => {
+    const definitions = platformBrowserNodeDefinitionCatalog().definitions.map(
+      ({ presentation: _presentation, ...projection }) => projection,
+    );
+    const projection = JSON.stringify({ definitions });
+    expect(createHash('sha256').update(projection).digest('hex')).toBe(
+      'b03fc3cb0eec3e7943bf07f0519a65d1c62c7243e98c21779cf8fe1715b31ab4',
+    );
+    for (const manifest of PLATFORM_NODE_CATALOG.definitions)
+      expect(manifest, manifest.definition.key).not.toHaveProperty('execution');
+  });
+
   it('returns deterministic metadata and schemas without runtime identities', () => {
     const first = platformBrowserNodeDefinitionCatalog();
     const second = platformBrowserNodeDefinitionCatalog();

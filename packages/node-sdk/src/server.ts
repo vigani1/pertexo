@@ -1,8 +1,5 @@
-export {
-  createNodeRegistry,
-  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
-  type NodeRegistry,
-} from './execution/registry.js';
+export { createNodeRegistry, type NodeRegistry } from './execution/registry.js';
+export { DISPATCH_AWARE_EXECUTOR_ABI_VERSION } from './execution/executor-binding.js';
 
 export {
   type JsonValue,

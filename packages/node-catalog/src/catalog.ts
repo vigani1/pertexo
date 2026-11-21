@@ -1,5 +1,6 @@
 import { INTEGRATION_MODULE_REGISTRY } from './integration-modules.js';
 import {
+  assertAttemptOnlyManifest,
   createNodeCatalog,
   definitionIdentitySchema,
   executorManifestFor,
@@ -12,11 +13,13 @@ import {
 } from '@pertexo/nodes-core';
 
 export type PlatformNodeDefinition = NodeDefinitionRegistration;
+export { INTEGRATION_REGISTRATIONS };
 
 const INTEGRATION_REGISTRATIONS = INTEGRATION_MODULE_REGISTRY.registrations;
-const INTEGRATION_MANIFESTS = INTEGRATION_REGISTRATIONS.map(
-  ({ manifest }) => manifest,
-);
+const INTEGRATION_MANIFESTS = INTEGRATION_REGISTRATIONS.map(({ manifest }) => {
+  assertAttemptOnlyManifest(manifest);
+  return manifest;
+});
 
 /** Every node the platform serves, with its runtime schemas. */
 export const PLATFORM_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =

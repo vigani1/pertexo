@@ -1,5 +1,6 @@
 import { z, type ZodType } from 'zod';
 import { ARTIFACT_INPUT_CAPABILITY } from '../artifacts/reference.js';
+import { assertAttemptOnlyManifest } from '../definitions/execution-class.js';
 
 import type {
   NodeDefinitionRegistration,
@@ -42,8 +43,11 @@ import {
   TERMINATES_RUN_CAPABILITY,
 } from '../definitions/catalog.js';
 import { identityToken, sameIdentity } from '../definitions/identity.js';
+import {
+  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
+  validateInlineFallback,
+} from './executor-binding.js';
 
-export const DISPATCH_AWARE_EXECUTOR_ABI_VERSION = 2 as const;
 const SUPPORTED_EXECUTOR_ABI_VERSIONS = new Set<number>([
   1,
   DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
@@ -105,10 +109,9 @@ function runtimeSchemaComparable(value: unknown): unknown {
 }
 
 function sameManifest(left: NodeManifest, right: NodeManifest): boolean {
-  return (
-    JSON.stringify(stableComparable(left)) ===
-    JSON.stringify(stableComparable(right))
-  );
+  const comparable = ({ execution = 'attempt', ...fields }: NodeManifest) =>
+    JSON.stringify(stableComparable({ ...fields, execution }));
+  return comparable(left) === comparable(right);
 }
 
 function validateUnique(
@@ -189,24 +192,32 @@ function validateDefinitionRegistration(
  */
 function pinRegistrations(
   catalog: NodeCatalog,
-  options: Pick<NodeRegistryOptions, 'definitions' | 'executors'>,
+  options: NodeRegistryOptions,
 ): PinnedRegistrations {
+  const registeredDefinitions = [
+    ...(options.core?.definitions ?? []),
+    ...options.definitions,
+  ];
+  const registeredExecutors = [
+    ...(options.core?.executors ?? []),
+    ...options.executors,
+  ];
   validateUnique(
     'definition',
-    options.definitions.map(({ manifest }) => manifest.definition),
+    registeredDefinitions.map(({ manifest }) => manifest.definition),
   );
   validateUnique(
     'executor',
-    options.executors.map(({ executor }) => executor),
+    registeredExecutors.map(({ executor }) => executor),
   );
   const definitions = new Map(
-    options.definitions.map((registration) => [
+    registeredDefinitions.map((registration) => [
       identityToken(registration.manifest.definition),
       registration,
     ]),
   );
   const executors = new Map(
-    options.executors.map((registration) => [
+    registeredExecutors.map((registration) => [
       identityToken(executorIdentitySchema.parse(registration.executor)),
       registration,
     ]),
@@ -219,10 +230,9 @@ function pinRegistrations(
       throw new NodeRegistryCompatibilityError(
         `catalog definition ${manifest.definition.key}@${String(manifest.definition.version)} has no server schema registration`,
       );
-    definitionMap.set(
-      token,
-      validateDefinitionRegistration(registration, manifest),
-    );
+    const pinned = validateDefinitionRegistration(registration, manifest);
+    validateInlineFallback(manifest, options.core?.executors);
+    definitionMap.set(token, pinned);
   }
   const executorMap = new Map<string, PinnedNodeExecutor>();
   for (const manifest of catalog.executors) {
@@ -263,6 +273,8 @@ export function createNodeRegistry(options: NodeRegistryOptions): NodeRegistry {
       cause: safeNodeCatalogFailureCause(error),
     });
   }
+  for (const { manifest } of options.definitions)
+    assertAttemptOnlyManifest(manifest);
   const { definitionMap, executorMap } = pinRegistrations(catalog, options);
   const resolveDefinition = (
     definition: DefinitionIdentity,

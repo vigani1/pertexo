@@ -42,6 +42,8 @@ export {
   parseNodeCatalog,
 } from './definitions/catalog.js';
 
+export { assertAttemptOnlyManifest } from './definitions/execution-class.js';
+
 export {
   ARTIFACT_INPUT_CAPABILITY,
   ARTIFACT_INPUT_MAX_BYTES,
