@@ -33,7 +33,6 @@ const slackFields = {
     placeholder: 'xoxb-…',
     secret: true,
     inputMaxLength: CONNECTION_CREDENTIALS_BOUNDS.botTokenCharacters,
-    description: 'Stored encrypted. Nobody, including you, can see it again.',
   }),
 };
 

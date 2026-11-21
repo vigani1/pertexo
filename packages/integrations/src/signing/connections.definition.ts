@@ -10,7 +10,7 @@ const hmacFields = {
     secret: true,
     inputMaxLength: SIGNING_KEY_MAX_BYTES,
     description:
-      'Stored encrypted. Whitespace is part of the key. Test checks local access only.',
+      'Whitespace is part of the key. Test checks local access only.',
   }),
 };
 

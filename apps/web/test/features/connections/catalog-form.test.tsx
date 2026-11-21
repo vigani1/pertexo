@@ -31,6 +31,13 @@ it('uses the server catalog for the picker tile and the masked credential contro
                   title: 'Workspace token',
                   secret: true,
                 },
+                backupToken: {
+                  type: 'string',
+                  title: 'Backup token',
+                  description: 'Used when the primary token expires.',
+                  secret: true,
+                },
+                workspace: { type: 'string', title: 'Workspace' },
               },
               required: ['botToken'],
             },
@@ -47,6 +54,15 @@ it('uses the server catalog for the picker tile and the masked credential contro
     'type',
     'password',
   );
+  const secretDescription =
+    'Stored encrypted. Nobody, including you, can see it again.';
+  expect(lens().getByLabelText('Workspace token')).toHaveAccessibleDescription(
+    secretDescription,
+  );
+  expect(lens().getByLabelText(/Backup token/u)).toHaveAccessibleDescription(
+    `Used when the primary token expires. ${secretDescription}`,
+  );
+  expect(lens().getByLabelText('Workspace')).not.toHaveAccessibleDescription();
   expect(
     screen.queryByRole('button', { name: 'Connect Slack' }),
   ).not.toBeInTheDocument();

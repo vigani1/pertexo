@@ -1,3 +1,4 @@
+import { SECRET_DESCRIPTION } from './secret-description';
 import { useConnectionDefinitions } from '@/features/catalog/public';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Disclosure } from '@/components/ui/disclosure';
@@ -294,7 +295,7 @@ export function OAuth2Fields(form: FormProps) {
         form={form}
         field="clientSecret"
         label="Client secret"
-        description="Stored encrypted. Nobody, including you, can see it again."
+        description={SECRET_DESCRIPTION}
       />
       <TextField
         form={form}
