@@ -23,6 +23,7 @@
           "infrastructure/checks/test-honesty/plugin.mjs",
           "infrastructure/checks/test-honesty/write-allowlists.mjs",
           "infrastructure/testing/editor-browser-envelope-keys.d.mts",
+          "infrastructure/testing/editor-provider-target.d.mts",
           "infrastructure/testing/canonical-json-vectors.d.mts",
           "infrastructure/testing/curated-template-envelope-context.d.mts",
           "infrastructure/testing/curated-template-owned-fixture.d.mts",
