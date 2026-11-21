@@ -1,3 +1,4 @@
+import type { ProviderHttpClient } from './http-client.js';
 import type { ConnectionDefinition } from './connection-definition.js';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { NodeCatalog } from '@pertexo/node-sdk';
@@ -12,7 +13,8 @@ import type { SlackSendMessageExecutorDependencies } from '../slack/send-message
 
 export type IntegrationExecutorDependencies = Readonly<{
   database?: PostgresClient;
-  httpRequest: HttpRequestExecutorDependencies;
+  httpClient: Pick<ProviderHttpClient, 'executeStreaming' | 'redactText'>;
+  httpRequest?: HttpRequestExecutorDependencies;
   httpRequestTelemetry?: HttpRequestExecutorDependencies['telemetry'];
   slackSendMessage: SlackSendMessageExecutorDependencies;
   slackSendMessageTelemetry?: SlackSendMessageExecutorDependencies['telemetry'];
@@ -34,6 +36,7 @@ export interface IntegrationModule {
     ) => NodeExecutorRegistration;
     presentation?: Partial<IntegrationPresentation>;
   }>[];
+  readonly executorSummaryCodes?: readonly string[];
   readonly connections?: readonly ConnectionDefinition[];
   readonly policies?: NodeCatalog['policies'];
 }

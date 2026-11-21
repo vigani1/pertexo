@@ -71,7 +71,11 @@ export function registerIntegrationModules(
       ({ registration: { manifest } }) => manifest.family !== 'trigger',
     ),
   ];
+  const executorSummaryCodes = new Set(
+    modules.flatMap((module) => module.executorSummaryCodes ?? []),
+  );
   return {
+    acceptsExecutorSummary: (code: string) => executorSummaryCodes.has(code),
     registrations: orderedSteps.map(({ registration }) => registration),
     createExecutors: (dependencies: IntegrationExecutorDependencies) =>
       orderedSteps.map(({ createExecutor }) => createExecutor(dependencies)),

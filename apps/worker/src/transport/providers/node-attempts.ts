@@ -65,9 +65,7 @@ export function nodeAttemptRuntimeProvider(
         previewInvoker = factories.createPreviewInvoker({
           registry: createPlatformNodeRegistry(
             {
-              httpRequest: {
-                httpClient: createNodeProviderHttpClient(config.httpRequest),
-              },
+              httpClient: createNodeProviderHttpClient(config.httpRequest),
             },
             config.smtpPolicy,
           ),

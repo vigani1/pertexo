@@ -1,3 +1,7 @@
+import { HTTP_RESPONSE_FAILURES } from './request/request.errors.js';
+import { HTTP_PAGINATION_FAILURES } from './request/pagination/pagination.errors.js';
+import { HTTP_OAUTH2_FAILURES } from './request/execution/oauth2-renewal.errors.js';
+import { PROVIDER_RETRY_FAILURE } from './retry-after.errors.js';
 import {
   HTTP_HEADERS_CONNECTION,
   OAUTH2_CONNECTION,
@@ -15,12 +19,19 @@ import { HTTP_POLL_DEFINITION_REGISTRATION } from './polling/polling.definition.
 export const HTTP_MODULE = {
   key: 'http',
   presentation: { name: 'HTTP request', icon: 'globe', group: 'action' },
+  executorSummaryCodes: [
+    ...Object.keys(HTTP_PAGINATION_FAILURES),
+    ...Object.keys(HTTP_OAUTH2_FAILURES),
+    ...Object.keys(HTTP_RESPONSE_FAILURES),
+    PROVIDER_RETRY_FAILURE.code,
+  ],
   connections: [HTTP_HEADERS_CONNECTION, OAUTH2_CONNECTION],
   steps: [
     {
       registration: HTTP_REQUEST_DEFINITION_REGISTRATION,
-      createExecutor: ({ httpRequest, httpRequestTelemetry }) =>
+      createExecutor: ({ httpClient, httpRequest, httpRequestTelemetry }) =>
         createHttpRequestExecutorRegistration({
+          httpClient,
           ...httpRequest,
           ...(httpRequestTelemetry === undefined
             ? {}

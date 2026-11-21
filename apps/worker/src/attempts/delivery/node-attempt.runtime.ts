@@ -148,7 +148,7 @@ const productionFactories: NodeAttemptRuntimeFactories = {
   registry: (httpRequest, smtpPolicy) =>
     createPlatformNodeRegistry(
       {
-        httpRequest: { httpClient: createNodeProviderHttpClient(httpRequest) },
+        httpClient: createNodeProviderHttpClient(httpRequest),
         httpRequestTelemetry: createHttpProviderTelemetry(),
         slackSendMessageTelemetry: createSlackProviderTelemetry(),
         emailSendNotificationTelemetry: createEmailProviderTelemetry(),
