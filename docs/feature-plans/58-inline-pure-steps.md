@@ -1,6 +1,6 @@
 # F58 — Inline pure steps
 
-Status: accepted. Inline execution stays off by default after the [load qualification](step-transaction-cost.md#load-qualification) missed its gate. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
+Status: accepted. Inline execution stays off by default after the [capped worker requalification](step-transaction-cost.md#capped-worker-requalification) missed the load gate. Decision: [ADR 096](../adr/096-inline-pure-steps.md).
 F58 implements option C from [Cost of a pure step](step-transaction-cost.md).
 Implementation follows the integration module rollout in F57.
 
