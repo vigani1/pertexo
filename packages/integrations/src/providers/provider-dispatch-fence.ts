@@ -100,3 +100,17 @@ export function createUnauthenticatedBeforeDispatch(
     }
   };
 }
+
+export function markingDispatchOnce(runtime: NodeExecutionRuntime) {
+  let marked = false;
+  return {
+    ...runtime,
+    beforeDispatch: async (
+      evidence?: Parameters<typeof runtime.beforeDispatch>[0],
+    ) => {
+      if (marked) return;
+      await runtime.beforeDispatch(evidence);
+      marked = true;
+    },
+  };
+}
