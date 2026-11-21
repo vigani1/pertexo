@@ -1,11 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
-import { CatalogStepDescriptions } from '@/features/catalog/catalog-views.public';
+import { StepDescriptionsContext } from '@/features/catalog/hooks/step-descriptions';
 import { WorkflowImportContents } from '@/features/workflows/components/portability/workflow-import-review';
 import { portableSteps } from '@/features/workflows/model/portability';
-import { renderInRouter } from '../../../support/render-in-router';
-import { userId } from '../list/fixtures';
-import { client } from './fixture';
+import { describeBrowserStep } from '../../../support/fixtures/node-catalog';
 
 const step = (id: string, key: string, label: string) => ({
   id,
@@ -44,20 +42,18 @@ it('counts the steps inside a For each', () => {
   ]);
 });
 
-it('shows a step inside a For each, and warns that it reaches outside', async () => {
-  renderInRouter(
-    <CatalogStepDescriptions apiClient={client()} userId={userId}>
+it('shows a step inside a For each, and warns that it reaches outside', () => {
+  render(
+    <StepDescriptionsContext value={describeBrowserStep}>
       <WorkflowImportContents manifest={manifest} />
-    </CatalogStepDescriptions>,
+    </StepDescriptionsContext>,
   );
-  const region = await screen.findByRole('region', {
+  const region = screen.getByRole('region', {
     name: 'What the file contains',
   });
   const items = within(region).getAllByRole('listitem');
   expect(items).toHaveLength(2);
   expect(items[1]).toHaveTextContent('Call the shop');
   expect(items[1]).toHaveTextContent('inside Each order');
-  await waitFor(() => {
-    expect(items[1]?.querySelector('.text-warning')).not.toBeNull();
-  });
+  expect(items[1]?.querySelector('.text-warning')).not.toBeNull();
 });
