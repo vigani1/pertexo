@@ -10,3 +10,5 @@ export const liveWebPort = z.coerce
   .parse(process.env.PERTEXO_LIVE_WEB_PORT ?? '4174');
 
 export const liveWebOrigin = `http://127.0.0.1:${String(liveWebPort)}`;
+
+export const liveProviderPort = liveWebPort + 1;
