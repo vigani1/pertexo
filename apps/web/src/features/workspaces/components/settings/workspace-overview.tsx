@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -11,7 +12,10 @@ import {
 import type { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Status } from '@/components/ui/status';
-import { needsReconnecting, PROVIDERS } from '@/features/connections/public';
+import {
+  needsReconnecting,
+  connectionPresentation,
+} from '@/features/connections/public';
 import { connectionsInfiniteQueryOptions } from '@/features/connections/connections-queries.public';
 import { failureNotificationDestinationsQueryOptions } from '@/features/failure-notifications/failure-notifications-queries.public';
 import { countWorkflowStates } from '@/features/workflows/public';
@@ -228,9 +232,13 @@ function ConnectionsTile({
   const connections = (
     query.data?.pages.flatMap((page) => page.items) ?? []
   ).filter((connection) => connection.status !== 'revoked');
+  const definitions = useConnectionDefinitions();
   const providers = [
     ...new Set(
-      connections.map((connection) => PROVIDERS[connection.providerKey].name),
+      connections.map(
+        (connection) =>
+          connectionPresentation(definitions, connection.providerKey).name,
+      ),
     ),
   ];
   const needsAttention = connections.filter(needsReconnecting).length;

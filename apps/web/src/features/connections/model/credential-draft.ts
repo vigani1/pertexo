@@ -1,144 +1,68 @@
-import {
-  emptyPostgresDraft,
-  postgresCredential,
-  postgresDraftErrors,
-  POSTGRES_FIELDS,
-  type PostgresDraft,
-  type PostgresField,
-} from './postgres-draft';
+import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { SIGNING_KEY_MAX_BYTES } from '@pertexo/node-sdk';
 import { formatCount } from '@/lib/format/count';
 import {
-  smtpCredential,
-  emptySmtpDraft,
-  smtpDraftErrors,
-  SMTP_FIELDS,
-  type SmtpDraft,
-  type SmtpField,
-} from './smtp-draft';
-import {
-  signingKeyCredentialSchema,
   httpHeadersCredentialSchema,
-  resendApiKeyCredentialSchema,
-  slackBotTokenCredentialSchema,
   type ConnectionCreateRequest,
+  type ConnectionFormDefinition,
 } from '@pertexo/contracts';
 import type { ApiProblemIssue } from '@pertexo/contracts';
 import type { FieldErrors } from '@/components/ui/use-field-validation';
 import type { ConnectionCredential } from '../data/connections.api';
-import type { ConnectionChoice } from './connection-providers';
+import {
+  credentialFields,
+  emptySchemaCredential,
+  parseScalarCredential,
+  type SchemaCredentialDraft,
+} from './schema-credential';
 import {
   emptyOAuth2Draft,
   oauth2DraftErrors,
   oauth2ServerErrors,
   toOAuth2Credential,
   type OAuth2Draft,
-  type OAuth2Field,
 } from './oauth2-draft';
-
-/** What a form fills in: a provider's own credential, or HTTP's other way in. */
-export type CredentialKind = ConnectionChoice | 'oauth2';
 
 export type HeaderRow = Readonly<{ id: string; name: string; value: string }>;
 
-/** Unsaved credential input. It lives only in the form that owns it. */
 export type CredentialDraft =
-  | Readonly<{ provider: 'signing'; signingKey: string }>
-  | Readonly<{ provider: 'slack'; botToken: string }>
   | Readonly<{ provider: 'http'; headers: readonly HeaderRow[] }>
-  | Readonly<{ provider: 'email'; apiKey: string; fromEmail: string }>
-  | PostgresDraft
   | OAuth2Draft
-  | SmtpDraft;
+  | SchemaCredentialDraft;
 
-export type CredentialField =
-  | SmtpField
-  | PostgresField
-  | OAuth2Field
-  | 'signingKey'
-  | 'botToken'
-  | 'apiKey'
-  | 'fromEmail'
-  | 'headers'
-  | `header-name:${string}`
-  | `header-value:${string}`;
+export type CredentialField = string;
 
 export const MAX_HEADER_ROWS = 32;
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
 const SLACK_TOKEN_FORMAT =
   'Slack bot tokens start with xoxb- and use only letters, numbers and dashes.';
 
-/** Whether anything secret has been typed or pasted into the draft. */
 export function credentialDraftHasSecret(draft: CredentialDraft): boolean {
-  switch (draft.provider) {
-    case 'postgres':
-    case 'smtp':
-      return draft.password !== '';
-    case 'signing':
-      return draft.signingKey !== '';
-    case 'slack':
-      return draft.botToken.trim() !== '';
-    case 'http':
-      return draft.headers.some((row) => row.value.trim() !== '');
-    case 'email':
-      return draft.apiKey.trim() !== '';
-    case 'oauth2':
-      return draft.clientSecret.trim() !== '';
-  }
+  if (draft.provider === 'http')
+    return draft.headers.some((row) => row.value.trim() !== '');
+  if (draft.provider === 'oauth2') return draft.clientSecret.trim() !== '';
+  return credentialFields(draft.definition).some(({ key, metadata }) => {
+    const value = draft.values[key];
+    return (
+      metadata.secret === true &&
+      typeof value === 'string' &&
+      (metadata.trim === true ? value.trim() : value) !== ''
+    );
+  });
 }
 
 export function emptyCredentialDraft(
-  provider: CredentialKind,
+  definition: ConnectionFormDefinition,
   createId: () => string,
 ): CredentialDraft {
-  switch (provider) {
-    case 'postgres':
-      return emptyPostgresDraft();
-    case 'smtp':
-      return emptySmtpDraft();
-    case 'signing':
-      return { provider, signingKey: '' };
-    case 'slack':
-      return { provider, botToken: '' };
-    case 'http':
-      return {
-        provider,
-        headers: [{ id: createId(), name: 'Authorization', value: '' }],
-      };
-    case 'email':
-      return { provider, apiKey: '', fromEmail: '' };
-    case 'oauth2':
-      return emptyOAuth2Draft();
+  if (definition.test === 'http') {
+    return {
+      provider: 'http',
+      headers: [{ id: createId(), name: 'Authorization', value: '' }],
+    };
   }
-}
-
-function slackTokenError(botToken: string): string | undefined {
-  const token = botToken.trim();
-  if (token === '') return 'Paste the bot token from your Slack app.';
-  return slackBotTokenCredentialSchema.safeParse({
-    type: 'slack_bot_token',
-    botToken: token,
-  }).success
-    ? undefined
-    : SLACK_TOKEN_FORMAT;
-}
-
-function resendKeyError(apiKey: string): string | undefined {
-  const key = apiKey.trim();
-  if (key === '') return 'Paste an API key from Resend.';
-  return /^re_[A-Za-z0-9_-]{5,}$/u.test(key)
-    ? undefined
-    : 'Resend API keys start with re_.';
-}
-
-function fromEmailError(fromEmail: string): string | undefined {
-  const email = fromEmail.trim();
-  if (email === '')
-    return 'Enter the address emails come from, like alerts@yourdomain.com.';
-  return resendApiKeyCredentialSchema.unwrap().shape.fromEmail.safeParse(email)
-    .success
-    ? undefined
-    : 'That isn’t a complete email address, like alerts@yourdomain.com.';
+  if (definition.test === 'oauth2') return emptyOAuth2Draft();
+  return emptySchemaCredential(definition);
 }
 
 export function filledRows(
@@ -228,107 +152,92 @@ function headerIssueErrors(
   return errors;
 }
 
-/** Every message for the draft, keyed by field. Empty when it can be saved. */
 export function credentialErrors(
   draft: CredentialDraft,
 ): FieldErrors<CredentialField> {
-  switch (draft.provider) {
-    case 'postgres':
-      return postgresDraftErrors(draft);
-    case 'smtp':
-      return smtpDraftErrors(draft);
+  if (draft.provider === 'oauth2') return oauth2DraftErrors(draft);
+  if (draft.provider === 'http') {
+    const rowErrors = headerRowErrors(draft.headers);
+    return Object.keys(rowErrors).length > 0
+      ? rowErrors
+      : contractHeaderErrors(draft.headers);
+  }
+  const parsed = parseScalarCredential(draft);
+  if (parsed.success) return {};
+  const errors: Partial<Record<CredentialField, string>> = {};
+  for (const issue of parsed.error.issues) {
+    const field = issue.path[0];
+    if (typeof field === 'string')
+      errors[field] = scalarError(draft, field, issue.message);
+  }
+  return errors;
+}
+
+function scalarError(
+  draft: SchemaCredentialDraft,
+  field: string,
+  message: string,
+): string {
+  const blank = String(draft.values[field] ?? '').trim() === '';
+  switch (draft.definition.test) {
     case 'signing':
-      return signingKeyCredentialSchema.safeParse({
-        type: 'hmac_key',
-        signingKey: draft.signingKey,
-      }).success
-        ? {}
-        : {
-            signingKey: `Enter valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}. Whitespace is preserved.`,
-          };
-    case 'slack': {
-      const botToken = slackTokenError(draft.botToken);
-      return botToken === undefined ? {} : { botToken };
-    }
-    case 'email': {
-      const apiKey = resendKeyError(draft.apiKey);
-      const fromEmail = fromEmailError(draft.fromEmail);
-      return {
-        ...(apiKey === undefined ? {} : { apiKey }),
-        ...(fromEmail === undefined ? {} : { fromEmail }),
-      };
-    }
-    case 'http': {
-      const rowErrors = headerRowErrors(draft.headers);
-      return Object.keys(rowErrors).length > 0
-        ? rowErrors
-        : contractHeaderErrors(draft.headers);
-    }
-    case 'oauth2':
-      return oauth2DraftErrors(draft);
+      return `Enter valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}. Whitespace is preserved.`;
+    case 'slack':
+      return blank
+        ? 'Paste the bot token from your Slack app.'
+        : SLACK_TOKEN_FORMAT;
+    case 'resend':
+      if (field === 'apiKey')
+        return blank
+          ? 'Paste an API key from Resend.'
+          : 'Resend API keys start with re_.';
+      return blank
+        ? 'Enter the address emails come from, like alerts@yourdomain.com.'
+        : 'That isn’t a complete email address, like alerts@yourdomain.com.';
+    case 'smtp':
+      return SMTP_MESSAGES[field] ?? message;
+    default:
+      return message;
   }
 }
 
-/** The contract credential for a draft that has no errors. */
+const SMTP_MESSAGES: Readonly<Record<string, string>> = {
+  host: 'Enter the SMTP hostname or IP address, without a URL or spaces.',
+  port: 'Use a port from 1 to 65535.',
+  security: 'Choose how this connection uses TLS.',
+  username: 'Enter the SMTP username.',
+  password: 'Enter the SMTP password.',
+  fromEmail: 'Enter a valid sender email address.',
+  fromName: `Use a sender name of at most ${formatCount(RESOURCE_NAME_MAX_LENGTH, 'character')} without line breaks.`,
+};
+
 export function toConnectionCredential(
   draft: CredentialDraft,
-): ConnectionCredential {
-  switch (draft.provider) {
-    case 'postgres':
-      return postgresCredential(draft);
-    case 'smtp':
-      return smtpCredential(draft);
-    case 'signing':
-      return { type: 'hmac_key', signingKey: draft.signingKey };
-    case 'slack':
-      return {
-        type: 'slack_bot_token',
-        botToken: draft.botToken.trim(),
-      };
-    case 'email':
-      return {
-        type: 'resend_api_key',
-        apiKey: draft.apiKey.trim(),
-        fromEmail: draft.fromEmail.trim(),
-      };
-    case 'http':
-      return {
-        type: 'http_headers',
-        headers: Object.fromEntries(
-          filledRows(draft.headers).map((row) => [
-            row.name.trim(),
-            row.value.trim(),
-          ]),
-        ),
-      };
-    case 'oauth2':
-      return toOAuth2Credential(draft);
+): ConnectionCredential | undefined {
+  if (draft.provider === 'oauth2') return toOAuth2Credential(draft);
+  if (draft.provider === 'http') {
+    return {
+      type: 'http_headers',
+      headers: Object.fromEntries(
+        filledRows(draft.headers).map((row) => [
+          row.name.trim(),
+          row.value.trim(),
+        ]),
+      ),
+    };
   }
+  const parsed = parseScalarCredential(draft);
+  return parsed.success ? parsed.data : undefined;
 }
 
-/** The create request for a named, valid draft. */
 export function toCreateRequest(
   name: string,
-  draft: CredentialDraft,
+  definition: ConnectionFormDefinition,
+  credential: ConnectionCredential,
 ): ConnectionCreateRequest {
-  const credential = toConnectionCredential(draft);
-  switch (credential.type) {
-    case 'postgres':
-      return { providerKey: 'postgres', name, credential };
-    case 'hmac_key':
-      return { providerKey: 'signing', name, credential };
-    case 'slack_bot_token':
-      return { providerKey: 'slack', name, credential };
-    case 'resend_api_key':
-    case 'smtp':
-      return { providerKey: 'email', name, credential };
-    case 'http_headers':
-    case 'oauth2':
-      return { providerKey: 'http', name, credential };
-  }
+  return { providerKey: definition.providerKey, name, credential };
 }
 
-/** Server field issues (`credential.botToken`, …) placed on their fields. */
 export function credentialServerErrors(
   draft: CredentialDraft,
   issues: readonly ApiProblemIssue[],
@@ -337,45 +246,39 @@ export function credentialServerErrors(
   const errors: Partial<Record<CredentialField, string>> = {};
   for (const issue of issues) {
     const path = issue.path.replace(/^\//u, '').replaceAll('/', '.').split('.');
-    if (path[0] !== 'credential') continue;
-    const field = path[1];
-    switch (draft.provider) {
-      case 'postgres': {
-        const postgresField = POSTGRES_FIELDS.find(
-          (candidate) => candidate === field,
+    const [root, field] = path;
+    if (root !== 'credential' || field === undefined) continue;
+    if (draft.provider === 'http') {
+      if (field === 'headers')
+        Object.assign(
+          errors,
+          headerIssueErrors(filledRows(draft.headers), [
+            { path: path.slice(1), message: issue.message },
+          ]),
         );
-        if (postgresField !== undefined) errors[postgresField] = issue.message;
-        break;
-      }
-      case 'smtp': {
-        const smtpField = SMTP_FIELDS.find((candidate) => candidate === field);
-        if (smtpField !== undefined) errors[smtpField] = issue.message;
-        break;
-      }
-      case 'signing':
-        if (field === 'signingKey')
-          errors.signingKey = `Use valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}.`;
-        break;
-      case 'slack':
-        if (field === 'botToken') errors.botToken = SLACK_TOKEN_FORMAT;
-        break;
-      case 'email':
-        if (field === 'apiKey')
-          errors.apiKey = 'Resend didn’t accept this API key format.';
-        else if (field === 'fromEmail')
-          errors.fromEmail =
-            'Use a complete email address, like alerts@yourdomain.com.';
-        break;
-      case 'http':
-        if (field === 'headers')
-          Object.assign(
-            errors,
-            headerIssueErrors(filledRows(draft.headers), [
-              { path: path.slice(1), message: issue.message },
-            ]),
-          );
-        break;
+      continue;
     }
+    if (!Object.hasOwn(draft.values, field)) continue;
+    errors[field] = serverScalarError(draft, field, issue.message);
   }
   return errors;
+}
+
+function serverScalarError(
+  draft: SchemaCredentialDraft,
+  field: string,
+  message: string,
+) {
+  switch (draft.definition.test) {
+    case 'signing':
+      return `Use valid Unicode text of 1–${formatCount(SIGNING_KEY_MAX_BYTES, 'UTF-8 byte')}.`;
+    case 'slack':
+      return SLACK_TOKEN_FORMAT;
+    case 'resend':
+      return field === 'apiKey'
+        ? 'Resend didn’t accept this API key format.'
+        : 'Use a complete email address, like alerts@yourdomain.com.';
+    default:
+      return message;
+  }
 }

@@ -122,9 +122,8 @@ function failureOf(
     return 'Pertexo couldn’t send the test. The problem is on Pertexo’s side, not with this destination. Try again.';
   if (mutation.isError) return destinationCommandError(mutation.error, 'test');
   if (mutation.data === undefined || mutation.data.outcome.ok) return undefined;
-  const { title, detail } = describeTestOutcome(
-    destination.kind === 'system_mail' ? 'email' : destination.kind,
-    mutation.data.outcome,
-  );
+  let testKey = destination.kind === 'slack' ? 'slack' : 'resend';
+  if (mutation.data.connection.authType === 'smtp') testKey = 'smtp';
+  const { title, detail } = describeTestOutcome(testKey, mutation.data.outcome);
   return `${title} ${detail}`;
 }

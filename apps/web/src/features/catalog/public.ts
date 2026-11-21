@@ -19,3 +19,6 @@ export {
 } from './model/steps/presentation';
 export type { StepFamily, StepPresentation } from './model/steps/registry';
 export { useStepDescriptions } from './hooks/step-descriptions';
+
+export { useConnectionDefinitions } from './hooks/connection-definitions';
+export { catalogIcon } from './model/steps/registry';

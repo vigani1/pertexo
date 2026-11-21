@@ -1,4 +1,8 @@
-import type { ConnectionResponse } from '@pertexo/contracts';
+import { useConnectionDefinitions } from '@/features/catalog/public';
+import type {
+  ConnectionFormDefinition,
+  ConnectionResponse,
+} from '@pertexo/contracts';
 import { ProgressButton } from '@/components/ui/progress-button';
 import { Button } from '@/components/ui/button';
 import { RadioChoice } from '@/components/ui/radio-choice';
@@ -6,7 +10,10 @@ import type { FieldValidation } from '@/components/ui/use-field-validation';
 import type { useOAuth2Consent } from '../../data/oauth2-consent.mutations';
 import { connectionCommandError } from '../../model/connection-errors';
 import { isOAuth2Connection } from '../../model/oauth2-copy';
-import type { ConnectionChoice } from '../../model/connection-providers';
+import {
+  isConnectionChoice,
+  type ConnectionChoice,
+} from '../../model/connection-providers';
 import type { CredentialDraft } from '../../model/credential-draft';
 import type { SavedCredential } from '../../model/saved-credential';
 import type { useConnectionTest } from '../../data/connection-test.mutations';
@@ -30,10 +37,9 @@ export function StepBody({
   id: string;
   step: AddStep;
   provider: ConnectionChoice | undefined;
-  onChoose: (provider: ConnectionChoice) => void;
+  onChoose: (provider: ConnectionChoice, authType?: string) => void;
   fields: Readonly<{
-    useOAuth2: boolean;
-    onUseOAuth2: (useOAuth2: boolean) => void;
+    definition: ConnectionFormDefinition | undefined;
     credential: CredentialForm;
     name: string;
     nameValidation: FieldValidation<'name'>;
@@ -54,8 +60,7 @@ export function StepBody({
   }>;
 }>) {
   const {
-    useOAuth2,
-    onUseOAuth2,
+    definition,
     credential,
     name,
     nameValidation,
@@ -66,6 +71,21 @@ export function StepBody({
   const { created, savedCredential, test, consent } = result;
 
   const { disabled, uncertain, createError } = command;
+
+  const definitions = useConnectionDefinitions();
+  const variants = definitions.flatMap((entry) =>
+    entry.providerKey === definition?.providerKey &&
+    entry.presentation.variant !== undefined
+      ? [
+          {
+            value: entry.authType,
+            label: entry.presentation.variant,
+            choice: entry.presentation.choice,
+          },
+        ]
+      : [],
+  );
+  const variantPrompt = definition?.presentation.variantPrompt;
 
   if (step === 'provider')
     return <ProviderSockets layout="stack" onConnect={onChoose} />;
@@ -81,29 +101,18 @@ export function StepBody({
   if (step === 'credential')
     return (
       <div className="flex flex-col gap-5">
-        {provider === 'email' || provider === 'smtp' ? (
+        {variantPrompt !== undefined &&
+        definition !== undefined &&
+        variants.length > 1 ? (
           <RadioChoice
-            label="Send email with"
-            value={provider}
+            label={variantPrompt}
+            value={definition.authType}
             disabled={disabled}
-            options={[
-              { value: 'email', label: 'Resend' },
-              { value: 'smtp', label: 'SMTP' },
-            ]}
-            onChange={onChoose}
-          />
-        ) : null}
-        {provider === 'http' ? (
-          <RadioChoice
-            label="How this connection signs in"
-            value={useOAuth2 ? 'oauth2' : 'headers'}
-            disabled={disabled}
-            options={[
-              { value: 'headers', label: 'Headers' },
-              { value: 'oauth2', label: 'OAuth2' },
-            ]}
-            onChange={(choice) => {
-              onUseOAuth2(choice === 'oauth2');
+            options={variants}
+            onChange={(value) => {
+              const variant = variants.find((entry) => entry.value === value);
+              if (variant !== undefined && isConnectionChoice(variant.choice))
+                onChoose(variant.choice, value);
             }}
           />
         ) : null}
@@ -117,12 +126,11 @@ export function StepBody({
         />
       </div>
     );
-  const authType = useOAuth2 ? 'oauth2' : undefined;
   return (
     <NameStep
       id={id}
       provider={provider}
-      authType={provider === 'smtp' ? 'smtp' : authType}
+      authType={definition?.authType}
       name={name}
       disabled={disabled}
       validation={nameValidation}

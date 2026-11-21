@@ -1,3 +1,4 @@
+import { browserConnectionDefinitions } from '../../support/fixtures/node-catalog';
 import { describe, expect, it } from 'vitest';
 import {
   describeConnectionHealth,
@@ -9,6 +10,7 @@ import {
   credentialErrors,
   toCreateRequest,
   type CredentialDraft,
+  toConnectionCredential,
 } from '@/features/connections/model/credential-draft';
 import { describeSavedCredential } from '@/features/connections/model/saved-credential';
 
@@ -26,6 +28,23 @@ function health(
     lastHealthyAt: null,
     lastErrorCode: null,
     ...overrides,
+  };
+}
+
+function definition(authType: string) {
+  const found = browserConnectionDefinitions.find(
+    (entry) => entry.authType === authType,
+  );
+  if (found === undefined)
+    throw new Error(`Missing connection definition ${authType}`);
+  return found;
+}
+
+function scalar(authType: string, values: Readonly<Record<string, string>>) {
+  return {
+    provider: 'schema' as const,
+    definition: definition(authType),
+    values,
   };
 }
 
@@ -139,6 +158,7 @@ describe('connection health in words', () => {
           }),
         },
         now,
+        'slack',
       ),
     ).toEqual({ text: 'last test failed · invalid token', tone: 'attention' });
     expect(
@@ -155,7 +175,7 @@ describe('connection health in words', () => {
 
   it('explains a failed test and what to do next', () => {
     expect(
-      describeTestOutcome('email', {
+      describeTestOutcome('resend', {
         ok: false,
         httpStatus: 403,
         errorCode: 'connection.credential_rejected',
@@ -194,17 +214,17 @@ describe('connection health in words', () => {
 
   it('summarises a saved credential without showing it whole', () => {
     expect(
-      describeSavedCredential({
-        provider: 'slack',
-        botToken: 'xoxb-1-abcd4f2a',
-      }),
+      describeSavedCredential(
+        scalar('slack_bot_token', { botToken: 'xoxb-1-abcd4f2a' }),
+      ),
     ).toEqual({ term: 'Token', value: 'xoxb-••••••••4f2a' });
     expect(
-      describeSavedCredential({
-        provider: 'email',
-        apiKey: 're_live_9Qx1',
-        fromEmail: 'billing@northwind.dev',
-      }).value,
+      describeSavedCredential(
+        scalar('resend_api_key', {
+          apiKey: 're_live_9Qx1',
+          fromEmail: 'billing@northwind.dev',
+        }),
+      ).value,
     ).toBe('re_••••••••9Qx1 · sends from billing@northwind.dev');
     expect(
       describeSavedCredential({
@@ -220,15 +240,18 @@ describe('connection health in words', () => {
 
 describe('credential drafts', () => {
   it('names each Slack and Resend problem on its own field', () => {
-    expect(credentialErrors({ provider: 'slack', botToken: ' ' })).toEqual({
+    expect(
+      credentialErrors(scalar('slack_bot_token', { botToken: ' ' })),
+    ).toEqual({
       botToken: 'Paste the bot token from your Slack app.',
     });
     expect(
-      credentialErrors({
-        provider: 'email',
-        apiKey: 'sk_live',
-        fromEmail: 'billing@northwind',
-      }),
+      credentialErrors(
+        scalar('resend_api_key', {
+          apiKey: 'sk_live',
+          fromEmail: 'billing@northwind',
+        }),
+      ),
     ).toEqual({
       apiKey: 'Resend API keys start with re_.',
       fromEmail:
@@ -270,14 +293,16 @@ describe('credential drafts', () => {
   });
 
   it('builds the contract request with trimmed values and blank rows dropped', () => {
+    const credential = toConnectionCredential({
+      provider: 'http',
+      headers: [
+        { id: 'a', name: ' Authorization ', value: ' Bearer a ' },
+        { id: 'b', name: '', value: '' },
+      ],
+    });
+    if (credential === undefined) throw new Error('Expected a valid draft');
     expect(
-      toCreateRequest('Billing API', {
-        provider: 'http',
-        headers: [
-          { id: 'a', name: ' Authorization ', value: ' Bearer a ' },
-          { id: 'b', name: '', value: '' },
-        ],
-      }),
+      toCreateRequest('Billing API', definition('http_headers'), credential),
     ).toEqual({
       providerKey: 'http',
       name: 'Billing API',
@@ -309,25 +334,29 @@ describe('connections URL state', () => {
 });
 
 it('keeps signing key whitespace, enforces UTF-8 size and never shows key fragments', () => {
-  const draft = { provider: 'signing', signingKey: ' key\n' } as const;
+  const draft = scalar('hmac_key', { signingKey: ' key\n' });
   expect(credentialErrors(draft)).toEqual({});
-  expect(toCreateRequest('Orders', draft)).toEqual({
-    providerKey: 'signing',
-    name: 'Orders',
-    credential: { type: 'hmac_key', signingKey: ' key\n' },
-  });
+  const credential = toConnectionCredential(draft);
+  if (credential === undefined) throw new Error('Expected a valid draft');
+  expect(toCreateRequest('Orders', definition('hmac_key'), credential)).toEqual(
+    {
+      providerKey: 'signing',
+      name: 'Orders',
+      credential: { type: 'hmac_key', signingKey: ' key\n' },
+    },
+  );
   expect(describeSavedCredential(draft)).toEqual({
     term: 'Key',
     value: 'Stored encrypted',
   });
   expect(
-    credentialErrors({ provider: 'signing', signingKey: '😀'.repeat(1024) }),
+    credentialErrors(scalar('hmac_key', { signingKey: '😀'.repeat(1024) })),
   ).toEqual({});
   expect(
-    credentialErrors({ provider: 'signing', signingKey: '😀'.repeat(1025) }),
+    credentialErrors(scalar('hmac_key', { signingKey: '😀'.repeat(1025) })),
   ).toHaveProperty('signingKey');
   expect(
-    credentialErrors({ provider: 'signing', signingKey: '' }),
+    credentialErrors(scalar('hmac_key', { signingKey: '' })),
   ).toHaveProperty('signingKey');
   expect(
     describeTestOutcome('signing', {

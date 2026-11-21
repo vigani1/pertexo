@@ -1,22 +1,14 @@
-import {
-  KeyRoundIcon,
-  GlobeIcon,
-  DatabaseIcon,
-  HashIcon,
-  MailIcon,
-  type LucideIcon,
-} from 'lucide-react';
+import { createElement } from 'react';
+import { KeyRoundIcon } from 'lucide-react';
 import { cn } from '@/lib/class-names';
-import type { ConnectionChoice } from '../model/connection-providers';
-
-const ICONS: Readonly<Record<ConnectionChoice, LucideIcon>> = {
-  signing: KeyRoundIcon,
-  postgres: DatabaseIcon,
-  slack: HashIcon,
-  http: GlobeIcon,
-  email: MailIcon,
-  smtp: MailIcon,
-};
+import {
+  catalogIcon,
+  useConnectionDefinitions,
+} from '@/features/catalog/public';
+import {
+  connectionDefinition,
+  type ConnectionChoice,
+} from '../model/connection-providers';
 
 /** The provider's small square tile: the same mark in rows, sockets and lenses. */
 export function ProviderTile({
@@ -28,7 +20,10 @@ export function ProviderTile({
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }>) {
-  const Icon = ICONS[provider];
+  const definitions = useConnectionDefinitions();
+  const icon =
+    catalogIcon(connectionDefinition(definitions, provider)?.icon) ??
+    KeyRoundIcon;
   return (
     <span
       aria-hidden="true"
@@ -41,7 +36,7 @@ export function ProviderTile({
         className,
       )}
     >
-      <Icon />
+      {createElement(icon)}
     </span>
   );
 }

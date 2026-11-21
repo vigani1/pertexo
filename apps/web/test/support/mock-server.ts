@@ -7,8 +7,12 @@ import { defaultConcurrencySettings } from './fixtures/concurrency';
 
 export const mockServer = setupServer(
   http.get('http://pertexo.test/v1/node-definitions', async () => {
-    const { browserDefinitions } = await import('./fixtures/node-catalog');
-    return HttpResponse.json({ items: browserDefinitions() });
+    const { browserDefinitions, browserConnectionDefinitions } =
+      await import('./fixtures/node-catalog');
+    return HttpResponse.json({
+      items: browserDefinitions(),
+      connections: browserConnectionDefinitions,
+    });
   }),
   http.get('http://pertexo.test/v1/integrations', () =>
     HttpResponse.json({ items: [] }),

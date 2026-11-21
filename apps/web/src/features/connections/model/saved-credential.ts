@@ -16,25 +16,30 @@ export function describeSavedCredential(
   draft: CredentialDraft,
 ): SavedCredential {
   switch (draft.provider) {
-    case 'postgres':
-      return { term: 'Database', value: draft.database };
-    case 'smtp':
-      return {
-        term: 'SMTP',
-        value: `${draft.host}:${draft.port} · sends from ${draft.fromEmail}`,
-      };
-    case 'signing':
-      return { term: 'Key', value: 'Stored encrypted' };
-    case 'slack':
-      return {
-        term: 'Token',
-        value: maskSecret(draft.botToken.trim(), 'xoxb-'),
-      };
-    case 'email':
-      return {
-        term: 'API key',
-        value: `${maskSecret(draft.apiKey.trim(), 're_')} · sends from ${draft.fromEmail.trim()}`,
-      };
+    case 'schema': {
+      const read = (field: string) => String(draft.values[field] ?? '');
+      switch (draft.definition.test) {
+        case 'postgres':
+          return { term: 'Database', value: read('database') };
+        case 'smtp':
+          return {
+            term: 'SMTP',
+            value: `${read('host')}:${read('port')} · sends from ${read('fromEmail')}`,
+          };
+        case 'slack':
+          return {
+            term: 'Token',
+            value: maskSecret(read('botToken').trim(), 'xoxb-'),
+          };
+        case 'resend':
+          return {
+            term: 'API key',
+            value: `${maskSecret(read('apiKey').trim(), 're_')} · sends from ${read('fromEmail').trim()}`,
+          };
+        default:
+          return { term: 'Key', value: 'Stored encrypted' };
+      }
+    }
     case 'http': {
       const names = filledRows(draft.headers).map((row) => row.name.trim());
       return {

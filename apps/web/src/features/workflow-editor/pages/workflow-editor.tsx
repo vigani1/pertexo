@@ -1,3 +1,4 @@
+import { ConnectionDefinitions } from '@/features/catalog/catalog-views.public';
 import type { EditorPresenceSource } from '../model/state/presence';
 import type {
   ConnectionResponse,
@@ -63,31 +64,33 @@ export function WorkflowEditorPage({
         savedAt: draft.data.draft.updatedAt,
       }}
     >
-      <ReactFlowProvider>
-        <StepDiscussionsContext value={stepDiscussions ?? NO_DISCUSSIONS}>
-          <WorkflowEditorSession
-            onRunAccepted={onRunAccepted}
-            triggerNotice={triggerNotice}
-            headerPresence={headerPresence}
-            {...(renderEditingPresence === undefined
-              ? {}
-              : { renderEditingPresence })}
-            {...(onPublished === undefined ? {} : { onPublished })}
-            catalog={{
-              definitions: catalog.data.definitions.items,
-              codeSettings: catalog.data.definitions.codeSettings,
-              connections: connections.data?.items ?? NO_CONNECTIONS,
-              connectionsAvailable: connections.data !== null,
-            }}
-            scope={{
-              apiClient: apiClient,
-              userId: user.id,
-              workspace: workspace,
-              workflowId: workflowId,
-            }}
-          />
-        </StepDiscussionsContext>
-      </ReactFlowProvider>
+      <ConnectionDefinitions items={catalog.data.definitions.connections}>
+        <ReactFlowProvider>
+          <StepDiscussionsContext value={stepDiscussions ?? NO_DISCUSSIONS}>
+            <WorkflowEditorSession
+              onRunAccepted={onRunAccepted}
+              triggerNotice={triggerNotice}
+              headerPresence={headerPresence}
+              {...(renderEditingPresence === undefined
+                ? {}
+                : { renderEditingPresence })}
+              {...(onPublished === undefined ? {} : { onPublished })}
+              catalog={{
+                definitions: catalog.data.definitions.items,
+                codeSettings: catalog.data.definitions.codeSettings,
+                connections: connections.data?.items ?? NO_CONNECTIONS,
+                connectionsAvailable: connections.data !== null,
+              }}
+              scope={{
+                apiClient: apiClient,
+                userId: user.id,
+                workspace: workspace,
+                workflowId: workflowId,
+              }}
+            />
+          </StepDiscussionsContext>
+        </ReactFlowProvider>
+      </ConnectionDefinitions>
     </EditorProvider>
   );
 }

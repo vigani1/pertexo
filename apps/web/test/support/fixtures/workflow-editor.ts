@@ -1,3 +1,4 @@
+import { browserConnectionDefinitions } from './node-catalog';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import {
   workflowSummaryResponseSchema,
@@ -174,7 +175,10 @@ export function editorHandlers(
       HttpResponse.json({ items: [] }),
     ),
     http.get(`${api}/node-definitions`, () =>
-      HttpResponse.json({ items: definitions }),
+      HttpResponse.json({
+        items: definitions,
+        connections: browserConnectionDefinitions,
+      }),
     ),
     http.get(`${api}/integrations`, () => HttpResponse.json({ items: [] })),
     http.get(`${api}/workspaces/${workspaceId}/connections`, () =>

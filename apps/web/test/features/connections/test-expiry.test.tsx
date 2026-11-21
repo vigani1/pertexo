@@ -1,3 +1,5 @@
+import { ConnectionDefinitionsContext } from '@/features/catalog/hooks/connection-definitions';
+import { browserConnectionDefinitions } from '../../support/fixtures/node-catalog';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -50,7 +52,9 @@ it('requires new email consent after an unconfirmed connection test expires', as
   render(
     <QueryClientProvider client={cache}>
       <NotificationsProvider>
-        <Test />
+        <ConnectionDefinitionsContext value={browserConnectionDefinitions}>
+          <Test />
+        </ConnectionDefinitionsContext>
       </NotificationsProvider>
     </QueryClientProvider>,
   );

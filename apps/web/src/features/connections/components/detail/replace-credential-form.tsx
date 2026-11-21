@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 import { useId, useState } from 'react';
@@ -17,7 +18,10 @@ import {
   type ConnectionMutationScope,
   type RotateConnectionCommand,
 } from '../../data/connections.mutations';
-import { PROVIDERS } from '../../model/connection-providers';
+import {
+  connectionDefinition,
+  connectionPresentation,
+} from '../../model/connection-providers';
 import { isOAuth2Connection } from '../../model/oauth2-copy';
 import { draftFromSettings } from '../../model/oauth2-draft';
 import { CredentialFields } from '../credential/fields';
@@ -39,8 +43,14 @@ export function ReplaceCredentialForm({
   const id = useId();
   const notifications = useNotifications();
   const oauth2 = isOAuth2Connection(connection) ? connection.oauth2 : undefined;
+  const definitions = useConnectionDefinitions();
+  const provider = connectionPresentation(definitions, connection.providerKey);
   const credential = useCredentialForm(
-    replacementCredentialKind(connection),
+    connectionDefinition(
+      definitions,
+      connection.providerKey,
+      connection.authType,
+    ),
     oauth2 === undefined ? undefined : draftFromSettings(oauth2.settings),
   );
   const [baseVersion, setBaseVersion] = useState(connection.secretVersionId);
@@ -87,19 +97,16 @@ export function ReplaceCredentialForm({
     notifications.success({
       title:
         oauth2 === undefined
-          ? `Replaced the ${PROVIDERS[connection.providerKey].credential} for ${connection.name}`
+          ? `Replaced the ${provider.credential} for ${connection.name}`
           : `Saved the settings for ${connection.name}`,
     });
     finish();
   }
 
-  const uncertain = mutation.isError && isUnconfirmedCommand(mutation.error);
-  const replacingNewer =
-    mutation.isError &&
-    !uncertain &&
-    isApiError(mutation.error) &&
-    mutation.error.problem?.code === 'connection.conflict' &&
-    connection.secretVersionId !== baseVersion;
+  const { uncertain, replacingNewer } = replacementConflict(
+    mutation.error,
+    connection.secretVersionId !== baseVersion,
+  );
   return (
     <form
       noValidate
@@ -112,9 +119,8 @@ export function ReplaceCredentialForm({
       <p className="text-sm text-muted-foreground">
         {oauth2 === undefined ? (
           <>
-            Steps keep using {connection.name}. The old{' '}
-            {PROVIDERS[connection.providerKey].credential} stops being used as
-            soon as this is saved.
+            Steps keep using {connection.name}. The old {provider.credential}{' '}
+            stops being used as soon as this is saved.
           </>
         ) : (
           <>
@@ -190,8 +196,14 @@ function replaceLabel({
   return oauth2 ? 'Save settings' : 'Replace credential';
 }
 
-function replacementCredentialKind(connection: ConnectionResponse) {
-  return connection.authType === 'smtp' || connection.authType === 'oauth2'
-    ? connection.authType
-    : connection.providerKey;
+function replacementConflict(error: unknown, versionChanged: boolean) {
+  const uncertain = isUnconfirmedCommand(error);
+  return {
+    uncertain,
+    replacingNewer:
+      !uncertain &&
+      isApiError(error) &&
+      error.problem?.code === 'connection.conflict' &&
+      versionChanged,
+  };
 }

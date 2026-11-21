@@ -1,8 +1,9 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { ReactNode } from 'react';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
-import { credentialWord, PROVIDERS } from '../../model/connection-providers';
+import { connectionPresentation } from '../../model/connection-providers';
 import { grantSentence, shownHost } from '../../model/oauth2-copy';
 import { Disclosure } from '@/components/ui/disclosure';
 
@@ -44,10 +45,14 @@ function testedWhen(value: string | null | undefined): string {
 export function ConnectionFacts({
   connection,
 }: Readonly<{ connection: ConnectionResponse }>) {
-  const provider =
-    PROVIDERS[connection.authType === 'smtp' ? 'smtp' : connection.providerKey];
+  const definitions = useConnectionDefinitions();
+  const provider = connectionPresentation(
+    definitions,
+    connection.providerKey,
+    connection.authType,
+  );
   const { health } = connection;
-  const word = credentialWord(connection.providerKey, connection.authType);
+  const word = provider.savedCredential;
   const credentialLabel = `${word.charAt(0).toUpperCase()}${word.slice(1)}`;
   // With no history at all the status line already says "never tested";
   // once a run has reported, "Last tested: Never" is the useful contrast.

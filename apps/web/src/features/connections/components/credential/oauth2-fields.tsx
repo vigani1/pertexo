@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Disclosure } from '@/components/ui/disclosure';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
@@ -12,7 +13,7 @@ import {
 import { oauth2RedirectUrl } from '../../model/oauth2-copy';
 import type { OAuth2Draft } from '../../model/oauth2-draft';
 import {
-  OAUTH2_SERVICES,
+  oauth2Services,
   oauth2ServiceOf,
   oauth2ServiceSetup,
   withOAuth2Service,
@@ -228,7 +229,10 @@ export function OAuth2Fields(form: FormProps) {
   const { draft, idPrefix, disabled, onChange } = form;
   const consent = draft.grantType === 'authorization_code';
   const redirectUrl = oauth2RedirectUrl(window.location.origin);
-  const service = oauth2ServiceOf(draft);
+  const presets =
+    useConnectionDefinitions().find((entry) => entry.test === 'oauth2')
+      ?.presets ?? [];
+  const service = oauth2ServiceOf(draft, presets);
   const setup = oauth2ServiceSetup(service);
   return (
     <FieldGroup>
@@ -236,9 +240,9 @@ export function OAuth2Fields(form: FormProps) {
         label="Service"
         value={service}
         disabled={disabled}
-        options={OAUTH2_SERVICES}
+        options={oauth2Services(presets)}
         onChange={(next) => {
-          const changed = withOAuth2Service(draft, next);
+          const changed = withOAuth2Service(draft, next, presets);
           onChange(changed);
           const errors = credentialErrors(changed);
           for (const field of FIELDS_A_SERVICE_FILLS)

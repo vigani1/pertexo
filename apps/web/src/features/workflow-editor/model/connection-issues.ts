@@ -1,5 +1,6 @@
 import type {
   ConnectionResponse,
+  ConnectionFormDefinition,
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
@@ -17,12 +18,14 @@ export function workflowConnectionIssues({
   graph,
   definitions,
   connections,
+  credentials,
   available,
 }: Readonly<{
   graph: WorkflowGraphContract;
   definitions: readonly NodeDefinitionCatalogItem[];
   connections: readonly ConnectionResponse[];
   available: boolean;
+  credentials: readonly ConnectionFormDefinition[];
 }>): readonly WorkflowIssue[] {
   const byId = new Map(
     connections.map((connection) => [connection.id, connection]),
@@ -41,6 +44,7 @@ export function workflowConnectionIssues({
             requirement,
             selectedId,
             connections: byId,
+            credentials,
             available,
           });
           return message === undefined
@@ -65,22 +69,25 @@ function describeCredentialIssue({
   requirement,
   selectedId,
   connections,
+  credentials,
   available,
 }: Readonly<{
   requirement: string;
   selectedId: string | undefined;
   connections: ReadonlyMap<string, ConnectionResponse>;
   available: boolean;
+  credentials: readonly ConnectionFormDefinition[];
 }>): string | undefined {
-  const label = describeConnectionRequirement(requirement);
+  const label = describeConnectionRequirement(requirement, credentials);
   if (!available)
     return 'Connections are unavailable here. Ask the server operator to check connection configuration and workspace access.';
   if (selectedId === undefined) return `Choose a ${label} for this step.`;
   const connection = connections.get(selectedId);
   if (connection === undefined)
     return `The selected ${label} is unavailable. Choose another one.`;
-  if (isUsableConnection(connection, requirement)) return undefined;
-  if (!fitsRequirement(connection, requirement))
+  if (isUsableConnection(connection, requirement, credentials))
+    return undefined;
+  if (!fitsRequirement(connection, requirement, credentials))
     return `Choose a ${label}; ${connection.name} has a different credential type.`;
   return connection.status === 'revoked'
     ? `${connection.name} was revoked. Choose another ${label}.`

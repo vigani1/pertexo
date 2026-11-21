@@ -1,4 +1,7 @@
-import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
+import {
+  connectionFormCatalog,
+  platformBrowserNodeDefinitionCatalog,
+} from '@pertexo/node-catalog';
 import { catalogStepDescriptions } from '@/features/catalog/public';
 import { nodeDefinitionListResponseSchema } from '@pertexo/contracts';
 
@@ -11,3 +14,9 @@ export function browserDefinitions() {
 
 export const describeBrowserStep =
   catalogStepDescriptions(browserDefinitions());
+
+export const browserConnectionDefinitions =
+  nodeDefinitionListResponseSchema.parse({
+    items: [],
+    connections: connectionFormCatalog,
+  }).connections ?? [];

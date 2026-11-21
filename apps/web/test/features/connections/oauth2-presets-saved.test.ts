@@ -1,3 +1,4 @@
+import { browserConnectionDefinitions } from '../../support/fixtures/node-catalog';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,6 +11,10 @@ import {
   oauth2ServiceOf,
   withOAuth2Service,
 } from '@/features/connections/model/oauth2-presets';
+
+const presets =
+  browserConnectionDefinitions.find((entry) => entry.authType === 'oauth2')
+    ?.presets ?? [];
 
 const typed = (draft: OAuth2Draft): OAuth2Draft => ({
   ...draft,
@@ -27,22 +32,29 @@ describe('a saved connection and its service', () => {
   it.each(['google', 'microsoft'] as const)(
     'reads %s again from its stored settings, with every field as it was',
     (service) => {
-      const before = typed(withOAuth2Service(emptyOAuth2Draft(), service));
+      const before = typed(
+        withOAuth2Service(emptyOAuth2Draft(), service, presets),
+      );
 
       const saved = toOAuth2Credential(before).settings;
       const after = draftFromSettings(saved);
 
-      expect(oauth2ServiceOf(after)).toBe(service);
+      expect(oauth2ServiceOf(after, presets)).toBe(service);
       expect(after).toEqual({ ...before, clientSecret: '' });
     },
   );
 
   it('reads as Other service for an address of anyone else', () => {
     expect(
-      oauth2ServiceOf(withTokenUrl('https://auth.example.test/oauth/token')),
+      oauth2ServiceOf(
+        withTokenUrl('https://auth.example.test/oauth/token'),
+        presets,
+      ),
     ).toBe('custom');
-    expect(oauth2ServiceOf(emptyOAuth2Draft())).toBe('custom');
-    expect(oauth2ServiceOf(withTokenUrl('not an address'))).toBe('custom');
+    expect(oauth2ServiceOf(emptyOAuth2Draft(), presets)).toBe('custom');
+    expect(oauth2ServiceOf(withTokenUrl('not an address'), presets)).toBe(
+      'custom',
+    );
   });
 
   // The word "Google" on a form is a claim: a lookalike mustn't earn it.
@@ -53,6 +65,6 @@ describe('a saved connection and its service', () => {
     'https://login.microsoftonline.com.example.test/common/oauth2/v2.0/token',
     'https://example.test/login.microsoftonline.com/token',
   ])('doesn’t read %s as a known service', (address) => {
-    expect(oauth2ServiceOf(withTokenUrl(address))).toBe('custom');
+    expect(oauth2ServiceOf(withTokenUrl(address), presets)).toBe('custom');
   });
 });

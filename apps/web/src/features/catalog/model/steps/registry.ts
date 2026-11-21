@@ -86,9 +86,14 @@ export const stepIcons: Readonly<Partial<Record<string, LucideIcon>>> =
   });
 
 export const catalogIcons: ReadonlyMap<string, LucideIcon> = new Map([
+  ['key', KeyRoundIcon],
   ['globe', GlobeIcon],
   ['hash', HashIcon],
   ['mail', MailIcon],
   ['database', DatabaseIcon],
   ['webhook', WebhookIcon],
 ]);
+
+export function catalogIcon(key: string | undefined) {
+  return key === undefined ? undefined : catalogIcons.get(key);
+}

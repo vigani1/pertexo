@@ -1,7 +1,8 @@
-import { PostgresFields } from './postgres-fields';
-import { SmtpFields } from './smtp-fields';
+import { Checkbox } from '@/components/ui/checkbox';
 import { FieldGroup, LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { Notice } from '@/components/ui/notice';
+import { RadioChoice } from '@/components/ui/radio-choice';
+import { SchemaTextControl } from '@/components/ui/schema-text-control';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
 import { CREDENTIAL_STEPS } from '../../model/connection-providers';
 import {
@@ -9,12 +10,18 @@ import {
   type CredentialDraft,
   type CredentialField,
 } from '../../model/credential-draft';
+import {
+  credentialFields,
+  isVisibleField,
+  type ScalarValue,
+  type SchemaCredentialDraft,
+} from '../../model/schema-credential';
 import { CredentialHelp } from './help';
 import { HttpHeaderEditor } from './http-header-editor';
 import { OAuth2Fields } from './oauth2-fields';
 
 type FieldsProps = Readonly<{
-  draft: CredentialDraft;
+  draft: CredentialDraft | undefined;
   idPrefix: string;
   disabled: boolean;
   validation: FieldValidation<CredentialField>;
@@ -22,139 +29,157 @@ type FieldsProps = Readonly<{
   createId: () => string;
 }>;
 
-type SecretFieldProps = Readonly<{
-  field: 'signingKey' | 'botToken' | 'apiKey' | 'fromEmail';
-  label: string;
-  value: string;
-  placeholder: string;
-  secret: boolean;
-  description?: string;
-  update: (value: string) => CredentialDraft;
-  form: Pick<FieldsProps, 'idPrefix' | 'disabled' | 'validation' | 'onChange'>;
-}>;
+export function CredentialFields({ draft, ...props }: FieldsProps) {
+  if (draft === undefined) return null;
+  if (draft.provider === 'oauth2')
+    return <OAuth2Fields {...props} draft={draft} />;
+  if (draft.provider === 'http')
+    return <HttpHeaderEditor {...props} draft={draft} />;
+  return <ScalarFields {...props} draft={draft} />;
+}
 
-function CredentialInput({
-  field,
-  label,
-  value,
-  placeholder,
-  secret,
-  description,
-  update,
-  form,
-}: SecretFieldProps) {
-  const { idPrefix, disabled, validation, onChange } = form;
+type ScalarProps = Omit<FieldsProps, 'draft' | 'createId'> &
+  Readonly<{ draft: SchemaCredentialDraft }>;
+
+function ScalarFields(props: ScalarProps) {
+  const { draft } = props;
   return (
-    <LabelledField
-      id={`${idPrefix}-${field}`}
-      label={label}
-      {...(description === undefined ? {} : { description })}
-      error={validation.error(field)}
-    >
-      {(control) => (
-        <Input
-          {...control}
-          ref={validation.register(field)}
-          name={field}
-          type={secret ? 'password' : 'email'}
-          autoComplete={secret ? 'new-password' : 'email'}
-          spellCheck={false}
-          placeholder={placeholder}
-          maxLength={field === 'signingKey' ? 4_096 : 512}
-          disabled={disabled}
-          value={value}
-          onChange={(event) => {
-            const next = update(event.currentTarget.value);
-            onChange(next);
-            validation.change(field, credentialErrors(next)[field]);
-          }}
-        />
+    <FieldGroup>
+      {credentialFields(draft.definition).map((field) =>
+        isVisibleField(field.metadata, draft.values) ? (
+          <ScalarField key={field.key} form={props} field={field} />
+        ) : null,
       )}
-    </LabelledField>
+    </FieldGroup>
   );
 }
 
-/** The provider's credential inputs. Secrets stay masked and local. */
-export function CredentialFields(props: FieldsProps) {
-  const { draft } = props;
-  if (draft.provider === 'postgres')
-    return <PostgresFields {...props} draft={draft} />;
-  if (draft.provider === 'smtp') return <SmtpFields {...props} draft={draft} />;
-  if (draft.provider === 'oauth2')
+function ScalarField({
+  form,
+  field,
+}: Readonly<{
+  form: ScalarProps;
+  field: ReturnType<typeof credentialFields>[number];
+}>) {
+  const { draft, idPrefix, disabled, validation, onChange } = form;
+  const { key, label, description, metadata } = field;
+  const value = draft.values[key];
+  const error = validation.error(key);
+  function update(value: ScalarValue) {
+    const next = { ...draft, values: { ...draft.values, [key]: value } };
+    onChange(next);
+    validation.change(key, credentialErrors(next)[key]);
+  }
+
+  if (field.kind === 'boolean')
     return (
-      <OAuth2Fields
-        draft={draft}
-        idPrefix={props.idPrefix}
-        disabled={props.disabled}
-        validation={props.validation}
-        onChange={props.onChange}
-      />
-    );
-  if (draft.provider === 'http')
-    return (
-      <HttpHeaderEditor
-        draft={draft}
-        idPrefix={props.idPrefix}
-        disabled={props.disabled}
-        validation={props.validation}
-        onChange={props.onChange}
-        createId={props.createId}
-      />
-    );
-  if (draft.provider === 'signing')
-    return (
-      <FieldGroup>
-        <CredentialInput
-          form={props}
-          field="signingKey"
-          label="Signing key"
-          value={draft.signingKey}
-          placeholder="Paste the exact signing key"
-          secret
-          description="Stored encrypted. Whitespace is part of the key. Test checks local access only."
-          update={(signingKey) => ({ ...draft, signingKey })}
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={value === true}
+          disabled={disabled}
+          onCheckedChange={update}
         />
-      </FieldGroup>
+        {label}
+      </label>
     );
-  if (draft.provider === 'slack')
+  if (field.options !== undefined)
     return (
-      <FieldGroup>
-        <CredentialInput
-          form={props}
-          field="botToken"
-          label="Slack bot token"
-          value={draft.botToken}
-          placeholder="xoxb-…"
-          secret
-          description="Stored encrypted. Nobody, including you, can see it again."
-          update={(botToken) => ({ ...draft, botToken })}
+      <>
+        <RadioChoice
+          label={label}
+          value={String(value ?? '')}
+          disabled={disabled}
+          className="flex-wrap"
+          options={field.options.map((option) => ({
+            value: option,
+            label: field.optionLabels?.[option] ?? option,
+          }))}
+          onChange={update}
         />
-        <CredentialHelp steps={CREDENTIAL_STEPS.slack} />
-      </FieldGroup>
+        {error === undefined ? null : (
+          <Notice tone="destructive">{error}</Notice>
+        )}
+        <ChoiceNotice metadata={metadata} value={value} />
+      </>
     );
+
+  const secret = metadata.secret === true;
+  const email = metadata.format === 'email';
+  const plainInputType = email ? 'email' : 'text';
+  const plainAutocomplete = email ? 'email' : 'off';
+  const help =
+    metadata.help === 'slack' || metadata.help === 'email'
+      ? CREDENTIAL_STEPS[metadata.help]
+      : undefined;
   return (
-    <FieldGroup>
-      <CredentialInput
-        form={props}
-        field="apiKey"
-        label="Resend API key"
-        value={draft.apiKey}
-        placeholder="re_…"
-        secret
-        description="Stored encrypted. Nobody, including you, can see it again."
-        update={(apiKey) => ({ ...draft, apiKey })}
-      />
-      <CredentialHelp steps={CREDENTIAL_STEPS.email} />
-      <CredentialInput
-        form={props}
-        field="fromEmail"
-        label="From address"
-        value={draft.fromEmail}
-        placeholder="alerts@yourdomain.com"
-        secret={false}
-        description="Emails come from this address. Its domain must be verified in Resend."
-        update={(fromEmail) => ({ ...draft, fromEmail })}
-      />
-    </FieldGroup>
+    <>
+      <LabelledField
+        id={`${idPrefix}-${key}`}
+        label={label}
+        {...(description === undefined ? {} : { description })}
+        error={error}
+      >
+        {(control) =>
+          metadata.multiline === true ? (
+            <SchemaTextControl
+              {...control}
+              multiline
+              ref={validation.register(key)}
+              disabled={disabled}
+              value={String(value ?? '')}
+              onTextChange={update}
+            />
+          ) : (
+            <SchemaTextControl
+              {...control}
+              ref={validation.register(key)}
+              name={key}
+              type={secret ? 'password' : plainInputType}
+              autoComplete={secret ? 'new-password' : plainAutocomplete}
+              inputMode={metadata.numericInput === true ? 'numeric' : undefined}
+              spellCheck={false}
+              placeholder={
+                typeof metadata.placeholder === 'string'
+                  ? metadata.placeholder
+                  : undefined
+              }
+              maxLength={
+                typeof metadata.inputMaxLength === 'number'
+                  ? metadata.inputMaxLength
+                  : undefined
+              }
+              disabled={disabled}
+              value={String(value ?? '')}
+              onTextChange={update}
+            />
+          )
+        }
+      </LabelledField>
+      {help === undefined ? null : <CredentialHelp steps={help} />}
+    </>
   );
+}
+
+function ChoiceNotice({
+  metadata,
+  value,
+}: Readonly<{
+  metadata: Readonly<Record<string, unknown>>;
+  value: ScalarValue | undefined;
+}>) {
+  if (metadata.notice === 'smtp_plaintext' && value === 'none')
+    return (
+      <Notice tone="warning">
+        Credentials and email travel without encryption. Use only with a trusted
+        relay. The operator must permit plain SMTP with SMTP_ALLOW_PLAINTEXT.
+      </Notice>
+    );
+  if (metadata.notice === 'postgres_plaintext' && value === 'disable')
+    return (
+      <p className="text-sm text-muted-foreground">
+        Unencrypted connections require a private network your operator has
+        allowed.
+      </p>
+    );
+  return null;
 }

@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import { useCommandAttempt } from '@/lib/api/commands/use-command-attempt';
 import { ExpiredAttemptNotice } from '@/components/patterns/states/expired-attempt-notice';
 
@@ -26,8 +27,9 @@ import {
   type CreateConnectionCommand,
 } from '../../data/connections.mutations';
 import {
+  automaticTestRequest,
   connectionNameError,
-  PROVIDERS,
+  connectionDefinition,
   suggestConnectionName,
   type ConnectionChoice,
 } from '../../model/connection-providers';
@@ -95,9 +97,9 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
       <SheetContent className="w-[min(28rem,calc(100vw-1.5rem))]">
         <SheetHeader className="gap-3">
           <SheetTitle>
-            {model.provider === undefined
+            {model.definition === undefined
               ? 'Add a connection'
-              : PROVIDERS[model.provider].connectTitle}
+              : `Connect ${model.definition.presentation.name}`}
           </SheetTitle>
           <SheetDescription>
             {stepDescription(model.step, model.provider)}
@@ -127,7 +129,8 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
               id={model.id}
               step={model.step}
               provider={model.provider}
-              onChoose={(next) => {
+              onChoose={(next, authType) => {
+                model.chooseAuthType(authType);
                 model.setChosen(next);
                 model.setStep('credential');
               }}
@@ -146,8 +149,7 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
                 consent: model.consent,
               }}
               fields={{
-                useOAuth2: model.useOAuth2,
-                onUseOAuth2: model.chooseOAuth2,
+                definition: model.definition,
                 credential: model.credential,
                 name: model.name,
                 nameValidation: model.nameValidation,
@@ -221,13 +223,14 @@ function useAddConnectionForm({
   const [created, setCreated] = useState<ConnectionResponse>();
   const [savedCredential, setSavedCredential] = useState<SavedCredential>();
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  const [useOAuth2, chooseOAuth2] = useState(false);
+  const [authType, chooseAuthType] = useState<string>();
   const provider = chosen ?? (request === 'any' ? undefined : request);
   const step: AddStep =
     stepState ?? (provider === undefined ? 'provider' : 'credential');
-  const credential = useCredentialForm(
-    provider === 'http' && useOAuth2 ? 'oauth2' : (provider ?? 'slack'),
-  );
+  const definitions = useConnectionDefinitions();
+  const definition = connectionDefinition(definitions, provider, authType);
+  const credential = useCredentialForm(definition);
+  const useOAuth2 = definition?.test === 'oauth2';
   const nameValidation = useFieldValidation<'name'>();
   const { mutation: create, clearSensitiveState } =
     useCreateConnectionMutation(scope);
@@ -235,13 +238,16 @@ function useAddConnectionForm({
   const consent = useOAuth2Consent(scope, created, (connected) => {
     setCreated(connected);
     setStep('test');
-    // A step's slot takes it as soon as it can be used, not when this sheet closes.
     onCreated?.(connected);
   });
   const attempt = useCommandAttempt<HeldCommand>();
   const name =
     nameInput ??
-    (provider && suggestConnectionName(provider, workspaceName)) ??
+    (definition &&
+      suggestConnectionName(
+        definition.presentation.nameSuffix,
+        workspaceName,
+      )) ??
     '';
 
   function close() {
@@ -256,7 +262,7 @@ function useAddConnectionForm({
     setNameInput(undefined);
     setCreated(undefined);
     setSavedCredential(undefined);
-    chooseOAuth2(false);
+    chooseAuthType(undefined);
     credential.clear();
     nameValidation.reset();
     clearSensitiveState();
@@ -264,11 +270,10 @@ function useAddConnectionForm({
     onClose();
   }
 
-  /** Closing asks first when a pasted secret would be thrown away. */
   function requestClose() {
     if (
       created === undefined &&
-      provider !== undefined &&
+      credential.draft !== undefined &&
       credentialDraftHasSecret(credential.draft)
     )
       setConfirmingDiscard(true);
@@ -280,13 +285,19 @@ function useAddConnectionForm({
   }
 
   async function save() {
-    if (provider === undefined || create.isPending) return;
+    if (
+      definition === undefined ||
+      credential.draft === undefined ||
+      create.isPending
+    )
+      return;
     if (!nameValidation.submit({ name: connectionNameError(name) })) return;
-    if (credential.validate() === undefined) {
+    const value = credential.validate();
+    if (value === undefined) {
       setStep('credential');
       return;
     }
-    const request = toCreateRequest(name.trim(), credential.draft);
+    const request = toCreateRequest(name.trim(), definition, value);
     const signature = JSON.stringify(request);
     if (attempt.current()?.signature !== signature) attempt.clear();
     const command = await attempt.getOrCreateKeyed(() => ({
@@ -312,19 +323,15 @@ function useAddConnectionForm({
       return;
     }
     setStep('test');
-    if (connection.authType === 'smtp')
-      test.run(connection, { providerKey: 'email', transport: 'smtp' });
-    if (
-      connection.providerKey === 'slack' ||
-      connection.providerKey === 'signing'
-    )
-      test.run(connection, { providerKey: connection.providerKey });
+    const automatic = automaticTestRequest(definition.test);
+    if (automatic !== undefined) test.run(connection, automatic);
   }
 
   const createFailed = create.isError && !isFieldProblem(create.error);
   const uncertain = create.isError && isUnconfirmedCommand(create.error);
 
   return {
+    definition,
     request,
     attempt,
     requestClose,
@@ -336,7 +343,7 @@ function useAddConnectionForm({
     created,
     savedCredential,
     useOAuth2,
-    chooseOAuth2,
+    chooseAuthType,
     consent,
     credential,
     name,

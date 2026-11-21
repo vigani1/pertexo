@@ -1,3 +1,4 @@
+import { browserConnectionDefinitions } from '../../test/support/fixtures/node-catalog';
 import { workflowGraphReadBody } from '../workflows/read-projections';
 import {
   createUserFixture,
@@ -145,7 +146,10 @@ export async function installRoutes(page: Page) {
   );
   await page.route('**/v1/node-definitions', (route) =>
     route.fulfill({
-      json: { items: [slackDefinition] },
+      json: {
+        items: [slackDefinition],
+        connections: browserConnectionDefinitions,
+      },
     }),
   );
   await page.route('**/v1/integrations', (route) =>

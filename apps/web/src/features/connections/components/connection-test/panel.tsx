@@ -1,3 +1,5 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
+import { connectionDefinition } from '../../model/connection-providers';
 import { Button } from '@/components/ui/button';
 import { useId, useState } from 'react';
 import { connectionTestRequestSchema } from '@pertexo/contracts';
@@ -23,22 +25,26 @@ import { TestThread } from './thread';
 
 type TestField = 'url' | 'acknowledged';
 
-const INTRO: Readonly<Record<ProviderKey, string>> = {
+const INTRO: Readonly<Record<string, string>> = {
   postgres: 'Pertexo connects and runs a simple read-only query.',
   signing:
     'Pertexo checks it can open this key locally. Nothing is sent to another service.',
   slack: 'Pertexo asks Slack whether the token works. Nothing is posted.',
   http: 'Pertexo calls an address with these headers to see whether they work.',
-  email:
+  resend:
     'Pertexo sends one real email through Resend to see whether the key works.',
+  smtp: 'Pertexo connects, upgrades TLS when required, authenticates and quits. No email is sent.',
+  oauth2:
+    'Pertexo gets a token and calls an address with it to see whether it works.',
 };
 
-const RUN_LABEL: Readonly<Record<ProviderKey, string>> = {
+const RUN_LABEL: Readonly<Record<string, string>> = {
   signing: 'Check key access',
   postgres: 'Test connection',
   slack: 'Test connection',
   http: 'Call this address',
-  email: 'Send test email',
+  resend: 'Send test email',
+  oauth2: 'Call this address',
 };
 
 function urlError(url: string): string | undefined {
@@ -50,18 +56,16 @@ function urlError(url: string): string | undefined {
 }
 
 function TestOutcome({
-  provider,
-  authType,
+  testKey,
   test,
 }: Readonly<{
-  provider: ProviderKey;
-  authType: ConnectionResponse['authType'] | undefined;
+  testKey: string;
   test: Pick<ConnectionTest, 'phase' | 'result' | 'error'>;
 }>) {
   if (test.phase === 'running')
     return <p className="text-sm text-muted-foreground">Testing…</p>;
   if (test.result !== undefined && test.phase !== 'unsure') {
-    const copy = describeTestOutcome(provider, test.result.outcome, authType);
+    const copy = describeTestOutcome(testKey, test.result.outcome);
     return (
       <Notice
         tone={test.result.outcome.ok ? 'success' : 'destructive'}
@@ -77,14 +81,7 @@ function TestOutcome({
         {test.error}
       </Notice>
     );
-  let intro = INTRO[provider];
-  if (authType === 'smtp')
-    intro =
-      'Pertexo connects, upgrades TLS when required, authenticates and quits. No email is sent.';
-  else if (authType === 'oauth2')
-    intro =
-      'Pertexo gets a token and calls an address with it to see whether it works.';
-  return <p className="text-sm text-muted-foreground">{intro}</p>;
+  return <p className="text-sm text-muted-foreground">{INTRO[testKey]}</p>;
 }
 
 /**
@@ -107,6 +104,9 @@ export function ConnectionTestPanel({
   onRun: (request: ConnectionTestRequest) => void;
   disabled?: boolean;
 }>) {
+  const definitions = useConnectionDefinitions();
+  const testKey = connectionDefinition(definitions, provider, authType)?.test;
+  const usesUrl = testKey === 'http' || testKey === 'oauth2';
   const id = useId();
   const [url, setUrl] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
@@ -114,14 +114,14 @@ export function ConnectionTestPanel({
   const running = test.phase === 'running';
 
   function request(): ConnectionTestRequest | undefined {
-    if (authType === 'smtp') return { providerKey: 'email', transport: 'smtp' };
-    if (provider === 'signing') return { providerKey: 'signing' };
-    if (provider === 'postgres') return { providerKey: 'postgres' };
-    if (provider === 'slack') return { providerKey: 'slack' };
-    if (provider === 'http')
+    if (testKey === 'smtp') return { providerKey: 'email', transport: 'smtp' };
+    if (testKey === 'signing' || testKey === 'postgres' || testKey === 'slack')
+      return { providerKey: testKey };
+    if (usesUrl)
       return validation.submit({ url: urlError(url) })
         ? { url: url.trim() }
         : undefined;
+    if (testKey !== 'resend') return undefined;
     return validation.submit({
       acknowledged: acknowledged
         ? undefined
@@ -131,15 +131,16 @@ export function ConnectionTestPanel({
       : undefined;
   }
 
+  if (testKey === undefined) return null;
   const acknowledgementError = validation.error('acknowledged');
 
   return (
     <div className="flex flex-col gap-4">
       <TestThread provider={provider} phase={test.phase} />
       <div role="status" aria-live="polite">
-        <TestOutcome provider={provider} authType={authType} test={test} />
+        <TestOutcome testKey={testKey} test={test} />
       </div>
-      {provider === 'http' ? (
+      {usesUrl ? (
         <LabelledField
           id={`${id}-url`}
           label="Address to call"
@@ -167,7 +168,7 @@ export function ConnectionTestPanel({
           )}
         </LabelledField>
       ) : null}
-      {provider === 'email' && authType !== 'smtp' ? (
+      {testKey === 'resend' ? (
         <Field
           data-invalid={acknowledgementError === undefined ? undefined : true}
         >
@@ -227,7 +228,9 @@ export function ConnectionTestPanel({
           if (next !== undefined) onRun(next);
         }}
       >
-        {test.phase === 'idle' ? RUN_LABEL[provider] : 'Test again'}
+        {test.phase === 'idle'
+          ? (RUN_LABEL[testKey] ?? 'Test connection')
+          : 'Test again'}
       </ProgressButton>
     </div>
   );

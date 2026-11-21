@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import { useConnectionSharingEditor } from '../../data/sharing.mutations';
 import { ConnectionSharingPanel } from '../connection-sharing';
 import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
@@ -28,8 +29,9 @@ import {
   describeConnectionStatus,
 } from '../../model/connection-health';
 import {
+  connectionDefinition,
   describeConnectionKind,
-  PROVIDERS,
+  connectionPresentation,
 } from '../../model/connection-providers';
 import { useConnectionTest } from '../../data/connection-test.mutations';
 import { ConnectionTestPanel } from '../connection-test/panel';
@@ -55,7 +57,16 @@ function ConnectionState({
   connection,
 }: Readonly<{ connection: ConnectionResponse }>) {
   const status = describeConnectionStatus(connection.status, connection.health);
-  const health = describeConnectionHealth(connection);
+  const definitions = useConnectionDefinitions();
+  const health = describeConnectionHealth(
+    connection,
+    undefined,
+    connectionDefinition(
+      definitions,
+      connection.providerKey,
+      connection.authType,
+    )?.test,
+  );
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <Status tone={status.tone}>{status.label}</Status>
@@ -84,6 +95,8 @@ function OverviewActions({
   permissions: ConnectionPermissions;
   onMode: (mode: Mode) => void;
 }>) {
+  const definitions = useConnectionDefinitions();
+  const provider = connectionPresentation(definitions, connection.providerKey);
   if (connection.status === 'revoked') return null;
   if (isOAuth2Connection(connection))
     return (
@@ -100,10 +113,9 @@ function OverviewActions({
     <>
       {reconnect ? (
         <Notice tone="warning" title="This connection needs reconnecting.">
-          {PROVIDERS[connection.providerKey].name} stopped accepting its{' '}
-          {PROVIDERS[connection.providerKey].credential}. Replace it to get the
-          steps that use it working again, or test it to check whether access
-          has been restored.
+          {provider.name} stopped accepting its {provider.credential}. Replace
+          it to get the steps that use it working again, or test it to check
+          whether access has been restored.
         </Notice>
       ) : null}
       <div className="flex flex-wrap gap-2">
@@ -269,6 +281,7 @@ function ConnectionDetailSession({
   permissions: ConnectionPermissions;
   onClose: () => void;
 }>) {
+  const definitions = useConnectionDefinitions();
   const [mode, setMode] = useState<Mode>('overview');
   const notifications = useNotifications();
   const sharing = useConnectionSharingEditor(
@@ -325,6 +338,7 @@ function ConnectionDetailSession({
                     </SheetTitle>
                     <SheetDescription>
                       {describeConnectionKind(
+                        definitions,
                         connection.providerKey,
                         connection.authType,
                       )}

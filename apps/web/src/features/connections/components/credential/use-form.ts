@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import type { ApiProblemIssue } from '@pertexo/contracts';
+import type {
+  ApiProblemIssue,
+  ConnectionFormDefinition,
+} from '@pertexo/contracts';
 import { useFieldValidation } from '@/components/ui/use-field-validation';
 import type { ConnectionCredential } from '../../data/connections.api';
 import {
@@ -9,7 +12,6 @@ import {
   toConnectionCredential,
   type CredentialDraft,
   type CredentialField,
-  type CredentialKind,
 } from '../../model/credential-draft';
 
 // The first header row needs a stable identity before anyone edits it.
@@ -24,33 +26,41 @@ export function createHeaderRowId(): string {
  * in this component's state only and is dropped by `clear`.
  */
 export function useCredentialForm(
-  provider: CredentialKind,
+  definition: ConnectionFormDefinition | undefined,
   initial?: CredentialDraft,
 ) {
-  const [stored, setDraft] = useState<CredentialDraft | undefined>();
+  const [stored, setStored] =
+    useState<Readonly<{ authType: string; draft: CredentialDraft }>>();
   const validation = useFieldValidation<CredentialField>();
-  const draft =
-    stored?.provider === provider
-      ? stored
-      : (initial ?? emptyCredentialDraft(provider, () => FIRST_ROW_ID));
+  let draft: CredentialDraft | undefined;
+  if (definition !== undefined) {
+    draft =
+      stored?.authType === definition.authType
+        ? stored.draft
+        : (initial ?? emptyCredentialDraft(definition, () => FIRST_ROW_ID));
+  }
 
   return {
     draft,
     validation,
-    setDraft,
+    setDraft: (next: CredentialDraft) => {
+      if (definition !== undefined)
+        setStored({ authType: definition.authType, draft: next });
+    },
     /** The credential to send, or undefined after focusing the first problem. */
     validate: (): ConnectionCredential | undefined =>
-      validation.submit(credentialErrors(draft))
+      draft !== undefined && validation.submit(credentialErrors(draft))
         ? toConnectionCredential(draft)
         : undefined,
     showServerIssues: (issues: readonly ApiProblemIssue[]) => {
+      if (draft === undefined) return false;
       const errors = credentialServerErrors(draft, issues);
       if (Object.keys(errors).length === 0) return false;
       validation.showErrors(errors);
       return true;
     },
     clear: () => {
-      setDraft(undefined);
+      setStored(undefined);
       validation.reset();
     },
   } as const;
