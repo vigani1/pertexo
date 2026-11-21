@@ -10,7 +10,10 @@ import {
 } from '@pertexo/queue/server';
 import { Queue } from 'bullmq';
 
-import { createCoordinatorRuntime } from '../../../src/runs/coordinator.runtime.js';
+import {
+  createCoordinatorRuntime,
+  type CoordinatorCompositionFactories,
+} from '../../../src/runs/coordinator.runtime.js';
 import type { createNodeAttemptRuntime } from '../../../src/attempts/delivery/node-attempt.runtime.js';
 import { coordinatorFixture } from './consumer.js';
 
@@ -79,6 +82,8 @@ export async function createCoordinatorRecoveryHarness(input: {
   readonly database: ReturnType<typeof parseDatabaseConfig>;
   readonly runtimeCapabilities: RecoveryRuntimeCapabilities;
   readonly workerIdPrefix: string;
+  readonly coordinatorFactories?: Partial<CoordinatorCompositionFactories>;
+  readonly attemptEngine?: TestNodeAttemptServices['engine'];
 }): Promise<CoordinatorRecoveryHarness> {
   let producer: ReturnType<typeof createQueueProducer> | undefined;
   let coordinatorQueue: Queue | undefined;
@@ -90,15 +95,19 @@ export async function createCoordinatorRecoveryHarness(input: {
     let coordinator: RecoveryWorkers['coordinator'] | undefined;
     let attempts: RecoveryWorkers['attempts'] | undefined;
     try {
-      coordinator = await createCoordinatorRuntime({
-        maintenanceDatabase: parseDatabaseConfig({
-          connectionString: databaseUrl(dispatcherUrl),
-          max: 2,
-        }),
-        database: input.database,
-        maximumAdmissions: 10,
-        redisUrl,
-      });
+      coordinator = await createCoordinatorRuntime(
+        {
+          maintenanceDatabase: parseDatabaseConfig({
+            connectionString: databaseUrl(dispatcherUrl),
+            max: 2,
+          }),
+          database: input.database,
+          maximumAdmissions: 10,
+          inlineSteps: coordinatorFixture.inlineSteps,
+          redisUrl,
+        },
+        input.coordinatorFactories,
+      );
       attempts = await testNodeAttemptRuntime(
         {
           database: input.database,
@@ -117,6 +126,9 @@ export async function createCoordinatorRecoveryHarness(input: {
         {
           registry: createPlatformNodeRegistry(),
           runtimeCapabilities: input.runtimeCapabilities,
+          ...(input.attemptEngine === undefined
+            ? {}
+            : { engine: input.attemptEngine }),
         },
       );
       await Promise.all([

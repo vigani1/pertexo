@@ -24,6 +24,7 @@ export interface CoordinatorIntegrationFixture {
   readonly databaseUrl: typeof databaseUrl;
   readonly dispatcherUrl: string;
   readonly enabled: boolean;
+  readonly inlineSteps: boolean;
   readonly forEachWorkflowId: string;
   readonly forEachWorkflowVersionId: string;
   readonly nestedParallelWorkflowId: string;

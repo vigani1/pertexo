@@ -85,6 +85,7 @@ describe.runIf(f.enabled)(
             max: 2,
           }),
           maximumAdmissions: 1,
+          inlineSteps: f.inlineSteps,
           redisUrl: f.redisUrl,
         });
         const queue = new Queue(QUEUE_NAME.workflowCoordinator, {

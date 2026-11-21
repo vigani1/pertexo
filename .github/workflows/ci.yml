@@ -328,7 +328,16 @@ jobs:
         if: matrix.group == 'worker'
         # Its files share Redis databases by number, so three shards run side by side,
         # each with a whole stack of its own.
-        run: node infrastructure/testing/run-worker-suite.mjs 3
+        run: |
+          set -euo pipefail
+          node infrastructure/testing/run-worker-suite.mjs 3
+          WORKFLOW_COORDINATOR_INLINE_STEPS=true \
+            node infrastructure/testing/run-worker-suite.mjs 1 \
+              test/runs/consumer/linear-execution.integration.test.ts \
+              test/runs/consumer/recovery.integration.test.ts \
+              test/runs/consumer/parallel-recovery.integration.test.ts \
+              test/runs/consumer/redelivery.integration.test.ts \
+              test/runs/consumer/retry-wait.integration.test.ts
       - name: Qualify pinned beta storage
         if: matrix.group == 'services'
         run: node infrastructure/single-server/storage/qualify.mjs
