@@ -1,3 +1,4 @@
+import type { WorkflowEdge } from '@pertexo/workflow-model';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
@@ -108,11 +109,15 @@ async function start(
     config: {},
     inputMappings: {},
   };
-  const edges = tail.map(({ id }, index) => ({
-    id: `edge-${String(index)}`,
-    source: { nodeId: nodes[index]?.id, port: 'out' },
-    target: { nodeId: id, port: 'in' },
-  }));
+  const edges = tail.map<WorkflowEdge>(({ id }, index) => {
+    const source = nodes[index];
+    if (source === undefined) throw new Error('Fixture source missing');
+    return {
+      id: `edge-${String(index)}`,
+      source: { nodeId: source.id, port: 'out' },
+      target: { nodeId: id, port: 'in' },
+    };
+  });
   if (mixedFrontier)
     edges.push({
       id: 'manual-external',
