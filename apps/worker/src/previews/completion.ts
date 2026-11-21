@@ -43,7 +43,7 @@ export function capturePreviewDiagnostics() {
     observeModelUsage(value: ModelUsage) {
       modelUsage = value;
     },
-    read(): AttemptDiagnosticFields {
+    read: (): AttemptDiagnosticFields => {
       if (modelUsage !== undefined) return { modelUsage };
       return codeDiagnostics === undefined
         ? {}
