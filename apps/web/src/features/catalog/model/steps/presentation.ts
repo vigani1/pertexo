@@ -234,7 +234,7 @@ export function describeConnectionRequirement(
 const retryWords: Readonly<
   Record<NodeDefinitionCatalogItem['retryClass'], string>
 > = {
-  safe: 'Safe to retry: running it again has no extra effect.',
+  safe: 'Pertexo can automatically retry eligible failures.',
   'idempotent-with-key':
     'Retries reuse an idempotency key, so a retry can’t repeat the effect.',
   unsafe: 'Retries never repeat a possibly dispatched effect.',
