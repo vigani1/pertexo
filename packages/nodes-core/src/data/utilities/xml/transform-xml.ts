@@ -1,6 +1,6 @@
 import { XmlElement, XmlText } from '@rgrove/parse-xml';
 import type { JsonValue } from '@pertexo/node-sdk/server';
-import { refuseUtility } from '../utility-result.js';
+import { refuseUtility } from '../utility-execution.errors.js';
 import { buildXml } from './build.js';
 import { parseBoundedXml } from './parse.js';
 import type { XmlConfig } from './xml.schemas.js';

@@ -1,10 +1,10 @@
 import type { CoreConcatConfig, CoreConcatInput } from './concat.schemas.js';
 import { checkCanceled, invalidInput } from '../selection.js';
-import { COLLECTION_MAX_ITEMS } from '../collection.schemas.js';
+import { COLLECTION_MAX_ITEMS } from '../collection-limits.js';
 export function concatenateItems(
   _config: CoreConcatConfig,
   input: CoreConcatInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   checkCanceled(signal);
   const count = input.items.length + input.otherItems.length;

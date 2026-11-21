@@ -19,7 +19,7 @@ describe('immutable executable control-output selection', () => {
               id: 'condition',
               definition: { key: 'core.condition', version: 1 },
             },
-            { id: 'switch', definition: { key: 'core.switch', version: 1 } },
+            { id: 'switch', definition: { key: 'core.switch', version: 2 } },
             {
               id: 'parallel',
               definition: { key: 'core.parallel', version: 1 },
@@ -57,6 +57,9 @@ describe('immutable executable control-output selection', () => {
     );
     expect(
       workflowControlOutputKind({ key: 'core.condition', version: 2 }),
+    ).toBe('branch');
+    expect(
+      workflowControlOutputKind({ key: 'core.condition', version: 3 }),
     ).toBeUndefined();
   });
 

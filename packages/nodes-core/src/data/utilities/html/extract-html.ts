@@ -6,7 +6,7 @@ import { selectAll } from 'css-select';
 import { textContent } from 'domutils';
 import { HTML_LIMITS, type HtmlConfig } from './html.schemas.js';
 import { parseBoundedHtml } from './parse.js';
-import { refuseUtility } from '../utility-result.js';
+import { refuseUtility } from '../utility-execution.errors.js';
 
 const ALLOWED_SELECTOR_TYPES = new Set([
   'tag',

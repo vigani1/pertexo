@@ -1,15 +1,15 @@
 import {
   canonicalizeBoundedJson,
   InvalidBoundedJsonError,
-  NodeExecutorFailure,
-} from '@pertexo/node-sdk/server';
-import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
+} from '@pertexo/node-sdk/pure';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk/pure';
+import { CoreStepRefusal } from '../../../catalog/core-step.errors.js';
 import { SUMMARY_RESULT_FAILURE } from './summary.errors.js';
 import {
   canonicalJson,
   parseJsonPath,
   resolveJsonPath,
-} from '@pertexo/workflow-model';
+} from '@pertexo/workflow-model/pure';
 import type {
   CoreSummarizeConfig,
   CoreSummarizeInput,
@@ -38,7 +38,7 @@ function checkNumber(value: number): void {
 export function summarizeItems(
   config: CoreSummarizeConfig,
   input: CoreSummarizeInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   const groups = new Map<string, Group>();
   // Registry config validation guarantees that a present path has valid segments.
@@ -104,12 +104,9 @@ function requireRetainableSummary(result: unknown, groupCount: number): void {
     });
   } catch (error) {
     if (!(error instanceof InvalidBoundedJsonError)) throw error;
-    throw new NodeExecutorFailure({
-      kind: 'failed',
-      errorKind: 'configuration',
-      possiblyDispatched: false,
-      safeErrorCode: SUMMARY_RESULT_FAILURE.code,
-      errorSummary: `${String(groupCount)} groups. ${SUMMARY_RESULT_FAILURE.sentence} ${SUMMARY_RESULT_FAILURE.advice}`,
-    });
+    throw new CoreStepRefusal(
+      SUMMARY_RESULT_FAILURE.code,
+      `${String(groupCount)} groups. ${SUMMARY_RESULT_FAILURE.sentence} ${SUMMARY_RESULT_FAILURE.advice}`,
+    );
   }
 }

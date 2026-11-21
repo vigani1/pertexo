@@ -1,11 +1,5 @@
 type ByteMeasurementOptions = Readonly<{ stopAfterBytes?: number }>;
 
-// Browser builds have no Buffer; keep the Node fast path behind this owner.
-const host: {
-  Buffer?: { byteLength: (value: string, encoding: 'utf8') => number };
-} = globalThis;
-const nativeUtf8ByteLength = host.Buffer?.byteLength;
-
 /** Replacement bytes match UTF-8 encoding of lone surrogates on every host.
  * A finite budget returns at the first overflow, which may be a partial size.
  */
@@ -14,8 +8,6 @@ export function utf8ByteLength(
   options: ByteMeasurementOptions = {},
 ): number {
   const maximum = options.stopAfterBytes ?? Infinity;
-  if (nativeUtf8ByteLength !== undefined && maximum === Infinity)
-    return nativeUtf8ByteLength(value, 'utf8');
   let bytes = 0;
   for (const character of value) {
     bytes += scalarUtf8Bytes(character);

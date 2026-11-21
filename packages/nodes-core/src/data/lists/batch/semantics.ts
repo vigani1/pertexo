@@ -4,7 +4,7 @@ import type { JsonValue } from '@pertexo/workflow-model';
 export function batchItems(
   config: CoreBatchConfig,
   input: CoreBatchInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   const batches: JsonValue[][] = [];
   for (let start = 0; start < input.items.length; start += config.size) {

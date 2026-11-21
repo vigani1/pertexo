@@ -1,3 +1,5 @@
+import { inlineCoreExecutor } from '../../../catalog/inline-registration.js';
+import { inlineFilter } from './filter-kernel.js';
 import type {
   NodeExecutionInvocation,
   NodeExecutorRegistration,
@@ -15,4 +17,8 @@ export const coreFilterExecutor: NodeExecutorRegistration = Object.freeze({
         invocation.signal,
       ),
     ),
+});
+
+export const coreFilterInlineExecutor = inlineCoreExecutor(coreFilterExecutor, {
+  executeInline: inlineFilter,
 });

@@ -2,7 +2,7 @@ import {
   formatByteSize,
   formatCount,
   STORED_EXECUTION_VALUE_LIMITS,
-} from '@pertexo/node-sdk';
+} from '@pertexo/node-sdk/pure';
 
 export const SUMMARY_RESULT_FAILURE = Object.freeze({
   code: 'list.summary_too_large',

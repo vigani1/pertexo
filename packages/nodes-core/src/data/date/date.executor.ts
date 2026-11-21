@@ -1,3 +1,5 @@
+import { inlineCoreExecutor } from '../../catalog/inline-registration.js';
+import { inlineDate } from './date-kernel.js';
 import type {
   NodeExecutionInvocation,
   NodeExecutorRegistration,
@@ -14,4 +16,8 @@ export const coreDateExecutor: NodeExecutorRegistration = Object.freeze({
         invocation.input as CoreDateInput,
       ),
     ),
+});
+
+export const coreDateInlineExecutor = inlineCoreExecutor(coreDateExecutor, {
+  executeInline: inlineDate,
 });

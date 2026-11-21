@@ -1,4 +1,4 @@
-import { NodeInputValidationError } from '@pertexo/node-sdk/server';
+import { NodeInputValidationError } from '@pertexo/node-sdk/pure';
 
 // ISO 8601 without an expanded year: four digits, so years 0000 to 9999.
 const ISO_YEAR_DIGITS = 4;

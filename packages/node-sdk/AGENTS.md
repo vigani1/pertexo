@@ -12,7 +12,12 @@ file pages, data tables, code steps) that both sides check the same way.
 `workflow-engine`, `node-catalog`, the API, the worker, the code runner and the
 web read it.
 
-Two entries. `@pertexo/node-sdk` is safe in the browser: catalogs, schemas,
+The `/pure` entry exposes only deterministic helpers used by the inline
+kernels. The import-closure check walks it independently of its callers.
+
+The general entries are
+
+`@pertexo/node-sdk` is safe in the browser: catalogs, schemas,
 limits and pure checks. `@pertexo/node-sdk/server` is Node only: the node
 registry, executor failures, bounded-JSON canonicalisation and file-page
 writing. It depends on `zod` and `acorn` alone, never on another workspace

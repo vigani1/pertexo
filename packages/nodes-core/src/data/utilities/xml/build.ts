@@ -6,7 +6,7 @@ import { parseBoundedXml } from './parse.js';
 import { qName } from 'xml-naming';
 import { XML_LIMITS } from './xml.schemas.js';
 import { isRecord } from '@pertexo/workflow-model';
-import { refuseUtility } from '../utility-result.js';
+import { refuseUtility } from '../utility-execution.errors.js';
 import { formatCount } from '@pertexo/node-sdk';
 
 // fast-xml-parser's attribute key prefix.

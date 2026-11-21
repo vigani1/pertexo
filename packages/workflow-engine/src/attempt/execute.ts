@@ -1,3 +1,4 @@
+import { isCoreMergeDefinition } from '@pertexo/workflow-model';
 import { resolveAttemptCallbacks } from './callbacks.js';
 
 import type { CallbackBindings } from '@pertexo/workflow-model';
@@ -19,8 +20,6 @@ import type {
   NodeAttemptInputSource,
   NodeAttemptOutcome,
 } from './node-attempt.types.js';
-
-import { isCoreMergeDefinition } from '../control-nodes/core-definition-identities.js';
 
 import {
   assertIdentity,

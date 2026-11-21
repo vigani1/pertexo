@@ -1,13 +1,13 @@
-import { utf8ByteLength } from '@pertexo/workflow-model';
-import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
-import { COLLECTION_MAX_ITEMS } from '../../lists/collection.schemas.js';
+import { utf8ByteLength } from '@pertexo/workflow-model/pure';
+import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk/pure';
+import { COLLECTION_MAX_ITEMS } from '../../lists/collection-limits.js';
 import { refuseUtility } from '../utility-result.js';
 import type { TextConfig, TextInput } from './text.schemas.js';
 
 export function transformText(
   config: TextConfig,
   input: TextInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   const { value } = input;
   switch (config.operation) {
@@ -39,7 +39,7 @@ export function transformText(
       const values: string[] = [];
       let offset = 0;
       for (;;) {
-        signal.throwIfAborted();
+        signal?.throwIfAborted();
         const next = value.indexOf(input.delimiter, offset);
         values.push(value.slice(offset, next < 0 ? undefined : next));
         if (values.length > COLLECTION_MAX_ITEMS)
@@ -57,7 +57,7 @@ export function transformText(
 function replaceText(
   config: Extract<TextConfig, { operation: 'replace' }>,
   input: TextInput,
-  signal: AbortSignal,
+  signal?: AbortSignal,
 ) {
   const { value } = input;
   if (
@@ -71,7 +71,7 @@ function replaceText(
     );
   let count = 0;
   for (let offset = 0; ;) {
-    signal.throwIfAborted();
+    signal?.throwIfAborted();
     const next = value.indexOf(input.search, offset);
     if (next < 0) break;
     count++;

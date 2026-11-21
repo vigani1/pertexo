@@ -1,3 +1,5 @@
+import { inlineCoreExecutor } from '../../../catalog/inline-registration.js';
+import { inlineBatch } from './batch-kernel.js';
 import type {
   NodeExecutionInvocation,
   NodeExecutorRegistration,
@@ -15,4 +17,8 @@ export const coreBatchExecutor: NodeExecutorRegistration = Object.freeze({
         invocation.signal,
       ),
     ),
+});
+
+export const coreBatchInlineExecutor = inlineCoreExecutor(coreBatchExecutor, {
+  executeInline: inlineBatch,
 });
