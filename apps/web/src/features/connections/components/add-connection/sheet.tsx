@@ -241,14 +241,7 @@ function useAddConnectionForm({
     onCreated?.(connected);
   });
   const attempt = useCommandAttempt<HeldCommand>();
-  const name =
-    nameInput ??
-    (definition &&
-      suggestConnectionName(
-        definition.presentation.nameSuffix,
-        workspaceName,
-      )) ??
-    '';
+  const name = nameInput ?? suggestConnectionName(definition, workspaceName);
 
   function close() {
     if (create.isPending) return;
