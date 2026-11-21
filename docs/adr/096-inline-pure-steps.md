@@ -37,17 +37,28 @@ cannot change its origin.
 **The executor gets values.** The SDK's inline invocation contains bounded
 config and mapped input plus the engine's injected `now` snapshot as data.
 It returns a bounded result or a typed failure synchronously. The coordinator
-supplies a registry built from the trusted pure kernels alone. Their
-transitive runtime imports are restricted to checked pure code. Execute the
-kernels in a Node VM context loaded from that closed build, with dynamic code
-generation and module loading disabled. Pass serialized values in both
-directions. Supply zero host objects, callbacks or capabilities. The context
-has no process, network, files, connections, artifacts, timers or ambient
-time or randomness. Explicit date arithmetic uses the inputs and a
+invokes the reviewed, platform-owned kernels directly from the pure registry.
+The SDK permits only this executor signature for inline registration. Supply
+zero host objects, callbacks, clients, connections, artifacts, timers or
+randomness sources. Explicit date arithmetic uses the inputs and a
 deterministic date API. Validation, mapped input resolution and typed error
 translation run in the host using the existing bounded paths. Use the
-existing JSONata evaluator and its expression limits there. This interface is
-for reviewed built-ins and excludes arbitrary third-party JavaScript.
+existing JSONata evaluator and its expression limits there.
+
+**Check the full import closure.** An architecture check in
+`infrastructure/checks/`, run by `pnpm check`, walks every module reachable
+from each inline executor entry, including through re-exports. The Node
+builtin allowlist starts empty because the initial kernels need no builtins.
+Reject builtin imports with or without the `node:` prefix, network, database,
+filesystem and process packages, and imports from `@pertexo/secrets`,
+`@pertexo/database`, `@pertexo/integrations` or the worker. Reject ambient
+network, process and timer access, `Date.now`, argumentless `new Date()`,
+`Math.random`, crypto randomness, dynamic `import()`, `eval` and the
+`Function` constructor. The check has refusal tests for each case. Direct
+calls avoid per-advance context setup and serialization. The check enforces
+project rules for reviewed built-ins. Node advises against using VM
+contexts for untrusted code.
+[Node.js VM documentation](https://nodejs.org/api/vm.html#vm-executing-javascript)
 
 **Commit one advance.** Within the current workspace admission and locked-run
 transaction, consume the durable observations, use the existing scheduler to
@@ -70,16 +81,19 @@ outbox are already complete. Redis loss uses the existing outbox recovery.
 
 **Bound every advance.** Start with at most 16 inline attempts and a 50 ms
 monotonic elapsed budget for inline work, including input preparation and
-settlement. Elapsed time bounds CPU time and also counts time spent waiting on
+settlement. Elapsed time counts computation and time spent waiting on
 expression evaluation while the run lock is held. Check both limits before
 starting another invocation. Give an invocation its existing effective step
 deadline, clipped by the run deadline, and a separate stop at the remaining
-advance budget. Use the evaluator deadline and VM execution limit to
-interrupt computation. A step or run deadline keeps its usual timeout
-semantics. An advance budget interruption discards only that invocation's
-uncommitted result and yields from the last settled invocation. If the
-first invocation cannot finish within a fresh budget, admit it through the
-ordinary attempt path to guarantee progress and preserve its step timeout.
+advance budget. Use the evaluator deadline to interrupt expression evaluation.
+Require bounded synchronous work for every accepted kernel configuration and
+check the deadlines again on return, before accepting the result. A direct
+synchronous call can run past the elapsed budget before that check. A step or
+run deadline keeps its usual timeout semantics. If the advance budget expires
+during an invocation, discard only that invocation's uncommitted result and
+yield from the last settled invocation. If the first invocation cannot finish
+within a fresh budget, admit it through the ordinary attempt path to guarantee
+progress and preserve its step timeout.
 A process shutdown aborts the advance. Keep admission limits independent of
 this computation budget. For Each keeps its existing declaration, iteration
 ordinals, concurrency and checkpoint bounds. Inline body invocations share
