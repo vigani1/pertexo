@@ -468,9 +468,9 @@ Committed V8 heap and ArrayBuffers stayed unchanged across each trim.
 ArrayBuffer peaks were 8.0 MiB off and 7.9 MiB on. Their slopes were −0.4 and
 −0.1 MiB/h respectively. V8 heap profiles sampled pg and Redis allocation
 paths in both modes, no zlib frames and one JSONata sample in the on profile.
-The profiles sample surviving V8 allocations. They do not identify which
-transient allocations left the returned pages behind. The evidence shows
-that the resident-page growth can occur in either execution mode.
+These profiles sample surviving V8 allocations. The native traces below
+sample transient allocation requests. Either execution mode can retain pages
+in glibc's arenas.
 [Off profile](https://github.com/vigani1/pertexo/actions/runs/44932651743) ·
 [On profile](https://github.com/vigani1/pertexo/actions/runs/44932649255).
 
@@ -490,8 +490,9 @@ serialized and hashed that same catalog for every advance and queued
 attempt, even on a verification cache hit. The fixed build reuses the
 fingerprint for catalogs composed and deeply frozen by the engine. It still
 checks fresh executable bytes and recomputes the fingerprint for other
-catalog input. The native trace could not split backing stores by JavaScript
-caller. None of the top 30 groups contained zlib frames.
+catalog input. The native trace groups backing stores by their native stack.
+The JavaScript callers are unresolved. The top 30 groups contained zero zlib
+frames.
 [Off native trace](https://github.com/vigani1/pertexo/actions/runs/44938763833) ·
 [On native trace](https://github.com/vigani1/pertexo/actions/runs/44938760991).
 
