@@ -1,4 +1,8 @@
-import { SLACK_BOT_TOKEN_CONNECTION } from './connections.definition.js';
+import {
+  SLACK_BOT_TOKEN_CONNECTION,
+  slackErrorSchema,
+  slackResponseSchema,
+} from './connections.definition.js';
 import { z } from 'zod';
 import { parseRetryAfterMillis } from '../http/retry-after.js';
 
@@ -9,7 +13,6 @@ import type {
 import {
   SLACK_SEND_MESSAGE_LIMITS,
   slackChannelIdSchema,
-  slackMessageTimestampSchema,
 } from './send-message/send-message.schemas.js';
 
 export const SLACK_API_ENDPOINTS = Object.freeze({
@@ -20,22 +23,8 @@ export const SLACK_API_ENDPOINTS = Object.freeze({
 
 // Slack error names, and channel names (Slack allows 80 characters).
 const SLACK_TEXT_LIMITS = Object.freeze({
-  errorCharacters: 128,
   channelNameCharacters: 80,
 });
-const slackErrorSchema = z
-  .string()
-  .min(1)
-  .max(SLACK_TEXT_LIMITS.errorCharacters)
-  .regex(/^[a-z0-9_]+$/u);
-const slackResponseSchema = z
-  .object({
-    ok: z.boolean(),
-    channel: slackChannelIdSchema.optional(),
-    ts: slackMessageTimestampSchema.optional(),
-    error: slackErrorSchema.optional(),
-  })
-  .strip();
 /** ADR 046: only the requested conversation's identity and display name. */
 const slackConversationResponseSchema = z
   .object({

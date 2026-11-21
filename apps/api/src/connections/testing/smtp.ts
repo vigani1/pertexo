@@ -67,20 +67,14 @@ export async function testSmtpConnection(
       };
 }
 
-export function assertEmailTestProfile(
-  profile: Readonly<{ smtp: boolean; requiresConsent: boolean }>,
+export function assertSmtpTestProfile(
   request: TestConnectionCommand['request'],
   destination: FailureNotificationDestinationResponse | undefined,
 ): void {
-  if (profile.smtp && destination === undefined && !('transport' in request))
+  if (destination === undefined && !('transport' in request))
     throw requestInputError(
       ['transport'],
       'Use the SMTP connection test. No email was sent.',
-    );
-  if (profile.requiresConsent && !('sideEffectDisclosureAccepted' in request))
-    throw requestInputError(
-      ['transport'],
-      'This connection uses Resend. Accept its test email before testing.',
     );
 }
 

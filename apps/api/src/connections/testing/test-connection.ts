@@ -1,4 +1,5 @@
-import { testHeaderConnection } from './headers.js';
+import { testHttpConnection } from './http.js';
+import { requestInputError } from '../../platform/http/request-input.js';
 import { testSlackConnection } from './slack.js';
 import { testResendConnection } from './resend.js';
 import { testPostgresConnection } from './postgres.js';
@@ -315,15 +316,8 @@ export class TestConnectionService {
           beforeDispatch,
         },
       );
-    smtp.assertEmailTestProfile(
-      {
-        smtp: recipe.kind === 'smtp',
-        requiresConsent: 'requiresConsent' in recipe,
-      },
-      request,
-      destination,
-    );
-    if (recipe.kind === 'smtp' && credential.type === 'smtp')
+    if (recipe.kind === 'smtp' && credential.type === 'smtp') {
+      smtp.assertSmtpTestProfile(request, destination);
       return smtp.testSmtpConnection(credential, this.smtpPolicy, {
         command: input,
         destination,
@@ -331,27 +325,34 @@ export class TestConnectionService {
         signal,
         beforeDispatch,
       });
-    if (recipe.kind === 'resend') {
+    }
+    if (
+      recipe.kind === 'http' &&
+      recipe.requiresConsent === true &&
+      !('sideEffectDisclosureAccepted' in request)
+    )
+      throw requestInputError(['transport'], recipe.consentMessage);
+    if (destination?.config.kind === 'email') {
       if (
         credential.type !== 'resend_api_key' ||
         this.emailClient === undefined
       )
         throw new ConnectionSecretEncryptionError();
       return testResendConnection(this.emailClient, credential, {
-        destination,
+        toEmail: destination.config.toEmail,
         command: input,
         signal,
         beforeDispatch,
       });
     }
-    if (recipe.kind === 'slack') {
+    if (destination?.config.kind === 'slack') {
       if (
         credential.type !== 'slack_bot_token' ||
         this.slackClient === undefined
       )
         throw new ConnectionSecretEncryptionError();
       return testSlackConnection(this.slackClient, credential.botToken, {
-        destination,
+        channelId: destination.config.channelId,
         signal,
         beforeDispatch,
       });
@@ -365,12 +366,13 @@ export class TestConnectionService {
       await beforeDispatch();
       return SUCCEEDED_TEST;
     }
-    if (auth.kind !== 'header_map' || recipe.kind !== 'http')
-      throw new ConnectionSecretEncryptionError();
-    return testHeaderConnection(this.httpClient, {
+    if (recipe.kind !== 'http') throw new ConnectionSecretEncryptionError();
+    return testHttpConnection(this.httpClient, {
       request,
       credential,
-      method: recipe.method,
+      recipe,
+      auth,
+      command: input,
       timeoutMillis: CONNECTION_TEST_TIMEOUT_MILLIS,
       maxRedirects: CONNECTION_TEST_MAXIMUM_REDIRECTS,
       maxResponseBytes: CONNECTION_TEST_MAXIMUM_RESPONSE_BYTES,
