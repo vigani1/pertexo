@@ -18,6 +18,7 @@ import {
   describeStep,
   familyWord,
   requiredConnections,
+  useConnectionDefinitions,
 } from '@/features/catalog/public';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
@@ -33,6 +34,7 @@ export function AboutTab({
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
 }>) {
+  const credentials = useConnectionDefinitions();
   const step = describeStep(node.definition, undefined, definition);
   const guide = stepGuideLink(node.definition.key);
   return (
@@ -80,14 +82,18 @@ export function AboutTab({
           {requiredConnections(definition).length === 0 ? null : (
             <Row term="Needs">
               {requiredConnections(definition)
-                .map(describeConnectionRequirement)
+                .map((requirement) =>
+                  describeConnectionRequirement(requirement, credentials),
+                )
                 .join(', ')}
             </Row>
           )}
           {(definition.optionalConnections ?? []).length === 0 ? null : (
             <Row term="Can use">
               {(definition.optionalConnections ?? [])
-                .map(describeConnectionRequirement)
+                .map((requirement) =>
+                  describeConnectionRequirement(requirement, credentials),
+                )
                 .join(', ')}
             </Row>
           )}
