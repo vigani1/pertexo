@@ -86,6 +86,7 @@ describe('step setup in the catalog schema', () => {
       return key === undefined ? [] : [{ step: definition.key, key, variants }];
     });
     expect([...new Set(unions.map(({ step }) => step))].sort()).toEqual([
+      'ai.model',
       'core.crypto',
       'core.date',
       'core.html',
