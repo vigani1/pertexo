@@ -44,9 +44,11 @@ load):
 | 16 GiB, 8 vCPUs | 2048 | 3072 |
 
 More memory gives each service headroom; it doesn't make it do more at once.
-For more throughput, raise the run limits and Code slots as well. The Code container ceiling for this preset is 1,872 MiB; it is not
-reserved while idle. Existing installs retaining the 128 MiB / two-slot Code
-preset need a larger memory budget: that runner ceiling alone is 2,912 MiB.
+For more throughput, raise the run limits and Code slots as well. The Code container ceiling for the default preset is 1,872 MiB. Together
+with the API and worker caps it totals 3,152 MiB, leaving 944 MiB of the
+minimum server's budget for the database, Redis, storage, proxy, web, and OS.
+Existing installs that explicitly set a 128 MiB Code heap and two slots
+need a larger server. Those three container caps alone total 4,192 MiB.
 
 `POSTGRES_SHARED_BUFFERS` defaults to `128MB`. Budget the database together with
 the other services rather than assigning it a quarter of total host RAM. A larger
