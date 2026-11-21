@@ -1,6 +1,6 @@
 # ADR 096: Execute pure steps in a coordinator advance
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-21
 - **Related:** [ADR 006](006-coordinator-checkpoint-and-node-attempt-jobs.md),
   [ADR 007](007-run-node-state-retry-idempotency.md),
