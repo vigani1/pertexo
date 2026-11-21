@@ -1,6 +1,6 @@
 # ADR 097 — MCP exposes explicitly published workflow versions
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-21
 - **Feature:** [F60](../feature-plans/60-mcp.md)
 

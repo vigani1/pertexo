@@ -99,8 +99,8 @@ AWS/ECS proposals unsupported.
 
 | Document | Recorded status / evidence |
 | --- | --- |
-| [ADR 097 — MCP exposes explicitly published workflow versions](097-mcp-workflow-exposure.md) | Proposed for [F60](../feature-plans/60-mcp.md). |
-| [ADR 098 — The workflow engine owns agent tool continuations](098-agent-tool-execution.md) | Proposed for [F61](../feature-plans/61-ai-agent-step.md). |
+| [ADR 097 — MCP exposes explicitly published workflow versions](097-mcp-workflow-exposure.md) | Accepted for [F60](../feature-plans/60-mcp.md). |
+| [ADR 098 — The workflow engine owns agent tool continuations](098-agent-tool-execution.md) | Accepted for [F61](../feature-plans/61-ai-agent-step.md). |
 
 ## Superseded decisions and unsupported deployment proposals
 
