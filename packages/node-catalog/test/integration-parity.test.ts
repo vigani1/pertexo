@@ -59,12 +59,9 @@ describe('integration registry parity', () => {
           },
         });
       }
-      if (executor !== undefined) {
-        const dispatch = registry.dispatchMode({ definition, executor });
-        expect(dispatch).toBe(
-          executorAbi === 2 ? 'executor_controlled' : 'before_execute',
-        );
-      }
+      expect(registry.dispatchMode({ definition, executor })).toBe(
+        executorAbi === 2 ? 'executor_controlled' : 'before_execute',
+      );
     }
   });
 
