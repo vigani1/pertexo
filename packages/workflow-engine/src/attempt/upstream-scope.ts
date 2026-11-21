@@ -1,3 +1,4 @@
+import type { WorkflowExecutableGraph } from '../compilation/workflow-executable.js';
 import type {
   BranchScopePart,
   IterationScopePart,
@@ -38,4 +39,23 @@ export function upstreamInvocationKey(
     branchPath: branchPath.map((part) => `${part.nodeId}:${part.outputPort}`),
     iterationPath: input.iterationPath,
   });
+}
+
+/** The For Each steps feeding a node, each with its body's last step. */
+export function deriveForEachUpstreams(
+  graph: Pick<WorkflowExecutableGraph, 'nodes'>,
+  upstream: readonly Readonly<{ nodeId: string; invocationKey: string }>[],
+) {
+  return Object.freeze(
+    upstream.flatMap(({ nodeId, invocationKey: key }) => {
+      const body = graph.nodes.find(({ id }) => id === nodeId)?.structured
+        ?.body;
+      if (body === undefined) return [];
+      const sources = new Set(body.edges.map(({ source }) => source.nodeId));
+      const sink = body.nodes.find(({ id }) => !sources.has(id));
+      return sink === undefined
+        ? []
+        : [Object.freeze({ nodeId, invocationKey: key, sinkNodeId: sink.id })];
+    }),
+  );
 }

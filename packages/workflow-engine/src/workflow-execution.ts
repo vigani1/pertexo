@@ -1,3 +1,4 @@
+import type { InlineAttemptSettlement } from './attempt/inline-settlement.types.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type { CallbackWaitConfig } from '@pertexo/workflow-model';
 import type {
@@ -277,6 +278,7 @@ export type EngineEventName =
   | 'run.timed_out'
   | 'run.outcome_unknown'
   | 'node.ready'
+  | 'node.started'
   | 'node.waiting'
   | 'node.retry_scheduled'
   | 'node.succeeded'
@@ -379,6 +381,7 @@ export interface WorkflowTransitionPlan {
   readonly events: readonly EngineEventPlan[];
   readonly nodeRunAdmissions: readonly NodeRunAdmissionPlan[];
   readonly attempts: readonly AttemptAdmissionPlan[];
+  readonly inlineAttempts?: readonly InlineAttemptSettlement[];
   /** Final records needed by this commit's writers, never stored in the checkpoint. */
   readonly prunedInvocations?: readonly InvocationState[];
   /** A durable wakeup is needed for scheduler work with no admitted attempt. */

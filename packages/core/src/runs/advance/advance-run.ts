@@ -1,3 +1,8 @@
+import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
+import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
+import type { JsonValue } from '@pertexo/workflow-model';
+import { generatePersistedId } from '@pertexo/database/platform';
+import type { InlineAdvanceOptions } from '@pertexo/workflow-engine/server';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -26,6 +31,7 @@ export type AdvanceRunDependencies = Readonly<{
   /** Most node attempts one transition may admit. */
   maximumAdmissions: number;
   expressionEvaluator?: ExpressionEvaluator;
+  inline?: Pick<InlineAdvanceOptions, 'registry' | 'normalizeFailure'>;
 }>;
 
 /**
@@ -67,6 +73,25 @@ export async function advanceRun(
       ...(state.workflow.test === undefined
         ? {}
         : { test: state.workflow.test }),
+      ...(dependencies.inline === undefined ||
+      state.readInlineValues === undefined
+        ? {}
+        : {
+            inline: {
+              ...dependencies.inline,
+              now: Date.now,
+              monotonicNow: () => performance.now(),
+              newAttemptId: generatePersistedId,
+              canStore: canStoreInlineValue,
+              readValues: state.readInlineValues,
+              ...(state.deadlineAt === undefined
+                ? {}
+                : { deadlineAt: state.deadlineAt }),
+              ...(dependencies.expressionEvaluator === undefined
+                ? {}
+                : { expressionEvaluator: dependencies.expressionEvaluator }),
+            },
+          }),
       signal: input.signal,
     });
     const callable = executable.envelope.graph.callable;
@@ -78,7 +103,7 @@ export async function advanceRun(
         plan,
         await resolveRunResult(
           callable,
-          state,
+          { ...state, inlineAttempts: plan.inlineAttempts },
           input.signal,
           dependencies.expressionEvaluator,
         ),
@@ -87,6 +112,7 @@ export async function advanceRun(
       plan.events.length === 0 &&
       plan.nodeRunAdmissions.length === 0 &&
       plan.attempts.length === 0 &&
+      !plan.immediateContinuation &&
       isDeepStrictEqual(
         { ...previous, revision: plan.checkpoint.revision },
         plan.checkpoint,
@@ -95,4 +121,14 @@ export async function advanceRun(
       ? { kind: 'no_change' }
       : { kind: 'transition', previous, plan };
   });
+}
+
+function canStoreInlineValue(value: JsonValue): boolean {
+  try {
+    prepareStoredExecutionValue({ kind: 'inline', value });
+    return true;
+  } catch (error) {
+    if (error instanceof StoredExecutionValueInvalidError) return false;
+    throw error;
+  }
 }

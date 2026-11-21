@@ -25,23 +25,13 @@ export async function saveAttemptCompletion(
   await drizzle(client)
     .update(nodeAttempts)
     .set({
-      status: fields.durableStatus,
       leaseOwner: null,
       leaseExpiresAt: null,
-      outputRef: sql`${serializedOutput}::json`,
-      safeErrorCode: fields.safeErrorCode,
-      errorSummary: fields.errorSummary,
-      executorFailureKind: fields.executorOutcome?.failureKind ?? null,
-      executorErrorKind: fields.executorOutcome?.errorKind ?? null,
-      executorPossiblyDispatched:
-        fields.executorOutcome?.possiblyDispatched ?? null,
-      retryDecision: fields.executorOutcome === undefined ? null : 'pending',
+      ...attemptOutcomeFields(fields, serializedOutput),
       codeDiagnostics:
         input.codeDiagnostics === undefined
           ? null
           : sql`${canonicalJson(input.codeDiagnostics)}::jsonb`,
-      executorRetryAfterMillis:
-        fields.executorOutcome?.minimumRetryDelayMillis ?? null,
       completedAt: sql`clock_timestamp()`,
       updatedAt: sql`clock_timestamp()`,
     })
@@ -52,6 +42,26 @@ export async function saveAttemptCompletion(
       ),
     )
     .catch(rethrowQueryFailure);
+}
+
+export function attemptOutcomeFields(
+  fields: CompletionFields,
+  serializedOutput: string | null,
+  decision = 'pending',
+) {
+  return {
+    status: fields.durableStatus,
+    outputRef: sql`${serializedOutput}::json`,
+    safeErrorCode: fields.safeErrorCode,
+    errorSummary: fields.errorSummary,
+    executorFailureKind: fields.executorOutcome?.failureKind ?? null,
+    executorErrorKind: fields.executorOutcome?.errorKind ?? null,
+    executorPossiblyDispatched:
+      fields.executorOutcome?.possiblyDispatched ?? null,
+    retryDecision: fields.executorOutcome === undefined ? null : decision,
+    executorRetryAfterMillis:
+      fields.executorOutcome?.minimumRetryDelayMillis ?? null,
+  };
 }
 
 /** Asks the coordinator to advance the run, in this transaction. */

@@ -20,7 +20,6 @@ import { persistConsumedCalls } from '../../calls/persist.repository.js';
 import { persistCoordinatorExecutionTransitions } from './node-admissions.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import {
-  claimCoordinatorReceipt,
   completeCoordinatorReceipt,
   deferCoordinatorForActiveCapacity,
 } from '../receipts.repository.js';
@@ -52,19 +51,14 @@ export async function saveRunTransition(
   const { delivery, plan, previous, row, runId, traceparent, workspaceId } =
     input;
   if (
-    (await claimCoordinatorReceipt(client, workspaceId, delivery)) ===
-    'duplicate'
-  )
-    return Object.freeze({
-      kind: 'already_committed',
-      revision: row.revision,
-    });
-  if (
     plan.expectedRevision !== row.revision ||
     plan.checkpoint.workflowVersionId !== row.workflow_version_id
   )
     throw new CoordinatorRunStateCorruptError();
-  const startsRun = startsRunExecution(row.status, plan.checkpoint.runStatus);
+  const startsRun =
+    startsRunExecution(row.status, plan.checkpoint.runStatus) ||
+    (row.status === 'queued' &&
+      plan.events.some(({ name }) => name === 'run.started'));
   if (startsRun) {
     assertRunStartNotCanceled(row.cancel_requested_at);
     const deferred = await deferCoordinatorForActiveCapacity(client, {
@@ -137,6 +131,20 @@ export async function saveRunTransition(
         });
       }),
     ),
+    ...(plan.inlineAttempts === undefined
+      ? {}
+      : {
+          inline: {
+            lastEventSequence: plan.checkpoint.nextEventSequence - 1,
+            metrics: plan.inlineAttempts.map((attempt) => ({
+              outcome:
+                attempt.kind === 'executor_failure'
+                  ? attempt.disposition
+                  : attempt.kind,
+              durationMillis: attempt.durationMillis,
+            })),
+          },
+        }),
     ...runTransition,
   });
 }

@@ -26,8 +26,9 @@ import {
   suspendNodeRun,
 } from './outcomes.repository.js';
 
-function completionFields(input: CompleteAttemptInput): CompletionFields {
-  const outcome = input.outcome;
+export function completionFields(
+  outcome: CompleteAttemptInput['outcome'],
+): CompletionFields {
   switch (outcome.status) {
     case 'succeeded':
       return {
@@ -160,7 +161,7 @@ export async function applyNodeAttemptCompletion(
     controlActive: boolean;
   }>,
 ): Promise<CompleteNodeAttemptResult> {
-  const fields = completionFields(input);
+  const fields = completionFields(input.outcome);
   const duplicate = await duplicateCompletion(client, input, {
     row,
     receipt,

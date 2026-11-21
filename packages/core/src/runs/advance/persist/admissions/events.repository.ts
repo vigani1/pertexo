@@ -85,11 +85,22 @@ export async function persistRunEvents(
   }>,
 ): Promise<void> {
   const { physical, plan, runId, workspaceId } = input;
+  const inlineAttempts = new Map(
+    plan.inlineAttempts?.map((attempt) => [attempt.invocationKey, attempt]),
+  );
   const persistedEvents = plan.events.map((event) => {
     const ids =
       event.invocationKey === undefined
         ? undefined
         : physical.get(event.invocationKey);
+    const inline =
+      event.invocationKey === undefined
+        ? undefined
+        : inlineAttempts.get(event.invocationKey);
+    const inlineControlOutcome =
+      (inline?.kind === 'failed' || inline?.kind === 'timed_out') &&
+      inline.attemptNumber === event.attemptNumber &&
+      event.name === `node.${inline.kind}`;
     const payload = {
       ...(event.invocationKey === undefined
         ? {}
@@ -100,7 +111,10 @@ export async function persistRunEvents(
         : { attemptNumber: event.attemptNumber }),
       ...(event.reasonCode === undefined
         ? {}
-        : { reasonCode: event.reasonCode }),
+        : {
+            [inlineControlOutcome ? 'safeErrorCode' : 'reasonCode']:
+              event.reasonCode,
+          }),
       ...(event.dueAt === undefined ? {} : { dueAt: event.dueAt }),
       ...(ids === undefined ? {} : { nodeRunId: ids.nodeRunId }),
       ...(ids?.attemptId !== undefined &&
@@ -133,11 +147,15 @@ async function settleInvocations(
   const pendingFailureInvocations = new Set(
     pendingFailures.map(({ invocation_key: invocationKey }) => invocationKey),
   );
+  const inlineInvocations = new Set(
+    plan.inlineAttempts?.map(({ invocationKey }) => invocationKey),
+  );
   const settled = plan.events.flatMap((event) => {
     const status = terminalStatus(event.name);
     return status === undefined ||
       event.invocationKey === undefined ||
       pendingFailureInvocations.has(event.invocationKey) ||
+      inlineInvocations.has(event.invocationKey) ||
       input.rejectedForEachDeclarations.has(event.invocationKey)
       ? []
       : [

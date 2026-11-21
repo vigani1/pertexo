@@ -13,6 +13,24 @@ import path from 'node:path';
 import { WorkerEnvironmentValueError } from '../../src/config/worker-configuration.errors.js';
 
 describe('parseWorkerConfig', () => {
+  it('requires opt-in to run inline steps', () => {
+    expect(parseWorkerConfig(requiredEnvironment).coordinator.inlineSteps).toBe(
+      false,
+    );
+    expect(
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        WORKFLOW_COORDINATOR_INLINE_STEPS: 'true',
+      }).coordinator.inlineSteps,
+    ).toBe(true);
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        WORKFLOW_COORDINATOR_INLINE_STEPS: 'yes',
+      }),
+    ).toThrow('Invalid worker configuration');
+  });
+
   it('preserves client and dispatcher pool settings with their own bounds', () => {
     const config = parseWorkerConfig({
       ...requiredEnvironment,
@@ -169,6 +187,7 @@ describe('parseWorkerConfig', () => {
       coordinator: {
         dueWakeupBatchSize: 25,
         dueWakeupPollIntervalMillis: 1_000,
+        inlineSteps: false,
         maximumAdmissions: 32,
       },
       workspaceInbox: {

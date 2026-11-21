@@ -42,3 +42,4 @@ export type {} from './access/workspace-authority.js';
 export type {} from './resources/require-workflow-call-targets.js';
 export type {} from './resources/require-connection-bindings.js';
 export type {} from './run-records/run-statuses.js';
+export type {} from './run-records/node-run-outputs.repository.js';

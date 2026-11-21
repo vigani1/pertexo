@@ -101,20 +101,35 @@ export function createCoordinatorHandler(
             // Diagnostics cannot change durable workflow truth.
           }
         }
-        await publishResync(dependencies.notifications, identity);
+        if (result.inline !== undefined) {
+          for (const measurement of result.inline.metrics) {
+            try {
+              dependencies.telemetry?.inlineAttempt?.(measurement);
+            } catch {
+              // Diagnostics cannot change durable workflow truth.
+            }
+          }
+        }
+        await publishAdvance(
+          dependencies.notifications,
+          identity,
+          result.inline?.lastEventSequence,
+        );
       }
       return Object.freeze({ kind: result.kind, revision: result.revision });
     },
   });
 }
 
-async function publishResync(
+async function publishAdvance(
   notifications: RunEventNotificationPublisher | undefined,
   identity: Readonly<{ workspaceId: string; runId: string }>,
+  sequence: number | undefined,
 ): Promise<void> {
   if (notifications === undefined) return;
   try {
-    await notifications.resync(identity);
+    if (sequence === undefined) await notifications.resync(identity);
+    else await notifications.publish({ ...identity, sequence });
   } catch {
     // PostgreSQL is authoritative; a later hint or reconnect backfills events.
   }

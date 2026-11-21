@@ -1,3 +1,4 @@
+import type { InlineAttemptSettlement } from '../attempt/inline-settlement.types.js';
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import type { SchedulerState } from './scheduling/policy.js';
 import type {
@@ -38,6 +39,13 @@ export interface AdvanceWorkflowFromSchedulerStateInput {
 export function advanceWorkflowFromSchedulerState(
   input: AdvanceWorkflowFromSchedulerStateInput,
 ): WorkflowTransitionPlan {
+  const { state, finish } = prepareWorkflowAdvance(input);
+  return finish(state);
+}
+
+export function prepareWorkflowAdvance(
+  input: AdvanceWorkflowFromSchedulerStateInput,
+) {
   if (
     !Number.isSafeInteger(input.maximumAdmissions) ||
     input.maximumAdmissions < 0
@@ -107,29 +115,53 @@ export function advanceWorkflowFromSchedulerState(
   const observations = externalFactsArePersisted
     ? [...(input.observations ?? [])]
     : [...(input.observations ?? [])].sort(observationOrder);
-  applyWorkflowObservations(state, {
-    dueResumptions: input.dueResumptions ?? [],
-    observations,
-    occurredAt: input.occurredAt,
-  });
-  settleFailureHandlers(state, input.occurredAt);
   const coordinatorNodeIds = new Set([
     ...current.joins.map(({ joinId }) => joinId),
     ...current.loops.map(({ loopId }) => loopId),
     ...observations.flatMap(coordinatorNodeId),
   ]);
-  deriveWorkflowTransitions(state, {
-    coordinatorNodeIds,
-    occurredAt: input.occurredAt,
-  });
-  applyWorkflowStops(state, input.occurredAt);
-  return buildWorkflowTransitionPlan(state, {
-    consumedObservationCount,
-    consumedThroughEventSequence,
-    maximumAdmissions: input.maximumAdmissions,
-    hasExecutionSlot: input.hasExecutionSlot ?? true,
-    occurredAt: input.occurredAt,
-  });
+  const apply = (
+    facts: readonly WorkflowObservation[],
+    occurredAt: string,
+    dueResumptions: NonNullable<typeof input.dueResumptions> = [],
+  ) => {
+    for (const fact of facts)
+      for (const id of coordinatorNodeId(fact)) coordinatorNodeIds.add(id);
+    applyWorkflowObservations(state, {
+      dueResumptions,
+      observations: facts,
+      occurredAt,
+    });
+    settleFailureHandlers(state, occurredAt);
+    deriveWorkflowTransitions(state, { coordinatorNodeIds, occurredAt });
+    applyWorkflowStops(state, occurredAt);
+  };
+  apply(observations, input.occurredAt, input.dueResumptions);
+  return {
+    state,
+    apply,
+    finish: (
+      working: MutableWorkflowTransition,
+      {
+        inlineAttempts,
+        yieldInline,
+        occurredAt = input.occurredAt,
+      }: Readonly<{
+        inlineAttempts?: readonly InlineAttemptSettlement[];
+        yieldInline?: boolean;
+        occurredAt?: string;
+      }> = {},
+    ) =>
+      buildWorkflowTransitionPlan(working, {
+        consumedObservationCount,
+        consumedThroughEventSequence,
+        maximumAdmissions: input.maximumAdmissions,
+        hasExecutionSlot: input.hasExecutionSlot ?? true,
+        occurredAt,
+        ...(inlineAttempts === undefined ? {} : { inlineAttempts }),
+        ...(yieldInline === undefined ? {} : { yieldInline }),
+      }),
+  };
 }
 
 function coordinatorNodeId(

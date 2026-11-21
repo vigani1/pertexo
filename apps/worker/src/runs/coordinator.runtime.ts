@@ -22,6 +22,7 @@ import type {
 } from '@pertexo/database/platform';
 import { advanceRun } from '@pertexo/core/runs';
 import { PLATFORM_NODE_CATALOG } from '@pertexo/node-catalog';
+import { createPlatformInlineRegistry } from '@pertexo/node-catalog/server';
 import {
   createQueueTraceRunner,
   type StructuredLogger,
@@ -41,6 +42,7 @@ import {
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
 import { JsonataEvaluator } from '@pertexo/workflow-model/server';
 
+import { nodeFailureCompletion } from '../attempts/delivery/executor-failure.js';
 import { createCoordinatorTelemetry } from './telemetry.js';
 import {
   createCoordinatorHandler,
@@ -73,6 +75,7 @@ export type CoordinatorRuntimeOptions = Readonly<{
   dueWakeupBatchSize?: number;
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
+  inlineSteps?: boolean;
   observer?: QueueConsumerObserver;
   redisUrl: string;
   logger?: StructuredLogger;
@@ -234,6 +237,23 @@ export async function createCoordinatorRuntime(
           verification: { catalog },
           maximumAdmissions: options.maximumAdmissions,
           expressionEvaluator,
+          ...(options.inlineSteps === true
+            ? {
+                inline: {
+                  registry: createPlatformInlineRegistry(),
+                  normalizeFailure(error: unknown) {
+                    const failure = nodeFailureCompletion(error);
+                    if (failure === undefined) throw error;
+                    const {
+                      status: _status,
+                      possiblyDispatched: _possiblyDispatched,
+                      ...facts
+                    } = failure;
+                    return facts;
+                  },
+                },
+              }
+            : {}),
         }),
       ),
       notifications,

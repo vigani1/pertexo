@@ -12,10 +12,8 @@ import {
   type LoopState,
   type WorkflowCheckpoint,
 } from '@pertexo/workflow-engine';
-import {
-  loopIterationOrdinal,
-  parseCheckpoint,
-} from '@pertexo/workflow-engine/server';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
+import { withLoopResults } from './values/loop-results.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 
 /** Everything a node attempt's executor reads, projected from stored state. */
@@ -49,73 +47,6 @@ export type LoopResultsRequest = Readonly<{
   loops: readonly ForEachUpstream[];
   maxBytes: number;
 }>;
-
-type CompletedOutput = NodeAttemptStoredInputs['completedNodeOutputs'][number];
-
-/**
- * What a finished loop passes on: its output plus `results`, each pass's
- * result in item order, null for a pass that skipped the body's last step.
- * The checkpoint releases passes as they settle, so results are read back
- * from the stored step runs.
- */
-async function withLoopResults({
-  store,
-  request,
-  output,
-  loop,
-  maxBytes,
-}: Readonly<{
-  store: Pick<NodeAttemptRunStore, 'listNodeOutcomes' | 'readNodeOutputs'>;
-  request: LoadInputsInput;
-  output: CompletedOutput;
-  loop: ForEachUpstream;
-  maxBytes: number;
-}>): Promise<CompletedOutput | undefined> {
-  const count = (output.value as { iterationCount?: unknown } | null)
-    ?.iterationCount;
-  if (typeof count !== 'number') throw new NodeAttemptStateCorruptError();
-  const passes = new Map<number, { invocationKey: string; bytes?: number }>();
-  for (const outcome of await store.listNodeOutcomes({
-    lease: request.lease,
-    nodeId: loop.sinkNodeId,
-    signal: request.signal,
-  })) {
-    const ordinal = loopIterationOrdinal(
-      outcome.invocationKey,
-      loop.nodeId,
-      request.lease.iterationPath ?? [],
-    );
-    if (ordinal === undefined) continue;
-    if (ordinal >= count || passes.has(ordinal))
-      throw new NodeAttemptStateCorruptError();
-    passes.set(ordinal, {
-      invocationKey: outcome.invocationKey,
-      ...(outcome.status === 'succeeded' ? { bytes: outcome.outputBytes } : {}),
-    });
-  }
-  const succeeded = [...passes.values()].filter(
-    (pass) => pass.bytes !== undefined,
-  );
-  if (succeeded.reduce((sum, pass) => sum + (pass.bytes ?? 0), 0) > maxBytes)
-    return undefined;
-  const stored = new Map(
-    (
-      await store.readNodeOutputs({
-        lease: request.lease,
-        invocationKeys: succeeded.map(({ invocationKey }) => invocationKey),
-        signal: request.signal,
-      })
-    ).map(({ invocationKey, output: value }) => [invocationKey, value]),
-  );
-  const results = Array.from({ length: count }, (_, ordinal) => {
-    const pass = passes.get(ordinal);
-    return pass?.bytes === undefined ? null : stored.get(pass.invocationKey);
-  });
-  return Object.freeze({
-    ...output,
-    value: { ...(output.value as object), results },
-  });
-}
 
 /**
  * A Merge's settled branches with each selected branch's result: the
@@ -226,8 +157,19 @@ export async function loadAttemptInputs(
       );
       if (loop === undefined) return { output, tooLarge: false };
       const withResults = await withLoopResults({
-        store,
-        request: input,
+        readOutcomes: (nodeId) =>
+          store.listNodeOutcomes({
+            lease: input.lease,
+            nodeId,
+            signal: input.signal,
+          }),
+        readOutputs: (invocationKeys) =>
+          store.readNodeOutputs({
+            lease: input.lease,
+            invocationKeys,
+            signal: input.signal,
+          }),
+        iterationPath: input.lease.iterationPath ?? [],
         output,
         loop,
         maxBytes: loopResults?.maxBytes ?? 0,

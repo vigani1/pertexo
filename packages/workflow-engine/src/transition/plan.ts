@@ -1,3 +1,4 @@
+import type { InlineAttemptSettlement } from '../attempt/inline-settlement.types.js';
 import {
   parseCheckpoint,
   reconstructReadySet,
@@ -85,6 +86,8 @@ export function buildWorkflowTransitionPlan(
     maximumAdmissions: number;
     hasExecutionSlot: boolean;
     occurredAt: string;
+    inlineAttempts?: readonly InlineAttemptSettlement[];
+    yieldInline?: boolean;
   }>,
 ): WorkflowTransitionPlan {
   const {
@@ -95,21 +98,13 @@ export function buildWorkflowTransitionPlan(
     cancelRequested,
     deadlineExpired,
   } = state;
-  const ordered = [...invocations.values()].sort((left, right) =>
-    compareOrdinal(left.invocationKey, right.invocationKey),
-  );
-  const readySet = ordered
-    .filter(({ status }) => status === 'ready')
-    .map(({ invocationKey }) => invocationKey);
-  const admittedKeys =
-    cancelRequested || deadlineExpired || !input.hasExecutionSlot
-      ? []
-      : boundedReadyAdmissions({
-          invocations: [...invocations.values()],
-          maximumAdmissions: input.maximumAdmissions,
-          readySet,
-          schedulerNodes: state.schedulerNodes,
-        });
+  const admittedKeys = input.yieldInline
+    ? []
+    : selectReadyAdmissions(
+        state,
+        input.maximumAdmissions,
+        input.hasExecutionSlot,
+      );
   const attempts = admitAttempts(state, admittedKeys);
   if (state.runStatus === 'waiting' && attempts.length > 0) {
     assertRunTransition(state.runStatus, 'running');
@@ -139,7 +134,13 @@ export function buildWorkflowTransitionPlan(
       : { retiredIterationBudget: pruned.retiredIterationBudget }),
     remainingIterationBudget: state.remainingIterationBudget,
     admittedInvocationKeys: [
-      ...new Set([...current.admittedInvocationKeys, ...admittedKeys]),
+      ...new Set([
+        ...current.admittedInvocationKeys,
+        ...admittedKeys,
+        ...(input.inlineAttempts ?? []).map(
+          ({ invocationKey }) => invocationKey,
+        ),
+      ]),
     ]
       .filter((key) => !pruned.prunedKeys.has(key))
       .sort(),
@@ -182,6 +183,9 @@ export function buildWorkflowTransitionPlan(
     events,
     nodeRunAdmissions,
     attempts,
+    ...(input.inlineAttempts?.length
+      ? { inlineAttempts: input.inlineAttempts }
+      : {}),
     ...(state.failureValues.length === 0
       ? {}
       : { failureValues: state.failureValues }),
@@ -191,13 +195,35 @@ export function buildWorkflowTransitionPlan(
     ...(input.hasExecutionSlot &&
     attempts.length === 0 &&
     ['running', 'waiting'].includes(state.runStatus) &&
-    hasUnsettledSchedulerWork(state)
+    (input.yieldInline || hasUnsettledSchedulerWork(state))
       ? { immediateContinuation: true as const }
       : {}),
   };
 }
 
-function admitAttempts(
+export function selectReadyAdmissions(
+  state: MutableWorkflowTransition,
+  maximumAdmissions: number,
+  hasExecutionSlot: boolean,
+): readonly string[] {
+  const { invocations, cancelRequested, deadlineExpired } = state;
+  const ordered = [...invocations.values()].sort((left, right) =>
+    compareOrdinal(left.invocationKey, right.invocationKey),
+  );
+  const readySet = ordered
+    .filter(({ status }) => status === 'ready')
+    .map(({ invocationKey }) => invocationKey);
+  return cancelRequested || deadlineExpired || !hasExecutionSlot
+    ? []
+    : boundedReadyAdmissions({
+        invocations: [...invocations.values()],
+        maximumAdmissions: maximumAdmissions,
+        readySet,
+        schedulerNodes: state.schedulerNodes,
+      });
+}
+
+export function admitAttempts(
   state: MutableWorkflowTransition,
   admittedKeys: readonly string[],
 ): readonly AttemptAdmissionPlan[] {

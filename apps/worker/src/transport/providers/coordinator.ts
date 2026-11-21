@@ -37,6 +37,7 @@ export function coordinatorRuntimeProvider(
         dueWakeupBatchSize: config.coordinator.dueWakeupBatchSize,
         dueWakeupPollIntervalMillis:
           config.coordinator.dueWakeupPollIntervalMillis,
+        inlineSteps: config.coordinator.inlineSteps,
         maximumAdmissions: config.coordinator.maximumAdmissions,
         observer,
         redisUrl: config.redisUrl,
