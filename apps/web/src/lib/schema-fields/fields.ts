@@ -32,12 +32,21 @@ export function schemaFields(
   options?: Readonly<{ jsonObjects: boolean }>,
 ): readonly SchemaFieldSpec[] {
   return objectFields(schema).flatMap(({ key, candidate, required }) => {
-    const field = schemaField(key, candidate, required, options?.jsonObjects);
+    const field = scalarField(key, candidate, required);
     if (field !== undefined) return [field];
     const nested = objectFields(candidate);
+    if (
+      options?.jsonObjects === true &&
+      nested.length === 0 &&
+      isSchemaObject(candidate) &&
+      candidate.type === 'object'
+    )
+      return [
+        { ...fieldPresentation(key, candidate), kind: 'json-object', required },
+      ];
     const parent = { key, label: titleOf(candidate) ?? fieldLabel(key) };
     const children = nested.flatMap((child) => {
-      const childField = schemaField(
+      const childField = scalarField(
         child.key,
         child.candidate,
         required && child.required,
@@ -79,30 +88,13 @@ function objectFields(schema: unknown): readonly ObjectProperty[] {
   }));
 }
 
-function schemaField(
+function scalarField(
   key: string,
   candidate: unknown,
   required: boolean,
-  jsonObjects = false,
 ): SchemaFieldSpec | undefined {
   if (!isSchemaObject(candidate)) return undefined;
-  const {
-    type,
-    title,
-    description,
-    minimum,
-    maximum,
-    format,
-    contentMediaType,
-  } = candidate;
-  if (type === 'object' && jsonObjects && objectFields(candidate).length === 0)
-    return {
-      key,
-      label: typeof title === 'string' ? title : fieldLabel(key),
-      kind: 'json-object',
-      required,
-      ...(typeof description === 'string' ? { description } : {}),
-    };
+  const { type, minimum, maximum, format, contentMediaType } = candidate;
   if (
     type !== 'string' &&
     type !== 'number' &&
@@ -114,11 +106,9 @@ function schemaField(
     type === 'string' || type === 'boolean' ? undefined : fieldUnit(key);
   const choices = type === 'string' ? stringChoices(candidate) : undefined;
   return {
-    key,
-    label: typeof title === 'string' ? title : fieldLabel(key),
+    ...fieldPresentation(key, candidate),
     kind: type,
     required,
-    ...(typeof description === 'string' ? { description } : {}),
     ...(choices ?? {}),
     ...(typeof minimum === 'number' ? { minimum } : {}),
     ...(typeof maximum === 'number' ? { maximum } : {}),
@@ -132,6 +122,18 @@ function schemaField(
       ? { format: 'json-path' as const }
       : {}),
   } satisfies SchemaFieldSpec;
+}
+
+function fieldPresentation(
+  key: string,
+  candidate: Readonly<Record<string, unknown>>,
+): Pick<SchemaFieldSpec, 'key' | 'label' | 'description'> {
+  const { description } = candidate;
+  return {
+    key,
+    label: titleOf(candidate) ?? fieldLabel(key),
+    ...(typeof description === 'string' ? { description } : {}),
+  };
 }
 
 /**
