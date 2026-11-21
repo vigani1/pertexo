@@ -458,3 +458,99 @@ Off reports [1](https://github.com/vigani1/pertexo/actions/runs/44923893536),
 On reports [1](https://github.com/vigani1/pertexo/actions/runs/44923855382),
 [2](https://github.com/vigani1/pertexo/actions/runs/44923900262),
 [3](https://github.com/vigani1/pertexo/actions/runs/44923855570).
+
+### F58-5 allocator trials
+
+The stock glibc worker's growth is resident allocator pages. In a fresh pair
+at 60 minutes, inline-off container growth was 71.1 MiB/h and inline-on was
+18.7 MiB/h. Post-drain `malloc_trim(0)` released 173 MiB off and 138 MiB on.
+Committed V8 heap and ArrayBuffers stayed unchanged across each trim.
+ArrayBuffer peaks were 8.0 MiB off and 7.9 MiB on. Their slopes were −0.4 and
+−0.1 MiB/h respectively. V8 heap profiles sampled pg and Redis allocation
+paths in both modes, no zlib frames and one JSONata sample in the on profile.
+The profiles sample surviving V8 allocations. They do not identify which
+transient allocations left the returned pages behind. The evidence shows
+that the resident-page growth can occur in either execution mode.
+[Off profile](https://github.com/vigani1/pertexo/actions/runs/44932651743) ·
+[On profile](https://github.com/vigani1/pertexo/actions/runs/44932649255).
+
+A separate pair traced native `malloc`, `calloc` and `realloc` requests of
+at least 8 KiB for one minute after warm-up. These are cumulative requested
+bytes across the 30 largest stack groups, measured in MiB.
+
+| Native allocation stack | Inline off | Inline on |
+| --- | ---: | ---: |
+| Node hash string decoding | 708.4 | 661.3 |
+| V8 ArrayBuffer backing stores | 363.2 | 380.0 |
+| V8 JSON stringification | 91.9 | 95.2 |
+
+The two largest hash stacks in each mode were exact multiples of the
+executable catalog's 238,300-character length. Projection verification
+serialized and hashed that same catalog for every advance and queued
+attempt, even on a verification cache hit. The fixed build reuses the
+fingerprint for catalogs composed and deeply frozen by the engine. It still
+checks fresh executable bytes and recomputes the fingerprint for other
+catalog input. The native trace could not split backing stores by JavaScript
+caller. None of the top 30 groups contained zlib frames.
+[Off native trace](https://github.com/vigani1/pertexo/actions/runs/44938763833) ·
+[On native trace](https://github.com/vigani1/pertexo/actions/runs/44938760991).
+
+
+Three pairs per allocator ran the same 60-minute worker-memory load on build
+`23a56c2545a9408d6341af5b69c53609c12d0012`. The worker alone used the trial
+setting. Table entries are container slopes in MiB/h after warm-up.
+
+| Worker allocator | Pair | Inline off | Inline on |
+| --- | ---: | ---: | ---: |
+| jemalloc 5.3.0 | 1 | [12.2](https://github.com/vigani1/pertexo/actions/runs/44932635036) | [17.7](https://github.com/vigani1/pertexo/actions/runs/44932632230) |
+| jemalloc 5.3.0 | 2 | [12.9](https://github.com/vigani1/pertexo/actions/runs/44932641342) | [20.6](https://github.com/vigani1/pertexo/actions/runs/44932637773) |
+| jemalloc 5.3.0 | 3 | [14.4](https://github.com/vigani1/pertexo/actions/runs/44932646713) | [5.5](https://github.com/vigani1/pertexo/actions/runs/44932644111) |
+| glibc fixed thresholds | 1 | [34.1](https://github.com/vigani1/pertexo/actions/runs/44933513568) | [5.0](https://github.com/vigani1/pertexo/actions/runs/44933510958) |
+| glibc fixed thresholds | 2 | [14.3](https://github.com/vigani1/pertexo/actions/runs/44933520561) | [22.4](https://github.com/vigani1/pertexo/actions/runs/44933515778) |
+| glibc fixed thresholds | 3 | [9.2](https://github.com/vigani1/pertexo/actions/runs/44933526339) | [26.1](https://github.com/vigani1/pertexo/actions/runs/44933523022) |
+
+The glibc trial fixed `trim_threshold` at 65,536 bytes and `mmap_threshold`
+at 32,768 bytes. All six jemalloc runs passed their assertions. The glibc
+preset had one off-mode memory failure at 34.1 MiB/h. The jemalloc worker
+completed 7,240–10,816 runs on and 9,886–10,314 off. Glibc with fixed thresholds
+completed 9,811–10,865 on and 8,695–10,725 off. The load driver throttles
+senders at its backlog ceiling, so these counts reflect throughput under load.
+
+### API cgroup kill and allocator choice
+
+The original overload failure logged 482 MiB RSS for the API process
+before its restart and 712 HTTP 502s. The host cgroup peaked at 1,758 MiB.
+Its hierarchical OOM counter included kills in its containers.
+[Original overload failure](https://github.com/vigani1/pertexo/actions/runs/44907637955/job/136856511428).
+
+Three pairs of inline-on overload jobs held the worker on jemalloc and
+changed only the API's allocator. The glibc control peaked at 488 MiB
+sampled container working set and 514 MiB process RSS. It restarted once and
+returned 1,792 HTTP 502s at 80 requests/s. The kernel log named a Docker child
+cgroup as the limit and the parent's `memory.events.local` reported zero
+OOMs. Host peak was 1,547 MiB. The 512 MiB API container limit caused the
+kill.
+[API glibc failure](https://github.com/vigani1/pertexo/actions/runs/44932656956).
+
+| API comparison | Original glibc arena cap | jemalloc |
+| --- | ---: | ---: |
+| Peak container working set, median [range] | 482.3 [441.5–488.1] MiB | 417.0 [412.7–420.7] MiB |
+| Slow admission began, median [range] | 20 [10–20] requests/s | 20 [10–20] requests/s |
+| Drain, median [range] | 171.16 [169.41–171.70] s | 168.67 [158.95–185.06] s |
+| OOM kills and API restarts | 1 each | 0 |
+
+Other glibc controls [2](https://github.com/vigani1/pertexo/actions/runs/44932662746)
+and [3](https://github.com/vigani1/pertexo/actions/runs/44932668002).
+Jemalloc trials [1](https://github.com/vigani1/pertexo/actions/runs/44932654316),
+[2](https://github.com/vigani1/pertexo/actions/runs/44932660089) and
+[3](https://github.com/vigani1/pertexo/actions/runs/44932665328).
+
+The API and worker share the pinned Debian jemalloc library and one Compose
+setting. The API measurements justify the dependency, and using the same
+allocator on the worker avoids maintaining a second set of glibc tunables.
+Separately, the old Compose fallback selected the legacy 2,912 MiB Code
+runner cap when both Code settings were absent. The API, worker and Code
+caps then summed to 4,192 MiB. The fallback now uses the qualified 1,872 MiB
+Code preset, leaving 944 MiB on the minimum host for the remaining services
+and operating system. The failed overload run already used the smaller
+preset.
