@@ -1,0 +1,118 @@
+# ADR 096: Execute pure steps in a coordinator advance
+
+- **Status:** proposed
+- **Date:** 2026-11-21
+- **Related:** [ADR 006](006-coordinator-checkpoint-and-node-attempt-jobs.md),
+  [ADR 007](007-run-node-state-retry-idempotency.md),
+  [ADR 012](012-fair-admission-backpressure-entitlements.md),
+  [ADR 072](072-failed-step-recovery.md),
+  ADR 095 (integration modules)
+- **Feature:** [F58](../feature-plans/58-inline-pure-steps.md)
+
+## Context
+
+Every pure step currently goes through an attempt delivery and a coordinator
+continuation. Option B reduced transaction setup without removing either hop.
+[Option C](../feature-plans/step-transaction-cost.md#options) removes both hops
+for steps whose work can be repeated after rollback. PostgreSQL still owns the
+run, checkpoint, history and follow-up work under ADRs 005, 069 and 091.
+
+## Decision
+
+**The pinned definition owns the execution class.** A step definition declares
+`execution: 'attempt' | 'inline'`. A missing declaration on a legacy version
+means `attempt`. Only platform-owned, deterministic, bounded, I/O-free
+definitions can declare `inline`. Start with Set, Condition, Switch, Merge,
+Filter, Sort and qualifying transforms. Qualify the whole version and every
+configuration it accepts. Crypto versions that generate random values, HMAC
+with a signing connection, file steps, Code, and steps that wait or dispatch
+work stay on the attempt path. The registry checks the registration's origin
+from catalog composition, the definition and executor pairing, safe retry
+class, absence of connection slots and execution capabilities, and the
+capability-free executor registration. All integration modules, including
+platform integrations under ADR 095 and future community modules, enter
+through an attempt-only registration path. A module's self-declared metadata
+cannot change its origin.
+
+**The executor gets values.** The SDK's inline invocation contains bounded
+config and mapped input plus the engine's injected `now` snapshot as data.
+It returns a bounded result or a typed failure synchronously. The coordinator
+supplies a registry built from the trusted pure kernels alone. Their
+transitive runtime imports are restricted to checked pure code. Execute the
+kernels in a Node VM context loaded from that closed build, with dynamic code
+generation and module loading disabled. Pass serialized values in both
+directions. Supply zero host objects, callbacks or capabilities. The context
+has no process, network, files, connections, artifacts, timers or ambient
+time or randomness. Explicit date arithmetic uses the inputs and a
+deterministic date API. Validation, mapped input resolution and typed error
+translation run in the host using the existing bounded paths. Use the
+existing JSONata evaluator and its expression limits there. This interface is
+for reviewed built-ins and excludes arbitrary third-party JavaScript.
+
+**Commit one advance.** Within the current workspace admission and locked-run
+transaction, consume the durable observations, use the existing scheduler to
+select work, and execute consecutive ready inline invocations in scheduler
+order. Feed each outcome and its output into the same completion and
+scheduling rules used for an attempt delivery. Keep sequential dependencies
+on the transaction-local results. Persist the usual node runs, attempt
+numbers, inputs, outputs and completion facts, with one gapless event sequence
+and one checkpoint CAS for the entire advance. Inline attempts have terminal
+records and no lease or provider dispatch evidence. Write the attempt outbox
+for the next admitted attempt-class work, or the coordinator continuation
+when immediate work remains. Keep the delivery receipt in the same commit.
+
+Before commit, process death, abort or a failed CAS rolls back the entire
+advance. Redelivery can recompute the bounded pure work from the previous
+checkpoint and durable inputs, with no externally visible effect from the
+discarded execution. After commit, redelivery sees the receipt and checkpoint
+under the run lock. The stored attempt identities, event sequence and
+outbox are already complete. Redis loss uses the existing outbox recovery.
+
+**Bound every advance.** Start with at most 16 inline attempts and a 50 ms
+monotonic elapsed budget for inline work, including input preparation and
+settlement. Elapsed time bounds CPU time and also counts time spent waiting on
+expression evaluation while the run lock is held. Check both limits before
+starting another invocation. Give an invocation its existing effective step
+deadline, clipped by the run deadline, and a separate stop at the remaining
+advance budget. Use the evaluator deadline and VM execution limit to
+interrupt computation. A step or run deadline keeps its usual timeout
+semantics. An advance budget interruption discards only that invocation's
+uncommitted result and yields from the last settled invocation. If the
+first invocation cannot finish within a fresh budget, admit it through the
+ordinary attempt path to guarantee progress and preserve its step timeout.
+A process shutdown aborts the advance. Keep admission limits independent of
+this computation budget. For Each keeps its existing declaration, iteration
+ordinals, concurrency and checkpoint bounds. Inline body invocations share
+the advance budget across all ordinals. The first rollout stops at the
+current iteration-batch barrier and uses the existing continuation if the
+next batch is ready.
+
+**Keep the logical history.** Record the usual started and outcome events and
+serve them through the existing committed sequence and SSE notification
+path. Subscribers may see several steps in a single update. Apply the same
+failure classification, `decideRetry`, durable retry due time, failed node
+run, failure routes and error workflow rules. A due retry gets its own
+numbered attempt and shares the same budget when eligible. Use the existing
+test and pinned-sample policies before dispatch selection, with the same
+preview and test-suite semantics. Replays resolve the selected version and
+recovery reads the same retained attempt and output evidence. Report
+committed inline attempt outcomes and durations through existing step metrics,
+with actual queue delivery metrics coming from transport.
+
+**Upgrade by definition version.** Changing class adds a new definition
+version and retains the old definition and executor. Resolve class using the
+published node's existing definition pin. Preserve legacy projection hashes
+and existing workflow versions. Already-admitted attempts finish on their
+original path. Roll out readers and both executor bindings to all workers
+before publishing inline versions. Start with coordinator execution disabled.
+The setting gates newly selected work. An inline version ships with an
+attempt binding for the same pure implementation, so fallback and rollback
+of the setting never change workflow outputs or move a queued attempt.
+
+## Consequences
+
+The coordinator spends bounded compute time under its existing transaction
+and run lock. Short pure chains avoid per-step transport while preserving
+node-run and attempt history. External work keeps ADR 006's separate
+attempt transaction and recovery protocol. The default can change after
+the correctness, equivalence, safety and performance gates in F58 pass.
