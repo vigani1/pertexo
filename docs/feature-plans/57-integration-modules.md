@@ -43,7 +43,8 @@ interface and `node-catalog/src/integration-modules.ts` for the explicit
 registry. Wrap the current definitions in modules pointing at their existing
 files. In `catalog.ts`, derive `INTEGRATION_REGISTRATIONS`, manifests and
 provider policies from the modules. Preserve the manifest identities,
-versions and order. Keep the existing executor assembly until slice 4.
+versions and order. The F58 registration split moves executor assembly into
+the modules. The remaining worker changes stay in slice 4.
 
 Change `platformBrowserNodeDefinitionCatalog` in `browser-catalog.ts` to
 project module presentation and expose it through

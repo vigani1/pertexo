@@ -1,71 +1,29 @@
 export { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
 export { platformPortableDefinitionPolicy } from './portable-definition-policy.js';
 
-import {
-  databasePollExecutor,
-  httpPollExecutor,
-  createDatabaseExecutorRegistration,
-  createHttpRequestExecutorRegistration,
-  type HttpRequestExecutorDependencies,
-  createSlackSendMessageExecutorRegistration,
-  type SlackSendMessageExecutorDependencies,
-  createEmailSendNotificationExecutorRegistration,
-  type EmailSendNotificationExecutorDependencies,
-} from '@pertexo/integrations/server';
-import { INTEGRATION_REGISTRATIONS, PLATFORM_NODE_CATALOG } from './catalog.js';
-import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
+import type { IntegrationExecutorDependencies } from '@pertexo/integrations/server';
 import {
   createNodeRegistry,
-  type NodeExecutorRegistration,
   type NodeRegistry,
 } from '@pertexo/node-sdk/server';
+import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
+import { PLATFORM_NODE_CATALOG } from './catalog.js';
+import { INTEGRATION_MODULE_REGISTRY } from './integration-modules.js';
 
-export type PlatformNodeRegistryDependencies = Readonly<{
-  database?: Parameters<typeof createDatabaseExecutorRegistration>[0];
-  httpRequest: HttpRequestExecutorDependencies;
-  httpRequestTelemetry?: HttpRequestExecutorDependencies['telemetry'];
-  slackSendMessage: SlackSendMessageExecutorDependencies;
-  slackSendMessageTelemetry?: SlackSendMessageExecutorDependencies['telemetry'];
-  emailSendNotification: EmailSendNotificationExecutorDependencies;
-  emailSendNotificationTelemetry?: EmailSendNotificationExecutorDependencies['telemetry'];
-}>;
+export type PlatformNodeRegistryDependencies = IntegrationExecutorDependencies;
 
 /** The executing registry for the platform catalog; provider clients can be injected. */
 export function createPlatformNodeRegistry(
   dependencies: PlatformNodeRegistryDependencies,
 ): NodeRegistry {
-  const { httpRequest, slackSendMessage, emailSendNotification } = dependencies;
-  const executors: readonly NodeExecutorRegistration[] = [
-    databasePollExecutor,
-    httpPollExecutor,
-    createDatabaseExecutorRegistration(dependencies.database),
-    createHttpRequestExecutorRegistration({
-      ...httpRequest,
-      ...(dependencies.httpRequestTelemetry === undefined
-        ? {}
-        : { telemetry: dependencies.httpRequestTelemetry }),
-    }),
-    createSlackSendMessageExecutorRegistration({
-      ...slackSendMessage,
-      ...(dependencies.slackSendMessageTelemetry === undefined
-        ? {}
-        : { telemetry: dependencies.slackSendMessageTelemetry }),
-    }),
-    createEmailSendNotificationExecutorRegistration({
-      ...emailSendNotification,
-      ...(dependencies.emailSendNotificationTelemetry === undefined
-        ? {}
-        : { telemetry: dependencies.emailSendNotificationTelemetry }),
-    }),
-  ];
   return createNodeRegistry({
     catalog: PLATFORM_NODE_CATALOG,
-    definitions: INTEGRATION_REGISTRATIONS,
+    definitions: INTEGRATION_MODULE_REGISTRY.registrations,
     core: {
       definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
       executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
     },
-    executors,
+    executors: INTEGRATION_MODULE_REGISTRY.createExecutors(dependencies),
   });
 }
