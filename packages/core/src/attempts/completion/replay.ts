@@ -50,7 +50,7 @@ export async function duplicateCompletion(
     persistedOutput !== serializedOutput ||
     row.safeErrorCode !== fields.safeErrorCode ||
     row.errorSummary !== fields.errorSummary ||
-    canonicalJson(row.codeDiagnostics) !==
+    canonicalJson(row.diagnostics) !==
       canonicalJson(storedAttemptDiagnostics(input)) ||
     executorMismatch;
   if (completionMismatch) {

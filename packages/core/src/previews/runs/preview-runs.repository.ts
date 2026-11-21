@@ -31,7 +31,7 @@ export async function readPreviewRun(
   const rows = await transaction.db
     .select({
       completedAt: previewRuns.completedAt,
-      codeDiagnostics: previewAttempts.codeDiagnostics,
+      diagnostics: previewAttempts.diagnostics,
       errorSummary: previewAttempts.errorSummary,
       createdAt: previewRuns.createdAt,
       draftRevision: previewRuns.draftRevision,
@@ -70,7 +70,7 @@ export async function readPreviewRun(
   const row = rows[0];
   if (row === undefined) return null;
   return Object.freeze({
-    ...attemptDiagnosticFields(row.codeDiagnostics),
+    ...attemptDiagnosticFields(row.diagnostics),
     ...(row.errorSummary === null ? {} : { errorSummary: row.errorSummary }),
     id: row.id,
     workspaceId: row.workspaceId,
@@ -120,7 +120,7 @@ export async function readLivePreviewReplay(
       startedAt: previewRuns.startedAt,
       safeErrorCode: previewRuns.safeErrorCode,
       errorSummary: previewAttempts.errorSummary,
-      codeDiagnostics: previewAttempts.codeDiagnostics,
+      diagnostics: previewAttempts.diagnostics,
       expiresAt: previewRuns.expiresAt,
     })
     .from(previewRuns)

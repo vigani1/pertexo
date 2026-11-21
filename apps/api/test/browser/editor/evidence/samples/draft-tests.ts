@@ -42,10 +42,10 @@ export async function verifyDraftTestEvidence(database: Pool) {
   const code = await database.query<{
     workflow_run_id: string;
     output_ref: unknown;
-    code_diagnostics: unknown;
+    diagnostics: unknown;
     dispatch_marked_at: Date | null;
   }>(
-    `select node.workflow_run_id,node.output_ref,attempt.code_diagnostics,attempt.dispatch_marked_at from app.node_runs node join app.node_attempts attempt on attempt.node_run_id=node.id join app.workflow_test_snapshots snapshot on snapshot.id=node.workflow_run_id join lateral json_array_elements(snapshot.graph_json->'nodes') step on step->>'id'=node.node_id where node.workflow_run_id=any($1::uuid[]) and step#>>'{definition,key}'='core.code' order by node.created_at,node.id`,
+    `select node.workflow_run_id,node.output_ref,attempt.diagnostics,attempt.dispatch_marked_at from app.node_runs node join app.node_attempts attempt on attempt.node_run_id=node.id join app.workflow_test_snapshots snapshot on snapshot.id=node.workflow_run_id join lateral json_array_elements(snapshot.graph_json->'nodes') step on step->>'id'=node.node_id where node.workflow_run_id=any($1::uuid[]) and step#>>'{definition,key}'='core.code' order by node.created_at,node.id`,
     [testIds],
   );
   expect(code.rows).toHaveLength(3);
@@ -55,14 +55,12 @@ export async function verifyDraftTestEvidence(database: Pool) {
       value: { amount: 42 },
     })),
   );
-  expect(code.rows[0]?.code_diagnostics).toMatchObject({
+  expect(code.rows[0]?.diagnostics).toMatchObject({
     logs: [{ level: 'info', message: 'real draft-test Code execution' }],
   });
-  expect(code.rows[1]?.code_diagnostics).toEqual(
-    code.rows[0]?.code_diagnostics,
-  );
+  expect(code.rows[1]?.diagnostics).toEqual(code.rows[0]?.diagnostics);
   expect(code.rows[2]).toMatchObject({
-    code_diagnostics: null,
+    diagnostics: null,
     dispatch_marked_at: null,
   });
   const waits = await database.query(

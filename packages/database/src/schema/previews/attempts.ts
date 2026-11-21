@@ -60,7 +60,7 @@ export const previewAttempts = appSchema.table(
       mode: 'date',
     }),
     outputRef: json('output_ref'),
-    codeDiagnostics: jsonb('code_diagnostics').$type<AttemptDiagnostics>(),
+    diagnostics: jsonb('diagnostics').$type<AttemptDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     errorSummary: varchar('error_summary', { length: WIDTHS.errorSummary }),
     reconciliationRef: jsonb('reconciliation_ref'),
@@ -79,7 +79,7 @@ export const previewAttempts = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'preview_attempts_code_diagnostics_bound',
-      sql`${table.codeDiagnostics} IS NULL OR (jsonb_typeof(${table.codeDiagnostics})='object' AND octet_length(${table.codeDiagnostics}::text)<=1048576)`,
+      sql`${table.diagnostics} IS NULL OR (jsonb_typeof(${table.diagnostics})='object' AND octet_length(${table.diagnostics}::text)<=1048576)`,
     ),
     check(
       'preview_attempts_error_code_format',

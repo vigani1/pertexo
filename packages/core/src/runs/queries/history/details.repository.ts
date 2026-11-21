@@ -276,7 +276,7 @@ export async function readWorkflowNodeRunDiagnosticsRows(
   const attempt = alias(nodeAttempts, 'attempt');
   const [row] = await transaction.db
     .select({
-      diagnostics: sql<unknown>`case when ${run.detailsPurgedAt} is null and (${run.completedAt} is null or ${run.completedAt}>statement_timestamp()-${RUN_DETAILS_RETENTION_SQL}) and ${retainedTestRunSql('run')} then ${attempt.codeDiagnostics} else null end`,
+      diagnostics: sql<unknown>`case when ${run.detailsPurgedAt} is null and (${run.completedAt} is null or ${run.completedAt}>statement_timestamp()-${RUN_DETAILS_RETENTION_SQL}) and ${retainedTestRunSql('run')} then ${attempt.diagnostics} else null end`,
     })
     .from(node)
     .innerJoin(

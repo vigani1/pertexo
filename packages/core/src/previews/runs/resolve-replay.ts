@@ -45,17 +45,12 @@ export async function resolvePreviewReplay(
   if (replay === undefined) return null;
   if (replay.workflowId !== input.workflowId)
     throw new PreviewAcceptanceCorruptError();
-  const {
-    outputRef,
-    pinnedSampleId,
-    codeDiagnostics,
-    errorSummary,
-    ...summary
-  } = replay;
+  const { outputRef, pinnedSampleId, diagnostics, errorSummary, ...summary } =
+    replay;
   return Object.freeze({
     ...summary,
     ...(errorSummary === null ? {} : { errorSummary }),
-    ...attemptDiagnosticFields(codeDiagnostics),
+    ...attemptDiagnosticFields(diagnostics),
     ...(pinnedSampleId === null ? {} : { pinnedSampleId }),
     output:
       outputRef === null

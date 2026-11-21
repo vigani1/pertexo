@@ -272,7 +272,7 @@ export const nodeAttempts = appSchema.table(
       mode: 'date',
     }),
     outputRef: json('output_ref').$type<StoredExecutionValue>(),
-    codeDiagnostics: jsonb('code_diagnostics').$type<AttemptDiagnostics>(),
+    diagnostics: jsonb('diagnostics').$type<AttemptDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     errorSummary: varchar('error_summary', { length: WIDTHS.errorSummary }),
     executorRetryAfterMillis: integer('executor_retry_after_millis'),
@@ -304,7 +304,7 @@ export const nodeAttempts = appSchema.table(
   (table): PgTableExtraConfigValue[] => [
     check(
       'node_attempts_code_diagnostics_bound',
-      sql`${table.codeDiagnostics} IS NULL OR (jsonb_typeof(${table.codeDiagnostics})='object' AND octet_length(${table.codeDiagnostics}::text)<=1048576)`,
+      sql`${table.diagnostics} IS NULL OR (jsonb_typeof(${table.diagnostics})='object' AND octet_length(${table.diagnostics}::text)<=1048576)`,
     ),
     check(
       'node_attempts_admission_kind_valid',

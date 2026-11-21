@@ -106,7 +106,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       if (node === undefined) throw new Error('Node missing');
       const attemptId = randomUUID();
       await api.database().query(
-        `insert into app.node_attempts(id,workspace_id,node_run_id,attempt_number,status,side_effect_class,code_diagnostics,completed_at)
+        `insert into app.node_attempts(id,workspace_id,node_run_id,attempt_number,status,side_effect_class,diagnostics,completed_at)
         values($1,$2,$3,1,'failed','safe','{"private":"stored-only-canary"}',clock_timestamp())`,
         [attemptId, world.workspaceId, node.node_run_id],
       );
