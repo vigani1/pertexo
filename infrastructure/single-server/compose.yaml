@@ -83,9 +83,8 @@ services:
       # Read only by storage/prepare.mjs, through the resolved configuration.
       API_MEMORY_MB: ${API_MEMORY_MB:-}
       NODE_OPTIONS: '--max-old-space-size=${API_HEAP_MB:?}'
-      # glibc keeps a malloc arena per thread and holds what it frees; under a
-      # flood that grew the API's memory outside the heap by about 170 MiB.
-      MALLOC_ARENA_MAX: '2'
+      # The API hit its container cap under flood traffic with glibc.
+      LD_PRELOAD: libjemalloc.so.2
       AUTH_MAIL_MODE: durable
       AUTH_SIGN_UP_MODE: ${AUTH_SIGN_UP_MODE:-invitation}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
