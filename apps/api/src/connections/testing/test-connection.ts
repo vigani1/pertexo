@@ -332,31 +332,11 @@ export class TestConnectionService {
       !('sideEffectDisclosureAccepted' in request)
     )
       throw requestInputError(['transport'], recipe.consentMessage);
-    if (destination?.config.kind === 'email') {
-      if (
-        credential.type !== 'resend_api_key' ||
-        this.emailClient === undefined
-      )
-        throw new ConnectionSecretEncryptionError();
-      return testResendConnection(this.emailClient, credential, {
-        toEmail: destination.config.toEmail,
-        command: input,
+    if (destination !== undefined)
+      return this.testDestination(destination, credential, input, {
         signal,
         beforeDispatch,
       });
-    }
-    if (destination?.config.kind === 'slack') {
-      if (
-        credential.type !== 'slack_bot_token' ||
-        this.slackClient === undefined
-      )
-        throw new ConnectionSecretEncryptionError();
-      return testSlackConnection(this.slackClient, credential.botToken, {
-        channelId: destination.config.channelId,
-        signal,
-        beforeDispatch,
-      });
-    }
     if (
       recipe.kind === 'signing' &&
       credential.type === 'hmac_key' &&
@@ -379,5 +359,40 @@ export class TestConnectionService {
       signal,
       beforeDispatch,
     });
+  }
+
+  private testDestination(
+    destination: FailureNotificationDestinationResponse,
+    credential: DecodedConnectionCredential['credential'],
+    command: TestConnectionCommand,
+    dispatch: Readonly<{
+      signal: AbortSignal;
+      beforeDispatch: () => Promise<void>;
+    }>,
+  ): Promise<ConnectionTestOutcome> {
+    if (destination.config.kind === 'email') {
+      if (
+        credential.type !== 'resend_api_key' ||
+        this.emailClient === undefined
+      )
+        throw new ConnectionSecretEncryptionError();
+      return testResendConnection(this.emailClient, credential, {
+        toEmail: destination.config.toEmail,
+        command,
+        ...dispatch,
+      });
+    }
+    if (destination.config.kind === 'slack') {
+      if (
+        credential.type !== 'slack_bot_token' ||
+        this.slackClient === undefined
+      )
+        throw new ConnectionSecretEncryptionError();
+      return testSlackConnection(this.slackClient, credential.botToken, {
+        channelId: destination.config.channelId,
+        ...dispatch,
+      });
+    }
+    throw new ConnectionSecretEncryptionError();
   }
 }

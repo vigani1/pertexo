@@ -142,7 +142,10 @@ function applyAuth(
         sensitiveValues: [token],
       };
     }
-    default:
+    case 'oauth2':
+    case 'postgres':
+    case 'signing':
+    case 'smtp':
       throw new ConnectionSecretEncryptionError();
   }
 }
