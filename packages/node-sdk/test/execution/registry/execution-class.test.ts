@@ -1,3 +1,4 @@
+import { NODE_JSON_LIMITS } from '../../../src/values/bounded-json.validation.js';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,7 +8,9 @@ import {
 } from '../../../src/definitions/catalog.js';
 import {
   createNodeRegistry,
+  createInlineNodeRegistry,
   type NodeRegistryOptions,
+  type CoreNodeExecutorRegistration,
 } from '../../../src/server.js';
 import {
   configSchema,
@@ -21,6 +24,13 @@ const inlineManifest = {
   capabilities: [],
   execution: 'inline',
 } as const satisfies NodeManifest;
+
+const executeInline: NonNullable<
+  CoreNodeExecutorRegistration['executeInline']
+> = (invocation) => ({
+  kind: 'succeeded',
+  output: { ...invocation, fields: Object.keys(invocation) },
+});
 
 function options(selected: NodeManifest = inlineManifest): NodeRegistryOptions {
   return {
@@ -40,7 +50,7 @@ function options(selected: NodeManifest = inlineManifest): NodeRegistryOptions {
           outputSchema: objectSchema,
         },
       ],
-      executors: [executorRegistration()],
+      executors: [{ ...executorRegistration(), executeInline }],
     },
   };
 }
@@ -132,6 +142,87 @@ describe('versioned execution class registration', () => {
     expect(() =>
       createNodeRegistry(options({ ...inlineManifest, executorAbi: 2 })),
     ).toThrow(/dispatch-aware executor/u);
+  });
+
+  it('receives only config, mapped input and the injected clock snapshot', () => {
+    const registry = createInlineNodeRegistry(options());
+    expect(
+      registry.executeInline({
+        definition: inlineManifest.definition,
+        executor: inlineManifest.executor,
+        config: {},
+        input: { message: 'hello' },
+        now: 123,
+      }),
+    ).toEqual({
+      kind: 'succeeded',
+      output: {
+        config: {},
+        input: { message: 'hello' },
+        now: 123,
+        fields: ['config', 'input', 'now'],
+      },
+    });
+  });
+
+  it('refuses malformed inline config and input before executing the kernel', () => {
+    const registry = createInlineNodeRegistry(options());
+    const request = {
+      definition: inlineManifest.definition,
+      executor: inlineManifest.executor,
+      now: 123,
+    };
+    expect(() =>
+      registry.executeInline({
+        ...request,
+        config: { unknown: true },
+        input: {},
+      }),
+    ).toThrow(/configuration does not match its versioned schema/u);
+    expect(() =>
+      registry.executeInline({ ...request, config: {}, input: 'unexpected' }),
+    ).toThrow(/input does not match its versioned schema/u);
+  });
+
+  it('refuses inline results outside the bounded output envelope', () => {
+    const registered = options();
+    const registry = createInlineNodeRegistry({
+      ...registered,
+      core: {
+        definitions: registered.core?.definitions ?? [],
+        executors: [
+          {
+            ...executorRegistration(),
+            executeInline: () => ({
+              kind: 'succeeded',
+              output: { value: 'x'.repeat(NODE_JSON_LIMITS.bytes) },
+            }),
+          },
+        ],
+      },
+    });
+    expect(() =>
+      registry.executeInline({
+        definition: inlineManifest.definition,
+        executor: inlineManifest.executor,
+        config: {},
+        input: {},
+        now: 123,
+      }),
+    ).toThrow(/output does not match its versioned schema/u);
+  });
+
+  it('requires a synchronous binding for an inline definition', () => {
+    const registry = options();
+    expect(() =>
+      createNodeRegistry({
+        ...registry,
+        core: {
+          definitions: registry.core?.definitions ?? [],
+          executors: [executorRegistration()],
+        },
+      }),
+    ).toThrow(/has no synchronous core executor/u);
   });
 
   it('executes a trusted inline definition through its pinned attempt fallback', async () => {

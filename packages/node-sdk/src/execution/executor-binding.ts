@@ -1,13 +1,13 @@
 import type { NodeManifest } from '../definitions/catalog.js';
 import { identityToken, sameIdentity } from '../definitions/identity.js';
 import { NodeRegistryCompatibilityError } from './node-execution.errors.js';
-import type { NodeExecutorRegistration } from './node-execution.types.js';
+import type { CoreNodeExecutorRegistration } from './node-execution.types.js';
 
 export const DISPATCH_AWARE_EXECUTOR_ABI_VERSION = 2 as const;
 
 export function validateInlineFallback(
   manifest: NodeManifest,
-  coreExecutors: readonly NodeExecutorRegistration[] = [],
+  coreExecutors: readonly CoreNodeExecutorRegistration[] = [],
 ): void {
   if (manifest.execution !== 'inline') return;
   const definition = identityToken(manifest.definition);
@@ -24,12 +24,15 @@ export function validateInlineFallback(
     throw new NodeRegistryCompatibilityError(
       `inline definition ${definition} cannot bind a dispatch-aware executor`,
     );
-  if (
-    !coreExecutors.some(({ executor }) =>
-      sameIdentity(executor, manifest.executor),
-    )
-  )
+  const binding = coreExecutors.find(({ executor }) =>
+    sameIdentity(executor, manifest.executor),
+  );
+  if (binding === undefined)
     throw new NodeRegistryCompatibilityError(
       `inline definition ${definition} has no core attempt fallback`,
+    );
+  if (binding.executeInline === undefined)
+    throw new NodeRegistryCompatibilityError(
+      `inline definition ${definition} has no synchronous core executor`,
     );
 }
