@@ -4,7 +4,11 @@ import type { ConnectionResponse } from '@pertexo/contracts';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatDateTime, formatRelativeTime } from '@/lib/format/time';
 import { connectionPresentation } from '../../model/connection-providers';
-import { grantSentence, shownHost } from '../../model/oauth2-copy';
+import {
+  grantSentence,
+  isOAuth2Connection,
+  shownHost,
+} from '../../model/oauth2-copy';
 import { Disclosure } from '@/components/ui/disclosure';
 
 function shortId(id: string): string {
@@ -70,7 +74,7 @@ export function ConnectionFacts({
       <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-sm">
         <Fact term="Service">{provider.name}</Fact>
         <Fact term="Credential">{credentialLabel}, stored encrypted</Fact>
-        {connection.authType === 'oauth2' ? (
+        {isOAuth2Connection(connection) ? (
           <>
             <Fact term="Token address">
               {shownHost(connection.oauth2.settings.tokenUrl)}

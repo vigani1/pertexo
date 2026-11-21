@@ -130,20 +130,7 @@ export const connectionTestRequestSchema = z.union([
 
 export const connectionResponseSchema = responseSchema(
   z.union([
-    z
-      .object({
-        ...connectionResponseFields,
-        authType: z.enum([
-          'hmac_key',
-          'http_headers',
-          'slack_bot_token',
-          'resend_api_key',
-          'smtp',
-          'postgres',
-        ]),
-      })
-      .strict()
-      .readonly(),
+    z.object(connectionResponseFields).strict().readonly(),
     oauth2ConnectionResponseSchema,
   ]),
 );

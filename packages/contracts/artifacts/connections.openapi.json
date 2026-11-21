@@ -1997,14 +1997,8 @@
                     },
                     "authType": {
                       "type": "string",
-                      "enum": [
-                        "hmac_key",
-                        "http_headers",
-                        "slack_bot_token",
-                        "resend_api_key",
-                        "smtp",
-                        "postgres"
-                      ]
+                      "maxLength": 64,
+                      "pattern": "^(?!oauth2$)[a-z][a-z0-9_]*$"
                     },
                     "status": {
                       "type": "string",
@@ -3087,14 +3081,8 @@
               },
               "authType": {
                 "type": "string",
-                "enum": [
-                  "hmac_key",
-                  "http_headers",
-                  "slack_bot_token",
-                  "resend_api_key",
-                  "smtp",
-                  "postgres"
-                ]
+                "maxLength": 64,
+                "pattern": "^(?!oauth2$)[a-z][a-z0-9_]*$"
               },
               "status": {
                 "type": "string",
@@ -4486,14 +4474,8 @@
                   },
                   "authType": {
                     "type": "string",
-                    "enum": [
-                      "hmac_key",
-                      "http_headers",
-                      "slack_bot_token",
-                      "resend_api_key",
-                      "smtp",
-                      "postgres"
-                    ]
+                    "maxLength": 64,
+                    "pattern": "^(?!oauth2$)[a-z][a-z0-9_]*$"
                   },
                   "status": {
                     "type": "string",

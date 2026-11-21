@@ -108,12 +108,15 @@ export function useBetterAuthRealApi(
     await creator.query(
       `grant connect on database "${databaseName}" to pertexo_migration, pertexo_app, pertexo_maintenance`,
     );
-    await migrateDatabase({
-      appRole: 'pertexo_app',
-      connectionString: databaseUrl(migrationBaseUrl),
-      maintenanceRole: 'pertexo_maintenance',
-      ownerRole: 'pertexo_owner',
-    });
+    await migrateDatabase(
+      {
+        appRole: 'pertexo_app',
+        connectionString: databaseUrl(migrationBaseUrl),
+        maintenanceRole: 'pertexo_maintenance',
+        ownerRole: 'pertexo_owner',
+      },
+      options.migrationDirectory,
+    );
     admin = owner.acquire(
       'inspection pool',
       new Pool({ connectionString: databaseUrl(adminUrl), max: 1 }),
@@ -172,6 +175,14 @@ export function useBetterAuthRealApi(
                   databaseConfig,
                   {
                     identityRuntime,
+                    ...(options.connections.oauth2 === true
+                      ? {
+                          oauth2: {
+                            publicWebOrigin: fixtureOrigin,
+                            allowedPrivateNetworks: [],
+                          },
+                        }
+                      : {}),
                     applicationSecret: identity.betterAuth.secret,
                     systemMailAvailable: options.notificationMail !== undefined,
                   },

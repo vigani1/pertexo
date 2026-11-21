@@ -1,0 +1,2 @@
+ALTER TABLE "app"."connections" DROP CONSTRAINT "connections_auth_type_valid";--> statement-breakpoint
+ALTER TABLE "app"."connections" ADD CONSTRAINT "connections_auth_type_format" CHECK (((auth_type)::text ~ '^[a-z][a-z0-9_]*$'::text));

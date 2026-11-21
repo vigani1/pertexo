@@ -60,9 +60,11 @@ export type ApiFixtureOptions = Readonly<{
   logger?: StructuredLogger;
   connections?: Readonly<{
     config: NonNullable<ApiConfig['connections']>;
+    oauth2?: boolean;
     /** Replaces KMS and the providers; left out, the real runtime is used. */
     services?: () => FixtureConnectionServices;
   }>;
+  migrationDirectory?: string;
   afterMigration?: (databaseUrl: (base: string) => string) => Promise<void>;
   beforeClose?: () => Promise<void>;
   beforeDrop?: () => Promise<void>;

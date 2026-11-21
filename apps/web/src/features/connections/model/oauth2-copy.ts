@@ -39,7 +39,7 @@ export function oauth2RedirectUrl(origin: string): string {
 export function isOAuth2Connection(
   connection: ConnectionResponse,
 ): connection is OAuth2ConnectionResponse {
-  return connection.authType === 'oauth2';
+  return 'oauth2' in connection;
 }
 
 /** Host and port, so an address someone tampered with is plain to see. */

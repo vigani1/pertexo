@@ -17,7 +17,11 @@ import {
 } from './connections.mutations';
 import { startOAuth2Authorization } from './oauth2.api';
 import { connectionCommandError } from '../model/connection-errors';
-import { landingMessage, OAUTH2_CHANNEL } from '../model/oauth2-copy';
+import {
+  isOAuth2Connection,
+  landingMessage,
+  OAUTH2_CHANNEL,
+} from '../model/oauth2-copy';
 
 export type OAuth2ConsentState =
   | Readonly<{ kind: 'idle' }>
@@ -28,12 +32,12 @@ export type OAuth2ConsentState =
   | Readonly<{ kind: 'check-failed'; error: unknown }>;
 
 const grantTimeOf = (connection: ConnectionResponse): string | undefined =>
-  connection.authType === 'oauth2' && connection.status === 'active'
+  isOAuth2Connection(connection) && connection.status === 'active'
     ? connection.grant.authorizedAt
     : undefined;
 
 const needsSignInWindow = (connection: ConnectionResponse): boolean =>
-  connection.authType === 'oauth2' &&
+  isOAuth2Connection(connection) &&
   connection.oauth2.settings.grantType === 'authorization_code';
 
 /**

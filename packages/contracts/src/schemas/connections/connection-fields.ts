@@ -1,4 +1,7 @@
-import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
+import {
+  NODE_FAILURE_FIELD_LIMITS,
+  NODE_IDENTITY_KEY_MAX_CHARACTERS,
+} from '@pertexo/node-sdk';
 import { storageTextSchema } from '@pertexo/workflow-model';
 import { z } from 'zod';
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
@@ -16,15 +19,6 @@ export const connectionProviderKeySchema = z.enum([
   'signing',
   'postgres',
 ]);
-const connectionAuthTypeSchema = z.enum([
-  'hmac_key',
-  'http_headers',
-  'slack_bot_token',
-  'resend_api_key',
-  'smtp',
-  'postgres',
-  'oauth2',
-]);
 export const connectionStatusSchema = z.enum([
   'active',
   'reauthorization_required',
@@ -41,7 +35,10 @@ export const connectionResponseFields = {
   workspaceId: z.uuid(),
   providerKey: connectionProviderKeySchema,
   name: connectionNameSchema,
-  authType: connectionAuthTypeSchema,
+  authType: z
+    .string()
+    .max(NODE_IDENTITY_KEY_MAX_CHARACTERS)
+    .regex(/^(?!oauth2$)[a-z][a-z0-9_]*$/u),
   status: connectionStatusSchema,
   secretVersionId: connectionSecretVersionIdentifierSchema,
   health: z
