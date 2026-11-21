@@ -259,3 +259,11 @@ the store accepted another run in the same workspace while the child was
 paused inside its second inline invocation. The load report now includes
 sampled PostgreSQL lock waits and coordinator queue depth to track
 contention outside that direct shared-lock interaction.
+
+Approval resumption did hold a different lock during inline execution.
+The coordinator acquired the workspace capacity counter exclusively to
+reclaim the active slot, then kept it while running the pure chain. Run
+inserts need that same counter. The fix commits the resumed slot and an
+inline continuation before computing the chain. The integration test
+pauses the next advance within the chain and accepts a second run in
+the workspace while the first advance is paused.

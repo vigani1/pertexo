@@ -72,6 +72,12 @@ records and no lease or provider dispatch evidence. Write the attempt outbox
 for the next admitted attempt-class work, or the coordinator continuation
 when immediate work remains. Keep the delivery receipt in the same commit.
 
+Resuming a parked run may take the workspace capacity counter before
+scheduling. If the next work is inline, commit the slot reacquisition and
+the continuation before running the kernel. The new advance reacquires the
+shared workspace fence and the run lock. Its checkpoint and receipt still
+commit together with its inline attempts and events.
+
 Before commit, process death, abort or a failed CAS rolls back the entire
 advance. Redelivery can recompute the bounded pure work from the previous
 checkpoint and durable inputs, with no externally visible effect from the

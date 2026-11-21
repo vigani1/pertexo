@@ -3,10 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { createNodeAttemptExecutionEngine } from '../../../src/attempts/execution/engine.js';
-import { advanceRun } from '@pertexo/core/runs';
+import { advanceRun, createPendingTaskStore } from '@pertexo/core/runs';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import { composeExecutableCatalog } from '@pertexo/workflow-engine/server';
-import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
+import {
+  approvalConfigSchema,
+  WORKFLOW_FAILURE_PORT,
+} from '@pertexo/workflow-model';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { createCoordinatorRecoveryHarness } from '../../support/coordinator/recovery-harness.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
@@ -16,6 +19,7 @@ import {
 } from '../../support/coordinator/runs/accept.js';
 import { forEachGraph } from '../../support/coordinator/workflows/graphs/loops.js';
 import { linearGraph } from '../../support/coordinator/workflows/graphs/basic.js';
+import { edgesFromTuples } from '../../support/coordinator/workflows/nodes.js';
 import { ServiceProcess } from '../../support/recovery/processes.js';
 import {
   inlineDefinition,
@@ -116,21 +120,48 @@ function graphWithInlineLoopBody() {
   return graph;
 }
 
+function graphWithApproval() {
+  const graph = graphWithInlineSteps(false);
+  return {
+    ...graph,
+    nodes: [
+      ...graph.nodes,
+      {
+        id: 'approval',
+        definition: { key: 'core.approval', version: 1 },
+        position: { x: 5, y: 0 },
+        configVersion: 1,
+        config: approvalConfigSchema.parse({ allowStarterToDecide: true }),
+        inputMappings: {},
+        connectionRefs: {},
+      },
+    ],
+    edges: [
+      ...edgesFromTuples([
+        ['manual-approval', 'manual', 'out', 'approval', 'in'],
+        ['approval-inline', 'approval', 'approved', 'step-1', 'in'],
+      ]),
+      ...graph.edges.slice(1),
+    ],
+  };
+}
+
 async function prepareInlineDelivery(
-  scenario: 'linear' | 'failure' | 'loop' = 'linear',
+  scenario: 'linear' | 'failure' | 'loop' | 'approval' = 'linear',
 ) {
   const identity = {
     workflowId: randomUUID(),
     workflowVersionId: randomUUID(),
   };
+  const graph =
+    scenario === 'loop'
+      ? graphWithInlineLoopBody()
+      : graphWithInlineSteps(scenario === 'failure');
   await insertCompiledWorkflow(fixture.ownerQuery, {
     actorId,
     workspaceId,
     identity,
-    graph:
-      scenario === 'loop'
-        ? graphWithInlineLoopBody()
-        : graphWithInlineSteps(scenario === 'failure'),
+    graph: scenario === 'approval' ? graphWithApproval() : graph,
     name: 'Inline coordinator proof',
     catalog: inlineFixtureCatalog,
   });
@@ -168,11 +199,42 @@ async function prepareInlineDelivery(
       await harness.continueAfter(2);
       await harness.executeNext('for-each');
     }
+    if (scenario === 'approval') {
+      await harness.continueAfter(2);
+      await harness.executeNext('approval');
+      await harness.continueAfter(3);
+      await approveInlineRun(databaseUrl, accepted.runId);
+    }
     outboxEventId = await harness.nextCoordinatorOutbox();
   } finally {
     await harness.close();
   }
   return inlineDelivery(databaseUrl, accepted.runId, outboxEventId);
+}
+
+async function approveInlineRun(connectionString: string, runId: string) {
+  const [task] = await workerQuery<{ id: string }>(
+    `select task.id from app.pending_run_tasks task
+      join app.workflow_runs run on run.id=task.run_id
+     where run.id=$1 and run.human_wait_started_at is not null and task.status='pending'`,
+    [runId],
+  );
+  if (task === undefined)
+    throw new Error('Inline run did not park at approval');
+  const tasks = createPendingTaskStore(
+    parseDatabaseConfig({ connectionString, max: 1 }),
+  );
+  try {
+    await tasks.decide({
+      workspaceId,
+      actorId,
+      taskId: task.id,
+      decision: 'approved',
+      idempotencyKey: randomUUID(),
+    });
+  } finally {
+    await tasks.close();
+  }
 }
 
 interface InlineDelivery {
@@ -303,6 +365,29 @@ async function finish(
 describeIntegration('Inline coordinator transaction recovery', () => {
   beforeAll(fixture.setup);
   afterAll(fixture.restoreServicesAndClose);
+
+  it('lets another run start while the inline chain after an approval is in progress', async () => {
+    const resumed = await prepareInlineDelivery('approval');
+    await finish(resumed, 'committed');
+    const continuation = await resumed.continuation();
+    const child = continuation.child('after-second-kernel');
+    const reached = child.waitForLog(
+      /inline coordinator paused: after-second-kernel/u,
+      markerTimeout,
+    );
+    child.startOnce();
+    try {
+      await reached;
+      const accepted = await acceptRun();
+      expect(accepted.runId).not.toBe(resumed.runId);
+    } finally {
+      await child.stop('SIGKILL');
+    }
+    await finish(continuation, 'committed');
+    expect((await readCommit(continuation)).checkpoint?.status).toBe(
+      'succeeded',
+    );
+  });
 
   it.each(['after-second-kernel', 'before-commit', 'after-commit'] as const)(
     'redelivers exactly once when a child is killed %s',
