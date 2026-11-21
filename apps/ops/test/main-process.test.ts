@@ -82,7 +82,6 @@ describe('compiled operator command main process', () => {
           fixture.child.kill('SIGKILL');
       }
     },
-    12_000,
   );
 
   it('writes the successful command result as valid JSON', async () => {
@@ -132,5 +131,5 @@ describe('compiled operator command main process', () => {
     expect(fixture.output()).toContain('"event":"operator_command.failed"');
     expect(fixture.output()).toContain('"commandType":"stuck-work.list"');
     expect(fixture.output()).toContain('ECONNREFUSED');
-  }, 40_000);
+  });
 });

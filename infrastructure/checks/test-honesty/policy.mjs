@@ -47,6 +47,21 @@ export const LANES = Object.freeze([
   { files: ['apps/web/e2e/**'], testTimeout: 30_000, hookTimeout: 30_000 },
   { files: ['apps/web/e2e-live/**'], testTimeout: 60_000, hookTimeout: 60_000 },
   {
+    files: ['apps/api/test/main-process.test.ts'],
+    ...VITEST_DEFAULT,
+    testTimeout: 11_000,
+  },
+  {
+    files: ['apps/ops/test/main-process.test.ts'],
+    ...VITEST_DEFAULT,
+    testTimeout: 32_000,
+  },
+  {
+    files: ['apps/worker/test/main-process.test.ts'],
+    ...VITEST_DEFAULT,
+    testTimeout: 17_000,
+  },
+  {
     files: [
       'apps/{api,worker}/test/**/*.integration.test.ts',
       'apps/{api,worker}/test/**/*.integration.support.ts',
