@@ -306,12 +306,16 @@ On reports [1](https://github.com/vigani1/pertexo/actions/runs/44905626906),
 
 ### Qualification with versioned Set in every scenario
 
-Before the capacity-lock fix, one run of the revised workload executed
-7,320 Sets inline during overload. The drain took 147.38 seconds, with
-slow admission at 20 requests/s. PostgreSQL sampled waits for active
-capacity, run updates and transaction locks. It sampled zero waits at
-the shared workspace fence. The worker-memory job executed 5,530 Sets
-inline and grew 2.4 MiB/h. [Corrected fixture, inline on](https://github.com/vigani1/pertexo/actions/runs/44906493339).
+Before the capacity-lock fix, a matched pair at
+`505713d5eb25588056324ff29cce355c2c422bd6` used the revised workload.
+Both modes slowed admission at 20 requests/s. The on-mode overload
+job executed 7,320 Sets inline and drained in 147.38 seconds, versus
+483.46 seconds off. PostgreSQL sampled waits for active capacity,
+run updates and transaction locks. It sampled zero waits at the shared
+workspace fence. The worker-memory jobs grew 50.4 MiB/h off and
+2.4 MiB/h on. The on-mode job executed 5,530 Sets inline.
+[Corrected fixture, inline off](https://github.com/vigani1/pertexo/actions/runs/44906519056) ·
+[Corrected fixture, inline on](https://github.com/vigani1/pertexo/actions/runs/44906493339).
 
 The capacity-lock fix was measured at
 `73e7b3030c6864c0b01d17abfdd161e8c2288bbe`. The 10-step J7 burst had no
@@ -327,3 +331,130 @@ failed runs across the three pairs. The table gives medians and
 | PostgreSQL CPU per run | 390.26 [359.99–391.03] ms | 106.33 [100.59–110.88] ms |
 | Worker CPU per run | 515.85 [490.94–518.98] ms | 119.86 [117.33–125.75] ms |
 | Wall time, 200 runs | 100.41 [96.07–101.00] s | 24.71 [23.31–24.90] s |
+
+The one-step burst took 30.16 [29.57–30.47] seconds off and
+22.10 [21.61–22.15] seconds on. Marginal cost estimates use the difference
+between the 10-step and one-step results from each repetition, divided by
+nine. Slightly negative values reflect the precision of the idle correction.
+
+| Marginal cost per pure step | Inline off | Inline on |
+| --- | ---: | ---: |
+| Transactions | 10.11 [10.09–10.34] | −0.01 [−0.01–0.15] |
+| Client statements | 85.00 [84.98–85.08] | 1.97 [1.94–2.19] |
+| Redis commands | 96.27 [92.00–96.31] | 0.15 [−0.29–1.90] |
+| Queue hops | 2 | 0 |
+| PostgreSQL CPU | 30.23 [27.09–30.80] ms | 2.01 [1.91–2.90] ms |
+| Worker CPU | 40.42 [37.35–41.20] ms | 1.26 [0.61–1.87] ms |
+
+### Fixed-build matched load results
+
+Three matched pairs used the same build as J7, the revised pins and the
+4 GiB, 2 vCPU host limit. Steady and worker-memory ran for 60 minutes
+each. The overload jobs ran the full staged ramp. The table gives
+medians and [minimum–maximum].
+
+| Metric | Inline off | Inline on |
+| --- | ---: | ---: |
+| Steady run start p95 | 655 [630–655] ms | 638 [638–691] ms |
+| Steady Code webhook request p95 | 144 [113–147] ms | 139 [130–162] ms |
+| Steady HTTP webhook request p95 | 144 [138–145] ms | 138 [137–142] ms |
+| Steady burst webhook request p95 | 3,408 [3,106–3,638] ms | 3,381 [2,805–3,605] ms |
+| Steady drain | 12.43 [3.67–17.47] s | 8.47 [7.91–22.04] s |
+| Overload slow admission begins | 20 [10–20] requests/s | 20 [20–20] requests/s |
+| Overload first impact on the other workspace | 40 [40–40] requests/s | 40 [40–40] requests/s |
+| Overload drain | 487.36 [466.20–501.31] s | 149.10 [143.66–178.13] s |
+| Worker-memory runs stored | 7,517 [7,077–9,901] | 10,868 [10,377–10,970] |
+| Worker-memory drain | 56.46 [52.59–68.73] s | 37.98 [8.20–38.66] s |
+| Worker container memory growth | 13.2 [10.5–77.1] MiB/h | 128.8 [16.4–137.0] MiB/h |
+| Worker growth outside V8 heap and external buffers | 7.3 [1.6–71.6] MiB/h | 117.2 [12.8–129.0] MiB/h |
+| Worker glibc arena growth | 0.3 [0–67.2] MiB/h | 120.5 [0.2–129.8] MiB/h |
+| Worker RSS peak | 467.9 [462.2–517.5] MiB | 567.8 [467.7–584.9] MiB |
+
+Median host peaks off/on were 1,760/1,734 MiB for steady,
+1,794/1,812 MiB for overload, and 2,291/2,715 MiB for worker-memory.
+Median CPU peaks off/on were 180.1%/164.3%, 201.2%/201.5% and
+200.1%/200.0% respectively, where 100% is one core. All six overload
+jobs sampled zero waits at the shared workspace fence. Their busiest
+coordinator wait queues held 3–7 deliveries off and 4–8 on. Active
+capacity and run-update waits appeared in both modes.
+
+The steady and overload timing targets held. **The load gate failed
+and inline stays off by default.** The worker-memory check exceeded
+30 MiB/h in two on-mode jobs and one off-mode job. One on-mode overload
+job recorded an API restart, a host OOM kill and 712 flood requests with
+502 responses at 40 requests/s. There were zero lost or duplicated
+runs in all 18 jobs. Two off-mode steady checks flagged one queued
+schedule run each after observing an empty queue at the end of drain.
+The schedules were still active and the reports did not track those
+runs' eventual disposition.
+
+Off reports [1](https://github.com/vigani1/pertexo/actions/runs/44907735724),
+[2](https://github.com/vigani1/pertexo/actions/runs/44907738174),
+[3](https://github.com/vigani1/pertexo/actions/runs/44907743382).
+On reports [1](https://github.com/vigani1/pertexo/actions/runs/44907637955),
+[2](https://github.com/vigani1/pertexo/actions/runs/44907740698),
+[3](https://github.com/vigani1/pertexo/actions/runs/44907638261).
+
+### Worker allocator diagnosis
+
+A separate on-mode run used the fixed build and the same worker-memory
+workload. Worker container memory grew 77.7 MiB/h. After the run queue
+drained, the runner called `malloc_trim(0)` in the worker. Worker RSS fell
+from 550.0 to 335.8 MiB. Arena RSS fell from 228.4 to 17.1 MiB while V8's
+committed heap stayed at 172.3 MiB. The allocator had freed pages that
+were still resident in its arenas. The similarly sized arena spikes in
+off-mode runs show that this can happen without inline execution.
+[Allocator probe](https://github.com/vigani1/pertexo/actions/runs/44912691479) ·
+[glibc discussion of interior free pages](https://sourceware.org/pipermail/libc-alpha/2026-April/176852.html).
+
+A separate trial set `MALLOC_ARENA_MAX=2` for the worker. Container
+memory grew 8.0 MiB/h, arena RSS grew 0.5 MiB/h, and peak worker RSS was
+476.1 MiB. It stored 10,366 runs, including 4,957 successful inline Sets,
+with zero lost, duplicated or stranded runs and zero restarts.
+[Capped-arena trial](https://github.com/vigani1/pertexo/actions/runs/44917288966).
+
+### Capped worker requalification
+
+The next build used the worker cap in the single-server Compose file at
+`2208f39ec3077ff2c4c62c94fdd13d543e062e50`. The Compose config test failed
+without the environment setting and passed with it. The paired J7 suite
+passed all 2,400 runs on this build. The 10-step burst took 95.70
+[94.02–100.34] seconds off and 24.04 [23.18–24.56] seconds on.
+Median transactions per run went from 125.55 to 25.27, Redis commands
+from 1,212.40 to 248.13, and queue hops from 25 to 5.
+[J7 report](https://github.com/vigani1/pertexo/actions/runs/44923855570/job/136905537657).
+
+All six capped overload jobs passed the simulation assertions. Median
+drain was 508.73 [501.08–511.58] seconds off and 153.21
+[149.84–172.96] seconds on. Slow admission began at a median of
+20 requests/s in both modes. One on-mode job reached slow admission at
+10 requests/s and returned 261 HTTP 429 responses at that rate. Its
+flood request p95 was 11.50 seconds at that stage, against 0.53–0.85
+seconds in the capped off controls. No sample captured a wait on
+the shared workspace fence. [On-mode overload outlier](https://github.com/vigani1/pertexo/actions/runs/44923855382).
+
+All six steady jobs passed. Median run start p95 was 618 [582–996] ms
+off and 618 [582–624] ms on. Median drain was 13.86 [10.61–22.88]
+seconds off and 22.11 [20.93–24.31] seconds on.
+
+| Capped worker-memory metric | Inline off | Inline on |
+| --- | ---: | ---: |
+| Container growth | 35.3 [12.8–72.6] MiB/h | 68.9 [54.3–118.6] MiB/h |
+| Growth outside V8 heap and external buffers | 28.7 [2.4–66.3] MiB/h | 61.3 [51.8–113.4] MiB/h |
+| glibc main heap growth | 3.9 [1.0–65.7] MiB/h | 55.3 [45.5–133.6] MiB/h |
+
+The cap failed the memory bound in all three on-mode jobs and two
+off-mode jobs. In the on-mode failures, growth moved into glibc's main
+heap. The cap remains an experiment. **The rollout gate failed and
+inline stays off by default.** The API restart and 502 responses from
+the uncapped build did not recur in the capped overload jobs.
+All 18 capped jobs recorded zero lost, duplicated or stranded runs.
+The two failed provider calls were both from the intentionally flaky
+HTTP fixture.
+
+Off reports [1](https://github.com/vigani1/pertexo/actions/runs/44923893536),
+[2](https://github.com/vigani1/pertexo/actions/runs/44923897378),
+[3](https://github.com/vigani1/pertexo/actions/runs/44923902647).
+On reports [1](https://github.com/vigani1/pertexo/actions/runs/44923855382),
+[2](https://github.com/vigani1/pertexo/actions/runs/44923900262),
+[3](https://github.com/vigani1/pertexo/actions/runs/44923855570).
