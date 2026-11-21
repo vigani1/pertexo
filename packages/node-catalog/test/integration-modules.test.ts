@@ -1,11 +1,14 @@
 import { createHash } from 'node:crypto';
-import { HTTP_MODULE, SLACK_MODULE } from '@pertexo/integrations/server';
+import { INTEGRATION_MODULES } from '@pertexo/integrations/server';
 import { expect, it } from 'vitest';
 import { registerIntegrationModules } from '../src/integration-modules.js';
 import {
   PLATFORM_NODE_CATALOG,
   platformBrowserNodeDefinitionCatalog,
 } from '../src/index.js';
+
+const http = INTEGRATION_MODULES.find(({ key }) => key === 'http')!;
+const slack = INTEGRATION_MODULES.find(({ key }) => key === 'slack')!;
 
 it('preserves the published catalog and every legacy browser projection byte for byte', () => {
   const digest = (value: unknown) =>
@@ -25,18 +28,12 @@ it('preserves the published catalog and every legacy browser projection byte for
 
 it('refuses two modules with the same key during catalog assembly', () => {
   expect(() =>
-    registerIntegrationModules([
-      HTTP_MODULE,
-      { ...SLACK_MODULE, key: HTTP_MODULE.key },
-    ]),
+    registerIntegrationModules([http, { ...slack, key: http.key }]),
   ).toThrow('Duplicate integration module key: http');
 });
 
 it('refuses two modules that claim the same step during catalog assembly', () => {
   expect(() =>
-    registerIntegrationModules([
-      HTTP_MODULE,
-      { ...SLACK_MODULE, steps: HTTP_MODULE.steps },
-    ]),
+    registerIntegrationModules([http, { ...slack, steps: http.steps }]),
   ).toThrow('Duplicate integration step key: http.request');
 });

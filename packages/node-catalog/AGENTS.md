@@ -28,8 +28,8 @@ configuration.
 
 ## Where new code goes
 
-- A new integration: register its module in `integration-modules.ts` and,
-  if it executes, wire its executor in `server.ts`.
+- A new integration: add its module to `../integrations/src/modules.ts`.
+  The catalog derives its registration and executor from that list.
 - A new connection slot: declare it with its owning integration connection.
   `portable-definition-policy.ts` derives the portable slots from the registry.
 - A new browser field: `PlatformNodeDefinitionBrowserProjection` and its

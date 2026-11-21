@@ -21,6 +21,8 @@ reads the environment.
 ## Layout
 
 - `src/index.ts`, `src/server.ts`: the entries.
+- `src/modules.ts`: the explicit discovery list (see `ROOT_CONCEPTS` in
+  `infrastructure/checks/validate-package-roots.mjs`).
 - `http/`: content types, the outcome policy, `Retry-After` parsing and its
   failures (`retry-after.ts`, `retry-after.errors.ts`), and the
   HTTP request step (`request/`, with `execution/`, `multipart/` and
@@ -41,8 +43,8 @@ Each step is `<provider>/<step>/<step>.definition.ts`, `.executor.ts`,
 
 ## Where new code goes
 
-- A new provider step: `<provider>/<step>/` with those four files, listed in
-  `node-catalog`; provider-wide code (client, health, rejection policy) sits
+- A new provider step: `<provider>/<step>/` with those four files, registered through its module in
+  `src/modules.ts`; provider-wide code (client, health, rejection policy) sits
   in `<provider>/`.
 - A provider failure: built with `providerFailure` (`providers/provider.errors.ts`)
   so it carries the closed codes and retry facts every step reports.
