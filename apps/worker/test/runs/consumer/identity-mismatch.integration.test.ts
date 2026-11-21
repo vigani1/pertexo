@@ -45,6 +45,7 @@ describeIntegration('Coordinator transport identity fencing', () => {
         max: 4,
       }),
       maximumAdmissions: 1,
+      inlineSteps: coordinatorFixture.inlineSteps,
       redisUrl,
     });
     const producer = createQueueProducer({ redisUrl });

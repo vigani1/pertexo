@@ -6,6 +6,9 @@ import { afterAll } from 'vitest';
 
 import { createRedisTestNamespace } from '../../infrastructure/redis-test-namespace.js';
 
+export const inlineSteps =
+  process.env.WORKFLOW_COORDINATOR_INLINE_STEPS === 'true';
+
 export const enabled = process.env.WORKER_TRANSPORT_INTEGRATION === 'true';
 
 export const adminUrl = testStackSetting('DATABASE_ADMIN_URL');

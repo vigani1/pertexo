@@ -37,7 +37,7 @@ import type {
   AcceptedReplayRun,
 } from './coordinator-runs.types.js';
 
-async function acceptFixtureRun(
+export async function acceptFixtureRun(
   input: Readonly<{
     iterationBudget: number;
     workflowId: string;

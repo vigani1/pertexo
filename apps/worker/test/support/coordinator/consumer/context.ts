@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import {
   enabled,
+  inlineSteps,
   adminUrl,
   apiUrl,
   workerUrl,
@@ -71,6 +72,7 @@ export const coordinatorFixture: CoordinatorIntegrationFixture = Object.freeze({
   databaseUrl,
   dispatcherUrl,
   enabled,
+  inlineSteps,
   forEachWorkflowId,
   forEachWorkflowVersionId,
   nestedParallelWorkflowId,

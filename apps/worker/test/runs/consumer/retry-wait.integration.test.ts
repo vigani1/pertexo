@@ -1,3 +1,4 @@
+import { inlineSteps } from '../../support/coordinator/consumer/environment.js';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import {
   restoreServicesAndClose,
@@ -159,6 +160,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
       dueWakeupBatchSize: 10,
       dueWakeupPollIntervalMillis: 25,
       maximumAdmissions: 2,
+      inlineSteps,
       redisUrl,
     };
     const beforeDue = await testCoordinatorRuntime(runtimeOptions, {
@@ -384,6 +386,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
       }),
       database,
       maximumAdmissions: 1,
+      inlineSteps,
       redisUrl,
     });
     const attempts = await testNodeAttemptRuntime(
@@ -582,6 +585,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
         }),
         database,
         maximumAdmissions: 1,
+        inlineSteps,
         redisUrl,
       });
       await coordinator.consumer.waitUntilReady(5_000);
@@ -651,6 +655,7 @@ describeIntegration('Retry and Wait outage recovery', () => {
         }),
         database,
         maximumAdmissions: 1,
+        inlineSteps,
         redisUrl,
       });
       await coordinator.consumer.waitUntilReady(5_000);

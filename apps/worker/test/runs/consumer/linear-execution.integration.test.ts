@@ -67,6 +67,7 @@ describeIntegration('Linear node execution resilience', () => {
       }),
       database,
       maximumAdmissions: 1,
+      inlineSteps: coordinatorFixture.inlineSteps,
       redisUrl,
     });
     const attempts = await testNodeAttemptRuntime(

@@ -1,3 +1,4 @@
+import { inlineSteps } from '../consumer/environment.js';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 
 import {
@@ -43,6 +44,7 @@ export async function createCoordinatorRedeliveryHarness(
         max: 4,
       }),
       maximumAdmissions: 1,
+      inlineSteps,
       redisUrl,
     });
     owners.push(() => runtime.close());
