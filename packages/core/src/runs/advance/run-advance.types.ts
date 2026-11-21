@@ -26,8 +26,6 @@ export type RunAdvanceState = Readonly<{
   completedOutputs: readonly unknown[];
   /** A loan explicitly fences new parent node admissions. */
   hasExecutionSlot: boolean;
-  /** The advance holds the workspace capacity counter until it commits. */
-  reacquiredExecutionSlot?: true;
   callOutcomes: readonly WorkflowCallOutcome[];
   taskOutcomes: readonly PendingTaskOutcome[];
   workflow: WorkflowExecutionProjection;

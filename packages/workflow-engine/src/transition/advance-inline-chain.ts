@@ -43,7 +43,6 @@ export interface InlineAdvanceOptions {
   readonly monotonicNow: () => number;
   readonly newAttemptId: () => string;
   readonly canStore?: (value: JsonValue) => boolean;
-  readonly deferUntilNextAdvance?: true;
   readonly deadlineAt?: number;
   readonly expressionEvaluator?: ExpressionEvaluator;
   readonly readValues: (
@@ -106,11 +105,8 @@ export async function advanceInlineChain(
   const settled: InlineAttemptSettlement[] = [];
   const chain = { input, options, state, nodes, settled };
   const stopAt = options.monotonicNow() + INLINE_ADVANCE_BUDGET.millis;
-  let frontier = inlineFrontier(chain);
-  if (options.deferUntilNextAdvance && frontier.kind === 'inline')
-    return finish(state, { yieldInline: true });
-
   let occurredAt = input.occurredAt;
+  let frontier = inlineFrontier(chain);
   for (; frontier.kind === 'inline'; frontier = inlineFrontier(chain)) {
     const { candidate } = frontier;
     assertNotAborted(input.signal);
