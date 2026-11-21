@@ -10,6 +10,10 @@ import {
 } from '../observation/coordinator-tasks.js';
 
 import { advanceWorkflowFromSchedulerState } from './advance.js';
+import {
+  advanceInlineChain,
+  type InlineAdvanceOptions,
+} from './advance-inline-chain.js';
 
 import { resolveAttemptFailures } from '../observation/coordinator-failures.js';
 import {
@@ -51,6 +55,7 @@ import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executa
 import { assertIdentity, assertNotAborted } from '../attempt/admission.js';
 export interface AdvanceWorkflowInput {
   readonly test?: WorkflowTestPolicy;
+  readonly inline?: InlineAdvanceOptions;
   readonly runId: string;
   readonly executable: CompiledWorkflowExecutable;
   readonly workflowVersionId: string;
@@ -178,7 +183,7 @@ export async function advanceWorkflow(
     nodesById,
     invocationsByKey,
   });
-  const plan = advanceWorkflowFromSchedulerState({
+  const schedulerInput = {
     checkpoint,
     schedulerState: applyWorkflowTestPolicy(
       schedulerState(input.executable),
@@ -208,7 +213,16 @@ export async function advanceWorkflow(
     occurredAt: input.occurredAt,
     maximumAdmissions: input.maximumAdmissions,
     hasExecutionSlot: input.hasExecutionSlot ?? true,
-  });
+  };
+  const plan =
+    input.inline === undefined
+      ? advanceWorkflowFromSchedulerState(schedulerInput)
+      : await advanceInlineChain(
+          input,
+          schedulerInput,
+          nodesById,
+          input.inline,
+        );
   assertNotAborted(input.signal);
   return Object.freeze({
     ...plan,

@@ -1,11 +1,18 @@
 import { isIntegrationExecutorSummaryCode } from '@pertexo/node-catalog/server';
+import {
+  WorkflowEngineError,
+  type EngineErrorCode,
+} from '@pertexo/workflow-engine/server';
 import { SUMMARY_RESULT_FAILURE } from '@pertexo/nodes-core';
 import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import {
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
 } from '@pertexo/core/attempts';
-import type { NodeExecutorFailure } from '@pertexo/node-sdk/server';
+import {
+  describeNodeRefusal,
+  NodeExecutorFailure,
+} from '@pertexo/node-sdk/server';
 
 import {
   FILE_PAGES_ERROR_CODE,
@@ -37,7 +44,10 @@ const executorSummaryCodes = new Set<string>([
 /** Admit executor diagnostics before private failure text reaches persistence. */
 export function executorFailureCompletion(
   error: NodeExecutorFailure,
-): Parameters<NodeAttemptRunStore['complete']>[0]['outcome'] {
+): Extract<
+  Parameters<NodeAttemptRunStore['complete']>[0]['outcome'],
+  { status: 'executor_failure' }
+> {
   const summary = describeMappingFailure(error) ?? error.shownSummary;
   const safeErrorCode = error.safeErrorCode ?? `execution.${error.errorKind}`;
   if (
@@ -57,4 +67,34 @@ export function executorFailureCompletion(
     safeErrorCode,
     ...(summary === undefined ? {} : { errorSummary: summary }),
   };
+}
+
+const STEP_REFUSAL_CODES: ReadonlySet<EngineErrorCode> = new Set([
+  'attempt_invalid',
+  'variable_missing',
+  'expression_failed',
+  'expression_limit_exceeded',
+]);
+
+export function nodeFailureCompletion(
+  error: unknown,
+): ReturnType<typeof executorFailureCompletion> | undefined {
+  if (error instanceof NodeExecutorFailure)
+    return executorFailureCompletion(error);
+  if (
+    error instanceof WorkflowEngineError &&
+    STEP_REFUSAL_CODES.has(error.code)
+  ) {
+    const reason =
+      describeMappingFailure(error) ?? describeNodeRefusal(error.cause);
+    return {
+      status: 'executor_failure',
+      failureKind: 'failed',
+      errorKind: 'configuration',
+      possiblyDispatched: false,
+      safeErrorCode: `execution.${error.code}`,
+      ...(reason === undefined ? {} : { errorSummary: reason }),
+    };
+  }
+  return undefined;
 }

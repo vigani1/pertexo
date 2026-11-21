@@ -1,6 +1,5 @@
-import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import { isStoredDataError } from '@pertexo/core/shared';
-import { executorFailureCompletion } from './executor-failure.js';
+import { nodeFailureCompletion } from './executor-failure.js';
 import { codeCompletionFields } from '../code/diagnostics.js';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import {
@@ -13,15 +12,6 @@ import { loadAttemptInputs, type NodeAttemptInputs } from '@pertexo/core/runs';
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
 import type { QueueHandlerContext } from '@pertexo/queue/server';
 import type { NodeAttemptOutcome } from '@pertexo/workflow-engine/server';
-import {
-  WorkflowEngineError,
-  type EngineErrorCode,
-} from '@pertexo/workflow-engine/server';
-
-import {
-  describeNodeRefusal,
-  NodeExecutorFailure,
-} from '@pertexo/node-sdk/server';
 
 import {
   createNodeExecutionEnvironment,
@@ -55,13 +45,6 @@ export {
   type NodeAttemptHandlerDependencies,
 } from './node-attempt-delivery.types.js';
 
-// The step's input or setup can't work; each code becomes `execution.<code>`.
-const STEP_REFUSAL_CODES: ReadonlySet<EngineErrorCode> = new Set([
-  'attempt_invalid',
-  'variable_missing',
-  'expression_failed',
-  'expression_limit_exceeded',
-]);
 /**
  * Keeps the input the executor receives for the run page (ADR 052). It is
  * diagnostic: a store without it, a lost lease or a failed write records
@@ -141,38 +124,13 @@ async function executePreparedNodeAttempt(
       },
     );
     if (interruption !== undefined) return interruption;
-    if (error instanceof NodeExecutorFailure) {
+    const outcome = nodeFailureCompletion(error);
+    if (outcome !== undefined) {
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
         ...codeCompletionFields(environment),
         lease,
-        outcome: executorFailureCompletion(error),
-        ...traceContext,
-        signal: contextSignal,
-      });
-      return await completionResult(dependencies, lease, completed.kind);
-    }
-    if (
-      error instanceof WorkflowEngineError &&
-      STEP_REFUSAL_CODES.has(error.code)
-    ) {
-      // The step's input or setup can't work: a definite failure of the step
-      // itself, so the coordinator decides it like any other and its failure
-      // link can take it.
-      const reason =
-        describeMappingFailure(error) ?? describeNodeRefusal(error.cause);
-      const completed = await dependencies.runStore.complete({
-        ...connectionHealthCompletionFields(environment),
-        ...codeCompletionFields(environment),
-        lease,
-        outcome: {
-          status: 'executor_failure',
-          failureKind: 'failed',
-          errorKind: 'configuration',
-          possiblyDispatched: false,
-          safeErrorCode: `execution.${error.code}`,
-          ...(reason === undefined ? {} : { errorSummary: reason }),
-        },
+        outcome,
         ...traceContext,
         signal: contextSignal,
       });

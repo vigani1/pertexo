@@ -11,6 +11,10 @@ import { generatePersistedId } from '@pertexo/database/platform';
 import type { PoolClient } from 'pg';
 import { CoordinatorRunStateCorruptError } from '../../coordinator-state.errors.js';
 
+import { completionFields } from '../../../../attempts/completion/apply-completion.js';
+import { attemptOutcomeFields } from '../../../../attempts/completion/outcomes.repository.js';
+import { serializeStoredExecutionValue } from '../../../../shared/stored-execution.js';
+import { TERMINAL_NODE_FIELDS } from '../settlement.repository.js';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import type { ExecutionIdentityMap } from './execution-identity.types.js';
 
@@ -26,7 +30,16 @@ export async function persistNodeAdmissions(
     ),
   );
   const attempts = new Map(
-    plan.attempts.map((attempt) => [attempt.invocationKey, attempt]),
+    [...plan.attempts, ...(plan.inlineAttempts ?? [])].map((attempt) => [
+      attempt.invocationKey,
+      attempt,
+    ]),
+  );
+  const inlineIds = new Map(
+    plan.inlineAttempts?.map(({ invocationKey, attemptId }) => [
+      invocationKey,
+      attemptId,
+    ]),
   );
   const physical: ExecutionIdentityMap = new Map();
   const rows: PgInsertValue<typeof nodeRuns>[] = [];
@@ -35,7 +48,10 @@ export async function persistNodeAdmissions(
     if (invocation === undefined) throw new CoordinatorRunStateCorruptError();
     const attempt = attempts.get(admission.invocationKey);
     const nodeRunId = generatePersistedId();
-    const attemptId = attempt === undefined ? undefined : generatePersistedId();
+    const attemptId =
+      attempt === undefined
+        ? undefined
+        : (inlineIds.get(attempt.invocationKey) ?? generatePersistedId());
     const status = admittedNodeStatus(invocation);
     rows.push({
       id: nodeRunId,
@@ -89,7 +105,11 @@ export async function persistAttemptAdmissions(
   const { physical, plan, runId, traceparent, workspaceId } = input;
   const attemptRows: PgInsertValue<typeof nodeAttempts>[] = [];
   const outboxRows: PgInsertValue<typeof outboxEvents>[] = [];
-  for (const attempt of plan.attempts) {
+  const inlineAttempts = new Map(
+    plan.inlineAttempts?.map((attempt) => [attempt.invocationKey, attempt]),
+  );
+  for (const attempt of [...plan.attempts, ...(plan.inlineAttempts ?? [])]) {
+    const inline = inlineAttempts.get(attempt.invocationKey);
     let ids = physical.get(attempt.invocationKey);
     if (ids === undefined) {
       const [node] = await drizzle(client)
@@ -107,7 +127,7 @@ export async function persistAttemptAdmissions(
       if (node === undefined) throw new CoordinatorRunStateCorruptError();
       ids = {
         nodeRunId: node.id,
-        attemptId: generatePersistedId(),
+        attemptId: inline?.attemptId ?? generatePersistedId(),
         attemptNumber: attempt.attemptNumber,
       };
       physical.set(attempt.invocationKey, ids);
@@ -138,6 +158,24 @@ export async function persistAttemptAdmissions(
     }
     if (ids.attemptId === undefined)
       throw new CoordinatorRunStateCorruptError();
+    if (inline !== undefined) {
+      const persisted = await persistInlineNodeOutcome(
+        client,
+        workspaceId,
+        ids.nodeRunId,
+        inline,
+      );
+      attemptRows.push({
+        ...persisted,
+        id: ids.attemptId,
+        workspaceId,
+        nodeRunId: ids.nodeRunId,
+        attemptNumber: attempt.attemptNumber,
+        sideEffectClass: attempt.sideEffectClass,
+        admissionKind: attempt.admissionKind,
+      });
+      continue;
+    }
     attemptRows.push({
       id: ids.attemptId,
       workspaceId,
@@ -174,6 +212,8 @@ export async function persistAttemptAdmissions(
       .catch(rethrowQueryFailure);
     if (insertedAttempts.rowCount !== attemptRows.length)
       throw new CoordinatorRunStateCorruptError();
+  }
+  if (outboxRows.length > 0) {
     const insertedOutbox = await drizzle(client)
       .insert(outboxEvents)
       .values(outboxRows)
@@ -193,4 +233,80 @@ function admittedNodeStatus(
     return 'skipped';
   }
   return 'ready';
+}
+
+async function persistInlineNodeOutcome(
+  client: PoolClient,
+  workspaceId: string,
+  nodeRunId: string,
+  attempt: NonNullable<WorkflowTransitionPlan['inlineAttempts']>[number],
+) {
+  const fields = completionFields(inlineCompletionOutcome(attempt));
+  const output =
+    attempt.kind === 'succeeded'
+      ? serializeStoredExecutionValue({ kind: 'inline', value: attempt.output })
+      : null;
+  const input =
+    attempt.input === undefined
+      ? null
+      : serializeStoredExecutionValue({ kind: 'inline', value: attempt.input });
+  const disposition =
+    attempt.kind === 'executor_failure' ? attempt.disposition : undefined;
+  const retrying = disposition === 'retry';
+  const status = retrying ? 'waiting' : (disposition ?? fields.durableStatus);
+  const startedAt = sql`${attempt.startedAt}::timestamptz`;
+  const completedAt = sql`statement_timestamp()`;
+  const node = await drizzle(client)
+    .update(nodeRuns)
+    .set({
+      ...TERMINAL_NODE_FIELDS,
+      status,
+      inputRef: sql`${input}::json`,
+      outputRef: sql`${output}::json`,
+      safeErrorCode: fields.safeErrorCode,
+      startedAt: sql`coalesce(${nodeRuns.startedAt}, ${startedAt})`,
+      completedAt: retrying ? null : completedAt,
+      waitKind: retrying ? 'retry_backoff' : null,
+      retryDueAt:
+        attempt.kind === 'executor_failure' && attempt.disposition === 'retry'
+          ? sql`${attempt.dueAt}::timestamptz`
+          : null,
+    })
+    .where(
+      and(
+        eq(nodeRuns.workspaceId, workspaceId),
+        eq(nodeRuns.id, nodeRunId),
+        eq(nodeRuns.currentAttemptId, attempt.attemptId),
+        eq(nodeRuns.status, 'ready'),
+      ),
+    )
+    .catch(rethrowQueryFailure);
+  if (node.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
+  return {
+    ...attemptOutcomeFields(fields, output, disposition),
+    startedAt,
+    completedAt,
+  };
+}
+
+function inlineCompletionOutcome(
+  attempt: NonNullable<WorkflowTransitionPlan['inlineAttempts']>[number],
+): Parameters<typeof completionFields>[0] {
+  if (attempt.kind === 'succeeded')
+    return { status: 'succeeded', output: attempt.output };
+  if (attempt.kind !== 'executor_failure')
+    return { status: attempt.kind, safeErrorCode: attempt.safeErrorCode };
+  return {
+    status: 'executor_failure',
+    failureKind: attempt.failureKind,
+    errorKind: attempt.errorKind,
+    safeErrorCode: attempt.safeErrorCode,
+    possiblyDispatched: false,
+    ...(attempt.errorSummary === undefined
+      ? {}
+      : { errorSummary: attempt.errorSummary }),
+    ...(attempt.minimumRetryDelayMillis === undefined
+      ? {}
+      : { minimumRetryDelayMillis: attempt.minimumRetryDelayMillis }),
+  };
 }

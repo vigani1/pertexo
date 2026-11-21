@@ -62,14 +62,18 @@ async function advance(
         if (loaded.kind !== 'loaded') return loaded;
         failedRevision = loaded.row.revision;
         assertCoordinatorNotAborted(signal);
+        if (
+          (await claimCoordinatorReceipt(client, workspaceId, delivery)) ===
+          'duplicate'
+        )
+          return Object.freeze({
+            kind: 'already_committed',
+            revision: loaded.row.revision,
+          });
         const decision = await decide(loaded.state);
         assertCoordinatorNotAborted(signal);
         if (decision.kind === 'no_change') {
-          if (
-            (await claimCoordinatorReceipt(client, workspaceId, delivery)) ===
-            'new'
-          )
-            await completeCoordinatorReceipt(client, workspaceId, delivery);
+          await completeCoordinatorReceipt(client, workspaceId, delivery);
           return Object.freeze({
             kind: 'no_change',
             revision: loaded.row.revision,

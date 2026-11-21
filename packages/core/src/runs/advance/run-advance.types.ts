@@ -1,3 +1,4 @@
+import type { InlineAdvanceOptions } from '@pertexo/workflow-engine/server';
 import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
 import type {
   WorkflowCallOutcome,
@@ -28,6 +29,8 @@ export type RunAdvanceState = Readonly<{
   callOutcomes: readonly WorkflowCallOutcome[];
   taskOutcomes: readonly PendingTaskOutcome[];
   workflow: WorkflowExecutionProjection;
+  deadlineAt?: number;
+  readInlineValues?: InlineAdvanceOptions['readValues'];
   /** On-demand completion projection using the already locked run transaction. */
   readCompletionValues(nodeIds?: readonly string[]): Promise<
     Readonly<{
@@ -69,6 +72,19 @@ export type RunAdvanceResult =
         attemptId: string;
       }>[];
       scheduleToStartSeconds?: number;
+      inline?: Readonly<{
+        lastEventSequence: number;
+        metrics: readonly Readonly<{
+          outcome:
+            | 'succeeded'
+            | 'failed'
+            | 'timed_out'
+            | 'canceled'
+            | 'outcome_unknown'
+            | 'retry';
+          durationMillis: number;
+        }>[];
+      }>;
     }>
   | Readonly<{
       kind: 'already_committed' | 'deferred' | 'no_change';

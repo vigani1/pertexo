@@ -27,7 +27,7 @@ import {
   operationError,
   record,
 } from '../input-checks/engine-values.js';
-import type { ExecuteNodeAttemptInput } from './node-attempt.types.js';
+import type { NodeAttemptInputSource } from './node-attempt.types.js';
 import { invocationKey as createInvocationKey } from '../invocations/invocation-identity.js';
 
 // Predecessor outputs arrive keyed by step and invocation: JSON may spend six
@@ -50,7 +50,7 @@ export type PreparedNodeAttemptInput = Readonly<{
 }>;
 
 function assertStructuredScope(
-  input: ExecuteNodeAttemptInput,
+  input: NodeAttemptInputSource,
   ancestors: readonly string[],
 ): void {
   if (
@@ -68,7 +68,7 @@ function assertStructuredScope(
 }
 
 function expectedInvocationKey(
-  input: ExecuteNodeAttemptInput,
+  input: NodeAttemptInputSource,
   nodeId: string,
 ): string {
   return createInvocationKey({
@@ -96,7 +96,7 @@ function parseCompletedDescriptor(
     graph,
     directUpstream,
   }: Readonly<{
-    input: ExecuteNodeAttemptInput;
+    input: NodeAttemptInputSource;
     node: WorkflowExecutableNode;
     graph: WorkflowExecutableGraph;
     directUpstream: ReadonlySet<string>;
@@ -147,7 +147,7 @@ function parseCompletedOutputs(
     graph,
     directUpstream,
   }: Readonly<{
-    input: ExecuteNodeAttemptInput;
+    input: NodeAttemptInputSource;
     node: WorkflowExecutableNode;
     graph: WorkflowExecutableGraph;
     directUpstream: ReadonlySet<string>;
@@ -212,7 +212,7 @@ function parseCompletedOutputs(
 }
 
 function parseStructuredInputs(
-  input: ExecuteNodeAttemptInput,
+  input: NodeAttemptInputSource,
 ): Readonly<Record<string, JsonValue>> | undefined {
   const iterationPath = input.iterationPath;
   if (iterationPath === undefined || iterationPath.length === 0)
@@ -254,7 +254,7 @@ function parseStructuredInputs(
 }
 
 export function prepareNodeAttemptInput(
-  input: ExecuteNodeAttemptInput,
+  input: NodeAttemptInputSource,
 ): PreparedNodeAttemptInput {
   let runInput: JsonValue;
   let variables: WorkspaceVariableValues;

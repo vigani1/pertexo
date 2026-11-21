@@ -66,6 +66,7 @@ export const workerConfig = {
   coordinator: {
     dueWakeupBatchSize: 25,
     dueWakeupPollIntervalMillis: 250,
+    inlineSteps: false,
     maximumAdmissions: 32,
   },
   workspaceInbox: {

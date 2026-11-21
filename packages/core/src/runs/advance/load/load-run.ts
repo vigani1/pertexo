@@ -30,7 +30,10 @@ import {
 } from './facts.repository.js';
 import { pendingFailureObservations } from './pending-failures.js';
 import { readCallFacts } from '../../calls/facts.repository.js';
-import { readRunCompletionValues } from './completion.repository.js';
+import {
+  readInlineValues,
+  readRunCompletionValues,
+} from './completion.repository.js';
 
 type LockedCoordinatorRow = Awaited<
   ReturnType<typeof lockRunForAdvance>
@@ -198,6 +201,18 @@ async function loadLockedRunState(
       observations: Object.freeze(observations),
       completedOutputs: Object.freeze(completedOutputs),
       workflow: version,
+      ...(deadlineAt === null ? {} : { deadlineAt: deadlineAt.getTime() }),
+      readInlineValues: (request: Parameters<typeof readInlineValues>[2]) =>
+        readInlineValues(
+          client,
+          {
+            workspaceId,
+            runId,
+            inputRef: row.input_ref,
+            variableSetRevision: row.variable_set_revision,
+          },
+          request,
+        ),
       readCompletionValues: (nodeIds?: readonly string[]) =>
         readRunCompletionValues(client, {
           workspaceId,

@@ -3,6 +3,7 @@ import {
   STORED_EXECUTION_VALUE_LIMITS,
   StoredExecutionValueInvalidError,
 } from '@pertexo/node-sdk';
+import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import type { RunAdvanceState } from './run-advance.types.js';
 import { RunResultUnavailableError } from './run-advance.errors.js';
 import type { CallableResultDecision } from '@pertexo/workflow-engine/server';
@@ -19,7 +20,10 @@ import {
 /** Read retained physical outputs only for the provisional success transition. */
 export async function resolveRunResult(
   callable: CallableDeclaration,
-  state: Pick<RunAdvanceState, 'readCompletionValues'>,
+  state: Pick<RunAdvanceState, 'readCompletionValues'> &
+    Readonly<{
+      inlineAttempts?: WorkflowTransitionPlan['inlineAttempts'];
+    }>,
   signal: AbortSignal,
   evaluator?: ExpressionEvaluator,
 ): Promise<CallableResultDecision> {
@@ -27,7 +31,18 @@ export async function resolveRunResult(
   const inputs = await state.readCompletionValues(resultOutputIds(source));
   signal.throwIfAborted();
   const groups = new Map<string, typeof inputs.outputs>();
-  for (const output of inputs.outputs)
+  const inlineOutputs = (state.inlineAttempts ?? []).flatMap((attempt) =>
+    attempt.kind === 'succeeded'
+      ? [
+          {
+            nodeId: attempt.nodeId,
+            invocationKey: attempt.invocationKey,
+            value: attempt.output,
+          },
+        ]
+      : [],
+  );
+  for (const output of [...inputs.outputs, ...inlineOutputs])
     groups.set(output.nodeId, [...(groups.get(output.nodeId) ?? []), output]);
   const invalidInputs = validateResultInputs(source, inputs, groups);
   if (invalidInputs !== undefined) return invalidInputs;

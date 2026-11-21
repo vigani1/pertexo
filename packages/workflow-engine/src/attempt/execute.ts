@@ -1,5 +1,6 @@
 import { resolveAttemptCallbacks } from './callbacks.js';
 
+import type { CallbackBindings } from '@pertexo/workflow-model';
 import type { NodeExecutionResult } from '@pertexo/node-sdk/server';
 
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
@@ -9,9 +10,13 @@ import { normalizeBoundedEngineValue } from '../compilation/executable.validatio
 
 import { operationError } from '../input-checks/engine-values.js';
 
-import { prepareNodeAttemptInput } from './prepare-attempt-input.js';
+import {
+  prepareNodeAttemptInput,
+  type PreparedNodeAttemptInput,
+} from './prepare-attempt-input.js';
 import type {
   ExecuteNodeAttemptInput,
+  NodeAttemptInputSource,
   NodeAttemptOutcome,
 } from './node-attempt.types.js';
 
@@ -38,42 +43,14 @@ export async function executeNodeAttempt(
     'attempt_invalid',
   );
   assertNotAborted(input.signal);
-  const {
-    node,
-    runInput,
-    variables,
-    completedOutputs,
-    directUpstream,
-    structuredInputs,
-    sourceFailure,
-  } = prepareNodeAttemptInput(input);
+  const prepared = prepareNodeAttemptInput(input);
+  const { node } = prepared;
   const callbacks = await resolveAttemptCallbacks(input, node);
-  const resolvedInput = await resolveMappedNodeInput(
-    isCoreMergeDefinition(node.definition)
-      ? { ...node, inputMappings: {} }
-      : node,
-    {
-      runInput: runInput,
-      completedOutputs: completedOutputs,
-      directUpstream: directUpstream,
-      signal: input.signal,
-      expressionEvaluator: input.expressionEvaluator,
-      structuredInputs: structuredInputs,
-      sourceFailure: sourceFailure,
-      variables: variables,
-      callbacks: callbacks,
-    },
+  const executionInput = await mapPreparedAttemptInput(
+    input,
+    prepared,
+    callbacks,
   );
-  let executionInput = resolvedInput;
-  if (isCoreMergeDefinition(node.definition)) {
-    if (input.coordinatorInput === undefined)
-      operationError('attempt_invalid', 'settled Merge input is missing');
-    try {
-      executionInput = normalizeBoundedEngineValue(input.coordinatorInput);
-    } catch {
-      operationError('attempt_invalid', 'settled Merge input is invalid');
-    }
-  }
   // Recorded before the executor runs, so failed attempts keep it (ADR 052).
   await input.onInputResolved?.(executionInput);
   assertNotAborted(input.signal);
@@ -106,4 +83,50 @@ export async function executeNodeAttempt(
     kind: result.kind,
     output: result.output,
   };
+}
+
+export async function mapPreparedAttemptInput(
+  input: Pick<
+    NodeAttemptInputSource,
+    'signal' | 'expressionEvaluator' | 'coordinatorInput'
+  >,
+  prepared: PreparedNodeAttemptInput,
+  callbacks?: CallbackBindings,
+) {
+  const {
+    node,
+    runInput,
+    variables,
+    completedOutputs,
+    directUpstream,
+    structuredInputs,
+    sourceFailure,
+  } = prepared;
+  const resolvedInput = await resolveMappedNodeInput(
+    isCoreMergeDefinition(node.definition)
+      ? { ...node, inputMappings: {} }
+      : node,
+    {
+      runInput: runInput,
+      completedOutputs: completedOutputs,
+      directUpstream: directUpstream,
+      signal: input.signal,
+      expressionEvaluator: input.expressionEvaluator,
+      structuredInputs: structuredInputs,
+      sourceFailure: sourceFailure,
+      variables: variables,
+      callbacks: callbacks,
+    },
+  );
+  let executionInput = resolvedInput;
+  if (isCoreMergeDefinition(node.definition)) {
+    if (input.coordinatorInput === undefined)
+      operationError('attempt_invalid', 'settled Merge input is missing');
+    try {
+      executionInput = normalizeBoundedEngineValue(input.coordinatorInput);
+    } catch {
+      operationError('attempt_invalid', 'settled Merge input is invalid');
+    }
+  }
+  return executionInput;
 }

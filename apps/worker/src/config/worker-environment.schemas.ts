@@ -145,6 +145,10 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
     OUTBOX_DISPATCH_RETRY_MILLIS: boundedSetting(
       WORKER_SETTING_BOUNDS.OUTBOX_DISPATCH_RETRY_MILLIS,
     ),
+    WORKFLOW_COORDINATOR_INLINE_STEPS: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
     WORKFLOW_COORDINATOR_MAX_ADMISSIONS: boundedSetting(
       WORKER_SETTING_BOUNDS.WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
     ),
@@ -238,6 +242,7 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
       OUTBOX_DISPATCH_OPERATION_TIMEOUT_MILLIS,
       OUTBOX_DISPATCH_POLL_MILLIS,
       OUTBOX_DISPATCH_RETRY_MILLIS,
+      WORKFLOW_COORDINATOR_INLINE_STEPS,
       WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
       WORKSPACE_INBOX_FOLD_BATCH_SIZE,
       WORKSPACE_INBOX_FOLD_POLL_MILLIS,
@@ -297,6 +302,7 @@ export const workerConfigSchema = databaseClientEnvironmentSchema
       coordinator: {
         dueWakeupBatchSize: WORKFLOW_DUE_WAKEUP_BATCH_SIZE,
         dueWakeupPollIntervalMillis: WORKFLOW_DUE_WAKEUP_POLL_MILLIS,
+        inlineSteps: WORKFLOW_COORDINATOR_INLINE_STEPS,
         maximumAdmissions: WORKFLOW_COORDINATOR_MAX_ADMISSIONS,
       },
       workspaceInbox: {

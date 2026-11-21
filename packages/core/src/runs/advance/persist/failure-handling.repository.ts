@@ -18,7 +18,7 @@ export async function persistFailureHandling(
     const source = plan.checkpoint.invocations.find(
       ({ invocationKey }) => invocationKey === selection.value.invocationKey,
     );
-    if (source?.failureHandling?.disposition !== 'pending')
+    if (source?.failureHandling === undefined)
       throw new CoordinatorRunStateCorruptError();
     const written = await drizzle(client)
       .update(nodeRuns)

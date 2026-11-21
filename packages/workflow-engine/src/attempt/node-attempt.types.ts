@@ -62,6 +62,16 @@ export interface ExecuteNodeAttemptInput {
   readonly onInputResolved?: (input: JsonValue) => Promise<void>;
 }
 
+export type NodeAttemptInputSource = Omit<
+  ExecuteNodeAttemptInput,
+  | 'runId'
+  | 'nodeRunId'
+  | 'attemptId'
+  | 'registry'
+  | 'runtime'
+  | 'onInputResolved'
+>;
+
 export interface NodeAttemptOutcome {
   readonly runId: string;
   readonly nodeRunId: string;

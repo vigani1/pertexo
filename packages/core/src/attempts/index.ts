@@ -34,3 +34,5 @@ export type {} from './attempt-reconciliation.js';
 
 export type {} from './attempt-events.repository.js';
 export type {} from './dispatch/fence.js';
+export type {} from './completion/apply-completion.js';
+export type {} from './completion/outcomes.repository.js';
