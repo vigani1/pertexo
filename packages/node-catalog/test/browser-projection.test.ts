@@ -17,7 +17,7 @@ function expectDeepFrozen(value: unknown): void {
 import { isLegacyDefinition } from './legacy-catalog.js';
 
 describe('browser-safe platform catalog projection', () => {
-  it('preserves the legacy browser projection of every shipping definition', () => {
+  it('preserves the browser projection and implicit execution class of every legacy definition', () => {
     const definitions = platformBrowserNodeDefinitionCatalog()
       .definitions.filter(({ definition }) => isLegacyDefinition(definition))
       .map(({ presentation: _presentation, ...projection }) => projection);
@@ -25,7 +25,9 @@ describe('browser-safe platform catalog projection', () => {
     expect(createHash('sha256').update(projection).digest('hex')).toBe(
       'b03fc3cb0eec3e7943bf07f0519a65d1c62c7243e98c21779cf8fe1715b31ab4',
     );
-    for (const manifest of PLATFORM_NODE_CATALOG.definitions)
+    for (const manifest of PLATFORM_NODE_CATALOG.definitions.filter(
+      ({ definition }) => isLegacyDefinition(definition),
+    ))
       expect(manifest, manifest.definition.key).not.toHaveProperty('execution');
   });
 
