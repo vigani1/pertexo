@@ -51,7 +51,6 @@ interface RunEdgeData extends Record<string, unknown> {
 type RunNode = Node<RunNodeData, 'runNode'>;
 type NodeSize = Readonly<{ width: number; height: number }>;
 type RunEdge = Edge<RunEdgeData, 'runEdge'>;
-
 // Each step on the overview map in its status colour, as on the tiles.
 const toneFill: Readonly<Record<StatusTone, string>> = {
   live: 'var(--primary)',
@@ -65,7 +64,6 @@ const toneFill: Readonly<Record<StatusTone, string>> = {
   skipped: 'color-mix(in srgb, var(--subtle-foreground) 45%, transparent)',
   neutral: 'color-mix(in srgb, var(--muted-foreground) 60%, transparent)',
 };
-
 const nodeTypes = Object.freeze({ runNode: WorkflowRunNode });
 const edgeTypes = Object.freeze({ runEdge: WorkflowRunEdge });
 
@@ -144,7 +142,6 @@ function ReadableFit({
   }, [initialFitDone]);
   return null;
 }
-
 const edgeStrokeClass: Readonly<Partial<Record<StatusTone, string>>> = {
   live: '!stroke-primary',
   success: '!stroke-success',

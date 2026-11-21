@@ -35,10 +35,13 @@ export function workflowIssuesView(
   >,
   graph: WorkflowGraphContract,
   draft: Readonly<{ generation: number; revision: number }>,
-  connectionIssues: readonly WorkflowIssue[] = [],
-  describe?: DescribeStep,
+  options: Readonly<{
+    connectionIssues?: readonly WorkflowIssue[];
+    describe?: DescribeStep;
+  }> = {},
 ): WorkflowIssuesView {
   const { validation } = publication;
+  const { connectionIssues = [], describe } = options;
   const validationGroups =
     validation === undefined
       ? undefined

@@ -23,8 +23,7 @@ export function useIssuesView(
         { validation, validationPending, validationError },
         graph,
         { generation, revision },
-        connectionIssues,
-        describeStep,
+        { connectionIssues, describe: describeStep },
       ),
     [
       generation,

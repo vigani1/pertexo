@@ -61,7 +61,6 @@ const TRIGGERS: Readonly<
 function TriggerIcons({
   graph,
 }: Readonly<{ graph: WorkflowShape | undefined }>) {
-  const describeStep = useStepDescriptions();
   if (graph === undefined) return null;
   const kinds = workflowTriggerKinds(graph);
   if (kinds.length === 0)
