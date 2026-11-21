@@ -555,3 +555,31 @@ caps then summed to 4,192 MiB. The fallback now uses the qualified 1,872 MiB
 Code preset, leaving 944 MiB on the minimum host for the remaining services
 and operating system. The failed overload run already used the smaller
 preset.
+
+### Fixed-build J7
+
+Build `e68d476044d9d6bfb87cb2c5278cb2a71df6e6f2` includes the immutable catalog
+fingerprint and the pinned jemalloc preload used by both load modes. The
+paired J7 harness completed all 2,400 runs. The table gives medians and
+[minimum–maximum]. Costs are per run unless marked per burst.
+
+| Metric | 1 step off | 10 steps off | 1 step on | 10 steps on |
+| --- | ---: | ---: | ---: | ---: |
+| Wall time per 200-run burst, s | 26.99 [26.97–29.76] | 91.06 [90.49–91.89] | 20.61 [20.48–21.07] | 23.67 [23.63–23.81] |
+| PostgreSQL transactions | 34.97 [34.11–35.06] | 126.20 [125.81–126.69] | 24.42 [24.09–24.46] | 25.55 [25.54–25.72] |
+| Client statements | 329.03 [327.29–329.05] | 1,092.58 [1,091.66–1,092.72] | 244.75 [244.35–245.63] | 263.29 [263.11–263.54] |
+| Redis commands | 353.60 [344.75–362.28] | 1,201.68 [1,193.24–1,208.40] | 249.57 [248.75–256.19] | 260.56 [255.33–261.92] |
+| Queue hops | 7 | 25 | 5 | 5 |
+| PostgreSQL CPU, ms | 167.92 [157.62–179.96] | 530.04 [527.52–534.02] | 123.05 [120.31–126.52] | 153.98 [153.93–160.06] |
+| Worker CPU, ms | 129.01 [128.11–149.96] | 458.32 [454.79–460.37] | 96.26 [94.03–104.51] | 112.58 [111.25–115.00] |
+
+| Marginal cost per added step | Inline off | Inline on |
+| --- | ---: | ---: |
+| PostgreSQL transactions | 10.18 [10.14–10.19] | 0.14 [0.12–0.16] |
+| Client statements | 84.85 [84.74–85.03] | 2.09 [1.94–2.10] |
+| Redis commands | 94.01 [93.29–95.21] | 1.31 [−0.10–1.37] |
+| Queue hops | 2 | 0 |
+| PostgreSQL CPU, ms | 40.24 [38.62–41.82] | 3.44 [3.05–4.42] |
+| Worker CPU, ms | 36.30 [34.49–36.59] | 1.81 [1.17–1.91] |
+
+[J7 workflow and raw report](https://github.com/vigani1/pertexo/actions/runs/44941896208).
