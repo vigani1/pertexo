@@ -1,3 +1,5 @@
+import { fetchDatabasePollItems } from './polling/fetch-items.js';
+import { PollFailure } from '@pertexo/workflow-model';
 import { POSTGRES_FAILURE_CODES } from '@pertexo/workflow-model';
 import { POSTGRES_CONNECTION } from './connections.definition.js';
 import { createDatabaseExecutorRegistration } from './execute/execute.executor.js';
@@ -22,6 +24,16 @@ export const DATABASE_MODULE = {
     {
       registration: DATABASE_POLL_DEFINITION_REGISTRATION,
       createExecutor: () => databasePollExecutor,
+      fetchPoll: async ({ config, ...input }, { database, connections }) => {
+        if (!('source' in config))
+          throw new PollFailure('database.poll_invalid_key');
+        const { connectionId, source: _source, ...settings } = config;
+        return fetchDatabasePollItems(
+          { ...input, config: settings, connectionId },
+          database,
+          connections?.(),
+        );
+      },
       presentation: { icon: 'webhook', group: 'trigger' },
     },
   ],

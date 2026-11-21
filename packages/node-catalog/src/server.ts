@@ -8,6 +8,7 @@ import {
 } from '@pertexo/node-sdk/server';
 import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
+import { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js';
 import { PLATFORM_NODE_CATALOG } from './catalog.js';
 import { INTEGRATION_MODULE_REGISTRY } from './integration-modules.js';
 
@@ -31,3 +32,14 @@ export function createPlatformNodeRegistry(
 /** Whether an integration declares this code safe for persisted summaries. */
 export const isIntegrationExecutorSummaryCode =
   INTEGRATION_MODULE_REGISTRY.acceptsExecutorSummary;
+
+/** Resolve the polling adapter for a pinned trigger definition. */
+export function resolvePlatformPollFetcher(definition: {
+  key: string;
+  version: number;
+}) {
+  const fetchPoll = INTEGRATION_MODULE_REGISTRY.pollFetcherFor(definition);
+  if (fetchPoll === undefined)
+    throw new PlatformNodeDefinitionUnavailableError();
+  return fetchPoll;
+}

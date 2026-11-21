@@ -1,3 +1,8 @@
+import type { NodeConnectionRuntime } from '@pertexo/node-sdk/server';
+import type {
+  MaterializedPollConfig,
+  JsonValue,
+} from '@pertexo/workflow-model';
 import type { ProviderHttpClient } from './http-client.js';
 import type { ConnectionDefinition } from './connection-definition.js';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
@@ -24,6 +29,21 @@ export type IntegrationExecutorDependencies = Readonly<{
   emailSendNotificationTelemetry?: EmailSendNotificationExecutorDependencies['telemetry'];
 }>;
 
+export type IntegrationPollFetcher = (
+  input: Readonly<{
+    config: MaterializedPollConfig;
+    seenKeys: readonly string[];
+    maxItems: number;
+    maxPages: number;
+    signal: AbortSignal;
+  }>,
+  dependencies: Readonly<{
+    httpClient: Pick<ProviderHttpClient, 'executeStreaming'>;
+    database: PostgresClient;
+    connections?: () => NodeConnectionRuntime;
+  }>,
+) => Promise<readonly Readonly<{ key: string | number; item: JsonValue }>[]>;
+
 export type IntegrationPresentation = NonNullable<
   NodeDefinitionCatalogItem['presentation']
 >;
@@ -36,6 +56,7 @@ export interface IntegrationModule {
     createExecutor: (
       dependencies: IntegrationExecutorDependencies,
     ) => NodeExecutorRegistration;
+    fetchPoll?: IntegrationPollFetcher;
     presentation?: Partial<IntegrationPresentation>;
   }>[];
   readonly executorSummaryCodes?: readonly string[];

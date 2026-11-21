@@ -1,40 +1,28 @@
-import { fetchDatabasePollItems } from '@pertexo/integrations/server';
+import type { FetchPoll } from '@pertexo/core/triggers';
+import { resolvePlatformPollFetcher } from '@pertexo/node-catalog/server';
 import {
   createSecurePostgresClient,
   type SecureHttpAddressPolicy,
 } from '@pertexo/secrets/server';
-import type { MaterializedPollConfig } from '@pertexo/workflow-model';
 
 import type { ProviderConnectionFactory } from '../providers/connections.runtime.js';
-import { createHttpPollFetcher } from './fetch-http-poll.js';
+import { createNodeProviderHttpClient } from '../providers/http-client.js';
 
 export function createPollFetcher(
   addressPolicy: SecureHttpAddressPolicy,
   workerId: string,
   connections?: ProviderConnectionFactory,
-) {
-  const fetchHttp = createHttpPollFetcher(addressPolicy, workerId, connections);
-  const postgres = createSecurePostgresClient(
+): FetchPoll {
+  const httpClient = createNodeProviderHttpClient(addressPolicy);
+  const database = createSecurePostgresClient(
     addressPolicy.allowedPrivateNetworks,
   );
-  return ({
-    config,
-    ...input
-  }: Omit<Parameters<typeof fetchHttp>[0], 'config' | 'connectionId'> &
-    Readonly<{ config: MaterializedPollConfig }>) => {
-    if ('source' in config) {
-      const { connectionId, source: _source, ...settings } = config;
-      return fetchDatabasePollItems(
-        { ...input, config: settings, connectionId },
-        postgres,
-        connections?.({ workspaceId: input.workspaceId, workerId }),
-      );
-    }
-    const { connectionId, ...settings } = config;
-    return fetchHttp({
-      ...input,
-      config: settings,
-      ...(connectionId === undefined ? {} : { connectionId }),
+  return async ({ definition, workspaceId, ...input }) =>
+    resolvePlatformPollFetcher(definition)(input, {
+      httpClient,
+      database,
+      ...(connections === undefined
+        ? {}
+        : { connections: () => connections({ workspaceId, workerId }) }),
     });
-  };
 }

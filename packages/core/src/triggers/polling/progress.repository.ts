@@ -49,6 +49,8 @@ export async function readPollObservation(
   const [row] = await transaction.db
     .select({
       config: triggers.desiredConfig,
+      nodeId: triggers.nodeId,
+      graph: workflowVersions.graphJson,
       workflowId: triggers.workflowId,
       seenKeys: polls.seenKeys,
       pauseRevision: workflows.triggerPauseRevision,
@@ -63,6 +65,13 @@ export async function readPollObservation(
       ),
     )
     .innerJoin(workflows, currentWorkflow)
+    .innerJoin(
+      workflowVersions,
+      and(
+        eq(workflowVersions.id, triggers.workflowVersionId),
+        eq(workflowVersions.workspaceId, triggers.workspaceId),
+      ),
+    )
     .where(and(servingPoll(claim), triggerCurrent(claim)));
   return row;
 }

@@ -9,6 +9,7 @@ import {
   type ConnectionDefinition,
   type IntegrationExecutorDependencies,
   type IntegrationModule,
+  type IntegrationPollFetcher,
   type IntegrationPresentation,
 } from '@pertexo/integrations/server';
 import { IntegrationRegistryError } from './node-catalog.errors.js';
@@ -26,13 +27,14 @@ export function registerIntegrationModules(
 ) {
   const moduleKeys = new Set<string>();
   const stepOwners = new Map<string, string>();
+  const pollFetchers = new Map<string, IntegrationPollFetcher>();
   const presentations = new Map<string, IntegrationPresentation>();
   const entries = modules.flatMap((module) => {
     if (moduleKeys.has(module.key))
       throw new IntegrationRegistryError('module', module.key);
     moduleKeys.add(module.key);
     return module.steps.map(
-      ({ registration, presentation, createExecutor }) => {
+      ({ registration, presentation, createExecutor, fetchPoll }) => {
         const { key, version } = registration.manifest.definition;
         const identity = `${key}@${String(version)}`;
         const owner = stepOwners.get(key);
@@ -42,6 +44,7 @@ export function registerIntegrationModules(
         )
           throw new IntegrationRegistryError('step', key);
         stepOwners.set(key, module.key);
+        if (fetchPoll !== undefined) pollFetchers.set(identity, fetchPoll);
         presentations.set(
           identity,
           Object.freeze({
@@ -76,6 +79,8 @@ export function registerIntegrationModules(
   );
   return {
     acceptsExecutorSummary: (code: string) => executorSummaryCodes.has(code),
+    pollFetcherFor: ({ key, version }: { key: string; version: number }) =>
+      pollFetchers.get(`${key}@${String(version)}`),
     registrations: orderedSteps.map(({ registration }) => registration),
     createExecutors: (dependencies: IntegrationExecutorDependencies) =>
       orderedSteps.map(({ createExecutor }) => createExecutor(dependencies)),

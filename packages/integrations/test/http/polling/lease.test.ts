@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 
-import { fetchHttpPollItems } from '../../../src/server.js';
+import { fetchHttpPollItems } from '../../../src/http/polling/fetch-items.js';
 
 it('sends no connected request when the poll lease expires during the secret check', async () => {
   const lease = new AbortController();

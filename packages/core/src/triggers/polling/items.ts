@@ -12,6 +12,7 @@ export type FetchPoll = (
   input: Readonly<{
     workspaceId: string;
     triggerId: string;
+    definition: Readonly<{ key: string; version: number }>;
     config: MaterializedPollConfig;
     seenKeys: readonly string[];
     maxItems: number;

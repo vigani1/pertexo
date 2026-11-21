@@ -1,3 +1,5 @@
+import { fetchHttpPollItems } from './polling/fetch-items.js';
+import { PollFailure } from '@pertexo/workflow-model';
 import { HTTP_RESPONSE_FAILURES } from './request/response.errors.js';
 import { HTTP_PAGINATION_FAILURES } from './request/pagination/pagination.errors.js';
 import { HTTP_OAUTH2_FAILURES } from './request/execution/oauth2-renewal.errors.js';
@@ -41,6 +43,24 @@ export const HTTP_MODULE = {
     {
       registration: HTTP_POLL_DEFINITION_REGISTRATION,
       createExecutor: () => httpPollExecutor,
+      fetchPoll: async ({ config, ...input }, { httpClient, connections }) => {
+        if ('source' in config)
+          throw new PollFailure('http.poll_invalid_items');
+        const { connectionId, ...settings } = config;
+        const runtime =
+          connectionId === undefined ? undefined : connections?.();
+        return fetchHttpPollItems(
+          {
+            ...input,
+            config: settings,
+            ...(connectionId === undefined ? {} : { connectionId }),
+          },
+          {
+            httpClient,
+            ...(runtime === undefined ? {} : { connections: runtime }),
+          },
+        );
+      },
       presentation: { icon: 'webhook', group: 'trigger' },
     },
   ],
