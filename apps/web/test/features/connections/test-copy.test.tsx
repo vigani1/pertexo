@@ -41,7 +41,7 @@ for (const definition of browserConnectionDefinitions) {
     const credential =
       presentation.testCopy?.credential ?? presentation.credential;
 
-    expect(copy.action?.trim()).toBeTruthy();
+    expect(copy.action.trim()).toBeTruthy();
     expect(copy.panel).toContain(name);
     expect(copy.ok.title).toContain(name);
     expect(copy.rejected.title).toContain(credential);
