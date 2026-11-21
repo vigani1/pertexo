@@ -102,7 +102,7 @@ export function SchemaField({
         <SchemaFieldDescription id={id} text={field.description} />
       </Field>
     );
-  return field.kind === 'string' ? (
+  return field.kind === 'string' || field.kind === 'json-object' ? (
     <ConfigTextField
       field={field}
       id={id}
@@ -148,7 +148,7 @@ function useConfigText(
 
 function ConfigTextField(props: LiveFieldProps) {
   const { field, id, form } = props;
-  const path = field.format === 'json-path';
+  const jsonObject = field.kind === 'json-object';
 
   const live = useConfigText(
     props,
@@ -160,12 +160,16 @@ function ConfigTextField(props: LiveFieldProps) {
     <Field data-invalid={live.error !== undefined}>
       <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
       <SchemaTextControl
-        multiline={field.multiline === true}
+        multiline={jsonObject || field.multiline === true}
         aria-required={field.required}
         id={id}
         name={`config.${fieldPath(field)}`}
         autoComplete="off"
-        className={cn(path && 'font-mono')}
+        spellCheck={jsonObject ? false : undefined}
+        className={cn(
+          field.format === 'json-path' && 'font-mono',
+          jsonObject && 'min-h-32 font-mono',
+        )}
         value={live.text}
         disabled={!form.editable}
         aria-invalid={live.error !== undefined}

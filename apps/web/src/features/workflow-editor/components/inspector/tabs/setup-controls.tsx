@@ -125,14 +125,7 @@ export function SetupControls({
     );
   const union = readSchemaUnion(configSchema);
   if (union !== undefined)
-    return (
-      <SchemaUnionSetup
-        union={union}
-        config={config}
-        form={form}
-        model={formKey === 'ai.model'}
-      />
-    );
+    return <SchemaUnionSetup union={union} config={config} form={form} />;
   if (formKey === 'http.request') {
     const { essential, advanced } = splitHttpSetupFields(
       httpSetupFields(fields, config),

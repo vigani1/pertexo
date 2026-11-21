@@ -14,7 +14,8 @@ type NodeConfig = WorkflowNode['config'];
 /**
  * A new step's setup, from its catalog schema: the schema's own `default`
  * when it gives a whole starting setup (a union names the shape it starts
- * in), else each property's `default`. Human tasks start from their parsed
+ * in), else the first union shape or the standalone shape, with its
+ * property defaults. Human tasks start from their parsed
  * empty form, and a Merge waits for every branch and joins the Parallel on
  * its level when there's exactly one to join; a schema can't say that.
  */
@@ -41,7 +42,8 @@ export function startingConfig(
   const whole = definition.configSchema.default;
   if (isRecord(whole)) return structuredClone(whole);
   const union = readSchemaUnion(definition.configSchema);
-  if (key === 'ai.model' && union !== undefined)
-    return withUnionChoice(union, {}, 'text') ?? {};
+  const first = union?.choices[0];
+  if (union !== undefined && first !== undefined)
+    return withUnionChoice(union, {}, first.value) ?? {};
   return propertyDefaults(definition.configSchema);
 }

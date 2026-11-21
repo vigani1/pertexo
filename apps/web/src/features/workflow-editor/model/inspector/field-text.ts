@@ -1,5 +1,6 @@
 import { toShownValue } from '@/lib/schema-fields/units';
 import {
+  parseConfigJson,
   parseNumberField,
   type FieldParseResult,
   type NodeConfig,
@@ -14,6 +15,8 @@ export function formatFieldText(
   field: SchemaFieldSpec,
   value: FieldValue,
 ): string {
+  if (field.kind === 'json-object')
+    return value === undefined ? '' : JSON.stringify(value, null, 2);
   if (field.kind === 'integer' || field.kind === 'number')
     return typeof value === 'number'
       ? String(toShownValue(value, field.unit, field.maximum))
@@ -28,6 +31,13 @@ export function parseFieldText(
   field: SchemaFieldSpec,
   text: string,
 ): FieldParseResult<FieldValue> {
+  if (field.kind === 'json-object') {
+    if (text.trim() === '')
+      return field.required
+        ? { ok: false, error: `${field.label} is required.` }
+        : { ok: true, value: undefined };
+    return parseConfigJson(text, field.label);
+  }
   if (field.kind === 'integer' || field.kind === 'number')
     return parseNumberField(field, text);
   if (field.format !== 'json-path')

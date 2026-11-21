@@ -3,7 +3,7 @@ import { fieldLabel, fieldUnit, type FieldUnit } from './units';
 export type SchemaFieldSpec = Readonly<{
   key: string;
   label: string;
-  kind: 'boolean' | 'integer' | 'number' | 'string';
+  kind: 'boolean' | 'integer' | 'number' | 'string' | 'json-object';
   required: boolean;
   description?: string;
   options?: readonly string[];
@@ -23,17 +23,21 @@ export type SchemaFieldSpec = Readonly<{
 /**
  * The supported subset of a catalog JSON Schema: primitive and enum
  * properties, with their titles, descriptions and labelled choices, and
- * the same inside one level of nested object. Everything else stays
+ * the same inside one level of nested object. Open objects can be drawn
+ * as JSON fields. Everything else stays
  * reachable through "Edit as JSON".
  */
-export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
+export function schemaFields(
+  schema: unknown,
+  options?: Readonly<{ jsonObjects: boolean }>,
+): readonly SchemaFieldSpec[] {
   return objectFields(schema).flatMap(({ key, candidate, required }) => {
-    const field = scalarField(key, candidate, required);
+    const field = schemaField(key, candidate, required, options?.jsonObjects);
     if (field !== undefined) return [field];
     const nested = objectFields(candidate);
     const parent = { key, label: titleOf(candidate) ?? fieldLabel(key) };
     const children = nested.flatMap((child) => {
-      const childField = scalarField(
+      const childField = schemaField(
         child.key,
         child.candidate,
         required && child.required,
@@ -75,10 +79,11 @@ function objectFields(schema: unknown): readonly ObjectProperty[] {
   }));
 }
 
-function scalarField(
+function schemaField(
   key: string,
   candidate: unknown,
   required: boolean,
+  jsonObjects = false,
 ): SchemaFieldSpec | undefined {
   if (!isSchemaObject(candidate)) return undefined;
   const {
@@ -90,6 +95,14 @@ function scalarField(
     format,
     contentMediaType,
   } = candidate;
+  if (type === 'object' && jsonObjects && objectFields(candidate).length === 0)
+    return {
+      key,
+      label: typeof title === 'string' ? title : fieldLabel(key),
+      kind: 'json-object',
+      required,
+      ...(typeof description === 'string' ? { description } : {}),
+    };
   if (
     type !== 'string' &&
     type !== 'number' &&

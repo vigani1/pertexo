@@ -1,6 +1,7 @@
 import {
   nodeTestExecuteAcceptedResponseSchema,
   workflowRunStartResponseSchema,
+  workflowValidateResponseSchema,
 } from '@pertexo/contracts';
 import { expect, type Page, type TestInfo } from '@playwright/test';
 import {
@@ -51,6 +52,7 @@ test('extracts data, measures inference and replays with a fresh model call', as
       path: '$.prompt',
     });
     await page.getByRole('tab', { name: 'Setup', exact: true }).click();
+    await expectInvalidOutputSchemaBlocksPublish(page, path, source);
     await page.getByLabel('Mode', { exact: true }).scrollIntoViewIfNeeded();
     await screenshots(page, info, 'model-setup');
     await page.getByRole('tab', { name: 'Test', exact: true }).click();
@@ -188,10 +190,45 @@ async function configureModel(page: Page) {
     .getByRole('option', { name: 'Extract structured data', exact: true })
     .click();
   await expect(identifier).toHaveValue(model);
+}
+
+async function expectInvalidOutputSchemaBlocksPublish(
+  page: Page,
+  path: string,
+  source: string,
+) {
   const schema = page.getByLabel('Output schema', { exact: true });
+  await schema.fill('[]');
+  await schema.blur();
+  await expect(schema).toHaveAccessibleDescription(/JSON object/u);
+  const issueCopy = /object schema using the supported JSON Schema keywords/u;
+  const issuePath = `$.nodes.${source}.config.outputSchema`;
+  const validation = page.waitForResponse(async (response) => {
+    if (
+      new URL(response.url()).pathname !== `${path}/validate` ||
+      !response.ok()
+    )
+      return false;
+    const report = workflowValidateResponseSchema.parse(await response.json());
+    return report.issues.some(
+      (issue) => issue.path === issuePath && issueCopy.test(issue.message),
+    );
+  });
   await schema.fill('{"type":"object","$ref":"#"}');
   await schema.blur();
-  await expect(schema).toHaveAccessibleDescription(/unsupported/u);
+  await expect(schema).toHaveAttribute('aria-invalid', 'false');
+  await validation;
+  await page.locator('#editor-issues-chip').click();
+  await expect(page.locator('#editor-issues-lens')).toContainText(issueCopy);
+  await page.getByRole('button', { name: 'Publish v1', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Publish v1', exact: true });
+  await expect(dialog).toContainText(issueCopy);
+  await expect(
+    dialog.getByRole('button', { name: 'Publish v1', exact: true }),
+  ).toBeDisabled();
+  await dialog.getByRole('button', { name: /^Fix:.*output.?schema/iu }).click();
+  await expect(dialog).toBeHidden();
+  await expect(schema).toBeFocused();
   await schema.fill(
     JSON.stringify(
       {

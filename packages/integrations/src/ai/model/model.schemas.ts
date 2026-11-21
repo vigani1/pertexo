@@ -28,7 +28,10 @@ const common = {
     .min(1)
     .max(MODEL_IDENTIFIER_MAX_CHARACTERS)
     .refine((value) => value.trim() !== '')
-    .meta({ title: 'Model identifier' }),
+    .meta({
+      title: 'Model identifier',
+      description: 'Use the model identifier from your provider.',
+    }),
   timeoutMillis: z
     .number()
     .int()
@@ -59,7 +62,11 @@ const outputSchema = jsonObject
     (value) => compileModelOutputSchema(value) !== undefined,
     'Expected a bounded object schema using the supported JSON Schema keywords',
   )
-  .meta({ ...jsonObject.meta(), title: 'Output schema' });
+  .meta({
+    ...jsonObject.meta(),
+    title: 'Output schema',
+    description: 'Describe the data to extract with a JSON Schema object.',
+  });
 
 export const modelConfigSchema = z.discriminatedUnion('mode', [
   z.strictObject({ ...common, mode: mode('text') }),
