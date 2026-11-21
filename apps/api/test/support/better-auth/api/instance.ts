@@ -179,7 +179,6 @@ export function useBetterAuthRealApi(
                       ? {
                           oauth2: {
                             publicWebOrigin: fixtureOrigin,
-                            allowedPrivateNetworks: [],
                           },
                         }
                       : {}),
