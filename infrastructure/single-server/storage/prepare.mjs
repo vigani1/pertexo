@@ -245,6 +245,7 @@ await output(
   optionalValues([
     ...previous,
     ...telemetry,
+    'WORKFLOW_COORDINATOR_INLINE_STEPS',
     'SYSTEM_MAIL_TRANSPORT',
     ...mailNames,
   ]) +

@@ -158,6 +158,12 @@ its drain threshold could take effect, and the step it was running failed as
 interrupted. The Code runner's manager stayed at 82–117 MiB of its 1,872 MiB
 ceiling.
 
+The workflow coordinator runs eligible pure steps inline by default.
+Set `WORKFLOW_COORDINATOR_INLINE_STEPS=false` in `.env.production` and deploy
+to use attempt delivery for newly selected pure steps. Already queued attempts
+follow their original path.
+[Inline rollout qualification](../feature-plans/step-transaction-cost.md#fixed-build-steady-and-rollout-gate).
+
 A five-hour soak at the same load with the 768 MiB cap showed worker RSS growth
 slowing from 15.3 MiB/h in the first hour to 1.6 MiB/h in the middle three hours
 and 0.8 MiB/h in the final hour, based on five-minute readings. Peak RSS was

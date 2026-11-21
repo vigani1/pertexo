@@ -615,3 +615,52 @@ Off reports [1](https://github.com/vigani1/pertexo/actions/runs/44941880222),
 On reports [1](https://github.com/vigani1/pertexo/actions/runs/44941883025),
 [2](https://github.com/vigani1/pertexo/actions/runs/44941889000) and
 [3](https://github.com/vigani1/pertexo/actions/runs/44941893860).
+
+### Fixed-build worker memory
+
+All six one-hour worker-memory jobs passed. Inline-on container slopes were
+14.5, 8.6 and 12.5 MiB/h in pair order. Every slope stayed below 30 MiB/h.
+Each job completed without a lost, duplicated or stranded run, OOM kill or
+restart.
+
+| Metric | Inline off | Inline on |
+| --- | ---: | ---: |
+| Worker container growth, MiB/h | 11.4 [5.6–12.5] | 12.5 [8.6–14.5] |
+| Worker growth outside V8 heap and external buffers, MiB/h | 3.5 [−2.5–6.1] | 6.4 [3.6–7.7] |
+| Worker RSS peak after warm-up, MiB | 326.6 [320.2–329.5] | 326.0 [322.6–332.2] |
+| Runs stored | 10,972 [8,858–10,980] | 9,471 [9,157–11,017] |
+| Drain, s | 11.39 [9.36–54.16] | 53.69 [9.05–53.84] |
+| Host memory peak, MiB | 2,368 [2,145–2,404] | 2,219 [2,152–2,345] |
+| Host CPU peak, percent of a core | 199.5 [199.3–201.1] | 201.0 [193.5–201.2] |
+
+Drain followed the backlog. The three jobs with 88–97 queued runs in the
+final sample bucket drained in 53.69–54.16 seconds. The other three reported
+zero queued runs in that bucket and drained in 9.05–11.39 seconds. Pair 1
+drained with a backlog in both modes. Pair 2 had a backlog only on. Pair 3
+had zero queued runs in the final bucket in both modes.
+
+### Fixed-build steady and rollout gate
+
+All six steady jobs passed. Inline-on run start p95 stayed in the same range
+as the controls. Request latency and drain ranges overlapped, and all runs
+ended after traffic and schedules stopped.
+
+| Metric | Inline off | Inline on |
+| --- | ---: | ---: |
+| Run start p95, ms | 414 [368–544] | 481 [342–517] |
+| Code webhook request p95, ms | 77 [74–111] | 108 [74–116] |
+| HTTP webhook request p95, ms | 102 [71–109] | 113 [96–118] |
+| Burst webhook request p95, ms | 2,995 [2,839–3,475] | 3,146 [3,076–3,379] |
+| Drain, s | 18.26 [12.78–20.62] | 14.30 [13.34–24.66] |
+| Worker container growth, MiB/h | 1.2 [−2.1–2.9] | 4.0 [3.2–5.0] |
+| Host memory peak, MiB | 1,392 [1,391–1,510] | 1,412 [1,380–1,426] |
+| Host CPU peak, percent of a core | 147.9 [145.2–191.3] | 182.5 [148.8–187.1] |
+
+**The rollout gate passed.** Steady timing stayed within the observed
+variation. Overload admission thresholds overlapped and inline drain was
+faster. Worker-memory drain times overlapped when compared at similar
+backlogs. All nine inline-on jobs passed their test assertions and every
+inline-on worker memory slope stayed below 30 MiB/h. All 18 load jobs
+recorded zero lost, duplicated or stranded runs, OOM kills and restarts.
+The single off-mode overload response failure remains in the control data.
+`WORKFLOW_COORDINATOR_INLINE_STEPS` now defaults to `true`.
