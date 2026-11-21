@@ -99,7 +99,6 @@ export type { SmtpEmailClient } from './email/smtp.js';
 
 export { fetchDatabasePollItems } from './database/polling/fetch-items.js';
 export { databasePollExecutor } from './database/polling/polling.executor.js';
-export { createDatabaseExecutorRegistration } from './database/execute/execute.executor.js';
 export { fetchHttpPollItems } from './http/polling/fetch-items.js';
 export {
   HttpPollFailure,

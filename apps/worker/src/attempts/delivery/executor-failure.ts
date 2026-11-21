@@ -1,7 +1,6 @@
 import { isIntegrationExecutorSummaryCode } from '@pertexo/node-catalog/server';
 import { SUMMARY_RESULT_FAILURE } from '@pertexo/nodes-core';
 import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
-import { POSTGRES_FAILURE_CODES } from '@pertexo/workflow-model';
 import {
   NodeAttemptStateCorruptError,
   type NodeAttemptRunStore,
@@ -24,7 +23,6 @@ import { FILE_SCRATCH_ERROR_CODE } from '../artifacts/scratch/space.js';
 import { FILE_TRANSFER_ERROR_CODE } from '../artifacts/scratch/progress.js';
 
 const executorSummaryCodes = new Set<string>([
-  ...POSTGRES_FAILURE_CODES.map((code) => `database.${code}`),
   ...Object.values(FILE_PAGES_ERROR_CODE),
   ...Object.values(CALLBACK_ERROR_CODE),
   ...Object.values(RUN_VALUES_ERROR_CODE),
