@@ -1,7 +1,6 @@
 import { testHttpConnection } from './http.js';
 import { requestInputError } from '../../platform/http/request-input.js';
-import { testSlackConnection } from './slack.js';
-import { testResendConnection } from './resend.js';
+import { testDestination } from './test-destination.js';
 import { testPostgresConnection } from './postgres.js';
 import * as smtp from './smtp.js';
 import { ProviderHttpError } from '@pertexo/integrations/server';
@@ -333,10 +332,13 @@ export class TestConnectionService {
     )
       throw requestInputError(['transport'], recipe.consentMessage);
     if (destination !== undefined)
-      return this.testDestination(destination, credential, input, {
-        signal,
-        beforeDispatch,
-      });
+      return testDestination(
+        { email: this.emailClient, slack: this.slackClient },
+        destination,
+        credential,
+        input,
+        { signal, beforeDispatch },
+      );
     if (
       recipe.kind === 'signing' &&
       credential.type === 'hmac_key' &&
@@ -359,40 +361,5 @@ export class TestConnectionService {
       signal,
       beforeDispatch,
     });
-  }
-
-  private testDestination(
-    destination: FailureNotificationDestinationResponse,
-    credential: DecodedConnectionCredential['credential'],
-    command: TestConnectionCommand,
-    dispatch: Readonly<{
-      signal: AbortSignal;
-      beforeDispatch: () => Promise<void>;
-    }>,
-  ): Promise<ConnectionTestOutcome> {
-    if (destination.config.kind === 'email') {
-      if (
-        credential.type !== 'resend_api_key' ||
-        this.emailClient === undefined
-      )
-        throw new ConnectionSecretEncryptionError();
-      return testResendConnection(this.emailClient, credential, {
-        toEmail: destination.config.toEmail,
-        command,
-        ...dispatch,
-      });
-    }
-    if (destination.config.kind === 'slack') {
-      if (
-        credential.type !== 'slack_bot_token' ||
-        this.slackClient === undefined
-      )
-        throw new ConnectionSecretEncryptionError();
-      return testSlackConnection(this.slackClient, credential.botToken, {
-        channelId: destination.config.channelId,
-        ...dispatch,
-      });
-    }
-    throw new ConnectionSecretEncryptionError();
   }
 }
