@@ -12,10 +12,8 @@ import {
   createEmailSendNotificationExecutorRegistration,
   type EmailSendNotificationExecutorDependencies,
 } from '@pertexo/integrations/server';
-import {
-  PLATFORM_NODE_CATALOG,
-  PLATFORM_NODE_DEFINITION_REGISTRATIONS,
-} from './catalog.js';
+import { INTEGRATION_REGISTRATIONS, PLATFORM_NODE_CATALOG } from './catalog.js';
+import { CORE_NODE_DEFINITION_REGISTRATIONS } from '@pertexo/nodes-core';
 import {
   createNodeRegistry,
   type NodeExecutorRegistration,
@@ -39,7 +37,6 @@ export function createPlatformNodeRegistry(
 ): NodeRegistry {
   const { httpRequest, slackSendMessage, emailSendNotification } = dependencies;
   const executors: readonly NodeExecutorRegistration[] = [
-    ...CORE_NODE_EXECUTOR_REGISTRATIONS,
     databasePollExecutor,
     httpPollExecutor,
     createDatabaseExecutorRegistration(dependencies.database),
@@ -64,7 +61,11 @@ export function createPlatformNodeRegistry(
   ];
   return createNodeRegistry({
     catalog: PLATFORM_NODE_CATALOG,
-    definitions: PLATFORM_NODE_DEFINITION_REGISTRATIONS,
+    definitions: INTEGRATION_REGISTRATIONS,
+    core: {
+      definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
+      executors: CORE_NODE_EXECUTOR_REGISTRATIONS,
+    },
     executors,
   });
 }

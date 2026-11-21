@@ -4,7 +4,6 @@ import {
   type OutputVariantSelection,
 } from './output-variant.js';
 export { type OutputVariantSelection } from './output-variant.js';
-
 import { cloneAndFreeze } from '../values/freeze.js';
 import { compareIdentity, identityToken } from './identity.js';
 import {
@@ -12,6 +11,7 @@ import {
   type SchemaDocument,
 } from './schema-document.js';
 import { NodeCatalogIntegrityError } from './catalog.errors.js';
+import { executionClassSchema } from './execution-class.js';
 
 const NODE_DISPLAY_LIMITS = Object.freeze({
   nameCharacters: 128,
@@ -112,6 +112,7 @@ export interface NodeManifest {
   readonly readOnlyWhen?: ReadOnlyConfigCondition | undefined;
   readonly resourceClass: ResourceClass;
   readonly capabilities: readonly string[];
+  readonly execution?: z.infer<typeof executionClassSchema> | undefined;
   readonly executor: ExecutorIdentity;
   readonly executorAbi: number;
   readonly policyReferences: readonly PolicyReference[];
@@ -200,6 +201,7 @@ export const nodeManifestSchema = z
       .optional(),
     resourceClass: z.enum(['io', 'cpu']),
     capabilities: identifiersSchema,
+    execution: executionClassSchema.optional(),
     executor: executorIdentitySchema,
     executorAbi: z.number().int().positive(),
     policyReferences: z.array(policyReferenceSchema),
