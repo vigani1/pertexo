@@ -3597,7 +3597,13 @@
     "workspace-variables",
     "workspaces"
   ],
-  "journey:federation": ["auth", "federation", "overview", "workspaces"],
+  "journey:federation": [
+    "auth",
+    "catalog",
+    "federation",
+    "overview",
+    "workspaces"
+  ],
   "journey:first-use": [
     "artifacts",
     "auth",
