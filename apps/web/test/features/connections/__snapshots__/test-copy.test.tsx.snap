@@ -1,0 +1,134 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`preserves the 'hmac_key' test and health copy 1`] = `
+{
+  "action": "Check key access",
+  "health": {
+    "text": "last test failed · key unavailable",
+    "tone": "attention",
+  },
+  "ok": {
+    "detail": "This connection is ready to use.",
+    "title": "The signing key can be opened.",
+  },
+  "panel": "Pertexo checks it can open this key locally. Nothing is sent to another service.Check key access",
+  "rejected": {
+    "detail": "Replace the key and check the instance encryption settings.",
+    "title": "The signing key is unavailable.",
+  },
+}
+`;
+
+exports[`preserves the 'http_headers' test and health copy 1`] = `
+{
+  "action": "Call this address",
+  "health": {
+    "text": "last test failed · headers rejected",
+    "tone": "attention",
+  },
+  "ok": {
+    "detail": "It answered 200, so the headers work.",
+    "title": "The API answered.",
+  },
+  "panel": "Pertexo calls an address with these headers to see whether they work.Address to callPertexo sends a GET request with your headers, like https://api.example.com/me.Call this address",
+  "rejected": {
+    "detail": "It answered 401 or 403. Check the header names and values, then replace the credential.",
+    "title": "The API refused these headers.",
+  },
+}
+`;
+
+exports[`preserves the 'oauth2' test and health copy 1`] = `
+{
+  "action": "Call this address",
+  "health": {
+    "text": "last test failed · credential rejected",
+    "tone": "attention",
+  },
+  "ok": {
+    "detail": "It answered 200, so the token works.",
+    "title": "The API answered.",
+  },
+  "panel": "Pertexo gets a token and calls an address with it to see whether it works.Address to callPertexo sends a GET request with your token, like https://api.example.com/me.Call this address",
+  "rejected": {
+    "detail": "It answered 401 or 403. Check the scope and that this account can reach that URL, or reconnect.",
+    "title": "The API refused this token.",
+  },
+}
+`;
+
+exports[`preserves the 'postgres' test and health copy 1`] = `
+{
+  "action": "Test connection",
+  "health": {
+    "text": "last test failed · credentials rejected",
+    "tone": "attention",
+  },
+  "ok": {
+    "detail": "This connection is ready to use.",
+    "title": "PostgreSQL answered the test query.",
+  },
+  "panel": "Pertexo connects and runs a simple read-only query.Test connection",
+  "rejected": {
+    "detail": "Check the user and password.",
+    "title": "PostgreSQL rejected the login.",
+  },
+}
+`;
+
+exports[`preserves the 'resend_api_key' test and health copy 1`] = `
+{
+  "action": "Send test email",
+  "health": {
+    "text": "last test failed · invalid API key",
+    "tone": "attention",
+  },
+  "ok": {
+    "detail": "This connection is ready to use.",
+    "title": "Resend accepted the test email.",
+  },
+  "panel": "Pertexo sends one real email through Resend to see whether the key works.Send a real test emailResend delivers it to its own test inbox and counts it toward your Resend usage.Send test email",
+  "rejected": {
+    "detail": "Create a new sending key in Resend and check the from address uses a verified domain.",
+    "title": "Resend rejected the API key.",
+  },
+}
+`;
+
+exports[`preserves the 'slack_bot_token' test and health copy 1`] = `
+{
+  "action": "Test connection",
+  "health": {
+    "text": "last test failed · invalid token",
+    "tone": "attention",
+  },
+  "ok": {
+    "detail": "This connection is ready to use.",
+    "title": "Slack accepted the token.",
+  },
+  "panel": "Pertexo asks Slack whether the token works. Nothing is posted.Test connection",
+  "rejected": {
+    "detail": "Copy the Bot User OAuth Token again and check the app is still installed in your workspace.",
+    "title": "Slack rejected the token.",
+  },
+}
+`;
+
+exports[`preserves the 'smtp' test and health copy 1`] = `
+{
+  "action": "Test connection",
+  "health": {
+    "text": "last test failed · invalid API key",
+    "tone": "attention",
+  },
+  "ok": {
+    "detail": "This connection is ready to use.",
+    "title": "SMTP connection works.",
+  },
+  "panel": "Pertexo connects, upgrades TLS when required, authenticates and quits. No email is sent.Test connection",
+  "rejected": {
+    "detail": "Check the credential and the service’s settings, then test again.",
+    "title": "The test failed: invalid API key.",
+  },
+}
+`;

@@ -1,5 +1,10 @@
-import { connectionCredentialSchema } from '@pertexo/contracts';
+import {
+  emailMailboxSchema,
+  signingKeyCredentialSchema,
+  type ParsedConnectionCredential,
+} from '@pertexo/contracts';
 import type { ConnectionFormDefinition } from '@pertexo/contracts';
+import { fromJSONSchema } from 'zod';
 import { isRecord } from '@pertexo/workflow-model';
 import { schemaFields } from '@/lib/schema-fields/fields';
 
@@ -48,28 +53,45 @@ export function isVisibleField(
   );
 }
 
-function scalarCredentialInput(draft: SchemaCredentialDraft) {
-  return {
-    type: draft.definition.authType,
-    ...Object.fromEntries(
-      credentialFields(draft.definition).flatMap(({ key, kind, metadata }) => {
-        if (!isVisibleField(metadata, draft.values)) return [];
-        const raw = draft.values[key];
-        const value =
-          metadata.trim === true && typeof raw === 'string' ? raw.trim() : raw;
-        if (metadata.omitEmpty === true && String(value ?? '').trim() === '')
-          return [];
-        return [
-          [
-            key,
-            kind === 'number' || kind === 'integer' ? Number(value) : value,
-          ],
-        ];
-      }),
-    ),
-  };
-}
+const signingKeyField = signingKeyCredentialSchema.unwrap().shape.signingKey;
 
 export function parseScalarCredential(draft: SchemaCredentialDraft) {
-  return connectionCredentialSchema.safeParse(scalarCredentialInput(draft));
+  const fields: Record<string, ScalarValue | number> = {};
+  const errors: Record<string, string> = {};
+  for (const { key, kind, required, metadata } of credentialFields(
+    draft.definition,
+  )) {
+    if (!isVisibleField(metadata, draft.values)) continue;
+    const raw = draft.values[key];
+    if (raw === undefined && !required) continue;
+    const trimmed =
+      metadata.trim === true && typeof raw === 'string' ? raw.trim() : raw;
+    if (metadata.omitEmpty === true && String(trimmed ?? '').trim() === '')
+      continue;
+    const value =
+      kind === 'number' || kind === 'integer' ? Number(trimmed) : trimmed;
+    const schema = credentialFieldSchema(metadata);
+    const parsed = schema.safeParse(value);
+    if (!parsed.success) {
+      errors[key] = parsed.error.issues[0]?.message ?? 'Check this value.';
+      continue;
+    }
+    if (metadata.validateAs === 'mailbox' && typeof parsed.data === 'string')
+      fields[key] = parsed.data;
+    else if (value !== undefined) fields[key] = value;
+  }
+  const credential: ParsedConnectionCredential = {
+    ...fields,
+    type: draft.definition.authType,
+  };
+  return { errors, credential };
+}
+
+function credentialFieldSchema(
+  metadata: Parameters<typeof fromJSONSchema>[0] &
+    Readonly<Record<string, unknown>>,
+) {
+  if (metadata.validateAs === 'mailbox') return emailMailboxSchema;
+  if (metadata.validateAs === 'utf8_key') return signingKeyField;
+  return fromJSONSchema(metadata);
 }

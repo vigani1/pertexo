@@ -523,6 +523,64 @@
                     },
                     "requirement": {
                       "type": "string"
+                    },
+                    "testCopy": {
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "introNote": {
+                          "type": "string"
+                        },
+                        "credential": {
+                          "type": "string"
+                        },
+                        "rejectionReason": {
+                          "type": "string"
+                        },
+                        "rejectionHelp": {
+                          "type": "string"
+                        },
+                        "consentDetail": {
+                          "type": "string"
+                        },
+                        "failureReasons": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": true
+                    },
+                    "maskedSummary": {
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "prefix": {
+                          "type": "string"
+                        },
+                        "senderField": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "field",
+                        "label",
+                        "prefix"
+                      ],
+                      "additionalProperties": true
                     }
                   },
                   "required": [
@@ -555,9 +613,25 @@
                 },
                 "test": {
                   "type": "string",
-                  "minLength": 1,
-                  "maxLength": 64,
-                  "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$"
+                  "enum": [
+                    "http",
+                    "oauth2",
+                    "postgres",
+                    "smtp",
+                    "signing"
+                  ]
+                },
+                "testInput": {
+                  "type": "string",
+                  "enum": [
+                    "url",
+                    "provider",
+                    "consent"
+                  ]
+                },
+                "testAutomatically": {
+                  "type": "boolean",
+                  "const": true
                 }
               },
               "required": [
@@ -567,7 +641,8 @@
                 "presentation",
                 "fields",
                 "slot",
-                "test"
+                "test",
+                "testInput"
               ],
               "additionalProperties": true
             }

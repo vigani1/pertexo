@@ -9,7 +9,7 @@ import {
 
 export type ProviderKey = ConnectionResponse['providerKey'];
 /** A picker choice can name a credential variant within a stored provider. */
-export type ConnectionChoice = ProviderKey | 'smtp';
+export type ConnectionChoice = string;
 
 export function connectionDefinition(
   definitions: readonly ConnectionFormDefinition[],
@@ -26,9 +26,7 @@ export function connectionDefinition(
 }
 
 export function isConnectionChoice(value: unknown): value is ConnectionChoice {
-  return (
-    value === 'smtp' || connectionProviderKeySchema.safeParse(value).success
-  );
+  return connectionProviderKeySchema.safeParse(value).success;
 }
 
 export function connectionPresentation(
@@ -74,26 +72,13 @@ export function suggestConnectionName(
   return `${workspaceName.slice(0, RESOURCE_NAME_MAX_LENGTH - 1 - noun.length).trim()} ${noun}`;
 }
 
-/** "Where do I find this?" steps for credentials people copy from a provider. */
-export const CREDENTIAL_STEPS = {
-  slack: [
-    'Open api.slack.com/apps and pick your app, or create one for Pertexo.',
-    'Under OAuth & Permissions, add the chat:write scope and install the app.',
-    'Copy the Bot User OAuth Token. It starts with xoxb-.',
-    'In Slack, invite the bot to each channel it should post in.',
-  ],
-  email: [
-    'Open resend.com/api-keys and create an API key.',
-    'Give it Sending access. Full access isn’t needed.',
-    'Copy the key. It starts with re_ and is only shown once.',
-    'Use a from address on a domain you verified in Resend.',
-  ],
-} as const satisfies Readonly<Record<'slack' | 'email', readonly string[]>>;
-
-export function automaticTestRequest(
-  key: string,
-): ConnectionTestRequest | undefined {
-  if (key === 'smtp') return { providerKey: 'email', transport: 'smtp' };
-  if (key === 'slack' || key === 'signing') return { providerKey: key };
-  return undefined;
+/** Keep the stored provider key distinct from the picker variant in test requests. */
+export function providerTestRequest(
+  definition: ConnectionFormDefinition,
+): ConnectionTestRequest {
+  const { providerKey, test, testInput } = definition;
+  if (test === 'smtp') return { providerKey, transport: 'smtp' };
+  if (testInput === 'consent')
+    return { providerKey, sideEffectDisclosureAccepted: true };
+  return { providerKey };
 }

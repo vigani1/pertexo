@@ -8,7 +8,10 @@ import {
 } from '@/lib/api/commands/command-retry';
 import { useId, useState } from 'react';
 import { ConfirmDialog } from '@/components/patterns/actions/confirm-dialog';
-import type { ConnectionResponse } from '@pertexo/contracts';
+import type {
+  ConnectionFormDefinition,
+  ConnectionResponse,
+} from '@pertexo/contracts';
 import {
   Sheet,
   SheetBody,
@@ -27,7 +30,7 @@ import {
   type CreateConnectionCommand,
 } from '../../data/connections.mutations';
 import {
-  automaticTestRequest,
+  providerTestRequest,
   connectionNameError,
   connectionDefinition,
   suggestConnectionName,
@@ -48,7 +51,7 @@ import { StepIndicator, type AddStep } from './steps';
 import { StepBody } from './content';
 import { AddConnectionFooter } from './content';
 
-export type AddConnectionRequest = ConnectionChoice | 'any';
+export type AddConnectionRequest = ConnectionChoice;
 
 const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
   provider: 'Choose what Pertexo should plug into.',
@@ -60,12 +63,12 @@ const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
 
 function stepDescription(
   step: AddStep,
-  provider: ConnectionChoice | undefined,
+  definition: ConnectionFormDefinition | undefined,
 ) {
   if (step === 'credential') {
-    if (provider === 'smtp')
+    if (definition?.test === 'smtp')
       return 'Enter the settings supplied by your SMTP operator.';
-    if (provider === 'postgres')
+    if (definition?.test === 'postgres')
       return 'Enter the PostgreSQL server and login details.';
   }
   return DESCRIPTIONS[step];
@@ -102,7 +105,7 @@ export function AddConnectionSheet(props: AddConnectionSheetProps) {
               : `Connect ${model.definition.presentation.name}`}
           </SheetTitle>
           <SheetDescription>
-            {stepDescription(model.step, model.provider)}
+            {stepDescription(model.step, model.definition)}
           </SheetDescription>
           <StepIndicator step={model.step} />
         </SheetHeader>
@@ -316,7 +319,10 @@ function useAddConnectionForm({
       return;
     }
     setStep('test');
-    const automatic = automaticTestRequest(definition.test);
+    const automatic =
+      definition.testAutomatically === true
+        ? providerTestRequest(definition)
+        : undefined;
     if (automatic !== undefined) test.run(connection, automatic);
   }
 

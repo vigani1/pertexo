@@ -6423,13 +6423,9 @@
                     },
                     "providerKey": {
                       "type": "string",
-                      "enum": [
-                        "http",
-                        "slack",
-                        "email",
-                        "signing",
-                        "postgres"
-                      ]
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[a-z][a-z0-9_]*$"
                     },
                     "name": {
                       "type": "string",
@@ -7704,13 +7700,9 @@
               },
               "providerKey": {
                 "type": "string",
-                "enum": [
-                  "http",
-                  "slack",
-                  "email",
-                  "signing",
-                  "postgres"
-                ]
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_]*$"
               },
               "name": {
                 "type": "string",

@@ -19,7 +19,6 @@ type HttpTestRecipe = Readonly<{
   kind: 'http';
   method: ProviderHttpRequest['method'];
   target: string;
-  formTest?: string;
   headers?: Readonly<Record<string, string>>;
   body?: Readonly<{
     fields: Readonly<Record<string, JsonScalar | readonly JsonScalar[]>>;
@@ -52,24 +51,12 @@ type TestRecipe =
   | Readonly<{ kind: 'postgres' | 'smtp' | 'signing' }>;
 
 export interface ConnectionDefinition {
-  readonly presentation: Readonly<{
-    choice: string;
-    pickerOrder?: number;
-    name: string;
-    purpose: string;
-    credential: string;
-    savedCredential: string;
-    usedBy: string;
-    nameSuffix: string;
-    variant?: string;
-    variantPrompt?: string;
-    requirement?: string;
-  }>;
+  readonly presentation: ConnectionFormDefinition['presentation'];
   readonly authType: string;
   readonly schema: z.ZodType<ParsedConnectionCredential>;
   readonly presets?: ConnectionFormDefinition['presets'];
   readonly fields: z.ZodType;
   readonly auth: AuthRecipe;
-  readonly test: TestRecipe;
+  readonly test: TestRecipe & Readonly<{ automatic?: true }>;
   readonly slot: Readonly<{ key: string; primary: boolean }>;
 }

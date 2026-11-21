@@ -30,7 +30,7 @@ function ConnectionRow({
       definitions,
       connection.providerKey,
       connection.authType,
-    )?.test,
+    ),
   );
   return (
     <li className="row-divider">

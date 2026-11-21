@@ -1982,13 +1982,9 @@
                     },
                     "providerKey": {
                       "type": "string",
-                      "enum": [
-                        "http",
-                        "slack",
-                        "email",
-                        "signing",
-                        "postgres"
-                      ]
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[a-z][a-z0-9_]*$"
                     },
                     "name": {
                       "type": "string",
@@ -3019,7 +3015,8 @@
           "providerKey": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 64
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_]*$"
           },
           "name": {
             "type": "string",
@@ -3032,7 +3029,8 @@
               "type": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 64
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_]*$"
               }
             },
             "required": [
@@ -3066,13 +3064,9 @@
               },
               "providerKey": {
                 "type": "string",
-                "enum": [
-                  "http",
-                  "slack",
-                  "email",
-                  "signing",
-                  "postgres"
-                ]
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_]*$"
               },
               "name": {
                 "type": "string",
@@ -4322,7 +4316,8 @@
               "type": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 64
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_]*$"
               }
             },
             "required": [
@@ -4345,21 +4340,9 @@
             "properties": {
               "providerKey": {
                 "type": "string",
-                "const": "postgres"
-              }
-            },
-            "required": [
-              "providerKey"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "readOnly": true,
-            "type": "object",
-            "properties": {
-              "providerKey": {
-                "type": "string",
-                "const": "signing"
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_]*$"
               }
             },
             "required": [
@@ -4388,21 +4371,9 @@
             "properties": {
               "providerKey": {
                 "type": "string",
-                "const": "slack"
-              }
-            },
-            "required": [
-              "providerKey"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "readOnly": true,
-            "type": "object",
-            "properties": {
-              "providerKey": {
-                "type": "string",
-                "const": "email"
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_]*$"
               },
               "sideEffectDisclosureAccepted": {
                 "type": "boolean",
@@ -4421,7 +4392,9 @@
             "properties": {
               "providerKey": {
                 "type": "string",
-                "const": "email"
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_]*$"
               },
               "transport": {
                 "type": "string",
@@ -4459,13 +4432,9 @@
                   },
                   "providerKey": {
                     "type": "string",
-                    "enum": [
-                      "http",
-                      "slack",
-                      "email",
-                      "signing",
-                      "postgres"
-                    ]
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-z][a-z0-9_]*$"
                   },
                   "name": {
                     "type": "string",

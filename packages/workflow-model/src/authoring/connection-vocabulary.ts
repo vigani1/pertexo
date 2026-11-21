@@ -17,8 +17,17 @@ export const CONNECTION_AUTH_TYPE = {
   oauth2: 'oauth2',
 } as const;
 
-export type ConnectionAuthType =
+declare const nonOAuth2AuthType: unique symbol;
+
+type BuiltInConnectionAuthType =
   (typeof CONNECTION_AUTH_TYPE)[keyof typeof CONNECTION_AUTH_TYPE];
+
+/** A format-checked secret auth key, excluding the OAuth2 lifecycle. */
+export type SecretConnectionAuthType =
+  | Exclude<BuiltInConnectionAuthType, 'oauth2'>
+  | (string & { readonly [nonOAuth2AuthType]: true });
+
+export type ConnectionAuthType = SecretConnectionAuthType | 'oauth2';
 
 export const CONNECTION_EVENT_TYPE = {
   created: 'connection.created',

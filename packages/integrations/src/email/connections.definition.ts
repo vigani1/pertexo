@@ -19,7 +19,15 @@ export const resendSuccessSchema = z.object({ id: z.uuid() }).strip();
 const resendFields = {
   apiKey: resendApiKeyCredentialSchema.unwrap().shape.apiKey.meta({
     title: 'Resend API key',
-    help: 'email',
+    help: [
+      'Open resend.com/api-keys and create an API key.',
+      'Give it Sending access. Full access isn’t needed.',
+      'Copy the key. It starts with re_ and is only shown once.',
+      'Use a from address on a domain you verified in Resend.',
+    ],
+    blankError: 'Paste an API key from Resend.',
+    invalidError: 'Resend API keys start with re_.',
+    serverError: 'Resend didn’t accept this API key format.',
     trim: true,
     placeholder: 're_…',
     secret: true,
@@ -30,6 +38,12 @@ const resendFields = {
     trim: true,
     placeholder: 'alerts@yourdomain.com',
     format: 'email',
+    validateAs: 'mailbox',
+    blankError:
+      'Enter the address emails come from, like alerts@yourdomain.com.',
+    invalidError:
+      'That isn’t a complete email address, like alerts@yourdomain.com.',
+    serverError: 'Use a complete email address, like alerts@yourdomain.com.',
     inputMaxLength: RESEND_EMAIL_INPUT_CHARACTERS,
     description:
       'Emails come from this address. Its domain must be verified in Resend.',
@@ -49,6 +63,20 @@ export const RESEND_API_KEY_CONNECTION = {
     usedBy: 'Send email steps and email alerts',
     nameSuffix: 'email',
     variant: 'Resend',
+    maskedSummary: {
+      field: 'apiKey',
+      label: 'API key',
+      prefix: 're_',
+      senderField: 'fromEmail',
+    },
+    testCopy: {
+      name: 'Resend',
+      credential: 'key',
+      rejectionHelp:
+        'Create a new sending key in Resend and check the from address uses a verified domain.',
+      consentDetail:
+        'Resend delivers it to its own test inbox and counts it toward your Resend usage.',
+    },
     variantPrompt: 'Send email with',
   },
   schema: resendApiKeyCredentialSchema
@@ -59,7 +87,6 @@ export const RESEND_API_KEY_CONNECTION = {
   auth: { kind: 'bearer', field: 'apiKey' },
   test: {
     kind: 'http',
-    formTest: 'resend',
     method: 'POST',
     target: 'https://api.resend.com/emails',
     requiresConsent: true,
@@ -111,6 +138,7 @@ const smtpFields = {
   fromEmail: smtpCredentialSchema.unwrap().shape.fromEmail.meta({
     title: 'From address',
     trim: true,
+    validateAs: 'mailbox',
     inputMaxLength: EMAIL_ADDRESS_LIMITS.newAddressCharacters,
   }),
   fromName: smtpCredentialSchema.unwrap().shape.fromName.meta({
@@ -137,12 +165,13 @@ export const SMTP_CONNECTION = {
     savedCredential: 'SMTP',
     usedBy: 'Send email steps and email alerts',
     nameSuffix: 'SMTP',
+    testCopy: { rejectionReason: 'invalid API key' },
     variant: 'SMTP',
     variantPrompt: 'Send email with',
   },
   schema: smtpCredentialSchema.unwrap().safeExtend(smtpFields).readonly(),
   fields: z.strictObject(smtpFields),
   auth: { kind: 'smtp' },
-  test: { kind: 'smtp' },
+  test: { kind: 'smtp', automatic: true },
   slot: { key: 'resend_api_key', primary: false },
 } as const satisfies ConnectionDefinition;

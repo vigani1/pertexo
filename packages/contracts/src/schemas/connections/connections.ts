@@ -1,10 +1,6 @@
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { responseSchema } from '../shared/response-schema.js';
-import {
-  NODE_FAILURE_FIELD_LIMITS,
-  NODE_IDENTITY_KEY_MAX_CHARACTERS,
-  boundedNodeJsonRecordSchema,
-} from '@pertexo/node-sdk';
+import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 export { signingKeyCredentialSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { utf8ByteLength } from '@pertexo/workflow-model';
@@ -12,11 +8,15 @@ import { utf8ByteLength } from '@pertexo/workflow-model';
 import {
   connectionIdentifierSchema,
   connectionNameSchema,
+  connectionProviderKeySchema,
   connectionResponseFields,
   connectionSecretVersionIdentifierSchema,
 } from './connection-fields.js';
 import { oauth2ConnectionResponseSchema } from './oauth2-connections.js';
-import type { connectionCredentialSchema } from './connection-credentials.js';
+import {
+  connectionCredentialSchema,
+  type ParsedConnectionCredential,
+} from './connection-credentials.js';
 
 const CONNECTIONS_BOUNDS = Object.freeze({
   connectionCursorCharacters: 512,
@@ -47,38 +47,18 @@ const connectionPageLimitSchema = z.coerce
   .min(1)
   .max(CONNECTIONS_BOUNDS.connectionPageLimitMaximum);
 
-const connectionCredentialTypeSchema = z
-  .string()
-  .min(1)
-  .max(NODE_IDENTITY_KEY_MAX_CHARACTERS);
-const { $schema, ...connectionCredentialTypeProjection } = z.toJSONSchema(
-  connectionCredentialTypeSchema,
-);
-
-const connectionCredentialEnvelopeSchema = boundedNodeJsonRecordSchema
-  .refine(
-    (credential): credential is typeof credential & { readonly type: string } =>
-      connectionCredentialTypeSchema.safeParse(credential.type).success,
-    { path: ['type'], message: 'Expected a connection credential type' },
-  )
-  .meta({
-    type: 'object',
-    properties: { type: connectionCredentialTypeProjection },
-    required: ['type'],
-  });
-
 export const connectionCreateRequestSchema = z
   .strictObject({
-    providerKey: z.string().min(1).max(NODE_IDENTITY_KEY_MAX_CHARACTERS),
+    providerKey: connectionProviderKeySchema,
     name: connectionNameSchema,
-    credential: connectionCredentialEnvelopeSchema,
+    credential: connectionCredentialSchema,
   })
   .readonly();
 
 export const connectionRotateSecretRequestSchema = z
   .strictObject({
     expectedSecretVersionId: connectionSecretVersionIdentifierSchema,
-    credential: connectionCredentialEnvelopeSchema,
+    credential: connectionCredentialSchema,
   })
   .readonly();
 
@@ -100,31 +80,20 @@ const httpConnectionTestRequestSchema = z
   .strict()
   .readonly();
 
-const slackConnectionTestRequestSchema = z
-  .object({ providerKey: z.literal('slack') })
-  .strict()
-  .readonly();
-
-const emailConnectionTestRequestSchema = z
-  .object({
-    providerKey: z.literal('email'),
-    sideEffectDisclosureAccepted: z.literal(true),
-  })
-  .strict()
-  .readonly();
-
 export const connectionTestRequestSchema = z.union([
-  z.strictObject({ providerKey: z.literal('postgres') }).readonly(),
-  z
-    .object({ providerKey: z.literal('signing') })
-    .strict()
-    .readonly(),
+  z.strictObject({ providerKey: connectionProviderKeySchema }).readonly(),
   httpConnectionTestRequestSchema,
-  slackConnectionTestRequestSchema,
-  emailConnectionTestRequestSchema,
   z
-    .object({ providerKey: z.literal('email'), transport: z.literal('smtp') })
-    .strict()
+    .strictObject({
+      providerKey: connectionProviderKeySchema,
+      sideEffectDisclosureAccepted: z.literal(true),
+    })
+    .readonly(),
+  z
+    .strictObject({
+      providerKey: connectionProviderKeySchema,
+      transport: z.literal('smtp'),
+    })
     .readonly(),
 ]);
 
@@ -224,11 +193,11 @@ export const connectionIdParamSchema = z
 export type ConnectionCreateRequest = Readonly<{
   providerKey: string;
   name: string;
-  credential: z.input<typeof connectionCredentialSchema>;
+  credential: ParsedConnectionCredential;
 }>;
 export type ConnectionRotateSecretRequest = Readonly<{
   expectedSecretVersionId: string;
-  credential: z.input<typeof connectionCredentialSchema>;
+  credential: ParsedConnectionCredential;
 }>;
 export type ConnectionTestRequest = z.input<typeof connectionTestRequestSchema>;
 export type ConnectionResponse = z.output<typeof connectionResponseSchema>;

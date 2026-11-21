@@ -176,10 +176,22 @@ export const connectionFormCatalog = Object.freeze(
       icon: entry.icon,
       fields,
       slot: entry.slot.key,
-      test:
-        entry.test.kind === 'http'
-          ? (entry.test.formTest ?? entry.test.kind)
-          : entry.test.kind,
+      test: entry.test.kind,
+      testInput: connectionTestInput(entry.test),
+      ...(entry.test.automatic === true
+        ? { testAutomatically: true as const }
+        : {}),
     });
   }),
 );
+
+function connectionTestInput(test: ConnectionDefinition['test']) {
+  if (
+    test.kind === 'oauth2' ||
+    (test.kind === 'http' && test.target === 'entered_url')
+  )
+    return 'url' as const;
+  return test.kind === 'http' && test.requiresConsent === true
+    ? ('consent' as const)
+    : ('provider' as const);
+}

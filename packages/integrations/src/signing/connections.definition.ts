@@ -6,6 +6,7 @@ import type { ConnectionDefinition } from '../providers/connection-definition.js
 const hmacFields = {
   signingKey: signingKeyCredentialSchema.unwrap().shape.signingKey.meta({
     title: 'Signing key',
+    validateAs: 'utf8_key',
     placeholder: 'Paste the exact signing key',
     secret: true,
     inputMaxLength: SIGNING_KEY_MAX_BYTES,
@@ -30,6 +31,6 @@ export const HMAC_KEY_CONNECTION = {
   schema: signingKeyCredentialSchema.unwrap().safeExtend(hmacFields).readonly(),
   fields: z.strictObject(hmacFields),
   auth: { kind: 'signing' },
-  test: { kind: 'signing' },
+  test: { kind: 'signing', automatic: true },
   slot: { key: 'hmac_key', primary: true },
 } as const satisfies ConnectionDefinition;

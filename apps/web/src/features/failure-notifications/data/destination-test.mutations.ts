@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import { useQueryClient } from '@tanstack/react-query';
 import { useReadRetry } from '@/lib/hooks/use-read-retry';
 import { failureNotificationDestinationKeys } from './failure-notifications.queries';
@@ -11,7 +12,10 @@ import {
   newCommandKey,
   type CommandKey,
 } from '@/lib/api/commands/command-retry';
-import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
+import type {
+  ConnectionFormDefinition,
+  FailureNotificationDestinationResponse,
+} from '@pertexo/contracts';
 import { isApiError } from '@/lib/api/error';
 import {
   describeTestOutcome,
@@ -67,6 +71,7 @@ export function useDestinationTest(
   const cache = useQueryClient();
   const waitSeconds = useReadRetry(mutation.error);
   const phase = phaseOf(mutation);
+  const definitions = useConnectionDefinitions();
   async function send(command: Command) {
     try {
       const result = await mutation.mutateAsync(command);
@@ -109,21 +114,25 @@ export function useDestinationTest(
       attempt.clear();
       void run();
     },
-    failure: failureOf(mutation, destination),
+    failure: failureOf(mutation, definitions),
   };
 }
 
 /** What went wrong in words, so a refusal or our own failure isn't blamed on the destination. */
 function failureOf(
   mutation: ReturnType<typeof useTestFailureNotificationDestinationMutation>,
-  destination: FailureNotificationDestinationResponse,
+  definitions: readonly ConnectionFormDefinition[],
 ): string | undefined {
   if (failedOnOurSide(mutation.error))
     return 'Pertexo couldn’t send the test. The problem is on Pertexo’s side, not with this destination. Try again.';
   if (mutation.isError) return destinationCommandError(mutation.error, 'test');
   if (mutation.data === undefined || mutation.data.outcome.ok) return undefined;
-  let testKey = destination.kind === 'slack' ? 'slack' : 'resend';
-  if (mutation.data.connection.authType === 'smtp') testKey = 'smtp';
-  const { title, detail } = describeTestOutcome(testKey, mutation.data.outcome);
+  const { connection, outcome } = mutation.data;
+  const definition = definitions.find(
+    ({ providerKey, authType }) =>
+      providerKey === connection.providerKey &&
+      authType === connection.authType,
+  );
+  const { title, detail } = describeTestOutcome(definition, outcome);
   return `${title} ${detail}`;
 }

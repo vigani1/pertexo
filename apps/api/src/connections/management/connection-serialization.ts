@@ -1,3 +1,8 @@
+import {
+  oauth2CredentialSchema,
+  type ParsedConnectionCredential,
+} from '@pertexo/contracts';
+import { hasCredentialType } from '../credential-type.js';
 import { createHash, createHmac } from 'node:crypto';
 
 import { encodeStoredClientSecret } from '@pertexo/core/connections';
@@ -39,9 +44,9 @@ export const encryptionSignal = (input: ConnectionCommandInput): AbortSignal =>
   input.signal ?? AbortSignal.timeout(CONNECTION_COMMAND_TIMEOUT_MILLIS);
 
 export const encodeCredential = (
-  credential: Readonly<{ type: string; clientSecret?: string }>,
+  credential: ParsedConnectionCredential,
 ): Uint8Array =>
-  credential.type === 'oauth2' && credential.clientSecret !== undefined
+  hasCredentialType(credential, oauth2CredentialSchema)
     ? encodeStoredClientSecret(credential.clientSecret)
     : new TextEncoder().encode(JSON.stringify(credential));
 

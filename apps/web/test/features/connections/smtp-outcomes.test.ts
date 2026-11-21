@@ -1,3 +1,4 @@
+import { browserConnectionDefinitions } from '../../support/fixtures/node-catalog';
 import { expect, it } from 'vitest';
 import { describeTestOutcome } from '@/features/connections/model/connection-health';
 
@@ -7,11 +8,14 @@ it.each([
   ['connection.smtp_authentication', 'Authentication failed.'],
   ['connection.smtp_sender_rejected', 'Sender refused.'],
 ])('explains %s with safe, specific guidance', (errorCode, title) => {
-  const result = describeTestOutcome('smtp', {
-    ok: false,
-    httpStatus: null,
-    errorCode,
-  });
+  const result = describeTestOutcome(
+    browserConnectionDefinitions.find(({ test }) => test === 'smtp'),
+    {
+      ok: false,
+      httpStatus: null,
+      errorCode,
+    },
+  );
   expect(result.title).toBe(title);
   expect(result.detail).not.toBe('');
 });

@@ -8,7 +8,7 @@ import {
  * connections are shown. Unknown or malformed values are dropped.
  */
 export type ConnectionsSearch = Readonly<{
-  add?: ConnectionChoice | 'any';
+  add?: ConnectionChoice;
   connection?: string;
   view?: 'revoked';
 }>;

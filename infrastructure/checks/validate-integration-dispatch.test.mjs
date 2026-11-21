@@ -11,6 +11,10 @@ const declaration = "export const EXAMPLE_MODULE = { key: 'example' };";
 const keys = integrationKeys([
   [moduleFile, declaration],
   [
+    'packages/integrations/src/slack/slack.module.ts',
+    "const module = { key: 'slack' }; const credential = { authType: 'slack_bot_token' };",
+  ],
+  [
     'packages/integrations/src/example/auth.definition.ts',
     "const auth = { authType: 'custom_auth' };",
   ],
@@ -73,6 +77,37 @@ for (const [name, file, text] of [
 ]) {
   test(`refuses ${name}`, () => {
     assert.equal(findIntegrationDispatch(file, text, keys).length, 1);
+  });
+}
+
+for (const [file, source] of [
+  [
+    'apps/web/src/features/connections/model/connection-providers.ts',
+    "const request = (key) => key === 'slack';",
+  ],
+  [
+    'apps/web/src/features/connections/model/connection-health.ts',
+    "const SUCCESS_TITLES = { 'slack': 'Slack accepted the token.' };",
+  ],
+  [
+    'apps/web/src/features/connections/components/connection-test/panel.tsx',
+    "const INTRO = { 'slack': 'Pertexo asks Slack whether the token works.' };",
+  ],
+  [
+    'packages/contracts/src/schemas/connections/connection-fields.ts',
+    "const connectionProviderKeySchema = z.enum(['slack']);",
+  ],
+  [
+    'packages/contracts/src/schemas/connections/connection-credentials.ts',
+    "const schema = z.object({ type: z.literal('slack_bot_token') });",
+  ],
+  [
+    'packages/contracts/src/schemas/connections/connections.ts',
+    "const schema = z.object({ providerKey: z.literal('slack') });",
+  ],
+]) {
+  test(`refuses a provider key in ${file}`, () => {
+    assert.equal(findIntegrationDispatch(file, source, keys).length, 1);
   });
 }
 
