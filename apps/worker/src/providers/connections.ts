@@ -1,4 +1,3 @@
-import { CONNECTION_AUTH_TYPE } from '@pertexo/workflow-model';
 import { findConnectionDefinition } from '@pertexo/node-catalog';
 import {
   ConnectionOAuth2NotConnectedError,
@@ -193,7 +192,7 @@ export function createProviderConnectionRuntimeFactory(
           ...input,
           expectedProviderKey: 'http',
         });
-        if (resolved.connection.authType === CONNECTION_AUTH_TYPE.httpHeaders)
+        if (resolved.connection.authType === 'http_headers')
           return {
             ...(await openSecret(
               encryption,
@@ -203,10 +202,7 @@ export function createProviderConnectionRuntimeFactory(
             )),
             authType: 'http_headers',
           };
-        if (
-          resolved.connection.authType !== CONNECTION_AUTH_TYPE.oauth2 ||
-          tokens === undefined
-        )
+        if (resolved.connection.authType !== 'oauth2' || tokens === undefined)
           throw new ProviderCredentialInvalidError();
         const token = await tokens.accessToken(
           tokenScope(input.connectionId),

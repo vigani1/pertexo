@@ -41,6 +41,11 @@ for (const [name, file, text] of [
     "const stepIcons = { ['example.run@1']: ExampleIcon };",
   ],
   [
+    'a worker allowlist built from auth constants',
+    'apps/worker/src/providers/connections.ts',
+    "import { CONNECTION_AUTH_TYPE as types } from '@pertexo/workflow-model'; const supported = [types.slackBotToken];",
+  ],
+  [
     'a polling adapter map in the worker',
     'apps/worker/src/triggers/fetch-poll.ts',
     'const fetchers = new Map([[\x60example.run\x60, fetchExample]]);',
