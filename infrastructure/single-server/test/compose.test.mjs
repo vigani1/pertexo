@@ -1,7 +1,13 @@
 import { codeContainerLimits } from '../../../packages/node-sdk/dist/index.js';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseEnv } from 'node:util';
@@ -93,29 +99,53 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
       SERVICE_VERSION: 'b'.repeat(40),
       BETA_STATE_DIR: directory,
     };
+    if (mode === 'kms') {
+      delete environment.CODE_RUNNER_MEMORY_MB;
+      delete environment.CODE_RUNNER_CONCURRENCY;
+    }
+    const resolved = join(directory, 'resolved.json');
+    const compose = [
+      'compose',
+      '--env-file',
+      '/dev/null',
+      '-f',
+      'infrastructure/single-server/compose.yaml',
+      '--profile',
+      'ops',
+      'config',
+      '--format',
+      'json',
+    ];
+    writeFileSync(
+      resolved,
+      execFileSync('docker', [...compose, '--no-env-resolution'], {
+        env: {
+          ...environment,
+          APP_HOST: 'app.example.test',
+          FILES_HOST: 'files.example.test',
+          CODE_RUNNER_CONTAINER_MEMORY_MB: '128',
+          CODE_RUNNER_CONTAINER_CPUS: '1',
+          CODE_RUNNER_CONTAINER_PIDS: '128',
+          CODE_RUNNER_MANAGER_HEAP_MB: '32',
+          API_CONTAINER_MEMORY_MB: '512',
+          API_HEAP_MB: '256',
+          WORKER_CONTAINER_MEMORY_MB: '768',
+          WORKER_HEAP_MB: '256',
+          WORKER_MAX_RSS_BYTES: '671088640',
+        },
+      }),
+    );
     execFileSync(
       process.execPath,
       ['infrastructure/single-server/storage/prepare.mjs', directory],
-      { env: environment },
+      { env: { ...environment, PERTEXO_RESOLVED_CONFIG: resolved } },
     );
     const hosts = parseEnv(readFileSync(join(directory, 'hosts.env'), 'utf8'));
     const config = JSON.parse(
-      execFileSync(
-        'docker',
-        [
-          'compose',
-          '--env-file',
-          '/dev/null',
-          '-f',
-          'infrastructure/single-server/compose.yaml',
-          '--profile',
-          'ops',
-          'config',
-          '--format',
-          'json',
-        ],
-        { env: { ...environment, ...hosts }, encoding: 'utf8' },
-      ),
+      execFileSync('docker', compose, {
+        env: { ...environment, ...hosts },
+        encoding: 'utf8',
+      }),
     );
     assert.ok(
       config.services.postgres.command.includes(
@@ -240,6 +270,7 @@ for (const { mode, transport } of ['kms', 'self-managed'].flatMap((mode) =>
     assert.ok(runner.security_opt.includes('no-new-privileges:true'));
     assert.equal(runner.oom_score_adj, -1000);
     assert.equal(Number(runner.mem_limit), limits.memoryMiB * 1048576);
+    if (mode === 'kms') assert.equal(Number(runner.mem_limit), 1872 * 1048576);
     assert.equal(runner.memswap_limit, runner.mem_limit);
     assert.equal(Number(runner.cpus), limits.cpus);
     assert.equal(runner.pids_limit, limits.pids);
