@@ -53,7 +53,7 @@ export async function createApiConnectionRuntime(
     identityRuntime,
     applicationSecret,
     oauth2,
-    httpAllowedPrivateNetworks,
+    httpAllowedPrivateNetworks = [],
     smtpPolicy,
     systemMailAvailable,
     runtime,
@@ -62,7 +62,7 @@ export async function createApiConnectionRuntime(
     applicationSecret: string;
     systemMailAvailable?: boolean;
     oauth2?: Readonly<{ publicWebOrigin: string }>;
-    httpAllowedPrivateNetworks: readonly AllowedPrivateNetwork[];
+    httpAllowedPrivateNetworks?: readonly AllowedPrivateNetwork[];
     smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>;
     runtime?: DatabaseRuntime | undefined;
   }>,

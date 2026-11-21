@@ -18,14 +18,16 @@ export function decodeCredential(
     if (test.kind === 'http') {
       const target =
         typeof test.target === 'string'
-          ? { url: test.target, headers: {} }
+          ? { url: test.target, headers: undefined }
           : test.target.resolve(credential);
       return {
         credential,
         recipe: {
           ...test,
           target: target.url,
-          headers: { ...test.headers, ...target.headers },
+          ...(target.headers === undefined
+            ? {}
+            : { headers: { ...test.headers, ...target.headers } }),
         },
         auth,
       };
