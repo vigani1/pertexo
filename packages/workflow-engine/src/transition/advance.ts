@@ -144,10 +144,12 @@ export function prepareWorkflowAdvance(
       working: MutableWorkflowTransition,
       {
         inlineAttempts,
+        attemptKeys,
         yieldInline,
         occurredAt = input.occurredAt,
       }: Readonly<{
         inlineAttempts?: readonly InlineAttemptSettlement[];
+        attemptKeys?: readonly string[];
         yieldInline?: boolean;
         occurredAt?: string;
       }> = {},
@@ -160,6 +162,7 @@ export function prepareWorkflowAdvance(
         occurredAt,
         ...(inlineAttempts === undefined ? {} : { inlineAttempts }),
         ...(yieldInline === undefined ? {} : { yieldInline }),
+        ...(attemptKeys === undefined ? {} : { attemptKeys }),
       }),
   };
 }

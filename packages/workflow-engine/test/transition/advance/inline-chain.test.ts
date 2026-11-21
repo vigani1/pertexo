@@ -48,7 +48,12 @@ async function start(
   {
     withTerminate = true,
     expression,
-  }: { withTerminate?: boolean; expression?: string } = {},
+    mixedFrontier,
+  }: {
+    withTerminate?: boolean;
+    expression?: string;
+    mixedFrontier?: true;
+  } = {},
 ) {
   const template = graph();
   const manual = template.nodes[0];
@@ -95,6 +100,25 @@ async function start(
         ]
       : []),
   ];
+  const tail = nodes.slice(1);
+  const external = {
+    ...last,
+    id: 'external',
+    definition: { key: 'core.set', version: 1 },
+    config: {},
+    inputMappings: {},
+  };
+  const edges = tail.map(({ id }, index) => ({
+    id: `edge-${String(index)}`,
+    source: { nodeId: nodes[index]?.id, port: 'out' },
+    target: { nodeId: id, port: 'in' },
+  }));
+  if (mixedFrontier)
+    edges.push({
+      id: 'manual-external',
+      source: { nodeId: manual.id, port: 'out' },
+      target: { nodeId: external.id, port: 'in' },
+    });
   const original = nodeCatalog();
   const inlineCatalog = createNodeCatalog({
     definitions: [echo],
@@ -109,12 +133,8 @@ async function start(
   const executable = buildWorkflowExecutable({
     graph: {
       settings: template.settings,
-      nodes,
-      edges: nodes.slice(1).map(({ id }, index) => ({
-        id: `edge-${String(index)}`,
-        source: { nodeId: nodes[index]?.id, port: 'out' },
-        target: { nodeId: id, port: 'in' },
-      })),
+      nodes: mixedFrontier ? [...nodes, external] : nodes,
+      edges,
     },
     catalog: composeExecutableCatalog(catalog),
   });
@@ -249,6 +269,55 @@ describe('bounded coordinator inline advances', () => {
     expect(plan.checkpoint.nextEventSequence).toBe(
       fixture.checkpoint.nextEventSequence + 1 + plan.events.length,
     );
+  });
+
+  it('leaves later inline siblings ready when the frontier needs a delivery', async () => {
+    const fixture = await start(
+      1,
+      add,
+      {},
+      { withTerminate: false, mixedFrontier: true },
+    );
+    const delivery = await advanceWorkflow({
+      ...fixture.base,
+      checkpoint: fixture.checkpoint,
+      observations: fixture.observations,
+      inline: fixture.inline,
+    });
+    expect(delivery.inlineAttempts).toBeUndefined();
+    expect(delivery.attempts.map(({ nodeId }) => nodeId)).toEqual(['external']);
+    expect(delivery.checkpoint.invocations).toContainEqual(
+      expect.objectContaining({
+        nodeId: 'step-1',
+        status: 'ready',
+        attemptNumber: 0,
+      }),
+    );
+    const [external] = delivery.attempts;
+    if (external === undefined)
+      throw new Error('Delivery-backed sibling is missing');
+    const attemptId = randomUUID();
+    const resumed = await advanceWorkflow({
+      ...fixture.base,
+      checkpoint: delivery.checkpoint,
+      inline: fixture.inline,
+      observations: [
+        {
+          kind: 'outcome',
+          occurredAt,
+          sequence: delivery.checkpoint.nextEventSequence,
+          attemptId,
+          invocationKey: external.invocationKey,
+          attemptNumber: 1,
+          status: 'succeeded',
+          output: { kind: 'inline', attemptId },
+        },
+      ],
+    });
+    expect(resumed.inlineAttempts).toMatchObject([
+      { nodeId: 'step-1', attemptNumber: 1, output: { value: 11 } },
+    ]);
+    expect(resumed.checkpoint.runStatus).toBe('succeeded');
   });
 
   it('yields at the attempt budget and continues from the committed predecessor', async () => {

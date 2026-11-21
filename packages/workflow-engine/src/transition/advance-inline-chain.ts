@@ -14,7 +14,6 @@ import {
 } from '../observation/coordinator.js';
 import { forEachCoordinatorObservations } from '../observation/coordinator-loops.js';
 import type { ExecutionNode } from '../compilation/workflow-executable.js';
-import { testStepDisposition } from '../testing/policy.js';
 import type {
   WorkflowObservation,
   InvocationState,
@@ -25,13 +24,14 @@ import {
   type AdvanceWorkflowFromSchedulerStateInput,
 } from './advance.js';
 import type { AdvanceWorkflowInput } from './advance-workflow.js';
-import { admitAttempts, selectReadyAdmissions } from './plan.js';
+import { admitAttempts } from './plan.js';
 import {
   type MutableWorkflowTransition,
   transitionEvent,
 } from './transition-state.js';
 import {
   prepareInlineInvocation,
+  inlineFrontier,
   type PreparedInlineInvocation,
 } from './inline-invocation.js';
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
@@ -106,17 +106,17 @@ export async function advanceInlineChain(
   const chain = { input, options, state, nodes, settled };
   const stopAt = options.monotonicNow() + INLINE_ADVANCE_BUDGET.millis;
   let occurredAt = input.occurredAt;
-  for (
-    let candidate = nextInlineCandidate(chain);
-    candidate !== undefined;
-    candidate = nextInlineCandidate(chain)
-  ) {
+  let frontier = inlineFrontier(chain);
+  for (; frontier.kind === 'inline'; frontier = inlineFrontier(chain)) {
+    const { candidate } = frontier;
     assertNotAborted(input.signal);
     const remaining = stopAt - options.monotonicNow();
     if (settled.length >= INLINE_ADVANCE_BUDGET.attempts || remaining <= 0)
       return finish(state, {
         inlineAttempts: settled,
         yieldInline: settled.length > 0,
+        attemptKeys:
+          settled.length === 0 ? [candidate.invocation.invocationKey] : [],
         occurredAt,
       });
 
@@ -128,12 +128,14 @@ export async function advanceInlineChain(
       return finish(state, {
         inlineAttempts: settled,
         yieldInline: settled.length > 0,
+        attemptKeys:
+          settled.length === 0 ? [candidate.invocation.invocationKey] : [],
         occurredAt,
       });
     occurredAt = prepared.occurredAt;
     if (prepared.kind === 'deadline') {
       apply([{ kind: 'deadline_expired', occurredAt }], occurredAt);
-      break;
+      return finish(state, { inlineAttempts: settled, occurredAt });
     }
 
     const { observations, checkpoint } = settleInvocation(
@@ -150,32 +152,11 @@ export async function advanceInlineChain(
         occurredAt,
       });
   }
-  return finish(state, { inlineAttempts: settled, occurredAt });
-}
-
-function nextInlineCandidate({
-  input,
-  options,
-  state,
-  nodes,
-}: Chain): Candidate | undefined {
-  const [key] = selectReadyAdmissions(
-    state,
-    input.maximumAdmissions,
-    input.hasExecutionSlot ?? true,
-  );
-  const invocation = key === undefined ? undefined : state.invocations.get(key);
-  const node =
-    invocation === undefined ? undefined : nodes.get(invocation.nodeId);
-  if (
-    node === undefined ||
-    invocation === undefined ||
-    !options.registry.canExecuteInline(node.definition) ||
-    (input.test !== undefined &&
-      testStepDisposition(node, input.test).kind !== 'execute')
-  )
-    return undefined;
-  return { invocation, node };
+  return finish(state, {
+    inlineAttempts: settled,
+    occurredAt,
+    attemptKeys: frontier.attemptKeys,
+  });
 }
 
 function settleInvocation(

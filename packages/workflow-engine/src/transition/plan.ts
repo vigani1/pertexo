@@ -87,6 +87,7 @@ export function buildWorkflowTransitionPlan(
     hasExecutionSlot: boolean;
     occurredAt: string;
     inlineAttempts?: readonly InlineAttemptSettlement[];
+    attemptKeys?: readonly string[];
     yieldInline?: boolean;
   }>,
 ): WorkflowTransitionPlan {
@@ -100,11 +101,12 @@ export function buildWorkflowTransitionPlan(
   } = state;
   const admittedKeys = input.yieldInline
     ? []
-    : selectReadyAdmissions(
+    : (input.attemptKeys ??
+      selectReadyAdmissions(
         state,
         input.maximumAdmissions,
         input.hasExecutionSlot,
-      );
+      ));
   const attempts = admitAttempts(state, admittedKeys);
   if (state.runStatus === 'waiting' && attempts.length > 0) {
     assertRunTransition(state.runStatus, 'running');
