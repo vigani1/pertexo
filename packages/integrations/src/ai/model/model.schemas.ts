@@ -1,4 +1,4 @@
-import { labelledChoice } from '@pertexo/node-sdk';
+import { boundedNodeJsonRecordSchema, labelledChoice } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { compileModelOutputSchema } from './output-schema.js';
 
@@ -44,13 +44,19 @@ const common = {
       default: MODEL_LIMITS.defaultOutputTokens,
     }),
 };
-const jsonObject = z.record(z.string(), z.json());
+// The bounded JSON projection's recursive root does not resolve inside a
+// property. The enclosing document only needs to declare the object shape.
+const jsonObject = boundedNodeJsonRecordSchema.meta({
+  type: 'object',
+  additionalProperties: true,
+  anyOf: undefined,
+});
 const outputSchema = jsonObject
   .refine(
     (value) => compileModelOutputSchema(value) !== undefined,
     'Expected a bounded object schema using the supported JSON Schema keywords',
   )
-  .meta({ title: 'Output schema' });
+  .meta({ ...jsonObject.meta(), title: 'Output schema' });
 
 export const modelConfigSchema = z.discriminatedUnion('mode', [
   z.strictObject({ ...common, mode: mode('text') }),

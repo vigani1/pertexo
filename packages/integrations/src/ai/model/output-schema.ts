@@ -33,18 +33,19 @@ export function compileModelOutputSchema(schema: SchemaDocument) {
   if (
     schema.type !== 'object' ||
     utf8ByteLength(JSON.stringify(schema)) > OUTPUT_SCHEMA_LIMITS.bytes ||
-    !withinDepth(schema, OUTPUT_SCHEMA_LIMITS.depth) ||
-    !inSubset(schema)
+    !withinDepth(schema, OUTPUT_SCHEMA_LIMITS.depth)
   )
     return undefined;
 
+  const prepared = prepareSchema(schema);
+  if (prepared === undefined) return undefined;
   try {
-    return ajv.compile<SchemaDocument>(schema);
+    return ajv.compile<SchemaDocument>(prepared);
   } catch {
     return undefined;
   } finally {
     // Keep the validator for the current invocation without retaining past setup.
-    ajv.removeSchema(schema);
+    ajv.removeSchema(prepared);
   }
 }
 
@@ -58,26 +59,78 @@ function withinDepth(value: SchemaJson, remaining: number): boolean {
   );
 }
 
-function inSubset(value: unknown): boolean {
-  if (!isRecord(value) || Object.keys(value).some((key) => !keywords.has(key)))
-    return false;
-  const { type, properties, required, additionalProperties, items } = value;
-  if (type !== undefined && !types.has(type)) return false;
-  if (type === 'array' ? !inSubset(items) : items !== undefined) return false;
+function isSchemaObject(
+  value: SchemaJson | undefined,
+): value is SchemaDocument {
+  return isRecord(value);
+}
+
+function prepareSchema(
+  value: SchemaJson | undefined,
+): SchemaDocument | undefined {
   if (
-    properties !== undefined &&
-    (type !== 'object' ||
-      !isRecord(properties) ||
-      !Object.values(properties).every(inSubset))
+    !isSchemaObject(value) ||
+    Object.keys(value).some((key) => !keywords.has(key))
   )
-    return false;
+    return undefined;
+
+  const {
+    type,
+    properties,
+    required,
+    additionalProperties,
+    items,
+    ...constraints
+  } = value;
+  if (type !== undefined && !types.has(type)) return undefined;
   if (
-    (required !== undefined || additionalProperties !== undefined) &&
+    (properties !== undefined ||
+      required !== undefined ||
+      additionalProperties !== undefined) &&
     type !== 'object'
   )
-    return false;
-  return (
-    additionalProperties === undefined ||
-    typeof additionalProperties === 'boolean'
-  );
+    return undefined;
+  if (
+    additionalProperties !== undefined &&
+    typeof additionalProperties !== 'boolean'
+  )
+    return undefined;
+
+  const prepared = { ...constraints, ...(type === undefined ? {} : { type }) };
+  if (type === 'array') {
+    const itemSchema = prepareSchema(items);
+    return itemSchema === undefined
+      ? undefined
+      : { ...prepared, items: itemSchema };
+  }
+  if (items !== undefined) return undefined;
+  if (type !== 'object') return prepared;
+
+  const object = {
+    ...prepared,
+    ...(required === undefined ? {} : { required }),
+    ...(additionalProperties === undefined ? {} : { additionalProperties }),
+  };
+  if (properties === undefined) return object;
+  if (!isSchemaObject(properties)) return undefined;
+
+  const fields: Record<string, SchemaDocument> = {};
+  let prototypeField: SchemaDocument | undefined;
+  for (const [key, child] of Object.entries(properties)) {
+    const field = prepareSchema(child);
+    if (field === undefined) return undefined;
+    if (key === '__proto__') prototypeField = field;
+    else fields[key] = field;
+  }
+  return {
+    ...object,
+    properties: fields,
+    // Ajv skips this exact key in properties. A fixed pattern lets it validate
+    // the key without compiling any regex supplied by a workflow.
+    ...(prototypeField === undefined
+      ? {}
+      : {
+          patternProperties: { '^__proto__(?![\\s\\S])': prototypeField },
+        }),
+  };
 }

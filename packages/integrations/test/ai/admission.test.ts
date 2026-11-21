@@ -1,3 +1,5 @@
+import type { SchemaDocument } from '@pertexo/node-sdk';
+import { compileModelOutputSchema } from '../../src/ai/model/output-schema.js';
 import { describe, expect, it } from 'vitest';
 import {
   MODEL_CONNECTION,
@@ -104,6 +106,23 @@ describe('model catalog admission', () => {
       executorAbi: 2,
       connectionRequirements: ['model_api_key'],
     });
+  });
+
+  it('validates explicitly declared JSON keys even when the compiler treats them specially', () => {
+    const schema: SchemaDocument = {
+      type: 'object',
+      properties: { ['__proto__']: { type: 'integer' } },
+      required: ['__proto__'],
+      additionalProperties: false,
+    };
+    const validate = compileModelOutputSchema(schema);
+    expect(validate?.(JSON.parse('{"__proto__":1}'))).toBe(true);
+    expect(validate?.(JSON.parse('{"__proto__":"1"}'))).toBe(false);
+  });
+
+  it('retains JSON object keys unchanged in the data envelope', () => {
+    const data: unknown = JSON.parse('{"__proto__":{"count":1}}');
+    expect(outputSchema.parse({ data })).toEqual({ data });
   });
 
   it('admits nested objects, arrays, required properties, primitives and enums', () => {
