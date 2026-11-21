@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import type {
   AccessibleWorkspace,
   WorkflowRunListItem,
@@ -73,7 +74,12 @@ export function RunRow({
   });
   const layout = RUN_ROW_LAYOUT[variant];
   const inWorkflow = variant === 'workflow';
-  const failure = describeListedFailure(run.failedStep, run.failureReasonCode);
+  const describeStep = useStepDescriptions();
+  const failure = describeListedFailure(
+    run.failedStep,
+    run.failureReasonCode,
+    describeStep,
+  );
   return (
     <li
       data-slot="run-row"

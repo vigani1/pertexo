@@ -20,7 +20,7 @@ import type {
 
 import { describe, expect, it } from 'vitest';
 
-import { definition, etag, node } from './fixture';
+import { definition, editorDefinition, etag, node } from './fixture';
 
 describe('add-step choices', () => {
   it('folds the data table writes into one row after the everyday actions', () => {
@@ -33,10 +33,10 @@ describe('add-step choices', () => {
     const catalog = [
       action('core.table_delete'),
       action('core.table_insert'),
-      action('http.request'),
+      editorDefinition('http.request'),
       action('core.table_update'),
       action('core.table_upsert'),
-      action('email.send_notification'),
+      editorDefinition('email.send_notification'),
     ];
     const [browsing] = groupStepChoices(catalog, '');
     expect(
@@ -73,7 +73,7 @@ describe('add-step choices', () => {
       step('core.filter', 'transform'),
       step('core.run_values', 'transform'),
       step('core.table_insert', 'action'),
-      step('http.request', 'action'),
+      editorDefinition('http.request'),
     ];
     const groups = groupStepChoices(catalog, '');
     expect(
@@ -103,7 +103,11 @@ describe('add-step choices', () => {
         family: 'logic',
       }) satisfies NodeDefinitionCatalogItem;
     // Call workflow's description mentions waiting; Wait is the name match.
-    const catalog = [definition, logic('core.call'), logic('core.wait')];
+    const catalog = [
+      editorDefinition('slack.send_message'),
+      logic('core.call'),
+      logic('core.wait'),
+    ];
     expect(
       groupStepChoices(catalog, 'wait').flatMap((group) =>
         group.choices.map((choice) => choice.step.name),

@@ -2,7 +2,7 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { WrenchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusGlyph } from '@/components/ui/status';
-import { describeStep } from '@/features/catalog/public';
+import { useStepDescriptions } from '@/features/catalog/public';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import type { WorkflowIssueGroup } from '../../model/validation/issues';
 import {
@@ -20,6 +20,7 @@ export function IssuesList({
   graph: WorkflowGraphContract;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
+  const describeStep = useStepDescriptions();
   return (
     <ul className="flex flex-col gap-3" aria-label="Issues by step">
       {groups.map((group) => {
@@ -28,7 +29,7 @@ export function IssuesList({
             ? undefined
             : findWorkflowStep(graph, group.nodeId);
         const step =
-          node === undefined ? undefined : describeStep(node.definition.key);
+          node === undefined ? undefined : describeStep(node.definition);
         const name =
           node === undefined ? 'Whole workflow' : (node.label ?? step?.name);
         return (

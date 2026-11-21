@@ -1,3 +1,4 @@
+import { describeBrowserStep } from '../../support/fixtures/node-catalog';
 import { diffWorkflowGraphs } from '@/features/workflow-drafts/public';
 
 import { ReviewCandidate } from '@/features/workflow-publish/components/reviews/candidate';
@@ -135,14 +136,18 @@ describe('publish summary', () => {
         },
       ],
     );
-    const summary = summarizePublish(draft, {
-      id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-      workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
-      versionNumber: 7,
-      graph: live,
-      checksum: `wf:sha256:${'b'.repeat(64)}`,
-      publishedAt: '2026-09-14T10:02:00.000Z',
-    });
+    const summary = summarizePublish(
+      draft,
+      {
+        id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        workflowId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        versionNumber: 7,
+        graph: live,
+        checksum: `wf:sha256:${'b'.repeat(64)}`,
+        publishedAt: '2026-09-14T10:02:00.000Z',
+      },
+      describeBrowserStep,
+    );
     expect(summary.nextVersionNumber).toBe(8);
     expect(summary.previousVersionNumber).toBe(7);
     expect(summary.lines).toEqual([

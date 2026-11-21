@@ -4,7 +4,10 @@ import type {
 } from '@pertexo/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useId, useMemo } from 'react';
-import { describeStep } from '@/features/catalog/public';
+import {
+  useStepDescriptions,
+  type DescribeStep,
+} from '@/features/catalog/public';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/workflow-editor-queries.public';
 import { StepHealthList } from './health-list';
 import type { ApiClient } from '@/lib/api/client';
@@ -12,7 +15,10 @@ import type { ApiClient } from '@/lib/api/client';
 type GraphLevel = Readonly<Pick<WorkflowGraphContract, 'nodes' | 'edges'>>;
 
 /** Each step's name as Build shows it, on every level of the graph. */
-function stepNames(graph: GraphLevel | undefined): ReadonlyMap<string, string> {
+function stepNames(
+  graph: GraphLevel | undefined,
+  describeStep: DescribeStep,
+): ReadonlyMap<string, string> {
   const names = new Map<string, string>();
   const visit = (level: GraphLevel) => {
     for (const node of level.nodes) {
@@ -20,7 +26,7 @@ function stepNames(graph: GraphLevel | undefined): ReadonlyMap<string, string> {
       names.set(
         node.id,
         label === undefined || label === ''
-          ? describeStep(node.definition.key).name
+          ? describeStep(node.definition).name
           : label,
       );
       if (node.structured !== undefined) visit(node.structured.body);
@@ -48,7 +54,11 @@ export function WorkflowStepHealth({
   const draft = useQuery(
     workflowDraftQueryOptions(apiClient, userId, workspace.id, workflowId),
   );
-  const names = useMemo(() => stepNames(draft.data?.draft.graph), [draft.data]);
+  const describeStep = useStepDescriptions();
+  const names = useMemo(
+    () => stepNames(draft.data?.draft.graph, describeStep),
+    [draft.data, describeStep],
+  );
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-3">

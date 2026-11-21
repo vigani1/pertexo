@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import { PublicationResources } from '../validation/publication-resources';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { publicationAction } from '../../model/publication/action';
@@ -52,10 +53,11 @@ function usePublishPreview({
   });
   const latestVersion = everPublished ? latest.data : null;
   const known = workflow !== undefined || receipt !== undefined;
+  const describeStep = useStepDescriptions();
   const summary =
     latestVersion === undefined || !known
       ? undefined
-      : summarizePublish(graph, latestVersion);
+      : summarizePublish(graph, latestVersion, describeStep);
   return {
     everPublished,
     summary,

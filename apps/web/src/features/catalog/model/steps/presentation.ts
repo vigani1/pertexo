@@ -1,7 +1,12 @@
 import { TIMED_OUT_PORT, WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
-import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
-import { stepIcons, type StepFamily, type StepPresentation } from './registry';
+import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
+import {
+  catalogIcons,
+  stepIcons,
+  type StepFamily,
+  type StepPresentation,
+} from './registry';
 import {
   BoxIcon,
   BracesIcon,
@@ -21,12 +26,47 @@ const familyIcons: Readonly<Record<StepFamily | 'unknown', LucideIcon>> = {
   unknown: BoxIcon,
 };
 
-const catalogDefinitions = new Map(
-  platformBrowserNodeDefinitionCatalog().definitions.map((item) => [
-    item.definition.key,
-    item,
-  ]),
+const coreDefinitions = new Map(
+  CORE_NODE_CATALOG.definitions.map((item) => [item.definition.key, item]),
 );
+
+type StepIdentity = string | NodeDefinitionCatalogItem['definition'];
+type StepMetadata = Pick<
+  NodeDefinitionCatalogItem,
+  'display' | 'family' | 'presentation'
+>;
+
+export type DescribeStep = (
+  identity: StepIdentity,
+  family?: StepFamily,
+) => StepPresentation;
+
+/** Index the served versioned definitions. Key-only readers use the latest version. */
+export function catalogStepDescriptions(
+  items: readonly NodeDefinitionCatalogItem[],
+): DescribeStep {
+  const versions = new Map<string, Map<number, NodeDefinitionCatalogItem>>();
+  const latest = new Map<string, NodeDefinitionCatalogItem>();
+  for (const item of items) {
+    const { key, version } = item.definition;
+    let byVersion = versions.get(key);
+    if (byVersion === undefined) {
+      byVersion = new Map();
+      versions.set(key, byVersion);
+    }
+    byVersion.set(version, item);
+    const previous = latest.get(key);
+    if (previous === undefined || previous.definition.version < version)
+      latest.set(key, item);
+  }
+  return (identity, family) => {
+    const item =
+      typeof identity === 'string'
+        ? latest.get(identity)
+        : versions.get(identity.key)?.get(identity.version);
+    return describeStep(identity, family, item);
+  };
+}
 
 /** `acme_crm.create_contact` → "Create contact". */
 export function prettifyDefinitionKey(key: string): string {
@@ -37,21 +77,26 @@ export function prettifyDefinitionKey(key: string): string {
 }
 
 export function describeStep(
-  definitionKey: string,
+  identity: StepIdentity,
   family?: StepFamily,
+  metadata?: StepMetadata,
 ): StepPresentation {
-  const known = catalogDefinitions.get(definitionKey);
-  const resolvedFamily = family ?? known?.family ?? 'unknown';
-  if (known?.display !== undefined)
-    return {
-      ...known.display,
-      family: resolvedFamily,
-      icon: stepIcons[definitionKey] ?? familyIcons[resolvedFamily],
-    };
+  const key = typeof identity === 'string' ? identity : identity.key;
+  const core = coreDefinitions.get(key);
+  const resolvedFamily =
+    family ?? metadata?.family ?? core?.family ?? 'unknown';
+  const presentation = metadata?.presentation;
+  const display = metadata?.display ?? core?.display;
+  const catalogIcon =
+    presentation === undefined
+      ? undefined
+      : catalogIcons.get(presentation.icon);
+  const coreIcon = core === undefined ? undefined : stepIcons[key];
   return {
-    name: prettifyDefinitionKey(definitionKey),
-    description: 'A step from the catalog',
-    icon: familyIcons[resolvedFamily],
+    name: presentation?.name ?? display?.name ?? prettifyDefinitionKey(key),
+    description: display?.description ?? 'A step from the catalog',
+    sideEffect: display?.sideEffect,
+    icon: catalogIcon ?? coreIcon ?? familyIcons[resolvedFamily],
     family: resolvedFamily,
   };
 }

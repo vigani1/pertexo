@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import { PUBLICATION_REVIEW_TEXT_MAX_LENGTH } from '@pertexo/workflow-model';
 import { ConfirmationDetails } from '@/components/patterns/actions/confirm-dialog';
 import { unreachableStepIssues } from '../../model/validation/reachability';
@@ -333,7 +334,10 @@ function UnconnectedStepWarnings({
   graph: WorkflowGraphContract;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
-  const warnings = groupWorkflowFindings(unreachableStepIssues(graph));
+  const describeStep = useStepDescriptions();
+  const warnings = groupWorkflowFindings(
+    unreachableStepIssues(graph, describeStep),
+  );
   if (warnings.length === 0) return null;
   return (
     <section aria-label="Unconnected steps">

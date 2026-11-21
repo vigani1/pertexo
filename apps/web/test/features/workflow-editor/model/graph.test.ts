@@ -32,7 +32,13 @@ import type {
 
 import { describe, expect, it } from 'vitest';
 
-import { branchingGraph, definition, edge, node } from './graph/fixture';
+import {
+  branchingGraph,
+  definition,
+  edge,
+  editorDefinition,
+  node,
+} from './graph/fixture';
 
 describe('editor graph commands', () => {
   it('removes connections alone and restores removed steps with their connections', () => {
@@ -193,15 +199,19 @@ describe('editor graph commands', () => {
       ],
       edges: [edge('e1', 'trigger', 'slack')],
     };
-    const projection = projectWorkflowGraph(graph, [definition], {
-      issuesByNode: new Map([['slack', 2]]),
-      flowingEdgeIds: new Set(['e1']),
-      weaveOrder: null,
-      selectedNodeIds: ['slack'],
-      selectedEdgeIds: [],
-      dragPositions: new Map([['trigger', { x: 5, y: 6 }]]),
-      bodyIssues: new Map(),
-    });
+    const projection = projectWorkflowGraph(
+      graph,
+      [editorDefinition('slack.send_message')],
+      {
+        issuesByNode: new Map([['slack', 2]]),
+        flowingEdgeIds: new Set(['e1']),
+        weaveOrder: null,
+        selectedNodeIds: ['slack'],
+        selectedEdgeIds: [],
+        dragPositions: new Map([['trigger', { x: 5, y: 6 }]]),
+        bodyIssues: new Map(),
+      },
+    );
     expect(projection.nodes[0]?.position).toEqual({ x: 5, y: 6 });
     expect(projection.nodes[1]?.selected).toBe(true);
     expect(projection.nodes[1]?.data).toMatchObject({

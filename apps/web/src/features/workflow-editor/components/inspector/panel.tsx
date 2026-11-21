@@ -1,7 +1,7 @@
 import { Suspense, type ReactNode } from 'react';
 import { lazyPiece } from '@/components/patterns/app-update/lazy';
 import { Skeleton } from '@/components/ui/skeleton';
-import { describeStep } from '@/features/catalog/public';
+import { useStepDescriptions } from '@/features/catalog/public';
 import { useEditorStore } from '../../model/state/context';
 
 import { locateStep } from '../../model/graph/scopes';
@@ -11,15 +11,6 @@ import type { NodeInspectorActions, NodeInspectorView } from './node';
 const NodeInspector = lazyPiece(() =>
   import('./node').then((module) => module.NodeInspector),
 );
-
-function stepName(
-  node: Readonly<{ label?: string | undefined; definition: { key: string } }>,
-) {
-  const label = node.label?.trim();
-  return label === undefined || label === ''
-    ? describeStep(node.definition.key).name
-    : label;
-}
 
 /**
  * What the inspector lens shows for the current selection: one step's
@@ -40,6 +31,7 @@ export function InspectorPanel({
   renderRuns?: (nodeId: string, stepLabel: string) => ReactNode;
   actions: NodeInspectorActions;
 }>) {
+  const describeStep = useStepDescriptions();
   const { scratchVersion } = view;
   const graph = useEditorStore((state) => state.graph);
   const selectedNodeId = useEditorStore((state) => state.selectedNodeId);
@@ -48,6 +40,8 @@ export function InspectorPanel({
     selectedNodeId === null ? undefined : locateStep(graph, selectedNodeId);
   if (step !== undefined) {
     const { node } = step;
+    const presentation = describeStep(node.definition);
+    const label = node.label?.trim();
     return (
       <Suspense
         fallback={
@@ -69,11 +63,11 @@ export function InspectorPanel({
           loopPorts={step.loopPorts}
           view={view}
           panels={{
-            testPanel: renderTest(
+            testPanel: renderTest(node.id, presentation.sideEffect),
+            runsPanel: renderRuns?.(
               node.id,
-              describeStep(node.definition.key).sideEffect,
+              label === undefined || label === '' ? presentation.name : label,
             ),
-            runsPanel: renderRuns?.(node.id, stepName(node)),
             failureSetup: renderFailureSetup?.(node),
           }}
           actions={actions}

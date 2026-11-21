@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 import { useQueries } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ export function useRunFailures({
   workspace: AccessibleWorkspace;
   runIds: readonly string[];
 }>): ReadonlyMap<string, RunFailure> {
+  const describeStep = useStepDescriptions();
   const canReadVersions = workspace.capabilities.includes('workflow:read');
   const uniqueRunIds = [...new Set(runIds)];
   const snapshots = useQueries({
@@ -73,6 +75,7 @@ export function useRunFailures({
               describeRunFailure(
                 snapshot,
                 graphs.get(versionKey(snapshot.run)),
+                describeStep,
               ),
             ] as const,
           ];

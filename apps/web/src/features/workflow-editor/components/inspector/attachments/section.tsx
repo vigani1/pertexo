@@ -6,7 +6,7 @@ import { Notice } from '@/components/ui/notice';
 import { useNotifications } from '@/components/ui/use-notifications';
 import { useRemovalFocus } from '@/lib/hooks/use-removal-focus';
 import { UploadFile } from '@/features/artifacts/artifacts-views.public';
-import { describeStep } from '@/features/catalog/public';
+import { useStepDescriptions } from '@/features/catalog/public';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
@@ -151,6 +151,7 @@ function AttachmentList({
 
 /** Holds one chip's height, so the first file takes its place without a jump. */
 function EmptyAttachments() {
+  const describeStep = useStepDescriptions();
   return (
     <div className="flex h-13 min-w-0 items-center gap-3 rounded-lg border border-dashed border-border-strong px-2.5 text-label">
       <StepTile step={describeStep('email.send_notification')} size="sm" />

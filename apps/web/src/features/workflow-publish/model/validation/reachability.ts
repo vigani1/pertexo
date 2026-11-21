@@ -1,11 +1,12 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { isWorkflowTriggerKey } from '@pertexo/workflow-model';
-import { describeStep } from '@/features/catalog/public';
+import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import type { WorkflowIssue } from './issues';
 
 /** Follow execution links, including failure paths and reachable loop bodies. */
 export function unreachableStepIssues(
   graph: WorkflowGraphContract,
+  describe: DescribeStep = describeStep,
 ): readonly WorkflowIssue[] {
   const issues: WorkflowIssue[] = [];
   function visit(level: WorkflowGraphContract, roots: readonly string[]) {
@@ -27,7 +28,7 @@ export function unreachableStepIssues(
       if (!reached.has(node.id))
         issues.push({
           id: `unreachable-${node.id}`,
-          message: `${node.label ?? describeStep(node.definition.key).name} isn't linked from a trigger, so it never runs.`,
+          message: `${node.label ?? describe(node.definition).name} isn't linked from a trigger, so it never runs.`,
           target: { nodeId: node.id },
         });
       if (node.structured !== undefined) {

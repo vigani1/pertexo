@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/class-names';
 import { StepTestOutputsContext } from '../../../../hooks/use-last-test';
 import { findDefinition } from '../../../../model/graph/adapter';
-import { stepTitle } from '../../../../model/graph/step-title';
 import type { WorkflowNode } from '../../../../model/graph/scopes';
 import { useEditorSession } from '../../../../model/state/context';
 import {
@@ -65,7 +64,8 @@ export function StepFields({
     enabled: open && canRead,
   });
   const definition = findDefinition(definitions, step);
-  const name = stepTitle(step);
+  const presentation = describeStep(step.definition, undefined, definition);
+  const name = step.label ?? presentation.name;
   return (
     <li>
       <button
@@ -82,10 +82,7 @@ export function StepFields({
           aria-hidden="true"
           className={cn('size-3.5 shrink-0', open && 'rotate-90')}
         />
-        <StepTile
-          step={describeStep(step.definition.key, definition?.family)}
-          size="sm"
-        />
+        <StepTile step={presentation} size="sm" />
         <span className="min-w-0 truncate">{title ?? name}</span>
       </button>
       {open ? (

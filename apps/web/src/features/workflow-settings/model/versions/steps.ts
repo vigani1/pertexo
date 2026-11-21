@@ -1,9 +1,6 @@
+import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
-import {
-  definitionName,
-  stepLabel,
-  triggerKindOf,
-} from '@/features/workflows/public';
+import { stepLabel, triggerKindOf } from '@/features/workflows/public';
 import { formatCount } from '@/lib/format/count';
 
 export function stepCountLabel(count: number): string {
@@ -20,12 +17,13 @@ export type VersionStep = Readonly<{
 /** Steps in reading order: triggers first, then left to right on the canvas. */
 export function versionSteps(
   graph: WorkflowGraphContract,
+  describe: DescribeStep = describeStep,
 ): readonly VersionStep[] {
   return graph.nodes
     .map((node) => ({
       id: node.id,
-      label: stepLabel(node),
-      kind: definitionName(node.definition.key),
+      label: stepLabel(node, describe),
+      kind: describe(node.definition).name,
       trigger: triggerKindOf(node.definition) !== undefined,
       x: node.position.x,
       y: node.position.y,

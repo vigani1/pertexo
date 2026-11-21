@@ -181,6 +181,8 @@ test('browser resolution refuses runtime doors, including early instrumentation'
   const entries = [
     ...runtimePackages.map((name) => `@pertexo/${name}/server`),
     '@pertexo/observability/startup',
+    '@pertexo/node-catalog',
+    '@pertexo/node-catalog/server',
   ];
   const results = importEntries(entries, ['--conditions=browser']);
   for (const entry of entries)

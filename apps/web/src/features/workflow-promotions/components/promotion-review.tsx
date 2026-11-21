@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import { canonicalJson, EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import type { WorkflowPromotionPreview } from '@pertexo/contracts';
 import { diffWorkflowGraphs, isEmptyDiff } from '@/features/workflows/public';
@@ -17,6 +18,7 @@ export function PromotionReview({
   onAcknowledge: (id: string, checked: boolean) => void;
 }) {
   const acknowledgedIds = new Set(acknowledged);
+  const describeStep = useStepDescriptions();
   return (
     <div className="grid gap-5">
       <div className="flex flex-wrap items-center gap-3 border-y border-border py-4 text-sm">
@@ -34,6 +36,7 @@ export function PromotionReview({
         const diff = diffWorkflowGraphs(
           workflow.targetGraph ?? EMPTY_WORKFLOW_GRAPH,
           workflow.proposedGraph,
+          describeStep,
         );
         return (
           <article

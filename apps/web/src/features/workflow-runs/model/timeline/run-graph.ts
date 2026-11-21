@@ -2,7 +2,11 @@ import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { TIMED_OUT_PORT } from '@pertexo/workflow-model';
 import type { StatusTone } from '@/components/ui/status';
 import type { RunTimelineRow, RunTimelineStepStatus } from './runs';
-import { describeStep, portName } from '@/features/catalog/public';
+import {
+  describeStep,
+  portName,
+  type DescribeStep,
+} from '@/features/catalog/public';
 
 export type GraphStepStatus = RunTimelineStepStatus;
 
@@ -95,6 +99,7 @@ function strongestRow(
 export function projectRunGraph(
   graph: WorkflowGraphContract,
   rows: readonly RunTimelineRow[],
+  describe: DescribeStep = describeStep,
 ): Readonly<{ nodes: readonly GraphStep[]; edges: readonly GraphLink[] }> {
   const rowsByNode = new Map<string, RunTimelineRow[]>();
   for (const row of rows)
@@ -109,7 +114,7 @@ export function projectRunGraph(
     const status = strongest?.status ?? 'not_started';
     const tone = strongest?.tone ?? 'neutral';
     looks.set(node.id, { status, tone });
-    const kind = describeStep(node.definition.key).name;
+    const kind = describe(node.definition).name;
     const custom = node.label?.trim();
     const nodePorts = ports.get(node.id);
     return {

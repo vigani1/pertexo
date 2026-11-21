@@ -33,7 +33,7 @@ export function AboutTab({
   node: WorkflowNode;
   definition: NodeDefinitionCatalogItem | undefined;
 }>) {
-  const step = describeStep(node.definition.key, definition?.family);
+  const step = describeStep(node.definition, undefined, definition);
   const guide = stepGuideLink(node.definition.key);
   return (
     <dl className="flex flex-col gap-4 text-sm">

@@ -1,3 +1,4 @@
+import { browserDefinitions } from '../../../../support/fixtures/node-catalog';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
@@ -65,3 +66,11 @@ export const definition = {
   resourceClass: 'io',
   capabilities: [],
 } satisfies NodeDefinitionCatalogItem;
+
+export function editorDefinition(key: string): NodeDefinitionCatalogItem {
+  const item = browserDefinitions().find(
+    ({ definition }) => definition.key === key,
+  );
+  if (item === undefined) throw new Error(`Missing catalog fixture for ${key}`);
+  return item;
+}

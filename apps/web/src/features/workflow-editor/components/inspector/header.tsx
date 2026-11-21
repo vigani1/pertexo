@@ -55,7 +55,7 @@ export function InspectorHeader({
   form: NodeFormApi;
   actions: StepMenuActions;
 }>) {
-  const step = describeStep(node.definition.key, definition?.family);
+  const step = describeStep(node.definition, undefined, definition);
   const labelId = `node-label-${node.id}`;
   const label = useInspectorDraftField<string | undefined>({
     value: node.label,

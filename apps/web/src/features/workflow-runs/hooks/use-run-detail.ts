@@ -1,5 +1,6 @@
 import type { WorkflowRunEvent } from '@pertexo/contracts';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { useStepDescriptions } from '@/features/catalog/public';
 import { useMemo, useRef, useState } from 'react';
 import { useMediaQuery } from '@/lib/hooks/use-media-query';
 import { CLOCK_TICK, useNow } from '@/lib/hooks/use-now';
@@ -65,16 +66,20 @@ export function useRunDetail({
   });
   const active = isActiveRunStatus(run.status);
   const nowMs = useNow({ intervalMs: CLOCK_TICK.seconds, enabled: active });
+  const describeStep = useStepDescriptions();
   const view = useMemo(
     () =>
-      buildRunTimeline({
-        run,
-        nodes: snapshot.nodes,
-        events: events.timeline,
-        ...(version.data === undefined ? {} : { graph: version.data.graph }),
-        nowMs,
-      }),
-    [run, snapshot.nodes, events.timeline, version.data, nowMs],
+      buildRunTimeline(
+        {
+          run,
+          nodes: snapshot.nodes,
+          events: events.timeline,
+          ...(version.data === undefined ? {} : { graph: version.data.graph }),
+          nowMs,
+        },
+        describeStep,
+      ),
+    [run, snapshot.nodes, events.timeline, version.data, nowMs, describeStep],
   );
   const upstream = useMemo(
     () =>

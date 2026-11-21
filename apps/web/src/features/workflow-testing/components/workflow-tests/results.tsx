@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import {
   describeStepError,
   describeNodeStatus,
@@ -24,9 +25,10 @@ export function WorkflowTestResults({
   tests: WorkflowTests;
   ensureSaved: () => Promise<{ revision: number }>;
 }>) {
+  const describeStep = useStepDescriptions();
   const labels = useMemo(
-    () => workflowTestStepLabels(tests.snapshot.data?.graph),
-    [tests.snapshot.data?.graph],
+    () => workflowTestStepLabels(tests.snapshot.data?.graph, describeStep),
+    [tests.snapshot.data?.graph, describeStep],
   );
   if (tests.snapshot.data === undefined) return null;
   return (

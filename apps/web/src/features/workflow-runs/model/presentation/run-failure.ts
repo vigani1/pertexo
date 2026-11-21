@@ -4,7 +4,7 @@ import type {
   WorkflowRunFailedStep,
   WorkflowRunResponse,
 } from '@pertexo/contracts';
-import { describeStep } from '@/features/catalog/public';
+import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import { shortStepError } from '../step-inspection/step-error-summary';
 
 const FAILED_STEP_STATUSES: ReadonlySet<string> = new Set([
@@ -23,6 +23,7 @@ export type RunFailure = Readonly<{ step?: string; reason?: string }>;
 export function describeRunFailure(
   snapshot: WorkflowRunResponse,
   graph: WorkflowGraphContract | undefined,
+  describe: DescribeStep = describeStep,
 ): RunFailure {
   const failing = snapshot.nodes
     .filter((node) => FAILED_STEP_STATUSES.has(node.status))
@@ -33,7 +34,7 @@ export function describeRunFailure(
   const node = graph?.nodes.find(
     (candidate) => candidate.id === failing.nodeId,
   );
-  const step = failureStepName(node?.label?.trim(), node?.definition.key);
+  const step = failureStepName(node?.label?.trim(), node?.definition, describe);
   const reason = failureReason(failing.safeErrorCode, failing.status);
   return {
     ...(step === undefined ? {} : { step }),
@@ -45,6 +46,7 @@ export function describeRunFailure(
 export function describeListedFailure(
   failedStep: WorkflowRunFailedStep | null | undefined,
   runFailureCode?: string | null,
+  describe: DescribeStep = describeStep,
 ): RunFailure {
   const runReason = describeRunFailureReason(runFailureCode);
   if (runReason !== undefined) return { reason: runReason };
@@ -52,6 +54,7 @@ export function describeListedFailure(
   const step = failureStepName(
     failedStep.label?.trim(),
     failedStep.definitionKey,
+    describe,
   );
   const reason =
     failedStep.safeErrorCode === null
@@ -65,11 +68,12 @@ export function describeListedFailure(
 
 function failureStepName(
   label: string | undefined,
-  definitionKey: string | null | undefined,
+  definition: Parameters<DescribeStep>[0] | null | undefined,
+  describe: DescribeStep,
 ): string | undefined {
   if (label !== undefined && label !== '') return label;
-  if (definitionKey === null || definitionKey === undefined) return undefined;
-  return describeStep(definitionKey).name;
+  if (definition === null || definition === undefined) return undefined;
+  return describe(definition).name;
 }
 
 function failureReason(

@@ -1,3 +1,4 @@
+import type { DescribeStep } from '@/features/catalog/public';
 import { unreachableStepIssues } from './reachability';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { WorkflowPublication } from '../../data/mutations/use-workflow-publication';
@@ -35,6 +36,7 @@ export function workflowIssuesView(
   graph: WorkflowGraphContract,
   draft: Readonly<{ generation: number; revision: number }>,
   connectionIssues: readonly WorkflowIssue[] = [],
+  describe?: DescribeStep,
 ): WorkflowIssuesView {
   const { validation } = publication;
   const validationGroups =
@@ -45,7 +47,10 @@ export function workflowIssuesView(
           graph,
           validation.publicationRefused ? 'publication' : 'validation',
         );
-  const warnings = [...connectionIssues, ...unreachableStepIssues(graph)];
+  const warnings = [
+    ...connectionIssues,
+    ...unreachableStepIssues(graph, describe),
+  ];
   const groups =
     validationGroups === undefined && warnings.length === 0
       ? undefined

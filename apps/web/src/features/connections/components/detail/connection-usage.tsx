@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { LoadMore } from '@/components/patterns/lists/load-more';
 import { QueryView } from '@/components/patterns/states/query-view';
 import { SkeletonRows } from '@/components/ui/skeleton';
-import { describeStep } from '@/features/catalog/public';
+import { useStepDescriptions } from '@/features/catalog/public';
 import type { ConnectionMutationScope } from '../../data/connections.mutations';
 import { connectionUsageQueryOptions } from '../../data/connections.queries';
 import type { ConnectionUsageResponse } from '@pertexo/contracts';
@@ -19,6 +19,7 @@ export function ConnectionUsage({
   connectionId: string;
   canRead: boolean;
 }>) {
+  const describeStep = useStepDescriptions();
   const usage = useInfiniteQuery({
     ...connectionUsageQueryOptions(
       scope.apiClient,
