@@ -1,6 +1,6 @@
 # ADR 095: Register each integration as one module
 
-- **Status:** accepted
+- **Status:** implemented
 - **Date:** 2026-11-21
 - **Related:** [ADR 091](091-core-layer.md), [ADR 092](092-route-declarations.md),
   [ADR 093](093-polling-triggers.md)
