@@ -15,6 +15,7 @@ import {
 import {
   NODE_IDENTITY_KEY_MAX_CHARACTERS,
   codeDiagnosticsSchema,
+  modelUsageSchema,
   runValueKeySchema,
   runValueTextSchema,
   runValuesSchema,
@@ -372,7 +373,12 @@ export type WorkflowRunCancelResponse = z.output<
 >;
 
 export const workflowNodeRunDiagnosticsResponseSchema = responseSchema(
-  z.object({ diagnostics: codeDiagnosticsSchema.nullable() }).strict(),
+  z
+    .object({
+      diagnostics: codeDiagnosticsSchema.nullable(),
+      modelUsage: modelUsageSchema.optional(),
+    })
+    .strict(),
 );
 export type WorkflowNodeRunDiagnosticsResponse = z.output<
   typeof workflowNodeRunDiagnosticsResponseSchema

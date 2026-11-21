@@ -1,3 +1,4 @@
+import type { ModelUsage } from './attempt-diagnostics.js';
 import type { inlineExecutorFailureSchema } from './node-failure.schemas.js';
 import type { NodeCallbackRuntime } from '../callbacks/node-callback.types.js';
 import type { NodeRunValuesRuntime } from '../run-values/run-value.schemas.js';
@@ -166,6 +167,7 @@ export interface NodeExecutionRuntime {
   readonly dataTables?: NodeDataTableRuntime;
   readonly runValues?: NodeRunValuesRuntime;
   readonly code?: NodeCodeRuntime;
+  readonly observeModelUsage?: (usage: ModelUsage) => void;
   readonly observeCodeDiagnostics?: (diagnostics: CodeDiagnostics) => void;
   /** Synchronous, nonthrowing capture only. Never performs persistence or I/O. */
   readonly observeConnectionHealth?: (
@@ -253,4 +255,5 @@ export type NodeExecutionKind = 'succeeded' | 'terminal_success';
 export interface NodeExecutionResult {
   readonly kind: NodeExecutionKind;
   readonly output: JsonValue;
+  readonly modelUsage?: ModelUsage;
 }

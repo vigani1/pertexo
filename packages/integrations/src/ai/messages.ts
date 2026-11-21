@@ -1,3 +1,4 @@
+import { modelUsageReader } from './model-usage.js';
 import { z } from 'zod';
 import type { ModelRequest } from './model-request.js';
 
@@ -33,6 +34,7 @@ export const messages = {
         : {}),
     };
   },
+  usage: modelUsageReader('input_tokens', 'output_tokens'),
   completion(value: unknown, mode: ModelRequest['config']['mode']) {
     const result = envelope.safeParse(value);
     if (!result.success) return { kind: 'invalid_response' } as const;

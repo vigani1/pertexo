@@ -1,3 +1,4 @@
+import { attemptDiagnosticFields } from '@pertexo/node-sdk';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import type { Role } from '@pertexo/policy';
 import { sql } from 'drizzle-orm';
@@ -69,9 +70,7 @@ export async function readPreviewRun(
   const row = rows[0];
   if (row === undefined) return null;
   return Object.freeze({
-    ...(row.codeDiagnostics === null
-      ? {}
-      : { codeDiagnostics: row.codeDiagnostics }),
+    ...attemptDiagnosticFields(row.codeDiagnostics),
     ...(row.errorSummary === null ? {} : { errorSummary: row.errorSummary }),
     id: row.id,
     workspaceId: row.workspaceId,

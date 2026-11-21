@@ -81,6 +81,9 @@ export async function executeNodeAttempt(
     nodeId: node.id,
     kind: result.kind,
     output: result.output,
+    ...(result.modelUsage === undefined
+      ? {}
+      : { modelUsage: result.modelUsage }),
   };
 }
 

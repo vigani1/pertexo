@@ -1,4 +1,4 @@
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { AttemptDiagnosticFields } from '@pertexo/node-sdk';
 import type {
   NodeExecutorErrorKind,
   NodeExecutorFailureKind,
@@ -213,7 +213,6 @@ export type RecordInputInput = Readonly<{
 export type CompleteAttemptInput = Readonly<{
   lease: NodeAttemptLease;
   outcome: NodeAttemptCompletion;
-  codeDiagnostics?: CodeDiagnostics;
   connectionHealthObservation?:
     | Readonly<{ kind: 'healthy' }>
     | Readonly<{
@@ -225,6 +224,7 @@ export type CompleteAttemptInput = Readonly<{
       }>;
   traceparent?: string;
   signal: AbortSignal;
-}>;
+}> &
+  AttemptDiagnosticFields;
 
 export type NodeAttemptRunStore = ReturnType<typeof createNodeAttemptRunStore>;

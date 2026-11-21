@@ -3,7 +3,7 @@ import type {
   PreviewDelivery,
   PreviewTerminalOutcome,
 } from '../preview.types.js';
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { AttemptDiagnosticFields } from '@pertexo/node-sdk';
 import type { createPreviewAttemptRunStore } from './preview-attempt-run.store.js';
 
 export type PreviewClaimResult =
@@ -59,10 +59,10 @@ export type CompletePreviewAttemptInput = Readonly<{
   delivery: PreviewDelivery;
   lease: HeldLease;
   outcome: PreviewTerminalOutcome;
-  codeDiagnostics?: CodeDiagnostics;
   signal?: AbortSignal;
   workerId: string;
-}>;
+}> &
+  AttemptDiagnosticFields;
 
 /** What a worker runs an attempt with. Closing it belongs to whoever opened it. */
 export type PreviewAttemptRunStore = Omit<

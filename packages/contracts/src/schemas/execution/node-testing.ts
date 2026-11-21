@@ -1,6 +1,7 @@
 import { responseSchema } from '../shared/response-schema.js';
 import {
   codeDiagnosticsSchema,
+  modelUsageSchema,
   NODE_FAILURE_FIELD_LIMITS,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
@@ -117,6 +118,7 @@ export const previewRunSummarySchema = responseSchema(
   z
     .object({
       codeDiagnostics: codeDiagnosticsSchema.optional(),
+      modelUsage: modelUsageSchema.optional(),
       id: z.uuid(),
       workspaceId: z.uuid(),
       workflowId: z.uuid(),

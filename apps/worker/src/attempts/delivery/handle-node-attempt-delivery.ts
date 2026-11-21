@@ -1,6 +1,6 @@
 import { isStoredDataError } from '@pertexo/core/shared';
 import { nodeFailureCompletion } from './executor-failure.js';
-import { codeCompletionFields } from '../code/diagnostics.js';
+import { completionDiagnosticFields } from './completion-diagnostics.js';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
 import {
   NodeAttemptStateCorruptError,
@@ -124,11 +124,12 @@ async function executePreparedNodeAttempt(
       },
     );
     if (interruption !== undefined) return interruption;
-    const outcome = nodeFailureCompletion(error);
-    if (outcome !== undefined) {
+    const failure = nodeFailureCompletion(error);
+    if (failure !== undefined) {
+      const { modelUsage, ...outcome } = failure;
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
-        ...codeCompletionFields(environment),
+        ...completionDiagnosticFields(environment, modelUsage),
         lease,
         outcome,
         ...traceContext,

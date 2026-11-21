@@ -9,6 +9,7 @@ import {
   modelCredentialSchema,
 } from '../connections.definition.js';
 import type { ModelClient } from '../model-client.js';
+import { trackModelUsage } from '../model-usage.js';
 import { modelRequest } from '../model-request.js';
 import { MODEL_STEP } from './model.definition.js';
 import { modelFailure } from './model.errors.js';
@@ -92,6 +93,7 @@ export function createModelExecutor(
           modelFailure('credential_rejected', { possiblyDispatched: false }),
       },
       async (credential) => {
+        const usage = trackModelUsage(config.model, runtime.observeModelUsage);
         const complete = (repair?: { answer: unknown }) => {
           const timeoutMillis = deadline - now();
           if (timeoutMillis <= 0)
@@ -105,6 +107,7 @@ export function createModelExecutor(
               credential,
               signal,
               timeoutMillis,
+              usage,
               earlierDispatch: repair !== undefined,
               beforeDispatch,
             },

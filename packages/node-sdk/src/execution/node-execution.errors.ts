@@ -1,3 +1,4 @@
+import type { ModelUsage } from './attempt-diagnostics.js';
 import { NodeSdkError } from './node-admission.errors.js';
 export {
   NodeSdkError,
@@ -46,6 +47,7 @@ export class NodeExecutorFailure extends Error {
   public readonly safeErrorCode?: string;
   public readonly errorSummary?: string;
   public readonly serviceResponse?: ServiceResponseFacts;
+  #modelUsage: ModelUsage | undefined;
   public constructor(outcome: unknown) {
     const parsed = nodeExecutorFailureSchema.safeParse(outcome);
     if (!parsed.success) throw new TypeError('Invalid node executor failure');
@@ -61,6 +63,14 @@ export class NodeExecutorFailure extends Error {
       this.serviceResponse = parsed.data.serviceResponse;
     if (parsed.data.minimumRetryDelayMillis !== undefined)
       this.minimumRetryDelayMillis = parsed.data.minimumRetryDelayMillis;
+  }
+
+  public get modelUsage(): ModelUsage | undefined {
+    return this.#modelUsage;
+  }
+
+  public recordModelUsage(usage: ModelUsage): void {
+    this.#modelUsage ??= usage;
   }
 
   /** The sentence a person reads: the executor's own, or the service's answer. */

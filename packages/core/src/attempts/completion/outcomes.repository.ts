@@ -1,3 +1,4 @@
+import { storedAttemptDiagnostics } from '@pertexo/node-sdk';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { nodeRuns, nodeAttempts, outboxEvents } from '@pertexo/database/schema';
@@ -22,6 +23,7 @@ export async function saveAttemptCompletion(
   serializedOutput: string | null,
   fields: CompletionFields,
 ): Promise<void> {
+  const diagnostics = storedAttemptDiagnostics(input);
   await drizzle(client)
     .update(nodeAttempts)
     .set({
@@ -29,9 +31,7 @@ export async function saveAttemptCompletion(
       leaseExpiresAt: null,
       ...attemptOutcomeFields(fields, serializedOutput),
       codeDiagnostics:
-        input.codeDiagnostics === undefined
-          ? null
-          : sql`${canonicalJson(input.codeDiagnostics)}::jsonb`,
+        diagnostics === null ? null : sql`${canonicalJson(diagnostics)}::jsonb`,
       completedAt: sql`clock_timestamp()`,
       updatedAt: sql`clock_timestamp()`,
     })

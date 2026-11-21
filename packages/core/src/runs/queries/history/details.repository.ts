@@ -10,7 +10,10 @@ import {
   runRetentionIntervalSql,
   RUN_DETAILS_RETENTION_SQL,
 } from '../../../shared/run-records/run-retention.repository.js';
-import { codeDiagnosticsSchema, type CodeDiagnostics } from '@pertexo/node-sdk';
+import {
+  attemptDiagnosticsSchema,
+  type AttemptDiagnostics,
+} from '@pertexo/node-sdk';
 import { readVariableSetValues } from '../../../variables/values.repository.js';
 import type { WorkspaceVariableSnapshot } from '@pertexo/workflow-model';
 import { sql, and, eq, desc, exists, inArray } from 'drizzle-orm';
@@ -267,7 +270,7 @@ export async function readWorkflowRunVariablesRows(
 export async function readWorkflowNodeRunDiagnosticsRows(
   transaction: WorkspaceTransaction,
   input: ReadWorkflowNodeRunOutputInput,
-): Promise<CodeDiagnostics | null | undefined> {
+): Promise<AttemptDiagnostics | null | undefined> {
   const node = alias(nodeRuns, 'node');
   const run = alias(workflowRuns, 'run');
   const attempt = alias(nodeAttempts, 'attempt');
@@ -302,5 +305,5 @@ export async function readWorkflowNodeRunDiagnosticsRows(
   if (row === undefined) return undefined;
   return row.diagnostics === null
     ? null
-    : decodeStoredValue(() => codeDiagnosticsSchema.parse(row.diagnostics));
+    : decodeStoredValue(() => attemptDiagnosticsSchema.parse(row.diagnostics));
 }

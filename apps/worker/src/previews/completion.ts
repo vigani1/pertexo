@@ -2,6 +2,8 @@ import {
   codeDiagnosticsSchema,
   NODE_FAILURE_FIELD_LIMITS,
   type CodeDiagnostics,
+  type AttemptDiagnosticFields,
+  type ModelUsage,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import type { PreviewTerminalOutcome } from '@pertexo/core/previews';
@@ -31,10 +33,21 @@ export function parsePreviewFailure(outcome: PreviewFailure): PreviewFailure {
   };
 }
 
-export function previewDiagnostics(value: CodeDiagnostics | undefined): {
-  codeDiagnostics?: CodeDiagnostics;
-} {
-  return value === undefined
-    ? {}
-    : { codeDiagnostics: codeDiagnosticsSchema.parse(value) };
+export function capturePreviewDiagnostics() {
+  let codeDiagnostics: CodeDiagnostics | undefined;
+  let modelUsage: ModelUsage | undefined;
+  return {
+    observeCodeDiagnostics(value: CodeDiagnostics) {
+      codeDiagnostics ??= value;
+    },
+    observeModelUsage(value: ModelUsage) {
+      modelUsage = value;
+    },
+    read(): AttemptDiagnosticFields {
+      if (modelUsage !== undefined) return { modelUsage };
+      return codeDiagnostics === undefined
+        ? {}
+        : { codeDiagnostics: codeDiagnosticsSchema.parse(codeDiagnostics) };
+    },
+  };
 }

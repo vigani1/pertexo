@@ -1,3 +1,4 @@
+import { storedAttemptDiagnostics } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
 
 import type { PoolClient } from 'pg';
@@ -50,7 +51,7 @@ export async function duplicateCompletion(
     row.safeErrorCode !== fields.safeErrorCode ||
     row.errorSummary !== fields.errorSummary ||
     canonicalJson(row.codeDiagnostics) !==
-      canonicalJson(input.codeDiagnostics ?? null) ||
+      canonicalJson(storedAttemptDiagnostics(input)) ||
     executorMismatch;
   if (completionMismatch) {
     throw new NodeAttemptStateCorruptError();

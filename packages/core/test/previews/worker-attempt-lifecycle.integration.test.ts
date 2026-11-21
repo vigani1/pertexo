@@ -34,6 +34,48 @@ import { heartbeatPreviewLease } from '../../src/previews/attempts/heartbeat.js'
 import { markPreviewDispatched } from '../../src/previews/attempts/mark-dispatched.js';
 
 describe('preview worker attempt lifecycle', () => {
+  it('records model usage once with the preview and returns it on read', async () => {
+    const { fixture, lease, workerId } = await claimFixture(
+      await acceptFixture(),
+      'worker-model-preview',
+    );
+    const modelUsage = {
+      kind: 'incomplete',
+      model: 'fake',
+      inputTokens: 12,
+      outputTokens: null,
+    } as const;
+    const input = {
+      delivery: fixture.delivery,
+      lease,
+      workerId,
+      outcome: {
+        status: 'failed',
+        safeErrorCode: 'model.provider_timeout',
+      } as const,
+      modelUsage,
+    };
+    await expect(completePreviewAttempt(workerPool, input)).resolves.toEqual({
+      kind: 'committed',
+    });
+    await expect(completePreviewAttempt(workerPool, input)).resolves.toEqual({
+      kind: 'duplicate',
+    });
+    await expect(
+      completePreviewAttempt(workerPool, {
+        ...input,
+        modelUsage: { ...modelUsage, inputTokens: 24 },
+      }),
+    ).rejects.toBeInstanceOf(PreviewAttemptStateError);
+    await expect(
+      createPreviewRunStore(apiPool).readPreview({
+        workspaceId,
+        actorUserId,
+        previewRunId: fixture.previewRunId,
+      }),
+    ).resolves.toMatchObject({ modelUsage });
+  });
+
   it('retains private Code diagnostics under the same completion fence and preview expiry', async () => {
     const claimed = await claimFixture(
       await acceptFixture(),

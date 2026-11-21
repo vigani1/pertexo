@@ -1,6 +1,6 @@
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import type { PreviewAttemptLease, PreviewStatus } from '../stored-shapes.js';
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { AttemptDiagnostics } from '@pertexo/node-sdk';
 import {
   bigint,
   check,
@@ -60,7 +60,7 @@ export const previewAttempts = appSchema.table(
       mode: 'date',
     }),
     outputRef: json('output_ref'),
-    codeDiagnostics: jsonb('code_diagnostics').$type<CodeDiagnostics>(),
+    codeDiagnostics: jsonb('code_diagnostics').$type<AttemptDiagnostics>(),
     safeErrorCode: varchar('safe_error_code', { length: WIDTHS.safeErrorCode }),
     errorSummary: varchar('error_summary', { length: WIDTHS.errorSummary }),
     reconciliationRef: jsonb('reconciliation_ref'),

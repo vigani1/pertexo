@@ -1,5 +1,5 @@
 import { decodeStoredValue } from '../../shared/stored-values.js';
-import type { CodeDiagnostics } from '@pertexo/node-sdk';
+import type { AttemptDiagnostics } from '@pertexo/node-sdk';
 import {
   parseStoredExecutionValue,
   serializeStoredExecutionValue,
@@ -50,14 +50,14 @@ export function sameStoredCompletion(
     codeDiagnostics: unknown;
   }>,
   outcome: CanonicalCompletionOutcome,
-  diagnostics: CodeDiagnostics | undefined,
+  diagnostics: AttemptDiagnostics | null,
 ): boolean {
   const statusesMatch =
     row.attemptStatus === outcome.status && row.runStatus === outcome.status;
   return (
     statusesMatch &&
     sameStoredValues(row, outcome) &&
-    canonicalJson(row.codeDiagnostics) === canonicalJson(diagnostics ?? null)
+    canonicalJson(row.codeDiagnostics) === canonicalJson(diagnostics)
   );
 }
 

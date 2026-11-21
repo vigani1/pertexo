@@ -41,7 +41,9 @@ export function runPersistenceSpies() {
   return {
     canRead: () => Promise.resolve(true),
     readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-    readNodeRunDiagnostics: () => Promise.resolve(undefined),
+    readNodeRunDiagnostics: vi
+      .fn<WorkflowRunPersistence['readNodeRunDiagnostics']>()
+      .mockResolvedValue(undefined),
     start: vi.fn<WorkflowRunPersistence['start']>(),
     replay: vi.fn<WorkflowRunPersistence['replay']>(),
     recovery: vi.fn<WorkflowRunPersistence['recovery']>(),

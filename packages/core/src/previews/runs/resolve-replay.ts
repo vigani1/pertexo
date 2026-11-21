@@ -1,3 +1,4 @@
+import { attemptDiagnosticFields } from '@pertexo/node-sdk';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import type {
   PreviewReplayRecord,
@@ -54,7 +55,7 @@ export async function resolvePreviewReplay(
   return Object.freeze({
     ...summary,
     ...(errorSummary === null ? {} : { errorSummary }),
-    ...(codeDiagnostics === null ? {} : { codeDiagnostics }),
+    ...attemptDiagnosticFields(codeDiagnostics),
     ...(pinnedSampleId === null ? {} : { pinnedSampleId }),
     output:
       outputRef === null
