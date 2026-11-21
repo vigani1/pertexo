@@ -122,11 +122,11 @@ exposes, and self-hosted deployments ship the API and worker together.
    `markingDispatchOnce` pattern for additional calls. Use the shared module
    executor composition from ADR 095 and the host's HTTP Request address
    policy for both runs and worker previews.
-3. **Usage records.** Carry typed, bounded usage on attempt
-   outcomes through `node-sdk/src/execution/` and
-   `apps/worker/src/attempts/delivery/`, including
-   `executorFailureCompletion`. Store the model usage as a typed diagnostics
-   variant in the existing attempt and preview JSON diagnostics columns.
+3. **Usage records.** Report typed, bounded usage to the runtime observer
+   as provider calls dispatch and respond. Run attempts and previews capture
+   usage in their execution environments and include the latest observation
+   at completion. Store usage as a typed diagnostics variant in the existing
+   attempt and preview JSON diagnostics columns.
    Keep the existing Code step diagnostics shape readable. Write run usage
    under `completeNodeAttempt`'s fence and receipt and preview usage through
    `core/src/previews/attempts/complete.ts`. Project usage through the existing

@@ -126,12 +126,11 @@ async function executePreparedNodeAttempt(
     if (interruption !== undefined) return interruption;
     const failure = nodeFailureCompletion(error);
     if (failure !== undefined) {
-      const { modelUsage, ...outcome } = failure;
       const completed = await dependencies.runStore.complete({
         ...connectionHealthCompletionFields(environment),
-        ...completionDiagnosticFields(environment, modelUsage),
+        ...completionDiagnosticFields(environment),
         lease,
-        outcome,
+        outcome: failure,
         ...traceContext,
         signal: contextSignal,
       });

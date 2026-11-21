@@ -255,5 +255,4 @@ export type NodeExecutionKind = 'succeeded' | 'terminal_success';
 export interface NodeExecutionResult {
   readonly kind: NodeExecutionKind;
   readonly output: JsonValue;
-  readonly modelUsage?: ModelUsage;
 }

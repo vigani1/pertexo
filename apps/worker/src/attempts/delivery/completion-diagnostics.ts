@@ -4,8 +4,8 @@ import type { NodeExecutionEnvironment } from '../execution/environment.js';
 
 export function completionDiagnosticFields(
   environment: NodeExecutionEnvironment | undefined,
-  modelUsage = environment?.modelUsage(),
 ): AttemptDiagnosticFields {
+  const modelUsage = environment?.modelUsage();
   return modelUsage === undefined
     ? codeCompletionFields(environment)
     : { modelUsage };

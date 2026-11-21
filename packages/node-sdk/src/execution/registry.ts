@@ -1,5 +1,3 @@
-import { safeInstanceOf } from './unknown-error.js';
-import type { ModelUsage } from './attempt-diagnostics.js';
 import { z, type ZodType } from 'zod';
 import { inlineExecutorFailureSchema } from './node-failure.schemas.js';
 import { ARTIFACT_INPUT_CAPABILITY } from '../artifacts/reference.js';
@@ -24,7 +22,6 @@ import {
   NodeConfigValidationError,
   NodeDispatchEvidenceError,
   NodeExecutionAbortedError,
-  NodeExecutorFailure,
   NodeExecutionRuntimeRequiredError,
   NodeInputValidationError,
   NodeOutputValidationError,
@@ -190,16 +187,11 @@ function pinNodeRegistry(
     const dispatchState: {
       value: 'unused' | 'in_flight' | 'committed' | 'failed';
     } = { value: 'unused' };
-    let modelUsage: ModelUsage | undefined;
     const runtime =
       request.runtime === undefined
         ? undefined
         : Object.freeze({
             ...request.runtime,
-            observeModelUsage(value: ModelUsage) {
-              modelUsage = value;
-              request.runtime?.observeModelUsage?.(value);
-            },
             ...(request.runtime.artifacts?.read === undefined ||
             definition.manifest.capabilities.includes(ARTIFACT_INPUT_CAPABILITY)
               ? {}
@@ -225,23 +217,13 @@ function pinNodeRegistry(
               }
             },
           });
-    let result: unknown;
-    try {
-      result = await executor.execute({
-        config,
-        input,
-        connectionRefs,
-        signal: request.signal,
-        ...(runtime === undefined ? {} : { runtime }),
-      });
-    } catch (error: unknown) {
-      if (
-        modelUsage !== undefined &&
-        safeInstanceOf(error, NodeExecutorFailure)
-      )
-        error.recordModelUsage(modelUsage);
-      throw error;
-    }
+    const result = await executor.execute({
+      config,
+      input,
+      connectionRefs,
+      signal: request.signal,
+      ...(runtime === undefined ? {} : { runtime }),
+    });
     if (dispatchAware && dispatchState.value !== 'committed')
       throw new NodeDispatchEvidenceError('dispatch_evidence_missing');
     return {
@@ -249,7 +231,6 @@ function pinNodeRegistry(
         ? 'terminal_success'
         : 'succeeded',
       output: parseExecutionOutput(definition.outputSchema, result),
-      ...(modelUsage === undefined ? {} : { modelUsage }),
     };
   };
   return Object.freeze({

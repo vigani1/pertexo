@@ -40,7 +40,7 @@ export function capturePreviewDiagnostics() {
     observeCodeDiagnostics(value: CodeDiagnostics) {
       codeDiagnostics ??= value;
     },
-    observeModelUsage(value: ModelUsage) {
+    observeModelUsage: (value: ModelUsage) => {
       modelUsage = value;
     },
     read: (): AttemptDiagnosticFields => {

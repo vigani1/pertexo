@@ -246,7 +246,6 @@ export async function createCoordinatorRuntime(
                     if (failure === undefined) throw error;
                     const {
                       status: _status,
-                      modelUsage: _modelUsage,
                       possiblyDispatched: _possiblyDispatched,
                       ...facts
                     } = failure;

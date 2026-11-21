@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { chat, fakeModel, json, schema } from './model.fixture.js';
-import { executorFailureCompletion } from '../../../src/attempts/delivery/executor-failure.js';
+import { capturePreviewDiagnostics } from '../../../src/previews/completion.js';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 
 const structured = { mode: 'structured', outputSchema: schema };
@@ -19,16 +19,21 @@ it('accounts for Chat Completions text and Messages extraction', async () => {
       usage: { input_tokens: 31, output_tokens: 7 },
     }),
   ]);
-  expect((await fake.execute()).modelUsage).toEqual({
+  const { observeModelUsage, read } = capturePreviewDiagnostics();
+  const result = await fake.execute({ observeModelUsage });
+  expect(result).not.toHaveProperty('modelUsage');
+  expect(read().modelUsage).toEqual({
     kind: 'complete',
     model: 'fake',
     inputTokens: 12,
     outputTokens: 0,
   });
-  expect(
-    (await fake.execute({ endpoint: 'anthropic', config: structured }))
-      .modelUsage,
-  ).toEqual({
+  await fake.execute({
+    endpoint: 'anthropic',
+    config: structured,
+    observeModelUsage,
+  });
+  expect(read().modelUsage).toEqual({
     kind: 'complete',
     model: 'fake',
     inputTokens: 31,
@@ -44,7 +49,9 @@ it('adds the rejected answer and repair usage', async () => {
       usage: { prompt_tokens: 30, completion_tokens: 4 },
     }),
   ]);
-  expect((await fake.execute({ config: structured })).modelUsage).toEqual({
+  const { observeModelUsage, read } = capturePreviewDiagnostics();
+  await fake.execute({ config: structured, observeModelUsage });
+  expect(read().modelUsage).toEqual({
     kind: 'complete',
     model: 'fake',
     inputTokens: 42,
@@ -60,7 +67,9 @@ it.each([
   'keeps absent or invalid counts unknown (%j)',
   async (usage, inputTokens) => {
     await using fake = await fakeModel([json({ ...chat('answer'), usage })]);
-    expect((await fake.execute()).modelUsage).toEqual({
+    const { observeModelUsage, read } = capturePreviewDiagnostics();
+    await fake.execute({ observeModelUsage });
+    expect(read().modelUsage).toEqual({
       kind: 'incomplete',
       model: 'fake',
       inputTokens,
@@ -74,20 +83,18 @@ it('keeps reported usage when a repair fails after dispatch', async () => {
     json({ ...chat('{}'), usage: { prompt_tokens: 12, completion_tokens: 2 } }),
     json({}, 500),
   ]);
-  try {
-    await fake.execute({ config: structured });
-    expect.unreachable();
-  } catch (error) {
-    if (!(error instanceof NodeExecutorFailure)) throw error;
-    expect(executorFailureCompletion(error)).toMatchObject({
-      modelUsage: {
-        kind: 'incomplete',
-        model: 'fake',
-        inputTokens: 12,
-        outputTokens: 2,
-      },
-    });
-  }
+  const { observeModelUsage, read } = capturePreviewDiagnostics();
+  const execution = fake.execute({ config: structured, observeModelUsage });
+  await expect(execution).rejects.toBeInstanceOf(NodeExecutorFailure);
+  await expect(execution).rejects.not.toHaveProperty('modelUsage');
+  expect(read()).toEqual({
+    modelUsage: {
+      kind: 'incomplete',
+      model: 'fake',
+      inputTokens: 12,
+      outputTokens: 2,
+    },
+  });
 });
 
 it('retains complete usage from an answer rejected by the adapter', async () => {
@@ -97,8 +104,11 @@ it('retains complete usage from an answer rejected by the adapter', async () => 
       usage: { prompt_tokens: 12, completion_tokens: 2 },
     }),
   ]);
-  await expect(fake.execute()).rejects.toMatchObject({
+  const { observeModelUsage, read } = capturePreviewDiagnostics();
+  await expect(fake.execute({ observeModelUsage })).rejects.toMatchObject({
     safeErrorCode: 'model.output_truncated',
+  });
+  expect(read()).toEqual({
     modelUsage: {
       kind: 'complete',
       model: 'fake',
