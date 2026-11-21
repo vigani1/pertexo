@@ -48,7 +48,7 @@ export function isVisibleField(
   );
 }
 
-export function scalarCredentialInput(draft: SchemaCredentialDraft) {
+function scalarCredentialInput(draft: SchemaCredentialDraft) {
   return {
     type: draft.definition.authType,
     ...Object.fromEntries(
