@@ -15,8 +15,6 @@ web read it.
 The `/pure` entry exposes only deterministic helpers used by the inline
 kernels. The import-closure check walks it independently of its callers.
 
-The general entries are
-
 `@pertexo/node-sdk` is safe in the browser: catalogs, schemas,
 limits and pure checks. `@pertexo/node-sdk/server` is Node only: the node
 registry, executor failures, bounded-JSON canonicalisation and file-page
