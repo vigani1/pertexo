@@ -3060,9 +3060,7 @@
             "required": false,
             "schema": {
               "$schema": "https://json-schema.org/draft/2020-12/schema",
-              "type": "integer",
-              "exclusiveMinimum": 0,
-              "maximum": 2147483647
+              "type": "number"
             }
           }
         ],
