@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { formatDateTime } from '@/lib/format/time';
 import { shortRunId } from '../../model/list/runs';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
@@ -56,7 +57,9 @@ function StoryEntry({
   workspace,
   errorSummary,
   definitionKey,
+  usage,
 }: Readonly<{
+  usage?: ReactNode;
   errorSummary?: string | undefined;
   definitionKey?: string | undefined;
   entry: StepStoryEntry;
@@ -80,6 +83,7 @@ function StoryEntry({
         {reason === undefined ? null : (
           <p className="mt-1.5 text-muted-foreground">{reason}</p>
         )}
+        {usage}
         {entry.safeErrorCode === undefined ? null : (
           <StepError
             code={entry.safeErrorCode}
@@ -97,7 +101,9 @@ export function StepExecutionHistory({
   row,
   nowMs,
   workspace,
+  attemptUsage,
 }: Readonly<{
+  attemptUsage?: (attemptNumber: number) => ReactNode;
   row: RunTimelineRow;
   nowMs: number;
   workspace: AccessibleWorkspace;
@@ -155,6 +161,13 @@ export function StepExecutionHistory({
                   : undefined
               }
               definitionKey={row.definitionKey}
+              usage={
+                entry.kind === 'attempt' &&
+                entry.endedAt !== undefined &&
+                entry.attemptNumber !== undefined
+                  ? attemptUsage?.(entry.attemptNumber)
+                  : null
+              }
             />
           ))}
         </ol>

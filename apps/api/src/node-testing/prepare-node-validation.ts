@@ -74,7 +74,8 @@ function disclosure(
     sideEffectClass:
       retryClass === 'idempotent-with-key' ? 'idempotent_with_key' : retryClass,
     mayContactProvider: integration !== undefined,
-    mayCauseExternalSideEffect: retryClass !== 'safe',
+    mayCauseExternalSideEffect:
+      retryClass !== 'safe' || capabilities.includes('side_effect_disclosure'),
     dryRun: capabilities.includes('provider_dry_run')
       ? 'provider_supported'
       : 'not_supported',

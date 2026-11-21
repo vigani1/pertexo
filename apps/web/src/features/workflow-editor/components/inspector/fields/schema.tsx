@@ -161,6 +161,7 @@ function ConfigTextField(props: LiveFieldProps) {
       <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
       <SchemaTextControl
         multiline={field.multiline === true}
+        aria-required={field.required}
         id={id}
         name={`config.${fieldPath(field)}`}
         autoComplete="off"

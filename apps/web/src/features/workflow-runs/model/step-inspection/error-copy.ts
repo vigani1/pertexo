@@ -1,3 +1,4 @@
+import { MODEL_STEP_ERRORS } from './model-error-copy';
 import { formatCount } from '@/lib/format/count';
 import { formatTimeSpan } from '@/lib/format/time';
 import {
@@ -296,6 +297,7 @@ const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
     sentence: 'The code has a syntax error, so it didn’t run.',
     advice: 'Fix it in Build, publish, then replay the run.',
   },
+  ...MODEL_STEP_ERRORS,
   'code.timeout': {
     sentence: 'The code ran past its time limit.',
     advice:

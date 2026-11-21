@@ -269,7 +269,8 @@ export async function readWorkflowRunVariablesRows(
 /** Private diagnostics follow the current attempt and the logical detail window. */
 export async function readWorkflowNodeRunDiagnosticsRows(
   transaction: WorkspaceTransaction,
-  input: ReadWorkflowNodeRunOutputInput,
+  input: ReadWorkflowNodeRunOutputInput &
+    Readonly<{ attemptNumber?: number | undefined }>,
 ): Promise<AttemptDiagnostics | null | undefined> {
   const node = alias(nodeRuns, 'node');
   const run = alias(workflowRuns, 'run');
@@ -291,7 +292,9 @@ export async function readWorkflowNodeRunDiagnosticsRows(
       and(
         eq(attempt.workspaceId, node.workspaceId),
         eq(attempt.nodeRunId, node.id),
-        eq(attempt.id, node.currentAttemptId),
+        input.attemptNumber === undefined
+          ? eq(attempt.id, node.currentAttemptId)
+          : eq(attempt.attemptNumber, input.attemptNumber),
       ),
     )
     .where(

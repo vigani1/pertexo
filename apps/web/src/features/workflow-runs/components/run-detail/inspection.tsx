@@ -1,4 +1,4 @@
-import { StepCodeDiagnostics } from './run-diagnostics';
+import { StepCodeDiagnostics, StepModelUsage } from './run-diagnostics';
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
 import type { ReactNode } from 'react';
@@ -56,7 +56,6 @@ export function RunStepDetails({
   nowMs: number;
   scope: RunDataScope;
 }>) {
-  const { workspace } = scope;
   if (row === undefined)
     return (
       <p className="text-sm text-muted-foreground">
@@ -83,9 +82,7 @@ export function RunStepDetails({
           {stepTag(row, nowMs)}
         </span>
       </div>
-      <StepDetailsSection title="What happened">
-        <StepExecutionHistory row={row} nowMs={nowMs} workspace={workspace} />
-      </StepDetailsSection>
+      <StepHistory row={row} scope={scope} nowMs={nowMs} />
       <StepDetailsSection
         title="Data in"
         hint={
@@ -177,5 +174,37 @@ export function RunStepDetails({
         </dl>
       </Disclosure>
     </div>
+  );
+}
+
+function StepHistory({
+  row,
+  scope,
+  nowMs,
+}: Readonly<{
+  row: RunTimelineRow;
+  scope: RunDataScope;
+  nowMs: number;
+}>) {
+  const { nodeRunId } = row;
+  return (
+    <StepDetailsSection title="What happened">
+      <StepExecutionHistory
+        row={row}
+        nowMs={nowMs}
+        workspace={scope.workspace}
+        {...(row.definitionKey === 'ai.model' && nodeRunId !== undefined
+          ? {
+              attemptUsage: (attemptNumber: number) => (
+                <StepModelUsage
+                  scope={scope}
+                  nodeRunId={nodeRunId}
+                  attemptNumber={attemptNumber}
+                />
+              ),
+            }
+          : {})}
+      />
+    </StepDetailsSection>
   );
 }

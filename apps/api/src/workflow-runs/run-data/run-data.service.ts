@@ -205,10 +205,12 @@ export class GetWorkflowNodeRunDiagnosticsService {
     private readonly authorization: WorkspaceAuthorizationSource,
   ) {}
   async execute(
-    input: GetWorkflowNodeRunOutputInput,
+    input: GetWorkflowNodeRunOutputInput &
+      Readonly<{ attemptNumber?: number | undefined }>,
   ): Promise<WorkflowNodeRunDiagnosticsResponse> {
     await authorizeRunData(input, this.authorization);
     const diagnostics = await this.persistence.readNodeRunDiagnostics({
+      attemptNumber: input.attemptNumber,
       actorId: input.actor.actorId,
       workspaceId: input.routeWorkspaceId,
       runId: input.runId,

@@ -53,21 +53,39 @@ export function isVisibleField(
   );
 }
 
+export function isRequiredField(
+  field: ReturnType<typeof credentialFields>[number],
+  values: SchemaCredentialDraft['values'],
+) {
+  const when = field.metadata.requiredWhen;
+  if (field.required) return true;
+  if (
+    !isRecord(when) ||
+    typeof when.field !== 'string' ||
+    !Array.isArray(when.values)
+  )
+    return false;
+  const choice = values[when.field];
+  return when.values.some((value) => value === choice);
+}
+
 const signingKeyField = signingKeyCredentialSchema.unwrap().shape.signingKey;
 
 export function parseScalarCredential(draft: SchemaCredentialDraft) {
   const fields: Record<string, ScalarValue | number> = {};
   const errors: Record<string, string> = {};
-  for (const { key, kind, required, metadata } of credentialFields(
-    draft.definition,
-  )) {
+  for (const field of credentialFields(draft.definition)) {
+    const { key, kind, metadata } = field;
+    const required = isRequiredField(field, draft.values);
     if (!isVisibleField(metadata, draft.values)) continue;
     const raw = draft.values[key];
     if (raw === undefined && !required) continue;
     const trimmed =
       metadata.trim === true && typeof raw === 'string' ? raw.trim() : raw;
-    if (metadata.omitEmpty === true && String(trimmed ?? '').trim() === '')
+    if (metadata.omitEmpty === true && String(trimmed ?? '').trim() === '') {
+      if (required) errors[key] = `${field.label} is required.`;
       continue;
+    }
     const value =
       kind === 'number' || kind === 'integer' ? Number(trimmed) : trimmed;
     const schema = credentialFieldSchema(metadata);

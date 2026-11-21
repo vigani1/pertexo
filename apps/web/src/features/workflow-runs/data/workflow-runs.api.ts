@@ -354,21 +354,22 @@ export async function getWorkflowNodeRunDiagnostics({
   workspaceId,
   runId,
   nodeRunId,
+  attemptNumber,
   signal,
 }: Readonly<{
   apiClient: ApiClient;
   workspaceId: string;
   runId: string;
   nodeRunId: string;
+  attemptNumber?: number | undefined;
   signal?: AbortSignal | undefined;
 }>) {
-  const response = await apiClient.request({
-    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/node-runs/${encodeURIComponent(nodeRunId)}/diagnostics`,
+  return apiClient.request({
+    path: `/v1/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/node-runs/${encodeURIComponent(nodeRunId)}/diagnostics${attemptNumber === undefined ? '' : `?attempt=${String(attemptNumber)}`}`,
     ...(signal === undefined ? {} : { signal }),
     response: {
       kind: 'json',
       decode: (value) => workflowNodeRunDiagnosticsResponseSchema.parse(value),
     },
   });
-  return response.diagnostics;
 }

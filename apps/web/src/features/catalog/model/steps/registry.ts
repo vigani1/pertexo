@@ -25,6 +25,7 @@ import {
   OctagonXIcon,
   RepeatIcon,
   SplitIcon,
+  SparklesIcon,
   WebhookIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -87,6 +88,7 @@ export const stepIcons: Readonly<Partial<Record<string, LucideIcon>>> =
 
 export const catalogIcons: ReadonlyMap<string, LucideIcon> = new Map([
   ['key', KeyRoundIcon],
+  ['sparkles', SparklesIcon],
   ['globe', GlobeIcon],
   ['hash', HashIcon],
   ['mail', MailIcon],

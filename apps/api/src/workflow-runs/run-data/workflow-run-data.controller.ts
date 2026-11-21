@@ -91,9 +91,10 @@ export class WorkflowRunDataController {
   @Route(routes.diagnostics)
   public getDiagnostics(
     @Caller() caller: WorkspaceCaller,
-    @In() { params }: RouteInput<typeof routes.diagnostics>,
+    @In() { params, query }: RouteInput<typeof routes.diagnostics>,
   ) {
     return this.getNodeRunDiagnostics.execute({
+      attemptNumber: query.attempt,
       ...serviceCaller(caller),
       runId: params.runId,
       nodeRunId: params.nodeRunId,
