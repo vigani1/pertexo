@@ -1,6 +1,5 @@
 import { isIntegrationExecutorSummaryCode } from '@pertexo/node-catalog/server';
 import { SUMMARY_RESULT_FAILURE } from '@pertexo/nodes-core';
-import { SLACK_REJECTIONS } from '@pertexo/integrations';
 import { describeMappingFailure } from '../execution/mapping-diagnostic.js';
 import { POSTGRES_FAILURE_CODES } from '@pertexo/workflow-model';
 import {
@@ -35,7 +34,6 @@ const executorSummaryCodes = new Set<string>([
   ...Object.values(EMAIL_ATTACHMENT_ERROR_CODES),
   ...Object.values(FILE_SCRATCH_ERROR_CODE),
   ...Object.values(FILE_TRANSFER_ERROR_CODE),
-  ...Object.values(SLACK_REJECTIONS).map(({ code }) => code),
   FILE_INPUT_ERROR_CODE,
   SUMMARY_RESULT_FAILURE.code,
 ]);

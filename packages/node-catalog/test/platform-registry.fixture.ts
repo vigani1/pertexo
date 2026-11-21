@@ -12,6 +12,9 @@ export function createPlatformNodeRegistry(
       executeStreaming: vi.fn(),
       redactText: vi.fn((value: string) => value),
     },
+    fixedEndpointHttpClient: dependencies.fixedEndpointHttpClient ?? {
+      execute: vi.fn(),
+    },
     slackSendMessage: dependencies.slackSendMessage ?? {
       client: { sendMessage: vi.fn() },
     },
