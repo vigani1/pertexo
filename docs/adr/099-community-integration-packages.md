@@ -1,4 +1,4 @@
-# ADR 102: Community integration packages and operator trust
+# ADR 099: Community integration packages and operator trust
 
 - **Status:** accepted
 - **Date:** 2026-11-21
