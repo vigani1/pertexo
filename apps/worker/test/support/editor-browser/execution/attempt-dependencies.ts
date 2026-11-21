@@ -1,4 +1,6 @@
 import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
+import { editorProviderTarget } from '../../../../../../infrastructure/testing/editor-provider-target.mjs';
+import { createNodeProviderHttpClient } from '../../../../src/providers/http-client.js';
 import { withArtifactReadOutage } from '../artifact-read-retry.js';
 
 import { createPlatformNodeRegistry } from '../../../../src/providers/node-registry.js';
@@ -78,6 +80,7 @@ function controlledEditorDependencies(
     registry: createPlatformNodeRegistry(
       {
         httpRequest: { httpClient: controlledHttpClient },
+        fixedEndpointHttpClient: editorFixedEndpointHttpClient(),
         // Never allow unused provider executors to fall back to real networking.
         slackSendMessage: {
           client: state.curatedTarget?.slackClient ?? {
@@ -117,6 +120,24 @@ function controlledEditorDependencies(
                 ),
             }),
           }),
+    },
+  };
+}
+
+function editorFixedEndpointHttpClient() {
+  const port = process.env.PERTEXO_LIVE_PROVIDER_PORT;
+  const client = createNodeProviderHttpClient({
+    allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
+  });
+  return {
+    execute: (input: Parameters<typeof client.execute>[0]) => {
+      const target =
+        process.env.EDITOR_BROWSER_CASE === 'product' && port !== undefined
+          ? editorProviderTarget(input, port)
+          : undefined;
+      return target === undefined
+        ? Promise.reject(new Error('Provider outside controlled HTTP fixture'))
+        : client.execute(target);
     },
   };
 }

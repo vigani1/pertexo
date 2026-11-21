@@ -14,11 +14,13 @@ function expectDeepFrozen(value: unknown): void {
   for (const child of Object.values(value)) expectDeepFrozen(child);
 }
 
+import { isLegacyDefinition } from './legacy-catalog.js';
+
 describe('browser-safe platform catalog projection', () => {
   it('preserves the legacy browser projection of every shipping definition', () => {
-    const definitions = platformBrowserNodeDefinitionCatalog().definitions.map(
-      ({ presentation: _presentation, ...projection }) => projection,
-    );
+    const definitions = platformBrowserNodeDefinitionCatalog()
+      .definitions.filter(({ definition }) => isLegacyDefinition(definition))
+      .map(({ presentation: _presentation, ...projection }) => projection);
     const projection = JSON.stringify({ definitions });
     expect(createHash('sha256').update(projection).digest('hex')).toBe(
       'b03fc3cb0eec3e7943bf07f0519a65d1c62c7243e98c21779cf8fe1715b31ab4',

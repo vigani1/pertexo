@@ -34,7 +34,7 @@ import {
   recheckOwnership,
 } from './lifecycle.js';
 import { httpMaster, httpAuthorization, useEditorApiFixture } from './api.js';
-import { liveWebPort } from '../../web-origin.js';
+import { liveProviderPort, liveWebPort } from '../../web-origin.js';
 
 export function createEditorBrowserFixture() {
   let worker: ChildProcess;
@@ -89,6 +89,7 @@ export function createEditorBrowserFixture() {
         execArgv: ['--import', 'tsx'],
         env: {
           ...process.env,
+          PERTEXO_LIVE_PROVIDER_PORT: String(liveProviderPort),
           ...(noticeMailKey === undefined
             ? {}
             : {

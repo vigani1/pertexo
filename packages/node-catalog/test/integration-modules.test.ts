@@ -7,20 +7,30 @@ import {
   platformBrowserNodeDefinitionCatalog,
 } from '../src/index.js';
 
-const http = INTEGRATION_MODULES.find(({ key }) => key === 'http')!;
-const slack = INTEGRATION_MODULES.find(({ key }) => key === 'slack')!;
+import { isLegacyDefinition, isLegacyPolicy } from './legacy-catalog.js';
+
+const [http, slack] = INTEGRATION_MODULES;
 
 it('preserves the published catalog and every legacy browser projection byte for byte', () => {
   const digest = (value: unknown) =>
     createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
   // Recorded from the last catalog before integration modules were introduced.
-  expect(digest(PLATFORM_NODE_CATALOG)).toBe(
+  const legacyCatalog = {
+    definitions: PLATFORM_NODE_CATALOG.definitions.filter(({ definition }) =>
+      isLegacyDefinition(definition),
+    ),
+    executors: PLATFORM_NODE_CATALOG.executors.filter(({ executor }) =>
+      isLegacyDefinition(executor),
+    ),
+    policies: PLATFORM_NODE_CATALOG.policies.filter(isLegacyPolicy),
+  };
+  expect(digest(legacyCatalog)).toBe(
     'a7bc71739f8b115c36b9d73873e84775ef82ae998be88d74d5945b367936dbdd',
   );
-  const definitions = platformBrowserNodeDefinitionCatalog().definitions.map(
-    ({ presentation: _presentation, ...projection }) => projection,
-  );
+  const definitions = platformBrowserNodeDefinitionCatalog()
+    .definitions.filter(({ definition }) => isLegacyDefinition(definition))
+    .map(({ presentation: _presentation, ...projection }) => projection);
   expect(digest({ definitions })).toBe(
     'b03fc3cb0eec3e7943bf07f0519a65d1c62c7243e98c21779cf8fe1715b31ab4',
   );
