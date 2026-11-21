@@ -167,10 +167,15 @@ export async function hostMemory() {
       .split('\n')
       .map((line) => line.split(' ')),
   );
-  const peak = await read('memory.peak').catch(() => null);
+  const [peak, cpu] = await Promise.all([
+    read('memory.peak').catch(() => null),
+    read('cpu.stat'),
+  ]);
+  const cpuMicros = /^usage_usec (\d+)$/mu.exec(cpu)?.[1];
   return {
     currentMib: Math.round(Number(await read('memory.current')) / 1_048_576),
     peakMib: peak === null ? null : Math.round(Number(peak) / 1_048_576),
+    cpuMicros: cpuMicros === undefined ? null : Number(cpuMicros),
     oomKills: Number(events.oom_kill ?? 0),
     highEvents: Number(events.high ?? 0),
     maxEvents: Number(events.max ?? 0),
