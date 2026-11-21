@@ -1,12 +1,11 @@
 import { createHash } from 'node:crypto';
-import {
-  canonicalJson,
-  normalizedJson,
-  utf8ByteLength,
-} from '@pertexo/workflow-model';
+import { normalizedJson, utf8ByteLength } from '@pertexo/workflow-model';
 import { decodeStoredValue } from '../../../shared/stored-values.js';
 import type { PublishedWorkflow } from './workflow-execution.types.js';
-import { verifyWorkflowExecutable } from '@pertexo/workflow-engine/server';
+import {
+  fingerprintExecutableCatalog,
+  verifyWorkflowExecutable,
+} from '@pertexo/workflow-engine/server';
 
 /** The served catalog (node catalog plus engine policies) stored executables run on. */
 export type PersistedWorkflowProjectionVerificationOptions = Readonly<{
@@ -31,14 +30,14 @@ export function verifyPersistedWorkflowProjection(
     // Validate JSON while preserving authored member order. JSON.stringify
     // would erase invalid values (NaN or undefined) before the identity check.
     const content = normalizedJson(projection.executableJson);
-    const catalog = canonicalJson(options.catalog);
+    const catalog = fingerprintExecutableCatalog(options.catalog);
     const key = JSON.stringify([
       projection.workspaceId,
       projection.workflowId,
       projection.id,
       projection.checksum,
       createHash('sha256').update(content).digest('hex'),
-      createHash('sha256').update(catalog).digest('hex'),
+      catalog.sha256,
     ]);
     const existing = verifiedProjections.get(key);
     if (existing !== undefined) {
@@ -51,7 +50,7 @@ export function verifyPersistedWorkflowProjection(
       checksum: projection.checksum,
       catalog: options.catalog,
     });
-    const bytes = utf8ByteLength(content) + utf8ByteLength(catalog);
+    const bytes = utf8ByteLength(content) + catalog.bytes;
     if (bytes <= VERIFIED_PROJECTION_CACHE_BYTES) {
       while (
         verifiedProjections.size >= VERIFIED_PROJECTION_CACHE_ENTRIES ||

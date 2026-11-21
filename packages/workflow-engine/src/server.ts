@@ -21,7 +21,10 @@ export {
 } from './transition/settle-result.js';
 export type { EngineErrorCode } from './workflow-engine.errors.js';
 export { verifyWorkflowExecutable } from './compilation/boundary.js';
-export { composeExecutableCatalog } from './compilation/compatibility.js';
+export {
+  composeExecutableCatalog,
+  fingerprintExecutableCatalog,
+} from './compilation/compatibility.js';
 export { buildWorkflowExecutable } from './compilation/compile.js';
 
 export type {
