@@ -146,7 +146,7 @@ export type AssertConnectionSecretCurrentInput = Readonly<{
   workspaceId: string;
   connectionId: string;
   expectedProviderKey: string;
-  expectedAuthType: ConnectionAuthType;
+  expectedAuthType: string;
   secretVersionId: string;
   signal?: AbortSignal;
 }>;

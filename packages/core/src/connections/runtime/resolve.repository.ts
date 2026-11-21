@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
@@ -47,7 +47,7 @@ export async function secretStillCurrent(
         eq(connections.workspaceId, workspaceId),
         eq(connections.id, input.connectionId),
         eq(connections.providerKey, input.expectedProviderKey),
-        eq(connections.authType, input.expectedAuthType),
+        eq(connections.authType, sql`${input.expectedAuthType}`),
         eq(connections.currentSecretVersionId, input.secretVersionId),
         eq(connections.status, 'active'),
         eq(workspaces.status, 'active'),
