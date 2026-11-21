@@ -48,7 +48,8 @@ describe.runIf(betterAuthIntegrationEnabled)(
       },
       { deployed: false },
     );
-    if (config === undefined) throw new Error('Missing upgrade fixture key');
+    if (config === undefined || !('mode' in config))
+      throw new Error('Missing local upgrade fixture key');
     const { encryption } = createConnectionEnvelopeEncryption(config);
     const api = useBetterAuthRealApi('auth_key', {
       migrationDirectory: directory,
