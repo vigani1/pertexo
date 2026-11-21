@@ -1,6 +1,6 @@
 # F57 — Integration modules
 
-Status: proposed. Decision: [ADR 095](../adr/095-integration-modules.md).
+Status: accepted; slice 1 in progress. Decision: [ADR 095](../adr/095-integration-modules.md).
 This is groundwork for community integrations. Installation is a later feature.
 
 ## Cost of adding a provider
