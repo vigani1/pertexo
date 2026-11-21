@@ -1,7 +1,7 @@
+import { markingDispatchOnce } from '../../providers/provider-dispatch-fence.js';
 import { executePagination } from './pagination/execute.js';
 import {
   type NodeExecutionInvocation,
-  type NodeExecutionRuntime,
   type NodeExecutorRegistration,
   NodeExecutorFailure,
   type ResolvedHttpCredential,
@@ -223,20 +223,6 @@ async function executeWithMaterial(
     finalOrigin: response.finalUrl,
     redirectCount: response.redirectCount,
   });
-}
-
-function markingDispatchOnce(runtime: NodeExecutionRuntime) {
-  let marked = false;
-  return {
-    ...runtime,
-    beforeDispatch: async (
-      evidence?: Parameters<typeof runtime.beforeDispatch>[0],
-    ) => {
-      if (marked) return;
-      await runtime.beforeDispatch(evidence);
-      marked = true;
-    },
-  };
 }
 
 function rethrowHttpError(error: unknown, context: RequestContext): never {
