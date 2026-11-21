@@ -40,6 +40,7 @@ import type {
 export async function acceptFixtureRun(
   input: Readonly<{
     iterationBudget: number;
+    runInput?: Readonly<Record<string, string>>;
     workflowId: string;
     workflowVersionId: string;
   }>,
@@ -56,7 +57,9 @@ export async function acceptFixtureRun(
         initialCheckpoint: createCheckpoint(checkpointInput),
         keyHash: createHash('sha256').update(randomUUID()).digest('hex'),
         operation: 'workflow.run.accept',
-        runInput: input.workflowId === workflowId ? { name: 'Ada' } : {},
+        runInput:
+          input.runInput ??
+          (input.workflowId === workflowId ? { name: 'Ada' } : {}),
         requestHash: createHash('sha256').update(randomUUID()).digest('hex'),
         scope: `workflow:${input.workflowId}:manual`,
         triggerType: 'manual',

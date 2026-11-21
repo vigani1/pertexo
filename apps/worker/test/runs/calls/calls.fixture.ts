@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../../support/coordinator/inline-setting.js';
 import type { NodeExecutionCapabilityFactories } from '../../../src/attempts/execution/capabilities.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
@@ -180,6 +181,7 @@ export async function runtime(
   }
   async function startWorkers() {
     coordinator = await createCoordinatorRuntime({
+      inlineSteps: inlineStepsEnabled,
       database,
       maintenanceDatabase,
       maximumAdmissions: 10,

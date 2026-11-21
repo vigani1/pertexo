@@ -244,8 +244,8 @@ jobs:
     # suites and then storage and backup qualification: 10 to 13 minutes. The limit
     # catches hangs.
     timeout-minutes:
-      ${{ (matrix.group == 'worker' || matrix.group == 'services') && 20 || 15
-      }}
+      ${{ matrix.group == 'worker' && 35 || matrix.group == 'services' && 20 ||
+      15 }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.integration) }}
@@ -320,7 +320,7 @@ jobs:
             pnpm --filter @pertexo/api exec vitest run --config vitest.integration.config.ts \
             test/workflow-authoring/organization/
           # Last: these stop and restart Redis.
-          WORKER_TRANSPORT_RESILIENCE=true \
+          WORKER_TRANSPORT_RESILIENCE=true WORKFLOW_COORDINATOR_INLINE_STEPS=true \
             pnpm --filter @pertexo/worker exec vitest run --config vitest.resilience.config.ts
           API_SSE_RESILIENCE_INTEGRATION=true \
             pnpm --filter @pertexo/api exec vitest run --config vitest.sse-resilience.config.ts
@@ -332,12 +332,7 @@ jobs:
           set -euo pipefail
           node infrastructure/testing/run-worker-suite.mjs 3
           WORKFLOW_COORDINATOR_INLINE_STEPS=true \
-            node infrastructure/testing/run-worker-suite.mjs 1 \
-              test/runs/consumer/linear-execution.integration.test.ts \
-              test/runs/consumer/recovery.integration.test.ts \
-              test/runs/consumer/parallel-recovery.integration.test.ts \
-              test/runs/consumer/redelivery.integration.test.ts \
-              test/runs/consumer/retry-wait.integration.test.ts
+            node infrastructure/testing/run-worker-suite.mjs 3
       - name: Qualify pinned beta storage
         if: matrix.group == 'services'
         run: node infrastructure/single-server/storage/qualify.mjs
@@ -384,6 +379,8 @@ jobs:
       - name: Migrate
         run: pnpm db:migrate
       - name: Fault tests
+        env:
+          WORKFLOW_COORDINATOR_INLINE_STEPS: 'true'
         run:
           node infrastructure/testing/run-fault-shard.mjs ${{ matrix.shard }}
           ${{ strategy.job-total }}
