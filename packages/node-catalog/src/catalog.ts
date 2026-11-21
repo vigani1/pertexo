@@ -42,7 +42,7 @@ for (const manifest of INTEGRATION_MANIFESTS)
   assertAttemptOnlyManifest(manifest);
 
 /** Every node the platform serves, with its runtime schemas. */
-export const PLATFORM_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
+const PLATFORM_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
   Object.freeze([
     ...CORE_NODE_DEFINITION_REGISTRATIONS,
     ...INTEGRATION_REGISTRATIONS,
