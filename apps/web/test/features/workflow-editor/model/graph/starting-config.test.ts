@@ -123,11 +123,16 @@ describe('a new step’s setup', () => {
     it(`starts ${definition.key} with valid defaults from its catalog schema`, () => {
       const config = startingConfig(item, []);
       expect(config).toEqual(catalogDefaults(configSchema));
-      expect(
+      // Drafts stay saveable while incomplete (ADR 053). A setting with no
+      // default is the person's to enter; every value supplied must be valid.
+      const parsed =
         resolvePlatformNodeDefinition(definition).configSchema.safeParse(
           config,
-        ),
-      ).toMatchObject({ success: true });
+        );
+      const supplied = (parsed.error?.issues ?? []).filter(
+        (issue) => valueAt(config, issue.path) !== undefined,
+      );
+      expect(supplied).toEqual([]);
     });
   }
 
@@ -152,4 +157,12 @@ function catalogDefaults(schema: NodeDefinitionCatalogItem['configSchema']) {
     }
   }
   return defaults;
+}
+
+function valueAt(value: unknown, path: readonly PropertyKey[]): unknown {
+  return path.reduce<unknown>(
+    (current, key) =>
+      isRecord(current) && typeof key === 'string' ? current[key] : undefined,
+    value,
+  );
 }
