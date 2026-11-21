@@ -1,6 +1,6 @@
 # ADR 102: Community integration packages and operator trust
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-21
 - **Related:** [ADR 091](091-core-layer.md), [ADR 095](095-integration-modules.md)
 - **Feature:** [F64](../feature-plans/64-community-integrations.md)
