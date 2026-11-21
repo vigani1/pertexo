@@ -1,11 +1,7 @@
 import { generateSchemaDocument } from '@pertexo/node-sdk';
 import { compareOrdinal, isRecord } from '@pertexo/workflow-model';
 import {
-  DATABASE_MODULE,
-  EMAIL_MODULE,
-  HTTP_MODULE,
-  SLACK_MODULE,
-  SIGNING_MODULE,
+  INTEGRATION_MODULES,
   type ConnectionDefinition,
   type IntegrationExecutorDependencies,
   type IntegrationModule,
@@ -13,14 +9,6 @@ import {
   type IntegrationPresentation,
 } from '@pertexo/integrations/server';
 import { IntegrationRegistryError } from './node-catalog.errors.js';
-
-const modules = [
-  HTTP_MODULE,
-  SLACK_MODULE,
-  DATABASE_MODULE,
-  EMAIL_MODULE,
-  SIGNING_MODULE,
-] as const satisfies readonly IntegrationModule[];
 
 export function registerIntegrationModules(
   modules: readonly IntegrationModule[],
@@ -90,7 +78,8 @@ export function registerIntegrationModules(
   };
 }
 
-export const INTEGRATION_MODULE_REGISTRY = registerIntegrationModules(modules);
+export const INTEGRATION_MODULE_REGISTRY =
+  registerIntegrationModules(INTEGRATION_MODULES);
 
 type RegisteredConnection = ConnectionDefinition &
   Readonly<{
@@ -101,7 +90,7 @@ type RegisteredConnection = ConnectionDefinition &
 const connections = new Map<string, RegisteredConnection>();
 const primarySlots = new Map<string, RegisteredConnection>();
 
-for (const module of modules) {
+for (const module of INTEGRATION_MODULES) {
   for (const connection of module.connections) {
     if (connections.has(connection.authType))
       throw new IntegrationRegistryError('connection', connection.authType);
@@ -120,7 +109,7 @@ for (const module of modules) {
 }
 
 export function isRegisteredProvider(providerKey: string) {
-  return modules.some(
+  return INTEGRATION_MODULES.some(
     (module) => module.key === providerKey && module.connections.length > 0,
   );
 }

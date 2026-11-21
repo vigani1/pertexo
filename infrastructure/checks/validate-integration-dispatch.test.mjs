@@ -30,6 +30,16 @@ const keys = integrationKeys([
 
 for (const [name, file, text] of [
   [
+    'a module re-export from the integrations server entry',
+    'packages/integrations/src/server.ts',
+    "export { EXAMPLE_MODULE } from './example/example.module.js';",
+  ],
+  [
+    'individual module discovery in the catalog registry',
+    'packages/node-catalog/src/integration-modules.ts',
+    "import { EXAMPLE_MODULE } from '@pertexo/integrations/server';",
+  ],
+  [
     'a second executor registration list with a renamed import',
     'packages/node-catalog/src/server.ts',
     "import { EXAMPLE_MODULE as module } from '@pertexo/integrations/server';\nconst executors = [module.steps[0]];",
@@ -136,6 +146,25 @@ test('accepts dispatch through the registry', () => {
     findIntegrationDispatch(
       'packages/node-catalog/src/server.ts',
       'const executors = INTEGRATION_MODULE_REGISTRY.createExecutors(dependencies);',
+      keys,
+    ),
+    [],
+  );
+});
+
+test('allows discovery in integrations and consumption by the catalog registry', () => {
+  assert.deepEqual(
+    findIntegrationDispatch(
+      'packages/integrations/src/modules.ts',
+      "import { EXAMPLE_MODULE } from './example/example.module.js';",
+      keys,
+    ),
+    [],
+  );
+  assert.deepEqual(
+    findIntegrationDispatch(
+      'packages/node-catalog/src/integration-modules.ts',
+      "import { INTEGRATION_MODULES } from '@pertexo/integrations/server';",
       keys,
     ),
     [],

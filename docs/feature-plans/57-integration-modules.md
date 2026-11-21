@@ -39,8 +39,10 @@ fixups first. Make behavior and registration changes separately.
 ### 1. Registry and presentation
 
 Add `integrations/src/providers/integration-module.ts` for the module
-interface and `node-catalog/src/integration-modules.ts` for the explicit
-registry. Wrap the current definitions in modules pointing at their existing
+interface, `integrations/src/modules.ts` for the discovery list, and
+`node-catalog/src/integration-modules.ts` for registry assembly and validation.
+The discovery list lives with its modules so the existing server entry can
+expose it without re-exporting each module. Wrap the current definitions in modules pointing at their existing
 files. In `catalog.ts`, derive `INTEGRATION_REGISTRATIONS`, manifests and
 provider policies from the modules. Preserve the manifest identities,
 versions and order. The F58 registration split moves executor assembly into
@@ -163,7 +165,7 @@ The expected diff has **four files**. Record the actual path count in that PR.
 | --- | --- |
 | `packages/integrations/src/example-posts/example-posts.module.ts` | Identity, read-only step schemas, executor and failure registration |
 | `packages/integrations/src/example-posts/connections.definition.ts` | API-key schema, header application and test recipe |
-| `packages/node-catalog/src/integration-modules.ts` | One explicit registration line |
+| `packages/integrations/src/modules.ts` | One explicit registration |
 | `apps/web/e2e-live/editor/product/example-posts.spec.ts` | One journey including the stand-in fixture |
 
 If demonstrating the provider requires edits to a consumer, fix that seam in
