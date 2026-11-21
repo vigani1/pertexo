@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import { useAppearance } from '@/lib/appearance/use-choice';
 import '@xyflow/react/dist/style.css';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
@@ -169,7 +170,11 @@ export function RunGraphView({
   selectedNodeId: string | undefined;
   onSelectNode: (nodeId: string) => void;
 }>) {
-  const projection = useMemo(() => projectRunGraph(graph, rows), [graph, rows]);
+  const describeStep = useStepDescriptions();
+  const projection = useMemo(
+    () => projectRunGraph(graph, rows, describeStep),
+    [graph, rows, describeStep],
+  );
   // Hidden until the first fit, so the map never jumps into place.
   const [fitted, setFitted] = useState(false);
   const { theme } = useAppearance();

@@ -432,6 +432,36 @@
                   ],
                   "additionalProperties": true
                 },
+                "presentation": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "icon": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64,
+                      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)*$"
+                    },
+                    "group": {
+                      "type": "string",
+                      "enum": [
+                        "trigger",
+                        "action"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "icon",
+                    "group"
+                  ],
+                  "additionalProperties": true
+                },
                 "configVersion": {
                   "type": "integer",
                   "exclusiveMinimum": 0,

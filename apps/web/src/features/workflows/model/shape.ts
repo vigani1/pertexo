@@ -2,7 +2,7 @@ import {
   WORKFLOW_TRIGGER_DEFINITIONS,
   isWorkflowTriggerDefinition,
 } from '@pertexo/workflow-model';
-import { describeStep } from '@/features/catalog/public';
+import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 export type WorkflowShape = Readonly<{
@@ -23,10 +23,13 @@ export function definitionName(key: string): string {
 }
 
 /** The name a person gave the step, else its definition's readable name. */
-export function stepLabel(node: StepSource): string {
+export function stepLabel(
+  node: StepSource,
+  describe: DescribeStep = describeStep,
+): string {
   const label = node.label?.trim();
   return label === undefined || label === ''
-    ? definitionName(node.definition.key)
+    ? describe(node.definition).name
     : label;
 }
 
@@ -96,6 +99,7 @@ function entryNode(
 export function describeWorkflowPath(
   graph: WorkflowShape,
   maxSteps = 4,
+  describe: DescribeStep = describeStep,
 ): string {
   const { successors, incoming } = adjacency(graph);
   const entry = entryNode(graph, incoming);
@@ -103,9 +107,9 @@ export function describeWorkflowPath(
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
   const labelOf = (id: string) => {
     const node = byId.get(id);
-    return node === undefined ? 'Step' : stepLabel(node);
+    return node === undefined ? 'Step' : stepLabel(node, describe);
   };
-  const parts = [stepLabel(entry)];
+  const parts = [stepLabel(entry, describe)];
   const visited = new Set([entry.id]);
   let current = entry;
   for (;;) {
@@ -130,7 +134,7 @@ export function describeWorkflowPath(
     const node = byId.get(first);
     if (node === undefined) break;
     visited.add(first);
-    parts.push(stepLabel(node));
+    parts.push(stepLabel(node, describe));
     current = node;
   }
   return parts.join(' → ');

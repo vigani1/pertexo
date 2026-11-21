@@ -6,7 +6,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "browser": false,
+      "node": "./dist/index.js"
     },
     "./server": {
       "types": "./dist/server.d.ts",
@@ -15,6 +16,7 @@
     }
   },
   "browser": {
+    "./dist/index.js": false,
     "./dist/server.js": false
   },
   "scripts": {

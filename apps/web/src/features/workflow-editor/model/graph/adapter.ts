@@ -10,7 +10,11 @@ import type {
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import type { CoordinateExtent, Edge, Node } from '@xyflow/react';
-import { portName, requiredConnections } from '@/features/catalog/public';
+import {
+  catalogStepDescriptions,
+  portName,
+  requiredConnections,
+} from '@/features/catalog/public';
 import {
   BODY_ORIGIN,
   bodyFrame,
@@ -22,7 +26,6 @@ import type { BodyIssue } from './for-each-body-rules';
 import { portLinks, shownPorts, stepSummary } from '../step-card';
 import { levelSinks } from './order';
 import { loopSummary, type LoopSummary } from './loop-summary';
-import { stepTitle } from './step-title';
 import {
   indexGraph,
   isForEach,
@@ -45,6 +48,9 @@ interface WorkflowNodeData extends Record<string, unknown> {
   label: string | undefined;
   definitionKey: string;
   definitionVersion: number;
+  metadata?:
+    | Pick<NodeDefinitionCatalogItem, 'display' | 'family' | 'presentation'>
+    | undefined;
   family: NodeDefinitionCatalogItem['family'] | 'unknown';
   /** The ports the card draws (branching steps: only the configured ones). */
   inputPorts: readonly string[];
@@ -174,6 +180,7 @@ export function projectWorkflowGraph(
   definitions: readonly NodeDefinitionCatalogItem[],
   decorations: CanvasDecorations = noCanvasDecorations,
 ): WorkflowFlowProjection {
+  const describe = catalogStepDescriptions(definitions);
   const failureInspection = inspectWorkflowFailureRoutes(graph);
   const projection: Projection = {
     handlerNodeIds: new Set(
@@ -195,7 +202,7 @@ export function projectWorkflowGraph(
     labels: new Map(
       [...indexGraph(graph).nodes.values()].map(({ item }) => [
         item.id,
-        stepTitle(item),
+        item.label ?? describe(item.definition).name,
       ]),
     ),
     decorations,
@@ -277,6 +284,7 @@ function projectNode({
       label: node.label,
       definitionKey: node.definition.key,
       definitionVersion: node.definition.version,
+      metadata: definition,
       family: definition?.family ?? 'unknown',
       inputPorts: shownPorts(node, definition, level, 'inputs'),
       outputPorts,

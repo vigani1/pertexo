@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { useMemo } from 'react';
 import {
@@ -13,6 +14,7 @@ export function useIssuesView(
   draft: Readonly<{ generation: number; revision: number }>,
   connectionIssues: readonly WorkflowIssue[],
 ) {
+  const describeStep = useStepDescriptions();
   const { validation, validationPending, validationError } = publication;
   const { generation, revision } = draft;
   return useMemo(
@@ -22,6 +24,7 @@ export function useIssuesView(
         graph,
         { generation, revision },
         connectionIssues,
+        describeStep,
       ),
     [
       generation,
@@ -31,6 +34,7 @@ export function useIssuesView(
       validationError,
       validationPending,
       connectionIssues,
+      describeStep,
     ],
   );
 }

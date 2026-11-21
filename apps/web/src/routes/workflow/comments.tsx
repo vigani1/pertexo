@@ -3,10 +3,11 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { workflowNodes } from '@pertexo/workflow-model';
 import { WorkflowCommentsPage } from '@/features/workflow-collaboration/pages/workflow-comments';
 import { workflowDraftQueryOptions } from '@/features/workflow-editor/workflow-editor-queries.public';
-import { describeStep } from '@/features/catalog/public';
+import { useStepDescriptions } from '@/features/catalog/public';
 import { useWorkflowHubScope } from './hub/scope';
 import { WorkflowHubTabFrame } from './hub/frame';
 export function WorkflowCommentsRoute() {
+  const describeStep = useStepDescriptions();
   const { apiClient, user, workspace, workflowId } = useWorkflowHubScope();
   const search = useSearch({
     from: '/w/$workspaceId/workflows/$workflowId/comments',
@@ -20,7 +21,7 @@ export function WorkflowCommentsRoute() {
       ? []
       : Array.from(workflowNodes(draft.data.draft.graph), (node) => ({
           id: node.id,
-          label: node.label?.trim() ?? describeStep(node.definition.key).name,
+          label: node.label?.trim() ?? describeStep(node.definition).name,
         }));
   return (
     <WorkflowHubTabFrame tab="comments">

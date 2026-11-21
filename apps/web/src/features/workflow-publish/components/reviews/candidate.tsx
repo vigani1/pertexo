@@ -1,4 +1,4 @@
-import { describeStep } from '@/features/catalog/public';
+import { useStepDescriptions } from '@/features/catalog/public';
 import { useId } from 'react';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { graphSteps } from '@/features/workflow-drafts/public';
@@ -15,9 +15,10 @@ export function ReviewCandidate({
   graph: WorkflowGraphContract;
   liveGraph: WorkflowGraphContract | null;
 }>) {
+  const describeStep = useStepDescriptions();
   const id = useId();
   const before = liveGraph ?? { nodes: [], edges: [], settings: {} };
-  const diff = diffWorkflowGraphs(before, graph);
+  const diff = diffWorkflowGraphs(before, graph, describeStep);
   return (
     <section
       aria-label="Reviewed draft"
@@ -46,14 +47,14 @@ export function ReviewCandidate({
         {graphSteps(graph).map(({ node, inside }) => (
           <li key={node.id} className={inside === null ? 'py-3' : 'py-3 pl-6'}>
             <p className="font-medium [overflow-wrap:anywhere]">
-              {node.label ?? describeStep(node.definition.key).name}
+              {node.label ?? describeStep(node.definition).name}
             </p>
             <p className="text-xs text-muted-foreground">
               {node.definition.key} · v{node.definition.version}
               {(node.disabled ?? false) ? ' · disabled' : ''}
               {inside === null
                 ? ''
-                : ` · inside ${inside.label ?? describeStep(inside.definition.key).name}`}
+                : ` · inside ${inside.label ?? describeStep(inside.definition).name}`}
             </p>
             <Disclosure summary="Setup and mappings" className="mt-2">
               <pre

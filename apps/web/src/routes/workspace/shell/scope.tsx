@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { CatalogStepDescriptions } from '@/features/catalog/catalog-views.public';
 import { Outlet } from '@tanstack/react-router';
 import { WorkspaceDeletionPage } from '@/features/workspaces/pages/workspace-deletion';
 import { accessibleWorkspacesQueryOptions } from '@/features/workspaces/workspaces-queries.public';
@@ -26,6 +27,8 @@ export function WorkspaceScopeRoute() {
       workspaceId={workspace.id}
     />
   ) : (
-    <Outlet />
+    <CatalogStepDescriptions apiClient={apiClient} userId={user.id}>
+      <Outlet />
+    </CatalogStepDescriptions>
   );
 }

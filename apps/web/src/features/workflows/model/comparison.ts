@@ -4,6 +4,7 @@ import {
   type NoteChange,
   diffWorkflowGraphs as diffGraphs,
 } from '@/features/workflow-drafts/public';
+import type { DescribeStep } from '@/features/catalog/public';
 import { stepLabel } from './shape';
 import { canonicalJson } from '@pertexo/workflow-model';
 
@@ -45,11 +46,12 @@ export type VersionDiff = Readonly<{
 export function diffWorkflowGraphs(
   previous: WorkflowGraphContract,
   current: WorkflowGraphContract,
+  describe?: DescribeStep,
 ): VersionDiff {
   const diff = diffGraphs(previous, current, { ignoreLayout: true });
   const step = (node: WorkflowGraphContract['nodes'][number]) => ({
     id: node.id,
-    label: stepLabel(node),
+    label: stepLabel(node, describe),
   });
   const added = diff.added.map(step);
   const removed = diff.removed.map(step);

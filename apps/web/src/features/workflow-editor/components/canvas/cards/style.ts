@@ -22,8 +22,9 @@ export function cardIdentity(data: WorkflowFlowNode['data']): Readonly<{
   type: string;
 }> {
   const step = describeStep(
-    data.definitionKey,
+    { key: data.definitionKey, version: data.definitionVersion },
     data.family === 'unknown' ? undefined : data.family,
+    data.metadata,
   );
   const kind = data.label === undefined ? familyWord(step.family) : step.name;
   return {

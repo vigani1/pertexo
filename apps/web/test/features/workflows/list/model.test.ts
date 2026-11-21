@@ -1,3 +1,4 @@
+import { describeBrowserStep } from '../../../support/fixtures/node-catalog';
 import { describe, expect, it } from 'vitest';
 import type {
   WorkflowGraphContract,
@@ -71,7 +72,7 @@ describe('workflow shape', () => {
         { id: 'c', key: 'slack.send_message', x: 560 },
       ]),
     );
-    expect(describeWorkflowPath(linear)).toBe(
+    expect(describeWorkflowPath(linear, undefined, describeBrowserStep)).toBe(
       'Webhook → Call CRM → Send Slack message',
     );
     expect(describeWorkflowPath(branching())).toBe(

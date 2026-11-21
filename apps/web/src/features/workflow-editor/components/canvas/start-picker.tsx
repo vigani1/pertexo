@@ -110,7 +110,7 @@ function StartChoices({
       className="-mx-1 flex min-h-0 flex-col gap-1.5 overflow-y-auto px-1"
     >
       {definitions.map((definition) => {
-        const step = describeStep(definition.definition.key, definition.family);
+        const step = describeStep(definition.definition, undefined, definition);
         return (
           <li
             key={definitionIdentity(

@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import { useRef } from 'react';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ export function VersionPreviewSheet({
 }>) {
   // Focus lands on Close, outside the scrolling body, so opening never
   // scrolls the shape and steps out of view.
+  const describeStep = useStepDescriptions();
   const closeRef = useRef<HTMLButtonElement>(null);
   return (
     <Sheet
@@ -79,7 +81,7 @@ export function VersionPreviewSheet({
               <section className="flex flex-col gap-2">
                 <h3 className="text-sm font-semibold">Steps</h3>
                 <ol className="flex flex-col divide-y divide-border rounded-lg border border-border">
-                  {versionSteps(version.graph).map((step) => (
+                  {versionSteps(version.graph, describeStep).map((step) => (
                     <li
                       key={step.id}
                       className="flex items-center justify-between gap-3 px-3 py-2 text-sm"

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { platformBrowserNodeDefinitionCatalog } from '@pertexo/node-catalog';
+import { GlobeIcon, HashIcon } from 'lucide-react';
+import { stepIcons } from '@/features/catalog/model/steps/registry';
 import {
+  catalogStepDescriptions,
   describeConnectionRequirement,
   describeRetryBehaviour,
   describeStep,
@@ -9,6 +12,9 @@ import {
   stepGroupFor,
   stepGroups,
 } from '@/features/catalog/public';
+
+const { definitions } = platformBrowserNodeDefinitionCatalog();
+const describeServedStep = catalogStepDescriptions(definitions);
 
 describe('step presentation registry', () => {
   it('keeps established step names and side-effect explanations', () => {
@@ -30,13 +36,13 @@ describe('step presentation registry', () => {
       'email.send_notification': ['Send email', 'action'],
     } as const;
     for (const [key, [name, family]] of Object.entries(expected)) {
-      const step = describeStep(key);
+      const step = describeServedStep(key);
       expect(step.name).toBe(name);
       expect(step.family).toBe(family);
       expect(step.description.length).toBeGreaterThan(0);
       expect(step.description).not.toMatch(/\.$/u);
     }
-    expect(describeStep('slack.send_message').sideEffect).toBe(
+    expect(describeServedStep('slack.send_message').sideEffect).toBe(
       'This sends a real Slack message.',
     );
   });
@@ -109,10 +115,43 @@ it('uses the supplied catalog family even for a known step', () => {
 it('presents every actual catalog definition using its owned display vocabulary', () => {
   for (const item of platformBrowserNodeDefinitionCatalog().definitions) {
     expect(item.display, item.definition.key).toBeDefined();
-    const shown = describeStep(item.definition.key, item.family);
+    const shown = describeServedStep(item.definition, item.family);
     expect(shown).toMatchObject({ ...item.display, family: item.family });
     expect(shown.icon).toBeDefined();
     expect(shown.name.length).toBeGreaterThan(0);
     expect(shown.description.length).toBeGreaterThan(0);
   }
+});
+
+it('keeps the hand-written step icon list limited to core steps', () => {
+  expect(
+    Object.keys(stepIcons).filter((key) => !key.startsWith('core.')),
+  ).toEqual([]);
+});
+
+it('uses the pinned catalog version and falls back for an unknown icon', () => {
+  const item = definitions.find(
+    ({ definition }) => definition.key === 'slack.send_message',
+  );
+  if (item?.presentation === undefined || item.display === undefined)
+    throw new Error('Missing Slack presentation');
+  const updated = {
+    ...item,
+    definition: { ...item.definition, version: item.definition.version + 1 },
+    presentation: {
+      ...item.presentation,
+      icon: 'constructor',
+      name: 'Post a message',
+    },
+  };
+  const describe = catalogStepDescriptions([updated, item]);
+  expect(describe(item.definition)).toMatchObject({
+    name: 'Send Slack message',
+    icon: HashIcon,
+  });
+  expect(describe(updated.definition)).toMatchObject({
+    name: 'Post a message',
+    icon: GlobeIcon,
+  });
+  expect(describe(item.definition.key).name).toBe('Post a message');
 });

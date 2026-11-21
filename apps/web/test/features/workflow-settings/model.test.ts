@@ -1,3 +1,4 @@
+import { describeBrowserStep } from '../../support/fixtures/node-catalog';
 import { describeDestination } from '@/features/workflow-settings/model/destination-label';
 import { describeDelivery } from '@/features/workflow-settings/model/triggers/delivery-outcome';
 import { extractEndpointKey } from '@/features/workflow-settings/model/triggers/endpoint-key';
@@ -75,7 +76,7 @@ describe('version changes', () => {
       ],
       [edge('hook', 'call')],
     );
-    expect(diffWorkflowGraphs(before, after)).toEqual({
+    expect(diffWorkflowGraphs(before, after, describeBrowserStep)).toEqual({
       lines: [
         { target: 'step', kind: 'added', id: 'mail', label: 'Send email' },
         { target: 'step', kind: 'removed', id: 'old', label: 'Tidy' },
@@ -115,6 +116,7 @@ describe('version changes', () => {
         { ...stepNode('a', 'core.schedule'), position: { x: 500, y: 0 } },
         { ...stepNode('c', 'core.set', 'Shape'), position: { x: 100, y: 0 } },
       ]),
+      describeBrowserStep,
     );
     expect(steps.map((step) => [step.label, step.kind, step.trigger])).toEqual([
       ['Schedule', 'Schedule', true],

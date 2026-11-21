@@ -1,7 +1,8 @@
-import { describeStep } from '@/features/catalog/public';
+import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 export function workflowTestStepLabels(
   graph: WorkflowGraphContract | undefined,
+  describe: DescribeStep = describeStep,
 ): ReadonlyMap<string, string> {
   if (graph === undefined) return new Map();
   const nodes = (function flatten(
@@ -17,7 +18,7 @@ export function workflowTestStepLabels(
   return new Map(
     nodes.map((node) => [
       node.id,
-      node.label ?? describeStep(node.definition.key).name,
+      node.label ?? describe(node.definition).name,
     ]),
   );
 }

@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import type { WorkflowVersionResponse } from '@pertexo/contracts';
 import { cn } from '@/lib/class-names';
 import { diffWorkflowGraphs, isEmptyDiff } from '@/features/workflows/public';
@@ -50,7 +51,8 @@ export function VersionDiffSummary({
   from: WorkflowVersionResponse;
   to: WorkflowVersionResponse;
 }>) {
-  const diff = diffWorkflowGraphs(from.graph, to.graph);
+  const describeStep = useStepDescriptions();
+  const diff = diffWorkflowGraphs(from.graph, to.graph, describeStep);
   const since = `v${String(from.versionNumber)}`;
   if (isEmptyDiff(diff))
     return (

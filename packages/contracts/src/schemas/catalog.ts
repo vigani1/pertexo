@@ -71,6 +71,15 @@ export const nodeDefinitionCatalogItemSchema = z
     definition: catalogDefinitionIdentitySchema,
     family: z.enum(['trigger', 'action', 'logic', 'transform', 'output']),
     display: nodeDisplayMetadataSchema.optional(),
+    presentation: z
+      .object({
+        name: z.string().min(1).max(CATALOG_LIMITS.nameCharacters),
+        icon: identityKey,
+        group: z.enum(['trigger', 'action']),
+      })
+      .strict()
+      .readonly()
+      .optional(),
     configVersion: z.number().int().positive(),
     configSchema: schemaDocumentSchema,
     inputSchema: schemaDocumentSchema,

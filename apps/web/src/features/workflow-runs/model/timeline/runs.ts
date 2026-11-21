@@ -6,7 +6,7 @@ import type {
   WorkflowRunSummary,
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
-import { describeStep } from '@/features/catalog/public';
+import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import {
   describeNodeStatus,
   type NodeStatus,
@@ -80,6 +80,7 @@ type GraphLabel = Readonly<{
 
 function graphLabels(
   graph: WorkflowGraphContract | undefined,
+  describe: DescribeStep,
 ): ReadonlyMap<string, GraphLabel> {
   const labels = new Map<string, GraphLabel>();
   let order = 0;
@@ -89,7 +90,7 @@ function graphLabels(
   }: Readonly<{ current: WorkflowGraphContract; root: boolean }>) => {
     for (const node of current.nodes) {
       // The catalog's name for the step type, the same words Build uses.
-      const kind = describeStep(node.definition.key).name;
+      const kind = describe(node.definition).name;
       const label = node.label?.trim();
       const connected = {
         definitionKey: node.definition.key,
@@ -309,9 +310,10 @@ export function buildRunTimeline(
     graph?: WorkflowGraphContract;
     nowMs: number;
   }>,
+  describe: DescribeStep = describeStep,
 ): RunTimelineModel {
   const bounds = runBounds(input.run, input.nowMs);
-  const labels = graphLabels(input.graph);
+  const labels = graphLabels(input.graph, describe);
   const invocations = collectInvocations(input.nodes, input.events);
   const perNode = new Map<string, number>();
   const rows = invocations

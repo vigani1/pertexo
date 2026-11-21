@@ -4,6 +4,7 @@ export {
   describeRecurrence,
 } from './model/schedule-sentence';
 export {
+  catalogStepDescriptions,
   describeConnectionRequirement,
   describeRetryBehaviour,
   describeStep,
@@ -13,6 +14,8 @@ export {
   requiredConnections,
   stepGroupFor,
   stepGroups,
+  type DescribeStep,
   type StepGroup,
 } from './model/steps/presentation';
 export type { StepFamily, StepPresentation } from './model/steps/registry';
+export { useStepDescriptions } from './hooks/step-descriptions';

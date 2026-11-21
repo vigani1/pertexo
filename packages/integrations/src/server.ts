@@ -107,3 +107,12 @@ export {
 } from './http/polling/polling.errors.js';
 
 export { httpPollExecutor } from './http/polling/polling.executor.js';
+
+export type {
+  IntegrationModule,
+  IntegrationPresentation,
+} from './providers/integration-module.js';
+export { HTTP_MODULE } from './http/http.module.js';
+export { SLACK_MODULE } from './slack/slack.module.js';
+export { DATABASE_MODULE } from './database/database.module.js';
+export { EMAIL_MODULE } from './email/email.module.js';

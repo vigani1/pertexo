@@ -13,7 +13,6 @@ import { describeStep } from '@/features/catalog/public';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import type { ValueSource } from '@pertexo/workflow-model';
 import { findDefinition } from '../../../model/graph/adapter';
-import { stepTitle } from '../../../model/graph/step-title';
 import type { GraphLevel, WorkflowNode } from '../../../model/graph/scopes';
 import { directPredecessorOptions } from '../../../model/inspector/input-mappings/draft';
 import {
@@ -106,6 +105,9 @@ function attachChoices(
     const source = graph.nodes.find((node) => node.id === sourceId);
     if (source === undefined) continue;
     const definition = findDefinition(definitions, source);
+    const name =
+      source.label ??
+      describeStep(source.definition, undefined, definition).name;
     for (const field of fileFieldsOf(
       definition?.outputSchema,
       source,
@@ -114,7 +116,7 @@ function attachChoices(
       offer(source, {
         key: field.key,
         label: field.key,
-        name: `${field.key} from ${stepTitle(source)}`,
+        name: `${field.key} from ${name}`,
         hint: field.sometimes ? 'if saved as a file' : propertyPath(field.key),
         pick: () => {
           onPick({
@@ -161,16 +163,15 @@ function StepTitle({
   step: WorkflowNode;
   definitions: readonly NodeDefinitionCatalogItem[];
 }>) {
+  const presentation = describeStep(
+    step.definition,
+    undefined,
+    findDefinition(definitions, step),
+  );
   return (
     <>
-      <StepTile
-        step={describeStep(
-          step.definition.key,
-          findDefinition(definitions, step)?.family,
-        )}
-        size="sm"
-      />
-      {stepTitle(step)}
+      <StepTile step={presentation} size="sm" />
+      {step.label ?? presentation.name}
     </>
   );
 }

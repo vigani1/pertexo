@@ -10,7 +10,6 @@ import ts from 'typescript';
 export const WEB_BROWSER_PACKAGE_ROOTS = Object.freeze([
   '@pertexo/contracts',
   '@pertexo/integrations',
-  '@pertexo/node-catalog',
   '@pertexo/node-sdk',
   '@pertexo/nodes-core',
   '@pertexo/policy',

@@ -29,6 +29,14 @@ describe('catalog controller public seam', () => {
     );
     const response = controller.listNodeDefinitions();
     expect(nodeDefinitionListResponseSchema.parse(response)).toEqual(response);
+    expect(
+      response.items.find(
+        ({ definition }) => definition.key === 'http.request',
+      ),
+    ).toMatchObject({
+      display: { name: 'HTTP request' },
+      presentation: { name: 'HTTP request', icon: 'globe', group: 'action' },
+    });
     for (const item of response.items) {
       expect(item).not.toHaveProperty('executor');
       expect(item).not.toHaveProperty('executorAbi');

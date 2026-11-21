@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import type { AccessibleWorkspace, WorkflowSummary } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
 import {
@@ -60,6 +61,7 @@ const TRIGGERS: Readonly<
 function TriggerIcons({
   graph,
 }: Readonly<{ graph: WorkflowShape | undefined }>) {
+  const describeStep = useStepDescriptions();
   if (graph === undefined) return null;
   const kinds = workflowTriggerKinds(graph);
   if (kinds.length === 0)
@@ -298,10 +300,11 @@ export function WorkflowRow({
 }
 
 function RowPath({ graph }: Readonly<{ graph: WorkflowShape | undefined }>) {
+  const describeStep = useStepDescriptions();
   if (graph === undefined) return null;
   return (
     <p className="truncate text-xs/4 text-subtle-foreground">
-      {describeWorkflowPath(graph)}
+      {describeWorkflowPath(graph, undefined, describeStep)}
     </p>
   );
 }

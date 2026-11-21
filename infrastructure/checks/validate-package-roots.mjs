@@ -47,6 +47,7 @@ export const ROOT_CONCEPTS = Object.freeze({
   },
   'packages/node-catalog': {
     'catalog.ts': 'the platform catalog',
+    'integration-modules.ts': 'the explicit integration registry',
     'browser-catalog.ts': 'the browser projection of the catalog',
     'portable-definition-policy.ts': 'import and export admission',
     'curated-template-policy.ts': 'curated setup against node schemas',

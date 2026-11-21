@@ -1,3 +1,5 @@
+import type { IntegrationPresentation } from '@pertexo/integrations/server';
+import { INTEGRATION_MODULE_REGISTRY } from './integration-modules.js';
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import {
   approvalOutputSchema,
@@ -19,6 +21,7 @@ export type PlatformNodeDefinitionBrowserProjection = Readonly<{
   readonly definition: Readonly<{ key: string; version: number }>;
   readonly family: NodeManifest['family'];
   readonly display?: NodeManifest['display'];
+  readonly presentation?: IntegrationPresentation;
   readonly configVersion: number;
   readonly configSchema: NodeManifest['configSchema'];
   readonly inputSchema: NodeManifest['inputSchema'];
@@ -59,13 +62,17 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
     .sort((left, right) =>
       compareDefinitionIdentity(left.definition, right.definition),
     )
-    .map((projection) =>
-      Object.freeze({
+    .map((projection) => {
+      const presentation = INTEGRATION_MODULE_REGISTRY.presentationFor(
+        projection.definition,
+      );
+      return Object.freeze({
         definition: Object.freeze({ ...projection.definition }),
         family: projection.family,
         ...(projection.display === undefined
           ? {}
           : { display: projection.display }),
+        ...(presentation === undefined ? {} : { presentation }),
         configVersion: projection.configVersion,
         configSchema: projection.configSchema,
         inputSchema: projection.inputSchema,
@@ -97,8 +104,8 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
         retryClass: projection.retryClass,
         resourceClass: projection.resourceClass,
         capabilities: Object.freeze([...projection.capabilities]),
-      }),
-    );
+      });
+    });
   return Object.freeze({
     definitions: Object.freeze(definitions),
   });

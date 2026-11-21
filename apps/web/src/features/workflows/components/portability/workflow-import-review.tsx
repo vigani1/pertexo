@@ -26,19 +26,12 @@ import { connectionDiscoveryQueryOptions } from '@/features/connections/connecti
 import type { ApiClient } from '@/lib/api/client';
 import {
   describeConnectionRequirement,
-  describeStep,
+  useStepDescriptions,
   familyWord,
 } from '@/features/catalog/public';
 import { StepTile } from '@/features/catalog/catalog-views.public';
 import { PortableGraphReview } from './portable-graph-review';
 import { Disclosure } from '@/components/ui/disclosure';
-
-type PortableNode = WorkflowPortableManifest['graph']['nodes'][number];
-
-function stepName(node: PortableNode | undefined, fallback: string): string {
-  if (node === undefined) return fallback;
-  return node.label ?? describeStep(node.definition.key).name;
-}
 
 /**
  * The file's steps in words, each marked where it reaches outside Pertexo,
@@ -48,6 +41,7 @@ export function WorkflowImportContents({
   manifest,
 }: Readonly<{ manifest: WorkflowPortableManifest }>) {
   const steps = portableSteps(manifest);
+  const describeStep = useStepDescriptions();
   return (
     <section
       aria-label="What the file contains"
@@ -56,7 +50,7 @@ export function WorkflowImportContents({
       <h3 className="text-sm font-semibold text-foreground">What’s inside</h3>
       <ol className="flex flex-col rounded-lg border border-border">
         {steps.map(({ node, inside }) => {
-          const step = describeStep(node.definition.key);
+          const step = describeStep(node.definition);
           return (
             <li
               key={node.id}
@@ -68,14 +62,14 @@ export function WorkflowImportContents({
               <StepTile step={step} size="sm" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-foreground">
-                  {stepName(node, step.name)}
+                  {node.label ?? step.name}
                 </span>
                 <span className="block text-xs text-subtle-foreground">
                   {familyWord(step.family)}
                   {node.label === undefined ? '' : ` · ${step.name}`}
                   {inside === null
                     ? ''
-                    : ` · inside ${stepName(inside, 'For each')}`}
+                    : ` · inside ${inside.label ?? describeStep(inside.definition).name}`}
                 </span>
               </span>
               {step.sideEffect === undefined ? null : (
@@ -105,6 +99,8 @@ export function WorkflowImportContents({
   );
 }
 
+type PortableNode = WorkflowPortableManifest['graph']['nodes'][number];
+
 function WorkflowImportConnections({
   slots,
   nodes,
@@ -127,6 +123,7 @@ function WorkflowImportConnections({
   }>;
 }>) {
   const { apiClient, userId, workspace } = scope;
+  const describeStep = useStepDescriptions();
 
   const canRead = workspace.capabilities.includes('connection:read');
   const connections = useQuery({
@@ -179,14 +176,16 @@ function WorkflowImportConnections({
             (binding) =>
               binding.nodeId === slot.nodeId && binding.slot === slot.slot,
           )?.connectionId ?? null;
+        const node = nodes.find((candidate) => candidate.id === slot.nodeId);
         return (
           <LabelledField
             key={JSON.stringify([slot.nodeId, slot.slot])}
             id={`portable-slot-${String(index)}`}
-            label={stepName(
-              nodes.find((node) => node.id === slot.nodeId),
-              slot.nodeId,
-            )}
+            label={
+              node === undefined
+                ? slot.nodeId
+                : (node.label ?? describeStep(node.definition).name)
+            }
             description={
               optional
                 ? `${describeConnectionRequirement(slot.authType)}, optional: leave it empty for an API that needs no key.`
@@ -310,6 +309,7 @@ export function WorkflowImportReview({
   }>;
 }>) {
   const { apiClient, userId, workspace } = scope;
+  const describeStep = useStepDescriptions();
 
   return (
     <>

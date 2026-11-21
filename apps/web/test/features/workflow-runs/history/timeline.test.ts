@@ -1,3 +1,4 @@
+import { describeBrowserStep } from '../../../support/fixtures/node-catalog';
 // @vitest-environment node
 import { describeRunSentence } from '@/features/workflow-runs/model/presentation/run-sentence';
 
@@ -131,16 +132,19 @@ describe('thread view', () => {
       }),
       nodeEvent('node.started', 35, { attemptNumber: 2 }),
     ];
-    const view = buildRunTimeline({
-      run: runSummary('running'),
-      nodes: [
-        node('post-erp', 'succeeded', { completedAt: at(3) }),
-        node('send-receipt', 'running', { currentAttemptNumber: 2 }),
-      ],
-      events,
-      graph,
-      nowMs: start + 47_000,
-    });
+    const view = buildRunTimeline(
+      {
+        run: runSummary('running'),
+        nodes: [
+          node('post-erp', 'succeeded', { completedAt: at(3) }),
+          node('send-receipt', 'running', { currentAttemptNumber: 2 }),
+        ],
+        events,
+        graph,
+        nowMs: start + 47_000,
+      },
+      describeBrowserStep,
+    );
 
     expect(view.rows.map((row) => row.label)).toEqual([
       'Post to ERP',

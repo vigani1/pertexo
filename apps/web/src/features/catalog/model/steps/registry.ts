@@ -83,8 +83,12 @@ export const stepIcons: Readonly<Partial<Record<string, LucideIcon>>> =
     'core.approval': HandIcon,
     'core.wait': HourglassIcon,
     'core.terminate': OctagonXIcon,
-    'http.request': GlobeIcon,
-    'slack.send_message': HashIcon,
-    'email.send_notification': MailIcon,
-    'database.execute': DatabaseIcon,
   });
+
+export const catalogIcons: ReadonlyMap<string, LucideIcon> = new Map([
+  ['globe', GlobeIcon],
+  ['hash', HashIcon],
+  ['mail', MailIcon],
+  ['database', DatabaseIcon],
+  ['webhook', WebhookIcon],
+]);

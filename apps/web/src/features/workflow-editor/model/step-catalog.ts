@@ -124,7 +124,7 @@ export function groupStepChoices(
   const ranks = new Map<string, number>();
   const choices = placeableDefinitions(definitions).flatMap(
     (definition): StepChoice[] => {
-      const step = describeStep(definition.definition.key, definition.family);
+      const step = describeStep(definition.definition, undefined, definition);
       const identity = definitionIdentity(
         definition.definition.key,
         definition.definition.version,
@@ -153,7 +153,7 @@ export function groupStepChoices(
         (choice) =>
           stepGroupFor(
             choice.definition.definition.key,
-            choice.definition.family,
+            choice.definition.presentation?.group ?? choice.definition.family,
           )?.id === group.id,
       )
       // Stable sorts: equally good matches keep the section's order.

@@ -1,3 +1,4 @@
+import { useStepDescriptions } from '@/features/catalog/public';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { MinusIcon, PencilIcon, PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,8 +29,13 @@ export function ConflictCompareDialog({
   onOpenChange,
 }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
   const conflict = useEditorStore(shownConflict);
+  const describeStep = useStepDescriptions();
   if (conflict === null) return null;
-  const comparison = diffWorkflowGraphs(conflict.remote, conflict.local);
+  const comparison = diffWorkflowGraphs(
+    conflict.remote,
+    conflict.local,
+    describeStep,
+  );
   const lines = comparison.lines;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

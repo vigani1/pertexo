@@ -15,3 +15,11 @@ export class PortableConnectionSlotPolicyError extends Error {
     super('Portable connection slot policy is unavailable');
   }
 }
+
+export class IntegrationRegistryError extends Error {
+  public override readonly name = 'IntegrationRegistryError';
+
+  public constructor(kind: 'module' | 'step', key: string) {
+    super(`Duplicate integration ${kind} key: ${key}`);
+  }
+}

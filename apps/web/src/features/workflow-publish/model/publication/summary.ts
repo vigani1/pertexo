@@ -2,7 +2,7 @@ import type {
   WorkflowGraphContract,
   WorkflowVersionResponse,
 } from '@pertexo/contracts';
-import { describeStep } from '@/features/catalog/public';
+import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import { diffWorkflowGraphs, triggerKindOf } from '@/features/workflows/public';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
@@ -35,19 +35,22 @@ export type PublishSummary = Readonly<{
 export function summarizePublish(
   draft: WorkflowGraphContract,
   latest: WorkflowVersionResponse | null,
+  describe: DescribeStep = describeStep,
 ): PublishSummary {
   const previous = latest?.graph ?? {
     nodes: [],
     edges: [],
     settings: {},
   };
-  const diff = diffWorkflowGraphs(previous, draft);
+  const diff = diffWorkflowGraphs(previous, draft, describe);
   const lines: PublishSummaryLine[] = diff.lines.map((change) => ({
     kind: change.kind,
     nodeId: `${change.target}:${change.id}`,
     name: change.label,
     ...(change.detail === undefined ? {} : { detail: change.detail }),
   }));
+  const nodeName = (node: WorkflowNode) =>
+    node.label ?? describe(node.definition).name;
   return {
     nextVersionNumber: (latest?.versionNumber ?? 0) + 1,
     previousVersionNumber: latest?.versionNumber ?? null,
@@ -71,8 +74,4 @@ export function summarizePublish(
       )
       .map(nodeName),
   };
-}
-
-function nodeName(node: WorkflowNode): string {
-  return node.label ?? describeStep(node.definition.key).name;
 }
