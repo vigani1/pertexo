@@ -45,7 +45,6 @@ const BEFORE = {
   'core.manual': {},
   'core.request_input': { ...approval, ...form, title: 'Input needed' },
   'core.run_values': {},
-  'core.schedule': {},
   'core.set': {},
   'core.table_delete': {},
   'core.table_find': {},
@@ -122,11 +121,7 @@ describe('a new step’s setup', () => {
 
     it(`starts ${definition.key} with valid defaults from its catalog schema`, () => {
       const config = startingConfig(item, []);
-      expect(config).toEqual(
-        definition.key === 'ai.model'
-          ? { mode: 'text', maxOutputTokens: 1_024, timeoutMillis: 30_000 }
-          : catalogDefaults(configSchema),
-      );
+      expect(config).toEqual(catalogDefaults(configSchema));
       // Drafts stay saveable while incomplete (ADR 053). A setting with no
       // default is the person's to enter; every value supplied must be valid.
       const parsed =
@@ -139,6 +134,32 @@ describe('a new step’s setup', () => {
       expect(supplied).toEqual([]);
     });
   }
+
+  it('uses the first shape and its property defaults for a union without a whole default', () => {
+    expect(
+      startingConfig(
+        {
+          definition: { key: 'partner.step', version: 1 },
+          configSchema: {
+            oneOf: [
+              {
+                type: 'object',
+                properties: {
+                  action: { const: 'read' },
+                  limit: { type: 'integer', default: 5 },
+                },
+              },
+              {
+                type: 'object',
+                properties: { action: { const: 'write' } },
+              },
+            ],
+          },
+        },
+        [],
+      ),
+    ).toEqual({ action: 'read', limit: 5 });
+  });
 
   it('gives each new step its own copy', () => {
     const date = catalog.find(
@@ -153,12 +174,14 @@ describe('a new step’s setup', () => {
 function catalogDefaults(schema: NodeDefinitionCatalogItem['configSchema']) {
   if (schema.default !== undefined) return schema.default;
 
-  const properties = isRecord(schema.properties) ? schema.properties : {};
+  const first: unknown = Array.isArray(schema.oneOf) ? schema.oneOf[0] : schema;
+  const properties =
+    isRecord(first) && isRecord(first.properties) ? first.properties : {};
   const defaults: Record<string, unknown> = {};
   for (const [key, property] of Object.entries(properties)) {
-    if (isRecord(property) && 'default' in property) {
-      defaults[key] = property.default;
-    }
+    if (!isRecord(property)) continue;
+    if ('const' in property && first !== schema) defaults[key] = property.const;
+    else if ('default' in property) defaults[key] = property.default;
   }
   return defaults;
 }

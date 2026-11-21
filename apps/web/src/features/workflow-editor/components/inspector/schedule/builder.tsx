@@ -83,6 +83,11 @@ export function ScheduleBuilder({
   const issue =
     live.error === undefined ? undefined : scheduleIssue(draft, schema);
   const recurrence = recurrenceFor(draft, schema);
+  const hasRule =
+    (config.kind === 'cron' &&
+      config.expression !== undefined &&
+      config.timezone !== undefined) ||
+    (config.kind === 'interval' && config.intervalMinutes !== undefined);
   const fieldProps: RuleFieldProps = {
     nodeId: form.nodeId,
     draft,
@@ -98,7 +103,7 @@ export function ScheduleBuilder({
   return (
     // Leaving any of the rule's controls shows what's wrong with it.
     <div className="flex flex-col gap-4" onBlur={live.blur}>
-      {config.kind === 'cron' || config.kind === 'interval' ? null : (
+      {hasRule ? null : (
         <Notice
           tone="warning"
           title="Not scheduled yet"

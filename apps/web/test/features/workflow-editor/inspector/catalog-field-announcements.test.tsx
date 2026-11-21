@@ -31,29 +31,38 @@ type Setting = Readonly<{
   path: string;
   title?: string;
   description?: string;
-  numeric: boolean;
+  checksTypedError: boolean;
 }>;
 
 const SCALAR = new Set(['string', 'integer', 'number', 'boolean']);
 
-/** The scalar settings of one shape, one level of object deep. */
-function scalarSettings(schema: unknown, parent = ''): Setting[] {
+/** The settings of one shape, one level of object deep. */
+function drawnSettings(schema: unknown, parent = ''): Setting[] {
   if (!isRecord(schema) || !isRecord(schema.properties)) return [];
   return Object.entries(schema.properties).flatMap(
     ([key, property]): Setting[] => {
       if (!isRecord(property)) return [];
       const path = parent === '' ? key : `${parent}.${key}`;
-      if (property.type === 'object' && parent === '')
-        return scalarSettings(property, key);
+      if (
+        property.type === 'object' &&
+        parent === '' &&
+        isRecord(property.properties) &&
+        Object.keys(property.properties).length > 0
+      )
+        return drawnSettings(property, key);
       const scalar =
         typeof property.type === 'string'
-          ? SCALAR.has(property.type)
+          ? SCALAR.has(property.type) ||
+            (property.type === 'object' && parent === '')
           : Array.isArray(property.enum);
       if (!scalar || 'const' in property) return [];
       return [
         {
           path,
-          numeric: property.type === 'integer' || property.type === 'number',
+          checksTypedError:
+            property.type === 'integer' ||
+            property.type === 'number' ||
+            property.type === 'object',
           ...(typeof property.description === 'string'
             ? { description: property.description }
             : {}),
@@ -67,7 +76,7 @@ function scalarSettings(schema: unknown, parent = ''): Setting[] {
 }
 
 function describedSettings(schema: unknown) {
-  return scalarSettings(schema).filter(
+  return drawnSettings(schema).filter(
     (setting): setting is Setting & { description: string } =>
       setting.description !== undefined,
   );
@@ -111,7 +120,7 @@ function expectAnnounced(
   }
 }
 
-/** A wrong number reads its error with the field, after its help. */
+/** A invalid value reads its error with the field, after its help. */
 async function expectErrorAnnounced(step: string, field: HTMLElement) {
   const user = userEvent.setup();
   const help = (field.getAttribute('aria-describedby') ?? '').split(/\s+/u);
@@ -125,10 +134,10 @@ async function expectErrorAnnounced(step: string, field: HTMLElement) {
     .filter((id) => id !== '' && !help.includes(id));
   expect(
     added.map((id) => document.getElementById(id)?.textContent),
-    `${step}: a wrong number’s error isn’t read with the field`,
+    `${step}: a invalid value’s error isn’t read with the field`,
   ).toEqual([expect.stringMatching(/\S/u)]);
   await user.clear(field);
-  if (before !== '') await user.type(field, before);
+  if (before !== '') await user.paste(before);
   await user.tab();
 }
 
@@ -153,6 +162,7 @@ describe('catalog setup fields for assistive technology', () => {
     // joins the check by itself.
     expect(described).toEqual(
       expect.arrayContaining([
+        'ai.model',
         'core.batch',
         'core.crypto',
         'core.date',
@@ -202,11 +212,11 @@ describe('catalog setup fields for assistive technology', () => {
         if (choice !== undefined) await choose(picker, choice);
         for (const setting of describedSettings(shape))
           expectAnnounced(`${key} ${choice ?? ''}`, setting);
-        // Every control is named, and every typed number reads its error.
+        // Every control is named, and typed numbers and JSON objects reads its error.
         for (const control of controls())
           expect(control, `${key} ${choice ?? ''}`).toHaveAccessibleName(/\S/u);
-        for (const setting of scalarSettings(shape)) {
-          if (!setting.numeric) continue;
+        for (const setting of drawnSettings(shape)) {
+          if (!setting.checksTypedError) continue;
           const field = document.querySelector<HTMLElement>(
             `[name="config.${setting.path}"]`,
           );

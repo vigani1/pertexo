@@ -278,7 +278,13 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
           saves += 1;
           saved = body.graph;
         },
-        { graph: scheduleGraph({}), definitions: [scheduleDefinition] },
+        {
+          graph: scheduleGraph({
+            kind: 'cron',
+            misfirePolicy: 'catch_up_once',
+          }),
+          definitions: [scheduleDefinition],
+        },
       ),
       previewHandler(),
     );
@@ -287,7 +293,7 @@ describe('schedule builder in Setup', { timeout: 30_000 }, () => {
       const event = userEvent.setup();
       fireEvent.click((await findCanvas()).getByText('Nightly'));
       expect(
-        screen.getByRole('region', { name: 'When it runs' }),
+        await screen.findByRole('region', { name: 'When it runs' }),
       ).toHaveTextContent('Every day at 9:00 AM');
       pressSave();
       expect(saves).toBe(0);

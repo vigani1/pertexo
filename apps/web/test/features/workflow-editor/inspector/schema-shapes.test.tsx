@@ -112,6 +112,35 @@ describe('shapes the generic setup draws', () => {
     );
   });
 
+  it('keeps unfinished JSON local and saves or clears the object setting', async () => {
+    const user = userEvent.setup();
+    render(
+      <Fields
+        schema={{
+          type: 'object',
+          properties: {
+            label: { type: 'string' },
+            payload: { type: 'object', additionalProperties: true },
+          },
+        }}
+        start={{ label: 'Example', payload: { before: true } }}
+      />,
+    );
+    const field = screen.getByRole('textbox', { name: 'Payload' });
+    await user.clear(field);
+    await user.paste('{"next":true}');
+    expect(saved()).toEqual({ label: 'Example', payload: { next: true } });
+
+    await user.keyboard('{End}{Backspace}');
+    await user.tab();
+    expect(field).toHaveAccessibleDescription(/valid JSON/u);
+    expect(saved()).toEqual({ label: 'Example', payload: { next: true } });
+
+    await user.clear(field);
+    expect(saved()).toEqual({ label: 'Example' });
+    expect(field).toHaveAttribute('aria-invalid', 'false');
+  });
+
   it('keeps shapes it can’t draw on Edit as JSON', () => {
     render(
       <Fields

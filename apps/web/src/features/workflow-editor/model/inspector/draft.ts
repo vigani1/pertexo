@@ -1,11 +1,18 @@
-import type { SchemaFieldSpec } from '@/lib/schema-fields/fields';
-export { schemaFields, type SchemaFieldSpec } from '@/lib/schema-fields/fields';
+import {
+  schemaFields as readSchemaFields,
+  type SchemaFieldSpec,
+} from '@/lib/schema-fields/fields';
+export type { SchemaFieldSpec } from '@/lib/schema-fields/fields';
 import { isRecord } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describeAmount, toStoredValue } from '@/lib/schema-fields/units';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 export type NodeConfig = WorkflowNode['config'];
+
+export function schemaFields(schema: unknown): readonly SchemaFieldSpec[] {
+  return readSchemaFields(schema, { jsonObjects: true });
+}
 
 /**
  * How many settings a catalog JSON Schema declares, including each shape a
@@ -91,7 +98,10 @@ export function parseNumberField(
   return { ok: true, value };
 }
 
-export function parseConfigJson(text: string): FieldParseResult<NodeConfig> {
+export function parseConfigJson(
+  text: string,
+  label = 'The setup',
+): FieldParseResult<NodeConfig> {
   const parsed = parseJson(text);
   if (parsed === undefined)
     return {
@@ -101,7 +111,7 @@ export function parseConfigJson(text: string): FieldParseResult<NodeConfig> {
   if (!isJsonObject(parsed))
     return {
       ok: false,
-      error: 'The setup must be a JSON object, like {"name": "value"}.',
+      error: `${label} must be a JSON object, like {"name": "value"}.`,
     };
   return { ok: true, value: parsed };
 }
