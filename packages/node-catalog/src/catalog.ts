@@ -34,10 +34,12 @@ const INTEGRATION_REGISTRATIONS = [
   DATABASE_DEFINITION_REGISTRATION,
   EMAIL_SEND_NOTIFICATION_DEFINITION_REGISTRATION,
 ];
-const INTEGRATION_MANIFESTS = INTEGRATION_REGISTRATIONS.map(({ manifest }) => {
+const INTEGRATION_MANIFESTS = INTEGRATION_REGISTRATIONS.map(
+  ({ manifest }) => manifest,
+);
+
+for (const manifest of INTEGRATION_MANIFESTS)
   assertAttemptOnlyManifest(manifest);
-  return manifest;
-});
 
 /** Every node the platform serves, with its runtime schemas. */
 export const PLATFORM_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistration[] =
