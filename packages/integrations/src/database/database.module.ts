@@ -1,3 +1,4 @@
+import { POSTGRES_FAILURE_CODES } from '@pertexo/workflow-model';
 import { POSTGRES_CONNECTION } from './connections.definition.js';
 import { createDatabaseExecutorRegistration } from './execute/execute.executor.js';
 import { databasePollExecutor } from './polling/polling.executor.js';
@@ -8,6 +9,9 @@ import { DATABASE_POLL_DEFINITION_REGISTRATION } from './polling/polling.definit
 export const DATABASE_MODULE = {
   key: 'postgres',
   presentation: { name: 'Database', icon: 'database', group: 'action' },
+  executorSummaryCodes: [
+    ...POSTGRES_FAILURE_CODES.map((code) => `database.${code}`),
+  ],
   connections: [POSTGRES_CONNECTION],
   steps: [
     {
