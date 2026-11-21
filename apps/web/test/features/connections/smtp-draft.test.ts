@@ -1,17 +1,24 @@
+import { browserConnectionDefinitions } from '../../support/fixtures/node-catalog';
 import { describe, expect, it } from 'vitest';
 import {
   credentialErrors,
   emptyCredentialDraft,
   toCreateRequest,
+  toConnectionCredential,
 } from '@/features/connections/model/credential-draft';
+
+const definition = browserConnectionDefinitions.find(
+  (entry) => entry.authType === 'smtp',
+);
+if (definition === undefined)
+  throw new Error('SMTP is missing from the catalog');
 
 describe('SMTP connection form', () => {
   it('starts with required STARTTLS and identifies every missing required field', () => {
-    const draft = emptyCredentialDraft('smtp', () => 'row');
+    const draft = emptyCredentialDraft(definition, () => 'row');
     expect(draft).toMatchObject({
-      provider: 'smtp',
-      security: 'starttls',
-      port: '587',
+      provider: 'schema',
+      values: { security: 'starttls', port: '587' },
     });
     expect(credentialErrors(draft)).toMatchObject({
       host: expect.any(String) as unknown,
@@ -22,17 +29,22 @@ describe('SMTP connection form', () => {
   });
   it('preserves the exact password and saves a typed email connection', () => {
     const draft = {
-      provider: 'smtp' as const,
-      host: 'smtp.example.test',
-      port: '465',
-      security: 'implicit' as const,
-      username: 'ada',
-      password: '  exact password  ',
-      fromEmail: 'alerts@example.test',
-      fromName: 'Workspace alerts',
+      provider: 'schema' as const,
+      definition,
+      values: {
+        host: 'smtp.example.test',
+        port: '465',
+        security: 'implicit' as const,
+        username: 'ada',
+        password: '  exact password  ',
+        fromEmail: 'alerts@example.test',
+        fromName: 'Workspace alerts',
+      },
     };
     expect(credentialErrors(draft)).toEqual({});
-    expect(toCreateRequest('Workspace mail', draft)).toEqual({
+    const credential = toConnectionCredential(draft);
+    if (credential === undefined) throw new Error('Expected a valid draft');
+    expect(toCreateRequest('Workspace mail', definition, credential)).toEqual({
       providerKey: 'email',
       name: 'Workspace mail',
       credential: {

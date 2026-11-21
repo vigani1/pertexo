@@ -1,3 +1,4 @@
+import { browserConnectionDefinitions } from '../test/support/fixtures/node-catalog';
 import { temporaryTestPath } from '../test/support/temporary-test-path';
 import {
   botToken,
@@ -139,6 +140,14 @@ test('recovers run-rejected health, pages published usage, rotates to unknown an
   await context.addCookies([
     { name: 'pertexo_csrf', value: csrfToken, url: 'http://127.0.0.1:4173' },
   ]);
+  await page.route('**/v1/node-definitions', (route) =>
+    route.fulfill({
+      json: { items: [], connections: browserConnectionDefinitions },
+    }),
+  );
+  await page.route('**/v1/integrations', (route) =>
+    route.fulfill({ json: { items: [] } }),
+  );
   await page.route('**/v1/users/me', (route) => route.fulfill({ json: user }));
   await page.route('**/v1/workspaces?**', (route) =>
     route.fulfill({ json: { items: [workspace], nextCursor: null } }),

@@ -1,3 +1,4 @@
+import { browserConnectionDefinitions } from '../../support/fixtures/node-catalog';
 import {
   connectionResponseSchema,
   type WorkflowGraphContract,
@@ -67,6 +68,7 @@ describe('editor credential issues', () => {
       graph([node('call', { definition: http.definition, connectionRefs })]);
     expect(
       workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: request({}),
         definitions: [http],
         connections: [],
@@ -75,6 +77,7 @@ describe('editor credential issues', () => {
     ).toEqual([]);
     expect(
       workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: request({
           http_headers: '55555555-5555-4555-8555-555555555555',
         }),
@@ -88,6 +91,7 @@ describe('editor credential issues', () => {
   it('counts a missing selection before the first server check and targets Setup', () => {
     const current = graph([node('post')]);
     const issues = workflowConnectionIssues({
+      credentials: browserConnectionDefinitions,
       graph: current,
       definitions: [definition],
       connections: [],
@@ -121,6 +125,7 @@ describe('editor credential issues', () => {
     'counts the selected %s credential',
     (status) => {
       const issues = workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: linked,
         definitions: [definition],
         connections: [{ ...slack, status }],
@@ -136,6 +141,7 @@ describe('editor credential issues', () => {
   it('counts a missing or mismatched credential without treating unknown health as rejection', () => {
     expect(
       workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: linked,
         definitions: [definition],
         connections: [],
@@ -149,6 +155,7 @@ describe('editor credential issues', () => {
     });
     expect(
       workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: linked,
         definitions: [definition],
         connections: [wrongKind],
@@ -157,6 +164,7 @@ describe('editor credential issues', () => {
     ).toContain('different credential type');
     expect(
       workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: linked,
         definitions: [definition],
         connections: [slack],
@@ -165,6 +173,7 @@ describe('editor credential issues', () => {
     ).toEqual([]);
     expect(
       workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: linked,
         definitions: [definition],
         connections: [
@@ -185,6 +194,7 @@ describe('editor credential issues', () => {
   it('explains server unavailability instead of guessing that a credential was revoked', () => {
     expect(
       workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: linked,
         definitions: [definition],
         connections: [],
@@ -209,6 +219,7 @@ describe('editor credential issues', () => {
     ]);
     expect(
       workflowConnectionIssues({
+        credentials: browserConnectionDefinitions,
         graph: current,
         definitions: [definition],
         connections: [],
@@ -220,6 +231,7 @@ describe('editor credential issues', () => {
   it('groups server and credential findings once while preserving server publication rules', () => {
     const current = graph([node('post')]);
     const findings = workflowConnectionIssues({
+      credentials: browserConnectionDefinitions,
       graph: current,
       definitions: [definition],
       connections: [],

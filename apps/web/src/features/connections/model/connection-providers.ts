@@ -1,123 +1,59 @@
 import { RESOURCE_NAME_MAX_LENGTH } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
-import type { ConnectionResponse } from '@pertexo/contracts';
+import {
+  connectionProviderKeySchema,
+  type ConnectionFormDefinition,
+  type ConnectionResponse,
+  type ConnectionTestRequest,
+} from '@pertexo/contracts';
 
 export type ProviderKey = ConnectionResponse['providerKey'];
 /** A picker choice can name a credential variant within a stored provider. */
 export type ConnectionChoice = ProviderKey | 'smtp';
 
-export const CONNECTION_CHOICES = [
-  'postgres',
-  'slack',
-  'http',
-  'email',
-  'smtp',
-  'signing',
-] as const satisfies readonly ConnectionChoice[];
-
-type ProviderCopy = Readonly<{
-  /** The provider as people know it. */
-  name: string;
-  /** What a connection to it lets workflows do. */
-  purpose: string;
-  /** The stored credential in words, e.g. "bot token". */
-  credential: string;
-  /** Title of the add lens: always "Connect" and the name above. */
-  connectTitle: string;
-  /** Where a new connection can be used. */
-  usedBy: string;
-}>;
-
-export const PROVIDERS: Readonly<Record<ConnectionChoice, ProviderCopy>> = {
-  postgres: {
-    name: 'PostgreSQL',
-    purpose: 'Query a database and write rows',
-    credential: 'database login',
-    connectTitle: 'Connect PostgreSQL',
-    usedBy: 'Database steps',
-  },
-  signing: {
-    name: 'Signing key',
-    purpose: 'Create HMAC signatures locally',
-    credential: 'HMAC key',
-    connectTitle: 'Connect Signing key',
-    usedBy: 'HMAC steps',
-  },
-  slack: {
-    name: 'Slack',
-    purpose: 'Post messages to channels',
-    credential: 'bot token',
-    connectTitle: 'Connect Slack',
-    usedBy: 'Send Slack message steps and Slack alerts',
-  },
-  http: {
-    name: 'HTTP',
-    purpose: 'Call any API with headers or OAuth2',
-    credential: 'headers',
-    connectTitle: 'Connect HTTP',
-    usedBy: 'HTTP request steps',
-  },
-  email: {
-    name: 'Email · Resend',
-    purpose: 'Send notification email',
-    credential: 'API key',
-    connectTitle: 'Connect Email · Resend',
-    usedBy: 'Send email steps and email alerts',
-  },
-  smtp: {
-    name: 'Email (SMTP)',
-    purpose: 'Send email through an SMTP relay',
-    credential: 'SMTP login',
-    connectTitle: 'Connect Email (SMTP)',
-    usedBy: 'Send email steps and email alerts',
-  },
-};
-
-const PROVIDER_BY_CREDENTIAL: Readonly<
-  Record<ConnectionResponse['authType'], ProviderKey>
-> = {
-  hmac_key: 'signing',
-  slack_bot_token: 'slack',
-  http_headers: 'http',
-  resend_api_key: 'email',
-  smtp: 'email',
-  postgres: 'postgres',
-  oauth2: 'http',
-};
-
-/**
- * The provider whose connections hold a credential type, such as a step's
- * `slack_bot_token` requirement → Slack; undefined for an unknown type.
- */
-export function providerForCredential(
-  credential: string,
-): ProviderKey | undefined {
-  return Object.entries(PROVIDER_BY_CREDENTIAL).find(
-    ([type]) => type === credential,
-  )?.[1];
+export function connectionDefinition(
+  definitions: readonly ConnectionFormDefinition[],
+  choice: string | undefined,
+  authType?: string,
+) {
+  return definitions.find((entry) =>
+    authType === undefined
+      ? entry.presentation.choice === choice &&
+        entry.presentation.pickerOrder !== undefined
+      : entry.authType === authType &&
+        (entry.providerKey === choice || entry.presentation.choice === choice),
+  );
 }
 
 export function isConnectionChoice(value: unknown): value is ConnectionChoice {
-  return CONNECTION_CHOICES.some((key) => key === value);
+  return (
+    value === 'smtp' || connectionProviderKeySchema.safeParse(value).success
+  );
 }
 
-/** The stored credential in words: OAuth2 is HTTP's other way to sign in. */
-export function credentialWord(
-  provider: ConnectionChoice,
-  authType?: ConnectionResponse['authType'],
-): string {
-  if (authType === 'smtp') return 'SMTP';
-  if (authType === 'resend_api_key') return 'Resend API key';
-  if (authType === 'oauth2') return 'OAuth2';
-  return PROVIDERS[provider].credential;
+export function connectionPresentation(
+  definitions: readonly ConnectionFormDefinition[],
+  choice: string,
+  authType?: string,
+) {
+  const definition = connectionDefinition(definitions, choice, authType);
+  if (definition !== undefined) return definition.presentation;
+  return {
+    name: choice,
+    credential: 'credential',
+    savedCredential: 'credential',
+    usedBy: 'Workflow steps',
+    nameSuffix: choice,
+  };
 }
 
-/** Provider and stored credential in words, e.g. "Slack · bot token". */
 export function describeConnectionKind(
-  provider: ConnectionChoice,
-  authType?: ConnectionResponse['authType'],
+  definitions: readonly ConnectionFormDefinition[],
+  choice: string,
+  authType?: string,
 ): string {
-  return `${PROVIDERS[authType === 'smtp' ? 'smtp' : provider].name} · ${credentialWord(provider, authType)}`;
+  const provider = connectionPresentation(definitions, choice, authType);
+  return `${provider.name} · ${authType === undefined ? provider.credential : provider.savedCredential}`;
 }
 
 export function connectionNameError(name: string): string | undefined {
@@ -129,22 +65,11 @@ export function connectionNameError(name: string): string | undefined {
   return undefined;
 }
 
-const NAME_NOUNS: Readonly<Record<ConnectionChoice, string>> = {
-  signing: 'signing key',
-  slack: 'Slack',
-  http: 'API',
-  email: 'email',
-  smtp: 'SMTP',
-  postgres: 'PostgreSQL',
-};
-
-/** A starting name from the workspace and provider, e.g. "Northwind Ops Slack". */
 export function suggestConnectionName(
-  provider: ConnectionChoice,
+  noun: string,
   workspaceName: string,
 ): string {
-  const noun = NAME_NOUNS[provider];
-  return `${workspaceName.slice(0, 127 - noun.length).trim()} ${noun}`;
+  return `${workspaceName.slice(0, RESOURCE_NAME_MAX_LENGTH - 1 - noun.length).trim()} ${noun}`;
 }
 
 /** "Where do I find this?" steps for credentials people copy from a provider. */
@@ -162,3 +87,11 @@ export const CREDENTIAL_STEPS = {
     'Use a from address on a domain you verified in Resend.',
   ],
 } as const satisfies Readonly<Record<'slack' | 'email', readonly string[]>>;
+
+export function automaticTestRequest(
+  key: string,
+): ConnectionTestRequest | undefined {
+  if (key === 'smtp') return { providerKey: 'email', transport: 'smtp' };
+  if (key === 'slack' || key === 'signing') return { providerKey: key };
+  return undefined;
+}

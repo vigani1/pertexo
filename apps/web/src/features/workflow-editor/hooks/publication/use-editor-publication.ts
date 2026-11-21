@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import { usePublicationRefresh } from '../../data/publication-refresh';
 import { useMemo } from 'react';
 import type {
@@ -89,17 +90,19 @@ export function useEditorPublication({
     revision,
     generation,
   });
+  const credentials = useConnectionDefinitions();
   const connectionIssues = useMemo(
     () => [
       ...workflowConnectionIssues({
         graph,
         definitions,
         connections,
+        credentials,
         available: connectionsAvailable,
       }),
       ...workflowPlaceholderIssues(graph),
     ],
-    [graph, definitions, connections, connectionsAvailable],
+    [graph, definitions, connections, connectionsAvailable, credentials],
   );
   const issues = useIssuesView(
     publication,

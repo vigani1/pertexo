@@ -193,10 +193,19 @@ export const connectionsRoute = createRoute({
   validateSearch: (search) => parseConnectionsSearch(search),
   loader: async ({ context }) => {
     return warmWorkspacePage(context, 'connection:read', async () => {
-      const { connectionsInfiniteQueryOptions } =
-        await import('@/features/connections/connections-queries.public');
-
+      const [
+        { connectionsInfiniteQueryOptions },
+        { authoringCatalogQueryOptions },
+      ] = await Promise.all([
+        import('@/features/connections/connections-queries.public'),
+        import('@/features/catalog/catalog-queries.public'),
+      ]);
       const { apiClient, queryClient, user, workspace } = context;
+
+      // Add and Replace can open directly from the URL.
+      await Promise.allSettled([
+        queryClient.query(authoringCatalogQueryOptions(apiClient, user.id)),
+      ]);
 
       return [
         queryClient.infiniteQuery(

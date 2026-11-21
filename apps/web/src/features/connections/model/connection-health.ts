@@ -4,7 +4,6 @@ import type {
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { formatElapsedTime } from '@/lib/format/time';
-import type { ProviderKey } from './connection-providers';
 import { oauth2ShortStatus } from './oauth2-copy';
 import { CONNECTION_TEST_TIMEOUT_MILLIS } from '@pertexo/contracts';
 import { formatTimeSpan } from '@/lib/format/time';
@@ -86,12 +85,13 @@ const FAILURE_REASONS: Readonly<Record<string, string>> = {
   'connection.test.canceled': 'canceled',
 };
 
-const REJECTED_CREDENTIAL: Readonly<Record<ProviderKey, string>> = {
+const REJECTED_CREDENTIAL: Readonly<Partial<Record<string, string>>> = {
   signing: 'key unavailable',
   postgres: 'credentials rejected',
   slack: 'invalid token',
   http: 'headers rejected',
-  email: 'invalid API key',
+  resend: 'invalid API key',
+  smtp: 'invalid API key',
 };
 
 /**
@@ -107,9 +107,12 @@ function unmappedFailure(errorCode: string): string {
 }
 
 /** A few words for why the last test failed, never the raw code. */
-function describeTestFailure(provider: ProviderKey, errorCode: string): string {
-  if (errorCode === 'connection.credential_rejected')
-    return REJECTED_CREDENTIAL[provider];
+function describeTestFailure(
+  testKey: string | undefined,
+  errorCode: string,
+): string {
+  if (testKey !== undefined && errorCode === 'connection.credential_rejected')
+    return REJECTED_CREDENTIAL[testKey] ?? 'credential rejected';
   return FAILURE_REASONS[errorCode] ?? unmappedFailure(errorCode);
 }
 
@@ -125,6 +128,7 @@ export function describeConnectionHealth(
     'providerKey' | 'status' | 'health' | 'updatedAt'
   >,
   now = Date.now(),
+  testKey?: string,
 ): HealthSentence {
   const { health } = connection;
   if (connection.status === 'revoked')
@@ -140,7 +144,7 @@ export function describeConnectionHealth(
     return { text: oauth2Status, tone: 'attention' };
   if (health.lastErrorCode !== null)
     return {
-      text: `${connection.status === 'reauthorization_required' && health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(connection.providerKey, health.lastErrorCode)}`,
+      text: `${connection.status === 'reauthorization_required' && health.lastHealthTransitionSource === 'run' ? 'run credential rejected' : 'last test failed'} · ${describeTestFailure(testKey, health.lastErrorCode)}`,
       tone: 'attention',
     };
   const newerRunEvidence =
@@ -163,15 +167,17 @@ export function describeConnectionHealth(
 
 export type TestOutcomeCopy = Readonly<{ title: string; detail: string }>;
 
-const SUCCESS_TITLES: Readonly<Record<ProviderKey, string>> = {
+const SUCCESS_TITLES: Readonly<Partial<Record<string, string>>> = {
   signing: 'The signing key can be opened.',
   postgres: 'PostgreSQL answered the test query.',
   slack: 'Slack accepted the token.',
   http: 'The API answered.',
-  email: 'Resend accepted the test email.',
+  resend: 'Resend accepted the test email.',
+  smtp: 'SMTP connection works.',
+  oauth2: 'The API answered.',
 };
 
-const REJECTED_HELP: Readonly<Record<ProviderKey, TestOutcomeCopy>> = {
+const REJECTED_HELP: Readonly<Partial<Record<string, TestOutcomeCopy>>> = {
   postgres: {
     title: 'PostgreSQL rejected the login.',
     detail: 'Check the user and password.',
@@ -190,7 +196,7 @@ const REJECTED_HELP: Readonly<Record<ProviderKey, TestOutcomeCopy>> = {
     detail:
       'It answered 401 or 403. Check the header names and values, then replace the credential.',
   },
-  email: {
+  resend: {
     title: 'Resend rejected the API key.',
     detail:
       'Create a new sending key in Resend and check the from address uses a verified domain.',
@@ -224,30 +230,27 @@ function failureDetail(errorCode: string): string {
 
 /** The sentence under the test thread: what happened and what to do next. */
 export function describeTestOutcome(
-  provider: ProviderKey,
+  testKey: string,
   outcome: ConnectionTestResponse['outcome'],
-  authType?: ConnectionResponse['authType'],
 ): TestOutcomeCopy {
-  if (!outcome.ok && authType === 'smtp') {
+  if (!outcome.ok && testKey === 'smtp') {
     const smtpFailure = SMTP_FAILURES[outcome.errorCode];
     if (smtpFailure !== undefined) return smtpFailure;
   }
   if (outcome.ok)
     return {
-      title:
-        authType === 'smtp'
-          ? 'SMTP connection works.'
-          : SUCCESS_TITLES[provider],
+      title: SUCCESS_TITLES[testKey] ?? 'Connection test passed.',
       detail:
-        provider === 'http'
-          ? `It answered ${String(outcome.httpStatus)}, so the ${authType === 'oauth2' ? 'token works' : 'headers work'}.`
+        testKey === 'http' || testKey === 'oauth2'
+          ? `It answered ${String(outcome.httpStatus)}, so the ${testKey === 'oauth2' ? 'token works' : 'headers work'}.`
           : 'This connection is ready to use.',
     };
-  if (outcome.errorCode === 'connection.credential_rejected')
-    return authType === 'oauth2'
-      ? OAUTH2_REJECTED_HELP
-      : REJECTED_HELP[provider];
-  const reason = describeTestFailure(provider, outcome.errorCode);
+  if (outcome.errorCode === 'connection.credential_rejected') {
+    const help =
+      testKey === 'oauth2' ? OAUTH2_REJECTED_HELP : REJECTED_HELP[testKey];
+    if (help !== undefined) return help;
+  }
+  const reason = describeTestFailure(testKey, outcome.errorCode);
   return {
     title: `The test failed: ${reason}.`,
     detail: failureDetail(outcome.errorCode),

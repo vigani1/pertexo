@@ -1,11 +1,17 @@
-import type { ConnectionResponse } from '@pertexo/contracts';
+import type {
+  ConnectionFormDefinition,
+  ConnectionResponse,
+} from '@pertexo/contracts';
 import { PlusIcon } from 'lucide-react';
 import { use, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { describeConnectionRequirement } from '@/features/catalog/public';
+import {
+  describeConnectionRequirement,
+  useConnectionDefinitions,
+} from '@/features/catalog/public';
+import { isConnectionChoice } from '@/features/connections/public';
 import { AddConnectionSheet } from '@/features/connections/connections-views.public';
-import { providerForCredential } from '@/features/connections/public';
 import {
   fitsRequirement,
   isUsableConnection,
@@ -42,9 +48,17 @@ export function ConnectionSlot({
   // Shown until the workspace's list, refreshed after the save, includes it.
   const [created, setCreated] = useState<ConnectionResponse>();
   const id = `connection-${form.nodeId}-${requirement}`;
-  const label = describeConnectionRequirement(requirement);
-  const provider = providerForCredential(requirement);
-  const matching = usableConnections(connections, requirement, created);
+  const definitions = useConnectionDefinitions();
+  const label = describeConnectionRequirement(requirement, definitions);
+  const provider = definitions.find(
+    (entry) => entry.authType === requirement,
+  )?.providerKey;
+  const matching = usableConnections(
+    connections,
+    requirement,
+    created,
+    definitions,
+  );
   const missingId =
     selectedId !== undefined &&
     !matching.some((connection) => connection.id === selectedId)
@@ -125,14 +139,19 @@ export function ConnectionSlot({
           <AddConnectionSheet
             scope={addScope.scope}
             workspaceName={addScope.workspaceName}
-            request={adding ? provider : undefined}
+            request={
+              adding && isConnectionChoice(provider) ? provider : undefined
+            }
             onCreated={(connection) => {
               setCreated(connection);
               // A new OAuth2 connection is only selected once someone has connected it.
               const waiting =
                 connection.authType === 'oauth2' &&
                 connection.status !== 'active';
-              if (fitsRequirement(connection, requirement) && !waiting)
+              if (
+                fitsRequirement(connection, requirement, definitions) &&
+                !waiting
+              )
                 choose(connection.id);
             }}
             onClose={() => {
@@ -150,13 +169,14 @@ function usableConnections(
   connections: readonly ConnectionResponse[],
   requirement: string,
   created: ConnectionResponse | undefined,
+  definitions: readonly ConnectionFormDefinition[],
 ): readonly ConnectionResponse[] {
   const usable = connections.filter((connection) =>
-    isUsableConnection(connection, requirement),
+    isUsableConnection(connection, requirement, definitions),
   );
   const fresh =
     created !== undefined &&
-    isUsableConnection(created, requirement) &&
+    isUsableConnection(created, requirement, definitions) &&
     !connections.some((connection) => connection.id === created.id);
   return fresh ? [...usable, created] : usable;
 }

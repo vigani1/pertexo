@@ -1,7 +1,9 @@
 export type { ConnectionMutationScope } from './data/connections.mutations';
-export { providerForCredential } from './model/connection-providers';
 export { useConnectionResultScope } from './data/connections.mutations';
-export { PROVIDERS } from './model/connection-providers';
+export {
+  connectionPresentation,
+  isConnectionChoice,
+} from './model/connection-providers';
 export {
   describeTestOutcome,
   needsReconnecting,

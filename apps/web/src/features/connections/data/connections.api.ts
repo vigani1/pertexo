@@ -7,6 +7,7 @@ import {
   connectionTestResponseSchema,
   connectionUsageResponseSchema,
   slackChannelLookupResponseSchema,
+  httpHeadersCredentialSchema,
   type ConnectionCreateRequest,
   type ConnectionListResponse,
   type ConnectionResponse,
@@ -112,7 +113,10 @@ export function createConnection(
   return apiClient.request({
     path: connectionsPath(workspaceId),
     method: 'POST',
-    body: connectionCreateRequestSchema.parse(input.request),
+    body: connectionCreateRequestSchema.parse({
+      ...input.request,
+      credential: credentialForWire(input.request.credential),
+    }),
     headers: { 'Idempotency-Key': input.idempotencyKey },
     response: decodeConnection,
   });
@@ -154,7 +158,7 @@ export function rotateConnectionSecret(
     method: 'PUT',
     body: connectionRotateSecretRequestSchema.parse({
       expectedSecretVersionId: input.expectedSecretVersionId,
-      credential: input.credential,
+      credential: credentialForWire(input.credential),
     }),
     headers: { 'Idempotency-Key': input.idempotencyKey },
     response: decodeConnection,
@@ -196,4 +200,12 @@ export function revokeConnection(
     method: 'DELETE',
     response: decodeConnection,
   });
+}
+
+function credentialForWire(
+  credential: ConnectionCredential,
+): ConnectionCredential {
+  return credential.type === 'http_headers'
+    ? httpHeadersCredentialSchema.parse(credential)
+    : credential;
 }

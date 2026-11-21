@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { cn } from '@/lib/class-names';
 import {
   connectionNameError,
   describeConnectionKind,
-  PROVIDERS,
+  connectionPresentation,
   type ConnectionChoice,
 } from '../../model/connection-providers';
 import type { SavedCredential } from '../../model/saved-credential';
@@ -63,7 +64,7 @@ export function NameStep({
 }: Readonly<{
   id: string;
   provider: ConnectionChoice;
-  authType: ConnectionResponse['authType'] | undefined;
+  authType: string | undefined;
   name: string;
   disabled: boolean;
   validation: FieldValidation<'name'>;
@@ -72,6 +73,7 @@ export function NameStep({
   commandError: string | undefined;
   uncertain: boolean;
 }>) {
+  const definitions = useConnectionDefinitions();
   return (
     <div className="flex flex-col gap-5">
       <LabelledField
@@ -99,9 +101,16 @@ export function NameStep({
       </LabelledField>
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
         <dt className="text-subtle-foreground">Saves</dt>
-        <dd>{describeConnectionKind(provider, authType)}, stored encrypted</dd>
+        <dd>
+          {describeConnectionKind(
+            definitions,
+            provider,
+            authType === 'resend_api_key' ? undefined : authType,
+          )}
+          , stored encrypted
+        </dd>
         <dt className="text-subtle-foreground">Works with</dt>
-        <dd>{PROVIDERS[provider].usedBy}</dd>
+        <dd>{connectionPresentation(definitions, provider).usedBy}</dd>
       </dl>
       {commandError === undefined ? null : (
         <Notice role="alert" tone={uncertain ? 'warning' : 'destructive'}>
@@ -125,11 +134,14 @@ export function TestStep({
   saved: SavedCredential | undefined;
   test: ConnectionTest;
 }>) {
+  const definitions = useConnectionDefinitions();
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         <span className="font-semibold text-foreground">{connection.name}</span>{' '}
-        is saved. {PROVIDERS[connection.providerKey].usedBy} can use it.
+        is saved.{' '}
+        {connectionPresentation(definitions, connection.providerKey).usedBy} can
+        use it.
       </p>
       <ConnectionTestPanel
         provider={connection.providerKey}

@@ -1,9 +1,10 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
+import { isUsableConnection } from '@/features/connections/public';
 import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
-import {
-  connectionFitsSlot,
-  type PortableConnectionBinding,
-  type PortableConnectionSlot,
-  type WorkflowPortableManifest,
+import type {
+  PortableConnectionBinding,
+  PortableConnectionSlot,
+  WorkflowPortableManifest,
 } from '@pertexo/workflow-model';
 import { connectionSlotKey, portableSteps } from '../../model/portability';
 import { cn } from '@/lib/class-names';
@@ -133,6 +134,7 @@ function WorkflowImportConnections({
   });
   const bindingSelectionBlocked =
     disabled || connections.isFetching || connections.isError || !canRead;
+  const credentials = useConnectionDefinitions();
   return (
     <section
       aria-label="Destination connection bindings"
@@ -163,10 +165,8 @@ function WorkflowImportConnections({
         </Notice>
       )}
       {slots.map((slot, index) => {
-        const choices = (connections.data?.items ?? []).filter(
-          (connection) =>
-            connectionFitsSlot(connection, slot) &&
-            connection.status === 'active',
+        const choices = (connections.data?.items ?? []).filter((connection) =>
+          isUsableConnection(connection, slot.slot, credentials),
         );
         const optional = optionalSlots.has(
           connectionSlotKey(slot.nodeId, slot.slot),
@@ -188,8 +188,8 @@ function WorkflowImportConnections({
             }
             description={
               optional
-                ? `${describeConnectionRequirement(slot.authType)}, optional: leave it empty for an API that needs no key.`
-                : `${describeConnectionRequirement(slot.authType)}${choices.length === 0 && !connections.isFetching ? '. This workspace has none yet; add one in Connections.' : ''}`
+                ? `${describeConnectionRequirement(slot.authType, credentials)}, optional: leave it empty for an API that needs no key.`
+                : `${describeConnectionRequirement(slot.authType, credentials)}${choices.length === 0 && !connections.isFetching ? '. This workspace has none yet; add one in Connections.' : ''}`
             }
           >
             {(control) => (

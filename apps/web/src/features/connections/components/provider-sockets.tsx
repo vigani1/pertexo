@@ -1,10 +1,10 @@
 import { PlusIcon } from 'lucide-react';
 import { cn } from '@/lib/class-names';
 import {
-  CONNECTION_CHOICES,
-  PROVIDERS,
+  isConnectionChoice,
   type ConnectionChoice,
 } from '../model/connection-providers';
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import { ProviderTile } from './provider-tile';
 
 /**
@@ -19,16 +19,30 @@ export function ProviderSockets({
   layout?: 'row' | 'stack';
   onConnect: (provider: ConnectionChoice) => void;
 }>) {
+  const choices = useConnectionDefinitions()
+    .flatMap(({ presentation }) =>
+      presentation.pickerOrder !== undefined &&
+      isConnectionChoice(presentation.choice)
+        ? [
+            {
+              ...presentation,
+              provider: presentation.choice,
+              order: presentation.pickerOrder,
+            },
+          ]
+        : [],
+    )
+    .sort((left, right) => left.order - right.order);
   return (
     <ul
       aria-label="Services you can connect"
       className={cn('grid gap-3', layout === 'row' && 'lg:grid-cols-3')}
     >
-      {CONNECTION_CHOICES.map((provider) => (
+      {choices.map(({ provider, name, purpose }) => (
         <li key={provider}>
           <button
             type="button"
-            aria-label={`Connect ${PROVIDERS[provider].name}`}
+            aria-label={`Connect ${name}`}
             className="group/socket flex w-full items-center gap-3 rounded-lg border border-border bg-linear-135 from-surface-ink/[0.03] to-transparent p-3.5 text-left transition-colors outline-none hover:border-primary/35 focus-ring"
             onClick={() => {
               onConnect(provider);
@@ -36,11 +50,9 @@ export function ProviderSockets({
           >
             <ProviderTile provider={provider} size="lg" />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">
-                {PROVIDERS[provider].name}
-              </span>
+              <span className="block text-sm font-semibold">{name}</span>
               <span className="block text-xs text-pretty text-muted-foreground">
-                {PROVIDERS[provider].purpose}
+                {purpose}
               </span>
             </span>
             <PlusIcon

@@ -1,3 +1,4 @@
+import { useConnectionDefinitions } from '@/features/catalog/public';
 import type { ConnectionResponse } from '@pertexo/contracts';
 import { ChevronRightIcon, LockIcon } from 'lucide-react';
 import { Status } from '@/components/ui/status';
@@ -7,7 +8,10 @@ import {
   describeConnectionHealth,
   describeConnectionStatus,
 } from '../model/connection-health';
-import { describeConnectionKind } from '../model/connection-providers';
+import {
+  connectionDefinition,
+  describeConnectionKind,
+} from '../model/connection-providers';
 import { ProviderTile } from './provider-tile';
 
 function ConnectionRow({
@@ -18,7 +22,16 @@ function ConnectionRow({
   onOpen: (connectionId: string) => void;
 }>) {
   const status = describeConnectionStatus(connection.status, connection.health);
-  const health = describeConnectionHealth(connection);
+  const definitions = useConnectionDefinitions();
+  const health = describeConnectionHealth(
+    connection,
+    undefined,
+    connectionDefinition(
+      definitions,
+      connection.providerKey,
+      connection.authType,
+    )?.test,
+  );
   return (
     <li className="row-divider">
       <button
@@ -43,6 +56,7 @@ function ConnectionRow({
           </span>
           <span className="block truncate text-xs text-muted-foreground">
             {describeConnectionKind(
+              definitions,
               connection.providerKey,
               connection.authType,
             )}

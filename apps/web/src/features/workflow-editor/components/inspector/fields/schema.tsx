@@ -8,7 +8,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { SchemaTextControl } from '@/components/ui/schema-text-control';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/class-names';
 import {
@@ -149,7 +149,7 @@ function useConfigText(
 function ConfigTextField(props: LiveFieldProps) {
   const { field, id, form } = props;
   const path = field.format === 'json-path';
-  const TextControl = field.multiline ? Textarea : Input;
+
   const live = useConfigText(
     props,
     (current) => formatFieldText(field, current),
@@ -159,7 +159,8 @@ function ConfigTextField(props: LiveFieldProps) {
   return (
     <Field data-invalid={live.error !== undefined}>
       <FieldLabel htmlFor={id}>{field.label}</FieldLabel>
-      <TextControl
+      <SchemaTextControl
+        multiline={field.multiline === true}
         id={id}
         name={`config.${fieldPath(field)}`}
         autoComplete="off"
@@ -168,9 +169,7 @@ function ConfigTextField(props: LiveFieldProps) {
         disabled={!form.editable}
         aria-invalid={live.error !== undefined}
         aria-describedby={describedBy(id, field.description, live.error)}
-        onChange={(event) => {
-          live.change(event.currentTarget.value);
-        }}
+        onTextChange={live.change}
         onBlur={live.blur}
       />
       <SchemaFieldDescription id={id} text={field.description} />

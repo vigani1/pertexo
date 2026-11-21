@@ -1,3 +1,4 @@
+import { browserConnectionDefinitions } from '../../support/fixtures/node-catalog';
 import { describe, expect, it } from 'vitest';
 import { browserDefinitions } from '../../support/fixtures/node-catalog';
 import { GlobeIcon, HashIcon } from 'lucide-react';
@@ -90,12 +91,18 @@ describe('step presentation registry', () => {
   });
 
   it('describes connections and retry behaviour in plain words', () => {
-    expect(describeConnectionRequirement('slack_bot_token')).toBe(
-      'Slack connection',
-    );
-    expect(describeConnectionRequirement('custom_token')).toBe(
-      'Custom token connection',
-    );
+    expect(
+      describeConnectionRequirement(
+        'slack_bot_token',
+        browserConnectionDefinitions,
+      ),
+    ).toBe('Slack connection');
+    expect(
+      describeConnectionRequirement(
+        'custom_token',
+        browserConnectionDefinitions,
+      ),
+    ).toBe('Custom token connection');
     expect(describeRetryBehaviour('unsafe')).toMatch(
       /never repeat a possibly dispatched effect/u,
     );

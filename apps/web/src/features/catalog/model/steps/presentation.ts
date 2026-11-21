@@ -1,5 +1,8 @@
 import { TIMED_OUT_PORT, WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import type {
+  ConnectionFormDefinition,
+  NodeDefinitionCatalogItem,
+} from '@pertexo/contracts';
 import { CORE_NODE_CATALOG } from '@pertexo/nodes-core';
 import {
   catalogIcons,
@@ -204,15 +207,6 @@ export function familyWord(family: StepFamily | 'unknown'): string {
   return familyWords[family];
 }
 
-// Named as the Connections page names them, so a slot and its page agree.
-const connectionWords: Readonly<Record<string, string>> = {
-  slack_bot_token: 'Slack',
-  resend_api_key: 'Email · Resend',
-  hmac_key: 'Signing key',
-  http_headers: 'HTTP',
-  postgres: 'PostgreSQL',
-};
-
 /** The connections a step can't run without; optional ones, such as auth for a public API, are left out. */
 export function requiredConnections(
   definition: Pick<
@@ -227,9 +221,14 @@ export function requiredConnections(
 }
 
 /** A connection requirement such as `slack_bot_token` → "Slack connection". */
-export function describeConnectionRequirement(requirement: string): string {
-  const known = connectionWords[requirement];
-  return `${known ?? prettifyDefinitionKey(requirement)} connection`;
+export function describeConnectionRequirement(
+  requirement: string,
+  definitions: readonly ConnectionFormDefinition[],
+): string {
+  return (
+    definitions.find((entry) => entry.authType === requirement)?.presentation
+      .requirement ?? `${prettifyDefinitionKey(requirement)} connection`
+  );
 }
 
 const retryWords: Readonly<
