@@ -51,6 +51,11 @@ for (const [name, file, text] of [
     "const list = z.enum(['custom_auth']);",
   ],
   [
+    'a second credential variant in the wire schema',
+    'packages/contracts/src/schemas/connections/connection-credentials.ts',
+    "const anotherCredential = z.object({type: z.literal('custom_auth')});",
+  ],
+  [
     'a credential membership list in the current SQL schema',
     'packages/database/src/schema/connections.ts',
     "check('auth_type_valid', sql\x60auth_type in ('custom_auth')\x60);",
@@ -79,7 +84,7 @@ test('accepts module declarations, historical migrations and generic protocols',
   assert.deepEqual(
     findIntegrationDispatch(
       'apps/worker/src/providers/connections.ts',
-      "import { OAuth2TokenFailure } from '@pertexo/integrations/server'; const request = { expectedProviderKey: 'http' };",
+      "import { OAuth2TokenFailure } from '@pertexo/integrations/server'; const adapter = { protocol: 'http' }; const request = { expectedProviderKey: 'http' };",
       keys,
     ),
     [],
