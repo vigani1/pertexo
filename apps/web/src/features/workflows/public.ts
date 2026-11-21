@@ -11,7 +11,6 @@ export {
   type LifecycleIntent,
 } from './model/lifecycle';
 export {
-  definitionName,
   stepLabel,
   triggerKindOf,
   workflowTriggerKinds,
