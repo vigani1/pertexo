@@ -20,7 +20,6 @@ import {
   UTILITY_ERROR_CODE,
   FILE_CREATION_ERROR_CODE,
 } from '@pertexo/nodes-core/server';
-import { EMAIL_ATTACHMENT_ERROR_CODES } from '@pertexo/integrations/server';
 import { FILE_SCRATCH_ERROR_CODE } from '../artifacts/scratch/space.js';
 import { FILE_TRANSFER_ERROR_CODE } from '../artifacts/scratch/progress.js';
 
@@ -31,7 +30,6 @@ const executorSummaryCodes = new Set<string>([
   ...Object.values(RUN_VALUES_ERROR_CODE),
   ...Object.values(UTILITY_ERROR_CODE),
   ...Object.values(FILE_CREATION_ERROR_CODE),
-  ...Object.values(EMAIL_ATTACHMENT_ERROR_CODES),
   ...Object.values(FILE_SCRATCH_ERROR_CODE),
   ...Object.values(FILE_TRANSFER_ERROR_CODE),
   FILE_INPUT_ERROR_CODE,
