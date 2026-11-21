@@ -6,7 +6,7 @@ name: Simulate load
 # The sizing input `j1` instead applies the J1 qualification's per-service caps.
 # A third scenario keeps the worker at its busiest everyday work and reads its
 # own memory figures. Started by hand or by pushing a throwaway sim/load/<n>,
-# sim/load-shed/<n> or sim/worker-memory/<n> branch (the last runs only the
+# sim/load-shed/<n>, sim/inline/<n> or sim/worker-memory/<n> branch (the last runs only the
 # worker scenario); never on pull requests, main or a schedule.
 on:
   workflow_dispatch:
@@ -21,16 +21,29 @@ on:
         description: host (one 4 GiB cgroup) or j1 (per-service caps)
         default: host
       scenario:
-        description: all, steady, overload or worker-memory
+        description: all, steady, overload, worker-memory or j7
         default: all
+      inline-steps:
+        description:
+          Coordinator inline steps (paired against the same pure pins)
+        type: boolean
+        default: false
   push:
-    branches: ['sim/load/**', 'sim/load-shed/**', 'sim/worker-memory/**']
+    branches:
+      [
+        'sim/load/**',
+        'sim/load-shed/**',
+        'sim/worker-memory/**',
+        'sim/inline/**',
+      ]
 
 permissions:
   contents: read
 
 concurrency:
-  group: simulate-load-${{ github.ref }}
+  group:
+    simulate-load-${{ github.ref }}-${{ inputs.inline-steps || github.event_name
+    }}
   cancel-in-progress: true
 
 jobs:
@@ -40,6 +53,9 @@ jobs:
     # Allow about 15 minutes for setup and up to 40 for drain. Up to 90 minutes
     # of load keeps the 150-minute budget; longer soaks get 355, under GitHub's 360.
     timeout-minutes: ${{ fromJSON(inputs.minutes || '60') > 90 && 355 || 150 }}
+    env:
+      COMPOSE_PROJECT_NAME:
+        pertexo-ci-${{ github.run_id }}-${{ github.run_attempt }}-integration
     strategy:
       fail-fast: false
       matrix:
@@ -49,6 +65,9 @@ jobs:
           inputs.scenario)
             || startsWith(github.ref_name, 'sim/worker-memory/') &&
           '["worker-memory"]'
+            || startsWith(github.ref_name, 'sim/inline/') && github.event_name
+          == 'push' &&
+            '["steady", "overload", "worker-memory", "j7"]'
             || '["steady", "overload", "worker-memory"]') }}
     steps:
       - name: Check out repository
@@ -57,13 +76,42 @@ jobs:
         uses: ./.github/actions/docker-mirror
       - name: Set up workspace
         uses: ./.github/actions/setup
+      - name: Configure J7 test services
+        if: matrix.scenario == 'j7'
+        run: |
+          cat >> "$GITHUB_ENV" <<'ENV'
+          DATABASE_ADMIN_URL=postgresql://postgres:pertexo-local-superuser@127.0.0.1:5432/postgres
+          DATABASE_MIGRATION_URL=postgresql://pertexo_migration:pertexo-local-migration@127.0.0.1:5432/pertexo
+          DATABASE_URL=postgresql://pertexo_app:pertexo-local-app@127.0.0.1:5432/pertexo
+          DATABASE_MAINTENANCE_URL=postgresql://pertexo_maintenance:pertexo-local-maintenance@127.0.0.1:5432/pertexo
+          REDIS_URL=redis://:pertexo-local-redis@127.0.0.1:6379/0
+          ENV
+      - name: Start J7 test services
+        if: matrix.scenario == 'j7'
+        uses: ./.github/actions/start-services
+      - name: Run paired J7 bursts
+        if: matrix.scenario == 'j7'
+        env:
+          J7_MEASURE: 'true'
+          J7_REPORT: ${{ runner.temp }}/report.json
+          WORKER_TRANSPORT_INTEGRATION: 'true'
+        run: |
+          command pnpm build:packages
+          command pnpm db:migrate
+          command pnpm --filter @pertexo/worker exec vitest run --config vitest.integration.config.ts \
+            test/runs/consumer/j7-measure.integration.test.ts
+      - name: Stop J7 test services
+        if: always() && matrix.scenario == 'j7'
+        run: docker compose down -v --remove-orphans
       - name: Build the images once
+        if: matrix.scenario != 'j7'
         run:
           .github/scripts/retry-once.sh node
           infrastructure/single-server/test/drill/build-images.mjs
       # The runbook's minimum server: every service in one cgroup with 4 GiB,
       # no swap and two CPUs, whichever cgroup driver Docker uses.
       - name: Make a 4 GiB, 2 vCPU host inside the runner
+        if: matrix.scenario != 'j7'
         run: |
           if [ "$(docker info --format '{{.CgroupDriver}}')" = systemd ]; then
             printf '[Slice]\nMemoryMax=4G\nMemorySwapMax=0\nCPUQuota=200%%\n' |
@@ -84,10 +132,14 @@ jobs:
           echo "LOAD_HOST_CGROUP_PARENT=$parent" >> "$GITHUB_ENV"
           echo "LOAD_HOST_CGROUP_PATH=$path" >> "$GITHUB_ENV"
       - name: Simulate
+        if: matrix.scenario != 'j7'
         env:
           SCENARIO: ${{ matrix.scenario }}
           LOAD_MINUTES: ${{ inputs.minutes || '60' }}
           OVERLOAD_STAGE_MINUTES: ${{ inputs.stage-minutes || '3' }}
+          WORKFLOW_COORDINATOR_INLINE_STEPS:
+            ${{ inputs.inline-steps || (github.event_name == 'push' &&
+            startsWith(github.ref_name, 'sim/inline/')) || false }}
           LOAD_SIZING: ${{ inputs.sizing || 'host' }}
           SIMULATION_REPORT: ${{ runner.temp }}/report.json
           # The runner is thrown away; keeping the stack lets the next step show its logs.
