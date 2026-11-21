@@ -18,11 +18,11 @@ Implementation follows the integration module rollout in F57.
    the attempt path.
 2. **Run a chain behind an off-by-default server setting.**
    - **SDK and worker.** Add a synchronous inline invocation and result tag
-     in `packages/node-sdk/src/execution/node-execution.types.ts` and the
-     restricted context in `execution/inline.runtime.ts`. Keep shared
-     bounded schema parsing and failure mapping in `registry.ts`. Build
-     the closed code from core registrations and validate its dependency
-     closure through the existing architecture checks. In `apps/worker`,
+     in `packages/node-sdk/src/execution/node-execution.types.ts`. Type
+     inline registration to accept only bounded config, mapped input and the
+     injected `now` as plain values, and return a bounded result or typed
+     failure. Keep shared bounded schema parsing and failure mapping in
+     `registry.ts`. In `apps/worker`,
      validate the setting in `src/config/worker-environment.schemas.ts` and
      `src/config/worker.ts`. Pass it through
      `src/transport/providers/coordinator.ts` to
@@ -30,6 +30,11 @@ Implementation follows the integration module rollout in F57.
      Compose the pure registry there, independently of the provider
      composition in `src/providers/node-registry.ts`. Exercise the path
      with a test registration from the trusted core source.
+   - **Import closure.** Add a static check in `infrastructure/checks/`
+     and run it through `pnpm check`. Walk every module reachable from each
+     inline executor entry, including indirect imports and re-exports.
+     Enforce ADR 096's empty Node builtin allowlist, forbidden packages and
+     ambient API restrictions. Add refusal tests for every rule.
    - **Engine.** In `packages/workflow-engine/src/transition`, have
      `advanceWorkflow` in `advance-workflow.ts` drive bounded inline
      execution at the admission decision. Reuse
@@ -43,7 +48,9 @@ Implementation follows the integration module rollout in F57.
      batch and finalize one revision from the original checkpoint. Honor
      existing ready ordering and stop at a scheduler frontier that requires
      external outcomes. Carry budget exhaustion as immediate work, even
-     when the checkpoint has no other logical change.
+     when the checkpoint has no other logical change. Interrupt expression
+     evaluation at its deadline and check deadlines again after each
+     bounded synchronous kernel returns, before accepting its result.
    - **Input and completion.** Reuse the input preparation under
      `attempt/execute.ts` (`executeNodeAttempt`),
      `attempt/prepare-attempt-input.ts` (`prepareNodeAttemptInput`) and
@@ -165,15 +172,19 @@ under the production scheduler.
 **Safety.** Assert that real registry composition refuses an integration
 declaration of `inline`, including one that claims trusted metadata, and
 rejects a connection slot, capability or dispatch-aware executor binding
-on a core inline definition. Through the real restricted runtime, use
-fixture kernels that try host file, network, credential, module-loading
-and code-generation access. Require a refusal or unavailable interface and
-zero requests at a local listener or writes to a scratch marker. Check
-that the kernel cannot read ambient time or randomness. Prove the import
-check rejects forbidden direct and transitive dependencies. Validate
-malformed and oversized inputs/outputs and a runaway expression against
-the normal policy. Prove the budget cuts off a synchronous kernel as
-well as an expression.
+on a core inline definition. Test that the import check rejects forbidden
+direct and transitive imports, including through re-exports. Include cases
+for prefixed and bare Node builtins, network, database, filesystem and
+process packages, and each forbidden Pertexo area. Cover ambient network,
+process and timers, `Date.now`, argumentless `new Date()`, `Math.random`,
+crypto randomness, dynamic `import()`, `eval` and the `Function` constructor.
+Through a real coordinator advance, assert that the inline executor receives
+exactly bounded config, mapped input and the injected `now` as plain values,
+without host objects, callbacks, clients, connections, artifacts, timers or
+randomness sources. Validate malformed and oversized inputs/outputs and a
+runaway expression against the normal policy. Prove the budget interrupts
+expression evaluation and discards a synchronous result that returns after
+the budget expires.
 
 **Performance.** Re-run the J7 harness from the batch J7/J9 evidence,
 using `apps/worker/test/runs/consumer/latency.integration.test.ts` as its
