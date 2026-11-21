@@ -4,13 +4,14 @@ import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
 import {
   ProviderCredentialInvalidError,
   type NodeExecutionRequest,
+  type NodeExecutionRuntime,
 } from '@pertexo/node-sdk/server';
 import { createNodeProviderHttpClient } from '../../../src/providers/http-client.js';
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 
 export const API_KEY = 'synthetic-model-api-key';
-const step = { key: 'ai.model', version: 1 };
-const connectionId = '742c59fe-3d20-4c3e-a0d2-0919c6785ad0';
+export const modelStep = { key: 'ai.model', version: 1 };
+export const modelConnectionId = '742c59fe-3d20-4c3e-a0d2-0919c6785ad0';
 const chatPath = '/local/v1/chat/completions';
 const messagesPath = '/local/v1/messages';
 
@@ -93,8 +94,33 @@ export async function fakeModel(answers: readonly Answer[]) {
     }),
   });
   const denied = createPlatformNodeRegistry();
+  const connections = (
+    endpoint = 'openai',
+  ): NonNullable<NodeExecutionRuntime['connections']> => ({
+    resolve: () =>
+      Promise.resolve({
+        connectionId: modelConnectionId,
+        providerKey: 'ai',
+        authType: 'model_api_key',
+        secretVersionId: currentVersion,
+        secret: Buffer.from(
+          JSON.stringify({
+            type: 'model_api_key',
+            endpoint,
+            baseUrl,
+            apiKey: API_KEY,
+          }),
+        ),
+      }),
+    assertCurrent: ({ secretVersionId }) =>
+      secretVersionId === currentVersion
+        ? Promise.resolve()
+        : Promise.reject(new ProviderCredentialInvalidError()),
+  });
   return {
     calls,
+    registry: allowed,
+    connections,
     dispatches: () => dispatches,
     rotate: () => {
       currentVersion = 'version-two';
@@ -106,6 +132,7 @@ export async function fakeModel(answers: readonly Answer[]) {
       deadlineAt,
       signal = new AbortController().signal,
       denyAddress = false,
+      observeModelUsage,
     }: Readonly<{
       endpoint?: string;
       config?: Readonly<Record<string, unknown>>;
@@ -113,14 +140,17 @@ export async function fakeModel(answers: readonly Answer[]) {
       deadlineAt?: Date;
       signal?: AbortSignal;
       denyAddress?: boolean;
+      observeModelUsage?: NonNullable<
+        NodeExecutionRuntime['observeModelUsage']
+      >;
     }> = {}) {
       const invocation: NodeExecutionRequest = {
-        definition: step,
-        executor: step,
+        definition: modelStep,
+        executor: modelStep,
         config: { model: 'fake', mode: 'text', ...config },
         input: { prompt },
         signal,
-        connectionRefs: { model_api_key: connectionId },
+        connectionRefs: { model_api_key: modelConnectionId },
         runtime: {
           workspaceId: 'workspace',
           nodeId: 'node',
@@ -135,27 +165,8 @@ export async function fakeModel(answers: readonly Answer[]) {
             dispatches += 1;
             return Promise.resolve();
           },
-          connections: {
-            resolve: () =>
-              Promise.resolve({
-                connectionId,
-                providerKey: 'ai',
-                authType: 'model_api_key',
-                secretVersionId: currentVersion,
-                secret: Buffer.from(
-                  JSON.stringify({
-                    type: 'model_api_key',
-                    endpoint,
-                    baseUrl,
-                    apiKey: API_KEY,
-                  }),
-                ),
-              }),
-            assertCurrent: ({ secretVersionId }) =>
-              secretVersionId === currentVersion
-                ? Promise.resolve()
-                : Promise.reject(new ProviderCredentialInvalidError()),
-          },
+          connections: connections(endpoint),
+          ...(observeModelUsage === undefined ? {} : { observeModelUsage }),
         },
       };
       return (denyAddress ? denied : allowed).execute(invocation);

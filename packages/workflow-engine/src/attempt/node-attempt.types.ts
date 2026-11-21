@@ -79,6 +79,5 @@ export interface NodeAttemptOutcome {
   readonly invocationKey: string;
   readonly nodeId: string;
   readonly kind: NodeExecutionResult['kind'];
-  readonly modelUsage?: NonNullable<NodeExecutionResult['modelUsage']>;
   readonly output: NodeJsonValue;
 }

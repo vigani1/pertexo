@@ -116,7 +116,7 @@ export async function persistPreparedOutcome(
   try {
     const completed = await dependencies.runStore.complete({
       ...connectionHealthCompletionFields(environment),
-      ...completionDiagnosticFields(environment, outcome.modelUsage),
+      ...completionDiagnosticFields(environment),
       lease,
       outcome:
         prepared.suspensionDurationSeconds === undefined
@@ -134,7 +134,7 @@ export async function persistPreparedOutcome(
     if (!(error instanceof NodeAttemptOutputInvalidError)) throw error;
     const completed = await dependencies.runStore.complete({
       ...connectionHealthCompletionFields(environment),
-      ...completionDiagnosticFields(environment, outcome.modelUsage),
+      ...completionDiagnosticFields(environment),
       lease,
       outcome: {
         status: 'failed',

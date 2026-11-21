@@ -9,6 +9,7 @@ import {
 } from '@pertexo/workflow-engine/server';
 import { expect, it } from 'vitest';
 import { executorFailureCompletion } from '../../../src/attempts/delivery/executor-failure.js';
+import { capturePreviewDiagnostics } from '../../../src/previews/completion.js';
 import { API_KEY, fakeModel, json } from './model.fixture.js';
 
 it.each([429, 503])(
@@ -17,7 +18,10 @@ it.each([429, 503])(
     await using fake = await fakeModel([
       json({ error: API_KEY }, status, { 'retry-after': '15' }),
     ]);
-    const failure = await fake.execute().catch((error: unknown) => error);
+    const { observeModelUsage, read } = capturePreviewDiagnostics();
+    const failure = await fake
+      .execute({ observeModelUsage })
+      .catch((error: unknown) => error);
     expect(failure).toMatchObject({
       kind: 'retry',
       errorKind: status === 429 ? 'rate_limit' : 'provider',
@@ -26,12 +30,9 @@ it.each([429, 503])(
     expect(fake.calls).toHaveLength(1);
     if (!(failure instanceof NodeExecutorFailure))
       throw new Error('Missing executor failure');
-    const {
-      status: _status,
-      modelUsage,
-      ...observation
-    } = executorFailureCompletion(failure);
-    expect(modelUsage).toEqual({
+    const { status: _status, ...observation } =
+      executorFailureCompletion(failure);
+    expect(read().modelUsage).toEqual({
       kind: 'incomplete',
       model: 'fake',
       inputTokens: null,
