@@ -22,6 +22,8 @@ const ENTRY_FILES = new Set([
 /** Entries only one workspace has (the database's doors for core and secrets). */
 const WORKSPACE_ENTRY_FILES = Object.freeze({
   'packages/database': new Set(['schema.ts', 'primitives.ts', 'platform.ts']),
+  'packages/node-sdk': new Set(['pure.ts']),
+  'packages/workflow-model': new Set(['pure.ts']),
 });
 
 /** The named core concepts a workspace keeps beside its entries, each with a reason. */

@@ -15,6 +15,10 @@
       "types": "./dist/server.d.ts",
       "browser": false,
       "node": "./dist/server.js"
+    },
+    "./pure": {
+      "types": "./dist/pure.d.ts",
+      "default": "./dist/pure.js"
     }
   },
   "browser": {

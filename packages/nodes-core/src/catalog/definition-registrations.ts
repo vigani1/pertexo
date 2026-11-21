@@ -1,3 +1,4 @@
+import { withInlineVersion } from './inline-definition.js';
 import { CORE_RUN_VALUES_MANIFEST } from '../data/run-values/run-values.definition.js';
 import {
   CORE_RUN_VALUES_CONFIG_SCHEMA,
@@ -242,49 +243,49 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       inputSchema: CORE_READ_FILE_INPUT_SCHEMA,
       outputSchema: CORE_READ_FILE_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_CONCAT_MANIFEST,
       configSchema: CORE_CONCAT_CONFIG_SCHEMA,
       inputSchema: CORE_CONCAT_INPUT_SCHEMA,
       outputSchema: CORE_CONCAT_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_TAKE_MANIFEST,
       configSchema: CORE_TAKE_CONFIG_SCHEMA,
       inputSchema: CORE_TAKE_INPUT_SCHEMA,
       outputSchema: CORE_TAKE_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_BATCH_MANIFEST,
       configSchema: CORE_BATCH_CONFIG_SCHEMA,
       inputSchema: CORE_BATCH_INPUT_SCHEMA,
       outputSchema: CORE_BATCH_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_FILTER_MANIFEST,
       configSchema: CORE_FILTER_CONFIG_SCHEMA,
       inputSchema: CORE_FILTER_INPUT_SCHEMA,
       outputSchema: CORE_FILTER_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_SORT_MANIFEST,
       configSchema: CORE_SORT_CONFIG_SCHEMA,
       inputSchema: CORE_SORT_INPUT_SCHEMA,
       outputSchema: CORE_SORT_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_UNIQUE_MANIFEST,
       configSchema: CORE_UNIQUE_CONFIG_SCHEMA,
       inputSchema: CORE_UNIQUE_INPUT_SCHEMA,
       outputSchema: CORE_UNIQUE_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_SUMMARIZE_MANIFEST,
       configSchema: CORE_SUMMARIZE_CONFIG_SCHEMA,
       inputSchema: CORE_SUMMARIZE_INPUT_SCHEMA,
       outputSchema: CORE_SUMMARIZE_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_DATE_MANIFEST,
       configSchema: CORE_DATE_CONFIG_SCHEMA,
       inputSchema: CORE_DATE_INPUT_SCHEMA,
@@ -320,7 +321,7 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       inputSchema: CORE_FOR_EACH_INPUT_SCHEMA,
       outputSchema: CORE_FOR_EACH_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_MERGE_MANIFEST,
       configSchema: CORE_MERGE_CONFIG_SCHEMA,
       inputSchema: CORE_MERGE_INPUT_SCHEMA,
@@ -332,13 +333,13 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       inputSchema: CORE_PARALLEL_INPUT_SCHEMA,
       outputSchema: CORE_PARALLEL_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_SWITCH_MANIFEST,
       configSchema: CORE_SWITCH_CONFIG_SCHEMA,
       inputSchema: CORE_SWITCH_INPUT_SCHEMA,
       outputSchema: CORE_SWITCH_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_CONDITION_MANIFEST,
       configSchema: CORE_CONDITION_CONFIG_SCHEMA,
       inputSchema: CORE_CONDITION_INPUT_SCHEMA,
@@ -350,7 +351,7 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       inputSchema: CORE_MANUAL_INPUT_SCHEMA,
       outputSchema: CORE_MANUAL_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_SET_MANIFEST,
       configSchema: CORE_SET_CONFIG_SCHEMA,
       inputSchema: CORE_SET_INPUT_SCHEMA,
@@ -362,7 +363,7 @@ export const CORE_NODE_DEFINITION_REGISTRATIONS: readonly NodeDefinitionRegistra
       inputSchema: CORE_TERMINATE_INPUT_SCHEMA,
       outputSchema: CORE_TERMINATE_OUTPUT_SCHEMA,
     }),
-    Object.freeze({
+    ...withInlineVersion({
       manifest: CORE_VALIDATE_MANIFEST,
       configSchema: CORE_VALIDATE_CONFIG_SCHEMA,
       inputSchema: CORE_VALIDATE_INPUT_SCHEMA,

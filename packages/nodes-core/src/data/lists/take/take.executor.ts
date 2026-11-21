@@ -1,3 +1,5 @@
+import { inlineCoreExecutor } from '../../../catalog/inline-registration.js';
+import { inlineTake } from './take-kernel.js';
 import type {
   NodeExecutionInvocation,
   NodeExecutorRegistration,
@@ -15,4 +17,8 @@ export const coreTakeExecutor: NodeExecutorRegistration = Object.freeze({
         invocation.signal,
       ),
     ),
+});
+
+export const coreTakeInlineExecutor = inlineCoreExecutor(coreTakeExecutor, {
+  executeInline: inlineTake,
 });

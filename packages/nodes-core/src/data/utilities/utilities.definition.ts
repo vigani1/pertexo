@@ -1,3 +1,4 @@
+import { withInlineVersion } from '../../catalog/inline-definition.js';
 import { formatCount } from '@pertexo/node-sdk';
 import { defineUtility } from './define-utility.js';
 import {
@@ -33,32 +34,36 @@ import {
 } from './html/html.schemas.js';
 
 export const UTILITY_DEFINITIONS = Object.freeze([
-  defineUtility({
-    key: 'core.text',
-    display: {
-      name: 'Format text',
-      description: 'Case, trim, replace, split or truncate text',
-    },
-    configSchema: textConfigSchema,
-    inputSchema: textInputSchema,
-    outputSchema: textOutputSchema,
-    semantics: [
-      'Exact mapped Unicode text; explicit en-US casing; replace and split use literal strings, never regular expressions. Truncation counts code points and includes any ellipsis in its limit.',
-    ],
-  }),
-  defineUtility({
-    key: 'core.number',
-    display: {
-      name: 'Format number',
-      description: 'Format decimals, percentages and currency',
-    },
-    configSchema: numberConfigSchema,
-    inputSchema: numberInputSchema,
-    outputSchema: numberOutputSchema,
-    semantics: [
-      'Format finite numbers using an explicit Intl locale; decimal, percentage or currency. No implicit parsing or exchange rates.',
-    ],
-  }),
+  ...withInlineVersion(
+    defineUtility({
+      key: 'core.text',
+      display: {
+        name: 'Format text',
+        description: 'Case, trim, replace, split or truncate text',
+      },
+      configSchema: textConfigSchema,
+      inputSchema: textInputSchema,
+      outputSchema: textOutputSchema,
+      semantics: [
+        'Exact mapped Unicode text; explicit en-US casing; replace and split use literal strings, never regular expressions. Truncation counts code points and includes any ellipsis in its limit.',
+      ],
+    }),
+  ),
+  ...withInlineVersion(
+    defineUtility({
+      key: 'core.number',
+      display: {
+        name: 'Format number',
+        description: 'Format decimals, percentages and currency',
+      },
+      configSchema: numberConfigSchema,
+      inputSchema: numberInputSchema,
+      outputSchema: numberOutputSchema,
+      semantics: [
+        'Format finite numbers using an explicit Intl locale; decimal, percentage or currency. No implicit parsing or exchange rates.',
+      ],
+    }),
+  ),
   defineUtility({
     key: 'core.crypto',
     display: {

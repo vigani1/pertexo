@@ -1,0 +1,1 @@
+export const CORE_VALIDATE_MAX_ISSUES = 16;

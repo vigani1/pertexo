@@ -65,3 +65,47 @@ for (const [source, reason] of [
     assert.throws(() => checkCoreInlineBindings(root), reason);
   });
 }
+
+test('ignores erased imports and re-exports', (t) => {
+  const root = fixture(
+    t,
+    `
+    import type { ReadStream } from 'node:fs';
+    export type { Client } from 'pg';
+    export const kernel = () => ({ kind: 'succeeded', output: null });
+  `,
+  );
+  assert.doesNotThrow(() => checkCoreInlineBindings(root));
+});
+
+test('checks a pure export even when no kernel imports it', (t) => {
+  const root = fixture(t, 'export const kernel = () => null;');
+  const dir = join(root, 'packages/workflow-model');
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(
+    join(dir, 'package.json'),
+    JSON.stringify({
+      exports: {
+        './pure': { types: './dist/pure.d.ts', default: './dist/pure.js' },
+      },
+    }),
+  );
+  writeFileSync(join(dir, 'src/pure.ts'), 'export const value = Date.now();');
+  assert.throws(
+    () => checkCoreInlineBindings(root),
+    /Date requires explicit input/u,
+  );
+});
+
+test('rejects workspace barrels and relative paths into other packages', (t) => {
+  const root = fixture(t, "import '@pertexo/workflow-model';");
+  assert.throws(() => checkCoreInlineBindings(root), /forbidden package/u);
+  const dir = join(root, 'packages/workflow-model/src');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'value.ts'), 'export const value = 1;');
+  writeFileSync(
+    join(root, 'packages/nodes-core/src/kernel.ts'),
+    "export { value as kernel } from '../../workflow-model/src/value.js';",
+  );
+  assert.throws(() => checkCoreInlineBindings(root), /forbidden source path/u);
+});

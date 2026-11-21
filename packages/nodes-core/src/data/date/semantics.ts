@@ -1,6 +1,6 @@
 import { addDuration } from './add-duration.js';
 import { formatInstant } from './format-instant.js';
-import { NodeInputValidationError } from '@pertexo/node-sdk/server';
+import { NodeInputValidationError } from '@pertexo/node-sdk/pure';
 import type { CoreDateConfig, CoreDateInput } from './date.schemas.js';
 
 const CALENDAR = Object.freeze({

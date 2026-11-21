@@ -6,13 +6,9 @@ import {
 import { COLLECTION_PATH_LIMITS } from '@pertexo/workflow-model';
 import { z } from 'zod';
 
-// One-item batches use 2N+3 members, including their counts, under the SDK's
-// member bound.
-const ONE_ITEM_BATCH_MEMBERS = Object.freeze({ perItem: 2, fixed: 3 });
-export const COLLECTION_MAX_ITEMS = Math.floor(
-  (NODE_JSON_LIMITS.members - ONE_ITEM_BATCH_MEMBERS.fixed) /
-    ONE_ITEM_BATCH_MEMBERS.perItem,
-);
+import { COLLECTION_MAX_ITEMS } from './collection-limits.js';
+export { COLLECTION_MAX_ITEMS } from './collection-limits.js';
+
 export const collectionItemsSchema = z
   .array(z.json())
   .max(COLLECTION_MAX_ITEMS);

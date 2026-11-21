@@ -41,9 +41,11 @@ describe('core node catalog', () => {
       expectRecursivelyFrozen(manifest);
   });
 
-  it('lists every core node, one version each', () => {
+  it('keeps every legacy core definition available', () => {
     expect(
-      CORE_NODE_DEFINITION_REGISTRATIONS.map(
+      CORE_NODE_DEFINITION_REGISTRATIONS.filter(
+        ({ manifest }) => manifest.execution !== 'inline',
+      ).map(
         ({ manifest }) =>
           `${manifest.definition.key}@${String(manifest.definition.version)}`,
       ),
@@ -89,6 +91,32 @@ describe('core node catalog', () => {
       'core.set@1',
       'core.terminate@1',
       'core.validate@1',
+    ]);
+  });
+
+  it('adds inline versions only for reviewed deterministic steps', () => {
+    expect(
+      CORE_NODE_CATALOG.definitions
+        .filter(({ execution }) => execution === 'inline')
+        .map(
+          ({ definition }) => `${definition.key}@${String(definition.version)}`,
+        ),
+    ).toEqual([
+      'core.batch@2',
+      'core.concat@2',
+      'core.condition@2',
+      'core.date@2',
+      'core.filter@2',
+      'core.merge@2',
+      'core.number@2',
+      'core.set@2',
+      'core.sort@2',
+      'core.summarize@2',
+      'core.switch@2',
+      'core.take@2',
+      'core.text@2',
+      'core.unique@2',
+      'core.validate@2',
     ]);
   });
 

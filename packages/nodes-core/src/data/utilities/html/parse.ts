@@ -1,6 +1,6 @@
 import { DomHandler, type ChildNode } from 'domhandler';
 import { Parser } from 'htmlparser2';
-import { refuseUtility } from '../utility-result.js';
+import { refuseUtility } from '../utility-execution.errors.js';
 import { HTML_LIMITS } from './html.schemas.js';
 
 class BoundedDomHandler extends DomHandler {

@@ -1,3 +1,7 @@
+import {
+  isCoreConditionDefinition,
+  isCoreMergeDefinition,
+} from '@pertexo/workflow-model';
 import { supportsExpressionMappings } from '@pertexo/workflow-model';
 import type {
   DefinitionIdentity,
@@ -20,10 +24,7 @@ import {
   nodePortKey,
   type GraphValidationIndex,
 } from './graph-validation-index.js';
-import {
-  isCoreMergeDefinition,
-  isCoreParallelDefinition,
-} from '../control-nodes/core-definition-identities.js';
+import { isCoreParallelDefinition } from '../control-nodes/core-definition-identities.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import { fail } from './executable.errors.js';
 import { sameIdentity } from './definition-identity.js';
@@ -120,8 +121,7 @@ function structuredOutputPorts(
   node: WorkflowGraph['nodes'][number],
   index: GraphValidationIndex,
 ): readonly string[] {
-  if (node.definition.key === 'core.condition' && node.definition.version === 1)
-    return ['false', 'true'];
+  if (isCoreConditionDefinition(node.definition)) return ['false', 'true'];
   const control = index.controls.get(node.id);
   if (control?.kind === 'switch')
     return [...control.config.cases.map(({ id }) => id), 'default'];
@@ -262,9 +262,6 @@ function assertMergeParallel(
     control?.kind === 'merge'
       ? index.nodesById.get(control.config.parallelNodeId)
       : undefined;
-  if (
-    !isCoreParallelDefinition(parallel?.definition) ||
-    parallel?.definition.version !== merge.definition.version
-  )
+  if (!isCoreParallelDefinition(parallel?.definition))
     fail('Merge must reference a pinned Parallel node');
 }
