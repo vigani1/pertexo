@@ -10,7 +10,6 @@ import {
   ConnectionEnvelopeEncryption,
   type ConnectionSecretContext,
 } from '@pertexo/secrets/server';
-import { createSlackClient } from '@pertexo/integrations/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
 import { createConnectionHealthSlackTransport } from '../../../../../infrastructure/testing/connection-health-slack-transport.mjs';
 import { FixtureResourceOwner } from '../../browser/harness/resource-owner.js';
@@ -234,13 +233,7 @@ export function useConnectionHealthFixture(
       // The control origin is known only once the worker has started.
       services: () => ({
         encryption: { encryption: new ConnectionEnvelopeEncryption(keys) },
-        slack: createSlackClient(
-          createConnectionHealthSlackTransport(controlOrigin),
-        ),
-        http: {
-          execute: () =>
-            Promise.reject(new Error('HTTP outside health fixture')),
-        },
+        http: createConnectionHealthSlackTransport(controlOrigin),
         email: {
           sendNotification: () =>
             Promise.reject(new Error('Email outside health fixture')),
