@@ -111,9 +111,22 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'false'
     runs-on: ubuntu-latest
-    timeout-minutes:
-      ${{ matrix.group == 'worker' && 24 || matrix.group == 'services' && 20 ||
-      15 }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up workspace
+        uses: ./.github/actions/setup
+      - name: Format
+        run: pnpm format:check
+
+  check:
+    name: check (${{ matrix.part }})
+    needs: changes
+    runs-on: ubuntu-latest
+    # The checks ran one after another for about 13 minutes, lint alone for 6.
+    # Four parallel parts, each with its own build, finish in about 5.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.check) }}
@@ -226,12 +239,12 @@ jobs:
       needs.changes.outputs.integration != '' &&
       toJSON(fromJSON(needs.changes.outputs.integration).include) != '[]'
     runs-on: ubuntu-latest
-    # The worker leg runs three suite shards on one runner (run-worker-suite.mjs): up
-    # to 14 minutes for the shards plus setup and cold recovery on a busy runner. The services leg runs its
-    # suites and then storage and backup qualification: 10 to 13 minutes. The limit
-    # catches hangs.
+    # The worker leg runs three suite shards on one runner. The longest shard
+    # took 14 minutes, with additional time for setup and cold recovery on a
+    # busy runner. The services leg runs its suites and storage and backup
+    # qualification in 10 to 13 minutes.
     timeout-minutes:
-      ${{ matrix.group == 'worker' && 35 || matrix.group == 'services' && 20 ||
+      ${{ matrix.group == 'worker' && 24 || matrix.group == 'services' && 20 ||
       15 }}
     strategy:
       fail-fast: false
