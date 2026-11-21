@@ -95,7 +95,6 @@ describe('compiled worker main process', () => {
         }
       }
     },
-    12_000,
   );
 
   it('closes once when a second signal arrives while closing, and exits failed though a failed close holds the process open', async () => {
@@ -189,7 +188,7 @@ describe('compiled worker main process', () => {
     expect(fixture.output()).toContain('"errorType":"Error"');
     // ops-08: the fatal line names what to fix, never its value.
     expect(fixture.output()).toContain('DATABASE_URL');
-  }, 12_000);
+  });
   it('logs the setting and repair for an owned startup refusal without its value', async () => {
     const privateValue = 'relative-private-person@example.test';
     const fixture = start(entrypointPath, {
@@ -204,7 +203,7 @@ describe('compiled worker main process', () => {
     expect(fixture.output()).toContain('ARTIFACT_SCRATCH_DIRECTORY');
     expect(fixture.output()).toContain('absolute');
     expect(fixture.output()).not.toContain(privateValue);
-  }, 12000);
+  });
   it('starts telemetry without a preloaded Pino warning and retains log correlation', async () => {
     const path = fileURLToPath(
       new URL('./startup-logging.fixture.mjs', import.meta.url),
@@ -227,5 +226,5 @@ describe('compiled worker main process', () => {
     expect(fixture.output()).not.toContain(
       'Module pino has been loaded before',
     );
-  }, 12000);
+  });
 });

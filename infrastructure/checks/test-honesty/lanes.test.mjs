@@ -6,6 +6,7 @@ import process from 'node:process';
 import test from 'node:test';
 
 import { tsImport } from 'tsx/esm/api';
+import { mergeConfig } from 'vitest/config';
 
 import { laneOf } from './no-flake-masking.mjs';
 import { LANES } from './policy.mjs';
@@ -36,25 +37,35 @@ for (const config of configs) {
     const settings = loaded.default;
     // A shared fragment that other configs spread, not a lane of its own.
     if (settings === undefined) return;
-    const lane = config.includes('playwright')
-      ? playwrightLane(config, settings)
-      : vitestLane(config, settings);
-    assert.ok(lane.files.length > 0, `${config} selects no tracked file`);
-    for (const file of lane.files)
-      assert.deepEqual(
-        pick(laneOf(file, LANES)),
-        pick(lane),
-        `${file} under ${config}`,
-      );
+    const lanes = config.includes('playwright')
+      ? [playwrightLane(config, settings)]
+      : vitestLanes(config, settings);
+    const seen = new Set();
+    for (const lane of lanes) {
+      assert.ok(lane.files.length > 0, `${config} selects no tracked file`);
+      for (const file of lane.files) {
+        assert.ok(!seen.has(file), `${file} runs twice under ${config}`);
+        seen.add(file);
+        assert.deepEqual(
+          pick(laneOf(file, LANES)),
+          pick(lane),
+          `${file} under ${config}`,
+        );
+      }
+    }
   });
 }
 
-function vitestLane(config, { test: settings = {} }) {
+function vitestLanes(config, { test: settings = {} }) {
+  const projects = settings.projects ?? [{ extends: true }];
+  return projects.map(({ extends: inherits, test: options = {} }) =>
+    vitestLane(config, mergeConfig(inherits === true ? settings : {}, options)),
+  );
+}
+
+function vitestLane(config, settings) {
   const root = path.posix.dirname(config);
-  const include =
-    settings.include ??
-    settings.projects?.flatMap((project) => project.test?.include ?? []) ??
-    VITEST_INCLUDE;
+  const include = settings.include ?? VITEST_INCLUDE;
   const exclude = [
     '**/node_modules/**',
     '**/dist/**',
