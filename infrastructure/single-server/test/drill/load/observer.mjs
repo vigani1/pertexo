@@ -409,6 +409,7 @@ export function memoryTrend(
 /** Five-minute rows an operator can read: memory, queue, database, Redis. */
 export function summarizeSamples(samples, since) {
   const buckets = new Map();
+  let previousHostSample;
   for (const sample of samples.filter((candidate) => candidate.memory)) {
     const minute =
       Math.floor((sample.at - since) / BUCKET_MILLIS) *
@@ -442,6 +443,19 @@ export function summarizeSamples(samples, since) {
     if (sample.host) {
       row.hostMib = Math.max(row.hostMib ?? 0, sample.host.currentMib);
       row.hostOomKills = sample.host.oomKills;
+      if (sample.host.cpuMicros !== null) {
+        if (previousHostSample) {
+          const cpuMicros =
+            sample.host.cpuMicros - previousHostSample.host.cpuMicros;
+          const elapsedMicros = (sample.at - previousHostSample.at) * 1_000;
+          // CPU percentages use 100% for one core, as Docker stats does.
+          row.hostCpuPercentMax = Math.max(
+            row.hostCpuPercentMax ?? 0,
+            round((cpuMicros / elapsedMicros) * 100),
+          );
+        }
+        previousHostSample = sample;
+      }
     }
     row.databaseMib = round(sample.database.bytes / MIB);
     row.connectionsMax = Math.max(
