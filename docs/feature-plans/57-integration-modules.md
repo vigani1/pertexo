@@ -8,13 +8,13 @@ This is groundwork for community integrations. Installation is a later feature.
 The PostgreSQL addition in `a760caa91` (#810) changed 63 files in total.
 Count paths in that commit, excluding the plan, tests and test support
 (including the database fixture exports). The production and generated
-footprint was 47 files in nine workspaces.
+footprint was 48 files in nine workspaces.
 
 | Area | Files | Work |
 | --- | ---: | --- |
 | Integrations | 7 | Five files under `database/execute/`, two package entry files |
 | Secrets | 4 | Three secure PostgreSQL client files and its server export |
-| Web | 13 | Nine connection UI/model files, two catalog presentation files and two editor settings files |
+| Web | 14 | Ten connection UI/model files, two catalog presentation files and two editor settings files |
 | Contracts | 7 | Five schema/export files and two generated OpenAPI documents |
 | Database | 6 | Table declaration, readiness check, SQL dump and migration SQL, snapshot and journal |
 | Node catalog | 3 | Catalog, registry and portability slot map |
@@ -166,8 +166,8 @@ The expected diff has **four files**. Record the actual path count in that PR.
 | `apps/web/e2e-live/editor/product/example-posts.spec.ts` | One journey including the stand-in fixture |
 
 If demonstrating the provider requires edits to a consumer, fix that seam in
-the preceding slice before counting the proof. Keep the proof in draft while it uses a stand-in. Shipping an
-example provider is a separate decision.
+the preceding slice before counting the proof. Keep the proof in draft while
+it uses a stand-in. Shipping an example provider is a separate decision.
 
 ## Verification
 
