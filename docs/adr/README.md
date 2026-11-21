@@ -95,6 +95,13 @@ AWS/ECS proposals unsupported.
 | [ADR 091: The `core` layer and moving every area into it at once](091-core-layer.md)                                                               | accepted                                                                                                                                                                                |
 | [ADR 092: Each API route is declared once](092-route-declarations.md)                                                                              | accepted                                                                                                                                                                                |
 
+## Proposed decisions
+
+| Document | Recorded status / evidence |
+| --- | --- |
+| [ADR 097 — MCP exposes explicitly published workflow versions](097-mcp-workflow-exposure.md) | Proposed for [F60](../feature-plans/60-mcp.md). |
+| [ADR 098 — The workflow engine owns agent tool continuations](098-agent-tool-execution.md) | Proposed for [F61](../feature-plans/61-ai-agent-step.md). |
+
 ## Superseded decisions and unsupported deployment proposals
 
 | Document                                                                                                 | Recorded status / evidence                                                     |

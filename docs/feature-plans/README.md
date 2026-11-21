@@ -19,6 +19,11 @@ not instructions to repeat their rollout. Proposed work remains decision-gated.
 | [Step setup drawn from the catalog schema](step-setup-from-schema.md) | Status: **built** in batch J6b. |
 | [F22 — AI authoring assistance, model nodes and controlled tools](22-ai-assistance-and-ai-nodes.md) | Status: proposed plan; not implementation-authorized by this document.                                 |
 | [F23 — Billing and commercial entitlements](23-billing-and-commercialization.md)                    | Status: proposed plan; not implementation-authorized by this document.                                 |
+| [F59 — AI Classify step](59-ai-classify-step.md) | Designed; follows F56 slices 3–4. |
+| [F60 — MCP server and client step](60-mcp.md) | Designed; follows F59. |
+| [F61 — AI Agent step](61-ai-agent-step.md) | Designed; follows F60. |
+| [F62 — AI authoring assistant](62-ai-authoring-assistant.md) | Designed; follows F61. |
+| [F63 — AI Guardrails and evaluations](63-ai-guardrails-and-evaluations.md) | Designed; follows F62. |
 
 ## Delivered feature scope and evidence
 
