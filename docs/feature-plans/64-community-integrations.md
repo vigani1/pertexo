@@ -1,6 +1,6 @@
 # F64 — Community integrations
 
-Status: accepted; builds after the AI track (F59–F63). Decision: [ADR 102](../adr/102-community-integration-packages.md).
+Status: accepted; builds after the AI track (F59–F63). Decision: [ADR 099](../adr/099-community-integration-packages.md).
 
 ## Outcome
 
