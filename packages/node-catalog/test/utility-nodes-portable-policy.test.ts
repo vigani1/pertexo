@@ -9,6 +9,7 @@ it('admits portable utility settings and requires an encrypted signing connectio
       slot: 'hmac_key',
       providerKey: 'signing',
       authType: 'hmac_key',
+      acceptedAuthTypes: ['hmac_key'],
       optional: false,
     },
   ]);
