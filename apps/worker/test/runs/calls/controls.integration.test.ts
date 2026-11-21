@@ -342,22 +342,26 @@ describeIntegration('Workflow Call controls and retained public reads', () => {
   it('keeps an unknown child outcome unknown through restart without rewriting the terminal parent', async () => {
     const registry = createNodeRegistry({
       catalog: CORE_NODE_CATALOG,
-      definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
-      executors: CORE_NODE_EXECUTOR_REGISTRATIONS.map((registration) =>
-        registration.executor.key !== 'core.set'
-          ? registration
-          : {
-              ...registration,
-              execute: () =>
-                Promise.reject(
-                  new NodeExecutorFailure({
-                    kind: 'outcome_unknown',
-                    errorKind: 'network',
-                    possiblyDispatched: true,
-                  }),
-                ),
-            },
-      ),
+      definitions: [],
+      executors: [],
+      core: {
+        definitions: CORE_NODE_DEFINITION_REGISTRATIONS,
+        executors: CORE_NODE_EXECUTOR_REGISTRATIONS.map((registration) =>
+          registration.executor.key !== 'core.set'
+            ? registration
+            : {
+                ...registration,
+                execute: () =>
+                  Promise.reject(
+                    new NodeExecutorFailure({
+                      kind: 'outcome_unknown',
+                      errorKind: 'network',
+                      possiblyDispatched: true,
+                    }),
+                  ),
+              },
+        ),
+      },
     });
     const value = childGraph();
     const child = await publishGraph({

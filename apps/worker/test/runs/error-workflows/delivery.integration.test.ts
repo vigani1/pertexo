@@ -1,3 +1,4 @@
+import { inlineStepsEnabled } from '../../support/coordinator/inline-setting.js';
 import { maintenanceConfig } from '../../../../../infrastructure/testing/worker-databases.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -116,6 +117,7 @@ describe.runIf(fixture.enabled)(
       const cleanupFailures: unknown[] = [];
       try {
         const coordinator = await createCoordinatorRuntime({
+          inlineSteps: inlineStepsEnabled,
           database: config(fixture.workerUrl, 6),
           maintenanceDatabase: config(fixture.dispatcherUrl, 2),
           maximumAdmissions: 10,
