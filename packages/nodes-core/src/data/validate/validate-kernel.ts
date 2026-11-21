@@ -3,10 +3,7 @@ import type {
   InlineNodeResult,
 } from '@pertexo/node-sdk/server';
 import { inlineResult } from '../../catalog/inline-result.js';
-import type {
-  CoreValidateConfig,
-  CoreValidateInput,
-} from './validate.schemas.js';
+import type { CoreValidateConfig } from './validate.schemas.js';
 import { evaluateCoreValidate } from './semantics.js';
 
 export function inlineValidate({
@@ -14,9 +11,6 @@ export function inlineValidate({
   input,
 }: InlineNodeInvocation): InlineNodeResult {
   return inlineResult(() =>
-    evaluateCoreValidate(
-      config as CoreValidateConfig,
-      input as CoreValidateInput,
-    ),
+    evaluateCoreValidate(config as CoreValidateConfig, input),
   );
 }
