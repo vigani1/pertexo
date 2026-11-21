@@ -45,6 +45,9 @@ export const ROOT_CONCEPTS = Object.freeze({
     'curated-template.validation.ts': 'curated manifest verification',
     'https-endpoint.validation.ts': 'the curated HTTPS address grammar',
   },
+  'packages/integrations': {
+    'modules.ts': 'the explicit integration module discovery list',
+  },
   'packages/node-catalog': {
     'catalog.ts': 'the platform catalog',
     'integration-modules.ts': 'the explicit integration registry',

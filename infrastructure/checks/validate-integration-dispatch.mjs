@@ -12,10 +12,14 @@ import {
 } from './workspace-sources.mjs';
 
 const catalog = 'packages/node-catalog/src/';
+const discovery = 'packages/integrations/src/modules.ts';
+const catalogRegistry = `${catalog}integration-modules.ts`;
 const worker = 'apps/worker/src/';
 const web = 'apps/web/src/features/';
 const contracts = 'packages/contracts/src/schemas/connections/';
 const dispatchFiles = [
+  'packages/integrations/src/server.ts',
+  catalogRegistry,
   ...['catalog', 'browser-catalog', 'portable-definition-policy', 'server'].map(
     (name) => `${catalog}${name}.ts`,
   ),
@@ -48,6 +52,10 @@ const protocolImports = new Set([
 
 // Protocol-specific adapters and UI copy share these tags with integration keys.
 const protocolUses = new Map([
+  [
+    catalogRegistry,
+    ["test.kind === 'oauth2'", ...Array(2).fill("test.kind === 'http'")],
+  ],
   [
     `${worker}providers/connections.ts`,
     [
@@ -138,9 +146,10 @@ export function integrationKeys(sources) {
   return keys;
 }
 
-function registrationImport(node) {
+function registrationImport(file, node) {
   const source = node.moduleSpecifier;
   if (!source || !ts.isStringLiteralLike(source)) return false;
+  if (source.text.endsWith('.module.js') && file !== discovery) return true;
   const integration = /^@pertexo\/integrations(?:\/|$)/u.test(source.text);
   const workflow = source.text === '@pertexo/workflow-model';
   if (!integration && !workflow) return false;
@@ -150,6 +159,12 @@ function registrationImport(node) {
   return bindings.elements.some((binding) => {
     const name = (binding.propertyName ?? binding.name).text;
     if (binding.isTypeOnly || protocolImports.has(name)) return false;
+    if (
+      file === catalogRegistry &&
+      source.text === '@pertexo/integrations/server' &&
+      name === 'INTEGRATION_MODULES'
+    )
+      return false;
     return (
       integration ||
       name === 'CONNECTION_AUTH_TYPE' ||
@@ -199,7 +214,7 @@ export function findIntegrationDispatch(file, text, keys) {
   const permitted = [...(protocolUses.get(file) ?? [])];
   walk(file, text, (node, source) => {
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
-      if (registrationImport(node)) record(node, source);
+      if (registrationImport(file, node)) record(node, source);
       return;
     }
     const use = literalUse(node, keys);

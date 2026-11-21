@@ -30,12 +30,13 @@ keep their meanings, including where they differ today, such as the Database
 step and the PostgreSQL connection. Core signing advertises its existing
 credential from its owning module.
 
-The only discovery list lives in `packages/node-catalog/src/integration-modules.ts`
-under the existing Node-only entry. Each line is an explicit module reference
-using a literal import path. Resolve these imports when composing the server
-catalog and validate uniqueness and references before serving requests or starting
-worker jobs. Explicit imports let TypeScript check the targets and allow bundlers
-to discard unused exports. The browser never loads the executable registry.
+The only discovery list lives in `packages/integrations/src/modules.ts`. Each
+entry references a module imported from a literal path in the same package.
+The existing Node-only server entry exports the frozen list once. Keeping
+discovery with the modules lets new providers use the existing package entry
+points without per-provider re-exports. The node catalog validates uniqueness
+and references before serving requests or starting worker jobs. The browser
+never loads the executable registry.
 Keep the browser projection in the existing catalog routes as data and construct
 it once at API startup. Each module's registration contributes to
 `createNodeCatalog` and `createNodeRegistry`, which still check the pinned
