@@ -267,3 +267,63 @@ inserts need that same counter. The fix commits the resumed slot and an
 inline continuation before computing the chain. The integration test
 pauses the next advance within the chain and accepts a second run in
 the workspace while the first advance is paused.
+
+### Repeating the original load
+
+Three more pairs ran at `92e62820849513edc229e2f5da055f8e1fdf75dc`
+with the original fixtures and the 4 GiB, 2 vCPU host limit. Dispatch
+order alternated across the pairs. GitHub scheduled jobs on separate
+hosted runners. The table gives the median and [minimum–maximum].
+
+| Metric | Inline off | Inline on |
+| --- | ---: | ---: |
+| Steady run start p95 | 610 [556–628] ms | 739 [674–778] ms |
+| Steady drain | 12.18 [10.77–16.28] s | 15.44 [10.39–22.06] s |
+| Overload slow admission begins | 10 [10–20] requests/s | 10 [10–20] requests/s |
+| Overload drain | 538.71 [407.16–574.29] s | 540.18 [460.74–567.64] s |
+| Worker-memory drain | 10.84 [9.91–39.95] s | 53.96 [52.55–69.56] s |
+| Worker container memory growth | 37.3 [8.7–94.6] MiB/h | 15.4 [10.5–16.9] MiB/h |
+| Worker growth outside V8 heap and external buffers | 28.6 [−0.1–84.5] MiB/h | 7.1 [7–9.2] MiB/h |
+| Worker RSS peak | 504.5 [471.9–506.8] MiB | 470.4 [463.9–470.5] MiB |
+
+The overload drain and admission differences from the original pair
+landed within this spread. All six overload jobs accounted for every
+accepted run exactly once and drained. One on-mode job recorded an API
+restart and a host OOM kill, with 1,658 flood requests getting 502
+responses during the 80 requests/s stage. Steady run start p95 was
+consistently higher with the setting on. The two worker-memory failures
+were both off and exceeded the container growth limit. One of them
+recorded a near-identical jump in glibc arena RSS, from 136.1 MiB at minute
+25 to 185.7 MiB at minute 30. All 18 jobs reported zero lost, duplicated
+or stranded runs.
+
+Off reports [1](https://github.com/vigani1/pertexo/actions/runs/44905624590),
+[2](https://github.com/vigani1/pertexo/actions/runs/44906416649),
+[3](https://github.com/vigani1/pertexo/actions/runs/44906419074).
+On reports [1](https://github.com/vigani1/pertexo/actions/runs/44905626906),
+[2](https://github.com/vigani1/pertexo/actions/runs/44906379069),
+[3](https://github.com/vigani1/pertexo/actions/runs/44906421842).
+
+### Qualification with versioned Set in every scenario
+
+Before the capacity-lock fix, one run of the revised workload executed
+7,320 Sets inline during overload. The drain took 147.38 seconds, with
+slow admission at 20 requests/s. PostgreSQL sampled waits for active
+capacity, run updates and transaction locks. It sampled zero waits at
+the shared workspace fence. The worker-memory job executed 5,530 Sets
+inline and grew 2.4 MiB/h. [Corrected fixture, inline on](https://github.com/vigani1/pertexo/actions/runs/44906493339).
+
+The capacity-lock fix was measured at
+`73e7b3030c6864c0b01d17abfdd161e8c2288bbe`. The 10-step J7 burst had no
+failed runs across the three pairs. The table gives medians and
+[minimum–maximum]. [J7 report](https://github.com/vigani1/pertexo/actions/runs/44907637955).
+
+| Metric | Inline off | Inline on |
+| --- | ---: | ---: |
+| Transactions per run | 125.70 [124.86–127.19] | 25.01 [24.46–25.36] |
+| Client statements per run | 1,090.91 [1,089.98–1,093.89] | 263.08 [261.07–263.26] |
+| Redis commands per run | 1,196.92 [1,151.43–1,227.68] | 254.63 [249.18–257.42] |
+| Queue hops per run | 25 | 5 |
+| PostgreSQL CPU per run | 390.26 [359.99–391.03] ms | 106.33 [100.59–110.88] ms |
+| Worker CPU per run | 515.85 [490.94–518.98] ms | 119.86 [117.33–125.75] ms |
+| Wall time, 200 runs | 100.41 [96.07–101.00] s | 24.71 [23.31–24.90] s |
