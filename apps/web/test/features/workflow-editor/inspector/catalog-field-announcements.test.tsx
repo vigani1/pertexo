@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { browserDefinitions } from '../../../support/fixtures/node-catalog';
 import { NewStep } from './schema-setup.fixture';
 import { choose } from './schema-setup-actions';
+import { fieldLabel } from '@/lib/schema-fields/units';
 
 // Every setting a catalog step describes must reach a screen reader with
 // the setting: its words as the control's name, its help as the control's
@@ -176,27 +177,27 @@ describe('catalog setup fields for assistive technology', () => {
           <NewStep stepKey={key} />
         </div>,
       );
-      const variants =
+      const variants: readonly unknown[] =
         isRecord(schema) && Array.isArray(schema.oneOf) ? schema.oneOf : [];
+      // The shape is chosen by the property every variant fixes with a const
+      // (Date's `operation`, the AI step's `mode`).
+      const choiceKey = variants.length === 0 ? undefined : constKey(variants);
       const shapes: [string | undefined, unknown][] =
-        variants.length === 0
+        choiceKey === undefined
           ? [[undefined, schema]]
-          : variants.map((variant: unknown) => {
-              const operation =
-                isRecord(variant) && isRecord(variant.properties)
-                  ? variant.properties.operation
-                  : undefined;
+          : variants.map((variant) => {
+              const property = propertyOf(variant, choiceKey);
               return [
-                isRecord(operation) && typeof operation.title === 'string'
-                  ? operation.title
-                  : undefined,
+                typeof property.title === 'string'
+                  ? property.title
+                  : String(property.const),
                 variant,
               ];
             });
       const picker =
         isRecord(schema) && typeof schema.title === 'string'
           ? schema.title
-          : 'Operation';
+          : fieldLabel(choiceKey ?? 'operation');
       for (const [choice, shape] of shapes) {
         if (choice !== undefined) await choose(picker, choice);
         for (const setting of describedSettings(shape))
@@ -217,3 +218,22 @@ describe('catalog setup fields for assistive technology', () => {
     },
   );
 });
+
+function constKey(variants: readonly unknown[]): string | undefined {
+  const [first] = variants;
+  if (!isRecord(first) || !isRecord(first.properties)) return undefined;
+  return Object.keys(first.properties).find((key) =>
+    variants.every(
+      (variant) => typeof propertyOf(variant, key).const === 'string',
+    ),
+  );
+}
+
+function propertyOf(
+  variant: unknown,
+  key: string,
+): Readonly<Record<string, unknown>> {
+  const properties = isRecord(variant) ? variant.properties : undefined;
+  const property = isRecord(properties) ? properties[key] : undefined;
+  return isRecord(property) ? property : {};
+}
