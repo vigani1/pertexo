@@ -15,11 +15,8 @@ import {
   workflowListBody,
 } from '../workflows/list-support';
 const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-
 export const workspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-
 export const workflowId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
-
 export const editorUrl = `/w/${workspaceId}/workflows/${workflowId}`;
 
 const csrfToken = 'csrf-token-for-editor-tests-123456789012345678901234';
