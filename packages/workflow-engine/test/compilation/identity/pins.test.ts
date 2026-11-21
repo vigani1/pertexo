@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildWorkflowExecutable,
   composeExecutableCatalog,
+  fingerprintExecutableCatalog,
   verifyWorkflowExecutable,
 } from '../../../src/server.js';
 import { parseWorkflowExecutable } from '../../../src/compilation/boundary.js';
@@ -16,6 +17,14 @@ import {
   forEachGraph,
 } from '../../support/executable-workflow.js';
 describe('workflow executable identity', () => {
+  it('reuses the content fingerprint of a composed catalog', () => {
+    const catalog = composeExecutableCatalog(nodeCatalog());
+    const fingerprint = fingerprintExecutableCatalog(catalog);
+    expect(fingerprintExecutableCatalog(catalog)).toBe(fingerprint);
+    expect(
+      fingerprintExecutableCatalog(JSON.parse(JSON.stringify(catalog))),
+    ).toEqual(fingerprint);
+  });
   it('excludes canvas notes from the executable and keeps its exact checksum', () => {
     const catalog = composeExecutableCatalog(nodeCatalog());
     const original = graph();
