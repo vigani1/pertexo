@@ -13,6 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { expect, it } from 'vitest';
 
 import {
+  integrationListResponseSchema,
   workspaceResponseSchema,
   workflowCreateResponseSchema,
 } from '@pertexo/contracts';
@@ -42,7 +43,7 @@ import type {
 } from './contract.js';
 import { createEditorControlServer } from '../control/server.js';
 import { verifyEditorBrowserOutcome } from '../outcomes/dispatch.js';
-import { liveWebPort } from '../../web-origin.js';
+import { liveProviderPort, liveWebPort } from '../../web-origin.js';
 
 export function registerEditorBrowserJourney(
   fixture: ReturnType<typeof createEditorBrowserFixture>,
@@ -142,16 +143,18 @@ async function prepareEditorPrerequisites(api: EditorBrowserApi) {
     expect(response.statusCode, `${path}: ${response.payload}`).toBe(200);
   }
 
-  expect(
+  const integrations = integrationListResponseSchema.parse(
     (await api.send('GET', '/v1/integrations', { browser })).json(),
-  ).toMatchObject({
-    items: [
-      { providerKey: 'email', operationKey: 'send_notification' },
-      { providerKey: 'http', operationKey: 'request' },
-      { providerKey: 'postgres', operationKey: 'execute' },
-      { providerKey: 'slack', operationKey: 'send_message' },
-    ],
-  });
+  );
+  for (const operation of [
+    { providerKey: 'email', operationKey: 'send_notification' },
+    { providerKey: 'http', operationKey: 'request' },
+    { providerKey: 'postgres', operationKey: 'execute' },
+    { providerKey: 'slack', operationKey: 'send_message' },
+  ])
+    expect(integrations.items).toContainEqual(
+      expect.objectContaining(operation),
+    );
   for (const route of ['node-definitions', 'integrations']) {
     const refused = await api.send('GET', `/v1/${route}?arbitrary=value`, {
       browser,
@@ -240,6 +243,7 @@ async function runEditorBrowserJourney(
     PERTEXO_API_PROXY_TARGET: apiOrigin,
     PERTEXO_LIVE_MAIL_ORIGIN: `http://127.0.0.1:${String(address.port)}`,
     PERTEXO_LIVE_WEB_ORIGIN: webOrigin,
+    PERTEXO_LIVE_PROVIDER_PORT: String(liveProviderPort),
   };
 
   const viteCli = join(

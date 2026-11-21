@@ -22,6 +22,7 @@ import { createEditorWebhookRuntime } from '../webhook-runtime.js';
 
 import { createStructuredLogger } from '@pertexo/observability/server';
 import {
+  createNodeSecureHttpClient,
   parseAllowedPrivateNetworks,
   SECURE_HTTP_ERROR_CODE,
   SecureHttpError,
@@ -45,6 +46,8 @@ import {
   recheckOwnership,
   closeChild,
 } from './lifecycle.js';
+import { editorProviderTarget } from '../../../../../../infrastructure/testing/editor-provider-target.mjs';
+import { liveProviderPort } from '../../web-origin.js';
 import type { EditorBrowserApi } from './contract.js';
 
 export const httpMaster =
@@ -169,16 +172,7 @@ export function useEditorApiFixture(context: {
         // Refused as the real transport refuses a destination it won't call,
         // so callers answer as they would in production (a Slack channel
         // lookup says "provider unavailable"), not with an unexpected 500.
-        http: {
-          execute: () =>
-            Promise.reject(
-              new SecureHttpError(
-                SECURE_HTTP_ERROR_CODE.ssrfBlocked,
-                'definite_failure',
-                { possiblyDispatched: false },
-              ),
-            ),
-        },
+        http: editorConnectionHttp(),
       }),
     },
     logger: createStructuredLogger({
@@ -265,6 +259,29 @@ function connectionEnvelope(scenario: string, httpMaster: Buffer) {
     encryption: new ConnectionEnvelopeEncryption(keys),
     close: () => {
       keys.close();
+    },
+  };
+}
+
+function editorConnectionHttp() {
+  const client = createNodeSecureHttpClient({
+    allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
+  });
+  return {
+    execute: (input: Parameters<typeof client.execute>[0]) => {
+      const target =
+        scenario === 'product'
+          ? editorProviderTarget(input, liveProviderPort)
+          : undefined;
+      return target === undefined
+        ? Promise.reject(
+            new SecureHttpError(
+              SECURE_HTTP_ERROR_CODE.ssrfBlocked,
+              'definite_failure',
+              { possiblyDispatched: false },
+            ),
+          )
+        : client.execute(target);
     },
   };
 }
