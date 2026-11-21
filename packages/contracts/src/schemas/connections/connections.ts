@@ -47,10 +47,25 @@ const connectionPageLimitSchema = z.coerce
   .min(1)
   .max(CONNECTIONS_BOUNDS.connectionPageLimitMaximum);
 
-const connectionCredentialEnvelopeSchema = z.intersection(
-  z.object({ type: z.string().min(1).max(NODE_IDENTITY_KEY_MAX_CHARACTERS) }),
-  boundedNodeJsonRecordSchema,
+const connectionCredentialTypeSchema = z
+  .string()
+  .min(1)
+  .max(NODE_IDENTITY_KEY_MAX_CHARACTERS);
+const { $schema, ...connectionCredentialTypeProjection } = z.toJSONSchema(
+  connectionCredentialTypeSchema,
 );
+
+const connectionCredentialEnvelopeSchema = boundedNodeJsonRecordSchema
+  .refine(
+    (credential): credential is typeof credential & { readonly type: string } =>
+      connectionCredentialTypeSchema.safeParse(credential.type).success,
+    { path: ['type'], message: 'Expected a connection credential type' },
+  )
+  .meta({
+    type: 'object',
+    properties: { type: connectionCredentialTypeProjection },
+    required: ['type'],
+  });
 
 export const connectionCreateRequestSchema = z
   .strictObject({
