@@ -3,6 +3,7 @@ import { after, before, describe, it } from 'node:test';
 import { createWorkspace } from '../support/product.mjs';
 import { createReport } from '../support/simulation-report.mjs';
 import { destroyServer } from '../support/server.mjs';
+import { verifySetExecution } from './inline-qualification.mjs';
 import {
   checkRuns,
   checkSchedules,
@@ -206,6 +207,10 @@ describe(`the production stack at its minimum size under ${MINUTES} minutes of m
         `a schedule missed minutes: ${JSON.stringify(schedule)}`,
       );
     }
+  });
+
+  it('executes Set in the selected mode', async () => {
+    await verifySetExecution(server, record);
   });
 
   it('ends every run as it should: the flaky API retried, the waits resumed', () => {

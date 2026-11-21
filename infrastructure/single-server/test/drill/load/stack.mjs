@@ -20,6 +20,8 @@ import { TARGET_SOURCE } from './target.mjs';
 //   equal to memory. The Code runner keeps what storage/prepare.mjs gives it.
 // The drill's stand-ins and the load target are the outside world: uncapped.
 export const SIZING = process.env.LOAD_SIZING ?? 'host';
+export const INLINE_STEPS =
+  process.env.WORKFLOW_COORDINATOR_INLINE_STEPS ?? 'false';
 export const HOST_SIZE = Object.freeze({ memoryMiB: 4_096, cpus: 2 });
 export const J1_CAPS = Object.freeze({
   api: { memoryMiB: 512, cpus: 0.5 },
@@ -62,7 +64,7 @@ export function overlayMinimumSize(text) {
     }
   }
   compose.services.worker.environment.WORKFLOW_COORDINATOR_INLINE_STEPS =
-    process.env.WORKFLOW_COORDINATOR_INLINE_STEPS ?? 'false';
+    INLINE_STEPS;
   compose.services['drill-target'] = {
     image: RUNTIME_IMAGE,
     restart: 'unless-stopped',

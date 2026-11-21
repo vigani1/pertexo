@@ -3,6 +3,7 @@ import { after, before, describe, it } from 'node:test';
 import { createWorkspace } from '../support/product.mjs';
 import { createReport } from '../support/simulation-report.mjs';
 import { destroyServer } from '../support/server.mjs';
+import { verifySetExecution } from './inline-qualification.mjs';
 import {
   checkRuns,
   memoryTrend,
@@ -171,6 +172,10 @@ describe(`the worker under ${MINUTES} minutes of Code- and HTTP-heavy load`, () 
     );
   });
 
+  it('executes Set in the selected mode', async () => {
+    await verifySetExecution(server, record);
+  });
+
   it('keeps the worker and the Code runner up: no restart and no kill', async () => {
     const health = await restartsAndKills(started);
     record('health', health);
@@ -226,6 +231,8 @@ describe(`the worker under ${MINUTES} minutes of Code- and HTTP-heavy load`, () 
           rss: trend('rssMib'),
           heapUsed: trend('heapUsedMib'),
           outsideHeap: trend('outsideHeapMib'),
+          arenas: trend('arenaMib'),
+          mainHeap: trend('mainHeapMib'),
         },
       };
     }

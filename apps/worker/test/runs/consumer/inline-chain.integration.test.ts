@@ -10,7 +10,10 @@ import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { createCoordinatorRecoveryHarness } from '../../support/coordinator/recovery-harness.js';
 import { insertCompiledWorkflow } from '../../support/coordinator/workflows.js';
-import { acceptFixtureRun } from '../../support/coordinator/runs/accept.js';
+import {
+  acceptFixtureRun,
+  acceptRun,
+} from '../../support/coordinator/runs/accept.js';
 import { forEachGraph } from '../../support/coordinator/workflows/graphs/loops.js';
 import { linearGraph } from '../../support/coordinator/workflows/graphs/basic.js';
 import { ServiceProcess } from '../../support/recovery/processes.js';
@@ -321,6 +324,10 @@ describeIntegration('Inline coordinator transaction recovery', () => {
             receipt_count: 1,
           });
         else expect(paused).toEqual(before);
+        if (stage === 'after-second-kernel') {
+          const accepted = await acceptRun();
+          expect(accepted.runId).not.toBe(delivery.runId);
+        }
       } finally {
         await child.stop('SIGKILL');
       }
