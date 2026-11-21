@@ -12,6 +12,9 @@ x-runtime: &runtime
   tmpfs: [/tmp]
   # Past the worker's 60 s drain, plus time to close and flush logs.
   stop_grace_period: 90s
+# Keeps transient allocations from accumulating as resident pages under load.
+x-jemalloc: &jemalloc
+  LD_PRELOAD: libjemalloc.so.2
 x-code-settings: &code-settings
   CODE_STEPS_ENABLED: ${CODE_STEPS_ENABLED:-true}
   CODE_RUNNER_MEMORY_MB: ${CODE_RUNNER_MEMORY_MB:-64}
@@ -76,15 +79,13 @@ services:
     command: [node, apps/api/dist/main.js]
     env_file: ['${BETA_STATE_DIR}/api.env']
     environment:
-      <<: [*environment, *code-settings]
+      <<: [*environment, *code-settings, *jemalloc]
       HTTP_ALLOWED_PRIVATE_NETWORKS: ${HTTP_ALLOWED_PRIVATE_NETWORKS:-}
       SMTP_ALLOW_PLAINTEXT: ${SMTP_ALLOW_PLAINTEXT:-false}
       AUTOMATION_TOKENS_ENABLED: ${AUTOMATION_TOKENS_ENABLED:-false}
       # Read only by storage/prepare.mjs, through the resolved configuration.
       API_MEMORY_MB: ${API_MEMORY_MB:-}
       NODE_OPTIONS: '--max-old-space-size=${API_HEAP_MB:?}'
-      # The API hit its container cap under flood traffic with glibc.
-      LD_PRELOAD: libjemalloc.so.2
       AUTH_MAIL_MODE: durable
       AUTH_SIGN_UP_MODE: ${AUTH_SIGN_UP_MODE:-invitation}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
@@ -165,7 +166,7 @@ services:
       # before the kernel kills it mid-step.
       WORKER_MAX_RSS_BYTES: ${WORKER_MAX_RSS_BYTES:?}
       ARTIFACT_SCRATCH_DIRECTORY: /var/lib/pertexo/artifact-scratch
-      <<: [*environment, *code-settings]
+      <<: [*environment, *code-settings, *jemalloc]
       DATABASE_MAINTENANCE_URL: ${DATABASE_MAINTENANCE_URL:?}
       INVITATION_EMAIL_FROM: ${INVITATION_EMAIL_FROM:?}
       HTTP_ALLOWED_PRIVATE_NETWORKS: ${HTTP_ALLOWED_PRIVATE_NETWORKS:-}
