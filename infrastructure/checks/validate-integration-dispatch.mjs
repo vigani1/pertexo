@@ -35,7 +35,7 @@ const dispatchFiles = [
     'connections/components/provider-tile.tsx',
     'connections/components/connection-test/panel.tsx',
   ].map((name) => web + name),
-  ...['connection-fields', 'connections'].map(
+  ...['connection-credentials', 'connection-fields', 'connections'].map(
     (name) => `${contracts}${name}.ts`,
   ),
   'packages/database/src/schema/connections.ts',
@@ -75,7 +75,6 @@ const existing = new Map([
       "'email'",
       "key === 'smtp'",
       "providerKey: 'email'",
-      "transport: 'smtp'",
       "key === 'slack'",
       "key === 'signing'",
     ],
@@ -106,7 +105,6 @@ const existing = new Map([
       "testKey === 'oauth2'",
       "testKey === 'smtp'",
       "providerKey: 'email'",
-      "transport: 'smtp'",
       "testKey === 'signing'",
       "testKey === 'postgres'",
       "testKey === 'slack'",
@@ -114,6 +112,15 @@ const existing = new Map([
       "providerKey: 'email'",
       "authType === 'oauth2'",
       "testKey === 'resend'",
+    ],
+  ],
+  [
+    `${contracts}connection-credentials.ts`,
+    [
+      "z.literal('http_headers')",
+      "z.literal('slack_bot_token')",
+      "z.literal('resend_api_key')",
+      "z.literal('smtp')",
     ],
   ],
   [
@@ -218,6 +225,15 @@ function literalUse(node, keys) {
   }
   if (!providerKey(node, keys)) return undefined;
   const parent = node.parent;
+  if (
+    ts.isStringLiteralLike(node) &&
+    ts.isPropertyAssignment(parent) &&
+    parent.initializer === node &&
+    ((parent.name.getText() === 'protocol' &&
+      ['http', 'postgres', 'smtp'].includes(node.text)) ||
+      (parent.name.getText() === 'transport' && node.text === 'smtp'))
+  )
+    return undefined;
   if (
     ts.isIdentifier(node) &&
     !(ts.isPropertyAssignment(parent) && parent.name === node)
