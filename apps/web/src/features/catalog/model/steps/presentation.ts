@@ -87,18 +87,23 @@ export function describeStep(
     family ?? metadata?.family ?? core?.family ?? 'unknown';
   const presentation = metadata?.presentation;
   const display = metadata?.display ?? core?.display;
-  const catalogIcon =
-    presentation === undefined
-      ? undefined
-      : catalogIcons.get(presentation.icon);
-  const coreIcon = core === undefined ? undefined : stepIcons[key];
   return {
     name: presentation?.name ?? display?.name ?? prettifyDefinitionKey(key),
     description: display?.description ?? 'A step from the catalog',
     sideEffect: display?.sideEffect,
-    icon: catalogIcon ?? coreIcon ?? familyIcons[resolvedFamily],
+    icon: resolveStepIcon(key, resolvedFamily, presentation?.icon),
     family: resolvedFamily,
   };
+}
+
+function resolveStepIcon(
+  key: string,
+  family: StepFamily | 'unknown',
+  icon: string | undefined,
+): LucideIcon {
+  const servedIcon = icon === undefined ? undefined : catalogIcons.get(icon);
+  const coreIcon = Object.hasOwn(stepIcons, key) ? stepIcons[key] : undefined;
+  return servedIcon ?? coreIcon ?? familyIcons[family];
 }
 
 export type StepGroup = Readonly<{

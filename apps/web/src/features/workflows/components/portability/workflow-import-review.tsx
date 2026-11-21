@@ -309,7 +309,6 @@ export function WorkflowImportReview({
   }>;
 }>) {
   const { apiClient, userId, workspace } = scope;
-  const describeStep = useStepDescriptions();
 
   return (
     <>

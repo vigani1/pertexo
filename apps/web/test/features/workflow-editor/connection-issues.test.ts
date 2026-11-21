@@ -103,7 +103,7 @@ describe('editor credential issues', () => {
       { ...publication, validation: undefined },
       current,
       draft,
-      issues,
+      { connectionIssues: issues },
     );
     expect(view.groups?.[0]?.issues).toHaveLength(2);
     expect(view.countsByNode.get('post')).toBe(1);
@@ -243,13 +243,20 @@ describe('editor credential issues', () => {
         },
       },
     };
-    const view = workflowIssuesView(checked, current, draft, findings);
+    const view = workflowIssuesView(checked, current, draft, {
+      connectionIssues: findings,
+    });
     expect(view.groups).toHaveLength(1);
     expect(view.groups?.[0]?.issues).toHaveLength(3);
     expect(view.countsByNode.get('post')).toBe(2);
     expect(view.blockingGroups[0]?.issues).toHaveLength(1);
     expect(
-      workflowIssuesView(checked, current, { ...draft, revision: 2 }, findings),
+      workflowIssuesView(
+        checked,
+        current,
+        { ...draft, revision: 2 },
+        { connectionIssues: findings },
+      ),
     ).toMatchObject({ stale: true, blockingGroups: [] });
     expect(workflowIssuesView(publication, linked, draft)).toMatchObject({
       groups: [{ nodeId: 'post', issues: [{ id: 'unreachable-post' }] }],
