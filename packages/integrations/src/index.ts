@@ -78,7 +78,4 @@ export { SLACK_REJECTIONS } from './slack/rejection-policy.js';
 
 export { smtpCredentialSchema } from '@pertexo/contracts';
 
-export { DATABASE_POLL_DEFINITION_REGISTRATION } from './database/polling/polling.definition.js';
 export { DATABASE_DEFINITION_REGISTRATION } from './database/execute/execute.definition.js';
-
-export { HTTP_POLL_DEFINITION_REGISTRATION } from './http/polling/polling.definition.js';

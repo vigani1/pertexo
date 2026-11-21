@@ -24,17 +24,11 @@ export {
   type ResendClient,
 } from './email/client.js';
 
-export {
-  createEmailSendNotificationExecutorRegistration,
-  type EmailSendNotificationExecutorDependencies,
-} from './email/send-notification/send-notification.executor.js';
+export { createEmailSendNotificationExecutorRegistration } from './email/send-notification/send-notification.executor.js';
 
 export { EmailSendNotificationExecutorError } from './email/send-notification/send-notification.errors.js';
 
-export {
-  createSlackSendMessageExecutorRegistration,
-  type SlackSendMessageExecutorDependencies,
-} from './slack/send-message/send-message.executor.js';
+export { createSlackSendMessageExecutorRegistration } from './slack/send-message/send-message.executor.js';
 export { SlackSendMessageExecutorError } from './slack/send-message/send-message.errors.js';
 
 export {
@@ -96,11 +90,6 @@ export { HTTP_PAGINATION_FAILURES } from './http/request/pagination/pagination.e
 export { HTTP_OAUTH2_FAILURES } from './http/request/execution/oauth2-renewal.errors.js';
 
 export type { SmtpEmailClient } from './email/smtp.js';
-
-export {
-  HttpPollFailure,
-  type HttpPollFailureCode,
-} from './http/polling/polling.errors.js';
 
 export type {
   IntegrationExecutorDependencies,
