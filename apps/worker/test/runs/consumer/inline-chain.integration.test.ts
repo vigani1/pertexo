@@ -367,26 +367,32 @@ describeIntegration('Inline coordinator transaction recovery', () => {
   afterAll(fixture.restoreServicesAndClose);
 
   it('lets another run start while the inline chain after an approval is in progress', async () => {
-    const resumed = await prepareInlineDelivery('approval');
-    await finish(resumed, 'committed');
-    const continuation = await resumed.continuation();
-    const child = continuation.child('after-second-kernel');
-    const reached = child.waitForLog(
-      /inline coordinator paused: after-second-kernel/u,
-      markerTimeout,
-    );
-    child.startOnce();
-    try {
-      await reached;
-      const accepted = await acceptRun();
-      expect(accepted.runId).not.toBe(resumed.runId);
-    } finally {
-      await child.stop('SIGKILL');
+    let delivery = await prepareInlineDelivery('approval');
+    const { runId } = delivery;
+    // Follow the resumed run's coordinator deliveries until one is computing
+    // its inline steps, then start another run in the same workspace.
+    for (;;) {
+      const child = delivery.child('after-second-kernel');
+      const computing = 'inline coordinator paused: after-second-kernel';
+      const settled = child.waitForLog(
+        /inline coordinator (?:paused: after-second-kernel|result:)/u,
+        markerTimeout,
+      );
+      child.startOnce();
+      try {
+        await settled;
+        if (child.linesMentioning([computing], 'info').length > 0) {
+          const accepted = await acceptRun();
+          expect(accepted.runId).not.toBe(runId);
+          break;
+        }
+      } finally {
+        await child.stop('SIGKILL');
+      }
+      delivery = await delivery.continuation();
     }
-    await finish(continuation, 'committed');
-    expect((await readCommit(continuation)).checkpoint?.status).toBe(
-      'succeeded',
-    );
+    await finish(delivery, 'committed');
+    expect((await readCommit(delivery)).checkpoint?.status).toBe('succeeded');
   });
 
   it.each(['after-second-kernel', 'before-commit', 'after-commit'] as const)(
