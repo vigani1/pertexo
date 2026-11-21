@@ -116,7 +116,6 @@ export function testTriggerRuntime(
   const { logger } = services;
   return createTriggerRuntime(
     {
-      inlineSteps: inlineStepsEnabled,
       ...options,
       ...(logger === undefined ? {} : { logger }),
     },
