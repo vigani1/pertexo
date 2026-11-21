@@ -167,6 +167,11 @@ describe(`the production stack at its minimum size under ${MINUTES} minutes of m
       }),
     );
     await Promise.all(loops.map((loop) => loop.stop()));
+    await Promise.all(
+      workspaces.map(({ workflows }) =>
+        disableSchedule(client, workflows.schedule),
+      ),
+    );
     const trafficEnded = Date.now();
     const unfinished = await waitForDrain(server, DRAIN_MILLIS);
     await Promise.all(approvers.map((loop) => loop.stop()));
@@ -277,3 +282,16 @@ describe(`the production stack at its minimum size under ${MINUTES} minutes of m
     }
   });
 });
+
+async function disableSchedule(client, workflow) {
+  // An active schedule can queue a run between the drain and ledger reads.
+  const triggers = await client.get(`${workflow}/triggers/schedules`);
+  assert.equal(triggers.status, 200, triggers.text);
+  assert.equal(triggers.json.items.length, 1, triggers.text);
+  const [{ id }] = triggers.json.items;
+  const disabled = await client.post(
+    `${workflow}/triggers/${id}/schedule/disable`,
+    {},
+  );
+  assert.equal(disabled.status, 200, disabled.text);
+}
