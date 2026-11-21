@@ -105,12 +105,7 @@ export const workflowRunDataRoutes = {
     path: `${NODE_RUN}/diagnostics`,
     params: workflowNodeRunParamsSchema,
     query: z.strictObject({
-      attempt: z.coerce
-        .number()
-        .int()
-        .positive()
-        .max(z.int32().maxValue)
-        .optional(),
+      attempt: z.coerce.number().pipe(z.int32().positive()).optional(),
     }),
     access: session(read),
     rateLimit: 'authenticated_read',
