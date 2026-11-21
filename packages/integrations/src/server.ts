@@ -109,6 +109,7 @@ export {
 export { httpPollExecutor } from './http/polling/polling.executor.js';
 
 export type {
+  IntegrationExecutorDependencies,
   IntegrationModule,
   IntegrationPresentation,
 } from './providers/integration-module.js';

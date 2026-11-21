@@ -13,7 +13,6 @@ import {
 } from '@pertexo/nodes-core';
 
 export type PlatformNodeDefinition = NodeDefinitionRegistration;
-export { INTEGRATION_REGISTRATIONS };
 
 const INTEGRATION_REGISTRATIONS = INTEGRATION_MODULE_REGISTRY.registrations;
 const INTEGRATION_MANIFESTS = INTEGRATION_REGISTRATIONS.map(
