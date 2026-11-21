@@ -280,15 +280,15 @@ async function constructRuntimes(
     controlledHttpClient,
     state,
   });
-  const previewRegistry = productCase
-    ? 'registry' in dependencies
+  const previewRegistry =
+    (productCase && 'registry' in dependencies
       ? dependencies.registry
-      : undefined
-    : controlledHttpClient === undefined
+      : undefined) ??
+    (controlledHttpClient === undefined
       ? undefined
       : createPlatformNodeRegistry({
           httpRequest: { httpClient: controlledHttpClient },
-        });
+        }));
   const attempts = await testNodeAttemptRuntime(
     {
       database,
