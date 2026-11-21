@@ -1,8 +1,9 @@
 # ADR 094: Model steps use typed connections and validate structured output
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-21
-- **Related:** [ADR 080](080-draft-step-samples.md), [ADR 091](091-core-layer.md)
+- **Related:** [ADR 080](080-draft-step-samples.md), [ADR 091](091-core-layer.md),
+  [ADR 095](095-integration-modules.md)
 - **Feature:** [F56](../feature-plans/56-ai-model-step.md), first delivery from [F22](../feature-plans/22-ai-assistance-and-ai-nodes.md)
 
 ## Context
@@ -15,10 +16,13 @@ repeated.
 
 ## Decision
 
-**One inference port in integrations.** A single `ModelClient` accepts a
-bounded text request, model, output mode, deadline and dispatch guard. It returns
-a normalized completion or a classified failure. Use OpenAI-compatible Chat
-Completions for OpenAI, OpenRouter, Ollama and vLLM, and Messages for Anthropic.
+**One inference port in the AI integration module.** The step and its
+`ModelClient` live under `packages/integrations/src/ai/`. Register the AI module
+with one line in `packages/node-catalog/src/integration-modules.ts` under ADR 095.
+A single `ModelClient` accepts a bounded text request, model, output mode,
+deadline and dispatch guard. It returns a normalized completion or a
+classified failure. Use OpenAI-compatible Chat Completions for OpenAI,
+OpenRouter, Ollama and vLLM, and Messages for Anthropic.
 Application composition injects the secure outbound HTTP client from
 `@pertexo/secrets/server`, as in ADR 091. Every request obeys HTTP Request's
 address policy, including connection tests and repairs. Local Ollama requires an
@@ -26,14 +30,17 @@ operator-allowed private network. Redirects are disabled for model calls.
 Streaming, multimodal input, embeddings, other provider protocols, authoring
 assistance and agent tools are deferred.
 
-**One typed workflow connection slot.** Add provider key `ai` and auth type
-`model_api_key`, with an encrypted credential discriminated by endpoint
-variant. Its fields are the API key and an optional base URL where a default
-exists. A self-hosted endpoint needs a base URL. The adapter owns the auth
-header and protocol path. The step stores a connection reference. Reuse the
-existing connection authorization, rotation, redaction and current-secret
-dispatch fence. The typed credential defines the permitted destination and
-auth format for the slot.
+**One typed workflow connection slot.** The API-key login for provider `ai`
+and auth key `model_api_key` is a connection definition in the AI module's
+`connections.definition.ts`. Its encrypted credential is discriminated by
+endpoint variant and has a secret API key and an optional base URL field.
+Self-hosted variants require the URL. The variant selects an ADR 095 auth
+recipe: bearer for OpenAI-compatible endpoints and a named `x-api-key` header
+for Anthropic. The connection runtime applies the recipe, and the model adapter
+owns the protocol path. The registry admits the pair through the existing
+contracts envelope and F57's open auth key constraint. The step stores a
+connection reference and uses the existing connection authorization, rotation,
+redaction and current-secret dispatch fence.
 
 **Validate before publishing output.** Structured extraction takes a bounded
 JSON Schema object from the step's versioned catalog configuration. Request

@@ -1,6 +1,6 @@
 # F56 — AI Model step
 
-Status: proposed. Delivers slice 2 of [F22](22-ai-assistance-and-ai-nodes.md)
+Status: accepted; waits for F57 slices 1-3. Delivers slice 2 of [F22](22-ai-assistance-and-ai-nodes.md)
 first. Decisions in [ADR 094](../adr/094-model-steps.md). F22's model budget
 means the call and attempt bounds below. Authoring assistance and agent tools
 have their own delivery slices.
@@ -86,21 +86,22 @@ no inference usage record.
 
 ## Implementation slices
 
-1. **Typed connection and catalog.** Add the discriminated credential in
-   `packages/contracts/src/schemas/connections/` beside
-   `postgresCredentialSchema`. Extend `connectionCredentialSchema`, the
-   provider/auth fields and create-request narrowing in `connections.ts`.
-   Reuse current routes in `packages/contracts/src/routes/connections/management.ts`
-   and generate OpenAPI through ADR 092. Extend `CONNECTION_AUTH_TYPE` in
-   `workflow-model/src/authoring/connection-vocabulary.ts` and the connection
-   constraints in `database/src/schema/connections.ts` with an additive
-   migration, following `0006_allow_postgres_connections.sql`. Keep existing
-   core connection management and encrypted secret versions. Add the config,
-   input and output schemas and the manifest in
-   `integrations/src/ai/model/` using `generateSchemaDocument` like
-   `DATABASE_DEFINITION_REGISTRATION`. Prepare the registration and the
-   `model_api_key` slot in `node-catalog/src/catalog.ts` and
-   `platformPortableDefinitionPolicy`. Ship the registration with its executor.
+Start after [F57 slices 1–3](57-integration-modules.md) land the registry,
+connection definitions and open auth key constraint from
+[ADR 095](../adr/095-integration-modules.md).
+
+1. **Typed connection and catalog.** In
+   `packages/integrations/src/ai/connections.definition.ts`, declare the
+   `ai` provider's `model_api_key` login, its endpoint variants, secret key,
+   optional base URL field and typed slot compatibility. Use the bearer
+   recipe for OpenAI-compatible endpoints and the named `x-api-key` header
+   recipe for Anthropic. Require a base URL for self-hosted variants. Use
+   F57's registered admission, test and form projections with the existing
+   contracts envelope and database schema. Add the config, input and output
+   schemas and manifest under `packages/integrations/src/ai/model/` using
+   `generateSchemaDocument`. Ship the versioned step with its executor in
+   the AI module and add one line in
+   `packages/node-catalog/src/integration-modules.ts` to register the module.
 2. **Provider adapters and execution.** Implement `ModelClient` and the two
    adapters under `integrations/src/ai/`. Inject `ProviderHttpClient` from
    `integrations/src/providers/http-client.ts` and read bounded responses with
@@ -111,43 +112,27 @@ no inference usage record.
    Reuse its Retry-After ceiling behavior and the engine's
    `workflow-engine/src/attempt/retries.ts#decideRetry`. Translate model
    failures to `NodeExecutorFailure` with safe codes. Open the typed
-   credential with the Database executor's scoped secret pattern from
-   `integrations/src/database/execute/execute.executor.ts`. Extend
-   `createProviderConnectionRuntimeFactory` and `assertSecretCurrent` in
-   `apps/worker/src/providers/connections.ts`. Use
+   credential through the connection runtime. Use
    `createProviderBeforeDispatch`, following the HTTP executor's
-   `markingDispatchOnce` pattern for additional calls. Register the executor
-   in `node-catalog/src/server.ts#createPlatformNodeRegistry` and inject the
-   HTTP Request address policy through
-   `apps/worker/src/attempts/delivery/node-attempt.runtime.ts` and
-   `apps/worker/src/providers/node-registry.ts`. Worker previews use that
-   registry too.
+   `markingDispatchOnce` pattern for additional calls. Use the shared module
+   executor composition from ADR 095 and the host's HTTP Request address
+   policy for both runs and worker previews.
 3. **Usage and connection tests.** Carry typed, bounded usage on attempt
    outcomes through `node-sdk/src/execution/` and
    `apps/worker/src/attempts/delivery/`, including
-   `executorFailureCompletion`. Use a nullable usage field on `nodeAttempts`
-   in `database/src/schema/runs/node-executions.ts`, with
-   `saveAttemptCompletion` writing it under `completeNodeAttempt`'s existing
-   fence and receipt. Follow the attempt diagnostics read through
-   `core/src/runs/queries/history/details.repository.ts` and
-   `contracts/src/schemas/execution/runs.ts` for the run inspector. Persist
-   equivalent preview evidence via `core/src/previews/attempts/complete.ts`
-   and expose it through `contracts/src/schemas/execution/node-testing.ts`.
-   Keep both records under parent retention and purge. In
-   `apps/api/src/connections/testing/test-connection.ts`, extend
-   `TestConnectionService` with a typed model-connection test using a bounded
-   models-list request on the same base and address policy. Report what that
-   endpoint verifies. Actual inference compatibility is verified by Test step.
-   Extend the existing test request and sealed credential decoder in
-   `contracts/src/schemas/connections/connections.ts` and
-   `apps/api/src/connections/testing/credentials.ts`. Supply the configured
-   private-network policy and the existing test dispatch guard.
-4. **Editor and integrated acceptance.** Follow
-   `apps/web/src/features/connections/model/postgres-draft.ts` and
-   `components/credential/postgres-fields.tsx` for connection creation, rotation
-   and safe health messages. Register AI Model in
-   `features/catalog/model/steps/registry.ts`. Reuse the editor's catalog
-   settings and `SchemaField` in
+   `executorFailureCompletion`. Store the model usage as a typed diagnostics
+   variant in the existing attempt and preview JSON diagnostics columns.
+   Keep the existing Code step diagnostics shape readable. Write run usage
+   under `completeNodeAttempt`'s fence and receipt and preview usage through
+   `core/src/previews/attempts/complete.ts`. Project usage through the existing
+   run and preview reads and keep each record under its parent retention and
+   purge rules. Declare the connection test in `connections.definition.ts`
+   using a bounded models-list request on the configured API base. The
+   registered test runtime applies the same address policy and dispatch
+   guard. Report the probe outcome. Test step verifies inference compatibility.
+4. **Editor and integrated acceptance.** Use F57's projected connection
+   form and module presentation for the AI login and step. Reuse the editor's
+   catalog settings and `SchemaField` in
    `features/workflow-editor/components/inspector/fields/schema.tsx` for the
    mode fields and JSON input. Use the existing Test step and sample controls.
    Show model error copy and usage in the existing inspector. Land
