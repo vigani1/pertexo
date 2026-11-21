@@ -87,12 +87,7 @@ function graphWithInlineLoopBody() {
   const graph = forEachGraph(1);
   const loop = graph.nodes.find(({ id }) => id === 'for-each');
   const outer = graph.nodes.find(({ id }) => id === 'outer-successor');
-  if (
-    loop === undefined ||
-    !('structured' in loop) ||
-    loop.structured === undefined ||
-    outer === undefined
-  )
+  if (loop === undefined || !('structured' in loop) || outer === undefined)
     throw new Error('Inline loop fixture is incomplete');
   for (const node of loop.structured.body.nodes) {
     Object.assign(node, {

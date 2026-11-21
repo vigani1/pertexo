@@ -445,12 +445,13 @@ describe('bounded coordinator inline advances', () => {
             if (signal === undefined)
               throw new Error('Expression evaluation has no deadline signal');
             return new Promise((resolve) => {
-              const interrupted = () =>
+              const interrupted = () => {
                 resolve({
                   kind: 'error',
                   code: 'timed_out',
                   message: 'Evaluation stopped',
                 });
+              };
               if (signal.aborted) interrupted();
               else
                 signal.addEventListener('abort', interrupted, { once: true });
