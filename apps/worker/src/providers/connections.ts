@@ -76,15 +76,13 @@ async function assertSecretCurrent(
   input: Parameters<NonNullable<NodeConnectionRuntime['assertCurrent']>>[0],
 ): Promise<void> {
   assertNotAborted(input.signal);
-  const unsupportedAuthType =
-    input.expectedAuthType !== CONNECTION_AUTH_TYPE.signingKey &&
-    input.expectedAuthType !== CONNECTION_AUTH_TYPE.httpHeaders &&
-    input.expectedAuthType !== CONNECTION_AUTH_TYPE.slackBotToken &&
-    input.expectedAuthType !== CONNECTION_AUTH_TYPE.resendApiKey &&
-    input.expectedAuthType !== CONNECTION_AUTH_TYPE.smtp &&
-    input.expectedAuthType !== CONNECTION_AUTH_TYPE.postgres &&
-    input.expectedAuthType !== CONNECTION_AUTH_TYPE.oauth2;
-  if (unsupportedAuthType) throw new ProviderCredentialInvalidError();
+  if (
+    findConnectionDefinition(
+      input.expectedAuthType,
+      input.expectedProviderKey,
+    ) === undefined
+  )
+    throw new ProviderCredentialInvalidError();
   try {
     await database.assertConnectionSecretCurrent({
       workspaceId,
