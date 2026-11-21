@@ -14,6 +14,8 @@ export const errorWorkflowCase =
 export const webhookResponseCase =
   process.env.EDITOR_BROWSER_CASE === 'webhook-responses';
 
+export const productCase = process.env.EDITOR_BROWSER_CASE === 'product';
+
 const paginationCase = process.env.EDITOR_BROWSER_CASE === 'http-pagination';
 
 /** Reads and writes workbooks through the owned object store, without HTTP. */
@@ -21,6 +23,7 @@ export const spreadsheetCase =
   process.env.EDITOR_BROWSER_CASE === 'spreadsheets';
 
 export const previewCase =
+  productCase ||
   process.env.EDITOR_BROWSER_CASE === 'artifact-inputs' ||
   spreadsheetCase ||
   process.env.EDITOR_BROWSER_CASE === 'variables' ||
@@ -42,7 +45,7 @@ export const formUploadsCase =
 
 export const controlledHttp =
   process.env.EDITOR_BROWSER_CASE === 'webhook-controlled-http' ||
-  process.env.EDITOR_BROWSER_CASE === 'product' ||
+  productCase ||
   process.env.EDITOR_BROWSER_CASE === 'failure-routing' ||
   artifactInputs ||
   paginationCase;

@@ -28,6 +28,7 @@ import {
   scheduleCase,
   errorWorkflowCase,
   previewCase,
+  productCase,
   createEditorWorkerNamespace,
 } from './execution/environment.js';
 import { startEditorTriggers } from './execution/triggers.js';
@@ -274,6 +275,20 @@ async function constructRuntimes(
     httpTarget ??
     state.resendMailbox
   )?.httpClient;
+  const dependencies = editorAttemptDependencies({
+    controlledCapabilities,
+    controlledHttpClient,
+    state,
+  });
+  const previewRegistry = productCase
+    ? 'registry' in dependencies
+      ? dependencies.registry
+      : undefined
+    : controlledHttpClient === undefined
+      ? undefined
+      : createPlatformNodeRegistry({
+          httpRequest: { httpClient: controlledHttpClient },
+        });
   const attempts = await testNodeAttemptRuntime(
     {
       database,
@@ -283,22 +298,11 @@ async function constructRuntimes(
       workerId: `editor-browser-${randomUUID()}`,
       ...(previewCase
         ? {
-            preview: await createEditorPreview(
-              database,
-              controlledHttpClient === undefined
-                ? undefined
-                : createPlatformNodeRegistry({
-                    httpRequest: { httpClient: controlledHttpClient },
-                  }),
-            ),
+            preview: await createEditorPreview(database, previewRegistry),
           }
         : {}),
     },
-    editorAttemptDependencies({
-      controlledCapabilities,
-      controlledHttpClient,
-      state,
-    }),
+    dependencies,
   );
   resources.attempts = attempts;
   assertSetupActive();

@@ -1,3 +1,7 @@
+import type {
+  ProviderHttpClient,
+  ProviderHttpRequest,
+} from '@pertexo/integrations/server';
 import { parseAllowedPrivateNetworks } from '@pertexo/secrets/server';
 import { editorProviderTarget } from '../../../../../../infrastructure/testing/editor-provider-target.mjs';
 import { createNodeProviderHttpClient } from '../../../../src/providers/http-client.js';
@@ -11,7 +15,11 @@ import type {
   EditorWorkerHttpClient,
   EditorWorkerAttemptContext,
 } from './editor-execution.types.js';
-import { artifactInputs, emailAttachments } from './environment.js';
+import {
+  artifactInputs,
+  emailAttachments,
+  productCase,
+} from './environment.js';
 
 export function editorAttemptDependencies(context: EditorWorkerAttemptContext) {
   const { controlledCapabilities, controlledHttpClient, state } = context;
@@ -76,11 +84,13 @@ function controlledEditorDependencies(
   }>,
 ) {
   const { controlledCapabilities, controlledHttpClient, state } = context;
+  const providerHttp = editorFixedEndpointHttpClient();
   return {
     registry: createPlatformNodeRegistry(
       {
         httpRequest: { httpClient: controlledHttpClient },
-        fixedEndpointHttpClient: editorFixedEndpointHttpClient(),
+        fixedEndpointHttpClient: providerHttp,
+        httpClient: providerHttp,
         // Never allow unused provider executors to fall back to real networking.
         slackSendMessage: {
           client: state.curatedTarget?.slackClient ?? {
@@ -99,7 +109,7 @@ function controlledEditorDependencies(
           },
         },
       },
-      process.env.EDITOR_BROWSER_CASE === 'product'
+      productCase
         ? {
             allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
             allowPlaintext: false,
@@ -124,20 +134,24 @@ function controlledEditorDependencies(
   };
 }
 
-function editorFixedEndpointHttpClient() {
+function editorFixedEndpointHttpClient(): ProviderHttpClient {
   const port = process.env.PERTEXO_LIVE_PROVIDER_PORT;
   const client = createNodeProviderHttpClient({
     allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
   });
+  function destination(input: ProviderHttpRequest) {
+    const target =
+      productCase && port !== undefined
+        ? editorProviderTarget(input, port)
+        : undefined;
+    if (target === undefined)
+      throw new Error('Provider outside controlled HTTP fixture');
+    return target;
+  }
   return {
-    execute: (input: Parameters<typeof client.execute>[0]) => {
-      const target =
-        process.env.EDITOR_BROWSER_CASE === 'product' && port !== undefined
-          ? editorProviderTarget(input, port)
-          : undefined;
-      return target === undefined
-        ? Promise.reject(new Error('Provider outside controlled HTTP fixture'))
-        : client.execute(target);
-    },
+    execute: async (input) => client.execute(destination(input)),
+    executeStreaming: async (input, consume) =>
+      client.executeStreaming(destination(input), consume),
+    redactText: client.redactText,
   };
 }
