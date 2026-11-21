@@ -1,5 +1,9 @@
 import { Checkbox } from '@/components/ui/checkbox';
-import { FieldGroup, LabelledField } from '@/components/ui/field';
+import {
+  FieldDescription,
+  FieldGroup,
+  LabelledField,
+} from '@/components/ui/field';
 import { Notice } from '@/components/ui/notice';
 import { RadioChoice } from '@/components/ui/radio-choice';
 import { SchemaTextControl } from '@/components/ui/schema-text-control';
@@ -19,6 +23,7 @@ import {
 import { CredentialHelp } from './help';
 import { HttpHeaderEditor } from './http-header-editor';
 import { OAuth2Fields } from './oauth2-fields';
+import { SECRET_DESCRIPTION } from './secret-description';
 
 type FieldsProps = Readonly<{
   draft: CredentialDraft | undefined;
@@ -63,6 +68,10 @@ function ScalarField({
 }>) {
   const { draft, idPrefix, disabled, validation, onChange } = form;
   const { key, label, description, metadata } = field;
+  const secret = metadata.secret === true;
+  const hint = secret
+    ? [description, SECRET_DESCRIPTION].filter(Boolean).join(' ')
+    : description;
   const value = draft.values[key];
   const error = validation.error(key);
   function update(value: ScalarValue) {
@@ -73,14 +82,19 @@ function ScalarField({
 
   if (field.kind === 'boolean')
     return (
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={value === true}
-          disabled={disabled}
-          onCheckedChange={update}
-        />
-        {label}
-      </label>
+      <div>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={value === true}
+            disabled={disabled}
+            onCheckedChange={update}
+          />
+          {label}
+        </label>
+        {hint === undefined ? null : (
+          <FieldDescription>{hint}</FieldDescription>
+        )}
+      </div>
     );
   if (field.options !== undefined)
     return (
@@ -99,11 +113,13 @@ function ScalarField({
         {error === undefined ? null : (
           <Notice tone="destructive">{error}</Notice>
         )}
+        {hint === undefined ? null : (
+          <FieldDescription>{hint}</FieldDescription>
+        )}
         <ChoiceNotice metadata={metadata} value={value} />
       </>
     );
 
-  const secret = metadata.secret === true;
   const email = metadata.format === 'email';
   const plainInputType = email ? 'email' : 'text';
   const plainAutocomplete = email ? 'email' : 'off';
@@ -116,7 +132,7 @@ function ScalarField({
       <LabelledField
         id={`${idPrefix}-${key}`}
         label={label}
-        {...(description === undefined ? {} : { description })}
+        description={hint}
         error={error}
       >
         {(control) =>

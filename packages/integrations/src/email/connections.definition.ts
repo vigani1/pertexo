@@ -24,7 +24,6 @@ const resendFields = {
     placeholder: 're_…',
     secret: true,
     inputMaxLength: CONNECTION_CREDENTIALS_BOUNDS.apiKeyCharacters,
-    description: 'Stored encrypted. Nobody, including you, can see it again.',
   }),
   fromEmail: resendApiKeyCredentialSchema.unwrap().shape.fromEmail.meta({
     title: 'From address',

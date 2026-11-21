@@ -1,6 +1,10 @@
 import { PlusIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FieldControl, FieldError } from '@/components/ui/field';
+import {
+  FieldControl,
+  FieldDescription,
+  FieldError,
+} from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import type { FieldValidation } from '@/components/ui/use-field-validation';
 import {
@@ -10,6 +14,7 @@ import {
   type CredentialField,
   type HeaderRow,
 } from '../../model/credential-draft';
+import { SECRET_DESCRIPTION } from './secret-description';
 
 type HttpDraft = Extract<CredentialDraft, { provider: 'http' }>;
 
@@ -94,9 +99,6 @@ export function HttpHeaderEditor({
           <PlusIcon data-icon="inline-start" aria-hidden="true" />
           Add header
         </Button>
-        <p className="text-xs text-subtle-foreground">
-          Values are stored encrypted and never shown again.
-        </p>
       </div>
       {formError === undefined ? null : <FieldError>{formError}</FieldError>}
     </fieldset>
@@ -165,7 +167,9 @@ function HttpHeaderRow({
           value={row.value}
           aria-invalid={valueError !== undefined}
           aria-describedby={
-            valueError === undefined ? undefined : `${valueId}-error`
+            valueError === undefined
+              ? `${valueId}-description`
+              : `${valueId}-description ${valueId}-error`
           }
           onChange={(event) => {
             const value = event.currentTarget.value;
@@ -185,6 +189,9 @@ function HttpHeaderRow({
       >
         <XIcon aria-hidden="true" />
       </Button>
+      <FieldDescription id={`${valueId}-description`} className="col-start-2">
+        {SECRET_DESCRIPTION}
+      </FieldDescription>
       {nameError === undefined ? null : (
         <FieldError id={`${nameId}-error`} className="col-span-3">
           {nameError}
