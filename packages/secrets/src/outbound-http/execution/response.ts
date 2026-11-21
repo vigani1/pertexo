@@ -94,6 +94,7 @@ export async function consumeFinalResponse<Body>(
             limit: request.maxResponseBytes,
             signal: executionSignal,
             sensitiveValues: request.sensitiveValues,
+            rejectSensitiveResponse: request.rejectSensitiveResponse,
             deadline,
             redactor,
             ...(charset === undefined ? {} : { charset }),

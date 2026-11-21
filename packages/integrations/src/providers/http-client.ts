@@ -14,6 +14,7 @@ export type ProviderHttpRequest = Readonly<{
   maxRedirects: number;
   maxResponseBytes: number;
   sensitiveValues?: readonly string[];
+  rejectSensitiveResponse?: boolean;
   /** Private page navigation; never returned as step output or observation metadata. */
   navigation?: Readonly<{ origin: string; link: boolean }>;
   signal?: AbortSignal;

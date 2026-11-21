@@ -93,7 +93,7 @@ export function prepareResponseRedactor(
   };
   const redact = (
     source: Buffer,
-    { final = true, covered = 0 } = {},
+    { final = true, covered = 0, rejectSensitiveResponse = false } = {},
   ): Readonly<{ emitted: Buffer; remaining: Buffer; covered: number }> => {
     if (maximum === 0)
       return {
@@ -132,6 +132,11 @@ export function prepareResponseRedactor(
           );
       const matches: Match[] = [];
       for (const view of views) find(view, matches);
+      if (rejectSensitiveResponse && matches.length > 0)
+        throw failure(SECURE_HTTP_ERROR_CODE.responseSensitive, {
+          possiblyDispatched: true,
+          ambiguous: false,
+        });
       matches.sort(
         (left, right) => left.start - right.start || right.end - left.end,
       );

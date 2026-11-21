@@ -53,6 +53,7 @@ export async function createApiConnectionRuntime(
     identityRuntime,
     applicationSecret,
     oauth2,
+    httpAllowedPrivateNetworks,
     smtpPolicy,
     systemMailAvailable,
     runtime,
@@ -60,10 +61,8 @@ export async function createApiConnectionRuntime(
     identityRuntime: ApiIdentityRuntime;
     applicationSecret: string;
     systemMailAvailable?: boolean;
-    oauth2?: Readonly<{
-      publicWebOrigin: string;
-      allowedPrivateNetworks: readonly AllowedPrivateNetwork[];
-    }>;
+    oauth2?: Readonly<{ publicWebOrigin: string }>;
+    httpAllowedPrivateNetworks: readonly AllowedPrivateNetwork[];
     smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>;
     runtime?: DatabaseRuntime | undefined;
   }>,
@@ -91,16 +90,22 @@ export async function createApiConnectionRuntime(
     );
     const telemetry = productionTelemetry();
     const httpClient = createNodeProviderHttpClient();
+    const connectionTestClient = createNodeProviderHttpClient({
+      allowedPrivateNetworks: httpAllowedPrivateNetworks,
+    });
     const slackClient = createSlackClient(httpClient);
     const emailClient = createResendClient(httpClient);
     const oauth2Runtime =
       oauth2 === undefined
         ? undefined
-        : createOAuth2Runtime(oauth2, {
-            database,
-            encryption: encryptionRuntime.encryption,
-            apiClient: httpClient,
-          });
+        : createOAuth2Runtime(
+            { ...oauth2, allowedPrivateNetworks: httpAllowedPrivateNetworks },
+            {
+              database,
+              encryption: encryptionRuntime.encryption,
+              apiClient: httpClient,
+            },
+          );
     const acquiredDatabase = database;
     const acquiredDestinationDatabase = destinationDatabase;
     const acquiredEncryptionRuntime = encryptionRuntime;
@@ -116,7 +121,7 @@ export async function createApiConnectionRuntime(
         sharingPersistence: database,
         authorization: identityRuntime.dependencies.authorization,
         encryption: encryptionRuntime.encryption,
-        httpClient,
+        httpClient: connectionTestClient,
         slackClient,
         emailClient,
         telemetry,

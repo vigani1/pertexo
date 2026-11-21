@@ -15,10 +15,17 @@ type AuthRecipe =
 
 type JsonScalar = string | number | boolean | null;
 
-type HttpTestRecipe = Readonly<{
+type HttpTestRecipe<Credential> = Readonly<{
   kind: 'http';
   method: ProviderHttpRequest['method'];
-  target: string;
+  target:
+    | string
+    | Readonly<{
+        resolve(credential: Credential): Readonly<{
+          url: string;
+          headers: Readonly<Record<string, string>>;
+        }>;
+      }>;
   headers?: Readonly<Record<string, string>>;
   body?: Readonly<{
     fields: Readonly<Record<string, JsonScalar | readonly JsonScalar[]>>;
@@ -45,18 +52,21 @@ type HttpTestRecipe = Readonly<{
     | Readonly<{ requiresConsent?: false }>
   );
 
-type TestRecipe =
-  | HttpTestRecipe
+type TestRecipe<Credential> =
+  | HttpTestRecipe<Credential>
   | Readonly<{ kind: 'oauth2'; method: 'GET'; target: 'entered_url' }>
   | Readonly<{ kind: 'postgres' | 'smtp' | 'signing' }>;
 
-export interface ConnectionDefinition {
+export interface ConnectionDefinition<
+  Credential extends ParsedConnectionCredential = ParsedConnectionCredential,
+> {
   readonly presentation: ConnectionFormDefinition['presentation'];
   readonly authType: string;
-  readonly schema: z.ZodType<ParsedConnectionCredential>;
+  readonly schema: z.ZodType<Credential>;
   readonly presets?: ConnectionFormDefinition['presets'];
   readonly fields: z.ZodType;
-  readonly auth: AuthRecipe;
-  readonly test: TestRecipe & Readonly<{ automatic?: true }>;
+  readonly auth:
+    AuthRecipe | Readonly<{ resolve(credential: Credential): AuthRecipe }>;
+  readonly test: TestRecipe<Credential> & Readonly<{ automatic?: true }>;
   readonly slot: Readonly<{ key: string; primary: boolean }>;
 }

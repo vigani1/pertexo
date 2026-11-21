@@ -153,10 +153,8 @@ async function acquireIdentityWorkflows(
           allowedPrivateNetworks: config.httpAllowedPrivateNetworks ?? [],
           allowPlaintext: config.smtpAllowPlaintext ?? false,
         },
-        oauth2: {
-          publicWebOrigin: identity.publicWebOrigin,
-          allowedPrivateNetworks: config.httpAllowedPrivateNetworks ?? [],
-        },
+        oauth2: { publicWebOrigin: identity.publicWebOrigin },
+        httpAllowedPrivateNetworks: config.httpAllowedPrivateNetworks ?? [],
         runtime: databaseRuntime,
       },
     );

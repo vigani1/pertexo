@@ -64,8 +64,14 @@ export function classifySecureHttpResponse(
   if (status >= 200 && status <= 299)
     return Object.freeze({ kind: 'succeeded' });
   if (status === 401 || status === 403) return failed('authentication');
-  if (status === 429) {
-    const decision = retryDefinite('rate_limit', sideEffectClass, {
+  if (
+    status === 429 ||
+    (status === 503 &&
+      sideEffectClass === 'safe' &&
+      headers['retry-after'] !== undefined)
+  ) {
+    const errorKind = status === 429 ? 'rate_limit' : 'provider';
+    const decision = retryDefinite(errorKind, sideEffectClass, {
       providerKeyPresent,
     });
     const minimumRetryDelayMillis = parseRetryAfterMillis(
@@ -74,7 +80,7 @@ export function classifySecureHttpResponse(
     if (minimumRetryDelayMillis > MAXIMUM_RETRY_DELAY_MILLIS)
       return Object.freeze({
         kind: 'failed',
-        errorKind: 'rate_limit',
+        errorKind,
         reason: 'retry_after_exceeded',
       });
     return decision.kind === 'retry'
@@ -99,6 +105,7 @@ const unreadableResponseCodes = new Set<ProviderHttpError['code']>([
   PROVIDER_HTTP_ERROR_CODE.responseTooLarge,
   PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected,
   PROVIDER_HTTP_ERROR_CODE.responseRedactionLimit,
+  PROVIDER_HTTP_ERROR_CODE.responseSensitive,
 ]);
 
 export function classifySecureHttpError(
@@ -248,6 +255,7 @@ function secureErrorKind(
     case PROVIDER_HTTP_ERROR_CODE.paginationNavigationInvalid:
     case PROVIDER_HTTP_ERROR_CODE.redirectRejected:
     case PROVIDER_HTTP_ERROR_CODE.responseRedactionLimit:
+    case PROVIDER_HTTP_ERROR_CODE.responseSensitive:
     case PROVIDER_HTTP_ERROR_CODE.responseEncodingRejected:
     case PROVIDER_HTTP_ERROR_CODE.responseTooLarge:
     case PROVIDER_HTTP_ERROR_CODE.ssrfBlocked:

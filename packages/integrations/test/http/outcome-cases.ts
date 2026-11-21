@@ -176,6 +176,7 @@ export const ERROR_CASES: readonly ErrorCase[] = [
     [
       'response_encoding_rejected',
       'response_redaction_limit',
+      'response_sensitive',
       'response_too_large',
     ] as const
   ).flatMap((code): ErrorCase[] => [

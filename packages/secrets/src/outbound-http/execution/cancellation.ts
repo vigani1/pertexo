@@ -34,6 +34,7 @@ export function failureStage(
       return 'redirect';
     case SECURE_HTTP_ERROR_CODE.paginationNavigationInvalid:
     case SECURE_HTTP_ERROR_CODE.responseRedactionLimit:
+    case SECURE_HTTP_ERROR_CODE.responseSensitive:
     case SECURE_HTTP_ERROR_CODE.responseEncodingRejected:
     case SECURE_HTTP_ERROR_CODE.responseTooLarge:
       return 'response';

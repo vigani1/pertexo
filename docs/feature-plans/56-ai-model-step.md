@@ -90,6 +90,10 @@ Start after [F57 slices 1–3](57-integration-modules.md) land the registry,
 connection definitions and open auth key constraint from
 [ADR 095](../adr/095-integration-modules.md).
 
+Slices 1 and 2 ship together. Register the AI module in the last commit, once
+the executor is complete. The registry requires an executor for every step it
+exposes, and self-hosted deployments ship the API and worker together.
+
 1. **Typed connection and catalog.** In
    `packages/integrations/src/ai/connections.definition.ts`, declare the
    `ai` provider's `model_api_key` login, its endpoint variants, secret key,
@@ -97,11 +101,12 @@ connection definitions and open auth key constraint from
    recipe for OpenAI-compatible endpoints and the named `x-api-key` header
    recipe for Anthropic. Require a base URL for self-hosted variants. Use
    F57's registered admission, test and form projections with the existing
-   contracts envelope and database schema. Add the config, input and output
-   schemas and manifest under `packages/integrations/src/ai/model/` using
+   contracts envelope and database schema. The bounded connection test lists
+   models on the configured API base. Test step verifies inference compatibility.
+   Add the config, input and output schemas and manifest under `packages/integrations/src/ai/model/` using
    `generateSchemaDocument`. Ship the versioned step with its executor in
    the AI module and add one line in
-   `packages/node-catalog/src/integration-modules.ts` to register the module.
+   `packages/integrations/src/modules.ts` to register the module.
 2. **Provider adapters and execution.** Implement `ModelClient` and the two
    adapters under `integrations/src/ai/`. Inject `ProviderHttpClient` from
    `integrations/src/providers/http-client.ts` and read bounded responses with
@@ -117,7 +122,7 @@ connection definitions and open auth key constraint from
    `markingDispatchOnce` pattern for additional calls. Use the shared module
    executor composition from ADR 095 and the host's HTTP Request address
    policy for both runs and worker previews.
-3. **Usage and connection tests.** Carry typed, bounded usage on attempt
+3. **Usage records.** Carry typed, bounded usage on attempt
    outcomes through `node-sdk/src/execution/` and
    `apps/worker/src/attempts/delivery/`, including
    `executorFailureCompletion`. Store the model usage as a typed diagnostics
@@ -126,10 +131,7 @@ connection definitions and open auth key constraint from
    under `completeNodeAttempt`'s fence and receipt and preview usage through
    `core/src/previews/attempts/complete.ts`. Project usage through the existing
    run and preview reads and keep each record under its parent retention and
-   purge rules. Declare the connection test in `connections.definition.ts`
-   using a bounded models-list request on the configured API base. The
-   registered test runtime applies the same address policy and dispatch
-   guard. Report the probe outcome. Test step verifies inference compatibility.
+   purge rules.
 4. **Editor and integrated acceptance.** Use F57's projected connection
    form and module presentation for the AI login and step. Reuse the editor's
    catalog settings and `SchemaField` in
