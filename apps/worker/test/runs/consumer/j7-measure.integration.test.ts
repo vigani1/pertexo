@@ -136,7 +136,7 @@ async function startMany(
 }
 
 describeMeasurement('Batch J7 measurements (opt-in)', () => {
-  beforeAll(fixture.setup, 120_000);
+  beforeAll(fixture.setup);
   afterAll(fixture.restoreServicesAndClose);
 
   let admin: Pool;
@@ -189,6 +189,7 @@ describeMeasurement('Batch J7 measurements (opt-in)', () => {
         retryDelayMillis: 1_000,
         leaseOwner: `j7-${randomUUID()}`,
         pollIntervalMillis: 1_000,
+        operationTimeoutMillis: 5_000,
       },
     });
     owners.push(async () => {
@@ -276,6 +277,7 @@ describeMeasurement('Batch J7 measurements (opt-in)', () => {
 
   const counters = async () => {
     // PostgreSQL backends flush local counters at most once per second.
+    // oxlint-disable-next-line test-honesty/no-fixed-sleep -- PostgreSQL exposes no notification when other connections flush their cumulative statistics.
     await sleep(1_200);
     return readJ7Counters(observe, observerQueries);
   };
@@ -286,8 +288,53 @@ describeMeasurement('Batch J7 measurements (opt-in)', () => {
       max: 2,
     });
     await admin.query('create extension if not exists pg_stat_statements');
-  }, 60_000);
-  afterAll(async () => admin?.end());
+  });
+  afterAll(async () => admin.end());
+
+  async function runBurst(
+    harness: Awaited<ReturnType<typeof startHarness>>,
+    workflow: string,
+    idle: ReturnType<typeof counterRates>,
+  ) {
+    const before = await counters();
+    const started = performance.now();
+    const ids = await startMany(BURST_RUNS, START_CONCURRENCY, () =>
+      harness.start(fixture.workspaceId, workflow),
+    );
+    const failed = await waitAllTerminal(ids, 300_000);
+    const wallMs = Math.round(performance.now() - started);
+    const after = await counters();
+    const [delivery] = await observe<{
+      hops: number;
+      attempts: number;
+    }>(
+      `select count(*)::int as hops,
+                      count(*) filter (where job_name='execute-node-attempt')::int as attempts
+                   from app.outbox_events
+                  where job_name in ('advance-workflow-run','execute-node-attempt')
+                    and payload->>'runId' = any($1::text[])`,
+      [ids],
+    );
+    return {
+      wallMs,
+      failed,
+      ...measureBurst(before, after, idle, BURST_RUNS),
+      deliveries: delivery,
+    };
+  }
+
+  function requireSuccessfulBurst(
+    inlineSteps: boolean,
+    steps: number,
+    sample: Awaited<ReturnType<typeof runBurst>>,
+  ) {
+    expect(sample.failed).toBe(0);
+    expect(sample.deliveries?.hops).toBeGreaterThan(0);
+    if (inlineSteps)
+      expect(sample.deliveries?.attempts).toBeLessThan(
+        BURST_RUNS * (steps + 2),
+      );
+  }
 
   it('measures paired bursts over the same 1-step and 10-step pins', async () => {
     if (REPORT === undefined) throw new Error('J7_REPORT is required');
@@ -316,33 +363,11 @@ describeMeasurement('Batch J7 measurements (opt-in)', () => {
           await sleep(20_000);
           const idle = counterRates(idleBefore, await counters());
           for (const [steps, workflow] of workflows) {
-            const before = await counters();
-            const started = performance.now();
-            const ids = await startMany(BURST_RUNS, START_CONCURRENCY, () =>
-              harness.start(fixture.workspaceId, workflow),
-            );
-            const failed = await waitAllTerminal(ids, 300_000);
-            const wallMs = Math.round(performance.now() - started);
-            const after = await counters();
-            const [delivery] = await observe<{
-              hops: number;
-              attempts: number;
-            }>(
-              `select count(*)::int as hops,
-                      count(*) filter (where job_name='execute-node-attempt')::int as attempts
-                   from app.outbox_events
-                  where job_name in ('advance-workflow-run','execute-node-attempt')
-                    and payload->>'runId' = any($1::text[])`,
-              [ids],
-            );
             const sample = {
               repetition,
               inlineSteps,
               steps,
-              wallMs,
-              failed,
-              ...measureBurst(before, after, idle, BURST_RUNS),
-              deliveries: delivery,
+              ...(await runBurst(harness, workflow, idle)),
             };
             samples.push(sample);
             await writeFile(
@@ -353,15 +378,12 @@ describeMeasurement('Batch J7 measurements (opt-in)', () => {
                 2,
               ),
             );
-            expect(failed).toBe(0);
-            expect(delivery?.hops).toBeGreaterThan(0);
-            if (inlineSteps)
-              expect(delivery?.attempts).toBeLessThan(BURST_RUNS * (steps + 2));
+            requireSuccessfulBurst(inlineSteps, steps, sample);
           }
         } finally {
           await harness.close();
         }
       }
     }
-  }, 1_500_000);
+  });
 });
