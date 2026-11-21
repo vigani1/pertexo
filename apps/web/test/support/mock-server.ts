@@ -6,6 +6,13 @@ import { unpausedWorkflowSettings } from './fixtures/auto-pause';
 import { defaultConcurrencySettings } from './fixtures/concurrency';
 
 export const mockServer = setupServer(
+  http.get('http://pertexo.test/v1/node-definitions', async () => {
+    const { browserDefinitions } = await import('./fixtures/node-catalog');
+    return HttpResponse.json({ items: browserDefinitions() });
+  }),
+  http.get('http://pertexo.test/v1/integrations', () =>
+    HttpResponse.json({ items: [] }),
+  ),
   http.post(
     'http://pertexo.test/v1/workspaces/:workspaceId/workflow-folders/review-move',
     async ({ request }) => {
