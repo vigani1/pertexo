@@ -6,7 +6,7 @@ import {
   fieldUnit,
   toStoredValue,
   type FieldUnit,
-} from '../field-units';
+} from '@/lib/schema-fields/units';
 
 type WorkflowNode = WorkflowGraphContract['nodes'][number];
 export type NodeConfig = WorkflowNode['config'];

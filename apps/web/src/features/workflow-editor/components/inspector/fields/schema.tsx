@@ -15,7 +15,7 @@ import {
   describeAmount,
   toShownValue,
   unitDisplay,
-} from '../../../model/field-units';
+} from '@/lib/schema-fields/units';
 import {
   fieldPath,
   readFieldValue,

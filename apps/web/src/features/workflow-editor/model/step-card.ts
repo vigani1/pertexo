@@ -4,7 +4,7 @@ import type {
   PreviewRunSummary,
 } from '@pertexo/contracts';
 import { describeRecurrence, portName } from '@/features/catalog/public';
-import { describeAmount } from './field-units';
+import { describeAmount } from '@/lib/schema-fields/units';
 import type { GraphLevel, WorkflowNode } from './graph/scopes';
 import { formatCount } from '@/lib/format/count';
 
