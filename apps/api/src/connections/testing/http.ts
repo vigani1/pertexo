@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import type {
   ConnectionTestRequest,
   ParsedConnectionCredential,
@@ -124,7 +125,9 @@ function applyAuth(
     case 'basic': {
       const username = credentialText(credential, auth.username);
       const password = credentialText(credential, auth.password);
-      const encoded = Buffer.from(`${username}:${password}`).toString('base64');
+      const bytes = Buffer.from(`${username}:${password}`);
+      const encoded = bytes.toString('base64');
+      bytes.fill(0);
       return {
         url,
         headers: { authorization: `Basic ${encoded}` },
@@ -203,7 +206,8 @@ function rejectedJsonOutcome(
   if (rule !== undefined) {
     const code = readJsonPointer(value, rule.pointer);
     if (typeof code !== 'string') return INVALID_RESPONSE;
-    if (code === rule.rateLimited) return responseOutcome(429);
+    if (code === rule.rateLimited)
+      return responseOutcome(HttpStatus.TOO_MANY_REQUESTS);
     if (Object.hasOwn(rule.reauthorization, code)) {
       errorCode = rule.reauthorization[code] ?? errorCode;
       reauthorizationRequired = true;
