@@ -12,8 +12,6 @@ the worker, `core`, `contracts` and `workflow-engine` read it.
 The `/pure` entry exposes only deterministic helpers used by the inline
 kernels. The import-closure check walks it independently of its callers.
 
-The general entries are
-
 `@pertexo/workflow-model` is safe in the browser: schemas,
 types, limits and pure decisions. `@pertexo/workflow-model/server` is Node
 only: authoring validation in worker threads, expression evaluation in child
