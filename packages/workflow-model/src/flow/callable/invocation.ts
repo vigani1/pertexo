@@ -2,6 +2,8 @@ import { workflowExecutableChecksumSchema } from '../../graph/executable-checksu
 import { z } from 'zod';
 import type { WorkflowCallPin } from './dependencies.js';
 
+export const WORKFLOW_CALL = Object.freeze({ key: 'core.call', version: 1 });
+
 const workflowCallPinSchema: z.ZodType<WorkflowCallPin> = z
   .object({
     workflowId: z.uuid(),
@@ -20,5 +22,8 @@ export type WorkflowCallConfig = Readonly<
 export function isWorkflowCallDefinition(
   definition: Readonly<{ key: string; version: number }> | undefined,
 ): boolean {
-  return definition?.key === 'core.call' && definition.version === 1;
+  return (
+    definition?.key === WORKFLOW_CALL.key &&
+    definition.version === WORKFLOW_CALL.version
+  );
 }

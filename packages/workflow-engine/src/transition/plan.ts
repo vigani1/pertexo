@@ -322,7 +322,12 @@ function settleRunStatus(
       cancelRequested,
       deadlineExpired,
       graphIncomplete,
-      invocations: finalInvocations,
+      invocations: finalInvocations.filter(
+        (invocation) =>
+          invocation.agentWork?.work.kind !== 'tool_call' ||
+          state.agentScheduler?.tools.get(invocation.nodeId)?.callable ===
+            undefined,
+      ),
     });
     if (terminalStatus !== undefined) {
       assertRunTransition(state.runStatus, terminalStatus);
@@ -338,8 +343,13 @@ function settleRunStatus(
           status === 'waiting' ||
           (status === 'pending' &&
             (state.joins.has(invocationKey) ||
-              state.agents.get(invocationKey)?.phase.kind ===
-                'approval_wait')) ||
+              state.agents.get(invocationKey)?.phase.kind === 'approval_wait' ||
+              (state.agents.get(invocationKey)?.phase.kind === 'running_tool' &&
+                finalInvocations.some(
+                  (child) =>
+                    child.agentWork?.parentInvocationKey === invocationKey &&
+                    child.waitKind === 'workflow_call',
+                )))) ||
           (!input.hasExecutionSlot && status === 'ready'),
       );
     if (allWorkWaiting) {

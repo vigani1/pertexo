@@ -23,6 +23,8 @@ export interface AgentContinuation {
 export type AgentToolExchange = Readonly<{ proposal: AgentAttemptReceipt }> &
   (
     | Readonly<{ output: AgentAttemptReceipt }>
+    | Readonly<{ child: Extract<OutputReference, { kind: 'call' }> }>
+    | Readonly<{ childFailure: string }>
     | Readonly<{ outcome: 'rejected' | 'expired' }>
   );
 

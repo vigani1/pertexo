@@ -34,7 +34,9 @@ export function resolveAgentAttemptInput(
         'attempt_invalid',
         'Agent tool arguments exceed the selected tool policy',
       );
-    return { ...call.arguments, ...pinned.fixedInput };
+    return pinned.callable === undefined
+      ? { ...call.arguments, ...pinned.fixedInput }
+      : { input: call.arguments };
   }
   const { inputSchema, policy } = pinned;
   const properties = inputSchema.properties;
@@ -42,15 +44,18 @@ export function resolveAgentAttemptInput(
     operationError('attempt_invalid', 'Agent tool input schema is missing');
   return {
     ...mapped,
-    toolSchema: {
-      type: 'object',
-      properties: Object.fromEntries(
-        Object.entries(properties).filter(([name]) =>
-          policy.inputFields.includes(name),
-        ),
-      ),
-      additionalProperties: false,
-    },
+    toolSchema:
+      pinned.callable === undefined
+        ? {
+            type: 'object',
+            properties: Object.fromEntries(
+              Object.entries(properties).filter(([name]) =>
+                policy.inputFields.includes(name),
+              ),
+            ),
+            additionalProperties: false,
+          }
+        : inputSchema,
     history: history.map(({ proposal: saved, result }) => ({
       call: acceptedProposal(saved),
       result: disclosedResult(result, policy.result),

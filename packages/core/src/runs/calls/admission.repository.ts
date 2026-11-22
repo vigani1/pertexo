@@ -7,6 +7,7 @@ import {
   databaseSchema,
   workflowCalls,
   workflowRuns,
+  workflowVersions,
   workflows,
   runCheckpoints,
 } from '@pertexo/database/schema';
@@ -138,7 +139,10 @@ export async function lockCallTarget(
   input: Readonly<{ workspaceId: string; workflowId: string }>,
 ) {
   const [target] = await drizzle(client)
-    .select({ lifecycle_status: workflows.lifecycleStatus })
+    .select({
+      lifecycle_status: workflows.lifecycleStatus,
+      published_version_id: workflows.publishedVersionId,
+    })
     .from(workflows)
     .where(
       and(
@@ -249,4 +253,23 @@ export async function refusePendingCall(
       ),
     )
     .catch(rethrowQueryFailure);
+}
+
+export async function readCallParentPublisher(
+  client: PoolClient,
+  workspaceId: string,
+  runId: string,
+) {
+  const r = workflowRuns;
+  const v = workflowVersions;
+  const [version] = await drizzle(client)
+    .select({ actorId: v.publishedBy })
+    .from(r)
+    .innerJoin(
+      v,
+      and(eq(v.workspaceId, r.workspaceId), eq(v.id, r.workflowVersionId)),
+    )
+    .where(and(eq(r.workspaceId, workspaceId), eq(r.id, runId)))
+    .catch(rethrowQueryFailure);
+  return version;
 }

@@ -2,6 +2,7 @@ import {
   AGENT_LIMITS,
   compareOrdinal,
   isRecord,
+  isSafeExecutorErrorCode,
 } from '@pertexo/workflow-model';
 import type {
   AgentContinuation,
@@ -128,6 +129,25 @@ function parseHistory(value: unknown) {
         'Agent approval outcome is invalid',
       );
       return { proposal, outcome };
+    }
+    if ('child' in exchange) {
+      assertExactKeys(exchange, ['proposal', 'child']);
+      const child = parseOutputReference(exchange.child, 'Agent child result');
+      assertCheckpoint(
+        child.kind === 'call',
+        'Agent child must reference a Call result',
+      );
+      return { proposal, child };
+    }
+    if ('childFailure' in exchange) {
+      assertExactKeys(exchange, ['proposal', 'childFailure']);
+      const { childFailure } = exchange;
+      assertCheckpoint(
+        typeof childFailure === 'string' &&
+          isSafeExecutorErrorCode(childFailure),
+        'Agent child failure code is invalid',
+      );
+      return { proposal, childFailure };
     }
     assertExactKeys(exchange, ['proposal', 'output']);
     return {

@@ -8,7 +8,10 @@ import {
 } from '@pertexo/core/runs';
 import type { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
 import { buildWorkflowExecutable } from '@pertexo/workflow-engine/server';
-import type { SecretConnectionAuthType } from '@pertexo/workflow-model';
+import type {
+  SecretConnectionAuthType,
+  WorkflowGraph,
+} from '@pertexo/workflow-model';
 import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/server';
 
 import { sealAndZero } from '../../support/attempts/http-node-attempt/encryption.js';
@@ -20,13 +23,22 @@ import {
   commandKey,
   config,
   publishAgent,
+  publishAgentFixtureGraph,
   slackBotToken,
 } from './agent.fixture.js';
 
 export async function startAgentRun(
   baseUrl: string,
   encryption: ConnectionEnvelopeEncryption,
-  write?: 'approval' | 'allow' | 'slack',
+  write?:
+    | 'approval'
+    | 'allow'
+    | 'slack'
+    | {
+        child: WorkflowGraph;
+        approval?: boolean;
+        timeoutMillis?: number;
+      },
 ) {
   const connectionId = randomUUID();
   const tableName = `Agent Orders ${connectionId.slice(0, 8)}`;
@@ -115,16 +127,18 @@ export async function startAgentRun(
       idempotencyKey: randomUUID(),
       requestHash: commandKey(),
     });
-    const tool =
-      write === 'slack'
-        ? {
-            slackConnectionId: await createSlackConnection(
-              connections,
-              encryption,
-              tableName,
-            ),
-          }
-        : write;
+    let tool: Parameters<typeof publishAgent>[3];
+    if (write === 'slack')
+      tool = {
+        slackConnectionId: await createSlackConnection(
+          connections,
+          encryption,
+          tableName,
+        ),
+      };
+    else if (typeof write === 'object')
+      tool = await publishCallableTool(authoring, tableName, write);
+    else tool = write;
     const workflowId = await publishAgent(
       authoring,
       connectionId,
@@ -175,4 +189,33 @@ async function createSlackConnection(
     requestHash: commandKey(),
   });
   return connectionId;
+}
+
+async function publishCallableTool(
+  authoring: ReturnType<typeof createWorkflowAuthoringStore>,
+  parentName: string,
+  {
+    child,
+    ...settings
+  }: Extract<
+    NonNullable<Parameters<typeof startAgentRun>[2]>,
+    { child: WorkflowGraph }
+  >,
+) {
+  if (child.callable === undefined)
+    throw new Error('Fixture child has no contract');
+  const { version } = await publishAgentFixtureGraph(
+    authoring,
+    child,
+    `${parentName} child`,
+  );
+  return {
+    ...settings,
+    input: child.callable.input,
+    target: {
+      workflowId: version.workflowId,
+      workflowVersionId: version.id,
+      executableChecksum: version.checksum,
+    },
+  };
 }

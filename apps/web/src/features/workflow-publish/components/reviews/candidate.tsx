@@ -140,6 +140,11 @@ function AgentWriteAllowance({
         <span className="basis-full text-muted-foreground">
           Workspace table {tool.config.table}
         </span>
+      ) : 'target' in tool.config ? (
+        <span className="basis-full text-muted-foreground">
+          Callable workflow {tool.config.target.workflowId} · version{' '}
+          {tool.config.target.workflowVersionId}
+        </span>
       ) : (
         <span className="basis-full text-muted-foreground">
           Slack channel {tool.config.channelId} · connection{' '}

@@ -1,3 +1,4 @@
+import type { Role } from '@pertexo/policy';
 import type { PoolClient } from 'pg';
 import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -12,8 +13,9 @@ export async function countReadableWorkflows(
   client: PoolClient,
   actor: ResourceActor,
   targets: readonly string[],
+  role?: Role | null,
 ): Promise<number> {
-  const scope = await readFolderScope(client, actor);
+  const scope = await readFolderScope(client, actor, role);
   const found = await drizzle(client)
     .select({ id: workflows.id })
     .from(workflows)

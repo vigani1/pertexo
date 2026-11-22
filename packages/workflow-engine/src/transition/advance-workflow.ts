@@ -300,12 +300,14 @@ function coordinateObservations({
     successfulOutcomes,
     checkpoint,
     declarationNodes,
+    (nodeId) => executableAgentTool(input.executable, nodeId),
   );
   const callOutcomes = callOutcomeObservations(
     input.callOutcomes,
     checkpoint,
     nodesById,
     input.executable.envelope.graph,
+    (nodeId) => executableAgentTool(input.executable, nodeId),
   );
   const tasks = taskDeclarationObservations(
     completedOutputItems,

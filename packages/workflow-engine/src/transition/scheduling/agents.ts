@@ -1,4 +1,8 @@
-import { AGENT_STEP } from '@pertexo/workflow-model';
+import {
+  AGENT_STEP,
+  validateCallableValue,
+  type AgentToolCall,
+} from '@pertexo/workflow-model';
 import {
   dataTableValuesSchema,
   type DefinitionIdentity,
@@ -16,6 +20,7 @@ import {
   settleAgentModelTurn,
   settleAgentReadTool,
 } from '../../control-nodes/settle-agent-work.js';
+import { settleAgentCall } from './settle-agent-call.js';
 import { operationError } from '../../input-checks/engine-values.js';
 import type { AgentChild } from '../../invocations/agent-invocation.js';
 import type { InvocationState } from '../../workflow-execution.js';
@@ -147,6 +152,10 @@ function advanceAgent(
     return;
   }
   if (!isTerminalNodeStatus(child.status)) return;
+  if (next.kind === 'observe_tool' && tool.callable !== undefined) {
+    settleAgentCall(state, parent, { agent, child }, occurredAt);
+    return;
+  }
   if (child.status !== 'succeeded') {
     finishAgentInvocation(state, parent, occurredAt, {
       status: child.status === 'skipped' ? 'failed' : child.status,
@@ -202,13 +211,7 @@ function settleAgentChild(
     return;
   }
   if (receipt?.kind === 'proposal' && tool.policy.effect === 'write') {
-    if (
-      Object.keys(receipt.call.arguments).some(
-        (field) => !tool.policy.inputFields.includes(field),
-      ) ||
-      ('table' in tool.node.config &&
-        !dataTableValuesSchema.safeParse(receipt.call.arguments.values).success)
-    ) {
+    if (!validToolArguments(tool, receipt.call.arguments)) {
       finishAgentInvocation(state, parent, occurredAt, {
         status: 'failed',
         reasonCode: 'agent.tool_arguments',
@@ -356,4 +359,17 @@ function admitChild(
     ...transitionEvent('node.ready', occurredAt, { invocation }),
     agentWork: { ...agentWork, ...attribution },
   });
+}
+
+function validToolArguments(tool: AgentTool, args: AgentToolCall['arguments']) {
+  if (tool.callable !== undefined)
+    return validateCallableValue(tool.callable.input, args) === undefined;
+  if (
+    Object.keys(args).some((field) => !tool.policy.inputFields.includes(field))
+  )
+    return false;
+  return (
+    !('table' in tool.node.config) ||
+    dataTableValuesSchema.safeParse(args.values).success
+  );
 }

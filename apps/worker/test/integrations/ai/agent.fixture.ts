@@ -9,6 +9,9 @@ import {
   AGENT_SLACK_CONNECTION_SLOT,
   AGENT_STEP,
   PENDING_TASK_LIMITS,
+  WORKFLOW_CALL,
+  type CallableType,
+  type WorkflowCallPin,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -28,24 +31,47 @@ export const model = 'fake-agent';
 export const slackChannel = 'CAGENTTEST';
 export const slackBotToken = 'xoxb-agent-synthetic-test';
 
+export type AgentCallable = Readonly<{
+  target: WorkflowCallPin;
+  input: CallableType;
+  approval?: boolean;
+  timeoutMillis?: number;
+}>;
+
 export async function publishAgent(
   authoring: ReturnType<typeof createWorkflowAuthoringStore>,
   connectionId: string,
   table: string,
-  write?: 'approval' | 'allow' | { slackConnectionId: string },
+  write?: 'approval' | 'allow' | { slackConnectionId: string } | AgentCallable,
 ) {
   const expiry = PENDING_TASK_LIMITS.minimumExpirySeconds;
-  const slack = typeof write === 'object' ? write : undefined;
+  const slack =
+    typeof write === 'object' && 'slackConnectionId' in write
+      ? write
+      : undefined;
+  const callable =
+    typeof write === 'object' && 'target' in write ? write : undefined;
+  const approval = write === 'approval' || callable?.approval === true;
   let definition: WorkflowGraph['nodes'][number]['definition'] =
     AGENT_FIND_ROWS;
   let description = 'Look up one workspace order';
   if (slack !== undefined) {
     definition = AGENT_SEND_SLACK_MESSAGE;
     description = 'Send an update to the selected Slack channel';
+  } else if (callable !== undefined) {
+    definition = WORKFLOW_CALL;
+    description = 'Find the order in a published workflow';
   } else if (write !== undefined) {
     definition = AGENT_INSERT_ROW;
     description = 'Insert a workspace order';
   }
+  const timeoutMillis =
+    callable?.timeoutMillis ?? (approval ? (expiry + 1) * 1_000 : undefined);
+  let toolConfig: WorkflowGraph['nodes'][number]['config'] = { table };
+  if (callable !== undefined)
+    toolConfig = { target: { ...callable.target }, input: callable.input };
+  else if (slack !== undefined)
+    toolConfig = { channelId: slackChannel, timeoutMillis: 10_000 };
   const graph: WorkflowGraph = {
     settings: { maxRunDurationMs: 90_000 },
     callable: {
@@ -67,36 +93,30 @@ export async function publishAgent(
           { prompt: literal('Find order a.') },
           {
             model,
-            ...(write === 'approval'
-              ? { timeoutMillis: (expiry + 1) * 1_000 }
-              : {}),
+            ...(timeoutMillis === undefined ? {} : { timeoutMillis }),
             tool: {
               alias,
               description,
               definition,
-              config:
-                slack === undefined
-                  ? { table }
-                  : { channelId: slackChannel, timeoutMillis: 10_000 },
+              config: toolConfig,
               ...(write === undefined
                 ? {}
                 : {
-                    writePermission:
-                      write !== 'approval'
-                        ? { kind: 'allow' }
-                        : {
-                            kind: 'approval',
-                            config: {
-                              title: 'Approve order',
-                              instructions: '',
-                              expiresAfterSeconds: expiry,
-                              audience: {
-                                roles: [],
-                                memberIds: [actor.actorId],
-                              },
-                              allowStarterToDecide: true,
+                    writePermission: !approval
+                      ? { kind: 'allow' }
+                      : {
+                          kind: 'approval',
+                          config: {
+                            title: 'Approve order',
+                            instructions: '',
+                            expiresAfterSeconds: expiry,
+                            audience: {
+                              roles: [],
+                              memberIds: [actor.actorId],
                             },
+                            allowStarterToDecide: true,
                           },
+                        },
                   }),
             },
           },
@@ -117,9 +137,21 @@ export async function publishAgent(
       },
     ],
   };
+  const published = await publishAgentFixtureGraph(authoring, graph, table);
+  expect(published.version.graphJson.nodes[1]?.config).toEqual(
+    graph.nodes[1]?.config,
+  );
+  return published.version.workflowId;
+}
+
+export async function publishAgentFixtureGraph(
+  authoring: ReturnType<typeof createWorkflowAuthoringStore>,
+  graph: WorkflowGraph,
+  name: string,
+) {
   const { workflowId } = await authoring.createWorkflow({
     ...actor,
-    name: table,
+    name,
     emptyGraph: graph,
     idempotencyKey: randomUUID(),
   });
@@ -141,8 +173,5 @@ export async function publishAgent(
       compatibilityFingerprint: draft.compatibility.fingerprint,
     }),
   });
-  expect(published.version.graphJson.nodes[1]?.config).toEqual(
-    graph.nodes[1]?.config,
-  );
-  return workflowId;
+  return published;
 }

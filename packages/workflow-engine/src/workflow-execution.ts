@@ -323,6 +323,7 @@ export interface NodeRunAdmissionPlan {
 export interface WorkflowCallIntent {
   readonly invocationKey: string;
   readonly target: WorkflowCallPin;
+  readonly deadlineAt?: string;
   /** Physical declaration output; the Call result has a separate immutable owner. */
   readonly input: Exclude<OutputReference, { kind: 'call' | 'task' }>;
 }

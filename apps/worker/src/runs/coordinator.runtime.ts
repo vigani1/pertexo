@@ -228,6 +228,12 @@ export async function createCoordinatorRuntime(
     callStore = factories.callStore(
       options.maintenanceDatabase,
       options.maintenanceDatabaseRuntime,
+      {
+        database: options.database,
+        ...(options.databaseRuntime === undefined
+          ? {}
+          : { runtime: options.databaseRuntime }),
+      },
     );
     notifications = factories.notifications(options.redisUrl);
     dueWakeupScanner = factories.dueScanner(

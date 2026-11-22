@@ -14,6 +14,7 @@ import { actor, alias, config, slackChannel } from './agent.fixture.js';
 import { startAgentRun } from './agent-run.fixture.js';
 import type { AgentWorkerSettings } from './agent-worker.fixture.js';
 import { chat, fakeModel, json } from './model.fixture.js';
+import { childGraph } from '../../runs/calls/calls.fixture.js';
 import { fakeAgentSlack } from './slack-agent.fixture.js';
 
 const workerEntry = fileURLToPath(
@@ -71,6 +72,43 @@ function modelProposal(args: Record<string, unknown>) {
 
 beforeAll(fixture.setup);
 afterAll(fixture.restoreServicesAndClose);
+
+describe('Agent callable workflows', () => {
+  it('runs an explicitly allowed pinned workflow and gives the model its typed result', async () => {
+    await using run = await start(
+      [modelProposal({ name: 'Order a' }), finalAnswer],
+      {
+        write: { child: childGraph() },
+      },
+    );
+    expect(await run.end()).toMatchObject({
+      status: 'succeeded',
+      output_ref: { value: finalText },
+    });
+    expect(await run.tasks()).toEqual([]);
+    expect(await run.children()).toMatchObject([
+      {
+        status: 'succeeded',
+        result_ref: { value: 'Order a!' },
+      },
+    ]);
+    expect(run.calls[0]?.request).toMatchObject({
+      tools: [
+        {
+          function: {
+            parameters: {
+              type: 'object',
+              properties: { name: { type: 'string' } },
+              required: ['name'],
+              additionalProperties: false,
+            },
+          },
+        },
+      ],
+    });
+    expect(callableToolMessages(run)).toEqual(['Order a!']);
+  });
+});
 
 describe('Agent restart', () => {
   it.each(['lost response', 'worker restart'] as const)(
@@ -427,6 +465,15 @@ describe('Agent restart', () => {
   });
 });
 
+function callableToolMessages(run: Awaited<ReturnType<typeof start>>) {
+  const { messages } = run.calls[1]?.request as {
+    messages: { role: string; content: string }[];
+  };
+  return messages
+    .filter(({ role }) => role === 'tool')
+    .map(({ content }) => JSON.parse(content) as unknown);
+}
+
 async function assertOneResult(run: Awaited<ReturnType<typeof start>>) {
   expect(await run.end()).toMatchObject({
     status: 'succeeded',
@@ -497,6 +544,15 @@ async function start(
           'select id, status, consumed_at from app.pending_run_tasks where run_id=$1',
           [runId],
         ),
+      children: () =>
+        fixture.workerQuery<{
+          child_run_id: string | null;
+          status: string;
+          result_ref: unknown;
+        }>(
+          'select child_run_id, status, result_ref from app.workflow_calls where parent_run_id=$1',
+          [runId],
+        ),
       worker,
       calls: provider.calls,
       waitForCalls: (count: number) =>
@@ -535,9 +591,14 @@ async function start(
           );
           return rows[0];
         } catch (error) {
-          throw new Error(replacement.logs.map(({ text }) => text).join('\n'), {
-            cause: error,
-          });
+          throw new Error(
+            [...worker.logs, ...replacement.logs]
+              .map(({ text }) => text)
+              .join('\n'),
+            {
+              cause: error,
+            },
+          );
         }
       },
       async checkpoint() {

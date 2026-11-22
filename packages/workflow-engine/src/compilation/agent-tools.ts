@@ -1,8 +1,14 @@
-import type { DataTableConfig, NodeCatalog } from '@pertexo/node-sdk';
+import type {
+  NodeManifest,
+  DataTableConfig,
+  NodeCatalog,
+} from '@pertexo/node-sdk';
 import {
   AGENT_LIMITS,
+  type AgentConfig,
   AGENT_SLACK_CONNECTION_SLOT,
   agentConfigSchema,
+  callableObjectInputSchema,
   isAgentDefinition,
 } from '@pertexo/workflow-model';
 import { compareIdentity } from './definition-identity.js';
@@ -25,7 +31,8 @@ export function pinAgentTool(
     timeoutMillis = AGENT_LIMITS.timeoutMillis,
   } = parsed.data;
   const manifest = definitionManifest(catalog, tool.definition);
-  const policy = manifest.agentTool;
+  const callable = 'target' in tool.config ? tool.config : undefined;
+  const { callableSchema, policy } = toolPolicy(callable, manifest.agentTool);
   const slack = 'channelId' in tool.config ? tool.config : undefined;
   const {
     [AGENT_SLACK_CONNECTION_SLOT]: slackConnectionId,
@@ -56,7 +63,8 @@ export function pinAgentTool(
     approval:
       writePermission?.kind === 'approval' ? writePermission.config : undefined,
     policy,
-    inputSchema: manifest.inputSchema,
+    inputSchema: callableSchema ?? manifest.inputSchema,
+    callable,
     modelConnections: Object.freeze(modelConnections),
     fixedInput: Object.freeze(
       slack === undefined ? {} : { channelId: slack.channelId },
@@ -65,11 +73,7 @@ export function pinAgentTool(
       id: node.id,
       definition: manifest.definition,
       configVersion: manifest.configVersion,
-      config: Object.freeze(
-        'table' in tool.config
-          ? pinTableSetup(tool.config)
-          : { timeoutMillis: tool.config.timeoutMillis },
-      ),
+      config: Object.freeze(attemptConfig(tool.config)),
       inputMappings: {},
       connectionRefs: Object.freeze(connectionRefs),
       disabled: false,
@@ -81,6 +85,36 @@ export function pinAgentTool(
       ),
     }) satisfies WorkflowExecutableNode,
   });
+}
+
+function toolPolicy(
+  callable:
+    Extract<AgentConfig['tool']['config'], { target: unknown }> | undefined,
+  manifestPolicy: NodeManifest['agentTool'],
+) {
+  const callableSchema =
+    callable === undefined
+      ? undefined
+      : callableObjectInputSchema(callable.input);
+  if (callable !== undefined && callableSchema === undefined)
+    fail('Agent Call tools require a bounded object input contract');
+  const policy =
+    callableSchema === undefined
+      ? manifestPolicy
+      : {
+          effect: 'write' as const,
+          inputFields: Object.keys(callableSchema.properties),
+          result: { kind: 'bounded_output' as const },
+        };
+  return { callableSchema, policy };
+}
+
+function attemptConfig(
+  config: AgentConfig['tool']['config'],
+): WorkflowExecutableNode['config'] {
+  if ('table' in config) return pinTableSetup(config);
+  if ('target' in config) return { target: { ...config.target } };
+  return { timeoutMillis: config.timeoutMillis };
 }
 
 function pinTableSetup({ table, columnBindings }: DataTableConfig) {
