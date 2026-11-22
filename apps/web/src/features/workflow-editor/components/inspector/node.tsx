@@ -79,7 +79,7 @@ export function NodeInspector({
 }: NodeInspectorProps) {
   const { editable, tab, onTabChange, focusTarget } = view;
   const { testPanel, runsPanel, failureSetup } = panels;
-  const { definitions, channelLookup } = useInspectorSession();
+  const { definitions, connectionLookup } = useInspectorSession();
   const definition = findDefinition(definitions, node);
   const store = useEditorStoreApi();
   const scratch = useEditorStore((state) => state.inspectorScratch);
@@ -92,7 +92,7 @@ export function NodeInspector({
   const form = useMemo<NodeFormApi>(
     () => ({
       nodeId: node.id,
-      connectionRefs: node.connectionRefs,
+      lookup: { scope: connectionLookup, connectionRefs: node.connectionRefs },
       editable,
       reportScratch,
       commit: (update, coalesceKey) => {
@@ -106,7 +106,14 @@ export function NodeInspector({
         });
       },
     }),
-    [editable, node.id, node.connectionRefs, reportScratch, store],
+    [
+      connectionLookup,
+      editable,
+      node.id,
+      node.connectionRefs,
+      reportScratch,
+      store,
+    ],
   );
 
   useEffect(() => {
@@ -168,7 +175,7 @@ export function NodeInspector({
                 <SlackChannelField
                   node={node}
                   form={form}
-                  lookup={channelLookup}
+                  lookup={connectionLookup}
                 />
               ) : null}
             </div>
