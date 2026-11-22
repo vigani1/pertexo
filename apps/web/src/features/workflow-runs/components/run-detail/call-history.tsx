@@ -5,7 +5,7 @@ import type {
   WorkflowParentCall,
 } from '@pertexo/contracts';
 import { Link } from '@tanstack/react-router';
-import { Notice } from '@/components/ui/notice';
+import { ChildHistory } from './timeline/child-history';
 import { StepError } from './inspection';
 import type { AccessibleWorkspace } from '@pertexo/contracts';
 
@@ -52,7 +52,9 @@ export function CallHistory({
                 <p className="mt-1 text-muted-foreground">
                   {callStatusLabel(call.status)}
                 </p>
-                <ChildHistory call={call} workspace={workspace} />
+                <div className="mt-2">
+                  <ChildHistory call={call} workspaceId={workspace.id} />
+                </div>
                 {call.detailsRetired ? (
                   <p className="mt-2 text-muted-foreground">
                     Call input and result details expired.
@@ -69,42 +71,6 @@ export function CallHistory({
       )}
     </section>
   );
-}
-
-function ChildHistory({
-  call,
-  workspace,
-}: Readonly<{ call: WorkflowCallSummary; workspace: AccessibleWorkspace }>) {
-  if (call.childHistory === 'retained' && call.childRunId !== null) {
-    return (
-      <Link
-        to="/w/$workspaceId/runs/$runId"
-        params={{
-          workspaceId: workspace.id,
-          runId: call.childRunId,
-        }}
-        className="mt-2 inline-block underline underline-offset-4"
-      >
-        Open child run
-      </Link>
-    );
-  }
-  if (call.childHistory === 'unavailable') {
-    return (
-      <Notice tone="info">
-        Child history is unavailable with your current access. The parent’s Call
-        outcome remains visible.
-      </Notice>
-    );
-  }
-  if (call.childHistory === 'expired') {
-    return (
-      <Notice tone="info">
-        Child history expired. The Call’s identity and outcome remain retained.
-      </Notice>
-    );
-  }
-  return null;
 }
 
 const CALL_STATUS_COPY: Readonly<

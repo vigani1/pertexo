@@ -169,6 +169,7 @@ export function RunDetailPage(props: RunDetailPageProps) {
             <RunStepDetails
               onSelectStep={selectStep}
               row={selected}
+              calls={snapshot.calls}
               rows={view.rows}
               upstream={upstream}
               nowMs={nowMs}

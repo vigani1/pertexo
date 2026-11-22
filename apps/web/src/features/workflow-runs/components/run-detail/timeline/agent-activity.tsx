@@ -1,3 +1,5 @@
+import type { WorkflowCallSummary } from '@pertexo/contracts';
+import { ChildHistory } from './child-history';
 import type { RunDataScope } from '../data/value';
 import { StepModelUsage } from '../run-diagnostics';
 import { Status } from '@/components/ui/status';
@@ -21,8 +23,10 @@ export function AgentActivity({
   nowMs,
   scope,
   onSelectStep,
+  calls,
 }: Readonly<{
   parentKey: string;
+  calls?: readonly WorkflowCallSummary[];
   rows: readonly RunTimelineRow[];
   nowMs: number;
   scope: RunDataScope;
@@ -52,6 +56,7 @@ export function AgentActivity({
         : [[turn, row.agentApproval] as const],
     ),
   );
+  const childCalls = new Map(calls?.map((call) => [call.invocationKey, call]));
   const executed = new Set(
     activity.filter(({ tool }) => tool).map(({ turn }) => turn),
   );
@@ -65,59 +70,66 @@ export function AgentActivity({
         Agent activity
       </h3>
       <ol>
-        {activity.map(({ row, tool, turn }) => (
-          <li
-            key={row.key}
-            className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-2 text-xs"
-          >
-            <button
-              type="button"
-              className="text-action underline underline-offset-4 focus-ring"
-              onClick={() => {
-                onSelectStep(row.key);
-              }}
+        {activity.map(({ row, tool, turn }) => {
+          const call = childCalls.get(row.key);
+          return (
+            <li
+              key={row.key}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-2 text-xs"
             >
-              {row.label}
-            </button>
-            <Status tone={row.tone}>{row.statusLabel}</Status>
-            <ToolApproval
-              allowed={tool && writeAllowed}
-              approval={approvals.get(turn)}
-              show={tool || !executed.has(turn)}
-            />
-            {row.definitionKey === AGENT_SEND_SLACK_MESSAGE.key &&
-            row.dispatchMarkedAt !== undefined ? (
-              <span className="basis-full text-muted-foreground">
-                Dispatch recorded {formatDateTime(row.dispatchMarkedAt)}
-              </span>
-            ) : null}
-            {row.startedAt === undefined ? null : (
-              <span>
-                {formatDurationMs(
-                  (row.completedAt === undefined
-                    ? nowMs
-                    : Date.parse(row.completedAt)) - Date.parse(row.startedAt),
-                )}
-              </span>
-            )}
-            {row.attempts > 1 ? (
-              <span>{formatCount(row.attempts - 1, 'retry', 'retries')}</span>
-            ) : null}
-            {!tool &&
-            row.nodeRunId !== undefined &&
-            row.currentAttemptNumber !== undefined &&
-            row.attempts > 0 &&
-            row.completedAt !== undefined ? (
-              <div className="basis-full">
-                <StepModelUsage
-                  scope={scope}
-                  nodeRunId={row.nodeRunId}
-                  attemptNumber={row.currentAttemptNumber}
-                />
-              </div>
-            ) : null}
-          </li>
-        ))}
+              <button
+                type="button"
+                className="text-action underline underline-offset-4 focus-ring"
+                onClick={() => {
+                  onSelectStep(row.key);
+                }}
+              >
+                {row.label}
+              </button>
+              <Status tone={row.tone}>{row.statusLabel}</Status>
+              <ToolApproval
+                allowed={tool && writeAllowed}
+                approval={approvals.get(turn)}
+                show={tool || !executed.has(turn)}
+              />
+              {call === undefined ? null : (
+                <ChildHistory call={call} workspaceId={scope.workspace.id} />
+              )}
+              {row.definitionKey === AGENT_SEND_SLACK_MESSAGE.key &&
+              row.dispatchMarkedAt !== undefined ? (
+                <span className="basis-full text-muted-foreground">
+                  Dispatch recorded {formatDateTime(row.dispatchMarkedAt)}
+                </span>
+              ) : null}
+              {row.startedAt === undefined ? null : (
+                <span>
+                  {formatDurationMs(
+                    (row.completedAt === undefined
+                      ? nowMs
+                      : Date.parse(row.completedAt)) -
+                      Date.parse(row.startedAt),
+                  )}
+                </span>
+              )}
+              {row.attempts > 1 ? (
+                <span>{formatCount(row.attempts - 1, 'retry', 'retries')}</span>
+              ) : null}
+              {!tool &&
+              row.nodeRunId !== undefined &&
+              row.currentAttemptNumber !== undefined &&
+              row.attempts > 0 &&
+              row.completedAt !== undefined ? (
+                <div className="basis-full">
+                  <StepModelUsage
+                    scope={scope}
+                    nodeRunId={row.nodeRunId}
+                    attemptNumber={row.currentAttemptNumber}
+                  />
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
       </ol>
     </section>
   );

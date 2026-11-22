@@ -43,8 +43,46 @@ export function CallTargetField({
   form: NodeFormApi;
   scope: CallTargetScope;
 }>) {
-  const parsed = workflowCallConfigSchema.safeParse(node.config);
-  const pin = parsed.success ? parsed.data.target : undefined;
+  const pin = workflowCallConfigSchema.safeParse(node.config).data?.target;
+  return (
+    <CallTargetPicker
+      nodeId={node.id}
+      editable={form.editable}
+      scope={scope}
+      pin={pin}
+      onSelect={(target) => {
+        form.commit(
+          { config: { target: { ...target } } },
+          `${node.id}:target:${target.workflowVersionId}`,
+        );
+      }}
+    >
+      Map the child’s input on the Inputs tab. This step waits for its validated
+      result. Run the parent workflow to test the Call.
+    </CallTargetPicker>
+  );
+}
+
+export function CallTargetPicker({
+  nodeId,
+  editable,
+  scope,
+  pin,
+  onSelect,
+  acceptsVersion = hasCallableContract,
+  children,
+}: Readonly<{
+  nodeId: string;
+  editable: boolean;
+  scope: CallTargetScope;
+  pin: WorkflowCallConfig['target'] | undefined;
+  onSelect: (
+    target: WorkflowCallConfig['target'],
+    version: WorkflowVersionResponse,
+  ) => void;
+  acceptsVersion?: (version: WorkflowVersionResponse) => boolean;
+  children: ReactNode;
+}>) {
   const [browsingTarget, setBrowsingTarget] = useState<string | null>(null);
   const targetId = browsingTarget ?? pin?.workflowId ?? null;
   const versions = useInfiniteQuery(
@@ -53,7 +91,9 @@ export function CallTargetField({
   const pinnedVersion = useQuery(callPinnedVersionQueryOptions(scope, pin));
   const { targets, selected, selectedVersionId, upgrade } =
     callVersionSelection(
-      versions.data?.pages.flatMap((page) => page.items) ?? [],
+      versions.data?.pages.flatMap((page) =>
+        page.items.filter(acceptsVersion),
+      ) ?? [],
       pinnedVersion.data,
       pin,
       targetId,
@@ -61,17 +101,13 @@ export function CallTargetField({
   function chooseVersion(versionId: string | null) {
     const version = targets.find((candidate) => candidate.id === versionId);
     if (version === undefined) return;
-    form.commit(
+    onSelect(
       {
-        config: {
-          target: {
-            workflowId: version.workflowId,
-            workflowVersionId: version.id,
-            executableChecksum: version.checksum,
-          },
-        },
+        workflowId: version.workflowId,
+        workflowVersionId: version.id,
+        executableChecksum: version.checksum,
       },
-      `${node.id}:target:${version.id}`,
+      version,
     );
     setBrowsingTarget(null);
   }
@@ -81,20 +117,20 @@ export function CallTargetField({
         scope={scope}
         pin={pin}
         targetId={targetId}
-        editable={form.editable}
-        nodeId={node.id}
+        editable={editable}
+        nodeId={nodeId}
         onChange={setBrowsingTarget}
       />
       {targetId === null ? null : (
         <LabelledField
-          id={fieldControlId(node.id, 'targetVersion')}
+          id={fieldControlId(nodeId, 'targetVersion')}
           label="Published version"
           description={versionDiscoveryDescription(versions, targets)}
         >
           {(control) => (
             <ChoiceSelect
               value={selectedVersionId}
-              disabled={!form.editable || versions.isPending}
+              disabled={!editable || versions.isPending}
               onChange={chooseVersion}
               choices={[
                 { value: null, label: 'Choose an exact callable version' },
@@ -133,14 +169,14 @@ export function CallTargetField({
           {selected === undefined
             ? pin.workflowVersionId
             : `version ${String(selected.versionNumber)}`}
-          . Changes to the child do not change this Call.
+          . Changes to the child do not change the pinned version.
         </p>
       )}
       {upgrade === undefined ? null : (
         <Button
           variant="outline"
           size="sm"
-          disabled={!form.editable}
+          disabled={!editable}
           onClick={() => {
             chooseVersion(upgrade.id);
           }}
@@ -149,10 +185,7 @@ export function CallTargetField({
         </Button>
       )}
       <CallContractSummary version={selected} />
-      <FieldDescription>
-        Map the child’s input on the Inputs tab. This step waits for its
-        validated result; run the parent workflow to test the Call.
-      </FieldDescription>
+      <FieldDescription>{children}</FieldDescription>
     </div>
   );
 }
@@ -253,9 +286,7 @@ function callVersionSelection(
   pin: WorkflowCallConfig['target'] | undefined,
   targetId: string | null,
 ) {
-  const discovered = versions.filter(
-    (version) => version.graph.callable !== undefined,
-  );
+  const discovered = versions;
   const selected =
     discovered.find((version) => version.id === pin?.workflowVersionId) ??
     pinnedVersion;
@@ -284,6 +315,10 @@ function callVersionSelection(
     selectedVersionId: sameTarget ? pin.workflowVersionId : null,
     upgrade: hasNewerVersion ? latest : undefined,
   };
+}
+
+function hasCallableContract(version: WorkflowVersionResponse): boolean {
+  return version.graph.callable !== undefined;
 }
 
 type VersionDiscovery = UseInfiniteQueryResult<
