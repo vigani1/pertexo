@@ -2,10 +2,13 @@ import type { PoolClient } from 'pg';
 
 import {
   approvalConfigSchema,
+  agentConfigSchema,
   inputRequestConfigSchema,
   InvalidWorkflowGraphError,
   isHumanTaskDefinition,
+  isAgentDefinition,
   type WorkflowGraph,
+  type WorkflowNode,
 } from '@pertexo/workflow-model';
 
 import { shareLockActiveMembers } from './pending-tasks.repository.js';
@@ -28,17 +31,10 @@ export async function validateApprovalAudience(
           nodes: node.structured.body.nodes,
           path: `${path}.structured.body`,
         });
-      if (!isHumanTaskDefinition(node.definition)) continue;
-      const config = (
-        node.definition.key === 'core.approval'
-          ? approvalConfigSchema
-          : inputRequestConfigSchema
-      ).parse(node.config);
-      for (const id of config.audience.memberIds)
-        members.set(id, [
-          ...(members.get(id) ?? []),
-          `${path}.config.audience.memberIds`,
-        ]);
+      const task = taskAudience(node);
+      if (task === undefined) continue;
+      for (const id of task.audience.memberIds)
+        members.set(id, [...(members.get(id) ?? []), `${path}.${task.path}`]);
     }
   if (members.size === 0) return;
   const result = await shareLockActiveMembers(client, workspaceId, [
@@ -56,4 +52,25 @@ export async function validateApprovalAudience(
         })),
   );
   if (issues.length > 0) throw new InvalidWorkflowGraphError(issues);
+}
+
+function taskAudience(node: WorkflowNode) {
+  if (isAgentDefinition(node.definition)) {
+    const settings = agentConfigSchema.safeParse(node.config);
+    if (!settings.success) return undefined;
+    const { tool } = settings.data;
+    if ('writePermission' in tool && tool.writePermission.kind === 'approval')
+      return {
+        audience: tool.writePermission.config.audience,
+        path: 'config.tool.writePermission.config.audience.memberIds',
+      };
+    return undefined;
+  }
+  if (!isHumanTaskDefinition(node.definition)) return undefined;
+  const { audience } = (
+    node.definition.key === 'core.approval'
+      ? approvalConfigSchema
+      : inputRequestConfigSchema
+  ).parse(node.config);
+  return { audience, path: 'config.audience.memberIds' };
 }

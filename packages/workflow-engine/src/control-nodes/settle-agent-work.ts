@@ -89,9 +89,10 @@ function hasConsumedReceipt(
 ): boolean {
   return (
     agent.history?.some(
-      ({ proposal, output }) =>
-        proposal.attemptId === receipt.attemptId ||
-        output.attemptId === receipt.attemptId,
+      (exchange) =>
+        exchange.proposal.attemptId === receipt.attemptId ||
+        ('output' in exchange &&
+          exchange.output.attemptId === receipt.attemptId),
     ) ?? false
   );
 }

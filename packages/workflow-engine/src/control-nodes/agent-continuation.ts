@@ -16,12 +16,15 @@ export interface AgentContinuation {
     estimatedCost: number;
   }>;
   readonly turn: number;
-  readonly history?: readonly Readonly<{
-    proposal: AgentAttemptReceipt;
-    output: AgentAttemptReceipt;
-  }>[];
+  readonly history?: readonly AgentToolExchange[];
   readonly phase: AgentPhase;
 }
+
+export type AgentToolExchange = Readonly<{ proposal: AgentAttemptReceipt }> &
+  (
+    | Readonly<{ output: AgentAttemptReceipt }>
+    | Readonly<{ outcome: 'rejected' | 'expired' }>
+  );
 
 type AgentPhase =
   | Readonly<{ kind: 'model_turn' }>
@@ -34,7 +37,7 @@ type AgentPhase =
       kind: 'approval_wait';
       ordinal: number;
       proposal: AgentAttemptReceipt;
-      task: Extract<OutputReference, { kind: 'task' }>;
+      task?: Extract<OutputReference, { kind: 'task' }>;
     }>
   | Readonly<{
       kind: 'running_tool';

@@ -20,6 +20,7 @@ import { actor, commandKey, config, publishAgent } from './agent.fixture.js';
 export async function startAgentRun(
   baseUrl: string,
   encryption: ConnectionEnvelopeEncryption,
+  write?: Parameters<typeof publishAgent>[3],
 ) {
   const connectionId = randomUUID();
   const tableName = `Agent Orders ${connectionId.slice(0, 8)}`;
@@ -108,7 +109,12 @@ export async function startAgentRun(
       idempotencyKey: randomUUID(),
       requestHash: commandKey(),
     });
-    const workflowId = await publishAgent(authoring, connectionId, tableName);
+    const workflowId = await publishAgent(
+      authoring,
+      connectionId,
+      tableName,
+      write,
+    );
     const key = commandKey();
     const accepted = await runs.start({
       ...actor,

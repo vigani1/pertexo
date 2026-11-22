@@ -346,6 +346,7 @@ export interface WorkflowCallOutcome {
 export type PendingTaskIntent = Readonly<{
   invocationKey: string;
   context?: TaskContext;
+  deadlineAt?: string;
 }> &
   (
     | Readonly<{ kind: 'approval'; config: ApprovalConfig }>

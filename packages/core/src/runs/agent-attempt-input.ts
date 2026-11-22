@@ -51,7 +51,7 @@ export async function loadAgentAttemptInput(
   const attemptIds = [
     ...history.flatMap((entry) => [
       entry.proposal.attemptId,
-      entry.output.attemptId,
+      ...('output' in entry ? [entry.output.attemptId] : []),
     ]),
     ...(proposal === undefined ? [] : [proposal.attemptId]),
   ];
@@ -68,12 +68,15 @@ export async function loadAgentAttemptInput(
     throw new NodeAttemptStateCorruptError();
   const input: AgentAttemptInput = {
     identity,
-    history: history.map(({ proposal: saved, output }) => {
-      const result = values.get(output.attemptId);
+    history: history.map((entry) => {
+      const result =
+        'output' in entry
+          ? values.get(entry.output.attemptId)
+          : { approval: entry.outcome };
       if (result === undefined) throw new NodeAttemptStateCorruptError();
       // The run-data codec has already validated the stored JSON value.
       return {
-        proposal: values.get(saved.attemptId),
+        proposal: values.get(entry.proposal.attemptId),
         result: result as JsonValue,
       };
     }),

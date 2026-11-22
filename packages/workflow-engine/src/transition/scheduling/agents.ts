@@ -1,23 +1,12 @@
+import { AGENT_STEP } from '@pertexo/workflow-model';
 import {
-  AGENT_LIMITS,
-  AGENT_STEP,
-  agentTurnOutputSchema,
-  type JsonValue,
-} from '@pertexo/workflow-model';
-import type { DefinitionIdentity } from '@pertexo/node-sdk';
-import type { pinAgentTool } from '../../compilation/agent-tools.js';
-import {
-  executableAgentTool,
-  executionNodes,
-} from '../../compilation/verified-executable.js';
-import type { CompiledWorkflowExecutable } from '../../compilation/workflow-executable.js';
-import { isAgentWorkInvocationKey } from '../../invocations/agent-invocation.js';
-import { parseCompletedOutputItems } from '../../observation/coordinator-output.js';
-import type {
-  AgentContinuation,
-  AgentModelRates,
-} from '../../control-nodes/agent-continuation.js';
+  dataTableValuesSchema,
+  type DefinitionIdentity,
+} from '@pertexo/node-sdk';
+import type { AgentTool } from './agent-scheduler.js';
+import type { AgentContinuation } from '../../control-nodes/agent-continuation.js';
 import { resumeAgent } from '../../control-nodes/resume-agent.js';
+import { readAgentModelReceipt } from '../../control-nodes/agent-model-receipt.js';
 import {
   agentTurnTokenEnvelope,
   reserveAgentInference,
@@ -27,59 +16,20 @@ import {
   settleAgentModelTurn,
   settleAgentReadTool,
 } from '../../control-nodes/settle-agent-work.js';
-import {
-  isJsonRecord,
-  operationError,
-} from '../../input-checks/engine-values.js';
+import { operationError } from '../../input-checks/engine-values.js';
 import type { AgentChild } from '../../invocations/agent-invocation.js';
 import type { InvocationState } from '../../workflow-execution.js';
 import { invocationIdentity } from '../status.js';
 import {
+  finishAgentInvocation,
+  openAgentApproval,
+  resumeAgentApproval,
+} from './agent-approval.js';
+import {
   isTerminalNodeStatus,
-  nodeEventName,
   transitionEvent,
   type MutableWorkflowTransition,
 } from '../transition-state.js';
-type AgentTool = NonNullable<ReturnType<typeof pinAgentTool>>;
-export type AgentScheduler = Readonly<{
-  tools: ReadonlyMap<string, AgentTool>;
-  rates: (model: string) => AgentModelRates | undefined;
-  outputs: readonly JsonValue[];
-}>;
-export function agentSchedulerFor({
-  executable,
-  agentModelRates,
-  completedOutputs,
-}: Readonly<{
-  executable: CompiledWorkflowExecutable;
-  agentModelRates?: AgentScheduler['rates'];
-  completedOutputs?: unknown;
-}>): AgentScheduler | undefined {
-  const tools = new Map(
-    executionNodes(executable).flatMap(({ id }) => {
-      const tool = executableAgentTool(executable, id);
-      return tool === undefined ? [] : [[id, tool] as const];
-    }),
-  );
-  return tools.size === 0
-    ? undefined
-    : {
-        tools,
-        rates: agentModelRates ?? (() => undefined),
-        outputs: parseCompletedOutputItems(completedOutputs),
-      };
-}
-export function graphStepOutputs(
-  items: readonly JsonValue[],
-): readonly JsonValue[] {
-  return items.filter(
-    (item) =>
-      !isJsonRecord(item) ||
-      typeof item.invocationKey !== 'string' ||
-      !isAgentWorkInvocationKey(item.invocationKey),
-  );
-}
-
 export function reserveAgentAttempt(
   state: MutableWorkflowTransition,
   invocation: InvocationState,
@@ -120,13 +70,14 @@ function refuseAgentAttempt(
 ): false {
   const status = reasonCode === 'agent.deadline' ? 'timed_out' : 'failed';
   const outcome = { status, reasonCode } as const;
-  finishParent(state, invocation, occurredAt, outcome);
+  finishAgentInvocation(state, invocation, occurredAt, outcome);
   const work = invocation.agentWork;
   const parent =
     work === undefined
       ? undefined
       : state.invocations.get(work.parentInvocationKey);
-  if (parent !== undefined) finishParent(state, parent, occurredAt, outcome);
+  if (parent !== undefined)
+    finishAgentInvocation(state, parent, occurredAt, outcome);
   return false;
 }
 
@@ -146,7 +97,7 @@ export function advanceAgents(
     if (agent === undefined && parent.status === 'ready') {
       const modelRates = scheduler.rates(tool.model);
       if (modelRates === undefined) {
-        finishParent(state, parent, occurredAt, {
+        finishAgentInvocation(state, parent, occurredAt, {
           status: 'failed',
           reasonCode: 'agent.accounting',
         });
@@ -159,7 +110,7 @@ export function advanceAgents(
       agent = {
         parentInvocationKey: parent.invocationKey,
         deadlineAt: new Date(
-          Date.parse(occurredAt) + AGENT_LIMITS.timeoutMillis,
+          Date.parse(occurredAt) + tool.timeoutMillis,
         ).toISOString(),
         modelRates,
         budget: {
@@ -185,7 +136,11 @@ function advanceAgent(
   occurredAt: string,
 ) {
   const next = resumeAgent(state.current.workflowVersionId, agent);
-  if (next.kind === 'approval_wait' || next.kind === 'completion') return;
+  if (next.kind === 'completion') return;
+  if (next.kind === 'approval_wait') {
+    resumeAgentApproval(state, parent, { agent, phase: next }, occurredAt);
+    return;
+  }
   const child = state.invocations.get(next.invocationKey);
   if (child === undefined) {
     admitAgentWork(state, parent, { agent, tool, next }, occurredAt);
@@ -193,46 +148,88 @@ function advanceAgent(
   }
   if (!isTerminalNodeStatus(child.status)) return;
   if (child.status !== 'succeeded') {
-    finishParent(state, parent, occurredAt, {
+    finishAgentInvocation(state, parent, occurredAt, {
       status: child.status === 'skipped' ? 'failed' : child.status,
       reasonCode: 'agent.child_failed',
     });
     return;
   }
+  settleAgentChild(
+    state,
+    parent,
+    { agent, tool, child, modelTurn: next.kind === 'model_turn' },
+    occurredAt,
+  );
+}
+
+function settleAgentChild(
+  state: MutableWorkflowTransition,
+  parent: InvocationState,
+  {
+    agent,
+    tool,
+    child,
+    modelTurn,
+  }: Readonly<{
+    agent: AgentContinuation;
+    tool: AgentTool;
+    child: InvocationState;
+    modelTurn: boolean;
+  }>,
+  occurredAt: string,
+) {
   if (child.output?.kind !== 'inline')
     operationError(
       'observation_invalid',
       'Agent work requires an inline receipt',
     );
-  const receipt =
-    next.kind === 'model_turn'
-      ? modelReceipt(state, child.invocationKey, child.output)
-      : undefined;
-  const usage =
-    receipt === undefined
-      ? undefined
-      : settleAgentTurnUsage(agent, receipt.usage);
-  if (usage?.kind === 'refused') {
-    finishParent(state, parent, occurredAt, {
-      status: 'failed',
-      reasonCode: usage.reason,
-    });
-    return;
-  }
+  const receipt = modelTurn
+    ? readAgentModelReceipt(
+        state.agentScheduler?.outputs ?? [],
+        child.invocationKey,
+        child.output,
+      )
+    : undefined;
   const decision =
     receipt === undefined
       ? settleAgentReadTool(agent, child.output)
-      : settleAgentModelTurn(
-          { ...agent, budget: usage?.budget ?? agent.budget },
-          receipt,
-          tool.alias,
-        );
+      : settleModelReceipt(agent, receipt, tool.alias);
   if (decision.kind === 'refused') {
-    finishParent(state, parent, occurredAt, {
+    finishAgentInvocation(state, parent, occurredAt, {
       status: 'failed',
       reasonCode: decision.reason,
     });
     return;
+  }
+  if (receipt?.kind === 'proposal' && tool.policy.effect === 'write') {
+    if (
+      Object.keys(receipt.call.arguments).some(
+        (field) => !tool.policy.inputFields.includes(field),
+      ) ||
+      !dataTableValuesSchema.safeParse(receipt.call.arguments.values).success
+    ) {
+      finishAgentInvocation(state, parent, occurredAt, {
+        status: 'failed',
+        reasonCode: 'agent.tool_arguments',
+      });
+      return;
+    }
+    if (
+      tool.approval !== undefined &&
+      decision.agent.phase.kind === 'proposed_call'
+    ) {
+      openAgentApproval(
+        state,
+        child,
+        {
+          agent: decision.agent,
+          phase: decision.agent.phase,
+          config: tool.approval,
+        },
+        occurredAt,
+      );
+      return;
+    }
   }
   state.agents.set(parent.invocationKey, decision.agent);
   if (decision.agent.phase.kind === 'completion') {
@@ -259,6 +256,20 @@ function advanceAgent(
   }
 }
 
+function settleModelReceipt(
+  agent: AgentContinuation,
+  receipt: ReturnType<typeof readAgentModelReceipt>,
+  alias: string,
+) {
+  const usage = settleAgentTurnUsage(agent, receipt.usage);
+  if (usage.kind === 'refused') return usage;
+  return settleAgentModelTurn(
+    { ...agent, budget: usage.budget },
+    receipt,
+    alias,
+  );
+}
+
 function admitAgentWork(
   state: MutableWorkflowTransition,
   parent: InvocationState,
@@ -274,7 +285,7 @@ function admitAgentWork(
   occurredAt: string,
 ) {
   if (Date.parse(occurredAt) >= Date.parse(agent.deadlineAt)) {
-    finishParent(state, parent, occurredAt, {
+    finishAgentInvocation(state, parent, occurredAt, {
       status: 'timed_out',
       reasonCode: 'agent.deadline',
     });
@@ -313,36 +324,6 @@ function admitAgentWork(
   }
 }
 
-function modelReceipt(
-  state: MutableWorkflowTransition,
-  invocationKey: string,
-  output: Extract<NonNullable<InvocationState['output']>, { kind: 'inline' }>,
-) {
-  const material = state.agentScheduler?.outputs.find(
-    (item) =>
-      isJsonRecord(item) &&
-      item.attemptId === output.attemptId &&
-      item.invocationKey === invocationKey,
-  );
-  const record = isJsonRecord(material) ? material : undefined;
-  const parsed = agentTurnOutputSchema.safeParse(record?.value);
-  if (!parsed.success)
-    operationError('observation_invalid', 'Agent model receipt is invalid');
-  const reported =
-    typeof record?.inputTokens === 'number' &&
-    typeof record.outputTokens === 'number'
-      ? { inputTokens: record.inputTokens, outputTokens: record.outputTokens }
-      : undefined;
-  return 'proposal' in parsed.data
-    ? {
-        kind: 'proposal' as const,
-        call: parsed.data.proposal,
-        output,
-        usage: reported,
-      }
-    : { kind: 'final' as const, value: parsed.data, output, usage: reported };
-}
-
 function admitChild(
   state: MutableWorkflowTransition,
   parent: InvocationState,
@@ -374,26 +355,4 @@ function admitChild(
     ...transitionEvent('node.ready', occurredAt, { invocation }),
     agentWork: { ...agentWork, ...attribution },
   });
-}
-
-function finishParent(
-  state: MutableWorkflowTransition,
-  parent: InvocationState,
-  occurredAt: string,
-  {
-    status,
-    reasonCode,
-  }: Readonly<{
-    status: 'failed' | 'canceled' | 'timed_out' | 'outcome_unknown';
-    reasonCode: string;
-  }>,
-) {
-  const invocation = { ...invocationIdentity(parent), status };
-  state.invocations.set(parent.invocationKey, invocation);
-  state.eventDrafts.push(
-    transitionEvent(nodeEventName[status] ?? 'node.failed', occurredAt, {
-      invocation,
-      reasonCode,
-    }),
-  );
 }

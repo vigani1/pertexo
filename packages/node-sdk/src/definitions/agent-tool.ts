@@ -10,7 +10,7 @@ const fieldsSchema = z
 
 export const agentToolPolicySchema = z
   .strictObject({
-    effect: z.literal('read'),
+    effect: z.enum(['read', 'write']),
     inputFields: fieldsSchema,
     result: z.discriminatedUnion('kind', [
       z.strictObject({ kind: z.literal('bounded_output') }).readonly(),

@@ -3,7 +3,10 @@ import {
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { buildWorkflowExecutable } from '../compilation/compile.js';
-import { executionNodes } from '../compilation/verified-executable.js';
+import {
+  executableAgentTool,
+  executionNodes,
+} from '../compilation/verified-executable.js';
 import type { WorkflowExecutableGraph } from '../compilation/workflow-executable.js';
 import { createCheckpoint } from '../checkpoint/create-and-parse.js';
 import { testStepDisposition, type WorkflowTestPins } from './policy.js';
@@ -52,7 +55,11 @@ export function buildWorkflowTestExecutable(
       })
       .map((node) => node.id),
     effectfulNodeIds: candidates
-      .filter((node) => node.sideEffectClass !== 'safe')
+      .filter(
+        (node) =>
+          node.sideEffectClass !== 'safe' ||
+          executableAgentTool(executable, node.id)?.policy.effect === 'write',
+      )
       .map((node) => node.id),
     usesConnections: candidates.some(
       (node) => Object.keys(node.connectionRefs).length > 0,

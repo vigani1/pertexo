@@ -42,6 +42,11 @@ const FIND_ROWS_AGENT_TOOL = Object.freeze({
   inputFields: Object.freeze(['query']),
   result: Object.freeze({ kind: 'bounded_output' }),
 } as const);
+const INSERT_ROW_AGENT_TOOL = Object.freeze({
+  effect: 'write',
+  inputFields: Object.freeze(['values']),
+  result: Object.freeze({ kind: 'bounded_output' }),
+} as const);
 // prefault parses its value, so the query schema's own defaults apply.
 const query = dataTableQuerySchema.prefault({});
 const DATA_TABLE_INPUT_SCHEMAS = {
@@ -74,6 +79,7 @@ export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] =
       connectionRequirements: Object.freeze([]),
       retryClass: operation === 'find' ? 'safe' : 'idempotent-with-key',
       ...(operation === 'find' ? { agentTool: FIND_ROWS_AGENT_TOOL } : {}),
+      ...(operation === 'insert' ? { agentTool: INSERT_ROW_AGENT_TOOL } : {}),
       resourceClass: 'io',
       capabilities: Object.freeze([]),
       executor: definition,

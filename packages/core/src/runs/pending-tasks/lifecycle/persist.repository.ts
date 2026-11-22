@@ -27,7 +27,10 @@ import type { PoolClient } from 'pg';
 import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import { CoordinatorRunStateCorruptError } from '../../advance/coordinator-state.errors.js';
 import { generatePersistedId } from '@pertexo/database/platform';
-import { wakeWorkflowRun } from '../../../outbox/run-advance.repository.js';
+import {
+  enqueueAdvance,
+  wakeWorkflowRun,
+} from '../../../outbox/run-advance.repository.js';
 
 /** The validated declaration, logical wait and checkpoint share this transaction. */
 export async function persistTaskIntents(
@@ -92,6 +95,16 @@ export async function persistTaskIntents(
     if (wait.rowCount !== 1) throw new CoordinatorRunStateCorruptError();
     if (status === 'refused' || row.status === 'submitted')
       await wakeWorkflowRun(client, workspaceId, runId);
+    if (
+      status === 'pending' &&
+      intent.kind === 'approval' &&
+      intent.deadlineAt !== undefined
+    )
+      await enqueueAdvance(drizzle(client), {
+        workspaceId,
+        runId,
+        availableAt: intent.deadlineAt,
+      });
   }
 }
 

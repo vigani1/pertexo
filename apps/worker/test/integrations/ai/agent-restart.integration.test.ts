@@ -3,12 +3,14 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import { ConnectionEnvelopeEncryption } from '@pertexo/secrets/server';
+import { createPendingTaskStore } from '@pertexo/core/runs';
 import { AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
 
 import { ContextKeyProvider } from '../../support/attempts/http-node-attempt/encryption.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
+import { cancelFixtureRun } from '../../support/coordinator/runs/control.js';
 import { ServiceProcess } from '../../support/recovery/processes.js';
-import { alias } from './agent.fixture.js';
+import { actor, alias, config } from './agent.fixture.js';
 import { startAgentRun } from './agent-run.fixture.js';
 import type { AgentWorkerSettings } from './agent-worker.fixture.js';
 import { chat, fakeModel, json } from './model.fixture.js';
@@ -44,11 +46,188 @@ const proposal = json({
     },
   ],
 });
+const insertProposal = insertOrder({ values: { key: 'c', amount: 12 } });
+
+function insertOrder(args: Record<string, unknown>) {
+  return json({
+    usage: { prompt_tokens: 45, completion_tokens: 8 },
+    choices: [
+      {
+        finish_reason: 'tool_calls',
+        message: {
+          tool_calls: [
+            {
+              id: 'new-order',
+              type: 'function',
+              function: { name: alias, arguments: JSON.stringify(args) },
+            },
+          ],
+        },
+      },
+    ],
+  });
+}
 
 beforeAll(fixture.setup);
 afterAll(fixture.restoreServicesAndClose);
 
 describe('Agent restart', () => {
+  it('consumes one approval after restart and inserts the proposed row once', async () => {
+    await using run = await start([insertProposal, finalAnswer], {
+      write: 'approval',
+    });
+    const [task] = await fixture.waitFor(
+      run.tasks,
+      (rows) => rows[0]?.status === 'pending',
+      timeoutMillis,
+    );
+    if (task === undefined) throw new Error('Agent approval is missing');
+    expect(await run.checkpoint()).toMatchObject({
+      phase: { kind: 'approval_wait' },
+    });
+    expect(await run.attempts()).toMatchObject([{ status: 'succeeded' }]);
+    expect(run.calls).toHaveLength(1);
+    await run.restart();
+    const tasks = createPendingTaskStore(config(fixture.apiUrl));
+    try {
+      const command = {
+        ...actor,
+        taskId: task.id,
+        decision: 'approved',
+        idempotencyKey: randomUUID(),
+      } as const;
+      await tasks.decide(command);
+      await tasks.decide(command);
+    } finally {
+      await tasks.close();
+    }
+    expect(await run.end()).toMatchObject({ status: 'succeeded' });
+    expect(await run.tasks()).toMatchObject([
+      { status: 'approved', consumed_at: expect.any(Date) as unknown },
+    ]);
+    expect(await run.attempts()).toMatchObject([
+      { status: 'succeeded' },
+      {
+        status: 'succeeded',
+        output_ref: { value: { rows: [{ values: { key: 'c', amount: 12 } }] } },
+      },
+      { status: 'succeeded' },
+    ]);
+    expect(run.calls).toHaveLength(2);
+  });
+
+  it.each(['rejected', 'expired'] as const)(
+    'reports a %s approval to the model without writing',
+    async (decision) => {
+      await using run = await start([insertProposal, finalAnswer], {
+        write: 'approval',
+      });
+      const [task] = await fixture.waitFor(
+        run.tasks,
+        (rows) => rows[0]?.status === 'pending',
+        timeoutMillis,
+      );
+      if (task === undefined) throw new Error('Agent approval is missing');
+      if (decision === 'rejected') {
+        const tasks = createPendingTaskStore(config(fixture.apiUrl));
+        try {
+          await tasks.decide({
+            ...actor,
+            taskId: task.id,
+            decision,
+            idempotencyKey: randomUUID(),
+          });
+        } finally {
+          await tasks.close();
+        }
+      } else {
+        await fixture.ownerQuery(
+          'update app.pending_run_tasks set expires_at=statement_timestamp() where id=$1',
+          [task.id],
+        );
+        await fixture.ownerQuery(
+          'update app.node_runs set resume_at=statement_timestamp() where id=(select node_run_id from app.pending_run_tasks where id=$1)',
+          [task.id],
+        );
+      }
+      expect(await run.end()).toMatchObject({ status: 'succeeded' });
+      expect(await run.attempts()).toHaveLength(2);
+      const request = run.calls[1]?.request as {
+        messages: { role: string; content: string }[];
+      };
+      expect(
+        JSON.parse(
+          request.messages.find(({ role }) => role === 'tool')?.content ??
+            'null',
+        ),
+      ).toEqual({ approval: decision });
+      expect(await run.tasks()).toMatchObject([
+        { status: decision, consumed_at: expect.any(Date) as unknown },
+      ]);
+    },
+  );
+
+  it('cancels the pending approval without dispatching a write or another model turn', async () => {
+    await using run = await start([insertProposal], { write: 'approval' });
+    await fixture.waitFor(
+      run.tasks,
+      (rows) => rows[0]?.status === 'pending',
+      timeoutMillis,
+    );
+    await cancelFixtureRun(run.id, 'Cancel before approval');
+    expect(await run.end()).toMatchObject({ status: 'canceled' });
+    expect(await run.tasks()).toMatchObject([
+      { status: 'canceled', consumed_at: expect.any(Date) as unknown },
+    ]);
+    expect(await run.attempts()).toHaveLength(1);
+    expect(run.calls).toHaveLength(1);
+  });
+
+  it('runs Insert row directly when publication allows the tool without approval', async () => {
+    await using run = await start([insertProposal, finalAnswer], {
+      write: 'allow',
+    });
+    expect(await run.end()).toMatchObject({ status: 'succeeded' });
+    expect(await run.tasks()).toEqual([]);
+    expect(await run.attempts()).toMatchObject([
+      { status: 'succeeded' },
+      {
+        status: 'succeeded',
+        output_ref: { value: { rows: [{ values: { key: 'c', amount: 12 } }] } },
+      },
+      { status: 'succeeded' },
+    ]);
+  });
+
+  it('refuses model arguments that try to change the published approval rule', async () => {
+    await using run = await start(
+      [
+        insertOrder({
+          values: { key: 'c', amount: 12 },
+          writePermission: { kind: 'allow' },
+        }),
+      ],
+      { write: 'approval' },
+    );
+    expect(await run.end()).toMatchObject({ status: 'failed' });
+    expect(await run.failures()).toContainEqual({
+      safe_error_code: 'agent.tool_arguments',
+    });
+    expect(await run.attempts()).toHaveLength(1);
+    expect(await run.tasks()).toEqual([]);
+    expect(run.calls[0]?.request).toMatchObject({
+      tools: [
+        {
+          function: {
+            parameters: {
+              properties: { values: expect.any(Object) as unknown },
+              additionalProperties: false,
+            },
+          },
+        },
+      ],
+    });
+  });
   it('charges both physical model requests when the first worker dies before completion', async () => {
     await using run = await start([hold, finalAnswer]);
     await run.waitForCalls(1);
@@ -221,6 +400,7 @@ async function start(
     pause?: AgentWorkerSettings['pause'];
     inputRate?: number;
     deferWorker?: boolean;
+    write?: Parameters<typeof startAgentRun>[2];
   } = {},
 ) {
   const provider = await fakeModel(answers);
@@ -252,9 +432,20 @@ async function start(
     const runId = await startAgentRun(
       provider.baseUrl,
       new ConnectionEnvelopeEncryption(new ContextKeyProvider(key)),
+      options.write,
     );
     if (options.deferWorker !== true) worker.startOnce();
     return {
+      id: runId,
+      tasks: () =>
+        fixture.workerQuery<{
+          id: string;
+          status: string;
+          consumed_at: Date | null;
+        }>(
+          'select id, status, consumed_at from app.pending_run_tasks where run_id=$1',
+          [runId],
+        ),
       worker,
       calls: provider.calls,
       waitForCalls: (count: number) =>
@@ -282,9 +473,13 @@ async function start(
                 [runId],
               ),
             ([row]) =>
-              ['succeeded', 'failed', 'timed_out', 'outcome_unknown'].includes(
-                row?.status ?? '',
-              ),
+              [
+                'succeeded',
+                'failed',
+                'timed_out',
+                'outcome_unknown',
+                'canceled',
+              ].includes(row?.status ?? ''),
             timeoutMillis,
           );
           return rows[0];
