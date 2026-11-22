@@ -10,7 +10,6 @@ import {
 import {
   describeFaults,
   RECOVERY_LIMIT_MS,
-  SCENARIO_LIMIT_MS,
 } from '../support/recovery/environment.js';
 import { waitForRunsToEnd } from '../support/recovery/facts.js';
 import { httpChain } from '../support/recovery/graphs.js';
@@ -21,16 +20,18 @@ const waitLimit = 25_000;
 
 describeFaults('an MCP tool used by a workflow', () => {
   let stack: Stack;
+  let closeStack: Stack['close'] | undefined;
   let workspace: string;
   let otherWorkspace: string;
   beforeAll(async () => {
     stack = await startStack('mcp');
+    closeStack = stack.close;
     workspace = await stack.api.createWorkspace('mcp-tools');
     otherWorkspace = await stack.api.createWorkspace('other-mcp-workspace');
-  }, SCENARIO_LIMIT_MS);
+  });
   afterAll(async () => {
-    await stack?.close();
-  }, SCENARIO_LIMIT_MS);
+    await closeStack?.();
+  });
 
   async function connection(endpoint: string) {
     const created = await stack.api.expect(201)(
@@ -153,11 +154,11 @@ describeFaults('an MCP tool used by a workflow', () => {
   }, 40_000);
 
   it('checks the secret again after listing tools and before dispatch', async () => {
-    const listed = Promise.withResolvers<void>();
-    const continueList = Promise.withResolvers<void>();
+    const listed = Promise.withResolvers<undefined>();
+    const continueList = Promise.withResolvers<undefined>();
     await using fake = await fakeMcp({
       'tools/list': (response, request) => {
-        listed.resolve();
+        listed.resolve(undefined);
         void continueList.promise.then(() => {
           reply(response, request, {
             tools: [{ name: 'counter', inputSchema: TOOL_INPUT }],
@@ -192,7 +193,7 @@ describeFaults('an MCP tool used by a workflow', () => {
         ),
       );
     } finally {
-      continueList.resolve();
+      continueList.resolve(undefined);
     }
     const facts = await waitForRunsToEnd(stack, [runId], waitLimit);
     expect(facts[runId]).toMatchObject({
@@ -228,10 +229,10 @@ describeFaults('an MCP tool used by a workflow', () => {
   });
 
   it('keeps a tool call uncertain after worker loss and never calls it again', async () => {
-    const accepted = Promise.withResolvers<void>();
+    const accepted = Promise.withResolvers<undefined>();
     await using fake = await fakeMcp({
       'tools/call': () => {
-        accepted.resolve();
+        accepted.resolve(undefined);
       },
     });
     const runId = await startTool(await connection(fake.url));
@@ -249,14 +250,24 @@ describeFaults('an MCP tool used by a workflow', () => {
   });
 });
 
-function waitForSignal(event: Promise<void>) {
+function waitForSignal(event: Promise<undefined>) {
   const signal = AbortSignal.timeout(waitLimit);
   return Promise.race([
     event,
     new Promise<never>((_, reject) => {
-      signal.addEventListener('abort', () => reject(signal.reason), {
-        once: true,
-      });
+      signal.addEventListener(
+        'abort',
+        () => {
+          reject(
+            new Error(
+              'The fake MCP server did not receive the request in time',
+            ),
+          );
+        },
+        {
+          once: true,
+        },
+      );
     }),
   ]);
 }

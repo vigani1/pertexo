@@ -71,6 +71,42 @@ const answering = (
     dependencies.oauth2,
   ] as const;
 
+function optionalProviders(
+  dependencies: ConnectionDependencies,
+  telemetry: ConnectionTelemetry,
+) {
+  const providers: Provider[] = [];
+  if (dependencies.sharingPersistence !== undefined)
+    providers.push({
+      provide: ConnectionSharingServices,
+      useValue: new ConnectionSharingServices(
+        dependencies.sharingPersistence,
+        dependencies.authorization,
+        telemetry,
+      ),
+    });
+  if (dependencies.destinationPersistence !== undefined)
+    providers.push({
+      provide: FailureNotificationDestinationServices,
+      useValue: new FailureNotificationDestinationServices(
+        dependencies.destinationPersistence,
+        dependencies.applicationSecret,
+        telemetry,
+        dependencies.systemMailAvailable,
+      ),
+    });
+  if (dependencies.usagePersistence !== undefined)
+    providers.push({
+      provide: ListConnectionUsageService,
+      useValue: new ListConnectionUsageService(
+        dependencies.usagePersistence,
+        dependencies.authorization,
+        telemetry,
+      ),
+    });
+  return providers;
+}
+
 @Module({})
 // Nest dynamic modules require a class container.
 // oxlint-disable-next-line typescript/no-extraneous-class
@@ -186,34 +222,7 @@ export class ConnectionsModule {
         useValue: lookup,
       });
     providers.push(...oauth2Providers(dependencies));
-    if (dependencies.sharingPersistence !== undefined)
-      providers.push({
-        provide: ConnectionSharingServices,
-        useValue: new ConnectionSharingServices(
-          dependencies.sharingPersistence,
-          dependencies.authorization,
-          telemetry,
-        ),
-      });
-    if (dependencies.destinationPersistence !== undefined)
-      providers.push({
-        provide: FailureNotificationDestinationServices,
-        useValue: new FailureNotificationDestinationServices(
-          dependencies.destinationPersistence,
-          dependencies.applicationSecret,
-          telemetry,
-          dependencies.systemMailAvailable,
-        ),
-      });
-    if (dependencies.usagePersistence !== undefined)
-      providers.push({
-        provide: ListConnectionUsageService,
-        useValue: new ListConnectionUsageService(
-          dependencies.usagePersistence,
-          dependencies.authorization,
-          telemetry,
-        ),
-      });
+    providers.push(...optionalProviders(dependencies, telemetry));
     return {
       module: ConnectionsModule,
       imports: [identityModule],

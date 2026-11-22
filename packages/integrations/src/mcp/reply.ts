@@ -42,18 +42,16 @@ async function readEvents(body: AsyncIterable<Uint8Array>, id: number) {
       pending = pending.slice(match.index + match[0].length);
       if (line.startsWith(SSE_DATA_FIELD))
         data.push(line.slice(SSE_DATA_FIELD.length).replace(/^ /u, ''));
-      if (line === '' && data.length > 0) {
-        events += 1;
-        if (events > MCP_LIMITS.events)
-          throw new McpProtocolError('Too many MCP events');
-        const message = data.join('\n');
-        data = [];
-        if (message !== '') {
-          const result = readMessage(message, id);
-          if (result !== undefined) return result;
-        }
-      }
       match = /\r\n|\n|\r(?!$)/u.exec(pending);
+      if (line !== '' || data.length === 0) continue;
+      events += 1;
+      if (events > MCP_LIMITS.events)
+        throw new McpProtocolError('Too many MCP events');
+      const message = data.join('\n');
+      data = [];
+      if (message === '') continue;
+      const result = readMessage(message, id);
+      if (result !== undefined) return result;
     }
   }
   decoder.decode();
