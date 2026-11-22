@@ -65,8 +65,13 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const initialized = await client.result(
         client.request('initialize', {
           protocolVersion: MCP_PROTOCOL_VERSION,
-          capabilities: {},
-          clientInfo: { name: 'Pertexo test client', version: '1' },
+          capabilities: { experimental: { example: {} } },
+          clientInfo: {
+            name: 'Pertexo test client',
+            version: '1',
+            title: 'Example client',
+          },
+          _meta: { 'example/client': true },
         }),
       );
       expect(initialized).toMatchObject({
@@ -82,9 +87,16 @@ describe.runIf(betterAuthIntegrationEnabled)(
       expect(notification.status).toBe(202);
       expect(await notification.text()).toBe('');
       expect(await client.result(client.request('ping'))).toEqual({});
-      expect(
-        (await fetch(client.endpoint, { headers: client.headers })).status,
-      ).toBe(405);
+      const stream = await fetch(client.endpoint);
+      expect(stream.status).toBe(405);
+      expect(stream.headers.get('allow')).toBe('POST');
+      const anonymous = await fetch(client.endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      });
+      expect(anonymous.status).toBe(401);
+      expect(anonymous.headers.get('cache-control')).toBe('private, no-store');
       expect(
         (
           await client.request(
@@ -147,18 +159,26 @@ describe.runIf(betterAuthIntegrationEnabled)(
         (await second.client.list()).tools.map(({ name }) => name),
       ).toEqual([MCP_STATUS_TOOL_NAME]);
 
-      const invalid = await first.client.invoke(toolName, { name: 42 });
-      expect(invalid).toMatchObject({
-        isError: true,
-        structuredContent: { code: 'invalid_input' },
-      });
+      for (const args of [{ name: 42 }, { name: 'valid', extra: true }]) {
+        expect(await first.client.invoke(toolName, args)).toMatchObject({
+          isError: true,
+          structuredContent: { code: 'invalid_input' },
+        });
+      }
       expect(await runsOf(workflow.workflowId)).toHaveLength(0);
 
       const key = randomUUID();
       const args = { name: 'sensitive-input-for-audit-check' };
       const [accepted, duplicate] = await Promise.all([
         first.client.invoke(toolName, args, key),
-        first.client.invoke(toolName, args, key),
+        first.client.result(
+          first.client.request('tools/call', {
+            name: toolName,
+            arguments: args,
+            extra: 'client extension',
+            _meta: { 'pertexo/idempotencyKey': key, 'example/client': true },
+          }),
+        ),
       ]);
       expect(accepted).toMatchObject({
         isError: false,
@@ -191,6 +211,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         .toEqual({ status: 'completed', result: args.name });
       const [run] = await runsOf(workflow.workflowId);
       expect(await runsOf(workflow.workflowId)).toHaveLength(1);
+      expect(run?.input_ref).toEqual({ kind: 'inline', value: args });
       const audit = await stack.queryAsOwner<{
         actor_user_id: string;
         request_id: string;
@@ -388,11 +409,11 @@ describe.runIf(betterAuthIntegrationEnabled)(
 
     async function runsOf(workflowId: string) {
       return (
-        await stack.queryAsOwner(
-          'select id from app.workflow_runs where workflow_id=$1',
+        await stack.queryAsOwner<{ id: string; input_ref: unknown }>(
+          'select id,input_ref from app.workflow_runs where workflow_id=$1',
           [workflowId],
         )
-      ).rows as { id: string }[];
+      ).rows;
     }
   },
 );

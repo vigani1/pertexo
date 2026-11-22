@@ -1,41 +1,31 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Post,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, HttpStatus, Req, Res } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   MCP_PROTOCOL_VERSION,
   mcpRpcRequestSchema,
   mcpRpcEnvelopeSchema,
 } from '@pertexo/contracts';
+import { mcpTransportRoutes as routes } from '@pertexo/contracts/server';
 import {
   McpToolUnavailableError,
   WorkflowRunNotFoundError,
 } from '@pertexo/core/runs';
 import { CallableInputInvalidError } from '@pertexo/workflow-model';
 import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
-import { z } from 'zod';
-import { ApiTokenAuthentication } from '../authentication/automation/authority.js';
-import { RateLimitExempt } from '../platform/rate-limit/metadata.js';
+import { Route } from '../platform/http/route.js';
+import {
+  applicationError,
+  throwApplicationError,
+} from '../platform/http/index.js';
 import { rawHeaderValues } from '../platform/http/raw-headers.js';
 import {
-  requestIdentifier,
-  traceIdentifier,
-} from '../workspaces/request/identifiers.js';
-import { readCookie, SESSION_COOKIE_NAME } from '../workspaces/http/guards.js';
-import type { IdentityWorkspaceRequest } from '../workspaces/workspace-transport.js';
+  Caller,
+  requestIdentifiers,
+  type WorkspaceCaller,
+} from '../workspaces/request/caller.js';
 import { McpService, toolResult } from './mcp.service.js';
-import { MCP_NEST_PATH } from './transport.js';
 
 const rpc = '2.0';
-const workspaceParameter = z.uuid().overwrite((value) => value.toLowerCase());
 const RPC_INVALID_REQUEST = -32600;
 const RPC_METHOD_NOT_FOUND = -32601;
 const RPC_INVALID_PARAMS = -32602;
@@ -44,58 +34,32 @@ export class McpOriginPolicy {
   public constructor(public readonly allowedOrigin: string) {}
 }
 
-@Controller(MCP_NEST_PATH)
-@RateLimitExempt()
+@Controller()
 export class McpController {
   public constructor(
-    private readonly authentication: ApiTokenAuthentication,
     private readonly service: McpService,
     private readonly origin: McpOriginPolicy,
   ) {}
 
-  @Get()
+  @Route(routes.standaloneStream)
   public get(@Req() request: FastifyRequest, @Res() response: FastifyReply) {
     if (!this.validOrigin(request))
       return response.code(HttpStatus.FORBIDDEN).send();
     if (protocolHeader(request) === 'invalid') return invalidProtocol(response);
-    return response
-      .header('Allow', 'POST')
-      .code(HttpStatus.METHOD_NOT_ALLOWED)
-      .send();
+    return response.header('Allow', 'POST').send();
   }
 
-  @Post()
-  @HttpCode(HttpStatus.OK)
+  @Route(routes.exchange)
   public async post(
-    @Param('workspaceId') workspaceId: string,
+    @Caller() caller: WorkspaceCaller,
     @Body() body: unknown,
-    @Req() request: FastifyRequest & IdentityWorkspaceRequest,
+    @Req() request: FastifyRequest,
     @Res() response: FastifyReply,
   ) {
-    response.header('Cache-Control', 'private, no-store');
     if (!this.validOrigin(request))
       return response.code(HttpStatus.FORBIDDEN).send();
     const protocol = protocolHeader(request);
     if (protocol === 'invalid') return invalidProtocol(response);
-    const token = await this.authentication.authenticate({
-      headers: request.headers,
-      rawHeaders: request.raw.rawHeaders,
-      clientAddress: request.ip,
-      hasSession: readCookie(request, SESSION_COOKIE_NAME) !== undefined,
-    });
-    if (token === undefined)
-      return response
-        .header('WWW-Authenticate', 'Bearer realm="pertexo"')
-        .code(HttpStatus.UNAUTHORIZED)
-        .send();
-    const workspace = workspaceParameter.safeParse(workspaceId);
-    if (
-      !workspace.success ||
-      token.workspaceId !== workspace.data ||
-      !token.scopes.includes('mcp:invoke')
-    )
-      return response.code(HttpStatus.FORBIDDEN).send();
-
     const parsed = mcpRpcRequestSchema.safeParse(body);
     if (!parsed.success) return invalidMessage(response, body);
     const input = parsed.data;
@@ -103,16 +67,16 @@ export class McpController {
       return invalidProtocol(response);
     if (input.method === 'notifications/initialized')
       return response.code(HttpStatus.ACCEPTED).send();
-    const traceId = traceIdentifier(request);
-    const actor = {
-      actorId: token.ownerUserId,
-      workspaceId: workspace.data,
-      tokenId: token.tokenId,
-      requestId: requestIdentifier(request),
-      ...(traceId === undefined ? {} : { traceId }),
-    };
+    const { actor, workspaceId } = caller;
+    if (actor.kind !== 'api_key')
+      return throwApplicationError(applicationError('auth.unauthenticated'));
     try {
-      const result = await this.service.dispatch(input, actor);
+      const result = await this.service.dispatch(input, {
+        actorId: actor.actorId,
+        workspaceId,
+        tokenId: actor.tokenId,
+        ...requestIdentifiers(caller),
+      });
       return await response.send({ jsonrpc: rpc, id: input.id, result });
     } catch (error) {
       const failure = toolFailure(error);

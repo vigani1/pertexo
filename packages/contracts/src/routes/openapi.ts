@@ -213,7 +213,7 @@ function requestBody({ body, requestDocument }: AnyRoute) {
 }
 
 function tokenScopes(access: RouteAccess) {
-  if (access.auth !== 'session_or_token') return {};
+  if (access.auth === 'session' || access.auth === 'public') return {};
   return {
     'x-pertexo-api-token-scopes': (access.capabilities ?? []).map(
       ({ name }) => name,
@@ -221,15 +221,19 @@ function tokenScopes(access: RouteAccess) {
   };
 }
 
-function security(access: RouteAccess) {
+function security(access: RouteAccess): {
+  security: readonly Readonly<Record<string, readonly string[]>>[];
+} {
   if (access.auth === 'public') return { security: [] };
+  if (access.auth === 'token') return { security: [{ apiToken: [] }] };
   return access.auth === 'session'
     ? { security: [{ cookieSession: [] }] }
     : { security: automationSecurity };
 }
 
 function csrfParameter({ method, access }: AnyRoute) {
-  if (method === 'get' || access.auth === 'public') return [];
+  if (method === 'get' || access.auth === 'public' || access.auth === 'token')
+    return [];
   if (access.csrf === 'header_or_body')
     return [
       {

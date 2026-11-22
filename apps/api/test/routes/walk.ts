@@ -12,7 +12,10 @@ import {
 } from '@nestjs/common/constants.js';
 import { RequestMethod, type Type } from '@nestjs/common';
 
-import { AutomationAuthenticationGuard } from '../../src/authentication/automation/guard.js';
+import {
+  ApiTokenAuthenticationGuard,
+  AutomationAuthenticationGuard,
+} from '../../src/authentication/automation/guard.js';
 import {
   RATE_LIMIT_EXEMPT,
   RATE_LIMIT_METADATA,
@@ -26,7 +29,7 @@ export type WalkedRoute = Readonly<{
   method: string;
   path: string;
   status: number;
-  signIn: 'session' | 'session_or_token' | 'none';
+  signIn: 'session' | 'session_or_token' | 'token' | 'none';
   privateCache: boolean;
   capability: string | undefined;
   csrf: boolean;
@@ -68,6 +71,7 @@ function joined(prefix: string, suffix: string): string {
 
 function signInOf(guards: readonly Type[]): WalkedRoute['signIn'] {
   if (guards.includes(AutomationAuthenticationGuard)) return 'session_or_token';
+  if (guards.includes(ApiTokenAuthenticationGuard)) return 'token';
   return guards.includes(SessionAuthenticationGuard) ? 'session' : 'none';
 }
 

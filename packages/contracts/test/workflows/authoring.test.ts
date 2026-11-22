@@ -12,7 +12,10 @@ import {
   workflowValidationIssueSchema,
   workflowValidateResponseSchema,
 } from '../../src/schemas/workflows/authoring.js';
-import { workflowAuthoringOpenApiDocument } from '../../src/server.js';
+import {
+  workflowAuthoringOpenApiDocument,
+  workflowSettingsRoutes,
+} from '../../src/server.js';
 
 describe('workflow-authoring public contracts', () => {
   it('requires an explicit current-publication comparison and rejects malformed metadata', () => {
@@ -178,6 +181,8 @@ describe('workflow-authoring public contracts', () => {
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/resume',
         '/v1/workspaces/{workspaceId}/auto-pause',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/concurrency',
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/mcp',
+        '/v1/workspaces/{workspaceId}/mcp',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/error-workflow/targets',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/error-workflow',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/publication-review',
@@ -216,6 +221,17 @@ describe('workflow-authoring public contracts', () => {
         '/v1/workspaces/{workspaceId}/workflows/organization/bulk',
       ].toSorted(),
     );
+    const mcp =
+      paths['/v1/workspaces/{workspaceId}/workflows/{workflowId}/mcp'];
+    for (const route of [
+      workflowSettingsRoutes.mcp,
+      workflowSettingsRoutes.updateMcp,
+    ]) {
+      expect(route.path).toBe(
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/mcp',
+      );
+      expect(mcp[route.method].operationId).toBe(route.operationId);
+    }
     expect(
       paths[
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft'

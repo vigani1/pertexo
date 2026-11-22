@@ -2774,14 +2774,14 @@
     "/v1/workspaces/{workspaceId}/mcp": {
       "post": {
         "operationId": "exchangeMcpMessage",
+        "x-pertexo-api-token-scopes": [
+          "mcp:invoke"
+        ],
         "description": "Stateless Streamable HTTP for a workspace API token. Send the negotiated protocol header after initialize. Calls admit runs and return a status reference. Use params._meta[\"pertexo/idempotencyKey\"] for exact retries while a command receipt is retained.",
         "security": [
           {
             "apiToken": []
           }
-        ],
-        "x-pertexo-api-token-scopes": [
-          "mcp:invoke"
         ],
         "parameters": [
           {
@@ -2789,8 +2789,10 @@
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           },
           {
@@ -2881,18 +2883,27 @@
       "get": {
         "operationId": "mcpStandaloneStream",
         "description": "Standalone server event streams are unavailable in this protocol profile.",
+        "security": [],
         "parameters": [
           {
             "name": "workspaceId",
             "in": "path",
             "required": true,
             "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
         "responses": {
+          "400": {
+            "description": "Invalid MCP protocol version"
+          },
+          "403": {
+            "description": "Origin refused"
+          },
           "405": {
             "description": "The endpoint accepts POST messages"
           }

@@ -25,9 +25,8 @@ import { ApiTokenAuthentication } from './authority.js';
 
 @Injectable()
 @SetMetadata(PRIVATE_AUTHENTICATION, true)
-export class AutomationAuthenticationGuard implements CanActivate {
+export class ApiTokenAuthenticationGuard implements CanActivate {
   public constructor(
-    private readonly sessions: SessionAuthenticationGuard,
     private readonly authentication: ApiTokenAuthentication,
     private readonly contexts: RequestContextStore,
   ) {}
@@ -35,8 +34,6 @@ export class AutomationAuthenticationGuard implements CanActivate {
     const request = context
       .switchToHttp()
       .getRequest<IdentityWorkspaceRequest & AuthorizationHeaderSource>();
-    if (!hasAuthorizationHeader(request.headers, request.raw?.rawHeaders))
-      return this.sessions.canActivate(context);
     const verified = await this.authentication.authenticate({
       headers: request.headers,
       rawHeaders: request.raw?.rawHeaders,
@@ -69,5 +66,26 @@ export class AutomationAuthenticationGuard implements CanActivate {
       'Bearer realm="pertexo", error="invalid_token"',
     );
     return throwApplicationError(applicationError('auth.unauthenticated'));
+  }
+}
+
+@Injectable()
+@SetMetadata(PRIVATE_AUTHENTICATION, true)
+export class AutomationAuthenticationGuard extends ApiTokenAuthenticationGuard {
+  public constructor(
+    private readonly sessions: SessionAuthenticationGuard,
+    authentication: ApiTokenAuthentication,
+    contexts: RequestContextStore,
+  ) {
+    super(authentication, contexts);
+  }
+
+  public override canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context
+      .switchToHttp()
+      .getRequest<IdentityWorkspaceRequest & AuthorizationHeaderSource>();
+    if (!hasAuthorizationHeader(request.headers, request.raw?.rawHeaders))
+      return this.sessions.canActivate(context);
+    return super.canActivate(context);
   }
 }
