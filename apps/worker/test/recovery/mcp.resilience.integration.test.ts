@@ -152,6 +152,56 @@ describeFaults('an MCP tool used by a workflow', () => {
     );
   }, 40_000);
 
+  it('checks the secret again after listing tools and before dispatch', async () => {
+    const listed = Promise.withResolvers<void>();
+    const continueList = Promise.withResolvers<void>();
+    await using fake = await fakeMcp({
+      'tools/list': (response, request) => {
+        listed.resolve();
+        void continueList.promise.then(() => {
+          reply(response, request, {
+            tools: [{ name: 'counter', inputSchema: TOOL_INPUT }],
+          });
+        });
+      },
+    });
+    const id = await connection(fake.url);
+    const root = `/v1/workspaces/${workspace}/connections/${id}`;
+    const current = await stack.api.expect(200)(stack.api.call('GET', root));
+    if (
+      !isRecord(current.json) ||
+      typeof current.json.secretVersionId !== 'string'
+    )
+      throw new Error('Connection response has no secret version');
+    const runId = await startTool(id);
+    await waitForSignal(listed.promise);
+    try {
+      await stack.api.expect(200)(
+        stack.api.call(
+          'PUT',
+          `${root}/secret`,
+          {
+            expectedSecretVersionId: current.json.secretVersionId,
+            credential: {
+              type: 'mcp_bearer',
+              endpoint: fake.url,
+              token: 'rotated-mcp-credential',
+            },
+          },
+          headers(),
+        ),
+      );
+    } finally {
+      continueList.resolve();
+    }
+    const facts = await waitForRunsToEnd(stack, [runId], waitLimit);
+    expect(facts[runId]).toMatchObject({
+      status: 'failed',
+      steps: { call: ['failed'] },
+    });
+    expect(fake.calls.map(({ method }) => method)).not.toContain('tools/call');
+  });
+
   it('records the mapped result through the run inspector API without credentials', async () => {
     await using fake = await fakeMcp();
     const runId = await startTool(await connection(fake.url));
@@ -185,15 +235,7 @@ describeFaults('an MCP tool used by a workflow', () => {
       },
     });
     const runId = await startTool(await connection(fake.url));
-    const signal = AbortSignal.timeout(waitLimit);
-    await Promise.race([
-      accepted.promise,
-      new Promise<never>((_, reject) => {
-        signal.addEventListener('abort', () => reject(signal.reason), {
-          once: true,
-        });
-      }),
-    ]);
+    await waitForSignal(accepted.promise);
     await stack.worker.stop('SIGKILL');
     stack.worker.start();
     const facts = await waitForRunsToEnd(stack, [runId], RECOVERY_LIMIT_MS);
@@ -206,3 +248,15 @@ describeFaults('an MCP tool used by a workflow', () => {
     ).toHaveLength(1);
   });
 });
+
+function waitForSignal(event: Promise<void>) {
+  const signal = AbortSignal.timeout(waitLimit);
+  return Promise.race([
+    event,
+    new Promise<never>((_, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), {
+        once: true,
+      });
+    }),
+  ]);
+}

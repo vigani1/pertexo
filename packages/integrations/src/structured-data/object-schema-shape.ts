@@ -1,7 +1,7 @@
 import type { SchemaDocument, SchemaJson } from '@pertexo/node-sdk';
 import { isRecord, utf8ByteLength } from '@pertexo/workflow-model';
 
-const OUTPUT_SCHEMA_LIMITS = { bytes: 8 * 1_024, depth: 16 } as const;
+const OBJECT_SCHEMA_LIMITS = { bytes: 8 * 1_024, depth: 16 } as const;
 const keywords = new Set([
   'type',
   'properties',
@@ -20,11 +20,11 @@ const types = new Set<unknown>([
   'null',
 ]);
 
-export function prepareModelOutputSchema(schema: SchemaDocument) {
+export function prepareBoundedObjectSchema(schema: SchemaDocument) {
   if (
     schema.type !== 'object' ||
-    utf8ByteLength(JSON.stringify(schema)) > OUTPUT_SCHEMA_LIMITS.bytes ||
-    !withinDepth(schema, OUTPUT_SCHEMA_LIMITS.depth)
+    utf8ByteLength(JSON.stringify(schema)) > OBJECT_SCHEMA_LIMITS.bytes ||
+    !withinDepth(schema, OBJECT_SCHEMA_LIMITS.depth)
   )
     return undefined;
 
