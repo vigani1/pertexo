@@ -1,6 +1,7 @@
 import { responseSchema } from './shared/response-schema.js';
 import {
   NODE_IDENTITY_KEY_MAX_CHARACTERS,
+  NODE_IDENTITY_KEY_PATTERN,
   codeSettingsSchema,
   nodeDisplayMetadataSchema,
   outputVariantSelectionSchema,
@@ -25,7 +26,7 @@ const identityKey = z
   .string()
   .min(1)
   .max(CATALOG_LIMITS.identityKeyCharacters)
-  .regex(/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u);
+  .regex(new RegExp(NODE_IDENTITY_KEY_PATTERN, 'u'));
 
 const catalogDefinitionIdentitySchema = z
   .object({ key: identityKey, version: z.number().int().positive() })
