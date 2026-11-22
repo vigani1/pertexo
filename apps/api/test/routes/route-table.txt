@@ -38,6 +38,7 @@ GET /v1/workspaces/{workspaceId}/connections 200 session_or_token connection:rea
 POST /v1/workspaces/{workspaceId}/connections 201 session connection:manage csrf ordinary_mutation
 DELETE /v1/workspaces/{workspaceId}/connections/{connectionId} 200 session connection:manage csrf connection_mutation
 GET /v1/workspaces/{workspaceId}/connections/{connectionId} 200 session_or_token connection:read - authenticated_read
+POST /v1/workspaces/{workspaceId}/connections/{connectionId}/lookup 200 session connection:use csrf provider_test
 POST /v1/workspaces/{workspaceId}/connections/{connectionId}/oauth2/authorization 200 session connection:manage csrf provider_test
 PUT /v1/workspaces/{workspaceId}/connections/{connectionId}/secret 200 session connection:manage csrf connection_mutation
 GET /v1/workspaces/{workspaceId}/connections/{connectionId}/sharing 200 session connection:manage - authenticated_read
