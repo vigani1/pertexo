@@ -38,7 +38,10 @@ export function createExplanationStore(pool: Pool) {
         ];
         return {
           kind: 'failed_run' as const,
-          definitionVersion: recent[0]?.version ?? null,
+          definitionVersion: {
+            id: run.workflowVersionId,
+            number: recent[0]?.version ?? null,
+          },
           status: run.status,
           trigger: run.triggerType,
           failureCode: run.failureReasonCode,

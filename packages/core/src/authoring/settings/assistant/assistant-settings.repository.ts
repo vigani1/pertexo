@@ -12,7 +12,7 @@ import type { PoolClient } from 'pg';
 
 export type AssistantConnectionIdentity = Readonly<{
   providerKey: string;
-  authType: typeof connections.$inferSelect.authType;
+  authType: string;
 }>;
 
 export type AssistantSelection = Readonly<{
@@ -69,7 +69,7 @@ export async function isAvailableAssistantConnection(
         ),
         eq(connections.status, CONNECTION_STATUS.active),
         eq(connections.providerKey, connection.providerKey),
-        eq(connections.authType, connection.authType),
+        eq(connections.authType, sql`${connection.authType}`),
       ),
     )
     .for('share');
