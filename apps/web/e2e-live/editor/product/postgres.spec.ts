@@ -11,7 +11,7 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-test.use({ actionTimeout: 10_000 });
+test.use({ accountGroup: 'provider', actionTimeout: 10_000 });
 
 test('creates a PostgreSQL connection, runs a Database query and reads its rows', async ({
   page,

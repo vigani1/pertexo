@@ -17,7 +17,11 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-test.use({ actionTimeout: 10_000, viewport: { width: 1280, height: 1080 } });
+test.use({
+  accountGroup: 'provider',
+  actionTimeout: 10_000,
+  viewport: { width: 1280, height: 1080 },
+});
 
 test('authors stable categories and routes a published run and replay', async ({
   page,

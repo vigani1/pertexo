@@ -21,7 +21,11 @@ import { model, openModelProvider } from './model-provider';
 
 const alias = 'find_orders';
 
-test.use({ actionTimeout: 10_000, viewport: { width: 1280, height: 1280 } });
+test.use({
+  accountGroup: 'assistant',
+  actionTimeout: 10_000,
+  viewport: { width: 1280, height: 1280 },
+});
 
 test('publishes an Agent with a Find rows tool and inspects its work', async ({
   page,
