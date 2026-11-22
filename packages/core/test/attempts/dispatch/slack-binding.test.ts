@@ -9,14 +9,19 @@ it('matches only the published Slack send node and its own connection, including
   };
   for (const nodes of [[node], [{ structured: { body: { nodes: [node] } } }]]) {
     expect(
-      publishesSlackBinding({ graph: { nodes } }, 'send', 'connection'),
+      publishesSlackBinding({ graph: { nodes } }, 'send', 'connection', 'send'),
     ).toBe(true);
     expect(
-      publishesSlackBinding({ graph: { nodes } }, 'other', 'connection'),
+      publishesSlackBinding(
+        { graph: { nodes } },
+        'other',
+        'connection',
+        'send',
+      ),
     ).toBe(false);
-    expect(publishesSlackBinding({ graph: { nodes } }, 'send', 'other')).toBe(
-      false,
-    );
+    expect(
+      publishesSlackBinding({ graph: { nodes } }, 'send', 'other', 'send'),
+    ).toBe(false);
   }
   expect(
     publishesSlackBinding(
@@ -29,7 +34,8 @@ it('matches only the published Slack send node and its own connection, including
       },
       'send',
       'connection',
+      'send',
     ),
   ).toBe(false);
-  expect(publishesSlackBinding(null, 'send', 'connection')).toBe(false);
+  expect(publishesSlackBinding(null, 'send', 'connection', 'send')).toBe(false);
 });
