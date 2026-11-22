@@ -76,6 +76,12 @@ export { PROVIDER_RETRY_FAILURE } from './http/retry-after.errors.js';
 
 export { SLACK_REJECTIONS } from './slack/rejection-policy.js';
 
+export {
+  MODEL_AUTH_TYPE,
+  MODEL_ENDPOINT_LOOKUP,
+  MODEL_PROVIDER_KEY,
+} from './ai/connections.definition.js';
+
 export { smtpCredentialSchema } from '@pertexo/contracts';
 
 export { DATABASE_DEFINITION_REGISTRATION } from './database/execute/execute.definition.js';
@@ -84,5 +90,6 @@ export {
   GUARDRAILS_LIMITS,
   guardrailsDraftChecksSchema,
   guardrailsTermsSchema,
+  type GuardrailsModelCheck,
   type GuardrailsCheck,
 } from './ai/guardrails/guardrails.schemas.js';

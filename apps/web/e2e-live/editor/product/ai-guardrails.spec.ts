@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { mapBrowserInput } from '../../../test/support/browser/inputs';
 import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import {
@@ -9,9 +9,14 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 import { test } from './account';
-import { modelScreenshots } from './model-editor';
+import { connectModel, modelScreenshots } from './model-editor';
+import { baseUrl, model, openModelProvider } from './model-provider';
 
-test.use({ actionTimeout: 10_000, viewport: { width: 1280, height: 1080 } });
+test.use({
+  accountGroup: 'guardrails',
+  actionTimeout: 10_000,
+  viewport: { width: 1280, height: 1080 },
+});
 
 test('configures Guardrails, routes both outcomes and shows the deciding category', async ({
   page,
@@ -50,24 +55,7 @@ test('configures Guardrails, routes both outcomes and shows the deciding categor
     source: 'Run input',
     path: '$.message',
   });
-  for (const port of ['Pass', 'Fail']) {
-    await page.getByTestId(`rf__node-${source}`).focus();
-    await page.keyboard.press('Enter');
-    await page
-      .getByRole('button', { name: 'Step actions', exact: true })
-      .click();
-    await page
-      .getByRole('menuitem', { name: 'Add step after', exact: true })
-      .click();
-    const dialog = page.getByRole('dialog', {
-      name: 'Add a step after “Check message”',
-    });
-    await dialog.getByLabel('Link from', { exact: true }).click();
-    await page.getByRole('option', { name: port, exact: true }).click();
-    await dialog.getByRole('button', { name: /Set fields/u }).click();
-    await page.getByLabel('Label', { exact: true }).fill(`Route ${port}`);
-    await page.keyboard.press('Tab');
-  }
+  await addGuardrailsRoutes(page, source);
 
   await page.getByTestId(`rf__node-${source}`).focus();
   await page.keyboard.press('Enter');
@@ -114,3 +102,137 @@ test('configures Guardrails, routes both outcomes and shows the deciding categor
     }
   }
 });
+
+test('discloses model transfer and inspects both model verdicts on published runs', async ({
+  page,
+}, info) => {
+  const provider = await openModelProvider();
+  try {
+    const workspace = await openNewEditorWorkspace(
+      page,
+      'Model Guardrails workspace',
+    );
+    await connectModel(page, workspace);
+    const path = await createEditorWorkflow(
+      page,
+      workspace,
+      'Review with a model',
+    );
+    const editor = new URL(page.url()).pathname;
+    const source = await addSingleStep(
+      page,
+      path,
+      /^Guardrails\b/u,
+      'Check message',
+    );
+    await page.getByRole('tab', { name: 'Setup', exact: true }).click();
+    await page
+      .getByRole('checkbox', { name: 'Model check', exact: true })
+      .check();
+    await page.getByLabel('AI model connection', { exact: true }).click();
+    await page
+      .getByRole('option', { name: 'Order model', exact: true })
+      .click();
+    await page.getByLabel('Model identifier', { exact: true }).fill(model);
+    await page.getByLabel('Review for', { exact: true }).click();
+    await page
+      .getByRole('option', { name: 'Text policy', exact: true })
+      .click();
+    const policy = 'Reject text that discloses unpublished pricing.';
+    await page.getByLabel('Policy', { exact: true }).fill(policy);
+    await mapBrowserInput({
+      page,
+      field: 'text',
+      source: 'Run input',
+      path: '$.message',
+    });
+    await addGuardrailsRoutes(page, source);
+    await page.getByTestId(`rf__node-${source}`).focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('tab', { name: 'Setup', exact: true }).click();
+    const disclosed = page.getByText(
+      'Sends the mapped text and the policy after the deterministic checks pass.',
+      { exact: true },
+    );
+    await expect(disclosed).toBeVisible();
+    await expect(disclosed.locator('..')).toContainText(new URL(baseUrl).host);
+    await expect(disclosed.locator('..')).toContainText(model);
+    await expect(
+      page.getByRole('status').filter({ hasText: /\bSaved\b/u }),
+    ).toBeVisible();
+    await disclosed.scrollIntoViewIfNeeded();
+    await modelScreenshots(page, info, 'guardrails-model-disclosure');
+    expect(provider.calls).toHaveLength(0);
+
+    await publishSingleStep(page, path);
+    for (const [port, message, verdict, reason, label] of [
+      [
+        'Fail',
+        'Our unreleased plan will cost ten credits.',
+        'reject',
+        'policy',
+        'Model flagged a policy violation',
+      ],
+      [
+        'Pass',
+        'The public plan is available.',
+        'pass',
+        'clear',
+        'Model approved the text',
+      ],
+    ] as const) {
+      provider.answerWith({ verdict, reason });
+      await page.goto(editor);
+      const run = await startSingleStep(page, { message });
+      await waitForRun(page, workspace, run, 'succeeded');
+      await expect(
+        page.getByRole('button', { name: `Route ${port}: Succeeded` }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', {
+          name: `Route ${port === 'Pass' ? 'Fail' : 'Pass'}: Succeeded`,
+        }),
+      ).toHaveCount(0);
+      await page
+        .getByRole('button', { name: 'Check message: Succeeded' })
+        .click();
+      const details = page.getByRole('complementary', { name: 'Step details' });
+      await expect(details.getByText(port, { exact: true })).toBeVisible();
+      await expect(details.getByText(label, { exact: true })).toBeVisible();
+      await expect(
+        details.getByText('Input tokens', { exact: true }),
+      ).toBeVisible();
+      await expect(details.getByText('23', { exact: true })).toBeVisible();
+      await expect(details.getByText('7', { exact: true })).toBeVisible();
+      await expect(details).not.toContainText(message);
+      expect(JSON.stringify(provider.calls.at(-1))).toContain(policy);
+      expect(JSON.stringify(provider.calls.at(-1))).toContain(message);
+      await details.getByText(label, { exact: true }).scrollIntoViewIfNeeded();
+      await modelScreenshots(page, info, `guardrails-model-${verdict}`);
+    }
+    expect(provider.calls).toHaveLength(2);
+  } finally {
+    await provider.close();
+  }
+});
+
+async function addGuardrailsRoutes(page: Page, source: string) {
+  for (const port of ['Pass', 'Fail']) {
+    await page.getByTestId(`rf__node-${source}`).focus();
+    await page.keyboard.press('Enter');
+    await page
+      .getByRole('button', { name: 'Step actions', exact: true })
+      .click();
+    await page
+      .getByRole('menuitem', { name: 'Add step after', exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', {
+      name: 'Add a step after “Check message”',
+    });
+    await dialog.getByLabel('Link from', { exact: true }).click();
+    await page.getByRole('option', { name: port, exact: true }).click();
+    await dialog.getByRole('button', { name: /Set fields/u }).click();
+    await page.getByLabel('Label', { exact: true }).fill(`Route ${port}`);
+    await page.keyboard.press('Tab');
+  }
+}

@@ -11615,7 +11615,10 @@
                 "pii.iban",
                 "pii.national_id",
                 "terms.prohibited",
-                "injection.marker"
+                "injection.marker",
+                "model.clear",
+                "model.injection",
+                "model.policy"
               ]
             },
             "additionalProperties": {

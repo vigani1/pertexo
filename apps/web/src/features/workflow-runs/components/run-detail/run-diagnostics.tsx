@@ -78,10 +78,12 @@ export function StepModelUsage({
   scope,
   nodeRunId,
   attemptNumber,
+  optional = false,
 }: Readonly<{
   scope: RunDataScope;
   nodeRunId: string;
   attemptNumber: number;
+  optional?: boolean;
 }>) {
   const query = useQuery(
     nodeRunDiagnosticsQueryOptions({
@@ -101,13 +103,13 @@ export function StepModelUsage({
         <InlineFailedRead text="Couldn’t load model usage." {...failed} />
       )}
     >
-      {({ modelUsage }) =>
-        modelUsage === undefined ? (
+      {({ modelUsage }) => {
+        if (modelUsage !== undefined)
+          return <ModelUsageDetails usage={modelUsage} />;
+        return optional ? null : (
           <p className="mt-1 text-muted-foreground">Model usage unavailable.</p>
-        ) : (
-          <ModelUsageDetails usage={modelUsage} />
-        )
-      }
+        );
+      }}
     </QueryView>
   );
 }
@@ -169,7 +171,11 @@ export function StepGuardrailsDiagnostics({
                     {reason}
                   </span>
                 </dt>
-                <dd>{formatCount(count, 'match', 'matches')}</dd>
+                <dd>
+                  {reason.startsWith('model.')
+                    ? null
+                    : formatCount(count, 'match', 'matches')}
+                </dd>
               </div>
             ))}
           </dl>

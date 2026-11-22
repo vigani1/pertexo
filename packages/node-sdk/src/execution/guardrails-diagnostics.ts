@@ -8,6 +8,9 @@ const guardrailsReasonSchema = z.enum([
   'pii.national_id',
   'terms.prohibited',
   'injection.marker',
+  'model.clear',
+  'model.injection',
+  'model.policy',
 ]);
 
 export const guardrailsDiagnosticsSchema = z.partialRecord(

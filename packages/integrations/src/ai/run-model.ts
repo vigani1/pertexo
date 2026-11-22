@@ -10,7 +10,7 @@ import {
   MODEL_AUTH_TYPE,
   MODEL_PROVIDER_KEY,
   modelCredentialSchema,
-  modelEndpoint,
+  modelEndpointHost,
 } from './connections.definition.js';
 import type { ModelClient } from './model-client.js';
 import { trackModelUsage } from './model-usage.js';
@@ -53,6 +53,7 @@ type ModelAttempt = Readonly<{
   prompt: string;
   purpose: string;
   now: () => number;
+  structuredResponse?: 'prompt';
 }>;
 
 export async function runModel(attempt: ModelAttempt) {
@@ -102,8 +103,7 @@ export function modelCredentialHost(
       refuse: () =>
         modelFailure('credential_rejected', { possiblyDispatched: false }),
     },
-    (credential) =>
-      Promise.resolve(new URL(modelEndpoint(credential, 'models')).host),
+    (credential) => Promise.resolve(modelEndpointHost(credential)),
   );
 }
 
@@ -129,7 +129,15 @@ export async function runAgentTurn(
 }
 
 async function withModelAttempt<Result>(
-  { client, invocation, config, prompt, purpose, now }: ModelAttempt,
+  {
+    client,
+    invocation,
+    config,
+    prompt,
+    purpose,
+    now,
+    structuredResponse,
+  }: ModelAttempt,
   use: (
     complete: (repair?: {
       answer: unknown;
@@ -195,7 +203,13 @@ async function withModelAttempt<Result>(
           });
         return client.complete(
           agent === undefined || config.mode !== 'text'
-            ? modelRequest(credential.endpoint, config, prompt, repair)
+            ? modelRequest(
+                credential.endpoint,
+                config,
+                prompt,
+                repair,
+                structuredResponse,
+              )
             : {
                 endpoint: credential.endpoint,
                 config,

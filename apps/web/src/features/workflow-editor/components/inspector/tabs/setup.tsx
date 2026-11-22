@@ -1,4 +1,5 @@
 import { useInspectorSession } from '../use-session';
+import { GuardrailsSetup } from '../builders/guardrails-setup';
 import { RunValuesSetup } from '../run-values/setup';
 import { useScratchForm } from '../use-draft-field';
 import { StepRetrySetup } from '../retries/setup';
@@ -15,6 +16,7 @@ import {
   AGENT_SEND_SLACK_MESSAGE,
   AGENT_SLACK_CONNECTION_SLOT,
   isPollingTriggerDefinition,
+  isGuardrailsDefinition,
 } from '@pertexo/workflow-model';
 import {
   databasePollingGuidance,
@@ -98,7 +100,9 @@ function CatalogSetupTab({
     configuredAgentTool(node.config).definition.key ===
     AGENT_SEND_SLACK_MESSAGE.key;
   const slots = (definition?.connectionRequirements ?? []).filter(
-    (slot) => !agent || slot !== AGENT_SLACK_CONNECTION_SLOT || sendsSlack,
+    (slot) =>
+      !isGuardrailsDefinition(node.definition) &&
+      (!agent || slot !== AGENT_SLACK_CONNECTION_SLOT || sendsSlack),
   );
   // A step whose schema has nothing to set (Condition, say) is decided by
   // its inputs: point there instead of offering an empty JSON object.
@@ -292,6 +296,14 @@ function CatalogFields({
             ? 'This step type isn’t in the catalog, so its setup is kept exactly as it is.'
             : 'Every property is kept, including ones the fields above don’t show.'
         }
+      />
+    );
+  if (isGuardrailsDefinition(node.definition))
+    return (
+      <GuardrailsSetup
+        config={node.config}
+        connectionRefs={node.connectionRefs}
+        form={form}
       />
     );
   return (
