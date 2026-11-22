@@ -182,7 +182,8 @@ describeIntegration('Workflow Call execution through real transport', () => {
     }
   }, 30_000);
 
-  it('executes five waiting parents and five children in the default five slots', async () => {
+  it('executes five waiting parents and five children with a five-slot workspace limit', async () => {
+    await limitWorkspace(5);
     const provider = childWithHeldHttpResponse();
     const child = await publishGraph(provider.graph);
     const parents = await Promise.all(
