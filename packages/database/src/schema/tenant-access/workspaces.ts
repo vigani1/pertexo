@@ -2,6 +2,7 @@ import {
   RESOURCE_NAME_MAX_LENGTH,
   WORKSPACE_TEXT_LIMITS,
 } from '@pertexo/workflow-model';
+import { MODEL_IDENTIFIER_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { sql } from 'drizzle-orm';
 import {
   type PgTableExtraConfigValue,
@@ -52,6 +53,10 @@ export const workspaces = appSchema.table(
     requirePublishApproval: boolean('require_publish_approval')
       .notNull()
       .default(false),
+    assistantConnectionId: uuid('assistant_connection_id'),
+    assistantModel: varchar('assistant_model', {
+      length: MODEL_IDENTIFIER_MAX_CHARACTERS,
+    }),
     createdBy: uuid('created_by'),
     deletionRequestedAt: timestamp('deletion_requested_at', {
       withTimezone: true,
@@ -74,6 +79,10 @@ export const workspaces = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    check(
+      'workspaces_assistant_selection_complete',
+      sql`(assistant_connection_id IS NULL) = (assistant_model IS NULL)`,
+    ),
     check(
       'workspaces_audit_retention_valid',
       sql`audit_retention_days between 30 and 2555`,

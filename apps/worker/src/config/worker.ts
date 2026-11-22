@@ -11,8 +11,7 @@ import path from 'node:path';
 import { parseCodeSettings, codeRunnerSocketPath } from '@pertexo/node-sdk';
 import type { WorkerCodeRunnerConfig } from '../attempts/code/client.js';
 import { z } from 'zod';
-import { AGENT_LIMITS } from '@pertexo/workflow-model';
-import { MODEL_IDENTIFIER_MAX_CHARACTERS } from '@pertexo/node-sdk';
+import { agentModelRatesSchema } from '@pertexo/workflow-model';
 import {
   parseArtifactStoreConfig,
   type ArtifactStoreConfig,
@@ -46,11 +45,6 @@ import {
 // Linux's PATH_MAX.
 const PATH_MAX_CHARACTERS = 4_096;
 
-const agentTokenRate = z.int().min(0).max(AGENT_LIMITS.costNanoDollars);
-const agentModelRatesSchema = z.record(
-  z.string().min(1).max(MODEL_IDENTIFIER_MAX_CHARACTERS),
-  z.strictObject({ input: agentTokenRate, output: agentTokenRate }),
-);
 type AgentModelRates = z.output<typeof agentModelRatesSchema>;
 
 export type WorkerConfig = Readonly<

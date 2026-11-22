@@ -40,7 +40,11 @@ import {
 } from './rules/invitations.repository.js';
 import { presence } from './rules/collaboration.repository.js';
 import { publicationRequests } from './rules/publication-reviews.repository.js';
-import { triggerSkips, previewUsage } from './rules/usage.repository.js';
+import {
+  triggerSkips,
+  previewUsage,
+  assistantUsage,
+} from './rules/usage.repository.js';
 import { testSuites } from './rules/test-suites.repository.js';
 import { transportFacts } from './rules/transport-security.repository.js';
 import {
@@ -90,6 +94,7 @@ export const RETENTION_RULES = Object.freeze([
   dataTableReceipts,
   triggerSkips,
   previewUsage,
+  assistantUsage,
   testSuites,
   testSnapshots,
   webhookResponses,

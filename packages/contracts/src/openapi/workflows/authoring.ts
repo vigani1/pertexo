@@ -1,3 +1,4 @@
+import { assistantRoutes } from '../../routes/workflows/assistant.js';
 import {
   mcpTransportPaths,
   workflowMcpContractPaths,
@@ -115,7 +116,10 @@ function contractSchemas() {
     ),
   });
 }
-const openApiSchemas = contractSchemas();
+const openApiSchemas = {
+  ...contractSchemas(),
+  ...routeSchemas(Object.values(assistantRoutes)),
+};
 
 const problemResponses = Object.freeze({
   BadRequest: sharedProblemResponses.BadRequest,

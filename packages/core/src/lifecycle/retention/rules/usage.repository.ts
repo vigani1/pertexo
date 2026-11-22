@@ -29,3 +29,16 @@ export const previewUsage = deletionRule('preview_usage', {
   orderBy: [usageEvents.occurredAt, usageEvents.id],
   recheck: previewUsageExpired,
 });
+
+const assistantUsageExpired = and(
+  eq(usageEvents.category, 'assistant.model'),
+  sql`${usageEvents.occurredAt}<=clock_timestamp()-${RUN_SUMMARY_RETENTION_SQL}`,
+);
+
+export const assistantUsage = deletionRule('assistant_usage', {
+  table: usageEvents,
+  keys: [usageEvents.id],
+  condition: assistantUsageExpired,
+  orderBy: [usageEvents.occurredAt, usageEvents.id],
+  recheck: assistantUsageExpired,
+});

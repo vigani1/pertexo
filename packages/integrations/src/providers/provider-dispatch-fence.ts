@@ -101,7 +101,9 @@ export function createUnauthenticatedBeforeDispatch(
   };
 }
 
-export function markingDispatchOnce(runtime: NodeExecutionRuntime) {
+export function markingDispatchOnce<
+  Runtime extends Pick<NodeExecutionRuntime, 'beforeDispatch'>,
+>(runtime: Runtime) {
   let marked = false;
   return {
     ...runtime,

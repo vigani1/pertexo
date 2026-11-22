@@ -6,6 +6,7 @@ import type { DatabaseConfig } from '@pertexo/database/platform';
 import { createNodeProviderHttpClient } from '../../src/platform/connections/http-client.js';
 import {
   createResendClient,
+  type ProviderHttpClient,
   createSlackClient,
 } from '@pertexo/integrations/server';
 
@@ -24,7 +25,8 @@ export type FixtureConnectionServices = Readonly<{
     encryption: ConnectionSecretEncryptionPort;
     close?: () => void;
   }>;
-  http?: ConnectionHttpClient;
+  http?: ConnectionHttpClient &
+    Partial<Pick<ProviderHttpClient, 'executeStreaming'>>;
   slack?: ConnectionSlackClient;
   email?: ConnectionEmailClient;
   smtpPolicy?: NonNullable<Parameters<typeof createSmtpClient>[1]>;
@@ -62,6 +64,15 @@ export function createFixtureConnectionRuntime(
       authorization: identityRuntime.dependencies.authorization,
       encryption: services.encryption.encryption,
       httpClient,
+      ...(httpClient.executeStreaming === undefined
+        ? {}
+        : {
+            lookup: {
+              persistence: database,
+              encryption: services.encryption.encryption,
+              http: { executeStreaming: httpClient.executeStreaming },
+            },
+          }),
       slackClient: services.slack ?? createSlackClient(httpClient),
       emailClient: services.email ?? createResendClient(httpClient),
       telemetry: {

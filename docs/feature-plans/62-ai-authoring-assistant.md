@@ -52,6 +52,9 @@ An operator sets provider limits, address policy and retention expectations.
   no tool for saving, publishing, running, provisioning credentials or
   calling workflow tools. No shared chat history in this delivery.
 
+- Each finished explanation records bounded model usage as `assistant.model`
+  against its run. It follows the same retention window as preview usage.
+
 ## Codebase structure
 
 Add an API service and route under `apps/api/src/workflow-authoring/`.

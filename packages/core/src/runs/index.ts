@@ -170,3 +170,8 @@ export { readMcpWorkflow } from './mcp/exposure.repository.js';
 export { callableTool } from './mcp/callable-tool.js';
 export { findPublishedWorkflow } from './queries/execution/published.repository.js';
 export { McpToolUnavailableError } from './mcp/mcp.errors.js';
+
+export type {} from './access.js';
+export type {} from './commands/workflow-run-records.repository.js';
+export type {} from './queries/history/details.repository.js';
+export type {} from './queries/explanation-context.repository.js';

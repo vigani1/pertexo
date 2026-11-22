@@ -5571,6 +5571,9 @@ CREATE TABLE app.workspaces (
     audit_retention_days smallint DEFAULT 365 NOT NULL,
     governance_revision integer DEFAULT 1 NOT NULL,
     require_publish_approval boolean DEFAULT false NOT NULL,
+    assistant_connection_id uuid,
+    assistant_model character varying(512),
+    CONSTRAINT workspaces_assistant_selection_complete CHECK (((assistant_connection_id IS NULL) = (assistant_model IS NULL))),
     CONSTRAINT workspaces_audit_retention_valid CHECK (((audit_retention_days >= 30) AND (audit_retention_days <= 2555))),
     CONSTRAINT workspaces_auto_pause_threshold_valid CHECK (((auto_pause_threshold >= 3) AND (auto_pause_threshold <= 100))),
     CONSTRAINT workspaces_deletion_state_valid CHECK (((((status)::text = ANY (ARRAY[('active'::character varying)::text, ('suspended'::character varying)::text])) AND (created_by IS NOT NULL) AND (deletion_requested_at IS NULL) AND (deletion_requested_by IS NULL) AND (deletion_reason IS NULL) AND (purge_after IS NULL)) OR (((status)::text = ANY (ARRAY[('pending_deletion'::character varying)::text, ('purging'::character varying)::text])) AND (created_by IS NOT NULL) AND (deletion_requested_at IS NOT NULL) AND (deletion_requested_by IS NOT NULL) AND (deletion_reason IS NOT NULL) AND ((length(btrim((deletion_reason)::text)) >= 1) AND (length(btrim((deletion_reason)::text)) <= 512)) AND (purge_after IS NOT NULL) AND (purge_after > deletion_requested_at)) OR (((status)::text = 'deleted'::text) AND (created_by IS NULL) AND (deletion_requested_at IS NOT NULL) AND (deletion_requested_by IS NULL) AND ((deletion_reason)::text = 'purged'::text) AND (purge_after IS NOT NULL) AND (purge_after > deletion_requested_at) AND ((name)::text = 'Deleted workspace'::text) AND ((slug)::text = ('deleted-'::text || (id)::text))))),
@@ -8329,6 +8332,13 @@ CREATE INDEX trigger_schedule_occurrences_trigger_time_idx ON app.trigger_schedu
 --
 
 CREATE INDEX trigger_schedules_due_idx ON app.trigger_schedules USING btree (next_fire_at, workspace_id, trigger_id) WHERE ((status)::text = 'enabled'::text);
+
+
+--
+-- Name: usage_events_assistant_retention_idx; Type: INDEX; Schema: app; Owner: pertexo_owner
+--
+
+CREATE INDEX usage_events_assistant_retention_idx ON app.usage_events USING btree (occurred_at, id) WHERE ((category)::text = 'assistant.model'::text);
 
 
 --
@@ -17475,6 +17485,22 @@ GRANT UPDATE(governance_revision) ON TABLE app.workspaces TO pertexo_app;
 --
 
 GRANT UPDATE(require_publish_approval) ON TABLE app.workspaces TO pertexo_app;
+
+
+--
+-- Name: COLUMN workspaces.assistant_connection_id; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(assistant_connection_id) ON TABLE app.workspaces TO pertexo_app;
+GRANT UPDATE(assistant_connection_id) ON TABLE app.workspaces TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN workspaces.assistant_model; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(assistant_model) ON TABLE app.workspaces TO pertexo_app;
+GRANT UPDATE(assistant_model) ON TABLE app.workspaces TO pertexo_maintenance;
 
 
 --

@@ -95,6 +95,8 @@ export async function leaveWorkspaceTombstone(
     .update(workspaces)
     .set({
       status: 'deleted',
+      assistantConnectionId: null,
+      assistantModel: null,
       name: TOMBSTONE_NAME,
       slug: sql`'deleted-'||${workspaces.id}::text`,
       createdBy: null,

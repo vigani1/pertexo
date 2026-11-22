@@ -192,3 +192,10 @@ export function agentToolAllowedWithoutApproval(
     return tool;
   return undefined;
 }
+
+const agentTokenRate = z.int().min(0).max(AGENT_LIMITS.costNanoDollars);
+
+export const agentModelRatesSchema = z.record(
+  z.string().min(1).max(MODEL_IDENTIFIER_MAX_CHARACTERS),
+  z.strictObject({ input: agentTokenRate, output: agentTokenRate }),
+);

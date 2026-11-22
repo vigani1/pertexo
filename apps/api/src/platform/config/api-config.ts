@@ -1,3 +1,4 @@
+import { agentModelRatesSchema } from '@pertexo/workflow-model';
 import {
   ApiConfigurationError,
   parseConfigurationSection,
@@ -166,6 +167,7 @@ export type ApiConfig = Readonly<{
   /** Requests held at once; past it the API answers 503 server.busy. */
   inFlightRequestLimit: number;
   codeSettings: CodeSettings;
+  agentModelRates?: z.output<typeof agentModelRatesSchema>;
   artifacts?: ArtifactStoreConfig;
   connections?:
     | SelfManagedConnectionEncryptionConfig
@@ -231,7 +233,17 @@ export function parseApiConfig(
     'configure matching callback key settings and a public web origin; use private keys with distinct versions and HTTPS when deployed.',
     () => parseCallbackKeyConfig(environment, { deployed }),
   );
+  const rates = environment.AGENT_MODEL_RATES;
+  const agentModelRates =
+    rates === undefined
+      ? undefined
+      : parseConfigurationSection(
+          'AGENT_MODEL_RATES',
+          'configure model identifiers with input and output rates in nano-dollars per token.',
+          () => agentModelRatesSchema.parse(JSON.parse(rates) as unknown),
+        );
   return Object.freeze({
+    ...(agentModelRates === undefined ? {} : { agentModelRates }),
     smtpAllowPlaintext: parseConfigurationSection(
       'SMTP_ALLOW_PLAINTEXT',
       'use true or false; defaults to false.',

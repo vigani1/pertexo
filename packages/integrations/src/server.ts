@@ -102,3 +102,10 @@ export { INTEGRATION_MODULES } from './modules.js';
 export type { ConnectionDefinition } from './providers/connection-definition.js';
 
 export type { ConnectionLookup } from './providers/connection-lookup.js';
+
+export { createModelClient, type ModelClient } from './ai/model-client.js';
+export { modelCredentialHost, runModelOnce } from './ai/run-model.js';
+export {
+  MODEL_AUTH_TYPE,
+  MODEL_PROVIDER_KEY,
+} from './ai/connections.definition.js';
