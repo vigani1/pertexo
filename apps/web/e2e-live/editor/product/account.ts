@@ -1,42 +1,71 @@
-import type { Cookie } from '@playwright/test';
+import type { Browser, Cookie } from '@playwright/test';
 import { test as base } from '../../support/browser-fixture';
 import { registerEditorUser } from '../../support/ordinary-editor-session';
 
+const ownerNames = {
+  product: 'Product owner',
+  assistant: 'Assistant author',
+  provider: 'Provider workflow author',
+} as const;
+
+type AccountGroup = keyof typeof ownerNames;
+type ProductAccount = Readonly<{ cookies: readonly Cookie[]; email: string }>;
+
 /**
- * The product journey's specs share one signed-in account, each in a new
- * workspace of its own. Signing every spec up and in would spend the identity
- * budget (10 sign-ups and sign-ins a minute per address) on a fast machine;
- * none of these specs tests signing in itself.
+ * Each group shares one signed-in account per worker and creates a new
+ * workspace per test. This keeps both sign-ins per address and reads per
+ * account within their budgets when the journey runs quickly.
  */
 export const test = base.extend<
-  // Playwright's way to declare that this adds no test-scoped fixtures.
-  // oxlint-disable-next-line typescript/no-generated-empty-object-type
-  Record<never, never>,
-  { productAccount: Readonly<{ cookies: readonly Cookie[]; email: string }> }
+  { accountGroup: AccountGroup; productAccount: ProductAccount },
+  { productAccounts: (group: AccountGroup) => Promise<ProductAccount> }
 >({
-  productAccount: [
+  accountGroup: ['product', { option: true }],
+  productAccounts: [
     async ({ browser }, runFixtures, workerInfo) => {
       const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
       if (mail === undefined) throw new Error('Use the owned API fixture');
-      const baseURL = workerInfo.project.use.baseURL;
-      const context = await browser.newContext(
-        baseURL === undefined ? {} : { baseURL },
-      );
-      const page = await context.newPage();
-      const email = await registerEditorUser(
-        page,
-        context.request,
-        mail,
-        'Product owner',
-      );
-      const { cookies } = await context.storageState();
-      await context.close();
-      await runFixtures({ cookies, email });
+      const { baseURL } = workerInfo.project.use;
+      const accounts = new Map<AccountGroup, Promise<ProductAccount>>();
+      await runFixtures((group) => {
+        const existing = accounts.get(group);
+        if (existing !== undefined) return existing;
+        const account = registerAccount(
+          browser,
+          baseURL,
+          mail,
+          ownerNames[group],
+        );
+        accounts.set(group, account);
+        return account;
+      });
     },
     { scope: 'worker' },
   ],
+  productAccount: async ({ accountGroup, productAccounts }, runFixtures) => {
+    await runFixtures(await productAccounts(accountGroup));
+  },
   context: async ({ context, productAccount }, runFixtures) => {
     await context.addCookies([...productAccount.cookies]);
     await runFixtures(context);
   },
 });
+
+async function registerAccount(
+  browser: Browser,
+  baseURL: string | undefined,
+  mail: string,
+  name: string,
+): Promise<ProductAccount> {
+  const context = await browser.newContext(
+    baseURL === undefined ? {} : { baseURL },
+  );
+  try {
+    const page = await context.newPage();
+    const email = await registerEditorUser(page, context.request, mail, name);
+    const { cookies } = await context.storageState();
+    return { cookies, email };
+  } finally {
+    await context.close();
+  }
+}

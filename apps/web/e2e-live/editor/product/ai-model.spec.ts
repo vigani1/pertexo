@@ -21,7 +21,11 @@ import {
   waitForRun,
 } from '../../support/authoring/single-step';
 
-test.use({ actionTimeout: 10_000, viewport: { width: 1280, height: 960 } });
+test.use({
+  accountGroup: 'provider',
+  actionTimeout: 10_000,
+  viewport: { width: 1280, height: 960 },
+});
 
 test('extracts data, measures inference and replays with a fresh model call', async ({
   page,

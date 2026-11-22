@@ -8,23 +8,23 @@ import {
   startSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
-import {
-  openNewEditorWorkspace,
-  registerEditorUser,
-} from '../../support/ordinary-editor-session';
+import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import { publishGraph, saveGraph } from '../callable/fixture';
-import { test } from '../../support/browser-fixture';
+import { test } from './account';
 import { addAgent, choose } from './agent-editor';
 import { connectModel, modelScreenshots } from './model-editor';
 import { model, openModelProvider } from './model-provider';
 
 const alias = 'verify_order';
 
-test.use({ actionTimeout: 10_000, viewport: { width: 1280, height: 1280 } });
+test.use({
+  accountGroup: 'assistant',
+  actionTimeout: 10_000,
+  viewport: { width: 1280, height: 1280 },
+});
 
 test('pins a callable workflow as an Agent tool and opens its child from the inspector', async ({
   page,
-  request,
 }, info) => {
   const provider = await openModelProvider([
     {
@@ -55,15 +55,6 @@ test('pins a callable workflow as an Agent tool and opens its child from the ins
     },
   ]);
   try {
-    const mailOrigin = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
-    if (mailOrigin === undefined)
-      throw new Error('Use the owned product fixture');
-    await registerEditorUser(
-      page,
-      request,
-      mailOrigin,
-      'Callable Agent author',
-    );
     const workspace = await openNewEditorWorkspace(
       page,
       'Agent callable workspace',
