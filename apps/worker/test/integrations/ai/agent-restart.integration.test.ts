@@ -48,7 +48,7 @@ const proposal = json({
 beforeAll(fixture.setup);
 afterAll(fixture.restoreServicesAndClose);
 
-describe('Agent restart', { timeout: 60_000 }, () => {
+describe('Agent restart', () => {
   it('charges both physical model requests when the first worker dies before completion', async () => {
     await using run = await start([hold, finalAnswer]);
     await run.waitForCalls(1);
