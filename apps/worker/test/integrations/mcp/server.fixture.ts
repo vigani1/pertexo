@@ -68,7 +68,9 @@ export async function fakeMcp(
         response.writeHead(400).end();
         return;
       }
-      const override = overrides[rpc.method];
+      const override = Object.hasOwn(overrides, rpc.method)
+        ? overrides[rpc.method]
+        : undefined;
       if (override !== undefined) {
         override(response, rpc);
         return;
