@@ -1,4 +1,5 @@
-import { CLASSIFY_STEP } from '@pertexo/workflow-model';
+import { AgentActivity } from './agent-activity';
+import { AGENT_STEP, CLASSIFY_STEP } from '@pertexo/workflow-model';
 import { StepCodeDiagnostics, StepModelUsage } from './run-diagnostics';
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
@@ -49,7 +50,9 @@ export function RunStepDetails({
   upstream,
   nowMs,
   scope,
+  onSelectStep,
 }: Readonly<{
+  onSelectStep?: (key: string) => void;
   row: RunTimelineRow | undefined;
   rows: readonly RunTimelineRow[];
   /** Steps connected into each step; undefined while the version loads. */
@@ -63,6 +66,9 @@ export function RunStepDetails({
         Choose a step to see what happened in it.
       </p>
     );
+  const isAgent =
+    row.definitionKey === AGENT_STEP.key && row.agentWork === undefined;
+  const mappedInput = isAgent || row.agentWork?.work.kind === 'model_turn';
   return (
     <div className="text-sm">
       {/* The step's type under a custom name, and which attempt; nothing
@@ -84,24 +90,41 @@ export function RunStepDetails({
         </span>
       </div>
       <StepHistory row={row} scope={scope} nowMs={nowMs} />
+      {onSelectStep === undefined ? null : (
+        <AgentActivity
+          parentKey={row.key}
+          rows={rows}
+          nowMs={nowMs}
+          scope={scope}
+          onSelectStep={onSelectStep}
+        />
+      )}
       <StepDetailsSection
-        title="Data in"
+        title={mappedInput ? 'Mapped input' : 'Data in'}
         hint={
-          <>
-            <p>
-              Exactly what this step received, as it started. Where it came from
-              is underneath: the run’s input for the first step, and what the
-              steps connected into it returned for the others.
-            </p>
-            <p>
-              Pertexo keeps run data for{' '}
-              {formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}, then deletes
-              it.
-            </p>
-          </>
+          mappedInput ? (
+            <p>The task and input supplied by this step’s mappings.</p>
+          ) : (
+            <>
+              <p>
+                Exactly what this step received, as it started. Where it came
+                from is underneath: the run’s input for the first step, and what
+                the steps connected into it returned for the others.
+              </p>
+              <p>
+                Pertexo keeps run data for{' '}
+                {formatCount(DATA_RETENTION_DAYS.runDetails, 'day')}, then
+                deletes it.
+              </p>
+            </>
+          )
         }
       >
-        {row.reused === undefined ? (
+        {isAgent && row.reused === undefined ? (
+          <p className="text-label text-muted-foreground">
+            Open a model turn to see the task and input it received.
+          </p>
+        ) : row.reused === undefined ? (
           <StepInputData
             row={row}
             rows={rows}
@@ -195,7 +218,8 @@ function StepHistory({
         nowMs={nowMs}
         workspace={scope.workspace}
         {...((row.definitionKey === 'ai.model' ||
-          row.definitionKey === CLASSIFY_STEP.key) &&
+          row.definitionKey === CLASSIFY_STEP.key ||
+          row.agentWork?.work.kind === 'model_turn') &&
         nodeRunId !== undefined
           ? {
               attemptUsage: (attemptNumber: number) => (

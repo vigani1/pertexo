@@ -7,6 +7,7 @@ import { DISPATCH_AWARE_EXECUTOR_ABI_VERSION } from '@pertexo/node-sdk/server';
 import {
   AGENT_STEP,
   AGENT_TOOL_LIMITS,
+  agentMappedInputSchema,
   agentConfigSchema,
   agentToolCallSchema,
   agentTurnOutputSchema,
@@ -17,8 +18,7 @@ import {
   MODEL_PROVIDER_KEY,
 } from '../connections.definition.js';
 
-export const agentTurnInputSchema = z.strictObject({
-  prompt: z.string().min(1),
+export const agentTurnInputSchema = agentMappedInputSchema.extend({
   toolSchema: boundedNodeJsonRecordSchema,
   history: z
     .array(z.strictObject({ call: agentToolCallSchema, result: z.json() }))
@@ -32,7 +32,7 @@ const manifest: NodeManifest = Object.freeze({
     name: 'Agent',
     description: 'Use a model with a workspace read tool',
     sideEffect:
-      'The mapped prompt, tool schema and bounded tool results enter the model request.',
+      'The mapped task and input, tool schemas and bounded tool results enter the model request.',
   },
   configVersion: 1,
   configSchema: generateSchemaDocument(agentConfigSchema),

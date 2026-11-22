@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { INTEGRATION_MODULES } from '@pertexo/integrations/server';
 import {
   PLATFORM_NODE_CATALOG,
   PlatformNodeDefinitionUnavailableError,
@@ -29,14 +30,11 @@ describe('integration registry parity', () => {
         .map(({ definition }) => definition),
     ).toEqual(
       expect.arrayContaining(
-        [
-          'database.execute',
-          'database.poll',
-          'email.send_notification',
-          'http.poll',
-          'http.request',
-          'slack.send_message',
-        ].map((key) => ({ key, version: 1 })),
+        INTEGRATION_MODULES.flatMap((module) =>
+          module.steps.map(
+            ({ registration }) => registration.manifest.definition,
+          ),
+        ),
       ),
     );
 

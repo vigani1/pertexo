@@ -28,6 +28,7 @@ const PUBLIC_PAYLOAD_KEYS = Object.freeze([
   'invocationKey',
   'nodeId',
   'nodeRunId',
+  'agentWork',
   'attemptId',
   'attemptNumber',
   'dueAt',

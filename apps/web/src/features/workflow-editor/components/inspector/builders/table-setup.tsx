@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { TableColumnNames } from '../data-tables/column-names';
 import { Button } from '@/components/ui/button';
 import { reviewTableBindings } from '../../../model/inspector/table-bindings';
@@ -15,10 +15,12 @@ export function DataTableSetup({
   scope,
   config,
   form,
+  children,
 }: Readonly<{
   scope: WorkspaceApiScope;
   config: Readonly<Record<string, unknown>>;
   form: NodeFormApi;
+  children?: ReactNode;
 }>) {
   const query = useQuery(tablesQuery(scope));
   const reviewButton = useRef<HTMLButtonElement>(null);
@@ -99,9 +101,8 @@ export function DataTableSetup({
       )}
       <QueryView query={query} resource="Tables" loading={null} />
       <p className="text-xs text-muted-foreground">
-        Use Inputs to map row values, filters and sorting. Find returns rows
-        with id, revision and values. Writes change workspace data, including
-        during tests.
+        {children ??
+          'Use Inputs to map row values, filters and sorting. Find returns rows with id, revision and values. Writes change workspace data, including during tests.'}
       </p>
       <Link
         className="text-sm text-action underline"

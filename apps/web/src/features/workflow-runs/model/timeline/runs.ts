@@ -30,6 +30,7 @@ export type RunTimelineRow = Readonly<{
   nodeId: string;
   invocationKey?: string;
   nodeRunId?: string;
+  agentWork?: NonNullable<WorkflowRunEvent['payload']['agentWork']>;
   label: string;
   /** What kind of step it is, when the graph names it separately. */
   kindLabel?: string;
@@ -183,6 +184,9 @@ function rowFor(
     ordered.length === 0 && invocation.summary !== undefined
       ? replayFromSummary(invocation.summary, bounds.startMs, bounds.endMs)
       : replayStep(ordered, invocation.summary, bounds.endMs);
+  const agentWork = ordered.find(
+    ({ payload }) => payload.agentWork !== undefined,
+  )?.payload.agentWork;
   const status = replay.status ?? 'pending';
   const look = describeNodeStatus(status);
   return {
@@ -192,7 +196,17 @@ function rowFor(
       ? {}
       : { invocationKey: invocation.invocationKey }),
     ...(replay.nodeRunId === undefined ? {} : { nodeRunId: replay.nodeRunId }),
-    ...label,
+    ...(agentWork === undefined
+      ? label
+      : {
+          agentWork,
+          definitionKey: agentWork.definition.key,
+          label:
+            agentWork.work.kind === 'model_turn'
+              ? `Model turn ${String(agentWork.turn)}`
+              : `Find rows · ${agentWork.alias ?? String(agentWork.work.ordinal)}`,
+          usesConnection: false,
+        }),
     status,
     tone: look.tone,
     statusLabel: rowStatusLabel(invocation.summary, look.label, bounds.endMs),
@@ -320,7 +334,12 @@ export function buildRunTimeline(
     .map((invocation) => {
       const graphLabel = labels.get(invocation.nodeId);
       const index = (perNode.get(invocation.nodeId) ?? 0) + 1;
-      perNode.set(invocation.nodeId, index);
+      if (
+        !invocation.events.some(
+          ({ payload }) => payload.agentWork !== undefined,
+        )
+      )
+        perNode.set(invocation.nodeId, index);
       return {
         row: rowFor(
           invocation,
@@ -340,7 +359,7 @@ export function buildRunTimeline(
     .map(({ row, index }) => {
       const repeated = (perNode.get(row.nodeId) ?? 0) > 1;
       const { firstActivityMs: _first, ...rest } = row;
-      if (!repeated) return rest;
+      if (!repeated || rest.agentWork !== undefined) return rest;
       const item = loopItemOf(rest.invocationKey);
       return {
         ...rest,

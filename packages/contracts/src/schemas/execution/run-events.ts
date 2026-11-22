@@ -1,4 +1,8 @@
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
+import {
+  AGENT_LIMITS,
+  AGENT_TOOL_LIMITS,
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+} from '@pertexo/workflow-model';
 import { NODE_FAILURE_FIELD_LIMITS } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
@@ -53,6 +57,31 @@ export const workflowRunEventPayloadSchema = z
       .max(RUN_EVENTS_BOUNDS.nodeIdCharacters)
       .optional(),
     nodeRunId: z.uuid().optional(),
+    agentWork: z
+      .strictObject({
+        parentInvocationKey: z
+          .string()
+          .min(1)
+          .max(RUN_EVENTS_BOUNDS.invocationKeyCharacters),
+        turn: z.int().min(1).max(AGENT_LIMITS.turns),
+        work: z.discriminatedUnion('kind', [
+          z.strictObject({ kind: z.literal('model_turn') }),
+          z.strictObject({
+            kind: z.literal('tool_call'),
+            ordinal: z.int().min(1).max(AGENT_LIMITS.toolCalls),
+          }),
+        ]),
+        definition: z.strictObject({
+          key: z.string(),
+          version: z.int().positive(),
+        }),
+        alias: z
+          .string()
+          .min(1)
+          .max(AGENT_TOOL_LIMITS.aliasCharacters)
+          .optional(),
+      })
+      .optional(),
     attemptId: z.uuid().optional(),
     sourceRunId: z.uuid().optional(),
     sourceNodeRunId: z.uuid().optional(),

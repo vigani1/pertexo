@@ -2,7 +2,11 @@ import {
   PlatformNodeDefinitionUnavailableError,
   resolvePlatformNodeDefinition,
 } from '@pertexo/node-catalog';
-import { isWorkflowTriggerDefinition } from '@pertexo/workflow-model';
+import {
+  agentMappedInputSchema,
+  isAgentDefinition,
+  isWorkflowTriggerDefinition,
+} from '@pertexo/workflow-model';
 import type {
   GraphValidationIssue,
   WorkflowGraph,
@@ -94,7 +98,10 @@ function inputIssues(
   for (const [key, source] of Object.entries(node.inputMappings))
     if (source.kind === 'literal') literals[key] = source.value;
     else mapped.add(key);
-  const parsed = definition.inputSchema.safeParse(literals);
+  const inputSchema = isAgentDefinition(node.definition)
+    ? agentMappedInputSchema
+    : definition.inputSchema;
+  const parsed = inputSchema.safeParse(literals);
   if (parsed.success) return [];
   return parsed.error.issues.flatMap((problem) => {
     const [field] = problem.path;

@@ -246,6 +246,7 @@ await output(
     ...previous,
     ...telemetry,
     'WORKFLOW_COORDINATOR_INLINE_STEPS',
+    'AGENT_MODEL_RATES',
     'SYSTEM_MAIL_TRANSPORT',
     ...mailNames,
   ]) +

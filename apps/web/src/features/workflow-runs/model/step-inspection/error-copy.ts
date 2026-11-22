@@ -1,3 +1,4 @@
+import { AGENT_STEP_ERRORS } from './agent-error-copy';
 import { MODEL_STEP_ERRORS } from './model-error-copy';
 import { formatCount } from '@/lib/format/count';
 import { formatTimeSpan } from '@/lib/format/time';
@@ -79,6 +80,7 @@ const outcomeUnknown: StepErrorCopy = {
 
 const knownCodes: Readonly<Record<string, StepErrorCopy>> = {
   ...HTTP_RESPONSE_FAILURES,
+  ...AGENT_STEP_ERRORS,
   [SUMMARY_RESULT_FAILURE.code]: SUMMARY_RESULT_FAILURE,
   ...Object.fromEntries(
     Object.values(SLACK_REJECTIONS).map((policy) => [policy.code, policy]),

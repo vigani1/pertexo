@@ -126,9 +126,12 @@ function prepareNode(
   // A step that uses a connection sends its input to a provider, and what
   // it sends never enters execution records (ADR 023, 024): only other
   // steps record their input (ADR 052).
+  const hasCallbackInput = hasCallbackMapping(
+    node.inputMappings,
+    inspectExpression,
+  );
   const recordsInput =
-    Object.keys(node.connectionRefs).length === 0 &&
-    !hasCallbackMapping(node.inputMappings, inspectExpression);
+    Object.keys(node.connectionRefs).length === 0 && !hasCallbackInput;
   return Object.freeze({
     ...(substituted ? { testSubstitution: true } : {}),
     ...(disposition?.kind === 'pin_required' ? { testPinRequired: true } : {}),
@@ -196,7 +199,7 @@ function prepareNode(
           : { expressionEvaluator: options.expressionEvaluator }),
         ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
         ...(input.onInputResolved === undefined ||
-        (!recordsInput && input.agent?.identity.work.kind !== 'tool_call')
+        (!recordsInput && (input.agent === undefined || hasCallbackInput))
           ? {}
           : { onInputResolved: input.onInputResolved }),
         signal: input.signal,

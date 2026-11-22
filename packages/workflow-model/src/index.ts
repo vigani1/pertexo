@@ -99,6 +99,8 @@ export {
   AGENT_FIND_ROWS,
   AGENT_STEP,
   AGENT_LIMITS,
+  agentMappedInputSchema,
+  agentFinalOutputSchema,
   AGENT_TOOL_LIMITS,
   agentConfigSchema,
   agentToolCallSchema,

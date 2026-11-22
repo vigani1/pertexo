@@ -12,7 +12,7 @@ export function createAgentExecutor(
 ) {
   return registerProviderExecutor(AGENT_STEP, undefined, (invocation) => {
     const { model, tool } = invocation.config as AgentConfig;
-    const { prompt, history, toolSchema } = invocation.input as z.output<
+    const { prompt, input, history, toolSchema } = invocation.input as z.output<
       typeof agentTurnInputSchema
     >;
     return runAgentTurn(
@@ -24,7 +24,10 @@ export function createAgentExecutor(
           model,
           maxOutputTokens: AGENT_TOOL_LIMITS.outputTokens,
         },
-        prompt,
+        prompt:
+          input === undefined
+            ? prompt
+            : `${prompt}\n\nInput:\n${JSON.stringify(input)}`,
         purpose: 'ai.agent.execute',
         now,
       },

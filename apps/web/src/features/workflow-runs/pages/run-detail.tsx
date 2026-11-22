@@ -167,6 +167,7 @@ export function RunDetailPage(props: RunDetailPageProps) {
           lensRef={lensRef}
           lens={
             <RunStepDetails
+              onSelectStep={selectStep}
               row={selected}
               rows={view.rows}
               upstream={upstream}
