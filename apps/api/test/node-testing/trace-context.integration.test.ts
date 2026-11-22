@@ -13,7 +13,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
     it.each([
       undefined,
       valid,
-      'bad',
+      'invalid-trace-header',
       `${valid}, ${valid}`,
       '00-00000000000000000000000000000000-2222222222222222-01',
     ])(
