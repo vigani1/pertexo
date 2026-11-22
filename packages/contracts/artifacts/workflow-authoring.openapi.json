@@ -1577,6 +1577,155 @@
         }
       }
     },
+    "/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/proposal": {
+      "get": {
+        "operationId": "getDraftProposalDisclosure",
+        "description": "Identify the endpoint before sending filtered draft context.",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transfer disclosure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftProposalDisclosure"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        }
+      },
+      "post": {
+        "operationId": "proposeWorkflowDraft",
+        "description": "Inspect a suggested draft against the current draft revision.",
+        "security": [
+          {
+            "cookieSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "x-csrf-token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 256
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftProposalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Draft proposal outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftProposalResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/Unexpected"
+          }
+        }
+      }
+    },
     "/v1/workspaces/{workspaceId}/assistant": {
       "get": {
         "operationId": "getAssistantSettings",
@@ -12414,6 +12563,2519 @@
           "reused"
         ],
         "additionalProperties": true
+      },
+      "DraftProposalDisclosure": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "not_configured",
+                  "connection_unavailable"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "ready"
+              },
+              "connectionName": {
+                "type": "string"
+              },
+              "host": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "confirmation": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "connectionName",
+              "host",
+              "model",
+              "confirmation"
+            ],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "DraftProposalRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "confirmation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "request": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "confirmation",
+          "request"
+        ],
+        "additionalProperties": false
+      },
+      "DraftProposalResult": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "not_configured",
+                  "connection_unavailable"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "confirmation_changed",
+                  "timeout",
+                  "response_too_large",
+                  "invalid_response",
+                  "provider_failure"
+                ]
+              },
+              "usage": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "complete"
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 512
+                      },
+                      "inputTokens": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "outputTokens": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "model",
+                      "inputTokens",
+                      "outputTokens"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "incomplete"
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 512
+                      },
+                      "inputTokens": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "outputTokens": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "model",
+                      "inputTokens",
+                      "outputTokens"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "rejected"
+              },
+              "issues": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "readOnly": true,
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "maxLength": 1024
+                    },
+                    "code": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "message": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "usage": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "complete"
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 512
+                      },
+                      "inputTokens": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "outputTokens": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "model",
+                      "inputTokens",
+                      "outputTokens"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "incomplete"
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 512
+                      },
+                      "inputTokens": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "outputTokens": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "model",
+                      "inputTokens",
+                      "outputTokens"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "issues",
+              "usage"
+            ],
+            "additionalProperties": true
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "inspected"
+              },
+              "base": {
+                "type": "object",
+                "properties": {
+                  "workflowId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "graph": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "maxItems": 200,
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema0"
+                        }
+                      },
+                      "edges": {
+                        "maxItems": 4000,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "port": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": true
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "port": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": true
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "settings": {
+                        "type": "object",
+                        "properties": {
+                          "maxRunDurationMs": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 3600000
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "callable": {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema3"
+                          },
+                          "resultType": {
+                            "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema3"
+                          },
+                          "result": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "workspace_variable"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "name"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "literal"
+                                  },
+                                  "value": {
+                                    "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema2"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "value"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "run_input"
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "path"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "node_output"
+                                  },
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "nodeId",
+                                  "path"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "node_failure"
+                                  },
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "nodeId",
+                                  "path"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "expression"
+                                  },
+                                  "language": {
+                                    "type": "string",
+                                    "const": "jsonata"
+                                  },
+                                  "expression": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "language",
+                                  "expression"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "structured_input"
+                                  },
+                                  "port": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "port",
+                                  "path"
+                                ],
+                                "additionalProperties": true
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "input",
+                          "resultType",
+                          "result"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "notes": {
+                        "maxItems": 100,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "text": {
+                              "type": "string",
+                              "maxLength": 4000
+                            },
+                            "position": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number",
+                                  "minimum": -100000,
+                                  "maximum": 100000
+                                },
+                                "y": {
+                                  "type": "number",
+                                  "minimum": -100000,
+                                  "maximum": 100000
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": true
+                            },
+                            "size": {
+                              "type": "object",
+                              "properties": {
+                                "width": {
+                                  "type": "number",
+                                  "minimum": 200,
+                                  "maximum": 1200
+                                },
+                                "height": {
+                                  "type": "number",
+                                  "minimum": 120,
+                                  "maximum": 1200
+                                }
+                              },
+                              "required": [
+                                "width",
+                                "height"
+                              ],
+                              "additionalProperties": true
+                            },
+                            "color": {
+                              "type": "string",
+                              "enum": [
+                                "neutral",
+                                "teal",
+                                "violet",
+                                "sage",
+                                "amber"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "text",
+                            "position",
+                            "size",
+                            "color"
+                          ],
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges",
+                      "settings"
+                    ],
+                    "additionalProperties": true,
+                    "$defs": {
+                      "__schema0": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "definition": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              "version": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "version"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "position": {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number"
+                              },
+                              "y": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "config": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema1"
+                            }
+                          },
+                          "inputMappings": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "workspace_variable"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "name"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "literal"
+                                    },
+                                    "value": {
+                                      "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema2"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "value"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "run_input"
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "path"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "node_output"
+                                    },
+                                    "nodeId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "nodeId",
+                                    "path"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "node_failure"
+                                    },
+                                    "nodeId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "nodeId",
+                                    "path"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "expression"
+                                    },
+                                    "language": {
+                                      "type": "string",
+                                      "const": "jsonata"
+                                    },
+                                    "expression": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "language",
+                                    "expression"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "structured_input"
+                                    },
+                                    "port": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "port",
+                                    "path"
+                                  ],
+                                  "additionalProperties": true
+                                }
+                              ]
+                            }
+                          },
+                          "connectionRefs": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "disabled": {
+                            "type": "boolean"
+                          },
+                          "retry": {
+                            "type": "object",
+                            "properties": {
+                              "maximumAttempts": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 5
+                              },
+                              "delayMillis": {
+                                "type": "integer",
+                                "minimum": 1000,
+                                "maximum": 60000,
+                                "multipleOf": 1000
+                              }
+                            },
+                            "required": [
+                              "maximumAttempts",
+                              "delayMillis"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "structured": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "for_each"
+                              },
+                              "maxIterations": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 4998
+                              },
+                              "maxConcurrency": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 200
+                              },
+                              "body": {
+                                "type": "object",
+                                "properties": {
+                                  "nodes": {
+                                    "type": "array",
+                                    "items": {
+                                      "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema0"
+                                    }
+                                  },
+                                  "edges": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        },
+                                        "source": {
+                                          "type": "object",
+                                          "properties": {
+                                            "nodeId": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            },
+                                            "port": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            }
+                                          },
+                                          "required": [
+                                            "nodeId",
+                                            "port"
+                                          ],
+                                          "additionalProperties": true
+                                        },
+                                        "target": {
+                                          "type": "object",
+                                          "properties": {
+                                            "nodeId": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            },
+                                            "port": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            }
+                                          },
+                                          "required": [
+                                            "nodeId",
+                                            "port"
+                                          ],
+                                          "additionalProperties": true
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "source",
+                                        "target"
+                                      ],
+                                      "additionalProperties": true
+                                    }
+                                  },
+                                  "settings": {
+                                    "type": "object",
+                                    "properties": {
+                                      "maxRunDurationMs": {
+                                        "type": "integer",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 3600000
+                                      }
+                                    },
+                                    "additionalProperties": true
+                                  },
+                                  "inputPorts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    }
+                                  },
+                                  "outputPorts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "nodes",
+                                  "edges",
+                                  "settings",
+                                  "inputPorts",
+                                  "outputPorts"
+                                ],
+                                "additionalProperties": true
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "maxIterations",
+                              "maxConcurrency",
+                              "body"
+                            ],
+                            "additionalProperties": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "definition",
+                          "position",
+                          "configVersion",
+                          "config",
+                          "inputMappings",
+                          "connectionRefs"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "__schema1": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema1"
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema1"
+                            }
+                          }
+                        ]
+                      },
+                      "__schema2": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema2"
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema2"
+                            }
+                          }
+                        ]
+                      },
+                      "__schema3": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "null"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "boolean"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "number"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "string"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "array"
+                              },
+                              "items": {
+                                "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema3"
+                              },
+                              "maxItems": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "items",
+                              "maxItems"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "object"
+                              },
+                              "properties": {
+                                "maxItems": 10000,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "valueType": {
+                                      "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/base/properties/graph/$defs/__schema3"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "valueType",
+                                    "required"
+                                  ],
+                                  "additionalProperties": true
+                                }
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "properties"
+                            ],
+                            "additionalProperties": true
+                          }
+                        ]
+                      }
+                    },
+                    "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+                    "x-pertexo-runtime-bounds": true
+                  },
+                  "graphDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$",
+                    "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+                  },
+                  "compatibility": {
+                    "type": "object",
+                    "properties": {
+                      "compatible": {
+                        "type": "boolean"
+                      },
+                      "fingerprint": {
+                        "type": "string",
+                        "pattern": "^wf-compat:sha256:[0-9a-f]{64}$"
+                      },
+                      "issues": {
+                        "maxItems": 1000,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "unknown_definition"
+                            },
+                            "definitionKey": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "definitionKey",
+                            "version"
+                          ],
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "required": [
+                      "compatible",
+                      "fingerprint",
+                      "issues"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "workflowId",
+                  "revision",
+                  "graph",
+                  "compatibility",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              },
+              "draft": {
+                "type": "object",
+                "properties": {
+                  "workflowId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "graph": {
+                    "type": "object",
+                    "properties": {
+                      "nodes": {
+                        "maxItems": 200,
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema0"
+                        }
+                      },
+                      "edges": {
+                        "maxItems": 4000,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "source": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "port": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": true
+                            },
+                            "target": {
+                              "type": "object",
+                              "properties": {
+                                "nodeId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                },
+                                "port": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 64
+                                }
+                              },
+                              "required": [
+                                "nodeId",
+                                "port"
+                              ],
+                              "additionalProperties": true
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "source",
+                            "target"
+                          ],
+                          "additionalProperties": true
+                        }
+                      },
+                      "settings": {
+                        "type": "object",
+                        "properties": {
+                          "maxRunDurationMs": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 3600000
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      "callable": {
+                        "type": "object",
+                        "properties": {
+                          "input": {
+                            "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema3"
+                          },
+                          "resultType": {
+                            "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema3"
+                          },
+                          "result": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "workspace_variable"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "name"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "literal"
+                                  },
+                                  "value": {
+                                    "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema2"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "value"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "run_input"
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "path"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "node_output"
+                                  },
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "nodeId",
+                                  "path"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "node_failure"
+                                  },
+                                  "nodeId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "nodeId",
+                                  "path"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "expression"
+                                  },
+                                  "language": {
+                                    "type": "string",
+                                    "const": "jsonata"
+                                  },
+                                  "expression": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "language",
+                                  "expression"
+                                ],
+                                "additionalProperties": true
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "structured_input"
+                                  },
+                                  "port": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "port",
+                                  "path"
+                                ],
+                                "additionalProperties": true
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "input",
+                          "resultType",
+                          "result"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "notes": {
+                        "maxItems": 100,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "text": {
+                              "type": "string",
+                              "maxLength": 4000
+                            },
+                            "position": {
+                              "type": "object",
+                              "properties": {
+                                "x": {
+                                  "type": "number",
+                                  "minimum": -100000,
+                                  "maximum": 100000
+                                },
+                                "y": {
+                                  "type": "number",
+                                  "minimum": -100000,
+                                  "maximum": 100000
+                                }
+                              },
+                              "required": [
+                                "x",
+                                "y"
+                              ],
+                              "additionalProperties": true
+                            },
+                            "size": {
+                              "type": "object",
+                              "properties": {
+                                "width": {
+                                  "type": "number",
+                                  "minimum": 200,
+                                  "maximum": 1200
+                                },
+                                "height": {
+                                  "type": "number",
+                                  "minimum": 120,
+                                  "maximum": 1200
+                                }
+                              },
+                              "required": [
+                                "width",
+                                "height"
+                              ],
+                              "additionalProperties": true
+                            },
+                            "color": {
+                              "type": "string",
+                              "enum": [
+                                "neutral",
+                                "teal",
+                                "violet",
+                                "sage",
+                                "amber"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "text",
+                            "position",
+                            "size",
+                            "color"
+                          ],
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "required": [
+                      "nodes",
+                      "edges",
+                      "settings"
+                    ],
+                    "additionalProperties": true,
+                    "$defs": {
+                      "__schema0": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "definition": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 64
+                              },
+                              "version": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "version"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "position": {
+                            "type": "object",
+                            "properties": {
+                              "x": {
+                                "type": "number"
+                              },
+                              "y": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "x",
+                              "y"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "config": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema1"
+                            }
+                          },
+                          "inputMappings": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "workspace_variable"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "name"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "literal"
+                                    },
+                                    "value": {
+                                      "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema2"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "value"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "run_input"
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "path"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "node_output"
+                                    },
+                                    "nodeId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "nodeId",
+                                    "path"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "node_failure"
+                                    },
+                                    "nodeId": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "nodeId",
+                                    "path"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "expression"
+                                    },
+                                    "language": {
+                                      "type": "string",
+                                      "const": "jsonata"
+                                    },
+                                    "expression": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "language",
+                                    "expression"
+                                  ],
+                                  "additionalProperties": true
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "const": "structured_input"
+                                    },
+                                    "port": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "path": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "port",
+                                    "path"
+                                  ],
+                                  "additionalProperties": true
+                                }
+                              ]
+                            }
+                          },
+                          "connectionRefs": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "disabled": {
+                            "type": "boolean"
+                          },
+                          "retry": {
+                            "type": "object",
+                            "properties": {
+                              "maximumAttempts": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 5
+                              },
+                              "delayMillis": {
+                                "type": "integer",
+                                "minimum": 1000,
+                                "maximum": 60000,
+                                "multipleOf": 1000
+                              }
+                            },
+                            "required": [
+                              "maximumAttempts",
+                              "delayMillis"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "structured": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "for_each"
+                              },
+                              "maxIterations": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 4998
+                              },
+                              "maxConcurrency": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 200
+                              },
+                              "body": {
+                                "type": "object",
+                                "properties": {
+                                  "nodes": {
+                                    "type": "array",
+                                    "items": {
+                                      "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema0"
+                                    }
+                                  },
+                                  "edges": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 64
+                                        },
+                                        "source": {
+                                          "type": "object",
+                                          "properties": {
+                                            "nodeId": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            },
+                                            "port": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            }
+                                          },
+                                          "required": [
+                                            "nodeId",
+                                            "port"
+                                          ],
+                                          "additionalProperties": true
+                                        },
+                                        "target": {
+                                          "type": "object",
+                                          "properties": {
+                                            "nodeId": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            },
+                                            "port": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 64
+                                            }
+                                          },
+                                          "required": [
+                                            "nodeId",
+                                            "port"
+                                          ],
+                                          "additionalProperties": true
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "source",
+                                        "target"
+                                      ],
+                                      "additionalProperties": true
+                                    }
+                                  },
+                                  "settings": {
+                                    "type": "object",
+                                    "properties": {
+                                      "maxRunDurationMs": {
+                                        "type": "integer",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 3600000
+                                      }
+                                    },
+                                    "additionalProperties": true
+                                  },
+                                  "inputPorts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    }
+                                  },
+                                  "outputPorts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "nodes",
+                                  "edges",
+                                  "settings",
+                                  "inputPorts",
+                                  "outputPorts"
+                                ],
+                                "additionalProperties": true
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "maxIterations",
+                              "maxConcurrency",
+                              "body"
+                            ],
+                            "additionalProperties": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "definition",
+                          "position",
+                          "configVersion",
+                          "config",
+                          "inputMappings",
+                          "connectionRefs"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "__schema1": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema1"
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema1"
+                            }
+                          }
+                        ]
+                      },
+                      "__schema2": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema2"
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema2"
+                            }
+                          }
+                        ]
+                      },
+                      "__schema3": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "null"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "boolean"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "number"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "string"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "array"
+                              },
+                              "items": {
+                                "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema3"
+                              },
+                              "maxItems": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "items",
+                              "maxItems"
+                            ],
+                            "additionalProperties": true
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "const": "object"
+                              },
+                              "properties": {
+                                "maxItems": 10000,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 64
+                                    },
+                                    "valueType": {
+                                      "$ref": "#/components/schemas/DraftProposalResult/anyOf/3/properties/draft/properties/graph/$defs/__schema3"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "valueType",
+                                    "required"
+                                  ],
+                                  "additionalProperties": true
+                                }
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "properties"
+                            ],
+                            "additionalProperties": true
+                          }
+                        ]
+                      }
+                    },
+                    "description": "Structural workflow graph contract. Runtime validation additionally enforces aggregate node/edge, nesting-depth, and encoded-byte limits.",
+                    "x-pertexo-runtime-bounds": true
+                  },
+                  "graphDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$",
+                    "description": "Returned on reads with include=graphDigest. Review the source graph, then echo this content identity as reviewedGraphDigest; draft writes still require the opaque ETag."
+                  },
+                  "compatibility": {
+                    "type": "object",
+                    "properties": {
+                      "compatible": {
+                        "type": "boolean"
+                      },
+                      "fingerprint": {
+                        "type": "string",
+                        "pattern": "^wf-compat:sha256:[0-9a-f]{64}$"
+                      },
+                      "issues": {
+                        "maxItems": 1000,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "unknown_definition"
+                            },
+                            "definitionKey": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "definitionKey",
+                            "version"
+                          ],
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "required": [
+                      "compatible",
+                      "fingerprint",
+                      "issues"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "workflowId",
+                  "revision",
+                  "graph",
+                  "compatibility",
+                  "updatedAt"
+                ],
+                "additionalProperties": true
+              },
+              "representationTag": {
+                "type": "string",
+                "pattern": "^\"draft\\.[A-Za-z0-9_-]{43}\"$"
+              },
+              "validation": {
+                "type": "object",
+                "properties": {
+                  "valid": {
+                    "type": "boolean"
+                  },
+                  "issues": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "readOnly": true,
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "maxLength": 1024
+                        },
+                        "code": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "message": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "compatibility": {
+                    "type": "object",
+                    "properties": {
+                      "compatible": {
+                        "type": "boolean"
+                      },
+                      "fingerprint": {
+                        "type": "string",
+                        "pattern": "^wf-compat:sha256:[0-9a-f]{64}$"
+                      },
+                      "issues": {
+                        "maxItems": 1000,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "const": "unknown_definition"
+                            },
+                            "definitionKey": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "code",
+                            "definitionKey",
+                            "version"
+                          ],
+                          "additionalProperties": true
+                        }
+                      }
+                    },
+                    "required": [
+                      "compatible",
+                      "fingerprint",
+                      "issues"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "currentPublication": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "versionId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "versionNumber": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "matchesDraft": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "versionId",
+                          "versionNumber",
+                          "matchesDraft"
+                        ],
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "valid",
+                  "issues",
+                  "compatibility",
+                  "currentPublication"
+                ],
+                "additionalProperties": true
+              },
+              "usage": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "complete"
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 512
+                      },
+                      "inputTokens": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "outputTokens": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "model",
+                      "inputTokens",
+                      "outputTokens"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "incomplete"
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 512
+                      },
+                      "inputTokens": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "outputTokens": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "model",
+                      "inputTokens",
+                      "outputTokens"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "base",
+              "draft",
+              "representationTag",
+              "validation",
+              "usage"
+            ],
+            "additionalProperties": true
+          }
+        ]
       },
       "AssistantSettings": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",

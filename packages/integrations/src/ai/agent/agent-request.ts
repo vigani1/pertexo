@@ -11,7 +11,7 @@ export interface AgentToolRequest {
 }
 
 export interface AgentModelContext {
-  readonly tool: AgentToolRequest;
+  readonly tools: readonly AgentToolRequest[];
   readonly history: readonly Readonly<{
     call: AgentToolCall;
     result: JsonValue;

@@ -1,8 +1,6 @@
+import { admitDraftCandidate } from '../admit-draft-candidate.js';
 import { appendAuditFact } from '../../../governance/audit/facts.js';
 import type { PoolClient } from 'pg';
-import { lockArtifactReferences } from '../../../artifacts/references/lock-references.js';
-import { requireWorkflowCallTargets } from '../../../shared/resources/require-workflow-call-targets.js';
-import { requireConnectionBindings } from '../../../shared/resources/require-connection-bindings.js';
 import { pruneStepSamples } from '../../step-samples/step-sample-state.repository.js';
 
 import type { AuthoringCatalogs } from '../catalogs.js';
@@ -13,7 +11,6 @@ import {
 } from '../workflow-authoring.errors.js';
 import type { WorkflowDraftRecord } from '../representation/workflow-record.types.js';
 import { draftRepresentationTag } from '../representation/tag.js';
-import { requirePlaceableDefinitionAdditions } from '../placement.js';
 import { projectDraft } from '../representation/workflow-representations.repository.js';
 import {
   readActiveDraft,
@@ -39,19 +36,13 @@ export async function saveDraft(
   const currentTag = draftRepresentationTag(workflowId, currentDraft);
   if (currentTag !== representationTag || currentDraft.revision !== expected)
     throwRevisionConflict(workflowId, currentDraft);
-  requirePlaceableDefinitionAdditions(
+  await admitDraftCandidate(
+    client,
+    input,
     currentDraft.graphJson,
     graph,
     placementDefinitionCatalog,
   );
-  await requireWorkflowCallTargets(
-    client,
-    input,
-    graph,
-    currentDraft.graphJson,
-  );
-  await requireConnectionBindings(client, input, graph, currentDraft.graphJson);
-  await lockArtifactReferences(client, input.workspaceId, graph, input.actorId);
   const row = await replaceDraftGraph(client, {
     workspaceId: input.workspaceId,
     workflowId,

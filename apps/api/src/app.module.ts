@@ -1,3 +1,4 @@
+import { ProposeDraftService } from './workflow-authoring/proposals/propose-draft.service.js';
 import { ExplanationService } from './workflow-authoring/explanations/explanation.service.js';
 import { AssistantModule } from './workflow-authoring/explanations/assistant.module.js';
 import { McpModule } from './mcp/mcp.module.js';
@@ -16,7 +17,7 @@ import type { WorkspaceDatabase } from '@pertexo/database/platform';
 import type { ApiRuntimeSet } from './platform/api-application.types.js';
 import type { ApiConfig } from './platform/config/api-config.js';
 import { ConnectionsModule } from './connections/index.js';
-import { CatalogModule } from './catalog/index.js';
+import { CatalogModule, createCatalogServices } from './catalog/index.js';
 import { ArtifactsModule } from './artifacts/index.js';
 
 import {
@@ -230,6 +231,12 @@ function registerFeatureModules(
           assistant.assistantSettings,
           assistant.explanations,
           dependencies.connectionRuntime?.dependencies.lookup,
+          { rates: config.agentModelRates },
+        ),
+        new ProposeDraftService(
+          assistant,
+          dependencies.connectionRuntime?.dependencies.lookup,
+          createCatalogServices(config.codeSettings).listNodeDefinitions,
           { rates: config.agentModelRates },
         ),
         authorization,

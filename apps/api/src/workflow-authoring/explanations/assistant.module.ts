@@ -4,19 +4,24 @@ import { WORKSPACE_AUTHORIZATION } from '../../workspaces/tokens.js';
 import { ExplanationController } from './explanation.controller.js';
 import { ExplanationService } from './explanation.service.js';
 
+import { DraftProposalController } from '../proposals/draft-proposal.controller.js';
+import { ProposeDraftService } from '../proposals/propose-draft.service.js';
+
 @Module({})
 // oxlint-disable-next-line typescript/no-extraneous-class
 export class AssistantModule {
   static register(
     service: ExplanationService,
+    proposals: ProposeDraftService,
     authorization: WorkspaceAuthorizationSource,
     identity: DynamicModule,
   ): DynamicModule {
     return {
       module: AssistantModule,
       imports: [identity],
-      controllers: [ExplanationController],
+      controllers: [ExplanationController, DraftProposalController],
       providers: [
+        { provide: ProposeDraftService, useValue: proposals },
         { provide: ExplanationService, useValue: service },
         { provide: WORKSPACE_AUTHORIZATION, useValue: authorization },
       ],

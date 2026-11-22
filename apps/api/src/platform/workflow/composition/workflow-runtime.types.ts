@@ -30,7 +30,7 @@ export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
   assistant?: Pick<
     WorkflowAuthoringStore,
-    'assistantSettings' | 'explanations'
+    'assistantSettings' | 'explanations' | 'getDraft' | 'inspectCandidate'
   >;
   mcp?: McpRuntime & Readonly<{ exposure: WorkflowAuthoringStore['mcp'] }>;
   nodeTestingDependencies?: NodeTestingDependencies;

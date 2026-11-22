@@ -174,6 +174,7 @@ describe('workflow-authoring public contracts', () => {
         '/v1/workspaces/{workspaceId}/workflows',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft',
+        '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/proposal',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/validate',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/publish',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/versions',
