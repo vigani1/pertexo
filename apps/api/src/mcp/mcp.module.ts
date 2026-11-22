@@ -3,7 +3,7 @@ import type { WorkflowAuthoringStore } from '@pertexo/core/authoring';
 import { WORKSPACE_AUTHORIZATION } from '../workspaces/tokens.js';
 import type { WorkspaceAuthorizationSource } from '../authorization/index.js';
 import { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
-import { McpController, McpOriginPolicy } from './mcp.controller.js';
+import { McpController } from './mcp.controller.js';
 import { McpService, type McpRuntime } from './mcp.service.js';
 import { McpExposureController, MCP_EXPOSURE } from './exposure.controller.js';
 
@@ -15,7 +15,6 @@ export class McpModule {
     options: Readonly<{
       identity: DynamicModule;
       rateLimit: DynamicModule;
-      publicOrigin: string;
       runtime: McpRuntime;
       authorization: WorkspaceAuthorizationSource;
       exposure: WorkflowAuthoringStore['mcp'];
@@ -28,10 +27,6 @@ export class McpModule {
       providers: [
         { provide: WORKSPACE_AUTHORIZATION, useValue: options.authorization },
         { provide: MCP_EXPOSURE, useValue: options.exposure },
-        {
-          provide: McpOriginPolicy,
-          useValue: new McpOriginPolicy(options.publicOrigin),
-        },
         {
           provide: McpService,
           inject: [HttpRateLimitAdmission],

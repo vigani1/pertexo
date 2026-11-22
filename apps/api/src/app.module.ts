@@ -226,7 +226,6 @@ function registerFeatureModules(
       McpModule.register({
         identity: identityModule,
         rateLimit: admissionModule,
-        publicOrigin: config.identity.publicWebOrigin,
         authorization,
         runtime: mcp,
         exposure: mcp.exposure,

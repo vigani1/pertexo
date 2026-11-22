@@ -97,6 +97,16 @@ describe.runIf(betterAuthIntegrationEnabled)(
       });
       expect(anonymous.status).toBe(401);
       expect(anonymous.headers.get('cache-control')).toBe('private, no-store');
+      const foreignOrigin = await fetch(client.endpoint, {
+        method: 'POST',
+        headers: { origin: 'https://foreign.example' },
+      });
+      expect(foreignOrigin.status).toBe(403);
+      const unsupportedProtocol = await fetch(client.endpoint, {
+        method: 'POST',
+        headers: { 'mcp-protocol-version': '2025-03-26' },
+      });
+      expect(unsupportedProtocol.status).toBe(400);
       expect(
         (
           await client.request(

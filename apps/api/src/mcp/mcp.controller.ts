@@ -1,10 +1,6 @@
 import { Body, Controller, HttpStatus, Req, Res } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import {
-  MCP_PROTOCOL_VERSION,
-  mcpRpcRequestSchema,
-  mcpRpcEnvelopeSchema,
-} from '@pertexo/contracts';
+import { mcpRpcRequestSchema, mcpRpcEnvelopeSchema } from '@pertexo/contracts';
 import { mcpTransportRoutes as routes } from '@pertexo/contracts/server';
 import {
   McpToolUnavailableError,
@@ -17,35 +13,28 @@ import {
   applicationError,
   throwApplicationError,
 } from '../platform/http/index.js';
-import { rawHeaderValues } from '../platform/http/raw-headers.js';
 import {
   Caller,
   requestIdentifiers,
   type WorkspaceCaller,
 } from '../workspaces/request/caller.js';
 import { McpService, toolResult } from './mcp.service.js';
-
-const rpc = '2.0';
-const RPC_INVALID_REQUEST = -32600;
+import {
+  MCP_JSON_RPC_VERSION,
+  MCP_PROTOCOL_HEADER,
+  RPC_INVALID_REQUEST,
+  errorReply,
+  invalidProtocol,
+} from './transport.js';
 const RPC_METHOD_NOT_FOUND = -32601;
 const RPC_INVALID_PARAMS = -32602;
 
-export class McpOriginPolicy {
-  public constructor(public readonly allowedOrigin: string) {}
-}
-
 @Controller()
 export class McpController {
-  public constructor(
-    private readonly service: McpService,
-    private readonly origin: McpOriginPolicy,
-  ) {}
+  public constructor(private readonly service: McpService) {}
 
   @Route(routes.standaloneStream)
-  public get(@Req() request: FastifyRequest, @Res() response: FastifyReply) {
-    if (!this.validOrigin(request))
-      return response.code(HttpStatus.FORBIDDEN).send();
-    if (protocolHeader(request) === 'invalid') return invalidProtocol(response);
+  public get(@Res() response: FastifyReply) {
     return response.header('Allow', 'POST').send();
   }
 
@@ -56,14 +45,13 @@ export class McpController {
     @Req() request: FastifyRequest,
     @Res() response: FastifyReply,
   ) {
-    if (!this.validOrigin(request))
-      return response.code(HttpStatus.FORBIDDEN).send();
-    const protocol = protocolHeader(request);
-    if (protocol === 'invalid') return invalidProtocol(response);
     const parsed = mcpRpcRequestSchema.safeParse(body);
     if (!parsed.success) return invalidMessage(response, body);
     const input = parsed.data;
-    if (protocol === 'missing' && input.method !== 'initialize')
+    if (
+      request.headers[MCP_PROTOCOL_HEADER] === undefined &&
+      input.method !== 'initialize'
+    )
       return invalidProtocol(response);
     if (input.method === 'notifications/initialized')
       return response.code(HttpStatus.ACCEPTED).send();
@@ -77,45 +65,22 @@ export class McpController {
         tokenId: actor.tokenId,
         ...requestIdentifiers(caller),
       });
-      return await response.send({ jsonrpc: rpc, id: input.id, result });
+      return await response.send({
+        jsonrpc: MCP_JSON_RPC_VERSION,
+        id: input.id,
+        result,
+      });
     } catch (error) {
       const failure = toolFailure(error);
       if (input.method === 'tools/call' && failure !== undefined)
         return response.send({
-          jsonrpc: rpc,
+          jsonrpc: MCP_JSON_RPC_VERSION,
           id: input.id,
           result: toolResult(failure),
         });
       throw error;
     }
   }
-
-  private validOrigin(request: FastifyRequest) {
-    const values = rawHeaderValues(request.raw.rawHeaders, 'origin');
-    return (
-      values.length === 0 ||
-      (values.length === 1 && values[0] === this.origin.allowedOrigin)
-    );
-  }
-}
-
-function protocolHeader(request: FastifyRequest) {
-  const values = rawHeaderValues(
-    request.raw.rawHeaders,
-    'mcp-protocol-version',
-  );
-  if (values.length === 0) return 'missing';
-  return values.length === 1 && values[0] === MCP_PROTOCOL_VERSION
-    ? 'supported'
-    : 'invalid';
-}
-
-function invalidProtocol(response: FastifyReply) {
-  return response
-    .code(HttpStatus.BAD_REQUEST)
-    .send(
-      errorReply(null, RPC_INVALID_REQUEST, 'Unsupported MCP protocol header.'),
-    );
 }
 
 function invalidMessage(response: FastifyReply, body: unknown) {
@@ -137,10 +102,6 @@ function invalidMessage(response: FastifyReply, body: unknown) {
         known ? 'Invalid parameters.' : 'Method not found.',
       ),
     );
-}
-
-function errorReply(id: string | number | null, code: number, message: string) {
-  return { jsonrpc: rpc, id, error: { code, message } };
 }
 
 function toolFailure(error: unknown) {
