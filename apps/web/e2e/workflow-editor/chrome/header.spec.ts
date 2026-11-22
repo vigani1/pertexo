@@ -132,13 +132,15 @@ async function exerciseSaveStates(
   const status = header.getByRole('status');
   await expect(status).toContainText('Saved');
   await openStep(page, width);
+  const label = page.getByLabel('Label', { exact: true });
+  await expect(label).toBeEditable();
   const baseline = await measureHeader(page);
   // Pin the pause timestamp so browser time cannot overtake it on a slow runner.
   const now = Date.now();
   await page.clock.setFixedTime(now);
   await page.clock.pauseAt(now);
   await page.clock.setSystemTime(now);
-  await page.getByLabel('Label', { exact: true }).fill('Header edit');
+  await label.fill('Header edit');
   await expect(status).toContainText('Unsaved');
   await expectSameHeader(page, baseline);
   await page.clock.runFor(SAVE_DEBOUNCE_MS);
@@ -158,7 +160,7 @@ async function exerciseSaveStates(
   await expect(status).toContainText('Saved');
   await expectSameHeader(page, baseline);
   remote.revision += 1;
-  await page.getByLabel('Label', { exact: true }).fill('Conflicting edit');
+  await label.fill('Conflicting edit');
   await page.clock.runFor(SAVE_DEBOUNCE_MS);
   await expect(status).toContainText('Changed elsewhere');
   await expectSameHeader(page, baseline);
