@@ -142,7 +142,9 @@ test('authors stable categories and routes a published run and replay', async ({
           name: 'Step details',
         });
         await expect(detail).toContainText(model);
-        await expect(detail.getByText(label, { exact: true })).toBeVisible();
+        await expect(
+          detail.getByText('Payments', { exact: true }),
+        ).toBeVisible();
         await expect(detail.getByText(port, { exact: true })).toBeVisible();
         await modelScreenshots(runPage, info, 'classify-routed-run');
       }
