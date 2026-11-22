@@ -222,3 +222,9 @@ export {
   type AttemptDiagnosticFields,
   type ModelUsage,
 } from './execution/attempt-diagnostics.js';
+
+export {
+  guardrailsDiagnosticsSchema,
+  type GuardrailsDiagnostics,
+  type GuardrailsReason,
+} from './execution/guardrails-diagnostics.js';

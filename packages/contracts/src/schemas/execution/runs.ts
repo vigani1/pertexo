@@ -16,6 +16,7 @@ import {
 import {
   NODE_IDENTITY_KEY_MAX_CHARACTERS,
   codeDiagnosticsSchema,
+  guardrailsDiagnosticsSchema,
   modelUsageSchema,
   runValueKeySchema,
   runValueTextSchema,
@@ -380,6 +381,7 @@ export const workflowNodeRunDiagnosticsResponseSchema = responseSchema(
     .object({
       diagnostics: codeDiagnosticsSchema.nullable(),
       modelUsage: modelUsageSchema.optional(),
+      guardrailsDiagnostics: guardrailsDiagnosticsSchema.optional(),
     })
     .strict(),
 );

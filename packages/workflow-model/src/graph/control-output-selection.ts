@@ -1,4 +1,5 @@
 import { isClassifyDefinition } from '../flow/control-nodes/classify.js';
+import { isGuardrailsDefinition } from '../flow/control-nodes/guardrails.js';
 import { isAgentDefinition } from '../flow/control-nodes/agent.js';
 import {
   isCoreConditionDefinition,
@@ -25,7 +26,8 @@ export function workflowControlOutputKind(
   if (
     isCoreConditionDefinition(definition) ||
     isCoreSwitchDefinition(definition) ||
-    isClassifyDefinition(definition)
+    isClassifyDefinition(definition) ||
+    isGuardrailsDefinition(definition)
   )
     return 'branch';
   if (definition?.version !== 1) return undefined;

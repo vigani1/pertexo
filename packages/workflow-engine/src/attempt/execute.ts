@@ -1,4 +1,7 @@
-import { isCoreMergeDefinition } from '@pertexo/workflow-model';
+import {
+  isCoreMergeDefinition,
+  isGuardrailsDefinition,
+} from '@pertexo/workflow-model';
 import { resolveAttemptCallbacks } from './callbacks.js';
 
 import type { CallbackBindings } from '@pertexo/workflow-model';
@@ -52,9 +55,13 @@ export async function executeNodeAttempt(
       ? mapped
       : resolveAgentAttemptInput(input, mapped);
   // Recorded before the executor runs, so failed attempts keep it (ADR 052).
-  await input.onInputResolved?.(
-    input.agent?.identity.work.kind === 'model_turn' ? mapped : executionInput,
-  );
+  // Guardrails can inspect sensitive text. Its attempt keeps only reason counts.
+  if (!isGuardrailsDefinition(node.definition))
+    await input.onInputResolved?.(
+      input.agent?.identity.work.kind === 'model_turn'
+        ? mapped
+        : executionInput,
+    );
   assertNotAborted(input.signal);
   let result: NodeExecutionResult;
   try {

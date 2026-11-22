@@ -568,3 +568,9 @@ export {
   type PollPauseEvidence,
   type TriggerPauseEvidence,
 } from './triggers/pause-evidence.js';
+
+export {
+  GUARDRAILS_STEP,
+  GUARDRAILS_PORTS,
+  isGuardrailsDefinition,
+} from './flow/control-nodes/guardrails.js';

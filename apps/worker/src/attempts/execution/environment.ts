@@ -1,4 +1,4 @@
-import type { ModelUsage } from '@pertexo/node-sdk';
+import type { GuardrailsDiagnostics, ModelUsage } from '@pertexo/node-sdk';
 import type { CodeDiagnostics, JsonValue } from '@pertexo/node-sdk/server';
 import {
   NodeAttemptConnectionFenceError,
@@ -29,6 +29,7 @@ export type NodeExecutionEnvironment = Readonly<{
   connectionHealthObservation(): NodeConnectionHealthObservation | undefined;
   codeDiagnostics(): CodeDiagnostics | undefined;
   modelUsage(): ModelUsage | undefined;
+  guardrailsDiagnostics(): GuardrailsDiagnostics | undefined;
 }>;
 
 export function createNodeExecutionEnvironment(
@@ -68,12 +69,16 @@ export function createNodeExecutionEnvironment(
   } = bindExecutionCapabilities(input, capabilityContext);
   let diagnostics: CodeDiagnostics | undefined;
   let usage: ModelUsage | undefined;
+  let guardrails: GuardrailsDiagnostics | undefined;
   const runtime: NodeExecutionRuntime = Object.freeze({
     ...(input.deadlineAt === undefined ? {} : { deadlineAt: input.deadlineAt }),
     ...(code === undefined ? {} : { code }),
     ...(callbacks === undefined ? {} : { callbacks }),
     ...(dataTables === undefined ? {} : { dataTables }),
     ...(runValues === undefined ? {} : { runValues }),
+    observeGuardrailsDiagnostics: (reasons: GuardrailsDiagnostics) => {
+      guardrails = reasons;
+    },
     observeModelUsage: (value: ModelUsage) => {
       usage = value;
     },
@@ -159,6 +164,7 @@ export function createNodeExecutionEnvironment(
       : healthCapture.read,
     codeDiagnostics: () => diagnostics,
     modelUsage: () => usage,
+    guardrailsDiagnostics: () => guardrails,
   });
 }
 
