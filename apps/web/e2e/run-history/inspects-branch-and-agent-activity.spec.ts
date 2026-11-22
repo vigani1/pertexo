@@ -32,8 +32,7 @@ test('shows the pinned branch label and groups Agent activity under its full dur
     id: string,
     invocationKey: string,
     node: string,
-    start: number,
-    end: number,
+    [start, end]: readonly [start: number, end: number],
   ) => ({
     id,
     nodeId: node,
@@ -49,36 +48,31 @@ test('shows the pinned branch label and groups Agent activity under its full dur
     '22222222-2222-4222-8222-222222222222',
     'route-request:0',
     branchId,
-    0,
-    1,
+    [0, 1],
   );
   const agent = step(
     '33333333-3333-4333-8333-333333333333',
     parent,
     nodeId,
-    9,
-    9,
+    [9, 9],
   );
   const turn = step(
     '44444444-4444-4444-8444-444444444444',
     'turn:1',
     nodeId,
-    2,
-    5,
+    [2, 5],
   );
   const tool = step(
     '66666666-6666-4666-8666-666666666666',
     'tool:1',
     nodeId,
-    5,
-    7,
+    [5, 7],
   );
   const lastTurn = step(
     '55555555-5555-4555-8555-555555555555',
     'turn:2',
     nodeId,
-    7,
-    9,
+    [7, 9],
   );
   await page.route(`**${base}`, (route) =>
     route.fulfill({
