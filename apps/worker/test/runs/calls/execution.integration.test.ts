@@ -10,7 +10,10 @@ import {
   edge,
   node,
 } from './calls.fixture.js';
-import { describeIntegration } from './calls-execution.fixture.js';
+import {
+  childWithHeldHttpResponse,
+  describeIntegration,
+} from './calls-execution.fixture.js';
 import { restrictAcceptedWorkflows } from '../../support/resources/sharing.js';
 import { randomUUID } from 'node:crypto';
 import { canonicalOutboxPayloadChecksum } from '@pertexo/core/outbox';
@@ -180,42 +183,49 @@ describeIntegration('Workflow Call execution through real transport', () => {
   }, 30_000);
 
   it('executes five waiting parents and five children in the default five slots', async () => {
-    const child = await publishGraph(childGraph(2));
+    const provider = childWithHeldHttpResponse();
+    const child = await publishGraph(provider.graph);
     const parents = await Promise.all(
       Array.from({ length: 5 }, () => publishGraph(parentGraph(child.pin))),
     );
     const accepted = await Promise.all(parents.map((parent) => accept(parent)));
-    const workers = await runtime();
+    const workers = await runtime(provider.registry);
+    const parentRunIds = accepted.map((run) => run.runId);
     try {
       await workers.until(async () => {
         expect(
           await fixture.workerQuery(
-            `select count(*)::int loans from app.workflow_calls where parent_run_id=any($1::uuid[]) and slot_lent`,
-            [accepted.map((run) => run.runId)],
+            `select count(*)::int loans from app.workflow_calls call
+              join app.workflow_runs child on child.workspace_id=call.workspace_id and child.id=call.child_run_id
+             where call.parent_run_id=any($1::uuid[]) and call.slot_lent and child.status='running'`,
+            [parentRunIds],
           ),
         ).toEqual([{ loans: 5 }]);
       });
-      expect(
-        await fixture.workerQuery(
-          `select active_runs+reserved_active_slots occupied from app.workflow_run_slot_counts($1,null,null)`,
-          [fixture.workspaceId],
-        ),
-      ).toEqual([{ occupied: 5 }]);
+      const slots = await fixture.workerQuery(
+        `select active_runs+reserved_active_slots occupied from app.workflow_run_slot_counts($1,null,null)`,
+        [fixture.workspaceId],
+      );
+      provider.respond();
+      // Drain these runs before asserting the snapshot. Later cases share the
+      // workspace and must have capacity even if the snapshot is wrong.
       await workers.until(async () => {
         expect(
           await fixture.workerQuery(
             `select count(*)::int finished from app.workflow_runs where id=any($1::uuid[]) and status='succeeded'`,
-            [accepted.map((run) => run.runId)],
+            [parentRunIds],
           ),
         ).toEqual([{ finished: 5 }]);
       });
+      expect(slots).toEqual([{ occupied: 5 }]);
       expect(
         await fixture.workerQuery(
           `select count(*)::int children from app.workflow_calls where parent_run_id=any($1::uuid[])`,
-          [accepted.map((run) => run.runId)],
+          [parentRunIds],
         ),
       ).toEqual([{ children: 5 }]);
     } finally {
+      provider.respond();
       await workers.close();
     }
   }, 30_000);
