@@ -117,10 +117,7 @@ function contractSchemas() {
     ),
   });
 }
-const openApiSchemas = {
-  ...contractSchemas(),
-  ...routeSchemas(Object.values(assistantRoutes)),
-};
+const openApiSchemas = contractSchemas();
 
 const problemResponses = Object.freeze({
   BadRequest: sharedProblemResponses.BadRequest,
