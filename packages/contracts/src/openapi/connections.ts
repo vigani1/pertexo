@@ -25,10 +25,8 @@ import {
   responseReference,
 } from '../routes/openapi-primitives.js';
 
-const { slackChannels, ...beforeCallback } = connectionRoutes;
 const routes = [
-  ...Object.values(beforeCallback),
-  slackChannels,
+  ...Object.values(connectionRoutes),
   ...Object.values(failureNotificationRoutes),
 ];
 
@@ -66,7 +64,7 @@ export const connectionsOpenApiDocument = Object.freeze({
   openapi: '3.1.0',
   info: { title: 'Pertexo Connections API', version: '1.4.0' },
   paths: {
-    ...routePaths(Object.values(beforeCallback)),
+    ...routePaths(Object.values(connectionRoutes)),
     // Public and always a redirect: its use case reads the query to pick the landing.
     [OAUTH2_CALLBACK_PATH]: {
       get: {
@@ -87,7 +85,7 @@ export const connectionsOpenApiDocument = Object.freeze({
         },
       },
     },
-    ...routePaths([slackChannels, ...Object.values(failureNotificationRoutes)]),
+    ...routePaths(Object.values(failureNotificationRoutes)),
   },
   components: authenticatedComponents(schemas, problemResponses, {
     automation: true,

@@ -10,4 +10,3 @@ export * from './telemetry.js';
 export * from './connection-request.js';
 export * from './management/connection-management.js';
 export type { TestConnectionCommand } from './testing/test-connection.js';
-export { LookupSlackChannelsService } from './failure-notifications/slack-channel-lookup.js';

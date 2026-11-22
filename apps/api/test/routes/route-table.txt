@@ -43,7 +43,6 @@ POST /v1/workspaces/{workspaceId}/connections/{connectionId}/oauth2/authorizatio
 PUT /v1/workspaces/{workspaceId}/connections/{connectionId}/secret 200 session connection:manage csrf connection_mutation
 GET /v1/workspaces/{workspaceId}/connections/{connectionId}/sharing 200 session connection:manage - authenticated_read
 POST /v1/workspaces/{workspaceId}/connections/{connectionId}/sharing 200 session connection:manage csrf ordinary_mutation
-GET /v1/workspaces/{workspaceId}/connections/{connectionId}/slack/channels 200 session connection:use - provider_test
 POST /v1/workspaces/{workspaceId}/connections/{connectionId}/test 200 session connection:use csrf provider_test
 GET /v1/workspaces/{workspaceId}/connections/{connectionId}/usage 200 session connection:read - authenticated_read
 GET /v1/workspaces/{workspaceId}/data-tables 200 session_or_token workspace:read - authenticated_read

@@ -13,10 +13,8 @@ import {
   httpHeadersCredentialSchema,
   resendApiKeyCredentialSchema,
 } from '../src/schemas/connections/credential-formats.js';
-import {
-  slackChannelLookupQuerySchema,
-  slackChannelLookupResponseSchema,
-} from '../src/schemas/connections/slack-channel-lookup.js';
+import { slackChannelLookupInputSchema } from '../src/schemas/connections/slack-channel-lookup.js';
+import { connectionLookupResponseSchema } from '../src/schemas/connections/connection-lookup.js';
 import { API_PROBLEM_MANIFEST } from '../src/errors/api-problem.js';
 
 const connection = {
@@ -213,56 +211,45 @@ describe('connection public contracts', () => {
       ).toBe(false);
   });
 
-  it('bounds Slack channel lookups and keeps unresolved states honest', () => {
-    expect(
-      slackChannelLookupQuerySchema.parse({ channelIds: 'C0123,G456,D789' }),
-    ).toEqual({ channelIds: ['C0123', 'G456', 'D789'] });
-    const eleven = Array.from(
-      { length: 11 },
-      (_, index) => `C${String(index)}`,
-    );
-    for (const channelIds of [
-      '',
-      'c0123',
-      'C0123,C0123',
-      'C0123,',
-      eleven.join(','),
+  it('bounds Slack channel IDs and carries unresolved reasons in generic lookup results', () => {
+    const channelIds = ['C0123', 'G456', 'D789'];
+    expect(slackChannelLookupInputSchema.parse({ channelIds })).toEqual({
+      channelIds,
+    });
+    for (const ids of [
+      [],
+      ['c0123'],
+      ['C0123', 'C0123'],
+      Array.from({ length: 11 }, (_, index) => `C${index}`),
     ])
       expect(
-        slackChannelLookupQuerySchema.safeParse({ channelIds }).success,
+        slackChannelLookupInputSchema.safeParse({ channelIds: ids }).success,
       ).toBe(false);
     expect(
-      slackChannelLookupQuerySchema.safeParse({
-        channelIds: 'C0123',
-        extra: 'x',
-      }).success,
+      slackChannelLookupInputSchema.safeParse({ channelIds, extra: 'x' })
+        .success,
     ).toBe(false);
-    const resolved = { channelId: 'C0123', status: 'resolved', name: 'ops' };
+    const resolved = { value: 'C0123', label: 'ops' };
     const unresolved = {
-      channelId: 'D0123',
-      status: 'unresolved',
-      reason: 'not_a_channel',
+      value: 'D0123',
+      label: 'D0123',
+      unavailableReason: 'not_a_channel',
     };
     expect(
-      slackChannelLookupResponseSchema.parse({ items: [resolved, unresolved] }),
+      connectionLookupResponseSchema.parse({ items: [resolved, unresolved] }),
     ).toEqual({ items: [resolved, unresolved] });
     expect(
-      slackChannelLookupResponseSchema.parse({
-        items: [
-          { ...resolved, reason: 'not_found' },
-          { ...unresolved, name: 'ops' },
-        ],
-      }),
-    ).toEqual({ items: [resolved, unresolved] });
-    for (const item of [
-      { ...unresolved, reason: 'token_revoked' },
-      { ...resolved, name: '' },
-    ])
-      expect(
-        slackChannelLookupResponseSchema.safeParse({ items: [item] }).success,
-      ).toBe(false);
+      connectionLookupResponseSchema.safeParse({
+        items: [{ ...unresolved, unavailableReason: 'Invalid reason' }],
+      }).success,
+    ).toBe(false);
+    expect(
+      connectionLookupResponseSchema.safeParse({
+        items: [{ ...resolved, label: '' }],
+      }).success,
+    ).toBe(false);
     expect(connectionsOpenApiDocument.components.schemas).toHaveProperty(
-      'SlackChannelLookupResponse',
+      'ConnectionLookupResponse',
     );
   });
 
@@ -339,7 +326,6 @@ describe('connection public contracts', () => {
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/oauth2/authorization',
       '/v1/workspaces/{workspaceId}/connections/{connectionId}/lookup',
       '/v1/connections/oauth2/callback',
-      '/v1/workspaces/{workspaceId}/connections/{connectionId}/slack/channels',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}',
       '/v1/workspaces/{workspaceId}/failure-notification-destinations/{destinationId}/test',

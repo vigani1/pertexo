@@ -9,9 +9,6 @@ export {
   type ConnectionResponse,
   type ConnectionListResponse,
   type ConnectionTestResponse,
-  type SlackChannelLookupItem,
-  type SlackChannelLookupResponse,
-  type SlackChannelUnresolvedReason,
 } from '@pertexo/contracts';
 
 export type ConnectionRequest = IdentityWorkspaceRequest &

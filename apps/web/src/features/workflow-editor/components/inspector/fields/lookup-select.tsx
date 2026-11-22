@@ -11,7 +11,7 @@ import {
   type SchemaFieldSpec,
 } from '../../../model/inspector/draft';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
-import { connectionOptions } from '../../../data/connection-options.queries';
+import { connectionOptions } from '@/features/connections/connections-queries.public';
 import { ChoiceSelect } from './choice-select';
 
 type LookupSelectProps = Readonly<{
@@ -76,8 +76,16 @@ function ConnectedLookupSelect({
     connectionId: string;
     scope: NonNullable<NodeFormApi['lookup']>['scope'];
   }>) {
-  const query = useQuery(connectionOptions(scope, connectionId, lookup));
-  const items = query.data?.items ?? [];
+  const query = useQuery(
+    connectionOptions({
+      ...scope,
+      connectionId,
+      request: { providerKey: lookup.providerKey, lookup: lookup.lookup },
+    }),
+  );
+  const items =
+    query.data?.items.filter((item) => item.unavailableReason === undefined) ??
+    [];
   const selected = items.find((item) => item.value === value);
   const attachTo = lookup.attachTo;
   const stored = attachTo === undefined ? undefined : config[attachTo];

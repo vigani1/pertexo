@@ -17,8 +17,10 @@ import {
   RevokeConnectionService,
   RotateConnectionSecretService,
 } from '../../../src/connections/management/connection-management.js';
-import { LookupSlackChannelsService } from '../../../src/connections/failure-notifications/slack-channel-lookup.js';
+import { LookupConnectionOptionsService } from '../../../src/connections/lookups/lookup-options.service.js';
+import { LookupConnectionOptionsController } from '../../../src/connections/lookups/lookup-options.controller.js';
 import { TestConnectionService } from '../../../src/connections/testing/test-connection.js';
+import type { WorkspaceAuthorizationSource } from '../../../src/authorization/index.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import {
@@ -54,6 +56,10 @@ const rotation = {
 };
 const created = { providerKey: 'http', name: 'Operations API', credential };
 
+const findAccess = vi.fn<WorkspaceAuthorizationSource['findAccess']>(
+  ownerAccess.findAccess,
+);
+
 const services = {
   list: { execute: vi.fn() },
   read: { execute: vi.fn() },
@@ -70,16 +76,16 @@ beforeAll(async () => {
   harness = await routeHarness({
     module: ConnectionsModule,
     imports: [{ module: FakeIdentityModule }],
-    controllers: [ConnectionsController],
+    controllers: [ConnectionsController, LookupConnectionOptionsController],
     providers: [
-      { provide: WORKSPACE_AUTHORIZATION, useValue: ownerAccess },
+      { provide: WORKSPACE_AUTHORIZATION, useValue: { findAccess } },
       { provide: ListConnectionsService, useValue: services.list },
       { provide: GetConnectionService, useValue: services.read },
       { provide: CreateConnectionService, useValue: services.create },
       { provide: RotateConnectionSecretService, useValue: services.rotate },
       { provide: RevokeConnectionService, useValue: services.revoke },
       { provide: TestConnectionService, useValue: services.test },
-      { provide: LookupSlackChannelsService, useValue: services.lookup },
+      { provide: LookupConnectionOptionsService, useValue: services.lookup },
     ],
   });
 });
@@ -147,24 +153,41 @@ describe('connection routes', () => {
     expect(services.list.execute).not.toHaveBeenCalled();
   });
 
-  it('looks up the listed Slack channels with the request signal', async () => {
-    const reply = await harness.send('GET', `${one}/slack/channels`, {
-      query: { channelIds: 'C0123,D0456' },
-    });
+  it('forwards a connection lookup with the request signal', async () => {
+    const request = {
+      providerKey: 'slack',
+      lookup: 'channels',
+      input: { channelIds: ['C0123', 'D0456'] },
+    };
+    const reply = await command('POST', `${one}/lookup`, request, null);
     expect(reply.statusCode, reply.payload).toBe(200);
-    expect(forwarded(services.lookup)).toMatchObject({
-      connectionId,
-      channelIds: ['C0123', 'D0456'],
-    });
+    expect(forwarded(services.lookup)).toMatchObject({ connectionId, request });
     expect(forwarded(services.lookup).signal).toBeInstanceOf(AbortSignal);
   });
 
-  it.each([{}, { channelIds: 'C0001,C0001' }, { channelIds: 'c0001' }])(
-    'refuses Slack lookup query %j before the credential',
-    async (query) => {
-      const reply = await harness.send('GET', `${one}/slack/channels`, {
-        query,
-      });
+  it('refuses a viewer before invoking the connection lookup', async () => {
+    findAccess.mockResolvedValueOnce({
+      ...(await ownerAccess.findAccess({ workspaceId })),
+      role: 'viewer',
+    });
+    const reply = await command(
+      'POST',
+      `${one}/lookup`,
+      {
+        providerKey: 'slack',
+        lookup: 'channels',
+        input: { channelIds: ['C0123'] },
+      },
+      null,
+    );
+    expect(reply.statusCode).toBe(404);
+    expect(services.lookup.execute).not.toHaveBeenCalled();
+  });
+
+  it.each([{}, { providerKey: 'slack', lookup: '' }])(
+    'rejects an invalid lookup envelope before invoking the lookup',
+    async (body) => {
+      const reply = await command('POST', `${one}/lookup`, body, null);
       expect(reply.statusCode).toBe(400);
       expect(services.lookup.execute).not.toHaveBeenCalled();
     },

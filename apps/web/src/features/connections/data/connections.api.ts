@@ -6,7 +6,8 @@ import {
   connectionTestRequestSchema,
   connectionTestResponseSchema,
   connectionUsageResponseSchema,
-  slackChannelLookupResponseSchema,
+  connectionLookupPath,
+  connectionLookupResponseSchema,
   httpHeadersCredentialSchema,
   type ConnectionCreateRequest,
   type ConnectionListResponse,
@@ -15,7 +16,7 @@ import {
   type ConnectionTestRequest,
   type ConnectionTestResponse,
   type ConnectionUsageResponse,
-  type SlackChannelLookupResponse,
+  type ConnectionLookupRequest,
 } from '@pertexo/contracts';
 import type { ApiClient } from '@/lib/api/client';
 import { collectPages, searchParams } from '@/lib/api/pagination';
@@ -165,27 +166,21 @@ export function rotateConnectionSecret(
   });
 }
 
-/** ADR 046: display names for up to ten Slack channel IDs. */
-export function getSlackChannelNames({
-  apiClient,
-  workspaceId,
-  connectionId,
-  channelIds,
-  signal,
-}: Readonly<{
-  apiClient: ApiClient;
-  workspaceId: string;
-  connectionId: string;
-  channelIds: readonly string[];
-  signal?: AbortSignal | undefined;
-}>): Promise<SlackChannelLookupResponse> {
-  const query = searchParams({ channelIds: channelIds.join(',') });
+export function lookupConnectionOptions(
+  apiClient: ApiClient,
+  workspaceId: string,
+  connectionId: string,
+  body: ConnectionLookupRequest,
+  signal: AbortSignal,
+) {
   return apiClient.request({
-    path: `${connectionPath(workspaceId, connectionId)}/slack/channels?${query}`,
-    ...(signal === undefined ? {} : { signal }),
+    path: connectionLookupPath(workspaceId, connectionId),
+    method: 'POST',
+    body,
+    signal,
     response: {
       kind: 'json',
-      decode: (value) => slackChannelLookupResponseSchema.parse(value),
+      decode: (value) => connectionLookupResponseSchema.parse(value),
     },
   });
 }

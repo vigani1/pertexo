@@ -45,6 +45,7 @@ export const connectionLookupResponseSchema = responseSchema(
             .max(CONNECTION_LOOKUP_LIMITS.descriptionCharacters)
             .optional(),
           attach: json.optional(),
+          unavailableReason: key.optional(),
         }),
       )
       .max(CONNECTION_LOOKUP_LIMITS.items),

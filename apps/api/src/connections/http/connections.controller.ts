@@ -18,7 +18,6 @@ import {
   RevokeConnectionService,
   RotateConnectionSecretService,
 } from '../management/connection-management.js';
-import { LookupSlackChannelsService } from '../failure-notifications/slack-channel-lookup.js';
 import { TestConnectionService } from '../testing/test-connection.js';
 import type { ConnectionRequest } from '../connection-request.js';
 import { domainErrors } from '../../platform/http/problems/interceptor.js';
@@ -41,7 +40,6 @@ export class ConnectionsController {
     private readonly rotateSecret: RotateConnectionSecretService,
     private readonly revokeConnection: RevokeConnectionService,
     private readonly testConnection: TestConnectionService,
-    private readonly lookupSlackChannels: LookupSlackChannelsService,
   ) {}
 
   @Route(routes.list)
@@ -112,23 +110,6 @@ export class ConnectionsController {
       ...serviceCaller(caller),
       connectionId: params.connectionId,
     });
-  }
-
-  /** ADR 046: bounded channel-name lookup; never fails for one channel. */
-  @Route(routes.slackChannels)
-  public slackChannels(
-    @Req() request: ConnectionRequest,
-    @Caller() caller: WorkspaceCaller,
-    @In() { params, query }: RouteInput<typeof routes.slackChannels>,
-  ) {
-    return withRequestOperationSignal(request, (signal) =>
-      this.lookupSlackChannels.execute({
-        ...serviceCaller(caller),
-        connectionId: params.connectionId,
-        channelIds: query.channelIds,
-        signal,
-      }),
-    );
   }
 
   @Route(routes.test)

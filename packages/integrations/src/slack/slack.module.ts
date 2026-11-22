@@ -1,4 +1,5 @@
 import { SLACK_REJECTIONS } from './rejection-policy.js';
+import { channelsLookup } from './channels-lookup.js';
 import { createSlackClient } from './client.js';
 import { SLACK_BOT_TOKEN_CONNECTION } from './connections.definition.js';
 import { createSlackSendMessageExecutorRegistration } from './send-message/send-message.executor.js';
@@ -15,6 +16,7 @@ export const SLACK_MODULE = {
     ...Object.values(SLACK_REJECTIONS).map(({ code }) => code),
   ],
   connections: [SLACK_BOT_TOKEN_CONNECTION],
+  lookups: [channelsLookup],
   steps: [
     {
       registration: SLACK_SEND_MESSAGE_DEFINITION_REGISTRATION,

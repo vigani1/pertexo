@@ -1,6 +1,9 @@
 import {
   SLACK_CHANNEL_LOOKUP_LIMIT,
-  type SlackChannelLookupResponse,
+  SLACK_CHANNELS_LOOKUP,
+  type ConnectionLookupRequest,
+  type ConnectionLookupResponse,
+  slackChannelUnresolvedReasonSchema,
   type SlackChannelUnresolvedReason,
 } from '@pertexo/contracts';
 import type { FailureNotificationDestinationResponse } from '@pertexo/contracts';
@@ -27,7 +30,7 @@ export type ChannelLookup = Readonly<{
 }>;
 
 type LookupResult = Readonly<{
-  data: SlackChannelLookupResponse | undefined;
+  data: ConnectionLookupResponse | undefined;
   isError: boolean;
 }>;
 
@@ -90,6 +93,16 @@ export function channelLookups(
     });
 }
 
+export function slackChannelLookupRequest(
+  channelIds: readonly string[],
+): ConnectionLookupRequest {
+  return {
+    providerKey: 'slack',
+    lookup: SLACK_CHANNELS_LOOKUP,
+    input: { channelIds },
+  };
+}
+
 /** Every answered or failed lookup, keyed by connection and channel. */
 export function channelNamesFrom(
   lookups: readonly ChannelLookup[],
@@ -100,12 +113,7 @@ export function channelNamesFrom(
     const result = results[index];
     if (result?.data !== undefined)
       for (const item of result.data.items)
-        names.set(
-          channelKey(connectionId, item.channelId),
-          item.status === 'resolved'
-            ? { status: 'resolved', name: item.name }
-            : { status: 'unresolved', reason: item.reason },
-        );
+        names.set(channelKey(connectionId, item.value), channelName(item));
     else if (result?.isError ?? false)
       for (const channelId of channelIds)
         names.set(channelKey(connectionId, channelId), {
@@ -114,6 +122,19 @@ export function channelNamesFrom(
         });
   });
   return names;
+}
+
+export function channelName(
+  item: ConnectionLookupResponse['items'][number],
+): ChannelName {
+  return item.unavailableReason === undefined
+    ? { status: 'resolved', name: item.label }
+    : {
+        status: 'unresolved',
+        reason:
+          slackChannelUnresolvedReasonSchema.safeParse(item.unavailableReason)
+            .data ?? 'lookup_failed',
+      };
 }
 
 /**

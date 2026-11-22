@@ -6,7 +6,6 @@ import {
   CreateConnectionService,
   GetConnectionService,
   ListConnectionsService,
-  LookupSlackChannelsService,
   FailureNotificationDestinationsController,
   FailureNotificationDestinationServices,
   type ConnectionDependencies,
@@ -66,7 +65,6 @@ describe('connections Nest module', () => {
         expect.objectContaining({ provide: CreateConnectionService }),
         expect.objectContaining({ provide: ListConnectionsService }),
         expect.objectContaining({ provide: GetConnectionService }),
-        expect.objectContaining({ provide: LookupSlackChannelsService }),
         expect.objectContaining({
           provide: FailureNotificationDestinationServices,
         }),

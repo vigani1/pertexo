@@ -1,16 +1,10 @@
-import { useState } from 'react';
-import { Field, FieldDescription, LabelledField } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { Field, FieldDescription } from '@/components/ui/field';
 import {
-  channelKey,
+  channelName,
   describeChannel,
-  useSlackChannelNames,
+  slackChannelLookupRequest,
 } from '@/features/failure-notifications/public';
-import type { ApiClient } from '@/lib/api/client';
-import {
-  fieldControlId,
-  type NodeFormApi,
-} from '../../../model/inspector/node-form';
+import type { NodeFormApi } from '../../../model/inspector/node-form';
 import type { WorkflowNode } from '../../../model/graph/scopes';
 import {
   parseChannelId,
@@ -18,25 +12,18 @@ import {
   stepChannel,
   withChannelId,
 } from '../../../model/inspector/slack-channel';
-import { useInspectorDraftField } from '../use-draft-field';
+import { LookupValueField } from './lookup-value';
 
-/** Who looks channel names up, and whether their role lets them. */
-export type ChannelLookupScope = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  /** Looking names up uses the connection, so it needs `connection:use`. */
-  enabled: boolean;
-}>;
+const FIELD = {
+  key: 'channelId',
+  name: 'slackChannelId',
+  label: 'Channel ID',
+  description:
+    'The channel the message is posted to, like C0123456789. Find it in the channel’s details in Slack.',
+  needsConnection:
+    'Choose a Slack connection above to show this channel’s name.',
+};
 
-const CHANNEL_FIELD = 'channelId';
-
-/**
- * The Slack step's channel in Setup: its ID, applied as you type, with the
- * channel's `#name` beside it once the chosen connection can look it up
- * (ADR 046), or the reason it can't. A channel another source provides is
- * edited on the Inputs tab instead.
- */
 export function SlackChannelField({
   node,
   form,
@@ -44,7 +31,7 @@ export function SlackChannelField({
 }: Readonly<{
   node: WorkflowNode;
   form: NodeFormApi;
-  lookup: ChannelLookupScope;
+  lookup: NonNullable<NodeFormApi['lookup']>['scope'];
 }>) {
   const channel = stepChannel(node);
   if (channel.kind === 'mapped')
@@ -58,146 +45,35 @@ export function SlackChannelField({
       </Field>
     );
   return (
-    <ChannelIdField
-      channelId={channel.channelId}
+    <LookupValueField
+      field={FIELD}
+      value={channel.channelId}
       connectionId={node.connectionRefs[SLACK_CONNECTION]}
+      scope={lookup}
       form={form}
-      lookup={lookup}
+      lookup={(value) => slackChannelLookupRequest([value])}
+      parse={parseChannelId}
+      commit={(value) => {
+        form.commit(
+          (current) => ({
+            inputMappings: withChannelId(current.inputMappings, value),
+          }),
+          `${form.nodeId}:channel`,
+        );
+      }}
+      describe={(value, item, failed) => {
+        const name = item === undefined ? undefined : channelName(item);
+        const { target, note } = describeChannel(
+          value,
+          failed && name === undefined
+            ? { status: 'unresolved', reason: 'lookup_failed' }
+            : name,
+        );
+        return {
+          label: name?.status === 'resolved' ? target : undefined,
+          note,
+        };
+      }}
     />
   );
-}
-
-function ChannelIdField({
-  channelId,
-  connectionId,
-  form,
-  lookup,
-}: Readonly<{
-  channelId: string | undefined;
-  connectionId: string | undefined;
-  form: NodeFormApi;
-  lookup: ChannelLookupScope;
-}>) {
-  const id = fieldControlId(form.nodeId, CHANNEL_FIELD);
-  const nameId = `${id}-name`;
-  // Names are looked up once people leave the field, not per keystroke:
-  // the lookup shares the connection test's rate limit.
-  const [editing, setEditing] = useState(false);
-  const live = useInspectorDraftField<string | undefined>({
-    value: channelId,
-    format: (value) => value ?? '',
-    parse: parseChannelId,
-    commit: (value) => {
-      form.commit(
-        (node) => ({
-          inputMappings: withChannelId(node.inputMappings, value),
-        }),
-        `${form.nodeId}:channel`,
-      );
-    },
-    onScratchChange: (scratch) => {
-      form.reportScratch(CHANNEL_FIELD, scratch);
-    },
-  });
-  const channel =
-    editing || channelId === undefined || connectionId === undefined
-      ? undefined
-      : { connectionId, channelId };
-  const names = useSlackChannelNames({
-    ...lookup,
-    channels: channel === undefined ? [] : [channel],
-  });
-  const name =
-    channel === undefined
-      ? undefined
-      : names.get(channelKey(channel.connectionId, channel.channelId));
-  const shown =
-    channel === undefined
-      ? undefined
-      : describeChannel(channel.channelId, name);
-  const pending = lookup.enabled && channel !== undefined && name === undefined;
-  return (
-    <LabelledField
-      id={id}
-      label="Channel ID"
-      description="The channel the message is posted to, like C0123456789. Find it in the channel’s details in Slack."
-      error={live.error}
-      describedBy={nameId}
-      slots={{
-        feedback: (
-          <ChannelNote
-            note={shown?.note}
-            needsConnection={
-              channelId !== undefined && connectionId === undefined && !editing
-            }
-          />
-        ),
-      }}
-    >
-      {(control) => (
-        <div className="flex items-center gap-2">
-          <Input
-            {...control}
-            name="slackChannelId"
-            autoComplete="off"
-            spellCheck={false}
-            className="flex-1 font-mono"
-            value={live.text}
-            disabled={!form.editable}
-            onBlur={() => {
-              setEditing(false);
-              live.blur();
-            }}
-            onChange={(event) => {
-              // Only a changed value waits for the field to be left; a
-              // focused but unchanged channel keeps showing its name.
-              setEditing(true);
-              live.change(event.currentTarget.value);
-            }}
-          />
-          <span
-            id={nameId}
-            aria-live="polite"
-            className="max-w-[45%] shrink-0 truncate font-mono text-xs text-muted-foreground"
-          >
-            {
-              <ChannelName
-                resolved={name?.status === 'resolved'}
-                target={shown?.target}
-                pending={pending}
-              />
-            }
-          </span>
-        </div>
-      )}
-    </LabelledField>
-  );
-}
-
-function ChannelNote({
-  note,
-  needsConnection,
-}: Readonly<{ note: string | undefined; needsConnection: boolean }>) {
-  if (needsConnection)
-    return (
-      <p className="text-xs text-muted-foreground">
-        Choose a Slack connection above to show this channel’s name.
-      </p>
-    );
-  return note === undefined ? null : (
-    <p className="text-xs text-muted-foreground">{note}</p>
-  );
-}
-
-function ChannelName({
-  resolved,
-  target,
-  pending,
-}: Readonly<{
-  resolved: boolean;
-  target: string | undefined;
-  pending: boolean;
-}>) {
-  if (resolved) return <span className="text-foreground">{target}</span>;
-  return pending ? 'Looking up…' : null;
 }

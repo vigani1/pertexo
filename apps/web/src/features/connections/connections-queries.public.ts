@@ -2,5 +2,5 @@ export {
   connectionDiscoveryQueryOptions,
   connectionsInfiniteQueryOptions,
   editorConnectionsQueryOptions,
-  slackChannelNamesQueryOptions,
+  connectionOptions,
 } from './data/connections.queries';

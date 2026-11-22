@@ -1,3 +1,4 @@
+import { slackChannelLookup } from '../../support/fixtures/slack-channels';
 import { screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
@@ -100,25 +101,14 @@ describe('alert destinations', () => {
       }),
       connectionHandler(),
       destinationsOf(() => [destination(), second, direct]),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/connections/${connectionId}/slack/channels`,
-        ({ request }) => {
-          const channelIds =
-            new URL(request.url).searchParams.get('channelIds') ?? '';
-          lookups.push(channelIds);
-          return HttpResponse.json({
-            items: channelIds.split(',').map((channelId) =>
-              channelId === 'C0123456789'
-                ? { channelId, status: 'resolved', name: 'ops-alerts' }
-                : {
-                    channelId,
-                    status: 'unresolved',
-                    reason:
-                      channelId === 'C0404' ? 'missing_scope' : 'not_a_channel',
-                  },
-            ),
-          });
+      slackChannelLookup(
+        `http://pertexo.test/v1/workspaces/${workspaceId}`,
+        {
+          C0123456789: { name: 'ops-alerts' },
+          C0404: { reason: 'missing_scope' },
+          D0999: { reason: 'not_a_channel' },
         },
+        lookups,
       ),
     );
     await renderLoadedApp(`/w/${workspaceId}/alerts`);
@@ -164,8 +154,8 @@ describe('alert destinations', () => {
       }),
       connectionHandler(),
       destinationsOf(() => [destination()]),
-      http.get(
-        `http://pertexo.test/v1/workspaces/${workspaceId}/connections/${connectionId}/slack/channels`,
+      http.post(
+        `http://pertexo.test/v1/workspaces/${workspaceId}/connections/${connectionId}/lookup`,
         () => problem(429, 'rate_limit.exceeded'),
       ),
     );
