@@ -3,7 +3,7 @@ import {
   AGENT_STEP,
   CLASSIFY_STEP,
 } from '@pertexo/workflow-model';
-import { expect, test } from '../support/fixtures';
+import { expect, test, type Page } from '../support/fixtures';
 import { workflowVersionsBody } from '../workflows/read-projections';
 import {
   firstRunId,
@@ -207,10 +207,7 @@ test('shows the pinned branch label and groups Agent activity under its full dur
   await screenshots(page, info.outputPath('agent-duration'));
 });
 
-async function screenshots(
-  page: import('@playwright/test').Page,
-  path: string,
-) {
+async function screenshots(page: Page, path: string) {
   for (const colorScheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme });
     await expect(page.locator('html')).toHaveAttribute(
