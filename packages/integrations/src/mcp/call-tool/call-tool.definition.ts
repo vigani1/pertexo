@@ -8,7 +8,7 @@ import {
 } from './call-tool.schemas.js';
 
 export const MCP_CALL_TOOL_STEP = Object.freeze({
-  key: 'mcp.call-tool',
+  key: 'mcp.call_tool',
   version: 1,
 });
 
