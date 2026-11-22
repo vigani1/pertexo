@@ -1,3 +1,9 @@
+import { IssuesList } from '@/features/workflow-publish/workflow-publish-views.public';
+import {
+  groupWorkflowIssues,
+  type WorkflowValidationTarget,
+} from '@/features/workflow-publish/public';
+import { EMPTY_WORKFLOW_GRAPH } from '@pertexo/workflow-model';
 import type {
   DraftProposalResult,
   WorkflowGraphContract,
@@ -11,23 +17,25 @@ type DraftNode = WorkflowGraphContract['nodes'][number];
 
 export function DraftProposalReview({
   result,
+  graph,
+  onFix,
 }: Readonly<{
   result: Extract<DraftProposalResult, { kind: 'inspected' | 'rejected' }>;
+  graph: WorkflowGraphContract;
+  onFix: (target: WorkflowValidationTarget) => void;
 }>) {
-  const issues =
-    result.kind === 'rejected' ? result.issues : result.validation.issues;
-  const uniqueIssues = new Map(
-    issues.map(({ code, path, message }) => [
-      JSON.stringify([code, path, message]),
-      message,
-    ]),
+  const proposedGraph =
+    result.kind === 'inspected' ? result.draft.graph : EMPTY_WORKFLOW_GRAPH;
+  const groups = groupWorkflowIssues(
+    result.kind === 'inspected' ? result.validation : result,
+    proposedGraph,
   );
   return (
     <div className="grid gap-4">
       {result.kind === 'inspected' ? (
         <DraftChanges before={result.base.graph} after={result.draft.graph} />
       ) : null}
-      {issues.length > 0 ? (
+      {groups.length > 0 ? (
         <section
           aria-labelledby="proposal-issues"
           className="rounded-md border p-3"
@@ -37,11 +45,14 @@ export function DraftProposalReview({
               ? 'Proposal issues'
               : 'Publication issues'}
           </h3>
-          <ul className="mt-2 grid list-disc gap-1 pl-4 text-sm text-muted-foreground">
-            {[...uniqueIssues].map(([key, message]) => (
-              <li key={key}>{message}</li>
-            ))}
-          </ul>
+          <div className="mt-2">
+            <IssuesList
+              groups={groups}
+              graph={proposedGraph}
+              fixableGraph={graph}
+              onFix={onFix}
+            />
+          </div>
         </section>
       ) : null}
     </div>

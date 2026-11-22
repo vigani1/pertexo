@@ -32,6 +32,22 @@ const manual = {
   connectionRefs: {},
 };
 const empty = { nodes: [], edges: [], settings: {} };
+const httpRequest = {
+  ...manual,
+  id: 'request',
+  definition: { key: 'http.request', version: 1 },
+};
+const httpWorkflow = {
+  ...empty,
+  nodes: [manual, httpRequest],
+  edges: [
+    {
+      id: 'send-request',
+      source: { nodeId: manual.id, port: 'out' },
+      target: { nodeId: httpRequest.id, port: 'in' },
+    },
+  ],
+};
 const configuredDraft = {
   ...empty,
   nodes: [{ ...manual, config: { unknown: settingSentinel } }],
@@ -225,14 +241,10 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
   it('checks publication rules and does not apply a reviewed proposal after another save', async () => {
     const path = await workflow();
     const original = await draft(path);
-    const invalid = {
-      ...empty,
-      nodes: [{ ...manual, definition: { key: 'http.request', version: 1 } }],
-    };
     const result = await propose(path, [
       { name: 'search_catalog', args: { query: 'http' } },
       { name: 'get_step_details', args: { key: 'http.request', version: 1 } },
-      { name: 'propose_draft', args: { graph: invalid } },
+      { name: 'propose_draft', args: { graph: httpWorkflow } },
     ]);
     expect(result).toMatchObject({
       kind: 'inspected',
@@ -243,11 +255,13 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect((await draft(path)).payload).toBe(original.payload);
     if (result.kind !== 'inspected')
       throw new Error('Expected an inspectable draft');
-    expect(result.validation.issues).toContainEqual({
-      code: 'invalid_graph',
-      path: '$.nodes.manual.config.url',
-      message: 'URL needs a value.',
-    });
+    expect(result.validation.issues).toEqual([
+      {
+        code: 'invalid_graph',
+        path: '$.nodes.request.config.url',
+        message: 'URL needs a value.',
+      },
+    ]);
     expect(
       (await save(path, original.headers.etag, { ...empty, nodes: [manual] }))
         .statusCode,
@@ -260,6 +274,35 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect(
       (await api.send('GET', `${path}/versions`, { browser: owner })).json(),
     ).toMatchObject({ items: [] });
+  });
+
+  it('starts a new HTTP step with catalog defaults and preserves supplied settings', async () => {
+    const path = await workflow();
+    const graph = {
+      ...httpWorkflow,
+      nodes: [
+        manual,
+        { ...httpRequest, config: { url: 'https://orders.example.test' } },
+      ],
+    };
+    const result = await propose(path, [
+      { name: 'propose_draft', args: { graph } },
+    ]);
+    expect(result).toMatchObject({
+      kind: 'inspected',
+      validation: { valid: true, issues: [] },
+      draft: {
+        graph: {
+          nodes: [
+            { id: manual.id },
+            {
+              id: httpRequest.id,
+              config: { method: 'GET', url: 'https://orders.example.test' },
+            },
+          ],
+        },
+      },
+    });
   });
 
   it('masks values in the provider request and rejects changes without saving, publishing or running', async () => {

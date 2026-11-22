@@ -18,7 +18,7 @@ export function useWorkspaceChrome({
   const [feedbackTarget, setFeedbackTarget] = useState<HTMLDivElement | null>(
     null,
   );
-  const chrome: EditorChrome = {
+  const chrome: Omit<EditorChrome, 'proposalOpen' | 'onProposalOpenChange'> = {
     renderFeedback: (feedback) =>
       feedbackTarget === null ? null : createPortal(feedback, feedbackTarget),
     workflowTestAction: (

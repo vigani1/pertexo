@@ -55,6 +55,14 @@ const incomplete = {
       position: { x: 600, y: 0 },
     },
   ],
+  edges: [
+    ...edited.edges,
+    {
+      id: 'prepare-order-send',
+      source: { nodeId: prepare.id, port: 'out' },
+      target: { nodeId: 'send-order', port: 'in' },
+    },
+  ],
 };
 
 test('reviews, applies and publishes a draft chosen from the catalog', async ({
@@ -86,10 +94,16 @@ test('reviews, applies and publishes a draft chosen from the catalog', async ({
     const path = await createEditorWorkflow(page, workspace, 'Intake orders');
     const draft = await readEditorDraft(page, path);
     expect(draft.graph.nodes).toEqual([]);
+    const startPicker = page.getByText('Start with a trigger', { exact: true });
+    await expect(startPicker).toBeVisible();
     const request = await openProposal(
       page,
       'Start a manual workflow and prepare the order.',
     );
+    await expect(startPicker).toHaveCount(0);
+    const backdrop = page.locator('[data-open].scrim');
+    await expect(backdrop).toBeVisible();
+    await expect(backdrop).toHaveCSS('background-color', /rgba\(/u);
     expect(inference.calls).toHaveLength(0);
     await modelScreenshots(page, info, 'draft-proposal-request');
     await request.getByRole('button', { name: 'Send to model' }).click();
@@ -98,6 +112,7 @@ test('reviews, applies and publishes a draft chosen from the catalog', async ({
     expect(inference.calls).toHaveLength(3);
     expect(JSON.stringify(inference.calls)).not.toContain(key);
     expect(await readEditorDraft(page, path)).toEqual(draft);
+    await expect(backdrop).toBeVisible();
     await modelScreenshots(page, info, 'draft-proposal-diff');
     await review.getByRole('button', { name: 'Apply to draft' }).click();
     await expect(review).toBeHidden();
@@ -122,9 +137,17 @@ test('reviews, applies and publishes a draft chosen from the catalog', async ({
       'Add an HTTP request with settings to fill in later.',
     );
     await missing.getByRole('button', { name: 'Send to model' }).click();
-    await expect(review).toContainText('Publication issues');
+    const issues = review.getByRole('list', { name: 'Issues by step' });
+    await expect(issues).toContainText('Send order');
+    await expect(issues).toContainText('URL needs a value.');
+    await expect(issues).not.toContainText('timeoutMillis');
+    await expect(backdrop).toBeVisible();
     await modelScreenshots(page, info, 'draft-proposal-issues');
-    await review.getByRole('button', { name: 'Cancel' }).click();
+    await page.keyboard.press('Escape');
+    await expect(review).toBeHidden();
+    await expect(
+      page.getByRole('button', { name: 'Ask assistant' }),
+    ).toBeFocused();
     expect((await readEditorDraft(page, path)).graph).toEqual(edited);
   } finally {
     await inference.close();
