@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  hasValidOutputVariants,
   outputVariantSelectionSchema,
   type OutputVariantSelection,
 } from './output-variant.js';
@@ -207,34 +208,10 @@ export const nodeManifestSchema = z
     policyReferences: z.array(policyReferenceSchema),
   })
   .strict()
-  .refine(
-    (manifest) => {
-      if (manifest.outputVariant === undefined) return true;
-      const variants =
-        manifest.outputSchema.anyOf ?? manifest.outputSchema.oneOf;
-      return (
-        Array.isArray(variants) &&
-        [
-          manifest.outputVariant.whenPresent,
-          manifest.outputVariant.whenAbsent,
-          ...(manifest.outputVariant.overrides ?? []).map(
-            (override) => override.variant,
-          ),
-        ].every((index) => {
-          const candidate: unknown = variants[index];
-          return (
-            candidate !== null &&
-            typeof candidate === 'object' &&
-            !Array.isArray(candidate)
-          );
-        })
-      );
-    },
-    {
-      path: ['outputVariant'],
-      message: 'output variants must select object schemas in the output union',
-    },
-  )
+  .refine(hasValidOutputVariants, {
+    path: ['outputVariant'],
+    message: 'output variants must select object schemas in the output union',
+  })
   .refine(
     (manifest) =>
       (manifest.optionalConnections ?? []).every((slot) =>
