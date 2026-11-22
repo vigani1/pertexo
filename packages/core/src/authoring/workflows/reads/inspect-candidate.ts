@@ -28,13 +28,11 @@ export async function inspectCandidate(
   if (base.revision !== input.expectedRevision)
     throw new WorkflowRevisionConflictError(base.revision, representationTag);
   try {
-    await admitDraftCandidate(
-      client,
-      input,
-      base.graphJson,
-      input.graph,
-      catalogs.placementDefinitionCatalog,
-    );
+    await admitDraftCandidate(client, input, {
+      previous: base.graphJson,
+      graph: input.graph,
+      catalog: catalogs.placementDefinitionCatalog,
+    });
   } catch (error) {
     if (
       error instanceof WorkflowDefinitionPlacementError ||

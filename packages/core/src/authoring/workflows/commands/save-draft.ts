@@ -36,13 +36,11 @@ export async function saveDraft(
   const currentTag = draftRepresentationTag(workflowId, currentDraft);
   if (currentTag !== representationTag || currentDraft.revision !== expected)
     throwRevisionConflict(workflowId, currentDraft);
-  await admitDraftCandidate(
-    client,
-    input,
-    currentDraft.graphJson,
+  await admitDraftCandidate(client, input, {
+    previous: currentDraft.graphJson,
     graph,
-    placementDefinitionCatalog,
-  );
+    catalog: placementDefinitionCatalog,
+  });
   const row = await replaceDraftGraph(client, {
     workspaceId: input.workspaceId,
     workflowId,

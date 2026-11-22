@@ -164,12 +164,9 @@ export class ExplanationService {
     if (context === undefined) throw new WorkflowRunNotFoundError();
     if (context.kind !== 'failed_run') return context;
     const prepared = await prepareAssistant(
-      this.settings,
-      this.connection,
+      { settings: this.settings, connection: this.connection },
       input,
-      PURPOSE,
-      [input.runId],
-      signal,
+      { purpose: PURPOSE, subject: [input.runId], signal },
     );
     return prepared.kind === 'ready' ? { ...prepared, context } : prepared;
   }

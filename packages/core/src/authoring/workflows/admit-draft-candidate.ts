@@ -10,9 +10,15 @@ import { requirePlaceableDefinitionAdditions } from './placement.js';
 export async function admitDraftCandidate(
   client: PoolClient,
   actor: WorkflowActor,
-  previous: WorkflowGraph,
-  graph: WorkflowGraph,
-  catalog: WorkflowDefinitionCatalog | undefined,
+  {
+    previous,
+    graph,
+    catalog,
+  }: Readonly<{
+    previous: WorkflowGraph;
+    graph: WorkflowGraph;
+    catalog: WorkflowDefinitionCatalog | undefined;
+  }>,
 ) {
   requirePlaceableDefinitionAdditions(previous, graph, catalog);
   await requireWorkflowCallTargets(client, actor, graph, previous);

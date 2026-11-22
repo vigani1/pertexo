@@ -82,7 +82,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
                 content: null,
                 tool_calls: [
                   {
-                    id: `call-${requests.length}`,
+                    id: `call-${String(requests.length)}`,
                     type: 'function',
                     function: {
                       name: reply.name,
@@ -141,7 +141,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
         credential: {
           type: 'model_api_key',
           endpoint: 'vllm',
-          baseUrl: `http://127.0.0.1:${address.port}/v1`,
+          baseUrl: `http://127.0.0.1:${String(address.port)}/v1`,
           apiKey: credentialSentinel,
         },
       },
@@ -166,7 +166,11 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
   afterAll(async () => {
     keys.close();
     inference.closeAllConnections();
-    await new Promise<void>((resolve) => inference.close(() => resolve()));
+    await new Promise<void>((resolve) =>
+      inference.close(() => {
+        resolve();
+      }),
+    );
   });
 
   it('refuses a caller who cannot read the workflow or use the selected connection', async () => {
@@ -232,22 +236,18 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     ]);
     expect(result).toMatchObject({
       kind: 'inspected',
-      validation: {
-        valid: false,
-        issues: expect.arrayContaining([
-          expect.objectContaining({
-            code: 'invalid_graph',
-            path: '$.nodes.manual.config.url',
-            message: 'URL needs a value.',
-          }),
-        ]),
-      },
+      validation: { valid: false },
       usage: { kind: 'complete', inputTokens: 120, outputTokens: 30 },
     });
     expect(requests.at(-1)).toContain('http.request');
     expect((await draft(path)).payload).toBe(original.payload);
     if (result.kind !== 'inspected')
       throw new Error('Expected an inspectable draft');
+    expect(result.validation.issues).toContainEqual({
+      code: 'invalid_graph',
+      path: '$.nodes.manual.config.url',
+      message: 'URL needs a value.',
+    });
     expect(
       (await save(path, original.headers.etag, { ...empty, nodes: [manual] }))
         .statusCode,

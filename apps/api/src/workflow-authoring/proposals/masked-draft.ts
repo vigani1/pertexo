@@ -77,17 +77,13 @@ export function restoreDraftFields(
         changed(`${scope}.nodes.${node.id}`);
     }
     return next.map((node, index) => {
-      const path = `${scope}.nodes[${index}]`;
+      const path = `${scope}.nodes[${String(index)}]`;
       const original = byId.get(node.id);
       const duplicate = !nextIds.delete(node.id);
-      if (duplicate && original !== undefined && hasProtectedValues(original))
-        changed(path);
       if (
         original !== undefined &&
         hasProtectedValues(original) &&
-        (original.definition.key !== node.definition.key ||
-          original.definition.version !== node.definition.version ||
-          original.configVersion !== node.configVersion)
+        (duplicate || changedDefinition(original, node))
       )
         changed(path);
       const config = restoreRecord(
@@ -179,4 +175,12 @@ function maskRecord<Value>(
 
 function hasEntries(record: object | undefined): boolean {
   return record !== undefined && Object.keys(record).length > 0;
+}
+
+function changedDefinition(before: WorkflowNode, after: WorkflowNode): boolean {
+  return (
+    before.definition.key !== after.definition.key ||
+    before.definition.version !== after.definition.version ||
+    before.configVersion !== after.configVersion
+  );
 }
