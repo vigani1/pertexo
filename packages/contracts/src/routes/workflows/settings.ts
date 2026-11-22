@@ -1,3 +1,4 @@
+import * as mcp from '../../schemas/workflows/mcp/exposure.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 
 import { workflowIdParamSchema } from '../../schemas/workflows/authoring.js';
@@ -27,6 +28,48 @@ const replayed =
   'Command accepted; exact retries replay the original settings snapshot';
 
 export const workflowSettingsRoutes = {
+  mcp: defineRoute({
+    operationId: 'getWorkflowMcpSettings',
+    method: 'get',
+    path: `${WORKFLOW}/mcp`,
+    params: workflowIdParamSchema,
+    access: publishing,
+    rateLimit: 'authenticated_read',
+    cacheControl: noStore,
+    description:
+      'Read published callable workflow exposure settings as an administrator.',
+    success: {
+      status: 200,
+      description: 'MCP exposure settings',
+      body: projected('WorkflowMcpSettings', mcp.workflowMcpSettingsSchema),
+    },
+    problems: readProblems,
+  }),
+  updateMcp: defineRoute({
+    operationId: 'updateWorkflowMcpExposure',
+    method: 'put',
+    path: `${WORKFLOW}/mcp`,
+    params: workflowIdParamSchema,
+    access: publishing,
+    rateLimit: 'ordinary_mutation',
+    cacheControl: noStore,
+    description:
+      'Expose the reviewed published workflow version or revoke its tool exposure.',
+    body: projected(
+      'WorkflowMcpExposureRequest',
+      mcp.workflowMcpExposureRequestSchema,
+    ),
+    success: {
+      status: 200,
+      description: 'Updated MCP exposure',
+      body: projected(
+        'WorkflowMcpExposureResponse',
+        mcp.workflowMcpExposureResponseSchema,
+      ),
+    },
+    problems: { ...readProblems, ...problems('409') },
+  }),
+
   concurrency: defineRoute({
     operationId: 'getWorkflowConcurrencySettings',
     method: 'get',

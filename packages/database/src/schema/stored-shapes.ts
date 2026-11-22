@@ -13,6 +13,13 @@ type SideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
 export type { ConnectionAuthType, ConnectionStatus };
 export type FolderAccess = 'viewer' | 'editor';
 export type FolderFact = Readonly<{ accessMode: 'workspace' | 'restricted' }>;
+export type StoredMcpExposure = Readonly<{
+  revision: string;
+  versionId: string;
+  entryId: string;
+  name: string;
+  description: string;
+}>;
 export type WorkflowTriggerHealth = Readonly<{
   kind: 'webhook' | 'schedule' | 'polling';
   healthStatus: 'pending' | 'healthy' | 'degraded' | 'unhealthy' | 'disabled';

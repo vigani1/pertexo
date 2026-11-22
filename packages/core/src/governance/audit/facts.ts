@@ -90,6 +90,8 @@ type AuditStoredOnlyKey =
   | 'threadId'
   | 'toName'
   | 'toNameRevision'
+  | 'tokenId'
+  | 'toolName'
   | 'triggerId'
   | 'version'
   | 'workflowName'

@@ -395,3 +395,5 @@ export {
   POSTGRES_LIMITS,
   type PostgresCredential,
 } from './schemas/connections/postgres.js';
+export * from './schemas/workflows/mcp/exposure.js';
+export * from './schemas/workflows/mcp/rpc.js';

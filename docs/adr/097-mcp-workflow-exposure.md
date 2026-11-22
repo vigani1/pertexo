@@ -32,8 +32,12 @@ reviews and exposes the new contract. Pause, archive or revocation stops new
 calls. Revoke exposure or the token to stop status reads too. Accepted runs
 use ordinary run lifecycle and cancellation. The status lookup binds the
 invocation to its initiating token ID, workspace, workflow and exposure revision. Re-exposure issues a fresh revision.
-Scope lookup to the receipt and project only the declared result. Keep
-the invocation reference and result within existing run retention.
+Scope lookup to the run's invocation binding and project only the declared
+result. The binding records the initiating token, exposure revision and opaque
+reference digest. The run row supplies its workspace and workflow. The binding
+and result expire with normal run detail retention. Command receipts retain the
+product-wide 24-hour replay window. A repeated call after its receipt expires
+may create a new run.
 
 Record exposure changes and run admission through existing workspace audit
 facts. Correlate tool name, exposed version, actor/token ID, run and outcome

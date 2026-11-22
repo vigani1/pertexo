@@ -86,6 +86,9 @@ function statisticsRecord() {
 export function databaseWith(overrides: Partial<WorkflowRunDatabase> = {}) {
   return {
     canRead: () => Promise.resolve(true),
+    invokeMcpTool: vi.fn<WorkflowRunDatabase['invokeMcpTool']>(),
+    listMcpTools: vi.fn<WorkflowRunDatabase['listMcpTools']>(),
+    readMcpToolStatus: vi.fn<WorkflowRunDatabase['readMcpToolStatus']>(),
     recovery: vi.fn<NonNullable<WorkflowRunDatabase['recovery']>>(),
     recover: vi.fn<NonNullable<WorkflowRunDatabase['recover']>>(),
     usageTrends: vi.fn<NonNullable<WorkflowRunDatabase['usageTrends']>>(),

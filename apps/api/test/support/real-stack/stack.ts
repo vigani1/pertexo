@@ -1,4 +1,7 @@
-import { SUITE_REDIS_DATABASES } from './redis-databases.js';
+import {
+  SECURITY_REDIS_DATABASES,
+  SUITE_REDIS_DATABASES,
+} from './redis-databases.js';
 import { leaseRedisDatabase } from './lease.js';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -8,7 +11,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import { migrateDatabase } from '@pertexo/database/testing';
 import { Redis } from 'ioredis';
-import { Pool } from 'pg';
+import { Pool, type QueryResultRow } from 'pg';
 
 import { dropDisconnectedDatabase } from '../disposable-database.js';
 
@@ -56,12 +59,6 @@ function isRunning(child: ChildProcess) {
   return child.exitCode === null && child.signalCode === null;
 }
 
-function suiteRedisUrl(suite: keyof typeof SUITE_REDIS_DATABASES): string {
-  return Object.assign(new URL(required('REDIS_URL')), {
-    pathname: `/${String(SUITE_REDIS_DATABASES[suite])}`,
-  }).toString();
-}
-
 async function clearRedis(url: string): Promise<void> {
   const redis = new Redis(url);
   try {
@@ -79,11 +76,12 @@ function withDatabase(base: string, name: string): string {
 
 /** Real API and worker processes from their built entry points, on a disposable database. */
 export function createRealStack(
-  suite: keyof typeof SUITE_REDIS_DATABASES,
+  suite: keyof typeof SUITE_REDIS_DATABASES | 'mcp',
   reservation?: Awaited<ReturnType<typeof leaseRedisDatabase>>,
 ) {
   const databaseName = `pertexo_test_stack_${randomUUID().replaceAll('-', '')}`;
-  const redisUrl = reservation?.url ?? suiteRedisUrl(suite);
+  const databases =
+    suite === 'mcp' ? SECURITY_REDIS_DATABASES : [SUITE_REDIS_DATABASES[suite]];
   const processes = new Set<ChildProcess>();
   const output = new Map<ChildProcess, string>();
   const errorLogs = new Map<ChildProcess, string[]>();
@@ -97,9 +95,9 @@ export function createRealStack(
       redisLease = await leaseRedisDatabase(
         required('REDIS_URL'),
         databaseName,
-        [SUITE_REDIS_DATABASES[suite]],
+        databases,
       );
-    else await clearRedis(redisUrl);
+    else await clearRedis(redisLease.url);
     admin = new Pool({
       connectionString: required('DATABASE_ADMIN_URL'),
       max: 1,
@@ -179,6 +177,7 @@ export function createRealStack(
     listenPort: number,
     settings: Readonly<Record<string, string>>,
   ) {
+    if (redisLease === undefined) throw new Error('Stack not created');
     return {
       PATH: process.env.PATH ?? '',
       ...exampleEnvironment(),
@@ -195,7 +194,7 @@ export function createRealStack(
         required('DATABASE_MIGRATION_URL'),
         databaseName,
       ),
-      REDIS_URL: redisUrl,
+      REDIS_URL: redisLease.url,
       ARTIFACT_STORE_ENDPOINT: required('ARTIFACT_STORE_ENDPOINT'),
       ARTIFACT_STORE_ACCESS_KEY_ID: required('ARTIFACT_STORE_ACCESS_KEY_ID'),
       ARTIFACT_STORE_SECRET_ACCESS_KEY: required(
@@ -233,6 +232,7 @@ export function createRealStack(
     return {
       origin,
       stop: () => Promise.all([stop(api), stop(worker)]),
+      stopWorker: () => stop(worker),
       /** The API's logged errors so far, as written, to say why a request failed. */
       apiErrors: () => [...(errorLogs.get(api) ?? [])],
     };
@@ -258,7 +258,7 @@ export function createRealStack(
     admin = undefined;
     try {
       await Promise.all([...processes].map(stop));
-      if (lease !== undefined) await clearRedis(redisUrl);
+      if (lease !== undefined) await clearRedis(lease.url);
       await inspection?.end();
       if (databaseOwner !== undefined) {
         await dropDisconnectedDatabase(databaseOwner, databaseName);
@@ -278,9 +278,12 @@ export function createRealStack(
   }
 
   /** A change only an outside failure could make, on the stack's database. */
-  async function queryAsOwner(text: string, values: readonly unknown[]) {
+  async function queryAsOwner<Row extends QueryResultRow = QueryResultRow>(
+    text: string,
+    values: readonly unknown[],
+  ) {
     if (owner === undefined) throw new Error('Stack not created');
-    return owner.query(text, [...values]);
+    return owner.query<Row>(text, [...values]);
   }
 
   return { create, boot, bootExitCode, close, verifyEmail, queryAsOwner };

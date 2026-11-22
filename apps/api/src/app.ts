@@ -1,3 +1,4 @@
+import { registerMcpTransport } from './mcp/transport.js';
 import { registerAuditDownloadResponse } from './governance/audit-download-response.js';
 import { registerReceiveShutdown } from './platform/http/receive-shutdown.js';
 import { registerInFlightLimit } from './platform/http/in-flight-limit.js';
@@ -121,6 +122,7 @@ export async function assembleApiApplication(
     const fastifyInstance: FastifyInstance = fastifyAdapter.getInstance();
     application.get(RouteTable).register(fastifyInstance);
     registerResponseSecurityHeaders(fastifyInstance);
+    registerMcpTransport(fastifyInstance);
     registerAuditDownloadResponse(fastifyInstance);
     registerWorkflowPortabilityJsonParser(fastifyAdapter);
     registerNoticeUnsubscribeTransport(fastifyAdapter);

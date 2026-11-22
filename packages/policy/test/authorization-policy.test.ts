@@ -35,6 +35,7 @@ const expectedCapabilitiesByRole = {
     'workflow:publish',
     'run:read-data',
     'run:start',
+    'mcp:invoke',
     'run:cancel',
     'run:replay',
     'connection:use',
@@ -56,6 +57,7 @@ const expectedCapabilitiesByRole = {
     'workflow:publish',
     'run:read-data',
     'run:start',
+    'mcp:invoke',
     'connection:use',
   ],
   operator: [
@@ -67,6 +69,7 @@ const expectedCapabilitiesByRole = {
     'artifact:upload',
     'run:read-data',
     'run:start',
+    'mcp:invoke',
     'run:cancel',
     'run:replay',
     'connection:use',

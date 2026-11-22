@@ -1,3 +1,4 @@
+import { createWorkflowMcpStore } from '../settings/mcp/workflow-mcp.store.js';
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
 import {
@@ -74,6 +75,7 @@ export function createWorkflowAuthoringStore(
     }),
     publicationReviews: createPublicationReviewStore(access, { catalogs }),
     stepSamples: createWorkflowStepSampleStore(access),
+    mcp: createWorkflowMcpStore(pool, options.executableCatalog),
     autoPause: createWorkflowAutoPauseStore((workspaceId, actorId, operation) =>
       access.tracked(() =>
         withTenantScopedClient(pool, { workspaceId, actorId }, operation),

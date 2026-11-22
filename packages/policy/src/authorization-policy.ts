@@ -53,6 +53,7 @@ const capabilityRoles = Object.freeze({
   // Run data follows the run; apart from run:read only so a token can go without it.
   'run:read-data': ROLES,
   'run:start': executionRoles,
+  'mcp:invoke': executionRoles,
   'run:cancel': operationalRoles,
   'run:replay': operationalRoles,
   'connection:read': ROLES,
@@ -74,6 +75,7 @@ export const API_TOKEN_SCOPES = [
   'run:read',
   'run:read-data',
   'run:start',
+  'mcp:invoke',
   'run:cancel',
   'connection:read',
   'workspace:read',

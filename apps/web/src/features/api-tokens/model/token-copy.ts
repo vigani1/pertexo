@@ -37,6 +37,11 @@ export const SCOPE_COPY: Readonly<
     description:
       "Read a run's input and what each step received and returned, which can be sensitive.",
   },
+  'mcp:invoke': {
+    label: 'Invoke MCP tools',
+    description:
+      'Discover and invoke exposed workflows and read their results.',
+  },
   'run:start': {
     label: 'Start runs',
     description: 'Execute a published workflow with real effects.',

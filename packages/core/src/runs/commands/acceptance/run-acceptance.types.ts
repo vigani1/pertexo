@@ -1,3 +1,4 @@
+import type { workflowRuns } from '@pertexo/database/schema';
 import type { WorkflowRunSource } from '@pertexo/workflow-model';
 import type { RunInputValidator } from '../initial-checkpoint.types.js';
 import type { RunStatus as EngineRunStatus } from '@pertexo/workflow-engine';
@@ -6,6 +7,9 @@ import type { WorkflowRecoverySummary } from '../../recovery/workflow-recovery.t
 
 export type AcceptWorkflowRunInput = Readonly<{
   initialCheckpoint: unknown;
+  mcpInvocation?: (
+    runId: string,
+  ) => NonNullable<(typeof workflowRuns.$inferInsert)['mcpInvocation']>;
   keyHash: string;
   operation: 'workflow.run.accept';
   requestHash: string;

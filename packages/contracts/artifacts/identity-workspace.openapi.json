@@ -9160,7 +9160,7 @@
             "type": "boolean"
           },
           "availableScopes": {
-            "maxItems": 11,
+            "maxItems": 12,
             "type": "array",
             "items": {
               "type": "string",
@@ -9172,6 +9172,7 @@
                 "run:read",
                 "run:read-data",
                 "run:start",
+                "mcp:invoke",
                 "run:cancel",
                 "connection:read",
                 "workspace:read",
@@ -9204,7 +9205,7 @@
                     },
                     "scopes": {
                       "minItems": 1,
-                      "maxItems": 11,
+                      "maxItems": 12,
                       "type": "array",
                       "items": {
                         "type": "string",
@@ -9216,6 +9217,7 @@
                           "run:read",
                           "run:read-data",
                           "run:start",
+                          "mcp:invoke",
                           "run:cancel",
                           "connection:read",
                           "workspace:read",
@@ -9288,7 +9290,7 @@
                     },
                     "scopes": {
                       "minItems": 1,
-                      "maxItems": 11,
+                      "maxItems": 12,
                       "type": "array",
                       "items": {
                         "type": "string",
@@ -9300,6 +9302,7 @@
                           "run:read",
                           "run:read-data",
                           "run:start",
+                          "mcp:invoke",
                           "run:cancel",
                           "connection:read",
                           "workspace:read",
@@ -9390,7 +9393,7 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 11,
+            "maxItems": 12,
             "type": "array",
             "items": {
               "type": "string",
@@ -9402,6 +9405,7 @@
                 "run:read",
                 "run:read-data",
                 "run:start",
+                "mcp:invoke",
                 "run:cancel",
                 "connection:read",
                 "workspace:read",
@@ -9450,7 +9454,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 11,
+                        "maxItems": 12,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9462,6 +9466,7 @@
                             "run:read",
                             "run:read-data",
                             "run:start",
+                            "mcp:invoke",
                             "run:cancel",
                             "connection:read",
                             "workspace:read",
@@ -9534,7 +9539,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 11,
+                        "maxItems": 12,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9546,6 +9551,7 @@
                             "run:read",
                             "run:read-data",
                             "run:start",
+                            "mcp:invoke",
                             "run:cancel",
                             "connection:read",
                             "workspace:read",
@@ -9643,7 +9649,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 11,
+                        "maxItems": 12,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9655,6 +9661,7 @@
                             "run:read",
                             "run:read-data",
                             "run:start",
+                            "mcp:invoke",
                             "run:cancel",
                             "connection:read",
                             "workspace:read",
@@ -9727,7 +9734,7 @@
                       },
                       "scopes": {
                         "minItems": 1,
-                        "maxItems": 11,
+                        "maxItems": 12,
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -9739,6 +9746,7 @@
                             "run:read",
                             "run:read-data",
                             "run:start",
+                            "mcp:invoke",
                             "run:cancel",
                             "connection:read",
                             "workspace:read",
@@ -9840,7 +9848,7 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 11,
+                    "maxItems": 12,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -9852,6 +9860,7 @@
                         "run:read",
                         "run:read-data",
                         "run:start",
+                        "mcp:invoke",
                         "run:cancel",
                         "connection:read",
                         "workspace:read",
@@ -9924,7 +9933,7 @@
                   },
                   "scopes": {
                     "minItems": 1,
-                    "maxItems": 11,
+                    "maxItems": 12,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -9936,6 +9945,7 @@
                         "run:read",
                         "run:read-data",
                         "run:start",
+                        "mcp:invoke",
                         "run:cancel",
                         "connection:read",
                         "workspace:read",
@@ -10023,7 +10033,7 @@
           },
           "scopes": {
             "minItems": 1,
-            "maxItems": 11,
+            "maxItems": 12,
             "type": "array",
             "items": {
               "type": "string",
@@ -10035,6 +10045,7 @@
                 "run:read",
                 "run:read-data",
                 "run:start",
+                "mcp:invoke",
                 "run:cancel",
                 "connection:read",
                 "workspace:read",
@@ -10335,7 +10346,7 @@
                   ]
                 },
                 "capabilities": {
-                  "maxItems": 23,
+                  "maxItems": 24,
                   "type": "array",
                   "items": {
                     "type": "string",
@@ -10354,6 +10365,7 @@
                       "run:read",
                       "run:read-data",
                       "run:start",
+                      "mcp:invoke",
                       "run:cancel",
                       "run:replay",
                       "connection:read",

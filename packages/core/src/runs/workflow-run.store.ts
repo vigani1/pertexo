@@ -1,3 +1,6 @@
+import { invokeMcpTool } from './mcp/invoke-tool.js';
+import { listMcpTools } from './mcp/list-tools.js';
+import { readMcpToolStatus } from './mcp/read-tool-status.js';
 import {
   ACTIVE_WORKSPACE_STATUSES,
   UNPURGED_WORKSPACE_STATUSES,
@@ -69,6 +72,13 @@ import type {
 import { startInTransaction } from './commands/start-run.js';
 import { cancelInTransaction } from './commands/cancel-run.js';
 
+type Tail<T extends readonly unknown[]> = T extends readonly [
+  unknown,
+  ...infer Rest,
+]
+  ? Rest
+  : never;
+
 export type WorkflowRunDatabase = ReturnType<typeof createWorkflowRunDatabase>;
 
 export function createWorkflowRunDatabase(
@@ -78,6 +88,12 @@ export function createWorkflowRunDatabase(
   const lease = acquireDatabasePool(config, runtime);
   const { pool } = lease;
   return Object.freeze({
+    invokeMcpTool: (...args: Tail<Parameters<typeof invokeMcpTool>>) =>
+      invokeMcpTool(pool, ...args),
+    listMcpTools: (...args: Tail<Parameters<typeof listMcpTools>>) =>
+      listMcpTools(pool, ...args),
+    readMcpToolStatus: (input: Parameters<typeof readMcpToolStatus>[1]) =>
+      readMcpToolStatus(pool, input),
     canRead: async (input: GetWorkflowRunInput) =>
       (await withResourceRunRead(pool, input, () => Promise.resolve(true))) ??
       false,

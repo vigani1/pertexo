@@ -125,6 +125,9 @@ function acceptedWorkflowRunValues(
   const { failureNotificationPolicy } = prepared;
   return {
     id: runId,
+    ...(parsed.mcpInvocation === undefined
+      ? {}
+      : { mcpInvocation: parsed.mcpInvocation(runId) }),
     workspaceId: transaction.workspaceId,
     workflowId: parsed.workflowId,
     workflowVersionId: parsed.workflowVersionId,

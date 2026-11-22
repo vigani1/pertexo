@@ -166,3 +166,7 @@ export type {} from './commands/acceptance/trigger-skips.repository.js';
 
 export type {} from './statuses.js';
 export type {} from './stalled/stuck-work-cursor.js';
+export { readMcpWorkflow } from './mcp/exposure.repository.js';
+export { callableTool } from './mcp/callable-tool.js';
+export { findPublishedWorkflow } from './queries/execution/published.repository.js';
+export { McpToolUnavailableError } from './mcp/mcp.errors.js';

@@ -152,6 +152,7 @@ export const runDetails = {
         .update(workflowRuns)
         .set({
           outputRef: null,
+          mcpInvocation: null,
           errorSummary: null,
           cancelReason: null,
           variableSetRevision: null,

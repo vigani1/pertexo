@@ -2278,7 +2278,7 @@ CREATE TABLE app.api_tokens (
     CONSTRAINT api_tokens_expiry_valid CHECK (((expires_at > created_at) AND (expires_at <= (created_at + '8760:00:00'::interval)))),
     CONSTRAINT api_tokens_name_bounded CHECK (((length(btrim((name)::text)) >= 1) AND (length(btrim((name)::text)) <= 128))),
     CONSTRAINT api_tokens_revision_positive CHECK ((membership_revision > 0)),
-    CONSTRAINT api_tokens_scopes_valid CHECK (((jsonb_typeof(scopes) = 'array'::text) AND ((jsonb_array_length(scopes) >= 1) AND (jsonb_array_length(scopes) <= 11)) AND (scopes <@ '["workflow:read", "workflow:create", "workflow:update", "workflow:publish", "run:read", "run:read-data", "run:start", "run:cancel", "connection:read", "workspace:read", "variable:manage"]'::jsonb)))
+    CONSTRAINT api_tokens_scopes_valid CHECK (((jsonb_typeof(scopes) = 'array'::text) AND ((jsonb_array_length(scopes) >= 1) AND (jsonb_array_length(scopes) <= 12)) AND (scopes <@ '["workflow:read", "workflow:create", "workflow:update", "workflow:publish", "run:read", "run:read-data", "run:start", "mcp:invoke", "run:cancel", "connection:read", "workspace:read", "variable:manage"]'::jsonb)))
 );
 
 
@@ -4733,6 +4733,7 @@ CREATE TABLE app.workflow_runs (
     remaining_execution_ms integer,
     variable_set_revision integer,
     timed_wait_started_at timestamp with time zone,
+    mcp_invocation jsonb,
     CONSTRAINT workflow_runs_admission_ticket_positive CHECK ((admission_ticket > 0)),
     CONSTRAINT workflow_runs_cancel_actor_format CHECK (((cancel_requested_by IS NULL) OR ((cancel_requested_by)::text ~ '^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$'::text))),
     CONSTRAINT workflow_runs_cancel_metadata_complete CHECK ((((cancel_requested_at IS NULL) AND (cancel_requested_by IS NULL) AND (cancel_reason IS NULL)) OR ((cancel_requested_at IS NOT NULL) AND (cancel_requested_by IS NOT NULL)))),
@@ -5071,6 +5072,7 @@ CREATE TABLE app.workflows (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     trigger_pause_poll_trigger_id uuid,
     trigger_pause_poll_error_code text,
+    mcp_exposure jsonb,
     CONSTRAINT workflows_activation_status_valid CHECK (((activation_status)::text = ANY (ARRAY[('inactive'::character varying)::text, ('activating'::character varying)::text, ('active'::character varying)::text, ('deactivating'::character varying)::text, ('degraded'::character varying)::text, ('error'::character varying)::text]))),
     CONSTRAINT workflows_auto_pause_settings_revision_check CHECK ((auto_pause_settings_revision > 0)),
     CONSTRAINT workflows_auto_pause_threshold_valid CHECK (((auto_pause_threshold IS NULL) OR ((auto_pause_threshold >= 3) AND (auto_pause_threshold <= 100)))),
@@ -8824,6 +8826,13 @@ CREATE INDEX workflow_versions_reuse_idx ON app.workflow_versions USING btree (w
 --
 
 CREATE INDEX workflow_versions_workspace_workflow_idx ON app.workflow_versions USING btree (workspace_id, workflow_id, version_number DESC);
+
+
+--
+-- Name: workflows_mcp_tool_name_unique; Type: INDEX; Schema: app; Owner: pertexo_owner
+--
+
+CREATE UNIQUE INDEX workflows_mcp_tool_name_unique ON app.workflows USING btree (workspace_id, ((mcp_exposure ->> 'name'::text))) WHERE ((mcp_exposure ->> 'versionId'::text) = (published_version_id)::text);
 
 
 --
@@ -16526,6 +16535,13 @@ GRANT UPDATE(timed_wait_started_at) ON TABLE app.workflow_runs TO pertexo_app;
 
 
 --
+-- Name: COLUMN workflow_runs.mcp_invocation; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT UPDATE(mcp_invocation) ON TABLE app.workflow_runs TO pertexo_maintenance;
+
+
+--
 -- Name: TABLE workflow_step_samples; Type: ACL; Schema: app; Owner: pertexo_owner
 --
 
@@ -16845,7 +16861,7 @@ GRANT UPDATE(auto_pause_settings_revision) ON TABLE app.workflows TO pertexo_app
 -- Name: COLUMN workflows.trigger_pause_state; Type: ACL; Schema: app; Owner: pertexo_owner
 --
 
-GRANT UPDATE(trigger_pause_state) ON TABLE app.workflows TO pertexo_app;
+GRANT SELECT(trigger_pause_state),UPDATE(trigger_pause_state) ON TABLE app.workflows TO pertexo_app;
 GRANT UPDATE(trigger_pause_state) ON TABLE app.workflows TO pertexo_maintenance;
 
 
@@ -16910,6 +16926,13 @@ GRANT UPDATE(trigger_pause_poll_trigger_id) ON TABLE app.workflows TO pertexo_ma
 
 GRANT UPDATE(trigger_pause_poll_error_code) ON TABLE app.workflows TO pertexo_app;
 GRANT UPDATE(trigger_pause_poll_error_code) ON TABLE app.workflows TO pertexo_maintenance;
+
+
+--
+-- Name: COLUMN workflows.mcp_exposure; Type: ACL; Schema: app; Owner: pertexo_owner
+--
+
+GRANT SELECT(mcp_exposure),UPDATE(mcp_exposure) ON TABLE app.workflows TO pertexo_app;
 
 
 --

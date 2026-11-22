@@ -1,3 +1,4 @@
+import type { McpRuntime } from '../mcp/mcp.service.js';
 import {
   createWorkflowRunDatabase,
   type WorkflowRunDatabase,
@@ -25,6 +26,7 @@ import type { RunEventNotificationPublisher } from '@pertexo/queue/server';
 
 export type PostgresWorkflowRunPersistence = Readonly<{
   persistence: WorkflowRunPersistence;
+  mcp: McpRuntime;
   close(): Promise<void>;
 }>;
 
@@ -93,6 +95,7 @@ export function createPostgresWorkflowRunPersistence(
   });
   return Object.freeze({
     persistence,
+    mcp: { runs: database, catalog },
     close: (): Promise<void> => database.close(),
   });
 }

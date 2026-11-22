@@ -1,3 +1,4 @@
+import type { McpRuntime } from '../../../mcp/mcp.service.js';
 import type { NodeTestingRuntime } from './node-testing.runtime.js';
 import type { PendingTaskOperations } from '../../../pending-tasks/pending-task-operations.types.js';
 import type { GovernanceStore } from '@pertexo/core/governance';
@@ -27,6 +28,7 @@ import type { WorkflowRunsDependencies } from '../../../workflow-runs/workflow-r
 
 export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
+  mcp?: McpRuntime & Readonly<{ exposure: WorkflowAuthoringStore['mcp'] }>;
   nodeTestingDependencies?: NodeTestingDependencies;
   runDependencies: WorkflowRunsDependencies;
   pendingTasks?: PendingTaskOperations;
