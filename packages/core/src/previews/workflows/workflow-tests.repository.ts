@@ -2,7 +2,13 @@ import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js'
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { workflowRuns, workflowTestSnapshots } from '@pertexo/database/schema';
+import {
+  workflowRuns,
+  workflowTestSnapshots,
+  workflowTestSuiteCases,
+  workflowTestSuites,
+  workflowVersions,
+} from '@pertexo/database/schema';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
   testRunSql,
@@ -18,9 +24,23 @@ import type { WorkflowTestSummary } from './workflow-test.types.js';
 const TEST_HISTORY_ROWS = 20;
 
 const run = alias(workflowRuns, 'run');
+const publishedEvaluationVersionNumber = sql<number | null>`(
+  select ${workflowVersions.versionNumber}
+  from ${workflowTestSuiteCases}
+  join ${workflowTestSuites}
+    on ${workflowTestSuites.workspaceId} = ${workflowTestSuiteCases.workspaceId}
+    and ${workflowTestSuites.id} = ${workflowTestSuiteCases.suiteId}
+  join ${workflowVersions}
+    on ${workflowVersions.workspaceId} = ${workflowTestSuites.workspaceId}
+    and ${workflowVersions.workflowId} = ${workflowTestSuites.workflowId}
+    and ${workflowVersions.id} = ${workflowTestSuites.evaluationVersionId}
+  where ${workflowTestSuiteCases.workspaceId} = ${run.workspaceId}
+    and ${workflowTestSuiteCases.runId} = ${run.id}
+)`;
 const testSummarySelection = {
   runId: run.id,
   draftRevision: workflowTestSnapshots.draftRevision,
+  publishedVersionNumber: publishedEvaluationVersionNumber,
   status: run.status,
   createdAt: run.createdAt,
   startedBy: run.startedBy,
@@ -65,6 +85,9 @@ export function summary(
     runId: row.runId,
     startedBy: row.startedBy,
     draftRevision: row.draftRevision,
+    ...(row.publishedVersionNumber === null
+      ? {}
+      : { publishedVersionNumber: row.publishedVersionNumber }),
     status: row.status,
     createdAt: row.createdAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),

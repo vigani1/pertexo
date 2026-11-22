@@ -72,6 +72,7 @@ const summarySchema = z
     runId: z.uuid(),
     startedBy: z.uuid().nullable(),
     draftRevision: z.number().int().positive(),
+    publishedVersionNumber: z.number().int().positive().optional(),
     status: workflowRunStatusSchema,
     createdAt: z.iso.datetime(),
     expiresAt: z.iso.datetime(),
