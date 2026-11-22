@@ -1,4 +1,0 @@
-ALTER TABLE "app"."preview_runs" DROP CONSTRAINT "preview_runs_definition_key_format";--> statement-breakpoint
-ALTER TABLE "app"."preview_runs" DROP CONSTRAINT "preview_runs_executor_key_format";--> statement-breakpoint
-ALTER TABLE "app"."preview_runs" ADD CONSTRAINT "preview_runs_definition_key_format" CHECK (definition_key ~ $node_key$^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+(?:-[a-z0-9_]+)*)*$$node_key$);--> statement-breakpoint
-ALTER TABLE "app"."preview_runs" ADD CONSTRAINT "preview_runs_executor_key_format" CHECK (executor_key ~ $node_key$^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+(?:-[a-z0-9_]+)*)*$$node_key$);

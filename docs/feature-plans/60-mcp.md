@@ -57,7 +57,7 @@ are untrusted data.
 
 ## Client settings and execution
 
-- Register provider `mcp`, its bearer connection and `mcp.call-tool@1` once
+- Register provider `mcp`, its bearer connection and `mcp.call_tool@1` once
   under ADR 095. Use the connection runtime and injected secure HTTP for
   initialization, capability discovery, listing and calling. The endpoint is
   connection-owned, preserves its configured path and uses the HTTP Request

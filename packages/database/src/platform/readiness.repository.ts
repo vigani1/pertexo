@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import type { DatabaseReadiness } from './database-platform.types.js';
 import { DatabaseNotReadyError } from './readiness.errors.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0011_allow_hyphenated_node_keys.sql';
+export const EXPECTED_MIGRATION_HEAD = '0010_rename_attempt_diagnostics.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

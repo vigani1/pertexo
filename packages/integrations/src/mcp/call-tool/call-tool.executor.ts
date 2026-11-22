@@ -81,7 +81,7 @@ async function callTool(
   try {
     resolved = await connections.resolve({
       ...identity,
-      purpose: 'mcp.call-tool.execute',
+      purpose: 'mcp.call_tool.execute',
       signal,
     });
   } catch (error: unknown) {

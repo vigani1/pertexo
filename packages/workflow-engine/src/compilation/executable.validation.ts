@@ -1,8 +1,7 @@
-import {
-  NODE_IDENTITY_KEY_PATTERN,
-  type DefinitionIdentity,
-  type NodeManifest,
-  type PolicyReference,
+import type {
+  DefinitionIdentity,
+  NodeManifest,
+  PolicyReference,
 } from '@pertexo/node-sdk';
 import {
   canonicalJson,
@@ -75,8 +74,6 @@ export function normalizeBoundedEngineValue(
   return JSON.parse(normalizedJson(value)) as JsonValue;
 }
 
-const identityKey = new RegExp(NODE_IDENTITY_KEY_PATTERN, 'u');
-
 export function parseIdentity(
   value: unknown,
   label: string,
@@ -85,7 +82,10 @@ export function parseIdentity(
   const { version } = identity;
 
   exactKeys(identity, ['key', 'version']);
-  if (typeof identity.key !== 'string' || !identityKey.test(identity.key))
+  if (
+    typeof identity.key !== 'string' ||
+    !/^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/u.test(identity.key)
+  )
     fail(`${label} is invalid`);
   const invalidVersion =
     typeof version !== 'number' ||

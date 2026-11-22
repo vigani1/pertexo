@@ -69,7 +69,7 @@ describeFaults('an MCP tool used by a workflow', () => {
         ...flow.nodes,
         {
           id: 'call',
-          definition: { key: 'mcp.call-tool', version: 1 },
+          definition: { key: 'mcp.call_tool', version: 1 },
           position: { x: 100, y: 0 },
           configVersion: 1,
           config: { toolName: 'counter', toolInputSchema: TOOL_INPUT },
