@@ -5,7 +5,7 @@ import { STORED_EXECUTION_VALUE_LIMITS } from '@pertexo/node-sdk';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { rawHeaderValues } from '../platform/http/raw-headers.js';
 
-export const MCP_NEST_PATH = MCP_ENDPOINT_PATH.replace(
+const MCP_NEST_PATH = MCP_ENDPOINT_PATH.replace(
   '{workspaceId}',
   ':workspaceId',
 );
