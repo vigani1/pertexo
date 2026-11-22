@@ -16,6 +16,11 @@ type PublicOperation = Readonly<{
 
 /** A route that takes a token is public: it's documented here, or the build fails. */
 export const PUBLIC_OPERATIONS: Readonly<Record<string, PublicOperation>> = {
+  exchangeMcpMessage: {
+    summary: 'Exchange a workspace MCP message',
+    tag: 'Workflows',
+    problems: ['request.idempotency_conflict', 'workspace.quota_exceeded'],
+  },
   readCurrentApiToken: {
     summary: 'Read the calling token',
     tag: 'Tokens',

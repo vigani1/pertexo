@@ -18,6 +18,7 @@ import {
   index,
   integer,
   json,
+  jsonb,
   timestamp,
   type PgTableExtraConfigValue,
   unique,
@@ -135,6 +136,13 @@ export const workflowRuns = appSchema.table(
       mode: 'date',
     }),
     outputRef: json('output_ref').$type<StoredExecutionValue>(),
+    mcpInvocation: jsonb('mcp_invocation').$type<
+      Readonly<{
+        tokenId: string;
+        exposureRevision: string;
+        referenceDigest: string;
+      }>
+    >(),
     errorSummary: varchar('error_summary', { length: WIDTHS.errorSummary }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

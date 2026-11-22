@@ -1,4 +1,9 @@
 import {
+  mcpTransportPaths,
+  workflowMcpContractPaths,
+  workflowMcpContractSchemas,
+} from './mcp.js';
+import {
   workflowDraftConflictResponse,
   workflowDraftConflictSchemas,
 } from './draft-precondition.js';
@@ -71,6 +76,7 @@ function contractSchemas() {
     ...workflowAutoPauseContractSchemas(project),
     ...workflowConcurrencyContractSchemas(project),
     ...workflowErrorContractSchemas(),
+    ...workflowMcpContractSchemas(),
     ...publicationReviewContractSchemas(),
     ...collaborationContractSchemas(),
     ...workflowPromotionContractSchemas(),
@@ -158,6 +164,8 @@ type AuthoringPaths = RoutePaths<readonly DeclaredAuthoringRoute[]> &
   typeof workflowAutoPauseContractPaths &
   typeof workflowConcurrencyContractPaths &
   typeof workflowErrorContractPaths &
+  typeof workflowMcpContractPaths &
+  typeof mcpTransportPaths &
   typeof publicationReviewContractPaths &
   typeof collaborationContractPaths &
   typeof workflowPromotionContractPaths &
@@ -176,6 +184,8 @@ const paths: AuthoringPaths = {
   ...workflowAutoPauseContractPaths,
   ...workflowConcurrencyContractPaths,
   ...workflowErrorContractPaths,
+  ...workflowMcpContractPaths,
+  ...mcpTransportPaths,
   ...publicationReviewContractPaths,
   ...collaborationContractPaths,
   ...workflowPromotionContractPaths,

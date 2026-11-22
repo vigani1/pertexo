@@ -96,6 +96,7 @@ export function createCoreAuthoringOptions(
 ) {
   return {
     definitionCatalog: compatibility.definitionCatalog,
+    executableCatalog: compatibility.catalog,
     portableCatalog: compatibility.portableCatalog,
     validateAuthoringGraph: async (
       graph: WorkflowGraph,

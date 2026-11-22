@@ -112,3 +112,18 @@ isolation and audit correlation. Test the client with redirect and denied
 address, malformed and oversized replies, unsupported schemas, a changed
 connection and worker loss after the fake server accepts a call. Verify a
 valid mapped result in the run inspector with credentials absent.
+
+## MCP server client settings
+
+Set the server URL to `/v1/workspaces/{workspaceId}/mcp` on the Pertexo HTTPS
+origin and send `Authorization: Bearer <workspace API token>` with
+`mcp:invoke` on every POST. Send `MCP-Protocol-Version: 2025-11-25` after
+initialization. Clients that supply an Origin must use the configured Pertexo
+web origin. The server responds with JSON and accepts the initialized
+notification without a body. Standalone GET streams are unavailable.
+
+Set `params._meta["pertexo/idempotencyKey"]` on `tools/call` to replay the
+same accepted invocation within the normal command receipt window. A repeated
+call without a key or after receipt expiry can create another run. Pass the
+returned `invocation` to `pertexo.invocation_status` using the initiating
+token. Revoking or changing an exposure invalidates its status references.

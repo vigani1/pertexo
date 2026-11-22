@@ -6,7 +6,10 @@ import type {
   WorkflowActivationStatus,
   WorkflowTriggerStatus,
 } from '@pertexo/workflow-model';
-import type { WorkflowTriggerHealth } from '../stored-shapes.js';
+import type {
+  WorkflowTriggerHealth,
+  StoredMcpExposure,
+} from '../stored-shapes.js';
 import { users } from '../identity/users.js';
 import { workspaces } from '../tenant-access/workspaces.js';
 import {
@@ -22,6 +25,7 @@ import {
   timestamp,
   type PgTableExtraConfigValue,
   unique,
+  uniqueIndex,
   text,
   uuid,
   varchar,
@@ -68,6 +72,7 @@ export const workflows = appSchema.table(
       .default('inactive')
       .notNull(),
     publishedVersionId: uuid('published_version_id'),
+    mcpExposure: jsonb('mcp_exposure').$type<StoredMcpExposure>(),
     // ADR 056: operational auto-pause settings and trigger pause state.
     autoPauseEnabled: boolean('auto_pause_enabled').default(true).notNull(),
     autoPauseThreshold: smallint('auto_pause_threshold'),
@@ -138,6 +143,11 @@ export const workflows = appSchema.table(
       'workflows_trigger_pause_valid',
       sql`((trigger_pause_revision > 0) AND ((((trigger_pause_state)::text = 'none'::text) AND (trigger_paused_at IS NULL) AND (trigger_pause_reason IS NULL) AND (trigger_pause_failures IS NULL) AND (trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR (((trigger_pause_state)::text = 'paused'::text) AND (trigger_paused_at IS NOT NULL) AND (trigger_pause_reason IS NOT NULL) AND ((trigger_pause_reason)::text = 'consecutive_failures'::text) AND (trigger_pause_failures IS NOT NULL) AND (trigger_pause_failures > 0) AND (((trigger_pause_last_run_id IS NOT NULL) AND (trigger_pause_poll_trigger_id IS NULL) AND (trigger_pause_poll_error_code IS NULL)) OR ((trigger_pause_last_run_id IS NULL) AND (trigger_pause_poll_trigger_id IS NOT NULL) AND (trigger_pause_poll_error_code IS NOT NULL)))))) IS TRUE`,
     ),
+    uniqueIndex('workflows_mcp_tool_name_unique')
+      .on(table.workspaceId, sql`(${table.mcpExposure}->>'name')`)
+      .where(
+        sql`${table.mcpExposure}->>'versionId'=${table.publishedVersionId}::text`,
+      ),
     unique('workflows_workspace_identity_unique').on(
       table.workspaceId,
       table.id,

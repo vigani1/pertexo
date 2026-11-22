@@ -154,3 +154,4 @@ export type {
   TestEventReference,
   TestEventScope,
 } from './step-samples/webhook-test-events/webhook-test-event.types.js';
+export { McpExposureConflictError } from './settings/mcp/mcp-exposure.errors.js';

@@ -1,3 +1,4 @@
+import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import {
   runErrorWorkflowIntents,
   workflows,
@@ -32,7 +33,7 @@ const ofSource = (input: ErrorWorkflowDeliveryInput) =>
 export function errorWorkflowTransaction(
   client: PoolClient,
   workspaceId: string,
-) {
+): WorkspaceTransaction {
   return {
     db: drizzle(client, { schema: databaseSchema }),
     workspaceId: parseWorkspaceId(workspaceId),

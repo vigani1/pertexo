@@ -78,6 +78,13 @@
       "when": 1795301955718,
       "tag": "0010_rename_attempt_diagnostics",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795310113110,
+      "tag": "0011_mcp_workflow_exposure",
+      "breakpoints": true
     }
   ]
 }

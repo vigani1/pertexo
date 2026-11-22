@@ -1,3 +1,4 @@
+import { McpModule } from './mcp/mcp.module.js';
 import 'reflect-metadata';
 import { ARTIFACT_OBJECT_MAX_BYTES } from '@pertexo/contracts';
 
@@ -219,6 +220,19 @@ function registerFeatureModules(
   const authorization =
     dependencies.identityRuntime?.dependencies.authorization;
   if (authorization === undefined) return modules;
+  const mcp = dependencies.workflowRuntime?.mcp;
+  if (mcp !== undefined && config.identity !== undefined)
+    modules.push(
+      McpModule.register({
+        identity: identityModule,
+        rateLimit: admissionModule,
+        publicOrigin: config.identity.publicWebOrigin,
+        authorization,
+        runtime: mcp,
+        exposure: mcp.exposure,
+      }),
+    );
+
   if (dependencies.connectionRuntime === undefined)
     modules.push(
       ConnectionsModule.registerUnavailable(authorization, identityModule),

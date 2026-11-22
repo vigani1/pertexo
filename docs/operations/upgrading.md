@@ -96,6 +96,15 @@ read instead of writing the interval themselves; reservations expire exactly
 as before. It changes no table or data and runs in well under a second, so the
 normal upgrade estimate applies.
 
+## Migration 0011: MCP workflow exposure
+
+This migration adds nullable exposure and invocation fields. It validates the
+expanded scope constraint by scanning `app.api_tokens` and builds a partial
+unique index by scanning `app.workflows`. Existing workflows have no exposure,
+so the index starts empty. Writers stay stopped during the normal index build
+and constraint validation. Index and WAL growth during this migration are small
+because existing workflow rows contribute no index entries.
+
 ## Baseline transition: required release stop
 
 **Required stop: v0.2.0 — the final release containing migrations

@@ -39,5 +39,6 @@ export type WorkflowAuthoringStoreOptions = Readonly<{
   definitionCatalog?: WorkflowDefinitionCatalog;
   runtime?: DatabaseRuntime;
   executableCompiler: WorkflowExecutableCompiler;
+  executableCatalog?: unknown;
   validateAuthoringGraph?: WorkflowAuthoringGraphValidator;
 }>;

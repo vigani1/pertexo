@@ -1,3 +1,4 @@
+import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, exists, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -125,7 +126,7 @@ export function lockCallParent(
 export function callAcceptanceTransaction(
   client: PoolClient,
   workspaceId: string,
-) {
+): WorkspaceTransaction {
   return {
     db: drizzle(client, { schema: databaseSchema }),
     workspaceId: parseWorkspaceId(workspaceId),

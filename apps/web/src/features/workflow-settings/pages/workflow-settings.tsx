@@ -1,3 +1,5 @@
+import { isAdministrativeRole } from '@pertexo/policy';
+import { McpExposureSection } from '../components/settings/mcp-exposure-section';
 import { NoticeSubjectActions } from '@/features/inbox/inbox-views.public';
 import { SettingsSection } from '@/components/patterns/settings/section';
 import { ErrorWorkflowSection } from '../components/settings/error-workflow-section';
@@ -95,6 +97,16 @@ function SettingsSession({
         workspace={workspace}
         workflowId={workflowId}
       />
+      {workspace.status === 'active' && isAdministrativeRole(workspace.role) ? (
+        <McpExposureSection
+          scope={{
+            apiClient,
+            userId: user.id,
+            workspaceId: workspace.id,
+            workflowId,
+          }}
+        />
+      ) : null}
       <LifecycleSection
         apiClient={apiClient}
         userId={user.id}

@@ -16,6 +16,9 @@ export const RATE_LIMIT_ENDPOINT_CLASSES = [
   'federated_sign_in_start',
   'federated_sign_in_callback',
   'automation_authentication',
+  'mcp_list',
+  'mcp_call',
+  'mcp_status',
   'directory_provisioning',
   'identity_callback',
   'authenticated_read',
@@ -153,6 +156,27 @@ const RULES: Readonly<Record<RateLimitEndpointClass, EndpointRule>> = {
     failureMode: 'closed',
     dimensions: [
       { kind: 'client_address', subject: 'clientAddress', limit: 600 },
+    ],
+  },
+  mcp_list: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'token', subject: 'tokenId', limit: 60 },
+      { kind: 'workspace', subject: 'workspaceId', limit: 300 },
+    ],
+  },
+  mcp_call: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'token', subject: 'tokenId', limit: 20 },
+      { kind: 'workspace', subject: 'workspaceId', limit: 100 },
+    ],
+  },
+  mcp_status: {
+    failureMode: 'closed',
+    dimensions: [
+      { kind: 'token', subject: 'tokenId', limit: 120 },
+      { kind: 'workspace', subject: 'workspaceId', limit: 600 },
     ],
   },
   identity_start: {

@@ -44,6 +44,9 @@ const PHRASES: Readonly<Record<string, Phrase>> = {
   'workflow.promotion_sent': {
     words: 'promoted a workflow to another workspace',
   },
+  'workflow.mcp.exposed': { words: 'exposed a workflow as an MCP tool' },
+  'workflow.mcp.unexposed': { words: 'revoked MCP tool exposure' },
+  'workflow.mcp.invoked': { words: 'started a run through MCP' },
   'workflow.run.started': { words: 'started a run' },
   'workflow.run.replayed': { words: 'ran a run again' },
   'workflow.run.cancel_requested': { words: 'asked a run to stop' },
