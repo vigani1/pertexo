@@ -1,6 +1,6 @@
 import { boundedNodeJsonRecordSchema, labelledChoice } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { compileModelOutputSchema } from '../../structured-data/object-schema.js';
+import { compileBoundedObjectSchema } from '../../structured-data/object-schema.js';
 
 import { modelSettings } from '../model-settings.js';
 
@@ -20,7 +20,7 @@ const jsonObject = boundedNodeJsonRecordSchema.meta({
 });
 const outputSchema = jsonObject
   .refine(
-    (value) => compileModelOutputSchema(value) !== undefined,
+    (value) => compileBoundedObjectSchema(value) !== undefined,
     'Expected a bounded object schema using the supported JSON Schema keywords',
   )
   .meta({

@@ -1,5 +1,5 @@
 import type { SchemaDocument } from '@pertexo/node-sdk';
-import { compileModelOutputSchema } from '../../src/structured-data/object-schema.js';
+import { compileBoundedObjectSchema } from '../../src/structured-data/object-schema.js';
 import { describe, expect, it } from 'vitest';
 import {
   MODEL_CONNECTION,
@@ -115,7 +115,7 @@ describe('model catalog admission', () => {
       required: ['__proto__'],
       additionalProperties: false,
     };
-    const validate = compileModelOutputSchema(schema);
+    const validate = compileBoundedObjectSchema(schema);
     expect(validate?.(JSON.parse('{"__proto__":1}'))).toBe(true);
     expect(validate?.(JSON.parse('{"__proto__":"1"}'))).toBe(false);
   });

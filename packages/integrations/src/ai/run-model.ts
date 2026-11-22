@@ -14,7 +14,7 @@ import { trackModelUsage } from './model-usage.js';
 import { modelRequest } from './model-request.js';
 import { modelFailure } from './model/model.errors.js';
 import type { ModelConfig } from './model/model.schemas.js';
-import { compileModelOutputSchema } from '../structured-data/object-schema.js';
+import { compileBoundedObjectSchema } from '../structured-data/object-schema.js';
 import {
   createProviderBeforeDispatch,
   markingDispatchOnce,
@@ -44,7 +44,7 @@ export async function runModel({
   const context = attemptContext(invocation, config, now);
   const validator =
     config.mode === 'structured'
-      ? compileModelOutputSchema(config.outputSchema)
+      ? compileBoundedObjectSchema(config.outputSchema)
       : undefined;
   if (config.mode === 'structured' && validator === undefined)
     throw failure('failed', 'configuration', { possiblyDispatched: false });

@@ -4,7 +4,7 @@ import {
 } from '@pertexo/contracts';
 import { boundedNodeJsonRecordSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { compileModelOutputSchema } from '../../structured-data/object-schema.js';
+import { compileBoundedObjectSchema } from '../../structured-data/object-schema.js';
 import {
   MCP_AUTH_TYPE,
   MCP_PROVIDER_KEY,
@@ -32,7 +32,7 @@ export const callToolConfigSchema = z.strictObject({
   }),
   [TOOL_INPUT_SETTING]: jsonObject
     .refine(
-      (schema) => compileModelOutputSchema(schema) !== undefined,
+      (schema) => compileBoundedObjectSchema(schema) !== undefined,
       'Expected a supported tool input schema',
     )
     .meta({
