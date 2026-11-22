@@ -275,7 +275,7 @@ function initializeAddedSteps(
     const config =
       definition === undefined
         ? node.config
-        : { ...startingConfig(definition, level), ...node.config };
+        : startingConfig(definition, level, node.config);
     const { structured } = node;
     if (structured === undefined) return { ...node, config };
     return {

@@ -305,6 +305,22 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     });
   });
 
+  it('uses the supplied setup variant for a new step', async () => {
+    const path = await workflow();
+    const file = {
+      ...manual,
+      id: 'file',
+      definition: { key: 'core.create_file', version: 1 },
+      config: { format: 'json' },
+    };
+    const result = await propose(path, [
+      { name: 'propose_draft', args: { graph: { ...empty, nodes: [file] } } },
+    ]);
+    if (result.kind !== 'inspected')
+      throw new Error('Expected an inspectable draft');
+    expect(result.draft.graph.nodes[0]?.config).toEqual({ format: 'json' });
+  });
+
   it('masks values in the provider request and rejects changes without saving, publishing or running', async () => {
     const path = await workflow();
     const initial = await draft(path);
