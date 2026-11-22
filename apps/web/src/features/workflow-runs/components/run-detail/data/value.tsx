@@ -1,3 +1,8 @@
+import { Disclosure } from '@/components/ui/disclosure';
+import {
+  outputBranches,
+  type BranchPorts,
+} from '../../../model/step-inspection/branch-output';
 import {
   DialogFooter,
   Dialog,
@@ -157,11 +162,13 @@ export function RunDataValue({
 /** A stored value being read: a quiet placeholder, then the value or a retry. */
 export function RunDataRead({
   query,
+  branchPorts,
   title,
   emptyText,
   scope,
 }: Readonly<{
   query: UseQueryResult<WorkflowRunData>;
+  branchPorts?: BranchPorts | undefined;
   title: string;
   emptyText: string;
   scope: RunDataScope;
@@ -175,14 +182,44 @@ export function RunDataRead({
         <InlineFailedRead text="Couldn’t load this." {...failed} />
       )}
     >
-      {(data) => (
-        <RunDataValue
-          data={data}
-          title={title}
-          emptyText={emptyText}
-          scope={scope}
-        />
-      )}
+      {(data) => {
+        const value = (
+          <RunDataValue
+            data={data}
+            title={title}
+            emptyText={emptyText}
+            scope={scope}
+          />
+        );
+        const branches = outputBranches(data, branchPorts);
+        if (branches.length === 0) return value;
+        return (
+          <>
+            <dl className="space-y-1 text-label">
+              <dt className="text-subtle-foreground">
+                {branches.length === 1 ? 'Branch' : 'Branches'}
+              </dt>
+              {branches.map(({ id, label }) => (
+                <dd key={id} className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="font-semibold">{label}</span>
+                  {label === id ? null : (
+                    <code className="text-caption text-subtle-foreground">
+                      {id}
+                    </code>
+                  )}
+                </dd>
+              ))}
+            </dl>
+            <Disclosure
+              summary="Raw output"
+              className="mt-3"
+              appearance={{ size: 'xs' }}
+            >
+              {value}
+            </Disclosure>
+          </>
+        );
+      }}
     </QueryView>
   );
 }

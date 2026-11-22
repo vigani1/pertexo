@@ -1,6 +1,10 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { DescribeStep } from '@/features/catalog/public';
 import { agentToolAllowedWithoutApproval } from '@pertexo/workflow-model';
+import {
+  branchPorts,
+  type BranchPorts,
+} from '../step-inspection/branch-output';
 
 export type StepLabel = Readonly<{
   label: string;
@@ -8,6 +12,7 @@ export type StepLabel = Readonly<{
   definitionKey?: string;
   usesConnection?: boolean;
   agentWriteAllowed?: true;
+  branchPorts?: BranchPorts;
 }>;
 
 type GraphLabel = Readonly<{
@@ -30,7 +35,9 @@ export function graphLabels(
       // The catalog's name for the step type, the same words Build uses.
       const kind = describe(node.definition).name;
       const label = node.label?.trim();
+      const ports = branchPorts(node);
       const connected = {
+        ...(ports === undefined ? {} : { branchPorts: ports }),
         definitionKey: node.definition.key,
         ...(agentToolAllowedWithoutApproval(node) === undefined
           ? {}

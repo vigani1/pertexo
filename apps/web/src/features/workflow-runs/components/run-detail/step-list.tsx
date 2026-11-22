@@ -53,7 +53,9 @@ export function RunStepList({
                 onSelectStep(row.key);
               }}
             >
-              <span className="min-w-0">
+              <span
+                className={cn('min-w-0', row.agentWork !== undefined && 'pl-4')}
+              >
                 <span className="block truncate text-lead">{row.label}</span>
                 <span className="block truncate font-mono text-caption text-subtle-foreground">
                   {stepLine(row, nowMs)}

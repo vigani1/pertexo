@@ -1,3 +1,4 @@
+import { outputBranches } from '../../model/step-inspection/branch-output';
 import { useHistoryPage } from '../../hooks/use-history-page';
 import { HistoryPager } from './history-pager';
 import { RotateCcwIcon } from 'lucide-react';
@@ -32,6 +33,8 @@ function ResultSummary({
   );
   const data = query.data;
   if (data === undefined) return query.isError ? 'couldn’t load' : '…';
+  const branches = outputBranches(data, row.branchPorts);
+  if (branches.length > 0) return branches.map(({ label }) => label).join(', ');
   if (data.kind === 'inline' && !isEmptyValue(data.value))
     return describeValue(data.value);
   if (data.kind === 'artifact') return 'file';
@@ -111,7 +114,7 @@ export function RunOutputsView({
                     <StatusGlyph tone={row.tone} />
                     <span className="truncate text-sm">{row.label}</span>
                   </span>
-                  <span className="shrink-0 font-mono text-xs text-subtle-foreground">
+                  <span className="min-w-0 truncate font-mono text-xs text-subtle-foreground">
                     {summarise ? (
                       <ResultSummary row={row} scope={scope} />
                     ) : (
