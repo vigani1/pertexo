@@ -22,6 +22,7 @@ export function coordinatorRuntimeProvider(
     useFactory: async (
       observer: QueueConsumerObserver,
     ): Promise<CoordinatorRuntime> => {
+      const rates = config.agentModelRates;
       return createCoordinatorRuntime({
         database: config.database,
         maintenanceDatabase: config.dispatcherDatabase,
@@ -38,10 +39,12 @@ export function coordinatorRuntimeProvider(
         dueWakeupPollIntervalMillis:
           config.coordinator.dueWakeupPollIntervalMillis,
         inlineSteps: config.coordinator.inlineSteps,
-        agentModelRates: (model) =>
-          Object.hasOwn(config.agentModelRates, model)
-            ? config.agentModelRates[model]
-            : undefined,
+        ...(rates === undefined
+          ? {}
+          : {
+              agentModelRates: (model: string) =>
+                Object.hasOwn(rates, model) ? rates[model] : undefined,
+            }),
         maximumAdmissions: config.coordinator.maximumAdmissions,
         observer,
         redisUrl: config.redisUrl,
