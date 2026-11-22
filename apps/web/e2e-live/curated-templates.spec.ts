@@ -212,7 +212,7 @@ test('owned complete examples retain historical origin through independent edits
   const fieldCount = Object.values(retyped)
     .flatMap((steps) => Object.values(steps))
     .reduce((total, fields) => total + fields.length, 0);
-  expect(fieldCount).toBe(15);
+  expect(fieldCount).toBe(16);
   const editedWorkflowId = importedWorkflowIds[0];
   if (editedWorkflowId === undefined)
     throw new Error('Reviewed first template was not imported');
