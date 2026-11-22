@@ -80,25 +80,27 @@ export async function startAgentRun(
     runs.close,
   ];
   try {
-    const table = await tables.create({
-      ...actor,
-      idempotencyKey: randomUUID(),
-      name: tableName,
-      columns: [
-        { name: 'key', type: 'text', required: true },
-        { name: 'amount', type: 'number', required: true },
-      ],
-      keyColumn: 'key',
-    });
-    await tables.importRows({
-      ...actor,
-      idempotencyKey: randomUUID(),
-      tableId: table.id,
-      rows: [
-        { key: 'a', amount: 42 },
-        { key: 'b', amount: 99 },
-      ],
-    });
+    if (typeof write !== 'object') {
+      const table = await tables.create({
+        ...actor,
+        idempotencyKey: randomUUID(),
+        name: tableName,
+        columns: [
+          { name: 'key', type: 'text', required: true },
+          { name: 'amount', type: 'number', required: true },
+        ],
+        keyColumn: 'key',
+      });
+      await tables.importRows({
+        ...actor,
+        idempotencyKey: randomUUID(),
+        tableId: table.id,
+        rows: [
+          { key: 'a', amount: 42 },
+          { key: 'b', amount: 99 },
+        ],
+      });
+    }
     const secretVersionId = randomUUID();
     const sealed = await sealAndZero(
       encryption,

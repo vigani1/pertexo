@@ -97,5 +97,8 @@ function disclosedResult(
       break;
     rows.push(row);
   }
-  return { ...projected, rows, truncated: true };
+  const truncated = { ...projected, rows, truncated: true };
+  return inspectJsonValue(truncated).bytes <= AGENT_TOOL_LIMITS.resultBytes
+    ? truncated
+    : { truncated: true };
 }
