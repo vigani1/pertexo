@@ -28,6 +28,10 @@ import type { WorkflowRunsDependencies } from '../../../workflow-runs/workflow-r
 
 export type ApiWorkflowRuntime = Readonly<{
   dependencies: WorkflowAuthoringDependencies;
+  assistant?: Pick<
+    WorkflowAuthoringStore,
+    'assistantSettings' | 'explanations'
+  >;
   mcp?: McpRuntime & Readonly<{ exposure: WorkflowAuthoringStore['mcp'] }>;
   nodeTestingDependencies?: NodeTestingDependencies;
   runDependencies: WorkflowRunsDependencies;

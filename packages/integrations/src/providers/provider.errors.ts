@@ -67,7 +67,7 @@ export function connectionLookupFailure<Failure extends NodeExecutorFailure>(
     signal,
   }: Readonly<{
     failure: ProviderFailure<Failure>;
-    runtime: NodeExecutionRuntime;
+    runtime: Pick<NodeExecutionRuntime, 'providerDispatchUnresolved'>;
     signal: AbortSignal;
   }>,
 ): Failure {

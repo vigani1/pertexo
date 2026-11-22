@@ -398,3 +398,15 @@ export {
 } from './schemas/connections/postgres.js';
 export * from './schemas/workflows/mcp/exposure.js';
 export * from './schemas/workflows/mcp/rpc.js';
+
+export {
+  assistantSelectionSchema,
+  assistantSettingsSchema,
+  assistantSettingsResultSchema,
+} from './schemas/workflows/assistant/settings.js';
+export {
+  explanationDisclosureSchema,
+  explanationModelAnswerSchema,
+  explainFailedRunRequestSchema,
+  explainFailedRunResultSchema,
+} from './schemas/workflows/assistant/explanation.js';

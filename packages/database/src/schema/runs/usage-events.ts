@@ -44,6 +44,9 @@ export const usageEvents = appSchema.table(
       .notNull(),
   },
   (table): PgTableExtraConfigValue[] => [
+    index('usage_events_assistant_retention_idx')
+      .on(table.occurredAt, table.id)
+      .where(sql`category='assistant.model'`),
     index('usage_events_coordinated_history_idx')
       .on(table.workspaceId, table.occurredAt, table.id)
       .where(sql`category='trigger.coordinated'`),

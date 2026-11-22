@@ -1,3 +1,5 @@
+import { createAssistantSettingsStore } from '../settings/assistant/assistant-settings.store.js';
+import { createExplanationStore } from '../explanations/explanation.store.js';
 import { createWorkflowMcpStore } from '../settings/mcp/workflow-mcp.store.js';
 import { acquireDatabasePool } from '@pertexo/database/platform';
 import type { DatabaseConfig } from '@pertexo/database/platform';
@@ -67,6 +69,8 @@ export function createWorkflowAuthoringStore(
     );
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
+    assistantSettings: createAssistantSettingsStore(pool),
+    explanations: createExplanationStore(pool),
     collaboration: createWorkflowCollaborationStore(access),
     promotions: createWorkflowPromotionStore({
       access,

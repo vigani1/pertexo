@@ -48,6 +48,7 @@ export function assembleWorkflowRuntime({
       ...pendingTasks,
       audience: identityRuntime.people,
     }),
+    assistant: database,
     forms,
     mcp: { ...runAdapter.mcp, exposure: database.mcp, liveSource },
     variables: metadataRuntime.variables,

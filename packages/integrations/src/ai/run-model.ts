@@ -2,6 +2,7 @@ import { MODEL_LIMITS } from './model-settings.js';
 import type { AgentModelContext } from './agent/agent-request.js';
 import {
   type NodeExecutionInvocation,
+  type NodeExecutionRuntime,
   NodeExecutorFailure,
   withProviderCredential,
 } from '@pertexo/node-sdk/server';
@@ -9,6 +10,7 @@ import {
   MODEL_AUTH_TYPE,
   MODEL_PROVIDER_KEY,
   modelCredentialSchema,
+  modelEndpoint,
 } from './connections.definition.js';
 import type { ModelClient } from './model-client.js';
 import { trackModelUsage } from './model-usage.js';
@@ -27,9 +29,26 @@ import {
 
 const failure = providerFailure(NodeExecutorFailure);
 
+type ModelRuntime = Pick<
+  NodeExecutionRuntime,
+  | 'connections'
+  | 'sideEffectClass'
+  | 'providerIdempotencyKey'
+  | 'providerDispatchUnresolved'
+  | 'deadlineAt'
+  | 'beforeDispatch'
+  | 'observeModelUsage'
+>;
+
+type ModelInvocation = Pick<
+  NodeExecutionInvocation<unknown, unknown>,
+  'connectionRefs' | 'signal'
+> &
+  Readonly<{ runtime?: ModelRuntime }>;
+
 type ModelAttempt = Readonly<{
   client: ModelClient;
-  invocation: NodeExecutionInvocation<unknown, unknown>;
+  invocation: ModelInvocation;
   config: ModelConfig;
   prompt: string;
   purpose: string;
@@ -62,6 +81,29 @@ export async function runModel(attempt: ModelAttempt) {
       possiblyDispatched: true,
     });
   });
+}
+
+export async function runModelOnce(attempt: ModelAttempt) {
+  return withModelAttempt(attempt, async (complete) =>
+    candidate(await complete()),
+  );
+}
+
+export function modelCredentialHost(
+  resolved: Parameters<typeof withProviderCredential>[0],
+) {
+  return withProviderCredential(
+    resolved,
+    {
+      connectionId: resolved.connectionId,
+      providerKey: MODEL_PROVIDER_KEY,
+      authTypes: [MODEL_AUTH_TYPE],
+      schema: modelCredentialSchema,
+      refuse: () =>
+        modelFailure('credential_rejected', { possiblyDispatched: false }),
+    },
+    async (credential) => new URL(modelEndpoint(credential, 'models')).host,
+  );
 }
 
 export async function runAgentTurn(
@@ -174,7 +216,7 @@ async function withModelAttempt<Result>(
 }
 
 function attemptContext(
-  invocation: NodeExecutionInvocation<unknown, unknown>,
+  invocation: ModelInvocation,
   config: ModelConfig,
   now: () => number,
 ) {

@@ -1,3 +1,5 @@
+import { ExplanationService } from './workflow-authoring/explanations/explanation.service.js';
+import { AssistantModule } from './workflow-authoring/explanations/assistant.module.js';
 import { McpModule } from './mcp/mcp.module.js';
 import 'reflect-metadata';
 import { ARTIFACT_OBJECT_MAX_BYTES } from '@pertexo/contracts';
@@ -220,6 +222,20 @@ function registerFeatureModules(
   const authorization =
     dependencies.identityRuntime?.dependencies.authorization;
   if (authorization === undefined) return modules;
+  const assistant = dependencies.workflowRuntime?.assistant;
+  if (assistant !== undefined)
+    modules.push(
+      AssistantModule.register(
+        new ExplanationService(
+          assistant.assistantSettings,
+          assistant.explanations,
+          dependencies.connectionRuntime?.dependencies.lookup,
+          { rates: config.agentModelRates },
+        ),
+        authorization,
+        identityModule,
+      ),
+    );
   const mcp = dependencies.workflowRuntime?.mcp;
   if (mcp !== undefined && config.identity !== undefined)
     modules.push(

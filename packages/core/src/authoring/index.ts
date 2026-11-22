@@ -155,3 +155,7 @@ export type {
   TestEventScope,
 } from './step-samples/webhook-test-events/webhook-test-event.types.js';
 export { McpExposureConflictError } from './settings/mcp/mcp-exposure.errors.js';
+
+export type { AssistantSelection } from './settings/assistant/assistant-settings.repository.js';
+export type { AssistantSettingsStore } from './settings/assistant/assistant-settings.store.js';
+export type { ExplanationStore } from './explanations/explanation.store.js';

@@ -81,3 +81,5 @@ export {
   responseSchema,
   type ResponseSchema,
 } from './schemas/shared/response-schema.js';
+
+export { assistantRoutes } from './routes/workflows/assistant.js';
