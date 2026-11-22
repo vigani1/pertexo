@@ -13,7 +13,7 @@ import {
 import { toolNameSchema } from '../list-tools.js';
 import { MCP_LIMITS } from '../mcp-limits.js';
 
-export const TOOL_INPUT_SETTING = 'toolInputSchema';
+const TOOL_INPUT_SETTING = 'toolInputSchema';
 const jsonObject = boundedNodeJsonRecordSchema.meta({
   type: 'object',
   additionalProperties: true,
