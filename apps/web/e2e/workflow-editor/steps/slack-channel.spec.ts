@@ -1,3 +1,7 @@
+import {
+  connectionLookupRequestSchema,
+  slackChannelLookupInputSchema,
+} from '@pertexo/contracts';
 import { expect, test } from '../../support/fixtures';
 import { editorNode } from '../graph';
 import {
@@ -74,20 +78,30 @@ test('shows a Slack step’s channel name beside its ID, and why when it can’t
     }),
   );
   await page.route(
-    `**/v1/workspaces/${workspaceId}/connections/${connectionId}/slack/channels?**`,
+    `**/v1/workspaces/${workspaceId}/connections/${connectionId}/lookup`,
     (route) => {
-      const channelIds =
-        new URL(route.request().url()).searchParams.get('channelIds') ?? '';
-      lookups.push(channelIds);
+      const request = route.request();
+      expect(request.method()).toBe('POST');
+      const lookup = connectionLookupRequestSchema.parse(
+        request.postDataJSON(),
+      );
+      expect(lookup).toMatchObject({
+        providerKey: 'slack',
+        lookup: 'channels',
+      });
+      const { channelIds } = slackChannelLookupInputSchema.parse(lookup.input);
+      lookups.push(channelIds.join(','));
       return route.fulfill({
         json: {
-          items: channelIds
-            .split(',')
-            .map((channelId) =>
-              channelId === 'C0123456789'
-                ? { channelId, status: 'resolved', name: 'ops-alerts' }
-                : { channelId, status: 'unresolved', reason: 'missing_scope' },
-            ),
+          items: channelIds.map((channelId) =>
+            channelId === 'C0123456789'
+              ? { value: channelId, label: 'ops-alerts' }
+              : {
+                  value: channelId,
+                  label: channelId,
+                  unavailableReason: 'missing_scope',
+                },
+          ),
         },
       });
     },

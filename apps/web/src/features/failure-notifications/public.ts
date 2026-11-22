@@ -4,6 +4,8 @@ export { useAlertMembers } from './hooks/use-alert-members';
 export { useSlackChannelNames } from './hooks/use-slack-channel-names';
 export {
   channelKey,
+  channelName,
+  slackChannelLookupRequest,
   describeChannel,
   destinationChannels,
   type ChannelNames,

@@ -26,7 +26,6 @@ import {
   RevokeConnectionService,
   RotateConnectionSecretService,
 } from './management/connection-management.js';
-import { LookupSlackChannelsService } from './failure-notifications/slack-channel-lookup.js';
 import { LookupConnectionOptionsService } from './lookups/lookup-options.service.js';
 import { LookupConnectionOptionsController } from './lookups/lookup-options.controller.js';
 import { TestConnectionService } from './testing/test-connection.js';
@@ -203,18 +202,6 @@ export class ConnectionsModule {
           },
         ),
       },
-      {
-        provide: LookupSlackChannelsService,
-        useValue: new LookupSlackChannelsService(
-          dependencies.persistence,
-          dependencies.authorization,
-          {
-            encryption: dependencies.encryption,
-            slackClient: dependencies.slackClient,
-            telemetry: telemetry,
-          },
-        ),
-      },
     ];
     if (lookup !== undefined)
       providers.push({
@@ -252,7 +239,6 @@ export class ConnectionsModule {
         RotateConnectionSecretService,
         RevokeConnectionService,
         TestConnectionService,
-        LookupSlackChannelsService,
       ],
     };
   }

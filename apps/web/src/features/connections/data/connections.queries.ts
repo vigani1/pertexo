@@ -1,3 +1,4 @@
+import type { ConnectionLookupRequest } from '@pertexo/contracts';
 import { QUERY_FRESHNESS, QUERY_POLLING } from '@/lib/api/query-timings';
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import { isNotFound } from '@/lib/api/error-copy';
@@ -8,7 +9,7 @@ import {
   getConnection,
   getConnectionUsagePage,
   getConnectionsPage,
-  getSlackChannelNames,
+  lookupConnectionOptions,
 } from './connections.api';
 
 export const connectionKeys = {
@@ -31,53 +32,40 @@ export const connectionKeys = {
     [...connectionKeys.scope(userId, workspaceId), 'usage'] as const,
   usage: (userId: string, workspaceId: string, connectionId: string) =>
     [...connectionKeys.usages(userId, workspaceId), connectionId] as const,
-  slackChannels: (
-    userId: string,
-    workspaceId: string,
-    connectionId: string,
-    channelIds: readonly string[],
-  ) =>
-    [
-      ...connectionKeys.scope(userId, workspaceId),
-      'slack-channels',
-      connectionId,
-      channelIds.join(','),
-    ] as const,
 };
 
-/**
- * Channel names change rarely and each lookup spends the connection's
- * provider-test allowance, so names stay fresh for five minutes.
- */
-export function slackChannelNamesQueryOptions({
+export function connectionOptions({
   apiClient,
   userId,
   workspaceId,
   connectionId,
-  channelIds,
+  request,
+  staleTime,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
   connectionId: string;
-  channelIds: readonly string[];
+  request: ConnectionLookupRequest;
+  staleTime?: number;
 }>) {
   return queryOptions({
-    queryKey: connectionKeys.slackChannels(
-      userId,
-      workspaceId,
+    queryKey: [
+      ...connectionKeys.scope(userId, workspaceId),
+      'lookup',
       connectionId,
-      channelIds,
-    ),
+      request,
+    ],
     queryFn: ({ signal }) =>
-      getSlackChannelNames({
+      lookupConnectionOptions(
         apiClient,
         workspaceId,
         connectionId,
-        channelIds,
+        request,
         signal,
-      }),
-    staleTime: QUERY_FRESHNESS.catalog,
+      ),
+    retry: false,
+    ...(staleTime === undefined ? {} : { staleTime }),
   });
 }
 

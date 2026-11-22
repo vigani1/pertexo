@@ -33,20 +33,19 @@ that delivery and Slack steps use.
   ID that differs from the requested one, or a name outside 1–80 letters,
   digits, marks, `.`, `_` or `-`, is an invalid response. The token and
   response bytes are zeroed or dropped as for `auth.test`.
-- **Route.** `GET /v1/workspaces/:workspaceId/connections/:connectionId/slack/channels?channelIds=C…,G…`
-  accepts 1–10 unique channel IDs. It requires `connection:use` at the route
-  guard and again in PostgreSQL, uses the `provider_test` rate class shared with
-  connection testing (per actor, workspace and connection), and returns
-  `{ items }` in request order, each either
-  `{ channelId, status: "resolved", name }` or
-  `{ channelId, status: "unresolved", reason }`.
-- **Credential use.** The API re-reads membership before secret access, then
-  resolves the active connection's current secret in one workspace-scoped
-  transaction that writes the existing `connection.credential_accessed` audit
-  fact with purpose `slack.channel_lookup`, decrypts it just in time and zeroes
-  the plaintext afterwards. The token never leaves the server or enters logs,
-  telemetry or responses. A connection that is not visible is the
-  non-disclosing `404`.
+- **Route.** The Slack module declares the `channels` lookup on the shared
+  connection lookup route in [ADR 095](095-integration-modules.md). It accepts
+  1–10 unique channel IDs in `input.channelIds` and returns items in request
+  order. Each item has the channel ID as its `value` and the name as its
+  `label`; unresolved items use the ID as the label and carry an
+  `unavailableReason`.
+- **Credential use.** The shared lookup route requires `connection:use` and
+  uses the `provider_test` rate class. The connection runtime checks access
+  before reading the current secret, audits its use with purpose
+  `slack.channels.lookup`, and checks it again before each dispatch. It
+  decrypts the secret just in time and zeroes the plaintext afterwards.
+  The token never leaves the server except in the authorization header to
+  Slack. A connection that is not visible is the non-disclosing `404`.
 - **Bounded work.** Lookups run sequentially with a 5-second timeout per call
   inside a 15-second budget bounded by the request. Direct-message and user IDs
   (`D…`, `U…`) have no channel name and are answered without a provider call.

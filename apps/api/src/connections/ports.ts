@@ -31,12 +31,10 @@ export type ConnectionReadPersistence = ConnectionReadStore;
 
 export type ConnectionTestPersistence = ConnectionTestStore;
 
-export type ConnectionLookupPersistence = ConnectionLookupStore;
-
 export type ConnectionPersistence = ConnectionCommandPersistence &
   ConnectionReadPersistence &
   ConnectionTestPersistence &
-  ConnectionLookupPersistence;
+  ConnectionLookupStore;
 
 export interface ConnectionSecretEncryptionPort {
   seal(
@@ -52,10 +50,7 @@ export interface ConnectionSecretEncryptionPort {
 }
 
 export type ConnectionHttpClient = Pick<SecureHttpClient, 'execute'>;
-export type ConnectionSlackClient = Pick<
-  SlackClient,
-  'authTest' | 'lookupChannel'
-> &
+export type ConnectionSlackClient = Pick<SlackClient, 'authTest'> &
   Partial<Pick<SlackClient, 'sendMessage'>>;
 export type ConnectionEmailClient = Pick<ResendClient, 'sendNotification'>;
 

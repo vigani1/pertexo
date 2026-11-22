@@ -2,10 +2,11 @@ import {
   CONNECTION_LOOKUP_LIMITS,
   connectionLookupResponseSchema,
   type ConnectionLookupRequest,
+  type ConnectionLookupResponse,
 } from '@pertexo/contracts';
 import {
   ProviderHttpError,
-  type ProviderHttpClient,
+  type ConnectionLookup,
 } from '@pertexo/integrations/server';
 import { findConnectionLookup } from '@pertexo/node-catalog';
 import {
@@ -26,7 +27,7 @@ import {
   type ConnectionCommandInput,
 } from '../management/connection-serialization.js';
 import type { ConnectionSecretEncryptionPort } from '../ports.js';
-import { boundedLookupHttp } from './bounded-http.js';
+import { boundedLookupHttp, type LookupHttp } from './bounded-http.js';
 
 export type ConnectionLookupDependencies = Readonly<{
   persistence: Pick<
@@ -34,7 +35,7 @@ export type ConnectionLookupDependencies = Readonly<{
     'resolveConnectionLookupSecret' | 'assertConnectionLookupSecretCurrent'
   >;
   encryption: Pick<ConnectionSecretEncryptionPort, 'open'>;
-  http: Pick<ProviderHttpClient, 'executeStreaming'>;
+  http: LookupHttp;
 }>;
 
 type LookupCommand = ConnectionCommandInput &
@@ -58,14 +59,55 @@ export class LookupConnectionOptionsService {
     const lookup = findConnectionLookup(providerKey, key);
     if (lookup === undefined)
       throw requestInputError(['lookup'], 'Unknown connection lookup');
-    const run = lookup.prepare(input.request.input);
-    if (run === undefined)
+    const prepared = lookup.prepare(input.request.input);
+    if (prepared === undefined)
       throw requestInputError(['input'], 'Invalid lookup input');
+    const callerSignal = encryptionSignal(input);
+    callerSignal.throwIfAborted();
+    const local = prepared.local();
+    if (local !== undefined) return checkedResponse(local);
+
+    const deadline = new AbortController();
+    const timer = setTimeout(
+      () =>
+        deadline.abort(
+          new DOMException('Connection lookup timed out', 'TimeoutError'),
+        ),
+      CONNECTION_LOOKUP_LIMITS.timeoutMillis,
+    );
+    const signal = AbortSignal.any([callerSignal, deadline.signal]);
+    try {
+      const result = await this.run(input, prepared.run, signal, test);
+      callerSignal.throwIfAborted();
+      // Lookups that report unavailable items can retain results read before expiry.
+      if (prepared.recover === undefined) signal.throwIfAborted();
+      return checkedResponse(result);
+    } catch (error: unknown) {
+      callerSignal.throwIfAborted();
+      if (error instanceof ConnectionNotFoundError) throw error;
+      const reason = deadline.signal.aborted
+        ? 'provider_unavailable'
+        : error instanceof ConnectionUnavailableError
+          ? 'connection_unavailable'
+          : undefined;
+      if (reason !== undefined && prepared.recover !== undefined)
+        return checkedResponse(prepared.recover(reason));
+      if (deadline.signal.aborted)
+        return throwApplicationError(applicationError('provider.unavailable'));
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async run(
+    input: LookupCommand,
+    run: NonNullable<ReturnType<ConnectionLookup['prepare']>>['run'],
+    signal: AbortSignal,
+    test: ConnectionTest | undefined,
+  ) {
+    const { providerKey, lookup: key } = input.request;
     const { persistence, encryption, http } = this.dependencies;
-    const signal = AbortSignal.any([
-      encryptionSignal(input),
-      AbortSignal.timeout(CONNECTION_LOOKUP_LIMITS.timeoutMillis),
-    ]);
     const access = {
       workspaceId: input.routeWorkspaceId,
       actorId: input.actor.actorId,
@@ -99,6 +141,7 @@ export class LookupConnectionOptionsService {
         secretVersionId,
       });
     };
+    signal.throwIfAborted();
     const secret = await encryption.open(
       resolved.sealed,
       {
@@ -109,7 +152,7 @@ export class LookupConnectionOptionsService {
       signal,
     );
     try {
-      const result: unknown = await run({
+      return await run({
         connection: {
           connectionId: access.connectionId,
           providerKey,
@@ -122,21 +165,10 @@ export class LookupConnectionOptionsService {
         http: boundedLookupHttp(http, signal, beforeDispatch),
         refuse: () => new ConnectionSecretEncryptionError(),
       });
-      signal.throwIfAborted();
-      const checked = connectionLookupResponseSchema.safeParse(result);
-      if (
-        !checked.success ||
-        utf8ByteLength(JSON.stringify(checked.data)) >
-          CONNECTION_LOOKUP_LIMITS.bytes ||
-        new Set(checked.data.items.map(({ value }) => value)).size !==
-          checked.data.items.length
-      )
-        return throwApplicationError(applicationError('provider.unavailable'));
-      return checked.data;
     } catch (error: unknown) {
       if (
-        error instanceof ConnectionUnavailableError ||
         error instanceof ConnectionNotFoundError ||
+        error instanceof ConnectionUnavailableError ||
         error instanceof ConnectionSecretEncryptionError ||
         (test !== undefined && error instanceof ProviderHttpError)
       )
@@ -144,4 +176,17 @@ export class LookupConnectionOptionsService {
       return throwApplicationError(applicationError('provider.unavailable'));
     }
   }
+}
+
+function checkedResponse(result: ConnectionLookupResponse) {
+  const checked = connectionLookupResponseSchema.safeParse(result);
+  if (
+    !checked.success ||
+    utf8ByteLength(JSON.stringify(checked.data)) >
+      CONNECTION_LOOKUP_LIMITS.bytes ||
+    new Set(checked.data.items.map(({ value }) => value)).size !==
+      checked.data.items.length
+  )
+    return throwApplicationError(applicationError('provider.unavailable'));
+  return checked.data;
 }

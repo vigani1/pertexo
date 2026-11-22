@@ -11,17 +11,21 @@ type LookupContext = Readonly<{
   connectionId: string;
   providerKey: string;
   signal: AbortSignal;
-  http: Pick<ProviderHttpClient, 'executeStreaming'>;
+  http: Pick<ProviderHttpClient, 'execute' | 'executeStreaming'>;
   refuse(): Error;
+}>;
+
+type LookupFailure = 'connection_unavailable' | 'provider_unavailable';
+type PreparedLookup = Readonly<{
+  run(context: LookupContext): Promise<ConnectionLookupResponse>;
+  local(): ConnectionLookupResponse | undefined;
+  recover?: (reason: LookupFailure) => ConnectionLookupResponse;
 }>;
 
 export type ConnectionLookup = Readonly<{
   key: string;
   authType: string;
-  prepare(
-    input: unknown,
-  ):
-    ((context: LookupContext) => Promise<ConnectionLookupResponse>) | undefined;
+  prepare(input: unknown): PreparedLookup | undefined;
 }>;
 
 export function defineConnectionLookup<
@@ -33,6 +37,11 @@ export function defineConnectionLookup<
     authType: string;
     inputSchema: Input;
     credentialSchema: Credential;
+    local?(input: z.output<Input>): ConnectionLookupResponse | undefined;
+    recover?(
+      input: z.output<Input>,
+      reason: LookupFailure,
+    ): ConnectionLookupResponse;
     discover(
       input: z.output<Input>,
       credential: z.output<Credential>,
@@ -46,22 +55,31 @@ export function defineConnectionLookup<
     prepare(input) {
       const parsed = definition.inputSchema.safeParse(input);
       if (!parsed.success) return undefined;
-      return (context) =>
-        withProviderCredential(
-          context.connection,
-          {
-            connectionId: context.connectionId,
-            providerKey: context.providerKey,
-            authTypes: [definition.authType],
-            schema: definition.credentialSchema,
-            refuse: context.refuse,
-          },
-          (credential) =>
-            definition.discover(parsed.data, credential, {
-              signal: context.signal,
-              http: context.http,
+      const { recover } = definition;
+      return {
+        local: () => definition.local?.(parsed.data),
+        ...(recover === undefined
+          ? {}
+          : {
+              recover: (reason: LookupFailure) => recover(parsed.data, reason),
             }),
-        );
+        run: (context) =>
+          withProviderCredential(
+            context.connection,
+            {
+              connectionId: context.connectionId,
+              providerKey: context.providerKey,
+              authTypes: [definition.authType],
+              schema: definition.credentialSchema,
+              refuse: context.refuse,
+            },
+            (credential) =>
+              definition.discover(parsed.data, credential, {
+                signal: context.signal,
+                http: context.http,
+              }),
+          ),
+      };
     },
   };
 }

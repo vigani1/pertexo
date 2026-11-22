@@ -22,10 +22,6 @@ import {
   connectionSharingRequestSchema,
   connectionSharingResponseSchema,
 } from '../../schemas/connections/connection-sharing.js';
-import {
-  slackChannelLookupQuerySchema,
-  slackChannelLookupResponseSchema,
-} from '../../schemas/connections/slack-channel-lookup.js';
 import { oauth2AuthorizationStartResponseSchema } from '../../schemas/connections/oauth2-connections.js';
 import { defineRoute, named } from '../define.js';
 import { managing, problem, readingSession, using } from './access.js';
@@ -235,25 +231,5 @@ export const connectionRoutes = {
       body: named('ConnectionLookupResponse', connectionLookupResponseSchema),
     },
     problems: problem('400', '401', '403', '404', '409', '429', '503', '500'),
-  }),
-  slackChannels: defineRoute({
-    operationId: 'lookupSlackChannels',
-    method: 'get',
-    path: `${ONE}/slack/channels`,
-    params: connectionIdParamSchema,
-    query: slackChannelLookupQuerySchema,
-    access: using,
-    rateLimit: 'provider_test',
-    description:
-      'Resolves up to ten Slack channel IDs to names with the connection bot token (ADR 046). Channels that cannot be resolved are returned as unresolved with a reason.',
-    success: {
-      status: 200,
-      description: 'Channel names, in request order',
-      body: named(
-        'SlackChannelLookupResponse',
-        slackChannelLookupResponseSchema,
-      ),
-    },
-    problems: problem('400', '401', '403', '404', '429', '503', '500'),
   }),
 };

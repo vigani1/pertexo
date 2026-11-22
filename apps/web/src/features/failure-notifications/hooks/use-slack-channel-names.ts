@@ -1,9 +1,11 @@
+import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { useQueries } from '@tanstack/react-query';
-import { slackChannelNamesQueryOptions } from '@/features/connections/connections-queries.public';
+import { connectionOptions } from '@/features/connections/connections-queries.public';
 import type { ApiClient } from '@/lib/api/client';
 import {
   channelLookups,
   channelNamesFrom,
+  slackChannelLookupRequest,
   type ChannelNames,
   type SlackChannelRef,
 } from '../model/channel-names';
@@ -29,12 +31,13 @@ export function useSlackChannelNames({
   const lookups = channelLookups(channels);
   const results = useQueries({
     queries: lookups.map(({ connectionId, channelIds }) => ({
-      ...slackChannelNamesQueryOptions({
+      ...connectionOptions({
         apiClient,
         userId,
         workspaceId,
         connectionId,
-        channelIds,
+        request: slackChannelLookupRequest(channelIds),
+        staleTime: QUERY_FRESHNESS.catalog,
       }),
       enabled,
     })),

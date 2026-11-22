@@ -1,3 +1,7 @@
+import {
+  connectionLookupRequestSchema,
+  slackChannelLookupInputSchema,
+} from '@pertexo/contracts';
 import { HttpResponse, http } from 'msw';
 
 // A Slack connection and its ADR 046 channel-name lookup, for the places
@@ -35,21 +39,23 @@ export function slackChannelLookup(
   answers: Readonly<Record<string, Answer>>,
   lookups: string[] = [],
 ) {
-  return http.get(
-    `${workspaceApi}/connections/:connectionId/slack/channels`,
-    ({ request }) => {
-      const channelIds =
-        new URL(request.url).searchParams.get('channelIds') ?? '';
-      lookups.push(channelIds);
+  return http.post(
+    `${workspaceApi}/connections/:connectionId/lookup`,
+    async ({ request }) => {
+      const lookup = connectionLookupRequestSchema.parse(await request.json());
+      if (lookup.providerKey !== 'slack' || lookup.lookup !== 'channels')
+        return new HttpResponse(null, { status: 400 });
+      const { channelIds } = slackChannelLookupInputSchema.parse(lookup.input);
+      lookups.push(channelIds.join(','));
       return HttpResponse.json({
-        items: channelIds.split(',').map((channelId) => {
+        items: channelIds.map((channelId) => {
           const answer = answers[channelId];
           if (answer !== undefined && 'name' in answer)
-            return { channelId, status: 'resolved', name: answer.name };
+            return { value: channelId, label: answer.name };
           return {
-            channelId,
-            status: 'unresolved',
-            reason: answer?.reason ?? 'not_found',
+            value: channelId,
+            label: channelId,
+            unavailableReason: answer?.reason ?? 'not_found',
           };
         }),
       });
