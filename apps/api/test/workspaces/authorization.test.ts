@@ -43,6 +43,7 @@ describe('workspace authorization policy', () => {
       'run:read',
       'run:read-data',
       'run:start',
+      'mcp:invoke',
       'run:cancel',
       'run:replay',
       'connection:read',
@@ -95,6 +96,7 @@ describe('workspace authorization policy', () => {
       'workflow:publish',
       'run:read-data',
       'run:start',
+      'mcp:invoke',
       'run:cancel',
       'run:replay',
       'connection:use',
@@ -116,6 +118,7 @@ describe('workspace authorization policy', () => {
       'workflow:publish',
       'run:read-data',
       'run:start',
+      'mcp:invoke',
       'connection:use',
     ]);
     expect(capabilitiesForRole('operator')).toEqual([
@@ -127,6 +130,7 @@ describe('workspace authorization policy', () => {
       'artifact:upload',
       'run:read-data',
       'run:start',
+      'mcp:invoke',
       'run:cancel',
       'run:replay',
       'connection:use',
