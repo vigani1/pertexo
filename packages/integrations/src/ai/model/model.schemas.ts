@@ -4,7 +4,7 @@ import {
   MODEL_IDENTIFIER_MAX_CHARACTERS,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { compileModelOutputSchema } from './output-schema.js';
+import { compileModelOutputSchema } from '../output-schema.js';
 
 export const MODEL_LIMITS = {
   requestBytes: 64 * 1_024,

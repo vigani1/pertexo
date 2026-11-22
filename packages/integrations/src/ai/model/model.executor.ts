@@ -18,7 +18,7 @@ import {
   type ModelConfig,
   type modelInputSchema,
 } from './model.schemas.js';
-import { compileModelOutputSchema } from './output-schema.js';
+import { compileModelOutputSchema } from '../output-schema.js';
 import {
   createProviderBeforeDispatch,
   markingDispatchOnce,
