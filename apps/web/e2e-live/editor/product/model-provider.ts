@@ -14,6 +14,7 @@ export async function openModelProvider() {
   const probes: string[] = [];
   const calls: unknown[] = [];
   let refuse = false;
+  let answer: unknown = { order: 'order-17' };
   const server = createServer((request, response) => {
     void respond(request, response).catch(() => {
       response.writeHead(500).end('{}');
@@ -43,7 +44,7 @@ export async function openModelProvider() {
         choices: [
           {
             finish_reason: refuse ? 'content_filter' : 'stop',
-            message: { content: JSON.stringify({ order: 'order-17' }) },
+            message: { content: JSON.stringify(answer) },
           },
         ],
         usage: { prompt_tokens: 23, completion_tokens: refuse ? null : 7 },
@@ -57,6 +58,9 @@ export async function openModelProvider() {
   return {
     calls,
     probes,
+    answerWith(value: unknown) {
+      answer = value;
+    },
     refuse() {
       refuse = true;
     },

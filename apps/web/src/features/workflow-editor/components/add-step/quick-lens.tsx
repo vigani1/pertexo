@@ -1,4 +1,6 @@
+import { classifyPortLabels } from '../../model/classify-categories';
 import {
+  isClassifyDefinition,
   WORKFLOW_FAILURE_PORT,
   isWorkflowFailureSource,
   inspectWorkflowFailureRoutes,
@@ -97,6 +99,14 @@ function QuickAddContent({
         )
       : definitions;
   }, [graph, request.from, definitions]);
+  const source =
+    request.from === undefined
+      ? undefined
+      : findStep(graph, request.from.nodeId);
+  const categoryLabels =
+    source !== undefined && isClassifyDefinition(source.definition)
+      ? classifyPortLabels(source.config)
+      : undefined;
   const portId = useId();
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -128,7 +138,7 @@ function QuickAddContent({
             disabled={false}
             choices={request.outputs.map((port) => ({
               value: port,
-              label: portName(port),
+              label: categoryLabels?.[port] ?? portName(port),
             }))}
             onChange={(port) => {
               if (port !== null) onPortChange(port);

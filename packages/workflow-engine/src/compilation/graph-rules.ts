@@ -1,7 +1,5 @@
-import {
-  isCoreConditionDefinition,
-  isCoreMergeDefinition,
-} from '@pertexo/workflow-model';
+import { configuredScopedOutputPorts } from '../control-nodes/control-output-ports.js';
+import { isCoreMergeDefinition } from '@pertexo/workflow-model';
 import { supportsExpressionMappings } from '@pertexo/workflow-model';
 import type {
   DefinitionIdentity,
@@ -109,25 +107,21 @@ function configuresOutputPort(
   if (edge.source.port === WORKFLOW_FAILURE_PORT) return true;
   const taskPorts = pendingTaskOutputPorts(node);
   if (taskPorts !== undefined) return taskPorts.includes(edge.source.port);
-  const control = index.controls.get(node.id);
-  return (
-    (control?.kind !== 'switch' && control?.kind !== 'parallel') ||
-    structuredOutputPorts(node, index).includes(edge.source.port)
-  );
+  const ports = structuredOutputPorts(node, index);
+  return ports === undefined || ports.includes(edge.source.port);
 }
 
-/** Ports that open a branch scope: Condition, Switch and Parallel outputs. */
+/** Ports that open a graph branch scope. Pending tasks have their own rules. */
 function structuredOutputPorts(
-  node: WorkflowGraph['nodes'][number],
+  node: WorkflowNode,
   index: GraphValidationIndex,
-): readonly string[] {
-  if (isCoreConditionDefinition(node.definition)) return ['false', 'true'];
+): readonly string[] | undefined {
+  if (pendingTaskOutputPorts(node) !== undefined) return undefined;
   const control = index.controls.get(node.id);
-  if (control?.kind === 'switch')
-    return [...control.config.cases.map(({ id }) => id), 'default'];
-  if (control?.kind === 'parallel')
-    return control.config.branches.map(({ id }) => id);
-  return [];
+  return configuredScopedOutputPorts({
+    definition: node.definition,
+    ...(control === undefined ? {} : { control }),
+  });
 }
 
 export function assertBranchesDoNotReconverge(
@@ -158,7 +152,7 @@ export function assertBranchesDoNotReconverge(
 
   for (const node of graph.nodes) {
     const ports = structuredOutputPorts(node, index);
-    if (ports.length === 0) continue;
+    if (ports === undefined) continue;
     if (
       isCoreParallelDefinition(node.definition) &&
       ports.some(

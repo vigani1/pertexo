@@ -1,6 +1,12 @@
 import { WORKFLOW_FAILURE_PORT } from '@pertexo/workflow-model';
 import { StatusGlyph } from '@/components/ui/status';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import {
+  Handle,
+  Position,
+  type NodeProps,
+  useUpdateNodeInternals,
+} from '@xyflow/react';
+import { useLayoutEffect } from 'react';
 import type { WorkflowFlowNode } from '../../../model/graph/adapter';
 import { CardHeading, IssueBadge, NodeMarks, PortRows } from './parts';
 import { cardClassName, cardIdentity, handleClass } from './style';
@@ -18,7 +24,17 @@ export function WorkflowNodeCard({
 }: NodeProps<WorkflowFlowNode>) {
   const { step, title, type } = cardIdentity(data);
   const branchingIn = data.branching.inputs;
-  const branchingOut = data.branching.outputs;
+  const branchingOut =
+    data.branching.outputs || data.outputPortLabels !== undefined;
+  const categoryPortOrder =
+    data.outputPortLabels === undefined
+      ? undefined
+      : data.outputPorts.join(',');
+  const updateNodeInternals = useUpdateNodeInternals();
+  // Reordering categories can move handles without resizing the card.
+  useLayoutEffect(() => {
+    if (categoryPortOrder !== undefined) updateNodeInternals(id);
+  }, [categoryPortOrder, id, updateNodeInternals]);
   return (
     <article
       data-selected={selected}
@@ -53,6 +69,7 @@ export function WorkflowNodeCard({
           ports={data.outputPorts}
           side="outputs"
           links={data.links.outputs}
+          labels={data.outputPortLabels}
         />
       ) : null}
       <div className={data.failureEligible ? 'pb-4' : undefined}>

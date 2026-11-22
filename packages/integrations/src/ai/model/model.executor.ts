@@ -12,6 +12,13 @@ export function createModelExecutor(
   return registerProviderExecutor(MODEL_STEP, undefined, (invocation) => {
     const config = invocation.config as ModelConfig;
     const { prompt } = invocation.input as z.output<typeof modelInputSchema>;
-    return runModel(client, invocation, config, prompt, 'ai.model.execute', now);
+    return runModel({
+      client,
+      invocation,
+      config,
+      prompt,
+      purpose: 'ai.model.execute',
+      now,
+    });
   });
 }

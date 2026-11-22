@@ -1,4 +1,6 @@
+import { classifyPortLabels } from '../classify-categories';
 import {
+  isClassifyDefinition,
   inspectWorkflowFailureRoutes,
   isWorkflowFailureSource,
   TIMED_OUT_PORT,
@@ -55,6 +57,7 @@ interface WorkflowNodeData extends Record<string, unknown> {
   /** The ports the card draws (branching steps: only the configured ones). */
   inputPorts: readonly string[];
   outputPorts: readonly string[];
+  outputPortLabels?: Readonly<Record<string, string | undefined>>;
   /** The step can have several inputs or outputs, so its ports are labelled. */
   branching: Readonly<{ inputs: boolean; outputs: boolean }>;
   /** Titles of the steps each port links to, by port. */
@@ -281,6 +284,11 @@ function projectNode({
     ...nodeGeometry(node, parent, decorations),
     selected: projection.selectedNodes.has(node.id),
     data: {
+      ...(isClassifyDefinition(node.definition)
+        ? {
+            outputPortLabels: classifyPortLabels(node.config),
+          }
+        : {}),
       label: node.label,
       definitionKey: node.definition.key,
       definitionVersion: node.definition.version,

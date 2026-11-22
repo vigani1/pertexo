@@ -1,3 +1,4 @@
+import { MODEL_LIMITS } from './model-settings.js';
 import { NodeExecutorFailure, safeInstanceOf } from '@pertexo/node-sdk/server';
 import {
   classifySecureHttpError,
@@ -16,7 +17,7 @@ import {
 } from './connections.definition.js';
 import { messages } from './messages.js';
 import { modelFailure } from './model/model.errors.js';
-import { MODEL_LIMITS } from './model/model.schemas.js';
+
 import type { trackModelUsage } from './model-usage.js';
 import type { ModelRequest } from './model-request.js';
 

@@ -1,4 +1,10 @@
 import {
+  classifyCategoriesSchema,
+  isClassifyDefinition,
+  type ClassifyCategory,
+} from './classify.js';
+import { isRecord } from '../../values/json/object.js';
+import {
   isCoreMergeDefinition,
   isCoreSwitchDefinition,
 } from './control-node-definitions.js';
@@ -8,6 +14,7 @@ import { switchConfigSchema, type SwitchConfig } from './switch.js';
 
 /** The setup of a step whose config decides its output ports or its join. */
 export type ControlNodeConfig =
+  | Readonly<{ kind: 'classify'; categories: readonly ClassifyCategory[] }>
   | Readonly<{ kind: 'switch'; config: SwitchConfig }>
   | Readonly<{ kind: 'parallel'; config: ParallelConfig }>
   | Readonly<{ kind: 'merge'; config: MergeConfig }>;
@@ -18,7 +25,7 @@ export type ControlNodeConfigInspection =
   | Readonly<{ kind: 'invalid'; message: string }>;
 
 /**
- * Reads a Switch, Parallel or Merge setup with the same schemas its node
+ * Reads configured branch and join settings with the same schemas its node
  * definition publishes, so routing and joins can't accept a different shape.
  */
 export function inspectControlNodeConfig(
@@ -27,6 +34,14 @@ export function inspectControlNodeConfig(
     config: unknown;
   }>,
 ): ControlNodeConfigInspection {
+  if (isClassifyDefinition(node.definition)) {
+    const parsed = classifyCategoriesSchema.safeParse(
+      isRecord(node.config) ? node.config.categories : undefined,
+    );
+    return parsed.success
+      ? { kind: 'valid', value: { kind: 'classify', categories: parsed.data } }
+      : { kind: 'invalid', message: 'Classify categories are invalid' };
+  }
   if (isCoreSwitchDefinition(node.definition)) {
     const parsed = switchConfigSchema.safeParse(node.config);
     return parsed.success

@@ -1,3 +1,4 @@
+import { isClassifyDefinition } from '../flow/control-nodes/classify.js';
 import { z } from 'zod';
 import { isWorkflowCallDefinition } from '../flow/callable/invocation.js';
 import { workflowControlOutputKind } from '../graph/control-output-selection.js';
@@ -42,7 +43,8 @@ export function supportsStepRetrySettings(
 ): boolean {
   return (
     !isWorkflowTriggerKey(definition.key) &&
-    workflowControlOutputKind(definition) === undefined &&
+    (workflowControlOutputKind(definition) === undefined ||
+      isClassifyDefinition(definition)) &&
     !isWorkflowCallDefinition(definition) &&
     definition.key !== 'core.wait' &&
     definition.key !== 'core.merge' &&

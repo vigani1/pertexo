@@ -1,3 +1,4 @@
+import { isClassifyDefinition } from '../flow/control-nodes/classify.js';
 import {
   isCoreConditionDefinition,
   isCoreSwitchDefinition,
@@ -21,7 +22,8 @@ export function workflowControlOutputKind(
 ): WorkflowControlOutputKind | undefined {
   if (
     isCoreConditionDefinition(definition) ||
-    isCoreSwitchDefinition(definition)
+    isCoreSwitchDefinition(definition) ||
+    isClassifyDefinition(definition)
   )
     return 'branch';
   if (definition?.version !== 1) return undefined;

@@ -3,15 +3,15 @@ import {
   workflowRunStartResponseSchema,
   workflowValidateResponseSchema,
 } from '@pertexo/contracts';
-import { expect, type Page, type TestInfo } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import {
   addBrowserInput,
   mapBrowserInput,
 } from '../../../test/support/browser/inputs';
 import { test } from './account';
-import { baseUrl, key, model, openModelProvider } from './model-provider';
+import { model, openModelProvider } from './model-provider';
 import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
-import { fillOwnedHttpCredential } from '../../support/http-secret-actions';
+import { connectModel, modelScreenshots } from './model-editor';
 import {
   addSingleStep,
   createEditorWorkflow,
@@ -54,7 +54,7 @@ test('extracts data, measures inference and replays with a fresh model call', as
     await page.getByRole('tab', { name: 'Setup', exact: true }).click();
     await expectInvalidOutputSchemaBlocksPublish(page, path, source);
     await page.getByLabel('Mode', { exact: true }).scrollIntoViewIfNeeded();
-    await screenshots(page, info, 'model-setup');
+    await modelScreenshots(page, info, 'model-setup');
     await page.getByRole('tab', { name: 'Test', exact: true }).click();
     await page
       .getByLabel('Sample input (JSON)')
@@ -102,7 +102,7 @@ test('extracts data, measures inference and replays with a fresh model call', as
     await expect(detail).toContainText(model);
     await expect(detail.getByText('23', { exact: true })).toBeVisible();
     await expect(detail.getByText('7', { exact: true })).toBeVisible();
-    await screenshots(runPage, info, 'model-usage');
+    await modelScreenshots(runPage, info, 'model-usage');
     expect(provider.calls).toHaveLength(2);
 
     await pinAndTest(page, source);
@@ -137,43 +137,11 @@ test('extracts data, measures inference and replays with a fresh model call', as
     );
     await expect(detail).toContainText('Usage is incomplete.');
     await expect(detail.getByText('Unknown', { exact: true })).toBeVisible();
-    await screenshots(runPage, info, 'model-error');
+    await modelScreenshots(runPage, info, 'model-error');
   } finally {
     await provider.close();
   }
 });
-
-async function connectModel(page: Page, workspace: string) {
-  await page.goto(`/w/${workspace}/connections`);
-  await page
-    .getByRole('button', { name: 'Add connection', exact: true })
-    .click();
-  await page
-    .getByRole('dialog', { name: 'Add a connection', exact: true })
-    .getByRole('button', { name: 'Connect AI', exact: true })
-    .click();
-  const form = page.getByRole('dialog', { name: 'Connect AI', exact: true });
-  await form.getByRole('radio', { name: 'Ollama', exact: true }).click();
-  const url = form.getByLabel('API base URL', { exact: true });
-  await expect(url).toHaveAttribute('aria-required', 'true');
-  await form.getByRole('radio', { name: 'vLLM', exact: true }).click();
-  await expect(url).toHaveAttribute('aria-required', 'true');
-  await url.fill(baseUrl);
-  const secret = form.getByLabel('API key', { exact: true });
-  await expect(secret).toHaveAttribute('type', 'password');
-  await fillOwnedHttpCredential(secret, key);
-  await form.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByLabel('Connection name', { exact: true }).fill('Order model');
-  await page
-    .getByRole('button', { name: 'Save and test', exact: true })
-    .click();
-  await page
-    .getByRole('button', { name: 'Test connection', exact: true })
-    .click();
-  await expect(
-    page.getByText('AI accepted the API key.', { exact: true }),
-  ).toBeVisible();
-}
 
 async function configureModel(page: Page) {
   await page.getByRole('tab', { name: 'Setup', exact: true }).click();
@@ -311,17 +279,4 @@ async function pinAndTest(page: Page, source: string) {
     output: { kind: 'inline', value: { data: { order: 'order-17' } } },
   });
   expect(accepted.preview.modelUsage).toBeUndefined();
-}
-
-async function screenshots(page: Page, info: TestInfo, title: string) {
-  for (const colorScheme of ['light', 'dark'] as const) {
-    await page.emulateMedia({ colorScheme });
-    await expect(page.locator('html')).toHaveAttribute(
-      'data-theme',
-      colorScheme,
-    );
-    await page.screenshot({
-      path: info.outputPath(`${title}-${colorScheme}.png`),
-    });
-  }
 }
