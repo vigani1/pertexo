@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { SchemaDocument } from './schema-document.js';
 
 const OUTPUT_VARIANT_LIMITS = Object.freeze({
   propertyCharacters: 128,
@@ -76,4 +77,29 @@ function hasOwnConfigProperty(
     !Array.isArray(value) &&
     Object.hasOwn(value, key);
   return readable;
+}
+
+export function hasValidOutputVariants(manifest: {
+  readonly outputVariant?: OutputVariantSelection | undefined;
+  readonly outputSchema: SchemaDocument;
+}): boolean {
+  if (manifest.outputVariant === undefined) return true;
+  const variants = manifest.outputSchema.anyOf ?? manifest.outputSchema.oneOf;
+  return (
+    Array.isArray(variants) &&
+    [
+      manifest.outputVariant.whenPresent,
+      manifest.outputVariant.whenAbsent,
+      ...(manifest.outputVariant.overrides ?? []).map(
+        (override) => override.variant,
+      ),
+    ].every((index) => {
+      const candidate: unknown = variants[index];
+      return (
+        candidate !== null &&
+        typeof candidate === 'object' &&
+        !Array.isArray(candidate)
+      );
+    })
+  );
 }
