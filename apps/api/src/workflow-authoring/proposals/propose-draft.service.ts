@@ -78,7 +78,6 @@ export class ProposeDraftService {
     );
     if (preparation === undefined) return { kind: 'timeout' as const };
     const { prepared, draft } = preparation;
-    if (signal.aborted) return { kind: 'timeout' as const };
     if (prepared.kind !== 'ready') return prepared;
     if (prepared.confirmation !== confirmation)
       return { kind: 'confirmation_changed' as const };
@@ -91,13 +90,13 @@ export class ProposeDraftService {
     const requestId = generatePersistedId();
     const usages: ModelUsage[] = [];
     const actor = { ...storeContext(input), workflowId: input.workflowId };
-    const inference = await this.infer(
-      prepared,
-      prompt,
+    const inference = await this.infer(prepared, prompt, {
       deadlineAt,
       signal,
-      (value) => usages.push(value),
-    );
+      observe: (value) => {
+        usages.push(value);
+      },
+    });
     const usage = summarizeUsage(prepared.model, usages);
     await this.persistence.explanations.recordUsage({
       ...actor,
@@ -149,8 +148,7 @@ export class ProposeDraftService {
         if (signal.aborted) return undefined;
         throw error;
       });
-    if (inspected === undefined || signal.aborted)
-      return { kind: 'timeout' as const, usage };
+    if (inspected === undefined) return { kind: 'timeout' as const, usage };
     if (inspected.kind === 'rejected') return rejected(inspected.issues, usage);
     return {
       kind: 'inspected' as const,
@@ -177,12 +175,12 @@ export class ProposeDraftService {
     if (draft === null)
       throw new WorkflowNotFoundError('Workflow is not visible');
     const prepared = await prepareAssistant(
-      this.persistence.assistantSettings,
-      this.connection,
+      {
+        settings: this.persistence.assistantSettings,
+        connection: this.connection,
+      },
       input,
-      PURPOSE,
-      [input.workflowId, draft.revision],
-      signal,
+      { purpose: PURPOSE, subject: [input.workflowId, draft.revision], signal },
     );
     return { prepared, draft };
   }
@@ -193,9 +191,15 @@ export class ProposeDraftService {
       { kind: 'ready' }
     >,
     prompt: string,
-    deadlineAt: Date,
-    signal: AbortSignal,
-    observe: (usage: ModelUsage) => void,
+    {
+      deadlineAt,
+      signal,
+      observe,
+    }: Readonly<{
+      deadlineAt: Date;
+      signal: AbortSignal;
+      observe: (usage: ModelUsage) => void;
+    }>,
   ) {
     const history: { call: AgentToolCall; result: JsonValue }[] = [];
     for (let turn = 0; turn <= AGENT_TOOL_LIMITS.historyEntries; turn += 1) {

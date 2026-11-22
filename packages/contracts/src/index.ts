@@ -40,7 +40,6 @@ export * from './schemas/execution/run-events.js';
 export * from './schemas/execution/run-statistics.js';
 export * from './schemas/identity/inbox.js';
 export * from './schemas/identity/api-tokens.js';
-
 export {
   workflowErrorSettingsSchema,
   workflowErrorSettingsRequestSchema,

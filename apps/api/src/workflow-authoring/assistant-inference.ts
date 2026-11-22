@@ -54,23 +54,33 @@ type AssistantPreparation =
     };
 
 export async function prepareAssistant(
-  settings: AssistantSettingsStore,
-  connectionDependencies: ConnectionLookupDependencies | undefined,
+  {
+    settings,
+    connection,
+  }: Readonly<{
+    settings: AssistantSettingsStore;
+    connection: ConnectionLookupDependencies | undefined;
+  }>,
   input: AssistantCaller,
-  purpose: AssistantPurpose,
-  subject: readonly (string | number)[],
-  signal: AbortSignal,
+  {
+    purpose,
+    subject,
+    signal,
+  }: Readonly<{
+    purpose: AssistantPurpose;
+    subject: readonly (string | number)[];
+    signal: AbortSignal;
+  }>,
 ): Promise<AssistantPreparation> {
   const actor = { ...storeContext(input), signal };
   const selection = await settings.read(actor);
   if (selection === null) return { kind: 'not_configured' as const };
-  const dependencies = connectionDependencies;
-  if (dependencies === undefined)
+  if (connection === undefined)
     return { kind: 'connection_unavailable' as const };
   const { connectionId, model } = selection;
   let resolved;
   try {
-    resolved = await dependencies.persistence.resolveConnectionLookupSecret({
+    resolved = await connection.persistence.resolveConnectionLookupSecret({
       ...actor,
       ...requestIdentifiers(input),
       connectionId,
@@ -82,7 +92,7 @@ export async function prepareAssistant(
       return { kind: 'connection_unavailable' as const };
     throw error;
   }
-  const { connection, secretVersionId, sealed } = resolved;
+  const { connection: record, secretVersionId, sealed } = resolved;
   const confirmation = createHash('sha256')
     .update(
       JSON.stringify([
@@ -93,17 +103,17 @@ export async function prepareAssistant(
         connectionId,
         model,
         secretVersionId,
-        connection.name,
+        record.name,
       ]),
     )
     .digest('base64url');
-  const { persistence, encryption } = dependencies;
+  const { persistence, encryption } = connection;
   return {
     kind: 'ready' as const,
     model,
-    connectionName: connection.name,
+    connectionName: record.name,
     confirmation,
-    client: createModelClient(dependencies.http),
+    client: createModelClient(connection.http),
     open,
     invocation: (
       deadlineAt: Date,
