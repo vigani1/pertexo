@@ -1,5 +1,5 @@
 import type { SchemaDocument } from '@pertexo/node-sdk';
-import { compileModelOutputSchema } from '../../src/ai/output-schema.js';
+import { compileModelOutputSchema } from '../../src/structured-data/object-schema.js';
 import { describe, expect, it } from 'vitest';
 import {
   MODEL_CONNECTION,

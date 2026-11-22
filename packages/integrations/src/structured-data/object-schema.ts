@@ -1,6 +1,6 @@
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import type { SchemaDocument } from '@pertexo/node-sdk';
-import { prepareModelOutputSchema } from './output-schema-shape.js';
+import { prepareModelOutputSchema } from './object-schema-shape.js';
 
 const ajv = new Ajv2020({
   strict: false,
