@@ -2,7 +2,8 @@ import { useEditorSession } from '../model/state/context';
 
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { createDialogHandle, DialogTrigger } from '@/components/ui/dialog';
+import { DialogTrigger } from '@/components/ui/dialog';
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 import { WorkflowCommandActions } from '@/features/workflow-publish/workflow-publish-views.public';
@@ -55,7 +56,7 @@ export function SessionCommandBar({
     triggersAvailable,
   } = publication;
   // The command bar is inside the contract dialog root. Give the proposal its own backdrop and focus scope.
-  const [proposalHandle] = useState(createDialogHandle);
+  const [proposalHandle] = useState(DialogPrimitive.createHandle);
   const canPropose = !paused && editing.canUpdate;
   return (
     <>

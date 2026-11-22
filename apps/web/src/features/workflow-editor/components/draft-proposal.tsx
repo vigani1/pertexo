@@ -3,7 +3,7 @@ import {
   type DraftProposalResult,
   type WorkflowGraphContract,
 } from '@pertexo/contracts';
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { AssistantDisclosure } from '@/components/patterns/actions/assistant-disclosure';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogFooter,
   DialogTitle,
-  type createDialogHandle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { isApiError } from '@/lib/api/error';
@@ -40,7 +39,7 @@ export function DraftProposal({
   graph,
   onFix,
 }: Readonly<{
-  handle: ReturnType<typeof createDialogHandle>;
+  handle: NonNullable<ComponentProps<typeof Dialog>['handle']>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   graph: WorkflowGraphContract;

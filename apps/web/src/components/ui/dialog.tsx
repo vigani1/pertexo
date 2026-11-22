@@ -4,7 +4,6 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/class-names';
 
 export const Dialog = DialogPrimitive.Root;
-export const createDialogHandle = DialogPrimitive.createHandle;
 export const DialogClose = DialogPrimitive.Close;
 export const DialogTrigger = DialogPrimitive.Trigger;
 
