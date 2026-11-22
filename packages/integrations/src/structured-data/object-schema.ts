@@ -1,6 +1,6 @@
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import type { SchemaDocument } from '@pertexo/node-sdk';
-import { prepareModelOutputSchema } from './object-schema-shape.js';
+import { prepareBoundedObjectSchema } from './object-schema-shape.js';
 
 const ajv = new Ajv2020({
   strict: false,
@@ -10,8 +10,8 @@ const ajv = new Ajv2020({
   removeAdditional: false,
 });
 
-export function compileModelOutputSchema(schema: SchemaDocument) {
-  const prepared = prepareModelOutputSchema(schema);
+export function compileBoundedObjectSchema(schema: SchemaDocument) {
+  const prepared = prepareBoundedObjectSchema(schema);
   if (prepared === undefined) return undefined;
   try {
     return ajv.compile<SchemaDocument>(prepared);

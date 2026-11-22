@@ -4,7 +4,7 @@ import {
 } from '@pertexo/node-sdk';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { z } from 'zod';
-import { compileModelOutputSchema } from '../structured-data/object-schema.js';
+import { compileBoundedObjectSchema } from '../structured-data/object-schema.js';
 import type { openMcpSession } from './client.js';
 import { MCP_LIMITS } from './mcp-limits.js';
 import { McpProtocolError } from './mcp.errors.js';
@@ -68,7 +68,7 @@ export function normalizeToolInput(tool: McpTool) {
     dialect !== 'https://json-schema.org/draft/2020-12/schema'
   )
     return undefined;
-  const validate = compileModelOutputSchema(schema);
+  const validate = compileBoundedObjectSchema(schema);
   if (validate === undefined) return undefined;
   return {
     schema: boundedNodeJsonRecordSchema.parse(
@@ -82,6 +82,6 @@ export function toolOutputValidator(schema: SchemaDocument) {
   const { $schema: dialect, ...shape } = schema;
   return dialect === undefined ||
     dialect === 'https://json-schema.org/draft/2020-12/schema'
-    ? compileModelOutputSchema(shape)
+    ? compileBoundedObjectSchema(shape)
     : undefined;
 }

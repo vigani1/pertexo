@@ -1,3 +1,5 @@
+import { CONNECTION_LOOKUP_LIMITS } from '@pertexo/contracts';
+
 export const MCP_PROTOCOL_VERSION = '2025-11-25';
 export const MCP_LIMITS = {
   urlCharacters: 2_048,
@@ -5,7 +7,7 @@ export const MCP_LIMITS = {
   cursorCharacters: 2_048,
   sessionCharacters: 512,
   pages: 8,
-  tools: 100,
+  tools: CONNECTION_LOOKUP_LIMITS.items,
   events: 128,
   contentBlocks: 64,
   timeoutMillis: 20_000,
