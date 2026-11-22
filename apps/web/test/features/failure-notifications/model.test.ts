@@ -53,8 +53,8 @@ describe('Slack channel names on alert destinations', () => {
         isError: false,
         data: {
           items: [
-            { channelId: 'C1', status: 'resolved', name: 'ops' },
-            { channelId: 'D2', status: 'unresolved', reason: 'not_a_channel' },
+            { value: 'C1', label: 'ops' },
+            { value: 'D2', label: 'D2', unavailableReason: 'not_a_channel' },
           ],
         },
       },
