@@ -1,5 +1,10 @@
 import { AgentSetup } from '../builders/agent-setup';
-import { AGENT_STEP, CLASSIFY_STEP } from '@pertexo/workflow-model';
+import { GuardrailsSetup } from '../builders/guardrails-setup';
+import {
+  AGENT_STEP,
+  CLASSIFY_STEP,
+  GUARDRAILS_STEP,
+} from '@pertexo/workflow-model';
 import { ClassifyCategories } from '../builders/classify-categories';
 import { readClassifyCategories } from '../../../model/classify-categories';
 import { useInspectorSession } from '../use-session';
@@ -65,6 +70,7 @@ const SIMPLE_SETUP_RENDERERS: Readonly<
   >
 > = {
   [AGENT_STEP.key]: AgentSetup,
+  [GUARDRAILS_STEP.key]: GuardrailsSetup,
   'core.wait': WaitSetup,
   'core.respond_webhook': WebhookResponseSetup,
   'core.read_file': ReadFileSetup,
