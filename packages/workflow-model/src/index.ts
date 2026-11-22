@@ -112,6 +112,7 @@ export {
   type AgentConfig,
   type AgentToolCall,
   isAgentDefinition,
+  agentToolAllowedWithoutApproval,
 } from './flow/control-nodes/agent.js';
 export {
   CLASSIFY_STEP,

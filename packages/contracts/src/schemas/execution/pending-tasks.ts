@@ -47,7 +47,7 @@ export const pendingTaskListQuerySchema = z
     status: z.enum(['pending', 'resolved', 'all']).default('pending'),
   })
   .strict();
-const pendingTaskStatusSchema = z.enum([
+export const pendingTaskStatusSchema = z.enum([
   'pending',
   'approved',
   'rejected',

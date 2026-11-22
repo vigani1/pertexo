@@ -11,6 +11,9 @@ import { BracesIcon, ListIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
   DATABASE_POLL_TRIGGER,
+  AGENT_STEP,
+  AGENT_SEND_SLACK_MESSAGE,
+  AGENT_SLACK_CONNECTION_SLOT,
   isPollingTriggerDefinition,
 } from '@pertexo/workflow-model';
 import {
@@ -29,6 +32,7 @@ import type { GraphLevel } from '../../../model/graph/scopes';
 import { readScheduleSchema } from '../../../model/inspector/schedule-draft';
 import { ConfigJsonEditor } from '../fields/config-json-editor';
 import { ConnectionSlot } from '../fields/connection-slot';
+import { configuredAgentTool } from '../../../model/agent-tool';
 import type { NodeFormApi } from '../../../model/inspector/node-form';
 import type { WorkflowNode } from './setup-controls';
 import { SetupControls } from './setup-controls';
@@ -89,6 +93,13 @@ function CatalogSetupTab({
   const { form: setupForm, hasScratch: setupScratch } = useScratchForm(form);
   const onlyJson = definition === undefined;
   const showJson = onlyJson || jsonMode;
+  const agent = node.definition.key === AGENT_STEP.key;
+  const sendsSlack =
+    configuredAgentTool(node.config).definition.key ===
+    AGENT_SEND_SLACK_MESSAGE.key;
+  const slots = (definition?.connectionRequirements ?? []).filter(
+    (slot) => !agent || slot !== AGENT_SLACK_CONNECTION_SLOT || sendsSlack,
+  );
   // A step whose schema has nothing to set (Condition, say) is decided by
   // its inputs: point there instead of offering an empty JSON object.
   const nothingToSet =
@@ -99,12 +110,13 @@ function CatalogSetupTab({
     schemaPropertyCount(definition.configSchema) === 0;
   return (
     <FieldGroup className="gap-4">
-      {(definition?.connectionRequirements ?? []).map((requirement) => (
+      {slots.map((requirement) => (
         <ConnectionSlot
           key={requirement}
           requirement={requirement}
           optional={
-            definition?.optionalConnections?.includes(requirement) ?? false
+            !(agent && requirement === AGENT_SLACK_CONNECTION_SLOT) &&
+            (definition?.optionalConnections?.includes(requirement) ?? false)
           }
           selectedId={node.connectionRefs[requirement]}
           connections={connections}

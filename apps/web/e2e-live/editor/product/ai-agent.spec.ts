@@ -11,7 +11,10 @@ import {
   startSingleStep,
   waitForRun,
 } from '../../support/authoring/single-step';
-import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
+import {
+  openNewEditorWorkspace,
+  createVerifiedEditorUser,
+} from '../../support/ordinary-editor-session';
 import { test } from './account';
 import { connectModel, modelScreenshots } from './model-editor';
 import { model, openModelProvider } from './model-provider';
@@ -150,8 +153,201 @@ test('publishes an Agent with a Find rows tool and inspects its work', async ({
     await provider.close();
   }
 });
+test('configures, approves and reviews an Agent write tool', async ({
+  browser,
+  page: owner,
+  productAccount,
+}, info) => {
+  const mail = process.env.PERTEXO_LIVE_MAIL_ORIGIN;
+  const { baseURL } = info.project.use;
+  if (mail === undefined || baseURL === undefined)
+    throw new Error('Owned browser fixture missing');
+  const provider = await openModelProvider([
+    {
+      choices: [
+        {
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [
+              {
+                id: 'insert-order',
+                type: 'function',
+                function: {
+                  name: 'insert_order',
+                  arguments: JSON.stringify({
+                    values: { key: 'order-19', status: 'ready' },
+                  }),
+                },
+              },
+            ],
+          },
+        },
+      ],
+      usage: { prompt_tokens: 24, completion_tokens: 8 },
+    },
+    {
+      choices: [
+        { finish_reason: 'stop', message: { content: 'Order 19 is ready.' } },
+      ],
+      usage: { prompt_tokens: 38 },
+    },
+  ]);
+  try {
+    const ownerEmail = productAccount.email;
+    const workspace = await openNewEditorWorkspace(
+      owner,
+      'Agent write workspace',
+    );
+    await seedOrders(owner, workspace);
+    await connectModel(owner, workspace);
+    const path = await createEditorWorkflow(owner, workspace, 'Insert orders');
+    const editorUrl = new URL(owner.url()).pathname;
+    await addAgent(owner, path, 'Record an order');
+    await owner.getByRole('tab', { name: 'Setup', exact: true }).click();
+    await choose(owner, 'AI model connection', 'Order model');
+    await owner.getByLabel('Model identifier', { exact: true }).fill(model);
+    await choose(owner, 'Agent tool', 'Insert row');
+    await owner.getByLabel('Tool alias', { exact: true }).fill('insert_order');
+    await owner
+      .getByLabel('Tool description', { exact: true })
+      .fill('Record a new order in Orders');
+    await choose(owner, 'Workspace table', 'Orders');
+    await choose(owner, 'Write approval', 'Require approval');
+    await owner
+      .getByLabel('Request title', { exact: true })
+      .fill('Order 19 insertion');
+    await expect(
+      owner.getByRole('group', { name: 'Who can decide' }),
+    ).toBeVisible();
+    await owner
+      .getByRole('checkbox', {
+        name: 'Let the person who started the run decide',
+      })
+      .check();
+    await mapBrowserInput({
+      page: owner,
+      field: 'prompt',
+      source: 'Run input',
+      path: '$.task',
+    });
+    await owner.getByRole('tab', { name: 'Setup', exact: true }).click();
+    await expect
+      .poll(
+        async () =>
+          (await readEditorDraft(owner, path)).graph.nodes.find(
+            ({ definition }) => definition.key === 'ai.agent',
+          )?.config.tool,
+      )
+      .toMatchObject({
+        writePermission: { config: { title: 'Order 19 insertion' } },
+      });
+    await owner
+      .getByRole('checkbox', {
+        name: 'Let the person who started the run decide',
+      })
+      .scrollIntoViewIfNeeded();
+    await modelScreenshots(owner, info, 'agent-write-setup');
+    await publishSingleStep(owner, path);
+    const run = await startSingleStep(owner, { task: 'Record order 19' });
+    await waitForRun(owner, workspace, run, 'waiting');
+    await owner.getByRole('button', { name: /^Record an order:/u }).click();
+    const activity = owner.getByRole('region', { name: 'Agent activity' });
+    await expect(
+      activity.getByText('Awaiting approval', { exact: true }),
+    ).toBeVisible();
+    await owner
+      .getByRole('button', { name: 'Approve Order 19 insertion', exact: true })
+      .click();
+    await waitForRun(owner, workspace, run, 'succeeded');
+    await expect(
+      activity.getByRole('button', {
+        name: 'Insert row · insert_order',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(activity.getByText('Approved', { exact: true })).toBeVisible();
+    await modelScreenshots(owner, info, 'agent-write-inspector');
+    const reviewer = await browser.newContext({ baseURL });
+    try {
+      const person = await reviewer.newPage();
+      const viewerEmail = await createVerifiedEditorUser(
+        person,
+        person.request,
+        mail,
+        'Agent write reviewer',
+      );
+      const workflowId = path.split('/').at(-1);
+      const enrolled = await owner.request.post(`${mail}/readonly-setup`, {
+        data: { workspaceId: workspace, workflowId, ownerEmail, viewerEmail },
+      });
+      expect(enrolled.status()).toBe(200);
+      const { viewerId } = (await enrolled.json()) as { viewerId: string };
+      const role = await owner.request.post(
+        `/v1/workspaces/${workspace}/members/${viewerId}/role`,
+        {
+          headers: await commandHeaders(owner),
+          data: { role: 'admin', expectedRoleRevision: 1 },
+        },
+      );
+      expect(role.status(), await role.text()).toBe(200);
+    } finally {
+      await reviewer.close();
+    }
+    await owner.goto(`/w/${workspace}/settings/audit`);
+    await owner
+      .getByRole('checkbox', { name: 'Require approval to publish' })
+      .check();
+    await owner
+      .getByRole('button', { name: 'Save publishing policy', exact: true })
+      .click();
+    await expect(
+      owner.getByText('Publishing policy saved.', { exact: true }),
+    ).toBeVisible();
+    await owner.goto(editorUrl);
+    const agent = (await readEditorDraft(owner, path)).graph.nodes.find(
+      ({ definition }) => definition.key === 'ai.agent',
+    );
+    if (agent === undefined) throw new Error('Agent step missing');
+    await owner.getByTestId(`rf__node-${agent.id}`).focus();
+    await owner.keyboard.press('Enter');
+    await owner.getByRole('tab', { name: 'Setup', exact: true }).click();
+    await choose(owner, 'Write approval', 'Allow without approval');
+    await owner
+      .getByRole('button', { name: 'Request review', exact: true })
+      .click();
+    const dialog = owner.getByRole('dialog', {
+      name: 'Request publication review',
+      exact: true,
+    });
+    await dialog
+      .getByLabel('Note for the reviewer')
+      .fill('Review the Agent rule for writing orders.');
+    await dialog
+      .getByRole('button', { name: 'Request review', exact: true })
+      .click();
+    const review = owner.getByRole('region', { name: 'Reviewed draft' });
+    await expect(review).toContainText('Allowed without approval');
+    await expect(review).toContainText('Insert row · insert_order');
+    await expect(review).toContainText('Workspace table Orders');
+    await modelScreenshots(owner, info, 'agent-write-review');
+  } finally {
+    await provider.close();
+  }
+});
 
-async function addAgent(page: Page, path: string) {
+async function choose(page: Page, label: string, option: string) {
+  await page.getByLabel(label, { exact: true }).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+}
+
+async function commandHeaders(page: Page) {
+  return {
+    'x-csrf-token': await readCsrfToken(page),
+    'Idempotency-Key': randomUUID(),
+  };
+}
+
+async function addAgent(page: Page, path: string, label = 'Look up an order') {
   await addSingleStep(page, path, /^Manual start\b/u, 'Start');
   await page.getByRole('button', { name: 'Step actions', exact: true }).click();
   await page
@@ -171,7 +367,7 @@ async function addAgent(page: Page, path: string) {
   if (agent === undefined) throw new Error('Browser-authored Agent is missing');
   await page.getByTestId(`rf__node-${agent.id}`).focus();
   await page.keyboard.press('Enter');
-  await page.getByLabel('Label', { exact: true }).fill('Look up an order');
+  await page.getByLabel('Label', { exact: true }).fill(label);
   await page.keyboard.press('Tab');
 }
 

@@ -88,6 +88,7 @@ export const agentConfigSchema = z
       .int()
       .positive()
       .max(AGENT_TIMEOUT_MAX_MILLIS)
+      .meta({ title: 'Agent deadline' })
       .optional(),
     tool: z.union([
       toolSetup.extend({
@@ -109,8 +110,12 @@ export const agentConfigSchema = z
           version: z.literal(AGENT_SEND_SLACK_MESSAGE.version),
         }),
         config: z.strictObject({
-          channelId: z.string().min(1),
-          timeoutMillis: z.number().int().positive(),
+          channelId: z.string().min(1).meta({ title: 'Slack channel ID' }),
+          timeoutMillis: z
+            .number()
+            .int()
+            .positive()
+            .meta({ title: 'Slack timeout' }),
         }),
         writePermission,
       }),
@@ -152,4 +157,21 @@ export function isAgentDefinition(
     definition?.key === AGENT_STEP.key &&
     definition.version === AGENT_STEP.version
   );
+}
+
+export function agentToolAllowedWithoutApproval(
+  node: Readonly<{
+    definition: Readonly<{ key: string; version: number }>;
+    config: unknown;
+  }>,
+) {
+  if (!isAgentDefinition(node.definition)) return undefined;
+  const tool = agentConfigSchema.safeParse(node.config).data?.tool;
+  if (
+    tool !== undefined &&
+    'writePermission' in tool &&
+    tool.writePermission.kind === 'allow'
+  )
+    return tool;
+  return undefined;
 }
