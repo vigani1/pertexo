@@ -77,7 +77,9 @@ export function GuardrailsSetup({
           check={modelCheck}
           connectionId={connectionRefs[MODEL_AUTH_TYPE]}
           form={form}
-          onChange={(next) => updateChecks(form, 'model', next)}
+          onChange={(next) => {
+            updateChecks(form, 'model', next);
+          }}
         />
       ) : null}
     </div>
