@@ -20,7 +20,7 @@ import {
 import { LookupConnectionOptionsService } from '../../../src/connections/lookups/lookup-options.service.js';
 import { LookupConnectionOptionsController } from '../../../src/connections/lookups/lookup-options.controller.js';
 import { TestConnectionService } from '../../../src/connections/testing/test-connection.js';
-import type { WorkspaceAuthorizationSource } from '../../../src/authorization/index.js';
+import type { WorkspaceAuthorizationPort } from '../../../src/authorization/index.js';
 import { WORKSPACE_AUTHORIZATION } from '../../../src/workspaces/tokens.js';
 import { FakeIdentityModule } from '../../support/identity-module.js';
 import {
@@ -56,7 +56,7 @@ const rotation = {
 };
 const created = { providerKey: 'http', name: 'Operations API', credential };
 
-const findAccess = vi.fn<WorkspaceAuthorizationSource['findAccess']>(
+const findAccess = vi.fn<WorkspaceAuthorizationPort['findAccess']>(
   ownerAccess.findAccess,
 );
 
