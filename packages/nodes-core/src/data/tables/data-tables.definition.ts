@@ -37,6 +37,11 @@ const tableDisplay = {
   },
 };
 const DATA_TABLE_CONFIG_SCHEMA = dataTableConfigSchema;
+const FIND_ROWS_AGENT_TOOL = Object.freeze({
+  effect: 'read',
+  inputFields: Object.freeze(['query']),
+  result: Object.freeze({ kind: 'bounded_output' }),
+} as const);
 // prefault parses its value, so the query schema's own defaults apply.
 const query = dataTableQuerySchema.prefault({});
 const DATA_TABLE_INPUT_SCHEMAS = {
@@ -68,6 +73,7 @@ export const DATA_TABLE_DEFINITIONS: readonly NodeDefinitionRegistration[] =
       credentialRequirements: Object.freeze([]),
       connectionRequirements: Object.freeze([]),
       retryClass: operation === 'find' ? 'safe' : 'idempotent-with-key',
+      ...(operation === 'find' ? { agentTool: FIND_ROWS_AGENT_TOOL } : {}),
       resourceClass: 'io',
       capabilities: Object.freeze([]),
       executor: definition,

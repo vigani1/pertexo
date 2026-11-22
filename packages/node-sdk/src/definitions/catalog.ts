@@ -13,6 +13,11 @@ import {
 } from './schema-document.js';
 import { NodeCatalogIntegrityError } from './catalog.errors.js';
 import { executionClassSchema } from './execution-class.js';
+import {
+  agentToolPolicySchema,
+  hasValidAgentToolFields,
+  type AgentToolPolicy,
+} from './agent-tool.js';
 
 const NODE_DISPLAY_LIMITS = Object.freeze({
   nameCharacters: 128,
@@ -111,6 +116,7 @@ export interface NodeManifest {
   readonly retryClass: RetryClass;
   /** Config values under which an attempt only reads, whatever `retryClass` pins: an HTTP GET. */
   readonly readOnlyWhen?: ReadOnlyConfigCondition | undefined;
+  readonly agentTool?: AgentToolPolicy | undefined;
   readonly resourceClass: ResourceClass;
   readonly capabilities: readonly string[];
   readonly execution?: z.infer<typeof executionClassSchema> | undefined;
@@ -201,6 +207,7 @@ export const nodeManifestSchema = z
       .strict()
       .optional(),
     resourceClass: z.enum(['io', 'cpu']),
+    agentTool: agentToolPolicySchema.optional(),
     capabilities: identifiersSchema,
     execution: executionClassSchema.optional(),
     executor: executorIdentitySchema,
@@ -208,6 +215,11 @@ export const nodeManifestSchema = z
     policyReferences: z.array(policyReferenceSchema),
   })
   .strict()
+  .refine(hasValidAgentToolFields, {
+    path: ['agentTool'],
+    message:
+      'agent tool fields must be declared by the input and output schemas',
+  })
   .refine(hasValidOutputVariants, {
     path: ['outputVariant'],
     message: 'output variants must select object schemas in the output union',
