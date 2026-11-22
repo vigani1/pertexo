@@ -25,7 +25,8 @@ import {
 import type { CommandIdentity } from '@pertexo/database/primitives';
 import { hasCapability } from '@pertexo/policy';
 import { issueApiTokenCredential } from './credential.js';
-import { apiTokenMetadata, type ApiTokenRow } from './metadata.js';
+import { apiTokenMetadata } from './metadata.js';
+import type { ApiTokenRow } from '../../shared/access/api-token-authority.js';
 import { requireReadableReceipt } from '../../shared/receipts.js';
 import { tokenReceipt } from '../command-receipts.schemas.js';
 import { tokenOwnerAuthority } from './token-owner-authority.js';

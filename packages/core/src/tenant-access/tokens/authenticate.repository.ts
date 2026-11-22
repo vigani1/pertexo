@@ -1,11 +1,6 @@
-import { and, eq, getTableColumns, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import {
-  apiTokens,
-  users,
-  workspaces,
-  workspaceMemberships,
-} from '@pertexo/database/schema';
+import { apiTokens } from '@pertexo/database/schema';
 import {
   rethrowQueryFailure,
   withTenantScopedClient,
@@ -15,7 +10,8 @@ import {
   matchesApiTokenDigest,
   type ParsedApiTokenCredential,
 } from './credential.js';
-import { apiTokenStatus } from './metadata.js';
+import { isActiveApiToken } from '../../shared/access/api-token-authority.js';
+import { readApiTokenAuthority } from '../../shared/access/api-token-authority.repository.js';
 import type { VerifiedApiToken } from './api-token.types.js';
 import { MINUTE_INTERVAL } from '../../shared/sql-intervals.repository.js';
 
@@ -34,41 +30,13 @@ export function authenticateApiToken(
     { workspaceId: input.workspaceId },
     async (client) => {
       const db = drizzle(client);
-      const rows = await db
-        .select({
-          ...getTableColumns(apiTokens),
-          ownerStatus: users.status,
-          memberStatus: workspaceMemberships.status,
-          workspaceStatus: workspaces.status,
-          currentRevision: workspaceMemberships.roleRevision,
-          observedAt: sql<Date>`clock_timestamp()`.mapWith(apiTokens.createdAt),
-        })
-        .from(apiTokens)
-        .innerJoin(users, eq(users.id, apiTokens.ownerUserId))
-        .innerJoin(
-          workspaceMemberships,
-          and(
-            eq(workspaceMemberships.workspaceId, apiTokens.workspaceId),
-            eq(workspaceMemberships.userId, apiTokens.ownerUserId),
-          ),
-        )
-        .innerJoin(workspaces, eq(workspaces.id, apiTokens.workspaceId))
-        .where(
-          and(
-            eq(apiTokens.workspaceId, input.workspaceId),
-            eq(apiTokens.id, input.tokenId),
-          ),
-        )
-        .catch(rethrowQueryFailure);
-      const row = rows[0];
-      const tokenUnavailable =
+      const row = await readApiTokenAuthority(db, input);
+      if (
         row === undefined ||
         !matchesApiTokenDigest(input.digest, row.secretDigest) ||
-        apiTokenStatus(row, row.currentRevision, row.observedAt) !== 'active' ||
-        row.ownerStatus !== 'active' ||
-        row.memberStatus !== 'active' ||
-        row.workspaceStatus !== 'active';
-      if (tokenUnavailable) return undefined;
+        !isActiveApiToken(row)
+      )
+        return undefined;
       // Verification is already complete; revocation doesn't cancel admitted work.
       await db
         .update(apiTokens)

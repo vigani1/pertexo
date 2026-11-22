@@ -1,30 +1,8 @@
-import type { apiTokens } from '@pertexo/database/schema';
 import type { ApiTokenMetadata } from '@pertexo/contracts';
-
-export type ApiTokenRow = typeof apiTokens.$inferSelect;
-export function apiTokenStatus(
-  row: ApiTokenRow,
-  membershipRevision: number,
-  now: Date,
-): ApiTokenMetadata['status'] {
-  return row.revokedAt === null
-    ? unrevokedTokenStatus(row, membershipRevision, now)
-    : 'revoked';
-}
-
-function unrevokedTokenStatus(
-  row: ApiTokenRow,
-  membershipRevision: number,
-  now: Date,
-) {
-  if (row.membershipRevision !== membershipRevision) {
-    return 'membership_changed';
-  }
-  if (row.expiresAt <= now) {
-    return 'expired';
-  }
-  return 'active';
-}
+import {
+  unrevokedTokenStatus,
+  type ApiTokenRow,
+} from '../../shared/access/api-token-authority.js';
 
 export function apiTokenMetadata(
   row: ApiTokenRow,
