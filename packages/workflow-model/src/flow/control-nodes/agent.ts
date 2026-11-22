@@ -20,6 +20,16 @@ export const AGENT_TOOL_LIMITS = Object.freeze({
   outputTokens: 1_024,
 });
 
+export const AGENT_LIMITS = Object.freeze({
+  turns: 5,
+  toolCalls: AGENT_TOOL_LIMITS.historyEntries,
+  modelDispatches: 8,
+  inputTokens: 128_000,
+  outputTokens: 8_192,
+  costNanoDollars: 250_000_000,
+  timeoutMillis: 120_000,
+});
+
 const alias = z
   .string()
   .min(1)

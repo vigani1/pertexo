@@ -1,8 +1,8 @@
+import { AGENT_LIMITS } from '@pertexo/workflow-model';
 import type { AgentToolCall } from '@pertexo/workflow-model';
-import {
-  AGENT_LIMITS,
-  type AgentContinuation,
-  type AgentAttemptReceipt,
+import type {
+  AgentContinuation,
+  AgentAttemptReceipt,
 } from './agent-continuation.js';
 
 type AgentWorkRefusal = Readonly<{

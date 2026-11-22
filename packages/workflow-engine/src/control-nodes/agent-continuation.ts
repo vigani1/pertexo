@@ -1,15 +1,4 @@
 import type { OutputReference } from '../workflow-execution.js';
-import { AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
-
-export const AGENT_LIMITS = Object.freeze({
-  turns: 5,
-  toolCalls: AGENT_TOOL_LIMITS.historyEntries,
-  modelDispatches: 8,
-  inputTokens: 128_000,
-  outputTokens: 8_192,
-  costNanoDollars: 250_000_000,
-  timeoutMillis: 120_000,
-});
 
 export type AgentModelRates = Readonly<{ input: number; output: number }>;
 

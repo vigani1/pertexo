@@ -1,5 +1,5 @@
-import { AGENT_LIMITS, type AgentContinuation } from './agent-continuation.js';
-import { AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
+import type { AgentContinuation } from './agent-continuation.js';
+import { AGENT_LIMITS, AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
 
 type ModelBudget = AgentContinuation['budget'];
 type ModelRates = AgentContinuation['modelRates'];
