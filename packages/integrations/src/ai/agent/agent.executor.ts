@@ -34,11 +34,13 @@ export function createAgentExecutor(
         now,
       },
       {
-        tool: {
-          name: tool.alias,
-          description: tool.description,
-          inputSchema: toolSchema,
-        },
+        tools: [
+          {
+            name: tool.alias,
+            description: tool.description,
+            inputSchema: toolSchema,
+          },
+        ],
         history,
       },
     );

@@ -52,13 +52,11 @@ export const messages = {
       ...(agent === undefined
         ? {}
         : {
-            tools: [
-              {
-                name: agent.tool.name,
-                description: agent.tool.description,
-                input_schema: agent.tool.inputSchema,
-              },
-            ],
+            tools: agent.tools.map((tool) => ({
+              name: tool.name,
+              description: tool.description,
+              input_schema: tool.inputSchema,
+            })),
             tool_choice: { type: 'auto', disable_parallel_tool_use: true },
           }),
       ...(config.mode === 'structured'

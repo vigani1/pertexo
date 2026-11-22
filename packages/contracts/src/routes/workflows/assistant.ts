@@ -1,6 +1,7 @@
 import { responseSchema } from '../../schemas/shared/response-schema.js';
 import { z } from 'zod';
 import * as explanation from '../../schemas/workflows/assistant/explanation.js';
+import * as proposal from '../../schemas/workflows/assistant/proposal.js';
 import * as settings from '../../schemas/workflows/assistant/settings.js';
 import { defineRoute } from '../define.js';
 import { responseReference } from '../openapi-primitives.js';
@@ -8,6 +9,9 @@ import { projected, readProblems, session, workspaceParams } from './access.js';
 
 const settingsPath = '/v1/workspaces/{workspaceId}/assistant';
 const explainPath = '/v1/workspaces/{workspaceId}/runs/{runId}/explanation';
+const proposalPath =
+  '/v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/proposal';
+const proposalParams = workspaceParams.extend({ workflowId: z.uuid() });
 const params = workspaceParams.extend({ runId: z.uuid() });
 const common = {
   cacheControl: 'private, no-store',
@@ -15,6 +19,52 @@ const common = {
 } as const;
 
 export const assistantRoutes = {
+  proposalDisclosure: defineRoute({
+    ...common,
+    operationId: 'getDraftProposalDisclosure',
+    method: 'get',
+    path: proposalPath,
+    params: proposalParams,
+    access: session('workflow:read'),
+    rateLimit: 'authenticated_read',
+    description: 'Identify the endpoint before sending filtered draft context.',
+    success: {
+      status: 200,
+      description: 'Transfer disclosure',
+      body: projected(
+        'DraftProposalDisclosure',
+        responseSchema(proposal.draftProposalDisclosureSchema),
+      ),
+    },
+  }),
+  proposeDraft: defineRoute({
+    ...common,
+    operationId: 'proposeWorkflowDraft',
+    method: 'post',
+    path: proposalPath,
+    params: proposalParams,
+    access: session('workflow:read'),
+    rateLimit: 'assistant_request',
+    problems: {
+      ...readProblems,
+      '412': responseReference('PreconditionFailed'),
+      '429': responseReference('RateLimited'),
+    },
+    description:
+      'Inspect a suggested draft against the current draft revision.',
+    body: projected(
+      'DraftProposalRequest',
+      proposal.draftProposalRequestSchema,
+    ),
+    success: {
+      status: 200,
+      description: 'Draft proposal outcome',
+      body: projected(
+        'DraftProposalResult',
+        responseSchema(proposal.draftProposalResultSchema),
+      ),
+    },
+  }),
   settings: defineRoute({
     ...common,
     operationId: 'getAssistantSettings',

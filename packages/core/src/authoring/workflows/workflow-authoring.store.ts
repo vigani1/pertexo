@@ -38,6 +38,7 @@ import type {
   TransitionWorkflowLifecycleInput,
 } from './workflow-commands.types.js';
 import { readDraft } from './reads/drafts.repository.js';
+import { inspectCandidate } from './reads/inspect-candidate.js';
 import { validateDraft } from './reads/validate-draft.js';
 import { readVersion } from './reads/versions.repository.js';
 import { listVersions } from './reads/list-versions.js';
@@ -140,14 +141,23 @@ export function createWorkflowAuthoringStore(
           workflowId,
         }),
       ),
-    getDraft: (workspaceId: string, workflowId: string, actorId: string) =>
-      access.reader({ workspaceId, actorId }, (client, scope) =>
+    getDraft: (
+      workspaceId: string,
+      workflowId: string,
+      actorId: string,
+      signal?: AbortSignal,
+    ) =>
+      access.reader({ workspaceId, actorId, signal }, (client, scope) =>
         readDraft(
           client,
           scope,
           { workspaceId, workflowId },
           catalogs.definitionCatalog,
         ),
+      ),
+    inspectCandidate: (input: Parameters<typeof inspectCandidate>[1]) =>
+      access.workflow(input, { capability: 'workflow:read' }, (client) =>
+        inspectCandidate(client, input, catalogs),
       ),
     validateDraft: (
       workspaceId: string,

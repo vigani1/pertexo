@@ -117,7 +117,10 @@ export async function runAgentTurn(
     async (complete) => {
       const result = await complete();
       if (result.kind === 'text') return { text: result.text };
-      if (result.kind === 'proposal' && result.call.name === agent.tool.name)
+      if (
+        result.kind === 'proposal' &&
+        agent.tools.some(({ name }) => name === result.call.name)
+      )
         return { proposal: result.call };
       throw modelFailure('invalid_response', { possiblyDispatched: true });
     },

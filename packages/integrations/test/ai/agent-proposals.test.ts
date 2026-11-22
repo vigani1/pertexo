@@ -20,7 +20,7 @@ const request = (endpoint: ModelRequest['endpoint']): ModelRequest => ({
   config: { mode: 'text', model: 'fake-model' },
   prompt: 'Summarize the order',
   maxTokens: 64,
-  agent: { tool, history: [{ call, result }] },
+  agent: { tools: [tool], history: [{ call, result }] },
 });
 
 describe('native Agent proposals', () => {

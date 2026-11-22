@@ -398,3 +398,4 @@ export * from './schemas/workflows/mcp/exposure.js';
 export * from './schemas/workflows/mcp/rpc.js';
 export * from './schemas/workflows/assistant/settings.js';
 export * from './schemas/workflows/assistant/explanation.js';
+export * from './schemas/workflows/assistant/proposal.js';

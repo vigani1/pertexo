@@ -8,7 +8,7 @@ import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../../shared/access/workspace-access.js';
-import { recordExplanationUsage } from './explanation-usage.repository.js';
+import { recordAssistantUsage } from './explanation-usage.repository.js';
 
 type ExplanationActor = WorkspaceActor & Readonly<{ runId: string }>;
 
@@ -46,16 +46,19 @@ export function createExplanationStore(pool: Pool) {
           steps,
         };
       }),
-    recordUsage: (input: Parameters<typeof recordExplanationUsage>[1]) =>
+    recordUsage: (input: Parameters<typeof recordAssistantUsage>[1]) =>
       withWorkspaceAccess(
         pool,
         input,
         {
           mode: 'change',
-          capability: 'run:read',
+          capability:
+            input.target.purpose === 'explain_run'
+              ? 'run:read'
+              : 'workflow:read',
           statuses: ACTIVE_WORKSPACE_STATUSES,
         },
-        (client) => recordExplanationUsage(client, input),
+        (client) => recordAssistantUsage(client, input),
       ),
   });
 }

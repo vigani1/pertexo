@@ -62,16 +62,14 @@ export const chatCompletions = {
       ...(agent === undefined
         ? {}
         : {
-            tools: [
-              {
-                type: 'function',
-                function: {
-                  name: agent.tool.name,
-                  description: agent.tool.description,
-                  parameters: agent.tool.inputSchema,
-                },
+            tools: agent.tools.map((tool) => ({
+              type: 'function',
+              function: {
+                name: tool.name,
+                description: tool.description,
+                parameters: tool.inputSchema,
               },
-            ],
+            })),
             parallel_tool_calls: false,
           }),
       ...(config.mode === 'structured' && endpoint !== 'openrouter'

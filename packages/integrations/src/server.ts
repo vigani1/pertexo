@@ -104,7 +104,11 @@ export type { ConnectionDefinition } from './providers/connection-definition.js'
 export type { ConnectionLookup } from './providers/connection-lookup.js';
 
 export { createModelClient, type ModelClient } from './ai/model-client.js';
-export { modelCredentialHost, runModelOnce } from './ai/run-model.js';
+export {
+  modelCredentialHost,
+  runAgentTurn,
+  runModelOnce,
+} from './ai/run-model.js';
 export {
   MODEL_AUTH_TYPE,
   MODEL_PROVIDER_KEY,
