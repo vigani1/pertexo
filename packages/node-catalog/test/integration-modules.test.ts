@@ -36,12 +36,16 @@ it('preserves the published catalog and every legacy browser projection byte for
   );
 });
 
-it('serves Find rows as the only declared Agent read tool', () => {
-  expect(
+it('declares Find rows as the only Agent read tool and Insert row and Slack as write tools', () => {
+  const tools = (effect: 'read' | 'write') =>
     PLATFORM_NODE_CATALOG.definitions
-      .filter(({ agentTool }) => agentTool !== undefined)
-      .map(({ definition }) => definition),
-  ).toEqual([{ key: 'core.table_find', version: 1 }]);
+      .filter(({ agentTool }) => agentTool?.effect === effect)
+      .map(({ definition }) => definition);
+  expect(tools('read')).toEqual([{ key: 'core.table_find', version: 1 }]);
+  expect(tools('write')).toEqual([
+    { key: 'core.table_insert', version: 1 },
+    { key: 'slack.send_message', version: 1 },
+  ]);
 });
 
 it('refuses two modules with the same key during catalog assembly', () => {
