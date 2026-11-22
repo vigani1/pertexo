@@ -54,11 +54,12 @@ test('confirms the transfer and follows an authorized step from the explanation'
       name: 'Explain failed run',
       exact: true,
     });
+    const disclosure = page.getByRole('dialog', { name: 'Explain failed run' });
     await open.click();
-    await expect(page.getByRole('dialog')).toContainText(
-      'Ask a workspace administrator',
-    );
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(disclosure).toContainText('Ask a workspace administrator');
+    await disclosure
+      .getByRole('button', { name: 'Cancel', exact: true })
+      .click();
 
     await page.goto(`/w/${workspace}/settings`);
     await page.getByLabel('AI connection', { exact: true }).click();
@@ -78,7 +79,6 @@ test('confirms the transfer and follows an authorized step from the explanation'
     });
     const callCount = inference.calls.length;
     await open.click();
-    const disclosure = page.getByRole('dialog', { name: 'Explain failed run' });
     await expect(disclosure).toContainText('model.provider.test');
     await expect(disclosure).toContainText('safe error code');
     expect(inference.calls).toHaveLength(callCount);
