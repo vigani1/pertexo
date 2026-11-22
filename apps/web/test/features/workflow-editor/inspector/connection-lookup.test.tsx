@@ -9,6 +9,7 @@ import { expect, it } from 'vitest';
 import { createQueryClient } from '@/app/query-client';
 import { createApiClient } from '@/lib/api/client';
 import { testFetch } from '../../../support/render-app';
+import { deferred } from '../../../support/fixtures/workflow-editor';
 import { mockServer } from '../../../support/mock-server';
 import { choose, saved } from './schema-setup-actions';
 import { Fields } from './schema-setup.fixture';
@@ -57,7 +58,7 @@ function renderLookup() {
 }
 
 it('loads choices and saves a selection and attachment together', async () => {
-  const reply = Promise.withResolvers<void>();
+  const reply = deferred<void>();
   mockServer.use(
     http.post(`*${path}`, async ({ request }) => {
       expect(await request.json()).toEqual({
