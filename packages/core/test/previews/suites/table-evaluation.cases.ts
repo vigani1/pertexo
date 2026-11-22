@@ -56,6 +56,14 @@ export function registerTableEvaluationCases() {
         tableId: table.id,
         versionId: f.versionId,
       });
+      expect(
+        await database.workflowTests.get({
+          ...f.scope,
+          runId: runId(first, 0),
+        }),
+      ).toMatchObject({
+        publishedVersionNumber: 1,
+      });
       const firstInput = frozen[0]?.input ?? '';
       await complete(runId(first, 0), JSON.parse(firstInput));
       await due(accepted.suiteId);

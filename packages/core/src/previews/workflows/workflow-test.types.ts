@@ -25,6 +25,7 @@ export type WorkflowTestSummary = Readonly<{
   startedBy: string | null;
   draftRevision: number;
   status: string;
+  publishedVersionNumber?: number;
   createdAt: string;
   expiresAt: string;
 }>;
