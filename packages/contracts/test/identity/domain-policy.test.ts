@@ -55,6 +55,7 @@ it('keeps authoring and identity policy limits unchanged at the transport bounda
     'run:read',
     'run:read-data',
     'run:start',
+    'mcp:invoke',
     'run:cancel',
     'connection:read',
     'workspace:read',
