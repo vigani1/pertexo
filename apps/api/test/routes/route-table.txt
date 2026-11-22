@@ -117,7 +117,7 @@ GET /v1/workspaces/{workspaceId}/runs/{runId} 200 session_or_token run:read - au
 POST /v1/workspaces/{workspaceId}/runs/{runId}/cancel 200 session_or_token run:cancel csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/runs/{runId}/events 200 session run:read - authenticated_read
 GET /v1/workspaces/{workspaceId}/runs/{runId}/explanation 200 session run:read - authenticated_read
-POST /v1/workspaces/{workspaceId}/runs/{runId}/explanation 200 session run:read csrf ordinary_mutation
+POST /v1/workspaces/{workspaceId}/runs/{runId}/explanation 200 session run:read csrf assistant_request
 GET /v1/workspaces/{workspaceId}/runs/{runId}/input 200 session_or_token run:read-data - authenticated_read
 GET /v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/diagnostics 200 session run:read - authenticated_read
 GET /v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/input 200 session_or_token run:read-data - authenticated_read

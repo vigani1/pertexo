@@ -27,8 +27,10 @@ An operator sets provider limits, address policy and retention expectations.
   F61. Its tools search the visible catalog, fetch versioned step details
   and propose graph edits. Filter availability by the same catalog and
   workspace rules as the editor. Bound tool calls, response size, tokens,
-  elapsed time and concurrent requests. Treat tool output, labels, user
-  input and model text as data.
+  elapsed time and request rates. Failed-run explanations use the
+  `assistant_request` actor and workspace budgets and release database
+  connections before inference. Treat tool output, labels, user input and
+  model text as data.
 - Project only the context needed for the task. Exclude credentials,
   connection secret material, authorization headers, raw provider failure
   bodies and run payloads. Use typed references or placeholders for

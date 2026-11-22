@@ -125,87 +125,89 @@ export class ExplanationService {
       inputTokens: null,
       outputTokens: null,
     };
-    const reply = await this.runs.reserve(actor, async () => {
-      try {
-        const answer = await runModelOnce({
-          client: createModelClient(dependencies.http),
-          config: {
-            mode: 'structured',
-            model,
-            outputSchema: answerSchema,
-            maxOutputTokens: EXPLANATION_MAX_OUTPUT_TOKENS,
-          },
-          purpose: PURPOSE,
-          prompt,
-          now: this.now,
-          invocation: {
-            connectionRefs: { [MODEL_AUTH_TYPE]: connectionId },
-            signal,
-            runtime: {
-              deadlineAt,
-              sideEffectClass: 'safe',
-              beforeDispatch: () => Promise.resolve(),
-              observeModelUsage: (value) => {
-                usage = value;
-              },
-              connections: {
-                resolve: ({ signal: callSignal }) => open(callSignal),
-                assertCurrent: async (fence) => {
-                  try {
-                    await dependencies.persistence.assertConnectionLookupSecretCurrent(
-                      {
-                        ...actor,
-                        connectionId: fence.connectionId,
-                        providerKey: fence.expectedProviderKey,
-                        authType: fence.expectedAuthType,
-                        secretVersionId: fence.secretVersionId,
-                        signal: fence.signal,
-                      },
-                    );
-                  } catch (error: unknown) {
-                    if (
-                      error instanceof ConnectionUnavailableError ||
-                      error instanceof ConnectionNotFoundError
-                    )
-                      throw new ProviderCredentialInvalidError();
-                    throw error;
-                  }
-                },
+    let inference;
+    try {
+      const answer = await runModelOnce({
+        client: createModelClient(dependencies.http),
+        config: {
+          mode: 'structured',
+          model,
+          outputSchema: answerSchema,
+          maxOutputTokens: EXPLANATION_MAX_OUTPUT_TOKENS,
+        },
+        purpose: PURPOSE,
+        prompt,
+        now: this.now,
+        invocation: {
+          connectionRefs: { [MODEL_AUTH_TYPE]: connectionId },
+          signal,
+          runtime: {
+            deadlineAt,
+            sideEffectClass: 'safe',
+            beforeDispatch: () => Promise.resolve(),
+            observeModelUsage: (value) => {
+              usage = value;
+            },
+            connections: {
+              resolve: ({ signal: callSignal }) => open(callSignal),
+              assertCurrent: async (fence) => {
+                try {
+                  await dependencies.persistence.assertConnectionLookupSecretCurrent(
+                    {
+                      ...actor,
+                      connectionId: fence.connectionId,
+                      providerKey: fence.expectedProviderKey,
+                      authType: fence.expectedAuthType,
+                      secretVersionId: fence.secretVersionId,
+                      signal: fence.signal,
+                    },
+                  );
+                } catch (error: unknown) {
+                  if (
+                    error instanceof ConnectionUnavailableError ||
+                    error instanceof ConnectionNotFoundError
+                  )
+                    throw new ProviderCredentialInvalidError();
+                  throw error;
+                }
               },
             },
           },
-        });
-        const parsed = explanationModelAnswerSchema.safeParse(answer);
-        if (!parsed.success)
-          return { kind: 'invalid_response' as const, usage };
-        const { failedStep, steps } = context;
-        const candidates = new Map(steps.map((step) => [step.id, step.label]));
-        if (failedStep !== null)
-          candidates.set(failedStep.nodeId, failedStep.label);
-        return {
-          kind: 'explained' as const,
-          explanation: parsed.data.explanation,
-          steps: [...new Set(parsed.data.stepIds)].flatMap((id) =>
-            candidates.has(id) ? [{ id, label: candidates.get(id) ?? id }] : [],
-          ),
-          usage,
-          costNanoDollars: modelCost(usage, this.options.rates),
-        };
-      } catch (error: unknown) {
-        if (signal.aborted) return { kind: 'timeout' as const, usage };
-        if (!(error instanceof NodeExecutorFailure)) throw error;
-        return { kind: failureOutcome(error), usage };
-      }
-    });
-    if (reply.kind !== 'busy') {
-      await this.runs.recordUsage({
-        ...actor,
-        requestId,
-        usage,
-        costNanoDollars: modelCost(usage, this.options.rates),
+        },
       });
+      inference = { kind: 'answer' as const, answer };
+    } catch (error: unknown) {
+      if (signal.aborted) {
+        inference = { kind: 'timeout' as const };
+      } else {
+        if (!(error instanceof NodeExecutorFailure)) throw error;
+        inference = { kind: failureOutcome(error) };
+      }
     }
-    return reply;
+
+    const costNanoDollars = modelCost(usage, this.options.rates);
+    await this.runs.recordUsage({
+      ...actor,
+      requestId,
+      usage,
+      costNanoDollars,
+    });
+    if (inference.kind !== 'answer') return { kind: inference.kind, usage };
+    const parsed = explanationModelAnswerSchema.safeParse(inference.answer);
+    if (!parsed.success) return { kind: 'invalid_response' as const, usage };
+    const { failedStep, steps } = context;
+    const candidates = new Map(steps.map((step) => [step.id, step.label]));
+    if (failedStep !== null)
+      candidates.set(failedStep.nodeId, failedStep.label);
+    return {
+      kind: 'explained' as const,
+      explanation: parsed.data.explanation,
+      steps: [...new Set(parsed.data.stepIds)].flatMap((id) =>
+        candidates.has(id) ? [{ id, label: candidates.get(id) ?? id }] : [],
+      ),
+      usage,
+      costNanoDollars,
+    };
   }
 
   private async prepare(input: ExplainInput, signal: AbortSignal) {

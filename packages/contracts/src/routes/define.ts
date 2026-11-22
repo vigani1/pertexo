@@ -30,6 +30,7 @@ export type RouteRateClass =
   | 'preview_test'
   | 'connection_mutation'
   | 'provider_test'
+  | 'assistant_request'
   | 'destination_test'
   | 'trigger_mutation'
   | 'provider_execution';

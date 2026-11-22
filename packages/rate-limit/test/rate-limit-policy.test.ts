@@ -125,6 +125,13 @@ describe('abuse rate-limit policy', () => {
           ['connection', 5],
         ],
       ],
+      assistant_request: [
+        'closed',
+        [
+          ['actor', 10],
+          ['workspace', 20],
+        ],
+      ],
       destination_test: [
         'closed',
         [

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as explanation from '../../schemas/workflows/assistant/explanation.js';
 import * as settings from '../../schemas/workflows/assistant/settings.js';
 import { defineRoute } from '../define.js';
+import { responseReference } from '../openapi-primitives.js';
 import { projected, readProblems, session, workspaceParams } from './access.js';
 
 const settingsPath = '/v1/workspaces/{workspaceId}/assistant';
@@ -77,7 +78,10 @@ export const assistantRoutes = {
     path: explainPath,
     params,
     access: session('run:read'),
-    rateLimit: 'ordinary_mutation',
+    // With the 12 s deadline, this limits overlapping requests per workspace
+    // without holding database connections while waiting for inference.
+    rateLimit: 'assistant_request',
+    problems: { ...readProblems, '429': responseReference('RateLimited') },
     description:
       'Request an explanation of a failed run from the confirmed endpoint.',
     body: projected(
