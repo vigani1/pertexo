@@ -26,7 +26,7 @@ import type { RunEventNotificationPublisher } from '@pertexo/queue/server';
 
 export type PostgresWorkflowRunPersistence = Readonly<{
   persistence: WorkflowRunPersistence;
-  mcp: McpRuntime;
+  mcp: Omit<McpRuntime, 'liveSource'>;
   close(): Promise<void>;
 }>;
 

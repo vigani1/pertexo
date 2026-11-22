@@ -17,6 +17,7 @@ const toolArguments = z
   })
   .meta({ type: 'object' });
 const metadata = z.object({
+  'pertexo/waitMillis': z.number().int().nonnegative().optional(),
   'pertexo/idempotencyKey': idempotencyKeySchema.optional(),
 });
 export const mcpRpcRequestSchema = z.discriminatedUnion('method', [

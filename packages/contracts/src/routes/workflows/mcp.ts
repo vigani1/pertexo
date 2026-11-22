@@ -13,7 +13,7 @@ export const mcpTransportRoutes = {
     path: MCP_ENDPOINT_PATH,
     operationId: 'exchangeMcpMessage',
     description:
-      'Stateless Streamable HTTP for a workspace API token. Send the negotiated protocol header after initialize. Calls admit runs and return a status reference. Use params._meta["pertexo/idempotencyKey"] for exact retries while a command receipt is retained.',
+      'Stateless Streamable HTTP for a workspace API token. Send the negotiated protocol header after initialize. Calls admit runs and may return the result inline or a pending status reference. Use params._meta["pertexo/waitMillis"] to shorten the wait. Use params._meta["pertexo/idempotencyKey"] for exact retries while a command receipt is retained.',
     access: {
       auth: 'token',
       capabilities: [

@@ -18,6 +18,7 @@ import {
 import { mcpClient, pendingReference } from './client.js';
 import { expose, readExposure } from './exposure.js';
 import { mcpExposureCases } from './exposure.cases.js';
+import { mcpWaitCases } from './wait.cases.js';
 import { mcpAdmissionCases } from './admission.cases.js';
 
 const toolName = 'greet';
@@ -51,6 +52,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
       running = await stack.boot({
         WORKSPACE_QUEUED_RUN_LIMIT: '2',
         AUTH_SIGN_UP_MODE: 'open',
+        HTTP_ALLOWED_PRIVATE_NETWORKS: '127.0.0.1/32',
       });
       const send = await signUp(stack, running.origin);
       owner = await ownWorkspace(send);
@@ -82,7 +84,7 @@ describe.runIf(betterAuthIntegrationEnabled)(
         'notifications/initialized',
         {},
         undefined,
-        true,
+        { notification: true },
       );
       expect(notification.status).toBe(202);
       expect(await notification.text()).toBe('');
@@ -180,13 +182,17 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const key = randomUUID();
       const args = { name: 'sensitive-input-for-audit-check' };
       const [accepted, duplicate] = await Promise.all([
-        first.client.invoke(toolName, args, key),
+        first.client.invoke(toolName, args, { key, waitMillis: 0 }),
         first.client.result(
           first.client.request('tools/call', {
             name: toolName,
             arguments: args,
             extra: 'client extension',
-            _meta: { 'pertexo/idempotencyKey': key, 'example/client': true },
+            _meta: {
+              'pertexo/idempotencyKey': key,
+              'pertexo/waitMillis': 0,
+              'example/client': true,
+            },
           }),
         ),
       ]);
@@ -197,9 +203,12 @@ describe.runIf(betterAuthIntegrationEnabled)(
         },
       });
       expect(duplicate).toEqual(accepted);
-      expect(await first.client.invoke(toolName, args, key)).toEqual(accepted);
       expect(
-        (await first.client.call(toolName, { name: 'changed' }, key)).status,
+        await first.client.invoke(toolName, args, { key, waitMillis: 0 }),
+      ).toEqual(accepted);
+      expect(
+        (await first.client.call(toolName, { name: 'changed' }, { key }))
+          .status,
       ).toBe(409);
       const invocation = pendingReference(accepted);
       const another = await credential(
@@ -282,9 +291,13 @@ describe.runIf(betterAuthIntegrationEnabled)(
       const name = 'folder_tool';
       const workflow = await publishGraph(owner, 'Folder tool', graph);
       await expose(owner, workflow, name);
-      const pending = await delegated.client.invoke(name, {
-        name: 'Authorized',
-      });
+      const pending = await delegated.client.invoke(
+        name,
+        {
+          name: 'Authorized',
+        },
+        { waitMillis: 0 },
+      );
       expect(pending.isError).toBe(false);
       const invocation = pendingReference(pending);
       const folder = randomUUID();
@@ -334,9 +347,13 @@ describe.runIf(betterAuthIntegrationEnabled)(
       ).not.toContain(name);
       await expose(owner, workflow, name);
       expect((await delegated.client.status(invocation)).isError).toBe(true);
-      const fresh = await delegated.client.invoke(name, {
-        name: 'New exposure',
-      });
+      const fresh = await delegated.client.invoke(
+        name,
+        {
+          name: 'New exposure',
+        },
+        { waitMillis: 0 },
+      );
       expect(fresh.isError).toBe(false);
       const republished = await publishDraft(owner, workflow.path, {
         ...graph,
@@ -375,21 +392,25 @@ describe.runIf(betterAuthIntegrationEnabled)(
       };
       const workflow = await publishGraph(owner, 'Failing tool', broken);
       await expose(owner, workflow, 'failing');
-      const accepted = await first.client.invoke('failing', {
-        name: 'Private',
+      const key = randomUUID();
+      const args = { name: 'Private' };
+      const inline = await first.client.invoke('failing', args, { key });
+      expect(inline).toMatchObject({
+        isError: true,
+        structuredContent: { status: 'failed' },
       });
-      expect(accepted.isError).toBe(false);
-      const reference = pendingReference(accepted);
-      await expect
-        .poll(
-          async () =>
-            (await first.client.status(reference)).structuredContent.status,
-          { timeout: 15_000 },
-        )
-        .toBe('failed');
-      expect((await first.client.status(reference)).isError).toBe(true);
+      const reference = pendingReference(
+        await first.client.invoke('failing', args, { key, waitMillis: 0 }),
+      );
+      expect(await first.client.status(reference)).toEqual(inline);
     });
 
+    mcpWaitCases({
+      getOwner: () => owner,
+      credential,
+      runsOf,
+      graph,
+    });
     mcpExposureCases(() => owner, graph);
     mcpAdmissionCases({
       getWorkspace: () => foreign,

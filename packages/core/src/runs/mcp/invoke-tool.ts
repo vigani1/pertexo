@@ -112,7 +112,7 @@ export function invokeMcpTool(
         ...(input.traceId === undefined ? {} : { traceId: input.traceId }),
       });
       return {
-        status: 'pending' as const,
+        runId: run.id,
         invocation: invocationReference(run.id, input.tokenId),
       };
     },

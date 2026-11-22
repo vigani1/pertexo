@@ -58,27 +58,41 @@ export class McpController {
     const { actor, workspaceId } = caller;
     if (actor.kind !== 'api_key')
       return throwApplicationError(applicationError('auth.unauthenticated'));
+    const waiting = new AbortController();
+    const disconnect = () => {
+      waiting.abort();
+    };
+    response.raw.once('close', disconnect);
+    if (response.raw.destroyed) disconnect();
     try {
-      const result = await this.service.dispatch(input, {
-        actorId: actor.actorId,
-        workspaceId,
-        tokenId: actor.tokenId,
-        ...requestIdentifiers(caller),
-      });
+      const result = await this.service.dispatch(
+        input,
+        {
+          actorId: actor.actorId,
+          workspaceId,
+          tokenId: actor.tokenId,
+          ...requestIdentifiers(caller),
+        },
+        waiting.signal,
+      );
+      if (waiting.signal.aborted) return;
       return await response.send({
         jsonrpc: MCP_JSON_RPC_VERSION,
         id: input.id,
         result,
       });
     } catch (error) {
+      if (waiting.signal.aborted) return;
       const failure = toolFailure(error);
       if (input.method === 'tools/call' && failure !== undefined)
-        return response.send({
+        return await response.send({
           jsonrpc: MCP_JSON_RPC_VERSION,
           id: input.id,
           result: toolResult(failure),
         });
       throw error;
+    } finally {
+      response.raw.off('close', disconnect);
     }
   }
 }

@@ -49,7 +49,7 @@ export function assembleWorkflowRuntime({
       audience: identityRuntime.people,
     }),
     forms,
-    mcp: { ...runAdapter.mcp, exposure: database.mcp },
+    mcp: { ...runAdapter.mcp, exposure: database.mcp, liveSource },
     variables: metadataRuntime.variables,
     dataTables: metadataRuntime.dataTables,
     governance: metadataRuntime.governance,

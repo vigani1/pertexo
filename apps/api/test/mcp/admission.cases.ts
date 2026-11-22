@@ -26,10 +26,12 @@ export function mcpAdmissionCases({
     await stopWorker();
     const { client } = getToken();
     expect(
-      (await client.invoke('capacity_tool', { name: 'One' })).isError,
+      (await client.invoke('capacity_tool', { name: 'One' }, { waitMillis: 0 }))
+        .isError,
     ).toBe(false);
     expect(
-      (await client.invoke('capacity_tool', { name: 'Two' })).isError,
+      (await client.invoke('capacity_tool', { name: 'Two' }, { waitMillis: 0 }))
+        .isError,
     ).toBe(false);
     const full = await client.call('capacity_tool', { name: 'Three' });
     expect(full.status).toBe(429);
