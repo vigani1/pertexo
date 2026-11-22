@@ -177,7 +177,11 @@ function settleInvocation(
     failure,
   }: PreparedInlineInvocation,
 ) {
-  const [admission] = admitAttempts(state, [invocation.invocationKey]);
+  const [admission] = admitAttempts(
+    state,
+    [invocation.invocationKey],
+    occurredAt,
+  );
   if (admission === undefined)
     throw new WorkflowEngineError(
       'transition_invalid',

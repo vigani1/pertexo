@@ -16,10 +16,12 @@ import {
 } from './transition-state.js';
 import { settleFailureHandlers } from '../failure-routing/selection.js';
 import { applyWorkflowStops } from './stops.js';
+import { advanceAgents, type AgentScheduler } from './scheduling/agents.js';
 
 export interface AdvanceWorkflowFromSchedulerStateInput {
   readonly checkpoint: WorkflowCheckpoint;
   readonly schedulerState?: SchedulerState;
+  readonly agentScheduler?: AgentScheduler | undefined;
   readonly observations?: readonly WorkflowObservation[];
   readonly occurredAt: string;
   readonly maximumAdmissions: number;
@@ -89,6 +91,12 @@ export function prepareWorkflowAdvance(
   const state: MutableWorkflowTransition = {
     current,
     graph: input.schedulerState,
+    agentScheduler: input.agentScheduler,
+    agents: new Map(
+      current.agents?.map((agent) => [agent.parentInvocationKey, agent]),
+    ),
+    agentOutputs: new Map(),
+    continueAgents: false,
     schedulerNodes: indexTransitionNodes(input.schedulerState),
     invocations: new Map(
       current.invocations.map((invocation) => [
@@ -134,6 +142,7 @@ export function prepareWorkflowAdvance(
     });
     settleFailureHandlers(state, occurredAt);
     deriveWorkflowTransitions(state, { coordinatorNodeIds, occurredAt });
+    advanceAgents(state, occurredAt);
     applyWorkflowStops(state, occurredAt);
   };
   apply(observations, input.occurredAt, input.dueResumptions);

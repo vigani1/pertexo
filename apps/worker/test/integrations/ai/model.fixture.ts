@@ -118,6 +118,7 @@ export async function fakeModel(answers: readonly Answer[]) {
         : Promise.reject(new ProviderCredentialInvalidError()),
   });
   return {
+    baseUrl,
     calls,
     registry: allowed,
     connections,

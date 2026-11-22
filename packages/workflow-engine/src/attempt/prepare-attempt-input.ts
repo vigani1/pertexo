@@ -29,6 +29,8 @@ import {
 } from '../input-checks/engine-values.js';
 import type { NodeAttemptInputSource } from './node-attempt.types.js';
 import { invocationKey as createInvocationKey } from '../invocations/invocation-identity.js';
+import { agentChildInvocationKey } from '../invocations/agent-invocation.js';
+import { executableAgentTool } from '../compilation/verified-executable.js';
 
 // Predecessor outputs arrive keyed by step and invocation: JSON may spend six
 // bytes per character of those identities, plus fixed punctuation, and three
@@ -276,12 +278,7 @@ export function prepareNodeAttemptInput(
   }
   const { node, graph: containingGraph, ancestors } = context;
   assertStructuredScope(input, ancestors);
-  if (input.invocationKey !== expectedInvocationKey(input, node.id)) {
-    operationError(
-      'attempt_invalid',
-      'node invocation identity does not match',
-    );
-  }
+  const executionNode = resolveAttemptNode(input, node);
   const directUpstream = new Set(
     containingGraph.edges
       .filter(
@@ -316,7 +313,7 @@ export function prepareNodeAttemptInput(
     );
   const structuredInputs = parseStructuredInputs(input);
   return {
-    node,
+    node: executionNode,
     runInput,
     variables,
     directUpstream,
@@ -329,4 +326,30 @@ export function prepareNodeAttemptInput(
     ...(structuredInputs === undefined ? {} : { structuredInputs }),
     ...(sourceFailure === undefined ? {} : { sourceFailure }),
   };
+}
+
+function resolveAttemptNode(
+  input: NodeAttemptInputSource,
+  node: WorkflowExecutableNode,
+): WorkflowExecutableNode {
+  const parentKey = expectedInvocationKey(input, node.id);
+  const work = input.agent?.identity;
+  const pinned = executableAgentTool(input.executable, node.id);
+  const expectedKey =
+    work === undefined
+      ? parentKey
+      : agentChildInvocationKey(input.workflowVersionId, parentKey, work);
+  if (
+    input.invocationKey !== expectedKey ||
+    (work !== undefined &&
+      (pinned === undefined || work.parentInvocationKey !== parentKey))
+  ) {
+    operationError(
+      'attempt_invalid',
+      'node invocation identity does not match',
+    );
+  }
+  return work?.work.kind === 'tool_call' && pinned !== undefined
+    ? pinned.node
+    : node;
 }

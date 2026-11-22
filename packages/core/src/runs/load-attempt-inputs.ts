@@ -15,10 +15,13 @@ import {
 import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 import { withLoopResults } from './values/loop-results.js';
 import { canonicalJson } from '@pertexo/workflow-model';
+import { loadAgentAttemptInput } from './agent-attempt-input.js';
+import type { AgentAttemptInput } from '@pertexo/workflow-engine/server';
 
 /** Everything a node attempt's executor reads, projected from stored state. */
 export type NodeAttemptInputs = Omit<NodeAttemptStoredInputs, 'checkpoint'> &
   Readonly<{
+    agent?: AgentAttemptInput;
     /** A join's selected branches and their outputs. */
     coordinatorInput?: Readonly<{
       ledger: Readonly<Record<string, unknown>>;
@@ -186,6 +189,11 @@ export async function loadAttemptInputs(
     completedNodeOutputs: resolved.map(({ output }) => output),
   };
   const checkpoint = decodeStoredValue(() => parseCheckpoint(stored));
+  const agent = await loadAgentAttemptInput(store, {
+    request: input,
+    checkpoint,
+    runDeadlineAt: inputs.deadlineAt,
+  });
   if (inputs.sourceFailure !== undefined) {
     const source = checkpoint.invocations.find(
       ({ invocationKey }) =>
@@ -229,6 +237,7 @@ export async function loadAttemptInputs(
   }
   return Object.freeze({
     ...inputs,
+    ...agent,
     ...(join === undefined ? {} : { coordinatorInput: join }),
     ...(structuredCollection === undefined ? {} : { structuredCollection }),
     ...(loopResultsTooLarge ? { loopResultsTooLarge: true as const } : {}),

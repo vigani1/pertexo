@@ -1,4 +1,5 @@
 import { MODEL_LIMITS } from './model-settings.js';
+import type { AgentModelContext } from './agent/agent-request.js';
 import {
   type NodeExecutionInvocation,
   NodeExecutorFailure,
@@ -26,28 +27,71 @@ import {
 
 const failure = providerFailure(NodeExecutorFailure);
 
-export async function runModel({
-  client,
-  invocation,
-  config,
-  prompt,
-  purpose,
-  now,
-}: Readonly<{
+type ModelAttempt = Readonly<{
   client: ModelClient;
   invocation: NodeExecutionInvocation<unknown, unknown>;
   config: ModelConfig;
   prompt: string;
   purpose: string;
   now: () => number;
-}>) {
-  const context = attemptContext(invocation, config, now);
+}>;
+
+export async function runModel(attempt: ModelAttempt) {
+  const { config } = attempt;
   const validator =
     config.mode === 'structured'
       ? compileBoundedObjectSchema(config.outputSchema)
       : undefined;
   if (config.mode === 'structured' && validator === undefined)
     throw failure('failed', 'configuration', { possiblyDispatched: false });
+  return withModelAttempt(attempt, async (complete) => {
+    const first = await complete();
+    if (validator === undefined && first.kind === 'text')
+      return { text: first.text };
+    if (first.kind === 'proposal')
+      throw modelFailure('invalid_response', { possiblyDispatched: true });
+    const answer = candidate(first);
+    if (validator?.(answer)) return { data: answer };
+    const repaired = candidate(
+      await complete({
+        answer: first.kind === 'text' ? first.text : first.data,
+      }),
+    );
+    if (validator?.(repaired)) return { data: repaired };
+    throw modelFailure('output_schema_invalid', {
+      possiblyDispatched: true,
+    });
+  });
+}
+
+export async function runAgentTurn(
+  attempt: Omit<ModelAttempt, 'config'> &
+    Readonly<{ config: Extract<ModelConfig, { mode: 'text' }> }>,
+  agent: AgentModelContext,
+) {
+  return withModelAttempt(
+    attempt,
+    async (complete) => {
+      const result = await complete();
+      if (result.kind === 'text') return { text: result.text };
+      if (result.kind === 'proposal' && result.call.name === agent.tool.name)
+        return { proposal: result.call };
+      throw modelFailure('invalid_response', { possiblyDispatched: true });
+    },
+    agent,
+  );
+}
+
+async function withModelAttempt<Result>(
+  { client, invocation, config, prompt, purpose, now }: ModelAttempt,
+  use: (
+    complete: (repair?: {
+      answer: unknown;
+    }) => ReturnType<ModelClient['complete']>,
+  ) => Promise<Result>,
+  agent?: AgentModelContext,
+): Promise<Result> {
+  const context = attemptContext(invocation, config, now);
 
   const {
     runtime,
@@ -104,7 +148,16 @@ export async function runModel({
             possiblyDispatched: repair !== undefined,
           });
         return client.complete(
-          modelRequest(credential.endpoint, config, prompt, repair),
+          agent === undefined || config.mode !== 'text'
+            ? modelRequest(credential.endpoint, config, prompt, repair)
+            : {
+                endpoint: credential.endpoint,
+                config,
+                prompt,
+                maxTokens:
+                  config.maxOutputTokens ?? MODEL_LIMITS.defaultOutputTokens,
+                agent,
+              },
           {
             credential,
             signal,
@@ -115,22 +168,7 @@ export async function runModel({
           },
         );
       };
-      const first = await complete();
-      if (validator === undefined && first.kind === 'text')
-        return { text: first.text };
-      if (first.kind === 'proposal')
-        throw modelFailure('invalid_response', { possiblyDispatched: true });
-      const answer = candidate(first);
-      if (validator?.(answer)) return { data: answer };
-      const repaired = candidate(
-        await complete({
-          answer: first.kind === 'text' ? first.text : first.data,
-        }),
-      );
-      if (validator?.(repaired)) return { data: repaired };
-      throw modelFailure('output_schema_invalid', {
-        possiblyDispatched: true,
-      });
+      return use(complete);
     },
   );
 }

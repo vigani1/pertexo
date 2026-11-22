@@ -1,8 +1,9 @@
 import type { OutputReference } from '../workflow-execution.js';
+import { AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
 
 export const AGENT_LIMITS = Object.freeze({
   turns: 5,
-  toolCalls: 4,
+  toolCalls: AGENT_TOOL_LIMITS.historyEntries,
   modelDispatches: 8,
   inputTokens: 128_000,
   outputTokens: 8_192,
@@ -10,13 +11,15 @@ export const AGENT_LIMITS = Object.freeze({
   timeoutMillis: 120_000,
 });
 
+export type AgentModelRates = Readonly<{ input: number; output: number }>;
+
 export type AgentAttemptReceipt = Extract<OutputReference, { kind: 'inline' }>;
 
 export interface AgentContinuation {
   readonly parentInvocationKey: string;
   readonly deadlineAt: string;
   /** Rates in nano-dollars per token, frozen before the first model turn. */
-  readonly modelRates: Readonly<{ input: number; output: number }>;
+  readonly modelRates: AgentModelRates;
   readonly budget: Readonly<{
     dispatches: number;
     inputTokens: number;

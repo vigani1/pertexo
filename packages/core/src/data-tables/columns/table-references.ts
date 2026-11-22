@@ -8,6 +8,8 @@ import {
   type DataTableConfig,
 } from '@pertexo/node-sdk';
 import {
+  agentConfigSchema,
+  isAgentDefinition,
   isRecord,
   type WorkflowNode,
   type WorkflowGraph,
@@ -68,6 +70,16 @@ function references(graph: ReferenceGraph) {
           label: node.label ?? node.id,
           node,
         });
+      else if (isAgentDefinition(node.definition)) {
+        const settings = agentConfigSchema.safeParse(node.config);
+        if (settings.success)
+          found.push({
+            config: settings.data.tool.config,
+            path: `${path}.config.tool`,
+            label: node.label ?? node.id,
+            node: { ...node, inputMappings: {} },
+          });
+      }
     }
   return found;
 }

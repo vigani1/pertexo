@@ -9,6 +9,8 @@ import {
   storedExecutionValuesEqual,
 } from '../../../shared/stored-execution.js';
 import type { PoolClient } from 'pg';
+import { attemptDiagnosticFields } from '@pertexo/node-sdk';
+import { isAgentWorkInvocationKey } from '@pertexo/workflow-engine/server';
 
 import { CoordinatorRunStateCorruptError } from '../coordinator-state.errors.js';
 import type { CoordinatorEventRow } from './attempts.repository.js';
@@ -85,6 +87,7 @@ export function completedInlineOutput(
     !controlOutputNodeIds.has(row.node_id);
   if (ignoresControlOutput) return [];
   const identity = attemptFact(row);
+  const { modelUsage } = attemptDiagnosticFields(row.attempt_diagnostics);
   let stored;
   try {
     stored = decodeStoredValue(() =>
@@ -100,6 +103,13 @@ export function completedInlineOutput(
           attemptId: identity.attemptId,
           invocationKey: identity.invocationKey,
           value: stored.value,
+          ...(modelUsage?.kind !== 'complete' ||
+          !isAgentWorkInvocationKey(identity.invocationKey)
+            ? {}
+            : {
+                inputTokens: modelUsage.inputTokens,
+                outputTokens: modelUsage.outputTokens,
+              }),
         },
       ]
     : [];

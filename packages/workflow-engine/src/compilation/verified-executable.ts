@@ -14,11 +14,13 @@ import type {
 } from './workflow-executable.js';
 import { sameIdentity } from './definition-identity.js';
 import { fail } from './executable.errors.js';
+import { pinAgentTool } from './agent-tools.js';
 type VerifiedExecutableFacts = Readonly<{
   failureRoutes: readonly ExecutionFailureRoute[];
   nodes: readonly ExecutionNode[];
   controls: ReadonlyMap<string, ControlNodeConfig>;
   readOnlyNodeIds: ReadonlySet<string>;
+  agentTools: ReadonlyMap<string, NonNullable<ReturnType<typeof pinAgentTool>>>;
 }>;
 const authenticExecutableIdentities = new WeakMap<
   object,
@@ -77,9 +79,22 @@ export function registerExecutableIdentity(
           .filter((node) => attemptsOnlyRead(node, catalog))
           .map(({ id }) => id),
       ),
+      agentTools: new Map(
+        nodes.flatMap((node) => {
+          const tool = pinAgentTool(node, catalog);
+          return tool === undefined ? [] : [[node.id, tool] as const];
+        }),
+      ),
     }),
   );
   return value;
+}
+
+export function executableAgentTool(
+  value: CompiledWorkflowExecutable,
+  nodeId: string,
+) {
+  return authenticExecutableIdentities.get(value)?.agentTools.get(nodeId);
 }
 
 function withControls(graph: WorkflowExecutableGraph): ExecutionNode[] {

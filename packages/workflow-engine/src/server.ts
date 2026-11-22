@@ -78,3 +78,6 @@ export {
 } from './attempt/mapping-refusal.errors.js';
 
 export type { InlineAdvanceOptions } from './transition/advance-inline-chain.js';
+export type { AgentAttemptInput } from './attempt/agent-input.js';
+export { isAgentWorkInvocationKey } from './invocations/agent-invocation.js';
+export type { AgentModelRates } from './control-nodes/agent-continuation.js';

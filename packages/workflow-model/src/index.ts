@@ -96,9 +96,13 @@ export {
   isCoreSwitchDefinition,
 } from './flow/control-nodes/control-node-definitions.js';
 export {
+  AGENT_FIND_ROWS,
   AGENT_STEP,
   AGENT_TOOL_LIMITS,
+  agentConfigSchema,
   agentToolCallSchema,
+  agentTurnOutputSchema,
+  type AgentConfig,
   type AgentToolCall,
   isAgentDefinition,
 } from './flow/control-nodes/agent.js';

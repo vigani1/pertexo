@@ -3,6 +3,7 @@ import type { SchedulerState } from './scheduling/policy.js';
 import {
   canonicalJson,
   compareOrdinal,
+  type JsonValue,
   type WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
 import { sameOutputReference } from '../invocations/output-reference.js';
@@ -27,14 +28,21 @@ import type {
   WorkflowCheckpoint,
   WorkflowObservation,
 } from '../workflow-execution.js';
-
+import type { AgentContinuation } from '../control-nodes/agent-continuation.js';
+import type { AgentScheduler } from './scheduling/agents.js';
 import { ORDINAL_SORT_KEY_WIDTH } from '../invocations/invocation-identity.js';
-
 export interface MutableWorkflowTransition {
   readonly current: WorkflowCheckpoint;
   readonly graph: SchedulerState | undefined;
   readonly schedulerNodes: SchedulerNodeLookup | undefined;
   readonly invocations: Map<string, InvocationState>;
+  readonly agents: Map<string, AgentContinuation>;
+  readonly agentScheduler: AgentScheduler | undefined;
+  readonly agentOutputs: Map<
+    string,
+    Readonly<{ nodeId: string; value: JsonValue }>
+  >;
+  continueAgents: boolean;
   readonly joins: Map<string, JoinState>;
   readonly loops: Map<string, LoopState>;
   readonly branchSelections: BranchSelection[];
@@ -51,7 +59,6 @@ export interface MutableWorkflowTransition {
   deadlineOccurredAt: string | undefined;
   runStatus: RunStatus;
 }
-
 export type SchedulerNodeLookup = ReadonlyMap<
   string,
   Readonly<{
@@ -59,7 +66,6 @@ export type SchedulerNodeLookup = ReadonlyMap<
     containingLoopId?: string;
   }>
 >;
-
 /** One transition-local projection, distinct from draft-validation indexes. */
 export function indexTransitionNodes(
   graph: SchedulerState | undefined,

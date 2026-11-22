@@ -24,6 +24,7 @@ import {
   deferCoordinatorForActiveCapacity,
 } from '../receipts.repository.js';
 import { persistCoordinatorRunTransition } from './persist-run-transition.js';
+import { persistAgentOutputs } from './agent-outputs.repository.js';
 import {
   persistDueReadyTransitions,
   persistLoopBarrierTransitions,
@@ -99,6 +100,7 @@ export async function saveRunTransition(
     workspaceId,
   });
   await persistFailureHandling(client, workspaceId, runId, plan);
+  await persistAgentOutputs(client, input);
   await persistConsumedCalls(client, workspaceId, runId, plan);
   if (row.has_unconsumed_tasks || (plan.taskIntents?.length ?? 0) > 0)
     await persistConsumedTasks(client, workspaceId, runId, plan);

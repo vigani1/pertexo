@@ -19,7 +19,7 @@ import { STORED_INTEGER_MAX } from '@pertexo/workflow-model';
 const UUID_TEXT_LENGTH = 36;
 // A completion's value nests inside its identity record and the window's array,
 // which add this much depth and these members.
-const COMPLETION_ENVELOPE = Object.freeze({ depth: 2, members: 4 });
+const COMPLETION_ENVELOPE = Object.freeze({ depth: 2, members: 6 });
 // The window array's brackets.
 const WINDOW_BRACKET_BYTES = 2;
 const maximumMaterialIdentityBytes =
@@ -30,6 +30,8 @@ const maximumMaterialIdentityBytes =
       WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength,
     ),
     value: null,
+    inputTokens: Number.MAX_SAFE_INTEGER,
+    outputTokens: Number.MAX_SAFE_INTEGER,
   }).length - 'null'.length;
 const COORDINATOR_COMPLETION_OUTPUT_LIMITS = Object.freeze({
   bytes:
