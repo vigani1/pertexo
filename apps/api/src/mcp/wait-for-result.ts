@@ -14,10 +14,11 @@ export async function waitForMcpResult(
 ) {
   const { disconnected, waitMillis, ...statusInput } = input;
   const pending = { status: 'pending' as const, invocation: input.invocation };
-  const budget = Math.min(
-    MCP_RESULT_WAIT_MAX_MILLIS,
-    waitMillis ?? MCP_RESULT_WAIT_MAX_MILLIS,
-  );
+  // A client may only shorten the wait; anything longer uses the maximum.
+  const budget =
+    waitMillis !== undefined && waitMillis < MCP_RESULT_WAIT_MAX_MILLIS
+      ? waitMillis
+      : MCP_RESULT_WAIT_MAX_MILLIS;
   if (budget === 0 || disconnected.aborted) return pending;
 
   const deadline = new AbortController();
