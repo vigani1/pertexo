@@ -2,7 +2,6 @@ import {
   CONNECTION_LOOKUP_LIMITS,
   connectionLookupResponseSchema,
   type ConnectionLookupRequest,
-  type ConnectionLookupResponse,
 } from '@pertexo/contracts';
 import {
   ProviderHttpError,
@@ -64,17 +63,15 @@ export class LookupConnectionOptionsService {
       throw requestInputError(['input'], 'Invalid lookup input');
     const callerSignal = encryptionSignal(input);
     callerSignal.throwIfAborted();
-    const local = prepared.local();
+    const local: unknown = prepared.local();
     if (local !== undefined) return checkedResponse(local);
 
     const deadline = new AbortController();
-    const timer = setTimeout(
-      () =>
-        deadline.abort(
-          new DOMException('Connection lookup timed out', 'TimeoutError'),
-        ),
-      CONNECTION_LOOKUP_LIMITS.timeoutMillis,
-    );
+    const timer = setTimeout(() => {
+      deadline.abort(
+        new DOMException('Connection lookup timed out', 'TimeoutError'),
+      );
+    }, CONNECTION_LOOKUP_LIMITS.timeoutMillis);
     const signal = AbortSignal.any([callerSignal, deadline.signal]);
     try {
       const result = await this.run(input, prepared.run, signal, test);
@@ -85,15 +82,16 @@ export class LookupConnectionOptionsService {
     } catch (error: unknown) {
       callerSignal.throwIfAborted();
       if (error instanceof ConnectionNotFoundError) throw error;
-      const reason = deadline.signal.aborted
-        ? 'provider_unavailable'
-        : error instanceof ConnectionUnavailableError
-          ? 'connection_unavailable'
-          : undefined;
-      if (reason !== undefined && prepared.recover !== undefined)
-        return checkedResponse(prepared.recover(reason));
-      if (deadline.signal.aborted)
+      if (deadline.signal.aborted) {
+        if (prepared.recover !== undefined)
+          return checkedResponse(prepared.recover('provider_unavailable'));
         return throwApplicationError(applicationError('provider.unavailable'));
+      }
+      if (
+        error instanceof ConnectionUnavailableError &&
+        prepared.recover !== undefined
+      )
+        return checkedResponse(prepared.recover('connection_unavailable'));
       throw error;
     } finally {
       clearTimeout(timer);
@@ -178,7 +176,7 @@ export class LookupConnectionOptionsService {
   }
 }
 
-function checkedResponse(result: ConnectionLookupResponse) {
+function checkedResponse(result: unknown) {
   const checked = connectionLookupResponseSchema.safeParse(result);
   if (
     !checked.success ||
