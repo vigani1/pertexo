@@ -21,7 +21,7 @@ export type SaveCoordinatorTransport = Readonly<{
  * Quiet time after the last edit before a save. Live-applied inspector edits
  * land here too, so a busy session stays well inside the draft-save limit.
  */
-const SAVE_DEBOUNCE_MS = 1_000;
+export const SAVE_DEBOUNCE_MS = 1_000;
 /** The longest a rate-limited save waits before trying on its own. */
 const MAX_RETRY_WAIT_MS = 60_000;
 /** Saves lost in a row, with the draft unchanged, before the editor says so. */

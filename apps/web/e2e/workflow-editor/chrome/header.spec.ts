@@ -1,4 +1,4 @@
-import { workflowVersionsBody } from '../../workflows/read-projections';
+import { SAVE_DEBOUNCE_MS } from '../../../src/features/workflow-editor/model/persistence/save-coordinator';
 import { temporaryTestPath } from '../../../test/support/temporary-test-path';
 import {
   expect,
@@ -6,6 +6,7 @@ import {
   type BrowserContext,
   type Page,
 } from '../../support/fixtures';
+import { workflowVersionsBody } from '../../workflows/read-projections';
 import { openWorkflowAction } from '../actions';
 import { mappingGraph } from '../graph';
 import {
@@ -125,15 +126,23 @@ async function exerciseSaveStates(
       });
     },
   );
+  await page.clock.install();
   await page.goto(editorUrl);
   const header = page.locator('header');
   const status = header.getByRole('status');
   await expect(status).toContainText('Saved');
   await openStep(page, width);
   const baseline = await measureHeader(page);
+  // Pin the pause timestamp so browser time cannot overtake it on a slow runner.
+  const now = Date.now();
+  await page.clock.setFixedTime(now);
+  await page.clock.pauseAt(now);
+  await page.clock.setSystemTime(now);
   await page.getByLabel('Label', { exact: true }).fill('Header edit');
   await expect(status).toContainText('Unsaved');
   await expectSameHeader(page, baseline);
+  await page.clock.runFor(SAVE_DEBOUNCE_MS);
+  await page.clock.resume();
   await expect(status).toContainText('Saving…');
   await expectSameHeader(page, baseline);
   await expect.poll(() => typeof finishFailure).toBe('function');
@@ -150,6 +159,7 @@ async function exerciseSaveStates(
   await expectSameHeader(page, baseline);
   remote.revision += 1;
   await page.getByLabel('Label', { exact: true }).fill('Conflicting edit');
+  await page.clock.runFor(SAVE_DEBOUNCE_MS);
   await expect(status).toContainText('Changed elsewhere');
   await expectSameHeader(page, baseline);
   await header.getByRole('button', { name: 'Review', exact: true }).click();
