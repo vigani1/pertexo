@@ -396,5 +396,3 @@ export type WorkflowVersionsResponse = z.output<
 export type WorkflowRevisionConflictProblem = z.output<
   typeof workflowRevisionConflictProblemSchema
 >;
-export * from './assistant/settings.js';
-export * from './assistant/explanation.js';
