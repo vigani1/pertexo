@@ -87,7 +87,11 @@ async function chooseOnEmptyList(
   showPendingImmediately = false,
 ) {
   const app = await renderLoadedApp(`/w/${workspaceId}/workflows`);
-  if (showPendingImmediately) app.router.update({ defaultPendingMs: 0 });
+  if (showPendingImmediately)
+    app.router.update({
+      context: app.router.options.context,
+      defaultPendingMs: 0,
+    });
   const empty = await screen.findByRole(
     'region',
     { name: 'Weave your first workflow' },
@@ -108,10 +112,13 @@ mockServer.events.on('request:start', ({ request }) => {
 describe('examples with nothing to set up', () => {
   it('creates the first-run example in one click and opens it in Build with its guide', async () => {
     const sent = workspace();
-    const draft = Promise.withResolvers<void>();
+    let releaseDraft: (() => void) | undefined;
+    const draft = new Promise<void>((resolve) => {
+      releaseDraft = resolve;
+    });
     mockServer.use(
       http.get(`${api}/workflows/${workflowId}/draft`, async () => {
-        await draft.promise;
+        await draft;
         return HttpResponse.json(draftBody(workflowId), { headers: { etag } });
       }),
     );
@@ -129,7 +136,7 @@ describe('examples with nothing to set up', () => {
         expect(originRequests()[0]).toBe(originUrl);
       });
     } finally {
-      draft.resolve();
+      releaseDraft?.();
     }
 
     await waitFor(() => {
