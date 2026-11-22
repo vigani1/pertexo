@@ -17,7 +17,7 @@ export const AGENT_INSERT_ROW = Object.freeze({
   version: 1,
 });
 const MILLIS_PER_SECOND = 1_000;
-export const AGENT_TIMEOUT_DEFAULT_MILLIS = 120_000;
+const AGENT_TIMEOUT_DEFAULT_MILLIS = 120_000;
 export const AGENT_TIMEOUT_MAX_MILLIS =
   (PENDING_TASK_LIMITS.maximumExpirySeconds + 1) * MILLIS_PER_SECOND;
 export const AGENT_TOOL_LIMITS = Object.freeze({
