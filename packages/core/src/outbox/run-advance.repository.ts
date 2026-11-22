@@ -23,6 +23,7 @@ export async function enqueueAdvance(
     outboxEventId?: string;
     traceparent?: string | undefined;
     delaySeconds?: number;
+    availableAt?: string;
   }>,
 ): Promise<string> {
   const row = advanceOutboxRow(input);
@@ -47,7 +48,7 @@ export async function enqueueAdvances(
 }
 
 function advanceOutboxRow(input: Parameters<typeof enqueueAdvance>[1]) {
-  const { workspaceId, runId, traceparent, delaySeconds } = input;
+  const { workspaceId, runId, traceparent, delaySeconds, availableAt } = input;
   const id = input.outboxEventId ?? generatePersistedId();
   const payload = {
     workspaceId,
@@ -55,6 +56,10 @@ function advanceOutboxRow(input: Parameters<typeof enqueueAdvance>[1]) {
     outboxEventId: id,
     ...(traceparent === undefined ? {} : { traceparent }),
   };
+  let available;
+  if (availableAt !== undefined) available = sql`${availableAt}::timestamptz`;
+  else if (delaySeconds !== undefined)
+    available = sql`clock_timestamp()+make_interval(secs=>${delaySeconds})`;
   return {
     id,
     workspaceId,
@@ -63,11 +68,7 @@ function advanceOutboxRow(input: Parameters<typeof enqueueAdvance>[1]) {
     aggregateId: runId,
     payload,
     payloadChecksum: canonicalOutboxPayloadChecksum(payload),
-    ...(delaySeconds === undefined
-      ? {}
-      : {
-          availableAt: sql`clock_timestamp()+make_interval(secs=>${delaySeconds})`,
-        }),
+    ...(available === undefined ? {} : { availableAt: available }),
   };
 }
 

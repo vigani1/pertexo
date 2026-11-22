@@ -24,12 +24,13 @@ import type {
   JoinState,
   LoopState,
   NodeStatus,
+  PendingTaskIntent,
   RunStatus,
   WorkflowCheckpoint,
   WorkflowObservation,
 } from '../workflow-execution.js';
 import type { AgentContinuation } from '../control-nodes/agent-continuation.js';
-import type { AgentScheduler } from './scheduling/agents.js';
+import type { AgentScheduler } from './scheduling/agent-scheduler.js';
 import { ORDINAL_SORT_KEY_WIDTH } from '../invocations/invocation-identity.js';
 export interface MutableWorkflowTransition {
   readonly current: WorkflowCheckpoint;
@@ -38,6 +39,7 @@ export interface MutableWorkflowTransition {
   readonly invocations: Map<string, InvocationState>;
   readonly agents: Map<string, AgentContinuation>;
   readonly agentScheduler: AgentScheduler | undefined;
+  readonly agentTaskIntents: PendingTaskIntent[];
   readonly agentOutputs: Map<
     string,
     Readonly<{ nodeId: string; value: JsonValue }>

@@ -7,8 +7,6 @@ import {
   isPendingTaskNode,
   isCallbackWaitNode,
   callbackWaitConfigSchema,
-  UUID_PATTERN,
-  WORKFLOW_GRAPH_LIMITS,
   taskContextSchema,
   type TaskContext,
   type JsonValue,
@@ -18,18 +16,21 @@ import type {
   ExecutionNode,
 } from '../compilation/workflow-executable.js';
 import { findExecutableNodeContext } from '../compilation/graph.js';
-import { normalizeBoundedEngineJson } from '../compilation/executable.validation.js';
 import {
   exactKeys,
   operationError,
   record,
 } from '../input-checks/engine-values.js';
-import { parseBranchPath, parseIterationPath } from '../checkpoint/fields.js';
+import {
+  parseTaskOutcome,
+  readTaskOutcomeWindow,
+} from './pending-task-outcome.js';
 import {
   configuredBranchOutputPorts,
   configuredScopedOutputPorts,
 } from '../control-nodes/control-output-ports.js';
 import { invocationKey } from '../invocations/invocation-identity.js';
+import { isAgentWorkInvocationKey } from '../invocations/agent-invocation.js';
 import {
   isFinishedIterationScope,
   isTerminalNodeStatus,
@@ -41,8 +42,6 @@ import type {
   WorkflowCheckpoint,
   WorkflowObservation,
 } from '../workflow-execution.js';
-
-import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 
 /** A successful declaration opens a task; it cannot choose a decision path. */
 export function taskDeclarationObservations(
@@ -137,68 +136,25 @@ function taskSetup<Setup>(
   return parsed.data;
 }
 
-function parseTaskOutcome(value: JsonValue): PendingTaskOutcome {
-  const fact = record(value, 'observation_invalid', 'task outcome');
-  const { taskId, invocationKey, nodeId } = fact;
-
-  exactKeys(
-    fact,
-    ['taskId', 'invocationKey', 'nodeId', 'status'],
-    ['branchPath', 'iterationPath'],
-  );
-  const invalidTaskIdentity =
-    typeof taskId !== 'string' ||
-    !UUID_PATTERN.test(taskId) ||
-    typeof invocationKey !== 'string' ||
-    invocationKey.length === 0 ||
-    invocationKey.length > WORKFLOW_GRAPH_CONTRACT_LIMITS.invocationKeyLength ||
-    typeof nodeId !== 'string' ||
-    nodeId.length === 0 ||
-    typeof fact.status !== 'string' ||
-    ![
-      'approved',
-      'rejected',
-      'submitted',
-      'expired',
-      'refused',
-      'canceled',
-    ].includes(fact.status);
-  if (invalidTaskIdentity)
-    operationError('observation_invalid', 'task outcome identity is invalid');
-  return {
-    taskId: taskId,
-    invocationKey: invocationKey,
-    nodeId: nodeId,
-    status: fact.status as PendingTaskOutcome['status'],
-    branchPath: parseBranchPath(fact.branchPath, 'invocation'),
-    iterationPath: parseIterationPath(fact.iterationPath, 'invocation'),
-  };
-}
-
 /** Typed stored task facts settle only their exact waiting invocation. */
 export function taskOutcomeObservations(
   input: unknown,
   checkpoint: WorkflowCheckpoint,
   nodes: ReadonlyMap<string, ExecutionNode>,
-  graph: WorkflowExecutableGraph,
+  {
+    graph,
+    agentDecisions,
+  }: Readonly<{
+    graph: WorkflowExecutableGraph;
+    agentDecisions: Map<string, PendingTaskOutcome['status']>;
+  }>,
 ): readonly WorkflowObservation[] {
-  let bounded: JsonValue;
-  try {
-    bounded = normalizeBoundedEngineJson(input ?? []);
-  } catch {
-    operationError('observation_invalid', 'task outcomes are invalid');
-  }
-  if (
-    !Array.isArray(bounded) ||
-    bounded.length > WORKFLOW_GRAPH_LIMITS.maxExpandedInvocations
-  )
-    operationError('observation_invalid', 'task outcome window is invalid');
   const seen = new Map<string, string>();
   const invocations = new Map(
     checkpoint.invocations.map((owner) => [owner.invocationKey, owner]),
   );
   const observations: WorkflowObservation[] = [];
-  for (const item of bounded as readonly JsonValue[]) {
+  for (const item of readTaskOutcomeWindow(input)) {
     const fact = parseTaskOutcome(item);
     const canonical = canonicalJson(fact);
     const previous = seen.get(fact.invocationKey);
@@ -208,8 +164,10 @@ export function taskOutcomeObservations(
       continue;
     }
     seen.set(fact.invocationKey, canonical);
-    assertTaskOutcomeScope(fact, { checkpoint, nodes, graph });
     const owner = invocations.get(fact.invocationKey);
+    const agentApproval = isAgentWorkInvocationKey(fact.invocationKey);
+    if (!agentApproval)
+      assertTaskOutcomeScope(fact, { checkpoint, nodes, graph });
     if (owner === undefined) {
       if (isFinishedIterationScope(checkpoint.loops, fact)) continue;
       operationError(
@@ -224,6 +182,17 @@ export function taskOutcomeObservations(
     }
     if (owner.status !== 'waiting' || owner.waitKind !== 'human_task')
       operationError('observation_invalid', 'task outcome has no durable wait');
+    if (agentApproval) {
+      if (
+        owner.agentWork?.work.kind !== 'model_turn' ||
+        owner.nodeId !== fact.nodeId
+      )
+        operationError(
+          'observation_invalid',
+          'Agent approval does not belong to its model turn',
+        );
+      agentDecisions.set(fact.invocationKey, fact.status);
+    }
     observations.push(...taskResultObservations(fact, owner, nodes));
   }
   return observations;
@@ -289,7 +258,8 @@ function taskResultObservations(
   owner: InvocationState,
   nodes: ReadonlyMap<string, ExecutionNode>,
 ): readonly WorkflowObservation[] {
-  const node = nodes.get(fact.nodeId);
+  const agentApproval = owner.agentWork?.work.kind === 'model_turn';
+  const node = agentApproval ? undefined : nodes.get(fact.nodeId);
   const inputRequest =
     node?.definition.key === 'core.request_input' || isCallbackWaitNode(node);
   const incompatibleTaskResult =
@@ -299,7 +269,8 @@ function taskResultObservations(
     operationError('observation_invalid', 'task result kind conflicts');
   // Silence settles like an answer when the step continues on Timed out.
   const timedOut =
-    fact.status === 'expired' && node !== undefined && continuesOnExpiry(node);
+    fact.status === 'expired' &&
+    (agentApproval || (node !== undefined && continuesOnExpiry(node)));
   const settled =
     timedOut || ['approved', 'rejected', 'submitted'].includes(fact.status);
   const observations: WorkflowObservation[] = [

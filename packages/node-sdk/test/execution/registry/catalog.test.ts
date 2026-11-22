@@ -273,7 +273,7 @@ describe('node-sdk catalog contracts', () => {
     ).toBe(false);
   });
 
-  it('admits read-tool policy only for declared input and result fields', () => {
+  it('admits agent-tool policy only for declared effects and fields', () => {
     const inputSchema = generateSchemaDocument(
       z.strictObject({ query: z.string() }),
     );
@@ -288,8 +288,12 @@ describe('node-sdk catalog contracts', () => {
     const candidate = { ...manifest, inputSchema, outputSchema, agentTool };
 
     expect(nodeManifestSchema.parse(candidate)).toMatchObject({ agentTool });
+    const writeTool = { ...agentTool, effect: 'write' };
+    expect(
+      nodeManifestSchema.parse({ ...candidate, agentTool: writeTool }),
+    ).toMatchObject({ agentTool: writeTool });
     for (const invalid of [
-      { ...agentTool, effect: 'write' },
+      { ...agentTool, effect: 'unknown' },
       { ...agentTool, inputFields: ['table'] },
       { ...agentTool, inputFields: ['query', 'query'] },
       { ...agentTool, result: { kind: 'fields', fields: ['missing'] } },

@@ -37,12 +37,18 @@ import {
 import type {
   CompiledWorkflowExecutable,
   ExecutionNode,
-  WorkflowExecutableGraph,
 } from '../compilation/workflow-executable.js';
-import type { ControlNodeConfig } from '@pertexo/workflow-model';
-import type { WorkflowObservation } from '../workflow-execution.js';
+import type {
+  PendingTaskOutcome,
+  WorkflowObservation,
+} from '../workflow-execution.js';
+import {
+  isAgentWorkInvocationKey,
+  isAgentModelTurnInvocationKey,
+} from '../invocations/agent-invocation.js';
 import { parseCheckpoint } from '../checkpoint/create-and-parse.js';
 import type { SchedulerState } from './scheduling/policy.js';
+import { projectSchedulerState } from './scheduling/project-scheduler.js';
 import { operationError, record } from '../input-checks/engine-values.js';
 import { parsePersistedObservations } from '../observation/persisted.js';
 import { nodeProviderIdempotencyKey } from '../attempt/derive-provider-key.js';
@@ -50,7 +56,10 @@ import type { WorkflowTransitionPlan } from '../workflow-execution.js';
 import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executable.js';
 import { assertIdentity, assertNotAborted } from '../attempt/admission.js';
 import type { AgentModelRates } from '../control-nodes/agent-continuation.js';
-import { agentSchedulerFor, graphStepOutputs } from './scheduling/agents.js';
+import {
+  agentSchedulerFor,
+  graphStepOutputs,
+} from './scheduling/agent-scheduler.js';
 export interface AdvanceWorkflowInput {
   readonly agentModelRates?: (model: string) => AgentModelRates | undefined;
   readonly test?: WorkflowTestPolicy;
@@ -67,48 +76,6 @@ export interface AdvanceWorkflowInput {
   readonly callOutcomes?: unknown;
   readonly taskOutcomes?: unknown;
   readonly signal: AbortSignal;
-}
-export function projectSchedulerState(
-  graph: WorkflowExecutableGraph,
-  controls: ReadonlyMap<string, ControlNodeConfig>,
-  readOnlyNodeIds: ReadonlySet<string> = new Set(),
-): SchedulerState {
-  const projectGraph = (graph: WorkflowExecutableGraph): SchedulerState => {
-    const nodes = graph.nodes.map(
-      ({
-        id,
-        definition,
-        config,
-        disabled,
-        sideEffectClass: pinnedSideEffectClass,
-      }) => {
-        const control = controls.get(id);
-        return {
-          id,
-          definition,
-          config,
-          ...(control === undefined ? {} : { control }),
-          disabled,
-          sideEffectClass: pinnedSideEffectClass,
-          ...(readOnlyNodeIds.has(id) ? { readOnlyAttempts: true } : {}),
-        };
-      },
-    );
-    const edges = graph.edges.map(({ source, target }) => ({
-      source: { nodeId: source.nodeId, port: source.port },
-      target: { nodeId: target.nodeId, port: target.port },
-    }));
-    const structuredBodies = graph.nodes.flatMap((node) => {
-      if (node.structured === undefined) return [];
-      const body = projectGraph(node.structured.body);
-      return [
-        { loopNodeId: node.id, nodes: body.nodes, edges: body.edges },
-        ...(body.structuredBodies ?? []),
-      ];
-    });
-    return { deriveReadiness: true, nodes, edges, structuredBodies };
-  };
-  return projectGraph(graph);
 }
 function schedulerState(
   executable: CompiledWorkflowExecutable,
@@ -170,6 +137,7 @@ export async function advanceWorkflow(
     callOutcomes,
     tasks,
     taskOutcomes,
+    agentDecisions,
     forEach,
     executionObservations,
     coordinatorObservations,
@@ -179,7 +147,7 @@ export async function advanceWorkflow(
     nodesById,
     invocationsByKey,
   });
-  const agentScheduler = agentSchedulerFor(input);
+  const agentScheduler = agentSchedulerFor({ ...input, agentDecisions });
   const schedulerInput = {
     checkpoint,
     agentScheduler,
@@ -225,10 +193,12 @@ export async function advanceWorkflow(
   return Object.freeze({
     ...plan,
     ...(calls.intents.length === 0 ? {} : { callIntents: calls.intents }),
-    ...(tasks.intents.length === 0 ? {} : { taskIntents: tasks.intents }),
+    ...(tasks.intents.length === 0
+      ? {}
+      : { taskIntents: [...tasks.intents, ...(plan.taskIntents ?? [])] }),
     attempts: plan.attempts.map((attempt) => {
       const key = nodeProviderIdempotencyKey(
-        nodesById.get(attempt.nodeId),
+        providerKeyNode(input.executable, nodesById, attempt),
         input.runId,
         attempt.invocationKey,
         attempt.sideEffectClass,
@@ -240,7 +210,7 @@ export async function advanceWorkflow(
     }),
     nodeRunAdmissions: plan.nodeRunAdmissions.map((admission) => {
       const key = nodeProviderIdempotencyKey(
-        nodesById.get(admission.nodeId),
+        providerKeyNode(input.executable, nodesById, admission),
         input.runId,
         admission.invocationKey,
         admission.sideEffectClass,
@@ -251,6 +221,20 @@ export async function advanceWorkflow(
       });
     }),
   });
+}
+
+function providerKeyNode(
+  executable: CompiledWorkflowExecutable,
+  nodes: ReadonlyMap<string, ExecutionNode>,
+  {
+    nodeId,
+    invocationKey,
+  }: Readonly<{ nodeId: string; invocationKey: string }>,
+) {
+  return isAgentWorkInvocationKey(invocationKey) &&
+    !isAgentModelTurnInvocationKey(invocationKey)
+    ? executableAgentTool(executable, nodeId)?.node
+    : nodes.get(nodeId);
 }
 function coordinateObservations({
   input,
@@ -329,11 +313,12 @@ function coordinateObservations({
     invocationsByKey,
     declarationNodes,
   );
+  const agentDecisions = new Map<string, PendingTaskOutcome['status']>();
   const taskOutcomes = taskOutcomeObservations(
     input.taskOutcomes,
     checkpoint,
     nodesById,
-    input.executable.envelope.graph,
+    { graph: input.executable.envelope.graph, agentDecisions },
   );
   const forEach = forEachCoordinatorObservations({
     completedItems: completedOutputItems,
@@ -392,6 +377,7 @@ function coordinateObservations({
     callOutcomes,
     tasks,
     taskOutcomes,
+    agentDecisions,
     forEach,
     executionObservations,
     coordinatorObservations,

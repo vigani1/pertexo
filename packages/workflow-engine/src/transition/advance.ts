@@ -16,7 +16,8 @@ import {
 } from './transition-state.js';
 import { settleFailureHandlers } from '../failure-routing/selection.js';
 import { applyWorkflowStops } from './stops.js';
-import { advanceAgents, type AgentScheduler } from './scheduling/agents.js';
+import { advanceAgents } from './scheduling/agents.js';
+import type { AgentScheduler } from './scheduling/agent-scheduler.js';
 
 export interface AdvanceWorkflowFromSchedulerStateInput {
   readonly checkpoint: WorkflowCheckpoint;
@@ -92,6 +93,7 @@ export function prepareWorkflowAdvance(
     current,
     graph: input.schedulerState,
     agentScheduler: input.agentScheduler,
+    agentTaskIntents: [],
     agents: new Map(
       current.agents?.map((agent) => [agent.parentInvocationKey, agent]),
     ),

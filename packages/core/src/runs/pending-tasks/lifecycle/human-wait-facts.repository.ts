@@ -54,6 +54,7 @@ export async function readHumanWaitFacts(
     .select({ key: structural.invocationKey })
     .from(structural)
     .where(eq(structural.invocationKey, node.invocationKey));
+  const waitingAgent = waitingAgentQuery(client);
   const physicalQuery = db
     .select({
       status: node.status,
@@ -66,7 +67,7 @@ export async function readHumanWaitFacts(
       ),
       slot_lent: call.slotLent,
       join_barrier:
-        sql<boolean>`${node.status}='pending' and ${exists(barrier)}`.as(
+        sql<boolean>`(${node.status}='pending' and ${exists(barrier)}) or ${exists(waitingAgent)}`.as(
           'join_barrier',
         ),
     })
@@ -161,6 +162,19 @@ export async function readHumanWaitFacts(
     )
     .catch(rethrowQueryFailure);
   return result.rows[0];
+}
+function waitingAgentQuery(client: PoolClient) {
+  const node = nodeRuns;
+  return drizzle(client)
+    .select({ id: runCheckpoints.workflowRunId })
+    .from(runCheckpoints)
+    .where(
+      and(
+        eq(runCheckpoints.workspaceId, node.workspaceId),
+        eq(runCheckpoints.workflowRunId, node.workflowRunId),
+        sql`${runCheckpoints.schedulerState}->'agents' @> jsonb_build_array(jsonb_build_object('parentInvocationKey',${node.invocationKey},'phase',jsonb_build_object('kind','approval_wait')))`,
+      ),
+    );
 }
 function resumeQuery(client: PoolClient, workspaceId: string) {
   const db = drizzle(client),

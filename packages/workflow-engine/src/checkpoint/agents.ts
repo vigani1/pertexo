@@ -3,7 +3,10 @@ import {
   compareOrdinal,
   isRecord,
 } from '@pertexo/workflow-model';
-import type { AgentContinuation } from '../control-nodes/agent-continuation.js';
+import type {
+  AgentContinuation,
+  AgentToolExchange,
+} from '../control-nodes/agent-continuation.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type { InvocationState } from '../workflow-execution.js';
 import { assertCheckpoint, assertExactKeys, isInteger } from './admission.js';
@@ -111,14 +114,24 @@ function parseHistory(value: unknown) {
     Array.isArray(value) && value.length <= AGENT_LIMITS.toolCalls,
     'Agent tool history exceeds its bound',
   );
-  return value.map((exchange: unknown) => {
+  return value.map((exchange: unknown): AgentToolExchange => {
     assertCheckpoint(
       isRecord(exchange),
       'Agent tool exchange must be an object',
     );
+    const proposal = attemptReceipt(exchange.proposal, 'Agent proposal');
+    if ('outcome' in exchange) {
+      assertExactKeys(exchange, ['proposal', 'outcome']);
+      const { outcome } = exchange;
+      assertCheckpoint(
+        outcome === 'rejected' || outcome === 'expired',
+        'Agent approval outcome is invalid',
+      );
+      return { proposal, outcome };
+    }
     assertExactKeys(exchange, ['proposal', 'output']);
     return {
-      proposal: attemptReceipt(exchange.proposal, 'Agent proposal'),
+      proposal,
       output: attemptReceipt(exchange.output, 'Agent tool output'),
     };
   });
@@ -139,7 +152,8 @@ function parsePhase(value: unknown): AgentContinuation['phase'] {
       assertExactKeys(value, ['kind', 'ordinal', 'proposal']);
       return { kind, ...toolCall(value) };
     case 'approval_wait': {
-      assertExactKeys(value, ['kind', 'ordinal', 'proposal', 'task']);
+      assertExactKeys(value, ['kind', 'ordinal', 'proposal'], ['task']);
+      if (value.task === undefined) return { kind, ...toolCall(value) };
       const task = parseOutputReference(value.task, 'Agent approval');
       assertCheckpoint(
         task.kind === 'task',

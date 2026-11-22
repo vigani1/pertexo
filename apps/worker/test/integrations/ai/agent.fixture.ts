@@ -4,7 +4,9 @@ import type { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
 import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   AGENT_FIND_ROWS,
+  AGENT_INSERT_ROW,
   AGENT_STEP,
+  PENDING_TASK_LIMITS,
   type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
@@ -26,7 +28,9 @@ export async function publishAgent(
   authoring: ReturnType<typeof createWorkflowAuthoringStore>,
   connectionId: string,
   table: string,
+  write?: 'approval' | 'allow',
 ) {
+  const expiry = PENDING_TASK_LIMITS.minimumExpirySeconds;
   const graph: WorkflowGraph = {
     settings: { maxRunDurationMs: 90_000 },
     callable: {
@@ -48,11 +52,38 @@ export async function publishAgent(
           { prompt: literal('Find order a.') },
           {
             model,
+            ...(write === 'approval'
+              ? { timeoutMillis: (expiry + 1) * 1_000 }
+              : {}),
             tool: {
               alias,
-              description: 'Look up one workspace order',
-              definition: AGENT_FIND_ROWS,
+              description:
+                write === undefined
+                  ? 'Look up one workspace order'
+                  : 'Insert a workspace order',
+              definition:
+                write === undefined ? AGENT_FIND_ROWS : AGENT_INSERT_ROW,
               config: { table },
+              ...(write === undefined
+                ? {}
+                : {
+                    writePermission:
+                      write === 'allow'
+                        ? { kind: 'allow' }
+                        : {
+                            kind: 'approval',
+                            config: {
+                              title: 'Approve order',
+                              instructions: '',
+                              expiresAfterSeconds: expiry,
+                              audience: {
+                                roles: [],
+                                memberIds: [actor.actorId],
+                              },
+                              allowStarterToDecide: true,
+                            },
+                          },
+                  }),
             },
           },
         ),

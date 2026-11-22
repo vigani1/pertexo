@@ -97,6 +97,8 @@ export {
 } from './flow/control-nodes/control-node-definitions.js';
 export {
   AGENT_FIND_ROWS,
+  AGENT_INSERT_ROW,
+  AGENT_TIMEOUT_MAX_MILLIS,
   AGENT_STEP,
   AGENT_LIMITS,
   agentMappedInputSchema,

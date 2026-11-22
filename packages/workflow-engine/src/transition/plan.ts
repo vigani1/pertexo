@@ -174,10 +174,9 @@ export function buildWorkflowTransitionPlan(
       return {
         invocationKey,
         nodeId: invocation.nodeId,
-        sideEffectClass: schedulerNodeSideEffectClass(
-          state.schedulerNodes,
-          invocation.nodeId,
-        ),
+        sideEffectClass:
+          agentToolSideEffectClass(state, invocation) ??
+          schedulerNodeSideEffectClass(state.schedulerNodes, invocation.nodeId),
         ...(invocation.branchPath === undefined
           ? {}
           : { branchPath: invocation.branchPath }),
@@ -194,6 +193,9 @@ export function buildWorkflowTransitionPlan(
     events,
     nodeRunAdmissions,
     attempts,
+    ...(state.agentTaskIntents.length === 0
+      ? {}
+      : { taskIntents: state.agentTaskIntents }),
     ...(state.agentOutputs.size === 0
       ? {}
       : {
@@ -274,10 +276,9 @@ export function admitAttempts(
       nodeId: running.nodeId,
       attemptNumber: running.attemptNumber,
       admissionKind,
-      sideEffectClass: schedulerAttemptSideEffectClass(
-        state.schedulerNodes,
-        running.nodeId,
-      ),
+      sideEffectClass:
+        agentToolSideEffectClass(state, running) ??
+        schedulerAttemptSideEffectClass(state.schedulerNodes, running.nodeId),
       ...(running.branchPath === undefined
         ? {}
         : { branchPath: running.branchPath }),
@@ -287,6 +288,14 @@ export function admitAttempts(
     });
   }
   return attempts;
+}
+function agentToolSideEffectClass(
+  state: MutableWorkflowTransition,
+  invocation: InvocationState,
+) {
+  if (invocation.agentWork?.work.kind !== 'tool_call') return undefined;
+  return state.agentScheduler?.tools.get(invocation.nodeId)?.node
+    .sideEffectClass;
 }
 function settleRunStatus(
   state: MutableWorkflowTransition,
@@ -327,7 +336,10 @@ function settleRunStatus(
       nonterminal.every(
         ({ status, invocationKey }) =>
           status === 'waiting' ||
-          (status === 'pending' && state.joins.has(invocationKey)) ||
+          (status === 'pending' &&
+            (state.joins.has(invocationKey) ||
+              state.agents.get(invocationKey)?.phase.kind ===
+                'approval_wait')) ||
           (!input.hasExecutionSlot && status === 'ready'),
       );
     if (allWorkWaiting) {

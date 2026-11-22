@@ -11,7 +11,7 @@ function inputSchemaOf(key: string) {
 }
 
 describe('data-table steps without a query', () => {
-  it('offers only Find rows as a read tool, with query as its model input', () => {
+  it('offers Find rows and Insert row with only their model inputs', () => {
     expect(
       DATA_TABLE_DEFINITIONS.map(({ manifest }) => manifest)
         .filter(({ agentTool }) => agentTool !== undefined)
@@ -22,6 +22,14 @@ describe('data-table steps without a query', () => {
         agentTool: {
           effect: 'read',
           inputFields: ['query'],
+          result: { kind: 'bounded_output' },
+        },
+      },
+      {
+        definition: { key: 'core.table_insert', version: 1 },
+        agentTool: {
+          effect: 'write',
+          inputFields: ['values'],
           result: { kind: 'bounded_output' },
         },
       },
