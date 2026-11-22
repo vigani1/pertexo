@@ -10,6 +10,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { SchemaTextControl } from '@/components/ui/schema-text-control';
 import { Switch } from '@/components/ui/switch';
+import { canonicalJson } from '@pertexo/workflow-model';
 import { cn } from '@/lib/class-names';
 import {
   describeAmount,
@@ -140,6 +141,10 @@ function useConfigText(
     format,
     parse,
     commit,
+    // The draft stores a copy of a committed object, so identity would read
+    // every keystroke as an outside change and reformat the text under the
+    // caret.
+    ...(field.kind === 'json-object' ? { equals: sameJson } : {}),
     onScratchChange: (scratch) => {
       form.reportScratch(fieldPath(field), scratch);
     },
@@ -331,5 +336,14 @@ export function SchemaFieldDescription({
 }: Readonly<{ id: string; text: string | undefined }>) {
   return text === undefined ? null : (
     <FieldDescription id={fieldDescriptionId(id)}>{text}</FieldDescription>
+  );
+}
+
+function sameJson(left: ConfigValue, right: ConfigValue): boolean {
+  return (
+    left === right ||
+    (left !== undefined &&
+      right !== undefined &&
+      canonicalJson(left) === canonicalJson(right))
   );
 }
