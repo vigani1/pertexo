@@ -73,6 +73,32 @@ describe('retained Agent checkpoints', () => {
     expect(replacementCoordinator(phase)).toEqual(phase);
   });
 
+  it('refuses a retained child key that names a different turn', () => {
+    const phase = { kind: 'model_turn' };
+    const step = replacementCoordinator(phase);
+    if (step.kind !== 'model_turn') throw new Error('Expected model work');
+    const stored = retainedCheckpoint(phase);
+    expect(() =>
+      parseCheckpoint({
+        ...stored,
+        invocations: [
+          ...stored.invocations,
+          {
+            nodeId: 'agent',
+            invocationKey: step.invocationKey,
+            status: 'succeeded',
+            attemptNumber: 1,
+            agentWork: {
+              parentInvocationKey: parent,
+              turn: 2,
+              work: { kind: 'model_turn' },
+            },
+          },
+        ],
+      }),
+    ).toThrow('Agent work key disagrees with its parent and ordinals');
+  });
+
   it('refuses a proposal phase with no completion receipt reference', () => {
     expect(() =>
       parseCheckpoint(

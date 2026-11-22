@@ -1,4 +1,4 @@
-import { isPendingTaskNode } from '@pertexo/workflow-model';
+import { isAgentDefinition, isPendingTaskNode } from '@pertexo/workflow-model';
 import { assertFailureCheckpoint } from '../failure-routing/checkpoint.js';
 import { isWorkflowCallDefinition } from '@pertexo/workflow-model';
 import type { parseCheckpoint } from './create-and-parse.js';
@@ -227,8 +227,49 @@ export function assertCheckpointMatchesExecutable(
   assertFailureCheckpoint(checkpoint, executable);
   for (const join of checkpoint.joins)
     assertCheckpointJoinIdentity(join, checkpoint, nodesById);
+  const invocationsByKey = new Map(
+    checkpoint.invocations.map((invocation) => [
+      invocation.invocationKey,
+      invocation,
+    ]),
+  );
+  const agents = new Map(
+    checkpoint.agents?.map((agent) => [agent.parentInvocationKey, agent]),
+  );
+  for (const key of agents.keys()) {
+    const parent = invocationsByKey.get(key);
+    if (
+      parent === undefined ||
+      parent.agentWork !== undefined ||
+      !isAgentDefinition(nodesById.get(parent.nodeId)?.definition)
+    )
+      operationError(
+        'workflow_identity_invalid',
+        'Agent continuation has no pinned Agent parent',
+      );
+  }
   const invocationKeys = new Set<string>();
   for (const invocation of checkpoint.invocations) {
+    if (invocation.agentWork !== undefined) {
+      const work = invocation.agentWork;
+      const parent = invocationsByKey.get(work.parentInvocationKey);
+      const agent = agents.get(work.parentInvocationKey);
+      if (
+        parent === undefined ||
+        parent.nodeId !== invocation.nodeId ||
+        agent === undefined ||
+        work.turn > agent.turn ||
+        !sameIterationPath(parent.iterationPath, invocation.iterationPath) ||
+        !branchPathHasPrefix(parent.branchPath, invocation.branchPath) ||
+        !branchPathHasPrefix(invocation.branchPath, parent.branchPath)
+      )
+        operationError(
+          'workflow_identity_invalid',
+          'Agent work does not belong to its parent',
+        );
+      invocationKeys.add(invocation.invocationKey);
+      continue;
+    }
     assertInvocationBelongsToExecutable(invocation, {
       checkpoint: checkpoint,
       executable: executable,

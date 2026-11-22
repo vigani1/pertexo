@@ -2,14 +2,22 @@ import { MODEL_LIMITS } from './model-settings.js';
 import type { ModelCredential } from './connections.definition.js';
 import type { ModelConfig } from './model/model.schemas.js';
 
+import type { AgentModelContext } from './agent/agent-request.js';
+
 export type RejectedAnswer = Readonly<{ answer: unknown }>;
 
 export type ModelRequest = Readonly<{
   endpoint: ModelCredential['endpoint'];
-  config: ModelConfig;
   prompt: string;
   maxTokens: number;
-}>;
+}> &
+  (
+    | Readonly<{ config: ModelConfig; agent?: never }>
+    | Readonly<{
+        config: Extract<ModelConfig, { mode: 'text' }>;
+        agent: AgentModelContext;
+      }>
+  );
 
 export function modelRequest(
   endpoint: ModelRequest['endpoint'],
