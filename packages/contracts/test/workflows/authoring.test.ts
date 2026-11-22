@@ -180,6 +180,8 @@ describe('workflow-authoring public contracts', () => {
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/auto-pause',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/resume',
         '/v1/workspaces/{workspaceId}/auto-pause',
+        '/v1/workspaces/{workspaceId}/assistant',
+        '/v1/workspaces/{workspaceId}/runs/{runId}/explanation',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/concurrency',
         '/v1/workspaces/{workspaceId}/workflows/{workflowId}/mcp',
         '/v1/workspaces/{workspaceId}/mcp',

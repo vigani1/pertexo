@@ -5,7 +5,6 @@ export const explanationCopy = {
   connection_unavailable: 'The workspace AI connection is unavailable.',
   confirmation_changed:
     'The assistant settings changed. Open the disclosure again to review the destination.',
-  busy: 'An explanation is already in progress in this workspace.',
   timeout: 'The model request timed out.',
   response_too_large: 'The model response exceeded the size limit.',
   invalid_response: 'The model returned an unreadable explanation.',

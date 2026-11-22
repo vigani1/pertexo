@@ -38,16 +38,3 @@ export async function recordExplanationUsage(
       target: [usageEvents.workspaceId, usageEvents.idempotencyKey],
     });
 }
-
-// One in-flight explanation per workspace across API replicas.
-export async function tryReserveExplanation(
-  client: PoolClient,
-  workspaceId: string,
-) {
-  const [row] = (
-    await drizzle(client).execute<{ acquired: boolean }>(
-      sql`select pg_try_advisory_xact_lock(hashtextextended(${`assistant:${workspaceId}`}, 0)) acquired`,
-    )
-  ).rows;
-  return row?.acquired === true;
-}

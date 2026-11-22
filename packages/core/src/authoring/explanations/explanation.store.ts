@@ -8,10 +8,7 @@ import {
   withWorkspaceAccess,
   type WorkspaceActor,
 } from '../../shared/access/workspace-access.js';
-import {
-  recordExplanationUsage,
-  tryReserveExplanation,
-} from './explanation-usage.repository.js';
+import { recordExplanationUsage } from './explanation-usage.repository.js';
 
 type ExplanationActor = WorkspaceActor & Readonly<{ runId: string }>;
 
@@ -49,21 +46,6 @@ export function createExplanationStore(pool: Pool) {
           steps,
         };
       }),
-    reserve: <T>(input: ExplanationActor, explain: () => Promise<T>) =>
-      withWorkspaceAccess(
-        pool,
-        input,
-        {
-          mode: 'read',
-          capability: 'run:read',
-          statuses: ACTIVE_WORKSPACE_STATUSES,
-        },
-        async (client) => {
-          if (!(await tryReserveExplanation(client, input.workspaceId)))
-            return { kind: 'busy' as const };
-          return await explain();
-        },
-      ),
     recordUsage: (input: Parameters<typeof recordExplanationUsage>[1]) =>
       withWorkspaceAccess(
         pool,

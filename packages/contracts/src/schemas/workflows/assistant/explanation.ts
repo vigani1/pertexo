@@ -36,7 +36,6 @@ export const explainFailedRunResultSchema = z.union([
   z.strictObject({
     kind: z.enum([
       'confirmation_changed',
-      'busy',
       'timeout',
       'response_too_large',
       'invalid_response',

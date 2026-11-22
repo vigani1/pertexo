@@ -78,6 +78,7 @@ V1 endpoint classes and one-minute defaults are:
 | `preview_test` | actor 20; workspace 40 | per-process fallback |
 | `connection_mutation` | actor 30; workspace 60; connection 10 when selected | per-process fallback |
 | `provider_test` | actor 10; workspace 20; connection 5 | per-process fallback |
+| `assistant_request` | actor 10; workspace 20 | per-process fallback |
 | `destination_test` | actor 10; workspace 20 | per-process fallback |
 | `trigger_mutation` | actor 60; workspace 120 | per-process fallback |
 | `provider_execution` | workspace 300; connection 60 | fail closed before provider I/O |

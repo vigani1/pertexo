@@ -11,6 +11,7 @@ import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/t
 import { createNodeProviderHttpClient } from '../../../src/platform/connections/http-client.js';
 import {
   betterAuthIntegrationEnabled,
+  expectProblem,
   useBetterAuthRealApi,
   type Browser,
 } from '../../support/better-auth/real-api.support.js';
@@ -95,22 +96,8 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
     const collaborator = await newUser();
     member = collaborator.browser;
     outsider = (await newUser()).browser;
-    const workspace = await api.send('POST', '/v1/workspaces', {
-      browser: owner,
-      headers: { 'Idempotency-Key': randomUUID() },
-      payload: {
-        name: 'Run diagnostics',
-        slug: `diagnostics-${randomUUID().slice(0, 8)}`,
-      },
-    });
-    expect(workspace.statusCode, workspace.payload).toBe(201);
-    workspaceId = workspace.json<{ id: string }>().id;
-    await api
-      .database()
-      .query(
-        "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'builder')",
-        [workspaceId, collaborator.id],
-      );
+    workspaceId = await createWorkspace(owner);
+    await addBuilder(workspaceId, collaborator.id);
     runId = await seedFailedRun(workspaceId, ownerId);
     const workspacePath = `/v1/workspaces/${workspaceId}`;
     path = `${workspacePath}/runs/${runId}/explanation`;
@@ -224,7 +211,7 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
     }
   });
 
-  it('reports provider response size and timeout failures separately and limits in-flight work', async () => {
+  it('reports provider failures and releases database transactions while inference waits', async () => {
     mode = 'large';
     const large = await explain(owner);
     expect(large.statusCode, large.payload).toBe(200);
@@ -236,10 +223,13 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
     mode = 'timeout';
     const timed = explain(owner);
     await timedRequest.promise;
-    const busy = await explain(owner);
-    expect(busy.statusCode, busy.payload).toBe(200);
-    expect(busy.json()).toMatchObject({ kind: 'busy' });
+    const activity = await api.database().query(
+      `select pid from pg_stat_activity
+       where datname = current_database() and usename = 'pertexo_app'
+       and state = 'idle in transaction'`,
+    );
     const result = await timed;
+    expect(activity.rows).toEqual([]);
     expect(result.statusCode, result.payload).toBe(200);
     expect(result.json()).toMatchObject({
       kind: 'timeout',
@@ -254,6 +244,51 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
       retained.rows.filter(({ kind }) => kind === 'incomplete'),
     ).toHaveLength(2);
   }, 25_000);
+
+  it('refuses the 21st explanation request in one workspace across actors', async () => {
+    const first = await newUser();
+    const second = await newUser();
+    const third = await newUser();
+    const workspace = await createWorkspace(first.browser);
+    await addBuilder(workspace, second.id);
+    await addBuilder(workspace, third.id);
+    const run = await seedFailedRun(workspace, first.id);
+    const explanationPath = `/v1/workspaces/${workspace}/runs/${run}/explanation`;
+    const request = (browser: Browser) =>
+      api.send('POST', explanationPath, { browser, payload: { confirmation } });
+
+    for (const { browser } of [first, second]) {
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const accepted = await request(browser);
+        expect(accepted.statusCode, accepted.payload).toBe(200);
+        expect(accepted.json()).toEqual({ kind: 'not_configured' });
+      }
+    }
+
+    expectProblem(await request(third.browser), 429, 'request.rate_limited');
+  });
+
+  async function createWorkspace(browser: Browser) {
+    const workspace = await api.send('POST', '/v1/workspaces', {
+      browser,
+      headers: { 'Idempotency-Key': randomUUID() },
+      payload: {
+        name: 'Run diagnostics',
+        slug: `diagnostics-${randomUUID().slice(0, 8)}`,
+      },
+    });
+    expect(workspace.statusCode, workspace.payload).toBe(201);
+    return workspace.json<{ id: string }>().id;
+  }
+
+  async function addBuilder(workspaceId: string, userId: string) {
+    await api
+      .database()
+      .query(
+        "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'builder')",
+        [workspaceId, userId],
+      );
+  }
 
   function explain(browser: Browser) {
     return api.send('POST', path, { browser, payload: { confirmation } });
