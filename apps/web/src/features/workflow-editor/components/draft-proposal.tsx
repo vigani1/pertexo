@@ -36,12 +36,14 @@ export function DraftProposal({
   handle,
   open,
   onOpenChange,
+  finalFocus,
   graph,
   onFix,
 }: Readonly<{
   handle: NonNullable<ComponentProps<typeof Dialog>['handle']>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  finalFocus: ComponentProps<typeof DialogContent>['finalFocus'];
   graph: WorkflowGraphContract;
   onFix: (target: WorkflowValidationTarget) => void;
 }>) {
@@ -74,7 +76,7 @@ export function DraftProposal({
         if (next) void loadDisclosure();
       }}
     >
-      <DialogContent>
+      <DialogContent finalFocus={finalFocus}>
         <DialogTitle>
           {review === undefined
             ? 'Describe your workflow change'
