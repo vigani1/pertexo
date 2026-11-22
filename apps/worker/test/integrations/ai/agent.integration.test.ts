@@ -23,19 +23,22 @@ import { chat, fakeModel, json } from './model.fixture.js';
 import { agentRegistry, executableCatalog } from './agent-registry.fixture.js';
 import { alias, config, model } from './agent.fixture.js';
 
-import { startAgentRun } from './agent-run.fixture.js';
+import {
+  publishAgentRun,
+  startPublishedAgentRun,
+} from './agent-run.fixture.js';
 
 const result = { text: 'Order a totals 42.' };
+const query = {
+  filters: [{ column: 'key', operator: 'equals', value: 'a' }],
+  limit: 1,
+};
 
 beforeAll(fixture.setup);
 afterAll(fixture.restoreServicesAndClose);
 
-it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
-  const query = {
-    filters: [{ column: 'key', operator: 'equals', value: 'a' }],
-    limit: 1,
-  };
-  await using provider = await fakeModel([
+it('runs a bounded Find rows attempt between inline Sets and preserves output and event order', async () => {
+  const answers = [
     json({
       usage: { prompt_tokens: 45, completion_tokens: 8 },
       choices: [
@@ -57,11 +60,54 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
       ...chat(result.text),
       usage: { prompt_tokens: 80, completion_tokens: 7 },
     }),
-  ]);
+  ];
+  await using provider = await fakeModel([...answers, ...answers]);
   const encryption = new ConnectionEnvelopeEncryption(new ContextKeyProvider());
+  const workflowId = await publishAgentRun(
+    provider.baseUrl,
+    encryption,
+    undefined,
+    'linear-sets',
+  );
+  const queued = await runFindRows(workflowId, encryption, false);
+  const inline = await runFindRows(workflowId, encryption, true);
+  expect(inline).toEqual(queued);
+  expect(provider.calls).toHaveLength(4);
+  for (const [first, second] of [
+    provider.calls.slice(0, 2),
+    provider.calls.slice(2),
+  ]) {
+    expect(first?.request).toMatchObject({
+      tools: [
+        {
+          function: {
+            name: alias,
+            parameters: {
+              properties: { query: expect.any(Object) as unknown },
+            },
+          },
+        },
+      ],
+    });
+    const { messages } = second?.request as {
+      messages: { role: string; content: string }[];
+    };
+    const tool = messages.find(({ role }) => role === 'tool');
+    expect(tool).toBeDefined();
+    expect(JSON.parse(tool?.content ?? 'null')).toMatchObject({
+      rows: [{ values: { key: 'a', amount: 42 } }],
+    });
+  }
+});
+
+async function runFindRows(
+  workflowId: string,
+  encryption: ConnectionEnvelopeEncryption,
+  inlineSteps: boolean,
+) {
   const database = config(fixture.workerUrl);
   const maintenanceDatabase = config(fixture.dispatcherUrl);
-  const runId = await startAgentRun(provider.baseUrl, encryption);
+  const runId = await startPublishedAgentRun(workflowId);
   const owners: (() => Promise<void>)[] = [];
   try {
     const coordinator = await testCoordinatorRuntime(
@@ -69,6 +115,7 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
         database,
         maintenanceDatabase,
         maximumAdmissions: 10,
+        inlineSteps,
         redisUrl: fixture.redisUrl,
       },
       {},
@@ -148,24 +195,36 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
         ),
       20_000,
     );
+    const attemptsByNode = await fixture.workerQuery<{
+      node_id: string;
+      fence_token: string;
+    }>(
+      `select n.node_id, a.fence_token::text as fence_token
+       from app.node_attempts a join app.node_runs n on n.id=a.node_run_id
+       where n.workflow_run_id=$1
+         and n.node_id in ('before-agent', 'agent', 'after-agent')
+       order by a.started_at, n.node_id`,
+      [runId],
+    );
+    expect(attemptsByNode).toEqual([
+      { node_id: 'before-agent', fence_token: inlineSteps ? '0' : '1' },
+      { node_id: 'agent', fence_token: '1' },
+      { node_id: 'agent', fence_token: '1' },
+      { node_id: 'agent', fence_token: '1' },
+      { node_id: 'after-agent', fence_token: inlineSteps ? '0' : '1' },
+    ]);
+    const timeline = await fixture.workerQuery(
+      `select type, payload->>'nodeId' as node_id,
+              payload->'agentWork'->'work'->>'kind' as agent_work
+       from app.run_events where workflow_run_id=$1 order by sequence`,
+      [runId],
+    );
     const history = await fixture.workerQuery<{ invocation_key: string }>(
       `select n.invocation_key,n.input_ref,a.status,a.output_ref,a.dispatch_marked_at
        from app.node_attempts a join app.node_runs n on n.id=a.node_run_id
        where n.workflow_run_id=$1 and n.node_id='agent' order by a.started_at`,
       [runId],
     );
-    expect(provider.calls[0]?.request).toMatchObject({
-      tools: [
-        {
-          function: {
-            name: alias,
-            parameters: {
-              properties: { query: expect.any(Object) as unknown },
-            },
-          },
-        },
-      ],
-    });
     expect(history).toMatchObject([
       {
         status: 'succeeded',
@@ -195,16 +254,6 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
       alias,
       work: { kind: 'tool_call', ordinal: 1 },
     });
-    const messages = (
-      provider.calls[1]?.request as {
-        messages: { role: string; content: string }[];
-      }
-    ).messages;
-    const tool = messages.find(({ role }) => role === 'tool');
-    expect(tool).toBeDefined();
-    expect(JSON.parse(tool?.content ?? 'null')).toMatchObject({
-      rows: [{ values: { key: 'a', amount: 42 } }],
-    });
     expect(status).toMatchObject([
       {
         status: 'succeeded',
@@ -212,7 +261,8 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
         error_summary: null,
       },
     ]);
+    return { status, timeline };
   } finally {
     await Promise.allSettled(owners.reverse().map((close) => close()));
   }
-});
+}

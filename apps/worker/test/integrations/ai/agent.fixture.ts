@@ -8,6 +8,7 @@ import {
   AGENT_SEND_SLACK_MESSAGE,
   AGENT_SLACK_CONNECTION_SLOT,
   AGENT_STEP,
+  CORE_INLINE_DEFINITION_VERSION,
   PENDING_TASK_LIMITS,
   WORKFLOW_CALL,
   type CallableType,
@@ -42,7 +43,18 @@ export async function publishAgent(
   authoring: ReturnType<typeof createWorkflowAuthoringStore>,
   connectionId: string,
   table: string,
-  write?: 'approval' | 'allow' | { slackConnectionId: string } | AgentCallable,
+  {
+    write,
+    shape,
+  }: Readonly<{
+    write?:
+      | 'approval'
+      | 'allow'
+      | { slackConnectionId: string }
+      | AgentCallable
+      | undefined;
+    shape?: 'linear-sets' | 'sibling-set' | undefined;
+  }>,
 ) {
   const expiry = PENDING_TASK_LIMITS.minimumExpirySeconds;
   const slack =
@@ -119,11 +131,80 @@ export async function publishAgent(
       },
     ],
   };
-  const published = await publishAgentFixtureGraph(authoring, graph, table);
+  const shapes = {
+    'linear-sets': surroundAgentWithSets,
+    'sibling-set': addAgentSiblingSet,
+  };
+  const published = await publishAgentFixtureGraph(
+    authoring,
+    shape === undefined ? graph : shapes[shape](graph),
+    table,
+  );
   expect(published.version.graphJson.nodes[1]?.config).toEqual(
     graph.nodes[1]?.config,
   );
   return published.version.workflowId;
+}
+
+function surroundAgentWithSets(graph: WorkflowGraph): WorkflowGraph {
+  const output = (nodeId: string, path: string) =>
+    ({ kind: 'node_output', nodeId, path }) as const;
+  const edges = [
+    ['start', 'before-agent'],
+    ['before-agent', 'agent'],
+    ['agent', 'after-agent'],
+    ['after-agent', 'end'],
+  ] as const;
+  const { callable } = graph;
+  return {
+    ...graph,
+    ...(callable === undefined
+      ? {}
+      : { callable: { ...callable, result: output('after-agent', '$') } }),
+    nodes: [
+      ...graph.nodes.map((step) =>
+        step.id === 'agent'
+          ? {
+              ...step,
+              inputMappings: { prompt: output('before-agent', '$.prompt') },
+            }
+          : step,
+      ),
+      inlineSet('before-agent', { prompt: literal('Find order a.') }),
+      inlineSet('after-agent', { text: output('agent', '$.text') }),
+      node('end', 'core.terminate', { result: output('after-agent', '$') }),
+    ],
+    edges: edges.map(([source, target]) => ({
+      id: `mixed-${target}`,
+      source: { nodeId: source, port: 'out' },
+      target: { nodeId: target, port: 'in' },
+    })),
+  };
+}
+
+function addAgentSiblingSet(graph: WorkflowGraph): WorkflowGraph {
+  return {
+    ...graph,
+    nodes: [...graph.nodes, inlineSet('sibling', { value: literal('ready') })],
+    edges: [
+      ...graph.edges,
+      {
+        id: 'start-sibling',
+        source: { nodeId: 'start', port: 'out' },
+        target: { nodeId: 'sibling', port: 'in' },
+      },
+    ],
+  };
+}
+
+function inlineSet(
+  id: string,
+  inputMappings: WorkflowGraph['nodes'][number]['inputMappings'],
+) {
+  return {
+    ...node(id, 'core.set', inputMappings),
+    definition: { key: 'core.set', version: CORE_INLINE_DEFINITION_VERSION },
+  };
 }
 
 function toolPermission(

@@ -47,7 +47,13 @@ async function run(settings: AgentWorkerSettings) {
     process.kill(process.pid, 'SIGSTOP');
   };
   const coordinator = await createCoordinatorRuntime(
-    { database, maintenanceDatabase, maximumAdmissions: 10, redisUrl },
+    {
+      database,
+      maintenanceDatabase,
+      maximumAdmissions: 10,
+      redisUrl,
+      inlineSteps: true,
+    },
     {
       runStore: (...args) => {
         const store = createRunAdvanceStore(...args);
