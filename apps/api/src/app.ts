@@ -122,7 +122,8 @@ export async function assembleApiApplication(
     const fastifyInstance: FastifyInstance = fastifyAdapter.getInstance();
     application.get(RouteTable).register(fastifyInstance);
     registerResponseSecurityHeaders(fastifyInstance);
-    registerMcpTransport(fastifyInstance);
+    if (config.identity !== undefined)
+      registerMcpTransport(fastifyInstance, config.identity.publicWebOrigin);
     registerAuditDownloadResponse(fastifyInstance);
     registerWorkflowPortabilityJsonParser(fastifyAdapter);
     registerNoticeUnsubscribeTransport(fastifyAdapter);
