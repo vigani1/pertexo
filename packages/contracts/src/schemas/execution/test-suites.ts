@@ -5,7 +5,10 @@ import {
   isStorageText,
   workflowTestExpectationsSchema,
 } from '@pertexo/workflow-model';
-import { DATA_TABLE_LIMITS } from '@pertexo/node-sdk';
+import {
+  DATA_TABLE_LIMITS,
+  dataTableIdentifierSchema,
+} from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import {
   WORKFLOW_TEST_SUITE_MAX_CASES,
@@ -73,7 +76,7 @@ export const workflowTableEvaluationSchema = z
           .min(1)
           .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength)
           .refine(isStorageText),
-        z.uuid(),
+        dataTableIdentifierSchema,
       )
       .refine((columns) => {
         const count = Object.keys(columns).length;
@@ -81,7 +84,7 @@ export const workflowTableEvaluationSchema = z
       }),
     expectations: workflowTestExpectationsSchema,
     expectedColumns: z
-      .array(z.uuid().nullable())
+      .array(dataTableIdentifierSchema.nullable())
       .max(WORKFLOW_TEST_LIMITS.assertions)
       .optional(),
   })

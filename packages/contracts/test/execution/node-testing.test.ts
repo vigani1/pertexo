@@ -8,6 +8,7 @@ import {
   previewRunResponseSchema,
 } from '../../src/schemas/execution/node-testing.js';
 import { nodeTestingOpenApiDocument } from '../../src/server.js';
+import { workflowTestSuiteStartRequestSchema } from '../../src/schemas/execution/test-suites.js';
 
 function nestedArray(depth: number): unknown {
   let value: unknown = null;
@@ -44,6 +45,40 @@ const preview = {
 };
 
 describe('node-testing public contracts', () => {
+  it('accepts saved table column IDs in evaluation inputs and expected values', () => {
+    const request = {
+      expectedRevision: 1,
+      expectedSamples: [],
+      expectedEffectfulSteps: [],
+      expectedVariableSetRevision: null,
+      signature: 'a'.repeat(64),
+      acknowledgeSideEffects: false,
+      evaluation: {
+        tableId: preview.id,
+        versionId: preview.workflowId,
+        columns: { category: 'category' },
+        expectedColumns: ['expected_port_2'],
+        expectations: {
+          outcome: 'succeeds',
+          assertions: [
+            {
+              source: { kind: 'step', nodeId: 'route' },
+              path: '$.selectedPort',
+              operator: 'equals',
+              expected: null,
+            },
+          ],
+        },
+      },
+    };
+    expect(
+      workflowTestSuiteStartRequestSchema.safeParse(request),
+    ).toMatchObject({
+      success: true,
+      data: request,
+    });
+  });
+
   // The browser preflight accepts exactly the depth the server's canonical
   // JSON accepts.
   it.each([
