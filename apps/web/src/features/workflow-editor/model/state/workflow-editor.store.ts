@@ -1,4 +1,5 @@
 import type { WorkflowGraphContract } from '@pertexo/contracts';
+import type { WorkflowDraftSnapshot } from '@/features/workflow-drafts/public';
 import { createStore } from 'zustand/vanilla';
 import {
   emptyEditorHistory,
@@ -74,6 +75,11 @@ export type EditorActions = Readonly<{
     revision: number,
     savedGeneration: number,
     savedAt?: string,
+  ) => void;
+  acceptProposal: (
+    base: WorkflowDraftSnapshot,
+    saved: WorkflowDraftSnapshot,
+    generation: number,
   ) => void;
   reportFailure: (
     message: string,
@@ -201,6 +207,9 @@ export function createEditorStore(
           },
         });
       },
+      acceptProposal: (base, saved, generation) => {
+        set((current) => acceptedProposal(current, base, saved, generation));
+      },
       reportFailure: (error, uncertain, recovery = 'retry') => {
         set({
           save: { status: uncertain ? 'uncertain' : 'failed', error, recovery },
@@ -226,6 +235,29 @@ export function createEditorStore(
       },
     };
   });
+}
+
+function acceptedProposal(
+  current: EditorState,
+  base: WorkflowDraftSnapshot,
+  saved: WorkflowDraftSnapshot,
+  generation: number,
+): Partial<EditorState> {
+  if (current.generation !== generation || current.save.status !== 'clean')
+    return current;
+  const graph = saved.draft.graph;
+  const history =
+    current.etag === base.etag ? current.history : emptyEditorHistory;
+  return {
+    graph,
+    etag: saved.etag,
+    revision: saved.draft.revision,
+    savedAt: saved.draft.updatedAt,
+    generation: generation + 1,
+    history: recordHistory(history, base.draft.graph),
+    lastEdit: null,
+    ...pruneSelection(graph, current),
+  };
 }
 
 function adoptRemote(conflict: EditorConflict, generation: number) {

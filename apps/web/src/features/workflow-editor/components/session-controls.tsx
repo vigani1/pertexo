@@ -9,6 +9,7 @@ import {
   ConfirmDialog,
   ConfirmationDetails,
 } from '@/components/patterns/actions/confirm-dialog';
+import { DraftProposal } from './draft-proposal';
 import { EditorCommandBar } from './chrome/editor-command-bar';
 import { ConflictCompareDialog } from './chrome/conflict-compare-dialog';
 import { UnfinishedEditDialog } from './chrome/editor-dialogs';
@@ -65,28 +66,31 @@ export function SessionCommandBar({
       }}
       commands={
         paused ? null : (
-          <WorkflowCommandActions
-            renderFeedback={chrome.renderFeedback}
-            commandSession={commandSession}
-            testAction={chrome.workflowTestAction}
-            onPublished={(receipt) => {
-              if (!receipt.reused) effects.weaveIn();
-            }}
-            validation={{
-              issues,
-              issuesOpen: chrome.issuesOpen,
-              onIssuesOpenChange: chrome.onIssuesOpenChange,
-              onFix: chrome.onFix,
-            }}
-            snapshot={{
-              workflow,
-              graph,
-              draft: { generation, revision },
-              savedDraftCurrent: saveStatus === 'clean' && !inspectorScratch,
-              triggersAvailable,
-            }}
-            scope={{ apiClient, userId, workspace, workflowId }}
-          />
+          <>
+            {editing.canUpdate ? <DraftProposal /> : null}
+            <WorkflowCommandActions
+              renderFeedback={chrome.renderFeedback}
+              commandSession={commandSession}
+              testAction={chrome.workflowTestAction}
+              onPublished={(receipt) => {
+                if (!receipt.reused) effects.weaveIn();
+              }}
+              validation={{
+                issues,
+                issuesOpen: chrome.issuesOpen,
+                onIssuesOpenChange: chrome.onIssuesOpenChange,
+                onFix: chrome.onFix,
+              }}
+              snapshot={{
+                workflow,
+                graph,
+                draft: { generation, revision },
+                savedDraftCurrent: saveStatus === 'clean' && !inspectorScratch,
+                triggersAvailable,
+              }}
+              scope={{ apiClient, userId, workspace, workflowId }}
+            />
+          </>
         )
       }
       shortcuts={{
