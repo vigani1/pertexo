@@ -4,6 +4,11 @@ import {
   MODEL_IDENTIFIER_MAX_CHARACTERS,
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
+import { callableTypeStructuralSchema } from '../callable/callable-types.js';
+import {
+  WORKFLOW_CALL,
+  workflowCallConfigSchema,
+} from '../callable/invocation.js';
 import { approvalConfigSchema } from '../pending-tasks/approval.js';
 import { PENDING_TASK_LIMITS } from '../pending-tasks/pending-task-limits.js';
 
@@ -91,6 +96,18 @@ export const agentConfigSchema = z
       .meta({ title: 'Agent deadline' })
       .optional(),
     tool: z.union([
+      toolSetup.extend({
+        definition: z.strictObject({
+          key: z.literal(WORKFLOW_CALL.key),
+          version: z.literal(WORKFLOW_CALL.version),
+        }),
+        config: workflowCallConfigSchema.extend({
+          input: callableTypeStructuralSchema.refine(
+            (type) => type.type === 'object',
+          ),
+        }),
+        writePermission,
+      }),
       toolSetup.extend({
         definition: z.strictObject({
           key: z.literal(AGENT_FIND_ROWS.key),

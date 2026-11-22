@@ -8,7 +8,7 @@ import type {
 import { NodeAttemptStateCorruptError } from '../attempts/node-attempt.errors.js';
 
 export async function loadAgentAttemptInput(
-  store: Pick<NodeAttemptRunStore, 'readAttemptOutputs'>,
+  store: Pick<NodeAttemptRunStore, 'readAttemptOutputs' | 'readNodeOutputs'>,
   {
     request,
     checkpoint,
@@ -66,13 +66,30 @@ export async function loadAgentAttemptInput(
   );
   if (values.size !== attemptIds.length)
     throw new NodeAttemptStateCorruptError();
+  const childInvocations = new Map(
+    checkpoint.invocations.flatMap(({ invocationKey, output }) =>
+      output?.kind === 'call' ? [[output.callId, invocationKey] as const] : [],
+    ),
+  );
+  const childOutputs = new Map(
+    (
+      await store.readNodeOutputs({
+        lease: request.lease,
+        invocationKeys: history.flatMap((entry) => {
+          if (!('child' in entry)) return [];
+          const invocationKey = childInvocations.get(entry.child.callId);
+          if (invocationKey === undefined)
+            throw new NodeAttemptStateCorruptError();
+          return [invocationKey];
+        }),
+        signal: request.signal,
+      })
+    ).map(({ invocationKey, output }) => [invocationKey, output]),
+  );
   const input: AgentAttemptInput = {
     identity,
     history: history.map((entry) => {
-      const result =
-        'output' in entry
-          ? values.get(entry.output.attemptId)
-          : { approval: entry.outcome };
+      const result = resultFor(entry);
       if (result === undefined) throw new NodeAttemptStateCorruptError();
       // The run-data codec has already validated the stored JSON value.
       return {
@@ -84,6 +101,14 @@ export async function loadAgentAttemptInput(
       ? {}
       : { proposal: values.get(proposal.attemptId) }),
   };
+  function resultFor(entry: (typeof history)[number]) {
+    if ('output' in entry) return values.get(entry.output.attemptId);
+    if ('outcome' in entry) return { approval: entry.outcome };
+    if ('childFailure' in entry)
+      return { status: 'failed', errorCode: entry.childFailure };
+    return childOutputs.get(childInvocations.get(entry.child.callId) ?? '');
+  }
+
   return {
     agent: input,
     deadlineAt: new Date(

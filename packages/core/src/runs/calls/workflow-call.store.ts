@@ -29,6 +29,7 @@ async function performOutgoingActions(
   client: PoolClient,
   input: RunAdvanceInput,
   prepareChild: InitialCheckpointFactory,
+  accessPool?: Pool,
 ): Promise<void> {
   const { workspaceId, runId } = input;
   const db = drizzle(client),
@@ -95,6 +96,8 @@ async function performOutgoingActions(
       parentRunId: runId,
       call,
       prepareChild,
+      ...(accessPool === undefined ? {} : { accessPool }),
+      signal: input.signal,
       ...(input.traceparent === undefined
         ? {}
         : { traceparent: input.traceparent }),
@@ -105,6 +108,7 @@ async function performActions(
   pool: Pool,
   input: RunAdvanceInput,
   prepareChild: InitialCheckpointFactory,
+  accessPool?: Pool,
 ): Promise<void> {
   const workspaceId = input.workspaceId;
   const runId = input.runId;
@@ -131,7 +135,12 @@ async function performActions(
           )
         )
           return true;
-        await performOutgoingActions(client, validated, prepareChild);
+        await performOutgoingActions(
+          client,
+          validated,
+          prepareChild,
+          accessPool,
+        );
         return false;
       },
     );
@@ -149,7 +158,12 @@ async function performActions(
             runId,
             delivery,
           );
-          await performOutgoingActions(client, validated, prepareChild);
+          await performOutgoingActions(
+            client,
+            validated,
+            prepareChild,
+            accessPool,
+          );
         },
       );
   } catch (error) {
@@ -173,14 +187,25 @@ export type WorkflowCallStore = ReturnType<typeof createWorkflowCallStore>;
 export function createWorkflowCallStore(
   config: DatabaseConfig,
   runtime?: DatabaseRuntime,
+  access?: Readonly<{ database: DatabaseConfig; runtime?: DatabaseRuntime }>,
 ) {
   const lease = acquireDatabasePool(config, runtime);
+  const reader =
+    access === undefined
+      ? undefined
+      : acquireDatabasePool(access.database, access.runtime);
   return Object.freeze({
     /** Executes durable run actions before the normal parent advance transaction. */
     performActions: (
       input: RunAdvanceInput,
       prepareChild: InitialCheckpointFactory,
-    ) => performActions(lease.pool, input, prepareChild),
-    close: () => lease.close(),
+    ) => performActions(lease.pool, input, prepareChild, reader?.pool),
+    close: async () => {
+      try {
+        await lease.close();
+      } finally {
+        await reader?.close();
+      }
+    },
   });
 }

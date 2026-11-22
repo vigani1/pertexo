@@ -125,7 +125,7 @@ export function insertCallIntent(
       inputRef: sql`${prepared.json}::json`.as('input_ref'),
       inputChecksum: sql<string>`${prepared.checksum}`.as('input_checksum'),
       deadlineAt:
-        sql<Date | null>`least(${r.deadlineAt},clock_timestamp()+(${v.executableJson}#>>'{graph,settings,maxRunDurationMs}')::integer*${MILLISECOND_INTERVAL})`.as(
+        sql<Date | null>`least(${r.deadlineAt},${intent.deadlineAt ?? null}::timestamptz,clock_timestamp()+(${v.executableJson}#>>'{graph,settings,maxRunDurationMs}')::integer*${MILLISECOND_INTERVAL})`.as(
           'deadline_at',
         ),
       status: sql<string>`${refusal === undefined ? 'pending' : 'refused'}`.as(

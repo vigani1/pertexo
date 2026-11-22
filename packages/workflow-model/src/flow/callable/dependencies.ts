@@ -1,3 +1,8 @@
+import {
+  AGENT_LIMITS,
+  agentConfigSchema,
+  isAgentDefinition,
+} from '../control-nodes/agent.js';
 import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
 import {
   isWorkflowCallDefinition,
@@ -80,6 +85,26 @@ export async function validateCallDependencyClosure(
   return (await visit(root)).count;
 }
 
+export function agentCallSetup(node: {
+  definition: { key: string; version: number };
+  config: unknown;
+}) {
+  if (!isAgentDefinition(node.definition)) return undefined;
+  const tool = agentConfigSchema.safeParse(node.config).data?.tool;
+  return tool !== undefined && 'target' in tool.config
+    ? tool.config
+    : undefined;
+}
+
+export function workflowCallTarget(node: {
+  definition: { key: string; version: number };
+  config: unknown;
+}) {
+  return isWorkflowCallDefinition(node.definition)
+    ? workflowCallConfigSchema.safeParse(node.config).data?.target
+    : agentCallSetup(node)?.target;
+}
+
 /** Graph validation supplies the local count; each structured site retains its weight. */
 export function summarizeWorkflowCalls(
   identity: WorkflowCallPin & Readonly<{ workspaceId: string }>,
@@ -89,11 +114,14 @@ export function summarizeWorkflowCalls(
   const calls: CallableVersionSummary['calls'][number][] = [];
   const visit = (current: WorkflowGraph, multiplicity: number): void => {
     for (const node of current.nodes) {
-      if (isWorkflowCallDefinition(node.definition))
+      const pin = workflowCallTarget(node);
+      if (pin !== undefined)
         calls.push({
           nodeId: node.id,
-          pin: workflowCallConfigSchema.parse(node.config).target,
-          multiplicity,
+          pin,
+          multiplicity: isAgentDefinition(node.definition)
+            ? multiplicity * AGENT_LIMITS.toolCalls
+            : multiplicity,
         });
       if (node.structured !== undefined)
         visit(

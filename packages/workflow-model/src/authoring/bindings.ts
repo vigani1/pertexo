@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { canonicalJson } from '../values/json/canonical.js';
 import type { WorkflowGraph } from '../graph/workflow-graph.schemas.js';
-import {
-  isWorkflowCallDefinition,
-  workflowCallConfigSchema,
-} from '../flow/callable/invocation.js';
+import { workflowCallTarget } from '../flow/callable/dependencies.js';
 
 const uuidSchema = z.uuid();
 
@@ -17,19 +14,12 @@ function callTargets(graph: WorkflowGraph): Map<string, string> {
     const current = pending.pop();
     if (current === undefined) break;
     for (const node of current.graph.nodes) {
-      if (isWorkflowCallDefinition(node.definition)) {
-        // Incomplete draft configuration is not an executable binding yet.
-        const parsed = workflowCallConfigSchema.safeParse(node.config);
-        if (parsed.success)
-          targets.set(
-            canonicalJson([
-              [...current.path, node.id],
-              node.definition,
-              parsed.data.target,
-            ]),
-            parsed.data.target.workflowId,
-          );
-      }
+      const target = workflowCallTarget(node);
+      if (target !== undefined)
+        targets.set(
+          canonicalJson([[...current.path, node.id], node.definition, target]),
+          target.workflowId,
+        );
       if (node.structured !== undefined)
         pending.push({
           graph: node.structured.body,

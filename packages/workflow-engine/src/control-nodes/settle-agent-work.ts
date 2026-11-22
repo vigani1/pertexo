@@ -3,6 +3,7 @@ import type { AgentToolCall } from '@pertexo/workflow-model';
 import type {
   AgentContinuation,
   AgentAttemptReceipt,
+  AgentToolExchange,
 } from './agent-continuation.js';
 
 type AgentWorkRefusal = Readonly<{
@@ -61,10 +62,24 @@ export function settleAgentReadTool(
   agent: AgentContinuation,
   output: AgentAttemptReceipt,
 ): AgentWorkDecision {
+  return settleAgentTool(agent, { output });
+}
+
+export function settleAgentTool(
+  agent: AgentContinuation,
+  result:
+    | { output: AgentAttemptReceipt }
+    | Pick<Extract<AgentToolExchange, { child: unknown }>, 'child'>
+    | Pick<
+        Extract<AgentToolExchange, { childFailure: unknown }>,
+        'childFailure'
+      >,
+): AgentWorkDecision {
   if (
     agent.phase.kind !== 'running_tool' ||
-    agent.phase.proposal.attemptId === output.attemptId ||
-    hasConsumedReceipt(agent, output)
+    ('output' in result &&
+      (agent.phase.proposal.attemptId === result.output.attemptId ||
+        hasConsumedReceipt(agent, result.output)))
   )
     return { kind: 'refused', reason: 'agent.stale_receipt' };
   if (agent.turn >= AGENT_LIMITS.turns)
@@ -76,7 +91,7 @@ export function settleAgentReadTool(
       turn: agent.turn + 1,
       history: [
         ...(agent.history ?? []),
-        { proposal: agent.phase.proposal, output },
+        { proposal: agent.phase.proposal, ...result },
       ],
       phase: { kind: 'model_turn' },
     },

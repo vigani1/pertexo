@@ -27,6 +27,8 @@ import type {
 } from '../workflow-execution.js';
 import { completedOutputReference } from './coordinator-output.js';
 import { parseBranchPath, parseIterationPath } from '../checkpoint/fields.js';
+import { agentChildInvocationKey } from '../invocations/agent-invocation.js';
+import type { AgentTool } from '../transition/scheduling/agent-scheduler.js';
 import { invocationKey } from '../invocations/invocation-identity.js';
 import {
   isFinishedIterationScope,
@@ -40,6 +42,7 @@ export function callDeclarationObservations(
   successfulOutcomes: ReadonlyMap<string, Readonly<Record<string, JsonValue>>>,
   checkpoint: WorkflowCheckpoint,
   nodes: ReadonlyMap<string, ExecutionNode>,
+  agentToolFor: (nodeId: string) => AgentTool | undefined,
 ): Readonly<{
   intents: readonly WorkflowCallIntent[];
   observations: readonly WorkflowObservation[];
@@ -52,11 +55,22 @@ export function callDeclarationObservations(
       ({ invocationKey }) => invocationKey === outcome.invocationKey,
     );
     const node = nodes.get(owner?.nodeId ?? '');
-    const notCallable =
-      owner === undefined ||
-      node === undefined ||
-      !isWorkflowCallDefinition(node.definition);
-    if (notCallable) continue;
+    if (owner === undefined || node === undefined) continue;
+    const tool =
+      owner.agentWork?.work.kind === 'tool_call'
+        ? agentToolFor(node.id)?.callable
+        : undefined;
+    if (tool === undefined && !isWorkflowCallDefinition(node.definition))
+      continue;
+    const deadlineAt =
+      tool === undefined
+        ? undefined
+        : checkpoint.agents?.find(
+            ({ parentInvocationKey }) =>
+              parentInvocationKey === owner.agentWork?.parentInvocationKey,
+          )?.deadlineAt;
+    if (tool !== undefined && deadlineAt === undefined)
+      operationError('observation_invalid', 'Agent Call deadline is missing');
     const input = completedOutputReference(
       outcome,
       outcome.attemptId as string,
@@ -73,7 +87,9 @@ export function callDeclarationObservations(
     // cannot express that its definition selects WorkflowCallConfig.
     intents.push({
       invocationKey: owner.invocationKey,
-      target: (node.config as unknown as WorkflowCallConfig).target,
+      target:
+        tool?.target ?? (node.config as unknown as WorkflowCallConfig).target,
+      ...(deadlineAt === undefined ? {} : { deadlineAt }),
       input,
     });
   }
@@ -136,6 +152,7 @@ export function callOutcomeObservations(
   checkpoint: WorkflowCheckpoint,
   nodes: ReadonlyMap<string, ExecutionNode>,
   graph: WorkflowExecutableGraph,
+  agentToolFor: (nodeId: string) => AgentTool | undefined,
 ): readonly WorkflowObservation[] {
   let bounded: JsonValue;
   try {
@@ -160,7 +177,27 @@ export function callOutcomeObservations(
       continue;
     }
     seen.set(fact.invocationKey, canonical);
-    assertCallOutcomeScope(fact, { checkpoint, nodes, graph });
+    const work = checkpoint.invocations.find(
+      ({ invocationKey }) => invocationKey === fact.invocationKey,
+    )?.agentWork;
+    if (
+      work?.work.kind === 'tool_call' &&
+      agentToolFor(fact.nodeId)?.callable !== undefined
+    ) {
+      if (
+        agentChildInvocationKey(
+          checkpoint.workflowVersionId,
+          work.parentInvocationKey,
+          work,
+        ) !== fact.invocationKey
+      )
+        operationError(
+          'observation_invalid',
+          'Agent Call outcome scope is invalid',
+        );
+    } else {
+      assertCallOutcomeScope(fact, { checkpoint, nodes, graph });
+    }
     const owner = checkpoint.invocations.find(
       ({ invocationKey }) => invocationKey === fact.invocationKey,
     );

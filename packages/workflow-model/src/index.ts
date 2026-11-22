@@ -65,15 +65,18 @@ export {
 export type { WorkflowCallPin } from './flow/callable/dependencies.js';
 export {
   summarizeWorkflowCalls,
+  agentCallSetup,
   validateCallDependencyClosure,
   type CallableVersionSummary,
 } from './flow/callable/dependencies.js';
 export { WorkflowCallDependencyError } from './flow/callable/callable.errors.js';
 export {
+  WORKFLOW_CALL,
   workflowCallConfigSchema,
   isWorkflowCallDefinition,
   type WorkflowCallConfig,
 } from './flow/callable/invocation.js';
+export { callableObjectInputSchema } from './flow/callable/tool-projection.js';
 export { validateCallableValue } from './flow/callable/validate-value.js';
 export {
   callbackTargetNodes,

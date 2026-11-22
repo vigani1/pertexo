@@ -9,13 +9,18 @@ import {
   lockCallParent,
   lockCallTarget,
   lockPendingCall,
+  readCallParentPublisher,
   openCallCandidate,
   parentSlotLent,
   refusePendingCall,
   type PendingWorkflowCall,
 } from './admission.repository.js';
 import { createHash } from 'node:crypto';
-import type { PoolClient } from 'pg';
+import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
+import { withWorkspaceAccess } from '../../shared/access/workspace-access.js';
+import type { Pool, PoolClient } from 'pg';
+import { isAgentWorkInvocationKey } from '@pertexo/workflow-engine/server';
+import { countReadableWorkflows } from '../../shared/resources/workflow-call-bindings.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
 import {
@@ -38,6 +43,8 @@ export async function acceptPendingCall(
     parentRunId: string;
     call: PendingWorkflowCall;
     prepareChild: InitialCheckpointFactory;
+    accessPool?: Pool;
+    signal?: AbortSignal;
     traceparent?: string;
   }>,
 ): Promise<void> {
@@ -68,6 +75,10 @@ export async function acceptPendingCall(
     if (!(error instanceof WorkspaceRunAdmissionDeniedError)) throw error;
     unavailable = true;
   }
+  if (!unavailable && isAgentWorkInvocationKey(call.invocation_key))
+    unavailable =
+      target?.published_version_id == null ||
+      !(await canDispatchAgentCall(client, input));
   const row = await lockWaitingCallParent(client, input);
   if (row === undefined) return;
   const [locked] = await lockPendingCall(client, {
@@ -117,6 +128,38 @@ export async function acceptPendingCall(
     await refusePendingCall(client, { workspaceId, callId: call.id, refusal });
     await wakeWorkflowRun(client, workspaceId, parentRunId, input.traceparent);
   }
+}
+
+async function canDispatchAgentCall(
+  client: PoolClient,
+  {
+    accessPool,
+    workspaceId,
+    parentRunId,
+    call,
+    signal,
+  }: Parameters<typeof acceptPendingCall>[1],
+) {
+  const publisher = await readCallParentPublisher(
+    client,
+    workspaceId,
+    parentRunId,
+  );
+  if (accessPool === undefined || publisher === undefined) return false;
+  const actor = { workspaceId, actorId: publisher.actorId, signal };
+  return withWorkspaceAccess(
+    accessPool,
+    actor,
+    { mode: 'visible', statuses: ACTIVE_WORKSPACE_STATUSES },
+    async (read, role) =>
+      role !== null &&
+      (await countReadableWorkflows(
+        read,
+        actor,
+        [call.target_workflow_id],
+        role,
+      )) === 1,
+  );
 }
 
 async function lockWaitingCallParent(
