@@ -76,12 +76,18 @@ export function NewStep({ stepKey }: Readonly<{ stepKey: string }>) {
 export function Fields({
   schema,
   start = {},
-}: Readonly<{ schema: unknown; start?: NodeConfig }>) {
+  lookup,
+}: Readonly<{
+  schema: unknown;
+  start?: NodeConfig;
+  lookup?: NodeFormApi['lookup'];
+}>) {
   const [config, setConfig] = useState<NodeConfig>(start);
   const fields = schemaFields(schema);
   const form: NodeFormApi = {
     nodeId: 'step',
     editable: true,
+    ...(lookup === undefined ? {} : { lookup }),
     reportScratch: vi.fn(),
     commit: (update) => {
       setConfig((current) => {
@@ -94,7 +100,7 @@ export function Fields({
                 position: { x: 0, y: 0 },
                 config: current,
                 inputMappings: {},
-                connectionRefs: {},
+                connectionRefs: lookup?.connectionRefs ?? {},
               })
             : update;
         return next.config ?? current;

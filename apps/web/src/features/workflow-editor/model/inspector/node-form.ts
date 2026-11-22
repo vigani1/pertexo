@@ -1,3 +1,4 @@
+import type { ApiClient } from '@/lib/api/client';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import type { WorkflowNodeUpdate } from '../graph/workflow-graph-commands';
 
@@ -14,7 +15,15 @@ export type NodeUpdateInput =
 export type NodeFormApi = Readonly<{
   nodeId: string;
   editable: boolean;
-  connectionRefs?: WorkflowNode['connectionRefs'];
+  lookup?: Readonly<{
+    scope: Readonly<{
+      apiClient: ApiClient;
+      userId: string;
+      workspaceId: string;
+      enabled: boolean;
+    }>;
+    connectionRefs: WorkflowNode['connectionRefs'];
+  }>;
   commit: (update: NodeUpdateInput, coalesceKey: string) => void;
   reportScratch: (field: string, hasScratch: boolean) => void;
 }>;

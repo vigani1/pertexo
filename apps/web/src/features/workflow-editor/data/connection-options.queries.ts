@@ -1,4 +1,4 @@
-import { queryOptions, skipToken } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import {
   connectionLookupPath,
   connectionLookupResponseSchema,
@@ -12,7 +12,7 @@ export function connectionOptions(
     userId: string;
     workspaceId: string;
   }>,
-  connectionId: string | undefined,
+  connectionId: string,
   { providerKey, lookup }: ConnectionLookupField,
 ) {
   return queryOptions({
@@ -25,19 +25,16 @@ export function connectionOptions(
       lookup,
     ],
     retry: false,
-    queryFn:
-      connectionId === undefined
-        ? skipToken
-        : ({ signal }) =>
-            scope.apiClient.request({
-              path: connectionLookupPath(scope.workspaceId, connectionId),
-              method: 'POST',
-              body: { providerKey, lookup },
-              signal,
-              response: {
-                kind: 'json',
-                decode: (value) => connectionLookupResponseSchema.parse(value),
-              },
-            }),
+    queryFn: ({ signal }) =>
+      scope.apiClient.request({
+        path: connectionLookupPath(scope.workspaceId, connectionId),
+        method: 'POST',
+        body: { providerKey, lookup },
+        signal,
+        response: {
+          kind: 'json',
+          decode: (value) => connectionLookupResponseSchema.parse(value),
+        },
+      }),
   });
 }
