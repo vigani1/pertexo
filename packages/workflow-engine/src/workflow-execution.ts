@@ -1,3 +1,4 @@
+import type { AgentContinuation } from './control-nodes/agent-continuation.js';
 import type { InlineAttemptSettlement } from './attempt/inline-settlement.types.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type { CallbackWaitConfig } from '@pertexo/workflow-model';
@@ -259,6 +260,7 @@ export interface WorkflowCheckpoint {
   readonly invocations: readonly InvocationState[];
   readonly joins: readonly JoinState[];
   readonly loops: readonly LoopState[];
+  readonly agents?: readonly AgentContinuation[];
   readonly remainingIterationBudget: number;
   readonly cancelRequested: boolean;
   readonly deadlineExpired: boolean;
