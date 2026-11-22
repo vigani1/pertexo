@@ -9,7 +9,7 @@ import { createNodeProviderHttpClient } from '../../../src/providers/http-client
 import { createPlatformNodeRegistry } from '../../../src/providers/node-registry.js';
 import { fakeMcp, MCP_TOKEN, reply, TOOL_INPUT } from './server.fixture.js';
 
-const definition = { key: 'mcp.call-tool', version: 1 };
+const definition = { key: 'mcp.call_tool', version: 1 };
 const connectionId = randomUUID();
 const allowed = createPlatformNodeRegistry({
   httpClient: createNodeProviderHttpClient({
