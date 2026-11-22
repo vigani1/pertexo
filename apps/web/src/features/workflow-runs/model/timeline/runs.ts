@@ -1,3 +1,4 @@
+import { graphLabels, type StepLabel } from './graph-labels';
 import type {
   WorkflowGraphContract,
   WorkflowNodeReuse,
@@ -7,10 +8,7 @@ import type {
 } from '@pertexo/contracts';
 import type { StatusTone } from '@/components/ui/status';
 import { describeStep, type DescribeStep } from '@/features/catalog/public';
-import {
-  AGENT_SEND_SLACK_MESSAGE,
-  agentToolAllowedWithoutApproval,
-} from '@pertexo/workflow-model';
+import { AGENT_SEND_SLACK_MESSAGE } from '@pertexo/workflow-model';
 import {
   describeNodeStatus,
   type NodeStatus,
@@ -65,59 +63,6 @@ export type RunTimelineModel = Readonly<{
   rows: readonly RunTimelineRow[];
   ticks: readonly RunTimelineTick[];
 }>;
-
-type StepLabel = Readonly<{
-  label: string;
-  kindLabel?: string;
-  definitionKey?: string;
-  usesConnection?: boolean;
-  agentWriteAllowed?: true;
-}>;
-
-type GraphLabel = Readonly<{
-  step: StepLabel;
-  order: number;
-  root: boolean;
-}>;
-
-function graphLabels(
-  graph: WorkflowGraphContract | undefined,
-  describe: DescribeStep,
-): ReadonlyMap<string, GraphLabel> {
-  const labels = new Map<string, GraphLabel>();
-  let order = 0;
-  const visit = ({
-    current,
-    root,
-  }: Readonly<{ current: WorkflowGraphContract; root: boolean }>) => {
-    for (const node of current.nodes) {
-      // The catalog's name for the step type, the same words Build uses.
-      const kind = describe(node.definition).name;
-      const label = node.label?.trim();
-      const connected = {
-        definitionKey: node.definition.key,
-        ...(agentToolAllowedWithoutApproval(node) === undefined
-          ? {}
-          : { agentWriteAllowed: true as const }),
-        ...(Object.keys(node.connectionRefs).length > 0
-          ? { usesConnection: true }
-          : {}),
-      };
-      labels.set(node.id, {
-        step:
-          label === undefined || label === ''
-            ? { label: kind, ...connected }
-            : { label, kindLabel: kind, ...connected },
-        order: order++,
-        root,
-      });
-      if (node.structured?.kind === 'for_each')
-        visit({ current: node.structured.body, root: false });
-    }
-  };
-  if (graph !== undefined) visit({ current: graph, root: true });
-  return labels;
-}
 
 function eventKey(event: WorkflowRunEvent): string | undefined {
   if (!event.type.startsWith('node.')) return undefined;
