@@ -11,6 +11,15 @@ export type AgentChild = Readonly<{
 export type AgentWorkIdentity = AgentChild &
   Readonly<{ parentInvocationKey: string }>;
 
+const agentNodePrefix = '\u0000agent:';
+
+export function isAgentWorkInvocationKey(key: string): boolean {
+  const [, nodeComponent] = key.split('|');
+  return (
+    nodeComponent?.startsWith(encodeURIComponent(agentNodePrefix)) === true
+  );
+}
+
 /** A NUL in the encoded node component cannot originate in a graph node ID. */
 export function agentChildInvocationKey(
   workflowVersionId: string,
@@ -24,6 +33,6 @@ export function agentChildInvocationKey(
       : `tool:${String(child.work.ordinal)}`;
   return invocationKey({
     workflowVersionId,
-    nodeId: `\u0000agent:${parent}:${String(child.turn)}:${work}`,
+    nodeId: `${agentNodePrefix}${parent}:${String(child.turn)}:${work}`,
   });
 }

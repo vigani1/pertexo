@@ -169,6 +169,7 @@ function prepareNode(
         workflowVersionId: lease.workflowVersionId,
         invocationKey: lease.invocationKey,
         nodeId: lease.nodeId,
+        ...(input.agent === undefined ? {} : { agent: input.agent }),
         ...(lease.branchPath === undefined
           ? {}
           : { branchPath: lease.branchPath }),
@@ -194,7 +195,8 @@ function prepareNode(
           ? {}
           : { expressionEvaluator: options.expressionEvaluator }),
         ...(input.runtime === undefined ? {} : { runtime: input.runtime }),
-        ...(input.onInputResolved === undefined || !recordsInput
+        ...(input.onInputResolved === undefined ||
+        (!recordsInput && input.agent?.identity.work.kind !== 'tool_call')
           ? {}
           : { onInputResolved: input.onInputResolved }),
         signal: input.signal,

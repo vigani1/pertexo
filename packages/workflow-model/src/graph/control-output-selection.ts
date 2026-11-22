@@ -1,4 +1,5 @@
 import { isClassifyDefinition } from '../flow/control-nodes/classify.js';
+import { isAgentDefinition } from '../flow/control-nodes/agent.js';
 import {
   isCoreConditionDefinition,
   isCoreSwitchDefinition,
@@ -13,13 +14,14 @@ import {
 // Executable graphs nest; selection refuses one that visits more nodes than this.
 const MAX_VISITED_CONTROL_NODES = 10_000;
 export type WorkflowControlOutputKind =
-  'branch' | 'parallel' | 'for_each' | 'human_task';
+  'branch' | 'parallel' | 'for_each' | 'human_task' | 'agent';
 
 /** Definition identity, not output property names, determines control materialization. */
 export function workflowControlOutputKind(
   definition: Readonly<{ key: string; version: number }> | undefined,
   config?: Readonly<Record<string, unknown>>,
 ): WorkflowControlOutputKind | undefined {
+  if (isAgentDefinition(definition)) return 'agent';
   if (
     isCoreConditionDefinition(definition) ||
     isCoreSwitchDefinition(definition) ||

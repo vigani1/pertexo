@@ -5,6 +5,7 @@ import {
 } from '../checkpoint/create-and-parse.js';
 import { WorkflowEngineError } from '../workflow-engine.errors.js';
 import { pruneFinishedIterations } from './prune.js';
+import { reserveAgentAttempt } from './scheduling/agents.js';
 import { deriveReadyNodes } from './scheduling/readiness.js';
 import { compareOrdinal } from '@pertexo/workflow-model';
 import {
@@ -107,7 +108,7 @@ export function buildWorkflowTransitionPlan(
         input.maximumAdmissions,
         input.hasExecutionSlot,
       ));
-  const attempts = admitAttempts(state, admittedKeys);
+  const attempts = admitAttempts(state, admittedKeys, input.occurredAt);
   if (state.runStatus === 'waiting' && attempts.length > 0) {
     assertRunTransition(state.runStatus, 'running');
     state.runStatus = 'running';
@@ -138,7 +139,7 @@ export function buildWorkflowTransitionPlan(
     admittedInvocationKeys: [
       ...new Set([
         ...current.admittedInvocationKeys,
-        ...admittedKeys,
+        ...attempts.map(({ invocationKey }) => invocationKey),
         ...(input.inlineAttempts ?? []).map(
           ({ invocationKey }) => invocationKey,
         ),
@@ -147,6 +148,14 @@ export function buildWorkflowTransitionPlan(
       .filter((key) => !pruned.prunedKeys.has(key))
       .sort(),
     invocations: pruned.invocations,
+    ...(state.agents.size === 0
+      ? {}
+      : {
+          agents: [...state.agents.values()].filter(
+            ({ parentInvocationKey }) =>
+              !pruned.prunedKeys.has(parentInvocationKey),
+          ),
+        }),
     readySet: reconstructReadySet({
       ...current,
       invocations: pruned.invocations,
@@ -185,6 +194,16 @@ export function buildWorkflowTransitionPlan(
     events,
     nodeRunAdmissions,
     attempts,
+    ...(state.agentOutputs.size === 0
+      ? {}
+      : {
+          agentOutputs: [...state.agentOutputs].map(
+            ([invocationKey, output]) => ({
+              invocationKey,
+              ...output,
+            }),
+          ),
+        }),
     ...(input.inlineAttempts?.length
       ? { inlineAttempts: input.inlineAttempts }
       : {}),
@@ -197,7 +216,9 @@ export function buildWorkflowTransitionPlan(
     ...(input.hasExecutionSlot &&
     attempts.length === 0 &&
     ['running', 'waiting'].includes(state.runStatus) &&
-    (input.yieldInline || hasUnsettledSchedulerWork(state))
+    (input.yieldInline ||
+      state.continueAgents ||
+      hasUnsettledSchedulerWork(state))
       ? { immediateContinuation: true as const }
       : {}),
   };
@@ -228,6 +249,7 @@ export function selectReadyAdmissions(
 export function admitAttempts(
   state: MutableWorkflowTransition,
   admittedKeys: readonly string[],
+  occurredAt: string,
 ): readonly AttemptAdmissionPlan[] {
   const { invocations } = state;
   const attempts: AttemptAdmissionPlan[] = [];
@@ -239,6 +261,7 @@ export function admitAttempts(
         `ready invocation ${key} is missing`,
       );
     assertNodeTransition(invocation.status, 'running');
+    if (!reserveAgentAttempt(state, invocation, occurredAt)) continue;
     const admissionKind = attemptAdmissionKind(invocation.waitKind);
     const running = {
       ...invocationIdentity(invocation),

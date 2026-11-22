@@ -1,8 +1,17 @@
 import {
+  isAgentDefinition,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
   utf8ByteLength,
   type ControlNodeConfig,
 } from '@pertexo/workflow-model';
+import {
+  AGENT_LIMITS,
+  type AgentContinuation,
+} from '../control-nodes/agent-continuation.js';
+import {
+  agentChildInvocationKey,
+  type AgentChild,
+} from '../invocations/agent-invocation.js';
 import { configuredScopedOutputPorts } from '../control-nodes/control-output-ports.js';
 import type {
   BranchScopePart,
@@ -22,7 +31,7 @@ export type CapacityCheckpoint = {
   ]: WorkflowCheckpoint[K] extends readonly (infer T)[]
     ? T[]
     : WorkflowCheckpoint[K];
-};
+} & { agents?: AgentContinuation[] };
 const output = {
   kind: 'artifact',
   artifactId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -100,6 +109,8 @@ export function reserveCheckpointNode(
     checkpoint.invocations.push(largest.invocation);
     checkpoint.readySet.push(...largest.ready);
     checkpoint.admittedInvocationKeys.push(key);
+    if (!node.disabled && isAgentDefinition(node.definition))
+      reserveAgent(checkpoint, node.id, key, scope);
     const ports = configuredScopedOutputPorts({
       ...node,
       ...(control === undefined ? {} : { control }),
@@ -150,6 +161,78 @@ export function reserveCheckpointNode(
         terminalStatus: 'outcome_unknown',
       });
     }
+  }
+}
+
+function reserveAgent(
+  checkpoint: CapacityCheckpoint,
+  nodeId: string,
+  parentInvocationKey: string,
+  scope: Scope,
+) {
+  const receipts = {
+    proposal: {
+      kind: 'inline',
+      attemptId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    },
+    output: {
+      kind: 'inline',
+      attemptId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    },
+  } as const;
+  (checkpoint.agents ??= []).push({
+    parentInvocationKey,
+    deadlineAt: '9999-12-31T23:59:59.999Z',
+    modelRates: {
+      input: AGENT_LIMITS.costNanoDollars,
+      output: AGENT_LIMITS.costNanoDollars,
+    },
+    budget: {
+      dispatches: AGENT_LIMITS.modelDispatches,
+      inputTokens: AGENT_LIMITS.inputTokens,
+      outputTokens: AGENT_LIMITS.outputTokens,
+      estimatedCost: AGENT_LIMITS.costNanoDollars,
+    },
+    turn: AGENT_LIMITS.turns,
+    history: Array.from({ length: AGENT_LIMITS.toolCalls }, () => receipts),
+    phase: {
+      kind: 'running_tool',
+      ordinal: AGENT_LIMITS.toolCalls,
+      proposal: receipts.proposal,
+    },
+  });
+  const children: AgentChild[] = [
+    ...Array.from({ length: AGENT_LIMITS.turns }, (_, index): AgentChild => ({
+      turn: index + 1,
+      work: { kind: 'model_turn' },
+    })),
+    ...Array.from(
+      { length: AGENT_LIMITS.toolCalls },
+      (_, index): AgentChild => ({
+        turn: index + 1,
+        work: { kind: 'tool_call', ordinal: index + 1 },
+      }),
+    ),
+  ];
+  for (const child of children) {
+    const key = agentChildInvocationKey(
+      checkpoint.workflowVersionId,
+      parentInvocationKey,
+      child,
+    );
+    checkpoint.invocations.push({
+      invocationKey: key,
+      nodeId,
+      ...scope,
+      agentWork: { ...child, parentInvocationKey },
+      status: 'waiting',
+      attemptNumber: Number.MAX_SAFE_INTEGER,
+      waitKind: 'retry_backoff',
+      resumeAt: '9999-12-31T23:59:59.999Z',
+      output: receipts.output,
+    });
+    checkpoint.admittedInvocationKeys.push(key);
+    checkpoint.readySet.push(key);
   }
 }
 

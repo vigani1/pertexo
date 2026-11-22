@@ -1,4 +1,6 @@
 import { CLASSIFY_REGISTRATION } from './classify/classify.definition.js';
+import { AGENT_REGISTRATION } from './agent/agent.definition.js';
+import { createAgentExecutor } from './agent/agent.executor.js';
 import { createClassifyExecutor } from './classify/classify.executor.js';
 import type { IntegrationModule } from '../providers/integration-module.js';
 import {
@@ -16,6 +18,11 @@ export const AI_MODULE = {
   connections: [MODEL_CONNECTION],
   executorSummaryCodes: MODEL_FAILURE_CODES,
   steps: [
+    {
+      registration: AGENT_REGISTRATION,
+      createExecutor: ({ httpClient }) =>
+        createAgentExecutor(createModelClient(httpClient)),
+    },
     {
       registration: CLASSIFY_REGISTRATION,
       createExecutor: ({ httpClient }) =>

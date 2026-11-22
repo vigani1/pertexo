@@ -116,6 +116,7 @@ export async function persistRunEvents(
               event.reasonCode,
           }),
       ...(event.dueAt === undefined ? {} : { dueAt: event.dueAt }),
+      ...(event.agentWork === undefined ? {} : { agentWork: event.agentWork }),
       ...(ids === undefined ? {} : { nodeRunId: ids.nodeRunId }),
       ...(ids?.attemptId !== undefined &&
       ids.attemptNumber === event.attemptNumber

@@ -7,6 +7,7 @@ import type { WorkflowTransitionPlan } from '@pertexo/workflow-engine';
 import type { RunAdvanceState } from './run-advance.types.js';
 import { RunResultUnavailableError } from './run-advance.errors.js';
 import type { CallableResultDecision } from '@pertexo/workflow-engine/server';
+import { isAgentWorkInvocationKey } from '@pertexo/workflow-engine/server';
 import {
   resolveValueSource,
   validateCallableValue,
@@ -23,6 +24,7 @@ export async function resolveRunResult(
   state: Pick<RunAdvanceState, 'readCompletionValues'> &
     Readonly<{
       inlineAttempts?: WorkflowTransitionPlan['inlineAttempts'];
+      agentOutputs?: WorkflowTransitionPlan['agentOutputs'];
     }>,
   signal: AbortSignal,
   evaluator?: ExpressionEvaluator,
@@ -42,8 +44,14 @@ export async function resolveRunResult(
         ]
       : [],
   );
-  for (const output of [...inputs.outputs, ...inlineOutputs])
+  for (const output of [
+    ...inputs.outputs,
+    ...inlineOutputs,
+    ...(state.agentOutputs ?? []),
+  ]) {
+    if (isAgentWorkInvocationKey(output.invocationKey)) continue;
     groups.set(output.nodeId, [...(groups.get(output.nodeId) ?? []), output]);
+  }
   const invalidInputs = validateResultInputs(source, inputs, groups);
   if (invalidInputs !== undefined) return invalidInputs;
   const nodeOutputs = Object.fromEntries(

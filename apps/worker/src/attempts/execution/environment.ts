@@ -33,6 +33,7 @@ export type NodeExecutionEnvironment = Readonly<{
 
 export function createNodeExecutionEnvironment(
   input: NodeExecutionEnvironmentInput,
+  now: () => number = Date.now,
 ): NodeExecutionEnvironment {
   const { executionSignal, lease, registry: sourceRegistry, runStore } = input;
   let dispatchAbortReason: 'canceled' | 'timed_out' | undefined;
@@ -99,6 +100,12 @@ export function createNodeExecutionEnvironment(
       // failed marker is uncertain and must not reopen the provider-I/O gate.
       dispatchState = 'marking';
       try {
+        if (
+          input.agentWork &&
+          input.deadlineAt !== undefined &&
+          now() >= input.deadlineAt.getTime()
+        )
+          throw new NodeAttemptRunAbortedError('timed_out');
         await runStore.markDispatched({
           lease,
           ...(dispatchInput?.connectionFence === undefined
@@ -156,6 +163,7 @@ export function createNodeExecutionEnvironment(
 }
 
 type NodeExecutionEnvironmentInput = Readonly<{
+  agentWork?: true;
   executionSignal: AbortSignal;
   test?: boolean;
   artifactRetentionDeadline?: Date;

@@ -295,6 +295,7 @@ async function handleClaimedAttempt(
     }
     const environment = createNodeExecutionEnvironment({
       executionSignal: heartbeat.executionSignal,
+      ...(inputs.agent === undefined ? {} : { agentWork: true }),
       variables: inputs.variables ?? {},
       ...(inputs.deadlineAt === undefined
         ? {}

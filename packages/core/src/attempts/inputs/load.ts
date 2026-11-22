@@ -13,6 +13,7 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { readVariableSetValues } from '../../variables/values.repository.js';
 import { workflowNodeFailureValueSchema } from '@pertexo/workflow-model';
+import { parseCheckpoint } from '@pertexo/workflow-engine/server';
 import type { Pool, PoolClient } from 'pg';
 import {
   NodeAttemptReconciliationRequiredError,
@@ -30,6 +31,7 @@ type UpstreamOutputRow = Awaited<
 function reconcileCompletedNodeOutputs(
   expectedOutputs: LoadInputsInput['upstreamNodeOutputs'],
   rows: readonly UpstreamOutputRow[],
+  checkpoint: unknown,
 ): readonly Readonly<{
   invocationKey: string;
   nodeId: string;
@@ -40,12 +42,23 @@ function reconcileCompletedNodeOutputs(
   const outputsByInvocationKey = new Map(
     rows.map((output) => [output.invocationKey, output]),
   );
+  const agentOutputs = rows.some(
+    ({ currentAttemptId, reusedSourceRunId }) =>
+      currentAttemptId === null && reusedSourceRunId === null,
+  )
+    ? new Set(
+        decodeStoredValue(() => parseCheckpoint(checkpoint))
+          .agents?.filter(({ phase }) => phase.kind === 'completion')
+          .map(({ parentInvocationKey }) => parentInvocationKey),
+      )
+    : undefined;
   return Object.freeze(
     expectedOutputs.map((expected) => {
       const output = outputsByInvocationKey.get(expected.invocationKey);
       if (output?.nodeId !== expected.nodeId)
         throw new NodeAttemptStateCorruptError();
       const reused = output.reusedSourceRunId !== null;
+      const agent = agentOutputs?.has(expected.invocationKey) === true;
       if (reused) {
         const invalidReusedOutput =
           output.reusedSourceNodeRunId === null ||
@@ -54,7 +67,7 @@ function reconcileCompletedNodeOutputs(
           output.currentAttemptNumber !== null ||
           output.attemptStatus !== null;
         if (invalidReusedOutput) throw new NodeAttemptStateCorruptError();
-      } else {
+      } else if (!agent) {
         const invalidAttemptOutput =
           output.attemptStatus !== 'succeeded' ||
           output.reusedSourceNodeRunId !== null ||
@@ -67,7 +80,7 @@ function reconcileCompletedNodeOutputs(
       }
       const stored = decodeStoredValue(() =>
         parseStoredExecutionValue(
-          reused ? output.nodeOutputRef : output.attemptOutputRef,
+          reused || agent ? output.nodeOutputRef : output.attemptOutputRef,
         ),
       );
       if (stored.kind !== 'inline') throw new NodeAttemptStateCorruptError();
@@ -116,6 +129,7 @@ export async function loadNodeAttemptInputs(
         completedNodeOutputs = reconcileCompletedNodeOutputs(
           input.upstreamNodeOutputs,
           outputs,
+          row.schedulerState,
         );
       }
       const sourceFailure = await readSourceFailure(client, input);

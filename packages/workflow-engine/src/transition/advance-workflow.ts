@@ -3,18 +3,15 @@ import {
   testStepDisposition,
   applyWorkflowTestPolicy,
 } from '../testing/policy.js';
-
 import {
   taskDeclarationObservations,
   taskOutcomeObservations,
 } from '../observation/coordinator-tasks.js';
-
 import { advanceWorkflowFromSchedulerState } from './advance.js';
 import {
   advanceInlineChain,
   type InlineAdvanceOptions,
 } from './advance-inline-chain.js';
-
 import { resolveAttemptFailures } from '../observation/coordinator-failures.js';
 import {
   branchSelectionObservations,
@@ -32,6 +29,7 @@ import {
 import {
   assertAuthenticExecutableIdentity,
   executableControls,
+  executableAgentTool,
   executableFailureRoutes,
   executableReadOnlyNodeIds,
   executionNodes,
@@ -42,7 +40,6 @@ import type {
   WorkflowExecutableGraph,
 } from '../compilation/workflow-executable.js';
 import type { ControlNodeConfig } from '@pertexo/workflow-model';
-
 import type { WorkflowObservation } from '../workflow-execution.js';
 import { parseCheckpoint } from '../checkpoint/create-and-parse.js';
 import type { SchedulerState } from './scheduling/policy.js';
@@ -50,10 +47,12 @@ import { operationError, record } from '../input-checks/engine-values.js';
 import { parsePersistedObservations } from '../observation/persisted.js';
 import { nodeProviderIdempotencyKey } from '../attempt/derive-provider-key.js';
 import type { WorkflowTransitionPlan } from '../workflow-execution.js';
-
 import { assertCheckpointMatchesExecutable } from '../checkpoint/matches-executable.js';
 import { assertIdentity, assertNotAborted } from '../attempt/admission.js';
+import type { AgentModelRates } from '../control-nodes/agent-continuation.js';
+import { agentSchedulerFor, graphStepOutputs } from './scheduling/agents.js';
 export interface AdvanceWorkflowInput {
+  readonly agentModelRates?: (model: string) => AgentModelRates | undefined;
   readonly test?: WorkflowTestPolicy;
   readonly inline?: InlineAdvanceOptions;
   readonly runId: string;
@@ -69,7 +68,6 @@ export interface AdvanceWorkflowInput {
   readonly taskOutcomes?: unknown;
   readonly signal: AbortSignal;
 }
-
 export function projectSchedulerState(
   graph: WorkflowExecutableGraph,
   controls: ReadonlyMap<string, ControlNodeConfig>,
@@ -112,7 +110,6 @@ export function projectSchedulerState(
   };
   return projectGraph(graph);
 }
-
 function schedulerState(
   executable: CompiledWorkflowExecutable,
 ): SchedulerState {
@@ -126,7 +123,6 @@ function schedulerState(
     ...(routes.length === 0 ? {} : { failureRoutes: routes }),
   };
 }
-
 export async function advanceWorkflow(
   input: AdvanceWorkflowInput,
 ): Promise<WorkflowTransitionPlan> {
@@ -183,8 +179,10 @@ export async function advanceWorkflow(
     nodesById,
     invocationsByKey,
   });
+  const agentScheduler = agentSchedulerFor(input);
   const schedulerInput = {
     checkpoint,
+    agentScheduler,
     schedulerState: applyWorkflowTestPolicy(
       schedulerState(input.executable),
       executableNodeList,
@@ -215,7 +213,7 @@ export async function advanceWorkflow(
     hasExecutionSlot: input.hasExecutionSlot ?? true,
   };
   const plan =
-    input.inline === undefined
+    input.inline === undefined || agentScheduler !== undefined
       ? advanceWorkflowFromSchedulerState(schedulerInput)
       : await advanceInlineChain(
           input,
@@ -254,7 +252,6 @@ export async function advanceWorkflow(
     }),
   });
 }
-
 function coordinateObservations({
   input,
   checkpoint,
@@ -274,8 +271,8 @@ function coordinateObservations({
     input.observations,
     checkpoint,
   );
-  const completedOutputItems = parseCompletedOutputItems(
-    input.completedOutputs,
+  const completedOutputItems = graphStepOutputs(
+    parseCompletedOutputItems(input.completedOutputs),
   );
   const successfulOutcomes = indexPersistedSuccessfulOutcomes(
     persistedObservations.facts,
@@ -300,6 +297,8 @@ function coordinateObservations({
     failures: persistedObservations.attemptFailures,
     invocations: invocationsByKey,
     nodes: nodesById,
+    agentToolFor: (nodeId) =>
+      executableAgentTool(input.executable, nodeId)?.node,
     retryPolicyReference: input.executable.envelope.runtimePolicies.retry,
     controlCanceled,
     controlDeadline,

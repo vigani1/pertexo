@@ -1,4 +1,5 @@
 import { AGENT_LIMITS, type AgentContinuation } from './agent-continuation.js';
+import { AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
 
 type ModelBudget = AgentContinuation['budget'];
 type ModelRates = AgentContinuation['modelRates'];
@@ -6,6 +7,29 @@ type TokenCounts = Readonly<{ inputTokens: number; outputTokens: number }>;
 
 export type ModelReservation = TokenCounts &
   Readonly<{ estimatedCost: number }>;
+
+// Reserve one input token per encoded request byte and the full output grant.
+export const agentTurnTokenEnvelope = Object.freeze({
+  inputTokens: AGENT_TOOL_LIMITS.requestBytes,
+  outputTokens: AGENT_TOOL_LIMITS.outputTokens,
+});
+
+export function settleAgentTurnUsage(
+  continuation: AgentContinuation,
+  reported: TokenCounts | undefined,
+) {
+  return settleAgentInference(
+    continuation,
+    {
+      ...agentTurnTokenEnvelope,
+      estimatedCost: estimatedCost(
+        agentTurnTokenEnvelope,
+        continuation.modelRates,
+      ),
+    },
+    reported,
+  );
+}
 
 type BudgetRefusal = Readonly<{
   kind: 'refused';

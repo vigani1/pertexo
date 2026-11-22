@@ -28,6 +28,7 @@ import {
   isNodeExecutorFailure,
 } from './admission.js';
 import { resolveMappedNodeInput } from './mapping.js';
+import { resolveAgentAttemptInput } from './agent-input.js';
 
 export async function executeNodeAttempt(
   input: ExecuteNodeAttemptInput,
@@ -45,11 +46,11 @@ export async function executeNodeAttempt(
   const prepared = prepareNodeAttemptInput(input);
   const { node } = prepared;
   const callbacks = await resolveAttemptCallbacks(input, node);
-  const executionInput = await mapPreparedAttemptInput(
-    input,
-    prepared,
-    callbacks,
-  );
+  const mapped = await mapPreparedAttemptInput(input, prepared, callbacks);
+  const executionInput =
+    input.agent === undefined
+      ? mapped
+      : resolveAgentAttemptInput(input, mapped);
   // Recorded before the executor runs, so failed attempts keep it (ADR 052).
   await input.onInputResolved?.(executionInput);
   assertNotAborted(input.signal);

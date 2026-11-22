@@ -2,7 +2,10 @@ import { StoredExecutionValueInvalidError } from '@pertexo/node-sdk';
 import { prepareStoredExecutionValue } from '../../shared/stored-execution.js';
 import type { JsonValue } from '@pertexo/workflow-model';
 import { generatePersistedId } from '@pertexo/database/platform';
-import type { InlineAdvanceOptions } from '@pertexo/workflow-engine/server';
+import type {
+  AgentModelRates,
+  InlineAdvanceOptions,
+} from '@pertexo/workflow-engine/server';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -25,6 +28,7 @@ import {
 } from '../queries/execution/verify-projection.js';
 
 export type AdvanceRunDependencies = Readonly<{
+  agentModelRates?: (model: string) => AgentModelRates | undefined;
   runs: RunAdvanceStore;
   calls: WorkflowCallStore;
   verification: PersistedWorkflowProjectionVerificationOptions;
@@ -70,6 +74,11 @@ export async function advanceRun(
       hasExecutionSlot: state.hasExecutionSlot,
       occurredAt: state.occurredAt,
       maximumAdmissions: dependencies.maximumAdmissions,
+      ...(dependencies.agentModelRates === undefined
+        ? {}
+        : {
+            agentModelRates: dependencies.agentModelRates,
+          }),
       ...(state.workflow.test === undefined
         ? {}
         : { test: state.workflow.test }),
@@ -106,7 +115,11 @@ export async function advanceRun(
         plan,
         await resolveRunResult(
           callable,
-          { ...state, inlineAttempts: plan.inlineAttempts },
+          {
+            ...state,
+            inlineAttempts: plan.inlineAttempts,
+            agentOutputs: plan.agentOutputs,
+          },
           input.signal,
           dependencies.expressionEvaluator,
         ),

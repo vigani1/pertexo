@@ -9,11 +9,13 @@ import { operationError } from '../input-checks/engine-values.js';
 import type { AttemptFailureObservation } from './persisted.js';
 import { decideRetry, resolveRetryPolicy } from '../attempt/retries.js';
 import type { WorkflowObservation } from '../workflow-execution.js';
+import type { AgentWorkIdentity } from '../invocations/agent-invocation.js';
 
 interface FailureInvocation {
   readonly attemptNumber: number;
   readonly nodeId: string;
   readonly status: string;
+  readonly agentWork?: AgentWorkIdentity;
 }
 
 export function resolveAttemptFailures(
@@ -22,6 +24,7 @@ export function resolveAttemptFailures(
     failures: readonly AttemptFailureObservation[];
     invocations: ReadonlyMap<string, FailureInvocation>;
     nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+    agentToolFor?: (nodeId: string) => WorkflowExecutableNode | undefined;
     retryPolicyReference: PolicyReference;
     controlCanceled: boolean;
     controlDeadline: boolean;
@@ -35,7 +38,7 @@ export function resolveAttemptFailures(
   }
   return input.failures.map((failure) => {
     const invocation = input.invocations.get(failure.invocationKey);
-    const node = input.nodes.get(invocation?.nodeId ?? '');
+    const node = failureNode(input, invocation);
     const staleFailure =
       invocation?.status !== 'running' ||
       invocation.attemptNumber !== failure.attemptNumber ||
@@ -107,23 +110,47 @@ export function resolveAttemptFailures(
       status:
         decision.kind === 'outcome_unknown' ? 'outcome_unknown' : 'failed',
       reasonCode: failure.safeErrorCode,
-      ...(decision.kind === 'failed' &&
-      !node.disabled &&
-      isWorkflowFailureSource(node.definition, node.config) &&
-      isRoutableExecutorFailure(failure)
-        ? {
-            failure: {
-              nodeId: node.id,
-              invocationKey: failure.invocationKey,
-              attemptNumber: failure.attemptNumber,
-              errorKind: failure.errorKind,
-              safeErrorCode: failure.safeErrorCode,
-            },
-          }
+      ...(decision.kind === 'failed' && invocation.agentWork === undefined
+        ? routableFailure(node, failure)
         : {}),
       coordinatorDerived: true,
     };
   });
+}
+
+function failureNode(
+  {
+    nodes,
+    agentToolFor,
+  }: Readonly<{
+    nodes: ReadonlyMap<string, WorkflowExecutableNode>;
+    agentToolFor?: (nodeId: string) => WorkflowExecutableNode | undefined;
+  }>,
+  invocation: FailureInvocation | undefined,
+): WorkflowExecutableNode | undefined {
+  if (invocation === undefined) return undefined;
+  return invocation.agentWork?.work.kind === 'tool_call'
+    ? agentToolFor?.(invocation.nodeId)
+    : nodes.get(invocation.nodeId);
+}
+
+function routableFailure(
+  node: WorkflowExecutableNode,
+  failure: AttemptFailureObservation,
+) {
+  return !node.disabled &&
+    isWorkflowFailureSource(node.definition, node.config) &&
+    isRoutableExecutorFailure(failure)
+    ? {
+        failure: {
+          nodeId: node.id,
+          invocationKey: failure.invocationKey,
+          attemptNumber: failure.attemptNumber,
+          errorKind: failure.errorKind,
+          safeErrorCode: failure.safeErrorCode,
+        },
+      }
+    : {};
 }
 
 function interruptedFailureStatus({

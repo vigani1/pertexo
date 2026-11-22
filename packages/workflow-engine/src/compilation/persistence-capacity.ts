@@ -69,11 +69,12 @@ export function assertExecutablePersistenceCapacity(
           `${definition.definition.key}@${String(definition.definition.version)}`,
       ),
   );
+  const { agents: _agents, ...emptyCheckpoint } = createCheckpoint({
+    workflowVersionId: versionId,
+    iterationBudget: WORKFLOW_GRAPH_CONTRACT_LIMITS.maxTotalLoopIterations,
+  });
   const checkpoint = {
-    ...createCheckpoint({
-      workflowVersionId: versionId,
-      iterationBudget: WORKFLOW_GRAPH_CONTRACT_LIMITS.maxTotalLoopIterations,
-    }),
+    ...emptyCheckpoint,
     revision: Number.MAX_SAFE_INTEGER,
     nextEventSequence: STORED_INTEGER_MAX,
     retiredIterationBudget:

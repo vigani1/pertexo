@@ -1,4 +1,5 @@
 import { MODEL_LIMITS } from './model-settings.js';
+import { AGENT_TOOL_LIMITS } from '@pertexo/workflow-model';
 import { NodeExecutorFailure, safeInstanceOf } from '@pertexo/node-sdk/server';
 import {
   classifySecureHttpError,
@@ -55,7 +56,11 @@ export function createModelClient(
       );
       let dispatched = earlierDispatch;
       try {
-        if (body.byteLength > MODEL_LIMITS.requestBytes)
+        const requestBytes =
+          request.agent === undefined
+            ? MODEL_LIMITS.requestBytes
+            : AGENT_TOOL_LIMITS.requestBytes;
+        if (body.byteLength > requestBytes)
           throw modelFailure('request_too_large', {
             possiblyDispatched: dispatched,
           });

@@ -1,4 +1,5 @@
 import type { AgentWorkIdentity } from './invocations/agent-invocation.js';
+import type { DefinitionIdentity } from '@pertexo/node-sdk';
 import type { AgentContinuation } from './control-nodes/agent-continuation.js';
 import type { InlineAttemptSettlement } from './attempt/inline-settlement.types.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
@@ -12,10 +13,8 @@ import type {
   WorkflowCallPin,
   WorkflowNodeFailureValue,
 } from '@pertexo/workflow-model';
-
 export { RUN_STATUSES, type RunStatus } from '@pertexo/workflow-model';
 import type { RunStatus } from '@pertexo/workflow-model';
-
 export const NODE_STATUSES = [
   'pending',
   'ready',
@@ -29,31 +28,26 @@ export const NODE_STATUSES = [
   'outcome_unknown',
 ] as const;
 export type NodeStatus = (typeof NODE_STATUSES)[number];
-
 export type SideEffectClass = 'safe' | 'idempotent_with_key' | 'unsafe';
 export type WaitKind =
   'node_wait' | 'retry_backoff' | 'workflow_call' | 'human_task';
 export type AdmissionKind = 'execute' | 'retry' | 'wait_resume';
 export type BranchDisposition =
   'pending' | 'arrived' | 'skipped' | 'missing' | 'failed' | 'canceled';
-
 export type OutputReference =
   | Readonly<{ readonly kind: 'inline'; readonly attemptId: string }>
   | Readonly<{ readonly kind: 'artifact'; readonly artifactId: string }>
   | Readonly<{ readonly kind: 'reused'; readonly nodeRunId: string }>
   | Readonly<{ readonly kind: 'call'; readonly callId: string }>
   | Readonly<{ readonly kind: 'task'; readonly taskId: string }>;
-
 export interface BranchScopePart {
   readonly nodeId: string;
   readonly outputPort: string;
 }
-
 export interface IterationScopePart {
   readonly loopNodeId: string;
   readonly ordinal: number;
 }
-
 /** What an invocation keeps whatever its status. */
 export type InvocationIdentity = Readonly<{
   invocationKey: string;
@@ -68,7 +62,6 @@ export type InvocationIdentity = Readonly<{
   iterationPath?: readonly IterationScopePart[];
   agentWork?: AgentWorkIdentity;
 }>;
-
 /** Waits that resume on their own at `resumeAt`. */
 export type TimedWaitKind = Extract<WaitKind, 'node_wait' | 'retry_backoff'>;
 
@@ -303,6 +296,8 @@ export interface EngineEventPlan {
   readonly attemptNumber?: number;
   readonly reasonCode?: string;
   readonly dueAt?: string;
+  readonly agentWork?: AgentWorkIdentity &
+    Readonly<{ definition: DefinitionIdentity; alias?: string }>;
 }
 
 export interface AttemptAdmissionPlan {
@@ -369,6 +364,11 @@ export interface PendingTaskOutcome {
 }
 
 export interface WorkflowTransitionPlan {
+  readonly agentOutputs?: readonly Readonly<{
+    invocationKey: string;
+    nodeId: string;
+    value: JsonValue;
+  }>[];
   /** Mandatory selected source evidence, persisted atomically outside the checkpoint. */
   readonly failureValues?: readonly Readonly<{
     value: WorkflowNodeFailureValue;
