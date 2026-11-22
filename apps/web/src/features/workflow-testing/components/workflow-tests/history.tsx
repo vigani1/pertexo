@@ -170,10 +170,11 @@ function WorkflowTestRunControls({
         )}
         {snapshot === undefined ? null : (
           <span className="text-xs text-muted-foreground">
-            Draft {snapshot.draftRevision}
-            {snapshot.draftRevision === currentRevision
-              ? ''
-              : ' · Earlier draft'}
+            {testSourceLabel(snapshot)}
+            {snapshot.publishedVersionNumber === undefined &&
+            snapshot.draftRevision !== currentRevision
+              ? ' · Earlier draft'
+              : ''}
           </span>
         )}
         <Button
@@ -252,7 +253,7 @@ function WorkflowTestPicker({
       : retained;
   const choices = items.map((item) => ({
     value: item.runId,
-    label: `Draft ${String(item.draftRevision)} · ${describeRunStatus({ status: item.runId === progress?.run.id ? progress.run.status : item.status }).label} · ${formatDate(item.createdAt)} · ${formatClock(item.createdAt)}`,
+    label: `${testSourceLabel(item)} · ${describeRunStatus({ status: item.runId === progress?.run.id ? progress.run.status : item.status }).label} · ${formatDate(item.createdAt)} · ${formatClock(item.createdAt)}`,
   }));
   if (choices.length === 0) return null;
   return (
@@ -278,4 +279,15 @@ function WorkflowTestPicker({
       </SelectContent>
     </Select>
   );
+}
+
+function testSourceLabel(
+  item: Readonly<{
+    draftRevision: number;
+    publishedVersionNumber?: number | undefined;
+  }>,
+) {
+  return item.publishedVersionNumber === undefined
+    ? `Draft ${String(item.draftRevision)}`
+    : `Version ${String(item.publishedVersionNumber)}`;
 }

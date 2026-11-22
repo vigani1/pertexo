@@ -82,6 +82,12 @@ export function WorkflowTestMenuItems({
       >
         Run all tests
       </DropdownMenuItem>
+      <DropdownMenuItem
+        disabled={suiteActionsBlocked}
+        onClick={() => void tests.suites.prepare('table')}
+      >
+        Evaluate data table
+      </DropdownMenuItem>
       <DropdownMenuItem onClick={tests.showHistory}>
         Test history
       </DropdownMenuItem>

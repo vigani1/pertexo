@@ -1,5 +1,6 @@
 import { DialogFooter } from '@/components/ui/dialog';
 import { SuitePreparation } from './preparation';
+import { EvaluationSetup } from './evaluation';
 import { useState } from 'react';
 import {
   Dialog,
@@ -16,6 +17,7 @@ export function TestSuiteDialog({ suites }: Readonly<{ suites: TestSuites }>) {
   const [acknowledged, setAcknowledged] = useState(false);
   const locked = suites.start.pending || suites.start.uncertain;
   const preparation = suites.preparation;
+  const evaluation = suites.caseSource === 'table';
   return (
     <Dialog
       open={suites.open}
@@ -24,10 +26,13 @@ export function TestSuiteDialog({ suites }: Readonly<{ suites: TestSuites }>) {
       }}
     >
       <DialogContent className="flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-y-auto">
-        <DialogTitle>Run all tests</DialogTitle>
+        <DialogTitle>
+          {evaluation ? 'Evaluate data table' : 'Run all tests'}
+        </DialogTitle>
         <DialogDescription>
-          Runs every saved input case against this saved draft, one after
-          another. Pins replace their steps. Test results stay for{' '}
+          {evaluation
+            ? 'Runs one case for each row in the table you select. Test results stay for '
+            : 'Runs every saved input case against this saved draft, one after another. Pins replace their steps. Test results stay for '}
           {formatCount(DATA_RETENTION_DAYS.testRuns, 'day')}.
         </DialogDescription>
         {suites.preparing ? (
@@ -36,7 +41,10 @@ export function TestSuiteDialog({ suites }: Readonly<{ suites: TestSuites }>) {
         {suites.error === undefined ? null : (
           <Notice tone="destructive">{suites.error}</Notice>
         )}
-        {preparation === undefined ? null : (
+        {evaluation && suites.open ? (
+          <EvaluationSetup suites={suites} locked={locked} />
+        ) : null}
+        {evaluation || preparation === undefined ? null : (
           <SuitePreparation
             preparation={preparation}
             acknowledged={acknowledged}
@@ -52,7 +60,7 @@ export function TestSuiteDialog({ suites }: Readonly<{ suites: TestSuites }>) {
           acknowledged={acknowledged}
           onPrepare={() => {
             setAcknowledged(false);
-            void suites.prepare();
+            void suites.prepare(suites.caseSource);
           }}
         />
       </DialogContent>
@@ -103,14 +111,16 @@ function SuiteStartActions({
           >
             Prepare again
           </Button>
-          <Button
-            disabled={suiteStartBlocked}
-            onClick={() =>
-              void suites.submit({ acknowledgeSideEffects: acknowledged })
-            }
-          >
-            {suites.start.pending ? 'Starting…' : 'Start suite'}
-          </Button>
+          {suites.caseSource === 'table' ? null : (
+            <Button
+              disabled={suiteStartBlocked}
+              onClick={() =>
+                void suites.submit({ acknowledgeSideEffects: acknowledged })
+              }
+            >
+              {suites.start.pending ? 'Starting…' : 'Start suite'}
+            </Button>
+          )}
         </>
       )}
     </DialogFooter>

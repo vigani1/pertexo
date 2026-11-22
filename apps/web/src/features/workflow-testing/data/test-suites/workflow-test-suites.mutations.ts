@@ -49,6 +49,7 @@ export function useTestSuites({
     scope.workflowId,
   ]);
   const [open, setOpen] = useState(false);
+  const [caseSource, setCaseSource] = useState<'saved' | 'table'>('saved');
   const [preparation, setPreparation] =
     useState<WorkflowTestSuitePreparation>();
   const [preparing, setPreparing] = useState(false);
@@ -89,13 +90,14 @@ export function useTestSuites({
     refresh,
     { action: 'canceling the test suite' },
   );
-  async function prepare() {
+  async function prepare(source: 'saved' | 'table' = 'saved') {
     if (preparing || start.pending || start.uncertain) return;
     start.reset();
     setPreparing(true);
     setError(undefined);
     setPreparation(undefined);
     setOpen(true);
+    setCaseSource(source);
     try {
       const saved = await ensureSaved();
       const value = await prepareSuite(scope, await signal());
@@ -117,29 +119,24 @@ export function useTestSuites({
   }
   async function submit({
     acknowledgeSideEffects,
-  }: Readonly<{ acknowledgeSideEffects: boolean }>) {
+    evaluation,
+  }: Readonly<{
+    acknowledgeSideEffects: boolean;
+    evaluation?: Extract<
+      WorkflowTestSuiteStartRequest,
+      { evaluation: unknown }
+    >['evaluation'];
+  }>) {
     if (preparation === undefined) return;
     await start.send(
-      workflowTestSuiteStartRequestSchema.parse({
-        expectedRevision: preparation.draftRevision,
-        expectedSamples: preparation.samples,
-        expectedEffectfulSteps: preparation.effectfulSteps.map(
-          (step) => step.nodeId,
-        ),
-        expectedCases: preparation.cases.map(({ id, revision }) => ({
-          id,
-          revision,
-        })),
-        expectedVariableSetRevision: preparation.variableSetRevision,
-        signature: preparation.signature,
-        acknowledgeSideEffects,
-      }),
+      suiteRequest(preparation, acknowledgeSideEffects, evaluation),
     );
   }
   return {
     scope,
     enabled,
     open,
+    caseSource,
     setOpen,
     preparation,
     preparing,
@@ -160,3 +157,33 @@ export function useTestSuites({
   };
 }
 export type TestSuites = ReturnType<typeof useTestSuites>;
+
+function suiteRequest(
+  preparation: WorkflowTestSuitePreparation,
+  acknowledgeSideEffects: boolean,
+  evaluation:
+    | Extract<
+        WorkflowTestSuiteStartRequest,
+        { evaluation: unknown }
+      >['evaluation']
+    | undefined,
+) {
+  return workflowTestSuiteStartRequestSchema.parse({
+    expectedRevision: preparation.draftRevision,
+    expectedSamples: preparation.samples,
+    expectedEffectfulSteps: preparation.effectfulSteps.map(
+      (step) => step.nodeId,
+    ),
+    ...(evaluation === undefined
+      ? {
+          expectedCases: preparation.cases.map(({ id, revision }) => ({
+            id,
+            revision,
+          })),
+        }
+      : { evaluation }),
+    expectedVariableSetRevision: preparation.variableSetRevision,
+    signature: preparation.signature,
+    acknowledgeSideEffects,
+  });
+}

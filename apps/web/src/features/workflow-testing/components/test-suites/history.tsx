@@ -37,7 +37,7 @@ export function TestSuiteHistory({
     const item = detail?.suiteId === stored.suiteId ? detail : stored;
     return {
       value: item.suiteId,
-      label: `${formatDate(item.createdAt)} ${formatClock(item.createdAt)} · ${item.status} · ${String(item.passed)}/${String(item.total)} passed`,
+      label: `${item.evaluation === undefined ? '' : 'Evaluation · '}${formatDate(item.createdAt)} ${formatClock(item.createdAt)} · ${item.status} · ${String(item.passed)}/${String(item.total)} cases passed`,
     };
   });
   return (
@@ -119,7 +119,8 @@ function SuiteResult({
     <>
       <div className="flex flex-wrap items-center gap-2">
         <Status tone={tones[detail.status] ?? 'neutral'}>
-          Suite · {detail.status}
+          {detail.evaluation === undefined ? 'Suite' : 'Evaluation'} ·{' '}
+          {detail.status}
         </Status>
         <span className="text-xs text-muted-foreground">
           {detail.passed}/{detail.total} passed · {detail.failed} failed ·{' '}
@@ -137,65 +138,85 @@ function SuiteResult({
           </Button>
         ) : null}
       </div>
+      {detail.score === undefined ? null : (
+        <p className="text-sm">
+          <strong>
+            {detail.score.matched}/{detail.score.total} assertions passed
+          </strong>
+          {' · '}
+          {detail.score.failedRuns} failed runs
+          {' · '}
+          {detail.score.incompleteCases} incomplete cases
+        </p>
+      )}
       {detail.stopReason === null ? null : (
         <Notice tone="warning">
           Suite stopped: {detail.stopReason.replaceAll('_', ' ')}.
         </Notice>
       )}
       <ol className="divide-y">
-        {detail.cases.map((entry) => (
-          <li
-            key={entry.ordinal}
-            className="flex flex-wrap items-center gap-2 py-2"
-          >
-            <span className="min-w-0 flex-1 text-sm wrap-anywhere">
-              {entry.name}
-            </span>
-            <Status tone={tones[entry.status] ?? 'neutral'}>
-              {entry.status}
-            </Status>
-            <div className="ml-auto flex flex-wrap gap-1">
-              {entry.runId === null ? null : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`View test ${entry.name}`}
-                  onClick={() => {
-                    if (entry.runId !== null) onViewRun(entry.runId);
-                  }}
-                >
-                  View test
-                </Button>
-              )}
-              {['passed', 'failed', 'error'].includes(entry.status) ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`Report ${entry.name}`}
-                  onClick={() => {
-                    setReportOrdinal(
-                      reportOrdinal === entry.ordinal
-                        ? undefined
-                        : entry.ordinal,
-                    );
-                  }}
-                >
-                  Report
-                </Button>
-              ) : null}
-            </div>
-            {reportOrdinal === entry.ordinal ? (
-              <div className="w-full">
-                <TestCaseReport
-                  key={`${detail.suiteId}:${String(entry.ordinal)}`}
-                  scope={suites.scope}
-                  suiteId={detail.suiteId}
-                  ordinal={entry.ordinal}
-                />
+        {detail.cases.map((entry) => {
+          const name =
+            detail.evaluation === undefined
+              ? entry.name
+              : `Row ${String(entry.ordinal + 1)}`;
+          return (
+            <li
+              key={entry.ordinal}
+              className="flex flex-wrap items-center gap-2 py-2"
+            >
+              <span className="min-w-0 flex-1 text-sm wrap-anywhere">
+                {name}
+              </span>
+              <Status tone={tones[entry.status] ?? 'neutral'}>
+                {detail.evaluation !== undefined &&
+                (entry.status === 'error' || entry.status === 'skipped')
+                  ? 'incomplete'
+                  : entry.status}
+              </Status>
+              <div className="ml-auto flex flex-wrap gap-1">
+                {entry.runId === null ? null : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`View test ${name}`}
+                    onClick={() => {
+                      if (entry.runId !== null) onViewRun(entry.runId);
+                    }}
+                  >
+                    View test
+                  </Button>
+                )}
+                {['passed', 'failed', 'error'].includes(entry.status) ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Report ${name}`}
+                    onClick={() => {
+                      setReportOrdinal(
+                        reportOrdinal === entry.ordinal
+                          ? undefined
+                          : entry.ordinal,
+                      );
+                    }}
+                  >
+                    Report
+                  </Button>
+                ) : null}
               </div>
-            ) : null}
-          </li>
-        ))}
+              {reportOrdinal === entry.ordinal ? (
+                <div className="w-full">
+                  <TestCaseReport
+                    key={`${detail.suiteId}:${String(entry.ordinal)}`}
+                    scope={suites.scope}
+                    suiteId={detail.suiteId}
+                    ordinal={entry.ordinal}
+                  />
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
       </ol>
     </>
   );

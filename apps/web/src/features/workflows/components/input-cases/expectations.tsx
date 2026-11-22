@@ -4,6 +4,7 @@ import { QueryView } from '@/components/patterns/states/query-view';
 import {
   WORKFLOW_TEST_LIMITS,
   workflowTestStepChoices,
+  type WorkflowGraph,
 } from '@pertexo/workflow-model';
 import type { CaseExpectationDraft } from '../../model/input-cases/expectations';
 import { useQuery } from '@tanstack/react-query';
@@ -26,6 +27,8 @@ export function CaseExpectations({
   disabled,
   scope,
   error,
+  versionGraph,
+  expectedColumns,
 }: Readonly<{
   value: CaseExpectationDraft;
   onChange: (value: CaseExpectationDraft) => void;
@@ -37,6 +40,8 @@ export function CaseExpectations({
     workflowId: string;
   };
   error: string | undefined;
+  versionGraph?: WorkflowGraph | undefined;
+  expectedColumns?: readonly Choice[] | undefined;
 }>) {
   const graph = useQuery({
     ...workflowShapeQueryOptions(
@@ -46,13 +51,14 @@ export function CaseExpectations({
       scope.workflowId,
     ),
     staleTime: QUERY_FRESHNESS.none,
-    enabled: value.assertions.length > 0,
+    enabled: value.assertions.length > 0 && versionGraph === undefined,
   });
+  const testedGraph = versionGraph ?? graph.data;
   const choices = [
     { value: '', label: 'Final output (declared result)' },
-    ...(graph.data === undefined
+    ...(testedGraph === undefined
       ? []
-      : workflowTestStepChoices(graph.data).map((node) => ({
+      : workflowTestStepChoices(testedGraph).map((node) => ({
           value: node.nodeId,
           label: `${node.label} (${node.nodeId})`,
         }))),
@@ -99,13 +105,16 @@ export function CaseExpectations({
           </Select>
         )}
       </LabelledField>
-      <QueryView query={graph} resource="Step choices" loading={null} />
+      {versionGraph === undefined ? (
+        <QueryView query={graph} resource="Step choices" loading={null} />
+      ) : null}
       {value.assertions.map((item, index) => (
         <ExpectationRow
           key={item.id}
           item={item}
           index={index}
           choices={choices}
+          expectedColumns={expectedColumns}
           onChange={(change) => {
             update(item.id, change);
           }}
@@ -123,7 +132,9 @@ export function CaseExpectations({
         type="button"
         variant="outline"
         size="sm"
-        disabled={disabled || value.assertions.length >= 20}
+        disabled={
+          disabled || value.assertions.length >= WORKFLOW_TEST_LIMITS.assertions
+        }
         onClick={() => {
           onChange({
             ...value,
@@ -151,10 +162,12 @@ export function CaseExpectations({
   );
 }
 
+type Choice = Readonly<{ value: string; label: string }>;
 type ExpectationRowProps = Readonly<{
   item: CaseExpectationDraft['assertions'][number];
   index: number;
-  choices: readonly Readonly<{ value: string; label: string }>[];
+  choices: readonly Choice[];
+  expectedColumns: readonly Choice[] | undefined;
   onChange: (
     change: Partial<CaseExpectationDraft['assertions'][number]>,
   ) => void;
@@ -164,6 +177,7 @@ function ExpectationRow({
   item,
   index,
   choices,
+  expectedColumns,
   onChange,
   onRemove,
 }: ExpectationRowProps) {
@@ -208,12 +222,25 @@ function ExpectationRow({
           </Select>
         )}
       </LabelledField>
+      {expectedColumns !== undefined && item.source !== '' ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-pressed={item.path === '$.selectedPort'}
+          onClick={() => {
+            onChange({ path: '$.selectedPort', operator: 'equals' });
+          }}
+        >
+          Use selected branch
+        </Button>
+      ) : null}
       <LabelledField id={`${item.id}-path`} label="JSON path">
         {(control) => (
           <Input
             {...control}
             value={item.path}
-            maxLength={512}
+            maxLength={WORKFLOW_TEST_LIMITS.pathLength}
             placeholder="$.total"
             autoComplete="off"
             onChange={(event) => {
@@ -244,20 +271,32 @@ function ExpectationRow({
           </Select>
         )}
       </LabelledField>
-      <LabelledField id={`${item.id}-expected`} label="Expected value (JSON)">
-        {(control) => (
-          <Textarea
-            {...control}
-            value={item.expected}
-            autoComplete="off"
-            spellCheck={false}
-            className="min-h-16 font-mono"
-            onChange={(event) => {
-              onChange({ expected: event.target.value });
-            }}
-          />
-        )}
-      </LabelledField>
+      {expectedColumns === undefined ? null : (
+        <ExpectedValueSource
+          id={item.id}
+          value={item.expectedColumn}
+          expectedColumns={expectedColumns}
+          onChange={(expectedColumn) => {
+            onChange({ expectedColumn });
+          }}
+        />
+      )}
+      {item.expectedColumn === undefined ? (
+        <LabelledField id={`${item.id}-expected`} label="Expected value (JSON)">
+          {(control) => (
+            <Textarea
+              {...control}
+              value={item.expected}
+              autoComplete="off"
+              spellCheck={false}
+              className="min-h-16 font-mono"
+              onChange={(event) => {
+                onChange({ expected: event.target.value });
+              }}
+            />
+          )}
+        </LabelledField>
+      ) : null}
       <Button
         type="button"
         variant="ghost"
@@ -269,5 +308,43 @@ function ExpectationRow({
         Remove check {index + 1}
       </Button>
     </fieldset>
+  );
+}
+
+function ExpectedValueSource({
+  id,
+  value,
+  expectedColumns,
+  onChange,
+}: Readonly<{
+  id: string;
+  value: string | undefined;
+  expectedColumns: readonly Choice[];
+  onChange: (column: string | undefined) => void;
+}>) {
+  return (
+    <LabelledField id={`${id}-expected-source`} label="Expected value source">
+      {(control) => (
+        <Select
+          value={value ?? ''}
+          onValueChange={(column) => {
+            onChange(column === '' ? undefined : (column ?? undefined));
+          }}
+          items={[{ value: '', label: 'Fixed value' }, ...expectedColumns]}
+        >
+          <SelectTrigger {...control}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">Fixed value</SelectItem>
+            {expectedColumns.map(({ value, label }) => (
+              <SelectItem value={value} key={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </LabelledField>
   );
 }

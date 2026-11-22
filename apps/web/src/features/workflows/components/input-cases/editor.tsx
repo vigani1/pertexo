@@ -1,5 +1,8 @@
 import { CaseExpectations } from './expectations';
-import { expectationDraft } from '../../model/input-cases/expectations';
+import {
+  expectationDraft,
+  expectationRequest,
+} from '../../model/input-cases/expectations';
 import { useId, useState } from 'react';
 import {
   workflowInputCaseCreateRequestSchema,
@@ -163,18 +166,7 @@ function useInputCaseForm({
     }
     let parsedExpectations: unknown;
     try {
-      parsedExpectations = {
-        outcome: expectations.outcome,
-        assertions: expectations.assertions.map((item) => ({
-          source:
-            item.source === ''
-              ? { kind: 'final' }
-              : { kind: 'step', nodeId: item.source },
-          path: item.path,
-          operator: item.operator,
-          expected: JSON.parse(item.expected) as unknown,
-        })),
-      };
+      parsedExpectations = expectationRequest(expectations);
     } catch {
       setExpectationError('Enter valid JSON for each expected value.');
       return;
