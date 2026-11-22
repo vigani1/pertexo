@@ -7,6 +7,12 @@ import { LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { Disclosure } from '@/components/ui/disclosure';
 import { formatCount } from '@/lib/format/count';
+import {
+  AGENT_SLACK_CONNECTION_SLOT,
+  agentToolAllowedWithoutApproval,
+} from '@pertexo/workflow-model';
+import { Status } from '@/components/ui/status';
+import type { DescribeStep } from '@/features/catalog/public';
 
 export function ReviewCandidate({
   graph,
@@ -56,6 +62,7 @@ export function ReviewCandidate({
                 ? ''
                 : ` · inside ${inside.label ?? describeStep(inside.definition).name}`}
             </p>
+            <AgentWriteAllowance node={node} describe={describeStep} />
             <Disclosure summary="Setup and mappings" className="mt-2">
               <pre
                 className="max-h-80 overflow-auto rounded-md border border-border p-3 text-xs"
@@ -110,5 +117,35 @@ export function ReviewCandidate({
         </div>
       </Disclosure>
     </section>
+  );
+}
+
+function AgentWriteAllowance({
+  node,
+  describe,
+}: Readonly<{
+  node: WorkflowGraphContract['nodes'][number];
+  describe: DescribeStep;
+}>) {
+  if (node.disabled) return null;
+  const tool = agentToolAllowedWithoutApproval(node);
+  if (tool === undefined) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+      <Status tone="attention">Allowed without approval</Status>
+      <span>
+        {describe(tool.definition).name} · {tool.alias}
+      </span>
+      {'table' in tool.config ? (
+        <span className="basis-full text-muted-foreground">
+          Workspace table {tool.config.table}
+        </span>
+      ) : (
+        <span className="basis-full text-muted-foreground">
+          Slack channel {tool.config.channelId} · connection{' '}
+          {node.connectionRefs[AGENT_SLACK_CONNECTION_SLOT]}
+        </span>
+      )}
+    </div>
   );
 }

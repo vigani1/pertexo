@@ -1,9 +1,15 @@
-import { nodeRuns, nodeAttempts, workflowRuns } from '@pertexo/database/schema';
+import {
+  nodeRuns,
+  nodeAttempts,
+  pendingRunTasks,
+  workflowRuns,
+} from '@pertexo/database/schema';
 import { RUN_DETAILS_RETENTION_SQL } from '../../shared/run-records/run-retention.repository.js';
 import type { WorkspaceTransaction } from '@pertexo/database/primitives';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
 import { and, eq, exists, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import type { PendingTaskOutcome } from '@pertexo/workflow-engine';
 
 /** The run's node runs in creation order, one past the graph's limit so an overfull run shows. */
 export function readNodes(
@@ -40,6 +46,10 @@ export function readNodes(
       node_id: nodeRuns.nodeId,
       invocation_key: nodeRuns.invocationKey,
       status: nodeRuns.status,
+      approval_status: sql<
+        PendingTaskOutcome['status'] | 'pending' | null
+      >`${pendingRunTasks.status}`,
+      dispatch_marked_at: nodeAttempts.dispatchMarkedAt,
       current_attempt_number: sql<number>`coalesce(${nodeRuns.currentAttemptNumber},0)`,
       started_at: nodeRuns.startedAt,
       completed_at: nodeRuns.completedAt,
@@ -60,6 +70,23 @@ export function readNodes(
       reused_source_completed_at: nodeRuns.reusedSourceCompletedAt,
     })
     .from(nodeRuns)
+    .leftJoin(
+      nodeAttempts,
+      and(
+        eq(nodeAttempts.workspaceId, nodeRuns.workspaceId),
+        eq(nodeAttempts.nodeRunId, nodeRuns.id),
+        eq(nodeAttempts.id, nodeRuns.currentAttemptId),
+      ),
+    )
+    .leftJoin(
+      pendingRunTasks,
+      and(
+        eq(pendingRunTasks.workspaceId, nodeRuns.workspaceId),
+        eq(pendingRunTasks.runId, nodeRuns.workflowRunId),
+        eq(pendingRunTasks.invocationKey, nodeRuns.invocationKey),
+        eq(pendingRunTasks.kind, 'approval'),
+      ),
+    )
     .where(
       and(
         eq(nodeRuns.workspaceId, workspaceId),

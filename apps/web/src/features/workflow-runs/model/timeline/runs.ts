@@ -8,6 +8,10 @@ import type {
 import type { StatusTone } from '@/components/ui/status';
 import { describeStep, type DescribeStep } from '@/features/catalog/public';
 import {
+  AGENT_SEND_SLACK_MESSAGE,
+  agentToolAllowedWithoutApproval,
+} from '@pertexo/workflow-model';
+import {
   describeNodeStatus,
   type NodeStatus,
 } from '../presentation/run-status';
@@ -21,43 +25,39 @@ import {
 import { type RunTimelineTick, runBounds, timelineTicks } from './geometry';
 
 export type { RunTimelineSegment };
-
 export type RunTimelineStepStatus = NodeStatus | 'not_started';
 
 /** One step invocation laid out on the run's time axis. */
-export type RunTimelineRow = Readonly<{
-  key: string;
-  nodeId: string;
-  invocationKey?: string;
-  nodeRunId?: string;
-  agentWork?: NonNullable<WorkflowRunEvent['payload']['agentWork']>;
-  label: string;
-  /** What kind of step it is, when the graph names it separately. */
-  kindLabel?: string;
-  definitionKey?: string;
-  /** The step sends its input through a connection, so it isn't kept. */
-  usesConnection?: boolean;
-  status: RunTimelineStepStatus;
-  tone: StatusTone;
-  statusLabel: string;
-  attempts: number;
-  reused?: WorkflowNodeReuse;
-  failureHandling?: NonNullable<WorkflowNodeRunSummary['failureHandling']>;
-  handlingInProgress?: true;
-  /**
-   * The node run's current attempt as the run snapshot has it, counting wait
-   * resumes: data recorded per attempt is read again when it changes.
-   */
-  currentAttemptNumber?: number;
-  segments: readonly RunTimelineSegment[];
-  story: readonly StepStoryEntry[];
-  outputs: readonly StepOutput[];
-  safeErrorCode?: string;
-  errorSummary?: string;
-  resumeAt?: string;
-  startedAt?: string;
-  completedAt?: string;
-}>;
+export type RunTimelineRow = StepLabel &
+  Readonly<{
+    key: string;
+    nodeId: string;
+    invocationKey?: string;
+    nodeRunId?: string;
+    agentWork?: NonNullable<WorkflowRunEvent['payload']['agentWork']>;
+    agentApproval?: NonNullable<WorkflowNodeRunSummary['agentApproval']>;
+    dispatchMarkedAt?: string;
+    status: RunTimelineStepStatus;
+    tone: StatusTone;
+    statusLabel: string;
+    attempts: number;
+    reused?: WorkflowNodeReuse;
+    failureHandling?: NonNullable<WorkflowNodeRunSummary['failureHandling']>;
+    handlingInProgress?: true;
+    /**
+     * The node run's current attempt as the run snapshot has it, counting wait
+     * resumes: data recorded per attempt is read again when it changes.
+     */
+    currentAttemptNumber?: number;
+    segments: readonly RunTimelineSegment[];
+    story: readonly StepStoryEntry[];
+    outputs: readonly StepOutput[];
+    safeErrorCode?: string;
+    errorSummary?: string;
+    resumeAt?: string;
+    startedAt?: string;
+    completedAt?: string;
+  }>;
 
 export type RunTimelineModel = Readonly<{
   startMs: number;
@@ -71,6 +71,7 @@ type StepLabel = Readonly<{
   kindLabel?: string;
   definitionKey?: string;
   usesConnection?: boolean;
+  agentWriteAllowed?: true;
 }>;
 
 type GraphLabel = Readonly<{
@@ -95,6 +96,9 @@ function graphLabels(
       const label = node.label?.trim();
       const connected = {
         definitionKey: node.definition.key,
+        ...(agentToolAllowedWithoutApproval(node) === undefined
+          ? {}
+          : { agentWriteAllowed: true as const }),
         ...(Object.keys(node.connectionRefs).length > 0
           ? { usesConnection: true }
           : {}),
@@ -176,6 +180,7 @@ function rowFor(
   invocation: Invocation,
   label: StepLabel,
   bounds: ReturnType<typeof runBounds>,
+  describe: DescribeStep,
 ): RunTimelineRow & { firstActivityMs: number } {
   const ordered = [...invocation.events].sort(
     (left, right) => left.sequence - right.sequence,
@@ -204,8 +209,9 @@ function rowFor(
           label:
             agentWork.work.kind === 'model_turn'
               ? `Model turn ${String(agentWork.turn)}`
-              : `Find rows · ${agentWork.alias ?? String(agentWork.work.ordinal)}`,
-          usesConnection: false,
+              : `${describe(agentWork.definition).name} · ${agentWork.alias ?? String(agentWork.work.ordinal)}`,
+          usesConnection:
+            agentWork.definition.key === AGENT_SEND_SLACK_MESSAGE.key,
         }),
     status,
     tone: look.tone,
@@ -254,6 +260,12 @@ function summaryFields(
       ? {}
       : { errorSummary: summary.errorSummary }),
     currentAttemptNumber: summary.currentAttemptNumber,
+    ...(summary.agentApproval === undefined
+      ? {}
+      : { agentApproval: summary.agentApproval }),
+    ...(summary.dispatchMarkedAt === undefined
+      ? {}
+      : { dispatchMarkedAt: summary.dispatchMarkedAt }),
     ...(startedAt === undefined ? {} : { startedAt }),
     ...(completedAt === undefined ? {} : { completedAt }),
   };
@@ -345,6 +357,7 @@ export function buildRunTimeline(
           invocation,
           graphLabel?.step ?? { label: invocation.nodeId },
           bounds,
+          describe,
         ),
         order: graphLabel?.order ?? Number.MAX_SAFE_INTEGER,
         index,

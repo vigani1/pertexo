@@ -1,6 +1,7 @@
 import { storedTimestampSchema } from '../shared/stored-timestamp.js';
 import { workflowRunCreatedAtSchema } from './run-created-at.js';
 import { responseSchema } from '../shared/response-schema.js';
+import { pendingTaskStatusSchema } from './pending-tasks.js';
 import {
   storageTextSchema,
   WORKFLOW_EXECUTION_LIMITS,
@@ -261,6 +262,8 @@ export const workflowNodeRunSummarySchema = responseSchema(
       invocationKey: z.string().min(1).max(RUN_BOUNDS.invocationKeyCharacters),
       status: workflowNodeRunStatusSchema,
       currentAttemptNumber: z.number().int().nonnegative(),
+      agentApproval: pendingTaskStatusSchema.exclude(['submitted']).optional(),
+      dispatchMarkedAt: z.iso.datetime({ offset: true }).optional(),
       reused: workflowNodeReuseSchema.optional(),
       failureHandling: z
         .object({

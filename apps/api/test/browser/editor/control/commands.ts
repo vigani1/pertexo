@@ -144,9 +144,13 @@ export function handleEditorReadonlySetup(
   const { api } = context;
   if (request.method === 'POST' && url.pathname === '/readonly-setup') {
     if (
-      !['readonly', 'approvals', 'governance', 'collaboration'].includes(
-        scenario,
-      ) ||
+      ![
+        'readonly',
+        'approvals',
+        'governance',
+        'collaboration',
+        'product',
+      ].includes(scenario) ||
       fixtureState.readonlyFixture !== undefined ||
       fixtureState.readonlySetupPending
     ) {

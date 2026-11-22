@@ -1,7 +1,14 @@
 import type { nodeRuns } from '@pertexo/database/schema';
 import { withResourceRunRead } from '../access.js';
 import { WORKFLOW_GRAPH_LIMITS } from '@pertexo/workflow-model';
-import type { WorkflowRunErrorWorkflow } from '@pertexo/contracts';
+import type {
+  WorkflowNodeRunSummary,
+  WorkflowRunErrorWorkflow,
+} from '@pertexo/contracts';
+import {
+  isAgentWorkInvocationKey,
+  isAgentModelTurnInvocationKey,
+} from '@pertexo/workflow-engine/server';
 import { readErrorWorkflow } from '../error-workflows/read.repository.js';
 import { readRunStalledSince } from '../stalled/overdue.repository.js';
 import {
@@ -32,6 +39,8 @@ export type WorkflowNodeRunRecord = Readonly<{
   invocationKey: string;
   status: typeof nodeRuns.$inferSelect.status;
   currentAttemptNumber: number;
+  agentApproval?: NonNullable<WorkflowNodeRunSummary['agentApproval']>;
+  dispatchMarkedAt?: string;
   failureHandling?: Readonly<{
     entryInvocationKey: string;
     sinkInvocationKey: string;
@@ -127,6 +136,7 @@ function toNodeRecord(
     invocationKey: row.invocation_key,
     status: row.status,
     currentAttemptNumber: row.current_attempt_number,
+    ...agentCallEvidence(row),
     startedAt: row.started_at,
     completedAt: row.completed_at,
     resumeAt: row.resume_at,
@@ -151,4 +161,19 @@ function toNodeRecord(
           },
         }),
   });
+}
+
+function agentCallEvidence(
+  row: Awaited<ReturnType<typeof readNodes>>[number],
+): Pick<WorkflowNodeRunRecord, 'agentApproval' | 'dispatchMarkedAt'> {
+  if (!isAgentWorkInvocationKey(row.invocation_key)) return {};
+  if (isAgentModelTurnInvocationKey(row.invocation_key)) {
+    const status = row.approval_status;
+    return status === null || status === 'submitted'
+      ? {}
+      : { agentApproval: status };
+  }
+  return row.dispatch_marked_at === null
+    ? {}
+    : { dispatchMarkedAt: row.dispatch_marked_at.toISOString() };
 }

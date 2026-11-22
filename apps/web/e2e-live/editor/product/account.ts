@@ -12,7 +12,7 @@ export const test = base.extend<
   // Playwright's way to declare that this adds no test-scoped fixtures.
   // oxlint-disable-next-line typescript/no-generated-empty-object-type
   Record<never, never>,
-  { productAccount: readonly Cookie[] }
+  { productAccount: Readonly<{ cookies: readonly Cookie[]; email: string }> }
 >({
   productAccount: [
     async ({ browser }, runFixtures, workerInfo) => {
@@ -23,15 +23,20 @@ export const test = base.extend<
         baseURL === undefined ? {} : { baseURL },
       );
       const page = await context.newPage();
-      await registerEditorUser(page, context.request, mail, 'Product owner');
+      const email = await registerEditorUser(
+        page,
+        context.request,
+        mail,
+        'Product owner',
+      );
       const { cookies } = await context.storageState();
       await context.close();
-      await runFixtures(cookies);
+      await runFixtures({ cookies, email });
     },
     { scope: 'worker' },
   ],
   context: async ({ context, productAccount }, runFixtures) => {
-    await context.addCookies([...productAccount]);
+    await context.addCookies([...productAccount.cookies]);
     await runFixtures(context);
   },
 });
