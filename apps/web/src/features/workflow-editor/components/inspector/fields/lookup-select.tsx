@@ -82,8 +82,7 @@ function ConnectedLookupSelect({
   const attachTo = lookup.attachTo;
   const stored = attachTo === undefined ? undefined : config[attachTo];
   const drifted =
-    selected !== undefined &&
-    selected.attach !== undefined &&
+    selected?.attach !== undefined &&
     (stored === undefined ||
       canonicalJson(stored) !== canonicalJson(selected.attach));
   const hint = lookupHint(query.status, {
