@@ -1,51 +1,29 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { createWorkflowAuthoringStore } from '@pertexo/core/authoring';
-import { createConnectionStore } from '@pertexo/core/connections';
-import { createDataTablesStore } from '@pertexo/core/data-tables';
-import {
-  advanceRun,
-  createWorkflowRunDatabase,
-  initialCheckpointFactory,
-} from '@pertexo/core/runs';
+import { advanceRun } from '@pertexo/core/runs';
 import { createOutboxDispatcherDatabase } from '@pertexo/core/testing';
 import { createQueueProducer, JOB_NAME } from '@pertexo/queue/server';
 import {
   ConnectionEnvelopeEncryption,
   parseAllowedPrivateNetworks,
 } from '@pertexo/secrets/server';
-import { buildWorkflowExecutable } from '@pertexo/workflow-engine/server';
-import {
-  AGENT_FIND_ROWS,
-  type SecretConnectionAuthType,
-} from '@pertexo/workflow-model';
-import { WorkflowAuthoringValidator } from '@pertexo/workflow-model/server';
+import { AGENT_FIND_ROWS } from '@pertexo/workflow-model';
 
 import { createNodeAttemptExecutionEngine } from '../../../src/attempts/execution/engine.js';
 import { createWorkerNodeRuntimeCapabilities } from '../../../src/attempts/execution/runtime-capabilities.js';
 import { WorkerDrainState } from '../../../src/runtime/shutdown/drain-state.js';
 import { OutboxDispatcher } from '../../../src/transport/outbox/dispatch/outbox-dispatcher.runtime.js';
-import {
-  ContextKeyProvider,
-  sealAndZero,
-} from '../../support/attempts/http-node-attempt/encryption.js';
+import { ContextKeyProvider } from '../../support/attempts/http-node-attempt/encryption.js';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import {
   testCoordinatorRuntime,
   testNodeAttemptRuntime,
 } from '../../support/runtime-factories.js';
-import { API_KEY, chat, fakeModel, json } from './model.fixture.js';
-import {
-  actor,
-  agentRegistry,
-  alias,
-  catalog,
-  commandKey,
-  config,
-  executableCatalog,
-  model,
-  publishAgent,
-} from './agent.fixture.js';
+import { chat, fakeModel, json } from './model.fixture.js';
+import { agentRegistry, executableCatalog } from './agent-registry.fixture.js';
+import { alias, config, model } from './agent.fixture.js';
+
+import { startAgentRun } from './agent-run.fixture.js';
 
 const result = { text: 'Order a totals 42.' };
 
@@ -83,93 +61,9 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
   const encryption = new ConnectionEnvelopeEncryption(new ContextKeyProvider());
   const database = config(fixture.workerUrl);
   const maintenanceDatabase = config(fixture.dispatcherUrl);
-  const connectionId = randomUUID();
-  const validator = new WorkflowAuthoringValidator();
-  const authoring = createWorkflowAuthoringStore(config(fixture.apiUrl), {
-    definitionCatalog: {
-      definitions: catalog.definitions.map(({ definition }) => definition),
-    },
-    validateAuthoringGraph: (graph, options) =>
-      validator.validate(
-        graph,
-        {
-          definitions: catalog.definitions.map(
-            ({ definition, capabilities, policyReferences }) => ({
-              definition,
-              capabilities,
-              policyReferences,
-            }),
-          ),
-        },
-        options,
-      ),
-    executableCompiler: (graph) => {
-      const compiled = buildWorkflowExecutable({
-        graph,
-        catalog: executableCatalog,
-      });
-      return { checksum: compiled.checksum, executableJson: compiled.envelope };
-    },
-  });
-  const tables = createDataTablesStore(config(fixture.apiUrl));
-  const connections = createConnectionStore(config(fixture.apiUrl));
-  const runs = createWorkflowRunDatabase(config(fixture.apiUrl));
-  const owners = [
-    () => validator.shutdown(),
-    authoring.close,
-    tables.close,
-    connections.close,
-    runs.close,
-  ];
+  const runId = await startAgentRun(provider.baseUrl, encryption);
+  const owners: (() => Promise<void>)[] = [];
   try {
-    const table = await tables.create({
-      ...actor,
-      idempotencyKey: randomUUID(),
-      name: 'Agent Orders',
-      columns: [
-        { name: 'key', type: 'text', required: true },
-        { name: 'amount', type: 'number', required: true },
-      ],
-      keyColumn: 'key',
-    });
-    await tables.importRows({
-      ...actor,
-      idempotencyKey: randomUUID(),
-      tableId: table.id,
-      rows: [
-        { key: 'a', amount: 42 },
-        { key: 'b', amount: 99 },
-      ],
-    });
-    const secretVersionId = randomUUID();
-    const sealed = await sealAndZero(
-      encryption,
-      Buffer.from(
-        JSON.stringify({
-          type: 'model_api_key',
-          endpoint: 'vllm',
-          baseUrl: provider.baseUrl,
-          apiKey: API_KEY,
-        }),
-      ),
-      {
-        workspaceId: actor.workspaceId,
-        connectionId,
-        secretVersionId,
-      },
-    );
-    await connections.createConnection({
-      ...actor,
-      connectionId,
-      secretVersionId,
-      providerKey: 'ai',
-      authType: 'model_api_key' as SecretConnectionAuthType,
-      name: 'Agent fixture model',
-      sealed,
-      idempotencyKey: randomUUID(),
-      requestHash: commandKey(),
-    });
-    const workflowId = await publishAgent(authoring, connectionId);
     const coordinator = await testCoordinatorRuntime(
       {
         database,
@@ -238,18 +132,6 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
       producer.waitUntilReady(5000),
     ]);
     dispatcher.start();
-    const key = commandKey();
-    const accepted = await runs.start({
-      ...actor,
-      workflowId,
-      idempotencyKeyHash: key,
-      requestHash: key,
-      scope: `workflow:${workflowId}:manual`,
-      input: {},
-      checkpointFactory: initialCheckpointFactory({
-        catalog: executableCatalog,
-      }),
-    });
     const status = await fixture.waitFor(
       () =>
         fixture.workerQuery<{
@@ -258,7 +140,7 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
           error_summary: unknown;
         }>(
           'select status,output_ref,error_summary from app.workflow_runs where id=$1',
-          [accepted.run.id],
+          [runId],
         ),
       (rows) =>
         ['succeeded', 'failed', 'timed_out', 'outcome_unknown'].includes(
@@ -270,7 +152,7 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
       `select n.invocation_key,n.input_ref,a.status,a.output_ref,a.dispatch_marked_at
        from app.node_attempts a join app.node_runs n on n.id=a.node_run_id
        where n.workflow_run_id=$1 and n.node_id='agent' order by a.started_at`,
-      [accepted.run.id],
+      [runId],
     );
     expect(provider.calls[0]?.request).toMatchObject({
       tools: [
@@ -305,7 +187,7 @@ it('publishes and runs an Agent with a bounded Find rows attempt', async () => {
     const [admission] = await fixture.workerQuery<{ agent_work: unknown }>(
       `select payload->'agentWork' as agent_work from app.run_events
        where workflow_run_id=$1 and type='node.ready' and payload->>'invocationKey'=$2`,
-      [accepted.run.id, history[1]?.invocation_key],
+      [runId, history[1]?.invocation_key],
     );
     expect(admission?.agent_work).toMatchObject({
       parentInvocationKey: expect.any(String) as unknown,
