@@ -83,6 +83,38 @@ describe('Agent receipts', () => {
     });
   });
 
+  it('refuses a previously consumed proposal during a later model turn', () => {
+    const laterTurn: AgentContinuation = {
+      ...agent,
+      turn: 2,
+      history: [{ proposal: modelOutput, output: toolOutput }],
+    };
+    expect(settleAgentModelTurn(laterTurn, receipt, toolName)).toEqual({
+      kind: 'refused',
+      reason: 'agent.stale_receipt',
+    });
+  });
+
+  it('refuses a previously consumed tool receipt during a later tool call', () => {
+    const laterCall: AgentContinuation = {
+      ...agent,
+      turn: 2,
+      history: [{ proposal: modelOutput, output: toolOutput }],
+      phase: {
+        kind: 'running_tool',
+        ordinal: 2,
+        proposal: {
+          kind: 'inline',
+          attemptId: '00000000-0000-4000-8000-000000000004',
+        },
+      },
+    };
+    expect(settleAgentReadTool(laterCall, toolOutput)).toEqual({
+      kind: 'refused',
+      reason: 'agent.stale_receipt',
+    });
+  });
+
   it('resumes the next turn with the accepted tool receipt after replacement', () => {
     const accepted = settleAgentModelTurn(agent, receipt, toolName);
     if (
