@@ -33,7 +33,9 @@ it('upgrades an adopted baseline through the real later migrations, preserving d
       await admin.query('select * from app.workflow_versions order by id')
     ).rows;
     const runsBefore = (
-      await admin.query('select * from app.workflow_runs order by id')
+      await admin.query<Record<string, unknown>>(
+        'select * from app.workflow_runs order by id',
+      )
     ).rows;
     const before = (
       await admin.query<Record<string, unknown>>('select * from app.workflows')
@@ -70,11 +72,12 @@ it('upgrades an adopted baseline through the real later migrations, preserving d
         ...workflow,
         trigger_pause_poll_error_code: null,
         trigger_pause_poll_trigger_id: null,
+        mcp_exposure: null,
       })),
     );
     expect(
       (await admin.query('select * from app.workflow_runs order by id')).rows,
-    ).toEqual(runsBefore);
+    ).toEqual(runsBefore.map((run) => ({ ...run, mcp_invocation: null })));
     expect(
       (await admin.query('select * from app.workflow_versions order by id'))
         .rows,
