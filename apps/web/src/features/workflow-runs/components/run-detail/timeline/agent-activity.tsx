@@ -1,9 +1,9 @@
-import type { RunDataScope } from './data/value';
-import { StepModelUsage } from './run-diagnostics';
+import type { RunDataScope } from '../data/value';
+import { StepModelUsage } from '../run-diagnostics';
 import { Status } from '@/components/ui/status';
 import { formatDurationMs } from '@/lib/format/time';
 import { formatCount } from '@/lib/format/count';
-import type { RunTimelineRow } from '../../model/timeline/runs';
+import type { RunTimelineRow } from '../../../model/timeline/runs';
 
 export function AgentActivity({
   parentKey,

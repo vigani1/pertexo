@@ -1,4 +1,4 @@
-import { AgentActivity } from './agent-activity';
+import { AgentActivity } from './timeline/agent-activity';
 import { AGENT_STEP, CLASSIFY_STEP } from '@pertexo/workflow-model';
 import { StepCodeDiagnostics, StepModelUsage } from './run-diagnostics';
 import { StepExecutionHistory } from './execution-history';
