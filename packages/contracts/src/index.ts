@@ -383,13 +383,11 @@ export * from './schemas/workflows/organization-folders.js';
 export * from './schemas/workflows/input-cases.js';
 export * from './schemas/execution/step-history.js';
 export * from './schemas/execution/recovery.js';
-
 export {
   CODE_ERROR_CODES,
   codeErrorCodeSchema,
   type CodeErrorCode,
 } from '@pertexo/node-sdk';
-
 export {
   postgresCredentialSchema,
   POSTGRES_DEFAULT_PORT,
@@ -398,3 +396,5 @@ export {
 } from './schemas/connections/postgres.js';
 export * from './schemas/workflows/mcp/exposure.js';
 export * from './schemas/workflows/mcp/rpc.js';
+export * from './schemas/workflows/assistant/settings.js';
+export * from './schemas/workflows/assistant/explanation.js';
