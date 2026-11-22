@@ -1,4 +1,4 @@
-import { assistantSettingsSchema } from '@pertexo/contracts';
+import type { assistantSettingsSchema } from '@pertexo/contracts';
 import { MODEL_IDENTIFIER_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
