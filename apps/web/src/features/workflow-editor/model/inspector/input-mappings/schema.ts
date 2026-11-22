@@ -1,3 +1,4 @@
+import { INPUT_SCHEMA_SETTING } from '@pertexo/contracts';
 import {
   selectOutputVariant,
   type OutputVariantSelection,
@@ -17,8 +18,14 @@ export type InputKeySuggestion = Readonly<{
 
 export function inputKeySuggestions(
   inputSchema: unknown,
+  config?: WorkflowNode['config'],
 ): readonly InputKeySuggestion[] {
-  return schemaProperties(inputSchema).map(([key, candidate]) => {
+  const setting = isRecord(inputSchema)
+    ? inputSchema[INPUT_SCHEMA_SETTING]
+    : undefined;
+  const mappedSchema =
+    typeof setting === 'string' ? config?.[setting] : inputSchema;
+  return schemaProperties(mappedSchema).map(([key, candidate]) => {
     if (!isRecord(candidate)) return { key, label: key };
     const title = Reflect.get(candidate, 'title');
     const description = Reflect.get(candidate, 'description');

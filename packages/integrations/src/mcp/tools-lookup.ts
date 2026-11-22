@@ -25,14 +25,14 @@ export const toolsLookup = defineConnectionLookup({
       items: [...tools.values()].flatMap((tool) => {
         const input = normalizeToolInput(tool);
         if (input === undefined) return [];
+        const title =
+          tool.title
+            ?.trim()
+            .slice(0, CONNECTION_LOOKUP_LIMITS.labelCharacters) ?? '';
         return [
           {
             value: tool.name,
-            label:
-              tool.title
-                ?.trim()
-                .slice(0, CONNECTION_LOOKUP_LIMITS.labelCharacters) ||
-              tool.name,
+            label: title === '' ? tool.name : title,
             ...(tool.description === undefined
               ? {}
               : {

@@ -86,14 +86,13 @@ function ConnectedLookupSelect({
     selected.attach !== undefined &&
     (stored === undefined ||
       canonicalJson(stored) !== canonicalJson(selected.attach));
-  const hint = lookupHint(
-    query.status,
+  const hint = lookupHint(query.status, {
     items,
     selected,
     value,
     drifted,
-    field.description,
-  );
+    description: field.description,
+  });
   const choices =
     value !== null && selected === undefined
       ? [{ value, label: value }, ...items]
@@ -138,11 +137,19 @@ function ConnectedLookupSelect({
 
 function lookupHint(
   status: 'error' | 'pending' | 'success',
-  items: ConnectionLookupResponse['items'],
-  selected: ConnectionLookupResponse['items'][number] | undefined,
-  value: string | null,
-  drifted: boolean,
-  description: string | undefined,
+  {
+    items,
+    selected,
+    value,
+    drifted,
+    description,
+  }: Readonly<{
+    items: ConnectionLookupResponse['items'];
+    selected: ConnectionLookupResponse['items'][number] | undefined;
+    value: string | null;
+    drifted: boolean;
+    description: string | undefined;
+  }>,
 ) {
   if (status === 'error') return 'Could not load options.';
   if (status === 'pending') return 'Loading options…';

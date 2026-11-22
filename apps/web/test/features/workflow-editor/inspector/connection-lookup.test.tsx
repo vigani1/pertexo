@@ -58,7 +58,7 @@ function renderLookup() {
 }
 
 it('loads choices and saves a selection and attachment together', async () => {
-  const reply = deferred<void>();
+  const reply = deferred<undefined>();
   mockServer.use(
     http.post(`*${path}`, async ({ request }) => {
       expect(await request.json()).toEqual({
@@ -73,10 +73,10 @@ it('loads choices and saves a selection and attachment together', async () => {
   );
   renderLookup();
   expect(screen.getByText('Loading options…')).toBeVisible();
-  reply.resolve();
-  await waitFor(() =>
-    expect(screen.queryByText('Loading options…')).toBeNull(),
-  );
+  reply.resolve(undefined);
+  await waitFor(() => {
+    expect(screen.queryByText('Loading options…')).toBeNull();
+  });
   await choose('Sheet', 'January');
   expect(saved()).toEqual({ selection: 'stored-id', inputSchema: attached });
 });
