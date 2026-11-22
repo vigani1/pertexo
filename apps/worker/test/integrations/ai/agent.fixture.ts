@@ -99,25 +99,7 @@ export async function publishAgent(
               description,
               definition,
               config: toolConfig,
-              ...(write === undefined
-                ? {}
-                : {
-                    writePermission: !approval
-                      ? { kind: 'allow' }
-                      : {
-                          kind: 'approval',
-                          config: {
-                            title: 'Approve order',
-                            instructions: '',
-                            expiresAfterSeconds: expiry,
-                            audience: {
-                              roles: [],
-                              memberIds: [actor.actorId],
-                            },
-                            allowStarterToDecide: true,
-                          },
-                        },
-                  }),
+              ...toolPermission(write, approval, expiry),
             },
           },
         ),
@@ -142,6 +124,27 @@ export async function publishAgent(
     graph.nodes[1]?.config,
   );
   return published.version.workflowId;
+}
+
+function toolPermission(
+  write: unknown,
+  approval: boolean,
+  expiresAfterSeconds: number,
+) {
+  if (write === undefined) return {};
+  if (!approval) return { writePermission: { kind: 'allow' } };
+  return {
+    writePermission: {
+      kind: 'approval',
+      config: {
+        title: 'Approve order',
+        instructions: '',
+        expiresAfterSeconds,
+        audience: { roles: [], memberIds: [actor.actorId] },
+        allowStarterToDecide: true,
+      },
+    },
+  };
 }
 
 export async function publishAgentFixtureGraph(
