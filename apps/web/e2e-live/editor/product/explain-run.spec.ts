@@ -12,7 +12,7 @@ import { openNewEditorWorkspace } from '../../support/ordinary-editor-session';
 import { connectModel, modelScreenshots } from './model-editor';
 import { key, model, openModelProvider } from './model-provider';
 
-test.use({ viewport: { width: 1280, height: 960 } });
+test.use({ accountGroup: 'assistant', viewport: { width: 1280, height: 960 } });
 
 test('confirms the transfer and follows an authorized step from the explanation', async ({
   page,
