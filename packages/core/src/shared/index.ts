@@ -7,6 +7,8 @@ export {
 
 // Other areas import these files directly (ADR 091); the door gains nothing.
 export type {} from './access/authority.repository.js';
+export type {} from './access/api-token-authority.js';
+export type {} from './access/api-token-authority.repository.js';
 export type {} from './access/folder-access.types.js';
 export type {} from './access/workspace-access.errors.js';
 export type {} from './access/folder-access-facts.repository.js';
