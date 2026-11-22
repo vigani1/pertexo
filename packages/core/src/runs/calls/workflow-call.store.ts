@@ -181,8 +181,8 @@ async function performActions(
 export type WorkflowCallStore = ReturnType<typeof createWorkflowCallStore>;
 
 /**
- * Config is the existing maintenance authority; actions never use the app pool. A
- * delivery has no member behind it, so it stays off withWorkspaceAccess.
+ * Call writes use maintenance authority. The separate app reader checks an
+ * Agent’s pinned publisher through the member-scoped access flow.
  */
 export function createWorkflowCallStore(
   config: DatabaseConfig,

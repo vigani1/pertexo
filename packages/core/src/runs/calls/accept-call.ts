@@ -140,12 +140,13 @@ async function canDispatchAgentCall(
     signal,
   }: Parameters<typeof acceptPendingCall>[1],
 ) {
+  if (accessPool === undefined) return false;
   const publisher = await readCallParentPublisher(
     client,
     workspaceId,
     parentRunId,
   );
-  if (accessPool === undefined || publisher === undefined) return false;
+  if (publisher === undefined) return false;
   const actor = { workspaceId, actorId: publisher.actorId, signal };
   return withWorkspaceAccess(
     accessPool,
