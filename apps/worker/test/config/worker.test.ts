@@ -14,7 +14,9 @@ import { WorkerEnvironmentValueError } from '../../src/config/worker-configurati
 
 describe('parseWorkerConfig', () => {
   it('requires explicitly configured rates even for unmetered Agent models', () => {
-    expect(parseWorkerConfig(requiredEnvironment).agentModelRates).toEqual({});
+    expect(
+      parseWorkerConfig(requiredEnvironment).agentModelRates,
+    ).toBeUndefined();
     expect(
       parseWorkerConfig({
         ...requiredEnvironment,

@@ -56,7 +56,7 @@ type AgentModelRates = z.output<typeof agentModelRatesSchema>;
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     publicWebOrigin?: string;
-    agentModelRates: AgentModelRates;
+    agentModelRates?: AgentModelRates;
     callbacks?: CallbackKeyConfig;
     artifactStore: ArtifactStoreConfig;
     artifactScratchDirectory: string;
@@ -153,9 +153,10 @@ export function parseWorkerConfig(
     const allowedPrivateNetworks = parseAllowedPrivateNetworks(
       raw.HTTP_ALLOWED_PRIVATE_NETWORKS,
     );
+    const agentModelRates = parseAgentModelRates(raw.AGENT_MODEL_RATES);
     return Object.freeze({
       ...result.data,
-      agentModelRates: parseAgentModelRates(raw.AGENT_MODEL_RATES),
+      ...(agentModelRates === undefined ? {} : { agentModelRates }),
       ...(publicWebOrigin === undefined ? {} : { publicWebOrigin }),
       ...(callbacks === undefined ? {} : { callbacks }),
       smtpPolicy: {
@@ -199,8 +200,10 @@ export function parseWorkerConfig(
   }
 }
 
-function parseAgentModelRates(value: string | undefined): AgentModelRates {
-  if (value === undefined) return {};
+function parseAgentModelRates(
+  value: string | undefined,
+): AgentModelRates | undefined {
+  if (value === undefined) return undefined;
   try {
     return agentModelRatesSchema.parse(JSON.parse(value) as unknown);
   } catch (cause) {
