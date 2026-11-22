@@ -27,8 +27,7 @@ export function readMcpToolStatus(
       const transaction = await readResourceTransaction(client, input, role);
       const token = await readApiTokenAuthority(transaction.db, input);
       if (
-        token === undefined ||
-        token.ownerUserId !== input.actorId ||
+        token?.ownerUserId !== input.actorId ||
         !isActiveApiToken(token) ||
         !token.scopes.includes('mcp:invoke')
       )
