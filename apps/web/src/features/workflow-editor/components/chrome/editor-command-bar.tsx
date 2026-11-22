@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode, type RefObject } from 'react';
 import { BracesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DialogTrigger } from '@/components/ui/dialog';
@@ -23,7 +23,8 @@ import { DeclarationDialog } from '../callable/declaration-dialog';
  */
 export function EditorCommandBar({
   shortcuts,
-  testMenuItems,
+  secondaryMenuItems,
+  moreRef,
   onRetrySave,
   onReviewConflict,
   onUndo,
@@ -32,7 +33,8 @@ export function EditorCommandBar({
   presence,
 }: Readonly<{
   shortcuts: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>;
-  testMenuItems: ReactNode;
+  secondaryMenuItems: ReactNode;
+  moreRef: RefObject<HTMLButtonElement | null>;
   onRetrySave: () => void;
   onReviewConflict: () => void;
   onUndo: () => void;
@@ -49,7 +51,6 @@ export function EditorCommandBar({
   const duplicateBlocked = useEditorStore(
     (state) => state.save.status !== 'clean' || state.inspectorScratch,
   );
-  const moreRef = useRef<HTMLButtonElement>(null);
   const contractRef = useRef<HTMLButtonElement>(null);
   const contractBlocked = useEditorStore((state) => state.inspectorScratch);
   // The contract opens from ⋯ only where its own button is hidden; there the
@@ -82,7 +83,7 @@ export function EditorCommandBar({
                 <BracesIcon aria-hidden="true" />
                 Contract
               </DialogTrigger>
-              {testMenuItems}
+              {secondaryMenuItems}
               <HistoryMenuItems
                 onUndo={onUndo}
                 onRedo={onRedo}

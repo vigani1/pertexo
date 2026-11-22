@@ -1,8 +1,9 @@
 import { useEditorSession } from '../model/state/context';
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
@@ -57,12 +58,36 @@ export function SessionCommandBar({
   } = publication;
   // The command bar is inside the contract dialog root. Give the proposal its own backdrop and focus scope.
   const [proposalHandle] = useState(DialogPrimitive.createHandle);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const proposalRef = useRef<HTMLButtonElement>(null);
   const canPropose = !paused && editing.canUpdate;
+
+  function proposalFinalFocus() {
+    const inline = proposalRef.current;
+    if (inline !== null && inline.getClientRects().length > 0) return inline;
+    // The phone menu item unmounts as the dialog opens.
+    const more = moreRef.current;
+    return more !== null && more.getClientRects().length > 0 ? more : true;
+  }
+
   return (
     <>
       <EditorCommandBar
         presence={headerPresence}
-        testMenuItems={chrome.workflowTestMenuItems}
+        moreRef={moreRef}
+        secondaryMenuItems={
+          <>
+            {canPropose ? (
+              <DialogTrigger
+                handle={proposalHandle}
+                render={<DropdownMenuItem />}
+              >
+                Ask assistant
+              </DialogTrigger>
+            ) : null}
+            {chrome.workflowTestMenuItems}
+          </>
+        }
         onRetrySave={() => void flushSave()}
         onReviewConflict={onReviewConflict}
         onUndo={() => {
@@ -76,8 +101,15 @@ export function SessionCommandBar({
             <>
               {canPropose ? (
                 <DialogTrigger
+                  ref={proposalRef}
                   handle={proposalHandle}
-                  render={<Button variant="outline" size="sm" />}
+                  render={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="hidden sm:inline-flex"
+                    />
+                  }
                 >
                   Ask assistant
                 </DialogTrigger>
@@ -118,6 +150,7 @@ export function SessionCommandBar({
           handle={proposalHandle}
           open={chrome.proposalOpen}
           onOpenChange={chrome.onProposalOpenChange}
+          finalFocus={proposalFinalFocus}
           graph={graph}
           onFix={chrome.onFix}
         />
