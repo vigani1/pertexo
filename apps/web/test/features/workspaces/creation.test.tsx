@@ -25,7 +25,7 @@ import {
 } from './creation/fixture';
 
 describe('workspace creation', () => {
-  it('creates the first workspace with CSRF/idempotency and enters its empty workflow list', async () => {
+  it('creates the first workspace with CSRF/idempotency and opens its getting-started Home', async () => {
     let authoritativeWorkspaces: object[] = [];
     const requests: { body: unknown; csrf?: string; key?: string }[] = [];
     installIdentity(authoritativeWorkspaces);
@@ -55,14 +55,31 @@ describe('workspace creation', () => {
     const name = within(dialog).getByLabelText('Workspace name');
     await userEvent.setup().type(name, 'Signal Operations');
     expect(within(dialog).getByText('signal-operations')).toBeVisible();
+
+    const destination = `/w/${createdWorkspaceId}`;
+    // The first navigation loads the workspace shell and Home for this file.
+    const rendered = new Promise<void>((resolve) => {
+      const unsubscribe = app.router.subscribe(
+        'onRendered',
+        ({ toLocation }) => {
+          if (toLocation.pathname !== destination) return;
+          unsubscribe();
+          resolve();
+        },
+      );
+    });
     await userEvent
       .setup()
       .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
 
+    await rendered;
     expect(
-      await screen.findAllByRole('link', { name: 'Home', current: 'page' }),
+      screen.getAllByRole('link', { name: 'Home', current: 'page' }),
     ).not.toHaveLength(0);
-    expect(app.router.state.location.pathname).toBe(`/w/${createdWorkspaceId}`);
+    expect(
+      await screen.findByRole('region', { name: 'Getting started' }),
+    ).toBeVisible();
+    expect(app.router.state.location.pathname).toBe(destination);
     expect(requests).toHaveLength(1);
     expect(requests[0]?.body).toEqual({
       name: 'Signal Operations',
