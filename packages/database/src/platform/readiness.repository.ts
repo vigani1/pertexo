@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import type { DatabaseReadiness } from './database-platform.types.js';
 import { DatabaseNotReadyError } from './readiness.errors.js';
 
-export const EXPECTED_MIGRATION_HEAD = '0011_mcp_workflow_exposure.sql';
+export const EXPECTED_MIGRATION_HEAD = '0012_agent_attempt_recovery.sql';
 const MINIMUM_POSTGRES_MAJOR = 18;
 
 /**

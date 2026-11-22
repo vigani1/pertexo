@@ -1,5 +1,6 @@
 import { attemptReconciliationOutcome } from './attempt-reconciliation.js';
 import { and, eq, sql } from 'drizzle-orm';
+import { isAgentModelTurnInvocationKey } from '@pertexo/workflow-engine/server';
 import { alias } from 'drizzle-orm/pg-core';
 import { nodeAttempts, nodeRuns, workflowRuns } from '@pertexo/database/schema';
 import {
@@ -36,7 +37,16 @@ export async function settleExpiredAttempt(
   const outcome = attemptReconciliationOutcome(attempt, input);
 
   let outboxEventId: string | undefined;
-  if (attempt !== undefined && outcome === 'reclaimed') {
+  if (
+    attempt !== undefined &&
+    outcome === 'reclaimed' &&
+    attempt.dispatchMarkedAt !== null &&
+    isAgentModelTurnInvocationKey(attempt.invocationKey)
+  ) {
+    // The provider may have billed this dispatch. Keep the checkpoint
+    // reservation and let the coordinator decide and budget a new attempt.
+    outboxEventId = await retryLostInference(transaction, attempt, input);
+  } else if (attempt !== undefined && outcome === 'reclaimed') {
     await transaction.db
       .update(nodeAttempts)
       .set({
@@ -128,6 +138,47 @@ export async function settleExpiredAttempt(
     : Object.freeze({ outcome, outboxEventId });
 }
 
+async function retryLostInference(
+  transaction: WorkspaceTransaction,
+  attempt: LockedAttempt,
+  {
+    attemptId,
+    expectedFenceToken,
+    source,
+  }: Readonly<{
+    attemptId: string;
+    expectedFenceToken: number;
+    source: AttemptSettlementSource;
+  }>,
+): Promise<string> {
+  await transaction.db
+    .update(nodeAttempts)
+    .set({
+      status: 'failed',
+      safeErrorCode: 'execution.timeout',
+      executorFailureKind: 'retry',
+      executorErrorKind: 'timeout',
+      executorPossiblyDispatched: true,
+      retryDecision: 'pending',
+      fenceToken: expectedFenceToken + 1,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      reconciliationRef: sql`${JSON.stringify(source)}::jsonb`,
+      completedAt: sql`clock_timestamp()`,
+      updatedAt: sql`clock_timestamp()`,
+    })
+    .where(
+      and(
+        eq(nodeAttempts.workspaceId, transaction.workspaceId),
+        eq(nodeAttempts.id, attemptId),
+      ),
+    );
+  return enqueueAdvance(transaction.db, {
+    workspaceId: transaction.workspaceId,
+    runId: attempt.runId,
+  });
+}
+
 export type LockedAttempt = NonNullable<
   Awaited<ReturnType<typeof readLockedAttempt>>
 >;
@@ -172,6 +223,7 @@ export async function readLockedAttempt(
       fenceToken: attempt.fenceToken,
       dispatchMarkedAt: attempt.dispatchMarkedAt,
       sideEffectClass: attempt.sideEffectClass,
+      invocationKey: node.invocationKey,
       nodeRunId: node.id,
       runId: node.workflowRunId,
       leaseExpired: sql<

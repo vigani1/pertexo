@@ -7,7 +7,7 @@ import type {
 } from '@pertexo/secrets/server';
 
 export class ContextKeyProvider implements EnvelopeKeyProvider {
-  private readonly key = randomBytes(32);
+  public constructor(private readonly key = randomBytes(32)) {}
 
   generateDataKey(context: ConnectionSecretContext) {
     return Promise.resolve({

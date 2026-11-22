@@ -14210,6 +14210,7 @@ GRANT UPDATE(output_ref) ON TABLE app.node_attempts TO pertexo_app;
 --
 
 GRANT UPDATE(safe_error_code) ON TABLE app.node_attempts TO pertexo_app;
+GRANT UPDATE(safe_error_code) ON TABLE app.node_attempts TO pertexo_maintenance;
 
 
 --
@@ -14224,6 +14225,7 @@ GRANT UPDATE(error_summary) ON TABLE app.node_attempts TO pertexo_app;
 --
 
 GRANT UPDATE(executor_failure_kind) ON TABLE app.node_attempts TO pertexo_app;
+GRANT UPDATE(executor_failure_kind) ON TABLE app.node_attempts TO pertexo_maintenance;
 
 
 --
@@ -14231,6 +14233,7 @@ GRANT UPDATE(executor_failure_kind) ON TABLE app.node_attempts TO pertexo_app;
 --
 
 GRANT UPDATE(executor_error_kind) ON TABLE app.node_attempts TO pertexo_app;
+GRANT UPDATE(executor_error_kind) ON TABLE app.node_attempts TO pertexo_maintenance;
 
 
 --
@@ -14238,6 +14241,7 @@ GRANT UPDATE(executor_error_kind) ON TABLE app.node_attempts TO pertexo_app;
 --
 
 GRANT UPDATE(executor_possibly_dispatched) ON TABLE app.node_attempts TO pertexo_app;
+GRANT UPDATE(executor_possibly_dispatched) ON TABLE app.node_attempts TO pertexo_maintenance;
 
 
 --
@@ -14245,6 +14249,7 @@ GRANT UPDATE(executor_possibly_dispatched) ON TABLE app.node_attempts TO pertexo
 --
 
 GRANT UPDATE(retry_decision) ON TABLE app.node_attempts TO pertexo_app;
+GRANT UPDATE(retry_decision) ON TABLE app.node_attempts TO pertexo_maintenance;
 
 
 --
