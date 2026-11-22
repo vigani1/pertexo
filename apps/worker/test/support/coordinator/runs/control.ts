@@ -119,6 +119,8 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
     );
     if (acceptedDelivery === undefined)
       throw new Error('Accepted coordinator delivery is missing');
+    // Retention uses the terminal event time as the run's completion time.
+    const occurredAt = new Date().toISOString();
     const plan: WorkflowTransitionPlan = {
       expectedRevision: 0,
       expectedNextEventSequence: 2,
@@ -145,7 +147,7 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
         {
           sequence: 2,
           name: 'node.failed',
-          occurredAt: '2026-08-24T10:01:00.000Z',
+          occurredAt,
           invocationKey: failedInvocationKey,
           nodeId: 'set',
           attemptNumber: 1,
@@ -154,7 +156,7 @@ export async function terminalizeFailedRun(accepted: AcceptedRun): Promise<
         {
           sequence: 3,
           name: 'run.failed',
-          occurredAt: '2026-08-24T10:01:00.000Z',
+          occurredAt,
         },
       ],
       nodeRunAdmissions: [],
