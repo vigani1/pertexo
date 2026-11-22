@@ -24,6 +24,10 @@ function lastAttempt(row: RunTimelineRow): StepStoryEntry | undefined {
 /** The short note beside a step's thread: "attempt 2", "retry in 24 s". */
 export function stepTag(row: RunTimelineRow, nowMs: number): string {
   if (row.reused !== undefined) return 'saved result · no execution';
+  if (row.agentSpan !== undefined)
+    return formatDurationMs(
+      (row.agentSpan.endMs ?? nowMs) - row.agentSpan.startMs,
+    );
   switch (row.status) {
     case 'running':
       return runningTag(row, nowMs);

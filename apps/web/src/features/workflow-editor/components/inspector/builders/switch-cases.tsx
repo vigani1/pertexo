@@ -1,3 +1,4 @@
+import { portName } from '@/features/catalog/public';
 import { SWITCH_SCALAR_STRING_LENGTH } from '@pertexo/workflow-model';
 import { PlusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -142,7 +143,7 @@ function CaseRow({
   }
   return (
     <BuilderCard
-      title={`Case ${String(index + 1)}`}
+      title={portName(entry.id, index)}
       port={entry.id}
       actions={
         <EntryActions

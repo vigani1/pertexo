@@ -1,4 +1,5 @@
 import { graphLabels, type StepLabel } from './graph-labels';
+import { groupAgentRows } from './agent-rows';
 import type {
   WorkflowGraphContract,
   WorkflowNodeReuse,
@@ -32,6 +33,7 @@ export type RunTimelineRow = StepLabel &
     nodeId: string;
     invocationKey?: string;
     nodeRunId?: string;
+    agentSpan?: RunTimelineSegment;
     agentWork?: NonNullable<WorkflowRunEvent['payload']['agentWork']>;
     agentApproval?: NonNullable<WorkflowNodeRunSummary['agentApproval']>;
     dispatchMarkedAt?: string;
@@ -329,7 +331,7 @@ export function buildRunTimeline(
     .filter(([nodeId, label]) => label.root && !invoked.has(nodeId))
     .sort(([, left], [, right]) => left.order - right.order)
     .map(([nodeId, label]) => notStartedRow(nodeId, label.step, bounds));
-  const allRows = [...rows, ...pending];
+  const allRows = [...groupAgentRows(rows), ...pending];
   let endMs = bounds.axisEndMs;
   for (const row of allRows)
     for (const segment of row.segments)

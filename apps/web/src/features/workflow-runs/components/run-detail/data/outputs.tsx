@@ -1,3 +1,4 @@
+import type { BranchPorts } from '../../../model/step-inspection/branch-output';
 import { useQuery } from '@tanstack/react-query';
 import {
   nodeRunOutputQueryOptions,
@@ -48,12 +49,14 @@ export function StepRunOutput({
   scope,
   title,
   emptyText,
+  branchPorts,
 }: Readonly<{
   nodeRunId: string | undefined;
   status: RunTimelineRow['status'];
   scope: RunDataScope;
   title: string;
   emptyText?: string;
+  branchPorts?: BranchPorts | undefined;
 }>) {
   const query = useQuery({
     ...nodeRunOutputQueryOptions({
@@ -81,6 +84,7 @@ export function StepRunOutput({
     <RunDataRead
       query={query}
       title={title}
+      branchPorts={branchPorts}
       emptyText={
         emptyText ??
         (status === 'succeeded'
@@ -102,6 +106,7 @@ export function StepOutputData({
     <StepRunOutput
       nodeRunId={row.nodeRunId}
       status={row.status}
+      branchPorts={row.branchPorts}
       scope={scope}
       title={title}
       {...(row.reused === undefined

@@ -250,11 +250,15 @@ export function describeRetryBehaviour(
  * A port as people read it: "Branch 2" for `branch-02`, "Case 1" for
  * `case-01`, "Otherwise" for a Switch's `default`; other ports as named.
  */
-export function portName(port: string): string {
+export function portName(port: string, position?: number): string {
   if (port === WORKFLOW_FAILURE_PORT) return 'Failure';
   if (port === TIMED_OUT_PORT) return 'Timed out';
-  const numbered = /^(branch|case)-0*(\d+)$/u.exec(port);
-  if (numbered !== null)
-    return `${numbered[1] === 'branch' ? 'Branch' : 'Case'} ${numbered[2] ?? ''}`;
+  const numbered = /^(branch|case|category)-0*(\d+)$/u.exec(port);
+  if (numbered?.[1] !== undefined) {
+    const kind = numbered[1];
+    const number =
+      position === undefined ? (numbered[2] ?? '') : String(position + 1);
+    return `${kind.charAt(0).toUpperCase()}${kind.slice(1)} ${number}`;
+  }
   return port === 'default' ? 'Otherwise' : port;
 }

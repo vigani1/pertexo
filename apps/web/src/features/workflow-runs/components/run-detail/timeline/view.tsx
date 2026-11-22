@@ -89,7 +89,12 @@ export function RunTimeline({
                   onSelectStep(row.key);
                 }}
               >
-                <span className="flex min-w-0 items-center gap-2.5 pr-3">
+                <span
+                  className={cn(
+                    'flex min-w-0 items-center gap-2.5 pr-3',
+                    row.agentWork !== undefined && 'pl-4',
+                  )}
+                >
                   <span
                     className={cn(
                       'grid size-7 shrink-0 place-items-center rounded-md border bg-card',
