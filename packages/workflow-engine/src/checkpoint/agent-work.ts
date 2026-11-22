@@ -1,5 +1,5 @@
-import { isRecord } from '@pertexo/workflow-model';
-import { AGENT_LIMITS } from '../control-nodes/agent-continuation.js';
+import { AGENT_LIMITS, isRecord } from '@pertexo/workflow-model';
+
 import type { AgentWorkIdentity } from '../invocations/agent-invocation.js';
 import { assertCheckpoint, assertExactKeys, isInteger } from './admission.js';
 

@@ -1,13 +1,11 @@
 import {
+  AGENT_LIMITS,
   isAgentDefinition,
   WORKFLOW_GRAPH_CONTRACT_LIMITS,
   utf8ByteLength,
   type ControlNodeConfig,
 } from '@pertexo/workflow-model';
-import {
-  AGENT_LIMITS,
-  type AgentContinuation,
-} from '../control-nodes/agent-continuation.js';
+import type { AgentContinuation } from '../control-nodes/agent-continuation.js';
 import {
   agentChildInvocationKey,
   type AgentChild,

@@ -1,12 +1,10 @@
+import { AGENT_LIMITS } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
 import {
   reserveAgentInference,
   settleAgentInference,
 } from '../../src/control-nodes/agent-budget.js';
-import {
-  AGENT_LIMITS,
-  type AgentContinuation,
-} from '../../src/control-nodes/agent-continuation.js';
+import type { AgentContinuation } from '../../src/control-nodes/agent-continuation.js';
 
 const started = '2026-11-22T00:00:00.000Z';
 const expired = '2026-11-22T00:02:00.000Z';

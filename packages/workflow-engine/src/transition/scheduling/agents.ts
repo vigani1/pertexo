@@ -1,4 +1,5 @@
 import {
+  AGENT_LIMITS,
   AGENT_STEP,
   agentTurnOutputSchema,
   type JsonValue,
@@ -12,10 +13,9 @@ import {
 import type { CompiledWorkflowExecutable } from '../../compilation/workflow-executable.js';
 import { isAgentWorkInvocationKey } from '../../invocations/agent-invocation.js';
 import { parseCompletedOutputItems } from '../../observation/coordinator-output.js';
-import {
-  AGENT_LIMITS,
-  type AgentContinuation,
-  type AgentModelRates,
+import type {
+  AgentContinuation,
+  AgentModelRates,
 } from '../../control-nodes/agent-continuation.js';
 import { resumeAgent } from '../../control-nodes/resume-agent.js';
 import {

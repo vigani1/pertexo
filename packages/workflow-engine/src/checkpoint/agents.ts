@@ -1,8 +1,9 @@
-import { compareOrdinal, isRecord } from '@pertexo/workflow-model';
 import {
   AGENT_LIMITS,
-  type AgentContinuation,
-} from '../control-nodes/agent-continuation.js';
+  compareOrdinal,
+  isRecord,
+} from '@pertexo/workflow-model';
+import type { AgentContinuation } from '../control-nodes/agent-continuation.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
 import type { InvocationState } from '../workflow-execution.js';
 import { assertCheckpoint, assertExactKeys, isInteger } from './admission.js';

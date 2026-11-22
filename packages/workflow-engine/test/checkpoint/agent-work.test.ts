@@ -1,8 +1,6 @@
+import { AGENT_LIMITS } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
-import {
-  AGENT_LIMITS,
-  type AgentContinuation,
-} from '../../src/control-nodes/agent-continuation.js';
+import type { AgentContinuation } from '../../src/control-nodes/agent-continuation.js';
 import { resumeAgent } from '../../src/control-nodes/resume-agent.js';
 import {
   settleAgentModelTurn,
