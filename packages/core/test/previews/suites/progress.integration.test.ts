@@ -36,9 +36,11 @@ import { WorkflowNotFoundError } from '../../../src/authoring/workflows/workflow
 import { setVariableSet } from '../../support/variable-sets.js';
 import { createRetentionStore } from '../../../src/lifecycle/retention/retention.store.js';
 import { serializeStoredExecutionValue } from '../../../src/shared/stored-execution.js';
+import { registerTableEvaluationCases } from './table-evaluation.cases.js';
 
 beforeAll(beforeAllFixture1);
 afterAll(afterAllFixture2);
+registerTableEvaluationCases();
 describe('durable serial draft suites', () => {
   it('freezes cases, shares one source and advances once across competing scanners and restarts', async () => {
     const f = await fixture(),

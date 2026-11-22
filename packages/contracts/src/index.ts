@@ -147,6 +147,7 @@ export * from './schemas/execution/usage-trends.js';
 export {
   workflowTestSuitePreparationSchema,
   workflowTestSuiteStartRequestSchema,
+  workflowTableEvaluationSchema,
   workflowTestSuiteAcceptedSchema,
   workflowTestSuiteListSchema,
   workflowTestSuiteDetailSchema,
@@ -158,7 +159,6 @@ export {
   type WorkflowTestSuiteDetail,
   type WorkflowTestSuiteReport,
 } from './schemas/execution/test-suites.js';
-
 export {
   dataTableCreateSchema,
   dataTableSchemaEditSchema,

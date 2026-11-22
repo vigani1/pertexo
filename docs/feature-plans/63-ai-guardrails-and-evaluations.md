@@ -50,6 +50,8 @@ access and use test-safe workflow bindings, including synthetic fixture data.
   and exclude those cases from completed scores. Run the same engine, test
   credential policy and capacity controls. Reject workflows with effectful
   steps or unknown effects for table batches, including nested calls.
+  Evaluations require every Call to have an F02 output pin, reuse that
+  pin in every case, and never admit a child run.
 - Deterministic scoring is useful for routing and extraction within the
   track, and adding it later can reuse the same suite. Ship it now for
   repeatable acceptance. A dedicated evaluation scheduler, production
@@ -63,8 +65,8 @@ Put Guardrails settings and execution under
 `packages/integrations/src/ai/guardrails/` and share the browser-safe
 branch declaration and engine observation path from F59. Use existing
 worker connection and capability composition for the optional model check.
-Adapt authorized row reads from `packages/core/src/data-tables/` in API
-composition and pass a bounded snapshot to `core/src/previews/suites/`.
+Reuse authorized row reads from `packages/core/src/data-tables/` inside
+the admission transaction in `core/src/previews/suites/`.
 Keep comparisons and suite report math beside the existing expectations
 in `packages/workflow-model/src/authoring/test-suites/`. Extend existing
 suite contracts, tests UI and run inspector. No new role, package entry

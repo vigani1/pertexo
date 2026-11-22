@@ -43,6 +43,7 @@ export const workflowTestSuiteReportSchema = z
         'run_timed_out',
         'run_outcome_unknown',
         'run_canceled',
+        'run_infrastructure_failed',
       ])
       .optional(),
     assertions: z
@@ -56,3 +57,26 @@ export const workflowTestSuiteReportSchema = z
   .strict();
 
 export type SuiteCaseReport = z.output<typeof workflowTestSuiteReportSchema>;
+
+/** Only completed cases contribute assertions to the denominator. */
+export function scoreSuiteCases(
+  cases: readonly Readonly<{
+    status: 'pending' | 'running' | 'passed' | 'failed' | 'error' | 'skipped';
+    report: SuiteCaseReport | null;
+  }>[],
+) {
+  const score = { matched: 0, total: 0, failedRuns: 0, incompleteCases: 0 };
+  for (const { status, report } of cases) {
+    if (status === 'pending' || status === 'running') continue;
+    if (report === null || report.error !== undefined) {
+      score.incompleteCases += 1;
+      continue;
+    }
+    if (report.actualOutcome === 'failed') score.failedRuns += 1;
+    for (const { actual } of report.assertions) {
+      score.total += 1;
+      if (actual.matched) score.matched += 1;
+    }
+  }
+  return score;
+}

@@ -4898,8 +4898,11 @@ CREATE TABLE app.workflow_test_suites (
     expires_at timestamp with time zone NOT NULL,
     next_check_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
     completed_at timestamp with time zone,
+    evaluation_table_id uuid,
+    evaluation_version_id uuid,
     CONSTRAINT workflow_test_suites_checkpoint_bound CHECK (((jsonb_typeof(initial_checkpoint) = 'object'::text) AND (octet_length((initial_checkpoint)::text) <= 262144))),
     CONSTRAINT workflow_test_suites_duration_valid CHECK ((((case_duration_ms >= 1) AND (case_duration_ms <= 300000)) AND (deadline_at > created_at) AND (expires_at > deadline_at))),
+    CONSTRAINT workflow_test_suites_evaluation_version_source CHECK (((evaluation_version_id IS NULL) OR (evaluation_table_id IS NOT NULL))),
     CONSTRAINT workflow_test_suites_signature_valid CHECK (((signature)::text ~ '^[0-9a-f]{64}$'::text)),
     CONSTRAINT workflow_test_suites_status_valid CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'passed'::character varying, 'failed'::character varying, 'canceled'::character varying, 'error'::character varying])::text[])))
 );

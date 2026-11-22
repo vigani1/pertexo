@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
 /** Repository-owned run failures; arbitrary historical summaries stay private. */
-export const RUN_FAILURE_CODES = [
+export const RUN_INFRASTRUCTURE_FAILURE_CODES = [
   'execution.run_state_invalid',
   'execution.checkpoint_missing',
+] as const;
+export const RUN_FAILURE_CODES = [
+  ...RUN_INFRASTRUCTURE_FAILURE_CODES,
   'callable_result_missing',
   'callable_result_variable_missing',
   'callable_result_ambiguous',

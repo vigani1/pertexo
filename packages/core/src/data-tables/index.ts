@@ -25,5 +25,7 @@ export type { WorkspaceActor } from '../shared/access/workspace-access.js';
 export type {} from './columns/references.repository.js';
 export type {} from './table-lookups.repository.js';
 export type {} from './columns/table-references.js';
+export type {} from './require-table.js';
+export type {} from './rows/find-rows.js';
 
 export { StoredTableDefinitionError } from './data-table.errors.js';

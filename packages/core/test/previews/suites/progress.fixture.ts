@@ -42,17 +42,21 @@ export const query = <T extends Record<string, unknown>>(
   values: unknown[] = [],
 ) => queryAsOwner<T>(sql, values, workspaceId);
 
-export async function fixture(count = 2) {
+export async function fixture(
+  count = 2,
+  definition = 'core.set',
+  nodeConfig = {},
+) {
   const workflowId = randomUUID(),
     versionId = randomUUID();
   const graph = parseWorkflowGraphDraft({
     settings: {},
-    nodes: ['core.manual', 'core.set'].map((key, index) => ({
+    nodes: ['core.manual', definition].map((key, index) => ({
       id: index === 0 ? 'start' : 'set',
       definition: { key, version: 1 },
       position: { x: index * 200, y: 0 },
       configVersion: 1,
-      config: {},
+      config: index === 0 ? {} : nodeConfig,
       inputMappings: {},
       connectionRefs: {},
     })),
@@ -108,7 +112,7 @@ export async function fixture(count = 2) {
         idempotencyKey: randomUUID(),
       }),
     );
-  return { scope, records };
+  return { scope, records, versionId };
 }
 
 export async function command(f: Awaited<ReturnType<typeof fixture>>) {

@@ -37,6 +37,8 @@ export const workflowTestSuites = appSchema.table(
     workflowId: uuid('workflow_id').notNull(),
     startedBy: uuid('started_by').notNull(),
     snapshotId: uuid('snapshot_id').notNull(),
+    evaluationTableId: uuid('evaluation_table_id'),
+    evaluationVersionId: uuid('evaluation_version_id'),
     signature: varchar('signature', { length: WIDTHS.signature }).notNull(),
     variableSetRevision: integer('variable_set_revision'),
     usesConnections: boolean('uses_connections').notNull(),
@@ -107,6 +109,10 @@ export const workflowTestSuites = appSchema.table(
     check(
       'workflow_test_suites_status_valid',
       sql`status in ('running','passed','failed','canceled','error')`,
+    ),
+    check(
+      'workflow_test_suites_evaluation_version_source',
+      sql`evaluation_version_id is null or evaluation_table_id is not null`,
     ),
     check(
       'workflow_test_suites_duration_valid',

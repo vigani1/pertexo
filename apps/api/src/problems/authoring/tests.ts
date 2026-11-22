@@ -14,6 +14,7 @@ import {
   WorkflowTestError,
 } from '@pertexo/core/previews';
 import { applicationError } from '../../platform/http/index.js';
+import { WORKFLOW_TEST_SUITE_MAX_CASES } from '@pertexo/workflow-model';
 import {
   formatByteSize,
   formatCount,
@@ -50,7 +51,19 @@ export const nodeTestProblems = [
         'The input cases or variables changed. Prepare the suite again.',
       cases_required: 'Save at least one input case before running the suite.',
       case_invalid:
-        'A case names a step missing from this draft. Review its expectations.',
+        'A case names a step missing from the tested workflow. Review its expectations.',
+      evaluation_empty: 'Add at least one row to the evaluation table.',
+      evaluation_case_limit: `Use an evaluation table with at most ${String(WORKFLOW_TEST_SUITE_MAX_CASES)} rows.`,
+      evaluation_column_missing:
+        'A mapped column is unavailable. Refresh the table and review the mapping.',
+      evaluation_expectation_invalid:
+        'A row produces invalid or duplicate expectations. Review the mapped expectation columns.',
+      evaluation_input_invalid:
+        'A row exceeds the test input limits. Reduce the number or size of its mapped columns.',
+      evaluation_effectful:
+        'Pin steps with side effects or select a workflow version that can run safely.',
+      evaluation_pin_required:
+        'Pin the output of each Call or human task before starting the evaluation.',
       draft_changed: 'The draft changed. Save and prepare the test again.',
       samples_changed: 'The pins changed. Review them before testing again.',
       not_supported: 'Workflow testing is unavailable on this server.',

@@ -18,10 +18,6 @@ const INPUT_CASES_BOUNDS = Object.freeze({
   workflowInputCaseListPageDefault: 20,
 });
 
-const WORKFLOW_INPUT_CASE_MAX_BYTES = 65_536;
-const WORKFLOW_INPUT_CASE_MAX_DEPTH = 64;
-const WORKFLOW_INPUT_CASE_MAX_MEMBERS = 10_000;
-
 /** Inspect descriptors before recursive JSON parsing; never invoke input accessors. */
 function boundedCaseJson(value: unknown): boolean {
   let members = 0;
@@ -38,7 +34,8 @@ function boundedCaseJson(value: unknown): boolean {
       throw new TypeError();
     const { array, keys } = caseContainer(current, depth);
     members += keys.length;
-    if (members > WORKFLOW_INPUT_CASE_MAX_MEMBERS) throw new TypeError();
+    if (members > WORKFLOW_INPUT_CASE_LIMITS.payloadMembers)
+      throw new TypeError();
     ancestors.add(current);
     try {
       const normalized: Record<string, unknown> | unknown[] = array
@@ -64,8 +61,9 @@ function boundedCaseJson(value: unknown): boolean {
   try {
     const text = JSON.stringify(normalize(value, 0));
     return (
-      utf8ByteLength(text, { stopAfterBytes: WORKFLOW_INPUT_CASE_MAX_BYTES }) <=
-      WORKFLOW_INPUT_CASE_MAX_BYTES
+      utf8ByteLength(text, {
+        stopAfterBytes: WORKFLOW_INPUT_CASE_LIMITS.payloadBytes,
+      }) <= WORKFLOW_INPUT_CASE_LIMITS.payloadBytes
     );
   } catch {
     return false;
@@ -74,12 +72,12 @@ function boundedCaseJson(value: unknown): boolean {
 
 function caseContainer(current: object, depth: number) {
   if (
-    depth === WORKFLOW_INPUT_CASE_MAX_DEPTH ||
+    depth === WORKFLOW_INPUT_CASE_LIMITS.payloadDepth ||
     Object.getOwnPropertySymbols(current).length > 0
   )
     throw new TypeError();
   const array = Array.isArray(current);
-  if (array && current.length > WORKFLOW_INPUT_CASE_MAX_MEMBERS)
+  if (array && current.length > WORKFLOW_INPUT_CASE_LIMITS.payloadMembers)
     throw new TypeError();
   const unsupportedPrototype =
     !array &&
@@ -100,16 +98,16 @@ export const workflowInputCaseJsonSchema = z
     if (!boundedCaseJson(value))
       context.addIssue({
         code: 'custom',
-        message: `Run-input case must be ordinary JSON within ${formatByteSize(WORKFLOW_INPUT_CASE_MAX_BYTES)}, depth ${String(WORKFLOW_INPUT_CASE_MAX_DEPTH)} and ${formatCount(WORKFLOW_INPUT_CASE_MAX_MEMBERS)} members.`,
+        message: `Run-input case must be ordinary JSON within ${formatByteSize(WORKFLOW_INPUT_CASE_LIMITS.payloadBytes)}, depth ${String(WORKFLOW_INPUT_CASE_LIMITS.payloadDepth)} and ${formatCount(WORKFLOW_INPUT_CASE_LIMITS.payloadMembers)} members.`,
       });
   })
   .pipe(z.json())
   .meta({
     description:
       'Manually entered JSON; bounded validation does not guarantee acceptance by workflow nodes or providers.',
-    'x-pertexo-runtime-max-bytes': WORKFLOW_INPUT_CASE_MAX_BYTES,
-    'x-pertexo-runtime-max-depth': WORKFLOW_INPUT_CASE_MAX_DEPTH,
-    'x-pertexo-runtime-max-members': WORKFLOW_INPUT_CASE_MAX_MEMBERS,
+    'x-pertexo-runtime-max-bytes': WORKFLOW_INPUT_CASE_LIMITS.payloadBytes,
+    'x-pertexo-runtime-max-depth': WORKFLOW_INPUT_CASE_LIMITS.payloadDepth,
+    'x-pertexo-runtime-max-members': WORKFLOW_INPUT_CASE_LIMITS.payloadMembers,
   });
 
 const workflowInputCaseRevisionSchema = z
