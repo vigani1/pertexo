@@ -75,6 +75,9 @@ test('configures Guardrails, routes both outcomes and shows the deciding categor
   await expect(page.getByLabel('Prohibited terms list')).toHaveValue(
     'wire transfer\ninternal only',
   );
+  await expect(
+    page.getByRole('status').filter({ hasText: /\bSaved\b/u }),
+  ).toBeVisible();
   await modelScreenshots(page, info, 'guardrails-setup');
   await publishSingleStep(page, path);
   const sentinel = 'guardrails-journey-sentinel@example.test';
