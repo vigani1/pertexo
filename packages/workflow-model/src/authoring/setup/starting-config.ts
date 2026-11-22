@@ -10,6 +10,11 @@ import {
 } from './schema-union.js';
 
 type NodeConfig = WorkflowNode['config'];
+type SetupDefinition = Readonly<{
+  definition: WorkflowNode['definition'];
+  configSchema: NodeConfig;
+}>;
+type LevelNode = Pick<WorkflowNode, 'id' | 'definition'>;
 
 /**
  * A new step's setup, from its catalog schema: the schema's own `default`
@@ -18,13 +23,29 @@ type NodeConfig = WorkflowNode['config'];
  * property defaults. Human tasks start from their parsed
  * empty form, and a Merge waits for every branch and joins the Parallel on
  * its level when there's exactly one to join; a schema can't say that.
+ * Supplied values take precedence, and a supplied variant uses its own fields.
  */
 export function startingConfig(
-  definition: {
-    readonly definition: WorkflowNode['definition'];
-    readonly configSchema: NodeConfig;
-  },
-  levelNodes: readonly Pick<WorkflowNode, 'id' | 'definition'>[],
+  definition: SetupDefinition,
+  levelNodes: readonly LevelNode[],
+  supplied?: NodeConfig,
+): NodeConfig {
+  const defaults = startingDefaults(definition, levelNodes);
+  if (supplied === undefined) return defaults;
+  const union = readSchemaUnion(definition.configSchema);
+  const choice = union === undefined ? undefined : supplied[union.key];
+  const setup =
+    union !== undefined &&
+    typeof choice === 'string' &&
+    choice !== defaults[union.key]
+      ? (withUnionChoice(union, defaults, choice) ?? defaults)
+      : defaults;
+  return { ...setup, ...supplied };
+}
+
+function startingDefaults(
+  definition: SetupDefinition,
+  levelNodes: readonly LevelNode[],
 ): NodeConfig {
   const { key } = definition.definition;
   if (key === 'core.form') return formConfigSchema.parse({});
