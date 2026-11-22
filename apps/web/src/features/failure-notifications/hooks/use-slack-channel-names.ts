@@ -1,4 +1,3 @@
-import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import { useQueries } from '@tanstack/react-query';
 import { connectionOptions } from '@/features/connections/connections-queries.public';
 import type { ApiClient } from '@/lib/api/client';
@@ -37,7 +36,7 @@ export function useSlackChannelNames({
         workspaceId,
         connectionId,
         request: slackChannelLookupRequest(channelIds),
-        staleTime: QUERY_FRESHNESS.catalog,
+        freshness: 'catalog',
       }),
       enabled,
     })),

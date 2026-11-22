@@ -166,13 +166,19 @@ export function rotateConnectionSecret(
   });
 }
 
-export function lookupConnectionOptions(
-  apiClient: ApiClient,
-  workspaceId: string,
-  connectionId: string,
-  body: ConnectionLookupRequest,
-  signal: AbortSignal,
-) {
+export function lookupConnectionOptions({
+  apiClient,
+  workspaceId,
+  connectionId,
+  body,
+  signal,
+}: Readonly<{
+  apiClient: ApiClient;
+  workspaceId: string;
+  connectionId: string;
+  body: ConnectionLookupRequest;
+  signal: AbortSignal;
+}>) {
   return apiClient.request({
     path: connectionLookupPath(workspaceId, connectionId),
     method: 'POST',

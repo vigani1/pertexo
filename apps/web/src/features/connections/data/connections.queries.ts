@@ -40,14 +40,14 @@ export function connectionOptions({
   workspaceId,
   connectionId,
   request,
-  staleTime,
+  freshness,
 }: Readonly<{
   apiClient: ApiClient;
   userId: string;
   workspaceId: string;
   connectionId: string;
   request: ConnectionLookupRequest;
-  staleTime?: number;
+  freshness?: keyof typeof QUERY_FRESHNESS;
 }>) {
   return queryOptions({
     queryKey: [
@@ -57,15 +57,17 @@ export function connectionOptions({
       request,
     ],
     queryFn: ({ signal }) =>
-      lookupConnectionOptions(
+      lookupConnectionOptions({
         apiClient,
         workspaceId,
         connectionId,
-        request,
+        body: request,
         signal,
-      ),
+      }),
     retry: false,
-    ...(staleTime === undefined ? {} : { staleTime }),
+    ...(freshness === undefined
+      ? {}
+      : { staleTime: QUERY_FRESHNESS[freshness] }),
   });
 }
 

@@ -220,7 +220,7 @@ describe('connection public contracts', () => {
       [],
       ['c0123'],
       ['C0123', 'C0123'],
-      Array.from({ length: 11 }, (_, index) => `C${index}`),
+      Array.from({ length: 11 }, (_, index) => `C${String(index)}`),
     ])
       expect(
         slackChannelLookupInputSchema.safeParse({ channelIds: ids }).success,

@@ -28,28 +28,37 @@ function fixture() {
     }),
   );
   const persistence = {
-    resolveConnectionLookupSecret: vi.fn(async () => ({
-      connection: record({ providerKey: 'slack', authType: 'slack_bot_token' }),
-      secretVersionId,
-      sealed,
-    })),
-    assertConnectionLookupSecretCurrent: vi.fn(async () => undefined),
+    resolveConnectionLookupSecret: vi.fn(() =>
+      Promise.resolve({
+        connection: record({
+          providerKey: 'slack',
+          authType: 'slack_bot_token',
+        }),
+        secretVersionId,
+        sealed,
+      }),
+    ),
+    assertConnectionLookupSecretCurrent: vi.fn(() => Promise.resolve()),
   };
   const encryption = {
     open: vi.fn<
       ConstructorParameters<
         typeof LookupConnectionOptionsService
       >[0]['encryption']['open']
-    >(async () => plaintext),
+    >(() => Promise.resolve(plaintext)),
   };
   const channelIds: string[] = [];
   const reply = vi.fn<(id: string, signal: AbortSignal) => Promise<unknown>>(
-    async (id) =>
-      id === 'C0404'
-        ? { ok: false, error: 'channel_not_found' }
-        : { ok: true, channel: { id, name: `name-${id.toLowerCase()}` } },
+    (id) =>
+      Promise.resolve(
+        id === 'C0404'
+          ? { ok: false, error: 'channel_not_found' }
+          : { ok: true, channel: { id, name: `name-${id.toLowerCase()}` } },
+      ),
   );
   const execute = vi.fn<ProviderHttpClient['execute']>(async (request) => {
+    if (request.signal === undefined)
+      throw new Error('Expected a lookup signal');
     await request.beforeDispatch();
     const id =
       new URLSearchParams(
@@ -60,7 +69,7 @@ function fixture() {
       status: 200,
       headers: {},
       body: new TextEncoder().encode(
-        JSON.stringify(await reply(id, request.signal!)),
+        JSON.stringify(await reply(id, request.signal)),
       ),
       bodyEncoding: 'utf8',
       finalUrl: request.url,
@@ -249,19 +258,17 @@ describe('Slack channels through connection lookups', () => {
     f.reply.mockImplementation(
       (id, signal) =>
         new Promise((resolve, reject) => {
-          const timer = setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                channel: { id, name: `name-${id.toLowerCase()}` },
-              }),
-            4_000,
-          );
+          const timer = setTimeout(() => {
+            resolve({
+              ok: true,
+              channel: { id, name: `name-${id.toLowerCase()}` },
+            });
+          }, 4_000);
           signal.addEventListener(
             'abort',
             () => {
               clearTimeout(timer);
-              reject(signal.reason);
+              reject(new DOMException('Lookup timed out', 'TimeoutError'));
             },
             { once: true },
           );
@@ -288,9 +295,18 @@ describe('Slack channels through connection lookups', () => {
     f.encryption.open.mockImplementation(
       (_sealed, _context, signal) =>
         new Promise((_resolve, reject) => {
-          signal.addEventListener('abort', () => reject(signal.reason), {
-            once: true,
-          });
+          signal.addEventListener(
+            'abort',
+            () => {
+              reject(
+                new DOMException(
+                  'Credential opening timed out',
+                  'TimeoutError',
+                ),
+              );
+            },
+            { once: true },
+          );
         }),
     );
     const answer = f.lookup(['G0001']);
@@ -304,10 +320,12 @@ describe('Slack channels through connection lookups', () => {
   it('propagates a caller abort while a provider request is in flight', async () => {
     const f = fixture();
     const caller = new AbortController();
-    f.reply.mockImplementation(async (_id, signal) => {
-      caller.abort();
-      signal.throwIfAborted();
-    });
+    f.reply.mockImplementation((_id, signal) =>
+      Promise.resolve().then(() => {
+        caller.abort();
+        signal.throwIfAborted();
+      }),
+    );
     await expect(
       f.lookup(['C0001', 'C0002'], caller.signal),
     ).rejects.toMatchObject({ name: 'AbortError' });

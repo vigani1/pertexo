@@ -7,7 +7,6 @@ import type {
 import { LabelledField } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { connectionOptions } from '@/features/connections/connections-queries.public';
-import { QUERY_FRESHNESS } from '@/lib/api/query-timings';
 import type { FieldParseResult } from '../../../model/inspector/draft';
 import {
   fieldControlId,
@@ -74,7 +73,7 @@ export function LookupValueField({
             ...scope,
             connectionId,
             request: lookup(requested),
-            staleTime: QUERY_FRESHNESS.catalog,
+            freshness: 'catalog',
           }),
         ];
   const [result] = useQueries({ queries });
@@ -87,6 +86,7 @@ export function LookupValueField({
     requested !== undefined && connectionId === undefined
       ? field.needsConnection
       : feedback?.note;
+  const pendingLabel = result?.isPending ? 'Looking up…' : null;
 
   return (
     <LabelledField
@@ -127,9 +127,7 @@ export function LookupValueField({
             className="max-w-[45%] shrink-0 truncate font-mono text-xs text-muted-foreground"
           >
             {feedback?.label === undefined ? (
-              result?.isPending ? (
-                'Looking up…'
-              ) : null
+              pendingLabel
             ) : (
               <span className="text-foreground">{feedback.label}</span>
             )}
