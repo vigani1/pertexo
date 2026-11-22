@@ -17,6 +17,7 @@ import {
 import { assertPersistedWorkflowVersionId } from './identity.js';
 import { parseJoin } from './joins.js';
 import { parseLoop } from './loops.js';
+import { parseAgents } from './agents.js';
 
 type CheckpointLoop = WorkflowCheckpoint['loops'][number];
 type CheckpointInvocation = WorkflowCheckpoint['invocations'][number];
@@ -201,6 +202,9 @@ export function parseCheckpointRecord(value: unknown): WorkflowCheckpoint {
     invocations,
     joins,
     loops,
+    ...(fields.agents === undefined
+      ? {}
+      : { agents: parseAgents(fields.agents, invocationByKey) }),
     readySet,
     remainingIterationBudget: fields.remainingIterationBudget,
     cancelRequested: fields.cancelRequested,
@@ -236,7 +240,12 @@ function parseCheckpointFields(value: unknown) {
       'cancelRequested',
       'branchSelections',
     ],
-    ['deadlineExpired', 'initialIterationBudget', 'retiredIterationBudget'],
+    [
+      'agents',
+      'deadlineExpired',
+      'initialIterationBudget',
+      'retiredIterationBudget',
+    ],
   );
   const workflowVersionId = assertPersistedWorkflowVersionId(
     value.workflowVersionId,
@@ -286,6 +295,7 @@ function parseCheckpointFields(value: unknown) {
     invocations: value.invocations,
     joins: value.joins,
     loops: value.loops,
+    agents: value.agents,
     remainingIterationBudget: value.remainingIterationBudget,
     cancelRequested: value.cancelRequested,
     deadlineExpired: value.deadlineExpired,
