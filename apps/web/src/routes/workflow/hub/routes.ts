@@ -33,7 +33,9 @@ export const workflowHubRoute = createRoute({
   getParentRoute: () => workspaceScopeRoute,
   path: 'workflows/$workflowId',
   pendingComponent: WorkflowHubPending,
-  beforeLoad: ({ params }) => {
+  // The pending header also uses the ID. Route context supplies it before
+  // the router can publish the pending match.
+  context: ({ params }) => {
     const parsed = workflowIdentifierSchema.safeParse(params.workflowId);
     return { workflowId: parsed.success ? parsed.data : null };
   },
