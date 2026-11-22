@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import type { ApiClient } from '@/lib/api/client';
 import { describeReadError } from '@/lib/api/error-copy';
+import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { useRunExplanation } from '../data/explanation.mutations';
 import { explanationCopy } from '../model/presentation/explanation-copy';
 import { ModelUsageDetails } from './model-usage';
@@ -196,10 +197,12 @@ function ExplanationFeedback({
 }
 
 const NANO_DOLLARS_PER_DOLLAR = 1_000_000_000;
+const MODEL_COST_FORMAT = new Intl.NumberFormat(FORMAT_LOCALE, {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 9,
+});
+
 function formatCost(cost: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 9,
-  }).format(cost / NANO_DOLLARS_PER_DOLLAR);
+  return MODEL_COST_FORMAT.format(cost / NANO_DOLLARS_PER_DOLLAR);
 }
