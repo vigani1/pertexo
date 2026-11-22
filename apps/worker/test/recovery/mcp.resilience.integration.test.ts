@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { isRecord } from '@pertexo/workflow-model';
+import type { ApiResponse } from '../support/recovery/api.js';
 import {
   fakeMcp,
   MCP_TOKEN,
@@ -34,7 +35,8 @@ describeFaults('an MCP tool used by a workflow', () => {
   });
 
   async function connection(endpoint: string) {
-    const created = await stack.api.expect(201)(
+    const created = await responseAt(
+      201,
       stack.api.call(
         'POST',
         `/v1/workspaces/${workspace}/connections`,
@@ -168,7 +170,7 @@ describeFaults('an MCP tool used by a workflow', () => {
     });
     const id = await connection(fake.url);
     const root = `/v1/workspaces/${workspace}/connections/${id}`;
-    const current = await stack.api.expect(200)(stack.api.call('GET', root));
+    const current = await responseAt(200, stack.api.call('GET', root));
     if (
       !isRecord(current.json) ||
       typeof current.json.secretVersionId !== 'string'
@@ -177,7 +179,8 @@ describeFaults('an MCP tool used by a workflow', () => {
     const runId = await startTool(id);
     await waitForSignal(listed.promise);
     try {
-      await stack.api.expect(200)(
+      await responseAt(
+        200,
         stack.api.call(
           'PUT',
           `${root}/secret`,
@@ -212,11 +215,12 @@ describeFaults('an MCP tool used by a workflow', () => {
       steps: { call: ['succeeded'] },
     });
     const root = `/v1/workspaces/${workspace}/runs/${runId}`;
-    const read = await stack.api.expect(200)(stack.api.call('GET', root));
+    const read = await responseAt(200, stack.api.call('GET', root));
     const { nodes } = read.json as { nodes: { nodeId: string; id: string }[] };
     const call = nodes.find(({ nodeId }) => nodeId === 'call');
     if (call === undefined) throw new Error('MCP run has no call step');
-    const output = await stack.api.expect(200)(
+    const output = await responseAt(
+      200,
       stack.api.call('GET', `${root}/node-runs/${call.id}/output`),
     );
     expect(output.json).toMatchObject({
@@ -270,4 +274,10 @@ function waitForSignal(event: Promise<undefined>) {
       );
     }),
   ]);
+}
+
+async function responseAt(status: number, pending: Promise<ApiResponse>) {
+  const response = await pending;
+  expect(response.status, JSON.stringify(response.json)).toBe(status);
+  return response;
 }
