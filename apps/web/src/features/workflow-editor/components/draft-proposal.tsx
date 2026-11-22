@@ -12,7 +12,7 @@ import {
   DialogContent,
   DialogFooter,
   DialogTitle,
-  DialogTrigger,
+  type createDialogHandle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { isApiError } from '@/lib/api/error';
@@ -34,11 +34,13 @@ const outcomeCopy = {
 } as const;
 
 export function DraftProposal({
+  handle,
   open,
   onOpenChange,
   graph,
   onFix,
 }: Readonly<{
+  handle: ReturnType<typeof createDialogHandle>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   graph: WorkflowGraphContract;
@@ -65,6 +67,7 @@ export function DraftProposal({
 
   return (
     <Dialog
+      handle={handle}
       open={open}
       onOpenChange={(next) => {
         if (pending) return;
@@ -72,9 +75,6 @@ export function DraftProposal({
         if (next) void loadDisclosure();
       }}
     >
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
-        Ask assistant
-      </DialogTrigger>
       <DialogContent>
         <DialogTitle>
           {review === undefined

@@ -21,7 +21,7 @@ type NodeConfig = WorkflowNode['config'];
  */
 export function startingConfig(
   definition: {
-    readonly definition: Pick<WorkflowNode['definition'], 'key'>;
+    readonly definition: WorkflowNode['definition'];
     readonly configSchema: NodeConfig;
   },
   levelNodes: readonly Pick<WorkflowNode, 'id' | 'definition'>[],

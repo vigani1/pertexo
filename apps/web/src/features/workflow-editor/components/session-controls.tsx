@@ -1,6 +1,8 @@
 import { useEditorSession } from '../model/state/context';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { createDialogHandle, DialogTrigger } from '@/components/ui/dialog';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 
 import { WorkflowCommandActions } from '@/features/workflow-publish/workflow-publish-views.public';
@@ -52,59 +54,74 @@ export function SessionCommandBar({
     inspectorScratch,
     triggersAvailable,
   } = publication;
+  // The command bar is inside the contract dialog root. Give the proposal its own backdrop and focus scope.
+  const [proposalHandle] = useState(createDialogHandle);
+  const canPropose = !paused && editing.canUpdate;
   return (
-    <EditorCommandBar
-      presence={headerPresence}
-      testMenuItems={chrome.workflowTestMenuItems}
-      onRetrySave={() => void flushSave()}
-      onReviewConflict={onReviewConflict}
-      onUndo={() => {
-        actions.request({ kind: 'undo' });
-      }}
-      onRedo={() => {
-        actions.request({ kind: 'redo' });
-      }}
-      commands={
-        paused ? null : (
-          <>
-            {editing.canUpdate ? (
-              <DraftProposal
-                open={chrome.proposalOpen}
-                onOpenChange={chrome.onProposalOpenChange}
-                graph={graph}
-                onFix={chrome.onFix}
+    <>
+      <EditorCommandBar
+        presence={headerPresence}
+        testMenuItems={chrome.workflowTestMenuItems}
+        onRetrySave={() => void flushSave()}
+        onReviewConflict={onReviewConflict}
+        onUndo={() => {
+          actions.request({ kind: 'undo' });
+        }}
+        onRedo={() => {
+          actions.request({ kind: 'redo' });
+        }}
+        commands={
+          paused ? null : (
+            <>
+              {canPropose ? (
+                <DialogTrigger
+                  handle={proposalHandle}
+                  render={<Button variant="outline" size="sm" />}
+                >
+                  Ask assistant
+                </DialogTrigger>
+              ) : null}
+              <WorkflowCommandActions
+                renderFeedback={chrome.renderFeedback}
+                commandSession={commandSession}
+                testAction={chrome.workflowTestAction}
+                onPublished={(receipt) => {
+                  if (!receipt.reused) effects.weaveIn();
+                }}
+                validation={{
+                  issues,
+                  issuesOpen: chrome.issuesOpen,
+                  onIssuesOpenChange: chrome.onIssuesOpenChange,
+                  onFix: chrome.onFix,
+                }}
+                snapshot={{
+                  workflow,
+                  graph,
+                  draft: { generation, revision },
+                  savedDraftCurrent:
+                    saveStatus === 'clean' && !inspectorScratch,
+                  triggersAvailable,
+                }}
+                scope={{ apiClient, userId, workspace, workflowId }}
               />
-            ) : null}
-            <WorkflowCommandActions
-              renderFeedback={chrome.renderFeedback}
-              commandSession={commandSession}
-              testAction={chrome.workflowTestAction}
-              onPublished={(receipt) => {
-                if (!receipt.reused) effects.weaveIn();
-              }}
-              validation={{
-                issues,
-                issuesOpen: chrome.issuesOpen,
-                onIssuesOpenChange: chrome.onIssuesOpenChange,
-                onFix: chrome.onFix,
-              }}
-              snapshot={{
-                workflow,
-                graph,
-                draft: { generation, revision },
-                savedDraftCurrent: saveStatus === 'clean' && !inspectorScratch,
-                triggersAvailable,
-              }}
-              scope={{ apiClient, userId, workspace, workflowId }}
-            />
-          </>
-        )
-      }
-      shortcuts={{
-        open: chrome.shortcutsOpen,
-        onOpenChange: chrome.onShortcutsOpenChange,
-      }}
-    />
+            </>
+          )
+        }
+        shortcuts={{
+          open: chrome.shortcutsOpen,
+          onOpenChange: chrome.onShortcutsOpenChange,
+        }}
+      />
+      {canPropose ? (
+        <DraftProposal
+          handle={proposalHandle}
+          open={chrome.proposalOpen}
+          onOpenChange={chrome.onProposalOpenChange}
+          graph={graph}
+          onFix={chrome.onFix}
+        />
+      ) : null}
+    </>
   );
 }
 export function SessionDialogs({
