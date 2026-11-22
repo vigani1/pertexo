@@ -29,8 +29,11 @@ import type { z } from 'zod';
 import { requestIdempotencyKey } from './idempotency-key.js';
 import { parseRequestInput } from './request-input.js';
 import { firstRequestHeader } from './request-headers.js';
-import { RateLimit } from '../rate-limit/metadata.js';
-import { AutomationAuthenticationGuard } from '../../authentication/automation/guard.js';
+import { RateLimit, RateLimitExempt } from '../rate-limit/metadata.js';
+import {
+  ApiTokenAuthenticationGuard,
+  AutomationAuthenticationGuard,
+} from '../../authentication/automation/guard.js';
 import { WORKSPACE_AUTHORIZATION } from '../../workspaces/tokens.js';
 import {
   ROUTE_ANSWER_CHECK,
@@ -63,7 +66,9 @@ export function Route(route: AnyRoute): MethodDecorator {
     SetMetadata(ROUTE_METADATA, route),
     METHOD_DECORATORS[route.method](nestPath(route.path)),
     HttpCode(route.success.status),
-    RateLimit(route.rateLimit),
+    route.rateLimit === 'exempt'
+      ? RateLimitExempt()
+      : RateLimit(route.rateLimit),
     UseGuards(...routeGuards(route)),
     UseInterceptors(RouteContractInterceptor),
     ...(route.cacheControl === undefined
@@ -220,6 +225,8 @@ function routeGuards({
   method,
 }: AnyRoute): readonly Type<CanActivate>[] {
   if (access.auth === 'public') return [];
+  if (access.auth === 'token')
+    return [ApiTokenAuthenticationGuard, ...access.capabilities.map(guardFor)];
   const csrf = method !== 'get' && access.csrf !== 'header_or_body';
   return [
     access.auth === 'session'

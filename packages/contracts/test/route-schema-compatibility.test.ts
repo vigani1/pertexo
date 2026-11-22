@@ -6,6 +6,11 @@ import type { AnyRoute } from '../src/routes/define.js';
 
 const futureKey = '__future_contract_metadata__';
 
+// MCP owns this envelope and clients can send additive metadata such as
+// _meta keys and clientInfo fields. Keep only the fields Pertexo reads.
+// https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+const mcpEnvelope = contracts.mcpRpcRequestSchema;
+
 const declaredRoutes = Object.values(routes).flatMap((group) =>
   typeof group === 'object' ? Object.values(group).filter(isRoute) : [],
 );
@@ -21,7 +26,7 @@ for (const route of declaredRoutes) {
   for (const success of [route.success, ...(route.otherSuccesses ?? [])]) {
     if ('body' in success)
       it(`${route.operationId} ${String(success.status)} strips additive response members at every object level`, () => {
-        expect(policyViolations(success.body.schema, 'response')).toEqual([]);
+        expect(policyViolations(success.body.schema, 'strip')).toEqual([]);
       });
   }
   for (const [name, schema] of Object.entries({
@@ -31,23 +36,32 @@ for (const route of declaredRoutes) {
     body: route.body?.schema,
   })) {
     if (schema !== undefined)
-      it(`${route.operationId} ${name} rejects undeclared request members at every object level`, () => {
-        expect(policyViolations(schema, 'request')).toEqual([]);
+      it(`${route.operationId} ${name} follows the request member policy at every object level`, () => {
+        expect(
+          policyViolations(schema, schema === mcpEnvelope ? 'strip' : 'reject'),
+        ).toEqual([]);
       });
   }
 }
 
 for (const [name, schema] of Object.entries(contracts)) {
+  if (name === 'mcpRpcRequestSchema') continue;
   let direction: 'response' | 'request' | undefined;
   if (/(Response|Summary|Problem)Schema$/u.test(name)) direction = 'response';
   else if (name.endsWith('RequestSchema')) direction = 'request';
   if (direction !== undefined && schema instanceof z.ZodType)
     it(`${name} follows the public ${direction} member policy recursively`, () => {
-      expect(policyViolations(schema, direction)).toEqual([]);
+      expect(
+        policyViolations(schema, direction === 'request' ? 'reject' : 'strip'),
+      ).toEqual([]);
     });
 }
 
-function policyViolations(root: z.ZodType, direction: 'request' | 'response') {
+it('mcpRpcRequestSchema strips additive MCP envelope members recursively', () => {
+  expect(policyViolations(mcpEnvelope, 'strip')).toEqual([]);
+});
+
+function policyViolations(root: z.ZodType, policy: 'reject' | 'strip') {
   const violations: string[] = [];
   const seen = new Set<z.ZodType>();
   const containers = new WeakSet<object>();
@@ -70,14 +84,14 @@ function policyViolations(root: z.ZodType, direction: 'request' | 'response') {
               issue.code === 'unrecognized_keys' &&
               issue.keys.includes(futureKey),
           );
-      if (direction === 'request') {
+      if (policy === 'reject') {
         if (unknownIssue === undefined)
           violations.push(`${path}: unknown request member was not rejected`);
       } else {
         if (unknownIssue !== undefined)
-          violations.push(`${path}: unknown response member was rejected`);
+          violations.push(`${path}: unknown member was rejected`);
         if (result.success && Object.hasOwn(result.data, futureKey))
-          violations.push(`${path}: unknown response member was retained`);
+          violations.push(`${path}: unknown member was retained`);
       }
     }
     const def = schema._zod.def;

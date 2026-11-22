@@ -9,6 +9,7 @@ export type RouteMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
 /** `@Route` hands this to the limiter, whose own type checks each name. */
 export type RouteRateClass =
+  | 'exempt'
   | 'webhook_preflight'
   | 'callback_ingress'
   | 'notice_unsubscribe'
@@ -45,6 +46,7 @@ export type RouteCapability = Readonly<{
 
 export type RouteAccess =
   | Readonly<{ auth: 'public' }>
+  | Readonly<{ auth: 'token'; capabilities: readonly RouteCapability[] }>
   | Readonly<{
       auth: 'session' | 'session_or_token';
       /** Each is checked in order; most routes have one. */

@@ -12,6 +12,8 @@ const PUBLIC_ROUTES = new Set([
   'OPTIONS /hooks/{endpointKey}/test',
   // The public API's own spec.
   'GET /v1/openapi.json',
+  // The stateless MCP transport rejects standalone streams with 405.
+  'GET /v1/workspaces/{workspaceId}/mcp',
   // The provider returns here; the state in the query is the credential.
   'GET /v1/connections/oauth2/callback',
   // A public form's capability is its authority.
@@ -109,7 +111,9 @@ describe('every API route against its rules and its document', () => {
       routes
         .filter(
           ({ method, signIn, csrf }) =>
-            method !== 'GET' && signIn !== 'none' && !csrf,
+            method !== 'GET' &&
+            (signIn === 'session' || signIn === 'session_or_token') &&
+            !csrf,
         )
         .map(key)
         .filter((route) => !CSRF_IN_THE_HANDLER.has(route)),
