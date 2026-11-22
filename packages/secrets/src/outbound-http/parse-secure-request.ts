@@ -51,6 +51,7 @@ const requestSchema = z
     maxResponseBytes: z.number(),
     sensitiveValues: z.array(z.string()).optional(),
     rejectSensitiveResponse: z.boolean().default(false),
+    privateResponseHeader: z.literal('mcp-session-id').optional(),
     navigation: z
       .object({
         origin: z
@@ -87,10 +88,18 @@ const blockedRequestHeaders = new Set([
 export type ParsedSecureHttpRequest = Required<
   Omit<
     SecureHttpRequest,
-    'body' | 'headers' | 'sensitiveValues' | 'signal' | 'navigation'
+    | 'body'
+    | 'headers'
+    | 'sensitiveValues'
+    | 'signal'
+    | 'navigation'
+    | 'privateResponseHeader'
   >
 > &
-  Pick<SecureHttpRequest, 'body' | 'signal' | 'navigation'> &
+  Pick<
+    SecureHttpRequest,
+    'body' | 'signal' | 'navigation' | 'privateResponseHeader'
+  > &
   Readonly<{
     headers: Readonly<Record<string, string>>;
     sensitiveValues: readonly string[];
@@ -208,6 +217,9 @@ export function parseRequest(
       maxResponseBytes: parsed.maxResponseBytes,
       sensitiveValues: parseSensitiveValues(parsed.sensitiveValues ?? []),
       rejectSensitiveResponse: parsed.rejectSensitiveResponse,
+      ...(parsed.privateResponseHeader === undefined
+        ? {}
+        : { privateResponseHeader: parsed.privateResponseHeader }),
       ...(parsed.signal === undefined ? {} : { signal: parsed.signal }),
       beforeDispatch: parsed.beforeDispatch,
     });

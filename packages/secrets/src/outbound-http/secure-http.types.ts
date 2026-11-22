@@ -46,6 +46,7 @@ export type SecureHttpRequest = Readonly<{
   maxResponseBytes: number;
   sensitiveValues?: readonly string[];
   rejectSensitiveResponse?: boolean;
+  privateResponseHeader?: 'mcp-session-id';
   /** Private page navigation; never returned as step output or observation metadata. */
   navigation?: Readonly<{ origin: string; link: boolean }>;
   signal?: AbortSignal;
@@ -62,6 +63,8 @@ export type SecureHttpResponse<Body = Uint8Array> = Readonly<{
 }>;
 
 export type SecureHttpStreamingBody = Readonly<{
+  /** Available only to the response consumer for a single exchange. */
+  privateHeader?: string;
   navigation?: Readonly<{ url: string; link?: string }>;
   status: number;
   headers: Readonly<Record<string, string>>;
