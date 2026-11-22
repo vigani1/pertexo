@@ -1,0 +1,56 @@
+import type { WorkflowGraphContract } from '@pertexo/contracts';
+import type { DescribeStep } from '@/features/catalog/public';
+import { agentToolAllowedWithoutApproval } from '@pertexo/workflow-model';
+
+export type StepLabel = Readonly<{
+  label: string;
+  kindLabel?: string;
+  definitionKey?: string;
+  usesConnection?: boolean;
+  agentWriteAllowed?: true;
+}>;
+
+type GraphLabel = Readonly<{
+  step: StepLabel;
+  order: number;
+  root: boolean;
+}>;
+
+export function graphLabels(
+  graph: WorkflowGraphContract | undefined,
+  describe: DescribeStep,
+): ReadonlyMap<string, GraphLabel> {
+  const labels = new Map<string, GraphLabel>();
+  let order = 0;
+  const visit = ({
+    current,
+    root,
+  }: Readonly<{ current: WorkflowGraphContract; root: boolean }>) => {
+    for (const node of current.nodes) {
+      // The catalog's name for the step type, the same words Build uses.
+      const kind = describe(node.definition).name;
+      const label = node.label?.trim();
+      const connected = {
+        definitionKey: node.definition.key,
+        ...(agentToolAllowedWithoutApproval(node) === undefined
+          ? {}
+          : { agentWriteAllowed: true as const }),
+        ...(Object.keys(node.connectionRefs).length > 0
+          ? { usesConnection: true }
+          : {}),
+      };
+      labels.set(node.id, {
+        step:
+          label === undefined || label === ''
+            ? { label: kind, ...connected }
+            : { label, kindLabel: kind, ...connected },
+        order: order++,
+        root,
+      });
+      if (node.structured?.kind === 'for_each')
+        visit({ current: node.structured.body, root: false });
+    }
+  };
+  if (graph !== undefined) visit({ current: graph, root: true });
+  return labels;
+}
