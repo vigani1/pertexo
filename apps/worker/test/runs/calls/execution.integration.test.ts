@@ -136,11 +136,12 @@ describeIntegration('Workflow Call execution through real transport', () => {
 
   it('passes a single workspace slot down a nested chain and returns it through each parent', async () => {
     await limitWorkspace(1);
-    const leaf = await publishGraph(childGraph(1));
+    const provider = childWithHeldHttpResponse();
+    const leaf = await publishGraph(provider.graph);
     const middle = await publishGraph(parentGraph(leaf.pin));
     const root = await publishGraph(parentGraph(middle.pin));
     const accepted = await accept(root);
-    const workers = await runtime();
+    const workers = await runtime(provider.registry);
     try {
       await workers.until(async () => {
         expect(
@@ -150,12 +151,11 @@ describeIntegration('Workflow Call execution through real transport', () => {
           ),
         ).toEqual([{ loans: 2 }]);
       });
-      expect(
-        await fixture.workerQuery(
-          `select active_runs+reserved_active_slots occupied from app.workflow_run_slot_counts($1,null,null)`,
-          [fixture.workspaceId],
-        ),
-      ).toEqual([{ occupied: 1 }]);
+      const slots = await fixture.workerQuery(
+        `select active_runs+reserved_active_slots occupied from app.workflow_run_slot_counts($1,null,null)`,
+        [fixture.workspaceId],
+      );
+      provider.respond();
       await workers.restart();
       await workers.until(async () => {
         expect(
@@ -170,6 +170,7 @@ describeIntegration('Workflow Call execution through real transport', () => {
           },
         ]);
       });
+      expect(slots).toEqual([{ occupied: 1 }]);
       expect(
         await fixture.workerQuery(
           `select count(*)::int loans from app.workflow_calls where workspace_id=$1 and slot_lent`,
@@ -177,6 +178,7 @@ describeIntegration('Workflow Call execution through real transport', () => {
         ),
       ).toEqual([{ loans: 0 }]);
     } finally {
+      provider.respond();
       await workers.close();
       await limitWorkspace(5);
     }
@@ -352,7 +354,8 @@ describeIntegration('Workflow Call execution through real transport', () => {
   }, 30_000);
 
   it('serializes parallel Call intents in stable invocation order without allocating an unreserved second child', async () => {
-    const child = await publishGraph(childGraph(1));
+    const provider = childWithHeldHttpResponse();
+    const child = await publishGraph(provider.graph);
     const call = (id: string, name: string) => ({
       ...node(id, 'core.call'),
       config: { target: { ...child.pin } },
@@ -393,7 +396,7 @@ describeIntegration('Workflow Call execution through real transport', () => {
       ],
     });
     const accepted = await accept(parent);
-    const workers = await runtime();
+    const workers = await runtime(provider.registry);
     try {
       await workers.until(async () => {
         expect(
@@ -406,6 +409,7 @@ describeIntegration('Workflow Call execution through real transport', () => {
           { status: 'pending', allocated: false, slot_lent: false },
         ]);
       });
+      provider.respond();
       await workers.restart();
       await workers.until(async () => {
         expect(
@@ -425,6 +429,7 @@ describeIntegration('Workflow Call execution through real transport', () => {
         { status: 'succeeded', result_ref: { kind: 'inline', value: 'Bob!' } },
       ]);
     } finally {
+      provider.respond();
       await workers.close();
     }
   }, 30_000);
