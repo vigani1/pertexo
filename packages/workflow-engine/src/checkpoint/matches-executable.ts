@@ -255,8 +255,7 @@ export function assertCheckpointMatchesExecutable(
       const parent = invocationsByKey.get(work.parentInvocationKey);
       const agent = agents.get(work.parentInvocationKey);
       if (
-        parent === undefined ||
-        parent.nodeId !== invocation.nodeId ||
+        parent?.nodeId !== invocation.nodeId ||
         agent === undefined ||
         work.turn > agent.turn ||
         !sameIterationPath(parent.iterationPath, invocation.iterationPath) ||
