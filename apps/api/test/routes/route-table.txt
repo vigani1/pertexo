@@ -189,6 +189,8 @@ POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/te
 POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/webhook-test-events 200 session workflow:update csrf trigger_mutation
 DELETE /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/webhook-test-events/{id} 204 session workflow:update csrf trigger_mutation
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/nodes/{nodeId}/webhook-test-events/{id} 200 session workflow:update - authenticated_read
+GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/proposal 200 session workflow:read - authenticated_read
+POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/proposal 200 session workflow:read csrf assistant_request
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/samples 200 session workflow:read - authenticated_read
 GET /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/test-suites 200 session workflow:update - authenticated_read
 POST /v1/workspaces/{workspaceId}/workflows/{workflowId}/draft/test-suites 202 session workflow:update csrf preview_test
