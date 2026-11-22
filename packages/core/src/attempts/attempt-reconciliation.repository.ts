@@ -164,8 +164,8 @@ async function retryLostInference(
       leaseOwner: null,
       leaseExpiresAt: null,
       reconciliationRef: sql`${JSON.stringify(source)}::jsonb`,
-      completedAt: sql`clock_timestamp()`,
-      updatedAt: sql`clock_timestamp()`,
+      completedAt: sql`statement_timestamp()`,
+      updatedAt: sql`statement_timestamp()`,
     })
     .where(
       and(
