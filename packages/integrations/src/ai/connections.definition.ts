@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { ConnectionDefinition } from '../providers/connection-definition.js';
 
 export const MODEL_PROVIDER_KEY = 'ai';
+export const MODEL_ENDPOINT_LOOKUP = 'model_endpoint';
 export const MODEL_AUTH_TYPE = 'model_api_key';
 
 const endpoint = labelledChoice({
@@ -76,6 +77,10 @@ export function modelEndpoint(
   const url = new URL(base);
   url.pathname = `${url.pathname.replace(/\/+$/u, '')}/${path}`;
   return url.href;
+}
+
+export function modelEndpointHost(credential: ModelCredential): string {
+  return new URL(modelEndpoint(credential, 'models')).host;
 }
 
 const anthropicHeaders = { 'anthropic-version': '2023-06-01' } as const;

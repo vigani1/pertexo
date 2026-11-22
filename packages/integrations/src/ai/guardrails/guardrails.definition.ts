@@ -1,6 +1,10 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import { GUARDRAILS_PORTS, GUARDRAILS_STEP } from '@pertexo/workflow-model';
-import { MODEL_PROVIDER_KEY } from '../connections.definition.js';
+import { DISPATCH_AWARE_EXECUTOR_ABI_VERSION } from '@pertexo/node-sdk/server';
+import {
+  MODEL_AUTH_TYPE,
+  MODEL_PROVIDER_KEY,
+} from '../connections.definition.js';
 import {
   guardrailsConfigSchema,
   guardrailsInputSchema,
@@ -13,7 +17,7 @@ const manifest: NodeManifest = Object.freeze({
   display: {
     name: 'Guardrails',
     description:
-      'Check text for sensitive information, prohibited terms or injection markers',
+      'Check text for sensitive information, prohibited terms or prompt injection, with optional model review',
   },
   configVersion: 1,
   configSchema: generateSchemaDocument(guardrailsConfigSchema),
@@ -21,13 +25,14 @@ const manifest: NodeManifest = Object.freeze({
   outputSchema: generateSchemaDocument(guardrailsOutputSchema),
   ports: { inputs: ['in'], outputs: GUARDRAILS_PORTS },
   credentialRequirements: [],
-  connectionRequirements: [],
+  connectionRequirements: [MODEL_AUTH_TYPE],
+  optionalConnections: [MODEL_AUTH_TYPE],
   integration: { providerKey: MODEL_PROVIDER_KEY, operationKey: 'guardrails' },
   retryClass: 'safe',
-  resourceClass: 'cpu',
+  resourceClass: 'io',
   capabilities: [],
   executor: GUARDRAILS_STEP,
-  executorAbi: 1,
+  executorAbi: DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
   policyReferences: [],
 });
 

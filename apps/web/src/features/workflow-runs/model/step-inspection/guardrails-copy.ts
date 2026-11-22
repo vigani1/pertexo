@@ -10,6 +10,9 @@ export const GUARDRAILS_REASON_LABELS: Readonly<
   'pii.iban': 'Bank account number (IBAN)',
   'pii.national_id': 'National ID number',
   'terms.prohibited': 'Prohibited term',
+  'model.clear': 'Model approved the text',
+  'model.injection': 'Model flagged prompt injection',
+  'model.policy': 'Model flagged a policy violation',
   'injection.marker': 'Prompt injection marker',
 };
 

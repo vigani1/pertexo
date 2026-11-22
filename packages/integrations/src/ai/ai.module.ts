@@ -7,9 +7,10 @@ import {
   MODEL_CONNECTION,
   MODEL_PROVIDER_KEY,
 } from './connections.definition.js';
+import { modelEndpointLookup } from './model-endpoint-lookup.js';
 import { createModelClient } from './model-client.js';
 import { GUARDRAILS_REGISTRATION } from './guardrails/guardrails.definition.js';
-import { guardrailsExecutor } from './guardrails/guardrails.executor.js';
+import { createGuardrailsExecutor } from './guardrails/guardrails.executor.js';
 import { MODEL_REGISTRATION } from './model/model.definition.js';
 import { MODEL_FAILURE_CODES } from './model/model.errors.js';
 import { createModelExecutor } from './model/model.executor.js';
@@ -18,6 +19,7 @@ export const AI_MODULE = {
   key: MODEL_PROVIDER_KEY,
   presentation: { name: 'AI', icon: 'sparkles', group: 'action' },
   connections: [MODEL_CONNECTION],
+  lookups: [modelEndpointLookup],
   executorSummaryCodes: MODEL_FAILURE_CODES,
   steps: [
     {
@@ -32,7 +34,8 @@ export const AI_MODULE = {
     },
     {
       registration: GUARDRAILS_REGISTRATION,
-      createExecutor: () => guardrailsExecutor,
+      createExecutor: ({ httpClient }) =>
+        createGuardrailsExecutor(createModelClient(httpClient)),
     },
     {
       registration: MODEL_REGISTRATION,

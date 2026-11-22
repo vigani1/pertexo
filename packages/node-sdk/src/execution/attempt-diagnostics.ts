@@ -30,6 +30,7 @@ export const attemptDiagnosticsSchema = z.union([
   z.strictObject({
     kind: z.literal('guardrails'),
     reasons: guardrailsDiagnosticsSchema,
+    modelUsage: modelUsageSchema.optional(),
   }),
   z.strictObject({
     kind: z.literal('model_usage'),
@@ -53,7 +54,7 @@ export type AttemptDiagnosticFields =
     }>
   | Readonly<{
       codeDiagnostics?: never;
-      modelUsage?: never;
+      modelUsage?: ModelUsage;
       guardrailsDiagnostics: GuardrailsDiagnostics;
     }>;
 
@@ -63,7 +64,11 @@ export function storedAttemptDiagnostics({
   guardrailsDiagnostics,
 }: AttemptDiagnosticFields): AttemptDiagnostics | null {
   if (guardrailsDiagnostics !== undefined)
-    return { kind: 'guardrails', reasons: guardrailsDiagnostics };
+    return {
+      kind: 'guardrails',
+      reasons: guardrailsDiagnostics,
+      ...(modelUsage === undefined ? {} : { modelUsage }),
+    };
   return modelUsage === undefined
     ? (codeDiagnostics ?? null)
     : { kind: 'model_usage', modelUsage };
@@ -75,6 +80,11 @@ export function attemptDiagnosticFields(
   if (value === null) return {};
   if (!('kind' in value)) return { codeDiagnostics: value };
   return value.kind === 'guardrails'
-    ? { guardrailsDiagnostics: value.reasons }
+    ? {
+        guardrailsDiagnostics: value.reasons,
+        ...(value.modelUsage === undefined
+          ? {}
+          : { modelUsage: value.modelUsage }),
+      }
     : { modelUsage: value.modelUsage };
 }

@@ -111,7 +111,7 @@ export function RunStepDetails({
       {row.definitionKey === GUARDRAILS_STEP.key ? (
         <StepDetailsSection title="Data in">
           <p className="text-label text-muted-foreground">
-            Guardrails keeps only the outcome and match counts.
+            Guardrails keeps the outcome, safe categories and any model usage.
           </p>
         </StepDetailsSection>
       ) : (
@@ -270,6 +270,7 @@ function StepHistory({
         workspace={scope.workspace}
         {...((row.definitionKey === 'ai.model' ||
           row.definitionKey === CLASSIFY_STEP.key ||
+          row.definitionKey === GUARDRAILS_STEP.key ||
           row.agentWork?.work.kind === 'model_turn') &&
         nodeRunId !== undefined
           ? {
@@ -278,6 +279,7 @@ function StepHistory({
                   scope={scope}
                   nodeRunId={nodeRunId}
                   attemptNumber={attemptNumber}
+                  optional={row.definitionKey === GUARDRAILS_STEP.key}
                 />
               ),
             }

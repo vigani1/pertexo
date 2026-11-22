@@ -19,7 +19,13 @@ const envelope = z.object({
 
 export const messages = {
   path: 'messages',
-  request({ config, prompt, maxTokens, agent }: ModelRequest) {
+  request({
+    config,
+    prompt,
+    maxTokens,
+    agent,
+    structuredResponse,
+  }: ModelRequest) {
     return {
       model: config.model,
       max_tokens: maxTokens,
@@ -59,7 +65,7 @@ export const messages = {
             })),
             tool_choice: { type: 'auto', disable_parallel_tool_use: true },
           }),
-      ...(config.mode === 'structured'
+      ...(config.mode === 'structured' && structuredResponse === undefined
         ? {
             tools: [{ name: OUTPUT_TOOL, input_schema: config.outputSchema }],
             tool_choice: {
@@ -89,7 +95,10 @@ export const messages = {
           })
         : ({ kind: 'invalid_response' } as const);
     }
-    if (request.config.mode === 'structured') {
+    if (
+      request.config.mode === 'structured' &&
+      request.structuredResponse === undefined
+    ) {
       const tools = content.filter(({ type }) => type === 'tool_use');
       const [tool] = tools;
       return stop === 'tool_use' &&

@@ -1,9 +1,12 @@
+import { MODEL_IDENTIFIER_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { GUARDRAILS_PORTS } from '@pertexo/workflow-model';
 import { z } from 'zod';
+import { modelSettings } from '../model-settings.js';
 
 export const GUARDRAILS_LIMITS = Object.freeze({
   textCharacters: 32_768,
-  checks: 3,
+  checks: 4,
+  policyCharacters: 4_096,
   terms: 32,
   termCharacters: 100,
 });
@@ -19,13 +22,40 @@ const prohibitedTermsCheck = z.strictObject({
   terms: guardrailsTermsSchema,
 });
 
+const modelCheckFields = {
+  kind: z.literal('model'),
+  model: modelSettings.model,
+};
+const injectionModelCheck = z.strictObject({
+  ...modelCheckFields,
+  mode: z.literal('injection'),
+});
+const guardrailsPolicySchema = z
+  .string()
+  .max(GUARDRAILS_LIMITS.policyCharacters);
+const policyModelCheck = z.strictObject({
+  ...modelCheckFields,
+  mode: z.literal('policy'),
+  policy: guardrailsPolicySchema.refine(
+    (value) => value.trim() !== '',
+    'Enter a policy for the Guardrails model check.',
+  ),
+});
+const modelCheck = z.discriminatedUnion('mode', [
+  injectionModelCheck,
+  policyModelCheck,
+]);
+
 const checkSchema = z.discriminatedUnion('kind', [
   piiCheck,
   prohibitedTermsCheck.extend({
     terms: guardrailsTermsSchema.min(1, 'Enter at least one prohibited term.'),
   }),
   injectionCheck,
+  modelCheck,
 ]);
+
+const draftModelIdentifier = z.string().max(MODEL_IDENTIFIER_MAX_CHARACTERS);
 
 export const guardrailsDraftChecksSchema = z
   .array(
@@ -33,6 +63,13 @@ export const guardrailsDraftChecksSchema = z
       piiCheck,
       prohibitedTermsCheck,
       injectionCheck,
+      z.discriminatedUnion('mode', [
+        injectionModelCheck.extend({ model: draftModelIdentifier }),
+        policyModelCheck.extend({
+          model: draftModelIdentifier,
+          policy: guardrailsPolicySchema,
+        }),
+      ]),
     ]),
   )
   .max(GUARDRAILS_LIMITS.checks);
@@ -65,5 +102,6 @@ export const guardrailsOutputSchema = z.strictObject({
 });
 
 export type GuardrailsCheck = z.output<typeof checkSchema>;
+export type GuardrailsModelCheck = z.output<typeof modelCheck>;
 export type GuardrailsInput = z.output<typeof guardrailsInputSchema>;
 export type GuardrailsConfig = z.output<typeof guardrailsConfigSchema>;

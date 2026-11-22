@@ -1,9 +1,11 @@
+import { GuardrailsModelSetup } from './guardrails-model-setup';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel, LabelledField } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCount } from '@/lib/format/count';
 import {
   GUARDRAILS_LIMITS,
+  MODEL_AUTH_TYPE,
   guardrailsDraftChecksSchema,
   guardrailsTermsSchema,
   type GuardrailsCheck,
@@ -16,17 +18,26 @@ import {
 import { useInspectorDraftField } from '../use-draft-field';
 
 const checks = [
-  { kind: 'pii', label: 'Personal information' },
-  { kind: 'prohibited_terms', label: 'Prohibited terms' },
-  { kind: 'injection', label: 'Prompt injection markers' },
-] as const;
+  { check: { kind: 'pii' }, label: 'Personal information' },
+  { check: { kind: 'prohibited_terms', terms: [] }, label: 'Prohibited terms' },
+  { check: { kind: 'injection' }, label: 'Prompt injection markers' },
+  {
+    check: { kind: 'model', mode: 'injection', model: '' },
+    label: 'Model check',
+  },
+] satisfies readonly { check: GuardrailsCheck; label: string }[];
 
 const termsField = 'guardrails-terms';
 
 export function GuardrailsSetup({
   config,
+  connectionRefs,
   form,
-}: Readonly<{ config: NodeConfig; form: NodeFormApi }>) {
+}: Readonly<{
+  config: NodeConfig;
+  connectionRefs: Readonly<Record<string, string>>;
+  form: NodeFormApi;
+}>) {
   const enabled = guardrailsDraftChecksSchema.safeParse(config.checks);
   if (!enabled.success)
     return (
@@ -37,22 +48,21 @@ export function GuardrailsSetup({
   const termsCheck = enabled.data.find(
     ({ kind }) => kind === 'prohibited_terms',
   );
+  const modelCheck = enabled.data.find(({ kind }) => kind === 'model');
   return (
     <div className="flex flex-col gap-3">
-      {checks.map(({ kind, label }) => (
-        <Field key={kind}>
+      {checks.map(({ check: initial, label }) => (
+        <Field key={initial.kind}>
           <FieldLabel className="flex items-center gap-2">
             <Checkbox
-              checked={enabled.data.some((check) => check.kind === kind)}
+              checked={enabled.data.some(
+                (check) => check.kind === initial.kind,
+              )}
               disabled={!form.editable}
               onCheckedChange={(checked) => {
-                if (!checked && kind === 'prohibited_terms')
+                if (!checked && initial.kind === 'prohibited_terms')
                   form.reportScratch(termsField, false);
-                const enabledCheck =
-                  kind === 'prohibited_terms'
-                    ? ({ kind, terms: [] } satisfies GuardrailsCheck)
-                    : { kind };
-                updateChecks(form, kind, checked ? enabledCheck : undefined);
+                updateChecks(form, initial.kind, checked ? initial : undefined);
               }}
             />
             {label}
@@ -61,6 +71,14 @@ export function GuardrailsSetup({
       ))}
       {termsCheck?.kind === 'prohibited_terms' ? (
         <ProhibitedTerms terms={termsCheck.terms} form={form} />
+      ) : null}
+      {modelCheck?.kind === 'model' ? (
+        <GuardrailsModelSetup
+          check={modelCheck}
+          connectionId={connectionRefs[MODEL_AUTH_TYPE]}
+          form={form}
+          onChange={(next) => updateChecks(form, 'model', next)}
+        />
       ) : null}
     </div>
   );
@@ -75,7 +93,16 @@ function updateChecks(
     const read = guardrailsDraftChecksSchema.safeParse(node.config.checks);
     if (!read.success) return {};
     const current = read.data.filter((check) => check.kind !== kind);
+    const connectionRefs =
+      kind === 'model' && next === undefined
+        ? Object.fromEntries(
+            Object.entries(node.connectionRefs).filter(
+              ([slot]) => slot !== MODEL_AUTH_TYPE,
+            ),
+          )
+        : undefined;
     return {
+      ...(connectionRefs === undefined ? {} : { connectionRefs }),
       config: {
         ...node.config,
         checks: next === undefined ? current : [...current, next],

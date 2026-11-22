@@ -7,6 +7,7 @@ const ownerNames = {
   assistant: 'Assistant author',
   provider: 'Provider workflow author',
   evaluation: 'Evaluation workflow author',
+  guardrails: 'Guardrails workflow author',
 } as const;
 
 type AccountGroup = keyof typeof ownerNames;

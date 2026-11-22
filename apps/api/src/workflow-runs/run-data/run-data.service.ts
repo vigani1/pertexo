@@ -1,3 +1,4 @@
+import { attemptDiagnosticFields } from '@pertexo/node-sdk';
 import type { WorkflowNodeRunDiagnosticsResponse } from '@pertexo/contracts';
 import type { WorkflowRunVariablesResponse } from '@pertexo/contracts';
 import type {
@@ -217,10 +218,8 @@ export class GetWorkflowNodeRunDiagnosticsService {
       nodeRunId: input.nodeRunId,
     });
     if (diagnostics === undefined) throw new WorkflowRunNotFoundError();
-    if (diagnostics !== null && 'kind' in diagnostics)
-      return diagnostics.kind === 'guardrails'
-        ? { diagnostics: null, guardrailsDiagnostics: diagnostics.reasons }
-        : { diagnostics: null, modelUsage: diagnostics.modelUsage };
-    return { diagnostics };
+    const { codeDiagnostics, ...observations } =
+      attemptDiagnosticFields(diagnostics);
+    return { diagnostics: codeDiagnostics ?? null, ...observations };
   }
 }
