@@ -14,7 +14,7 @@ import { trackModelUsage } from './model-usage.js';
 import { modelRequest } from './model-request.js';
 import { modelFailure } from './model/model.errors.js';
 import type { ModelConfig } from './model/model.schemas.js';
-import { compileModelOutputSchema } from './output-schema.js';
+import { compileModelOutputSchema } from '../structured-data/object-schema.js';
 import {
   createProviderBeforeDispatch,
   markingDispatchOnce,

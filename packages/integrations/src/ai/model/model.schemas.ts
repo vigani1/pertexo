@@ -1,6 +1,6 @@
 import { boundedNodeJsonRecordSchema, labelledChoice } from '@pertexo/node-sdk';
 import { z } from 'zod';
-import { compileModelOutputSchema } from '../output-schema.js';
+import { compileModelOutputSchema } from '../../structured-data/object-schema.js';
 
 import { modelSettings } from '../model-settings.js';
 
