@@ -107,7 +107,15 @@ export async function advanceInlineChain(
   const chain = { input, options, state, nodes, settled };
   const stopAt = options.monotonicNow() + INLINE_ADVANCE_BUDGET.millis;
   let frontier = inlineFrontier(chain);
-  if (options.deferUntilNextAdvance && frontier.kind === 'inline')
+  // A local outcome reruns scheduling. Commit Agent decisions and outputs
+  // first so the next pass sees the durable phase and can read its values.
+  if (
+    frontier.kind === 'inline' &&
+    (options.deferUntilNextAdvance ||
+      state.continueAgents ||
+      state.agentTaskIntents.length > 0 ||
+      state.agentOutputs.size > 0)
+  )
     return finish(state, { yieldInline: true });
 
   let occurredAt = input.occurredAt;

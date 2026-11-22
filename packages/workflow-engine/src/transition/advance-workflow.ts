@@ -181,7 +181,7 @@ export async function advanceWorkflow(
     hasExecutionSlot: input.hasExecutionSlot ?? true,
   };
   const plan =
-    input.inline === undefined || agentScheduler !== undefined
+    input.inline === undefined
       ? advanceWorkflowFromSchedulerState(schedulerInput)
       : await advanceInlineChain(
           input,

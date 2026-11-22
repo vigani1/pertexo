@@ -28,6 +28,12 @@ import {
 } from './agent.fixture.js';
 
 export async function startAgentRun(
+  ...input: Parameters<typeof publishAgentRun>
+) {
+  return startPublishedAgentRun(await publishAgentRun(...input));
+}
+
+export async function publishAgentRun(
   baseUrl: string,
   encryption: ConnectionEnvelopeEncryption,
   write?:
@@ -39,6 +45,7 @@ export async function startAgentRun(
         approval?: boolean;
         timeoutMillis?: number;
       },
+  shape?: Parameters<typeof publishAgent>[3]['shape'],
 ) {
   const connectionId = randomUUID();
   const tableName = `Agent Orders ${connectionId.slice(0, 8)}`;
@@ -71,13 +78,11 @@ export async function startAgentRun(
   });
   const tables = createDataTablesStore(config(fixture.apiUrl));
   const connections = createConnectionStore(config(fixture.apiUrl));
-  const runs = createWorkflowRunDatabase(config(fixture.apiUrl));
   const owners = [
     () => validator.shutdown(),
     authoring.close,
     tables.close,
     connections.close,
-    runs.close,
   ];
   try {
     if (typeof write !== 'object') {
@@ -129,7 +134,7 @@ export async function startAgentRun(
       idempotencyKey: randomUUID(),
       requestHash: commandKey(),
     });
-    let tool: Parameters<typeof publishAgent>[3];
+    let tool: Parameters<typeof publishAgent>[3]['write'];
     if (write === 'slack')
       tool = {
         slackConnectionId: await createSlackConnection(
@@ -141,12 +146,18 @@ export async function startAgentRun(
     else if (typeof write === 'object')
       tool = await publishCallableTool(authoring, tableName, write);
     else tool = write;
-    const workflowId = await publishAgent(
-      authoring,
-      connectionId,
-      tableName,
-      tool,
-    );
+    return await publishAgent(authoring, connectionId, tableName, {
+      write: tool,
+      shape,
+    });
+  } finally {
+    await Promise.allSettled(owners.reverse().map((close) => close()));
+  }
+}
+
+export async function startPublishedAgentRun(workflowId: string) {
+  const runs = createWorkflowRunDatabase(config(fixture.apiUrl));
+  try {
     const key = commandKey();
     const accepted = await runs.start({
       ...actor,
@@ -161,7 +172,7 @@ export async function startAgentRun(
     });
     return accepted.run.id;
   } finally {
-    await Promise.allSettled(owners.reverse().map((close) => close()));
+    await runs.close();
   }
 }
 
