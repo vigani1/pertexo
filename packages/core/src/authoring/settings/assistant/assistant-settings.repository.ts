@@ -10,6 +10,11 @@ import { and, eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { PoolClient } from 'pg';
 
+export type AssistantConnectionIdentity = Readonly<{
+  providerKey: string;
+  authType: typeof connections.$inferSelect.authType;
+}>;
+
 export type AssistantSelection = Readonly<{
   connectionId: string;
   model: string;
@@ -50,11 +55,7 @@ export async function isAvailableAssistantConnection(
   client: PoolClient,
   actor: WorkspaceActor,
   role: Role,
-  connection: Readonly<{
-    connectionId: string;
-    providerKey: string;
-    authType: string;
-  }>,
+  connection: AssistantConnectionIdentity & Readonly<{ connectionId: string }>,
 ) {
   const [row] = await drizzle(client)
     .select({ id: connections.id })

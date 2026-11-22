@@ -12,9 +12,8 @@ import {
   readAssistantSelection,
   updateAssistantSelection,
   type AssistantSelection,
+  type AssistantConnectionIdentity,
 } from './assistant-settings.repository.js';
-
-type ModelIdentity = Readonly<{ providerKey: string; authType: string }>;
 
 export type AssistantSettingsStore = ReturnType<
   typeof createAssistantSettingsStore
@@ -36,7 +35,7 @@ export function createAssistantSettingsStore(pool: Pool) {
     update: (
       actor: WorkspaceActor,
       selection: AssistantSelection | null,
-      identity: ModelIdentity,
+      identity: AssistantConnectionIdentity,
     ) =>
       withWorkspaceAccess(
         pool,

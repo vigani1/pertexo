@@ -109,6 +109,15 @@ describe('retention rules', () => {
     );
   });
 
+  it('expires assistant model usage at the same run summary window', async () => {
+    const expired = await usage('assistant.model', WINDOW_DAYS + 1);
+    const recent = await usage('assistant.model', WINDOW_DAYS - 1);
+
+    await enforceUntilIdle();
+
+    expect(await remaining([expired, recent])).toEqual([recent]);
+  });
+
   it('works through more than a page, and reports what it removed', async () => {
     const ids: string[] = [];
     for (let index = 0; index < 5; index += 1)
