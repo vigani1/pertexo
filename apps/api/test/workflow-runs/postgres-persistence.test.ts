@@ -288,33 +288,7 @@ describe('PostgreSQL workflow run persistence adapter', () => {
     });
     const close = vi.fn<WorkflowRunDatabase['close']>().mockResolvedValue();
     const publish = vi.fn().mockResolvedValue({ receivers: 1 });
-    const database = {
-      canRead: () => Promise.resolve(true),
-      start,
-      replay: vi.fn<WorkflowRunDatabase['replay']>(),
-      get: vi.fn<WorkflowRunDatabase['get']>().mockResolvedValue(undefined),
-      list: vi
-        .fn<WorkflowRunDatabase['list']>()
-        .mockResolvedValue({ items: [] }),
-      statistics: vi.fn<WorkflowRunDatabase['statistics']>(),
-      recovery: vi.fn<WorkflowRunDatabase['recovery']>(),
-      recover: vi.fn<WorkflowRunDatabase['recover']>(),
-      usageTrends: vi.fn<WorkflowRunDatabase['usageTrends']>(),
-      usageCapacity: vi.fn<WorkflowRunDatabase['usageCapacity']>(),
-      cancel: vi.fn<WorkflowRunDatabase['cancel']>().mockResolvedValue({
-        run: run(),
-        alreadyRequested: false,
-        eventSequence: 2,
-      }),
-      readVariables: () => Promise.resolve({ revision: 0, values: {} }),
-      readInput: vi.fn<WorkflowRunDatabase['readInput']>(),
-      readNodeRunDiagnostics: () => Promise.resolve(undefined),
-      readNodeRunOutput: vi.fn<WorkflowRunDatabase['readNodeRunOutput']>(),
-      readNodeRunInput: vi.fn<WorkflowRunDatabase['readNodeRunInput']>(),
-      stepHealth: vi.fn<WorkflowRunDatabase['stepHealth']>(),
-      stepRuns: vi.fn<WorkflowRunDatabase['stepRuns']>(),
-      close,
-    } satisfies WorkflowRunDatabase;
+    const database = databaseWith({ start, close });
     const adapter = createPostgresWorkflowRunPersistence(
       parseDatabaseConfig({
         connectionString: 'postgresql://unused.invalid/pertexo',

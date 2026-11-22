@@ -91,11 +91,17 @@ export const step = (
   connectionRefs: {},
 });
 
+type DraftGraph = Readonly<{
+  nodes: unknown[];
+  edges: unknown[];
+  callable?: unknown;
+}>;
+
 /** Saves a graph over the draft and publishes it, as the editor does. */
 export async function publishDraft(
   owner: StackOwner,
   path: string,
-  graph: Readonly<{ nodes: unknown[]; edges: unknown[] }>,
+  graph: DraftGraph,
 ) {
   const draft = await owner.send('GET', `${path}/draft`);
   const saved = await owner.send(
@@ -133,7 +139,7 @@ export async function publishCurrentDraft(
 export async function publishGraph(
   owner: StackOwner,
   name: string,
-  graph: Readonly<{ nodes: unknown[]; edges: unknown[] }>,
+  graph: DraftGraph,
 ) {
   const created = await owner.send('POST', `${owner.base}/workflows`, { name });
   expect(created.status).toBe(201);
