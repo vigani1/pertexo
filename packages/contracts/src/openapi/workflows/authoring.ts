@@ -69,6 +69,7 @@ function contractSchemas() {
   return Object.freeze({
     ...routeSchemas([
       ...Object.values(authoringRoutes),
+      ...Object.values(assistantRoutes),
       ...Object.values(lifecycleRoutes),
       ...Object.values(versionRoutes),
     ]),
@@ -163,7 +164,8 @@ const problemResponses = Object.freeze({
 type DeclaredAuthoringRoute =
   | (typeof authoringRoutes)[keyof typeof authoringRoutes]
   | (typeof lifecycleRoutes)[keyof typeof lifecycleRoutes]
-  | (typeof versionRoutes)[keyof typeof versionRoutes];
+  | (typeof versionRoutes)[keyof typeof versionRoutes]
+  | (typeof assistantRoutes)[keyof typeof assistantRoutes];
 type AuthoringPaths = RoutePaths<readonly DeclaredAuthoringRoute[]> &
   typeof workflowAutoPauseContractPaths &
   typeof workflowConcurrencyContractPaths &
@@ -183,6 +185,7 @@ const paths: AuthoringPaths = {
     lifecycleRoutes.restore,
     lifecycleRoutes.rename,
     ...Object.values(authoringRoutes),
+    ...Object.values(assistantRoutes),
     versionRoutes.versions,
   ]),
   ...workflowAutoPauseContractPaths,
