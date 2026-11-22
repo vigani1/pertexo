@@ -107,3 +107,62 @@ export function StepModelUsage({
     </QueryView>
   );
 }
+
+export function StepGuardrailsDiagnostics({
+  scope,
+  nodeRunId,
+  attemptNumber,
+}: Readonly<{
+  scope: RunDataScope;
+  nodeRunId: string;
+  attemptNumber: number | undefined;
+}>) {
+  const query = useQuery(
+    nodeRunDiagnosticsQueryOptions({
+      apiClient: scope.apiClient,
+      userId: scope.userId,
+      workspaceId: scope.workspace.id,
+      runId: scope.runId,
+      step: { nodeRunId, attemptNumber, status: 'settled' },
+    }),
+  );
+  return (
+    <QueryView
+      query={query}
+      resource="Guardrails diagnostics"
+      loading={<SkeletonLines label="Loading Guardrails diagnostics" />}
+      error={(failed) => (
+        <InlineFailedRead
+          text="Couldn’t load Guardrails diagnostics."
+          {...failed}
+        />
+      )}
+    >
+      {({ guardrailsDiagnostics }) => {
+        if (guardrailsDiagnostics === undefined)
+          return (
+            <p className="text-muted-foreground">
+              Guardrails diagnostics unavailable.
+            </p>
+          );
+        const reasons = Object.entries(guardrailsDiagnostics);
+        if (reasons.length === 0)
+          return (
+            <p className="text-muted-foreground">
+              The enabled checks found no matches.
+            </p>
+          );
+        return (
+          <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
+            {reasons.map(([reason, count]) => (
+              <div key={reason} className="contents">
+                <dt className="font-mono">{reason}</dt>
+                <dd>{formatCount(count, 'match', 'matches')}</dd>
+              </div>
+            ))}
+          </dl>
+        );
+      }}
+    </QueryView>
+  );
+}

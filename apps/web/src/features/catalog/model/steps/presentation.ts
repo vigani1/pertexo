@@ -255,6 +255,8 @@ export function describeRetryBehaviour(
 export function portName(port: string, position?: number): string {
   if (port === WORKFLOW_FAILURE_PORT) return 'Failure';
   if (port === TIMED_OUT_PORT) return 'Timed out';
+  if (port === 'pass') return 'Pass';
+  if (port === 'fail') return 'Fail';
   const numbered = /^(branch|case|category)-0*(\d+)$/u.exec(port);
   if (numbered?.[1] !== undefined) {
     const kind = numbered[1];
