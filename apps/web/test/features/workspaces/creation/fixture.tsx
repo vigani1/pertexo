@@ -6,6 +6,7 @@ import {
   createWorkspaceFixture,
 } from '../../../support/fixtures/identity';
 import { mockServer } from '../../../support/mock-server';
+import type { createAppRouter } from '@/app/router';
 export const userId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 const existingWorkspaceId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -106,6 +107,20 @@ export function installIdentity(workspaces: readonly object[] = []) {
       HttpResponse.json({ items: workspaces, nextCursor: null }),
     ),
   );
+}
+
+/** Subscribe before submitting because the destination may already be warm. */
+export function waitForWorkspaceHome(
+  router: ReturnType<typeof createAppRouter>,
+  pathname: string,
+): Promise<void> {
+  return new Promise((resolve) => {
+    const unsubscribe = router.subscribe('onRendered', ({ toLocation }) => {
+      if (toLocation.pathname !== pathname) return;
+      unsubscribe();
+      resolve();
+    });
+  });
 }
 
 export async function openCreation(kind: 'first' | 'another') {

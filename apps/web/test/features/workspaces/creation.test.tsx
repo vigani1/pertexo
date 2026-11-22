@@ -21,22 +21,17 @@ import {
   problem,
   revealHandle,
   user,
+  waitForWorkspaceHome,
   workspaceResponse,
 } from './creation/fixture';
 
 describe('workspace creation', () => {
   it('creates the first workspace with CSRF/idempotency and opens its getting-started Home', async () => {
-    let authoritativeWorkspaces: object[] = [];
+    const authoritativeWorkspaces: object[] = [];
     const requests: { body: unknown; csrf?: string; key?: string }[] = [];
     installIdentity(authoritativeWorkspaces);
     installWorkspaceDestination();
     mockServer.use(
-      http.get('http://pertexo.test/v1/workspaces', () =>
-        HttpResponse.json({
-          items: authoritativeWorkspaces,
-          nextCursor: null,
-        }),
-      ),
       http.post('http://pertexo.test/v1/workspaces', async ({ request }) => {
         const csrf = request.headers.get('x-csrf-token');
         const key = request.headers.get('idempotency-key');
@@ -45,40 +40,34 @@ describe('workspace creation', () => {
           ...(csrf === null ? {} : { csrf }),
           ...(key === null ? {} : { key }),
         });
-        authoritativeWorkspaces = [createdWorkspace];
+        authoritativeWorkspaces.push(createdWorkspace);
         return HttpResponse.json(workspaceResponse(), { status: 201 });
       }),
     );
     const app = await renderLoadedApp('/workspaces', { strict: true });
 
     const dialog = await openCreation('first');
-    const name = within(dialog).getByLabelText('Workspace name');
-    await userEvent.setup().type(name, 'Signal Operations');
+    const event = userEvent.setup();
+    await event.type(
+      within(dialog).getByLabelText('Workspace name'),
+      'Signal Operations',
+    );
     expect(within(dialog).getByText('signal-operations')).toBeVisible();
 
     const destination = `/w/${createdWorkspaceId}`;
-    // The first navigation loads the workspace shell and Home for this file.
-    const rendered = new Promise<void>((resolve) => {
-      const unsubscribe = app.router.subscribe(
-        'onRendered',
-        ({ toLocation }) => {
-          if (toLocation.pathname !== destination) return;
-          unsubscribe();
-          resolve();
-        },
-      );
-    });
-    await userEvent
-      .setup()
-      .click(within(dialog).getByRole('button', { name: 'Create workspace' }));
+    const rendered = waitForWorkspaceHome(app.router, destination);
+    await event.click(
+      within(dialog).getByRole('button', { name: 'Create workspace' }),
+    );
 
     await rendered;
     expect(
       screen.getAllByRole('link', { name: 'Home', current: 'page' }),
     ).not.toHaveLength(0);
-    expect(
-      await screen.findByRole('region', { name: 'Getting started' }),
-    ).toBeVisible();
+    const gettingStarted = await screen.findByRole('region', {
+      name: 'Getting started',
+    });
+    expect(gettingStarted).toBeVisible();
     expect(app.router.state.location.pathname).toBe(destination);
     expect(requests).toHaveLength(1);
     expect(requests[0]?.body).toEqual({
