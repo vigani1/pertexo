@@ -21,6 +21,12 @@ interface ToolResult {
   };
 }
 
+interface CallOptions {
+  key?: string;
+  waitMillis?: number;
+  signal?: AbortSignal;
+}
+
 export function mcpClient(origin: string, workspaceId: string, secret: string) {
   const endpoint = `${origin}${MCP_ENDPOINT_PATH.replace('{workspaceId}', workspaceId)}`;
   const headers = {
@@ -34,11 +40,15 @@ export function mcpClient(origin: string, workspaceId: string, secret: string) {
     method: string,
     params?: unknown,
     overrides?: Record<string, string>,
-    notification = false,
+    {
+      notification = false,
+      signal,
+    }: { notification?: boolean; signal?: AbortSignal | undefined } = {},
   ) {
     sequence += 1;
     return fetch(endpoint, {
       method: 'POST',
+      ...(signal === undefined ? {} : { signal }),
       headers: { ...headers, ...overrides },
       body: JSON.stringify({
         jsonrpc: '2.0',
@@ -56,17 +66,27 @@ export function mcpClient(origin: string, workspaceId: string, secret: string) {
     expect(envelope).toHaveProperty('result');
     return envelope.result;
   }
-  function call(name: string, args: unknown, key?: string) {
-    return request('tools/call', {
-      name,
-      arguments: args,
-      ...(key === undefined
-        ? {}
-        : { _meta: { 'pertexo/idempotencyKey': key } }),
-    });
+  function call(
+    name: string,
+    args: unknown,
+    { key, waitMillis, signal }: CallOptions = {},
+  ) {
+    return request(
+      'tools/call',
+      {
+        name,
+        arguments: args,
+        _meta: {
+          'pertexo/idempotencyKey': key,
+          'pertexo/waitMillis': waitMillis,
+        },
+      },
+      undefined,
+      { signal },
+    );
   }
-  async function invoke(name: string, args: unknown, key?: string) {
-    return (await result(call(name, args, key))) as ToolResult;
+  async function invoke(name: string, args: unknown, options?: CallOptions) {
+    return (await result(call(name, args, options))) as ToolResult;
   }
   return {
     endpoint,

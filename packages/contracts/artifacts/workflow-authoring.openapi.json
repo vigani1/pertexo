@@ -2777,7 +2777,7 @@
         "x-pertexo-api-token-scopes": [
           "mcp:invoke"
         ],
-        "description": "Stateless Streamable HTTP for a workspace API token. Send the negotiated protocol header after initialize. Calls admit runs and return a status reference. Use params._meta[\"pertexo/idempotencyKey\"] for exact retries while a command receipt is retained.",
+        "description": "Stateless Streamable HTTP for a workspace API token. Send the negotiated protocol header after initialize. Calls admit runs and may return the result inline or a pending status reference. Use params._meta[\"pertexo/waitMillis\"] to shorten the wait. Use params._meta[\"pertexo/idempotencyKey\"] for exact retries while a command receipt is retained.",
         "security": [
           {
             "apiToken": []
@@ -17115,6 +17115,11 @@
                   "_meta": {
                     "type": "object",
                     "properties": {
+                      "pertexo/waitMillis": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
                       "pertexo/idempotencyKey": {
                         "type": "string",
                         "minLength": 1,

@@ -127,3 +127,8 @@ same accepted invocation within the normal command receipt window. A repeated
 call without a key or after receipt expiry can create another run. Pass the
 returned `invocation` to `pertexo.invocation_status` using the initiating
 token. Revoking or changing an exposure invalidates its status references.
+
+By default, a tool call waits briefly for an inline result before returning
+the pending invocation. Set `params._meta["pertexo/waitMillis"]` to a
+nonnegative integer to shorten the wait. A value of zero returns the
+invocation immediately. The wait hint does not affect idempotency.

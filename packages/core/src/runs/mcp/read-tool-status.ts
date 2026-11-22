@@ -2,6 +2,8 @@ import type { Pool } from 'pg';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { readResourceTransaction } from '../../shared/access/folder-access-facts.repository.js';
 import { withWorkspaceAccess } from '../../shared/access/workspace-access.js';
+import { isActiveApiToken } from '../../shared/access/api-token-authority.js';
+import { readApiTokenAuthority } from '../../shared/access/api-token-authority.repository.js';
 import { commandKeyHash } from '../../shared/command-fingerprints.js';
 import { readMcpWorkflow } from './exposure.repository.js';
 import type { McpCaller } from './invoke-tool.js';
@@ -23,6 +25,14 @@ export function readMcpToolStatus(
     },
     async (client, role) => {
       const transaction = await readResourceTransaction(client, input, role);
+      const token = await readApiTokenAuthority(transaction.db, input);
+      if (
+        token === undefined ||
+        token.ownerUserId !== input.actorId ||
+        !isActiveApiToken(token) ||
+        !token.scopes.includes('mcp:invoke')
+      )
+        throw new McpToolUnavailableError();
       const run = await readMcpInvocation(transaction, {
         runId: input.runId,
         tokenId: input.tokenId,

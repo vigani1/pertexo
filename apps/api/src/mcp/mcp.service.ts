@@ -9,6 +9,8 @@ import {
   McpToolUnavailableError,
   type WorkflowRunDatabase,
 } from '@pertexo/core/runs';
+import type { LiveRunEventSource } from '../workflow-runs/events/stream.js';
+import { waitForMcpResult } from './wait-for-result.js';
 import type { HttpRateLimitAdmission } from '../platform/rate-limit/admission.js';
 import type { requestIdentifiers } from '../workspaces/request/caller.js';
 import { invocationRunId, statusArguments, statusToolInput } from './rpc.js';
@@ -19,6 +21,7 @@ export type McpRuntime = Readonly<{
     'invokeMcpTool' | 'listMcpTools' | 'readMcpToolStatus'
   >;
   catalog: unknown;
+  liveSource: LiveRunEventSource;
 }>;
 
 const statusTool = {
@@ -37,7 +40,11 @@ export class McpService {
     private readonly limits: HttpRateLimitAdmission,
   ) {}
 
-  public async dispatch(input: McpRequest, actor: Actor): Promise<unknown> {
+  public async dispatch(
+    input: McpRequest,
+    actor: Actor,
+    disconnected: AbortSignal,
+  ): Promise<unknown> {
     const subject = { tokenId: actor.tokenId, workspaceId: actor.workspaceId };
     switch (input.method) {
       case 'initialize':
@@ -81,6 +88,7 @@ export class McpService {
               ...actor,
               runId,
               invocation,
+              signal: disconnected,
             }),
           );
         }
@@ -90,16 +98,22 @@ export class McpService {
           !measureBoundedJson(args, { bytes: inlineBytes, depth, members }).ok
         )
           return toolResult({ status: 'failed', code: 'invalid_input' });
+        const accepted = await this.runtime.runs.invokeMcpTool(
+          { catalog: this.runtime.catalog },
+          {
+            ...actor,
+            name,
+            arguments: args,
+            key: _meta?.['pertexo/idempotencyKey'],
+          },
+        );
         return toolResult(
-          await this.runtime.runs.invokeMcpTool(
-            { catalog: this.runtime.catalog },
-            {
-              ...actor,
-              name,
-              arguments: args,
-              key: _meta?.['pertexo/idempotencyKey'],
-            },
-          ),
+          await waitForMcpResult(this.runtime, {
+            ...actor,
+            ...accepted,
+            disconnected,
+            waitMillis: _meta?.['pertexo/waitMillis'],
+          }),
         );
       }
     }

@@ -122,7 +122,15 @@ takes in about 10 webhook deliveries a second; faster senders get `429` with
 The API holds at most `API_IN_FLIGHT_REQUEST_LIMIT` requests at once (default
 128; see [usage](../guides/usage.md)). Past that it answers `503` with the
 `server.busy` problem and `Retry-After: 1` before reading the body; the health
-checks are never turned away. The API service preloads jemalloc from the runtime
+checks are never turned away.
+
+An MCP tool call holds its in-flight place while it waits for run events. The
+wait uses the shared Redis subscriber and holds no database connection
+between reads. The place is released when the reply closes or the client
+disconnects. A run that outlasts the wait continues and its result is
+available through the MCP status tool.
+
+The API service preloads jemalloc from the runtime
 image at `LD_PRELOAD` in [Compose](../../infrastructure/single-server/compose.yaml).
 Across three 4 GiB overload trials, the API peaked at 413–421 MiB with jemalloc
 and 442–488 MiB with the former glibc arena cap. The glibc control that reached
