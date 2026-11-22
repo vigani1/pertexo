@@ -11,6 +11,10 @@ import type { RunTimelineRow } from '../../model/timeline/runs';
 import type { RunDataScope } from './data/value';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
+import {
+  GUARDRAILS_REASONS,
+  GUARDRAILS_REASON_LABELS,
+} from '../../model/step-inspection/guardrails-copy';
 
 export function StepCodeDiagnostics({
   row,
@@ -145,7 +149,10 @@ export function StepGuardrailsDiagnostics({
               Guardrails diagnostics unavailable.
             </p>
           );
-        const reasons = Object.entries(guardrailsDiagnostics);
+        const reasons = GUARDRAILS_REASONS.flatMap((reason) => {
+          const count = guardrailsDiagnostics[reason];
+          return count === undefined ? [] : [{ reason, count }];
+        });
         if (reasons.length === 0)
           return (
             <p className="text-muted-foreground">
@@ -154,9 +161,14 @@ export function StepGuardrailsDiagnostics({
           );
         return (
           <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1">
-            {reasons.map(([reason, count]) => (
+            {reasons.map(({ reason, count }) => (
               <div key={reason} className="contents">
-                <dt className="font-mono">{reason}</dt>
+                <dt className="flex flex-wrap items-baseline gap-x-2">
+                  <span>{GUARDRAILS_REASON_LABELS[reason]}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {reason}
+                  </span>
+                </dt>
                 <dd>{formatCount(count, 'match', 'matches')}</dd>
               </div>
             ))}

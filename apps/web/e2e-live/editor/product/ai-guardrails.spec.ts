@@ -102,7 +102,7 @@ test('configures Guardrails, routes both outcomes and shows the deciding categor
     await expect(details.getByText(port, { exact: true })).toBeVisible();
     if (port === 'Fail') {
       await expect(
-        details.getByText('pii.email', { exact: true }),
+        details.getByText('Email address', { exact: true }),
       ).toBeVisible();
       await expect(details.getByText('1 match', { exact: true })).toBeVisible();
       await expect(details).not.toContainText(sentinel);
