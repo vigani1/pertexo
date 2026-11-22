@@ -104,16 +104,13 @@ export function RunDetailPage(props: RunDetailPageProps) {
             delivery={snapshot.errorWorkflow}
             workspaceId={workspace.id}
           />
-          <RunFailureNotice snapshot={snapshot} />
-          <RunBusinessValues values={run.runValues} />
-          <RunVariables
-            scope={{
-              apiClient,
-              userId: user.id,
-              workspaceId: workspace.id,
-              runId,
-            }}
+          <RunFailureNotice
+            snapshot={snapshot}
+            scope={dataScope}
+            navigation={{ rows: view.rows, selectStep }}
           />
+          <RunBusinessValues values={run.runValues} />
+          <RunVariables scope={dataScope} />
           <CallHistory
             calls={snapshot.calls ?? []}
             parentCall={snapshot.parentCall}

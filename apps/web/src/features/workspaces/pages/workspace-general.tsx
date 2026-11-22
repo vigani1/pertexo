@@ -44,10 +44,12 @@ export function WorkspaceGeneralPage({
   workspace,
   onWorkspaceChanged,
   onLeft,
+  assistantSettings,
 }: Readonly<{
   apiClient: ApiClient;
   user: UserProfileResponse;
   workspace: AccessibleWorkspace;
+  assistantSettings?: ReactNode;
   onWorkspaceChanged: () => void | Promise<void>;
   /** The person left; their sessions have ended. */
   onLeft: () => void | Promise<void>;
@@ -139,6 +141,7 @@ export function WorkspaceGeneralPage({
           <WorkspaceAccess workspace={workspace} />
         </SettingsSection>
 
+        {assistantSettings}
         {canManage || workspace.status === 'active' ? (
           <DangerZone>
             {canManage ? (

@@ -268,6 +268,24 @@ function editorConnectionHttp() {
     allowedPrivateNetworks: parseAllowedPrivateNetworks('127.0.0.1/32'),
   });
   return {
+    executeStreaming: <T>(
+      input: Parameters<typeof client.execute>[0],
+      consume: Parameters<typeof client.executeStreaming<T>>[1],
+    ) => {
+      const target =
+        scenario === 'product'
+          ? editorProviderTarget(input, liveProviderPort)
+          : undefined;
+      return target === undefined
+        ? Promise.reject(
+            new SecureHttpError(
+              SECURE_HTTP_ERROR_CODE.ssrfBlocked,
+              'definite_failure',
+              { possiblyDispatched: false },
+            ),
+          )
+        : client.executeStreaming(target, consume);
+    },
     execute: (input: Parameters<typeof client.execute>[0]) => {
       const target =
         scenario === 'product'

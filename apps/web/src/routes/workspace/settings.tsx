@@ -1,3 +1,4 @@
+import { AssistantSettings } from '@/features/connections/connections-views.public';
 import { useNavigate, useRouter } from '@tanstack/react-router';
 import { WorkspaceGeneralPage } from '@/features/workspaces/pages/workspace-general';
 import { useWorkspaceScope } from './shell/use-workspace-scope';
@@ -11,6 +12,14 @@ export function WorkspaceSettingsRoute() {
       apiClient={apiClient}
       user={user}
       workspace={workspace}
+      assistantSettings={
+        workspace.capabilities.includes('connection:manage') &&
+        workspace.status === 'active' ? (
+          <AssistantSettings
+            scope={{ apiClient, userId: user.id, workspaceId: workspace.id }}
+          />
+        ) : undefined
+      }
       onWorkspaceChanged={() => router.invalidate()}
       onLeft={() => navigate({ to: '/workspaces', replace: true })}
     />

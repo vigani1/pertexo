@@ -68,6 +68,7 @@ export async function openModelProvider(
     probes,
     answerWith(value: unknown) {
       answer = value;
+      refuse = false;
     },
     refuse() {
       refuse = true;
