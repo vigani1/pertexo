@@ -32,7 +32,7 @@ import { z } from 'zod';
 import type { ConnectionLookupDependencies } from '../../connections/lookups/lookup-options.service.js';
 import {
   requestIdentifiers,
-  serviceCaller,
+  type serviceCaller,
   storeContext,
 } from '../../workspaces/request/caller.js';
 
