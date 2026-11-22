@@ -35,7 +35,7 @@ import {
   isEmptyValue,
 } from '../../../model/step-inspection/run-data-summary';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
-import { formatCount } from '@/lib/format/count';
+import { formatCount, pluralWord } from '@/lib/format/count';
 
 export type RunDataScope = Readonly<{
   apiClient: ApiClient;
@@ -197,7 +197,7 @@ export function RunDataRead({
           <>
             <dl className="space-y-1 text-label">
               <dt className="text-subtle-foreground">
-                {branches.length === 1 ? 'Branch' : 'Branches'}
+                {pluralWord(branches.length, 'Branch', 'Branches')}
               </dt>
               {branches.map(({ id, label }) => (
                 <dd key={id} className="flex flex-wrap items-baseline gap-x-2">
