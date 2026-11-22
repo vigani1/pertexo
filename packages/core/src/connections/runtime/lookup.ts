@@ -1,3 +1,5 @@
+import { isConnectionFenceCurrent } from './credential-use.repository.js';
+import type { ConnectionFence } from './connection-resolution.types.js';
 import type { PoolClient } from 'pg';
 
 import type { ResolvedConnectionSecretRecord } from '../connection.types.js';
@@ -67,4 +69,17 @@ export async function resolveConnectionLookupSecret(
     secretVersionId: connection.currentSecretVersionId,
     sealed: row,
   });
+}
+
+export async function assertLookupSecretCurrent(
+  client: PoolClient,
+  input: ConnectionFence &
+    Readonly<{ workspaceId: string; actorId: string; signal: AbortSignal }>,
+): Promise<void> {
+  input.signal.throwIfAborted();
+  if (!(await isConnectionFenceCurrent(client, input.workspaceId, input)))
+    throw new ConnectionUnavailableError(
+      'Connection changed before lookup dispatch',
+      'settings_changed',
+    );
 }

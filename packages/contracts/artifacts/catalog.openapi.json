@@ -618,7 +618,8 @@
                     "oauth2",
                     "postgres",
                     "smtp",
-                    "signing"
+                    "signing",
+                    "lookup"
                   ]
                 },
                 "testInput": {

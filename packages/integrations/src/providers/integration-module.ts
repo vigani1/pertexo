@@ -3,6 +3,7 @@ import type {
   MaterializedPollConfig,
   JsonValue,
 } from '@pertexo/workflow-model';
+import type { ConnectionLookup } from './connection-lookup.js';
 import type { ProviderHttpClient } from './http-client.js';
 import type { ConnectionDefinition } from './connection-definition.js';
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
@@ -60,6 +61,7 @@ export interface IntegrationModule {
     presentation?: Partial<IntegrationPresentation>;
   }>[];
   readonly executorSummaryCodes?: readonly string[];
+  readonly lookups?: readonly ConnectionLookup[];
   readonly connections?: readonly ConnectionDefinition[];
   readonly policies?: NodeCatalog['policies'];
 }

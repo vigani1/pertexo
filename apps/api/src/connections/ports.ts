@@ -1,3 +1,4 @@
+import type { ConnectionLookupDependencies } from './lookups/lookup-options.service.js';
 import type { createSmtpClient } from '@pertexo/secrets/server';
 import type {
   ConnectionSharingStore,
@@ -76,6 +77,7 @@ export type ConnectionDependencies = Readonly<{
   authorization: WorkspaceAuthorizationSource;
   encryption: ConnectionSecretEncryptionPort;
   httpClient: ConnectionHttpClient;
+  lookup?: ConnectionLookupDependencies;
   slackClient?: ConnectionSlackClient;
   emailClient?: ConnectionEmailClient;
   telemetry?: ConnectionTelemetry;

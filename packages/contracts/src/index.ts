@@ -395,3 +395,15 @@ export {
   POSTGRES_LIMITS,
   type PostgresCredential,
 } from './schemas/connections/postgres.js';
+export {
+  CONNECTION_LOOKUP_LIMITS,
+  CONNECTION_LOOKUP_FIELD,
+  INPUT_SCHEMA_SETTING,
+  connectionLookupFieldSchema,
+  connectionLookupPath,
+  type ConnectionLookupField,
+  connectionLookupRequestSchema,
+  connectionLookupResponseSchema,
+  type ConnectionLookupRequest,
+  type ConnectionLookupResponse,
+} from './schemas/connections/connection-lookup.js';

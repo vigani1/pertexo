@@ -3,6 +3,7 @@ import { compareOrdinal, isRecord } from '@pertexo/workflow-model';
 import {
   INTEGRATION_MODULES,
   type ConnectionDefinition,
+  type ConnectionLookup,
   type IntegrationExecutorDependencies,
   type IntegrationModule,
   type IntegrationPollFetcher,
@@ -14,6 +15,7 @@ export function registerIntegrationModules(
   modules: readonly IntegrationModule[],
 ) {
   const moduleKeys = new Set<string>();
+  const lookups = new Map<string, ConnectionLookup>();
   const stepOwners = new Map<string, string>();
   const pollFetchers = new Map<string, IntegrationPollFetcher>();
   const presentations = new Map<string, IntegrationPresentation>();
@@ -21,6 +23,26 @@ export function registerIntegrationModules(
     if (moduleKeys.has(module.key))
       throw new IntegrationRegistryError('module', module.key);
     moduleKeys.add(module.key);
+    for (const lookup of module.lookups ?? []) {
+      const key = `${module.key}:${lookup.key}`;
+      if (
+        lookups.has(key) ||
+        !module.connections?.some(
+          ({ authType }) => authType === lookup.authType,
+        )
+      )
+        throw new IntegrationRegistryError('connection', key);
+      lookups.set(key, lookup);
+    }
+    for (const connection of module.connections ?? []) {
+      const test = connection.test;
+      if (
+        test.kind === 'lookup' &&
+        lookups.get(`${module.key}:${test.key}`)?.authType !==
+          connection.authType
+      )
+        throw new IntegrationRegistryError('connection', connection.authType);
+    }
     return module.steps.map(
       ({ registration, presentation, createExecutor, fetchPoll }) => {
         const { key, version } = registration.manifest.definition;
@@ -66,6 +88,8 @@ export function registerIntegrationModules(
     modules.flatMap((module) => module.executorSummaryCodes ?? []),
   );
   return {
+    connectionLookup: (provider: string, key: string) =>
+      lookups.get(`${provider}:${key}`),
     acceptsExecutorSummary: (code: string) => executorSummaryCodes.has(code),
     pollFetcherFor: ({ key, version }: { key: string; version: number }) =>
       pollFetchers.get(`${key}@${String(version)}`),
@@ -107,6 +131,9 @@ for (const module of INTEGRATION_MODULES) {
     }
   }
 }
+
+export const findConnectionLookup =
+  INTEGRATION_MODULE_REGISTRY.connectionLookup;
 
 export function isRegisteredProvider(providerKey: string) {
   return INTEGRATION_MODULES.some(

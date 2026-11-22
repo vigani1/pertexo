@@ -1,3 +1,8 @@
+import {
+  CONNECTION_LOOKUP_FIELD,
+  connectionLookupFieldSchema,
+  type ConnectionLookupField,
+} from '@pertexo/contracts';
 import { fieldLabel, fieldUnit, type FieldUnit } from './units';
 
 export type SchemaFieldSpec = Readonly<{
@@ -7,6 +12,7 @@ export type SchemaFieldSpec = Readonly<{
   required: boolean;
   description?: string;
   options?: readonly string[];
+  lookup?: ConnectionLookupField;
   /** How each option reads, when the stored value is an ID. */
   optionLabels?: Readonly<Record<string, string>>;
   minimum?: number;
@@ -105,11 +111,18 @@ function scalarField(
   const unit =
     type === 'string' || type === 'boolean' ? undefined : fieldUnit(key);
   const choices = type === 'string' ? stringChoices(candidate) : undefined;
+  const lookup =
+    type === 'string'
+      ? connectionLookupFieldSchema.safeParse(
+          candidate[CONNECTION_LOOKUP_FIELD],
+        )
+      : undefined;
   return {
     ...fieldPresentation(key, candidate),
     kind: type,
     required,
     ...(choices ?? {}),
+    ...(lookup?.success === true ? { lookup: lookup.data } : {}),
     ...(typeof minimum === 'number' ? { minimum } : {}),
     ...(typeof maximum === 'number' ? { maximum } : {}),
     ...(unit === undefined ? {} : { unit }),
