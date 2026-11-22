@@ -3,7 +3,10 @@ import type { ReactNode } from 'react';
 import { HttpBodyInputs } from '../http-body/inputs';
 import { EmailInputs } from '../attachments/email-inputs';
 import { InputFileActions } from '../input-mappings/file-actions';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
+import {
+  INPUT_SCHEMA_SETTING,
+  type NodeDefinitionCatalogItem,
+} from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
 import { PlusIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -133,8 +136,13 @@ function MappedInputsTab({
     rowsShown,
   });
   const editable = form.editable && definition !== undefined;
+  const schemaSetting = definition?.inputSchema[INPUT_SCHEMA_SETTING];
+  const mappedSchema =
+    typeof schemaSetting === 'string'
+      ? node.config[schemaSetting]
+      : definition?.inputSchema;
   const suggestions = [
-    ...inputKeySuggestions(definition?.inputSchema),
+    ...inputKeySuggestions(mappedSchema),
     ...httpRequestPlaceholders(node).map((name) => ({
       key: name,
       label: `{${name}}`,

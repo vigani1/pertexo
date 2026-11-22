@@ -3,7 +3,6 @@ import {
   type OutputVariantSelection,
 } from '@pertexo/node-sdk';
 import { isRecord } from '@pertexo/workflow-model';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import type { WorkflowNode } from '../../graph/scopes';
 
 export type SchemaValueType =
@@ -17,7 +16,7 @@ export type InputKeySuggestion = Readonly<{
 }>;
 
 export function inputKeySuggestions(
-  inputSchema: NodeDefinitionCatalogItem['inputSchema'] | undefined,
+  inputSchema: unknown,
 ): readonly InputKeySuggestion[] {
   return schemaProperties(inputSchema).map(([key, candidate]) => {
     if (!isRecord(candidate)) return { key, label: key };

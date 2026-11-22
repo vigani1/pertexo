@@ -8,6 +8,7 @@ export {
   boundedNodeJsonRecordSchema,
   boundedNodeJsonSchema,
   generateSchemaDocument,
+  isBoundedNodeJson,
   type SchemaDocument,
   type SchemaJson,
   type SchemaObject,

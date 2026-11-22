@@ -92,6 +92,7 @@ export function NodeInspector({
   const form = useMemo<NodeFormApi>(
     () => ({
       nodeId: node.id,
+      connectionRefs: node.connectionRefs,
       editable,
       reportScratch,
       commit: (update, coalesceKey) => {
@@ -105,7 +106,7 @@ export function NodeInspector({
         });
       },
     }),
-    [editable, node.id, reportScratch, store],
+    [editable, node.id, node.connectionRefs, reportScratch, store],
   );
 
   useEffect(() => {

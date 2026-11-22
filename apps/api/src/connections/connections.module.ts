@@ -27,6 +27,8 @@ import {
   RotateConnectionSecretService,
 } from './management/connection-management.js';
 import { LookupSlackChannelsService } from './failure-notifications/slack-channel-lookup.js';
+import { LookupConnectionOptionsService } from './lookups/lookup-options.service.js';
+import { LookupConnectionOptionsController } from './lookups/lookup-options.controller.js';
 import { TestConnectionService } from './testing/test-connection.js';
 
 function oauth2Providers({
@@ -92,6 +94,10 @@ export class ConnectionsModule {
     identityModule: DynamicModule,
   ): DynamicModule {
     const telemetry = dependencies.telemetry ?? NOOP_CONNECTION_TELEMETRY;
+    const lookup =
+      dependencies.lookup === undefined
+        ? undefined
+        : new LookupConnectionOptionsService(dependencies.lookup);
     const providers: Provider[] = [
       {
         provide: WORKSPACE_AUTHORIZATION,
@@ -157,6 +163,7 @@ export class ConnectionsModule {
             emailClient: dependencies.emailClient,
             oauth2: dependencies.oauth2,
             smtpPolicy: dependencies.smtpPolicy,
+            lookup,
           },
         ),
       },
@@ -173,6 +180,11 @@ export class ConnectionsModule {
         ),
       },
     ];
+    if (lookup !== undefined)
+      providers.push({
+        provide: LookupConnectionOptionsService,
+        useValue: lookup,
+      });
     providers.push(...oauth2Providers(dependencies));
     if (dependencies.sharingPersistence !== undefined)
       providers.push({
@@ -207,6 +219,9 @@ export class ConnectionsModule {
       imports: [identityModule],
       controllers: [
         ConnectionsController,
+        ...(dependencies.lookup === undefined
+          ? []
+          : [LookupConnectionOptionsController]),
         ...(dependencies.oauth2 === undefined
           ? []
           : [ConnectionOAuth2Controller]),
