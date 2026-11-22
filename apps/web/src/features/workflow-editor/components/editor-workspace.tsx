@@ -51,18 +51,7 @@ export function EditorWorkspace({
   const { scope, catalog, editing } = useEditorSession();
   const { apiClient, userId, workspace, workflowId } = scope;
   const { definitions, codeSettings } = catalog;
-  const {
-    workflow,
-    verifyIdentity,
-    canUpdate,
-    paused,
-    issues,
-    checking,
-    actions,
-    ensureSaved,
-    flushSave,
-    effects,
-  } = editing;
+  const { canUpdate, paused, actions, ensureSaved, effects } = editing;
   const { tests, testStatuses, revision, graph } = useEditorWorkflowTests({
     apiClient,
     userId,
@@ -70,7 +59,7 @@ export function EditorWorkspace({
     workflowId,
     paused,
     ensureSaved,
-    verifyIdentity,
+    verifyIdentity: editing.verifyIdentity,
   });
   const inspectorOpen = useEditorStore(
     (state) => state.selectedNodeIds.length > 0,
@@ -93,7 +82,7 @@ export function EditorWorkspace({
       paused,
       actions,
       testRef,
-      flushSave,
+      flushSave: editing.flushSave,
       onShortcuts: () => {
         setShortcutsOpen(true);
       },
@@ -106,7 +95,7 @@ export function EditorWorkspace({
       setProposalOpen(open);
     },
   };
-  const overlays = useCanvasOverlays(issues, effects, testStatuses);
+  const overlays = useCanvasOverlays(editing.issues, effects, testStatuses);
   return (
     <EditorLayout
       history={
@@ -142,7 +131,7 @@ export function EditorWorkspace({
           }}
           readSamples={!paused && workspace.capabilities.includes('run:read')}
           canvas={{ canvasRef, adding, selection }}
-          checking={checking}
+          checking={editing.checking}
           showStartPicker={!proposalOpen}
           onOpenInspector={() => {
             navigation.setMobilePanel('inspector');
@@ -179,7 +168,7 @@ export function EditorWorkspace({
           feedbackTarget={setFeedbackTarget}
           editable={editable}
           paused={paused}
-          testing={{ tests, workspace, workflow, graph }}
+          testing={{ tests, workspace, workflow: editing.workflow, graph }}
           selection={selection}
           adding={adding}
           definitions={placeable}
