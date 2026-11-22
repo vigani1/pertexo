@@ -136,21 +136,24 @@ function AgentWriteAllowance({
       <span>
         {describe(tool.definition).name} · {tool.alias}
       </span>
-      {'table' in tool.config ? (
-        <span className="basis-full text-muted-foreground">
-          Workspace table {tool.config.table}
-        </span>
-      ) : 'target' in tool.config ? (
-        <span className="basis-full text-muted-foreground">
-          Callable workflow {tool.config.target.workflowId} · version{' '}
-          {tool.config.target.workflowVersionId}
-        </span>
-      ) : (
-        <span className="basis-full text-muted-foreground">
-          Slack channel {tool.config.channelId} · connection{' '}
-          {node.connectionRefs[AGENT_SLACK_CONNECTION_SLOT]}
-        </span>
-      )}
+      <span className="basis-full text-muted-foreground">
+        {agentWriteTarget(
+          tool.config,
+          node.connectionRefs[AGENT_SLACK_CONNECTION_SLOT],
+        )}
+      </span>
     </div>
   );
+}
+
+function agentWriteTarget(
+  config: NonNullable<
+    ReturnType<typeof agentToolAllowedWithoutApproval>
+  >['config'],
+  slackConnection: string | undefined,
+) {
+  if ('table' in config) return `Workspace table ${config.table}`;
+  if ('target' in config)
+    return `Callable workflow ${config.target.workflowId} · version ${config.target.workflowVersionId}`;
+  return `Slack channel ${config.channelId} · connection ${slackConnection ?? ''}`;
 }
