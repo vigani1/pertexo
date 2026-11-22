@@ -6,22 +6,16 @@ import { Button } from '@/components/ui/button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { Disclosure } from '@/components/ui/disclosure';
 import { SkeletonLines } from '@/components/ui/skeleton';
-import type { ApiClient } from '@/lib/api/client';
+import type { RunDataScope } from './data/value';
 import { workflowRunVariablesQueryOptions } from '../../data/stored-values.queries';
 // Enough to recognise the set; the rest wait behind "Show all".
 const FIRST_TILES = 8;
-type Scope = Readonly<{
-  apiClient: ApiClient;
-  userId: string;
-  workspaceId: string;
-  runId: string;
-}>;
 
 /**
  * The workspace variables this run captured when it started, read only once
  * the fold opens. Each is a tile: its name, the value it had, and Copy.
  */
-export function RunVariables({ scope }: Readonly<{ scope: Scope }>) {
+export function RunVariables({ scope }: Readonly<{ scope: RunDataScope }>) {
   return (
     <Disclosure
       summary="Workspace variables this run used"
@@ -32,12 +26,12 @@ export function RunVariables({ scope }: Readonly<{ scope: Scope }>) {
     </Disclosure>
   );
 }
-function CapturedVariables({ scope }: Readonly<{ scope: Scope }>) {
+function CapturedVariables({ scope }: Readonly<{ scope: RunDataScope }>) {
   const query = useQuery(
     workflowRunVariablesQueryOptions(
       scope.apiClient,
       scope.userId,
-      scope.workspaceId,
+      scope.workspace.id,
       scope.runId,
     ),
   );

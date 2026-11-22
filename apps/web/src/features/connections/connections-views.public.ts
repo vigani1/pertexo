@@ -3,3 +3,4 @@
 export { AddConnectionSheet } from './components/add-connection/sheet';
 export { ProviderTile } from './components/provider-tile';
 export { TestThread } from './components/connection-test/thread';
+export { AssistantSettings } from './components/assistant-settings';
