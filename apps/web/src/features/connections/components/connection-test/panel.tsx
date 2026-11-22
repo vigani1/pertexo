@@ -30,7 +30,6 @@ import { TestThread } from './thread';
 type TestField = 'url' | 'acknowledged';
 
 const INTRO = {
-  lookup: 'Pertexo reads the available options using this connection.',
   postgres: 'Pertexo connects and runs a simple read-only query.',
   signing:
     'Pertexo checks it can open this key locally. Nothing is sent to another service.',
@@ -42,8 +41,10 @@ const INTRO = {
 
 function testIntro(definition: ConnectionFormDefinition): string {
   const { test, testInput } = definition;
-  if (test !== 'http' || testInput === 'url') return INTRO[test];
   const { name, credential } = testNouns(definition);
+  if (test === 'lookup')
+    return `Pertexo asks ${name} for its available options to see whether the ${credential} works.`;
+  if (test !== 'http' || testInput === 'url') return INTRO[test];
   return testInput === 'consent'
     ? `Pertexo sends one real email through ${name} to see whether the ${credential} works.`
     : `Pertexo asks ${name} whether the ${credential} works.${definition.presentation.testCopy?.introNote ?? ''}`;

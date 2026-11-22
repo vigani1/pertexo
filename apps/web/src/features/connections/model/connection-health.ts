@@ -120,7 +120,7 @@ function describeTestFailure(
     errorCode === 'connection.credential_rejected'
   ) {
     if (copy?.rejectionReason !== undefined) return copy.rejectionReason;
-    if (definition.test === 'http' && definition.testInput !== 'url')
+    if (asksProvider(definition))
       return `invalid ${definition.testInput === 'consent' ? definition.presentation.credential : testNouns(definition).credential}`;
     if (
       definition.test === 'http' ||
@@ -269,7 +269,7 @@ function testSuccessTitle(
   definition: ConnectionFormDefinition | undefined,
 ): string {
   if (definition === undefined) return 'Connection test passed.';
-  if (definition.test === 'http' && definition.testInput !== 'url') {
+  if (asksProvider(definition)) {
     const { name, credential } = testNouns(definition);
     return `${name} accepted the ${definition.testInput === 'consent' ? 'test email' : credential}.`;
   }
@@ -281,7 +281,7 @@ function rejectedHelp(
 ): TestOutcomeCopy | undefined {
   if (definition === undefined) return undefined;
   if (definition.test === 'oauth2') return OAUTH2_REJECTED_HELP;
-  if (definition.test === 'http' && definition.testInput !== 'url') {
+  if (asksProvider(definition)) {
     const { name, credential } = testNouns(definition);
     return {
       title: `${name} rejected the ${definition.testInput === 'consent' ? definition.presentation.credential : credential}.`,
@@ -291,4 +291,12 @@ function rejectedHelp(
     };
   }
   return REJECTED_HELP[definition.test];
+}
+
+/** A test that asks the provider itself with the saved credential. */
+function asksProvider(definition: ConnectionFormDefinition): boolean {
+  return (
+    definition.test === 'lookup' ||
+    (definition.test === 'http' && definition.testInput !== 'url')
+  );
 }
