@@ -1,3 +1,4 @@
+import type { GuardrailsDiagnostics } from './guardrails-diagnostics.js';
 import type { ModelUsage } from './attempt-diagnostics.js';
 import type { inlineExecutorFailureSchema } from './node-failure.schemas.js';
 import type { NodeCallbackRuntime } from '../callbacks/node-callback.types.js';
@@ -167,6 +168,9 @@ export interface NodeExecutionRuntime {
   readonly dataTables?: NodeDataTableRuntime;
   readonly runValues?: NodeRunValuesRuntime;
   readonly code?: NodeCodeRuntime;
+  readonly observeGuardrailsDiagnostics?: (
+    reasons: GuardrailsDiagnostics,
+  ) => void;
   readonly observeModelUsage?: (usage: ModelUsage) => void;
   readonly observeCodeDiagnostics?: (diagnostics: CodeDiagnostics) => void;
   /** Synchronous, nonthrowing capture only. Never performs persistence or I/O. */

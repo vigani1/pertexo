@@ -79,3 +79,10 @@ export { SLACK_REJECTIONS } from './slack/rejection-policy.js';
 export { smtpCredentialSchema } from '@pertexo/contracts';
 
 export { DATABASE_DEFINITION_REGISTRATION } from './database/execute/execute.definition.js';
+
+export {
+  GUARDRAILS_LIMITS,
+  guardrailsDraftChecksSchema,
+  guardrailsTermsSchema,
+  type GuardrailsCheck,
+} from './ai/guardrails/guardrails.schemas.js';

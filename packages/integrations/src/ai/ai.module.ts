@@ -8,6 +8,8 @@ import {
   MODEL_PROVIDER_KEY,
 } from './connections.definition.js';
 import { createModelClient } from './model-client.js';
+import { GUARDRAILS_REGISTRATION } from './guardrails/guardrails.definition.js';
+import { guardrailsExecutor } from './guardrails/guardrails.executor.js';
 import { MODEL_REGISTRATION } from './model/model.definition.js';
 import { MODEL_FAILURE_CODES } from './model/model.errors.js';
 import { createModelExecutor } from './model/model.executor.js';
@@ -27,6 +29,10 @@ export const AI_MODULE = {
       registration: CLASSIFY_REGISTRATION,
       createExecutor: ({ httpClient }) =>
         createClassifyExecutor(createModelClient(httpClient)),
+    },
+    {
+      registration: GUARDRAILS_REGISTRATION,
+      createExecutor: () => guardrailsExecutor,
     },
     {
       registration: MODEL_REGISTRATION,

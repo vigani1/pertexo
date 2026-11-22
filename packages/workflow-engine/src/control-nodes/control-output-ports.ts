@@ -1,5 +1,7 @@
 import {
   classifyOutputPorts,
+  GUARDRAILS_PORTS,
+  isGuardrailsDefinition,
   isCoreConditionDefinition,
   pendingTaskOutputPorts,
   workflowControlOutputKind,
@@ -21,6 +23,7 @@ export function configuredBranchOutputPorts(
     return taskPorts.length > 1 ? taskPorts : undefined;
   if (workflowControlOutputKind(node.definition) !== 'branch') return undefined;
   if (isCoreConditionDefinition(node.definition)) return ['false', 'true'];
+  if (isGuardrailsDefinition(node.definition)) return GUARDRAILS_PORTS;
   if (node.control?.kind === 'classify')
     return classifyOutputPorts(node.control.categories);
   if (node.control?.kind !== 'switch') return undefined;
