@@ -39,7 +39,10 @@ import {
 const EXPLANATION_TIMEOUT_MILLIS = 12_000;
 const EXPLANATION_MAX_OUTPUT_TOKENS = 900;
 const PURPOSE = 'explain_run';
-const identity = { providerKey: MODEL_PROVIDER_KEY, authType: MODEL_AUTH_TYPE };
+const identity = {
+  providerKey: MODEL_PROVIDER_KEY,
+  authType: MODEL_AUTH_TYPE,
+} as const;
 const outputSchema = z.toJSONSchema(explanationModelAnswerSchema, {
   target: 'draft-7',
 });

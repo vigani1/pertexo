@@ -32,6 +32,8 @@ GET /v1/workspaces/{workspaceId}/artifacts/{artifactId} 200 session artifact:rea
 GET /v1/workspaces/{workspaceId}/artifacts/{artifactId}/download 200 session artifact:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/artifacts/{artifactId}/finalize 200 session artifact:upload csrf ordinary_mutation
 POST /v1/workspaces/{workspaceId}/artifacts/uploads 201 session artifact:upload csrf ordinary_mutation
+GET /v1/workspaces/{workspaceId}/assistant 200 session connection:manage - authenticated_read
+PUT /v1/workspaces/{workspaceId}/assistant 200 session connection:manage csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/auto-pause 200 session workspace:read - authenticated_read
 PUT /v1/workspaces/{workspaceId}/auto-pause 200 session workspace:manage csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/connections 200 session_or_token connection:read - authenticated_read
@@ -114,6 +116,8 @@ GET /v1/workspaces/{workspaceId}/runs 200 session_or_token run:read - authentica
 GET /v1/workspaces/{workspaceId}/runs/{runId} 200 session_or_token run:read - authenticated_read
 POST /v1/workspaces/{workspaceId}/runs/{runId}/cancel 200 session_or_token run:cancel csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/runs/{runId}/events 200 session run:read - authenticated_read
+GET /v1/workspaces/{workspaceId}/runs/{runId}/explanation 200 session run:read - authenticated_read
+POST /v1/workspaces/{workspaceId}/runs/{runId}/explanation 200 session run:read csrf ordinary_mutation
 GET /v1/workspaces/{workspaceId}/runs/{runId}/input 200 session_or_token run:read-data - authenticated_read
 GET /v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/diagnostics 200 session run:read - authenticated_read
 GET /v1/workspaces/{workspaceId}/runs/{runId}/node-runs/{nodeRunId}/input 200 session_or_token run:read-data - authenticated_read
