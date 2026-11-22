@@ -109,7 +109,7 @@ export class LookupConnectionOptionsService {
       signal,
     );
     try {
-      const result = await run({
+      const result: unknown = await run({
         connection: {
           connectionId: access.connectionId,
           providerKey,

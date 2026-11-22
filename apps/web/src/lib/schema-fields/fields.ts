@@ -110,19 +110,12 @@ function scalarField(
     return undefined;
   const unit =
     type === 'string' || type === 'boolean' ? undefined : fieldUnit(key);
-  const choices = type === 'string' ? stringChoices(candidate) : undefined;
-  const lookup =
-    type === 'string'
-      ? connectionLookupFieldSchema.safeParse(
-          candidate[CONNECTION_LOOKUP_FIELD],
-        )
-      : undefined;
+  const choices = type === 'string' ? stringFieldOptions(candidate) : undefined;
   return {
     ...fieldPresentation(key, candidate),
     kind: type,
     required,
     ...(choices ?? {}),
-    ...(lookup?.success === true ? { lookup: lookup.data } : {}),
     ...(typeof minimum === 'number' ? { minimum } : {}),
     ...(typeof maximum === 'number' ? { maximum } : {}),
     ...(unit === undefined ? {} : { unit }),
@@ -153,6 +146,13 @@ function fieldPresentation(
  * A string's choices: its `enum`, each named by the matching `oneOf`
  * `{ const, title }` when the schema labels them.
  */
+function stringFieldOptions(candidate: Readonly<Record<string, unknown>>) {
+  const lookup = connectionLookupFieldSchema.safeParse(
+    candidate[CONNECTION_LOOKUP_FIELD],
+  );
+  return lookup.success ? { lookup: lookup.data } : stringChoices(candidate);
+}
+
 function stringChoices(
   candidate: Readonly<Record<string, unknown>>,
 ): Pick<SchemaFieldSpec, 'options' | 'optionLabels'> | undefined {

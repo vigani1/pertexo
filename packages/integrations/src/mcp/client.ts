@@ -20,13 +20,15 @@ export async function openMcpSession(
     beforeDispatch(): Promise<void>;
   }>,
 ) {
-  let sessionId: string | undefined;
   let sequence = 0;
   async function exchange(
     method: string,
     params: SchemaDocument,
     fence: () => Promise<void>,
-    notification = false,
+    {
+      notification,
+      sessionId,
+    }: Readonly<{ notification?: true; sessionId?: string | undefined }> = {},
   ) {
     signal.throwIfAborted();
     const id = sequence++;
@@ -105,7 +107,7 @@ export async function openMcpSession(
     throw new McpProtocolError(
       'MCP endpoint does not support the tool protocol',
     );
-  sessionId = initialized.body?.sessionId;
+  const sessionId = initialized.body?.sessionId;
   if (
     sessionId !== undefined &&
     (sessionId.length > MCP_LIMITS.sessionCharacters ||
@@ -114,14 +116,17 @@ export async function openMcpSession(
   )
     throw new McpProtocolError('Invalid MCP session identifier');
 
-  await exchange('notifications/initialized', {}, beforeDispatch, true);
+  await exchange('notifications/initialized', {}, beforeDispatch, {
+    notification: true,
+    sessionId,
+  });
 
   return async (
     method: 'tools/list' | 'tools/call',
     params: SchemaDocument,
     fence = beforeDispatch,
   ) => {
-    const response = await exchange(method, params, fence);
+    const response = await exchange(method, params, fence, { sessionId });
     if (response.body === undefined)
       throw new McpProtocolError('MCP response missing');
     return response.body.result;

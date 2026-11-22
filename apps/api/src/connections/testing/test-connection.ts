@@ -1,5 +1,5 @@
 import type { LookupConnectionOptionsService } from '../lookups/lookup-options.service.js';
-import { isApplicationError } from '../../platform/http/application-error.js';
+import { testConnectionLookup } from './lookup.js';
 import { hasCredentialType } from '../credential-type.js';
 import { testHttpConnection } from './http.js';
 import { requestInputError } from '../../platform/http/request-input.js';
@@ -220,34 +220,18 @@ export class TestConnectionService {
           if (definition === undefined)
             throw new ConnectionSecretEncryptionError();
           if (definition.test.kind === 'lookup') {
-            if (this.lookup === undefined)
-              throw new ConnectionSecretEncryptionError();
-            try {
-              await this.lookup.execute(
-                {
-                  ...input,
-                  signal: requestSignal,
-                  request: {
-                    providerKey: expectedProviderKey,
-                    lookup: definition.test.key,
-                  },
+            outcome = await testConnectionLookup(
+              this.lookup,
+              {
+                ...input,
+                signal: requestSignal,
+                request: {
+                  providerKey: expectedProviderKey,
+                  lookup: definition.test.key,
                 },
-                { resolved, beforeDispatch },
-              );
-              outcome = SUCCEEDED_TEST;
-            } catch (error: unknown) {
-              if (
-                !isApplicationError(error) ||
-                error.code !== 'provider.unavailable'
-              )
-                throw error;
-              outcome = {
-                ok: false,
-                httpStatus: null,
-                errorCode: 'connection.provider_invalid_response',
-                reauthorizationRequired: false,
-              };
-            }
+              },
+              { resolved, beforeDispatch },
+            );
           } else if (definition.test.kind === 'oauth2') {
             outcome = await this.testOAuth2(input, request, {
               method: definition.test.method,

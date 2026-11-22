@@ -14,6 +14,7 @@ export {
 } from './schemas/connections/credential-formats.js';
 export type { ParsedConnectionCredential } from './schemas/connections/connection-credentials.js';
 export * from './schemas/connections/connection-sharing.js';
+export * from './schemas/connections/connection-lookup.js';
 export * from './schemas/connections/slack-channel-lookup.js';
 export * from './schemas/connections/oauth2-connections.js';
 export * from './schemas/failure-notification-destinations.js';
@@ -395,15 +396,3 @@ export {
   POSTGRES_LIMITS,
   type PostgresCredential,
 } from './schemas/connections/postgres.js';
-export {
-  CONNECTION_LOOKUP_LIMITS,
-  CONNECTION_LOOKUP_FIELD,
-  INPUT_SCHEMA_SETTING,
-  connectionLookupFieldSchema,
-  connectionLookupPath,
-  type ConnectionLookupField,
-  connectionLookupRequestSchema,
-  connectionLookupResponseSchema,
-  type ConnectionLookupRequest,
-  type ConnectionLookupResponse,
-} from './schemas/connections/connection-lookup.js';
