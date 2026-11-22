@@ -70,7 +70,10 @@ export function createFixtureConnectionRuntime(
             lookup: {
               persistence: database,
               encryption: services.encryption.encryption,
-              http: { executeStreaming: httpClient.executeStreaming },
+              http: {
+                execute: httpClient.execute,
+                executeStreaming: httpClient.executeStreaming,
+              },
             },
           }),
       slackClient: services.slack ?? createSlackClient(httpClient),
