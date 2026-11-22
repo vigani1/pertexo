@@ -98,12 +98,15 @@ test('confirms the transfer and follows an authorized step from the explanation'
     expect(request).not.toContain(key);
     expect(request).not.toContain(sentinel);
     await modelScreenshots(page, info, 'assistant-explanation');
+    await page.setViewportSize({ width: 390, height: 844 });
+    const linkedStep = page.getByRole('dialog', { name: 'Extract order' });
+    await expect(linkedStep).toBeHidden();
     await explanation
       .getByRole('button', { name: 'Extract order', exact: true })
       .click();
-    await expect(
-      page.getByRole('complementary', { name: 'Step details' }),
-    ).toContainText('The model refused to answer the prompt.');
+    await expect(linkedStep).toContainText(
+      'The model refused to answer the prompt.',
+    );
   } finally {
     await inference.close();
   }
