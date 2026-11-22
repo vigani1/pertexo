@@ -20,3 +20,7 @@ export {
   startsInOneClick,
   useStartExample,
 } from './data/portability/start-example.mutations';
+export {
+  expectationDraft,
+  expectationRequest,
+} from './model/input-cases/expectations';

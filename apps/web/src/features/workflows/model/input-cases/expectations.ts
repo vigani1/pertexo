@@ -7,7 +7,25 @@ export interface CaseExpectationDraft {
     path: string;
     operator: 'equals' | 'contains';
     expected: string;
+    expectedColumn?: string | undefined;
   }[];
+}
+export function expectationRequest(draft: CaseExpectationDraft) {
+  return {
+    outcome: draft.outcome,
+    assertions: draft.assertions.map((item) => ({
+      source:
+        item.source === ''
+          ? { kind: 'final' as const }
+          : { kind: 'step' as const, nodeId: item.source },
+      path: item.path,
+      operator: item.operator,
+      expected:
+        item.expectedColumn === undefined
+          ? (JSON.parse(item.expected) as unknown)
+          : null,
+    })),
+  };
 }
 export function expectationDraft(
   value: WorkflowTestExpectations | undefined,

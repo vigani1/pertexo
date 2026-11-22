@@ -53,7 +53,10 @@ function LatestSuite({
 }: Readonly<{ suites: WorkflowSuiteList; savedDraftCurrent: boolean }>) {
   const latest = suites.items.reduce<(typeof suites.items)[number] | undefined>(
     (best, item) =>
-      best === undefined || item.createdAt > best.createdAt ? item : best,
+      item.evaluation === undefined &&
+      (best === undefined || item.createdAt > best.createdAt)
+        ? item
+        : best,
     undefined,
   );
   if (latest === undefined)

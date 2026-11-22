@@ -17,6 +17,7 @@ import { PinRecordedOutputButton } from '../samples/controls';
 import type { WorkflowTests } from '../../data/workflow-tests/workflow-tests.mutations';
 import { DATA_RETENTION_DAYS } from '@pertexo/workflow-model';
 import { formatCount } from '@/lib/format/count';
+import { TestCaseReport } from '../test-suites/report';
 
 export function WorkflowTestResults({
   tests,
@@ -31,8 +32,30 @@ export function WorkflowTestResults({
     [tests.snapshot.data?.graph, describeStep],
   );
   if (tests.snapshot.data === undefined) return null;
+  const suite = tests.suites.detail.data;
+  const evaluationCase =
+    suite?.evaluation === undefined
+      ? undefined
+      : suite.cases.find(
+          ({ runId, status }) =>
+            runId === tests.activeId &&
+            status !== 'pending' &&
+            status !== 'running',
+        );
   return (
     <>
+      {suite === undefined || evaluationCase === undefined ? null : (
+        <Disclosure
+          summary={`Evaluation report for row ${String(evaluationCase.ordinal + 1)}`}
+          lazy
+        >
+          <TestCaseReport
+            scope={tests.scope}
+            suiteId={suite.suiteId}
+            ordinal={evaluationCase.ordinal}
+          />
+        </Disclosure>
+      )}
       {tests.progress.data?.nodes.map((step) => {
         const disposition = tests.snapshot.data?.dispositions[step.nodeId];
         const state = describeNodeStatus(step.status);

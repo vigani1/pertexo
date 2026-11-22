@@ -16,3 +16,4 @@ export { WorkflowNameField } from './components/workflow-name-field';
 export { WorkflowTemplateOrigin } from './components/templates/origin';
 export { PatternGlyph } from './components/pattern-glyph';
 export { WorkflowGlyph } from './components/workflow-glyph';
+export { CaseExpectations } from './components/input-cases/expectations';
