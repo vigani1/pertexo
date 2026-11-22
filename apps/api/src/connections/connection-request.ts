@@ -5,7 +5,6 @@ export {
   connectionResponseSchema,
   connectionTestRequestSchema,
   connectionTestResponseSchema,
-  slackBotTokenCredentialSchema,
   type ConnectionResponse,
   type ConnectionListResponse,
   type ConnectionTestResponse,
