@@ -1,7 +1,15 @@
 import type { WorkflowCallSummary } from '@pertexo/contracts';
 import { AgentActivity } from './timeline/agent-activity';
-import { AGENT_STEP, CLASSIFY_STEP } from '@pertexo/workflow-model';
-import { StepCodeDiagnostics, StepModelUsage } from './run-diagnostics';
+import {
+  AGENT_STEP,
+  CLASSIFY_STEP,
+  GUARDRAILS_STEP,
+} from '@pertexo/workflow-model';
+import {
+  StepCodeDiagnostics,
+  StepGuardrailsDiagnostics,
+  StepModelUsage,
+} from './run-diagnostics';
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
 import type { ReactNode } from 'react';
@@ -100,7 +108,15 @@ export function RunStepDetails({
           onSelectStep={onSelectStep}
         />
       )}
-      <StepInputs row={row} rows={rows} upstream={upstream} scope={scope} />
+      {row.definitionKey === GUARDRAILS_STEP.key ? (
+        <StepDetailsSection title="Data in">
+          <p className="text-label text-muted-foreground">
+            Guardrails keeps only the outcome and match counts.
+          </p>
+        </StepDetailsSection>
+      ) : (
+        <StepInputs row={row} rows={rows} upstream={upstream} scope={scope} />
+      )}
       <StepDetailsSection
         title="Data out"
         hint={
@@ -116,6 +132,18 @@ export function RunStepDetails({
           title={`Data out of ${row.label}`}
         />
       </StepDetailsSection>
+      {row.definitionKey === GUARDRAILS_STEP.key &&
+      row.status === 'succeeded' &&
+      row.reused === undefined &&
+      row.nodeRunId !== undefined ? (
+        <StepDetailsSection title="Guardrails diagnostics">
+          <StepGuardrailsDiagnostics
+            scope={scope}
+            nodeRunId={row.nodeRunId}
+            attemptNumber={row.currentAttemptNumber}
+          />
+        </StepDetailsSection>
+      ) : null}
       {row.definitionKey === 'core.code' ? (
         <StepDetailsSection title="Code diagnostics">
           <StepCodeDiagnostics row={row} scope={scope} />

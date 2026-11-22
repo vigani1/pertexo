@@ -6,6 +6,8 @@ import { portName } from '@/features/catalog/public';
 import {
   CLASSIFY_OTHER_PORT,
   isClassifyDefinition,
+  isGuardrailsDefinition,
+  GUARDRAILS_PORTS,
   isCoreSwitchDefinition,
   isRecord,
   parallelConfigSchema,
@@ -21,6 +23,11 @@ export type BranchPorts = Readonly<{
 export function branchPorts(
   node: WorkflowGraphContract['nodes'][number],
 ): BranchPorts | undefined {
+  if (isGuardrailsDefinition(node.definition))
+    return {
+      field: 'selectedPort',
+      labels: new Map(GUARDRAILS_PORTS.map((port) => [port, portName(port)])),
+    };
   if (isClassifyDefinition(node.definition)) {
     const labels = new Map([[CLASSIFY_OTHER_PORT, 'Other']]);
     // Older data can still identify a category even if its label is blank.

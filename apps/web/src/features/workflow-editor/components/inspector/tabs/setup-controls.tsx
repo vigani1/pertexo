@@ -1,7 +1,9 @@
 import { AgentSetup } from '../builders/agent-setup';
+import { GuardrailsSetup } from '../builders/guardrails-setup';
 import {
   AGENT_STEP,
   CLASSIFY_STEP,
+  GUARDRAILS_STEP,
   readSchemaUnion,
 } from '@pertexo/workflow-model';
 import { ClassifyCategories } from '../builders/classify-categories';
@@ -68,6 +70,7 @@ const SIMPLE_SETUP_RENDERERS: Readonly<
   >
 > = {
   [AGENT_STEP.key]: AgentSetup,
+  [GUARDRAILS_STEP.key]: GuardrailsSetup,
   'core.wait': WaitSetup,
   'core.respond_webhook': WebhookResponseSetup,
   'core.read_file': ReadFileSetup,
