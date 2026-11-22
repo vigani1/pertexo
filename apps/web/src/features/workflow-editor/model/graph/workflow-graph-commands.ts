@@ -1,7 +1,9 @@
+import { removeDeletedCategoryLinks } from '../classify-categories';
 import { connectionPorts } from '../step-card';
 import { findDefinition } from './adapter';
 import {
   inspectWorkflowFailureRoutes,
+  isClassifyDefinition,
   WORKFLOW_FAILURE_PORT,
 } from '@pertexo/workflow-model';
 import type {
@@ -238,8 +240,18 @@ function updateIn<Level extends GraphLevel>(
 ): Level {
   const target = level.nodes.find((node) => node.id === nodeId);
   if (target === undefined || !changesNode(target, update)) return level;
+  const edges =
+    isClassifyDefinition(target.definition) && update.config !== undefined
+      ? removeDeletedCategoryLinks(
+          level.edges,
+          nodeId,
+          target.config,
+          update.config,
+        )
+      : level.edges;
   return {
     ...level,
+    edges,
     nodes: level.nodes.map((node) => {
       if (node.id !== nodeId) return node;
       const updated = { ...node, ...update };

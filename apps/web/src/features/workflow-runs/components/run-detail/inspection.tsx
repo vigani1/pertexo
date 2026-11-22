@@ -1,3 +1,4 @@
+import { CLASSIFY_STEP } from '@pertexo/workflow-model';
 import { StepCodeDiagnostics, StepModelUsage } from './run-diagnostics';
 import { StepExecutionHistory } from './execution-history';
 export { StepError } from './execution-history';
@@ -193,7 +194,9 @@ function StepHistory({
         row={row}
         nowMs={nowMs}
         workspace={scope.workspace}
-        {...(row.definitionKey === 'ai.model' && nodeRunId !== undefined
+        {...((row.definitionKey === 'ai.model' ||
+          row.definitionKey === CLASSIFY_STEP.key) &&
+        nodeRunId !== undefined
           ? {
               attemptUsage: (attemptNumber: number) => (
                 <StepModelUsage

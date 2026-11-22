@@ -1,3 +1,4 @@
+import { CLASSIFY_STEP } from '../control-nodes/classify.js';
 import { isCoreConditionDefinition } from '../control-nodes/control-node-definitions.js';
 import { isCallbackWaitNode } from '../callbacks/callback-wait.js';
 import { isWorkflowTriggerKey } from '../../graph/triggers.js';
@@ -18,6 +19,7 @@ export type WorkflowDecisionTree = Readonly<{
 }>;
 
 const excludedControls = new Set([
+  CLASSIFY_STEP.key,
   'core.switch',
   'core.parallel',
   'core.merge',

@@ -1,3 +1,6 @@
+import { CLASSIFY_STEP } from '@pertexo/workflow-model';
+import { ClassifyCategories } from '../builders/classify-categories';
+import { readClassifyCategories } from '../../../model/classify-categories';
 import { useInspectorSession } from '../use-session';
 import { WaitSetup } from '../wait/setup';
 import {
@@ -195,6 +198,21 @@ function listBuilder(
       .map((edge) => edge.source.port),
   );
   switch (node.definition.key) {
+    case CLASSIFY_STEP.key: {
+      const categories = readClassifyCategories(node.config);
+      return categories === undefined
+        ? undefined
+        : {
+            control: (
+              <ClassifyCategories
+                categories={categories}
+                linkedPorts={linkedPorts}
+                form={form}
+              />
+            ),
+            covers: 1,
+          };
+    }
     case 'core.switch': {
       const cases = readSwitchCases(node.config);
       return cases === undefined

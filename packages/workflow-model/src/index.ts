@@ -96,6 +96,16 @@ export {
   isCoreSwitchDefinition,
 } from './flow/control-nodes/control-node-definitions.js';
 export {
+  CLASSIFY_STEP,
+  CLASSIFY_OTHER_PORT,
+  CLASSIFY_CATEGORY_PORTS,
+  CLASSIFY_CATEGORY_LIMITS,
+  classifyCategoriesSchema,
+  classifyOutputPorts,
+  isClassifyDefinition,
+  type ClassifyCategory,
+} from './flow/control-nodes/classify.js';
+export {
   inspectControlNodeConfig,
   type ControlNodeConfig,
 } from './flow/control-nodes/control-node-config.js';

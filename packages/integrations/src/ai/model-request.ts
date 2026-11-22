@@ -1,5 +1,6 @@
+import { MODEL_LIMITS } from './model-settings.js';
 import type { ModelCredential } from './connections.definition.js';
-import { MODEL_LIMITS, type ModelConfig } from './model/model.schemas.js';
+import type { ModelConfig } from './model/model.schemas.js';
 
 export type RejectedAnswer = Readonly<{ answer: unknown }>;
 

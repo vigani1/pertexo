@@ -180,10 +180,12 @@ export function PortRows({
   ports,
   side,
   links,
+  labels,
 }: Readonly<{
   title: string;
   ports: readonly string[];
   side: 'inputs' | 'outputs';
+  labels?: Readonly<Record<string, string | undefined>> | undefined;
   links: Readonly<Record<string, readonly string[]>>;
 }>) {
   const output = side === 'outputs';
@@ -198,14 +200,14 @@ export function PortRows({
           <li key={port} className="relative flex min-w-0 items-center">
             <Mark tone={timedOut ? 'warning' : 'neutral'}>
               {timedOut ? <TimedOutGlyph className="size-3.5" /> : null}
-              {portLinkLabel(port, side, links[port])}
+              {portLinkLabel(port, side, links[port], labels?.[port])}
             </Mark>
             <Handle
               id={port}
               type={output ? 'source' : 'target'}
               position={output ? Position.Right : Position.Left}
               role="img"
-              aria-label={`${title}: ${output ? 'output' : 'input'} ${portName(port)}`}
+              aria-label={`${title}: ${output ? 'output' : 'input'} ${labels?.[port] ?? portName(port)}`}
               className={cn(
                 handleClass,
                 output ? '!-right-3' : '!-left-3',

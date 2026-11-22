@@ -1,4 +1,10 @@
-import { isRecord, pendingTaskOutputPorts } from '@pertexo/workflow-model';
+import { readClassifyCategories } from './classify-categories';
+import {
+  classifyOutputPorts,
+  isClassifyDefinition,
+  isRecord,
+  pendingTaskOutputPorts,
+} from '@pertexo/workflow-model';
 import type {
   NodeDefinitionCatalogItem,
   PreviewRunSummary,
@@ -45,6 +51,17 @@ export function shownPorts(
     const linked = new Set(Object.keys(portLinks(node, level, side, noTitles)));
     return ports.filter((port) => taskPorts.includes(port) || linked.has(port));
   }
+  const categoryPorts = configuredCategoryPorts(node, side);
+  if (categoryPorts !== undefined) {
+    const catalogPorts = new Set(ports);
+    const linked = Object.keys(portLinks(node, level, side, noTitles));
+    return [
+      ...new Set([
+        ...categoryPorts,
+        ...linked.filter((port) => catalogPorts.has(port)),
+      ]),
+    ];
+  }
   if (definition === undefined || ports.length <= 2) return ports;
   const configured = configuredPorts(node, definition, level, side);
   if (configured === undefined) return ports;
@@ -76,10 +93,18 @@ export function connectionPorts(
     const allowed = new Set(taskPorts);
     return ports.filter((port) => allowed.has(port));
   }
+  const categoryPorts = configuredCategoryPorts(node, side);
+  if (categoryPorts !== undefined) return categoryPorts;
   const configured = configuredPorts(node, definition, level, side);
   return configured === undefined
     ? ports
     : ports.filter((port) => configured.ids.has(port) || port === DEFAULT_PORT);
+}
+
+function configuredCategoryPorts(node: WorkflowNode, side: Side) {
+  if (side !== 'outputs' || !isClassifyDefinition(node.definition))
+    return undefined;
+  return classifyOutputPorts(readClassifyCategories(node.config) ?? []);
 }
 
 const noTitles: ReadonlyMap<string, string> = new Map();
@@ -111,9 +136,10 @@ export function portLinkLabel(
   port: string,
   side: Side,
   others: readonly string[] | undefined,
+  label?: string,
 ): string {
   const [first] = others ?? [];
-  const name = portName(port);
+  const name = label ?? portName(port);
   if (first === undefined) return name;
   const more =
     (others?.length ?? 0) > 1 ? ` +${String((others?.length ?? 1) - 1)}` : '';

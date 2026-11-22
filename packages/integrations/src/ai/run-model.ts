@@ -1,3 +1,4 @@
+import { MODEL_LIMITS } from './model-settings.js';
 import {
   type NodeExecutionInvocation,
   NodeExecutorFailure,
@@ -12,7 +13,7 @@ import type { ModelClient } from './model-client.js';
 import { trackModelUsage } from './model-usage.js';
 import { modelRequest } from './model-request.js';
 import { modelFailure } from './model/model.errors.js';
-import { MODEL_LIMITS, type ModelConfig } from './model/model.schemas.js';
+import type { ModelConfig } from './model/model.schemas.js';
 import { compileModelOutputSchema } from './output-schema.js';
 import {
   createProviderBeforeDispatch,
@@ -25,14 +26,21 @@ import {
 
 const failure = providerFailure(NodeExecutorFailure);
 
-export async function runModel(
-  client: ModelClient,
-  invocation: NodeExecutionInvocation<unknown, unknown>,
-  config: ModelConfig,
-  prompt: string,
-  purpose: string,
-  now: () => number,
-) {
+export async function runModel({
+  client,
+  invocation,
+  config,
+  prompt,
+  purpose,
+  now,
+}: Readonly<{
+  client: ModelClient;
+  invocation: NodeExecutionInvocation<unknown, unknown>;
+  config: ModelConfig;
+  prompt: string;
+  purpose: string;
+  now: () => number;
+}>) {
   const context = attemptContext(invocation, config, now);
   const validator =
     config.mode === 'structured'

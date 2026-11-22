@@ -1,4 +1,5 @@
 import {
+  classifyOutputPorts,
   isCoreConditionDefinition,
   pendingTaskOutputPorts,
   workflowControlOutputKind,
@@ -20,6 +21,8 @@ export function configuredBranchOutputPorts(
     return taskPorts.length > 1 ? taskPorts : undefined;
   if (workflowControlOutputKind(node.definition) !== 'branch') return undefined;
   if (isCoreConditionDefinition(node.definition)) return ['false', 'true'];
+  if (node.control?.kind === 'classify')
+    return classifyOutputPorts(node.control.categories);
   if (node.control?.kind !== 'switch') return undefined;
   return [...node.control.config.cases.map(({ id }) => id), 'default'];
 }
