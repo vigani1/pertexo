@@ -1,5 +1,9 @@
 import { AgentSetup } from '../builders/agent-setup';
-import { AGENT_STEP, CLASSIFY_STEP } from '@pertexo/workflow-model';
+import {
+  AGENT_STEP,
+  CLASSIFY_STEP,
+  readSchemaUnion,
+} from '@pertexo/workflow-model';
 import { ClassifyCategories } from '../builders/classify-categories';
 import { readClassifyCategories } from '../../../model/classify-categories';
 import { useInspectorSession } from '../use-session';
@@ -29,7 +33,6 @@ import {
   schemaPropertyCount,
   type SchemaFieldSpec,
 } from '../../../model/inspector/draft';
-import { readSchemaUnion } from '../../../model/inspector/schema-union';
 import {
   readParallelBranches,
   readSwitchCases,

@@ -3,7 +3,7 @@ import {
   type SchemaFieldSpec,
 } from '@/lib/schema-fields/fields';
 export type { SchemaFieldSpec } from '@/lib/schema-fields/fields';
-import { isRecord } from '@pertexo/workflow-model';
+import { isJsonObject } from '@pertexo/workflow-model';
 import type { WorkflowGraphContract } from '@pertexo/contracts';
 import { describeAmount, toStoredValue } from '@/lib/schema-fields/units';
 
@@ -42,21 +42,6 @@ export type FieldParseResult<Value> =
 /** How many of a schema's own properties the fields draw. */
 export function coveredProperties(fields: readonly SchemaFieldSpec[]): number {
   return new Set(fields.map((field) => field.parent?.key ?? field.key)).size;
-}
-
-/** The schema's own starting values: each property's `default`. */
-export function propertyDefaults(schema: unknown): NodeConfig {
-  const properties = isRecord(schema) ? schema.properties : undefined;
-  if (!isRecord(properties)) return {};
-  return Object.fromEntries(
-    Object.entries(properties).flatMap(([key, candidate]) =>
-      isRecord(candidate) &&
-      'default' in candidate &&
-      isJsonValue(candidate.default)
-        ? [[key, structuredClone(candidate.default) as NodeConfig[string]]]
-        : [],
-    ),
-  );
 }
 
 /**
@@ -174,18 +159,4 @@ function parseJson(value: string): unknown {
   } catch {
     return undefined;
   }
-}
-
-function isJsonObject(value: unknown): value is NodeConfig {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    return false;
-  return Object.values(value).every(isJsonValue);
-}
-
-function isJsonValue(value: unknown): boolean {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean')
-    return true;
-  if (typeof value === 'number') return Number.isFinite(value);
-  if (Array.isArray(value)) return value.every(isJsonValue);
-  return isJsonObject(value);
 }
