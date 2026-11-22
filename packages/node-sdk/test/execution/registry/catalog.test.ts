@@ -273,6 +273,33 @@ describe('node-sdk catalog contracts', () => {
     ).toBe(false);
   });
 
+  it('admits read-tool policy only for declared input and result fields', () => {
+    const inputSchema = generateSchemaDocument(
+      z.strictObject({ query: z.string() }),
+    );
+    const outputSchema = generateSchemaDocument(
+      z.strictObject({ rows: z.array(z.string()) }),
+    );
+    const agentTool = {
+      effect: 'read',
+      inputFields: ['query'],
+      result: { kind: 'fields', fields: ['rows'] },
+    };
+    const candidate = { ...manifest, inputSchema, outputSchema, agentTool };
+
+    expect(nodeManifestSchema.parse(candidate)).toMatchObject({ agentTool });
+    for (const invalid of [
+      { ...agentTool, effect: 'write' },
+      { ...agentTool, inputFields: ['table'] },
+      { ...agentTool, inputFields: ['query', 'query'] },
+      { ...agentTool, result: { kind: 'fields', fields: ['missing'] } },
+    ])
+      expect(
+        nodeManifestSchema.safeParse({ ...candidate, agentTool: invalid })
+          .success,
+      ).toBe(false);
+  });
+
   it('rejects recursively deep schema documents', () => {
     let deepSchema: Record<string, unknown> = {};
     for (let depth = 0; depth < 65; depth += 1)

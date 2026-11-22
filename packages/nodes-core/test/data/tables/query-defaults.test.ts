@@ -11,6 +11,23 @@ function inputSchemaOf(key: string) {
 }
 
 describe('data-table steps without a query', () => {
+  it('offers only Find rows as a read tool, with query as its model input', () => {
+    expect(
+      DATA_TABLE_DEFINITIONS.map(({ manifest }) => manifest)
+        .filter(({ agentTool }) => agentTool !== undefined)
+        .map(({ definition, agentTool }) => ({ definition, agentTool })),
+    ).toEqual([
+      {
+        definition: { key: 'core.table_find', version: 1 },
+        agentTool: {
+          effect: 'read',
+          inputFields: ['query'],
+          result: { kind: 'bounded_output' },
+        },
+      },
+    ]);
+  });
+
   it.each(['core.table_find', 'core.table_update', 'core.table_delete'])(
     '%s reads the data-table default page of rows from the start',
     (key) => {
