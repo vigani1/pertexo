@@ -1,8 +1,7 @@
 import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
 import { resolvePlatformNodeDefinition } from '@pertexo/node-catalog';
-import { isRecord } from '@pertexo/workflow-model';
+import { isRecord, startingConfig } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
-import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
 import { browserDefinitions } from '../../../../support/fixtures/node-catalog';
 
 const number = {

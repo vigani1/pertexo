@@ -1,3 +1,4 @@
+import { readSchemaUnion } from '@pertexo/workflow-model';
 import { CURATED_WORKFLOW_TEMPLATES } from '@pertexo/templates';
 import { isRecord } from '@pertexo/workflow-model';
 import { describe, expect, it } from 'vitest';
@@ -8,10 +9,7 @@ import {
   withFieldValue,
   type NodeConfig,
 } from '@/features/workflow-editor/model/inspector/draft';
-import {
-  readSchemaUnion,
-  unionFields,
-} from '@/features/workflow-editor/model/inspector/schema-union';
+import { unionFields } from '@/features/workflow-editor/model/inspector/schema-union';
 import { browserDefinitions } from '../../../../support/fixtures/node-catalog';
 
 type StoredStep = Readonly<{

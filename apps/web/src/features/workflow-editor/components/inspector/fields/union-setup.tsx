@@ -1,3 +1,5 @@
+import { withUnionChoice, type SchemaUnion } from '@pertexo/workflow-model';
+import { fieldLabel } from '@/lib/schema-fields/units';
 import { Field, FieldLabel } from '@/components/ui/field';
 import {
   coveredProperties,
@@ -11,8 +13,6 @@ import {
 import {
   unionFields,
   unionPropertyCount,
-  withUnionChoice,
-  type SchemaUnion,
 } from '../../../model/inspector/schema-union';
 import { useScratchForm } from '../use-draft-field';
 import { ChoiceSelect } from './choice-select';
@@ -37,13 +37,14 @@ export function SchemaUnionSetup({
   const choice = config[union.key];
   const fields = unionFields(union, choice);
   const id = fieldControlId(form.nodeId, union.key);
+  const label = union.title ?? fieldLabel(union.key);
   const hint = hasScratch
-    ? `Fix the unfinished edit before choosing another ${union.label.toLowerCase()}.`
+    ? `Fix the unfinished edit before choosing another ${label.toLowerCase()}.`
     : union.description;
   return (
     <>
       <Field>
-        <FieldLabel htmlFor={id}>{union.label}</FieldLabel>
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
         <ChoiceSelect
           value={typeof choice === 'string' ? choice : null}
           disabled={!form.editable || hasScratch}

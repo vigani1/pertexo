@@ -5,13 +5,13 @@ import {
   inspectWorkflowFailureRoutes,
   isClassifyDefinition,
   WORKFLOW_FAILURE_PORT,
+  startingConfig,
 } from '@pertexo/workflow-model';
 import type {
   NodeDefinitionCatalogItem,
   WorkflowGraphContract,
 } from '@pertexo/contracts';
 import type { Connection } from '@xyflow/react';
-import { startingConfig } from './starting-config';
 import {
   cardSize,
   makeRoomAround,

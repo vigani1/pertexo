@@ -1,13 +1,13 @@
+import { approvalConfigSchema } from '../../flow/pending-tasks/approval.js';
+import { formConfigSchema } from '../../triggers/forms/fields.js';
+import { inputRequestConfigSchema } from '../../flow/pending-tasks/input-request.js';
+import { isRecord } from '../../values/json/object.js';
+import type { WorkflowNode } from '../../graph/workflow-graph.schemas.js';
 import {
-  approvalConfigSchema,
-  formConfigSchema,
-  inputRequestConfigSchema,
-  isRecord,
-} from '@pertexo/workflow-model';
-import type { NodeDefinitionCatalogItem } from '@pertexo/contracts';
-import { readSchemaUnion, withUnionChoice } from '../inspector/schema-union';
-import { propertyDefaults } from '../inspector/draft';
-import type { WorkflowNode } from './scopes';
+  propertyDefaults,
+  readSchemaUnion,
+  withUnionChoice,
+} from './schema-union.js';
 
 type NodeConfig = WorkflowNode['config'];
 
@@ -20,8 +20,11 @@ type NodeConfig = WorkflowNode['config'];
  * its level when there's exactly one to join; a schema can't say that.
  */
 export function startingConfig(
-  definition: Pick<NodeDefinitionCatalogItem, 'definition' | 'configSchema'>,
-  levelNodes: readonly WorkflowNode[],
+  definition: {
+    readonly definition: Pick<WorkflowNode['definition'], 'key'>;
+    readonly configSchema: Readonly<Record<string, unknown>>;
+  },
+  levelNodes: readonly Pick<WorkflowNode, 'id' | 'definition'>[],
 ): NodeConfig {
   const { key } = definition.definition;
   if (key === 'core.form') return formConfigSchema.parse({});

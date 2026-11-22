@@ -1,4 +1,5 @@
 import {
+  propertyDefaults,
   AGENT_FIND_ROWS,
   AGENT_SEND_SLACK_MESSAGE,
   AGENT_SLACK_CONNECTION_SLOT,
@@ -13,7 +14,6 @@ import { formatCount } from '@/lib/format/count';
 import { FORMAT_LOCALE } from '@/lib/format/locale';
 import { formatTimeSpan } from '@/lib/format/time';
 import {
-  propertyDefaults,
   schemaFields,
   withConfigValue,
   type NodeConfig,

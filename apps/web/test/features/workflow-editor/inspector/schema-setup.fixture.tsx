@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { vi } from 'vitest';
 import { SchemaFieldList } from '@/features/workflow-editor/components/inspector/fields/schema-list';
 import { SchemaUnionSetup } from '@/features/workflow-editor/components/inspector/fields/union-setup';
-import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
+import { startingConfig } from '@pertexo/workflow-model';
 import {
   coveredProperties,
   schemaFields,
@@ -11,7 +11,7 @@ import {
   type NodeConfig,
 } from '@/features/workflow-editor/model/inspector/draft';
 import type { NodeFormApi } from '@/features/workflow-editor/model/inspector/node-form';
-import { readSchemaUnion } from '@/features/workflow-editor/model/inspector/schema-union';
+import { readSchemaUnion } from '@pertexo/workflow-model';
 import { browserDefinitions } from '../../../support/fixtures/node-catalog';
 
 const catalog = browserDefinitions();
