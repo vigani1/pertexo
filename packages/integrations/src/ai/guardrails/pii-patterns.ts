@@ -42,7 +42,25 @@ const PATTERNS: readonly Pattern[] = [
     candidates:
       /(?<![\p{L}\p{N}-])(?!(?:000|666|9\d{2})-)\d{3}-(?!00-)\d{2}-(?!0000)\d{4}(?![\p{L}\p{N}-])/gu,
   },
+  {
+    reason: 'pii.national_id',
+    // Canadian Social Insurance numbers use a checksum and grouped digits.
+    candidates:
+      /(?<![\p{L}\p{N}]|\d[ -])[1-79]\d{2}([ -])\d{3}\1\d{3}(?![\p{L}\p{N}]|[ -]\d)/gu,
+    valid: validLuhn,
+  },
 ];
+
+const DECIMAL_RADIX = 10;
+const LUHN_DOUBLE = 2;
+const IBAN_MODULUS = 97;
+const IBAN_CHECK_DIGITS_START = 2;
+const IBAN_HEADER_LENGTH = 4;
+const IBAN_GROUP_LENGTH = 4;
+const IBAN_MIN_CHECK_DIGITS = 2;
+const IBAN_MAX_CHECK_DIGITS = 98;
+const ASCII_ZERO = '0'.charCodeAt(0);
+const ASCII_LOWERCASE_A = 'a'.charCodeAt(0);
 
 export function countPii(text: string, reasons: GuardrailsDiagnostics): void {
   const ibans = countIbans(text);
@@ -50,8 +68,7 @@ export function countPii(text: string, reasons: GuardrailsDiagnostics): void {
   for (const { reason, candidates, valid } of PATTERNS) {
     let count = 0;
     for (const [candidate] of text.matchAll(candidates)) {
-      if (candidate !== undefined && (valid === undefined || valid(candidate)))
-        count += 1;
+      if (valid === undefined || valid(candidate)) count += 1;
     }
     if (count > 0) reasons[reason] = (reasons[reason] ?? 0) + count;
   }

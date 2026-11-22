@@ -8,7 +8,7 @@ import {
   guardrailsTermsSchema,
   type GuardrailsCheck,
 } from '@pertexo/integrations';
-import { type NodeConfig } from '../../../model/inspector/draft';
+import type { NodeConfig } from '../../../model/inspector/draft';
 import {
   fieldControlId,
   type NodeFormApi,
@@ -48,15 +48,11 @@ export function GuardrailsSetup({
               onCheckedChange={(checked) => {
                 if (!checked && kind === 'prohibited_terms')
                   form.reportScratch(termsField, false);
-                updateChecks(
-                  form,
-                  kind,
-                  checked
-                    ? kind === 'prohibited_terms'
-                      ? { kind, terms: [] }
-                      : { kind }
-                    : undefined,
-                );
+                const enabledCheck =
+                  kind === 'prohibited_terms'
+                    ? ({ kind, terms: [] } satisfies GuardrailsCheck)
+                    : { kind };
+                updateChecks(form, kind, checked ? enabledCheck : undefined);
               }}
             />
             {label}
@@ -110,12 +106,15 @@ function ProhibitedTerms({
             error: `Enter up to ${formatCount(GUARDRAILS_LIMITS.terms, 'term')}, each up to ${formatCount(GUARDRAILS_LIMITS.termCharacters, 'character')}.`,
           };
     },
-    commit: (next) =>
+    commit: (next) => {
       updateChecks(form, 'prohibited_terms', {
         kind: 'prohibited_terms',
         terms: [...next],
-      }),
-    onScratchChange: (scratch) => form.reportScratch(termsField, scratch),
+      });
+    },
+    onScratchChange: (scratch) => {
+      form.reportScratch(termsField, scratch);
+    },
   });
   return (
     <LabelledField
@@ -130,7 +129,9 @@ function ProhibitedTerms({
           rows={3}
           disabled={!form.editable}
           value={field.text}
-          onChange={(event) => field.change(event.target.value)}
+          onChange={(event) => {
+            field.change(event.target.value);
+          }}
           onBlur={field.blur}
         />
       )}

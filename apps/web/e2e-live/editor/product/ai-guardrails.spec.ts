@@ -81,7 +81,7 @@ test('configures Guardrails, routes both outcomes and shows the deciding categor
   for (const [port, message] of [
     ['Pass', 'A request for assistance.'],
     ['Fail', sentinel],
-  ]) {
+  ] as const) {
     await page.goto(editor);
     const run = await startSingleStep(page, { message });
     await waitForRun(page, workspace, run, 'succeeded');

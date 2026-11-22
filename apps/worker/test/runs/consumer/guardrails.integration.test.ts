@@ -16,7 +16,7 @@ import {
 const sentinel = 'f63-private-sentinel@example.test';
 
 describe.skipIf(!fixture.enabled)('published Guardrails workflow', () => {
-  beforeAll(fixture.setup, 60_000);
+  beforeAll(fixture.setup);
   afterAll(fixture.restoreServicesAndClose);
 
   it.each([
@@ -146,6 +146,5 @@ describe.skipIf(!fixture.enabled)('published Guardrails workflow', () => {
         await harness.close();
       }
     },
-    45_000,
   );
 });
