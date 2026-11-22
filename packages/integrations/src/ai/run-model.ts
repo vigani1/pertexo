@@ -12,10 +12,7 @@ import type { ModelClient } from './model-client.js';
 import { trackModelUsage } from './model-usage.js';
 import { modelRequest } from './model-request.js';
 import { modelFailure } from './model/model.errors.js';
-import {
-  MODEL_LIMITS,
-  type ModelConfig,
-} from './model/model.schemas.js';
+import { MODEL_LIMITS, type ModelConfig } from './model/model.schemas.js';
 import { compileModelOutputSchema } from './output-schema.js';
 import {
   createProviderBeforeDispatch,
@@ -36,96 +33,96 @@ export async function runModel(
   purpose: string,
   now: () => number,
 ) {
-    const context = attemptContext(invocation, config, now);
-    const validator =
-      config.mode === 'structured'
-        ? compileModelOutputSchema(config.outputSchema)
-        : undefined;
-    if (config.mode === 'structured' && validator === undefined)
-      throw failure('failed', 'configuration', { possiblyDispatched: false });
+  const context = attemptContext(invocation, config, now);
+  const validator =
+    config.mode === 'structured'
+      ? compileModelOutputSchema(config.outputSchema)
+      : undefined;
+  if (config.mode === 'structured' && validator === undefined)
+    throw failure('failed', 'configuration', { possiblyDispatched: false });
 
-    const {
-      runtime,
-      connections,
-      assertCurrent,
-      connectionId,
-      deadline,
-      signal,
-    } = context;
-    const identity = {
-      connectionId,
-      expectedProviderKey: MODEL_PROVIDER_KEY,
-      expectedAuthType: MODEL_AUTH_TYPE,
-    };
-    let resolved;
-    try {
-      resolved = await connections.resolve({
-        ...identity,
-        purpose,
-        signal,
-      });
-    } catch (error: unknown) {
-      if (context.timedOut())
-        throw modelFailure('provider_timeout', {
-          kind: 'retry',
-          possiblyDispatched: false,
-        });
-      throw connectionLookupFailure(error, { failure, runtime, signal });
-    }
-    const beforeDispatch = createProviderBeforeDispatch({
+  const {
+    runtime,
+    connections,
+    assertCurrent,
+    connectionId,
+    deadline,
+    signal,
+  } = context;
+  const identity = {
+    connectionId,
+    expectedProviderKey: MODEL_PROVIDER_KEY,
+    expectedAuthType: MODEL_AUTH_TYPE,
+  };
+  let resolved;
+  try {
+    resolved = await connections.resolve({
       ...identity,
-      secretVersionId: resolved.secretVersionId,
-      assertCurrent,
-      runtime: markingDispatchOnce(runtime),
+      purpose,
       signal,
     });
-    return withProviderCredential(
-      resolved,
-      {
-        connectionId,
-        providerKey: MODEL_PROVIDER_KEY,
-        authTypes: [MODEL_AUTH_TYPE],
-        schema: modelCredentialSchema,
-        refuse: () =>
-          modelFailure('credential_rejected', { possiblyDispatched: false }),
-      },
-      async (credential) => {
-        const usage = trackModelUsage(config.model, runtime.observeModelUsage);
-        const complete = (repair?: { answer: unknown }) => {
-          const timeoutMillis = deadline - now();
-          if (timeoutMillis <= 0)
-            throw modelFailure('provider_timeout', {
-              kind: 'retry',
-              possiblyDispatched: repair !== undefined,
-            });
-          return client.complete(
-            modelRequest(credential.endpoint, config, prompt, repair),
-            {
-              credential,
-              signal,
-              timeoutMillis,
-              usage,
-              earlierDispatch: repair !== undefined,
-              beforeDispatch,
-            },
-          );
-        };
-        const first = await complete();
-        if (validator === undefined && first.kind === 'text')
-          return { text: first.text };
-        const answer = candidate(first);
-        if (validator?.(answer)) return { data: answer };
-        const repaired = candidate(
-          await complete({
-            answer: first.kind === 'text' ? first.text : first.data,
-          }),
+  } catch (error: unknown) {
+    if (context.timedOut())
+      throw modelFailure('provider_timeout', {
+        kind: 'retry',
+        possiblyDispatched: false,
+      });
+    throw connectionLookupFailure(error, { failure, runtime, signal });
+  }
+  const beforeDispatch = createProviderBeforeDispatch({
+    ...identity,
+    secretVersionId: resolved.secretVersionId,
+    assertCurrent,
+    runtime: markingDispatchOnce(runtime),
+    signal,
+  });
+  return withProviderCredential(
+    resolved,
+    {
+      connectionId,
+      providerKey: MODEL_PROVIDER_KEY,
+      authTypes: [MODEL_AUTH_TYPE],
+      schema: modelCredentialSchema,
+      refuse: () =>
+        modelFailure('credential_rejected', { possiblyDispatched: false }),
+    },
+    async (credential) => {
+      const usage = trackModelUsage(config.model, runtime.observeModelUsage);
+      const complete = (repair?: { answer: unknown }) => {
+        const timeoutMillis = deadline - now();
+        if (timeoutMillis <= 0)
+          throw modelFailure('provider_timeout', {
+            kind: 'retry',
+            possiblyDispatched: repair !== undefined,
+          });
+        return client.complete(
+          modelRequest(credential.endpoint, config, prompt, repair),
+          {
+            credential,
+            signal,
+            timeoutMillis,
+            usage,
+            earlierDispatch: repair !== undefined,
+            beforeDispatch,
+          },
         );
-        if (validator?.(repaired)) return { data: repaired };
-        throw modelFailure('output_schema_invalid', {
-          possiblyDispatched: true,
-        });
-      },
-    );
+      };
+      const first = await complete();
+      if (validator === undefined && first.kind === 'text')
+        return { text: first.text };
+      const answer = candidate(first);
+      if (validator?.(answer)) return { data: answer };
+      const repaired = candidate(
+        await complete({
+          answer: first.kind === 'text' ? first.text : first.data,
+        }),
+      );
+      if (validator?.(repaired)) return { data: repaired };
+      throw modelFailure('output_schema_invalid', {
+        possiblyDispatched: true,
+      });
+    },
+  );
 }
 
 function attemptContext(
