@@ -145,3 +145,19 @@ separate trust and isolation decision.
 - A later community installer could supply additional reviewed modules at the
   same catalog seam. Package installation, signing, trust, admin opt-in and
   third-party code isolation are outside F57.
+
+## Connection lookups
+
+A built-in integration module may declare named lookups. Each lookup has a
+key, an input schema for any selection context, and a bounded result of
+items with a value, label, optional description and optional attachment.
+Step setting metadata names the lookup, its connection slot and, when
+applicable, the sibling setting that receives the selected attachment.
+
+The API authorizes a lookup as use of the selected connection in the
+workspace. It rate limits requests per workspace and actor. The lookup
+runs through the connection runtime and the injected secure HTTP client,
+verifies the current credential on every dispatch, applies the HTTP
+Request address policy and denies redirects. It bounds time, bytes and
+result items. It never invokes a side-effecting operation or produces
+workflow data. Community packages are excluded under [ADR 099](099-community-integration-packages.md).
