@@ -147,6 +147,7 @@ function inlineCandidate(
   if (
     node === undefined ||
     invocation === undefined ||
+    invocation.agentWork !== undefined ||
     !options.registry.canExecuteInline(node.definition) ||
     (input.test !== undefined &&
       testStepDisposition(node, input.test).kind !== 'execute')

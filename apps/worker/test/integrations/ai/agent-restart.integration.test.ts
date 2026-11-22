@@ -537,18 +537,34 @@ describe('Agent restart', () => {
     ]);
   });
 
-  it('uses the committed proposal after a crash before Find rows runs', async () => {
+  it('commits the proposal with an inline sibling ready and resumes it after a crash', async () => {
     await using run = await start([proposal, finalAnswer], {
       pause: 'proposal',
+      shape: 'sibling-set',
     });
     await run.worker.waitForLog(/paused: proposal/u, timeoutMillis);
     expect(await run.checkpoint()).toMatchObject({
       phase: { kind: 'proposed_call' },
     });
+    expect(
+      await fixture.workerQuery(
+        `select status from app.node_runs
+         where workflow_run_id=$1 and node_id='sibling'`,
+        [run.id],
+      ),
+    ).toEqual([{ status: 'ready' }]);
     expect(await run.attempts()).toMatchObject([{ status: 'succeeded' }]);
     expect(run.calls).toHaveLength(1);
     await run.restart();
     await assertOneResult(run);
+    expect(
+      await fixture.workerQuery(
+        `select a.fence_token::text as fence_token from app.node_attempts a
+         join app.node_runs n on n.id=a.node_run_id
+         where n.workflow_run_id=$1 and n.node_id='sibling'`,
+        [run.id],
+      ),
+    ).toEqual([{ fence_token: '0' }]);
   });
 
   it('reclaims the dispatched safe Find rows attempt without another proposal', async () => {
@@ -702,6 +718,7 @@ async function start(
     inputRate?: number;
     deferWorker?: boolean;
     write?: Parameters<typeof startAgentRun>[2];
+    shape?: Parameters<typeof startAgentRun>[3];
     slackUrl?: string;
   } = {},
 ) {
@@ -736,6 +753,7 @@ async function start(
       provider.baseUrl,
       new ConnectionEnvelopeEncryption(new ContextKeyProvider(key)),
       options.write,
+      options.shape,
     );
     if (options.deferWorker !== true) worker.startOnce();
     return {
