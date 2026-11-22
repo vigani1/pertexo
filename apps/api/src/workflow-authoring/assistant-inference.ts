@@ -14,7 +14,7 @@ import {
 } from '@pertexo/integrations/server';
 import type { ModelUsage } from '@pertexo/node-sdk';
 import {
-  NodeExecutorFailure,
+  type NodeExecutorFailure,
   ProviderCredentialInvalidError,
 } from '@pertexo/node-sdk/server';
 import type { ConnectionLookupDependencies } from '../connections/lookups/lookup-options.service.js';
