@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const guardrailsReasonSchema = z.enum([
+const guardrailsReasonSchema = z.enum([
   'pii.email',
   'pii.phone',
   'pii.payment_card',
