@@ -400,9 +400,11 @@ jobs:
       toJSON(fromJSON(needs.changes.outputs.browser).include) != '[]'
     # Keep browser OS dependencies stable across ubuntu-latest image rollouts.
     runs-on: ubuntu-24.04
-    # Full runs on main measured a mocked shard at 9.7 to 13.3 minutes with
-    # setup and live at up to 14.4; one budget for both.
-    timeout-minutes: 16
+    # Full runs measured a mocked shard at 9.7 to 13.3 minutes with setup.
+    # Live shards balance about 18 minutes of journeys at two at a time; on
+    # slow runners they reached the 16-minute limit with every journey passing
+    # (2026-11-22, journeys at up to twice their median). One budget for both.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.changes.outputs.browser) }}
