@@ -15,9 +15,9 @@ export function useInspectorSession() {
     () => ({ ...workspaceScope, workflowId }),
     [workspaceScope, workflowId],
   );
-  const channelLookup = useMemo(
+  const connectionLookup = useMemo(
     () => ({ ...workspaceScope, enabled }),
     [workspaceScope, enabled],
   );
-  return { ...catalog, workspaceScope, callScope, channelLookup };
+  return { ...catalog, workspaceScope, callScope, connectionLookup };
 }

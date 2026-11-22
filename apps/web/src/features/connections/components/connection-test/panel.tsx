@@ -30,6 +30,7 @@ import { TestThread } from './thread';
 type TestField = 'url' | 'acknowledged';
 
 const INTRO = {
+  lookup: 'Pertexo reads the available options using this connection.',
   postgres: 'Pertexo connects and runs a simple read-only query.',
   signing:
     'Pertexo checks it can open this key locally. Nothing is sent to another service.',
