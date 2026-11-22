@@ -78,11 +78,19 @@ export async function consumeFinalResponse<Body>(
     const textual = isTextualContentType(selectedHeaders['content-type'] ?? '');
     const bodyEncoding = textual ? ('utf8' as const) : ('base64' as const);
     const finalUrl = redactor.text(safeFinalUrl(state.url));
+    const privateHeader =
+      request.privateResponseHeader === undefined
+        ? undefined
+        : readPrivateHeader(
+            response.headers[request.privateResponseHeader],
+            redactor,
+          );
     const body = await raceWithSignal(
       consume(
         Object.freeze({
           status: response.status,
           headers: selectedHeaders,
+          ...(privateHeader === undefined ? {} : { privateHeader }),
           ...(request.navigation === undefined
             ? {}
             : {
@@ -140,6 +148,23 @@ export async function collectBody(
     offset += chunk.byteLength;
   }
   return result;
+}
+
+function readPrivateHeader(
+  value: string | readonly string[] | undefined,
+  redactor: ResponseRedactor,
+) {
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== 'string' ||
+    value.length > MAX_KEPT_HEADER_LENGTH ||
+    redactor.text(value) !== value
+  )
+    throw failure(SECURE_HTTP_ERROR_CODE.responseSensitive, {
+      possiblyDispatched: true,
+      ambiguous: false,
+    });
+  return value;
 }
 
 function selectResponseHeaders(
