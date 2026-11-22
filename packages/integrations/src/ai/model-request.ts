@@ -4,7 +4,7 @@ import type { ModelConfig } from './model/model.schemas.js';
 
 import type { AgentModelContext } from './agent/agent-request.js';
 
-export type RejectedAnswer = Readonly<{ answer: unknown }>;
+type RejectedAnswer = Readonly<{ answer: unknown }>;
 
 export type ModelRequest = Readonly<{
   endpoint: ModelCredential['endpoint'];
@@ -24,8 +24,13 @@ export function modelRequest(
   endpoint: ModelRequest['endpoint'],
   config: ModelConfig,
   prompt: string,
-  repair?: RejectedAnswer,
-  structuredResponse?: 'prompt',
+  {
+    repair,
+    structuredResponse,
+  }: Readonly<{
+    repair: RejectedAnswer | undefined;
+    structuredResponse: 'prompt' | undefined;
+  }>,
 ): ModelRequest {
   const maxTokens = config.maxOutputTokens ?? MODEL_LIMITS.defaultOutputTokens;
   if (config.mode === 'text') return { endpoint, config, prompt, maxTokens };

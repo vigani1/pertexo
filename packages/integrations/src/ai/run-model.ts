@@ -203,13 +203,10 @@ async function withModelAttempt<Result>(
           });
         return client.complete(
           agent === undefined || config.mode !== 'text'
-            ? modelRequest(
-                credential.endpoint,
-                config,
-                prompt,
+            ? modelRequest(credential.endpoint, config, prompt, {
                 repair,
                 structuredResponse,
-              )
+              })
             : {
                 endpoint: credential.endpoint,
                 config,
