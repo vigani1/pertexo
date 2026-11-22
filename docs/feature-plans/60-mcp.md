@@ -89,7 +89,7 @@ entry point. Own transport-neutral exposure schemas and declared routes in
 workflow or run tables. Use `apps/web/src/features/workflow-settings/` for
 exposure and the existing API token and run UI. The client lives under
 `packages/integrations/src/mcp/`, with one registration in
-`packages/node-catalog/src/integration-modules.ts`. The workflow editor uses
+`packages/integrations/src/modules.ts`. The workflow editor uses
 the projected connection and step forms. No new package or entry point.
 
 ## Implementation slices
