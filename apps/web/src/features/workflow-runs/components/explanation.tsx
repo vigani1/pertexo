@@ -1,3 +1,4 @@
+import { AssistantDisclosure } from '@/components/patterns/actions/assistant-disclosure';
 import type {
   explainFailedRunResultSchema,
   explanationDisclosureSchema,
@@ -9,7 +10,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogTitle,
   DialogTrigger,
@@ -155,18 +155,11 @@ function ExplanationBody({
     );
   if (destination?.kind !== 'ready') return null;
   return (
-    <DialogDescription>
-      <span className="block">
-        Send this request to <strong>{destination.connectionName}</strong> at{' '}
-        <strong>{destination.host}</strong> using{' '}
-        <strong>{destination.model}</strong>.
-      </span>
-      <span className="mt-3 block">
-        The request includes the workflow version, run status and trigger type,
-        recent step IDs, labels, types and statuses, the failed step and the
-        safe error codes.
-      </span>
-    </DialogDescription>
+    <AssistantDisclosure destination={destination}>
+      The request includes the workflow version, run status and trigger type,
+      recent step IDs, labels, types and statuses, the failed step and the safe
+      error codes.
+    </AssistantDisclosure>
   );
 }
 
