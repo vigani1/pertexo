@@ -1,9 +1,5 @@
 import { generateSchemaDocument } from '@pertexo/node-sdk';
-import {
-  compareOrdinal,
-  isAgentDefinition,
-  isRecord,
-} from '@pertexo/workflow-model';
+import { compareOrdinal, isRecord } from '@pertexo/workflow-model';
 import {
   INTEGRATION_MODULES,
   type ConnectionDefinition,
@@ -106,16 +102,8 @@ export function registerIntegrationModules(
   };
 }
 
-// Keep Agent out of platform admission until recovery and inspection are qualified.
-export const INTEGRATION_MODULE_REGISTRY = registerIntegrationModules(
-  INTEGRATION_MODULES.map((module: IntegrationModule) => ({
-    ...module,
-    steps: module.steps.filter(
-      ({ registration: { manifest } }) =>
-        !isAgentDefinition(manifest.definition),
-    ),
-  })),
-);
+export const INTEGRATION_MODULE_REGISTRY =
+  registerIntegrationModules(INTEGRATION_MODULES);
 
 type RegisteredConnection = ConnectionDefinition &
   Readonly<{

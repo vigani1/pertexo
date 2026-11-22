@@ -13,6 +13,22 @@ import path from 'node:path';
 import { WorkerEnvironmentValueError } from '../../src/config/worker-configuration.errors.js';
 
 describe('parseWorkerConfig', () => {
+  it('requires explicitly configured rates even for unmetered Agent models', () => {
+    expect(parseWorkerConfig(requiredEnvironment).agentModelRates).toEqual({});
+    expect(
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        AGENT_MODEL_RATES: '{"local-model":{"input":0,"output":0}}',
+      }).agentModelRates,
+    ).toEqual({ 'local-model': { input: 0, output: 0 } });
+    expect(() =>
+      parseWorkerConfig({
+        ...requiredEnvironment,
+        AGENT_MODEL_RATES: '{"local-model":{"input":0}}',
+      }),
+    ).toThrow('Invalid worker configuration');
+  });
+
   it('runs inline steps by default and accepts an explicit opt-out', () => {
     expect(parseWorkerConfig(requiredEnvironment).coordinator.inlineSteps).toBe(
       true,

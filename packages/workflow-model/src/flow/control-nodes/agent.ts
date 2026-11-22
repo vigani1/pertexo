@@ -30,6 +30,11 @@ export const AGENT_LIMITS = Object.freeze({
   timeoutMillis: 120_000,
 });
 
+export const agentMappedInputSchema = z.strictObject({
+  prompt: z.string().min(1).meta({ title: 'Task' }),
+  input: boundedNodeJsonRecordSchema.optional().meta({ title: 'Input' }),
+});
+
 const alias = z
   .string()
   .min(1)
@@ -37,14 +42,20 @@ const alias = z
   .regex(/^[A-Za-z0-9_-]+$/u);
 
 export const agentConfigSchema = z.strictObject({
-  model: z.string().trim().min(1).max(MODEL_IDENTIFIER_MAX_CHARACTERS),
+  model: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MODEL_IDENTIFIER_MAX_CHARACTERS)
+    .meta({ title: 'Model identifier' }),
   tool: z.strictObject({
-    alias,
+    alias: alias.meta({ title: 'Tool alias' }),
     description: z
       .string()
       .trim()
       .min(1)
-      .max(AGENT_TOOL_LIMITS.descriptionCharacters),
+      .max(AGENT_TOOL_LIMITS.descriptionCharacters)
+      .meta({ title: 'Tool description' }),
     definition: z.strictObject({
       key: z.literal(AGENT_FIND_ROWS.key),
       version: z.literal(AGENT_FIND_ROWS.version),
@@ -63,8 +74,10 @@ export const agentToolCallSchema = z.strictObject({
 
 export type AgentToolCall = z.output<typeof agentToolCallSchema>;
 
+export const agentFinalOutputSchema = z.strictObject({ text: z.string() });
+
 export const agentTurnOutputSchema = z.union([
-  z.strictObject({ text: z.string() }),
+  agentFinalOutputSchema,
   z.strictObject({ proposal: agentToolCallSchema }),
 ]);
 

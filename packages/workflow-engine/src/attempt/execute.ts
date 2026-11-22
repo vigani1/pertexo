@@ -52,7 +52,9 @@ export async function executeNodeAttempt(
       ? mapped
       : resolveAgentAttemptInput(input, mapped);
   // Recorded before the executor runs, so failed attempts keep it (ADR 052).
-  await input.onInputResolved?.(executionInput);
+  await input.onInputResolved?.(
+    input.agent?.identity.work.kind === 'model_turn' ? mapped : executionInput,
+  );
   assertNotAborted(input.signal);
   let result: NodeExecutionResult;
   try {

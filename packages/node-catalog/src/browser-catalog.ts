@@ -3,11 +3,16 @@ import { INTEGRATION_MODULE_REGISTRY } from './integration-modules.js';
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
 import {
   approvalOutputSchema,
+  agentMappedInputSchema,
+  agentFinalOutputSchema,
+  isAgentDefinition,
   formSubmissionSchema,
 } from '@pertexo/workflow-model';
 
 import { PLATFORM_NODE_CATALOG } from './catalog.js';
 
+const agentBrowserInputSchema = generateSchemaDocument(agentMappedInputSchema);
+const agentBrowserOutputSchema = generateSchemaDocument(agentFinalOutputSchema);
 const inputBrowserOutputSchema = generateSchemaDocument(formSubmissionSchema);
 const approvalBrowserOutputSchema =
   generateSchemaDocument(approvalOutputSchema);
@@ -75,7 +80,9 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
         ...(presentation === undefined ? {} : { presentation }),
         configVersion: projection.configVersion,
         configSchema: projection.configSchema,
-        inputSchema: projection.inputSchema,
+        inputSchema: isAgentDefinition(projection.definition)
+          ? agentBrowserInputSchema
+          : projection.inputSchema,
         // The executor declares a wait; mappings see only the final human result.
         outputSchema: browserOutputSchema(projection),
         ...(projection.outputVariant === undefined
@@ -114,6 +121,7 @@ export function platformBrowserNodeDefinitionCatalog(): PlatformNodeDefinitionBr
 function browserOutputSchema(
   projection: Pick<NodeManifest, 'definition' | 'outputSchema'>,
 ): NodeManifest['outputSchema'] {
+  if (isAgentDefinition(projection.definition)) return agentBrowserOutputSchema;
   if (
     projection.definition.key === 'core.approval' &&
     projection.definition.version === 1

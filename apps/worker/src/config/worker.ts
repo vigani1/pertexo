@@ -11,6 +11,8 @@ import path from 'node:path';
 import { parseCodeSettings, codeRunnerSocketPath } from '@pertexo/node-sdk';
 import type { WorkerCodeRunnerConfig } from '../attempts/code/client.js';
 import { z } from 'zod';
+import { AGENT_LIMITS } from '@pertexo/workflow-model';
+import { MODEL_IDENTIFIER_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import {
   parseArtifactStoreConfig,
   type ArtifactStoreConfig,
@@ -44,9 +46,17 @@ import {
 // Linux's PATH_MAX.
 const PATH_MAX_CHARACTERS = 4_096;
 
+const agentTokenRate = z.int().min(0).max(AGENT_LIMITS.costNanoDollars);
+const agentModelRatesSchema = z.record(
+  z.string().min(1).max(MODEL_IDENTIFIER_MAX_CHARACTERS),
+  z.strictObject({ input: agentTokenRate, output: agentTokenRate }),
+);
+type AgentModelRates = z.output<typeof agentModelRatesSchema>;
+
 export type WorkerConfig = Readonly<
   z.output<typeof workerConfigSchema> & {
     publicWebOrigin?: string;
+    agentModelRates: AgentModelRates;
     callbacks?: CallbackKeyConfig;
     artifactStore: ArtifactStoreConfig;
     artifactScratchDirectory: string;
@@ -145,6 +155,7 @@ export function parseWorkerConfig(
     );
     return Object.freeze({
       ...result.data,
+      agentModelRates: parseAgentModelRates(raw.AGENT_MODEL_RATES),
       ...(publicWebOrigin === undefined ? {} : { publicWebOrigin }),
       ...(callbacks === undefined ? {} : { callbacks }),
       smtpPolicy: {
@@ -185,6 +196,18 @@ export function parseWorkerConfig(
     throw new WorkerConfigurationError('Invalid worker configuration', {
       cause: error,
     });
+  }
+}
+
+function parseAgentModelRates(value: string | undefined): AgentModelRates {
+  if (value === undefined) return {};
+  try {
+    return agentModelRatesSchema.parse(JSON.parse(value) as unknown);
+  } catch (cause) {
+    throw new WorkerEnvironmentValueError(
+      'AGENT_MODEL_RATES must map model identifiers to input and output rates in nano-dollars per token',
+      { cause },
+    );
   }
 }
 

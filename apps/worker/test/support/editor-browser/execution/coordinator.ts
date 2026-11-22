@@ -7,7 +7,11 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import { curatedCoordinatorConsumerFactory } from '../../curated-templates/coordinator-diagnostic.js';
 
 import type { EditorWorkerExecution } from './editor-execution.types.js';
-import { errorWorkflowCase, curatedTemplates } from './environment.js';
+import {
+  errorWorkflowCase,
+  curatedTemplates,
+  productCase,
+} from './environment.js';
 import { testCoordinatorRuntime } from '../../runtime-factories.js';
 
 export async function startEditorCoordinator(context: EditorWorkerExecution) {
@@ -47,6 +51,14 @@ export async function startEditorCoordinator(context: EditorWorkerExecution) {
       database,
       maximumAdmissions: 10,
       redisUrl: namespace.redisUrl,
+      ...(productCase
+        ? {
+            agentModelRates: (model: string) =>
+              model === 'local-extraction-model'
+                ? { input: 0, output: 0 }
+                : undefined,
+          }
+        : {}),
     },
     curatedTemplates
       ? {
@@ -64,6 +76,14 @@ export async function startEditorCoordinator(context: EditorWorkerExecution) {
       maintenanceDatabase: maintenanceConfig(database),
       database,
       redisUrl: namespace.redisUrl,
+      ...(productCase
+        ? {
+            agentModelRates: (model: string) =>
+              model === 'local-extraction-model'
+                ? { input: 0, output: 0 }
+                : undefined,
+          }
+        : {}),
     });
     resources.maintenance = maintenance;
     await maintenance.consumer.waitUntilReady(5_000);

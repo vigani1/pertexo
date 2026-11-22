@@ -38,6 +38,10 @@ export function coordinatorRuntimeProvider(
         dueWakeupPollIntervalMillis:
           config.coordinator.dueWakeupPollIntervalMillis,
         inlineSteps: config.coordinator.inlineSteps,
+        agentModelRates: (model) =>
+          Object.hasOwn(config.agentModelRates, model)
+            ? config.agentModelRates[model]
+            : undefined,
         maximumAdmissions: config.coordinator.maximumAdmissions,
         observer,
         redisUrl: config.redisUrl,

@@ -76,6 +76,9 @@ export type CoordinatorRuntimeOptions = Readonly<{
   dueWakeupPollIntervalMillis?: number;
   maximumAdmissions: number;
   inlineSteps?: boolean;
+  agentModelRates?: NonNullable<
+    Parameters<typeof advanceRun>[0]['agentModelRates']
+  >;
   observer?: QueueConsumerObserver;
   redisUrl: string;
   logger?: StructuredLogger;
@@ -96,6 +99,24 @@ export type CoordinatorCompositionFactories = Readonly<{
   telemetry: typeof createCoordinatorTelemetry;
   traceRunner: typeof createQueueTraceRunner;
 }>;
+
+function inlineExecution(): NonNullable<
+  Parameters<typeof advanceRun>[0]['inline']
+> {
+  return {
+    registry: createPlatformInlineRegistry(),
+    normalizeFailure(error: unknown) {
+      const failure = nodeFailureCompletion(error);
+      if (failure === undefined) throw error;
+      const {
+        status: _status,
+        possiblyDispatched: _possiblyDispatched,
+        ...facts
+      } = failure;
+      return facts;
+    },
+  };
+}
 
 const productionFactories: CoordinatorCompositionFactories = {
   advance: (dependencies) => (input) => advanceRun(dependencies, input),
@@ -237,22 +258,11 @@ export async function createCoordinatorRuntime(
           verification: { catalog },
           maximumAdmissions: options.maximumAdmissions,
           expressionEvaluator,
+          ...(options.agentModelRates === undefined
+            ? {}
+            : { agentModelRates: options.agentModelRates }),
           ...(options.inlineSteps === true
-            ? {
-                inline: {
-                  registry: createPlatformInlineRegistry(),
-                  normalizeFailure(error: unknown) {
-                    const failure = nodeFailureCompletion(error);
-                    if (failure === undefined) throw error;
-                    const {
-                      status: _status,
-                      possiblyDispatched: _possiblyDispatched,
-                      ...facts
-                    } = failure;
-                    return facts;
-                  },
-                },
-              }
+            ? { inline: inlineExecution() }
             : {}),
         }),
       ),
