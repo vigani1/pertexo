@@ -1,3 +1,4 @@
+import type { WorkflowCallSummary } from '@pertexo/contracts';
 import { AgentActivity } from './timeline/agent-activity';
 import { AGENT_STEP, CLASSIFY_STEP } from '@pertexo/workflow-model';
 import { StepCodeDiagnostics, StepModelUsage } from './run-diagnostics';
@@ -51,7 +52,9 @@ export function RunStepDetails({
   nowMs,
   scope,
   onSelectStep,
+  calls,
 }: Readonly<{
+  calls?: readonly WorkflowCallSummary[] | undefined;
   onSelectStep?: (key: string) => void;
   row: RunTimelineRow | undefined;
   rows: readonly RunTimelineRow[];
@@ -90,6 +93,7 @@ export function RunStepDetails({
       {onSelectStep === undefined ? null : (
         <AgentActivity
           parentKey={row.key}
+          {...(calls === undefined ? {} : { calls })}
           rows={rows}
           nowMs={nowMs}
           scope={scope}

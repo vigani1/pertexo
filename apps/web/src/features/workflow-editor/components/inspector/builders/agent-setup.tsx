@@ -5,6 +5,7 @@ import {
   AGENT_LIMITS,
   AGENT_TOOL_LIMITS,
   isRecord,
+  WORKFLOW_CALL,
 } from '@pertexo/workflow-model';
 import { formatByteSize } from '@pertexo/node-sdk';
 import { Disclosure } from '@/components/ui/disclosure';
@@ -28,6 +29,7 @@ import { DataTableSetup } from './table-setup';
 import { ChoiceSelect } from '../fields/choice-select';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { AGENT_TOOLS, configuredAgentTool } from '../../../model/agent-tool';
+import { AgentCallableSetup } from './agent-callable-setup';
 import { AgentApprovalSetup } from './agent-approval-setup';
 
 const costLimit = new Intl.NumberFormat(FORMAT_LOCALE, {
@@ -98,6 +100,7 @@ function AgentToolSetup({
   const { callScope, definitions } = useInspectorSession();
   const selected = configuredAgentTool(config);
   const slack = selected.definition.key === AGENT_SEND_SLACK_MESSAGE.key;
+  const callable = selected.definition.key === WORKFLOW_CALL.key;
   const tool = isRecord(config.tool) ? (config.tool as NodeConfig) : {};
   const toolForm = nestedConfigForm(form, 'tool');
   const toolConfig = isRecord(tool.config) ? (tool.config as NodeConfig) : {};
@@ -127,10 +130,17 @@ function AgentToolSetup({
                 : {};
               const { [AGENT_SLACK_CONNECTION_SLOT]: _old, ...connectionRefs } =
                 node.connectionRefs;
-              const { writePermission: _permission, ...identity } = current;
+              const {
+                writePermission: _permission,
+                config: previous,
+                ...identity
+              } = current;
               const nextSlack =
                 next.definition.key === AGENT_SEND_SLACK_MESSAGE.key;
-              let config = slack ? {} : current.config;
+              let config =
+                slack || callable || next.definition.key === WORKFLOW_CALL.key
+                  ? {}
+                  : previous;
               if (nextSlack)
                 config = propertyDefaults(
                   definitions.find(
@@ -166,7 +176,15 @@ function AgentToolSetup({
           form={targetForm}
           jsonOnlySettings={false}
         />
-      ) : (
+      ) : null}
+      {callable ? (
+        <AgentCallableSetup
+          scope={callScope}
+          config={toolConfig}
+          form={targetForm}
+        />
+      ) : null}
+      {!slack && !callable ? (
         <DataTableSetup
           scope={callScope}
           config={toolConfig}
@@ -196,7 +214,7 @@ function AgentToolSetup({
             ? 'The model can propose filters and sorting for the selected table.'
             : 'The model supplies values for one row in the selected table.'}
         </DataTableSetup>
-      )}
+      ) : null}
       {selected.definition.key === AGENT_FIND_ROWS.key ? null : (
         <AgentApprovalSetup scope={callScope} form={form} tool={tool} />
       )}
