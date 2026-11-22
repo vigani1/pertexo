@@ -276,13 +276,14 @@ function coordinateObservations({
   const controlDeadline =
     checkpoint.deadlineExpired ||
     persistedObservations.deadlineExpiration !== undefined;
+  const agentToolFor = (nodeId: string) =>
+    executableAgentTool(input.executable, nodeId);
   const resolvedFailures = resolveAttemptFailures({
     runId: input.runId,
     failures: persistedObservations.attemptFailures,
     invocations: invocationsByKey,
     nodes: nodesById,
-    agentToolFor: (nodeId) =>
-      executableAgentTool(input.executable, nodeId)?.node,
+    agentToolFor: (nodeId) => agentToolFor(nodeId)?.node,
     retryPolicyReference: input.executable.envelope.runtimePolicies.retry,
     controlCanceled,
     controlDeadline,
@@ -300,16 +301,13 @@ function coordinateObservations({
     successfulOutcomes,
     checkpoint,
     declarationNodes,
-    (nodeId) => executableAgentTool(input.executable, nodeId),
+    agentToolFor,
   );
   const callOutcomes = callOutcomeObservations(
     input.callOutcomes,
     checkpoint,
     nodesById,
-    {
-      graph: input.executable.envelope.graph,
-      agentToolFor: (nodeId) => executableAgentTool(input.executable, nodeId),
-    },
+    { graph: input.executable.envelope.graph, agentToolFor },
   );
   const tasks = taskDeclarationObservations(
     completedOutputItems,
