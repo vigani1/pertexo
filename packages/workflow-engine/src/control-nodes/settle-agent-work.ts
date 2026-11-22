@@ -28,7 +28,9 @@ export function settleAgentModelTurn(
 ): AgentWorkDecision {
   if (agent.phase.kind !== 'model_turn')
     return { kind: 'refused', reason: 'agent.stale_receipt' };
-  if (receipt.kind === 'final')
+  if (receipt.kind === 'final') {
+    if (hasConsumedReceipt(agent, receipt.output))
+      return { kind: 'refused', reason: 'agent.stale_receipt' };
     return {
       kind: 'continue',
       agent: {
@@ -36,6 +38,7 @@ export function settleAgentModelTurn(
         phase: { kind: 'completion', output: receipt.output },
       },
     };
+  }
   if (receipt.call.name !== toolAlias)
     return { kind: 'refused', reason: 'agent.tool_unavailable' };
   const ordinal = (agent.history?.length ?? 0) + 1;
@@ -43,6 +46,8 @@ export function settleAgentModelTurn(
     return { kind: 'refused', reason: 'agent.tool_limit' };
   if (agent.turn >= AGENT_LIMITS.turns)
     return { kind: 'refused', reason: 'agent.turn_limit' };
+  if (hasConsumedReceipt(agent, receipt.output))
+    return { kind: 'refused', reason: 'agent.stale_receipt' };
   return {
     kind: 'continue',
     agent: {
@@ -56,7 +61,11 @@ export function settleAgentReadTool(
   agent: AgentContinuation,
   output: AgentAttemptReceipt,
 ): AgentWorkDecision {
-  if (agent.phase.kind !== 'running_tool')
+  if (
+    agent.phase.kind !== 'running_tool' ||
+    agent.phase.proposal.attemptId === output.attemptId ||
+    hasConsumedReceipt(agent, output)
+  )
     return { kind: 'refused', reason: 'agent.stale_receipt' };
   if (agent.turn >= AGENT_LIMITS.turns)
     return { kind: 'refused', reason: 'agent.turn_limit' };
@@ -72,4 +81,17 @@ export function settleAgentReadTool(
       phase: { kind: 'model_turn' },
     },
   };
+}
+
+function hasConsumedReceipt(
+  agent: AgentContinuation,
+  receipt: AgentAttemptReceipt,
+): boolean {
+  return (
+    agent.history?.some(
+      ({ proposal, output }) =>
+        proposal.attemptId === receipt.attemptId ||
+        output.attemptId === receipt.attemptId,
+    ) ?? false
+  );
 }
