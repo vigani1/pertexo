@@ -4,7 +4,7 @@ import {
 } from '@pertexo/node-sdk';
 import { z } from 'zod';
 import { MCP_LIMITS } from '../mcp-limits.js';
-import { toolOutputValidator } from '../list-tools.js';
+import type { toolOutputValidator } from '../list-tools.js';
 import { callToolFailure } from './call-tool.errors.js';
 
 const resultSchema = z.object({
