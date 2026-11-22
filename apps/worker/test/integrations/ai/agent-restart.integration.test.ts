@@ -108,6 +108,198 @@ describe('Agent callable workflows', () => {
     });
     expect(callableToolMessages(run)).toEqual(['Order a!']);
   });
+
+  it('bounds callable results before adding them to model history', async () => {
+    const child = childGraph();
+    if (child.callable === undefined)
+      throw new Error('Fixture child has no contract');
+    await using run = await start(
+      [modelProposal({ name: 'Order a' }), finalAnswer],
+      {
+        write: {
+          child: {
+            ...child,
+            callable: {
+              ...child.callable,
+              resultType: {
+                type: 'object',
+                properties: [
+                  {
+                    name: 'rows',
+                    required: true,
+                    valueType: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      maxItems: 1,
+                    },
+                  },
+                  {
+                    name: 'summary',
+                    required: true,
+                    valueType: { type: 'string' },
+                  },
+                ],
+              },
+              result: {
+                kind: 'literal',
+                value: {
+                  rows: [],
+                  summary: 'x'.repeat(AGENT_TOOL_LIMITS.resultBytes),
+                },
+              },
+            },
+          },
+        },
+      },
+    );
+    expect(await run.end()).toMatchObject({ status: 'succeeded' });
+    expect(await run.children()).toMatchObject([{ status: 'succeeded' }]);
+    expect(callableToolMessages(run)).toEqual([{ truncated: true }]);
+  });
+
+  it('reports a failed callable child to the model as a typed outcome', async () => {
+    const child = childGraph();
+    if (child.callable === undefined)
+      throw new Error('Fixture child has no contract');
+    await using run = await start(
+      [modelProposal({ name: 'Order a' }), finalAnswer],
+      {
+        write: {
+          child: {
+            ...child,
+            callable: {
+              ...child.callable,
+              result: { kind: 'run_input', path: '$' },
+            },
+          },
+        },
+      },
+    );
+    expect(await run.end()).toMatchObject({ status: 'succeeded' });
+    expect(await run.children()).toMatchObject([
+      { status: 'failed', result_ref: null },
+    ]);
+    expect(callableToolMessages(run)).toEqual([
+      { status: 'failed', errorCode: 'callable_result_invalid' },
+    ]);
+  });
+
+  it('admits a callable child only after the Agent tool is approved', async () => {
+    await using run = await start(
+      [modelProposal({ name: 'Order a' }), finalAnswer],
+      {
+        write: { child: childGraph(), approval: true },
+      },
+    );
+    const [task] = await fixture.waitFor(
+      async () => {
+        expect(await run.children()).toEqual([]);
+        return run.tasks();
+      },
+      (rows) => rows[0]?.status === 'pending',
+      timeoutMillis,
+    );
+    if (task === undefined) throw new Error('Agent approval is missing');
+    expect(await run.attempts()).toMatchObject([{ status: 'succeeded' }]);
+    expect(run.calls).toHaveLength(1);
+    const tasks = createPendingTaskStore(config(fixture.apiUrl));
+    try {
+      await tasks.decide({
+        ...actor,
+        taskId: task.id,
+        decision: 'approved',
+        idempotencyKey: randomUUID(),
+      });
+    } finally {
+      await tasks.close();
+    }
+    expect(await run.end()).toMatchObject({ status: 'succeeded' });
+    expect(callableToolMessages(run)).toEqual(['Order a!']);
+    expect(await run.tasks()).toMatchObject([{ status: 'approved' }]);
+    expect(await run.children()).toMatchObject([{ status: 'succeeded' }]);
+  });
+
+  it('cancels the waiting callable child when its Agent parent is canceled', async () => {
+    await using run = await start([modelProposal({ name: 'Order a' })], {
+      write: { child: childGraph(60) },
+    });
+    await waitForCallableChild(run);
+    await cancelFixtureRun(run.id, 'Cancel while the callable tool waits');
+    expect(await run.end()).toMatchObject({ status: 'canceled' });
+    const [call] = await run.children();
+    expect(call?.cancel_requested_at).toBeInstanceOf(Date);
+    await fixture.waitFor(
+      run.children,
+      ([row]) => row?.status === 'canceled',
+      timeoutMillis,
+    );
+    expect(run.calls).toHaveLength(1);
+  });
+
+  it('times out an Agent and its callable child at the Agent deadline', async () => {
+    await using run = await start([modelProposal({ name: 'Order a' })], {
+      write: { child: childGraph(60), timeoutMillis: 6_000 },
+    });
+    await waitForCallableChild(run);
+    const [call] = await run.children();
+    expect(await run.checkpoint()).toMatchObject({
+      deadlineAt: call?.deadline_at?.toISOString(),
+    });
+    expect(await run.end()).toMatchObject({ status: 'timed_out' });
+    expect(await run.children()).toMatchObject([{ status: 'timed_out' }]);
+    expect(run.calls).toHaveLength(1);
+  });
+
+  it('consumes a waiting callable child once after a worker restart', async () => {
+    await using run = await start(
+      [modelProposal({ name: 'Order a' }), finalAnswer],
+      {
+        write: { child: childGraph(5) },
+      },
+    );
+    await waitForCallableChild(run);
+    const [original] = await run.children();
+    expect(run.calls).toHaveLength(1);
+    await run.restart();
+    expect(await run.end()).toMatchObject({ status: 'succeeded' });
+    expect(run.calls).toHaveLength(2);
+    expect(callableToolMessages(run)).toEqual(['Order a!']);
+    expect(await run.children()).toMatchObject([
+      {
+        child_run_id: original?.child_run_id,
+        status: 'succeeded',
+        consumed_at: expect.any(Date) as unknown,
+      },
+    ]);
+  });
+
+  it('refuses a callable target unpublished after the tool proposal', async () => {
+    await using run = await start(
+      [modelProposal({ name: 'Order a' }), finalAnswer],
+      {
+        write: { child: childGraph() },
+        pause: 'proposal',
+      },
+    );
+    await run.worker.waitForLog(/paused: proposal/u, timeoutMillis);
+    await fixture.ownerQuery(
+      `update app.workflows set published_version_id=null
+       where id=(
+         select d.target_workflow_id from app.workflow_version_dependencies d
+         join app.workflow_runs r on r.workflow_version_id=d.parent_version_id
+         where r.id=$1
+       )`,
+      [run.id],
+    );
+    await run.restart();
+    expect(await run.end()).toMatchObject({ status: 'succeeded' });
+    expect(await run.children()).toMatchObject([
+      { status: 'refused', child_run_id: null },
+    ]);
+    expect(callableToolMessages(run)).toEqual([
+      { status: 'failed', errorCode: 'call_target_unavailable' },
+    ]);
+  });
 });
 
 describe('Agent restart', () => {
@@ -465,6 +657,19 @@ describe('Agent restart', () => {
   });
 });
 
+async function waitForCallableChild(run: Awaited<ReturnType<typeof start>>) {
+  const [call] = await fixture.waitFor(
+    run.children,
+    ([row]) => row?.status === 'accepted' && row.child_status === 'waiting',
+    timeoutMillis,
+  );
+  expect(call?.slot_lent).toBe(true);
+  expect(await run.attempts()).toMatchObject([
+    { status: 'succeeded' },
+    { status: 'succeeded' },
+  ]);
+}
+
 function callableToolMessages(run: Awaited<ReturnType<typeof start>>) {
   const { messages } = run.calls[1]?.request as {
     messages: { role: string; content: string }[];
@@ -547,10 +752,19 @@ async function start(
       children: () =>
         fixture.workerQuery<{
           child_run_id: string | null;
+          child_status: string | null;
           status: string;
           result_ref: unknown;
+          deadline_at: Date | null;
+          cancel_requested_at: Date | null;
+          consumed_at: Date | null;
+          slot_lent: boolean;
         }>(
-          'select child_run_id, status, result_ref from app.workflow_calls where parent_run_id=$1',
+          `select c.child_run_id, r.status as child_status, c.status, c.result_ref,
+                  c.deadline_at, c.cancel_requested_at, c.consumed_at, c.slot_lent
+           from app.workflow_calls c left join app.workflow_runs r
+             on r.workspace_id=c.workspace_id and r.id=c.child_run_id
+           where c.parent_run_id=$1`,
           [runId],
         ),
       worker,
