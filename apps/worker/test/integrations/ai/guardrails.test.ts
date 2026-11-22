@@ -103,20 +103,22 @@ it('reports safe, specific refusals for oversized text and an empty check list',
   await expect(
     execute('x'.repeat(GUARDRAILS_LIMITS.textCharacters + 1)),
   ).rejects.toSatisfy((error: unknown) =>
-    describeNodeRefusal(error)?.includes(
+    (describeNodeRefusal(error) ?? '').includes(
       'Mapped text exceeds the Guardrails character limit.',
     ),
   );
   await expect(execute('Ordinary text.', [])).rejects.toSatisfy(
     (error: unknown) =>
-      describeNodeRefusal(error)?.includes(
+      (describeNodeRefusal(error) ?? '').includes(
         'Enable at least one Guardrails check.',
       ),
   );
   await expect(
     execute('Ordinary text.', [{ kind: 'prohibited_terms', terms: [] }]),
   ).rejects.toSatisfy((error: unknown) =>
-    describeNodeRefusal(error)?.includes('Enter at least one prohibited term.'),
+    (describeNodeRefusal(error) ?? '').includes(
+      'Enter at least one prohibited term.',
+    ),
   );
 });
 
