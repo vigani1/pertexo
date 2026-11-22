@@ -349,7 +349,8 @@ function resolveAttemptNode(
       'node invocation identity does not match',
     );
   }
-  return work?.work.kind === 'tool_call' && pinned !== undefined
+  if (work === undefined || pinned === undefined) return node;
+  return work.work.kind === 'tool_call'
     ? pinned.node
-    : node;
+    : { ...node, connectionRefs: pinned.modelConnections };
 }

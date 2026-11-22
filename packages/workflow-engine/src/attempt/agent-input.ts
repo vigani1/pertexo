@@ -34,7 +34,7 @@ export function resolveAgentAttemptInput(
         'attempt_invalid',
         'Agent tool arguments exceed the selected tool policy',
       );
-    return call.arguments;
+    return { ...call.arguments, ...pinned.fixedInput };
   }
   const { inputSchema, policy } = pinned;
   const properties = inputSchema.properties;

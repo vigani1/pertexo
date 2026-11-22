@@ -1,4 +1,9 @@
 import { compareOrdinal } from '../values/ordering.js';
+import {
+  AGENT_SLACK_CONNECTION_SLOT,
+  agentConfigSchema,
+  isAgentDefinition,
+} from '../flow/control-nodes/agent.js';
 import type { WorkflowGraph, WorkflowNode } from './workflow-graph.schemas.js';
 import { parseWorkflowGraphDraft } from './validation/preflight.js';
 import {
@@ -28,11 +33,26 @@ export function workflowIntegrationUsage(
   );
   const usages = new Map<string, WorkflowIntegrationUsage>();
   for (const node of enabledNodes(graph)) {
-    const integration = definitions.get(
+    const direct = definitions.get(
       `${node.definition.key}\u0000${String(node.definition.version)}`,
     );
-    if (integration !== undefined) {
+    const agent = isAgentDefinition(node.definition);
+    const tool = agent
+      ? agentConfigSchema.safeParse(node.config).data?.tool.definition
+      : undefined;
+    const agentIntegration =
+      tool === undefined
+        ? undefined
+        : definitions.get(`${tool.key}\u0000${String(tool.version)}`);
+    for (const integration of [direct, agentIntegration]) {
+      if (integration === undefined) continue;
       for (const slot of integration.connectionSlots) {
+        if (
+          agent &&
+          integration === direct &&
+          slot === AGENT_SLACK_CONNECTION_SLOT
+        )
+          continue;
         const connectionId = node.connectionRefs[slot];
         if (
           connectionId === undefined &&

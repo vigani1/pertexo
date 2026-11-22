@@ -206,7 +206,8 @@ function settleAgentChild(
       Object.keys(receipt.call.arguments).some(
         (field) => !tool.policy.inputFields.includes(field),
       ) ||
-      !dataTableValuesSchema.safeParse(receipt.call.arguments.values).success
+      ('table' in tool.node.config &&
+        !dataTableValuesSchema.safeParse(receipt.call.arguments.values).success)
     ) {
       finishAgentInvocation(state, parent, occurredAt, {
         status: 'failed',

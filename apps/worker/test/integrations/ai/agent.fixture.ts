@@ -5,6 +5,8 @@ import { parseDatabaseConfig } from '@pertexo/database/testing';
 import {
   AGENT_FIND_ROWS,
   AGENT_INSERT_ROW,
+  AGENT_SEND_SLACK_MESSAGE,
+  AGENT_SLACK_CONNECTION_SLOT,
   AGENT_STEP,
   PENDING_TASK_LIMITS,
   type WorkflowGraph,
@@ -23,14 +25,27 @@ export const commandKey = () =>
   createHash('sha256').update(randomUUID()).digest('hex');
 export const alias = 'find_order';
 export const model = 'fake-agent';
+export const slackChannel = 'CAGENTTEST';
+export const slackBotToken = 'xoxb-agent-synthetic-test';
 
 export async function publishAgent(
   authoring: ReturnType<typeof createWorkflowAuthoringStore>,
   connectionId: string,
   table: string,
-  write?: 'approval' | 'allow',
+  write?: 'approval' | 'allow' | { slackConnectionId: string },
 ) {
   const expiry = PENDING_TASK_LIMITS.minimumExpirySeconds;
+  const slack = typeof write === 'object' ? write : undefined;
+  let definition: WorkflowGraph['nodes'][number]['definition'] =
+    AGENT_FIND_ROWS;
+  let description = 'Look up one workspace order';
+  if (slack !== undefined) {
+    definition = AGENT_SEND_SLACK_MESSAGE;
+    description = 'Send an update to the selected Slack channel';
+  } else if (write !== undefined) {
+    definition = AGENT_INSERT_ROW;
+    description = 'Insert a workspace order';
+  }
   const graph: WorkflowGraph = {
     settings: { maxRunDurationMs: 90_000 },
     callable: {
@@ -57,18 +72,17 @@ export async function publishAgent(
               : {}),
             tool: {
               alias,
-              description:
-                write === undefined
-                  ? 'Look up one workspace order'
-                  : 'Insert a workspace order',
-              definition:
-                write === undefined ? AGENT_FIND_ROWS : AGENT_INSERT_ROW,
-              config: { table },
+              description,
+              definition,
+              config:
+                slack === undefined
+                  ? { table }
+                  : { channelId: slackChannel, timeoutMillis: 10_000 },
               ...(write === undefined
                 ? {}
                 : {
                     writePermission:
-                      write === 'allow'
+                      write !== 'approval'
                         ? { kind: 'allow' }
                         : {
                             kind: 'approval',
@@ -87,7 +101,12 @@ export async function publishAgent(
             },
           },
         ),
-        connectionRefs: { model_api_key: connectionId },
+        connectionRefs: {
+          model_api_key: connectionId,
+          ...(slack === undefined
+            ? {}
+            : { [AGENT_SLACK_CONNECTION_SLOT]: slack.slackConnectionId }),
+        },
       },
     ],
     edges: [

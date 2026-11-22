@@ -1,6 +1,7 @@
-import type { NodeCatalog } from '@pertexo/node-sdk';
+import type { DataTableConfig, NodeCatalog } from '@pertexo/node-sdk';
 import {
   AGENT_LIMITS,
+  AGENT_SLACK_CONNECTION_SLOT,
   agentConfigSchema,
   isAgentDefinition,
 } from '@pertexo/workflow-model';
@@ -25,13 +26,26 @@ export function pinAgentTool(
   } = parsed.data;
   const manifest = definitionManifest(catalog, tool.definition);
   const policy = manifest.agentTool;
+  const slack = 'channelId' in tool.config ? tool.config : undefined;
+  const {
+    [AGENT_SLACK_CONNECTION_SLOT]: slackConnectionId,
+    ...modelConnections
+  } = node.connectionRefs;
+  if ((slack === undefined) !== (slackConnectionId === undefined))
+    fail('Select a Slack connection for the Agent Slack tool.');
+  const connectionRefs =
+    slackConnectionId === undefined
+      ? {}
+      : { [AGENT_SLACK_CONNECTION_SLOT]: slackConnectionId };
   const writePermission =
     'writePermission' in tool ? tool.writePermission : undefined;
   if (
     policy === undefined ||
     (policy.effect === 'write') !== (writePermission !== undefined) ||
     (policy.effect === 'read' && manifest.retryClass !== 'safe') ||
-    manifest.connectionRequirements.length !== 0
+    manifest.connectionRequirements.some(
+      (slot) => !Object.hasOwn(connectionRefs, slot),
+    )
   )
     fail('Agent tool must have a supported effect policy and setup');
   const executor = executorManifest(catalog, manifest.executor);
@@ -43,18 +57,21 @@ export function pinAgentTool(
       writePermission?.kind === 'approval' ? writePermission.config : undefined,
     policy,
     inputSchema: manifest.inputSchema,
+    modelConnections: Object.freeze(modelConnections),
+    fixedInput: Object.freeze(
+      slack === undefined ? {} : { channelId: slack.channelId },
+    ),
     node: Object.freeze({
       id: node.id,
       definition: manifest.definition,
       configVersion: manifest.configVersion,
-      config: Object.freeze({
-        table: tool.config.table,
-        ...(tool.config.columnBindings === undefined
-          ? {}
-          : { columnBindings: Object.freeze(tool.config.columnBindings) }),
-      }),
+      config: Object.freeze(
+        'table' in tool.config
+          ? pinTableSetup(tool.config)
+          : { timeoutMillis: tool.config.timeoutMillis },
+      ),
       inputMappings: {},
-      connectionRefs: {},
+      connectionRefs: Object.freeze(connectionRefs),
       disabled: false,
       sideEffectClass: sideEffectClass(manifest.retryClass),
       executor: manifest.executor,
@@ -64,4 +81,13 @@ export function pinAgentTool(
       ),
     }) satisfies WorkflowExecutableNode,
   });
+}
+
+function pinTableSetup({ table, columnBindings }: DataTableConfig) {
+  return {
+    table,
+    ...(columnBindings === undefined
+      ? {}
+      : { columnBindings: Object.freeze(columnBindings) }),
+  };
 }

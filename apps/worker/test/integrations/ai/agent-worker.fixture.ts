@@ -29,6 +29,7 @@ export interface AgentWorkerSettings {
   key: string;
   inputRate: number;
   pause?: 'proposal' | 'receipt';
+  slackUrl?: string;
 }
 
 async function run(settings: AgentWorkerSettings) {
@@ -96,7 +97,7 @@ async function run(settings: AgentWorkerSettings) {
     {
       engine: () =>
         createNodeAttemptExecutionEngine({ catalog: executableCatalog }),
-      registry: () => agentRegistry(allowedPrivateNetworks),
+      registry: () => agentRegistry(allowedPrivateNetworks, settings.slackUrl),
       capabilities: (options) =>
         createWorkerNodeRuntimeCapabilities(
           { ...options, allowedPrivateNetworks },

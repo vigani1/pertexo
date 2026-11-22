@@ -15,12 +15,18 @@ import { sealAndZero } from '../../support/attempts/http-node-attempt/encryption
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { API_KEY } from './model.fixture.js';
 import { catalog, executableCatalog } from './agent-registry.fixture.js';
-import { actor, commandKey, config, publishAgent } from './agent.fixture.js';
+import {
+  actor,
+  commandKey,
+  config,
+  publishAgent,
+  slackBotToken,
+} from './agent.fixture.js';
 
 export async function startAgentRun(
   baseUrl: string,
   encryption: ConnectionEnvelopeEncryption,
-  write?: Parameters<typeof publishAgent>[3],
+  write?: 'approval' | 'allow' | 'slack',
 ) {
   const connectionId = randomUUID();
   const tableName = `Agent Orders ${connectionId.slice(0, 8)}`;
@@ -109,11 +115,21 @@ export async function startAgentRun(
       idempotencyKey: randomUUID(),
       requestHash: commandKey(),
     });
+    const tool =
+      write === 'slack'
+        ? {
+            slackConnectionId: await createSlackConnection(
+              connections,
+              encryption,
+              tableName,
+            ),
+          }
+        : write;
     const workflowId = await publishAgent(
       authoring,
       connectionId,
       tableName,
-      write,
+      tool,
     );
     const key = commandKey();
     const accepted = await runs.start({
@@ -131,4 +147,32 @@ export async function startAgentRun(
   } finally {
     await Promise.allSettled(owners.reverse().map((close) => close()));
   }
+}
+
+async function createSlackConnection(
+  connections: ReturnType<typeof createConnectionStore>,
+  encryption: ConnectionEnvelopeEncryption,
+  tableName: string,
+) {
+  const connectionId = randomUUID();
+  const secretVersionId = randomUUID();
+  const sealed = await sealAndZero(
+    encryption,
+    Buffer.from(
+      JSON.stringify({ type: 'slack_bot_token', botToken: slackBotToken }),
+    ),
+    { workspaceId: actor.workspaceId, connectionId, secretVersionId },
+  );
+  await connections.createConnection({
+    ...actor,
+    connectionId,
+    secretVersionId,
+    providerKey: 'slack',
+    authType: 'slack_bot_token',
+    name: `${tableName} Slack`,
+    sealed,
+    idempotencyKey: randomUUID(),
+    requestHash: commandKey(),
+  });
+  return connectionId;
 }

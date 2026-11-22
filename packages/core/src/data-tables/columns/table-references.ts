@@ -72,7 +72,7 @@ function references(graph: ReferenceGraph) {
         });
       else if (isAgentDefinition(node.definition)) {
         const settings = agentConfigSchema.safeParse(node.config);
-        if (settings.success)
+        if (settings.success && 'table' in settings.data.tool.config)
           found.push({
             config: settings.data.tool.config,
             path: `${path}.config.tool`,
