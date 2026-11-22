@@ -1,4 +1,4 @@
-import { startingConfig } from '@/features/workflow-editor/model/graph/starting-config';
+import { startingConfig } from '@pertexo/workflow-model';
 import { browserDefinitions } from '../../../support/fixtures/node-catalog';
 import {
   addSwitchCase,
