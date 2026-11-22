@@ -37,7 +37,7 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
     },
   });
   const requests: string[] = [];
-  const timedRequest = Promise.withResolvers<void>();
+  const timedRequest = Promise.withResolvers<undefined>();
   let mode: 'answer' | 'large' | 'timeout' = 'answer';
   const inference = createServer((request, response) => {
     request.setEncoding('utf8');
@@ -52,7 +52,7 @@ describe.runIf(betterAuthIntegrationEnabled)('failed run explanation', () => {
         return;
       }
       if (mode === 'timeout') {
-        timedRequest.resolve();
+        timedRequest.resolve(undefined);
         return;
       }
       response.setHeader('content-type', 'application/json');

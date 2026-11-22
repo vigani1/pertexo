@@ -102,7 +102,8 @@ export function modelCredentialHost(
       refuse: () =>
         modelFailure('credential_rejected', { possiblyDispatched: false }),
     },
-    async (credential) => new URL(modelEndpoint(credential, 'models')).host,
+    (credential) =>
+      Promise.resolve(new URL(modelEndpoint(credential, 'models')).host),
   );
 }
 
