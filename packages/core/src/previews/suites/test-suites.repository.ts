@@ -21,6 +21,8 @@ const historyFields = {
   id: suite.id,
   workspaceId: suite.workspaceId,
   snapshotId: suite.snapshotId,
+  evaluationTableId: suite.evaluationTableId,
+  evaluationVersionId: suite.evaluationVersionId,
   startedBy: suite.startedBy,
   signature: suite.signature,
   status: suite.status,
@@ -78,6 +80,8 @@ function summarySelection(
     completedAt: source.completedAt,
     expiresAt: source.expiresAt,
     draftRevision: workflowTestSnapshots.draftRevision,
+    evaluationTableId: source.evaluationTableId,
+    evaluationVersionId: source.evaluationVersionId,
     total: counts.total,
     passed: counts.passed,
     failed: counts.failed,
@@ -138,6 +142,14 @@ export function summary(
     suiteId: row.id,
     startedBy: row.startedBy,
     draftRevision: row.draftRevision,
+    ...(row.evaluationTableId === null
+      ? {}
+      : {
+          evaluation: {
+            tableId: row.evaluationTableId,
+            versionId: row.evaluationVersionId,
+          },
+        }),
     signature: row.signature,
     status: row.status,
     stopReason: row.stopReason,
@@ -182,6 +194,7 @@ export async function readSuiteRow(
 export async function readSuiteCaseRows(
   client: PoolClient,
   input: WorkflowActor & { suiteId: string },
+  includeReports: boolean,
 ) {
   const db = drizzle(client);
   const cases = await db
@@ -192,6 +205,9 @@ export async function readSuiteCaseRows(
       name: workflowTestSuiteCases.name,
       status: workflowTestSuiteCases.status,
       runId: workflowTestSuiteCases.runId,
+      report: includeReports
+        ? workflowTestSuiteCases.report
+        : sql<string | null>`null`,
     })
     .from(workflowTestSuiteCases)
     .where(

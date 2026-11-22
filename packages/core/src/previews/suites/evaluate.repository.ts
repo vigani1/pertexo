@@ -6,6 +6,7 @@ import {
 } from '@pertexo/workflow-engine/server';
 import {
   workflowTestExpectationsSchema,
+  RUN_INFRASTRUCTURE_FAILURE_CODES,
   type JsonValue,
 } from '@pertexo/workflow-model';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -29,6 +30,7 @@ export interface SuiteRunOutcome {
   status: WorkflowTestSuiteReport['actualOutcome'];
   outputRef: unknown;
   pinRequired: boolean;
+  infrastructureFailed?: boolean;
 }
 /** Fetch only selected outputs; repeated steps are reported rather than guessed. */
 export async function evaluateSuiteCase(
@@ -97,6 +99,7 @@ export async function readSuiteRunOutcome(
     .select({
       status: run.status,
       outputRef: run.outputRef,
+      errorSummary: run.errorSummary,
       dispositions: workflowTestSnapshots.dispositions,
     })
     .from(run)
@@ -118,15 +121,18 @@ export async function readSuiteRunOutcome(
     .catch(rethrowQueryFailure);
   const row = found[0];
   if (row === undefined) return undefined;
+  const outcome = {
+    status: row.status,
+    outputRef: row.outputRef,
+    infrastructureFailed: RUN_INFRASTRUCTURE_FAILURE_CODES.some(
+      (code) => code === row.errorSummary,
+    ),
+  };
   const required = Object.entries(row.dispositions)
     .filter(([, kind]) => kind === 'pin_required')
     .map(([nodeId]) => nodeId);
   if (required.length === 0 || isActiveTestRun(row.status))
-    return {
-      status: row.status,
-      outputRef: row.outputRef,
-      pinRequired: false,
-    };
+    return { ...outcome, pinRequired: false };
   const problem = await drizzle(client)
     .select({ id: nodeRuns.id })
     .from(nodeRuns)
@@ -141,8 +147,7 @@ export async function readSuiteRunOutcome(
     .limit(1)
     .catch(rethrowQueryFailure);
   return {
-    status: row.status,
-    outputRef: row.outputRef,
+    ...outcome,
     pinRequired: problem.length !== 0,
   };
 }

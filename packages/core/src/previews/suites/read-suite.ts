@@ -5,6 +5,7 @@ import type {
   WorkflowTestSuiteReport,
 } from '@pertexo/contracts';
 import {
+  scoreSuiteCases,
   workflowTestStepChoices,
   workflowTestSuiteReportSchema,
 } from '@pertexo/workflow-model';
@@ -24,8 +25,25 @@ export async function readSuite(
 ): Promise<WorkflowTestSuiteDetail> {
   const row = await readSuiteRow(client, input);
   if (row === undefined) throw new WorkflowTestError('not_found');
-  const cases = await readSuiteCaseRows(client, input);
-  return { ...summary(row), cases };
+  const cases = await readSuiteCaseRows(
+    client,
+    input,
+    row.evaluationTableId !== null,
+  );
+  return {
+    ...summary(row),
+    cases: cases.map(({ report: _report, ...entry }) => entry),
+    ...(row.evaluationTableId === null
+      ? {}
+      : {
+          score: scoreSuiteCases(
+            cases.map(({ status, report }) => ({
+              status,
+              report: parseReport(report),
+            })),
+          ),
+        }),
+  };
 }
 export async function readCaseReport(
   client: PoolClient,
@@ -36,13 +54,7 @@ export async function readCaseReport(
 }> {
   const row = await readCaseReportRow(client, input);
   if (row === undefined) throw new WorkflowTestError('not_found');
-  const storedReport = row.report;
-  const report =
-    storedReport === null
-      ? null
-      : decodeStoredValue(() =>
-          workflowTestSuiteReportSchema.parse(JSON.parse(storedReport)),
-        );
+  const report = parseReport(row.report);
   const nodeIds = [
     ...new Set(
       report?.assertions.flatMap(({ assertion }) =>
@@ -66,4 +78,12 @@ export async function readCaseReport(
       labels.map((node) => [node.nodeId, node.label]),
     ),
   };
+}
+
+function parseReport(stored: string | null) {
+  return stored === null
+    ? null
+    : decodeStoredValue(() =>
+        workflowTestSuiteReportSchema.parse(JSON.parse(stored)),
+      );
 }

@@ -19,7 +19,10 @@ export function assertPreparedSuite(
   current: WorkflowTestSuiteCurrent,
   effectfulSteps: WorkflowTestPreparation['effectfulSteps'],
 ): void {
-  if (current.cases.length === 0) throw new WorkflowTestError('cases_required');
+  const savedCases =
+    'expectedCases' in input.request ? input.request.expectedCases : undefined;
+  if (savedCases !== undefined && current.cases.length === 0)
+    throw new WorkflowTestError('cases_required');
   if (current.draftRevision !== input.request.expectedRevision)
     throw new WorkflowTestError('draft_changed');
   if (!sameTestSamples(current.samples, input.request.expectedSamples))
@@ -27,11 +30,13 @@ export function assertPreparedSuite(
   const suiteChanged =
     current.variableSetRevision !== input.request.expectedVariableSetRevision ||
     current.signature !== input.request.signature ||
-    canonicalJson(
-      current.cases.map(({ id, revision }) => ({ id, revision })),
-    ) !== canonicalJson(input.request.expectedCases);
+    (savedCases !== undefined &&
+      canonicalJson(
+        current.cases.map(({ id, revision }) => ({ id, revision })),
+      ) !== canonicalJson(savedCases));
   if (suiteChanged) throw new WorkflowTestError('cases_changed');
-  assertEffectsAcknowledged(input.request, effectfulSteps);
+  if (savedCases !== undefined)
+    assertEffectsAcknowledged(input.request, effectfulSteps);
 }
 
 export function suiteOutcome(

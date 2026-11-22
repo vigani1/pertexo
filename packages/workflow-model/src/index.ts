@@ -240,6 +240,7 @@ export {
 } from './execution/traceparent.js';
 export {
   RUN_FAILURE_CODES,
+  RUN_INFRASTRUCTURE_FAILURE_CODES,
   runFailureCodeSchema,
   type RunFailureCode,
   type CallableResultFailureCode,
@@ -495,6 +496,7 @@ export {
   WORKFLOW_TEST_SUITE_MAX_CASES,
   workflowTestSuiteReportSchema,
   type SuiteCaseReport,
+  scoreSuiteCases,
 } from './authoring/test-suites/report.js';
 export { WORKFLOW_INPUT_CASE_LIMITS } from './authoring/test-suites/input-case-limits.js';
 export { workflowTestStepChoices } from './authoring/test-suites/steps.js';

@@ -13,6 +13,7 @@ export type { SuiteCaseReport } from '@pertexo/workflow-model';
 export interface SuiteRunOutcome {
   status: SuiteRunStatus;
   pinRequired: boolean;
+  infrastructureFailed?: boolean;
 }
 
 /** Evaluates only the frozen expectations and selected outputs supplied by storage. */
@@ -62,6 +63,9 @@ function suiteRunError(run: SuiteRunOutcome): SuiteCaseReport['error'] {
   }
   if (run.status === 'canceled') {
     return 'run_canceled';
+  }
+  if (run.infrastructureFailed === true) {
+    return 'run_infrastructure_failed';
   }
   return undefined;
 }

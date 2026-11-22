@@ -1,13 +1,18 @@
 import type { PoolClient } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { FrozenWorkflowTestPins } from '@pertexo/database/schema';
-import { workflowTestStepChoices } from '@pertexo/workflow-model';
+import {
+  parseWorkflowGraphDraft,
+  stepSampleBindings,
+  workflowTestStepChoices,
+} from '@pertexo/workflow-model';
 import type { WorkflowTestPins } from '@pertexo/workflow-engine/server';
 import type { WorkflowActor } from '../../shared/access/workflow-actor.types.js';
 import { decodeStoredValue } from '../../shared/stored-values.js';
 import { parseStoredExecutionValue } from '../../shared/stored-execution.js';
 import { readDatabaseClock } from '../../shared/database-clock.repository.js';
 import { sampleDraft } from '../../authoring/step-samples/step-sample-state.js';
+import { readVersionGraph } from '../../authoring/workflows/commands/version-sources.repository.js';
 import type { WorkflowTestOptions } from './workflow-test.types.js';
 import { WorkflowTestError } from './workflow-test.errors.js';
 import { lockWorkflowSamples } from './snapshot.repository.js';
@@ -18,9 +23,13 @@ export async function loadTestSnapshot(
   client: PoolClient,
   input: WorkflowActor,
   options: WorkflowTestOptions,
+  versionId?: string,
 ) {
   const draft = await sampleDraft(client, input, { write: true });
-  const { graph, bindings } = draft;
+  const { graph, bindings } =
+    versionId === undefined
+      ? draft
+      : await loadVersion(client, input, versionId);
   const samples = await lockWorkflowSamples(client, input);
   const now = await readDatabaseClock(drizzle(client));
   const pins: Record<string, WorkflowTestPins[string]> = Object.create(
@@ -29,6 +38,12 @@ export async function loadTestSnapshot(
   const frozenPins: Record<string, FrozenWorkflowTestPins[string]> =
     Object.create(null) as Record<string, FrozenWorkflowTestPins[string]>;
   for (const sample of samples) {
+    // A published graph can use pins whose binding still matches that version.
+    if (
+      versionId !== undefined &&
+      bindings.get(sample.nodeId) !== sample.binding
+    )
+      continue;
     if (
       sample.expiresAt <= now ||
       bindings.get(sample.nodeId) !== sample.binding
@@ -70,4 +85,15 @@ export async function loadTestSnapshot(
       })),
     },
   };
+}
+
+async function loadVersion(
+  client: PoolClient,
+  input: WorkflowActor,
+  versionId: string,
+) {
+  const stored = await readVersionGraph(client, { ...input, versionId });
+  if (stored === undefined) throw new WorkflowTestError('not_found');
+  const graph = decodeStoredValue(() => parseWorkflowGraphDraft(stored));
+  return { graph, bindings: stepSampleBindings(graph) };
 }

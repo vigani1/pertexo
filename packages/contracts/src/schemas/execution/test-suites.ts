@@ -1,4 +1,11 @@
-import { WORKFLOW_INPUT_CASE_LIMITS } from '@pertexo/workflow-model';
+import {
+  WORKFLOW_GRAPH_CONTRACT_LIMITS,
+  WORKFLOW_INPUT_CASE_LIMITS,
+  WORKFLOW_TEST_LIMITS,
+  isStorageText,
+  workflowTestExpectationsSchema,
+} from '@pertexo/workflow-model';
+import { DATA_TABLE_LIMITS } from '@pertexo/node-sdk';
 import { responseSchema } from '../shared/response-schema.js';
 import {
   WORKFLOW_TEST_SUITE_MAX_CASES,
@@ -44,18 +51,53 @@ export const workflowTestSuitePreparationSchema = responseSchema(
     })
     .strict(),
 );
-export const workflowTestSuiteStartRequestSchema =
-  workflowTestStartRequestSchema
-    .omit({ input: true })
-    .extend({
-      expectedCases: z
-        .array(caseIdentity)
-        .min(1)
-        .max(WORKFLOW_TEST_SUITE_MAX_CASES),
-      expectedVariableSetRevision: z.number().int().positive().nullable(),
-      signature: z.string().regex(/^[0-9a-f]{64}$/u),
-    })
-    .strict();
+const savedCaseSuite = workflowTestStartRequestSchema
+  .omit({ input: true })
+  .extend({
+    expectedCases: z
+      .array(caseIdentity)
+      .min(1)
+      .max(WORKFLOW_TEST_SUITE_MAX_CASES),
+    expectedVariableSetRevision: z.number().int().positive().nullable(),
+    signature: z.string().regex(/^[0-9a-f]{64}$/u),
+  })
+  .strict();
+export const workflowTableEvaluationSchema = z
+  .object({
+    tableId: z.uuid(),
+    versionId: z.uuid().optional(),
+    columns: z
+      .record(
+        z
+          .string()
+          .min(1)
+          .max(WORKFLOW_GRAPH_CONTRACT_LIMITS.identifierLength)
+          .refine(isStorageText),
+        z.uuid(),
+      )
+      .refine((columns) => {
+        const count = Object.keys(columns).length;
+        return count > 0 && count <= DATA_TABLE_LIMITS.maxColumns;
+      }),
+    expectations: workflowTestExpectationsSchema,
+    expectedColumns: z
+      .array(z.uuid().nullable())
+      .max(WORKFLOW_TEST_LIMITS.assertions)
+      .optional(),
+  })
+  .strict()
+  .refine(
+    ({ expectedColumns, expectations }) =>
+      expectedColumns === undefined ||
+      expectedColumns.length === expectations.assertions.length,
+    'Choose a literal or column for each value check.',
+  );
+export const workflowTestSuiteStartRequestSchema = z.union([
+  savedCaseSuite,
+  savedCaseSuite
+    .omit({ expectedCases: true })
+    .extend({ evaluation: workflowTableEvaluationSchema }),
+]);
 export const workflowTestSuiteAcceptedSchema = responseSchema(
   z.object({ suiteId: z.uuid() }).strict(),
 );
@@ -94,6 +136,13 @@ export const workflowTestSuiteSummarySchema = responseSchema(
       failed: z.number().int().min(0).max(WORKFLOW_TEST_SUITE_MAX_CASES),
       errors: z.number().int().min(0).max(WORKFLOW_TEST_SUITE_MAX_CASES),
       skipped: z.number().int().min(0).max(WORKFLOW_TEST_SUITE_MAX_CASES),
+      evaluation: z
+        .object({
+          tableId: z.uuid(),
+          versionId: z.uuid().nullable(),
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
 );
@@ -110,6 +159,15 @@ export const workflowTestSuiteListSchema = responseSchema(
 export const workflowTestSuiteDetailSchema = responseSchema(
   workflowTestSuiteSummarySchema
     .extend({
+      score: z
+        .object({
+          matched: z.number().int().nonnegative(),
+          total: z.number().int().nonnegative(),
+          failedRuns: z.number().int().nonnegative(),
+          incompleteCases: z.number().int().nonnegative(),
+        })
+        .strict()
+        .optional(),
       cases: z
         .array(
           z

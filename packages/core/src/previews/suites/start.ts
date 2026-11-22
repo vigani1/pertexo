@@ -40,13 +40,15 @@ import type { WorkflowTestSuiteStartInput } from './workflow-test-suite.types.js
 import { readSuiteCasePayloads } from './current.repository.js';
 import { readSuiteCurrent } from './read-current.js';
 import { assertPreparedSuite, SUITE_MAX_DURATION_MS } from './rules.js';
+import { snapshotTableCases } from './evaluation/snapshot-table-cases.js';
 
 export async function prepareTestSuite(
   client: PoolClient,
   input: WorkflowActor,
   options: WorkflowTestOptions,
+  versionId?: string,
 ) {
-  const snapshot = await loadTestSnapshot(client, input, options);
+  const snapshot = await loadTestSnapshot(client, input, options, versionId);
   await lockInputCaseQuota(client, input.workspaceId);
   const transaction = {
     db: drizzle(client, { schema: databaseSchema }),
@@ -83,13 +85,29 @@ export async function startTestSuite(
     resourceId: suiteId,
   });
   if (replay !== null) return replay;
-  const { snapshot, current } = await prepareTestSuite(client, input, options);
+  const evaluation =
+    'evaluation' in input.request ? input.request.evaluation : undefined;
+  const { snapshot, current } = await prepareTestSuite(
+    client,
+    input,
+    options,
+    evaluation?.versionId,
+  );
+  if (evaluation !== undefined) {
+    if (Object.values(snapshot.compiled.dispositions).includes('pin_required'))
+      throw new WorkflowTestError('evaluation_pin_required');
+    if (snapshot.compiled.effectfulNodeIds.length > 0)
+      throw new WorkflowTestError('evaluation_effectful');
+  }
   assertPreparedSuite(input, current, snapshot.preparation.effectfulSteps);
   if (snapshot.usesConnections) requireTestCapability(role, 'connection:use');
   await requireNoActiveSuite(client, input);
   await requireNoActiveTest(client, input);
-  const cases = await readSuiteCasePayloads(client, input);
-  if (cases.length !== current.cases.length)
+  const cases =
+    evaluation === undefined
+      ? await readSuiteCasePayloads(client, input)
+      : await snapshotTableCases(client, role, input.workspaceId, evaluation);
+  if (evaluation === undefined && cases.length !== current.cases.length)
     throw new WorkflowTestError('cases_changed');
   for (const entry of cases) {
     const expectations = decodeStoredValue(() =>
@@ -138,6 +156,8 @@ export async function startTestSuite(
     startedBy: input.actorId,
     snapshotId,
     signature: current.signature,
+    evaluationTableId: evaluation?.tableId ?? null,
+    evaluationVersionId: evaluation?.versionId ?? null,
     variableSetRevision: current.variableSetRevision,
     usesConnections: snapshot.usesConnections,
     caseDurationMs: testRunDurationMs(snapshot.graph.settings.maxRunDurationMs),
