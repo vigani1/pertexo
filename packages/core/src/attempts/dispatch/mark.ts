@@ -103,6 +103,7 @@ async function persistSlackDispatch(
         executableJson,
         input.lease.nodeId,
         input.connectionFence.connectionId,
+        input.lease.invocationKey,
       )
     )
       throw new NodeAttemptDispatchBindingMismatchError(

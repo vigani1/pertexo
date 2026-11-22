@@ -10,10 +10,11 @@ import { ContextKeyProvider } from '../../support/attempts/http-node-attempt/enc
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
 import { cancelFixtureRun } from '../../support/coordinator/runs/control.js';
 import { ServiceProcess } from '../../support/recovery/processes.js';
-import { actor, alias, config } from './agent.fixture.js';
+import { actor, alias, config, slackChannel } from './agent.fixture.js';
 import { startAgentRun } from './agent-run.fixture.js';
 import type { AgentWorkerSettings } from './agent-worker.fixture.js';
 import { chat, fakeModel, json } from './model.fixture.js';
+import { fakeAgentSlack } from './slack-agent.fixture.js';
 
 const workerEntry = fileURLToPath(
   new URL('./agent-worker.fixture.ts', import.meta.url),
@@ -46,9 +47,9 @@ const proposal = json({
     },
   ],
 });
-const insertProposal = insertOrder({ values: { key: 'c', amount: 12 } });
+const insertProposal = modelProposal({ values: { key: 'c', amount: 12 } });
 
-function insertOrder(args: Record<string, unknown>) {
+function modelProposal(args: Record<string, unknown>) {
   return json({
     usage: { prompt_tokens: 45, completion_tokens: 8 },
     choices: [
@@ -72,6 +73,54 @@ beforeAll(fixture.setup);
 afterAll(fixture.restoreServicesAndClose);
 
 describe('Agent restart', () => {
+  it.each(['lost response', 'worker restart'] as const)(
+    'stops for inspection after Slack dispatch following a %s',
+    async (failure) => {
+      await using slack = await fakeAgentSlack(failure === 'lost response');
+      const text = 'Order c is ready.';
+      await using run = await start([modelProposal({ text })], {
+        write: 'slack',
+        slackUrl: slack.baseUrl,
+      });
+      await fixture.waitFor(
+        () => Promise.resolve(slack.calls.length),
+        (count) => count > 0,
+        timeoutMillis,
+      );
+      if (failure === 'worker restart') await run.restart();
+      expect(await run.end()).toMatchObject({ status: 'outcome_unknown' });
+      expect(await run.attempts()).toMatchObject([
+        { status: 'succeeded' },
+        {
+          logical_status: 'outcome_unknown',
+          side_effect_class: 'unsafe',
+          dispatch_marked_at: expect.any(Date) as unknown,
+        },
+      ]);
+      expect(slack.calls).toMatchObject([{ channel: slackChannel, text }]);
+      expect(run.calls).toHaveLength(1);
+      expect(run.calls[0]?.request).toMatchObject({
+        tools: [
+          {
+            function: {
+              parameters: {
+                properties: { text: expect.any(Object) as unknown },
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+      });
+      const request = run.calls[0]?.request as {
+        tools: {
+          function: { parameters: { properties: Record<string, unknown> } };
+        }[];
+      };
+      expect(
+        Object.keys(request.tools[0]?.function.parameters.properties ?? {}),
+      ).toEqual(['text']);
+    },
+  );
   it('consumes one approval after restart and inserts the proposed row once', async () => {
     await using run = await start([insertProposal, finalAnswer], {
       write: 'approval',
@@ -202,7 +251,7 @@ describe('Agent restart', () => {
   it('refuses model arguments that try to change the published approval rule', async () => {
     await using run = await start(
       [
-        insertOrder({
+        modelProposal({
           values: { key: 'c', amount: 12 },
           writePermission: { kind: 'allow' },
         }),
@@ -401,6 +450,7 @@ async function start(
     inputRate?: number;
     deferWorker?: boolean;
     write?: Parameters<typeof startAgentRun>[2];
+    slackUrl?: string;
   } = {},
 ) {
   const provider = await fakeModel(answers);
@@ -415,6 +465,7 @@ async function start(
       inputRate: options.inputRate ?? 0,
       workerId: id,
       ...(pause === undefined ? {} : { pause }),
+      ...(options.slackUrl === undefined ? {} : { slackUrl: options.slackUrl }),
     };
     return new ServiceProcess(workerEntry, {
       ...process.env,
@@ -503,7 +554,7 @@ async function start(
         ),
       attempts: () =>
         fixture.workerQuery<{ status: string; fence_token: string }>(
-          `select a.status, a.fence_token, a.side_effect_class, a.dispatch_marked_at, a.output_ref,
+          `select a.status, n.status as logical_status, a.fence_token, a.side_effect_class, a.dispatch_marked_at, a.output_ref,
                 exists (select 1 from app.outbox_events o join app.inbox_receipts r on r.message_id=o.id
                   where o.aggregate_id=a.id and o.job_name='execute-node-attempt' and r.completed_at is not null) as completion_receipted
            from app.node_attempts a join app.node_runs n on n.id=a.node_run_id

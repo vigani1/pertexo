@@ -16,6 +16,11 @@ export const AGENT_INSERT_ROW = Object.freeze({
   key: 'core.table_insert',
   version: 1,
 });
+export const AGENT_SEND_SLACK_MESSAGE = Object.freeze({
+  key: 'slack.send_message',
+  version: 1,
+});
+export const AGENT_SLACK_CONNECTION_SLOT = 'slack_bot_token';
 const MILLIS_PER_SECOND = 1_000;
 const AGENT_TIMEOUT_DEFAULT_MILLIS = 120_000;
 export const AGENT_TIMEOUT_MAX_MILLIS =
@@ -95,6 +100,17 @@ export const agentConfigSchema = z
         definition: z.strictObject({
           key: z.literal(AGENT_INSERT_ROW.key),
           version: z.literal(AGENT_INSERT_ROW.version),
+        }),
+        writePermission,
+      }),
+      toolSetup.extend({
+        definition: z.strictObject({
+          key: z.literal(AGENT_SEND_SLACK_MESSAGE.key),
+          version: z.literal(AGENT_SEND_SLACK_MESSAGE.version),
+        }),
+        config: z.strictObject({
+          channelId: z.string().min(1),
+          timeoutMillis: z.number().int().positive(),
         }),
         writePermission,
       }),

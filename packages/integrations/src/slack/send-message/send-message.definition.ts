@@ -1,4 +1,8 @@
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
+import {
+  AGENT_SEND_SLACK_MESSAGE,
+  AGENT_SLACK_CONNECTION_SLOT,
+} from '@pertexo/workflow-model';
 
 import {
   slackSendMessageConfigSchema,
@@ -6,15 +10,12 @@ import {
   slackSendMessageOutputSchema,
 } from './send-message.schemas.js';
 
-export const SLACK_SEND_MESSAGE_DEFINITION = Object.freeze({
-  key: 'slack.send_message',
-  version: 1,
-});
+export const SLACK_SEND_MESSAGE_DEFINITION = AGENT_SEND_SLACK_MESSAGE;
 export const SLACK_SEND_MESSAGE_EXECUTOR = Object.freeze({
   key: 'slack.send_message',
   version: 1,
 });
-export const SLACK_BOT_TOKEN_CONNECTION_SLOT = 'slack_bot_token' as const;
+export const SLACK_BOT_TOKEN_CONNECTION_SLOT = AGENT_SLACK_CONNECTION_SLOT;
 export const SLACK_SEND_MESSAGE_POLICY = Object.freeze({
   key: 'slack.send_message',
   version: 1,
@@ -43,6 +44,11 @@ export const SLACK_SEND_MESSAGE_MANIFEST: NodeManifest = Object.freeze({
     operationKey: 'send_message',
   }),
   retryClass: 'unsafe',
+  agentTool: Object.freeze({
+    effect: 'write',
+    inputFields: Object.freeze(['text']),
+    result: Object.freeze({ kind: 'bounded_output' }),
+  }),
   resourceClass: 'io',
   capabilities: Object.freeze(['external_http', 'side_effect_disclosure']),
   executor: SLACK_SEND_MESSAGE_EXECUTOR,
