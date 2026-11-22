@@ -13,7 +13,9 @@ import {
   api,
   curatedCatalog,
   discoveryHandlers,
+  draftBody,
   draftHandler,
+  etag,
   organizedPage,
   summary,
   user,
@@ -80,8 +82,12 @@ function workspace(
   return { previews, imports };
 }
 
-async function chooseOnEmptyList(title: string) {
+async function chooseOnEmptyList(
+  title: string,
+  showPendingImmediately = false,
+) {
   const app = await renderLoadedApp(`/w/${workspaceId}/workflows`);
+  if (showPendingImmediately) app.router.update({ defaultPendingMs: 0 });
   const empty = await screen.findByRole(
     'region',
     { name: 'Weave your first workflow' },
@@ -102,7 +108,29 @@ mockServer.events.on('request:start', ({ request }) => {
 describe('examples with nothing to set up', () => {
   it('creates the first-run example in one click and opens it in Build with its guide', async () => {
     const sent = workspace();
-    const { router } = await chooseOnEmptyList(firstRun.title);
+    const draft = Promise.withResolvers<void>();
+    mockServer.use(
+      http.get(`${api}/workflows/${workflowId}/draft`, async () => {
+        await draft.promise;
+        return HttpResponse.json(draftBody(workflowId), { headers: { etag } });
+      }),
+    );
+    const originRequests = () =>
+      requested.filter((url) => url.endsWith('?include=templateOrigin'));
+    const originUrl = `${api}/workflows/${workflowId}?include=templateOrigin`;
+    const { router } = await chooseOnEmptyList(firstRun.title, true);
+    try {
+      await screen.findByRole(
+        'status',
+        { name: 'Loading the canvas' },
+        coldStart,
+      );
+      await waitFor(() => {
+        expect(originRequests()[0]).toBe(originUrl);
+      });
+    } finally {
+      draft.resolve();
+    }
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(
