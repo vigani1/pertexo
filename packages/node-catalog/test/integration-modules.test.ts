@@ -17,9 +17,9 @@ it('preserves the published catalog and every legacy browser projection byte for
 
   // Recorded from the last catalog before integration modules were introduced.
   const legacyCatalog = {
-    definitions: PLATFORM_NODE_CATALOG.definitions.filter(({ definition }) =>
-      isLegacyDefinition(definition),
-    ),
+    definitions: PLATFORM_NODE_CATALOG.definitions
+      .filter(({ definition }) => isLegacyDefinition(definition))
+      .map(({ agentTool: _agentTool, ...manifest }) => manifest),
     executors: PLATFORM_NODE_CATALOG.executors.filter(({ executor }) =>
       isLegacyDefinition(executor),
     ),
@@ -34,6 +34,14 @@ it('preserves the published catalog and every legacy browser projection byte for
   expect(digest({ definitions })).toBe(
     'b03fc3cb0eec3e7943bf07f0519a65d1c62c7243e98c21779cf8fe1715b31ab4',
   );
+});
+
+it('serves Find rows as the only declared Agent read tool', () => {
+  expect(
+    PLATFORM_NODE_CATALOG.definitions
+      .filter(({ agentTool }) => agentTool !== undefined)
+      .map(({ definition }) => definition),
+  ).toEqual([{ key: 'core.table_find', version: 1 }]);
 });
 
 it('refuses two modules with the same key during catalog assembly', () => {
