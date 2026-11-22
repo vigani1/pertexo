@@ -118,6 +118,8 @@ export async function runModel({
       const first = await complete();
       if (validator === undefined && first.kind === 'text')
         return { text: first.text };
+      if (first.kind === 'proposal')
+        throw modelFailure('invalid_response', { possiblyDispatched: true });
       const answer = candidate(first);
       if (validator?.(answer)) return { data: answer };
       const repaired = candidate(
@@ -178,6 +180,7 @@ function candidate(
   completion: Awaited<ReturnType<ModelClient['complete']>>,
 ): unknown {
   if (completion.kind === 'structured') return completion.data;
+  if (completion.kind !== 'text') return undefined;
   try {
     return JSON.parse(completion.text) as unknown;
   } catch {

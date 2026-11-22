@@ -1,0 +1,128 @@
+import { describe, expect, it } from 'vitest';
+import {
+  AGENT_LIMITS,
+  type AgentContinuation,
+} from '../../src/control-nodes/agent-continuation.js';
+import { resumeAgent } from '../../src/control-nodes/resume-agent.js';
+import {
+  settleAgentModelTurn,
+  settleAgentReadTool,
+} from '../../src/control-nodes/settle-agent-work.js';
+import { createCheckpoint, parseCheckpoint } from '../../src/server.js';
+
+const version = '00000000-0000-4000-8000-000000000001';
+const modelOutput = {
+  kind: 'inline',
+  attemptId: '00000000-0000-4000-8000-000000000002',
+} as const;
+const toolOutput = {
+  kind: 'inline',
+  attemptId: '00000000-0000-4000-8000-000000000003',
+} as const;
+const agent: AgentContinuation = {
+  parentInvocationKey: `${version}|agent|b:|i:`,
+  deadlineAt: '2026-11-22T00:01:00.000Z',
+  modelRates: { input: 0, output: 0 },
+  budget: {
+    dispatches: 1,
+    inputTokens: 100,
+    outputTokens: 20,
+    estimatedCost: 0,
+  },
+  turn: 1,
+  phase: { kind: 'model_turn' },
+};
+const toolName = 'read_order';
+const receipt = {
+  kind: 'proposal',
+  output: modelOutput,
+  call: {
+    name: toolName,
+    id: 'provider-correlation-id',
+    arguments: { order: '123' },
+  },
+} as const;
+
+describe('Agent receipts', () => {
+  it('refuses a model proposal that names a tool outside the pinned setup', () => {
+    expect(
+      settleAgentModelTurn(
+        agent,
+        {
+          ...receipt,
+          call: { ...receipt.call, name: 'write_order' },
+        },
+        toolName,
+      ),
+    ).toEqual({ kind: 'refused', reason: 'agent.tool_unavailable' });
+  });
+
+  it('refuses another tool call when its result would require a turn beyond the limit', () => {
+    expect(
+      settleAgentModelTurn(
+        { ...agent, turn: AGENT_LIMITS.turns },
+        receipt,
+        toolName,
+      ),
+    ).toEqual({
+      kind: 'refused',
+      reason: 'agent.turn_limit',
+    });
+  });
+
+  it('refuses another tool call after the tool call budget is spent', () => {
+    const history = Array.from({ length: AGENT_LIMITS.toolCalls }, () => ({
+      proposal: modelOutput,
+      output: toolOutput,
+    }));
+    expect(
+      settleAgentModelTurn({ ...agent, history }, receipt, toolName),
+    ).toEqual({
+      kind: 'refused',
+      reason: 'agent.tool_limit',
+    });
+  });
+
+  it('resumes the next turn with the accepted tool receipt after replacement', () => {
+    const accepted = settleAgentModelTurn(agent, receipt, toolName);
+    if (
+      accepted.kind !== 'continue' ||
+      accepted.agent.phase.kind !== 'proposed_call'
+    )
+      throw new Error('Expected committed proposal');
+    const settled = settleAgentReadTool(
+      {
+        ...accepted.agent,
+        phase: { ...accepted.agent.phase, kind: 'running_tool' },
+      },
+      toolOutput,
+    );
+    if (settled.kind !== 'continue') throw new Error('Expected completed tool');
+    const stored = {
+      ...createCheckpoint({ workflowVersionId: version, iterationBudget: 0 }),
+      invocations: [
+        {
+          invocationKey: agent.parentInvocationKey,
+          nodeId: 'agent',
+          attemptNumber: 0,
+          status: 'pending',
+        },
+      ],
+      agents: [settled.agent],
+    };
+    const restored = parseCheckpoint(
+      JSON.parse(JSON.stringify(stored)) as unknown,
+    ).agents?.at(0);
+    if (restored === undefined) throw new Error('Expected retained Agent');
+    expect(restored.history).toEqual([
+      { proposal: modelOutput, output: toolOutput },
+    ]);
+    const next = resumeAgent(version, restored);
+    expect(next.kind).toBe('model_turn');
+    expect(next).not.toEqual(resumeAgent(version, agent));
+    expect(settleAgentReadTool(restored, toolOutput)).toEqual({
+      kind: 'refused',
+      reason: 'agent.stale_receipt',
+    });
+  });
+});

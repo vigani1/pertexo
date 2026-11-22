@@ -8,6 +8,9 @@ export type AgentChild = Readonly<{
     | Readonly<{ kind: 'tool_call'; ordinal: number }>;
 }>;
 
+export type AgentWorkIdentity = AgentChild &
+  Readonly<{ parentInvocationKey: string }>;
+
 /** A NUL in the encoded node component cannot originate in a graph node ID. */
 export function agentChildInvocationKey(
   workflowVersionId: string,

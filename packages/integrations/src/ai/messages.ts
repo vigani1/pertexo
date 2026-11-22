@@ -1,5 +1,6 @@
 import { modelUsageReader } from './model-usage.js';
 import { z } from 'zod';
+import { normalizeAgentProposal } from './agent/agent-request.js';
 import type { ModelRequest } from './model-request.js';
 
 const OUTPUT_TOOL = 'return_output';
@@ -10,6 +11,7 @@ const envelope = z.object({
       type: z.string(),
       text: z.string().optional(),
       name: z.string().optional(),
+      id: z.unknown().optional(),
       input: z.unknown().optional(),
     }),
   ),
@@ -17,11 +19,48 @@ const envelope = z.object({
 
 export const messages = {
   path: 'messages',
-  request({ config, prompt, maxTokens }: ModelRequest) {
+  request({ config, prompt, maxTokens, agent }: ModelRequest) {
     return {
       model: config.model,
       max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'user', content: prompt },
+        ...(agent?.history.flatMap(({ call, result }) => [
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'tool_use',
+                id: call.id,
+                name: call.name,
+                input: call.arguments,
+              },
+            ],
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: call.id,
+                content: JSON.stringify(result),
+              },
+            ],
+          },
+        ]) ?? []),
+      ],
+      ...(agent === undefined
+        ? {}
+        : {
+            tools: [
+              {
+                name: agent.tool.name,
+                description: agent.tool.description,
+                input_schema: agent.tool.inputSchema,
+              },
+            ],
+            tool_choice: { type: 'auto', disable_parallel_tool_use: true },
+          }),
       ...(config.mode === 'structured'
         ? {
             tools: [{ name: OUTPUT_TOOL, input_schema: config.outputSchema }],
@@ -35,13 +74,24 @@ export const messages = {
     };
   },
   usage: modelUsageReader('input_tokens', 'output_tokens'),
-  completion(value: unknown, mode: ModelRequest['config']['mode']) {
+  completion(value: unknown, request: ModelRequest) {
     const result = envelope.safeParse(value);
     if (!result.success) return { kind: 'invalid_response' } as const;
     const { stop_reason: stop, content } = result.data;
     if (stop === 'max_tokens') return { kind: 'output_truncated' } as const;
     if (stop === 'refusal') return { kind: 'output_refused' } as const;
-    if (mode === 'structured') {
+    if (request.agent !== undefined && stop === 'tool_use') {
+      const tools = content.filter(({ type }) => type === 'tool_use');
+      const [tool] = tools;
+      return tools.length === 1 && tool !== undefined
+        ? normalizeAgentProposal({
+            id: tool.id,
+            name: tool.name,
+            arguments: tool.input,
+          })
+        : ({ kind: 'invalid_response' } as const);
+    }
+    if (request.config.mode === 'structured') {
       const tools = content.filter(({ type }) => type === 'tool_use');
       const [tool] = tools;
       return stop === 'tool_use' &&

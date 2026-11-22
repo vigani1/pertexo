@@ -1,3 +1,5 @@
+import { agentChildInvocationKey } from '../invocations/agent-invocation.js';
+import { parseAgentWorkIdentity } from './agent-work.js';
 import { UUID_PATTERN } from '@pertexo/workflow-model';
 import { isRecord } from '@pertexo/workflow-model';
 
@@ -257,11 +259,13 @@ export function parseInvocations(
         'branchPath',
         'iterationPath',
         'failureHandling',
+        'agentWork',
       ],
     );
     const {
       branchPath: rawBranchPath,
       iterationPath: rawIterationPath,
+      agentWork: rawAgentWork,
       ...base
     } = item;
     const invocation = parseInvocation(base);
@@ -272,6 +276,22 @@ export function parseInvocations(
         branchPath.length,
       'branch scope node IDs must be unique',
     );
+    const agentWork =
+      rawAgentWork === undefined
+        ? undefined
+        : parseAgentWorkIdentity(rawAgentWork);
+    if (agentWork !== undefined) {
+      assertCheckpoint(
+        invocation.invocationKey ===
+          agentChildInvocationKey(
+            workflowVersionId,
+            agentWork.parentInvocationKey,
+            agentWork,
+          ),
+        'Agent work key disagrees with its parent and ordinals',
+      );
+      return { ...invocation, branchPath, iterationPath, agentWork };
+    }
     if (rawBranchPath !== undefined || rawIterationPath !== undefined)
       assertCheckpoint(
         invocation.invocationKey ===

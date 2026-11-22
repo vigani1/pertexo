@@ -10,7 +10,7 @@ export const AGENT_LIMITS = Object.freeze({
   timeoutMillis: 120_000,
 });
 
-type AttemptReceipt = Extract<OutputReference, { kind: 'inline' }>;
+export type AgentAttemptReceipt = Extract<OutputReference, { kind: 'inline' }>;
 
 export interface AgentContinuation {
   readonly parentInvocationKey: string;
@@ -24,6 +24,10 @@ export interface AgentContinuation {
     estimatedCost: number;
   }>;
   readonly turn: number;
+  readonly history?: readonly Readonly<{
+    proposal: AgentAttemptReceipt;
+    output: AgentAttemptReceipt;
+  }>[];
   readonly phase: AgentPhase;
 }
 
@@ -32,17 +36,17 @@ type AgentPhase =
   | Readonly<{
       kind: 'proposed_call';
       ordinal: number;
-      proposal: AttemptReceipt;
+      proposal: AgentAttemptReceipt;
     }>
   | Readonly<{
       kind: 'approval_wait';
       ordinal: number;
-      proposal: AttemptReceipt;
+      proposal: AgentAttemptReceipt;
       task: Extract<OutputReference, { kind: 'task' }>;
     }>
   | Readonly<{
       kind: 'running_tool';
       ordinal: number;
-      proposal: AttemptReceipt;
+      proposal: AgentAttemptReceipt;
     }>
-  | Readonly<{ kind: 'completion'; output: AttemptReceipt }>;
+  | Readonly<{ kind: 'completion'; output: AgentAttemptReceipt }>;

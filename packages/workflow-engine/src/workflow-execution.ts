@@ -1,3 +1,4 @@
+import type { AgentWorkIdentity } from './invocations/agent-invocation.js';
 import type { AgentContinuation } from './control-nodes/agent-continuation.js';
 import type { InlineAttemptSettlement } from './attempt/inline-settlement.types.js';
 import { WORKFLOW_GRAPH_CONTRACT_LIMITS } from '@pertexo/workflow-model';
@@ -65,6 +66,7 @@ export type InvocationIdentity = Readonly<{
   }>;
   branchPath?: readonly BranchScopePart[];
   iterationPath?: readonly IterationScopePart[];
+  agentWork?: AgentWorkIdentity;
 }>;
 
 /** Waits that resume on their own at `resumeAt`. */

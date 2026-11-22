@@ -37,15 +37,19 @@ export function parseAgents(
 
 function parseAgent(value: unknown): AgentContinuation {
   assertCheckpoint(isRecord(value), 'Agent continuation must be an object');
-  assertExactKeys(value, [
-    'parentInvocationKey',
-    'deadlineAt',
-    'modelRates',
-    'budget',
-    'turn',
-    'phase',
-  ]);
-  const { parentInvocationKey, modelRates, budget } = value;
+  assertExactKeys(
+    value,
+    [
+      'parentInvocationKey',
+      'deadlineAt',
+      'modelRates',
+      'budget',
+      'turn',
+      'phase',
+    ],
+    ['history'],
+  );
+  const { parentInvocationKey, modelRates, budget, history } = value;
   assertCheckpoint(
     typeof parentInvocationKey === 'string' &&
       parentInvocationKey.length > 0 &&
@@ -97,7 +101,26 @@ function parseAgent(value: unknown): AgentContinuation {
     },
     turn: boundedInteger(value.turn, 1, AGENT_LIMITS.turns),
     phase: parsePhase(value.phase),
+    ...(history === undefined ? {} : { history: parseHistory(history) }),
   };
+}
+
+function parseHistory(value: unknown) {
+  assertCheckpoint(
+    Array.isArray(value) && value.length <= AGENT_LIMITS.toolCalls,
+    'Agent tool history exceeds its bound',
+  );
+  return value.map((exchange: unknown) => {
+    assertCheckpoint(
+      isRecord(exchange),
+      'Agent tool exchange must be an object',
+    );
+    assertExactKeys(exchange, ['proposal', 'output']);
+    return {
+      proposal: attemptReceipt(exchange.proposal, 'Agent proposal'),
+      output: attemptReceipt(exchange.output, 'Agent tool output'),
+    };
+  });
 }
 
 function parsePhase(value: unknown): AgentContinuation['phase'] {

@@ -100,8 +100,12 @@ export function createModelClient(
         });
         if (outcome.kind !== 'succeeded')
           throw statusFailure(response.status, outcome);
-        const result = adapter.completion(response.body, request.config.mode);
-        if (result.kind === 'text' || result.kind === 'structured')
+        const result = adapter.completion(response.body, request);
+        if (
+          result.kind === 'text' ||
+          result.kind === 'structured' ||
+          result.kind === 'proposal'
+        )
           return result;
         throw modelFailure(result.kind, { possiblyDispatched: true });
       } catch (error: unknown) {
