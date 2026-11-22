@@ -16,6 +16,11 @@ import { SchemaFieldList } from '../fields/schema-list';
 import { useInspectorSession } from '../use-session';
 import { DataTableSetup } from './table-setup';
 
+const costLimit = new Intl.NumberFormat(FORMAT_LOCALE, {
+  style: 'currency',
+  currency: 'USD',
+}).format(AGENT_LIMITS.costNanoDollars / 1e9);
+
 export function AgentSetup({
   schema,
   config,
@@ -99,11 +104,7 @@ export function AgentSetup({
           {formatCount(AGENT_TOOL_LIMITS.outputTokens, 'output token')}. The
           total budget is {formatCount(AGENT_LIMITS.inputTokens, 'input token')}
           , {formatCount(AGENT_LIMITS.outputTokens, 'output token')}, and{' '}
-          {new Intl.NumberFormat(FORMAT_LOCALE, {
-            style: 'currency',
-            currency: 'USD',
-          }).format(AGENT_LIMITS.costNanoDollars / 1e9)}{' '}
-          in estimated model cost.
+          {costLimit} in estimated model cost.
         </p>
       </Disclosure>
     </>
