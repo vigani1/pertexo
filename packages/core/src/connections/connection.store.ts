@@ -78,7 +78,10 @@ import { oauth2TokenFlows } from './oauth2/tokens.repository.js';
 import { selectConnection } from './connections.repository.js';
 import { requireVisibleConnection } from './require-visible-connection.js';
 import type { ResolveConnectionLookupSecretInput } from './runtime/connection-resolution.types.js';
-import { resolveConnectionLookupSecret } from './runtime/lookup.js';
+import {
+  assertLookupSecretCurrent,
+  resolveConnectionLookupSecret,
+} from './runtime/lookup.js';
 import {
   assertConnectionSecretCurrent,
   resolveConnectionSecret,
@@ -194,6 +197,9 @@ export function createConnectionStore(
     resolveConnectionLookupSecret: (
       input: ResolveConnectionLookupSecretInput,
     ) => use(input, (client) => resolveConnectionLookupSecret(client, input)),
+    assertConnectionLookupSecretCurrent: (
+      input: Parameters<typeof assertLookupSecretCurrent>[1],
+    ) => use(input, (client) => assertLookupSecretCurrent(client, input)),
     resolveConnectionSecret: (input: ResolveConnectionSecretInput) =>
       resolveConnectionSecret(pool, input),
     assertConnectionSecretCurrent: (

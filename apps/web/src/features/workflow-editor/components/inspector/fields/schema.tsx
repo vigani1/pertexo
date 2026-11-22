@@ -31,6 +31,7 @@ import {
 } from '../../../model/inspector/field-text';
 import { useInspectorDraftField } from '../use-draft-field';
 import { ChoiceSelect } from './choice-select';
+import { LookupSelect } from './lookup-select';
 import {
   describedBy,
   fieldControlId,
@@ -60,6 +61,17 @@ export function SchemaField({
       `${form.nodeId}:config:${path}`,
     );
   }
+  if (field.lookup !== undefined)
+    return (
+      <LookupSelect
+        id={id}
+        field={field}
+        lookup={field.lookup}
+        config={config}
+        form={form}
+        value={typeof value === 'string' ? value : null}
+      />
+    );
   if (field.kind === 'boolean')
     return (
       <Field>

@@ -175,7 +175,7 @@ const connectionFormDefinitionSchema = z
       .readonly(),
     fields: schemaDocumentSchema,
     slot: identityKey,
-    test: z.enum(['http', 'oauth2', 'postgres', 'smtp', 'signing']),
+    test: z.enum(['http', 'oauth2', 'postgres', 'smtp', 'signing', 'lookup']),
     testInput: z.enum(['url', 'provider', 'consent']),
     testAutomatically: z.literal(true).optional(),
   })

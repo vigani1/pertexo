@@ -1,3 +1,5 @@
+import type { LookupConnectionOptionsService } from '../lookups/lookup-options.service.js';
+import { isApplicationError } from '../../platform/http/application-error.js';
 import { hasCredentialType } from '../credential-type.js';
 import { testHttpConnection } from './http.js';
 import { requestInputError } from '../../platform/http/request-input.js';
@@ -64,6 +66,7 @@ export type TestConnectionCommand = ConnectionCommandInput &
   }>;
 
 export class TestConnectionService {
+  private readonly lookup: LookupConnectionOptionsService | undefined;
   private readonly smtpPolicy: smtp.SmtpTestPolicy | undefined;
   private readonly encryption: ConnectionSecretEncryptionPort;
   private readonly httpClient: ConnectionHttpClient;
@@ -85,6 +88,7 @@ export class TestConnectionService {
       emailClient,
       oauth2,
       smtpPolicy,
+      lookup,
     }: Readonly<{
       encryption: ConnectionSecretEncryptionPort;
       httpClient: ConnectionHttpClient;
@@ -95,9 +99,11 @@ export class TestConnectionService {
       emailClient?: ConnectionEmailClient | undefined;
       oauth2?: ConnectionOAuth2Dependencies | undefined;
       smtpPolicy?: smtp.SmtpTestPolicy | undefined;
+      lookup?: LookupConnectionOptionsService | undefined;
     }>,
   ) {
     this.smtpPolicy = smtpPolicy;
+    this.lookup = lookup;
     this.encryption = encryption;
     this.httpClient = httpClient;
     this.applicationSecret = applicationSecret;
@@ -213,7 +219,36 @@ export class TestConnectionService {
           );
           if (definition === undefined)
             throw new ConnectionSecretEncryptionError();
-          if (definition.test.kind === 'oauth2') {
+          if (definition.test.kind === 'lookup') {
+            if (this.lookup === undefined)
+              throw new ConnectionSecretEncryptionError();
+            try {
+              await this.lookup.execute(
+                {
+                  ...input,
+                  signal: requestSignal,
+                  request: {
+                    providerKey: expectedProviderKey,
+                    lookup: definition.test.key,
+                  },
+                },
+                { resolved, beforeDispatch },
+              );
+              outcome = SUCCEEDED_TEST;
+            } catch (error: unknown) {
+              if (
+                !isApplicationError(error) ||
+                error.code !== 'provider.unavailable'
+              )
+                throw error;
+              outcome = {
+                ok: false,
+                httpStatus: null,
+                errorCode: 'connection.provider_invalid_response',
+                reauthorizationRequired: false,
+              };
+            }
+          } else if (definition.test.kind === 'oauth2') {
             outcome = await this.testOAuth2(input, request, {
               method: definition.test.method,
               connection: resolved.connection,

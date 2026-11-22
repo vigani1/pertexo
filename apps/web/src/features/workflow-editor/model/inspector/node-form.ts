@@ -14,6 +14,7 @@ export type NodeUpdateInput =
 export type NodeFormApi = Readonly<{
   nodeId: string;
   editable: boolean;
+  connectionRefs?: WorkflowNode['connectionRefs'];
   commit: (update: NodeUpdateInput, coalesceKey: string) => void;
   reportScratch: (field: string, hasScratch: boolean) => void;
 }>;

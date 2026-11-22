@@ -122,6 +122,11 @@ export async function createApiConnectionRuntime(
         authorization: identityRuntime.dependencies.authorization,
         encryption: encryptionRuntime.encryption,
         httpClient: connectionTestClient,
+        lookup: {
+          persistence: database,
+          encryption: encryptionRuntime.encryption,
+          http: connectionTestClient,
+        },
         slackClient,
         emailClient,
         telemetry,

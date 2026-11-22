@@ -14,5 +14,6 @@ export { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js
 export {
   connectionFormCatalog,
   findConnectionDefinition,
+  findConnectionLookup,
   isRegisteredProvider,
 } from './integration-modules.js';

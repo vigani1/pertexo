@@ -54,6 +54,7 @@ type HttpTestRecipe<Credential> = Readonly<{
 
 type TestRecipe<Credential> =
   | HttpTestRecipe<Credential>
+  | Readonly<{ kind: 'lookup'; key: string }>
   | Readonly<{ kind: 'oauth2'; method: 'GET'; target: 'entered_url' }>
   | Readonly<{ kind: 'postgres' | 'smtp' | 'signing' }>;
 

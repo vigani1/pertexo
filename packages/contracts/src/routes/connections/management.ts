@@ -1,3 +1,8 @@
+import {
+  CONNECTION_LOOKUP_PATH,
+  connectionLookupRequestSchema,
+  connectionLookupResponseSchema,
+} from '../../schemas/connections/connection-lookup.js';
 import { BROWSABLE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { z } from 'zod';
 
@@ -215,6 +220,21 @@ export const connectionRoutes = {
       ),
     },
     problems: problem('401', '403', '404', '409', '429', '503', '500'),
+  }),
+  lookup: defineRoute({
+    operationId: 'lookupConnectionOptions',
+    method: 'post',
+    path: CONNECTION_LOOKUP_PATH,
+    params: connectionIdParamSchema,
+    access: using,
+    rateLimit: 'provider_test',
+    body: named('ConnectionLookupRequest', connectionLookupRequestSchema),
+    success: {
+      status: 200,
+      description: 'Available choices for the connection',
+      body: named('ConnectionLookupResponse', connectionLookupResponseSchema),
+    },
+    problems: problem('400', '401', '403', '404', '409', '429', '503', '500'),
   }),
   slackChannels: defineRoute({
     operationId: 'lookupSlackChannels',

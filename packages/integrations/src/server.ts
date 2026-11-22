@@ -100,3 +100,5 @@ export type {
 export { INTEGRATION_MODULES } from './modules.js';
 
 export type { ConnectionDefinition } from './providers/connection-definition.js';
+
+export type { ConnectionLookup } from './providers/connection-lookup.js';
