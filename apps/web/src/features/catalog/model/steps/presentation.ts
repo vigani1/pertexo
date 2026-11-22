@@ -37,7 +37,8 @@ type StepIdentity = string | NodeDefinitionCatalogItem['definition'];
 type StepMetadata = Pick<
   NodeDefinitionCatalogItem,
   'display' | 'family' | 'presentation'
->;
+> &
+  Partial<Pick<NodeDefinitionCatalogItem, 'configSchema'>>;
 
 export type DescribeStep = (
   identity: StepIdentity,
@@ -94,6 +95,7 @@ export function describeStep(
     name: presentation?.name ?? display?.name ?? prettifyDefinitionKey(key),
     description: display?.description ?? 'A step from the catalog',
     sideEffect: display?.sideEffect,
+    configSchema: metadata?.configSchema,
     icon: resolveStepIcon(key, resolvedFamily, presentation?.icon),
     family: resolvedFamily,
   };

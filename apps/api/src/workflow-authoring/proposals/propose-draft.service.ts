@@ -12,8 +12,10 @@ import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import {
   AGENT_TOOL_LIMITS,
   safeParseWorkflowGraphDraft,
+  startingConfig,
   type AgentToolCall,
   type JsonValue,
+  type WorkflowNode,
 } from '@pertexo/workflow-model';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
 import type { ConnectionLookupDependencies } from '../../connections/lookups/lookup-options.service.js';
@@ -124,7 +126,14 @@ export class ProposeDraftService {
     }
     const restored = restoreDraftFields(draft.graphJson, parsed.data);
     if (restored.kind === 'rejected') return rejected(restored.issues, usage);
-    const admitted = safeParseWorkflowGraphDraft(restored.graph);
+    const admitted = safeParseWorkflowGraphDraft({
+      ...restored.graph,
+      nodes: initializeAddedSteps(
+        draft.graphJson.nodes,
+        restored.graph.nodes,
+        this.catalog.execute().items,
+      ),
+    });
     if (!admitted.success)
       return rejected(
         [
@@ -245,6 +254,46 @@ export class ProposeDraftService {
     }
     return { kind: 'invalid_response' as const };
   }
+}
+
+function initializeAddedSteps(
+  previous: readonly WorkflowNode[],
+  level: readonly WorkflowNode[],
+  catalog: ReturnType<ListNodeDefinitionsService['execute']>['items'],
+): readonly WorkflowNode[] {
+  const existing = new Map(previous.map((node) => [node.id, node]));
+  return level.map((node) => {
+    const original = existing.get(node.id);
+    const definition =
+      original === undefined
+        ? catalog.find(
+            (item) =>
+              item.definition.key === node.definition.key &&
+              item.definition.version === node.definition.version,
+          )
+        : undefined;
+    const config =
+      definition === undefined
+        ? node.config
+        : { ...startingConfig(definition, level), ...node.config };
+    const { structured } = node;
+    if (structured === undefined) return { ...node, config };
+    return {
+      ...node,
+      config,
+      structured: {
+        ...structured,
+        body: {
+          ...structured.body,
+          nodes: initializeAddedSteps(
+            original?.structured?.body.nodes ?? [],
+            structured.body.nodes,
+            catalog,
+          ),
+        },
+      },
+    };
+  });
 }
 
 function rejected(

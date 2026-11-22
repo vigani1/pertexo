@@ -39,6 +39,7 @@ export type StepPresentation = Readonly<{
   icon: LucideIcon;
   family: StepFamily | 'unknown';
   sideEffect?: string | undefined;
+  configSchema?: NodeDefinitionCatalogItem['configSchema'] | undefined;
 }>;
 
 export const stepIcons: Readonly<Partial<Record<string, LucideIcon>>> =

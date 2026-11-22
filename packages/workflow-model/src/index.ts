@@ -430,6 +430,14 @@ export {
 } from './values/variables/workspace-variable.schemas.js';
 
 // Authoring
+export { startingConfig } from './authoring/setup/starting-config.js';
+export {
+  isJsonObject,
+  propertyDefaults,
+  readSchemaUnion,
+  withUnionChoice,
+  type SchemaUnion,
+} from './authoring/setup/schema-union.js';
 export {
   addedWorkflowCallTargets,
   addedWorkflowConnectionReferences,
@@ -558,12 +566,3 @@ export {
   type PollPauseEvidence,
   type TriggerPauseEvidence,
 } from './triggers/pause-evidence.js';
-
-export { startingConfig } from './authoring/setup/starting-config.js';
-export {
-  isJsonObject,
-  propertyDefaults,
-  readSchemaUnion,
-  withUnionChoice,
-  type SchemaUnion,
-} from './authoring/setup/schema-union.js';

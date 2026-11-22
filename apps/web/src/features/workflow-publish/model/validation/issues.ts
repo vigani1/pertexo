@@ -23,7 +23,9 @@ export type WorkflowIssueGroup = Readonly<{
 
 /** Every finding of a report in human words, grouped by the step it names. */
 export function groupWorkflowIssues(
-  report: WorkflowValidateResponse,
+  report: Pick<WorkflowValidateResponse, 'issues'> & {
+    compatibility?: Pick<WorkflowValidateResponse['compatibility'], 'issues'>;
+  },
   graph: WorkflowGraphContract,
   source: 'validation' | 'publication' = 'validation',
 ): readonly WorkflowIssueGroup[] {
@@ -36,7 +38,7 @@ export function groupWorkflowIssues(
           : describeValidationIssue(issue),
       target: resolveWorkflowValidationTarget(issue, graph),
     })),
-    ...report.compatibility.issues.map((issue, index) => ({
+    ...(report.compatibility?.issues ?? []).map((issue, index) => ({
       id: `compatibility-${String(index)}`,
       message:
         'This step’s type isn’t in the catalog any more. Replace it with an available step.',

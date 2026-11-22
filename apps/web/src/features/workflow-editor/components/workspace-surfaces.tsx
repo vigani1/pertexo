@@ -19,6 +19,7 @@ type SurfaceProps = Readonly<{
   readSamples: boolean;
   canvas: Pick<CanvasEditing, 'canvasRef' | 'adding' | 'selection'>;
   checking: boolean;
+  showStartPicker: boolean;
   onOpenInspector: () => void;
 }>;
 export function WorkspaceSurface({
@@ -29,6 +30,7 @@ export function WorkspaceSurface({
   readSamples,
   canvas,
   checking,
+  showStartPicker,
   onOpenInspector,
 }: SurfaceProps) {
   const { canvasRef, adding, selection } = canvas;
@@ -57,11 +59,13 @@ export function WorkspaceSurface({
         },
       }}
     >
-      <StartPicker
-        definitions={definitions}
-        editable={editable}
-        onPick={adding.placement.addAtCentre}
-      />
+      {showStartPicker ? (
+        <StartPicker
+          definitions={definitions}
+          editable={editable}
+          onPick={adding.placement.addAtCentre}
+        />
+      ) : null}
       <ValidationSweep active={checking} />
     </WorkflowCanvas>
   );

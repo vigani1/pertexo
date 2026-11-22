@@ -67,7 +67,14 @@ export function SessionCommandBar({
       commands={
         paused ? null : (
           <>
-            {editing.canUpdate ? <DraftProposal /> : null}
+            {editing.canUpdate ? (
+              <DraftProposal
+                open={chrome.proposalOpen}
+                onOpenChange={chrome.onProposalOpenChange}
+                graph={graph}
+                onFix={chrome.onFix}
+              />
+            ) : null}
             <WorkflowCommandActions
               renderFeedback={chrome.renderFeedback}
               commandSession={commandSession}

@@ -1,6 +1,7 @@
 import {
   DRAFT_PROPOSAL_MAX_REQUEST_CHARACTERS,
   type DraftProposalResult,
+  type WorkflowGraphContract,
 } from '@pertexo/contracts';
 import { useState } from 'react';
 import { AssistantDisclosure } from '@/components/patterns/actions/assistant-disclosure';
@@ -16,6 +17,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { isApiError } from '@/lib/api/error';
 import { describeCommandError } from '@/lib/api/error-copy';
+import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useDraftProposal } from '../data/draft-proposal.mutations';
 import { DraftProposalReview } from './draft-proposal-review';
 
@@ -31,8 +33,17 @@ const outcomeCopy = {
   provider_failure: 'The AI provider could not complete the request.',
 } as const;
 
-export function DraftProposal() {
-  const [open, setOpen] = useState(false);
+export function DraftProposal({
+  open,
+  onOpenChange,
+  graph,
+  onFix,
+}: Readonly<{
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  graph: WorkflowGraphContract;
+  onFix: (target: WorkflowValidationTarget) => void;
+}>) {
   const [request, setRequest] = useState('');
   const { disclosure, proposal, apply } = useDraftProposal();
   const destination = disclosure.data;
@@ -57,33 +68,45 @@ export function DraftProposal() {
       open={open}
       onOpenChange={(next) => {
         if (pending) return;
-        setOpen(next);
+        onOpenChange(next);
         if (next) void loadDisclosure();
       }}
     >
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         Ask assistant
       </DialogTrigger>
-      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
+      <DialogContent>
         <DialogTitle>
           {review === undefined
             ? 'Describe your workflow change'
             : 'Review proposed draft'}
         </DialogTitle>
-        <ProposalContent
-          review={review}
-          destination={destination}
-          request={request}
-          onRequestChange={setRequest}
-          pending={pending}
-        />
+        <div className="mt-4 grid gap-4">
+          {review === undefined ? (
+            <ProposalRequest
+              destination={destination}
+              request={request}
+              onRequestChange={setRequest}
+              pending={pending}
+            />
+          ) : (
+            <DraftProposalReview
+              result={review}
+              graph={graph}
+              onFix={(target) => {
+                onOpenChange(false);
+                onFix(target);
+              }}
+            />
+          )}
+        </div>
         <ProposalFeedback
           activity={activity}
           error={error}
           stale={stale}
           outcome={feedback?.kind}
         />
-        <DialogFooter>
+        <DialogFooter className="mt-5">
           <DialogClose render={<Button variant="outline" disabled={pending} />}>
             Cancel
           </DialogClose>
@@ -120,7 +143,7 @@ export function DraftProposal() {
                 void apply
                   .mutateAsync(action.review)
                   .then(() => {
-                    setOpen(false);
+                    onOpenChange(false);
                     setRequest('');
                   })
                   .catch(() => undefined);
@@ -162,22 +185,17 @@ function proposalAction(
   return { kind: 'wait' as const };
 }
 
-function ProposalContent({
-  review,
+function ProposalRequest({
   destination,
   request,
   onRequestChange,
   pending,
 }: Readonly<{
-  review:
-    | Extract<DraftProposalResult, { kind: 'inspected' | 'rejected' }>
-    | undefined;
   destination: Disclosure;
   request: string;
   onRequestChange: (value: string) => void;
   pending: boolean;
 }>) {
-  if (review !== undefined) return <DraftProposalReview result={review} />;
   if (destination?.kind !== 'ready') return null;
   return (
     <>

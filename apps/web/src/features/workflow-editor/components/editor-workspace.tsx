@@ -2,7 +2,7 @@ import {
   WorkflowTestHistory,
   type NodeTestHandle,
 } from '@/features/workflow-testing/workflow-testing-views.public';
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import type { WorkflowValidationTarget } from '@/features/workflow-publish/public';
 import { useEditorStore, useEditorSession } from '../model/state/context';
 import { useLastTest } from '../hooks/use-last-test';
@@ -28,6 +28,8 @@ export type EditorChrome = Readonly<{
   issuesOpen: boolean;
   onIssuesOpenChange: (open: boolean) => void;
   onFix: (target: WorkflowValidationTarget) => void;
+  proposalOpen: boolean;
+  onProposalOpenChange: (open: boolean) => void;
 }>;
 
 /**
@@ -76,11 +78,13 @@ export function EditorWorkspace({
   const testRef = useRef<NodeTestHandle>(null);
   const { navigation } = actions;
   const lastTest = useLastTest();
-  const { chrome, setFeedbackTarget } = useWorkspaceChrome({
+  const [proposalOpen, setProposalOpen] = useState(false);
+  const { chrome: workspaceChrome, setFeedbackTarget } = useWorkspaceChrome({
     tests,
     onFix: navigation.fix,
   });
-  const { issuesOpen, onShortcutsOpenChange: setShortcutsOpen } = chrome;
+  const { issuesOpen, onShortcutsOpenChange: setShortcutsOpen } =
+    workspaceChrome;
   const { editable, canvasRef, addStep, adding, selection, placeable } =
     useCanvasEditing({
       definitions,
@@ -94,6 +98,14 @@ export function EditorWorkspace({
         setShortcutsOpen(true);
       },
     });
+  const chrome: EditorChrome = {
+    ...workspaceChrome,
+    proposalOpen,
+    onProposalOpenChange: (open) => {
+      if (open) adding.quickAdd.close();
+      setProposalOpen(open);
+    },
+  };
   const overlays = useCanvasOverlays(issues, effects, testStatuses);
   return (
     <EditorLayout
@@ -131,6 +143,7 @@ export function EditorWorkspace({
           readSamples={!paused && workspace.capabilities.includes('run:read')}
           canvas={{ canvasRef, adding, selection }}
           checking={checking}
+          showStartPicker={!proposalOpen}
           onOpenInspector={() => {
             navigation.setMobilePanel('inspector');
           }}
