@@ -1,7 +1,7 @@
 import { MODEL_IDENTIFIER_MAX_CHARACTERS } from '@pertexo/node-sdk';
 import { z } from 'zod';
 
-export const assistantSelectionSchema = z.strictObject({
+const assistantSelectionSchema = z.strictObject({
   connectionId: z.uuid(),
   model: z.string().trim().min(1).max(MODEL_IDENTIFIER_MAX_CHARACTERS),
 });
