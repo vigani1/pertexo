@@ -67,8 +67,10 @@ independent run after final run failure, rather than another in-run handler.
   Only final allowlisted definite failures route; cancellation, run deadline,
   unknown outcome, corrupt state and platform bounds do not.
 - One selected handler owns the source's safe `node_failure` mapping. Its fields
-  are node/invocation/attempt identity and allowlisted error kind/code. No provider
-  text, stack, credentials, run input/output or nonexistent successful output.
+  are node/invocation/attempt identity and allowlisted error kind/code. An Agent
+  source also supplies the published step label, with its node ID as a fallback.
+  No provider text, stack, credentials, run input/output or nonexistent
+  successful output.
 - Route identity, bounded failure value, pending/handled disposition, checkpoint,
   events and admission commit together. Retries/restart cannot select a second
   handler. A failed handler fails the run; partial handling is not success.
