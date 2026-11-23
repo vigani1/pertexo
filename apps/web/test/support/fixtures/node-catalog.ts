@@ -18,5 +18,5 @@ export const describeBrowserStep =
 export const browserConnectionDefinitions =
   nodeDefinitionListResponseSchema.parse({
     items: [],
-    connections: connectionFormCatalog,
+    connections: connectionFormCatalog(),
   }).connections ?? [];
