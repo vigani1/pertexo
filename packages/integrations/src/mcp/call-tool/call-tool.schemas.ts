@@ -1,6 +1,7 @@
 import {
   CONNECTION_LOOKUP_FIELD,
   INPUT_SCHEMA_SETTING,
+  mcpToolNameSchema,
 } from '@pertexo/contracts';
 import { boundedNodeJsonRecordSchema } from '@pertexo/node-sdk';
 import { z } from 'zod';
@@ -10,7 +11,6 @@ import {
   MCP_PROVIDER_KEY,
   MCP_TOOLS_LOOKUP,
 } from '../connections.definition.js';
-import { toolNameSchema } from '../list-tools.js';
 import { MCP_LIMITS } from '../mcp-limits.js';
 
 const TOOL_INPUT_SETTING = 'toolInputSchema';
@@ -21,7 +21,7 @@ const jsonObject = boundedNodeJsonRecordSchema.meta({
 });
 
 export const callToolConfigSchema = z.strictObject({
-  toolName: toolNameSchema.meta({
+  toolName: mcpToolNameSchema.meta({
     title: 'Tool',
     [CONNECTION_LOOKUP_FIELD]: {
       providerKey: MCP_PROVIDER_KEY,

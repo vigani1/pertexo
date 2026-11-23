@@ -32,17 +32,21 @@ const SSE_DATA_FIELD = 'data:';
 async function readEvents(body: AsyncIterable<Uint8Array>, id: number) {
   const decoder = new TextDecoder('utf-8', { fatal: true });
   let pending = '';
+  let swallowLf = false;
   let data: string[] = [];
   let events = 0;
   for await (const chunk of body) {
     pending += decoder.decode(chunk, { stream: true });
-    let match = /\r\n|\n|\r(?!$)/u.exec(pending);
-    while (match !== null) {
+    while (pending !== '') {
+      if (swallowLf && pending.startsWith('\n')) pending = pending.slice(1);
+      swallowLf = false;
+      const match = /[\r\n]/u.exec(pending);
+      if (match === null) break;
       const line = pending.slice(0, match.index);
-      pending = pending.slice(match.index + match[0].length);
+      pending = pending.slice(match.index + 1);
+      swallowLf = match[0] === '\r';
       if (line.startsWith(SSE_DATA_FIELD))
         data.push(line.slice(SSE_DATA_FIELD.length).replace(/^ /u, ''));
-      match = /\r\n|\n|\r(?!$)/u.exec(pending);
       if (line !== '' || data.length === 0) continue;
       events += 1;
       if (events > MCP_LIMITS.events)

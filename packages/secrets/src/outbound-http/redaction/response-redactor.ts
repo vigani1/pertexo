@@ -17,6 +17,8 @@ const DECODING_BUDGET_BYTES = Object.freeze({
 /** The documented bound includes the outer response's JSON-string encoding. */
 const JSON_ESCAPE_LAYERS = 4;
 const MASK = Buffer.from('[Redacted]');
+const CR = '\r'.charCodeAt(0);
+const LF = '\n'.charCodeAt(0);
 class MatchingState {
   readonly edges = new Map<number, MatchingState>();
   fallback: MatchingState = this;
@@ -50,8 +52,11 @@ export function prepareResponseRedactor(
   const root = new MatchingState();
   const patterns = prepareSensitiveBytePatterns(sensitiveValues);
   let maximum = 0;
+  let lineBreaksSeparatePatterns = true;
   for (const pattern of patterns) {
     maximum = Math.max(maximum, pattern.length);
+    if (pattern.includes(CR) || pattern.includes(LF))
+      lineBreaksSeparatePatterns = false;
     let state = root;
     for (const byte of pattern) {
       let next = state.edges.get(byte);
@@ -93,7 +98,12 @@ export function prepareResponseRedactor(
   };
   const redact = (
     source: Buffer,
-    { final = true, covered = 0, rejectSensitiveResponse = false } = {},
+    {
+      final = true,
+      covered = 0,
+      rejectSensitiveResponse = false,
+      incremental = false,
+    } = {},
   ): Readonly<{ emitted: Buffer; remaining: Buffer; covered: number }> => {
     if (maximum === 0)
       return {
@@ -130,6 +140,14 @@ export function prepareResponseRedactor(
             end,
             view.sourceStart(Math.max(0, view.bytes.length - maximum - 11)),
           );
+      // Literal line breaks survive every escape-decoding layer. When no
+      // pattern contains one, no future chunk can complete a match across it.
+      if (incremental && lineBreaksSeparatePatterns)
+        end = Math.max(
+          end,
+          source.lastIndexOf(CR) + 1,
+          source.lastIndexOf(LF) + 1,
+        );
       const matches: Match[] = [];
       for (const view of views) find(view, matches);
       if (rejectSensitiveResponse && matches.length > 0)

@@ -22,6 +22,14 @@ export const PROVIDER_HTTP_ERROR_CODE = Object.freeze({
 export type ProviderHttpErrorCode =
   (typeof PROVIDER_HTTP_ERROR_CODE)[keyof typeof PROVIDER_HTTP_ERROR_CODE];
 
+export class ProviderCredentialRejectedError extends Error {
+  public override readonly name = 'ProviderCredentialRejectedError';
+
+  public constructor(public readonly status: number) {
+    super('Provider rejected the credential');
+  }
+}
+
 export class ProviderHttpError extends Error {
   public readonly possiblyDispatched: boolean;
   public override readonly name = 'ProviderHttpError';

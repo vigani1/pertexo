@@ -89,12 +89,7 @@ export function responseOutcome(
   if (status >= 200 && status <= 299)
     return Object.freeze({ ok: true, httpStatus: status });
   if (credentialRejection && (status === 401 || status === 403))
-    return Object.freeze({
-      ok: false,
-      httpStatus: status,
-      errorCode: 'connection.credential_rejected',
-      reauthorizationRequired: true,
-    });
+    return credentialRejectedOutcome(status);
   let errorCode:
     | 'connection.provider_rate_limited'
     | 'connection.provider_unavailable'
@@ -107,6 +102,17 @@ export function responseOutcome(
     httpStatus: status,
     errorCode,
     reauthorizationRequired: false,
+  });
+}
+
+export function credentialRejectedOutcome(
+  httpStatus: number,
+): ConnectionTestOutcome {
+  return Object.freeze({
+    ok: false,
+    httpStatus,
+    errorCode: 'connection.credential_rejected',
+    reauthorizationRequired: true,
   });
 }
 

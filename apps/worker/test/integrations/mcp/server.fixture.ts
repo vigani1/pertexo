@@ -112,7 +112,7 @@ export async function fakeMcp(
         case 'tools/call':
           response
             .writeHead(200, { 'content-type': 'text/event-stream' })
-            .end(
+            .write(
               `id: first\r\ndata:\r\n\r\n: keepalive\r\n\r\ndata: ${JSON.stringify({ jsonrpc: '2.0', id: rpc.id, result: { content: [], structuredContent: { count: (rpc.params as { arguments: { count: number } }).arguments.count } } })}\r\n\r\n`,
             );
           return;

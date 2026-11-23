@@ -28,6 +28,7 @@ export async function* boundedRedactedBody(
     deadline,
     redactor = prepareResponseRedactor(sensitiveValues, limit),
     charset,
+    incremental = false,
     rejectSensitiveResponse = false,
   }: Readonly<{
     limit: number;
@@ -36,6 +37,7 @@ export async function* boundedRedactedBody(
     deadline: number;
     redactor?: ResponseRedactor;
     charset?: string;
+    incremental?: boolean;
     rejectSensitiveResponse?: boolean;
   }>,
 ): AsyncGenerator<Uint8Array> {
@@ -49,9 +51,15 @@ export async function* boundedRedactedBody(
     return value;
   };
   try {
-    const raw = boundedSourceChunks(body, limit, signal);
+    // Charset detection needs both bytes of a possible UTF-16 BOM.
+    const raw = boundedSourceChunks(body, limit, signal, incremental, 2);
     const decoded = decodedResponseChunks(raw, charset);
-    for await (const chunk of boundedSourceChunks(decoded, limit, signal)) {
+    for await (const chunk of boundedSourceChunks(
+      decoded,
+      limit,
+      signal,
+      incremental,
+    )) {
       if (signal.aborted)
         throw abortFailure(signal, {
           possiblyDispatched: true,
@@ -68,7 +76,7 @@ export async function* boundedRedactedBody(
       assertBodyDeadline(signal, deadline);
       const redacted = redactor.redact(
         Buffer.from(pending.buffer, pending.byteOffset, pending.byteLength),
-        { covered, final: false, rejectSensitiveResponse },
+        { covered, final: false, rejectSensitiveResponse, incremental },
       );
       pending.fill(0);
       pending = redacted.remaining;
@@ -129,10 +137,13 @@ async function* boundedSourceChunks(
   body: AsyncIterable<Uint8Array>,
   limit: number,
   signal: AbortSignal,
+  incremental: boolean,
+  minimumFirstChunkBytes = 1,
 ): AsyncGenerator<Uint8Array> {
-  let buffer = Buffer.alloc(BODY_CHUNK_BYTES);
+  const buffer = Buffer.alloc(BODY_CHUNK_BYTES);
   let length = 0;
   let chunks = 0;
+  let minimum = minimumFirstChunkBytes;
   try {
     for await (const chunk of ownedSourceChunks(body, limit, signal)) {
       if (++chunks % CHUNKS_PER_YIELD === 0) await yieldToEventLoop();
@@ -148,8 +159,14 @@ async function* boundedSourceChunks(
         if (length < buffer.length) continue;
         yield buffer;
         buffer.fill(0);
-        buffer = Buffer.alloc(BODY_CHUNK_BYTES);
         length = 0;
+        minimum = 1;
+      }
+      if (incremental && length >= minimum) {
+        yield buffer.subarray(0, length);
+        buffer.fill(0, 0, length);
+        length = 0;
+        minimum = 1;
       }
     }
     if (length > 0) yield buffer.subarray(0, length);

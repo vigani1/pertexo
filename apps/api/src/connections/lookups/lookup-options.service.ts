@@ -4,6 +4,7 @@ import {
   type ConnectionLookupRequest,
 } from '@pertexo/contracts';
 import {
+  ProviderCredentialRejectedError,
   ProviderHttpError,
   type ConnectionLookup,
 } from '@pertexo/integrations/server';
@@ -31,7 +32,9 @@ import { boundedLookupHttp, type LookupHttp } from './bounded-http.js';
 export type ConnectionLookupDependencies = Readonly<{
   persistence: Pick<
     ApiConnectionStore,
-    'resolveConnectionLookupSecret' | 'assertConnectionLookupSecretCurrent'
+    | 'resolveConnectionLookupSecret'
+    | 'assertConnectionLookupAccess'
+    | 'assertConnectionLookupSecretCurrent'
   >;
   encryption: Pick<ConnectionSecretEncryptionPort, 'open'>;
   http: LookupHttp;
@@ -64,7 +67,17 @@ export class LookupConnectionOptionsService {
     const callerSignal = encryptionSignal(input);
     callerSignal.throwIfAborted();
     const local: unknown = prepared.local();
-    if (local !== undefined) return checkedResponse(local);
+    if (local !== undefined) {
+      await this.dependencies.persistence.assertConnectionLookupAccess({
+        workspaceId: input.routeWorkspaceId,
+        actorId: input.actor.actorId,
+        connectionId: input.connectionId,
+        expectedProviderKey: providerKey,
+        signal: callerSignal,
+      });
+      callerSignal.throwIfAborted();
+      return checkedResponse(local);
+    }
 
     const deadline = new AbortController();
     const timer = setTimeout(() => {
@@ -168,7 +181,9 @@ export class LookupConnectionOptionsService {
         error instanceof ConnectionNotFoundError ||
         error instanceof ConnectionUnavailableError ||
         error instanceof ConnectionSecretEncryptionError ||
-        (test !== undefined && error instanceof ProviderHttpError)
+        (test !== undefined &&
+          (error instanceof ProviderHttpError ||
+            error instanceof ProviderCredentialRejectedError))
       )
         throw error;
       return throwApplicationError(applicationError('provider.unavailable'));

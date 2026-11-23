@@ -1,9 +1,11 @@
+import { MCP_PROTOCOL_VERSION } from '@pertexo/contracts';
 import type { SchemaDocument } from '@pertexo/node-sdk';
 import { isRecord } from '@pertexo/workflow-model';
 import type { ProviderHttpClient } from '../providers/http-client.js';
+import { ProviderCredentialRejectedError } from '../providers/http.errors.js';
 import type { McpCredential } from './connections.definition.js';
-import { MCP_LIMITS, MCP_PROTOCOL_VERSION } from './mcp-limits.js';
-import { McpHttpError, McpProtocolError } from './mcp.errors.js';
+import { MCP_LIMITS } from './mcp-limits.js';
+import { McpProtocolError } from './mcp.errors.js';
 import { readMcpReply } from './reply.js';
 
 export type McpHttp = Pick<ProviderHttpClient, 'executeStreaming'>;
@@ -72,8 +74,11 @@ export async function openMcpSession(
           beforeDispatch: fence,
         },
         async (response) => {
-          if (response.status < 200 || response.status >= 300)
-            throw new McpHttpError(response.status);
+          const { status } = response;
+          if (status === 401 || status === 403)
+            throw new ProviderCredentialRejectedError(status);
+          if (status < 200 || status >= 300)
+            throw new McpProtocolError('MCP endpoint refused the exchange');
           if (!notification) {
             return {
               result: await readMcpReply(response, id),

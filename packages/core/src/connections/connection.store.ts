@@ -80,6 +80,7 @@ import { requireVisibleConnection } from './require-visible-connection.js';
 import type { ResolveConnectionLookupSecretInput } from './runtime/connection-resolution.types.js';
 import {
   assertLookupSecretCurrent,
+  requireLookupConnection,
   resolveConnectionLookupSecret,
 } from './runtime/lookup.js';
 import {
@@ -194,6 +195,12 @@ export function createConnectionStore(
       completeConnectionTest(pool, input),
     abandonConnectionTest: (input: AbandonConnectionTestInput) =>
       abandonConnectionTest(pool, input),
+    assertConnectionLookupAccess: (
+      input: Parameters<typeof requireLookupConnection>[1] & WorkspaceActor,
+    ) =>
+      use(input, async (client) => {
+        await requireLookupConnection(client, input);
+      }),
     resolveConnectionLookupSecret: (
       input: ResolveConnectionLookupSecretInput,
     ) => use(input, (client) => resolveConnectionLookupSecret(client, input)),
