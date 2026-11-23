@@ -44,6 +44,21 @@ type Persistence = Pick<
   'assistantSettings' | 'explanations' | 'getDraft' | 'inspectCandidate'
 >;
 
+type PreparedAssistant = Extract<
+  Awaited<ReturnType<typeof prepareAssistant>>,
+  { kind: 'ready' }
+>;
+interface ProposalBudget {
+  readonly deadlineAt: Date;
+  readonly signal: AbortSignal;
+  readonly usages: ModelUsage[];
+}
+interface ToolExchange {
+  readonly call: AgentToolCall;
+  readonly result: JsonValue;
+}
+type CandidateInspection = Awaited<ReturnType<typeof inspectProposalCandidate>>;
+
 export class ProposeDraftService {
   private readonly now: () => number;
   constructor(
@@ -155,115 +170,136 @@ export class ProposeDraftService {
   }
 
   private async infer(
-    prepared: Extract<
-      Awaited<ReturnType<typeof prepareAssistant>>,
-      { kind: 'ready' }
-    >,
+    prepared: PreparedAssistant,
+    prompt: string,
+    {
+      inspect,
+      ...budget
+    }: ProposalBudget & {
+      readonly inspect: (graph: unknown) => Promise<CandidateInspection>;
+    },
+  ) {
+    const history: ToolExchange[] = [];
+    let rounds = 0;
+    let maxOutputTokens = PROPOSAL_MAX_OUTPUT_TOKENS;
+    let lastCandidate: CandidateInspection | undefined;
+    const finish = (
+      result:
+        | CandidateInspection
+        | { kind: ReturnType<typeof failureOutcome> } = lastCandidate ?? {
+        kind: 'invalid_response',
+      },
+    ) => ({ result, rounds });
+    for (;;) {
+      if (budget.signal.aborted || this.now() >= budget.deadlineAt.getTime())
+        return finish({ kind: 'timeout' });
+      const correcting = history.at(-1)?.call.name === 'propose_draft';
+      rounds += Number(correcting);
+      const turn = await this.modelTurn(prepared, prompt, {
+        ...budget,
+        maxOutputTokens,
+        history,
+      });
+      if (turn.kind === 'request_too_large') {
+        rounds -= Number(correcting);
+        return finish(lastCandidate ?? { kind: 'provider_failure' });
+      }
+      if (turn.kind === 'invalid_response') return finish();
+      if (turn.kind !== 'call') return finish({ kind: turn.kind });
+
+      const { call, outputTokens } = turn;
+      maxOutputTokens -= outputTokens;
+      const canContinue =
+        maxOutputTokens > 0 &&
+        history.length < AGENT_TOOL_LIMITS.historyEntries &&
+        !history.some(({ call: earlier }) => earlier.id === call.id);
+      if (call.name !== 'propose_draft') {
+        if (!canContinue) return finish();
+        history.push({
+          call,
+          result: catalogToolResult(this.catalog, call.name, call.arguments),
+        });
+        continue;
+      }
+      lastCandidate = await inspect(call.arguments.graph);
+      const correction = correctionResult(lastCandidate);
+      if (
+        !canContinue ||
+        rounds === PROPOSAL_CORRECTION_ROUNDS ||
+        correction === undefined
+      )
+        return finish(lastCandidate);
+      history.push({ call, result: correction });
+    }
+  }
+
+  private async modelTurn(
+    prepared: PreparedAssistant,
     prompt: string,
     {
       deadlineAt,
       signal,
       usages,
-      inspect,
-    }: Readonly<{
-      deadlineAt: Date;
-      signal: AbortSignal;
-      usages: ModelUsage[];
-      inspect: (graph: unknown) => ReturnType<typeof inspectProposalCandidate>;
-    }>,
+      maxOutputTokens,
+      history,
+    }: ProposalBudget & {
+      readonly maxOutputTokens: number;
+      readonly history: readonly ToolExchange[];
+    },
   ) {
-    const history: { call: AgentToolCall; result: JsonValue }[] = [];
-    let rounds = 0;
-    let maxOutputTokens = PROPOSAL_MAX_OUTPUT_TOKENS;
-    let lastCandidate: Awaited<ReturnType<typeof inspect>> | undefined;
-    const finish = (
-      result:
-        | Awaited<ReturnType<typeof inspect>>
-        | { kind: ReturnType<typeof failureOutcome> },
-    ) => ({ result, rounds });
-    while (true) {
-      if (signal.aborted || this.now() >= deadlineAt.getTime())
-        return finish({ kind: 'timeout' });
-      if (maxOutputTokens <= 0)
-        return finish(lastCandidate ?? { kind: 'invalid_response' });
-      const correcting = history.at(-1)?.call.name === 'propose_draft';
-      if (correcting) rounds += 1;
-      let usage: ModelUsage | undefined;
-      try {
-        const result = await runAgentTurn(
-          {
-            client: prepared.client,
-            config: {
-              mode: 'text',
-              model: prepared.model,
-              maxOutputTokens,
-            },
-            prompt,
-            purpose: PURPOSE,
-            now: this.now,
-            invocation: prepared.invocation(deadlineAt, (value) => {
-              usage = value;
-            }),
-          },
-          { tools: proposalTools, history },
-        );
-        if (!('proposal' in result)) break;
-        const call = result.proposal;
-        const reportedOutputTokens = usage?.outputTokens;
-        maxOutputTokens -= reportedOutputTokens ?? maxOutputTokens;
-
-        if (call.name === 'propose_draft') {
-          lastCandidate = await inspect(call.arguments.graph);
-          const feedback =
-            'feedback' in lastCandidate ? lastCandidate.feedback : [];
-          const correction = {
-            instruction:
-              'Correct the issues and call propose_draft with the full graph.',
-            issues: feedback.map(({ path, code, message }) => ({
-              path,
-              code,
-              message,
-            })),
-          };
-          if (
-            feedback.length === 0 ||
-            rounds === PROPOSAL_CORRECTION_ROUNDS ||
-            history.length === AGENT_TOOL_LIMITS.historyEntries ||
-            maxOutputTokens <= 0 ||
-            Buffer.byteLength(JSON.stringify(correction)) >
-              AGENT_TOOL_LIMITS.resultBytes ||
-            history.some(({ call: earlier }) => earlier.id === call.id)
-          )
-            return finish(lastCandidate);
-          history.push({ call, result: correction });
-          continue;
-        }
-        if (
-          history.length === AGENT_TOOL_LIMITS.historyEntries ||
-          history.some(({ call: earlier }) => earlier.id === call.id)
-        )
-          break;
-        history.push({
-          call,
-          result: catalogToolResult(this.catalog, call.name, call.arguments),
-        });
-      } catch (error) {
-        if (signal.aborted) return finish({ kind: 'timeout' });
-        if (!(error instanceof NodeExecutorFailure)) throw error;
-        if (
-          lastCandidate !== undefined &&
+    let usage: ModelUsage | undefined;
+    try {
+      const result = await runAgentTurn(
+        {
+          client: prepared.client,
+          config: { mode: 'text', model: prepared.model, maxOutputTokens },
+          prompt,
+          purpose: PURPOSE,
+          now: this.now,
+          invocation: prepared.invocation(deadlineAt, (value) => {
+            usage = value;
+          }),
+        },
+        { tools: proposalTools, history },
+      );
+      return 'proposal' in result
+        ? {
+            kind: 'call' as const,
+            call: result.proposal,
+            outputTokens: usage?.outputTokens ?? maxOutputTokens,
+          }
+        : { kind: 'invalid_response' as const };
+    } catch (error) {
+      if (signal.aborted) return { kind: 'timeout' as const };
+      if (!(error instanceof NodeExecutorFailure)) throw error;
+      return {
+        kind:
           error.safeErrorCode === 'model.request_too_large'
-        ) {
-          if (correcting) rounds -= 1;
-          return finish(lastCandidate);
-        }
-        return finish({ kind: failureOutcome(error) });
-      } finally {
-        if (usage !== undefined) usages.push(usage);
-      }
+            ? 'request_too_large'
+            : failureOutcome(error),
+      } as const;
+    } finally {
+      if (usage !== undefined) usages.push(usage);
     }
-    return finish(lastCandidate ?? { kind: 'invalid_response' });
   }
+}
+
+function correctionResult(candidate: CandidateInspection) {
+  if (!('feedback' in candidate) || candidate.feedback.length === 0)
+    return undefined;
+  const result = {
+    instruction:
+      'Correct the issues and call propose_draft with the full graph.',
+    issues: candidate.feedback.map(({ path, code, message }) => ({
+      path,
+      code,
+      message,
+    })),
+  };
+  return Buffer.byteLength(JSON.stringify(result)) <=
+    AGENT_TOOL_LIMITS.resultBytes
+    ? result
+    : undefined;
 }
 
 function summarizeUsage(
