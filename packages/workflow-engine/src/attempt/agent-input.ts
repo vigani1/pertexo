@@ -35,7 +35,7 @@ export function resolveAgentAttemptInput(
       input.nodeId,
       identity.toolAlias,
     );
-    if (pinned === undefined || pinned.alias !== call.name)
+    if (pinned?.alias !== call.name)
       operationError(
         'attempt_invalid',
         'Agent tool invocation disagrees with its proposal',

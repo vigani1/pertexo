@@ -106,7 +106,7 @@ test('pins a callable workflow as an Agent tool and opens its child from the ins
         const tools = graph.nodes.find(
           ({ definition }) => definition.key === 'ai.agent',
         )?.config.tools;
-        return Array.isArray(tools) ? tools[0] : undefined;
+        return Array.isArray(tools) ? (tools[0] as unknown) : undefined;
       })
       .toMatchObject({
         definition: { key: 'core.call', version: 1 },

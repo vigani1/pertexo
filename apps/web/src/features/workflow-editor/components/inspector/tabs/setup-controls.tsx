@@ -132,11 +132,12 @@ export function SetupControls({
         config={config}
         form={form}
         agentVersion={
-          node.definition.version === AGENT_STEP_V3.version
-            ? AGENT_STEP_V3.version
-            : node.definition.version === AGENT_STEP_V2.version
-              ? AGENT_STEP_V2.version
-              : AGENT_STEP.version
+          [
+            AGENT_STEP.version,
+            AGENT_STEP_V2.version,
+            AGENT_STEP_V3.version,
+          ].find((version) => version === node.definition.version) ??
+          AGENT_STEP.version
         }
       />
     );
