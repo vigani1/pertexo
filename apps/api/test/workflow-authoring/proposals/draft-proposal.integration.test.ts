@@ -12,6 +12,8 @@ import {
   type ConnectionSecretContext,
 } from '@pertexo/secrets/server';
 import { createEditorBrowserEnvelopeKeys } from '../../../../../infrastructure/testing/editor-browser-envelope-keys.mjs';
+import { ASSISTANT_TIMEOUT_MILLIS } from '../../../src/workflow-authoring/assistant-inference.js';
+import { proposalCorrectionCases } from './proposal-correction.cases.js';
 import { createNodeProviderHttpClient } from '../../../src/platform/connections/http-client.js';
 import {
   betterAuthIntegrationEnabled,
@@ -71,7 +73,13 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     },
   });
   const requests: string[] = [];
-  let replies: { name: string; args: object }[] = [];
+  let replies: {
+    name: string;
+    args: object;
+    outputTokens?: number;
+    waitMillis?: number;
+    hold?: boolean;
+  }[] = [];
   const inference = createServer((request, response) => {
     request.setEncoding('utf8');
     let body = '';
@@ -88,30 +96,44 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
         response.writeHead(401).end();
         return;
       }
-      response.setHeader('content-type', 'application/json');
-      response.end(
-        JSON.stringify({
-          choices: [
-            {
-              finish_reason: 'tool_calls',
-              message: {
-                content: null,
-                tool_calls: [
-                  {
-                    id: `call-${String(requests.length)}`,
-                    type: 'function',
-                    function: {
-                      name: reply.name,
-                      arguments: JSON.stringify(reply.args),
+      if (reply.hold) return;
+      const { name, args, outputTokens = 10 } = reply;
+      if (reply.waitMillis === undefined) {
+        sendReply();
+      } else {
+        const timer = setTimeout(sendReply, reply.waitMillis);
+        response.once('close', () => clearTimeout(timer));
+      }
+
+      function sendReply() {
+        response.setHeader('content-type', 'application/json');
+        response.end(
+          JSON.stringify({
+            choices: [
+              {
+                finish_reason: 'tool_calls',
+                message: {
+                  content: null,
+                  tool_calls: [
+                    {
+                      id: `call-${String(requests.length)}`,
+                      type: 'function',
+                      function: {
+                        name,
+                        arguments: JSON.stringify(args),
+                      },
                     },
-                  },
-                ],
+                  ],
+                },
               },
+            ],
+            usage: {
+              prompt_tokens: 40,
+              completion_tokens: outputTokens,
             },
-          ],
-          usage: { prompt_tokens: 40, completion_tokens: 10 },
-        }),
-      );
+          }),
+        );
+      }
     });
   });
 
@@ -119,6 +141,8 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
   let member: Browser;
   let outsider: Browser;
   let workspace: string;
+  let correctionOwner: Browser;
+  let correctionWorkspace: string;
 
   beforeAll(async () => {
     await new Promise<void>((resolve) =>
@@ -128,8 +152,21 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     const collaborator = await newUser();
     member = collaborator.browser;
     outsider = (await newUser()).browser;
+    const original = await workspaceFor(owner);
+    workspace = original.path;
+    await api
+      .database()
+      .query(
+        "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'builder')",
+        [original.id, collaborator.id],
+      );
+    correctionOwner = (await newUser()).browser;
+    correctionWorkspace = (await workspaceFor(correctionOwner)).path;
+  });
+
+  async function workspaceFor(browser: Browser) {
     const root = await api.send('POST', '/v1/workspaces', {
-      browser: owner,
+      browser,
       headers: key(),
       payload: {
         name: 'Draft proposals',
@@ -138,18 +175,12 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     });
     expect(root.statusCode, root.payload).toBe(201);
     const { id } = root.json<{ id: string }>();
-    workspace = `/v1/workspaces/${id}`;
-    await api
-      .database()
-      .query(
-        "insert into app.workspace_memberships(workspace_id,user_id,role) values($1,$2,'builder')",
-        [id, collaborator.id],
-      );
+    const path = `/v1/workspaces/${id}`;
     const address = inference.address();
     if (address === null || typeof address === 'string')
       throw new Error('Inference listener unavailable');
-    const connection = await api.send('POST', `${workspace}/connections`, {
-      browser: owner,
+    const connection = await api.send('POST', `${path}/connections`, {
+      browser,
       headers: key(),
       payload: {
         providerKey: 'ai',
@@ -172,12 +203,13 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
         "update app.connections set access_mode='restricted' where workspace_id=$1 and id=$2",
         [id, connectionId],
       );
-    const saved = await api.send('PUT', `${workspace}/assistant`, {
-      browser: owner,
+    const saved = await api.send('PUT', `${path}/assistant`, {
+      browser,
       payload: { selection: { connectionId, model: 'local-test' } },
     });
     expect(saved.json()).toMatchObject({ kind: 'saved' });
-  });
+    return { path, id };
+  }
 
   afterAll(async () => {
     keys.close();
@@ -211,6 +243,15 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect(requests).toHaveLength(0);
   });
 
+  proposalCorrectionCases({
+    workflow: () => workflow(correctionWorkspace, correctionOwner),
+    propose: (path, script) => propose(path, script, correctionOwner),
+    requests,
+    httpWorkflow,
+    deadlineMillis: ASSISTANT_TIMEOUT_MILLIS,
+    usageRows,
+  });
+
   it('returns issues for malformed or unsupported drafts without writing them', async () => {
     const path = await workflow();
     const base = await draft(path);
@@ -223,9 +264,8 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
         ],
       },
     ]) {
-      const result = await propose(path, [
-        { name: 'propose_draft', args: { graph } },
-      ]);
+      const candidate = { name: 'propose_draft', args: { graph } };
+      const result = await propose(path, [candidate, candidate, candidate]);
       expect(result).toMatchObject({
         kind: 'rejected',
         issues: [
@@ -241,6 +281,7 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
   it('checks publication rules and does not apply a reviewed proposal after another save', async () => {
     const path = await workflow();
     const original = await draft(path);
+    const firstRequest = requests.length;
     const result = await propose(path, [
       { name: 'search_catalog', args: { query: 'http' } },
       { name: 'get_step_details', args: { key: 'http.request', version: 1 } },
@@ -249,8 +290,10 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect(result).toMatchObject({
       kind: 'inspected',
       validation: { valid: false },
+      rounds: 0,
       usage: { kind: 'complete', inputTokens: 120, outputTokens: 30 },
     });
+    expect(requests.slice(firstRequest)).toHaveLength(3);
     expect(requests.at(-1)).toContain('http.request');
     expect((await draft(path)).payload).toBe(original.payload);
     if (result.kind !== 'inspected')
@@ -312,9 +355,18 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
       id: 'file',
       definition: { key: 'core.create_file', version: 1 },
       config: { format: 'json' },
+      inputMappings: { data: { kind: 'literal', value: { order: 'test' } } },
+    };
+    const graph = {
+      ...httpWorkflow,
+      nodes: [file, manual],
+      edges: httpWorkflow.edges.map((edge) => ({
+        ...edge,
+        target: { nodeId: file.id, port: 'in' },
+      })),
     };
     const result = await propose(path, [
-      { name: 'propose_draft', args: { graph: { ...empty, nodes: [file] } } },
+      { name: 'propose_draft', args: { graph } },
     ]);
     if (result.kind !== 'inspected')
       throw new Error('Expected an inspectable draft');
@@ -328,31 +380,34 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
       (await save(path, initial.headers.etag, configuredDraft)).statusCode,
     ).toBe(200);
     const before = await draft(path);
-    const result = await propose(path, [
-      { name: 'propose_draft', args: { graph: { ...empty, nodes: [manual] } } },
-    ]);
+    const firstRequest = requests.length;
+    const overwrite = {
+      name: 'propose_draft',
+      args: { graph: { ...empty, nodes: [manual] } },
+    };
+    const result = await propose(path, [overwrite, overwrite, overwrite]);
     expect(result).toMatchObject({
       kind: 'rejected',
       issues: [{ code: 'masked_value_changed' }],
+      rounds: 2,
     });
-    const maskedBody = requests.at(-1);
+    const maskedBodies = requests.slice(firstRequest);
+    expect(maskedBodies).toHaveLength(3);
+    expect(maskedBodies[1]).toContain('masked_value_changed');
+    expect(maskedBodies[2]).toContain('masked_value_changed');
+    const maskedBody = maskedBodies.join('\n');
     expect(maskedBody).toContain('existing_setting');
     const forged = await propose(path, [
       { name: 'publish_workflow', args: { graph: configuredDraft } },
     ]);
     expect(forged).toMatchObject({ kind: 'invalid_response' });
-    const retained = await api
-      .database()
-      .query<{ metadata: unknown }>(
-        "select metadata from app.usage_events where resource_id=$1 and category='assistant.model'",
-        [path.split('/').at(-1)],
-      );
-    expect(retained.rows).toHaveLength(2);
-    for (const { metadata } of retained.rows)
+    const retained = await usageRows(path);
+    expect(retained).toHaveLength(2);
+    for (const metadata of retained)
       expect(metadata).toMatchObject({ purpose: 'propose_draft' });
     for (const sentinel of [settingSentinel, credentialSentinel]) {
       expect(maskedBody).not.toContain(sentinel);
-      expect(JSON.stringify(retained.rows)).not.toContain(sentinel);
+      expect(JSON.stringify(retained)).not.toContain(sentinel);
     }
     expect((await draft(path)).payload).toBe(before.payload);
     expect(
@@ -366,6 +421,54 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     expect(runs.rows).toEqual([]);
   });
 
+  it('keeps issues derived from restored settings out of the correction history', async () => {
+    const path = await workflow();
+    const codeStep = {
+      ...httpRequest,
+      definition: { key: 'core.code', version: 1 },
+      config: { [settingSentinel]: 'private' },
+    };
+    const graph = { ...httpWorkflow, nodes: [manual, codeStep] };
+    const initial = await draft(path);
+    expect((await save(path, initial.headers.etag, graph)).statusCode).toBe(
+      200,
+    );
+    const masked = {
+      ...graph,
+      nodes: [
+        manual,
+        { ...codeStep, config: { '@existing': { kind: 'existing_setting' } } },
+      ],
+    };
+    const dangling = {
+      ...masked,
+      edges: masked.edges.map((edge) => ({
+        ...edge,
+        target: { ...edge.target, nodeId: 'missing' },
+      })),
+    };
+    const start = requests.length;
+    const result = await propose(path, [
+      { name: 'propose_draft', args: { graph: dangling } },
+      { name: 'propose_draft', args: { graph: masked } },
+    ]);
+    expect(result).toMatchObject({
+      kind: 'inspected',
+      rounds: 1,
+      validation: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            message: expect.stringContaining(settingSentinel),
+          }),
+        ]),
+      },
+    });
+    const bodies = requests.slice(start);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1]).toContain('dangling_edge');
+    expect(bodies.join('\n')).not.toContain(settingSentinel);
+  });
+
   async function newUser() {
     const email = `proposal-${randomUUID()}@example.test`;
     await api.signUp(email, '/workspaces');
@@ -374,14 +477,14 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     return { browser, id: user.json<{ id: string }>().id };
   }
 
-  async function workflow() {
-    const result = await api.send('POST', `${workspace}/workflows`, {
-      browser: owner,
+  async function workflow(path = workspace, browser = owner) {
+    const result = await api.send('POST', `${path}/workflows`, {
+      browser,
       headers: key(),
       payload: { name: 'Order intake' },
     });
     expect(result.statusCode, result.payload).toBe(201);
-    return `${workspace}/workflows/${workflowCreateResponseSchema.parse(result.json()).workflow.id}`;
+    return `${path}/workflows/${workflowCreateResponseSchema.parse(result.json()).workflow.id}`;
   }
 
   function draft(path: string) {
@@ -397,14 +500,28 @@ describe.runIf(betterAuthIntegrationEnabled)('draft proposals', () => {
     });
   }
 
-  async function propose(path: string, script: typeof replies) {
+  async function usageRows(path: string) {
+    const retained = await api
+      .database()
+      .query<{ metadata: unknown }>(
+        "select metadata from app.usage_events where resource_id=$1 and category='assistant.model'",
+        [path.split('/').at(-1)],
+      );
+    return retained.rows.map(({ metadata }) => metadata);
+  }
+
+  async function propose(
+    path: string,
+    script: typeof replies,
+    browser = owner,
+  ) {
     replies = script;
     const endpoint = `${path}/draft/proposal`;
-    const disclosure = await api.send('GET', endpoint, { browser: owner });
+    const disclosure = await api.send('GET', endpoint, { browser });
     expect(disclosure.statusCode, disclosure.payload).toBe(200);
     const { confirmation } = disclosure.json<{ confirmation: string }>();
     const result = await api.send('POST', endpoint, {
-      browser: owner,
+      browser,
       payload: {
         confirmation,
         request:

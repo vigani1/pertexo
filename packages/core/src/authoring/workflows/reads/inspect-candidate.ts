@@ -45,7 +45,7 @@ export async function inspectCandidate(
     { ...row, graphJson: input.graph },
     catalogs.definitionCatalog,
   );
-  const { validation } = await compilePublicationGraph(
+  const publication = await compilePublicationGraph(
     client,
     input,
     input.graph,
@@ -55,7 +55,11 @@ export async function inspectCandidate(
     kind: 'inspected' as const,
     base,
     draft,
-    validation,
+    validation: publication.validation,
+    graphIssues:
+      publication.kind === 'refused' && publication.issueSource === 'graph'
+        ? publication.validation.issues
+        : [],
     representationTag,
   };
 }

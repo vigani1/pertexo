@@ -11,6 +11,8 @@ import {
 } from './explanation.js';
 
 export const DRAFT_PROPOSAL_MAX_REQUEST_CHARACTERS = 4_000;
+export const PROPOSAL_CORRECTION_ROUNDS = 2;
+const rounds = z.int().min(0).max(PROPOSAL_CORRECTION_ROUNDS);
 
 const unavailable = z.strictObject({
   kind: z.enum(['not_configured', 'connection_unavailable']),
@@ -36,11 +38,13 @@ export const draftProposalResultSchema = z.union([
       'provider_failure',
     ]),
     usage: modelUsageSchema.optional(),
+    rounds: rounds.optional(),
   }),
   z.strictObject({
     kind: z.literal('rejected'),
     issues: workflowValidateResponseSchema.shape.issues,
     usage: modelUsageSchema,
+    rounds: rounds.optional(),
   }),
   z.strictObject({
     kind: z.literal('inspected'),
@@ -49,6 +53,7 @@ export const draftProposalResultSchema = z.union([
     representationTag: strongEtagSchema,
     validation: workflowValidateResponseSchema,
     usage: modelUsageSchema,
+    rounds: rounds.optional(),
   }),
 ]);
 

@@ -1,6 +1,8 @@
 import type { z } from 'zod';
-import type { draftProposalRequestSchema } from '@pertexo/contracts';
-import { workflowValidateResponseSchema } from '@pertexo/contracts';
+import {
+  PROPOSAL_CORRECTION_ROUNDS,
+  type draftProposalRequestSchema,
+} from '@pertexo/contracts';
 import {
   WorkflowNotFoundError,
   type WorkflowAuthoringStore,
@@ -11,11 +13,8 @@ import type { ModelUsage } from '@pertexo/node-sdk';
 import { NodeExecutorFailure } from '@pertexo/node-sdk/server';
 import {
   AGENT_TOOL_LIMITS,
-  safeParseWorkflowGraphDraft,
-  startingConfig,
   type AgentToolCall,
   type JsonValue,
-  type WorkflowNode,
 } from '@pertexo/workflow-model';
 import type { ListNodeDefinitionsService } from '../../catalog/index.js';
 import type { ConnectionLookupDependencies } from '../../connections/lookups/lookup-options.service.js';
@@ -34,7 +33,8 @@ import {
   serializeWorkflowValidation,
 } from '../http/serializers.js';
 import { catalogToolResult, proposalTools } from './catalog-tools.js';
-import { projectDraftForModel, restoreDraftFields } from './masked-draft.js';
+import { inspectProposalCandidate } from './inspect-proposal-candidate.js';
+import { projectDraftForModel } from './masked-draft.js';
 
 const PURPOSE = 'propose_draft';
 const PROPOSAL_MAX_OUTPUT_TOKENS = 4_096;
@@ -92,83 +92,43 @@ export class ProposeDraftService {
     const requestId = generatePersistedId();
     const usages: ModelUsage[] = [];
     const actor = { ...storeContext(input), workflowId: input.workflowId };
-    const inference = await this.infer(prepared, prompt, {
+    const outcome = await this.infer(prepared, prompt, {
       deadlineAt,
       signal,
-      observe: (value) => {
-        usages.push(value);
-      },
-    });
-    const usage = summarizeUsage(prepared.model, usages);
-    await this.persistence.explanations.recordUsage({
-      ...actor,
-      target: { purpose: PURPOSE, workflowId: input.workflowId },
-      requestId,
-      usage,
-      costNanoDollars: modelCost(usage, this.options.rates),
-    });
-    if (inference.kind !== 'candidate') return { ...inference, usage };
-    const parsed = safeParseWorkflowGraphDraft(inference.graph);
-    if (!parsed.success) {
-      const issue =
-        'issues' in parsed.error
-          ? {
-              path: '$',
-              code: 'invalid_graph',
-              message: 'The model returned a malformed draft graph.',
-            }
-          : {
-              path: parsed.error.path,
-              code: parsed.error.code,
-              message: parsed.error.message,
-            };
-      return { kind: 'rejected' as const, issues: [issue], usage };
-    }
-    const restored = restoreDraftFields(draft.graphJson, parsed.data);
-    if (restored.kind === 'rejected') return rejected(restored.issues, usage);
-    const admitted = safeParseWorkflowGraphDraft({
-      ...restored.graph,
-      nodes: initializeAddedSteps(
-        draft.graphJson.nodes,
-        restored.graph.nodes,
-        this.catalog.execute().items,
-      ),
-    });
-    if (!admitted.success)
-      return rejected(
-        [
-          {
-            path: '$',
-            code: 'invalid_graph',
-            message: 'The restored graph exceeds the draft contract.',
-          },
-        ],
-        usage,
-      );
-    if (signal.aborted) return { kind: 'timeout' as const, usage };
-    const inspected = await this.persistence
-      .inspectCandidate({
+      usages,
+      inspect: (graph) =>
+        inspectProposalCandidate(this.persistence, this.catalog, {
+          graph,
+          draft,
+          actor,
+          signal,
+        }),
+    }).finally(async () => {
+      const usage = summarizeUsage(prepared.model, usages);
+      await this.persistence.explanations.recordUsage({
         ...actor,
-        graph: admitted.data,
-        expectedRevision: draft.revision,
-        signal,
-      })
-      .catch((error: unknown) => {
-        if (signal.aborted) return undefined;
-        throw error;
+        target: { purpose: PURPOSE, workflowId: input.workflowId },
+        requestId,
+        usage,
+        costNanoDollars: modelCost(usage, this.options.rates),
       });
-    if (inspected === undefined) return { kind: 'timeout' as const, usage };
-    if (inspected.kind === 'rejected') return rejected(inspected.issues, usage);
+    });
+    const { result, rounds } = outcome;
+    const usage = summarizeUsage(prepared.model, usages);
+    if (result.kind === 'rejected')
+      return { kind: result.kind, issues: result.issues, rounds, usage };
+    if (result.kind !== 'inspected') return { ...result, rounds, usage };
     return {
       kind: 'inspected' as const,
-      base: (await serializeWorkflowDraft(inspected.base)).body,
-      draft: (await serializeWorkflowDraft(inspected.draft)).body,
-      representationTag: inspected.representationTag,
+      base: (await serializeWorkflowDraft(result.base)).body,
+      draft: (await serializeWorkflowDraft(result.draft)).body,
+      representationTag: result.representationTag,
       validation: serializeWorkflowValidation(
-        inspected.draft,
-        inspected.validation,
+        result.draft,
+        result.validation,
         null,
       ).body,
+      rounds,
       usage,
     };
   }
@@ -203,15 +163,31 @@ export class ProposeDraftService {
     {
       deadlineAt,
       signal,
-      observe,
+      usages,
+      inspect,
     }: Readonly<{
       deadlineAt: Date;
       signal: AbortSignal;
-      observe: (usage: ModelUsage) => void;
+      usages: ModelUsage[];
+      inspect: (graph: unknown) => ReturnType<typeof inspectProposalCandidate>;
     }>,
   ) {
     const history: { call: AgentToolCall; result: JsonValue }[] = [];
-    for (let turn = 0; turn <= AGENT_TOOL_LIMITS.historyEntries; turn += 1) {
+    let rounds = 0;
+    let maxOutputTokens = PROPOSAL_MAX_OUTPUT_TOKENS;
+    let lastCandidate: Awaited<ReturnType<typeof inspect>> | undefined;
+    const finish = (
+      result:
+        | Awaited<ReturnType<typeof inspect>>
+        | { kind: ReturnType<typeof failureOutcome> },
+    ) => ({ result, rounds });
+    while (true) {
+      if (signal.aborted || this.now() >= deadlineAt.getTime())
+        return finish({ kind: 'timeout' });
+      if (maxOutputTokens <= 0)
+        return finish(lastCandidate ?? { kind: 'invalid_response' });
+      const correcting = history.at(-1)?.call.name === 'propose_draft';
+      if (correcting) rounds += 1;
       let usage: ModelUsage | undefined;
       try {
         const result = await runAgentTurn(
@@ -220,7 +196,7 @@ export class ProposeDraftService {
             config: {
               mode: 'text',
               model: prepared.model,
-              maxOutputTokens: PROPOSAL_MAX_OUTPUT_TOKENS,
+              maxOutputTokens,
             },
             prompt,
             purpose: PURPOSE,
@@ -233,10 +209,37 @@ export class ProposeDraftService {
         );
         if (!('proposal' in result)) break;
         const call = result.proposal;
-        if (call.name === 'propose_draft')
-          return { kind: 'candidate' as const, graph: call.arguments.graph };
+        const reportedOutputTokens = usage?.outputTokens;
+        maxOutputTokens -= reportedOutputTokens ?? maxOutputTokens;
+
+        if (call.name === 'propose_draft') {
+          lastCandidate = await inspect(call.arguments.graph);
+          const feedback =
+            'feedback' in lastCandidate ? lastCandidate.feedback : [];
+          const correction = {
+            instruction:
+              'Correct the issues and call propose_draft with the full graph.',
+            issues: feedback.map(({ path, code, message }) => ({
+              path,
+              code,
+              message,
+            })),
+          };
+          if (
+            feedback.length === 0 ||
+            rounds === PROPOSAL_CORRECTION_ROUNDS ||
+            history.length === AGENT_TOOL_LIMITS.historyEntries ||
+            maxOutputTokens <= 0 ||
+            Buffer.byteLength(JSON.stringify(correction)) >
+              AGENT_TOOL_LIMITS.resultBytes ||
+            history.some(({ call: earlier }) => earlier.id === call.id)
+          )
+            return finish(lastCandidate);
+          history.push({ call, result: correction });
+          continue;
+        }
         if (
-          turn === AGENT_TOOL_LIMITS.historyEntries ||
+          history.length === AGENT_TOOL_LIMITS.historyEntries ||
           history.some(({ call: earlier }) => earlier.id === call.id)
         )
           break;
@@ -245,65 +248,22 @@ export class ProposeDraftService {
           result: catalogToolResult(this.catalog, call.name, call.arguments),
         });
       } catch (error) {
-        if (signal.aborted) return { kind: 'timeout' as const };
+        if (signal.aborted) return finish({ kind: 'timeout' });
         if (!(error instanceof NodeExecutorFailure)) throw error;
-        return { kind: failureOutcome(error) };
+        if (
+          lastCandidate !== undefined &&
+          error.safeErrorCode === 'model.request_too_large'
+        ) {
+          if (correcting) rounds -= 1;
+          return finish(lastCandidate);
+        }
+        return finish({ kind: failureOutcome(error) });
       } finally {
-        if (usage !== undefined) observe(usage);
+        if (usage !== undefined) usages.push(usage);
       }
     }
-    return { kind: 'invalid_response' as const };
+    return finish(lastCandidate ?? { kind: 'invalid_response' });
   }
-}
-
-function initializeAddedSteps(
-  previous: readonly WorkflowNode[],
-  level: readonly WorkflowNode[],
-  catalog: ReturnType<ListNodeDefinitionsService['execute']>['items'],
-): readonly WorkflowNode[] {
-  const existing = new Map(previous.map((node) => [node.id, node]));
-  return level.map((node) => {
-    const original = existing.get(node.id);
-    const definition =
-      original === undefined
-        ? catalog.find(
-            (item) =>
-              item.definition.key === node.definition.key &&
-              item.definition.version === node.definition.version,
-          )
-        : undefined;
-    const config =
-      definition === undefined
-        ? node.config
-        : startingConfig(definition, level, node.config);
-    const { structured } = node;
-    if (structured === undefined) return { ...node, config };
-    return {
-      ...node,
-      config,
-      structured: {
-        ...structured,
-        body: {
-          ...structured.body,
-          nodes: initializeAddedSteps(
-            original?.structured?.body.nodes ?? [],
-            structured.body.nodes,
-            catalog,
-          ),
-        },
-      },
-    };
-  });
-}
-
-function rejected(
-  issues: readonly { path: string; code: string; message: string }[],
-  usage: ModelUsage,
-) {
-  const parsed = workflowValidateResponseSchema.shape.issues.safeParse(issues);
-  return parsed.success
-    ? { kind: 'rejected' as const, issues: parsed.data, usage }
-    : { kind: 'invalid_response' as const, usage };
 }
 
 function summarizeUsage(
