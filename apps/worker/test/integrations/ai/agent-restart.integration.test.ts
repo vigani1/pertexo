@@ -338,36 +338,39 @@ describe('Agent callable workflows', () => {
   });
 });
 
-it('publishes and runs the Agent failure edge with the failed model attempt evidence', async () => {
-  await using run = await start([json({})], { shape: 'failure-handler' });
-  expect(await run.end()).toMatchObject({ status: 'succeeded' });
-  const [handler] = await fixture.workerQuery(
-    "select n.status, a.output_ref from app.node_runs n join app.node_attempts a on a.id=n.current_attempt_id where n.workflow_run_id=$1 and n.node_id='handler'",
-    [run.id],
-  );
-  expect(handler).toMatchObject({
-    status: 'succeeded',
-    output_ref: {
-      value: {
-        result: {
-          nodeId: 'agent',
-          nodeLabel: agentFailureLabel,
-          attemptNumber: 1,
-          safeErrorCode: 'model.invalid_response',
+it.each(['failure-handler', 'inline-failure-handler'] as const)(
+  'publishes and runs the Agent %s with the failed model attempt evidence',
+  async (shape) => {
+    await using run = await start([json({})], { shape });
+    expect(await run.end()).toMatchObject({ status: 'succeeded' });
+    const [handler] = await fixture.workerQuery(
+      "select n.status, a.output_ref from app.node_runs n join app.node_attempts a on a.id=n.current_attempt_id where n.workflow_run_id=$1 and n.node_id='handler'",
+      [run.id],
+    );
+    expect(handler).toMatchObject({
+      status: 'succeeded',
+      output_ref: {
+        value: {
+          result: {
+            nodeId: 'agent',
+            nodeLabel: agentFailureLabel,
+            attemptNumber: 1,
+            safeErrorCode: 'model.invalid_response',
+          },
         },
       },
-    },
-  });
-  const [failure] = await fixture.workerQuery(
-    'select current_attempt_number, failure_handling from app.node_runs where workflow_run_id=$1 and failure_ref is not null',
-    [run.id],
-  );
-  expect(failure).toMatchObject({
-    current_attempt_number: 1,
-    failure_handling: 'handled',
-  });
-  expect(run.calls).toHaveLength(1);
-});
+    });
+    const [failure] = await fixture.workerQuery(
+      'select current_attempt_number, failure_handling from app.node_runs where workflow_run_id=$1 and failure_ref is not null',
+      [run.id],
+    );
+    expect(failure).toMatchObject({
+      current_attempt_number: 1,
+      failure_handling: 'handled',
+    });
+    expect(run.calls).toHaveLength(1);
+  },
+);
 
 it('collects each iteration result with Agent as the only For Each body step', async () => {
   const texts = ['alpha', 'beta', 'gamma'];

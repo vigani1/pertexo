@@ -11,7 +11,7 @@ import {
   type WorkspaceVariableValues,
   WORKFLOW_FAILURE_PORT,
   workflowNodeFailureInputSchema,
-  type WorkflowNodeFailureValue,
+  type WorkflowNodeFailureInput,
   type JsonValue,
 } from '@pertexo/workflow-model';
 
@@ -50,7 +50,7 @@ export type PreparedNodeAttemptInput = Readonly<{
   node: WorkflowExecutableNode;
   runInput: JsonValue;
   variables: WorkspaceVariableValues;
-  sourceFailure?: WorkflowNodeFailureValue;
+  sourceFailure?: WorkflowNodeFailureInput;
   structuredInputs?: Readonly<Record<string, JsonValue>>;
 }>;
 
@@ -260,6 +260,7 @@ function parseStructuredInputs(
 
 export function prepareNodeAttemptInput(
   input: NodeAttemptInputSource,
+  sourceFailureLabel?: string,
 ): PreparedNodeAttemptInput {
   let runInput: JsonValue;
   let variables: WorkspaceVariableValues;
@@ -293,7 +294,7 @@ export function prepareNodeAttemptInput(
   const route = executableFailureRoutes(input.executable).find(
     ({ entryNodeId }) => entryNodeId === node.id,
   );
-  let sourceFailure: WorkflowNodeFailureValue | undefined;
+  let sourceFailure: WorkflowNodeFailureInput | undefined;
   if (route !== undefined) {
     const parsed = workflowNodeFailureInputSchema.safeParse(
       input.sourceFailure,
@@ -313,7 +314,10 @@ export function prepareNodeAttemptInput(
         'attempt_invalid',
         'selected source failure evidence is missing or mismatched',
       );
-    sourceFailure = parsed.data;
+    sourceFailure =
+      sourceFailureLabel === undefined
+        ? parsed.data
+        : { ...parsed.data, nodeLabel: sourceFailureLabel };
   } else if (input.sourceFailure !== undefined)
     operationError(
       'attempt_invalid',

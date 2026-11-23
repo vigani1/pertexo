@@ -203,6 +203,7 @@ async function loadLockedRunState(
           {
             workspaceId,
             runId,
+            workflowVersionId: row.workflow_version_id,
             inputRef: row.input_ref,
             variableSetRevision: row.variable_set_revision,
           },

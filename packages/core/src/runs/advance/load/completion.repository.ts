@@ -1,4 +1,5 @@
 import { NODE_JSON_LIMITS } from '@pertexo/node-sdk';
+import { readPublishedStepLabel } from '../../../shared/run-records/graph-step.repository.js';
 import {
   listStoredNodeRunOutcomes,
   readStoredNodeRunOutputs,
@@ -147,7 +148,8 @@ export async function readInlineValues(
   run: Omit<
     Parameters<typeof readRunCompletionValues>[1],
     'nodeIds' | 'invocationKeys'
-  >,
+  > &
+    Readonly<{ workflowVersionId: string }>,
   request: Parameters<InlineAdvanceOptions['readValues']>[0],
 ): ReturnType<InlineAdvanceOptions['readValues']> {
   const { workspaceId, runId } = run;
@@ -199,6 +201,14 @@ export async function readInlineValues(
     parsed == null
       ? undefined
       : decodeStoredValue(() => parseStoredExecutionValue(parsed));
+  const agentFailureSourceLabel =
+    request.agentFailureSourceNodeId === undefined
+      ? undefined
+      : await readPublishedStepLabel(client, {
+          workspaceId,
+          workflowVersionId: run.workflowVersionId,
+          nodeId: request.agentFailureSourceNodeId,
+        });
   const resolved = await Promise.all(
     completion.outputs.flatMap(({ value, ...identity }) =>
       value === undefined
@@ -227,6 +237,9 @@ export async function readInlineValues(
         : [];
     }),
     ...(source?.kind === 'inline' ? { sourceFailure: source.value } : {}),
+    ...(agentFailureSourceLabel === undefined
+      ? {}
+      : { agentFailureSourceLabel }),
   };
 }
 
