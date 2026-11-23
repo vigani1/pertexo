@@ -1,7 +1,7 @@
 import { mapWorkflowNodes } from '../../graph/nodes.js';
 import {
   replaceWorkflowDataTableBinding,
-  workflowDataTableBinding,
+  workflowDataTableBindings,
 } from '../../graph/data-table-binding.js';
 import { compareOrdinal } from '../../values/ordering.js';
 import type { WorkflowGraph } from '../../graph/workflow-graph.schemas.js';
@@ -174,16 +174,17 @@ function replaceConnections(
 }
 
 function portableTableBindings(graph: WorkflowGraph): WorkflowGraph {
-  return mapWorkflowNodes(graph, (node) => {
-    const binding = workflowDataTableBinding(node);
-    if (binding?.idBound !== true || binding.config.tableId === undefined)
-      return node;
-    const { table, columnBindings } = binding.config;
-    return replaceWorkflowDataTableBinding(node, binding.location, {
-      table,
-      columnBindings,
-    });
-  });
+  return mapWorkflowNodes(graph, (node) =>
+    workflowDataTableBindings(node).reduce((bound, binding) => {
+      if (!binding.idBound || binding.config.tableId === undefined)
+        return bound;
+      const { table, columnBindings } = binding.config;
+      return replaceWorkflowDataTableBinding(bound, binding.location, {
+        table,
+        columnBindings,
+      });
+    }, node),
+  );
 }
 
 export function projectWorkflowPortableManifest(

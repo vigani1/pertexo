@@ -21,6 +21,34 @@ import { model, openModelProvider } from './model-provider';
 
 const alias = 'find_orders';
 
+const lookupOrder = {
+  choices: [
+    {
+      finish_reason: 'tool_calls',
+      message: {
+        tool_calls: [
+          {
+            id: 'selected-order',
+            type: 'function',
+            function: {
+              name: alias,
+              arguments: JSON.stringify({
+                query: {
+                  filters: [
+                    { column: 'key', operator: 'equals', value: 'order-17' },
+                  ],
+                  limit: 1,
+                },
+              }),
+            },
+          },
+        ],
+      },
+    },
+  ],
+  usage: { prompt_tokens: 23, completion_tokens: 7 },
+};
+
 test.use({
   accountGroup: 'assistant',
   actionTimeout: 10_000,
@@ -31,37 +59,7 @@ test('publishes an Agent with a Find rows tool and inspects its work', async ({
   page,
 }, info) => {
   const provider = await openModelProvider([
-    {
-      choices: [
-        {
-          finish_reason: 'tool_calls',
-          message: {
-            tool_calls: [
-              {
-                id: 'selected-order',
-                type: 'function',
-                function: {
-                  name: alias,
-                  arguments: JSON.stringify({
-                    query: {
-                      filters: [
-                        {
-                          column: 'key',
-                          operator: 'equals',
-                          value: 'order-17',
-                        },
-                      ],
-                      limit: 1,
-                    },
-                  }),
-                },
-              },
-            ],
-          },
-        },
-      ],
-      usage: { prompt_tokens: 23, completion_tokens: 7 },
-    },
+    lookupOrder,
     {
       choices: [
         {
@@ -158,7 +156,7 @@ test('publishes an Agent with a Find rows tool and inspects its work', async ({
     await provider.close();
   }
 });
-test('configures, approves and reviews an Agent write tool', async ({
+test('reads an order, approves a separate Agent write and reviews its allowance', async ({
   browser,
   page: owner,
   productAccount,
@@ -168,6 +166,7 @@ test('configures, approves and reviews an Agent write tool', async ({
   if (mail === undefined || baseURL === undefined)
     throw new Error('Owned browser fixture missing');
   const provider = await openModelProvider([
+    lookupOrder,
     {
       choices: [
         {
@@ -211,6 +210,12 @@ test('configures, approves and reviews an Agent write tool', async ({
     await owner.getByRole('tab', { name: 'Setup', exact: true }).click();
     await choose(owner, 'AI model connection', 'Order model');
     await owner.getByLabel('Model identifier', { exact: true }).fill(model);
+    await owner.getByLabel('Tool alias', { exact: true }).fill(alias);
+    await owner
+      .getByLabel('Tool description', { exact: true })
+      .fill('Look up an order in Orders');
+    await choose(owner, 'Workspace table', 'Orders');
+    await owner.getByRole('button', { name: 'Add tool', exact: true }).click();
     await choose(owner, 'Agent tool', 'Insert row');
     await owner.getByLabel('Tool alias', { exact: true }).fill('insert_order');
     await owner
@@ -237,24 +242,38 @@ test('configures, approves and reviews an Agent write tool', async ({
     });
     await owner.getByRole('tab', { name: 'Setup', exact: true }).click();
     await expect
-      .poll(
-        async () =>
-          (await readEditorDraft(owner, path)).graph.nodes.find(
-            ({ definition }) => definition.key === 'ai.agent',
-          )?.config.tool,
+      .poll(async () =>
+        (await readEditorDraft(owner, path)).graph.nodes.find(
+          ({ definition }) => definition.key === 'ai.agent',
+        ),
       )
       .toMatchObject({
-        writePermission: { config: { title: 'Order 19 insertion' } },
+        definition: { version: 3 },
+        config: {
+          tools: [
+            { alias },
+            {
+              alias: 'insert_order',
+              writePermission: { config: { title: 'Order 19 insertion' } },
+            },
+          ],
+        },
       });
-    await owner
-      .getByRole('checkbox', {
-        name: 'Let the person who started the run decide',
-      })
-      .scrollIntoViewIfNeeded();
-    await modelScreenshots(owner, info, 'agent-write-setup');
+    const toolList = owner.getByRole('list', { name: 'Agent tools' });
+    await expect(toolList.getByRole('button')).toHaveText([
+      alias,
+      'insert_order',
+    ]);
+    await toolList
+      .getByRole('button', { name: 'insert_order', exact: true })
+      .click();
+    await toolList.scrollIntoViewIfNeeded();
+    await modelScreenshots(owner, info, 'agent-multi-tool-setup');
     await publishSingleStep(owner, path);
     const run = await startSingleStep(owner, { task: 'Record order 19' });
     await waitForRun(owner, workspace, run, 'waiting');
+    expect(provider.calls).toHaveLength(2);
+    expect(JSON.stringify(provider.calls[1])).toContain('shipped');
     await owner.getByRole('button', { name: /^Record an order:/u }).click();
     const activity = owner.getByRole('region', { name: 'Agent activity' });
     await expect(
@@ -316,6 +335,10 @@ test('configures, approves and reviews an Agent write tool', async ({
     await owner.getByTestId(`rf__node-${agent.id}`).focus();
     await owner.keyboard.press('Enter');
     await owner.getByRole('tab', { name: 'Setup', exact: true }).click();
+    await owner
+      .getByRole('list', { name: 'Agent tools' })
+      .getByRole('button', { name: 'insert_order', exact: true })
+      .click();
     await choose(owner, 'Write approval', 'Allow without approval');
     await owner
       .getByRole('button', { name: 'Request review', exact: true })

@@ -142,6 +142,8 @@ function rowFor(
   const agentWork = ordered.find(
     ({ payload }) => payload.agentWork !== undefined,
   )?.payload.agentWork;
+  const { agentReadTables, ...stepLabel } = label;
+  const agentReadTable = agentReadTables?.get(agentWork?.alias ?? '');
   const status = replay.status ?? 'pending';
   const look = describeNodeStatus(status);
   return {
@@ -152,12 +154,12 @@ function rowFor(
       : { invocationKey: invocation.invocationKey }),
     ...(replay.nodeRunId === undefined ? {} : { nodeRunId: replay.nodeRunId }),
     ...(agentWork === undefined
-      ? label
+      ? stepLabel
       : {
           agentWork,
           ...(agentWork.definition.key === AGENT_FIND_ROWS.key &&
-          label.findRowsTable !== undefined
-            ? { findRowsTable: label.findRowsTable }
+          agentReadTable !== undefined
+            ? { findRowsTable: agentReadTable }
             : {}),
           definitionKey: agentWork.definition.key,
           label:

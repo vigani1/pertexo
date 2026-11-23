@@ -9,7 +9,7 @@ import { Disclosure } from '@/components/ui/disclosure';
 import { formatCount } from '@/lib/format/count';
 import {
   AGENT_SLACK_CONNECTION_SLOT,
-  agentToolAllowedWithoutApproval,
+  agentToolsAllowedWithoutApproval,
 } from '@pertexo/workflow-model';
 import { Status } from '@/components/ui/status';
 import type { DescribeStep } from '@/features/catalog/public';
@@ -128,10 +128,11 @@ function AgentWriteAllowance({
   describe: DescribeStep;
 }>) {
   if (node.disabled) return null;
-  const tool = agentToolAllowedWithoutApproval(node);
-  if (tool === undefined) return null;
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+  return agentToolsAllowedWithoutApproval(node).map((tool) => (
+    <div
+      key={tool.alias}
+      className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"
+    >
       <Status tone="attention">Allowed without approval</Status>
       <span>
         {describe(tool.definition).name} · {tool.alias}
@@ -143,13 +144,11 @@ function AgentWriteAllowance({
         )}
       </span>
     </div>
-  );
+  ));
 }
 
 function agentWriteTarget(
-  config: NonNullable<
-    ReturnType<typeof agentToolAllowedWithoutApproval>
-  >['config'],
+  config: ReturnType<typeof agentToolsAllowedWithoutApproval>[number]['config'],
   slackConnection: string | undefined,
 ) {
   if ('table' in config) return `Workspace table ${config.table}`;

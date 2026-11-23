@@ -10,7 +10,7 @@ import {
 import {
   mapWorkflowNodes,
   replaceWorkflowDataTableBinding,
-  workflowDataTableBinding,
+  workflowDataTableBindings,
   isRecord,
   type WorkflowNode,
   type WorkflowGraph,
@@ -49,7 +49,7 @@ function literalAliases(node: ReferenceNode): string[] {
 
 function references(graph: ReferenceGraph) {
   const found: {
-    binding: NonNullable<ReturnType<typeof workflowDataTableBinding>>;
+    binding: ReturnType<typeof workflowDataTableBindings>[number];
     path: string;
     label: string;
     node: ReferenceNode;
@@ -64,11 +64,10 @@ function references(graph: ReferenceGraph) {
           nodes: node.structured.body.nodes,
           path: `${path}.structured.body`,
         });
-      const binding = workflowDataTableBinding(node);
-      if (binding !== undefined)
+      for (const binding of workflowDataTableBindings(node))
         found.push({
           binding,
-          path: binding.location === 'tool' ? `${path}.config.tool` : path,
+          path: tableBindingPath(path, binding.location),
           label: node.label ?? node.id,
           node,
         });
@@ -139,28 +138,26 @@ export async function bindPublicationTables(
   );
   if (issues.length > 0) return { kind: 'refused', issues } as const;
   const byName = new Map(found.map((table) => [table.name, table.id]));
-  const pins = new Map(
-    refs.flatMap(({ node, binding }) => {
-      if (!binding.idBound || binding.config.tableId !== undefined) return [];
-      const tableId = byName.get(binding.config.table);
-      return tableId === undefined
-        ? []
-        : [[node, { binding, tableId }] as const];
-    }),
+  const pins = groupTableBindings(
+    refs,
+    ({ binding }) => binding.idBound && binding.config.tableId === undefined,
   );
   return {
     kind: 'bound',
     graph:
       pins.size === 0
         ? graph
-        : mapWorkflowNodes(graph, (node) => {
-            const pin = pins.get(node);
-            if (pin === undefined) return node;
-            return replaceWorkflowDataTableBinding(node, pin.binding.location, {
-              ...pin.binding.config,
-              tableId: pin.tableId,
-            });
-          }),
+        : mapWorkflowNodes(graph, (node) =>
+            (pins.get(node) ?? []).reduce((bound, { binding }) => {
+              const tableId = byName.get(binding.config.table);
+              return tableId === undefined
+                ? bound
+                : replaceWorkflowDataTableBinding(bound, binding.location, {
+                    ...binding.config,
+                    tableId,
+                  });
+            }, node),
+          ),
   } as const;
 }
 
@@ -170,29 +167,52 @@ export async function projectPortableTableNames(
   workspaceId: string,
   graph: WorkflowGraph,
 ): Promise<WorkflowGraph> {
-  const pins = new Map(
-    references(graph).flatMap(({ node, binding }) =>
-      binding.config.tableId === undefined ? [] : [[node, binding] as const],
-    ),
+  const refs = references(graph).filter(
+    ({ binding }) => binding.config.tableId !== undefined,
   );
-  if (pins.size === 0) return graph;
+  if (refs.length === 0) return graph;
+  const pins = groupTableBindings(refs, () => true);
   const tables = await readTablesByIdentity(
     drizzle(client),
     workspaceId,
-    [...pins.values()].map(({ config }) => dataTableIdentity(config)),
+    refs.map(({ binding }) => dataTableIdentity(binding.config)),
   ).catch(rethrowQueryFailure);
   const names = new Map(tables.map((table) => [table.id, table.name]));
-  return mapWorkflowNodes(graph, (node) => {
-    const binding = pins.get(node);
-    if (binding === undefined) return node;
-    const name = names.get(binding.config.tableId ?? '');
-    return name === undefined
-      ? node
-      : replaceWorkflowDataTableBinding(node, binding.location, {
-          ...binding.config,
-          table: name,
-        });
-  });
+  return mapWorkflowNodes(graph, (node) =>
+    (pins.get(node) ?? []).reduce((bound, { binding }) => {
+      const name = names.get(binding.config.tableId ?? '');
+      return name === undefined
+        ? bound
+        : replaceWorkflowDataTableBinding(bound, binding.location, {
+            ...binding.config,
+            table: name,
+          });
+    }, node),
+  );
+}
+
+function groupTableBindings(
+  refs: ReturnType<typeof references>,
+  predicate: (entry: ReturnType<typeof references>[number]) => boolean,
+) {
+  const byNode = new Map<ReferenceNode, ReturnType<typeof references>>();
+  for (const entry of refs) {
+    if (!predicate(entry)) continue;
+    const entries = byNode.get(entry.node) ?? [];
+    entries.push(entry);
+    byNode.set(entry.node, entries);
+  }
+  return byNode;
+}
+
+function tableBindingPath(
+  path: string,
+  location: ReturnType<typeof workflowDataTableBindings>[number]['location'],
+): string {
+  if (location === 'step') return path;
+  return typeof location === 'number'
+    ? `${path}.config.tools[${String(location)}]`
+    : `${path}.config.tool`;
 }
 
 async function reviewTableReferences(

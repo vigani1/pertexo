@@ -57,7 +57,7 @@ const proposal = json({
 });
 const insertProposal = modelProposal({ values: { key: 'c', amount: 12 } });
 
-function modelProposal(args: Record<string, unknown>) {
+function modelProposal(args: Record<string, unknown>, toolName = alias) {
   return json({
     usage: { prompt_tokens: 45, completion_tokens: 8 },
     choices: [
@@ -68,7 +68,7 @@ function modelProposal(args: Record<string, unknown>) {
             {
               id: 'new-order',
               type: 'function',
-              function: { name: alias, arguments: JSON.stringify(args) },
+              function: { name: toolName, arguments: JSON.stringify(args) },
             },
           ],
         },
@@ -391,6 +391,60 @@ it('collects each iteration result with Agent as the only For Each body step', a
   expect(outputs).toMatchObject(
     texts.map((text) => ({ output_ref: { value: { text } } })),
   );
+});
+
+it('reads then runs an independently approved write in one Agent invocation', async () => {
+  const values = { key: 'c', amount: 12 };
+  await using run = await start(
+    [proposal, modelProposal({ values }, 'insert_order'), finalAnswer],
+    { shape: 'multi-tool', write: 'approval' },
+  );
+  const [task] = await fixture.waitFor(
+    run.tasks,
+    (rows) => rows[0]?.status === 'pending',
+    timeoutMillis,
+  );
+  if (task === undefined) throw new Error('Agent write approval is missing');
+  expect(run.calls).toHaveLength(2);
+  expect(run.calls[0]?.request).toMatchObject({
+    tools: [
+      { function: { name: alias } },
+      { function: { name: 'insert_order' } },
+    ],
+  });
+  expect(await run.attempts()).toMatchObject([
+    { status: 'succeeded' },
+    {
+      status: 'succeeded',
+      output_ref: { value: { rows: [{ values: { key: 'a', amount: 42 } }] } },
+    },
+    { status: 'succeeded' },
+  ]);
+  await run.restart();
+  const tasks = createPendingTaskStore(config(fixture.apiUrl));
+  try {
+    await tasks.decide({
+      ...actor,
+      taskId: task.id,
+      decision: 'approved',
+      idempotencyKey: randomUUID(),
+    });
+  } finally {
+    await tasks.close();
+  }
+  expect(await run.end()).toMatchObject({
+    status: 'succeeded',
+    output_ref: { value: finalText },
+  });
+  expect(await run.attempts()).toMatchObject([
+    { status: 'succeeded' },
+    { status: 'succeeded' },
+    { status: 'succeeded' },
+    { status: 'succeeded', output_ref: { value: { rows: [{ values }] } } },
+    { status: 'succeeded' },
+  ]);
+  expect(await run.tasks()).toMatchObject([{ status: 'approved' }]);
+  expect(run.calls).toHaveLength(3);
 });
 
 describe('Agent restart', () => {

@@ -43,6 +43,7 @@ import type {
   WorkflowObservation,
 } from '../workflow-execution.js';
 import {
+  agentToolAliasFromInvocationKey,
   isAgentWorkInvocationKey,
   isAgentModelTurnInvocationKey,
 } from '../invocations/agent-invocation.js';
@@ -233,7 +234,11 @@ function providerKeyNode(
 ) {
   return isAgentWorkInvocationKey(invocationKey) &&
     !isAgentModelTurnInvocationKey(invocationKey)
-    ? executableAgentTool(executable, nodeId)?.node
+    ? executableAgentTool(
+        executable,
+        nodeId,
+        agentToolAliasFromInvocationKey(invocationKey),
+      )?.node
     : nodes.get(nodeId);
 }
 function coordinateObservations({
@@ -276,14 +281,14 @@ function coordinateObservations({
   const controlDeadline =
     checkpoint.deadlineExpired ||
     persistedObservations.deadlineExpiration !== undefined;
-  const agentToolFor = (nodeId: string) =>
-    executableAgentTool(input.executable, nodeId);
+  const agentToolFor = (nodeId: string, alias?: string) =>
+    executableAgentTool(input.executable, nodeId, alias);
   const resolvedFailures = resolveAttemptFailures({
     runId: input.runId,
     failures: persistedObservations.attemptFailures,
     invocations: invocationsByKey,
     nodes: nodesById,
-    agentToolFor: (nodeId) => agentToolFor(nodeId)?.node,
+    agentToolFor: (nodeId, alias) => agentToolFor(nodeId, alias)?.node,
     retryPolicyReference: input.executable.envelope.runtimePolicies.retry,
     controlCanceled,
     controlDeadline,

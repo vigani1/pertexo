@@ -36,6 +36,21 @@ it('preserves the published catalog and every legacy browser projection byte for
   );
 });
 
+it('preserves the exact manifests for both one-tool Agent versions', () => {
+  const manifests = PLATFORM_NODE_CATALOG.definitions.filter(
+    ({ definition }) =>
+      definition.key === 'ai.agent' && definition.version <= 2,
+  );
+  expect(
+    manifests.map((manifest) =>
+      createHash('sha256').update(JSON.stringify(manifest)).digest('hex'),
+    ),
+  ).toEqual([
+    '7b260bec5dcdbd516ea288304001e9830f0669e9d9e549d65e361c6ae2063a71',
+    '7bb355e5b5eb2e5c7580669336b5d965dfb634c58f379f176b0764f7c427498d',
+  ]);
+});
+
 it('advertises table IDs only for the new Find rows and Agent versions', () => {
   const definition = (key: string, version: number) =>
     PLATFORM_NODE_CATALOG.definitions.find(

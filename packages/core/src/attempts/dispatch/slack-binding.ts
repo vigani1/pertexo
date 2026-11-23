@@ -1,10 +1,12 @@
 import {
   AGENT_SEND_SLACK_MESSAGE,
   AGENT_SLACK_CONNECTION_SLOT,
-  agentConfigSchema,
+  AGENT_STEP_V3,
+  readAgentConfig,
   isAgentDefinition,
 } from '@pertexo/workflow-model';
 import {
+  agentToolAliasFromInvocationKey,
   isAgentModelTurnInvocationKey,
   isAgentWorkInvocationKey,
 } from '@pertexo/workflow-engine/server';
@@ -56,9 +58,17 @@ function sendsSlack(node: PublishedNode, invocationKey: string): boolean {
     isAgentModelTurnInvocationKey(invocationKey)
   )
     return false;
-  const config = agentConfigSchema.safeParse(node.config);
+  const toolAlias = agentToolAliasFromInvocationKey(invocationKey);
+  const config = readAgentConfig({
+    definition: { key: definition.key, version: definition.version },
+    config: node.config,
+  });
   return (
-    config.success &&
-    config.data.tool.definition.key === AGENT_SEND_SLACK_MESSAGE.key
+    config?.tools.some(
+      (tool) =>
+        tool.definition.key === AGENT_SEND_SLACK_MESSAGE.key &&
+        (definition.version !== AGENT_STEP_V3.version ||
+          tool.alias === toolAlias),
+    ) ?? false
   );
 }

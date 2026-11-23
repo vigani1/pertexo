@@ -4,7 +4,7 @@ import {
 } from '@pertexo/workflow-model';
 import { buildWorkflowExecutable } from '../compilation/compile.js';
 import {
-  executableAgentTool,
+  executableAgentTools,
   executionNodes,
 } from '../compilation/verified-executable.js';
 import type { WorkflowExecutableGraph } from '../compilation/workflow-executable.js';
@@ -58,7 +58,9 @@ export function buildWorkflowTestExecutable(
       .filter(
         (node) =>
           node.sideEffectClass !== 'safe' ||
-          executableAgentTool(executable, node.id)?.policy.effect === 'write',
+          executableAgentTools(executable, node.id).some(
+            ({ policy }) => policy.effect === 'write',
+          ),
       )
       .map((node) => node.id),
     usesConnections: candidates.some(

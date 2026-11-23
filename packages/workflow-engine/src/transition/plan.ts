@@ -1,3 +1,4 @@
+import { agentToolForAlias } from '../compilation/agent-tools.js';
 import { graphInvocationsWithRoutedFailures } from '../failure-routing/scope.js';
 import type { InlineAttemptSettlement } from '../attempt/inline-settlement.types.js';
 import {
@@ -295,8 +296,10 @@ function agentToolSideEffectClass(
   invocation: InvocationState,
 ) {
   if (invocation.agentWork?.work.kind !== 'tool_call') return undefined;
-  return state.agentScheduler?.tools.get(invocation.nodeId)?.node
-    .sideEffectClass;
+  return agentToolForAlias(
+    state.agentScheduler?.tools.get(invocation.nodeId) ?? [],
+    invocation.agentWork.toolAlias,
+  )?.node.sideEffectClass;
 }
 function settleRunStatus(
   state: MutableWorkflowTransition,

@@ -1,5 +1,6 @@
 import {
   type AgentToolCall,
+  AGENT_STEP_V3,
   agentTurnOutputSchema,
   type JsonValue,
 } from '@pertexo/workflow-model';
@@ -77,13 +78,28 @@ export function parseStoredAgentTurn(
 export function settleModelReceipt(
   agent: AgentContinuation,
   receipt: ReturnType<typeof readAgentModelReceipt>,
-  alias: string,
+  tool:
+    | Readonly<{ alias: string; agentDefinition: { version: number } }>
+    | undefined,
 ) {
   const usage = settleAgentTurnUsage(agent, receipt.usage);
   if (usage.kind === 'refused') return usage;
-  return settleAgentModelTurn(
+  const decision = settleAgentModelTurn(
     { ...agent, budget: usage.budget },
     receipt,
-    alias,
+    tool?.alias ?? '',
   );
+  if (
+    decision.kind !== 'continue' ||
+    decision.agent.phase.kind !== 'proposed_call' ||
+    tool?.agentDefinition.version !== AGENT_STEP_V3.version
+  )
+    return decision;
+  return {
+    ...decision,
+    agent: {
+      ...decision.agent,
+      phase: { ...decision.agent.phase, toolAlias: tool.alias },
+    },
+  };
 }
