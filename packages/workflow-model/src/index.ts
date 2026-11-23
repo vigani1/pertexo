@@ -169,9 +169,11 @@ export {
 export { inspectWorkflowFailureRoutes } from './flow/failure-routing/failure-routes.validation.js';
 export {
   isRoutableExecutorFailure,
+  workflowNodeFailureInputSchema,
   workflowNodeFailureValueSchema,
   MODEL_FAILURE_KINDS,
   workflowFailureClassificationSchema,
+  type WorkflowNodeFailureInput,
   type WorkflowNodeFailureValue,
 } from './flow/failure-routing/value.js';
 export {

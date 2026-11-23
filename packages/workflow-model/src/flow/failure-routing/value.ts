@@ -142,3 +142,11 @@ export const workflowNodeFailureValueSchema =
 export type WorkflowNodeFailureValue = z.output<
   typeof workflowNodeFailureValueSchema
 >;
+
+export const workflowNodeFailureInputSchema =
+  workflowNodeFailureValueSchema.safeExtend({
+    nodeLabel: z.string().min(1).optional(),
+  });
+export type WorkflowNodeFailureInput = z.output<
+  typeof workflowNodeFailureInputSchema
+>;

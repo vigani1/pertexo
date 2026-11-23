@@ -178,7 +178,13 @@ async function readSourceFailure(
       parsed.data.nodeId !== input.sourceFailure.nodeId ||
       parsed.data.invocationKey !== selectedSource.invocationKey;
     if (invalidSourceFailure) throw new NodeAttemptStateCorruptError();
-    sourceFailure = parsed.data;
+    sourceFailure =
+      selectedSource.invocationKey === input.sourceFailure.invocationKey
+        ? parsed.data
+        : {
+            ...parsed.data,
+            nodeLabel: selectedSource.agentLabel ?? parsed.data.nodeId,
+          };
   }
 
   return sourceFailure;

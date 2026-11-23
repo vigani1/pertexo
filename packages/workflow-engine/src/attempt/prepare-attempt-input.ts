@@ -10,7 +10,7 @@ import {
   workspaceVariableValuesSchema,
   type WorkspaceVariableValues,
   WORKFLOW_FAILURE_PORT,
-  workflowNodeFailureValueSchema,
+  workflowNodeFailureInputSchema,
   type WorkflowNodeFailureValue,
   type JsonValue,
 } from '@pertexo/workflow-model';
@@ -295,7 +295,7 @@ export function prepareNodeAttemptInput(
   );
   let sourceFailure: WorkflowNodeFailureValue | undefined;
   if (route !== undefined) {
-    const parsed = workflowNodeFailureValueSchema.safeParse(
+    const parsed = workflowNodeFailureInputSchema.safeParse(
       input.sourceFailure,
     );
     const parentKey = expectedInvocationKey(input, route.sourceNodeId);

@@ -3,8 +3,10 @@ import type {
   NodeExecutorErrorKind,
   NodeExecutorFailureKind,
 } from '@pertexo/node-sdk/server';
-import type { WorkspaceVariableValues } from '@pertexo/workflow-model';
-import type { WorkflowNodeFailureValue } from '@pertexo/workflow-model';
+import type {
+  WorkflowNodeFailureInput,
+  WorkspaceVariableValues,
+} from '@pertexo/workflow-model';
 
 import type { createNodeAttemptRunStore } from './node-attempt-run.store.js';
 
@@ -58,7 +60,7 @@ export type NodeAttemptStoredInputs = Readonly<{
     nodeId: string;
     value: unknown;
   }>[];
-  sourceFailure?: WorkflowNodeFailureValue;
+  sourceFailure?: WorkflowNodeFailureInput;
   resumeOutput?: unknown;
   control: NodeAttemptControl;
   deadlineAt?: Date;
