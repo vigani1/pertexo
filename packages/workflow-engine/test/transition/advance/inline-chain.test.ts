@@ -1,4 +1,8 @@
 import type { WorkflowEdge } from '@pertexo/workflow-model';
+import {
+  JsonataEvaluator,
+  type ExpressionResult,
+} from '@pertexo/workflow-model/server';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
@@ -602,5 +606,60 @@ describe('bounded coordinator inline advances', () => {
     expect(plan.attempts).toMatchObject([
       { nodeId: 'step-1', attemptNumber: 1 },
     ]);
+  });
+
+  it('interrupts a running Jsonata expression and delivers the attempt when the advance budget runs out', async () => {
+    const evaluator = new JsonataEvaluator({ maxActive: 1 });
+    const context = { runInput: null, nodeOutputs: {} };
+    try {
+      // Warm the child so the advance budget covers evaluation rather than startup.
+      expect(
+        await evaluator.evaluate({ expression: '1', context }),
+      ).toMatchObject({
+        kind: 'value',
+        value: 1,
+      });
+      let evaluation: ExpressionResult | undefined;
+      const fixture = await start(
+        1,
+        () => {
+          throw new Error('Kernel ran before its expression completed');
+        },
+        {
+          monotonicNow: () => performance.now(),
+          expressionEvaluator: {
+            async evaluate(request) {
+              evaluation = await evaluator.evaluate(request);
+              return evaluation;
+            },
+          },
+        },
+        // The evaluator allows 100 ms of execution, longer than the 50 ms advance.
+        { expression: '$distinct([1..50000])' },
+      );
+      const plan = await advanceWorkflow({
+        ...fixture.base,
+        checkpoint: fixture.checkpoint,
+        observations: fixture.observations,
+        inline: fixture.inline,
+      });
+      expect(evaluation).toMatchObject({ kind: 'error', code: 'canceled' });
+      expect(plan.inlineAttempts).toBeUndefined();
+      expect(plan.attempts).toMatchObject([
+        { nodeId: 'step-1', attemptNumber: 1 },
+      ]);
+      expect(
+        await evaluator.evaluate({ expression: '2', context }),
+      ).toMatchObject({
+        kind: 'value',
+        value: 2,
+      });
+      expect(evaluator.diagnostics()).toMatchObject({
+        processStarts: 2,
+        peakProcesses: 1,
+      });
+    } finally {
+      await evaluator.shutdown();
+    }
   });
 });
