@@ -35,12 +35,14 @@ export function parseAutomationHttpConfig(
   if (!parsed.success)
     throw new AutomationCommandError(
       'cli.invalid_config',
+      // session-setting-exempt: CLI configuration error text
       'Set PERTEXO_API_TOKEN to a valid personal API token.',
     );
   const value = environment.PERTEXO_API_URL;
   if (value === undefined || value.length > API_URL_MAX_CHARACTERS)
     throw new AutomationCommandError(
       'cli.invalid_config',
+      // session-setting-exempt: CLI configuration error text
       'Set PERTEXO_API_URL to your Pertexo origin.',
     );
   let url: URL;
