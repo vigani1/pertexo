@@ -1,4 +1,5 @@
 import {
+  CONNECTION_PROVIDER_KEY_PATTERN,
   NODE_FAILURE_FIELD_LIMITS,
   NODE_IDENTITY_KEY_MAX_CHARACTERS,
 } from '@pertexo/node-sdk';
@@ -16,7 +17,7 @@ export const connectionProviderKeySchema = z
   .string()
   .min(1)
   .max(NODE_IDENTITY_KEY_MAX_CHARACTERS)
-  .regex(/^[a-z][a-z0-9_]*$/u);
+  .regex(CONNECTION_PROVIDER_KEY_PATTERN);
 export const connectionStatusSchema = z.enum([
   'active',
   'reauthorization_required',
