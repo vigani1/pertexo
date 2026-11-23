@@ -222,14 +222,29 @@ export function requiredConnections(
   );
 }
 
+export function connectionDefinitionForSlot(
+  requirement: string,
+  definitions: readonly ConnectionFormDefinition[],
+) {
+  return (
+    definitions.find(
+      (entry) => entry.slot === requirement && entry.authType === requirement,
+    ) ?? definitions.find((entry) => entry.slot === requirement)
+  );
+}
+
 /** A connection requirement such as `slack_bot_token` → "Slack connection". */
 export function describeConnectionRequirement(
   requirement: string,
   definitions: readonly ConnectionFormDefinition[],
 ): string {
+  const presentation = connectionDefinitionForSlot(
+    requirement,
+    definitions,
+  )?.presentation;
   return (
-    definitions.find((entry) => entry.authType === requirement)?.presentation
-      .requirement ?? `${prettifyDefinitionKey(requirement)} connection`
+    presentation?.requirement ??
+    `${presentation?.name ?? prettifyDefinitionKey(requirement)} connection`
   );
 }
 

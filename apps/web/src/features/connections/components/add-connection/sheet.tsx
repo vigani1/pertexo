@@ -51,8 +51,6 @@ import { StepIndicator, type AddStep } from './steps';
 import { StepBody } from './content';
 import { AddConnectionFooter } from './content';
 
-export type AddConnectionRequest = ConnectionChoice;
-
 const DESCRIPTIONS: Readonly<Record<AddStep, string>> = {
   provider: 'Choose what Pertexo should plug into.',
   credential: 'Paste the key or token the service gave you.',
@@ -83,7 +81,7 @@ function stepDescription(
 type AddConnectionSheetProps = Readonly<{
   scope: ConnectionMutationScope;
   workspaceName: string;
-  request: AddConnectionRequest | undefined;
+  request: ConnectionChoice | ConnectionFormDefinition | undefined;
   onClose: () => void;
   onCreated?: (connection: ConnectionResponse) => void;
 }>;
@@ -227,11 +225,14 @@ function useAddConnectionForm({
   const [savedCredential, setSavedCredential] = useState<SavedCredential>();
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [authType, chooseAuthType] = useState<string>();
-  const provider = chosen ?? (request === 'any' ? undefined : request);
+  const definition = connectionDefinition(
+    useConnectionDefinitions(),
+    chosen ?? request,
+    authType,
+  );
+  const provider = definition?.presentation.choice;
   const step: AddStep =
     stepState ?? (provider === undefined ? 'provider' : 'credential');
-  const definitions = useConnectionDefinitions();
-  const definition = connectionDefinition(definitions, provider, authType);
   const credential = useCredentialForm(definition);
   const useOAuth2 = definition?.test === 'oauth2';
   const nameValidation = useFieldValidation<'name'>();
@@ -319,11 +320,8 @@ function useAddConnectionForm({
       return;
     }
     setStep('test');
-    const automatic =
-      definition.testAutomatically === true
-        ? providerTestRequest(definition)
-        : undefined;
-    if (automatic !== undefined) test.run(connection, automatic);
+    if (definition.testAutomatically === true)
+      test.run(connection, providerTestRequest(definition));
   }
 
   const createFailed = create.isError && !isFieldProblem(create.error);

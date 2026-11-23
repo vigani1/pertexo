@@ -15,6 +15,12 @@
       "path": "../../packages/contracts/tsconfig.json"
     },
     {
+      "path": "../../packages/integrations/tsconfig.json"
+    },
+    {
+      "path": "../../packages/node-catalog/tsconfig.json"
+    },
+    {
       "path": "../../packages/node-sdk/tsconfig.json"
     }
   ]

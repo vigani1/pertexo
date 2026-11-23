@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@pertexo/contracts": "workspace:*",
+    "@pertexo/integrations": "workspace:*",
+    "@pertexo/node-catalog": "workspace:*",
     "@pertexo/node-sdk": "workspace:*",
     "zod": "4.6.7"
   },

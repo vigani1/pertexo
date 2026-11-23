@@ -25,12 +25,7 @@ export async function loadCommunityModules({
     const identity = `${approval.providerKey}@${approval.version}`;
     try {
       const bytes = await readPackage(root, approval.file);
-      const digest = createHash('sha256').update(bytes).digest('hex');
-      if (digest !== approval.sha256)
-        throw new CommunityApprovalError(
-          'SHA-256 does not match the approved checksum',
-        );
-      const manifest = decodeCommunityManifest(bytes);
+      const { manifest } = decodePackage(bytes, approval.sha256);
       if (
         communityProviderKey(manifest) !== approval.providerKey ||
         manifest.version !== approval.version ||
@@ -104,4 +99,30 @@ async function readPackage(root: string, file: string): Promise<Uint8Array> {
   } finally {
     await handle.close();
   }
+}
+
+function decodePackage(bytes: Uint8Array, approvedSha256?: string) {
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  if (approvedSha256 !== undefined && sha256 !== approvedSha256)
+    throw new CommunityApprovalError(
+      'SHA-256 does not match the approved checksum',
+    );
+  return { manifest: decodeCommunityManifest(bytes), sha256 };
+}
+
+export async function loadAuthorCommunityModule(root: string, file: string) {
+  const { manifest, sha256 } = decodePackage(
+    await readPackage(await realpath(root), file),
+  );
+  return {
+    metadata: {
+      file,
+      providerKey: communityProviderKey(manifest),
+      version: manifest.version,
+      sha256,
+      origin: manifest.origin,
+    },
+    module: compileCommunityManifest(manifest),
+    credentialFields: Object.keys(manifest.connection?.fields ?? {}),
+  };
 }

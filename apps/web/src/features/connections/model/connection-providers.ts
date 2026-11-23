@@ -13,9 +13,10 @@ export type ConnectionChoice = string;
 
 export function connectionDefinition(
   definitions: readonly ConnectionFormDefinition[],
-  choice: string | undefined,
+  choice: string | ConnectionFormDefinition | undefined,
   authType?: string,
 ) {
+  if (typeof choice === 'object') return choice;
   return definitions.find((entry) =>
     authType === undefined
       ? entry.presentation.choice === choice &&

@@ -4,10 +4,11 @@ Follow the [root rules](../../AGENTS.md); this file only adds to them.
 
 ## Purpose and boundary
 
-The `pertexo` command: automation over the public HTTP API with a personal
-API token. It parses a command, calls the documented routes and prints one
-JSON line. It never touches the database or `core`; the API is its only
-door. Secrets come only from the environment.
+The `pertexo` command prints one JSON line for automation and offline integration
+authoring. Automation calls the public HTTP API with a personal token from the
+environment. Integration authoring uses the production package loader and platform
+registry with a synthetic provider transport. The CLI does not access the database
+or `core`.
 
 ## Layout
 
@@ -17,11 +18,12 @@ door. Secrets come only from the environment.
   once (`automation-http-config.ts`).
 - `commands/`: argument parsing, command execution, request-body files and
   `AutomationCommandError` with its exit codes.
+- `integrations/`: release scaffolding, conformance examples and the offline provider harness.
 - `http/`: the HTTP client over the API.
 
 ## Where new code goes
 
-- A new command: its arguments in `commands/automation-arguments.ts`, its
+- A new automation command: its arguments in `commands/automation-arguments.ts`, its
   execution in `commands/execute-automation-command.ts`, its help line in
   `run-automation-cli.ts`.
 
