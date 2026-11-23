@@ -1,14 +1,15 @@
 import type { ParsedConnectionCredential } from '@pertexo/contracts';
 import { isRecord } from '@pertexo/workflow-model';
-import type { AuthRecipe } from './connection-definition.js';
+import type { ConnectionDefinition } from './connection-definition.js';
 import type { ProviderHttpRequest } from './http-client.js';
 
 export function applyHttpAuth(
   url: string,
-  auth: AuthRecipe,
+  auth: Exclude<ConnectionDefinition['auth'], { resolve: unknown }>,
   credential: ParsedConnectionCredential,
   invalidCredential: () => Error,
-): Pick<ProviderHttpRequest, 'url' | 'headers' | 'sensitiveValues'> {
+): Pick<ProviderHttpRequest, 'url' | 'headers'> &
+  Readonly<{ sensitiveValues: readonly string[] }> {
   switch (auth.kind) {
     case 'header_map': {
       const fields: Readonly<Record<string, unknown>> = credential;
