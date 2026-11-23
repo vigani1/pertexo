@@ -18,6 +18,7 @@ type JsonScalar = string | number | boolean | null;
 type HttpTestRecipe<Credential> = Readonly<{
   kind: 'http';
   method: ProviderHttpRequest['method'];
+  approvedOrigin?: string;
   target:
     | string
     | Readonly<{

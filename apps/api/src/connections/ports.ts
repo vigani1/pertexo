@@ -17,6 +17,7 @@ import type {
 import type {
   OAuth2EndpointPolicy,
   SlackClient,
+  ProviderHttpClient,
   ResendClient,
 } from '@pertexo/integrations/server';
 import type { SecureHttpClient } from '@pertexo/secrets/server';
@@ -72,6 +73,10 @@ export type ConnectionDependencies = Readonly<{
   authorization: WorkspaceAuthorizationSource;
   encryption: ConnectionSecretEncryptionPort;
   httpClient: ConnectionHttpClient;
+  communityHttpClient?: Pick<
+    ProviderHttpClient,
+    'executeStreaming' | 'redactText'
+  >;
   lookup?: ConnectionLookupDependencies;
   slackClient?: ConnectionSlackClient;
   emailClient?: ConnectionEmailClient;

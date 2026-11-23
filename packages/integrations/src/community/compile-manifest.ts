@@ -1,8 +1,7 @@
+import { createRecipeExecutor } from './recipe.executor.js';
+import { recipeConnection } from './recipe-connection.js';
 import { generateSchemaDocument, type NodeManifest } from '@pertexo/node-sdk';
-import {
-  DISPATCH_AWARE_EXECUTOR_ABI_VERSION,
-  NodeExecutorFailure,
-} from '@pertexo/node-sdk/server';
+import { DISPATCH_AWARE_EXECUTOR_ABI_VERSION } from '@pertexo/node-sdk/server';
 import { z } from 'zod';
 import type { ConnectionDefinition } from '../providers/connection-definition.js';
 import type { IntegrationModule } from '../providers/integration-module.js';
@@ -18,7 +17,6 @@ import {
 import { COMMUNITY_MANIFEST_LIMITS as limits } from './manifest-limits.js';
 
 const COMMUNITY_DEFINITION_VERSION = 1;
-const COMMUNITY_EXECUTION_UNAVAILABLE = 'community.execution_unavailable';
 const CONFIG_SCHEMA = z.strictObject({});
 
 export function compileCommunityManifest(
@@ -43,8 +41,9 @@ export function compileCommunityManifest(
       group: 'action',
       community: { publisher: manifest.publisher, origin },
     },
-    executorSummaryCodes: [COMMUNITY_EXECUTION_UNAVAILABLE],
-    ...(credential === undefined ? {} : { connections: [credential] }),
+    ...(credential === undefined
+      ? {}
+      : { connections: [credential.definition] }),
     steps: manifest.actions.map((action) =>
       compileOperation(
         providerKey,
@@ -61,7 +60,7 @@ function compileConnection(
   providerKey: string,
   origin: string,
   { name, description }: CommunityManifest['presentation'],
-): ConnectionDefinition {
+) {
   const { fields, auth, test } = connection;
   const credentialFields = Object.entries(fields).map(
     ([key, { label, kind, default: initial }]) => {
@@ -90,7 +89,7 @@ function compileConnection(
   const digest = communityContractDigest('credential', contract);
   const authType = `community_${digest}`;
   const fieldShape = Object.fromEntries(credentialFields);
-  return {
+  const definition = {
     authType,
     presentation: {
       choice: providerKey,
@@ -106,11 +105,16 @@ function compileConnection(
     auth,
     test: {
       kind: 'http',
+      approvedOrigin: origin,
       method: test.method,
       target: new URL(test.path, origin).href,
       success: { status: '2xx' },
     },
     slot: { key: `community.${digest}`, primary: true },
+  } satisfies ConnectionDefinition;
+  return {
+    definition,
+    binding: recipeConnection(providerKey, definition, auth),
   };
 }
 
@@ -118,7 +122,7 @@ function compileOperation(
   providerKey: string,
   origin: string,
   action: CommunityAction,
-  credential: ConnectionDefinition | undefined,
+  credential: ReturnType<typeof compileConnection> | undefined,
 ): IntegrationModule['steps'][number] {
   const { name, description, connection: _connection, ...operation } = action;
   const contract = {
@@ -126,7 +130,7 @@ function compileOperation(
     providerKey,
     origin,
     ...operation,
-    credential: credential?.authType ?? null,
+    credential: credential?.definition.authType ?? null,
   };
   const definition = {
     key: `community.${communityContractDigest('definition', contract)}`,
@@ -138,7 +142,8 @@ function compileOperation(
   };
   const inputSchema = compileFields(action.input);
   const outputSchema = compileFields(action.output);
-  const slots = credential === undefined ? [] : [credential.slot.key];
+  const slots =
+    credential === undefined ? [] : [credential.definition.slot.key];
   const manifest: NodeManifest = {
     definition,
     family: 'action',
@@ -165,18 +170,14 @@ function compileOperation(
       inputSchema,
       outputSchema,
     },
-    createExecutor: () => ({
-      executor,
-      execute: () => {
-        // Recipe dispatch is added in F64 slice 2. Refuse before opening credentials.
-        throw new NodeExecutorFailure({
-          kind: 'failed',
-          errorKind: 'configuration',
-          possiblyDispatched: false,
-          safeErrorCode: COMMUNITY_EXECUTION_UNAVAILABLE,
-        });
-      },
-    }),
+    createExecutor: (dependencies) =>
+      createRecipeExecutor(
+        dependencies,
+        executor,
+        origin,
+        action,
+        credential?.binding,
+      ),
   };
 }
 

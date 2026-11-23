@@ -90,7 +90,7 @@ export function createProviderBeforeDispatch(input: {
 
 /** Dispatch evidence for a request that carries no connection, such as a public API call. */
 export function createUnauthenticatedBeforeDispatch(
-  runtime: NodeExecutionRuntime,
+  runtime: Pick<NodeExecutionRuntime, 'beforeDispatch'>,
 ): () => Promise<void> {
   return async () => {
     try {

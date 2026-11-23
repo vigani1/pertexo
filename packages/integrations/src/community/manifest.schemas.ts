@@ -239,7 +239,7 @@ function validatePath(
   if (!path.startsWith('/') || path.startsWith('//'))
     throw new CommunityManifestError('path must be origin-relative');
   for (const segment of path.slice(1).split('/')) {
-    const reference = /^\{([a-zA-Z][a-zA-Z0-9_]*)\}$/u.exec(segment)?.[1];
+    const reference = pathInputName(segment);
     if (reference !== undefined) {
       if (
         !Object.hasOwn(input, reference) ||
@@ -256,4 +256,8 @@ function validatePath(
       throw new CommunityManifestError('path contains an invalid segment');
     }
   }
+}
+
+export function pathInputName(segment: string): string | undefined {
+  return /^\{([a-zA-Z][a-zA-Z0-9_]*)\}$/u.exec(segment)?.[1];
 }

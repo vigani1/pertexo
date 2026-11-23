@@ -43,6 +43,7 @@ export type SecureHttpRequest = Readonly<{
   body?: Uint8Array | NodeVerifiedByteSource;
   timeoutMillis: number;
   maxRedirects: number;
+  publicOnly?: true;
   maxResponseBytes: number;
   sensitiveValues?: readonly string[];
   rejectSensitiveResponse?: boolean;
