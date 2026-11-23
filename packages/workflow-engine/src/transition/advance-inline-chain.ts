@@ -174,7 +174,7 @@ export async function advanceInlineChain(
 }
 
 function settleInvocation(
-  { input, options, state, settled }: Chain,
+  { input, options, state, nodes, settled }: Chain,
   { invocation, node }: Candidate,
   {
     startedAt,
