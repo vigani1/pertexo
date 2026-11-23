@@ -1,11 +1,5 @@
-import {
-  validateCallableValue,
-  type AgentToolCall,
-} from '@pertexo/workflow-model';
-import {
-  dataTableValuesSchema,
-  type DefinitionIdentity,
-} from '@pertexo/node-sdk';
+import { validLegacyToolArguments } from './accept-agent-proposal.js';
+import { type DefinitionIdentity } from '@pertexo/node-sdk';
 import type { AgentTool } from './agent-scheduler.js';
 import type { AgentContinuation } from '../../control-nodes/agent-continuation.js';
 import { resumeAgent } from '../../control-nodes/resume-agent.js';
@@ -344,20 +338,4 @@ function admitChild(
     ...transitionEvent('node.ready', occurredAt, { invocation }),
     agentWork: { ...agentWork, ...attribution },
   });
-}
-
-function validLegacyToolArguments(
-  tool: AgentTool,
-  args: AgentToolCall['arguments'],
-) {
-  if (tool.callable !== undefined)
-    return validateCallableValue(tool.callable.input, args) === undefined;
-  return (
-    Object.keys(args).every((field) =>
-      tool.policy.inputFields.includes(field),
-    ) &&
-    (!('table' in tool.node.config) ||
-      tool.policy.effect === 'read' ||
-      dataTableValuesSchema.safeParse(args.values).success)
-  );
 }
