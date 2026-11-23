@@ -1,3 +1,4 @@
+import { graphInvocationsWithRoutedFailures } from '../failure-routing/scope.js';
 import type { InlineAttemptSettlement } from '../attempt/inline-settlement.types.js';
 import {
   parseCheckpoint,
@@ -322,17 +323,25 @@ function settleRunStatus(
       cancelRequested,
       deadlineExpired,
       graphIncomplete,
-      invocations: finalInvocations.filter(
-        (invocation) =>
-          invocation.agentWork?.work.kind !== 'tool_call' ||
-          state.agentScheduler?.tools.get(invocation.nodeId)?.callable ===
-            undefined,
-      ),
+      invocations: [
+        ...graphInvocationsWithRoutedFailures(finalInvocations),
+        ...finalInvocations.filter(
+          ({ agentWork, status }) =>
+            agentWork !== undefined && status === 'outcome_unknown',
+        ),
+      ],
     });
     if (terminalStatus !== undefined) {
       assertRunTransition(state.runStatus, terminalStatus);
       state.runStatus = terminalStatus;
-      eventDrafts.push(event(`run.${terminalStatus}`, input.occurredAt));
+      const reasonCode =
+        terminalStatus === 'outcome_unknown'
+          ? eventDrafts.find(({ name }) => name === 'node.outcome_unknown')
+              ?.reasonCode
+          : undefined;
+      eventDrafts.push(
+        event(`run.${terminalStatus}`, input.occurredAt, { reasonCode }),
+      );
     }
   } else {
     const allWorkWaiting =

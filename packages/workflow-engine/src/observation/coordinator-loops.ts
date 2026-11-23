@@ -257,6 +257,7 @@ function completedLoopObservations(
         const status =
           terminalOutcomes.get(invocation.invocationKey) ?? invocation.status;
         return (
+          invocation.agentWork === undefined &&
           sameIterationPath(invocation.iterationPath, iterationPath) &&
           branchPathHasPrefix(invocation.branchPath, loop.branchPath) &&
           isTerminalNodeStatus(status) &&

@@ -202,6 +202,7 @@ export function readSourceFailureRows(
   return drizzle(client)
     .select({
       failureRef: sourceNode.failureRef,
+      invocationKey: sourceNode.invocationKey,
       currentAttemptNumber: sourceNode.currentAttemptNumber,
     })
     .from(sourceNode)
@@ -225,7 +226,6 @@ export function readSourceFailureRows(
         eq(sourceNode.workspaceId, lease.workspaceId),
         eq(sourceNode.workflowRunId, lease.runId),
         eq(sourceNode.nodeId, sourceFailure.nodeId),
-        eq(sourceNode.invocationKey, sourceFailure.invocationKey),
         eq(sourceNode.status, 'failed'),
         eq(sourceNode.failureHandling, 'pending'),
         eq(handler.id, lease.nodeRunId),

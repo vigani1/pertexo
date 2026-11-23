@@ -98,6 +98,7 @@ export function lockCallParent(
       error_workflow_origin: run.errorWorkflowOrigin,
       started_by: run.startedBy,
       absolute_deadline_at: run.absoluteDeadlineAt,
+      scheduler_state: checkpoint.schedulerState,
       variable_set_revision: run.variableSetRevision,
       deadline_expired: sql<
         boolean | null

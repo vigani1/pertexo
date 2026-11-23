@@ -205,6 +205,8 @@ export async function loadAttemptInputs(
     const sourceFailureStateInvalid =
       source?.status !== 'failed' ||
       source.failureHandling?.disposition !== 'pending' ||
+      (source.agentWork?.parentInvocationKey ?? source.invocationKey) !==
+        input.sourceFailure?.invocationKey ||
       source.attemptNumber !== inputs.sourceFailure.attemptNumber ||
       handler?.status !== 'running' ||
       handler.attemptNumber !== input.lease.attemptNumber;

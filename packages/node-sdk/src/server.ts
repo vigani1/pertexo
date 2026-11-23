@@ -1,4 +1,5 @@
 export {
+  admitNodeExecutionInput,
   createNodeRegistry,
   createInlineNodeRegistry,
   type NodeRegistry,

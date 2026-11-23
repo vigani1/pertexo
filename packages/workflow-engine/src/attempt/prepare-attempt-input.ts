@@ -29,7 +29,10 @@ import {
 } from '../input-checks/engine-values.js';
 import type { NodeAttemptInputSource } from './node-attempt.types.js';
 import { invocationKey as createInvocationKey } from '../invocations/invocation-identity.js';
-import { agentChildInvocationKey } from '../invocations/agent-invocation.js';
+import {
+  agentChildInvocationKey,
+  isAgentChildOf,
+} from '../invocations/agent-invocation.js';
 import { executableAgentTool } from '../compilation/verified-executable.js';
 
 // Predecessor outputs arrive keyed by step and invocation: JSON may spend six
@@ -295,11 +298,16 @@ export function prepareNodeAttemptInput(
     const parsed = workflowNodeFailureValueSchema.safeParse(
       input.sourceFailure,
     );
+    const parentKey = expectedInvocationKey(input, route.sourceNodeId);
     const invalidFailureEvidence =
       !parsed.success ||
       parsed.data.nodeId !== route.sourceNodeId ||
-      parsed.data.invocationKey !==
-        expectedInvocationKey(input, route.sourceNodeId);
+      (parsed.data.invocationKey !== parentKey &&
+        !isAgentChildOf(
+          parsed.data.invocationKey,
+          input.workflowVersionId,
+          parentKey,
+        ));
     if (invalidFailureEvidence)
       operationError(
         'attempt_invalid',

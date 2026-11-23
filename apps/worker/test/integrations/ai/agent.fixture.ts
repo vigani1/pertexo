@@ -19,6 +19,7 @@ import {
 } from '@pertexo/workflow-model';
 import { workflowDraftRepresentationTag } from '@pertexo/workflow-model/server';
 import { coordinatorFixture as fixture } from '../../support/coordinator/consumer.js';
+import { forEachGraph } from '../../support/coordinator/workflows/graphs/loops.js';
 import { literal, node } from '../../support/coordinator/workflows/graph.js';
 
 export const actor = {
@@ -56,7 +57,12 @@ export async function publishAgent(
       | { slackConnectionId: string }
       | AgentCallable
       | undefined;
-    shape?: 'linear-sets' | 'sibling-set' | undefined;
+    shape?:
+      | 'linear-sets'
+      | 'sibling-set'
+      | 'failure-handler'
+      | 'for-each'
+      | undefined;
     expectedTableId?: string | undefined;
   }>,
 ) {
@@ -142,13 +148,19 @@ export async function publishAgent(
   const shapes = {
     'linear-sets': surroundAgentWithSets,
     'sibling-set': addAgentSiblingSet,
+    'failure-handler': addAgentFailureHandler,
+    'for-each': loopOverAgent,
   };
   const published = await publishAgentFixtureGraph(
     authoring,
     shape === undefined ? graph : shapes[shape](graph),
     table,
   );
-  expect(published.version.graphJson.nodes[1]?.config).toEqual({
+  const publishedAgent =
+    shape === 'for-each'
+      ? published.version.graphJson.nodes[1]?.structured?.body.nodes[0]
+      : published.version.graphJson.nodes[1];
+  expect(publishedAgent?.config).toEqual({
     ...graph.nodes[1]?.config,
     tool: {
       ...tool,
@@ -156,6 +168,53 @@ export async function publishAgent(
     },
   });
   return published.version.workflowId;
+}
+
+function addAgentFailureHandler(graph: WorkflowGraph): WorkflowGraph {
+  return {
+    settings: graph.settings,
+    nodes: [
+      ...graph.nodes,
+      node('handler', 'core.terminate', {
+        result: { kind: 'node_failure', nodeId: 'agent', path: '$' },
+      }),
+    ],
+    edges: [
+      ...graph.edges,
+      {
+        id: 'agent-handler',
+        source: { nodeId: 'agent', port: '__failure' },
+        target: { nodeId: 'handler', port: 'in' },
+      },
+    ],
+  };
+}
+
+function loopOverAgent(graph: WorkflowGraph): WorkflowGraph {
+  const agent = graph.nodes.find(({ id }) => id === 'agent');
+  const loopGraph = forEachGraph(1);
+  const [manual, loop, finish] = loopGraph.nodes;
+  if (
+    agent === undefined ||
+    manual === undefined ||
+    loop?.structured === undefined ||
+    finish === undefined
+  )
+    throw new Error('Missing Agent loop fixture step');
+  return {
+    ...loopGraph,
+    nodes: [
+      manual,
+      {
+        ...loop,
+        structured: {
+          ...loop.structured,
+          body: { ...loop.structured.body, nodes: [agent], edges: [] },
+        },
+      },
+      finish,
+    ],
+  };
 }
 
 function readToolIdentities(tableId: string | undefined) {

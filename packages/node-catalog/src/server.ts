@@ -1,8 +1,12 @@
+import type { DefinitionIdentity } from '@pertexo/node-sdk';
 export { validateRegisteredCuratedTemplateSetup } from './curated-template-policy.js';
 export { platformPortableDefinitionPolicy } from './portable-definition-policy.js';
 
 import type { IntegrationExecutorDependencies } from '@pertexo/integrations/server';
 import {
+  admitNodeExecutionInput,
+  NodeInputValidationError,
+  type JsonValue,
   createNodeRegistry,
   createInlineNodeRegistry,
   type InlineNodeRegistry,
@@ -14,7 +18,11 @@ import {
 } from '@pertexo/nodes-core';
 import { CORE_NODE_EXECUTOR_REGISTRATIONS } from '@pertexo/nodes-core/server';
 import { PlatformNodeDefinitionUnavailableError } from './node-catalog.errors.js';
-import { installPlatformIntegrations, platformRegistry } from './catalog.js';
+import {
+  installPlatformIntegrations,
+  platformRegistry,
+  resolvePlatformNodeDefinition,
+} from './catalog.js';
 import type { CommunityApprovalSet } from './community/approvals.js';
 import {
   loadCommunityModules,
@@ -36,6 +44,19 @@ export async function loadPlatformRegistry(
       ? undefined
       : await loadCommunityModules(approved, onVerifiedFile),
   );
+}
+
+export function admitPlatformNodeInput(
+  definition: DefinitionIdentity,
+  input: JsonValue,
+) {
+  const { inputSchema } = resolvePlatformNodeDefinition(definition);
+  try {
+    return admitNodeExecutionInput(inputSchema, input);
+  } catch (error) {
+    if (error instanceof NodeInputValidationError) return undefined;
+    throw error;
+  }
 }
 
 export type PlatformNodeRegistryDependencies = IntegrationExecutorDependencies;

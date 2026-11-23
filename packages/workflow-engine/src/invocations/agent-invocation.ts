@@ -12,6 +12,23 @@ export type AgentWorkIdentity = AgentChild &
   Readonly<{ parentInvocationKey: string }>;
 
 const agentNodePrefix = '\u0000agent:';
+function agentChildNodePrefix(parentInvocationKey: string): string {
+  const parent = createHash('sha256').update(parentInvocationKey).digest('hex');
+  return `${agentNodePrefix}${parent}:`;
+}
+
+export function isAgentChildOf(
+  key: string,
+  workflowVersionId: string,
+  parentInvocationKey: string,
+): boolean {
+  const prefix = [
+    encodeURIComponent(workflowVersionId),
+    encodeURIComponent(agentChildNodePrefix(parentInvocationKey)),
+  ].join('|');
+  return key.startsWith(prefix);
+}
+
 const modelTurn = 'model';
 
 export function isAgentWorkInvocationKey(key: string): boolean {
@@ -34,13 +51,12 @@ export function agentChildInvocationKey(
   parentInvocationKey: string,
   child: AgentChild,
 ): string {
-  const parent = createHash('sha256').update(parentInvocationKey).digest('hex');
   const work =
     child.work.kind === 'model_turn'
       ? modelTurn
       : `tool:${String(child.work.ordinal)}`;
   return invocationKey({
     workflowVersionId,
-    nodeId: `${agentNodePrefix}${parent}:${String(child.turn)}:${work}`,
+    nodeId: `${agentChildNodePrefix(parentInvocationKey)}${String(child.turn)}:${work}`,
   });
 }

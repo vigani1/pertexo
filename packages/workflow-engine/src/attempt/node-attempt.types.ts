@@ -11,7 +11,7 @@ import type {
 import type { ExpressionEvaluator } from '@pertexo/workflow-model/server';
 
 import type { CompiledWorkflowExecutable } from '../compilation/workflow-executable.js';
-import type { AgentAttemptInput } from './agent-input.js';
+import type { AdmitAgentToolInput, AgentAttemptInput } from './agent-input.js';
 import type {
   BranchScopePart,
   IterationScopePart,
@@ -38,6 +38,7 @@ export interface ExecuteNodeAttemptInput {
   readonly invocationKey: string;
   readonly nodeId: string;
   readonly agent?: AgentAttemptInput;
+  readonly admitAgentToolInput?: AdmitAgentToolInput;
   readonly branchPath?: readonly BranchScopePart[];
   readonly iterationPath?: readonly IterationScopePart[];
   readonly structuredCollection?: Readonly<{

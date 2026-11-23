@@ -4,7 +4,7 @@ import type { AgentContinuation } from '../../src/control-nodes/agent-continuati
 import { resumeAgent } from '../../src/control-nodes/resume-agent.js';
 import {
   settleAgentModelTurn,
-  settleAgentReadTool,
+  settleAgentTool,
 } from '../../src/control-nodes/settle-agent-work.js';
 import { createCheckpoint, parseCheckpoint } from '../../src/server.js';
 
@@ -107,7 +107,7 @@ describe('Agent receipts', () => {
         },
       },
     };
-    expect(settleAgentReadTool(laterCall, toolOutput)).toEqual({
+    expect(settleAgentTool(laterCall, { output: toolOutput })).toEqual({
       kind: 'refused',
       reason: 'agent.stale_receipt',
     });
@@ -120,12 +120,12 @@ describe('Agent receipts', () => {
       accepted.agent.phase.kind !== 'proposed_call'
     )
       throw new Error('Expected committed proposal');
-    const settled = settleAgentReadTool(
+    const settled = settleAgentTool(
       {
         ...accepted.agent,
         phase: { ...accepted.agent.phase, kind: 'running_tool' },
       },
-      toolOutput,
+      { output: toolOutput },
     );
     if (settled.kind !== 'continue') throw new Error('Expected completed tool');
     const stored = {
@@ -150,7 +150,7 @@ describe('Agent receipts', () => {
     const next = resumeAgent(version, restored);
     expect(next.kind).toBe('model_turn');
     expect(next).not.toEqual(resumeAgent(version, agent));
-    expect(settleAgentReadTool(restored, toolOutput)).toEqual({
+    expect(settleAgentTool(restored, { output: toolOutput })).toEqual({
       kind: 'refused',
       reason: 'agent.stale_receipt',
     });

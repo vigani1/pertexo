@@ -1,3 +1,4 @@
+import { admitPlatformNodeInput } from '@pertexo/node-catalog/server';
 import { NodeAttemptHandlerStateError } from '../delivery/handler-state.errors.js';
 import { testStepDisposition } from '@pertexo/workflow-engine/server';
 import {
@@ -172,7 +173,12 @@ function prepareNode(
         workflowVersionId: lease.workflowVersionId,
         invocationKey: lease.invocationKey,
         nodeId: lease.nodeId,
-        ...(input.agent === undefined ? {} : { agent: input.agent }),
+        ...(input.agent === undefined
+          ? {}
+          : {
+              agent: input.agent,
+              admitAgentToolInput: admitPlatformNodeInput,
+            }),
         ...(lease.branchPath === undefined
           ? {}
           : { branchPath: lease.branchPath }),

@@ -19,7 +19,10 @@ import { createHash } from 'node:crypto';
 import { ACTIVE_WORKSPACE_STATUSES } from '@pertexo/policy';
 import { withWorkspaceAccess } from '../../shared/access/workspace-access.js';
 import type { Pool, PoolClient } from 'pg';
-import { isAgentWorkInvocationKey } from '@pertexo/workflow-engine/server';
+import {
+  isAgentWorkInvocationKey,
+  parseCheckpoint,
+} from '@pertexo/workflow-engine/server';
 import { countReadableWorkflows } from '../../shared/resources/workflow-call-bindings.repository.js';
 import { canonicalJson } from '@pertexo/workflow-model';
 import { rethrowQueryFailure } from '@pertexo/database/primitives';
@@ -34,6 +37,7 @@ import type { PublishedWorkflow } from '../queries/execution/workflow-execution.
 import { WorkflowCallRefusedError } from './workflow-call.errors.js';
 import { callAdmissionRefusal, callParentWaiting } from './acceptance.js';
 import { wakeWorkflowRun } from '../../outbox/run-advance.repository.js';
+import { CoordinatorRunStateCorruptError } from '../advance/coordinator-state.errors.js';
 
 /** All target prerequisites precede the parent and the counter stays last. */
 export async function acceptPendingCall(
@@ -217,7 +221,7 @@ function callRunInput(
     ),
     runInput: stored.value,
     triggerType: 'workflow_call',
-    absoluteDeadlineAt: row.absolute_deadline_at,
+    absoluteDeadlineAt: childAbsoluteDeadline(row, call.invocation_key),
     ...(row.started_by === null ? {} : { startedBy: row.started_by }),
     workflowId: call.target_workflow_id,
     workflowVersionId: call.target_version_id,
@@ -226,6 +230,25 @@ function callRunInput(
       ? {}
       : { traceparent: input.traceparent }),
   };
+}
+
+function childAbsoluteDeadline(
+  row: NonNullable<Awaited<ReturnType<typeof lockWaitingCallParent>>>,
+  invocationKey: string,
+): Date | null {
+  if (!isAgentWorkInvocationKey(invocationKey)) return row.absolute_deadline_at;
+  const checkpoint = parseCheckpoint(row.scheduler_state);
+  const parentKey = checkpoint.invocations.find(
+    (invocation) => invocation.invocationKey === invocationKey,
+  )?.agentWork?.parentInvocationKey;
+  const agent = checkpoint.agents?.find(
+    (continuation) => continuation.parentInvocationKey === parentKey,
+  );
+  if (agent === undefined) throw new CoordinatorRunStateCorruptError();
+  const cutoff = Date.parse(agent.deadlineAt);
+  return new Date(
+    Math.min(cutoff, row.absolute_deadline_at?.getTime() ?? Infinity),
+  );
 }
 
 function prepareCallInput(

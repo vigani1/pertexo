@@ -15,6 +15,7 @@ import { startAgentRun } from './agent-run.fixture.js';
 import type { AgentWorkerSettings } from './agent-worker.fixture.js';
 import { chat, fakeModel, json } from './model.fixture.js';
 import { childGraph } from '../../runs/calls/calls.fixture.js';
+import { graph as approvalGraph } from '../../runs/pending-tasks/pending-tasks-execution.fixture.js';
 import { fakeAgentSlack } from './slack-agent.fixture.js';
 
 const workerEntry = fileURLToPath(
@@ -184,6 +185,27 @@ describe('Agent callable workflows', () => {
     ]);
   });
 
+  it('stops the Agent when a callable write loses its receipt', async () => {
+    await using slack = await fakeAgentSlack(true);
+    const text = 'Order a is ready.';
+    await using run = await start(
+      [modelProposal({ name: 'Order a' }), finalAnswer],
+      {
+        write: { child: childGraph(), childSlackText: text },
+        slackUrl: slack.baseUrl,
+      },
+    );
+    expect(await run.end()).toMatchObject({ status: 'outcome_unknown' });
+    expect(await run.children()).toMatchObject([
+      { status: 'outcome_unknown', safe_error_code: 'execution.network' },
+    ]);
+    expect(await run.agentOutcomes()).toMatchObject([
+      { status: 'outcome_unknown', safe_error_code: 'execution.network' },
+    ]);
+    expect(run.calls).toHaveLength(1);
+    expect(slack.calls).toMatchObject([{ channel: slackChannel, text }]);
+  });
+
   it('admits a callable child only after the Agent tool is approved', async () => {
     await using run = await start(
       [modelProposal({ name: 'Order a' }), finalAnswer],
@@ -236,15 +258,23 @@ describe('Agent callable workflows', () => {
     expect(run.calls).toHaveLength(1);
   });
 
-  it('times out an Agent and its callable child at the Agent deadline', async () => {
+  it('times out an Agent and its callable child during a human wait', async () => {
     await using run = await start([modelProposal({ name: 'Order a' })], {
-      write: { child: childGraph(60), timeoutMillis: 6_000 },
+      write: {
+        child: { ...approvalGraph(), callable: childGraph().callable },
+        timeoutMillis: 6_000,
+      },
     });
     await waitForCallableChild(run);
     const [call] = await run.children();
+    const [child] = await fixture.workerQuery<{ absolute_deadline_at: Date }>(
+      'select absolute_deadline_at from app.workflow_runs where id=$1',
+      [call?.child_run_id],
+    );
     expect(await run.checkpoint()).toMatchObject({
       deadlineAt: call?.deadline_at?.toISOString(),
     });
+    expect(child?.absolute_deadline_at).toEqual(call?.deadline_at);
     expect(await run.end()).toMatchObject({ status: 'timed_out' });
     expect(await run.children()).toMatchObject([{ status: 'timed_out' }]);
     expect(run.calls).toHaveLength(1);
@@ -300,6 +330,57 @@ describe('Agent callable workflows', () => {
       { status: 'failed', errorCode: 'call_target_unavailable' },
     ]);
   });
+});
+
+it('publishes and runs the Agent failure edge with the failed model attempt evidence', async () => {
+  await using run = await start([json({})], { shape: 'failure-handler' });
+  expect(await run.end()).toMatchObject({ status: 'succeeded' });
+  const [handler] = await fixture.workerQuery(
+    "select n.status, a.output_ref from app.node_runs n join app.node_attempts a on a.id=n.current_attempt_id where n.workflow_run_id=$1 and n.node_id='handler'",
+    [run.id],
+  );
+  expect(handler).toMatchObject({
+    status: 'succeeded',
+    output_ref: {
+      value: {
+        result: {
+          nodeId: 'agent',
+          attemptNumber: 1,
+          safeErrorCode: 'model.invalid_response',
+        },
+      },
+    },
+  });
+  const [failure] = await fixture.workerQuery(
+    'select current_attempt_number, failure_handling from app.node_runs where workflow_run_id=$1 and failure_ref is not null',
+    [run.id],
+  );
+  expect(failure).toMatchObject({
+    current_attempt_number: 1,
+    failure_handling: 'handled',
+  });
+  expect(run.calls).toHaveLength(1);
+});
+
+it('collects each iteration result with Agent as the only For Each body step', async () => {
+  const texts = ['alpha', 'beta', 'gamma'];
+  await using run = await start(
+    texts.map((text) =>
+      json({
+        ...chat(text),
+        usage: { prompt_tokens: 8, completion_tokens: 1 },
+      }),
+    ),
+    { shape: 'for-each' },
+  );
+  expect(await run.end()).toMatchObject({ status: 'succeeded' });
+  const outputs = await fixture.workerQuery(
+    "select output_ref from app.node_runs where workflow_run_id=$1 and node_id='agent' and current_attempt_id is null order by invocation_key",
+    [run.id],
+  );
+  expect(outputs).toMatchObject(
+    texts.map((text) => ({ output_ref: { value: { text } } })),
+  );
 });
 
 describe('Agent restart', () => {
@@ -476,6 +557,21 @@ describe('Agent restart', () => {
       },
       { status: 'succeeded' },
     ]);
+  });
+
+  it('refuses invalid Slack input before opening a task or dispatching the tool', async () => {
+    await using slack = await fakeAgentSlack(false);
+    await using run = await start([modelProposal({ text: '' })], {
+      write: 'slack',
+      slackUrl: slack.baseUrl,
+    });
+    expect(await run.end()).toMatchObject({ status: 'failed' });
+    expect(await run.failures()).toContainEqual({
+      safe_error_code: 'agent.tool_arguments',
+    });
+    expect(await run.attempts()).toMatchObject([{ status: 'succeeded' }]);
+    expect(await run.tasks()).toEqual([]);
+    expect(slack.calls).toEqual([]);
   });
 
   it('refuses model arguments that try to change the published approval rule', async () => {
@@ -773,12 +869,13 @@ async function start(
           child_status: string | null;
           status: string;
           result_ref: unknown;
+          safe_error_code: string | null;
           deadline_at: Date | null;
           cancel_requested_at: Date | null;
           consumed_at: Date | null;
           slot_lent: boolean;
         }>(
-          `select c.child_run_id, r.status as child_status, c.status, c.result_ref,
+          `select c.child_run_id, r.status as child_status, c.status, c.result_ref, c.safe_error_code,
                   c.deadline_at, c.cancel_requested_at, c.consumed_at, c.slot_lent
            from app.workflow_calls c left join app.workflow_runs r
              on r.workspace_id=c.workspace_id and r.id=c.child_run_id
@@ -840,6 +937,11 @@ async function start(
         );
         return row?.agent;
       },
+      agentOutcomes: () =>
+        fixture.workerQuery(
+          "select status, safe_error_code from app.node_runs where workflow_run_id=$1 and node_id='agent' and current_attempt_id is null",
+          [runId],
+        ),
       failures: () =>
         fixture.workerQuery<{ safe_error_code: string }>(
           "select safe_error_code from app.node_runs where workflow_run_id=$1 and node_id='agent' and status='failed'",
