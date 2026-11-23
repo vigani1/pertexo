@@ -1,9 +1,13 @@
 import { expect, test } from '../../support/fixtures';
 import type { Page } from '@playwright/test';
-import type { DraftProposalResult } from '@pertexo/contracts';
+import {
+  draftProposalResultSchema,
+  type DraftProposalResult,
+} from '@pertexo/contracts';
 import { parseWorkflowGraphDraft } from '@pertexo/workflow-model';
 import {
   addCsrfCookie,
+  currentEtag,
   editorUrl,
   installEditorRoutes,
   remoteDraft,
@@ -34,7 +38,8 @@ test('reviews the removed and added link endpoints and the changed configuration
   context,
 }) => {
   await addCsrfCookie(context);
-  await installEditorRoutes(page, remoteDraft(initial));
+  const remote = remoteDraft(initial);
+  await installEditorRoutes(page, remote);
   const base = {
     workflowId,
     revision: 1,
@@ -64,7 +69,7 @@ test('reviews the removed and added link endpoints and the changed configuration
         ],
       },
     },
-    representationTag: '"draft-1"',
+    representationTag: currentEtag(remote),
     usage: { kind: 'complete', model: 'test', inputTokens: 1, outputTokens: 1 },
     validation: {
       valid: true,
@@ -73,7 +78,7 @@ test('reviews the removed and added link endpoints and the changed configuration
       currentPublication: null,
     },
   } satisfies DraftProposalResult;
-  await requestProposal(page, result);
+  await requestProposal(page, draftProposalResultSchema.parse(result));
   const review = page.getByRole('dialog', { name: 'Review proposed draft' });
   await expect(review).toContainText('Manual input (out) → Next step (in)');
   await expect(review).toContainText('Manual input (out) → Target (in)');
